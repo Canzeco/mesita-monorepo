@@ -22,6 +22,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { loadVisitsConfig } from "../_shared/visits-config.ts";
 
 // Mirrors the CHECK on public.ticket_reports.reason.
 const REASONS = [
@@ -77,6 +78,17 @@ Deno.serve(async (req) => {
   const details = rawDetails.length > 0 ? rawDetails : null;
 
   const admin = adminClient(envRes.env);
+  const visits = await loadVisitsConfig(admin);
+  if (!visits.reportEnabled) {
+    return json(
+      {
+        ok: false,
+        code: "report_disabled",
+        error: "Reporting is turned off.",
+      },
+      409,
+    );
+  }
 
   const ticketRow = await admin
     .from("visit_tickets")

@@ -16,7 +16,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type Stripe from "npm:stripe@17";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { resolvePlanPrice, STRIPE_CATALOG } from "./stripe-billing.ts";
+import { resolvePlanPrice, STRIPE_CATALOG, liveChargesBlocked } from "./stripe-billing.ts";
 
 // ─── Catalog contract ────────────────────────────────────────────────────
 
@@ -38,6 +38,30 @@ Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", ()
 Deno.test("STRIPE_CATALOG: lookup keys are unique (idempotency anchors)", () => {
   const keys = STRIPE_CATALOG.map((e) => e.lookupKey);
   assertEquals(new Set(keys).size, keys.length);
+});
+
+Deno.test("liveChargesBlocked: test keys and missing live flag never block", () => {
+  const prev = Deno.env.get("STRIPE_ALLOW_LIVE");
+  Deno.env.delete("STRIPE_ALLOW_LIVE");
+  try {
+    assertEquals(liveChargesBlocked("sk_test_abc"), null);
+    assertEquals(liveChargesBlocked("rk_live_not_a_secret"), null);
+    assert(liveChargesBlocked("sk_live_abc") !== null);
+  } finally {
+    if (prev === undefined) Deno.env.delete("STRIPE_ALLOW_LIVE");
+    else Deno.env.set("STRIPE_ALLOW_LIVE", prev);
+  }
+});
+
+Deno.test("liveChargesBlocked: STRIPE_ALLOW_LIVE=true is the human live flip", () => {
+  const prev = Deno.env.get("STRIPE_ALLOW_LIVE");
+  Deno.env.set("STRIPE_ALLOW_LIVE", "true");
+  try {
+    assertEquals(liveChargesBlocked("sk_live_abc"), null);
+  } finally {
+    if (prev === undefined) Deno.env.delete("STRIPE_ALLOW_LIVE");
+    else Deno.env.set("STRIPE_ALLOW_LIVE", prev);
+  }
 });
 
 // ─── Fakes ──────────────────────────────────────────────────────────────

@@ -100,3 +100,46 @@ jobs:
       - name: Check
         working-directory: supabase
         run: deno check .
+
+  # SQL invariants against a database built from every migration.
+  #
+  # The Deno suite never opens Postgres, so until this job every schema
+  # guarantee was convention: `profiles` keeps security_invoker, `places.name`
+  # stays generated, `admin_reset_database` finds its survivors registered.
+  # Migrations carry DO-block assertions (the 5A posture from /plan-eng-review
+  # 2026-08-09, Issue 5) but they only see the world at the moment they run.
+  # The failure that actually happened is the one they cannot see:
+  # 20260712040000 dropped security_invoker off a projects_view rebuild and it
+  # went unnoticed until an audit. This job runs after the LAST migration, so
+  # it sees the schema that ships (MESITA-1050).
+  #
+  # Blocking. If Postgres will not come up, the migration set is broken and
+  # that IS the finding — merging past it deploys the same breakage. Do not
+  # add continue-on-error (MESITA-1139).
+  #
+  # Cost: `-x` drops every container except Postgres (and auth, which the CLI
+  # always starts). Path-filtered to `supabase/**`, so a web-only PR never
+  # pays for it.
+  schema:
+    name: pgTAP · schema invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Pinned: resolving "latest" costs an unauthenticated GitHub API call,
+      # rate-limited per runner IP, and already failed this job once
+      # (run 32626825469).
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.100.0
+
+      - name: Start Postgres and replay every migration
+        working-directory: supabase
+        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta
+
+      - name: Run pgTAP
+        working-directory: supabase
+        run: supabase test db --local supabase/tests/database

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FlaskConical, Users } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
-import { SectionCard } from "../enricher-config/atlas-ui";
+import { SectionCard } from "@/components/admin-ui/config";
 import {
   DEFAULT_ASSUMPTIONS,
   SIMULATED_VISITS,
@@ -128,7 +128,7 @@ export function PromosDistributionClient({
             {CLASS_KEYS.map((cls) => (
               <PctField
                 key={cls}
-                label={`${CLASS_META[cls].emoji} ${CLASS_META[cls].name}`}
+                label={CLASS_META[cls].name}
                 value={assumptions.classPct[cls]}
                 onChange={(v) => setClassPct(cls, v)}
               />
@@ -151,10 +151,9 @@ export function PromosDistributionClient({
         />
       ))}
 
-      <p className="text-muted-foreground/80 type-label leading-snug">
-        Exact expected distribution of {SIMULATED_VISITS.toLocaleString("en-US")}{" "}
-        visits under the saved Config — no sampling. The live engine still pays
-        best-of until MESITA-992, so real bills today pay less than this.
+      <p className="text-muted-foreground type-label">
+        Exact expected mix of {SIMULATED_VISITS.toLocaleString("en-US")} visits
+        on the saved config — no sampling.
       </p>
     </div>
   );
@@ -212,7 +211,7 @@ function DistributionCard({
             className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-baseline"
             style={{ backgroundColor: ramp[0] }}
           />
-          {meta.emoji} {meta.name}
+          {meta.name}
         </h3>
         <span className="text-muted-foreground ml-auto text-xs">
           Expected discount{" "}

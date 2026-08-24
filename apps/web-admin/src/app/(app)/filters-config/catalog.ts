@@ -9,10 +9,10 @@
 //
 // TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
 //
-//   SIGNALS   the six EARNED signals, each with one exponent. Signals compose
-//             as `s^w`, so this table is the whole ranking model an operator
-//             owns. Promoting is not a row.
-//   ENGINES   which surfaces read any of it. Only a WIRED engine gets a knob.
+//   SIGNALS   six functions. One table: Input · Process · Output · every
+//             hyperparameter including the exponent. Promoting is not a row.
+//   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
+//             engine gets a knob, and today that knob is Swipe's `ranked`.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
@@ -28,11 +28,23 @@ export const SIGNAL_KEYS = [
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
 
+export type SignalParamBag = Record<string, number>;
+export type SignalParams = Record<SignalKey, SignalParamBag>;
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
+  params: SignalParams;
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+};
+
+export type ParamField = {
+  key: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
 };
 
 export type DiscoveryFilters = {
@@ -55,6 +67,24 @@ export const MIN_RATING_MAX = 5;
 export const MAX_DISTANCE_KM_MAX = 200;
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
+export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
+  timing: {
+    openShare: 0.7,
+    closedFloor: 0.2,
+    dead: 0.25,
+    dawn: 0.55,
+    breakfast: 0.8,
+    midday: 1,
+    evening: 1,
+    late: 0.5,
+  },
+  category: { exact: 1, family: 0.55, miss: 0.1 },
+  popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
+  semantic: { unembedded: 0.4 },
+  randomness: {},
+};
+
 export const DEFAULT_CONFIG: DiscoveryConfig = {
   weights: {
     proximity: 1,
@@ -64,6 +94,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     semantic: 1,
     randomness: 0.35,
   },
+  params: DEFAULT_SIGNAL_PARAMS,
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
@@ -80,63 +111,90 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
 export const ENGINES: {
   key: string;
   label: string;
-  what: string;
+  fn: string;
+  input: string;
+  process: string;
+  output: string;
   state: "LIVE" | "PARKED" | "UNBUILT";
   wired: WiredEngineKey | null;
 }[] = [
   {
     key: "swipe",
     label: "Swipe",
-    what: "The Home deck. Photo-first cards, right saves, left skips.",
+    fn: "swipe()",
+    input: "Ready pool + guest geo.",
+    process: "swipe(proximity(), timing(), category(), popularity(), semantic(), randomness()) then slot bought cards. Ranked off = pool order.",
+    output: "Ordered Home deck.",
     state: "LIVE",
     wired: "swipe",
   },
   {
     key: "map",
     label: "Map",
-    what: "The Search tab: pins, catalog rail, a deliberately plain searchbar.",
+    fn: "map()",
+    input: "Ready pool + viewport + query.",
+    process: "Admission predicates only. Not wired to the blend yet.",
+    output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
   },
   {
     key: "favorites",
     label: "Favorites",
-    what: "What the guest saved. No ranking question to answer.",
+    fn: "favorites()",
+    input: "What this guest saved.",
+    process: "No ranking question. Recency of the save.",
+    output: "The saved list.",
     state: "LIVE",
     wired: null,
   },
   {
     key: "catalog",
     label: "Catalog",
-    what: "The grid. Built and working; the page redirects and the pill opens coming-soon.",
+    fn: "catalog()",
+    input: "Ready pool.",
+    process: "Parked. The page redirects; the pill is coming-soon.",
+    output: "A grid, when unparked.",
     state: "PARKED",
     wired: null,
   },
   {
     key: "chat",
     label: "Chat",
-    what: "The Concierge. Ships dark; Don Memo is its persona.",
+    fn: "chat()",
+    input: "The guest's utterance + catalog.",
+    process: "Parked. Don Memo is the persona; ships dark.",
+    output: "A recommended set, when unparked.",
     state: "PARKED",
     wired: null,
   },
   {
     key: "social",
     label: "Social",
-    what: "A live feed of check-ins, likes, rewards and stories.",
+    fn: "social()",
+    input: "Check-ins, likes, rewards, stories.",
+    process: "Parked. An engine only — there is no Social signal.",
+    output: "A live feed, when unparked.",
     state: "PARKED",
     wired: null,
   },
   {
     key: "name",
     label: "Name",
-    what: "Entity resolution: a string in, the right place out.",
+    fn: "name()",
+    input: "A string.",
+    process: "Unbuilt. Entity resolution.",
+    output: "The right place.",
     state: "UNBUILT",
     wired: null,
   },
   {
     key: "web",
     label: "Web",
-    what: "Perplexity retrieval for what the catalog lacks. Wired inside Chat already.",
+    fn: "web()",
+    input: "A query the catalog cannot answer.",
+    process: "Unbuilt. Perplexity retrieval. Already called from Chat.",
+    output: "Places the catalog lacks.",
     state: "UNBUILT",
     wired: null,
   },
@@ -154,47 +212,98 @@ export const ENGINES: {
  * wired so far; saying so on the page is the difference between an enforced
  * config and a staged one pretending otherwise.
  */
+const UNIT: ParamField[] = [];
+const ZERO_ONE = (key: string, label: string): ParamField => ({
+  key,
+  label,
+  min: 0,
+  max: 1,
+  step: 0.05,
+});
+
 export const SIGNALS: {
   key: SignalKey;
   label: string;
-  blurb: string;
-  reads: string;
+  fn: string;
+  input: string;
+  process: string;
+  output: string;
+  fields: ParamField[];
 }[] = [
   {
     key: "proximity",
     label: "Proximity",
-    blurb: "How far is it, bent through a log curve — close counts hard, far counts gently.",
-    reads: "Place geo × the guest's location. No guest location → abstains.",
+    fn: "proximity()",
+    input: "Place geo × guest geo. No guest geo → abstains at 1.",
+    process: "Haversine km, then 1 − log1p(km / knee) / log1p(max / knee).",
+    output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
+    fields: [
+      { key: "maxKm", label: "maxKm", min: 1, max: 200, step: 0.5 },
+      { key: "kneeKm", label: "kneeKm", min: 0.1, max: 25, step: 0.1 },
+      ZERO_ONE("missingGeo", "missingGeo"),
+    ],
   },
   {
     key: "timing",
     label: "Timing",
-    blurb: "Is it open, and is this its hour — read in the place's own local time.",
-    reads: "Weekly hours + the place's local clock. Closed is demoted, never hidden.",
+    fn: "timing()",
+    input: "Weekly hours × the place's local clock.",
+    process: "openShare × openOrFloor + (1 − openShare) × daypart(hour).",
+    output: "Closed is demoted to closedFloor, never hidden.",
+    fields: [
+      ZERO_ONE("openShare", "openShare"),
+      ZERO_ONE("closedFloor", "closedFloor"),
+      ZERO_ONE("dead", "daypart dead"),
+      ZERO_ONE("dawn", "daypart dawn"),
+      ZERO_ONE("breakfast", "daypart breakfast"),
+      ZERO_ONE("midday", "daypart midday"),
+      ZERO_ONE("evening", "daypart evening"),
+      ZERO_ONE("late", "daypart late"),
+    ],
   },
   {
     key: "category",
     label: "Category",
-    blurb: "Does the type answer what the guest asked for.",
-    reads: "Category and family keys × the guest's stated categories. Swipe states none.",
+    fn: "category()",
+    input: "Place category/family × guest categories. Swipe states none.",
+    process: "exact hit, else family hit, else miss. No intent → abstain.",
+    output: "One of exact / family / miss.",
+    fields: [
+      ZERO_ONE("exact", "exact"),
+      ZERO_ONE("family", "family"),
+      ZERO_ONE("miss", "miss"),
+    ],
   },
   {
     key: "popularity",
     label: "Popularity",
-    blurb: "Rating shrunk toward the catalog mean by review volume.",
-    reads: "Google rating + review count. A thin 5.0 loses to a thick 4.6.",
+    fn: "popularity()",
+    input: "Google rating + review count.",
+    process: "(v·r + m·prior) / (v + m), then stretch from floorRating to 5.",
+    output: "Unrated place gets the prior, never an abstention.",
+    fields: [
+      { key: "priorRating", label: "priorRating", min: 0, max: 5, step: 0.1 },
+      { key: "confidence", label: "confidence", min: 1, max: 1000, step: 1 },
+      { key: "floorRating", label: "floorRating", min: 0, max: 4.9, step: 0.1 },
+    ],
   },
   {
     key: "semantic",
     label: "Semantic",
-    blurb: "The query against the place's Semantic Summary vector.",
-    reads: "places.embedding — written by the enrichment queue's semantic Summary function.",
+    fn: "semantic()",
+    input: "Query vector × places.embedding (Summary, never Presentation).",
+    process: "(cosine + 1) / 2. No query → abstain.",
+    output: "Unembedded place → unembedded, never deleted.",
+    fields: [ZERO_ONE("unembedded", "unembedded")],
   },
   {
     key: "randomness",
     label: "Randomness",
-    blurb: "Reads nothing about the place. Keeps the deck from freezing.",
-    reads: "Nothing. It is the only signal with no index at all.",
+    fn: "randomness()",
+    input: "Nothing about the place. A uniform draw.",
+    process: "rng() in [0, 1). The exponent is the only knob.",
+    output: "A number that only breaks near-ties when the exponent is soft.",
+    fields: UNIT,
   },
 ];
 
@@ -236,8 +345,25 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     };
   }
 
+  const rawParams = (r.params ?? {}) as Record<string, unknown>;
+  const params = {} as SignalParams;
+  for (const key of SIGNAL_KEYS) {
+    const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
+    const next: SignalParamBag = {};
+    const spec = SIGNALS.find((s) => s.key === key);
+    for (const field of spec?.fields ?? []) {
+      const fallback = DEFAULT_SIGNAL_PARAMS[key][field.key];
+      const v = num(bag[field.key], fallback, field.min, field.max);
+      const decimals = field.step >= 1 ? 0 : field.step >= 0.5 ? 1 : 2;
+      const factor = 10 ** decimals;
+      next[field.key] = Math.round(v * factor) / factor;
+    }
+    params[key] = next;
+  }
+
   return {
     weights,
+    params,
     slotting: {
       enabled: typeof s.enabled === "boolean" ? s.enabled : DEFAULT_CONFIG.slotting.enabled,
       everyNth: Math.round(

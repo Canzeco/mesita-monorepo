@@ -22,6 +22,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import {
   ensureWholeCatalog,
+  liveChargesBlocked,
   resolvePlanPrice,
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
@@ -111,6 +112,8 @@ Deno.serve(async (req) => {
   }
 
   // ── REAL Stripe mode ──────────────────────────────────────────────────────
+  const liveBlock = liveChargesBlocked(stripeKey);
+  if (liveBlock) return json({ ok: false, error: liveBlock, code: "stripe_live_blocked" }, 409);
   const stripe = new Stripe(stripeKey, { apiVersion: STRIPE_API_VERSION });
 
   // Self-provisioning: resolves (and if needed creates) the $-current monthly

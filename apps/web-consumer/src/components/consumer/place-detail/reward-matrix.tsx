@@ -109,15 +109,8 @@ export function RateSheetSkeleton() {
   );
 }
 
-// Which LEGACY segment carries each v2 class's free-plan rate. This is the
-// display half of the bridge (MESITA-1079): the engine reports the ladder
-// under the four legacy keys, so Bronze reads `standard`, Silver reads
-// `influencer` and Diamond reads `aura`.
-//
-// GOLD IS `null` AND THAT IS THE TRUTH, not a gap to paper over: no legacy key
-// resolves to Gold, so the engine has never priced it and nothing grants it
-// today (MESITA-1076). The row renders ★, which is the same thing this sheet
-// already shows for an action a place hasn't priced.
+// Which LEGACY segment carries each v2 class's free-plan rate. Used only when
+// the quote has no v11 `breakdown` (best-of fallback / stale EF).
 const LADDER_SOURCE: Record<ClassKey, LegacyClassKey | null> = {
   bronze: "standard",
   silver: "influencer",
@@ -125,10 +118,17 @@ const LADDER_SOURCE: Record<ClassKey, LegacyClassKey | null> = {
   diamond: "aura",
 };
 
+function standingForClass(quote: RewardQuote, key: ClassKey): number | null {
+  if (quote.breakdown) {
+    return quote.breakdown.automatic + quote.breakdown.classes[key];
+  }
+  const source = LADDER_SOURCE[key];
+  if (!source || !quote.ladder) return null;
+  return quote.ladder[source] ?? 0;
+}
+
 // Every class's standing rate at THIS place, in rank order, the guest's own
-// marked. Renders nothing when the engine didn't send a ladder — better a
-// missing section than one rebuilt from a client-side table the till has
-// never seen.
+// marked. v11 quotes Gold from the visits grid; the legacy ladder cannot.
 export function ClassLadder({
   quote,
   classKey,
@@ -136,21 +136,20 @@ export function ClassLadder({
   quote: RewardQuote;
   classKey: ClassKey;
 }) {
-  const ladder = quote.ladder;
-  if (!ladder) return null;
+  if (!quote.breakdown && !quote.ladder) return null;
   return (
     <div className="flex flex-col gap-1.5">
       {CLASS_ORDER.map((key) => {
-        const source = LADDER_SOURCE[key];
+        const value = standingForClass(quote, key);
         return (
           <Row
             key={key}
             icon={CLASS_ICONS[key]}
             label={classProperLabel(key)}
-            hint={key === "gold" ? "Not priced here yet" : undefined}
-            value={source ? (ladder[source] ?? 0) : null}
+            hint={value == null ? "Not priced here yet" : undefined}
+            value={value}
             mine={key === classKey}
-            muted={source == null}
+            muted={value == null}
           />
         );
       })}

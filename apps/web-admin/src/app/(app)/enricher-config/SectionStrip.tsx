@@ -2,27 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-// Wayfinding for a page that is five sections and twelve function blocks deep.
-// The strip does not exist until the first section scrolls away, so the top of
-// the page stays as calm as the rest of the console — it is a way back, not
-// chrome. Krug's trunk test: at depth you should still know where you are.
+// Wayfinding for five modules. The strip does not exist until the first
+// module scrolls away — it is a way back, not chrome. Function hashes still
+// work from Create/Enrich step chips; they are not repeated here.
 const LINKS: { id: string; label: string }[] = [
-  { id: "s-sourcing", label: "1 Sourcing" },
-  { id: "s-create", label: "2 Create" },
-  { id: "s-enrich", label: "3 Enrich" },
-  { id: "f-seed", label: "Seed" },
-  { id: "f-pulse", label: "1 Pulse" },
-  { id: "f-details", label: "2 Details" },
-  { id: "f-serp", label: "3 Serp" },
-  { id: "f-links", label: "4 Links" },
-  { id: "f-social", label: "5 Social" },
-  { id: "f-images", label: "6 Images" },
-  { id: "f-menu", label: "7 Menu" },
-  { id: "f-reviews", label: "8 Reviews" },
-  { id: "f-description", label: "9 Description" },
-  { id: "f-summary", label: "◇ Summary" },
-  { id: "f-name", label: "◇ Name" },
-  { id: "s-models", label: "5 Models" },
+  { id: "s-models", label: "Models" },
+  { id: "s-sourcing", label: "Sourcing" },
+  { id: "s-create", label: "Create" },
+  { id: "s-enrich", label: "Enrich" },
+  { id: "s-functions", label: "Functions" },
 ];
 
 export function SectionStrip() {
@@ -30,7 +18,7 @@ export function SectionStrip() {
   const [here, setHere] = useState<string | null>(null);
 
   useEffect(() => {
-    const first = document.getElementById("s-sourcing");
+    const first = document.getElementById("s-models");
     if (!first) return;
     const gate = new IntersectionObserver(
       ([e]) => setShown(!e.isIntersecting),
@@ -38,7 +26,6 @@ export function SectionStrip() {
     );
     gate.observe(first);
 
-    // Whichever section owns the middle of the viewport is where you are.
     const spy = new IntersectionObserver(
       (entries) => {
         for (const e of entries) if (e.isIntersecting) setHere(e.target.id);

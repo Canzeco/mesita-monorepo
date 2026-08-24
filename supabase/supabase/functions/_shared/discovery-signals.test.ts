@@ -136,6 +136,16 @@ Deno.test("an unlocated place is demoted, never deleted", () => {
   assert(s > 0 && s < 1, `expected a middling score, got ${s}`);
 });
 
+Deno.test("proximity hyperparameters change the curve and the missing-geo floor", () => {
+  assertEquals(proximity(place({ lat: null, lng: null }), CDMX, { missingGeo: 0.1 }), 0.1);
+  const farDefault = proximity(place({ lat: CDMX.lat + 0.2, lng: CDMX.lng }), CDMX);
+  const farTight = proximity(place({ lat: CDMX.lat + 0.2, lng: CDMX.lng }), CDMX, {
+    maxKm: 5,
+    kneeKm: 0.2,
+  });
+  assert(farTight < farDefault, `tighter max/knee should punish far more: ${farTight} vs ${farDefault}`);
+});
+
 // ── Timing ───────────────────────────────────────────────────────────────────
 
 const HOURS_ALWAYS = {
@@ -186,6 +196,16 @@ Deno.test("daypart is coarse but ordered: dead hours lose to meal windows", () =
   }
 });
 
+Deno.test("timing and daypart read operator params", () => {
+  assertEquals(daypartScore(4, { dead: 0.05 }), 0.05);
+  const closedDefault = timing(place({ hours: HOURS_NEVER }), { now: MIDDAY });
+  const closedHarsh = timing(place({ hours: HOURS_NEVER }), { now: MIDDAY }, {
+    closedFloor: 0.01,
+    openShare: 1,
+  });
+  assert(closedHarsh < closedDefault, `harsher closed floor should score lower: ${closedHarsh} vs ${closedDefault}`);
+});
+
 // ── Category ─────────────────────────────────────────────────────────────────
 
 Deno.test("category abstains when the guest asked for nothing", () => {
@@ -233,6 +253,12 @@ Deno.test("an unrated place gets the prior, not an abstention", () => {
   assert(unrated < NEUTRAL, "abstaining would hand a bare row a free 1");
 });
 
+Deno.test("popularity prior is an operator knob", () => {
+  const low = popularity(place(), {}, { priorRating: 3.1, floorRating: 3, confidence: 60 });
+  const high = popularity(place(), {}, { priorRating: 4.8, floorRating: 3, confidence: 60 });
+  assert(high > low, `higher prior should lift an unrated place: ${high} vs ${low}`);
+});
+
 // ── Semantic ─────────────────────────────────────────────────────────────────
 
 Deno.test("semantic abstains without a query vector", () => {
@@ -262,6 +288,11 @@ Deno.test("an unembedded place loses to an embedded one without being deleted", 
   assert(gap > 0 && gap < hit, `expected 0 < ${gap} < ${hit}`);
   // A dimension mismatch is the same kind of gap, never a crash.
   assertEquals(semantic(place({ embedding: [1, 0] }), { queryVector: q }), gap);
+});
+
+Deno.test("semantic unembedded floor is an operator knob", () => {
+  const q = [1, 0, 0];
+  assertEquals(semantic(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────

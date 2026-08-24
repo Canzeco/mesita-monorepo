@@ -176,6 +176,21 @@ Deno.test("a blob from before this change reads back with the new sections defau
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
   assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
+  assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
+});
+
+Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
+  const cfg = normalizeDiscoveryConfig({
+    params: {
+      proximity: { maxKm: 999, kneeKm: 0, missingGeo: 2 },
+      popularity: { confidence: -3 },
+    },
+  });
+  assertEquals(cfg.params.proximity.maxKm, 200);
+  assertEquals(cfg.params.proximity.kneeKm, 0.1);
+  assertEquals(cfg.params.proximity.missingGeo, 1);
+  assertEquals(cfg.params.popularity.confidence, 1);
+  assertEquals(cfg.params.semantic.unembedded, DISCOVERY_DEFAULTS.params.semantic.unembedded);
 });
 
 Deno.test("filters clamp, and minRating keeps one decimal", () => {

@@ -8,6 +8,7 @@ import {
   Star,
   Store,
   UserPlus,
+  UtensilsCrossed,
 } from "lucide-react";
 import { SectionHeader } from "@/components/landing/section-header";
 
@@ -49,8 +50,9 @@ const REWARDS: {
   },
 ];
 
-// The two shared actions. Verified in the app BEFORE the discount releases —
-// that ordering is the whole product, so the copy has to lead with it.
+// The three sharing actions. Verified in the app BEFORE the discount
+// releases — that ordering is the whole product, so the copy has to lead
+// with it.
 const SHARING = [
   {
     label: "Instagram Story",
@@ -63,6 +65,12 @@ const SHARING = [
     body: "Posted at the table and verified, once per guest per place. Any rating qualifies — never sentiment-gated, so the signal stays honest.",
     proof: "The rung that compounds after the guest leaves",
     Icon: Sparkles,
+  },
+  {
+    label: "Mesita Review",
+    body: "Food, Service, Ambience, Value, Overall — in the app, one per guest per place. A place's Mesita rating counts guests, not tickets.",
+    proof: "The rating Mesita owns",
+    Icon: UtensilsCrossed,
   },
 ];
 
@@ -119,7 +127,7 @@ function RewardsProgram() {
             </p>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
             {SHARING.map(({ label, body, proof, Icon }) => (
               <article
                 key={label}

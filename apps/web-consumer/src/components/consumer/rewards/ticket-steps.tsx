@@ -100,16 +100,22 @@ export function StepBill({
   busy,
   error,
   fixActive = false,
+  tipEnabled = true,
+  tipPresets = [...TIP_PRESETS],
+  defaultTipPct = DEFAULT_TIP_PCT,
   onSave,
 }: {
   initialSubtotalCents: number | null;
-  /** undefined = never billed (preselect 15); null = custom amount. */
+  /** undefined = never billed (preselect default); null = custom amount. */
   initialTipPct: number | null | undefined;
   initialTipCents: number | null;
   busy: boolean;
   error: string | null;
   /** Staff sent the bill back — the CTA names the resend. */
   fixActive?: boolean;
+  tipEnabled?: boolean;
+  tipPresets?: number[];
+  defaultTipPct?: number;
   onSave: (bill: {
     subtotalCents: number;
     tipPct: number | null;
@@ -122,7 +128,11 @@ export function StepBill({
       : "",
   );
   const [pct, setPct] = useState<number | null>(
-    initialTipPct === undefined ? DEFAULT_TIP_PCT : initialTipPct,
+    !tipEnabled
+      ? 0
+      : initialTipPct === undefined
+        ? defaultTipPct
+        : initialTipPct,
   );
   const [tipDraft, setTipDraft] = useState(
     initialTipPct === null && initialTipCents
@@ -173,11 +183,18 @@ export function StepBill({
           The printed total, before your discount.
         </p>
 
+        {tipEnabled ? (
+          <>
         <p className="text-muted-foreground type-meta mt-3 font-bold tracking-[0.12em] uppercase">
           Tip
         </p>
-        <div className="mt-1 grid grid-cols-4 gap-1.5">
-          {TIP_PRESETS.map((p) => {
+        <div
+          className="mt-1 grid gap-1.5"
+          style={{
+            gridTemplateColumns: `repeat(${tipPresets.length + 1}, minmax(0, 1fr))`,
+          }}
+        >
+          {tipPresets.map((p) => {
             const on = pct === p;
             return (
               <button
@@ -227,6 +244,8 @@ export function StepBill({
               className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
             />
           </div>
+        ) : null}
+          </>
         ) : null}
       </div>
 

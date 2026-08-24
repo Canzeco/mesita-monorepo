@@ -16,5 +16,16 @@
 -- in a follow-up rather than amending 0031 so the schema migration
 -- and the hardening read as separate intents in the history.
 
-revoke execute on function public.tg_saved_venues_issue_coupon()  from anon, authenticated, public;
-revoke execute on function public.tg_saved_venues_cancel_coupon() from anon, authenticated, public;
+-- Filename order runs this file before 20260531120003 creates the
+-- functions. Prod applied the other way. Skip the REVOKE when the
+-- function is not there yet; 20260824221900 reapplies once it exists.
+do $mesita_1278_lockdown$
+begin
+  if to_regprocedure('public.tg_saved_venues_issue_coupon()') is not null then
+    revoke execute on function public.tg_saved_venues_issue_coupon() from anon, authenticated, public;
+  end if;
+  if to_regprocedure('public.tg_saved_venues_cancel_coupon()') is not null then
+    revoke execute on function public.tg_saved_venues_cancel_coupon() from anon, authenticated, public;
+  end if;
+end
+$mesita_1278_lockdown$;
