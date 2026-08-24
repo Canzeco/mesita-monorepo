@@ -40,21 +40,22 @@ export const ENRICH_FIELD_LIMITS = {
   },
   tagCatalogSize: { max: 200, unit: "count", note: "Controlled tags in place_tags (Atlas taxonomy)" },
   tagSlugLength: { max: 40, unit: "chars", note: "Per-tag slug length cap" },
-  // Mirrors the Enricher Config "Images → Save Total Images" knob
-  // (admin-tunable 1–10; DB CHECK atlas_save_total_images 0–10). Lowering this
-  // number is what lowers the server validator too — admin-web-update-enricher-
-  // config derives SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The S9
+  // Mirrors app_config.atlas_save_total_images (1–10; DB CHECK 0–10). Set
+  // through admin-web-update-enricher-config, which is the only writer left
+  // now that the admin Enrichment page renders no knobs. Lowering this number
+  // is what lowers the server validator too — that EF derives
+  // SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The S9
   // storage-mirror step (store-place-images.ts / PHOTO_CEILING) separately
   // hard-caps the persisted array at 50 regardless of this setting — the two
   // are not the same knob.
   photos: {
     max: 10,
     unit: "count",
-    note: "places.photos array (hero + gallery) — mirrors the Enricher Config \"Save Total Images\" setting (admin-tunable 1–10, DB max 10, enforced by app_config_atlas_save_total_images_range); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
+    note: "places.photos array (hero + gallery) — mirrors app_config.atlas_save_total_images (1–10, DB max 10, enforced by app_config_atlas_save_total_images_range); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
   },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
-  // app_config.atlas_gather_reviews (0–100) on Enricher Config; this is the
-  // profile-spec max the pipeline may never exceed.
+  // app_config.atlas_gather_reviews (0–100); this is the profile-spec max the
+  // pipeline may never exceed.
   googleReviews: {
     max: 100,
     unit: "count",

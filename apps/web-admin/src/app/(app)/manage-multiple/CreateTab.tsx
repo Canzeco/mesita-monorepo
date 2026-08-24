@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Loader2, Play, Upload } from "lucide-react";
 import { createPlaceFromGooglePlaceId } from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
@@ -123,15 +122,9 @@ export function CreateTab({
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste Google Place IDs (one per line) or upload a CSV. Each create does
         the Google lookup and catalog listing, then hands off to the Enricher —
-        deep Enricher research runs in the background.
-        Caps, levels, and photo analysis are configured in{" "}
-        <Link
-          href="/enricher-config"
-          className="text-foreground font-medium underline underline-offset-2"
-        >
-          Enricher Config
-        </Link>
-        .
+        deep Enricher research runs in the background. Caps, levels and photo
+        analysis run on the stored Enrichment settings; the console for them is
+        empty, and what each one means lives in Notion Docs › Enrichment.
       </p>
 
       {/* Input */}

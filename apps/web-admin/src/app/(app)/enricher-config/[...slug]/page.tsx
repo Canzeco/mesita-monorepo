@@ -1,19 +1,12 @@
 import { permanentRedirect } from "next/navigation";
 
 // Every retired Enrichment subpath — config, triggers, calculator, playground —
-// lands on the one page. The old tabs are boxes on it now; the calculator keeps
-// an anchor so deep links still reach it.
+// lands on the one page. The tabs became boxes on it, and the boxes are gone
+// too (page.tsx), so there is no anchor left to preserve: every old deep link
+// lands on the Soon page rather than on a fragment that no longer exists.
 //
 // MUST stay the REQUIRED `[...slug]`, never `[[...slug]]`: the index is a real
 // page now, and the optional form would collide with it.
-export default async function EnrichmentLegacyRedirect({
-  params,
-}: {
-  params: Promise<{ slug: string[] }>;
-}) {
-  const { slug } = await params;
-  if (slug[0] === "calculator" || slug[0] === "playground") {
-    permanentRedirect("/enricher-config#calculator");
-  }
+export default async function EnrichmentLegacyRedirect() {
   permanentRedirect("/enricher-config");
 }

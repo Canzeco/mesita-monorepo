@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Loader2, Play, Upload } from "lucide-react";
 import {
   computeEnrichmentCost,
@@ -142,14 +141,9 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste place IDs (one per line) or upload a list. Each row queues the
         same re-enrich pipeline as the single-place control — the Enricher cron
-        runs async after trigger. Caps and models live in{" "}
-        <Link
-          href="/enricher-config"
-          className="text-foreground font-medium underline underline-offset-2"
-        >
-          Enrichment
-        </Link>
-        .
+        runs async after trigger. Caps and models are the stored Enrichment
+        settings; the console for them is empty, and what each one means lives
+        in Notion Docs › Enrichment.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
@@ -235,14 +229,8 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               ~{money(estimate.perPlace)} / place at current Enrichment rates
               {mode !== "full" ? " (scaled for lighter mode)" : ""}. Approximate
-              — not a bill. Full calculator:{" "}
-              <Link
-                href="/enricher-config#calculator"
-                className="text-foreground font-medium underline underline-offset-2"
-              >
-                the cost calculator
-              </Link>
-              .
+              — not a bill. This estimate is the last calculator standing:
+              the box on the Enrichment page went with its knobs.
             </p>
           </div>
         ) : costSeed === null ? (
