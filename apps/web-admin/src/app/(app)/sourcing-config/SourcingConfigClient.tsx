@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Layers, Star, Users } from "lucide-react";
+import { Layers, Star, Users } from "lucide-react";
 import { formatShortDate } from "@/lib/format";
 import { SectionCard, Switch } from "@/components/admin-ui/config";
 import {
@@ -116,75 +116,56 @@ export function SourcingChannels({
                     >
                       {ch.verb === "search" ? "Search" : "Add"}
                     </span>
-                    <details className="group/fam min-w-0">
-                      <summary
-                        className="hover:text-foreground flex cursor-pointer list-none items-center gap-1 pt-1.5 text-sm [&::-webkit-details-marker]:hidden"
-                        aria-label={`Families ${summary.label}`}
-                      >
-                        <ChevronRight className="text-muted-foreground h-3.5 w-3.5 shrink-0 transition-transform group-open/fam:rotate-90" />
-                        <span
-                          className={
-                            summary.kind === "none"
-                              ? "text-amber-600"
-                              : summary.kind === "all"
-                                ? "text-muted-foreground"
-                                : "text-foreground"
+                    <div className="min-w-0">
+                      <div className="mb-1.5 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={off || pending}
+                          onClick={() =>
+                            setFamilies(ch.key, [...ALL_FAMILY_KEYS])
                           }
+                          className="text-muted-foreground hover:text-foreground type-label font-medium disabled:opacity-40"
                         >
-                          {summary.label}
-                        </span>
-                      </summary>
-                      <div className="mt-2 mb-1">
-                        <div className="mb-1.5 flex gap-2">
-                          <button
-                            type="button"
-                            disabled={off || pending}
-                            onClick={() =>
-                              setFamilies(ch.key, [...ALL_FAMILY_KEYS])
-                            }
-                            className="text-muted-foreground hover:text-foreground type-label font-medium disabled:opacity-40"
-                          >
-                            All
-                          </button>
-                          <button
-                            type="button"
-                            disabled={off || pending}
-                            onClick={() => setFamilies(ch.key, [])}
-                            className="text-muted-foreground hover:text-foreground type-label font-medium disabled:opacity-40"
-                          >
-                            None
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {FAMILIES.map((fam) => {
-                            const on = p.families.includes(fam.key);
-                            return (
-                              <button
-                                key={fam.key}
-                                type="button"
-                                disabled={off || pending}
-                                onClick={() => toggleFamily(ch.key, fam.key)}
-                                title={fam.blurb}
-                                aria-pressed={on}
-                                className={
-                                  "rounded-lg border px-2 py-1 type-label font-medium transition disabled:cursor-not-allowed " +
-                                  (on
-                                    ? "border-foreground bg-foreground text-background"
-                                    : "border-border text-muted-foreground hover:bg-muted")
-                                }
-                              >
-                                {fam.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {summary.kind === "none" && !off && (
-                          <p className="mt-1.5 text-xs text-amber-600">
-                            Nothing is eligible for this channel.
-                          </p>
-                        )}
+                          All
+                        </button>
+                        <button
+                          type="button"
+                          disabled={off || pending}
+                          onClick={() => setFamilies(ch.key, [])}
+                          className="text-muted-foreground hover:text-foreground type-label font-medium disabled:opacity-40"
+                        >
+                          None
+                        </button>
                       </div>
-                    </details>
+                      <div className="flex flex-wrap gap-1">
+                        {FAMILIES.map((fam) => {
+                          const on = p.families.includes(fam.key);
+                          return (
+                            <button
+                              key={fam.key}
+                              type="button"
+                              disabled={off || pending}
+                              onClick={() => toggleFamily(ch.key, fam.key)}
+                              title={fam.blurb}
+                              aria-pressed={on}
+                              className={
+                                "rounded-lg border px-2 py-1 type-label font-medium transition disabled:cursor-not-allowed " +
+                                (on
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border text-muted-foreground hover:bg-muted")
+                              }
+                            >
+                              {fam.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {summary.kind === "none" && !off && (
+                        <p className="mt-1.5 text-xs text-amber-600">
+                          Nothing is eligible for this channel.
+                        </p>
+                      )}
+                    </div>
                     <div className="flex justify-end">
                       <FloorInput
                         value={p.minRating}
