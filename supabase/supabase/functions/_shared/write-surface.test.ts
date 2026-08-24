@@ -143,6 +143,24 @@ Deno.test("PLACE: no new writer of places/profiles outside the allowlist", async
   assertEquals(extra, [], `new direct writer(s) of places/profiles: ${extra.join(", ")}`);
 });
 
+// ── PROJECT (projects) — MESITA-1284: this table was missing from every
+// ratchet in this file (both this ivory-tower ratchet and the DELETION LAW
+// list below), so a new direct writer/deleter of projects went completely
+// unratcheted by CI. Empty on purpose, VERIFIED by running findWriters()
+// against this branch, not assumed: every real write to "projects" goes
+// through `_shared/place-doc.ts`'s writePlace() as a parameterized dispatch
+// (`admin.from(args.table)`), which this literal-string scan cannot and
+// should not match — so an empty allowlist here is the correct, current
+// baseline, not an oversight. If this test ever fails, it means a NEW file
+// wrote `.from("projects")` directly, bypassing the door.
+const PROJECT_UPDATE_ALLOWLIST: string[] = [];
+
+Deno.test("PROJECT: no new writer of projects outside the allowlist", async () => {
+  const found = await findWriters("projects", WRITE_VERBS);
+  const extra = found.filter((f) => !PROJECT_UPDATE_ALLOWLIST.includes(f));
+  assertEquals(extra, [], `new direct writer(s) of projects: ${extra.join(", ")}`);
+});
+
 // ── CONSUMER (consumers) — see the CONSUMER note in the file header ────────
 const CONSUMER_ALLOWLIST = [
   "_shared/consumer-doc.ts", // PR #1157's write door (merged)
@@ -248,7 +266,8 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // ── Guard test 4, refusal half ──────────────────────────────────────────
 //
 // Scope: hard DELETE on one of the six aggregates' OWN row — places,
-// profiles, consumers, visit_tickets, reservation_tickets. Deliberately NOT
+// profiles, consumers, visit_tickets, reservation_tickets, projects
+// (MESITA-1284 — this table was missing from both ratchets below). Deliberately NOT
 // in scope: satellite/audit tables (place_creation_attempts,
 // project_verifications, project_members, project_invites,
 // consumer_review_claims) whose own insert/delete is normal operation, not
@@ -273,7 +292,7 @@ const HARD_DELETE_ALLOWLIST = [
 ];
 
 Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/ticket/reservation row", async () => {
-  const tables = ["places", "profiles", "consumers", "visit_tickets", "reservation_tickets"];
+  const tables = ["places", "profiles", "consumers", "visit_tickets", "reservation_tickets", "projects"];
   const found = new Set<string>();
   for (const t of tables) for (const f of await findWriters(t, DELETE_VERB)) found.add(f);
   const extra = [...found].filter((f) => !HARD_DELETE_ALLOWLIST.includes(f));
