@@ -16,7 +16,7 @@
 import type { FleetAgentKey } from "./reservationist-fleet.ts";
 
 /** Content version — rides in every doc name (a1-kb-v1 → bump → a1-kb-v2). */
-export const RESERVATIONIST_KB_VERSION = 1;
+export const RESERVATIONIST_KB_VERSION = 2;
 
 /** Per-agent ElevenLabs KB doc name — sync finds/creates/renames by this. */
 export function reservationistKbDocName(key: FleetAgentKey): string {
@@ -49,7 +49,7 @@ export const RESERVATIONIST_KB_TEXT = [
   ``,
   `## Los cuatro agentes`,
   `- a1 Booker (saliente a negocio): pide la mesa de parte del comensal; registra confirmed / counter_offer / declined.`,
-  `- a2 Confirmer (saliente a comensal): confirma o presenta alternativas; el comensal acepta, propone otra fecha/hora, o cancela.`,
+  `- a2 Confirmer (saliente a comensal): confirma o presenta alternativas; el comensal acepta, propone otra fecha/hora, o cancela. También hace el recordatorio (~3 h antes) cuando el operador lo activa.`,
   `- a3 Inbound comensal: verifica por número, lee sus tickets, cancela los suyos. Cambios de fecha/hora/personas → app Mesita.`,
   `- a4 Inbound negocio: verifica la línea del lugar, busca por NOMBRE del comensal, cancela del lado del negocio (Mesita avisa al comensal). NUNCA des el teléfono del comensal.`,
   ``,
@@ -57,7 +57,7 @@ export const RESERVATIONIST_KB_TEXT = [
   `1. El comensal crea el ticket en la app (lugar, fecha, hora, personas, peticiones). Se genera un código de 8 dígitos.`,
   `2. a1 llama al lugar de inmediato (horario cerrado no bloquea el intento). Hasta 2 intentos; si no contestan, el ticket queda unreachable en la app.`,
   `3. Si el lugar confirma → a2 avisa al comensal. Si ofrece alternativas → a2 las presenta; el comensal elige o propone otra cosa → Mesita vuelve a llamar al lugar (máx. 2 rondas de negociación).`,
-  `4. Ambos lados deben coincidir para quedar confirmed. Fases que ve el comensal: created → booking → confirmed → passed (o cancelled / not booked).`,
+  `4. Ambos lados deben coincidir para quedar confirmed. Fases que ve el comensal: created → booking → confirmed → passed (o cancelled / not booked). Un recordatorio (a2, ~3 h antes) es opcional y lo enciende el operador; cap 1, nunca de madrugada.`,
   ``,
   `## Lookup: nombre primero, código segundo`,
   `En llamadas, ubica por nombre del comensal y lugar/fecha. El código de 8 dígitos es secundario (útil si el lugar pide “número de confirmación”). Los agentes lo leen de las herramientas; el comensal no tiene que saberlo.`,

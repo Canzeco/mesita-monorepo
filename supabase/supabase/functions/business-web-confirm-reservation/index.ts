@@ -24,6 +24,7 @@ import {
 } from "../_shared/auth.ts";
 import { RESERVATION_SELECT } from "../_shared/reservation-columns.ts";
 import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
+import { reminderParkPatch, REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 import { type ReservationPatch, validateReservationPatch } from "../_shared/reservation-doc.ts";
 
 type Decision = "confirm" | "decline";
@@ -102,6 +103,9 @@ Deno.serve(async (req) => {
       patch.last_call_status =
         "confirmed from the console — guest prefers app-only; no call";
     }
+    const reservedAt = current?.reserved_at ? new Date(current.reserved_at) : null;
+    const guestNotify: "call" | "app" = current?.consumer_notify === "app" ? "app" : "call";
+    Object.assign(patch, reminderParkPatch(lng, reservedAt, guestNotify));
   } else {
     patch = {
       status: "declined",
@@ -111,6 +115,7 @@ Deno.serve(async (req) => {
       callback_state: "skipped",
       callback_next_attempt_at: null,
       next_attempt_at: null,
+      ...REMINDER_CLEAR,
     };
   }
 

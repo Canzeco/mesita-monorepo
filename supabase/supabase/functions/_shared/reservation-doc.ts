@@ -143,6 +143,15 @@ export type NoticeState =
 
 export type NoticeKind = "venue_cancel" | "guest_cancel";
 
+export type ReminderState =
+  | "idle"
+  | "scheduled"
+  | "ringing"
+  | "calling"
+  | "answered"
+  | "failed"
+  | "skipped";
+
 export type CancelledBy = "consumer" | "business" | "agent";
 
 export type ConsumerNotify = "call" | "app";
@@ -210,6 +219,10 @@ export type ReservationDoc = {
   reschedules_day: string | null;
   modification_of: string | null;
   consumer_notify: ConsumerNotify;
+  reminder_state: ReminderState;
+  reminder_at: string | null;
+  reminder_attempts: number;
+  reminder_conversation_id: string | null;
 };
 
 // Every field a patch may touch — everything except `id` (server-generated,
@@ -264,6 +277,10 @@ export const RESERVATION_PATCH_KEYS = [
   "reschedules_day",
   "modification_of",
   "consumer_notify",
+  "reminder_state",
+  "reminder_at",
+  "reminder_attempts",
+  "reminder_conversation_id",
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
@@ -332,6 +349,15 @@ const NOTICE_STATE_VALUES = new Set<string>([
   "skipped",
 ]);
 const NOTICE_KIND_VALUES = new Set<string>(["venue_cancel", "guest_cancel"]);
+const REMINDER_STATE_VALUES = new Set<string>([
+  "idle",
+  "scheduled",
+  "ringing",
+  "calling",
+  "answered",
+  "failed",
+  "skipped",
+]);
 const CANCELLED_BY_VALUES = new Set<string>(["consumer", "business", "agent"]);
 const CONSUMER_NOTIFY_VALUES = new Set<string>(["call", "app"]);
 const REFERENCE_CODE_RE = /^\d{8}$/;
@@ -423,6 +449,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "notice_next_at",
       "claimed_at",
       "modification_of",
+      "reminder_at",
     ] as const
   ) {
     if (!(key in raw)) continue;
@@ -456,6 +483,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "callback_conversation_id",
       "outcome_note",
       "notice_conversation_id",
+      "reminder_conversation_id",
       "run_id",
     ] as const
   ) {
@@ -483,6 +511,7 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "negotiation_rounds",
       "callback_attempts",
       "notice_attempts",
+      "reminder_attempts",
       "outage_retries",
       "reschedules_today",
     ] as const
@@ -528,6 +557,16 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       };
     }
     patch.notice_state = v as NoticeState;
+  }
+  if ("reminder_state" in raw) {
+    const v = raw.reminder_state;
+    if (typeof v !== "string" || !REMINDER_STATE_VALUES.has(v)) {
+      return {
+        ok: false,
+        error: `reminder_state must be one of ${[...REMINDER_STATE_VALUES].join(", ")}`,
+      };
+    }
+    patch.reminder_state = v as ReminderState;
   }
   if ("notice_kind" in raw) {
     const v = raw.notice_kind;

@@ -263,6 +263,12 @@ Deno.test("validateReservationPatch: rejects attempts_state / callback_state / n
   assert(!validateReservationPatch({ notice_state: "answered" }).ok, "answered is an attempts/callback value, not notice_state");
 });
 
+Deno.test("validateReservationPatch: rejects a reminder_state outside its closed set", () => {
+  assert(!validateReservationPatch({ reminder_state: "pending" }).ok);
+  assert(validateReservationPatch({ reminder_state: "scheduled" }).ok);
+  assert(validateReservationPatch({ reminder_at: null }).ok);
+});
+
 Deno.test("validateReservationPatch: rejects a notice_kind outside {venue_cancel, guest_cancel}", () => {
   assert(!validateReservationPatch({ notice_kind: "reminder" }).ok);
 });
