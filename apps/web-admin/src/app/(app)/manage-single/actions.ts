@@ -248,6 +248,8 @@ export type AdminPlace = {
   embedding?: string | number[] | null;
   embedding_source_hash?: string | null;
   embedding_source_text?: string | null;
+  name_embedding?: string | number[] | null;
+  name_embedding_hash?: string | null;
   // ── Status, super-admin overview only (MESITA-1186) ──────────────────────
   // Computed by business-web-get-overview off _shared/place-status.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
@@ -802,20 +804,18 @@ export async function createPlaceFromGooglePlaceId(placeId: string) {
 // view).
 // Write: one owner-gated EF, partial updates — each card sends only its key.
 
-/** Both check-page gates a place controls. One box, one save (MESITA-1148). */
-export type CheckGates = { pin: string | null; requireBill: boolean };
+/** The one place-owned check-page gate (MESITA-823). The bill is always
+ *  required (MESITA-1095) — this door no longer writes a switch. */
+export type CheckGates = { pin: string | null };
 
-// business-web-set-check-pin writes only the keys present in the body, so
-// sending both in one call is a single atomic save for the Visits card —
-// the two used to be separate cards with separate saves.
 export async function setCheckGates(
   placeId: string,
   gates: CheckGates,
 ): Promise<Result<CheckGates>> {
-  const r = await efInvoke<{ pin: string | null; requireBill: boolean }>(
+  const r = await efInvoke<{ pin: string | null }>(
     "business-web-set-check-pin",
-    { placeId, pin: gates.pin, requireBill: gates.requireBill },
+    { placeId, pin: gates.pin },
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: { pin: r.data.pin, requireBill: r.data.requireBill } };
+  return { ok: true, data: { pin: r.data.pin } };
 }

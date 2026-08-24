@@ -2,7 +2,7 @@ import { getSourcingConfig } from "../sourcing-config/actions";
 import { DEFAULT_CONFIG } from "../sourcing-config/catalog";
 import { getAtlasSettings } from "./actions";
 import { IntakeClient } from "./IntakeClient";
-import { type IntakeSettings } from "./funnel";
+import { type IntakeSettings } from "./intake-guards";
 
 // INTAKE — how a place gets into Mesita and becomes a profile, on one page.
 // Five modules: shared models first (above Sourcing), then the gate · Create ·

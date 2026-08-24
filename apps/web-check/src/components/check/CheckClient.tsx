@@ -288,12 +288,10 @@ export function CheckClient({
 
   const status = statusFor(check.status);
   const scannedLine = minutesAgo(check.first_scanned_at);
-  const billRequired = check.bill_required === true;
-  // The place opted out of the optional bill, and this ticket carries none.
-  // Under v3 that blocked the close; under v4 it blocks the APPROVAL, which
-  // is where check-web-approve-ticket enforces it (MESITA-1148) — the button
-  // has to say so rather than earn a 409 bill_required.
-  const billMissing = billRequired && !check.bill;
+  // MESITA-1095: the guest bill is always required. Under v4 a missing
+  // bill blocks APPROVAL (MESITA-1148) — the button has to say so rather
+  // than earn a 409 bill_required.
+  const billMissing = !check.bill;
   const mustBillBeforeClose = billMissing && check.status === "open";
 
   const expected = check.updated_at ?? "";

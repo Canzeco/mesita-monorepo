@@ -2,13 +2,8 @@ import { getDiscoveryConfig } from "./actions";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — the ranking model (MESITA-1196).
-//
-// This page rendered the words "hello world" from the MESITA-1183 teardown
-// until now: the whole filter surface was deleted and Discovery was left as an
-// empty lot on purpose, with a note not to add config ahead of the rebuild.
-// This IS the rebuild — the weights table Docs › Discovery §A asks for, plus
-// the bought lane it deliberately keeps out of the blend.
+// Discovery — the ranking model (MESITA-1196). TWO boxes: Signals · Engines.
+// Slotting and operator filters still ride the blob; this page does not edit them.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {

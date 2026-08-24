@@ -51,6 +51,10 @@ import {
   sortMesitaPredictionsFirst,
 } from "./suggest-places-helpers.ts";
 import { statusesForPlaces } from "./suggest-place-status.ts";
+import {
+  mergePlaceRowsById,
+  placeIdsMatchingNameHistory,
+} from "./place-name-history.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -252,18 +256,23 @@ async function fetchMesitaPredictions(
   callerId: string | null,
 ): Promise<Prediction[]> {
   // ILIKE prefix-and-contains so "strana" finds both "Strana" and "Casa
-  // Strana, Monterrey". Match Mesita name OR google_name (MESITA-917);
-  // one row per place id. Limit small — Google is the primary surface; this
-  // is a fallback for the long-tail case where Google misses.
+  // Strana, Monterrey". Match Mesita name OR google_name (MESITA-917) OR a
+  // prior Google label in place_name_history (MESITA-1051); one row per
+  // place id. Limit small — Google is the primary surface; this is a
+  // fallback for the long-tail case where Google misses.
   // Quote the pattern like admin-web-search-places — unquoted `%…%` breaks
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id, slug, google_place_id, name, google_name, address")
-    .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
-    .not("google_place_id", "is", null)
-    .limit(8);
+  const cols = "id, slug, google_place_id, name, google_name, address";
+  const [{ data, error }, historyIds] = await Promise.all([
+    admin
+      .from("profiles")
+      .select(cols)
+      .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
+      .not("google_place_id", "is", null)
+      .limit(8),
+    placeIdsMatchingNameHistory(admin, pattern),
+  ]);
   if (error) {
     console.error("[suggest-places] mesita search:", error.message);
     return [];
@@ -277,6 +286,21 @@ async function fetchMesitaPredictions(
     address: string | null;
   };
   let rows = (data ?? []) as Row[];
+  const missingHistoryIds = historyIds.filter((id) =>
+    !rows.some((r) => r.id === id)
+  );
+  if (missingHistoryIds.length > 0) {
+    const { data: extra, error: extraErr } = await admin
+      .from("profiles")
+      .select(cols)
+      .in("id", missingHistoryIds)
+      .not("google_place_id", "is", null);
+    if (extraErr) {
+      console.error("[suggest-places] history backfill:", extraErr.message);
+    } else {
+      rows = mergePlaceRowsById(rows, (extra ?? []) as Row[], 8);
+    }
+  }
   if (rows.length === 0) return [];
 
   // Prefer Mesita-name hits ahead of google-only matches.

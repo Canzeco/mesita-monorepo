@@ -26,6 +26,10 @@ import {
 import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
+import {
+  mergePlaceRowsById,
+  placeIdsMatchingNameHistory,
+} from "../_shared/place-name-history.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -90,16 +94,37 @@ Deno.serve(async (req) => {
     const safe = q.replace(/[,()"]/g, " ").trim();
     const escaped = safe.replace(/[%_\\]/g, (m) => `\\${m}`);
     const pattern = `%${escaped}%`;
-    const { data, error } = await admin
-      .from("profiles")
-      .select(cols)
-      .or(
-        `name.ilike."${pattern}",google_name.ilike."${pattern}",slug.ilike."${pattern}"`,
-      )
-      .order("updated_at", { ascending: false })
-      .limit(limit);
+    const [{ data, error }, historyIds] = await Promise.all([
+      admin
+        .from("profiles")
+        .select(cols)
+        .or(
+          `name.ilike."${pattern}",google_name.ilike."${pattern}",slug.ilike."${pattern}"`,
+        )
+        .order("updated_at", { ascending: false })
+        .limit(limit),
+      placeIdsMatchingNameHistory(admin, pattern),
+    ]);
     if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
     rows = (data ?? []) as Record<string, unknown>[];
+    const have = new Set(
+      rows.map((r) => typeof r.id === "string" ? r.id : "").filter(Boolean),
+    );
+    const missing = historyIds.filter((id) => !have.has(id));
+    if (missing.length > 0) {
+      const { data: extra, error: extraErr } = await admin
+        .from("profiles")
+        .select(cols)
+        .in("id", missing);
+      if (extraErr) {
+        return json({ ok: false, error: `search_failed: ${extraErr.message}` }, 500);
+      }
+      rows = mergePlaceRowsById(
+        rows as Array<Record<string, unknown> & { id: string }>,
+        (extra ?? []) as Array<Record<string, unknown> & { id: string }>,
+        limit,
+      );
+    }
     // Prefer Mesita-name hits ahead of google-only / slug hits (one row per id).
     const qLower = safe.toLowerCase();
     rows.sort((a, b) => {

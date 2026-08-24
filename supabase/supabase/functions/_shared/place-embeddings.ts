@@ -14,6 +14,7 @@ import {
   type EmbeddablePlace,
   digest,
   placeEmbeddingFacts,
+  placeNameEmbedText,
   vectorLiteral,
 } from "./embeddings-vector.ts";
 import {
@@ -24,7 +25,7 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
-import { writePlace } from "./place-doc.ts";
+import { writePlace, type PlacePatch } from "./place-doc.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
@@ -136,6 +137,7 @@ export type PlaceEmbeddingWrite = {
   hash: string;
   text: string;
   skipped: boolean;
+  nameSkipped: boolean;
 };
 
 /**
@@ -158,50 +160,91 @@ async function computeAndPersistPlaceEmbedding(
   const facts = placeEmbeddingFacts(place);
   const factsHash = await digest(facts);
 
-  if (
+  const nameText = placeNameEmbedText(place);
+  const nameHash = nameText ? await digest(nameText) : "";
+  const summaryFresh = !!(
     place.embedding &&
     place.embedding_source_text?.trim() &&
     place.embedding_source_hash === factsHash
-  ) {
+  );
+  const nameFresh = !!(
+    nameText &&
+    place.name_embedding &&
+    place.name_embedding_hash === nameHash
+  );
+
+  if (summaryFresh && (nameFresh || !nameText)) {
     return {
       embedding: [],
       hash: factsHash,
-      text: place.embedding_source_text.trim(),
+      text: place.embedding_source_text!.trim(),
       skipped: true,
+      nameSkipped: true,
     };
   }
 
   const models = await loadModelsConfig(admin);
-  const text = await synthesizePlaceEmbeddingText(
-    place,
-    apiKey,
-    models.enricherModel || DEFAULT_SYNTH_MODEL,
-  );
-  let vector: number[];
-  try {
-    vector = await embedSingle(
-      text,
+  const model = models.embeddingModel || DEFAULT_EMBEDDING_MODEL;
+  const patch: PlacePatch = {};
+  let vector: number[] = [];
+  let text = place.embedding_source_text?.trim() ?? "";
+  let wroteSummary = false;
+  let wroteName = false;
+
+  if (!summaryFresh) {
+    text = await synthesizePlaceEmbeddingText(
+      place,
       apiKey,
-      models.embeddingModel || DEFAULT_EMBEDDING_MODEL,
+      models.enricherModel || DEFAULT_SYNTH_MODEL,
     );
-  } catch (err) {
-    console.error(`[${logPrefix}] embed failed:`, err);
-    return null;
+    try {
+      vector = await embedSingle(text, apiKey, model);
+    } catch (err) {
+      console.error(`[${logPrefix}] embed failed:`, err);
+      return null;
+    }
+    if (vector.length !== EMBEDDING_DIMS) {
+      console.error(`[${logPrefix}] bad dims ${vector.length}`);
+      return null;
+    }
+    patch.embedding = vectorLiteral(vector);
+    patch.embedding_source_hash = factsHash;
+    patch.embedding_source_text = text;
+    wroteSummary = true;
   }
-  if (vector.length !== EMBEDDING_DIMS) {
-    console.error(`[${logPrefix}] bad dims ${vector.length}`);
-    return null;
+
+  if (nameText && !nameFresh) {
+    let nameVector: number[];
+    try {
+      nameVector = await embedSingle(nameText, apiKey, model);
+    } catch (err) {
+      console.error(`[${logPrefix}] name embed failed:`, err);
+      return null;
+    }
+    if (nameVector.length !== EMBEDDING_DIMS) {
+      console.error(`[${logPrefix}] name bad dims ${nameVector.length}`);
+      return null;
+    }
+    patch.name_embedding = vectorLiteral(nameVector);
+    patch.name_embedding_hash = nameHash;
+    wroteName = true;
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return {
+      embedding: vector,
+      hash: factsHash,
+      text,
+      skipped: true,
+      nameSkipped: true,
+    };
   }
 
   const writeRes = await writePlace(admin, {
     table: "profiles",
     mode: "update",
     id: place.id,
-    patch: {
-      embedding: vectorLiteral(vector),
-      embedding_source_hash: factsHash,
-      embedding_source_text: text,
-    },
+    patch,
   });
 
   if (!writeRes.ok) {
@@ -209,24 +252,33 @@ async function computeAndPersistPlaceEmbedding(
     return null;
   }
 
-  // ── SEMANTIC · SUMMARY stamp (MESITA-1253) ──────────────────────────────
-  // This is the one spot where the vector write is OBSERVED, so the stamp
-  // lives here and covers every caller with one writer: CREATE (a place is
-  // born searchable), On-Update (an edit re-embeds), and the enrich contents
-  // stage (which may also stamp from its own observation — a duplicate stamp
-  // of the same status is harmless, the reader takes the latest). `via` names
-  // the caller on the event so the Monitor attributes the beacon to the right
-  // door instead of guessing "Contents" from the key. A hash-match
-  // skip above deliberately does NOT re-stamp: no new effect, the prior stamp
-  // stands. Best-effort by construction (reportPulsePieces swallows errors).
-  await reportPulsePieces(admin, place.id, {
-    summary: pieceDone(
+  // ── SEMANTIC stamps (MESITA-1253 / MESITA-1238) ─────────────────────────
+  // Summary and Name are separate vectors. A hash-match skip does not
+  // re-stamp. `via` names the caller so the Monitor attributes the beacon.
+  const extras: Parameters<typeof reportPulsePieces>[2] = {};
+  if (wroteSummary) {
+    extras.summary = pieceDone(
       `Semantic Summary written and embedded — ${countWords(text)} word(s).`,
       { via },
-    ),
-  });
+    );
+  }
+  if (wroteName) {
+    extras.name = pieceDone(
+      `Semantic Name written and embedded — ${nameText}.`,
+      { via },
+    );
+  }
+  if (Object.keys(extras).length > 0) {
+    await reportPulsePieces(admin, place.id, extras);
+  }
 
-  return { embedding: vector, hash: factsHash, text, skipped: false };
+  return {
+    embedding: vector,
+    hash: factsHash,
+    text,
+    skipped: !wroteSummary,
+    nameSkipped: !wroteName,
+  };
 }
 
 async function loadEmbeddablePlace(
@@ -236,7 +288,7 @@ async function loadEmbeddablePlace(
   const { data, error } = await admin
     .from("profiles")
     .select(
-      "id, name, category, description, zone, city, address, price_level, embedding, embedding_source_hash, embedding_source_text",
+      "id, name, category, description, zone, city, address, price_level, embedding, embedding_source_hash, embedding_source_text, name_embedding, name_embedding_hash",
     )
     .eq("id", placeId)
     .maybeSingle();

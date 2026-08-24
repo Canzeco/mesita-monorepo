@@ -115,6 +115,9 @@ export type PlaceRow = {
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
   embedding_source_hash: string | null;
+  /** MESITA-1238: name-only vector. Same literal shape as `embedding`. */
+  name_embedding: string | null;
+  name_embedding_hash: string | null;
   country: string | null;
   description: string | null;
   menu_pdf_url: string | null;
@@ -199,6 +202,8 @@ export const PLACE_PATCH_KEYS = [
   "hours",
   "embedding",
   "embedding_source_hash",
+  "name_embedding",
+  "name_embedding_hash",
   "country",
   "description",
   "menu_pdf_url",
@@ -293,9 +298,7 @@ export type ProjectRow = {
   promo_paused_until: string | null;
   plan_forfeited_at: string | null;
   check_pin: string | null;
-  check_require_bill: boolean;
   staff_pin: string | null;
-  require_bill: boolean;
   cfdi_rfc: string | null;
   cfdi_razon_social: string | null;
   cfdi_cp: string | null;
@@ -327,9 +330,7 @@ export const PROJECT_PATCH_KEYS = [
   "promo_paused_until",
   "plan_forfeited_at",
   "check_pin",
-  "check_require_bill",
   "staff_pin",
-  "require_bill",
   "cfdi_rfc",
   "cfdi_razon_social",
   "cfdi_cp",
@@ -403,7 +404,8 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "menu_pdf_url", "google_business_url", "menu_pdf_name", "editorial_summary",
   "zone", "city", "executive_chef", "category_label", "yelp_url",
   "embedding_source_text", "google_name", "description_es", "mesita_name",
-  "reservation_target", "order_target", "embedding", "google_place_id",
+  "reservation_target", "order_target", "embedding", "name_embedding",
+  "name_embedding_hash", "google_place_id",
   "enriched_at", "business_status_at", "enrich_next_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);
@@ -546,7 +548,6 @@ export function validatePlacePatch(input: unknown): PlacePatchValidation {
 const PROJECT_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
 const PROJECT_BOOLEAN_KEYS = new Set<string>([
   "requires_story", "segmentation_basic_enabled", "segmentation_advanced_enabled",
-  "check_require_bill", "require_bill",
 ]);
 // projects_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
 const PROJECT_RATE_KEYS = new Set<string>([

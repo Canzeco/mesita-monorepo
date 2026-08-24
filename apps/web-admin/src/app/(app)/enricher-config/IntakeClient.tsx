@@ -30,10 +30,7 @@ import {
 import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
 import { updateSourcingConfig } from "../sourcing-config/actions";
 import type { SourcingConfig } from "../sourcing-config/catalog";
-import {
-  updateAtlasConfig,
-  type PerplexityPreset,
-} from "./actions";
+import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
   FlowPanel,
@@ -45,13 +42,13 @@ import {
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
 import {
-  MAX_DISCOVERY_CANDIDATES,
   MAX_GOOGLE_COLLECT,
   MAX_INSTAGRAM_COLLECT,
   MAX_SAVE_IMAGES,
   clampFunnel,
+  intakeSaveBlocked,
   type IntakeSettings,
-} from "./funnel";
+} from "./intake-guards";
 
 export type { IntakeSettings };
 
@@ -67,7 +64,11 @@ export type { IntakeSettings };
 // call fails the bar says which half landed and only the failed half stays dirty.
 //
 // NO TRIGGER GRID. What a run is allowed to buy lives in
-// app_config.enrichment_triggers and is written by the EF alone.
+// app_config.enrichment_triggers and is written by the EF alone (Pato, three
+// times: 2026-08-21 "delete the triggers shit", 2026-08-23 "Fuck this page",
+// 2026-08-23 "delete this stupid box"). Do not restore it as a fix.
+
+const MAX_DISCOVERY_CANDIDATES = 10;
 
 const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] =
   [
@@ -115,7 +116,9 @@ export function IntakeClient({
   );
   const dirty = sourcingDirty || settingsDirty;
 
-  const blocked = sourcingLoadError ?? settingsLoadError;
+  // A failed GET must never let a save overwrite the live singleton with
+  // defaults (MESITA-737) — the half that failed to load cannot be saved.
+  const blocked = intakeSaveBlocked(sourcingLoadError, settingsLoadError);
 
   const dirtyNames = [
     sourcingDirty ? "Sourcing" : null,

@@ -1,16 +1,10 @@
 import type { PerplexityPreset, SynthesisQuality } from "./actions";
 
-// Image-funnel clamps. The Edge Function rejects a broken chain with a 400,
-// so the page keeps analyze ≤ collect per source and the gallery ≤ everything
-// analyzed. Pure so the UI and the unit tests share one function.
-//
-// Instagram collect (`gatherInstagramDepth`) is an Images knob, not a Social
-// one. Social attaches profiles; Images collects posts from Apify and analyzes.
-
+// Image-funnel ceilings the EF already CHECKs. The page clamps so a Save
+// never 400s on a broken chain (analyze > collect, gallery > analyzed).
 export const MAX_GOOGLE_COLLECT = 10;
 export const MAX_INSTAGRAM_COLLECT = 30;
 export const MAX_SAVE_IMAGES = 10; // DB CHECK app_config_atlas_save_total_images_range
-export const MAX_DISCOVERY_CANDIDATES = 10;
 
 export type IntakeSettings = {
   gatherGoogleImages: number;
@@ -36,6 +30,14 @@ export type IntakeSettings = {
 
 const clampN = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(v)));
+
+/** Either GET failing disables the one Save — defaults must not overwrite live. */
+export function intakeSaveBlocked(
+  sourcingLoadError: string | null,
+  settingsLoadError: string | null,
+): string | null {
+  return sourcingLoadError ?? settingsLoadError;
+}
 
 export function clampFunnel(s: IntakeSettings): IntakeSettings {
   const gatherGoogleImages = clampN(s.gatherGoogleImages, 1, MAX_GOOGLE_COLLECT);
