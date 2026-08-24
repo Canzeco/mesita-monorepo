@@ -1,11 +1,15 @@
 "use client";
 
-import { AlertTriangle, ChevronDown, Coins, Info } from "lucide-react";
+import { AlertTriangle, Coins } from "lucide-react";
 
-import { SectionCard } from "../enricher-config/atlas-ui";
+import {
+  Collapsible,
+  KnobStatus,
+  SectionCard,
+} from "@/components/admin-ui/config";
 import { formatShortDate } from "@/lib/format";
 import { ResolvedLedger } from "./ResolvedLedger";
-import { BoxRow, RateSelect, SoonPill } from "./promos-ui";
+import { BoxRow, RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
   ACTION_KEYS,
@@ -25,23 +29,14 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// TIERS — four boxes, one per (strategy × context).
+// TIERS — six boxes, one per (paid strategy × context).
 //
-//   Conservative · Visits     Aggressive · Visits
-//   Conservative · Orders     Aggressive · Orders
+// A place picks ONE strategy, so reading down a column is that place's whole
+// program. Each box: floor first, then signed adders. Pinned rungs (Bronze,
+// Free) are an em dash — "0%" is a real rate and would read as one.
 //
-// A place picks ONE strategy, so a box is exactly what that place pays in
-// that context: the whole ladder in one place, top to bottom. The earlier
-// split — a subpage per context, boxes per component — made an operator hold
-// two screens in their head to answer "what does a Conservative place give?".
-//
-// Every box reads the same way: the FLOOR first, then everything that adds to
-// it, signed. Pinned rungs (Bronze, Free) show an em dash — they are the
-// baseline the offsets are measured from, and "0%" would read as a rate.
-//
-// ORDERS has no Class rows at all. Class prices presence, and a delivery order
-// has nobody in the chair (Notion §2.8). It is also PARKED: the knobs save,
-// but no ticket carries a remote context yet, so nothing reads them.
+// Orders has no Class rows (presence is what class buys) and is not wired:
+// the knobs save, nothing reads them.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -100,19 +95,24 @@ function TierBox({
 
   return (
     <SectionCard
-      icon={<span className="text-base leading-none">{STRATEGY_META[strategy].emoji}</span>}
+      icon={<span className="bg-muted h-2.5 w-2.5 rounded-full" aria-hidden />}
       title={label}
       subtitle={
         isVisits
-          ? "A body in the room. Everything below adds onto the floor."
-          : "Pickup and delivery. No class rung — presence is what class buys."
+          ? "Floor, then signed adders. Class prices a body in the room."
+          : "Floor, then signed adders. No class — a delivery fills no chair."
       }
-      status={isVisits ? undefined : <SoonPill />}
+      status={
+        isVisits ? (
+          <KnobStatus kind="enforced" reason="THE TICKET" />
+        ) : (
+          <KnobStatus kind="not-wired" reason="no remote ticket yet" />
+        )
+      }
     >
       <div className="mt-3">
-        {/* THE FLOOR — plain, not signed, and visually set apart. */}
         <div className="bg-muted/40 border-border/70 mb-2 rounded-lg border px-3 py-1">
-          <BoxRow label="Base" hint="The standing rate, before anything is earned">
+          <BoxRow label="Base" hint="Standing rate, before anything is earned">
             <RateSelect
               value={comp.base}
               disabled={pending}
@@ -124,7 +124,6 @@ function TierBox({
 
         <BoxRow
           label={BONUS_META.welcome.name}
-          emoji={BONUS_META.welcome.emoji}
           hint={BONUS_META.welcome.qualifier}
         >
           <RateSelect
@@ -139,10 +138,10 @@ function TierBox({
         {isVisits && (
           <>
             <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-              Class · who they are
+              Class
             </p>
             {CLASS_KEYS.map((c) => (
-              <BoxRow key={c} label={CLASS_META[c].name} emoji={CLASS_META[c].emoji}>
+              <BoxRow key={c} label={CLASS_META[c].name}>
                 <RateSelect
                   value={visits[strategy].class[c]}
                   disabled={pending}
@@ -157,10 +156,10 @@ function TierBox({
         )}
 
         <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-          Plan · what they pay
+          Plan
         </p>
         {PLAN_KEYS.map((k) => (
-          <BoxRow key={k} label={PLAN_META[k].name} emoji={PLAN_META[k].emoji}>
+          <BoxRow key={k} label={PLAN_META[k].name}>
             <RateSelect
               value={comp.plan[k]}
               disabled={pending}
@@ -173,13 +172,12 @@ function TierBox({
         ))}
 
         <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-          Actions · what they did
+          Actions
         </p>
         {(["story", "mesita", "google"] as const).map((k) => (
           <BoxRow
             key={k}
             label={BONUS_META[k].name}
-            emoji={BONUS_META[k].emoji}
             hint={BONUS_META[k].qualifier}
           >
             <RateSelect
@@ -202,11 +200,10 @@ export function TiersClient() {
   const warnings = modelWarnings(cfg);
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4">
       {seeded && !loadBlocked && (
         <p className="border-border bg-muted/50 text-muted-foreground rounded-lg border px-3 py-2 text-xs">
-          Nothing is saved yet — these are the launch defaults. Review them,
-          then Save.
+          Nothing is saved yet — launch defaults. Review, then Save.
         </p>
       )}
 
@@ -235,9 +232,6 @@ export function TiersClient() {
               </li>
             ))}
           </ul>
-          <p className="mt-2 type-label text-amber-900/75">
-            Reported, never auto-corrected — this is money, so the call is yours.
-          </p>
         </div>
       )}
 
@@ -249,40 +243,25 @@ export function TiersClient() {
         </p>
       )}
 
-      {/* THE TIERS. One column per strategy: a place picks one, and reading
-          down its column gives the whole program for that posture. The column
-          count TRACKS STRATEGY_KEYS — at lg:grid-cols-2 the third strategy
-          wrapped to a row of its own and read as an afterthought rather than
-          a peer. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
-          <div key={s} className="space-y-5">
+          <div key={s} className="space-y-4">
             <TierBox strategy={s} context="visits" />
             <TierBox strategy={s} context="orders" />
           </div>
         ))}
       </div>
 
-      <p className="border-border bg-muted/50 text-muted-foreground flex items-start gap-1.5 rounded-lg border px-3 py-2 text-xs">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          <span className="text-foreground font-semibold">
-            Orders tiers are staged.
-          </span>{" "}
-          They save to the live config, but no ticket carries a remote context
-          yet, so nothing reads them and no order has ever been discounted.
-        </span>
-      </p>
+      <Collapsible summary="How a bill stacks">
+        <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
+          Standing (base + class locally + plan) plus Welcome plus every earned
+          action, clamped to 100%, on the first cap-pesos. Only the integer
+          percent leaves the server. Orders knobs save; no ticket reads them.
+        </p>
+      </Collapsible>
 
-      {/* The all-16 resolved matrix. Under a component editor this is the only
-          surface that can show two adjacent rungs clamping to the ceiling and
-          becoming a dead rung — the ledger only ever resolves one guest. */}
-      <details className="border-border group rounded-xl border">
-        <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-medium select-none">
-          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
-          Preview all visit totals
-        </summary>
-        <div className="overflow-x-auto px-4 pb-4">
+      <Collapsible summary="Preview all visit totals">
+        <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse type-body">
             <thead>
               <tr className="border-border border-b-2">
@@ -314,7 +293,8 @@ export function TiersClient() {
                 CLASS_KEYS.map((cls, ci) =>
                   PLAN_KEYS.map((p, pi) => {
                     const last =
-                      ci === CLASS_KEYS.length - 1 && pi === PLAN_KEYS.length - 1;
+                      ci === CLASS_KEYS.length - 1 &&
+                      pi === PLAN_KEYS.length - 1;
                     return (
                       <tr
                         key={`${s}|${cls}|${p}`}
@@ -328,9 +308,7 @@ export function TiersClient() {
                           scope="row"
                           className="py-1.5 pr-3 text-left font-bold whitespace-nowrap"
                         >
-                          {ci === 0 && pi === 0
-                            ? `${STRATEGY_META[s].emoji} ${STRATEGY_META[s].name}`
-                            : ""}
+                          {ci === 0 && pi === 0 ? STRATEGY_META[s].name : ""}
                         </th>
                         <td className="py-1.5 pr-3 whitespace-nowrap">
                           {pi === 0 ? CLASS_META[cls].name : ""}
@@ -355,17 +333,17 @@ export function TiersClient() {
             </tbody>
           </table>
           <p className="text-muted-foreground/80 mt-2 type-label leading-snug">
-            Base + that single action. A real bill stacks several, clamped to
-            100%. Two adjacent rungs showing the same number are a dead rung —
-            the higher one is paying nothing for the climb.
+            Base + that one action. A real bill stacks several, clamped to 100%.
+            Matching adjacent rungs are a dead climb.
           </p>
         </div>
-      </details>
+      </Collapsible>
 
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
         title="Default discount cap"
-        subtitle="Fallback when a place has not picked its own cap. Applies to all four tiers."
+        subtitle="Fallback when a place has not picked its own. First N of the bill."
+        status={<KnobStatus kind="fallback" reason="place cap wins" />}
       >
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {ALLOWED_CAPS.map((c) => {
@@ -383,19 +361,11 @@ export function TiersClient() {
                     : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
                 }
               >
-                <Coins className="mr-1.5 h-3.5 w-3.5" />
                 {c.toLocaleString("en-US")}
               </button>
             );
           })}
         </div>
-        <p className="text-muted-foreground mt-3 text-xs">
-          The discount applies to the first{" "}
-          <span className="text-foreground font-semibold">
-            MX${cfg.cap.toLocaleString("en-US")}
-          </span>{" "}
-          of the bill.
-        </p>
       </SectionCard>
     </div>
   );
