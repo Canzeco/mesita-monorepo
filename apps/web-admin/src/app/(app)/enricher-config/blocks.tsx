@@ -98,8 +98,61 @@ export function FlowPanel({
 }
 
 /**
- * One function of the ladder, as a disclosure inside the Functions card.
- * Shared functions print once with both flows on the chip.
+ * CREATE · ENRICH · SEMANTIC — the three families of §8.4–8.5. A box around
+ * a slice of the ladder, not a second card. Color is a rail + header mark;
+ * the page stays one pink accent, not a carnival of hues.
+ */
+export function FunctionFamily({
+  label,
+  kicker,
+  tone,
+  note,
+  children,
+}: {
+  label: string;
+  kicker: string;
+  tone: "create" | "enrich" | "semantic";
+  note?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const box =
+    tone === "create"
+      ? "border-primary/30 bg-primary/[0.035]"
+      : tone === "semantic"
+        ? "border-border bg-muted/60"
+        : "border-border bg-card";
+  const dot =
+    tone === "create"
+      ? "bg-primary"
+      : tone === "semantic"
+        ? "bg-muted-foreground"
+        : "bg-foreground";
+  return (
+    <section className={"mt-4 first:mt-2 overflow-hidden rounded-xl border " + box}>
+      <header className="border-border flex items-start gap-3 border-b px-4 py-3">
+        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + dot} aria-hidden />
+        <div className="min-w-0">
+          <p className="type-label font-semibold tracking-[0.14em] uppercase">
+            {label}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+            {kicker}
+          </p>
+        </div>
+      </header>
+      <div className="px-3 sm:px-4">{children}</div>
+      {note ? (
+        <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs leading-relaxed">
+          {note}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * One function of the ladder, as a disclosure inside a FunctionFamily.
+ * Shared functions print once. A family box is what names the type.
  */
 export function FunctionModule({
   id,
@@ -114,7 +167,7 @@ export function FunctionModule({
   id: string;
   index: string;
   name: string;
-  flows: string;
+  flows?: string;
   blurb: string;
   knobs: string;
   defaultOpen?: boolean;
@@ -148,7 +201,7 @@ export function FunctionModule({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold">{name}</span>
-            <Tag>{flows}</Tag>
+            {flows ? <Tag>{flows}</Tag> : null}
           </span>
           <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
             {blurb}
