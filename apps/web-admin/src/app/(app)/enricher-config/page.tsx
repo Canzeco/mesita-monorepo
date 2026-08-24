@@ -1,7 +1,7 @@
 import { Wand2 } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 
-// Enrichment — EMPTY on purpose (Pato, 2026-08-23: "Fuck this page. Just write
+// Intake — EMPTY on purpose (Pato, 2026-08-23: "Fuck this page. Just write
 // it as soon"), the same call Visits and Orders took on 2026-08-21: "make the
 // fucking page empty… just leave a soon… don't hide the current configurations
 // in the html. Literally delete it from the html."
@@ -26,11 +26,11 @@ import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 // enrich. What every setting means lives in Notion Docs › Enrichment.
 export const dynamic = "force-dynamic";
 
-export default function EnrichmentPage() {
+export default function IntakePage() {
   return (
     <ConfigSoon
       Icon={Wand2}
-      title="Enrichment settings are coming soon"
+      title="Intake settings are coming soon"
       body="The Enricher runs today on the triggers, caps and models stored the last time this page was saved — nothing about a run changed. What is gone is the wall of knobs that asked an operator to hold nine functions in their head to move one number. They come back as a page worth reading."
       doc="Notion Docs › Enrichment"
     />

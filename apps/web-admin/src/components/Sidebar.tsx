@@ -16,7 +16,7 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { DB_PARENT } from "@/app/(app)/manage-database/nav";
-import { ENRICHER_PARENT } from "@/app/(app)/enricher-config/nav";
+import { INTAKE_PARENT } from "@/app/(app)/enricher-config/nav";
 import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { INVITATIONS_PARENT } from "@/app/(app)/invitations/nav";
 import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
@@ -139,8 +139,11 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   // a page whose whole content is three controls does not earn a rail row.
   // Their routes survive as permanent redirects; only the rows are gone.
   { href: "/general-config", label: "General", Icon: Settings2 },
+  // Sourcing and Intake are one story told in two rows until MESITA-1287
+  // folds the channel matrix into the Intake page; then Sourcing's row goes
+  // and its route redirects. Intake keeps /enricher-config either way.
   SOURCING_PARENT,
-  ENRICHER_PARENT,
+  INTAKE_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,
   ORDERS_PARENT,
