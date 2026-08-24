@@ -62,8 +62,8 @@ export type CheckPayload = {
   /** The place set a staff PIN (MESITA-823) — write actions must carry one.
    *  Boolean only; the digits never leave the server. */
   pin_required?: boolean;
-  /** MESITA-898: the place requires the bill on record before the close —
-   *  the subtotal step is mandatory and the close waits for it. */
+  /** MESITA-1095: the guest bill is always required. Older bundles still
+   *  read this flag; new UI treats any missing bill as blocking. */
   bill_required?: boolean;
 };
 
@@ -126,7 +126,7 @@ const FAILURE_CODE_COPY: Record<string, string> = {
   pin_required: "Este lugar pide un PIN del personal para continuar.",
   pin_invalid: "PIN incorrecto — inténtalo de nuevo.",
   bill_required:
-    "Este lugar requiere registrar la cuenta antes de cerrar el ticket.",
+    "Hay que registrar la cuenta antes de aprobar el ticket.",
   // v4 (MESITA-1090): la escritura del cliente siempre gana — un 409 aquí
   // fuerza a re-mirar la cuenta antes de aprobar, nunca aprueba en silencio.
   stale_ticket: "El cliente acaba de cambiar algo, revisa la cuenta otra vez.",

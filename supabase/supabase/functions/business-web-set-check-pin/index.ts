@@ -1,16 +1,13 @@
 // Supabase Edge Function — business-web-set-check-pin
 //
 // The check-page settings door: sets (or clears) the place's optional staff
-// PIN (MESITA-823) and/or the require-bill switch (MESITA-898). Each key is
-// updated only when present in the body, so the two cards save
-// independently.
+// PIN (MESITA-823). The bill is always required (MESITA-1095) — this door
+// no longer writes a require-bill switch. A stale tab that still sends
+// `requireBill` is ignored so it cannot 400 a PIN save.
 //
 // PIN: one shared 6-digit secret per place — NOT a waiter identity
 // (MESITA-833 stands): staff hold no account; the manager briefs them with
 // this PIN and check-page WRITE actions require it. NULL = gate off.
-//
-// requireBill: when true, check-web-mark-paid refuses to close an unbilled
-// ticket (default false = the v3b optional bill, MESITA-850).
 //
 // Current values ride back on business-web-get-overview's active place
 // (owner/super-admin view) so consoles can display them — a shared secret
@@ -19,8 +16,8 @@
 // Auth: place OWNER (super-admins bypass). Editors/viewers can't set it —
 // the gate exists to protect the owner's numbers from the floor.
 //
-// Body:     { placeId: string, pin?: "123456" | null, requireBill?: boolean }
-// Response: { ok: true, pin: string | null, requireBill: boolean }
+// Body:     { placeId: string, pin?: "123456" | null, requireBill?: ignored }
+// Response: { ok: true, pin: string | null, requireBill: true }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
@@ -54,10 +51,7 @@ Deno.serve(async (req) => {
   const projectId = readPlaceIdAlias(bodyRes.body);
   if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
 
-  // Partial update: only keys present in the body are written, so the PIN
-  // card and the require-bill card save without clobbering each other.
-  const update: { check_pin?: string | null; check_require_bill?: boolean } =
-    {};
+  const update: { check_pin?: string | null } = {};
   if ("pin" in bodyRes.body) {
     const raw = bodyRes.body.pin;
     if (raw == null || raw === "") {
@@ -70,12 +64,6 @@ Deno.serve(async (req) => {
         400,
       );
     }
-  }
-  if ("requireBill" in bodyRes.body) {
-    if (typeof bodyRes.body.requireBill !== "boolean") {
-      return json({ ok: false, error: "requireBill must be a boolean" }, 400);
-    }
-    update.check_require_bill = bodyRes.body.requireBill;
   }
   if (Object.keys(update).length === 0) {
     return json({ ok: false, error: "Nothing to update" }, 400);
@@ -95,7 +83,7 @@ Deno.serve(async (req) => {
     mode: "update",
     id: projectId,
     patch: update,
-    select: "check_pin, check_require_bill",
+    select: "check_pin",
     selectMode: "maybeSingle",
   });
   if (!upd.ok) {
@@ -103,13 +91,10 @@ Deno.serve(async (req) => {
   }
   if (!upd.row) return json({ ok: false, error: "Place not found" }, 404);
 
-  const row = upd.row as {
-    check_pin: string | null;
-    check_require_bill: boolean | null;
-  };
+  const row = upd.row as { check_pin: string | null };
   return json({
     ok: true,
     pin: row.check_pin,
-    requireBill: row.check_require_bill === true,
+    requireBill: true,
   });
 });

@@ -137,7 +137,6 @@ export type MyPlace = Place & {
   // business-web-get-overview on the active place when my_role=owner;
   // absent for editors/viewers and never present on the profiles view.
   check_pin?: string | null;
-  check_require_bill?: boolean;
 };
 
 // Per-row state mirrored from the lookup EF, plus a self/other split

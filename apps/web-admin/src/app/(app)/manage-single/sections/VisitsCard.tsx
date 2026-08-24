@@ -17,16 +17,13 @@ import { SaveBar, SectionCard } from "../ui";
 //
 // Pato: "don't create lots of boxes. just create a box for visits / orders /
 // reservations — but not fucking lots of visits." The Check PIN (MESITA-823)
-// and Require bill (MESITA-898) were two cards saying the same thing twice:
-// both are gates on the same check page, on the same ticket. One box, one
-// save — business-web-set-check-pin takes both keys in a single call.
+// is the one place-owned gate. The bill is always required (MESITA-1095).
 //
 // The v4 machine underneath (MESITA-1086/1090/1092):
 //   open → scanned → approved → paying → revealed
 // with fix_requested (bill · proof · reward) a COLUMN at `scanned`, never a
 // status: a send-back keeps the same QR. What a visit PAYS is the Promos
-// grid; the tip chips, poll cadence and pay rails are Visits Config. Only
-// these two gates are the place's own call.
+// grid; the tip chips, poll cadence and pay rails are Visits Config.
 const LIFECYCLE = ["Open", "Scanned", "Approved", "Paying", "Closed"];
 
 export function VisitsCard({ place }: { place: AdminPlace }) {
@@ -34,25 +31,18 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
     () => (typeof place.check_pin === "string" ? place.check_pin : ""),
     [place.check_pin],
   );
-  const savedRequireBill = place.check_require_bill === true;
-
   const [pin, setPin] = useState(savedPin);
-  const [requireBill, setRequireBill] = useState(savedRequireBill);
-  const [current, setCurrent] = useState({
-    pin: savedPin,
-    requireBill: savedRequireBill,
-  });
+  const [current, setCurrent] = useState({ pin: savedPin });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
-  const dirty = pin !== current.pin || requireBill !== current.requireBill;
+  const dirty = pin !== current.pin;
   const valid = pin === "" || /^[0-9]{6}$/.test(pin);
 
   const resetDraft = useCallback(() => {
     setPin(current.pin);
-    setRequireBill(current.requireBill);
     setError(null);
     setOk(false);
   }, [current]);
@@ -72,22 +62,20 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
     start(async () => {
       const r = await setCheckGates(place.id, {
         pin: pin === "" ? null : pin,
-        requireBill,
       });
       if (!r.ok) {
         setError(r.error);
         return;
       }
-      const next = { pin: r.data.pin ?? "", requireBill: r.data.requireBill };
+      const next = { pin: r.data.pin ?? "" };
       setCurrent(next);
       setPin(next.pin);
-      setRequireBill(next.requireBill);
       setOk(true);
       window.setTimeout(() => setOk(false), 2500);
     });
   };
 
-  const gatesOn = (current.pin !== "" ? 1 : 0) + (current.requireBill ? 1 : 0);
+  const gatesOn = current.pin !== "" ? 1 : 0;
 
   return (
     <SectionCard
@@ -103,11 +91,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
               : "bg-muted text-muted-foreground")
           }
         >
-          {gatesOn === 0
-            ? "No gates"
-            : gatesOn === 1
-              ? "1 gate on"
-              : "2 gates on"}
+          {gatesOn === 0 ? "No PIN" : "PIN on"}
         </span>
       }
     >
@@ -127,33 +111,6 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
       </ol>
 
       <div className="border-border/60 mt-5 border-t pt-4">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-foreground/90 type-body font-medium">
-            Bill amount required
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={requireBill}
-            aria-label={`Bill amount required ${requireBill ? "on" : "off"}`}
-            disabled={pending}
-            onClick={() => setRequireBill((v) => !v)}
-            className={
-              "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-              (requireBill ? "bg-pink-gradient" : "bg-border")
-            }
-          >
-            <span
-              className={
-                "absolute h-4 w-4 rounded-full bg-white shadow transition " +
-                (requireBill ? "translate-x-4" : "translate-x-0.5")
-              }
-            />
-          </button>
-        </div>
-      </div>
-
-      <div className="border-border/60 mt-4 border-t pt-4">
         <div className="flex min-h-4 items-center justify-between gap-2">
           <span className="text-foreground/90 type-body font-medium">
             Staff PIN
