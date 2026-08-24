@@ -284,14 +284,22 @@ export async function apiSubmitTicketBill(
   });
 }
 
-// THE TICKET v4 live sync (MESITA-1091): one owner-scoped row, polled at 10s
-// while the ticket screen is mounted. Realtime stays off `tickets` on
-// purpose — this poll IS the design.
+// THE TICKET v4 live sync (MESITA-1091): one owner-scoped row, polled at
+// visits.consumerPollSeconds while the ticket screen is mounted. Realtime
+// stays off `tickets` on purpose — this poll IS the design.
+export type GuestVisitsPolicy = {
+  tipEnabled: boolean;
+  tipPresets: number[];
+  defaultTipPct: number;
+  consumerPollSeconds: number;
+  reportEnabled: boolean;
+};
+
 export async function apiGetTicket(
   client: SupabaseClient,
   ticketId: string,
-): Promise<{ ticket: ConsumerTicketRow }> {
-  return await invokeEF<{ ticket: ConsumerTicketRow }>(
+): Promise<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }> {
+  return await invokeEF<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }>(
     client,
     "consumer-web-get-ticket",
     { ticketId },
