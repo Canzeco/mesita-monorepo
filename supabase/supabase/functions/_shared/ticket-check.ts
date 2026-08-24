@@ -144,9 +144,8 @@ export function shapeCheckPayload(args: {
    *  to apply at its own POS. Live best-of blended percent; same privacy
    *  shape as discount_percent. Omit/null → no offer block. */
   offerRatePercent?: number | null;
-  /** MESITA-898: the place requires a bill on record before the close —
-   *  the page shows the subtotal step as mandatory and holds the close
-   *  button until check-web-submit-bill ran. Default false = v3b optional. */
+  /** MESITA-1095: the guest bill is always required. Default true so a
+   *  caller that omits the flag still matches the live gate. */
   billRequired?: boolean;
 }): Record<string, unknown> {
   const { ticket } = args;
@@ -215,7 +214,7 @@ export function shapeCheckPayload(args: {
     // Staff PIN gate (MESITA-823) — flag only, never the value.
     pin_required: args.pinRequired,
     // Bill-required gate (MESITA-898) — the close refuses until billed.
-    bill_required: args.billRequired ?? false,
+    bill_required: args.billRequired ?? true,
   };
 }
 
@@ -303,18 +302,18 @@ export function checkNotFound(json: (b: unknown, s?: number) => Response): Respo
   return json({ ok: false, error: "Check not found" }, 404);
 }
 
-// ── Per-place check settings (MESITA-823 · MESITA-898) ─────────────────
+// ── Per-place check settings (MESITA-823 · MESITA-1095) ────────────────
 //
-// The two staff-side knobs living on projects, EF-only (never in
-// profiles): check_pin — optional 6-digit PIN gating WRITE actions
-// (NULL = off; NOT a waiter identity, MESITA-833 stands) — and
-// check_require_bill — when true, mark-paid refuses to close an unbilled
-// ticket. get-ticket never gates; it exposes the booleans `pin_required`
-// and `bill_required` so the page can prompt.
+// One staff-side knob lives on projects, EF-only (never in profiles):
+// check_pin — optional 6-digit PIN gating WRITE actions (NULL = off; NOT
+// a waiter identity, MESITA-833 stands). The bill is always required
+// (MESITA-1095) — get-ticket never gates; it exposes `pin_required` and
+// `bill_required` so the page can prompt.
 
 export type CheckSettings = {
   pin: string | null;
-  requireBill: boolean;
+  /** Always true. Kept on the type so approve / mark-paid stay explicit. */
+  requireBill: true;
   /** MESITA-1120: the read itself failed, so we do NOT know whether this
    *  place has a PIN. `pin: null` alone cannot carry that — an unconfigured
    *  PIN and an errored read produce the identical row. Gates must DENY on
@@ -328,7 +327,7 @@ export async function loadCheckSettings(
 ): Promise<CheckSettings> {
   const { data, error } = await admin
     .from("projects")
-    .select("check_pin, check_require_bill")
+    .select("check_pin")
     .eq("id", projectId)
     .maybeSingle();
   // A transient DB error, an exhausted pool, a timeout, a renamed column or
@@ -341,15 +340,13 @@ export async function loadCheckSettings(
       message: error.message,
       details: error.details,
     });
-    return { pin: null, requireBill: false, loadFailed: true };
+    return { pin: null, requireBill: true, loadFailed: true };
   }
-  const row = data as
-    | { check_pin: string | null; check_require_bill: boolean | null }
-    | null;
+  const row = data as { check_pin: string | null } | null;
   const pin = row?.check_pin ?? null;
   return {
     pin: pin && /^[0-9]{6}$/.test(pin) ? pin : null,
-    requireBill: row?.check_require_bill === true,
+    requireBill: true,
     loadFailed: false,
   };
 }

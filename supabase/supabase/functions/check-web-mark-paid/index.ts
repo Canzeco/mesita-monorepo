@@ -3,10 +3,8 @@
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
 // The SINGLE close of the v3 lifecycle (MESITA-850): staff tap "done" and
-// the ticket dies, whether or not a bill was entered — by default the bill
-// is internal control, never a gate. EXCEPTION (MESITA-898): a place may
-// opt in to projects.check_require_bill, and then an UNBILLED ticket
-// refuses to close (409 bill_required) until check-web-submit-bill ran.
+// the ticket dies. MESITA-1095: an unbilled ticket refuses to close
+// (409 bill_required) — the guest types the bill, always.
 // Closes via the same closeTicketAndEnqueueReview helper: revealed +
 // revealed_at/paid_at, first-honor recording (now bound to the close), and
 // the queued post-visit review. With no bill on record the place applied
@@ -59,7 +57,7 @@ Deno.serve(async (req) => {
   if (!ticket) return checkNotFound(json);
 
   // Staff PIN gate (MESITA-823) — write actions only; no-op when the place
-  // has no PIN set. Settings loaded once; the bill gate below reuses them.
+  // has no PIN set.
   const settings = await loadCheckSettings(admin, ticket.project_id);
   const pinRes = await requireCheckPin({
     admin,
@@ -86,18 +84,17 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Bill-required gate (MESITA-898): the place opted OUT of the v3b
-  // optional bill — an unbilled ticket refuses to close until submit-bill
-  // ran. Same billed test as get-ticket/submit-bill (either amount > 0).
+  // Bill-required gate (MESITA-1095): the guest bill is always required.
+  // Same billed test as get-ticket (either amount > 0).
   const billed = (ticket.total_cents ?? 0) > 0 ||
     (ticket.bill_subtotal_cents ?? 0) > 0;
-  if (settings.requireBill && !billed) {
+  if (!billed) {
     return json(
       {
         ok: false,
         code: "bill_required",
         error:
-          "This place requires the bill amount on record before closing the ticket.",
+          "The bill amount must be on record before closing the ticket.",
       },
       409,
     );

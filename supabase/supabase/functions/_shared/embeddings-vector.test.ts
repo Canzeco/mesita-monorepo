@@ -8,8 +8,11 @@ import {
 } from "./place-embeddings.ts";
 import {
   placeEmbeddingFacts,
+  placeNameEmbedText,
   placeSourceText,
+  rankByNameCosine,
   shouldEmbed,
+  shouldEmbedName,
   type EmbeddablePlace,
 } from "./embeddings-vector.ts";
 
@@ -71,6 +74,38 @@ Deno.test("clampToWordLimit never truncates mid-word", () => {
   // Char-slice regression: the old 420-char cut landed mid-"night".
   const charSliced = long.replace(/\s+/g, " ").trim().slice(0, 420);
   assertEquals(charSliced.endsWith(" ni"), true);
+});
+
+Deno.test("placeNameEmbedText is the resolved name, not the summary", () => {
+  assertEquals(placeNameEmbedText(sample()), "Contramar");
+  assertEquals(
+    placeNameEmbedText(sample({ name: "  El  Nuevo   Nombre  " })),
+    "El Nuevo Nombre",
+  );
+  const facts = placeEmbeddingFacts(sample());
+  assertEquals(facts.includes("Famous tuna"), true);
+  assertEquals(placeNameEmbedText(sample()).includes("Famous"), false);
+});
+
+Deno.test("shouldEmbedName only when the name vector is missing", () => {
+  assertEquals(shouldEmbedName(sample()), true);
+  assertEquals(
+    shouldEmbedName(sample({
+      name_embedding: "[0.1,0.2]",
+      name_embedding_hash: "abc",
+    })),
+    false,
+  );
+  assertEquals(shouldEmbedName(sample({ name: "   " })), false);
+});
+
+Deno.test("rankByNameCosine reads name_embedding, not embedding", () => {
+  const query = [1, 0];
+  const ranked = rankByNameCosine([
+    { id: "summary-only", embedding: [1, 0], name_embedding: [0, 1] },
+    { id: "name-match", embedding: [0, 1], name_embedding: [1, 0] },
+  ], query);
+  assertEquals(ranked[0].id, "name-match");
 });
 
 Deno.test("shouldEmbed when vector or human text missing", () => {
