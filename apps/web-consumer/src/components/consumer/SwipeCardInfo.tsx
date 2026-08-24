@@ -1,5 +1,7 @@
 import {
+  BadgeCheck,
   Clock,
+  Globe,
   Instagram,
   MapPin,
   Navigation,
@@ -112,10 +114,16 @@ export function SwipeCardInfo({
         {/* ALWAYS RENDERED, AND FIRST. Partner is a two-state fact, so
             showing the chip only in one state made its absence ambiguous —
             a guest could not tell "not a partner" from "the card ran out of
-            room". Same glyph both ways, because the negative is the common
-            case and a warning icon on most cards is noise, not information. */}
+            room". */}
         <MetaChip compact={compact}>
-          <span aria-hidden>{partner ? "🤝" : "🌐"}</span>
+          {partner ? (
+            <BadgeCheck
+              className="text-primary h-3 w-3 shrink-0 fill-current"
+              strokeWidth={2}
+            />
+          ) : (
+            <Globe className="h-3 w-3 shrink-0 text-white/70" />
+          )}
           <span className="font-semibold">
             {partner ? "Partner" : "Not Partner"}
           </span>
