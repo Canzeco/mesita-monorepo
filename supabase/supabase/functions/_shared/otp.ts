@@ -12,6 +12,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 import { sha256Hex } from "./otp-crypto.ts";
+import { normalizeVerificationConfig } from "./verification-config.ts";
 
 // Re-export so existing `from "../_shared/otp.ts"` callers keep working.
 export { randomSixDigits, sha256Hex } from "./otp-crypto.ts";
@@ -82,7 +83,10 @@ export async function redeemOtpVerification(
     code: string;
     userId: string;
     methodFilter: OtpMethod;
-    autoVerifyColumn: "auto_verify_ai_call" | "auto_verify_ai_email";
+    // Key into verification_config (MESITA-1248) — was a raw app_config
+    // column name before the fold; the two auto-verify flags are the only
+    // ones this path ever reads.
+    autoVerifyKey: "autoVerifyAiCall" | "autoVerifyAiEmail";
   },
 ): Promise<Response> {
   if (!/^\d{6}$/.test(args.code)) {
@@ -146,11 +150,13 @@ export async function redeemOtpVerification(
 
   const { data: settings } = await admin
     .from("app_config")
-    .select(args.autoVerifyColumn)
+    .select("verification_config")
     .eq("id", 1)
     .maybeSingle();
-  const autoVerify =
-    (settings as Record<string, boolean | null> | null)?.[args.autoVerifyColumn] !== false;
+  const verificationConfig = normalizeVerificationConfig(
+    (settings as { verification_config?: unknown } | null)?.verification_config,
+  );
+  const autoVerify = verificationConfig[args.autoVerifyKey];
   const now = new Date().toISOString();
 
   if (!autoVerify) {

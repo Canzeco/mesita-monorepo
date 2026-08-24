@@ -3,11 +3,13 @@
 // Returns the full public.app_config singleton row to the admin web.
 // One central read for every admin page that needs to surface a flag:
 //
-//   auto_verify_ai_call         — verification auto-approve (call OTP)
-//   auto_verify_ai_email        — verification auto-approve (email OTP)
+//   autoVerifyAiCall  — verification auto-approve (call OTP)
+//   autoVerifyAiEmail — verification auto-approve (email OTP)
+//   (both live in the verification_config jsonb column, MESITA-1248 fold)
 //
-// `auto_verify_video` retired (MESITA-1248) — nothing ever read it; see
-// admin-web-update-verification-config's header for the full finding.
+// `auto_verify_video`/`autoVerifyVideo` retired (MESITA-1248, separate PR)
+// — nothing ever read it; see admin-web-update-verification-config's header
+// for the full finding.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -28,6 +30,7 @@ import {
   enrichmentTriggersMeta,
   normalizeEnrichmentTriggers,
 } from "../_shared/enrich-triggers.ts";
+import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -46,7 +49,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("app_config")
     .select(
-      "auto_verify_ai_call, auto_verify_ai_email, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
+      "verification_config, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -57,9 +60,11 @@ Deno.serve(async (req) => {
     return jsonError("app_config missing", 500);
   }
 
+  const verificationConfig = normalizeVerificationConfig(data.verification_config);
+
   return jsonOk({
-    autoVerifyAiCall: data.auto_verify_ai_call,
-    autoVerifyAiEmail: data.auto_verify_ai_email,
+    autoVerifyAiCall: verificationConfig.autoVerifyAiCall,
+    autoVerifyAiEmail: verificationConfig.autoVerifyAiEmail,
     atlasGatherGoogleImages: data.atlas_gather_google_images,
     atlasGatherInstagramDepth: data.atlas_gather_instagram_depth,
     atlasGatherInstagramPosts: data.atlas_gather_instagram_posts,

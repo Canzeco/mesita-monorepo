@@ -49,6 +49,6 @@ Deno.serve(async (req) => {
     code,
     userId,
     methodFilter: "ai_call",
-    autoVerifyColumn: "auto_verify_ai_call",
+    autoVerifyKey: "autoVerifyAiCall",
   });
 });

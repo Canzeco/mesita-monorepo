@@ -2,15 +2,17 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = verification-config.
 //
-// Returns every Verification Config knob from the public.app_config singleton
-// for the admin console's Verification Config page:
+// Returns every Verification Config knob from the public.app_config
+// singleton's verification_config jsonb column (MESITA-1248 fold of three
+// loose scalar columns) for the admin console's Verification Config page:
 //
-//   create_places_as_verified — catalog Mesita Partner badge at create time
-//   auto_verify_ai_call       — phone OTP auto-grants ownership
-//   auto_verify_ai_email      — email OTP auto-grants ownership
+//   createPlacesAsVerified — catalog Mesita Partner badge at create time
+//   autoVerifyAiCall       — phone OTP auto-grants ownership
+//   autoVerifyAiEmail      — email OTP auto-grants ownership
 //
-// `auto_verify_video` retired (MESITA-1248) — nothing ever read it; see
-// admin-web-update-verification-config's header for the full finding.
+// `auto_verify_video`/`autoVerifyVideo` retired (MESITA-1248, separate PR)
+// — nothing ever read it; see admin-web-update-verification-config's header
+// for the full finding.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -22,6 +24,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -39,9 +42,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await admin
     .from("app_config")
-    .select(
-      "create_places_as_verified, auto_verify_ai_call, auto_verify_ai_email, updated_at",
-    )
+    .select("verification_config, updated_at")
     .eq("id", 1)
     .maybeSingle();
   if (error) {
@@ -52,11 +53,7 @@ Deno.serve(async (req) => {
   }
 
   return jsonOk({
-    config: {
-      createPlacesAsVerified: data.create_places_as_verified === true,
-      autoVerifyAiCall: data.auto_verify_ai_call !== false,
-      autoVerifyAiEmail: data.auto_verify_ai_email !== false,
-    },
+    config: normalizeVerificationConfig(data.verification_config),
     updatedAt: data.updated_at,
   });
 });

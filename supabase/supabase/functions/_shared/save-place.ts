@@ -8,8 +8,8 @@
 //   • places   — the profile (Google identity, geo, channels, signals, photos)
 //   • projects — the owned Mesita entity (shared PK with the place), landing
 //     status='active', listing_type from Verification Config
-//     (create_places_as_verified → 'partner', else 'web'), and a
-//     caller-supplied content_status (the async create path passes
+//     (verification_config.createPlacesAsVerified → 'partner', else 'web'),
+//     and a caller-supplied content_status (the async create path passes
 //     'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
@@ -25,6 +25,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type PlacePatch, type ProjectRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
+import { normalizeVerificationConfig } from "./verification-config.ts";
 
 // The places-shaped profile from fetchGoogleBasics. Required spine:
 // google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
@@ -98,17 +99,23 @@ export async function savePlaceData(
 
   // ── Verification Config: create as Mesita Partner? ──
   // decision: Pato (live, 2026-08-05) — admin Verification Config toggle
-  // create_places_as_verified. When on, new places land as listing_type=
-  // 'partner' (consumer "Mesita Partner" badge) even without phone OTP
-  // ownership proof. Default off → 'web' / "Not Verified". Does not grant
-  // plan, ownership, or promo strategy (those stay on their own paths).
+  // createPlacesAsVerified (verification_config jsonb, MESITA-1248 fold of
+  // the old create_places_as_verified column). When on, new places land as
+  // listing_type='partner' (consumer "Mesita Partner" badge) even without
+  // phone OTP ownership proof. Default off → 'web' / "Not Verified". Does
+  // not grant plan, ownership, or promo strategy (those stay on their own
+  // paths).
   const { data: settingsRow } = await admin
     .from("app_config")
-    .select("create_places_as_verified")
+    .select("verification_config")
     .eq("id", 1)
     .maybeSingle();
   const listingType =
-    settingsRow?.create_places_as_verified === true ? "partner" : "web";
+    normalizeVerificationConfig(
+      (settingsRow as { verification_config?: unknown } | null)?.verification_config,
+    ).createPlacesAsVerified
+      ? "partner"
+      : "web";
 
   // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
