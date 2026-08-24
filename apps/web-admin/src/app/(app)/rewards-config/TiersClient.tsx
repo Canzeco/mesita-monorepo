@@ -40,9 +40,9 @@ import {
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
-  mesita_review: "+ Mesita",
-  story: "+ Story",
-  review: "+ Google",
+  mesita_review: "+ Mesita Review",
+  story: "+ Instagram Story",
+  review: "+ Google Review",
   welcome: "+ Welcome",
 };
 
@@ -174,7 +174,7 @@ function TierBox({
         <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
           Actions
         </p>
-        {(["story", "mesita", "google"] as const).map((k) => (
+        {(["story", "google", "mesita"] as const).map((k) => (
           <BoxRow
             key={k}
             label={BONUS_META[k].name}

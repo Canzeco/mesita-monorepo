@@ -77,10 +77,10 @@ export function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative and
-            Aggressive — pick either, switch free anytime while you&apos;re a
-            member. Zero stays free with no discounts. Being listed on Mesita
-            never costs anything. The fee is a commitment filter (keeps
+            The right to leave Zero. Membership unlocks Conservative,
+            Aggressive and Dominant — pick any, switch free anytime while
+            you&apos;re a member. Zero stays free with no discounts. Being listed
+            on Mesita never costs anything. The fee is a commitment filter (keeps
             half-hearted places out of rewards), not a feature tier and not a rank
             you can buy.
           </p>
@@ -102,9 +102,9 @@ export function FaqsBox({
 
         <Faq q="How does visibility work?">
           <p>
-            Zero sits at Low, Conservative at Mid, Aggressive at High.
-            Visibility rises with what you give — it is never a separate knob
-            you can buy.
+            Zero sits at Low, Conservative at Mid, Aggressive at High,
+            Dominant at Max. Visibility rises with what you give — it is never
+            a separate knob you can buy.
           </p>
         </Faq>
 
@@ -211,8 +211,9 @@ function PremiumExamples({
         />
       </div>
       <p>
-        Premium ≥ Standard in every strategy — Premium guests always get the
-        better deal. Action bonuses (story, reviews) stack on top of these.
+        Premium ≥ Free in every strategy — Premium guests always get the
+        better deal. Action bonuses (Instagram Story, Google Review, Mesita
+        Review) stack on top of these.
       </p>
     </>
   );
@@ -273,8 +274,8 @@ function ExampleCard({
           </p>
           <p className="text-muted-foreground mt-1 text-[11px]">
             {freeRate == null
-              ? "A Standard guest gets no discount on this visit."
-              : `A Standard guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
+              ? "A Free guest gets no discount on this visit."
+              : `A Free guest saves ${formatMoney(freeSaves, currency)} (${freeRate}%).`}
           </p>
         </>
       )}
