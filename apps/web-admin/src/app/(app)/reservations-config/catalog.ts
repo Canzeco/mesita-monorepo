@@ -21,6 +21,14 @@
 
 type ReservationChannel = "phone";
 
+/** Four Reservationist agents. Direction is fixed; the errand is data. */
+export const FLEET = [
+  { key: "a1", arrow: "→", side: "place" },
+  { key: "a2", arrow: "→", side: "guest" },
+  { key: "a3", arrow: "←", side: "guest" },
+  { key: "a4", arrow: "←", side: "place" },
+] as const;
+
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
   priority: ReservationChannel[];
