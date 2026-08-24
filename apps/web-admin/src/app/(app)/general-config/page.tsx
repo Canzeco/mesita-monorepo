@@ -7,10 +7,10 @@ import { getOjoConfig } from "../ojo-config/actions";
 import { OjoConfigClient } from "../ojo-config/OjoConfigClient";
 import { OJO_FALLBACK } from "../ojo-config/defaults";
 
-// General — Verification + Models + Ojo, each keeping its own client, its
-// own load and its own Save. The three clients render cards only (their
-// page chrome lived in the layouts this page replaces). Do not wrap them
-// in a second heading — SectionCard already owns the title.
+// General — Models first (Pato, 2026-08-24: "in general, models must be
+// on top"), then Verification, then Ojo. Each keeps its own client, load
+// and Save. Do not wrap them in a second heading — SectionCard already
+// owns the title.
 export const dynamic = "force-dynamic";
 
 const FALLBACK_CONFIG: VerificationConfig = {
@@ -27,14 +27,14 @@ export default async function GeneralConfigPage() {
   ]);
   return (
     <div className="flex flex-col gap-10">
+      <ModelsConfigClient
+        initialConfig={models.ok ? models.data : DEFAULT_MODELS_CONFIG}
+        loadError={models.ok ? null : models.error}
+      />
       <VerificationConfigClient
         initialConfig={res.ok ? res.config : FALLBACK_CONFIG}
         initialUpdatedAt={res.ok ? res.updatedAt : null}
         loadError={res.ok ? null : res.error}
-      />
-      <ModelsConfigClient
-        initialConfig={models.ok ? models.data : DEFAULT_MODELS_CONFIG}
-        loadError={models.ok ? null : models.error}
       />
       <OjoConfigClient
         initialConfig={ojo.ok ? ojo.config : OJO_FALLBACK}

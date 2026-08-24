@@ -183,7 +183,8 @@ export function ModelsConfigClient({
       <p className="text-muted-foreground mt-3 type-label leading-relaxed">
         Intaker quality tiers and the embedding model live on Intake; the
         embedding model is fixed by design — changing it re-vectors the catalog.
-        Ojo&apos;s enabled, threshold and fail-action policy is the card below.
+        Ojo&apos;s enabled, threshold and fail-action policy lives on the Ojo
+        card on this page.
       </p>
 
       <SaveRow
