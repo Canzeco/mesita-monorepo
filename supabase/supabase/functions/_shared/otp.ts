@@ -71,7 +71,7 @@ export async function insertPendingOtpVerification(
 
 // One redemption helper, identical for ai_call and ai_email. Caller
 // passes the methodFilter (so an email code can't redeem a phone row)
-// and the column on app_config that gates auto-vs-manual approval.
+// and the verification_config key that gates auto-vs-manual approval.
 //
 // Returns a Response either way — success path returns the JSON the
 // EF would have built itself. Hard errors get baked into 4xx/5xx
