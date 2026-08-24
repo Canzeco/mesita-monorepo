@@ -26,7 +26,7 @@ function Close() {
           ))}
         </div>
         <h2 className="font-display mt-4 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-          Built in Monterrey. Launching in California.
+          Built for San Francisco.
         </h2>
         <p className="text-muted-foreground max-w-xl text-base">
           Mesita is in development, launching January 2027.

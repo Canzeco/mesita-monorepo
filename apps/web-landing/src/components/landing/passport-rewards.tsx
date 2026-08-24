@@ -97,7 +97,7 @@ function PassportRewards() {
                 One rewards table
               </h3>
               <span className="border-secondary/40 text-secondary rounded-full border px-3 py-1 text-[11px] font-bold">
-                Cap MX$500
+                $25 cap
               </span>
             </div>
             <div className="border-border divide-border divide-y overflow-hidden rounded-2xl border">

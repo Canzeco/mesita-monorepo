@@ -10,8 +10,7 @@ function Footer() {
           <MesitaLogo variant="horizontal" className="h-6 w-auto" />
         </Link>
         <p className="text-muted-foreground text-[12px]">
-          © Mesita · {year} · Built in Monterrey · Launching in California,
-          January 2027
+          © Mesita · {year} · Launching in San Francisco, January 2027
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
           <a href="#catalog" className="hover:text-foreground py-2 transition">
