@@ -20,6 +20,9 @@ export type EmbeddablePlace = {
   embedding: unknown | null;
   embedding_source_hash: string | null;
   embedding_source_text?: string | null;
+  /** MESITA-1238: vector over the resolved display name only. */
+  name_embedding?: unknown | null;
+  name_embedding_hash?: string | null;
 };
 
 // Deterministic fallback / facts block used when the LLM synthesizer is
@@ -64,6 +67,32 @@ export function shouldEmbed(v: EmbeddablePlace): boolean {
   // re-run so admin + EM share the same stored blurb.
   if (!v.embedding_source_text?.trim()) return true;
   return false;
+}
+
+/** The name vector's source is the resolved display name, nothing else. */
+export function placeNameEmbedText(v: EmbeddablePlace): string {
+  return (v.name ?? "").replace(/\s+/g, " ").trim();
+}
+
+export function shouldEmbedName(v: EmbeddablePlace): boolean {
+  if (!placeNameEmbedText(v)) return false;
+  if (!v.name_embedding) return true;
+  if (v.name_embedding_hash == null) return true;
+  return false;
+}
+
+/** Rank by the NAME vector. Do not reuse rankByCosine — that reads `embedding`. */
+export function rankByNameCosine<T extends { name_embedding?: unknown }>(
+  rows: T[],
+  queryVec: number[],
+): T[] {
+  const scored = rows.map((r) => {
+    const v = parseVector(r.name_embedding);
+    const score = v ? cosineSim(v, queryVec) : -1;
+    return { row: r, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.row);
 }
 
 // pgvector accepts vectors as text literals like "[0.01,0.02,...]". We build

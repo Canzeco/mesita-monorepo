@@ -248,6 +248,8 @@ export type AdminPlace = {
   embedding?: string | number[] | null;
   embedding_source_hash?: string | null;
   embedding_source_text?: string | null;
+  name_embedding?: string | number[] | null;
+  name_embedding_hash?: string | null;
   // ── Status, super-admin overview only (MESITA-1186) ──────────────────────
   // Computed by business-web-get-overview off _shared/place-status.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so

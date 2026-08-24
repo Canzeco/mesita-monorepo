@@ -26,7 +26,7 @@ import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
 // off the business overview payload; only elevate when the caller is a
 // super-admin.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
-  ", embedding, embedding_source_hash, embedding_source_text";
+  ", embedding, embedding_source_hash, embedding_source_text, name_embedding, name_embedding_hash";
 
 // Status (MESITA-1186). The place editor's Status box answers `seeded` off the
 // identity spine, so the super-admin read needs the column. Admin-only for the

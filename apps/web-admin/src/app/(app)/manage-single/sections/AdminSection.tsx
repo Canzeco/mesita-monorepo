@@ -238,6 +238,9 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
   const vector = parseEmbeddingVector(place.embedding);
   const preview = vector?.slice(0, 24) ?? null;
   const dims = vector?.length ?? 0;
+  const nameVector = parseEmbeddingVector(place.name_embedding);
+  const namePreview = nameVector?.slice(0, 24) ?? null;
+  const nameDims = nameVector?.length ?? 0;
   // The resolved label is what actually reaches the source text: Postgres
   // generates places.name as coalesce(mesita_name, google_name), so an
   // operator override is already folded in by the time we embed.
@@ -257,7 +260,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
             Embedding
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            One vector, over the name and the Semantic Summary.
+            Two vectors — Mesita Name, and the Semantic Summary.
           </p>
         </div>
         <ChevronDown
@@ -272,7 +275,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
               <span className="text-sm">{resolvedName}</span>
               <span className="text-muted-foreground type-label">
                 {override
-                  ? "Operator override — this is what gets embedded."
+                  ? "Operator override — this is what the Name vector embeds."
                   : "Following the Google name — no override set."}
               </span>
             </span>
@@ -294,7 +297,21 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
             </span>
           )}
         </ReadField>
-        <ReadField label="Vector" boxed>
+        <ReadField label="Name vector" boxed>
+          {nameVector && namePreview ? (
+            <code className="text-muted-foreground break-all font-mono type-meta leading-snug">
+              [{namePreview.map((n) => n.toFixed(4)).join(", ")}
+              {nameDims > namePreview.length
+                ? `, \u2026 +${nameDims - namePreview.length} dims`
+                : ""}]
+            </code>
+          ) : (
+            <span className="text-muted-foreground text-xs italic">
+              No name vector yet — produced from the Mesita Name above.
+            </span>
+          )}
+        </ReadField>
+        <ReadField label="Summary vector" boxed>
           {vector && preview ? (
             <code className="text-muted-foreground break-all font-mono type-meta leading-snug">
               [{preview.map((n) => n.toFixed(4)).join(", ")}
@@ -302,23 +319,36 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
             </code>
           ) : (
             <span className="text-muted-foreground text-xs italic">
-              No vector yet — produced from the Semantic Summary above.
+              No summary vector yet — produced from the Semantic Summary above.
             </span>
           )}
         </ReadField>
         <ReadField label="Model" boxed>
           <span className="text-muted-foreground type-label tabular-nums">
-            text-embedding-3-small{dims ? ` \u00b7 ${dims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
+            text-embedding-3-small{dims || nameDims ? ` \u00b7 ${dims || nameDims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
           </span>
         </ReadField>
-        <ReadField label="Source hash" boxed>
-          {place.embedding_source_hash ? (
-            <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-              <code className="min-w-0 truncate font-mono type-label">
-                {place.embedding_source_hash}
-              </code>
+        <ReadField label="Source hashes" boxed>
+          {place.embedding_source_hash || place.name_embedding_hash ? (
+            <span className="flex min-w-0 flex-col gap-1 py-0.5">
+              {place.name_embedding_hash ? (
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-muted-foreground type-label">Name</span>
+                  <code className="min-w-0 truncate font-mono type-label">
+                    {place.name_embedding_hash}
+                  </code>
+                </span>
+              ) : null}
+              {place.embedding_source_hash ? (
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-muted-foreground type-label">Summary</span>
+                  <code className="min-w-0 truncate font-mono type-label">
+                    {place.embedding_source_hash}
+                  </code>
+                </span>
+              ) : null}
               <span className="text-muted-foreground type-label">
-                The model is only called again when this goes stale.
+                The model is only called again when the matching hash goes stale.
               </span>
             </span>
           ) : (
