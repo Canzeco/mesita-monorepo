@@ -24,13 +24,8 @@ import {
   placePromotingLevel,
 } from "../_shared/place-promoting.ts";
 import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
-import {
-  PULSE_LABELS_IN_ORDER,
-  PULSE_TOTAL,
-  pulseBlockedAt,
-  pulseHighWater,
-  type PulseEvent,
-} from "../_shared/pulse-pieces.ts";
+import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
 
 type Body = { query?: unknown; limit?: unknown };
 
@@ -132,23 +127,22 @@ Deno.serve(async (req) => {
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
   const verified = new Set<string>();
-  // PULSE piece events (MESITA-1172). The RPC returns only the latest event
-  // per (place, piece); pulseHighWater owns the ladder rules, which is where
-  // they are unit-tested.
-  const events = new Map<string, PulseEvent[]>();
+  // MESITA-1249: enrichment is READ, not folded — pulseHighWater/
+  // pulseBlockedAt already ran once, at write time, in pulse-report.ts.
+  // `places`, not `profiles`: this jsonb blob is deliberately NOT in the
+  // profiles view's column list (same reasoning as details/google_reviews/
+  // popular_times staying out of PLACE_CARD_COLUMNS, MESITA-1283) — adding
+  // it there means rebuilding the view + its two INSTEAD OF triggers, a
+  // documented recurring pain point, for a field only two admin EFs need.
+  const enrichment = new Map<string, EnrichmentMap>();
   if (ids.length > 0) {
-    const [verificationRes, eventsRes] = await Promise.all([
+    const [verificationRes, enrichmentRes] = await Promise.all([
       admin
         .from("project_verifications")
         .select("project_id")
         .eq("status", "approved")
         .in("project_id", ids),
-      // Via an RPC, not the table: the events table is an APPEND-ONLY log, so
-      // the raw rows grow with every re-enrich while the fold only ever wants
-      // the newest row per PIECE. `distinct on` collapses that in Postgres,
-      // capping the transfer at one row per (place, piece) instead of shipping
-      // the whole history out and throwing most of it away (MESITA-1198).
-      admin.rpc("place_enrich_events_latest", { p_place_ids: ids }),
+      admin.from("places").select("id, enrichment").in("id", ids),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
     // degrades to 0 / not-verified, which reads as "less done than it is" —
@@ -159,23 +153,16 @@ Deno.serve(async (req) => {
     for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
       verified.add(String(v.project_id));
     }
-    // Same best-effort posture: no events simply means no progress fraction,
-    // and the row falls back to the coarse stage level.
-    if (eventsRes.error) {
-      console.error("[search-places] place_enrichment_events:", eventsRes.error.message);
+    // Same best-effort posture: a missing/null row simply falls back to the
+    // CREATED-floor default below.
+    if (enrichmentRes.error) {
+      console.error("[search-places] places.enrichment:", enrichmentRes.error.message);
     }
-    for (const e of (eventsRes.data ?? []) as Record<string, unknown>[]) {
-      const key = String(e.place_id);
-      const list = events.get(key);
-      const row: PulseEvent = {
-        step_name: e.step_name == null ? null : String(e.step_name),
-        status: e.status == null ? null : String(e.status),
-        created_at: e.created_at == null ? null : String(e.created_at),
-      };
-      if (list) list.push(row);
-      else events.set(key, [row]);
+    for (const r of (enrichmentRes.data ?? []) as Record<string, unknown>[]) {
+      if (r.enrichment) enrichment.set(String(r.id), r.enrichment as EnrichmentMap);
     }
   }
+  const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
 
   // Trim photos to the first thumbnail to keep the payload small.
   // `name` is the generated display column (mesita_name → google_name); the
@@ -212,7 +199,7 @@ Deno.serve(async (req) => {
       // the last function such that it and everything before it completed.
       // 0 is the CREATED floor; create stamps pulse+details, so a healthy
       // fresh place reads 2.
-      enrich_pulse: pulseHighWater(events.get(id) ?? []),
+      enrich_pulse: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
       enrich_pulse_total: PULSE_TOTAL,
       // The function NAMES ride with the number so the client renders what the
       // server counted. Indexed BY FUNCTION NUMBER — labels[0] is the
@@ -226,7 +213,7 @@ Deno.serve(async (req) => {
       // reports permanently closed, so 0 means both "seeded, nothing tried"
       // and "we asked, and the listing is dead". Shipped from the same events
       // the high-water walks, so the two cannot disagree.
-      enrich_pulse_blocked: pulseBlockedAt(events.get(id) ?? []),
+      enrich_pulse_blocked: (enrichment.get(id) ?? EMPTY_ENRICHMENT).blockedAt,
       verified: verified.has(id),
       partner: isPaidPlan((v.plan as string | null) ?? null),
       promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),

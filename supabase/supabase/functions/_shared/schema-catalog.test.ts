@@ -22,10 +22,15 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { PULSE_EXTRAS, PULSE_PIECES, type PulseStep } from "./pulse-pieces.ts";
 import {
+  EnrichmentMapSchema,
   FUNCTION_STATE_KEYS,
+  FunctionStateMapSchema,
   isBillingState,
   isFunctionState,
   isMoney,
+  pulseBlockedAtFromMap,
+  pulseHighWaterFromMap,
+  toFunctionStatus,
   type BillingState,
   type ChannelSet,
   type ChannelSetKey,
@@ -145,4 +150,135 @@ Deno.test("isFunctionState: accepts all three statuses, rejects a fourth", () =>
   assert(isFunctionState(completed));
   assert(isFunctionState(failed));
   assert(!isFunctionState({ status: "skipped", at: null, detail: null }));
+});
+
+// ── The materialized enrichment state map (MESITA-1249) ────────────────────
+
+Deno.test("FunctionStateMapSchema: accepts a genuinely partial map — absent keys stay absent", () => {
+  const r = FunctionStateMapSchema.parse({
+    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+  });
+  assert(r.ok);
+  if (!r.ok) return;
+  assertEquals(Object.keys(r.value), ["pulse"]);
+  assert(!("details" in r.value), "an unset piece must not round-trip as a fabricated pending entry");
+});
+
+Deno.test("FunctionStateMapSchema: accepts an empty map (a brand-new place)", () => {
+  const r = FunctionStateMapSchema.parse({});
+  assert(r.ok);
+  if (r.ok) assertEquals(r.value, {});
+});
+
+Deno.test("FunctionStateMapSchema: rejects a key outside the 11 PulseSteps", () => {
+  const r = FunctionStateMapSchema.parse({ seed: { status: "completed", at: null, detail: null } });
+  assert(!r.ok);
+});
+
+Deno.test("FunctionStateMapSchema: rejects a malformed FunctionState value", () => {
+  const r = FunctionStateMapSchema.parse({ pulse: { status: "skipped", at: null, detail: null } });
+  assert(!r.ok);
+});
+
+Deno.test("EnrichmentMapSchema: accepts the CREATED-floor default", () => {
+  const r = EnrichmentMapSchema.parse({ functions: {}, highWater: 0, blockedAt: null });
+  assert(r.ok);
+});
+
+Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null", () => {
+  const full: Record<string, unknown> = {};
+  for (const key of FUNCTION_STATE_KEYS) {
+    full[key] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
+  }
+  const r = EnrichmentMapSchema.parse({ functions: full, highWater: 9, blockedAt: null });
+  assert(r.ok);
+});
+
+Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", () => {
+  const r = EnrichmentMapSchema.parse({
+    functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+    highWater: 1,
+    blockedAt: { key: "details", index: 2, status: "missing" },
+  });
+  assert(r.ok);
+});
+
+Deno.test("EnrichmentMapSchema: rejects highWater out of 0-9 range, a non-integer, and a bad blockedAt.status", () => {
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 10, blockedAt: null }).ok, "10 is over PULSE_TOTAL");
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: -1, blockedAt: null }).ok, "negative");
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 3.5, blockedAt: null }).ok, "non-integer");
+  assert(
+    !EnrichmentMapSchema.parse({
+      functions: {},
+      highWater: 0,
+      blockedAt: { key: "pulse", index: 1, status: "completed" },
+    }).ok,
+    "blockedAt.status must be failed|missing, never completed",
+  );
+});
+
+Deno.test("EnrichmentMapSchema: rejects an unknown top-level key", () => {
+  const r = EnrichmentMapSchema.parse({
+    functions: {},
+    highWater: 0,
+    blockedAt: null,
+    everyDays: 30, // MESITA-1249 deliberately did not fold the schedule in
+  });
+  assert(!r.ok);
+});
+
+// pulseHighWaterFromMap/pulseBlockedAtFromMap mirror pulse-pieces.ts's own
+// event-based walk (converting the map back to its event shape, not a
+// second implementation) — a few of that file's own pinned invariants,
+// re-run over the map path so the two can never silently diverge.
+
+function stamped(...pieces: string[]): FunctionStateMap {
+  const map: Record<string, FunctionState> = {};
+  for (const p of pieces) map[p] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
+  return map as FunctionStateMap;
+}
+
+Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 9", () => {
+  assertEquals(pulseHighWaterFromMap({}), 0);
+  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 9);
+});
+
+Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece completed", () => {
+  // links (4) missing, social (5) completed anyway.
+  const map = stamped("pulse", "details", "serp", "social");
+  assertEquals(pulseHighWaterFromMap(map), 3);
+});
+
+Deno.test("pulseHighWaterFromMap: summary/name never count toward the queue", () => {
+  const map: FunctionStateMap = {
+    ...stamped("pulse", "details"),
+    summary: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+  };
+  assertEquals(pulseHighWaterFromMap(map), 2, "the semantic function must not advance the ladder");
+});
+
+Deno.test("pulseBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {
+  assertEquals(pulseBlockedAtFromMap({}), { key: "pulse", index: 1, status: "missing" });
+  const failedAtLinks: FunctionStateMap = {
+    ...stamped("pulse", "details", "serp"),
+    links: { status: "failed", at: "2026-08-23T00:00:00Z", detail: "timeout" },
+  };
+  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 4, status: "failed" });
+  assertEquals(pulseBlockedAtFromMap(stamped(...PULSE_PIECES)), null);
+});
+
+Deno.test("pulseBlockedAtFromMap: a pending (in-flight) piece reads as failed, same as pulse-pieces.ts's own skipped rule", () => {
+  const map: FunctionStateMap = {
+    ...stamped("pulse"),
+    details: { status: "pending", at: "2026-08-23T00:00:00Z", detail: null },
+  };
+  assertEquals(pulseBlockedAtFromMap(map), { key: "details", index: 2, status: "failed" });
+});
+
+Deno.test("toFunctionStatus: completed stays completed, started becomes pending, everything else becomes failed", () => {
+  assertEquals(toFunctionStatus("completed"), "completed");
+  assertEquals(toFunctionStatus("started"), "pending");
+  assertEquals(toFunctionStatus("failed"), "failed");
+  assertEquals(toFunctionStatus("skipped"), "failed");
+  assertEquals(toFunctionStatus("some-future-unknown-status"), "failed");
 });

@@ -51,6 +51,13 @@ import {
   type PulsePiece,
   type PulseStep,
 } from "./pulse-pieces.ts";
+import {
+  pulseBlockedAtFromMap,
+  pulseHighWaterFromMap,
+  type EnrichmentMap,
+  type FunctionStateMap,
+} from "./schema-catalog.ts";
+import { writePlace } from "./place-doc.ts";
 
 /**
  * What a caller may stamp: any enrich function or semantic function. `seed`
@@ -105,6 +112,7 @@ export async function reportPulsePieces(
   //      name — the On-Update path fires the same machinery (MESITA-1243).
   pieces: Partial<Record<StampablePulseStep, PieceOutcome>>,
 ): Promise<void> {
+  const stamped: Partial<Record<StampablePulseStep, PieceOutcome>> = {};
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;
     const meta = PULSE_PIECE_META[key as PulsePiece];
@@ -121,5 +129,67 @@ export async function reportPulsePieces(
         ? { piece: key, index: meta.index, ...(outcome.meta ?? {}) }
         : { piece: key, extra: true, ...(outcome.meta ?? {}) },
     );
+    stamped[key as StampablePulseStep] = outcome;
+  }
+  if (Object.keys(stamped).length > 0) {
+    await mergeEnrichmentMap(admin, projectId, stamped);
+  }
+}
+
+/**
+ * MESITA-1249: keep `places.enrichment` current alongside the event log this
+ * function already writes. Read-merge-write rather than a blind overwrite —
+ * `stamped` only carries the pieces THIS stage bought (rule 3 above: a piece
+ * a run didn't buy writes nothing), so the merge must preserve every other
+ * piece's prior state, the same accumulation rule the append-only event log
+ * already gives every reader for free.
+ *
+ * Best-effort like `reportEnrichmentStep` itself: the event log (this
+ * function's caller, just above) is still the durable source of truth, so a
+ * failure here degrades the read-path shortcut, not correctness — the next
+ * successful write self-heals it.
+ */
+async function mergeEnrichmentMap(
+  admin: SupabaseClient,
+  projectId: string,
+  stamped: Partial<Record<StampablePulseStep, PieceOutcome>>,
+): Promise<void> {
+  const { data, error: readError } = await admin
+    .from("places")
+    .select("enrichment")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (readError) {
+    console.error("[pulse-report] enrichment map read:", readError.message);
+    return;
+  }
+  const current = (data?.enrichment as EnrichmentMap | null | undefined) ??
+    { functions: {}, highWater: 0, blockedAt: null };
+  const functions: FunctionStateMap = { ...current.functions };
+  const now = new Date().toISOString();
+  for (const [key, outcome] of Object.entries(stamped)) {
+    if (!outcome) continue;
+    // outcome.status is "completed" | "failed" — already a valid
+    // FunctionState.status, no translation needed (that mapping only
+    // applies to raw historical event rows — see toFunctionStatus).
+    functions[key as PulseStep] = {
+      status: outcome.status,
+      at: now,
+      detail: outcome.detail,
+    };
+  }
+  const next: EnrichmentMap = {
+    functions,
+    highWater: pulseHighWaterFromMap(functions),
+    blockedAt: pulseBlockedAtFromMap(functions),
+  };
+  const res = await writePlace(admin, {
+    table: "places",
+    mode: "update",
+    id: projectId,
+    patch: { enrichment: next },
+  });
+  if (!res.ok) {
+    console.error("[pulse-report] enrichment map write:", res.error);
   }
 }
