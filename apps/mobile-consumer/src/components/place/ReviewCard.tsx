@@ -139,7 +139,7 @@ function Header({
   );
 }
 
-// Intaker stores ISO `published`; mocks use relative strings — render either
+// Enricher stores ISO `published`; mocks use relative strings — render either
 // cleanly (mirrors web ReviewCard.formatReviewDate). Non-parseable strings
 // (already-relative) pass through untouched.
 function formatReviewDate(raw: string): string {
