@@ -303,6 +303,7 @@ Compare **meaning, never timestamps.** `notion-search`'s `timestamp` returned qu
 both Enrichment pages while returning a real past date for the Docs index (verified
 2026-08-22), so a staleness gate built on it reports green forever. You are a reading agent:
 compare the claim to the code, the way Scope 1 compares EF inventories.
+**Disk auto-memory is cache-not-law** (Pato Mac `~/.claude/projects/**/memory/`; none on this VM). Notion Rules win.
 
 **Already-tracked deltas are not findings.** Before promoting ANY disagreement, check
 whether it is already known: an open Linear issue naming it · a doc that declares its own
