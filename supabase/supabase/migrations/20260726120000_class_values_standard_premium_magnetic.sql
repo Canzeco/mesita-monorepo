@@ -14,6 +14,11 @@
 -- free->standard cutover only has to repoint that one table.
 
 -- 1 - Add 'standard' (the old 'free' defaults) before repointing any consumer.
+-- Empty-volume replay still has `free` on rank 0 (0033). The unique rank
+-- key is leftover from membership_tiers. Park `free` so `standard` can
+-- take 0; step 3 deletes `free`.
+update public.classes set rank = -1 where key = 'free';
+
 insert into public.classes
   (key, label, rank, follower_threshold, monthly_reservation_limit, price_cents, currency, recommendation_weight)
 values
