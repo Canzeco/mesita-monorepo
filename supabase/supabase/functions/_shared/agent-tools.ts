@@ -23,6 +23,7 @@ import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { phoneDigits } from "./phone.ts";
 import { writeReservation } from "./reservation-doc.ts";
+import { REMINDER_CLEAR } from "./reservation-reminder.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -293,6 +294,7 @@ export async function cancelTicket(
       next_attempt_at: null,
       callback_state: "skipped",
       callback_next_attempt_at: null,
+      ...REMINDER_CLEAR,
       run_id: crypto.randomUUID(),
       claimed_at: null,
       ...(notice

@@ -6,8 +6,8 @@
 // clean UI minimalist few words"). It was five cards for six controls, each
 // switch carrying a paragraph for its on state AND another for its off state.
 //
-// Unlike the other pages in the reduction, NOTHING here is staged — all six
-// controls are read by live code — so the cut is boxes and words, never knobs:
+// Unlike the other pages in the reduction, NOTHING here is staged — every
+// control is read by live code — so the cut is boxes and words, never knobs:
 //
 //   • TWO boxes, split by the only question that matters: is this call real?
 //     Calls = what actually dials out. Testing = the overrides that fake it.
@@ -204,6 +204,7 @@ export function ReservationsConfigClient({
     }
     if (row.attempts_state === "error") return "Booking run died";
     if (row.callback_state === "failed") return "Guest call could not be placed";
+    if (row.reminder_state === "failed") return "Reminder call could not be placed";
     return "Place confirmed, guest never picked up";
   };
 
@@ -310,6 +311,21 @@ export function ReservationsConfigClient({
             on={cfg.respectAdminOverride}
             pending={pending}
             onClick={() => patch({ respectAdminOverride: !cfg.respectAdminOverride })}
+          />
+        </div>
+
+        <div className="mt-3">
+          <Row
+            label="Remind guests 3 hours before"
+            help={
+              cfg.reminder.enabled
+                ? "One extra call per confirmed table. Quiet hours still apply."
+                : undefined
+            }
+            danger={cfg.reminder.enabled}
+            on={cfg.reminder.enabled}
+            pending={pending}
+            onClick={() => patch({ reminder: { enabled: !cfg.reminder.enabled } })}
           />
         </div>
       </SectionCard>
