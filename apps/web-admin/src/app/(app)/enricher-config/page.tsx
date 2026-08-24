@@ -28,7 +28,6 @@ const SETTINGS_FALLBACK: IntakeSettings = {
   synthesisQuality: "economy",
   visionQuality: "economy",
   perplexityPreset: "pro-search",
-  perRunCostCapUsd: 1,
   discoverWebsiteN: 5,
   discoverInstagramN: 5,
   discoverFacebookN: 3,
@@ -65,7 +64,6 @@ export default async function IntakePage() {
               visionQuality: settings.data.atlasVisionQuality ?? "economy",
               perplexityPreset:
                 settings.data.atlasPerplexityPreset ?? "pro-search",
-              perRunCostCapUsd: settings.data.atlasPerRunCostCapUsd ?? 1,
               discoverWebsiteN: settings.data.atlasDiscoverWebsiteN,
               discoverInstagramN: settings.data.atlasDiscoverInstagramN,
               discoverFacebookN: settings.data.atlasDiscoverFacebookN,

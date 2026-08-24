@@ -1,10 +1,9 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert";
+import { assertEquals } from "jsr:@std/assert";
 import { COST } from "./enrich-config.ts";
 import {
   chargeGoogleSpine,
   createEnrichCostLedger,
   discoverySearchCost,
-  EnrichCostCapError,
   googleSpineCost,
   instagramRunCost,
   isEnrichCostCapError,
@@ -17,7 +16,6 @@ Deno.test("ledger: charges accumulate and snapshot", () => {
   ledger.charge("a", 0.1);
   ledger.charge("b", 0.25);
   assertEquals(ledger.spentUsd, 0.35);
-  assertEquals(ledger.remaining(), 0.65);
   assertEquals(ledger.snapshot(), {
     spentUsd: 0.35,
     charges: [
@@ -27,29 +25,21 @@ Deno.test("ledger: charges accumulate and snapshot", () => {
   });
 });
 
-Deno.test("ledger: assertCanAfford blocks before spend", () => {
+Deno.test("ledger: a dollar cap does not abort a run", () => {
   const ledger = createEnrichCostLedger(0.05);
   ledger.charge("seed", 0.04);
-  assertThrows(
-    () => ledger.assertCanAfford(0.02, "next"),
-    EnrichCostCapError,
-    "cannot afford next",
-  );
-  assertEquals(ledger.spentUsd, 0.04);
-  assertEquals(ledger.charges.length, 1);
+  ledger.assertCanAfford(0.02, "next");
+  ledger.charge("over", 0.02);
+  assertEquals(ledger.spentUsd, 0.06);
+  assertEquals(ledger.charges.length, 2);
+  assertEquals(isEnrichCostCapError(new Error("nope")), false);
 });
 
-Deno.test("ledger: charge throws exceeded after recording", () => {
-  const ledger = createEnrichCostLedger(0.05);
-  ledger.charge("seed", 0.04);
-  const err = assertThrows(
-    () => ledger.charge("over", 0.02),
-    EnrichCostCapError,
-    "exceeds cap",
-  ) as EnrichCostCapError;
-  assertEquals(err.kind, "exceeded");
-  assertEquals(ledger.spentUsd, 0.06);
-  assertEquals(isEnrichCostCapError(err), true);
+Deno.test("ledger: cap 0 still records paid steps", () => {
+  const ledger = createEnrichCostLedger(0);
+  ledger.assertCanAfford(COST.perplexity, "serp");
+  ledger.charge("serp", COST.perplexity);
+  assertEquals(ledger.spentUsd, COST.perplexity);
 });
 
 Deno.test("ledger: resumes from prior snapshot across stages", () => {
@@ -59,11 +49,6 @@ Deno.test("ledger: resumes from prior snapshot across stages", () => {
   assertEquals(analysis.spentUsd, COST.compass);
   analysis.charge("sort", COST.sort);
   assertEquals(analysis.spentUsd, COST.compass + COST.sort);
-});
-
-Deno.test("ledger: cap 0 blocks any paid step", () => {
-  const ledger = createEnrichCostLedger(0);
-  assertThrows(() => ledger.assertCanAfford(COST.perplexity, "serp"), EnrichCostCapError);
 });
 
 Deno.test("helpers: google spine / IG / vision / synth / discovery", () => {
