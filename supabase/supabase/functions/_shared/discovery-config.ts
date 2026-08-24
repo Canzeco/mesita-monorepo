@@ -1,11 +1,13 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// FOUR things live here. Admin Discovery shows TWO boxes (Signals · Engines);
+// FIVE keys live here. Admin Discovery shows TWO boxes (Signals · Engines);
 // slotting and filters persist on the blob with no knobs (Pato, 2026-08-24).
+// `params` rides with `weights` — same Signals table, different numbers.
 //
-//   weights    one exponent per earned signal. This is the whole "weights
-//              table" the doc asks for — one row per signal, exponent editable.
+//   weights    one exponent per earned signal (`w` in `s^w`).
+//   params     the rest of each signal's hyperparameters (curve knees,
+//              floors, priors). Same table as the exponent on the console.
 //   slotting   the bought lane: whether promoting places get slots at all, and
 //              how often. Not a weight, because it is not a signal.
 //   filters    what may ENTER the pool at all. The counterpart to a signal, and
@@ -33,10 +35,34 @@
 // remainder ordered). The teardown migration says as much in its own comment.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
+import {
+  CATEGORY_EXACT,
+  CATEGORY_FAMILY,
+  CATEGORY_MISS,
+  DAYPART_BREAKFAST,
+  DAYPART_DAWN,
+  DAYPART_DEAD,
+  DAYPART_EVENING,
+  DAYPART_LATE,
+  DAYPART_MIDDAY,
+  POPULARITY_CONFIDENCE,
+  POPULARITY_FLOOR_RATING,
+  POPULARITY_PRIOR_RATING,
+  PROXIMITY_KNEE_KM,
+  PROXIMITY_MAX_KM,
+  SEMANTIC_UNEMBEDDED,
+  SIGNAL_KEYS,
+  TIMING_CLOSED_FLOOR,
+  TIMING_OPEN_SHARE,
+  type SignalKey,
+  type SignalParamBag,
+} from "./discovery-signals.ts";
+
+export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
+  params: SignalParams;
   slotting: {
     enabled: boolean;
     everyNth: number;
@@ -100,6 +126,68 @@ export const MAX_DISTANCE_KM_MAX = 200;
  * business — places do buy strategies today — and shipping it off would make
  * the bought lane dead code nobody notices is broken.
  */
+/**
+ * Default shape numbers. These are the same constants the signal functions
+ * fall back to, so a blob with no `params` scores identically to yesterday.
+ */
+export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+  proximity: { maxKm: PROXIMITY_MAX_KM, kneeKm: PROXIMITY_KNEE_KM, missingGeo: 0.35 },
+  timing: {
+    openShare: TIMING_OPEN_SHARE,
+    closedFloor: TIMING_CLOSED_FLOOR,
+    dead: DAYPART_DEAD,
+    dawn: DAYPART_DAWN,
+    breakfast: DAYPART_BREAKFAST,
+    midday: DAYPART_MIDDAY,
+    evening: DAYPART_EVENING,
+    late: DAYPART_LATE,
+  },
+  category: { exact: CATEGORY_EXACT, family: CATEGORY_FAMILY, miss: CATEGORY_MISS },
+  popularity: {
+    priorRating: POPULARITY_PRIOR_RATING,
+    confidence: POPULARITY_CONFIDENCE,
+    floorRating: POPULARITY_FLOOR_RATING,
+  },
+  semantic: { unembedded: SEMANTIC_UNEMBEDDED },
+  randomness: {},
+};
+
+/** Legal ranges for every param the console may edit. */
+export const SIGNAL_PARAM_BOUNDS: Record<
+  SignalKey,
+  Record<string, { min: number; max: number; decimals: number }>
+> = {
+  proximity: {
+    maxKm: { min: 1, max: 200, decimals: 1 },
+    kneeKm: { min: 0.1, max: 25, decimals: 2 },
+    missingGeo: { min: 0, max: 1, decimals: 2 },
+  },
+  timing: {
+    openShare: { min: 0, max: 1, decimals: 2 },
+    closedFloor: { min: 0, max: 1, decimals: 2 },
+    dead: { min: 0, max: 1, decimals: 2 },
+    dawn: { min: 0, max: 1, decimals: 2 },
+    breakfast: { min: 0, max: 1, decimals: 2 },
+    midday: { min: 0, max: 1, decimals: 2 },
+    evening: { min: 0, max: 1, decimals: 2 },
+    late: { min: 0, max: 1, decimals: 2 },
+  },
+  category: {
+    exact: { min: 0, max: 1, decimals: 2 },
+    family: { min: 0, max: 1, decimals: 2 },
+    miss: { min: 0, max: 1, decimals: 2 },
+  },
+  popularity: {
+    priorRating: { min: 0, max: 5, decimals: 2 },
+    confidence: { min: 1, max: 1000, decimals: 0 },
+    floorRating: { min: 0, max: 4.9, decimals: 2 },
+  },
+  semantic: {
+    unembedded: { min: 0, max: 1, decimals: 2 },
+  },
+  randomness: {},
+};
+
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   weights: {
     proximity: 1,
@@ -109,6 +197,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     semantic: 1,
     randomness: 0.35,
   },
+  params: DEFAULT_SIGNAL_PARAMS,
   slotting: {
     enabled: true,
     everyNth: 5,
@@ -179,8 +268,25 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     engines[key] = { ranked: bool(e.ranked, DISCOVERY_DEFAULTS.engines[key].ranked) };
   }
 
+  const rawParams = (r.params ?? {}) as Record<string, unknown>;
+  const params = {} as SignalParams;
+  for (const key of SIGNAL_KEYS) {
+    const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
+    const bounds = SIGNAL_PARAM_BOUNDS[key];
+    const next: SignalParamBag = {};
+    for (const field of Object.keys(DEFAULT_SIGNAL_PARAMS[key])) {
+      const b = bounds[field] ?? { min: 0, max: 1_000_000, decimals: 2 };
+      const fallback = DEFAULT_SIGNAL_PARAMS[key][field];
+      const v = num(bag[field], fallback, b.min, b.max);
+      const factor = 10 ** b.decimals;
+      next[field] = Math.round(v * factor) / factor;
+    }
+    params[key] = next;
+  }
+
   return {
     weights,
+    params,
     slotting: {
       enabled: bool(rawSlotting.enabled, DISCOVERY_DEFAULTS.slotting.enabled),
       everyNth: Math.round(

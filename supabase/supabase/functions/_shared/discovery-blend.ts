@@ -55,12 +55,16 @@ import {
   SIGNALS,
   type SignalIntent,
   type SignalKey,
+  type SignalParamBag,
   type SignalPlace,
 } from "./discovery-signals.ts";
 import { placePromotingLevel, type PromotingFields } from "./place-promoting.ts";
 
 /** One exponent per signal. */
 export type SignalWeights = Record<SignalKey, number>;
+
+/** One param bag per signal. Missing keys fall back inside the signal. */
+export type SignalParamsByKey = Partial<Record<SignalKey, SignalParamBag>>;
 
 /**
  * What one place scored, and why.
@@ -93,6 +97,7 @@ export function blend(
   place: SignalPlace,
   intent: SignalIntent,
   weights: SignalWeights,
+  params?: SignalParamsByKey,
 ): BlendResult {
   const parts = {} as Record<SignalKey, number>;
   let score = 1;
@@ -103,7 +108,7 @@ export function blend(
       parts[key] = NEUTRAL; // OFF — never called, contributes the identity
       continue;
     }
-    const s = clamp01(SIGNALS[key](place, intent));
+    const s = clamp01(SIGNALS[key](place, intent, params?.[key]));
     parts[key] = s;
     score *= w === 1 ? s : Math.pow(s, w);
   }
@@ -132,10 +137,11 @@ export function rankByBlend<T>(
   project: (row: T) => SignalPlace,
   intent: SignalIntent,
   weights: SignalWeights,
+  params?: SignalParamsByKey,
 ): Ranked<T>[] {
   return rows
     .map((row, i) => {
-      const { score, parts } = blend(project(row), intent, weights);
+      const { score, parts } = blend(project(row), intent, weights, params);
       return { row, score, parts, i };
     })
     .sort((a, b) => b.score - a.score || a.i - b.i)
@@ -245,8 +251,9 @@ export function discoveryRank<T>(
   intent: SignalIntent,
   weights: SignalWeights,
   slotting: SlottingConfig,
+  params?: SignalParamsByKey,
 ): Ranked<T>[] {
-  const earned = rankByBlend(rows, project, intent, weights);
+  const earned = rankByBlend(rows, project, intent, weights, params);
   return slotPromoted(earned, promoting, slotting, intent.now ?? new Date());
 }
 

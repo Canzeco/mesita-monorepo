@@ -66,6 +66,20 @@ export function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+/**
+ * Operator knobs a signal may read besides its exponent. The exponent lives
+ * on `weights` (the blend's `w` in `s^w`). These are the shape numbers that
+ * used to be file-level constants — they are still the defaults, and a
+ * missing or invalid key falls back to them so an old blob keeps scoring
+ * the same way.
+ */
+export type SignalParamBag = Record<string, number>;
+
+function pnum(params: SignalParamBag | undefined, key: string, fallback: number): number {
+  const v = params?.[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+}
+
 // ── The indexes a signal may read ────────────────────────────────────────────
 
 /**
@@ -125,18 +139,25 @@ export const PROXIMITY_KNEE_KM = 1;
  * signal whose entire question is "how far", but zero would delete it from a
  * multiplicative blend, and an unlocated place is unlocated, not disqualified.
  */
-export function proximity(place: SignalPlace, intent: SignalIntent): number {
+export function proximity(
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+): number {
   const gLat = intent.lat;
   const gLng = intent.lng;
+  const maxKm = Math.max(0.1, pnum(params, "maxKm", PROXIMITY_MAX_KM));
+  const kneeKm = Math.max(0.01, pnum(params, "kneeKm", PROXIMITY_KNEE_KM));
+  const missingGeo = clamp01(pnum(params, "missingGeo", 0.35));
   if (typeof gLat !== "number" || typeof gLng !== "number") return NEUTRAL;
-  if (typeof place.lat !== "number" || typeof place.lng !== "number") return 0.35;
+  if (typeof place.lat !== "number" || typeof place.lng !== "number") return missingGeo;
 
   const km = haversineKm(gLat, gLng, place.lat, place.lng);
-  if (!Number.isFinite(km)) return 0.35;
-  if (km >= PROXIMITY_MAX_KM) return 0;
+  if (!Number.isFinite(km)) return missingGeo;
+  if (km >= maxKm) return 0;
 
-  const scale = Math.log1p(PROXIMITY_MAX_KM / PROXIMITY_KNEE_KM);
-  return clamp01(1 - Math.log1p(km / PROXIMITY_KNEE_KM) / scale);
+  const scale = Math.log1p(maxKm / kneeKm);
+  return clamp01(1 - Math.log1p(km / kneeKm) / scale);
 }
 
 // ── 2. Timing ────────────────────────────────────────────────────────────────
@@ -161,34 +182,43 @@ export const TIMING_CLOSED_FLOOR = 0.2;
  * Is this the place's hour? Read off the place's own local clock, not the
  * server's — a multi-city pool is judged in each place's own time.
  *
- * This is deliberately COARSE. It is not a cuisine-by-daypart table; it is the
- * observation that the small hours are nobody's peak and the meal windows are
- * most places' peak. A real per-category daypart curve needs the category
- * taxonomy to carry one, and it does not yet — inventing one here would be a
- * config nobody can edit, which is the house definition of a bug.
+ * This is deliberately COARSE. Hour bands stay in code (the function's
+ * shape). The scores on each band are operator knobs, because a number
+ * nobody can edit is the house definition of a bug.
  */
-export function daypartScore(hour: number): number {
-  if (hour >= 2 && hour < 6) return 0.25; // dead hours
-  if (hour >= 6 && hour < 8) return 0.55;
-  if (hour >= 8 && hour < 11) return 0.8; // breakfast
-  if (hour >= 11 && hour < 17) return 1; // lunch through afternoon
-  if (hour >= 17 && hour < 23) return 1; // dinner and evening
-  return 0.5; // 23:00–02:00, late but alive
+export const DAYPART_DEAD = 0.25;
+export const DAYPART_DAWN = 0.55;
+export const DAYPART_BREAKFAST = 0.8;
+export const DAYPART_MIDDAY = 1;
+export const DAYPART_EVENING = 1;
+export const DAYPART_LATE = 0.5;
+
+export function daypartScore(hour: number, params?: SignalParamBag): number {
+  if (hour >= 2 && hour < 6) return clamp01(pnum(params, "dead", DAYPART_DEAD));
+  if (hour >= 6 && hour < 8) return clamp01(pnum(params, "dawn", DAYPART_DAWN));
+  if (hour >= 8 && hour < 11) return clamp01(pnum(params, "breakfast", DAYPART_BREAKFAST));
+  if (hour >= 11 && hour < 17) return clamp01(pnum(params, "midday", DAYPART_MIDDAY));
+  if (hour >= 17 && hour < 23) return clamp01(pnum(params, "evening", DAYPART_EVENING));
+  return clamp01(pnum(params, "late", DAYPART_LATE));
 }
 
-export function timing(place: SignalPlace, intent: SignalIntent): number {
+export function timing(
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+): number {
   const now = intent.now ?? new Date();
   const clock = localClock(place.lng ?? null, now);
   // No resolvable local clock — we cannot ask either half of the question.
   if (!clock) return NEUTRAL;
 
+  const openShare = clamp01(pnum(params, "openShare", TIMING_OPEN_SHARE));
+  const closedFloor = clamp01(pnum(params, "closedFloor", TIMING_CLOSED_FLOOR));
   const open = isOpenAt(place.hours, clock.weekday, clock.minutes);
-  const openPart = open === null ? NEUTRAL : open ? 1 : TIMING_CLOSED_FLOOR;
-  const dayPart = daypartScore(clock.hour);
+  const openPart = open === null ? NEUTRAL : open ? 1 : closedFloor;
+  const dayPart = daypartScore(clock.hour, params);
 
-  return clamp01(
-    openPart * TIMING_OPEN_SHARE + dayPart * (1 - TIMING_OPEN_SHARE),
-  );
+  return clamp01(openPart * openShare + dayPart * (1 - openShare));
 }
 
 // ── 3. Category ──────────────────────────────────────────────────────────────
@@ -211,23 +241,31 @@ export const CATEGORY_MISS = 0.1;
  * exists: it might match, we cannot tell, and an uncategorised place is an
  * enrichment gap rather than a wrong answer.
  */
-export function category(place: SignalPlace, intent: SignalIntent): number {
+export function category(
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+): number {
   const wantCats = (intent.categories ?? []).filter(Boolean);
   const wantFams = (intent.families ?? []).filter(Boolean);
   if (wantCats.length === 0 && wantFams.length === 0) return NEUTRAL;
 
+  const exact = clamp01(pnum(params, "exact", CATEGORY_EXACT));
+  const family = clamp01(pnum(params, "family", CATEGORY_FAMILY));
+  const miss = clamp01(pnum(params, "miss", CATEGORY_MISS));
+
   const cat = place.category;
   const fams = place.family_keys ?? [];
-  if (!cat && fams.length === 0) return CATEGORY_FAMILY;
+  if (!cat && fams.length === 0) return family;
 
-  if (cat && wantCats.includes(cat)) return CATEGORY_EXACT;
-  if (wantFams.some((f) => fams.includes(f))) return CATEGORY_FAMILY;
+  if (cat && wantCats.includes(cat)) return exact;
+  if (wantFams.some((f) => fams.includes(f))) return family;
   // The guest named categories; resolve those to families via the place's own
   // family keys only — this signal never loads the taxonomy, it reads the row.
   if (wantCats.length > 0 && fams.length > 0 && wantFams.length === 0) {
-    return CATEGORY_MISS;
+    return miss;
   }
-  return CATEGORY_MISS;
+  return miss;
 }
 
 // ── 4. Popularity ────────────────────────────────────────────────────────────
@@ -254,19 +292,26 @@ export const POPULARITY_CONFIDENCE = 60;
  */
 export const POPULARITY_FLOOR_RATING = 3;
 
-export function popularity(place: SignalPlace, _intent?: SignalIntent): number {
+export function popularity(
+  place: SignalPlace,
+  _intent?: SignalIntent,
+  params?: SignalParamBag,
+): number {
+  const prior = pnum(params, "priorRating", POPULARITY_PRIOR_RATING);
+  const confidence = Math.max(1, pnum(params, "confidence", POPULARITY_CONFIDENCE));
+  const floor = pnum(params, "floorRating", POPULARITY_FLOOR_RATING);
   const r = typeof place.rating === "number" ? place.rating : null;
   const v = typeof place.user_ratings_total === "number"
     ? Math.max(0, place.user_ratings_total)
     : 0;
 
   const shrunk = r === null
-    ? POPULARITY_PRIOR_RATING
-    : (v * r + POPULARITY_CONFIDENCE * POPULARITY_PRIOR_RATING) /
-      (v + POPULARITY_CONFIDENCE);
+    ? prior
+    : (v * r + confidence * prior) / (v + confidence);
 
-  const span = 5 - POPULARITY_FLOOR_RATING;
-  return clamp01((shrunk - POPULARITY_FLOOR_RATING) / span);
+  const span = 5 - floor;
+  if (!(span > 0)) return clamp01(shrunk >= 5 ? 1 : 0);
+  return clamp01((shrunk - floor) / span);
 }
 
 // ── 5. Semantic ──────────────────────────────────────────────────────────────
@@ -288,15 +333,20 @@ export function popularity(place: SignalPlace, _intent?: SignalIntent): number {
  */
 export const SEMANTIC_UNEMBEDDED = 0.4;
 
-export function semantic(place: SignalPlace, intent: SignalIntent): number {
+export function semantic(
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+): number {
+  const unembedded = clamp01(pnum(params, "unembedded", SEMANTIC_UNEMBEDDED));
   const q = intent.queryVector;
   if (!Array.isArray(q) || q.length === 0) return NEUTRAL;
 
   const v = parseVector(place.embedding);
-  if (!v || v.length !== q.length) return SEMANTIC_UNEMBEDDED;
+  if (!v || v.length !== q.length) return unembedded;
 
   const cos = cosineSim(q, v);
-  if (!Number.isFinite(cos)) return SEMANTIC_UNEMBEDDED;
+  if (!Number.isFinite(cos)) return unembedded;
   return clamp01((cos + 1) / 2);
 }
 
@@ -318,7 +368,11 @@ export function randomness(_place: SignalPlace, intent?: SignalIntent): number {
 
 // ── The library ──────────────────────────────────────────────────────────────
 
-export type SignalFn = (place: SignalPlace, intent: SignalIntent) => number;
+export type SignalFn = (
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+) => number;
 
 /**
  * The library every engine reaches. Engines call signals; signals never call

@@ -158,6 +158,18 @@ Deno.test("the blend is the product of the parts raised to their weights", () =>
   assertAlmostEquals(r.score, expected, 1e-12);
 });
 
+Deno.test("blend passes operator params into each signal", () => {
+  const p = project(row("a", 4.0, 500));
+  const defaulted = blend(p, {}, { ...WEIGHTS_OFF, popularity: 1 }).score;
+  const floored = blend(
+    p,
+    {},
+    { ...WEIGHTS_OFF, popularity: 1 },
+    { popularity: { floorRating: 4.5, priorRating: 4.2, confidence: 60 } },
+  ).score;
+  assert(floored < defaulted, `a higher floor should shrink the same rating: ${floored} vs ${defaulted}`);
+});
+
 Deno.test("rankByBlend sorts best-first and breaks ties on incoming order", () => {
   const rows = [row("c", 4.0), row("a", 4.8), row("b", 4.4)];
   const ranked = rankByBlend(rows, project, {}, WEIGHTS_POPULARITY);
