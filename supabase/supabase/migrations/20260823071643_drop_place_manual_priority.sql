@@ -132,8 +132,7 @@ as
     p.reservation_channel,
     p.reservation_target,
     p.order_channel,
-    p.order_target,
-    p.business_status
+    p.order_target
    from projects u
      join places p on p.id = u.id;
 
