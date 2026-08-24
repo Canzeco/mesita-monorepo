@@ -15,9 +15,8 @@ import { VisitsCard } from "./VisitsCard";
 // visits / orders / reservations — but not fucking lots of visits." Mesita has
 // exactly three things a guest can hold — a visit ticket, an order ticket, a
 // reservation ticket — so the page is three boxes in that order, plus Team,
-// which is people rather than a rail. Check PIN and Require bill used to be
-// two cards; both are gates on the same visit ticket, so they are one Visits
-// box with one save.
+// which is people rather than a rail. The Visits box holds the Check PIN
+// (MESITA-823). The bill is always required (MESITA-1095).
 export function SettingsSection({ place }: { place: AdminPlace }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).

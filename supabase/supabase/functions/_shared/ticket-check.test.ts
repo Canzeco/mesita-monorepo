@@ -144,10 +144,10 @@ Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never shi
   }
 });
 
-Deno.test("shapeCheckPayload: bill_required defaults off, flag only (MESITA-898)", () => {
-  // Same contract as pin_required: the shaper is handed a BOOLEAN; the
-  // column value stays server-side. Omitted → false (v3b optional bill).
-  assertEquals(shape().bill_required, false);
+Deno.test("shapeCheckPayload: bill_required defaults on (MESITA-1095)", () => {
+  // Same contract as pin_required: the shaper is handed a BOOLEAN. The
+  // bill is always required, so omitted → true.
+  assertEquals(shape().bill_required, true);
   const required = shapeCheckPayload({
     ticket: row(),
     placeName: "Café Prueba",
@@ -329,7 +329,7 @@ Deno.test("loadCheckSettings: an errored read reports loadFailed, never a clean 
   // The shape a genuinely unconfigured place produces — same pin, different
   // meaning. If these two ever collapse again, the gate reopens.
   const unconfigured = await loadCheckSettings(
-    fakeAdmin({ data: { check_pin: null, check_require_bill: null }, error: null }),
+    fakeAdmin({ data: { check_pin: null }, error: null }),
     "22222222-2222-2222-2222-222222222222",
   );
   assertEquals(unconfigured.loadFailed, false);
@@ -337,14 +337,14 @@ Deno.test("loadCheckSettings: an errored read reports loadFailed, never a clean 
 });
 
 Deno.test("requireCheckPin: DENIES 503 when the settings read failed (MESITA-1120)", async () => {
-  const res = await gate({ pin: null, requireBill: false, loadFailed: true }, "123456");
+  const res = await gate({ pin: null, requireBill: true, loadFailed: true }, "123456");
   assert(!res.ok, "an unknown PIN state must never pass the gate");
   assertEquals(res.response.status, 503);
   assertEquals((await res.response.json()).code, "pin_unavailable");
 });
 
 Deno.test("requireCheckPin: DENIES on a failed read even with no PIN supplied", async () => {
-  const res = await gate({ pin: null, requireBill: false, loadFailed: true }, undefined);
+  const res = await gate({ pin: null, requireBill: true, loadFailed: true }, undefined);
   assert(!res.ok);
   assertEquals(res.response.status, 503);
 });
@@ -362,12 +362,12 @@ Deno.test("requireCheckPin: DENIES when it loads the settings itself and that re
 });
 
 Deno.test("requireCheckPin: an unconfigured PIN still passes — the gate stays opt-in", async () => {
-  const res = await gate({ pin: null, requireBill: false, loadFailed: false }, undefined);
+  const res = await gate({ pin: null, requireBill: true, loadFailed: false }, undefined);
   assert(res.ok);
 });
 
 Deno.test("requireCheckPin: correct PIN passes, wrong PIN 401s, absent PIN asks", async () => {
-  const settings: CheckSettings = { pin: "123456", requireBill: false, loadFailed: false };
+  const settings: CheckSettings = { pin: "123456", requireBill: true, loadFailed: false };
 
   assert((await gate(settings, "123456")).ok);
   assert((await gate(settings, " 123456 ")).ok, "surrounding whitespace is trimmed");
@@ -384,7 +384,7 @@ Deno.test("requireCheckPin: correct PIN passes, wrong PIN 401s, absent PIN asks"
 });
 
 Deno.test("the 503 body never leaks the PIN or its existence", async () => {
-  const res = await gate({ pin: "123456", requireBill: false, loadFailed: true }, "000000");
+  const res = await gate({ pin: "123456", requireBill: true, loadFailed: true }, "000000");
   assert(!res.ok);
   const body = await res.response.text();
   for (const forbidden of ["123456", "check_pin"]) {

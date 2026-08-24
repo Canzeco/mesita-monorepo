@@ -42,11 +42,11 @@
 //
 // THE CHECK -> VALIDATE RENAME (MESITA-1114/1115) touches visit_tickets only
 // through check_code / ticket_code — both live, trigger-synced
-// (sync_visit_ticket_validate_columns, 20260823070057). staff_pin /
-// require_bill are a SEPARATE pair of columns on `projects`, not on
-// visit_tickets, gating writes through _shared/ticket-check.ts's
-// requireCheckPin — entirely outside this aggregate's table and this door;
-// nothing here touches, bypasses, or duplicates that gate.
+// (sync_visit_ticket_validate_columns, 20260823070057). staff_pin lives on
+// `projects` (twin of check_pin), gating writes through
+// _shared/ticket-check.ts's requireCheckPin — entirely outside this
+// aggregate's table and this door. The bill is always required (MESITA-1095);
+// there is no per-place require_bill column any more.
 //
 // THE INVARIANTS, and why each is real (not invented) — every one below is a
 // verbatim mirror of a live Postgres CHECK on visit_tickets (confirmed via
