@@ -1,9 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// FOUR things live here, and they are the four boxes on the one Discovery page
-// (Pato, 2026-08-23: "Signals, Engines, Filters. BUT NOT SUBPAGES. JUST ONE
-// PAGE FOR ALL DISCOVERY. PERHAPS DIVIDE INTO BOXES."):
+// FOUR things live here. Admin Discovery shows TWO boxes (Signals · Engines);
+// slotting and filters persist on the blob with no knobs (Pato, 2026-08-24).
 //
 //   weights    one exponent per earned signal. This is the whole "weights
 //              table" the doc asks for — one row per signal, exponent editable.
