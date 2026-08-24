@@ -1,9 +1,7 @@
 import { BadgeCheck } from "lucide-react";
 
-// One sidebar entry — "Verification Config". A single flat page for every
-// verification policy: create-as-Verified-Partner badge + ownership
-// auto-confirm (phone / email / video). Distinct from the Alerts
-// Verification Queue (manual review of claims).
+// Folded into General (MESITA-1175). Distinct from the Alerts Verification
+// Queue (manual review of claims). Video auto-verify is gone (MESITA-1248).
 export const VERIFICATION_PARENT = {
   href: "/verification-config",
   label: "Verification",

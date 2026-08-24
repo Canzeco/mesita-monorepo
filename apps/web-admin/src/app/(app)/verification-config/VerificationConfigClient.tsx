@@ -3,8 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { BadgeCheck, Mail, Phone } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SectionCard } from "@/components/admin-ui/config";
-import { Switch } from "../enricher-config/atlas-ui";
+import { SectionCard, Switch } from "@/components/admin-ui/config";
 import {
   getVerificationConfig,
   updateVerificationConfig,
@@ -30,8 +29,9 @@ const KNOBS: {
 }[] = [
   {
     key: "createPlacesAsVerified",
-    label: "Create new places as Mesita Partner",
-    blurb: "Off, a new place reads Not Verified until someone proves ownership.",
+    label: "Partner-list new places at create",
+    blurb:
+      "Catalog listing_type only — not ownership. Off, a new place starts web-listed. OTP still decides who owns it.",
     Icon: BadgeCheck,
   },
   {
