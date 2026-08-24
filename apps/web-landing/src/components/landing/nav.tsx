@@ -7,7 +7,7 @@ import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
 const NAV_LINKS = [
   { href: "#catalog", label: "Catalog" },
   { href: "#agents", label: "Agents" },
-  { href: "#passport", label: "Passport" },
+  { href: "#rewards", label: "Rewards" },
   { href: "#money", label: "Money" },
 ];
 
@@ -40,7 +40,7 @@ function Nav() {
           </Button>
           <Button asChild size="sm" className="rounded-full">
             <a href={OVERVIEW_URL}>
-              Read the overview
+              Learn more
               <ArrowRight />
             </a>
           </Button>

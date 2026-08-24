@@ -9,9 +9,9 @@ function Summary() {
         </p>
         <p className="font-display mt-6 text-2xl leading-[1.4] tracking-tight md:text-3xl">
           Mesita is an AI-native platform for going out — restaurants, cafés and
-          nightlife — that folds discovery, reservations, ordering, rewards and
+          bars — that folds discovery, reservations, ordering, rewards and
           payments into one app, serving both sides of the table: the guest’s
-          whole night, and the place’s whole funnel.
+          whole plan, and the place’s whole funnel.
         </p>
         <p className="font-display text-muted-foreground mt-7 text-xl leading-[1.45] tracking-tight md:text-2xl">
           Its structural advantage:{" "}

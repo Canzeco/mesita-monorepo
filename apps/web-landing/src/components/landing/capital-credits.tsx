@@ -6,7 +6,7 @@ const SPREAD = [
   { amount: "$100", label: "of food" },
 ];
 
-// The one dark act on the page: the money system gets the night treatment,
+// The one dark act on the page: the money system gets the dark treatment,
 // matching the product's own arc from the table to the balance sheet.
 function CapitalCredits() {
   return (

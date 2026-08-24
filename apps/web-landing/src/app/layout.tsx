@@ -21,12 +21,12 @@ const DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),
   title: {
-    default: "Mesita — where are we going tonight?",
+    default: "Mesita — where are we going?",
     template: "%s · Mesita",
   },
   description: DESCRIPTION,
   openGraph: {
-    title: "Mesita — where are we going tonight?",
+    title: "Mesita — where are we going?",
     description: DESCRIPTION,
     siteName: "Mesita",
     locale: "en_US",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita — where are we going tonight?",
+    title: "Mesita — where are we going?",
     description: DESCRIPTION,
   },
 };

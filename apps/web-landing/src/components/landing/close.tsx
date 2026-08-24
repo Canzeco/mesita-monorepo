@@ -26,7 +26,7 @@ function Close() {
           ))}
         </div>
         <h2 className="font-display mt-4 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
-          Built for San Francisco.
+          Built for San Francisco. Then the US.
         </h2>
         <p className="text-muted-foreground max-w-xl text-base">
           Mesita is in development, launching January 2027.
@@ -34,7 +34,7 @@ function Close() {
         <div className="flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg" className="min-h-11 rounded-full">
             <a href={OVERVIEW_URL}>
-              Read the full project overview
+              Learn more
               <ArrowRight />
             </a>
           </Button>
