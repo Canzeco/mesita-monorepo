@@ -55,7 +55,7 @@ function OrderAgents() {
             Say what you want, and the twin agent calls the place and orders it
             for pickup. No marketplace in the middle, no menu upload, no tablet
             on the counter — and Mesita takes nothing. Places keep the full
-            ticket; guests keep their rewards.
+            ticket.
           </p>
         </div>
       </div>

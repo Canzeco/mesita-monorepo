@@ -24,21 +24,21 @@ function Hero() {
         </Badge>
 
         <h1 className="font-display max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl">
-          Where are we going tonight?
+          Where are we going?
           <br />
           <span className="text-primary">Mesita knows.</span>
         </h1>
 
         <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
-          Every restaurant, café, bar and club in your city — tailored to you,
-          booked by AI, and cheaper every time you go. One app for both sides of
-          the table.
+          Every restaurant, café and bar in your city — tailored to you, booked
+          by AI, and cheaper every time you go. One app for both sides of the
+          table.
         </p>
 
         <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
           <Button asChild size="lg" className="min-h-11 rounded-full">
             <a href={OVERVIEW_URL}>
-              Read the project overview
+              Learn more
               <ArrowRight />
             </a>
           </Button>

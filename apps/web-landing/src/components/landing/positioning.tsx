@@ -1,7 +1,7 @@
 import { SectionHeader } from "@/components/landing/section-header";
 
 const CORNERS = [
-  { label: "Demand", who: "OpenTable · TheFork · Clubers", sells: true },
+  { label: "Demand", who: "OpenTable · Resy · TheFork", sells: true },
   { label: "Software", who: "Toast · SevenRooms", sells: false },
   { label: "Capital", who: "inKind", sells: true },
 ];

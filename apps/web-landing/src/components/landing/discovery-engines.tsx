@@ -14,7 +14,7 @@ import { SectionHeader } from "@/components/landing/section-header";
 const ENGINES: { name: string; note: string; Icon: LucideIcon }[] = [
   { name: "Name", note: "type it, find it", Icon: Search },
   { name: "Map", note: "the whole city, live", Icon: Map },
-  { name: "Swipe", note: "tonight’s deck", Icon: Sparkles },
+  { name: "Swipe", note: "today’s deck", Icon: Sparkles },
   { name: "Catalog", note: "browse everything", Icon: LayoutGrid },
   { name: "Chat", note: "ask the concierge", Icon: MessageCircle },
   { name: "Social", note: "where your people are", Icon: Users },

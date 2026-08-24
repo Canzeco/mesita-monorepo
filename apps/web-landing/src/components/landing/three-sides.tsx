@@ -21,7 +21,7 @@ function ThreeSides() {
               Guests
             </h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              The whole night in one app: discover, book, order pickup, pay less
+              The whole plan in one app: discover, book, order pickup, pay less
               on every visit — and pay in Credits.
             </p>
           </article>
