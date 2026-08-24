@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(18);
+select plan(28);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -154,6 +154,64 @@ select throws_ok(
 );
 
 rollback to savepoint before_name_probe;
+
+-- ━━━ Wave 0 — project secrets stay off the publishable key ━━━━━━━━━━━━━━━━━
+
+select ok(
+  not has_table_privilege('anon', 'public.projects', 'SELECT'),
+  'anon has no table-level SELECT on public.projects (table SELECT implies every column, including PIN)'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'public.projects', 'SELECT'),
+  'authenticated has no table-level SELECT on public.projects'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.projects', 'SELECT'),
+  'service_role keeps table SELECT on public.projects (Check + set-check-pin)'
+);
+
+select is_empty(
+  $$select c from unnest(array[
+      'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
+    ]) c
+    where has_column_privilege('anon', 'public.projects', c, 'SELECT')
+       or has_column_privilege('authenticated', 'public.projects', c, 'SELECT')$$,
+  'anon and authenticated have no SELECT on PIN / CFDI columns'
+);
+
+select ok(
+  has_column_privilege('anon', 'public.projects', 'plan', 'SELECT'),
+  'anon keeps SELECT on projects.plan (profiles invoker reads it)'
+);
+
+select ok(
+  has_table_privilege('anon', 'public.places', 'SELECT'),
+  'anon keeps table SELECT on public.places (Approach D is unimplementable)'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.consumer_plans', 'SELECT'),
+  'anon has no leftover SELECT on public.consumer_plans'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.consumers', 'SELECT'),
+  'anon has no leftover SELECT on public.consumers'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.consumers', 'SELECT'),
+  'authenticated keeps SELECT on public.consumers (self policy id = auth.uid())'
+);
+
+select is_empty(
+  $$select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'profiles_delete'$$,
+  'profiles_delete is gone (no DELETE trigger; it hard-deleted both rows)'
+);
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
