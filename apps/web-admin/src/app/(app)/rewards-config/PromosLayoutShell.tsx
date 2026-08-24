@@ -5,13 +5,13 @@ import { PageHeader } from "@/components/PageContainer";
 import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { PROMOS_SUBROUTES } from "./nav";
 
-// Promos Config shell — the header + the Config/Playground tab strip. Mirrors
-// the Memo / Intaker config shells; the description switches per active tab.
+// Promos Config shell — header + Tiers / Distribution tabs. Description is
+// one line; stacking math lives behind a disclosure on Tiers.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
-  "/rewards-config/config":
-    "Prices every promo a guest can earn. A bill pays the class base + the Welcome bonus + each earned action bonus, on the first cap-pesos.",
+  "/rewards-config/tiers":
+    "Components that build every rate. A place picks one strategy — its column is the whole program.",
   "/rewards-config/distribution":
-    "How those prices spread across 1,000 visits. Set the assumptions; the chart is the exact expected distribution, per strategy. Reads the saved Config — save your edits first.",
+    "Expected spread across 1,000 visits on the saved config. Save Tiers first.",
 };
 
 export function PromosLayoutShell({ children }: { children: React.ReactNode }) {
@@ -21,7 +21,7 @@ export function PromosLayoutShell({ children }: { children: React.ReactNode }) {
   );
   const description =
     (match && SUBPAGE_DESCRIPTION[match.href]) ??
-    SUBPAGE_DESCRIPTION["/rewards-config/config"];
+    SUBPAGE_DESCRIPTION["/rewards-config/tiers"];
 
   return (
     <>
