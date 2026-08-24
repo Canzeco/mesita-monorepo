@@ -26,6 +26,7 @@ import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
+import { loadVisitsConfig } from "../_shared/visits-config.ts";
 
 type Body = {
   ticketId?: string;
@@ -64,9 +65,23 @@ Deno.serve(async (req) => {
   }
 
   const tipPctRaw = bodyRes.body.tipPct;
-  const tipPct = tipPctRaw == null ? null : Math.trunc(Number(tipPctRaw));
+  let tipPct = tipPctRaw == null ? null : Math.trunc(Number(tipPctRaw));
   if (tipPct !== null && (!Number.isFinite(tipPct) || tipPct < 0 || tipPct > 100)) {
     return json({ ok: false, error: "tipPct must be between 0 and 100" }, 400);
+  }
+
+  const admin = adminClient(envRes.env);
+  const visits = await loadVisitsConfig(admin);
+  if (!visits.tipEnabled) {
+    tipPct = 0;
+  } else if (tipPct !== null && !visits.tipPresets.includes(tipPct)) {
+    return json(
+      {
+        ok: false,
+        error: `tipPct must be one of ${visits.tipPresets.join(", ")} or a custom amount`,
+      },
+      400,
+    );
   }
   const customTip = tipPct === null
     ? toCents(bodyRes.body.tipCustomCents ?? 0)
@@ -78,7 +93,6 @@ Deno.serve(async (req) => {
     );
   }
 
-  const admin = adminClient(envRes.env);
   const ticketRow = await admin
     .from("visit_tickets")
     .select(

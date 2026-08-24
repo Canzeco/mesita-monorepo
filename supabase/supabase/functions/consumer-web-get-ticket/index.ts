@@ -1,8 +1,9 @@
 // Supabase Edge Function — consumer-web-get-ticket
 //
 // THE TICKET v4 (MESITA-1091): the guest side's live sync. The ticket screen
-// polls THIS — one owner-scoped row — at 10s while mounted, instead of
-// re-fetching the whole wallet through consumer-web-list-tickets every tick.
+// polls THIS — one owner-scoped row — while mounted (cadence from
+// visits_config.consumerPollSeconds), instead of re-fetching the whole wallet
+// through consumer-web-list-tickets every tick.
 // This is also why Realtime stays off `tickets`: enabling postgres_changes
 // would reverse two security migrations and the clients-never-call-the-DB
 // law, so the live handshake is owner-scoped polling on both sides.
@@ -10,12 +11,13 @@
 // Caller: consumer. Verb: get. Noun: ticket.
 //
 // Body:     { ticketId: string }
-// Response: { ok: true, ticket } | 404
+// Response: { ok: true, ticket, visits } | 404
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
+import { guestVisitsPolicy, loadVisitsConfig } from "../_shared/visits-config.ts";
 
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
@@ -66,5 +68,6 @@ Deno.serve(async (req) => {
   }
 
   const [ticket] = await attachPlaces(admin, [row]);
-  return json({ ok: true, ticket });
+  const visits = guestVisitsPolicy(await loadVisitsConfig(admin));
+  return json({ ok: true, ticket, visits });
 });

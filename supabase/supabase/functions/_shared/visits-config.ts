@@ -11,18 +11,20 @@
 //
 // The defaults MIRROR the constants the apps ship today, so the page describes
 // the product as it is rather than proposing a different one:
-//   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT`
-//   consumer poll   web-consumer TicketScreen, 10s
-//   staff poll      web-check BASE_POLL_MS 3s, backing off to MAX_POLL_MS 30s
-//   pay rails       cash live; card and Yums are STAGED panels
+//   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT` fallbacks
+//   consumer poll   web-consumer TicketScreen, via consumer-web-get-ticket
+//   staff poll      web-check, via check-web-get-ticket (not the poll EF)
+//   report          consumer-web-report-ticket
 //
-// Every knob is STAGED until the apps read it: the blob is live and editable,
-// nothing consumes it yet, and the console says so. House rule is that an
-// unenforced config is a bug — a staged one has to be labeled.
+// Only WIRED knobs render on the admin page (Discovery law). Pay rails, proof,
+// send-back ceiling, abandonment and the v3 pair stay in the blob and round-
+// trip on save — they are not questions until a reader exists.
 //
 // NOT here, deliberately: the tip is always computed on the PRE-DISCOUNT bill
 // and the floor never adjudicates a proof. Those are invariants (Product Rules
 // §A), and an invariant with a toggle is not an invariant.
+
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type VisitsConfig = {
   tipEnabled: boolean;
@@ -137,5 +139,60 @@ export function normalizeVisitsConfig(raw: unknown): VisitsConfig {
     ),
     legacyV3Enabled: bool(r.legacyV3Enabled, VISITS_DEFAULTS.legacyV3Enabled),
     reportEnabled: bool(r.reportEnabled, VISITS_DEFAULTS.reportEnabled),
+  };
+}
+
+/** Load the live blob, or the defaults if the row cannot be read. */
+export async function loadVisitsConfig(
+  admin: SupabaseClient,
+): Promise<VisitsConfig> {
+  try {
+    const { data, error } = await admin
+      .from("app_config")
+      .select("visits_config")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) {
+      console.error("[visits-config] read:", error.message);
+      return { ...VISITS_DEFAULTS };
+    }
+    return normalizeVisitsConfig(
+      (data as { visits_config?: unknown } | null)?.visits_config,
+    );
+  } catch (e) {
+    console.error("[visits-config] read threw:", (e as Error).message);
+    return { ...VISITS_DEFAULTS };
+  }
+}
+
+/** Guest-facing slice — rides consumer-web-get-ticket. No class, no rates. */
+export type GuestVisitsPolicy = {
+  tipEnabled: boolean;
+  tipPresets: number[];
+  defaultTipPct: number;
+  consumerPollSeconds: number;
+  reportEnabled: boolean;
+};
+
+export function guestVisitsPolicy(c: VisitsConfig): GuestVisitsPolicy {
+  return {
+    tipEnabled: c.tipEnabled,
+    tipPresets: [...c.tipPresets],
+    defaultTipPct: c.defaultTipPct,
+    consumerPollSeconds: c.consumerPollSeconds,
+    reportEnabled: c.reportEnabled,
+  };
+}
+
+/** Staff-facing slice — rides check-web-get-ticket, never the poll EF. */
+export type StaffVisitsPolicy = {
+  staffPollSeconds: number;
+  staffPollMaxSeconds: number;
+};
+
+export function staffVisitsPolicy(c: VisitsConfig): StaffVisitsPolicy {
+  return {
+    staffPollSeconds: c.staffPollSeconds,
+    staffPollMaxSeconds: c.staffPollMaxSeconds,
   };
 }
