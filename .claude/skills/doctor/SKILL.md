@@ -266,8 +266,7 @@ un-staged Ojo knob reads to an operator as a control that does something.
     `git merge-tree --write-tree origin/main <branch>` equal to
     `git rev-parse "origin/main^{tree}"`: equal trees mean the branch adds nothing to main
     and should have died at merge (ASDM §A.5; any later session may sweep proven-landed
-    leftovers — 2026-08-24 baseline: 105/239 branches and 17/30 worktrees passed and were
-    reclaimed, 14 GB). Report the counts and the proven-landed list as *sweepable*; the
+    leftovers). Report the counts and the proven-landed list as *sweepable*; the
     doctor itself **never deletes** — an unlanded tip belongs to the claim that created it.
 6.8 **CI budget.** Actions minutes headroom, red workflows on main.
 
@@ -288,8 +287,10 @@ un-staged Ojo knob reads to an operator as a control that does something.
 
 ## Scope 8 — Ledger hygiene (Linear/ASDM) · P3
 
-8.1 Stale `claimed:` markers (> 24h with no branch activity) and claims whose declared
-    branch does not exist.
+8.1 Stale `claimed:` markers (> 24h with no branch activity); claims whose declared
+    branch does not exist; and the parallel-isolation invariant (ASDM §A): live claims,
+    branches and worktrees map 1:1 — no branch on two claims, no worktree holding two
+    live claims, the shared checkout on `main` with no own commits.
 8.2 Merged PRs whose `Closes MESITA-…` issue is not in a terminal status.
 8.3 Branches/PRs with no issue · issues with no project.
 8.4 Issues whose premise is already false — closed-by-reality work still open.
@@ -392,8 +393,6 @@ report that repeats it forever trains the reader to skip it. On day 7 promote it
 (P3→P2, P2→P1), file it like any new P1 titled `doctor: <symptom> — PERSISTING <n> days`,
 and name the promotion in the diff section. `RESOLVED` resets the counter; so does Pato
 closing the issue won't-fix — then stop counting and stop reporting it.
-Worked example: 6.7's git surface sat at P2 while local branches went 15 → 173 and
-worktrees 6 → 18 in six days (MESITA-1064).
 
 ## Report shape
 
