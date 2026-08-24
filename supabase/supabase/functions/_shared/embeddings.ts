@@ -23,6 +23,7 @@ import {
   type EmbeddablePlace,
   digest,
   placeEmbeddingFacts,
+  placeNameEmbedText,
   vectorLiteral,
 } from "./embeddings-vector.ts";
 import {
@@ -99,6 +100,24 @@ export async function embedAndPersistPlaces<T extends EmbeddablePlace>(
       if (!writeRes.ok) {
         console.error(`[${logPrefix}] embed write:`, writeRes.error);
         return;
+      }
+      const nameText = placeNameEmbedText(rows[i]);
+      if (nameText) {
+        const nameHash = await digest(nameText);
+        if (rows[i].name_embedding_hash !== nameHash || !rows[i].name_embedding) {
+          const nameVec = await embedSingle(nameText, apiKey, model);
+          if (nameVec.length === EMBEDDING_DIMS) {
+            await writePlace(admin, {
+              table: "profiles",
+              mode: "update",
+              id: inp.id,
+              patch: {
+                name_embedding: vectorLiteral(nameVec),
+                name_embedding_hash: nameHash,
+              },
+            });
+          }
+        }
       }
       out.set(inp.id, { embedding: v, hash: inp.hash, text: inp.text });
     }));

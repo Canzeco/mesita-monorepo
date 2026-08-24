@@ -115,6 +115,9 @@ export type PlaceRow = {
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
   embedding_source_hash: string | null;
+  /** MESITA-1238: name-only vector. Same literal shape as `embedding`. */
+  name_embedding: string | null;
+  name_embedding_hash: string | null;
   country: string | null;
   description: string | null;
   menu_pdf_url: string | null;
@@ -199,6 +202,8 @@ export const PLACE_PATCH_KEYS = [
   "hours",
   "embedding",
   "embedding_source_hash",
+  "name_embedding",
+  "name_embedding_hash",
   "country",
   "description",
   "menu_pdf_url",
@@ -399,7 +404,8 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "menu_pdf_url", "google_business_url", "menu_pdf_name", "editorial_summary",
   "zone", "city", "executive_chef", "category_label", "yelp_url",
   "embedding_source_text", "google_name", "description_es", "mesita_name",
-  "reservation_target", "order_target", "embedding", "google_place_id",
+  "reservation_target", "order_target", "embedding", "name_embedding",
+  "name_embedding_hash", "google_place_id",
   "enriched_at", "business_status_at", "enrich_next_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);

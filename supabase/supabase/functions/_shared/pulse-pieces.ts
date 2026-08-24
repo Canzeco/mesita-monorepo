@@ -27,7 +27,7 @@
 // path fires the same machinery whenever an operator edits the profile, and
 // `enriched` must not fall because someone renamed a place. Counting either
 // would stop answering "how far did the queue get". `name` (the Mesita Name as
-// its own vector) is DECLARED BUT NOT BUILT (MESITA-1238).
+// its own vector) is BUILT (MESITA-1238): `places.name_embedding`.
 //
 // RENUMBERING IS SURVIVABLE BECAUSE NOTHING MATCHES ON THE NUMBER. The reader
 // keys on `step_name` (the function KEY); the `S<n>` written beside it is
@@ -87,10 +87,9 @@ export const PULSE_PIECES = [
  * an operator wants to see, but it is not a rung of the queue — see the header
  * for why neither sits at 10. Order follows the spec: summary, then name.
  *
- * `name` is DECLARED BUT NOT BUILT: `places` today carries a single `embedding`
- * over the whole facts block, and splitting the Mesita Name into its own vector
- * is the open build (MESITA-1238). The key exists so the day it lands it has a
- * home, and so the console can say "not built" about something real.
+ * `name` is BUILT (MESITA-1238): `places.name_embedding` is the 1536-d vector
+ * of the resolved display name. `places.embedding` stays the Semantic Summary.
+ * The two answers different questions and must never share a column.
  */
 export const PULSE_EXTRAS = ["summary", "name"] as const;
 
