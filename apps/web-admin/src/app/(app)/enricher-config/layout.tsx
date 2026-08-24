@@ -1,13 +1,11 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Intake — a single flat page (no sub-tabs, Pato 2026-08-21), and since
-// 2026-08-23 an empty one: see page.tsx for why the knobs are gone and what
-// still reads their stored values. Named Intake on 2026-08-23 because sourcing
-// and enrichment are one story — find the place, then take its history — and
-// MESITA-1287 folds the Sourcing page in here. The ENGINE keeps its own name:
-// the Intaker is the cron pipeline that builds place profiles from the open
-// web ("Atlas" is its legacy brand). A label never repeats its section
-// heading, and the eyebrow carries the section.
+// Intake — a single flat page (no sub-tabs, Pato 2026-08-21) carrying the
+// whole story: sourcing's channel gate, then the Intaker's functions. Sourcing
+// folded in on 2026-08-23 and /sourcing-config redirects here; the Intaker's
+// own knobs are still the Soon panel (see page.tsx for what keeps reading
+// their stored values). A label never repeats its section heading, and the
+// eyebrow carries the section.
 export default function EnricherConfigLayout({
   children,
 }: {
@@ -17,7 +15,7 @@ export default function EnricherConfigLayout({
     <ConfigPageLayout
       eyebrow="Operations · Intake"
       title="Intake"
-      description="Intake is how a place gets into Mesita and becomes a profile. The Intaker, its engine, is the cron pipeline that builds that profile out of the open web: one CREATE run at birth — seed, pulse, details — then a queue of nine functions, re-run per place on its own decay schedule. This page was its console: which events start a run, which subprocesses each run may buy, the caps and models it buys them with, and what one run costs. Those settings are live and every Edge Function still reads them; what is gone is the console for changing them, which had grown into a wall of knobs no operator could read straight through. The page stays empty until it is worth reading again. What each setting means lives in Notion Docs › Intake."
+      description="How a place gets into Mesita and becomes a profile. First the gate: which surfaces may show a place in a searchbar, which may onboard one, and the Google quality bar each has to clear. Then the Intaker, the cron pipeline that builds the profile out of the open web — one CREATE run at the door, seed, pulse and details, then nine enrich functions re-run on each place's own decay schedule. The gate is editable here; the Intaker's caps, models and triggers are stored settings every Edge Function still reads, and their console comes back when it is worth reading. What each setting means lives in Notion Docs › Intake."
     >
       {children}
     </ConfigPageLayout>
