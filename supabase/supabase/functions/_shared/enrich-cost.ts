@@ -1,4 +1,4 @@
-// Enricher per-run spend ledger + cost-cap enforcement (MESITA-624).
+// Intaker per-run spend ledger + cost-cap enforcement (MESITA-624).
 //
 // Uses the shared COST rate card in enrich-config.ts (mirrors the admin
 // calculator). Accumulates estimated USD as each paid step completes; aborts

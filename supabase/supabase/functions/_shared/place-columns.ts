@@ -17,10 +17,10 @@ const COLUMNS: readonly string[] = [
   // Postgres rejects any write. Every audience reads this one.
   "name",
   // Cached Google Places displayName. NOT an identity spine (google_place_id
-  // is) — it changes whenever the Google listing does. Enricher-only write.
+  // is) — it changes whenever the Google listing does. Intaker-only write.
   "google_name",
   // Operator's display override. NULL ⇒ the place follows google_name.
-  // Admin/business writable; the Enricher never touches it.
+  // Admin/business writable; the Intaker never touches it.
   "mesita_name",
   // `description_es` exists in DB (dormant) for a future Spanish TMS —
   // not selected until that ships (MESITA-939).

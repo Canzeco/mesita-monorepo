@@ -4,7 +4,7 @@
 // sources do not have. When the Reservationist calls a place and learns the
 // hours are Tue–Sun rather than Mon–Sat, re-running S1 refetches the SAME wrong
 // hours from Google: the agent's knowledge is better than every source the
-// Enricher can reach, and a re-enrich would destroy it.
+// Intaker can reach, and a re-enrich would destroy it.
 //
 // So agent feedback is not a trigger. It is a PROPOSAL — a field, a value, who
 // observed it, how sure they are, and what they saw — which either applies
@@ -54,7 +54,7 @@ const CORRECTION_SOURCES: readonly CorrectionSource[] = [
 /**
  * Fields an observation may correct. Deliberately small: identity (name,
  * google_place_id) and anything generated are NOT correctable — identity is the
- * spine, and generated prose is the Enricher's to rewrite.
+ * spine, and generated prose is the Intaker's to rewrite.
  */
 export type CorrectableField =
   | "hours"
@@ -116,7 +116,7 @@ export const CORRECTION_AUTO_APPLY_FLOOR: Record<CorrectionSource, number> = {
   ojo: 1.01, // above 1 = never auto-applies, always queues
 };
 
-/** How long an applied correction outranks the Enricher for that field. */
+/** How long an applied correction outranks the Intaker for that field. */
 export const CORRECTION_PIN_DAYS = 90;
 
 /** True when a proposal may write straight through. */
@@ -150,7 +150,7 @@ export type FieldPin = {
   source: CorrectionSource;
   /** Confidence of the proposal that won the field. */
   confidence: number;
-  /** ISO. After this instant the Enricher owns the field again. */
+  /** ISO. After this instant the Intaker owns the field again. */
   pinnedUntil: string;
   /** ISO. When the observation was made — kept so the console can explain a pin. */
   observedAt?: string;
@@ -189,7 +189,7 @@ function coerceFieldPin(raw: unknown): FieldPin | null {
 /**
  * Read the pins off a live `enrichment_sources` value. Total: any shape that is
  * not a recognisable pin record yields no pin, because the failure mode of
- * guessing is a field frozen against the Enricher forever.
+ * guessing is a field frozen against the Intaker forever.
  */
 export function readFieldPins(enrichmentSources: unknown): FieldPins {
   if (!enrichmentSources || typeof enrichmentSources !== "object") return {};
@@ -231,7 +231,7 @@ export function carryFieldPins(
 
 /**
  * Drop every column an active pin owns from a `places` update payload, so the
- * Enricher writes around the correction instead of over it. Returns the payload
+ * Intaker writes around the correction instead of over it. Returns the payload
  * to send plus the fields it withheld, which the caller reports — a pin that
  * silently eats a write is as confusing as one that does not hold.
  *

@@ -6,7 +6,7 @@ import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { PROMOS_SUBROUTES } from "./nav";
 
 // Promos Config shell — the header + the Config/Playground tab strip. Mirrors
-// the Memo / Enricher config shells; the description switches per active tab.
+// the Memo / Intaker config shells; the description switches per active tab.
 const SUBPAGE_DESCRIPTION: Record<string, string> = {
   "/rewards-config/config":
     "Prices every promo a guest can earn. A bill pays the class base + the Welcome bonus + each earned action bonus, on the first cap-pesos.",

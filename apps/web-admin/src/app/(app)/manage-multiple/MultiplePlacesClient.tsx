@@ -119,7 +119,7 @@ export function MultiplePlacesClient({
         n={3}
         tint="amber"
         title="Enrich"
-        blurb="Re-run the Enricher over many places. Pick a mode and see the spend before you queue."
+        blurb="Re-run the Intaker over many places. Pick a mode and see the spend before you queue."
       >
         <EnrichTab costSeed={costSeed} />
       </Step>

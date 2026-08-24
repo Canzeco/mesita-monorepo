@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-cron-enrich-place-analysis (internal / cron)
 //
-// Stage 2 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
+// Stage 2 of the Intaker pipeline (the Intaker is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller claims
 // place_research rows at stage='analysis' and fires this EF with
 // { project_id }. It acks 202 immediately and runs the IMAGE half in a

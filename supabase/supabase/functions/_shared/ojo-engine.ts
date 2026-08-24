@@ -77,9 +77,9 @@
 // verdict — a new page is a separable follow-up if that's not enough). A new
 // consumer_notifications entry for the retry prompt (the existing
 // fix_requested poll already surfaces it). A cost ledger / cap analogous to
-// the Enricher's atlas_per_run_cost_cap_usd — Ojo's natural volume is bounded
+// the Intaker's atlas_per_run_cost_cap_usd — Ojo's natural volume is bounded
 // by maxRetries per ticket and a ticket requires a real physical visit,
-// unlike the Enricher's schedule-driven triggers; revisit if that stops
+// unlike the Intaker's schedule-driven triggers; revisit if that stops
 // being true.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";

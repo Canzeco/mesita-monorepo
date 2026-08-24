@@ -19,7 +19,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //
 //   Status      the six status fields — seeded · listed · enriched · verified ·
 //               partner · promoting — one row each, in one box.
-//   Enrichment  when the Enricher refreshes this place, and the run-now button.
+//   Enrichment  when the Intaker refreshes this place, and the run-now button.
 //   Embedding   the Semantic Summary and the vector it becomes.
 //   Metadata    every identifier and timestamp on the place. Nothing else in
 //               the tab carries an id or a date — they all live here.
@@ -84,7 +84,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
 }
 
 // No updated_by column exists, so attribute the last write by proximity: the
-// Enricher's final write stamps enriched_at and bumps updated_at in the same
+// Intaker's final write stamps enriched_at and bumps updated_at in the same
 // statement — a tiny gap means the AI wrote last; anything later is a human
 // edit (admin / business save).
 function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
@@ -160,7 +160,7 @@ function MetaCard({
                     : "bg-card text-muted-foreground border-border/70 border")
                 }
               >
-                by {by === "ai" ? "Enricher (AI)" : "human"}
+                by {by === "ai" ? "Intaker (AI)" : "human"}
               </span>
             )}
           </span>

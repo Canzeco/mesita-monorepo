@@ -30,7 +30,7 @@ const TAG_EXCLUSIVE_GROUPS: readonly (readonly string[])[] = [
 
 // Drops contradictory catalog tags. Preserves input order; within each
 // exclusive group keeps the first slug encountered and blocks the rest.
-// Safe to call on already-clean lists (idempotent). Used by Enricher
+// Safe to call on already-clean lists (idempotent). Used by Intaker
 // inference and business tag writes.
 export function sanitizePlaceTags(slugs: readonly string[]): string[] {
   if (slugs.length === 0) return [];
@@ -51,7 +51,7 @@ export function sanitizePlaceTags(slugs: readonly string[]): string[] {
 
 // Takes a best-first ranked slug list and returns exactly `limit` conflict-free
 // tags (or fewer only when the catalog itself cannot supply that many). Used by
-// Enricher so every place gets a full tag set — always the strongest matches.
+// Intaker so every place gets a full tag set — always the strongest matches.
 export function selectTopPlaceTags(
   rankedSlugs: readonly string[],
   limit: number = MAX_INFERRED_TAGS,

@@ -7,13 +7,13 @@
 //
 // One category so far — **atlas** — with four event types. Three are
 // *derived* (we read the timestamps the product already writes); the fourth
-// reads the dedicated per-step events table the Enricher pipeline appends to:
+// reads the dedicated per-step events table the Intaker pipeline appends to:
 //
 //   atlas.place_created      a new row in public.places
-//   atlas.place_enriched     a place whose Enricher pass completed
+//   atlas.place_enriched     a place whose Intaker pass completed
 //                            (enriched_at stamped) — carries the textual
 //                            summary the enricher synthesised
-//   atlas.enrichment_step    one Enricher pipeline step finished (or failed) —
+//   atlas.enrichment_step    one Intaker pipeline step finished (or failed) —
 //                            read from public.place_enrichment_events, written
 //                            by the enrich-place stage EFs as the run progresses
 //   atlas.ownership_claimed  someone submitted an ownership proof
@@ -310,7 +310,7 @@ Deno.serve(async (req) => {
         type: "atlas.place_enriched",
         occurredAt: v.enriched_at,
         place: placeRef(v),
-        actor: "Enricher",
+        actor: "Intaker",
         detail: summary ? truncate(summary, 260) : null,
         meta: { detailsFields, hasSummary: !!summary },
       });
@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
         type: "atlas.enrichment_step",
         occurredAt: e.created_at,
         place: placeRef(one(e.place)),
-        actor: "Enricher",
+        actor: "Intaker",
         detail: e.detail,
         meta: {
           step: e.step,

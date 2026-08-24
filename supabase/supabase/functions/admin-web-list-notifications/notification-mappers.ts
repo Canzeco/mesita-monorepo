@@ -30,7 +30,7 @@ export type NotificationItem = {
   occurredAt: string;
   place: PlaceRef;
   // "Who" — owner display for creations, requester email for claims,
-  // "Enricher" for enrichment events. null when genuinely unknown.
+  // "Intaker" for enrichment events. null when genuinely unknown.
   actor: string | null;
   // Free-text detail — the enrichment summary snippet / step detail line.
   detail: string | null;

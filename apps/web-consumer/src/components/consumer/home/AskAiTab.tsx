@@ -63,7 +63,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
   );
 
   // The REAL Add flow: create the place immediately; only enrichment is
-  // scheduled (the cron Enricher finishes async), so hold the row in its
+  // scheduled (the cron Intaker finishes async), so hold the row in its
   // added / Enriching state.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {

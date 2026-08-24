@@ -31,7 +31,7 @@ export default function IntakePage() {
     <ConfigSoon
       Icon={Wand2}
       title="Intake settings are coming soon"
-      body="The Enricher runs today on the triggers, caps and models stored the last time this page was saved — nothing about a run changed. What is gone is the wall of knobs that asked an operator to hold nine functions in their head to move one number. They come back as a page worth reading."
+      body="The Intaker runs today on the triggers, caps and models stored the last time this page was saved — nothing about a run changed. What is gone is the wall of knobs that asked an operator to hold nine functions in their head to move one number. They come back as a page worth reading."
       doc="Notion Docs › Intake"
     />
   );

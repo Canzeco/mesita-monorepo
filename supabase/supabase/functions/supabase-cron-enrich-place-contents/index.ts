@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-cron-enrich-place-contents (internal / cron)
 //
-// Stage 3 (final) of the Enricher pipeline. The pg_cron poller claims
+// Stage 3 (final) of the Intaker pipeline. The pg_cron poller claims
 // place_research rows at stage='contents' and fires this EF with { project_id }.
 // It acks 202 immediately and runs the WRITE half in a background task:
 //
@@ -108,7 +108,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // here therefore always yielded "" — synthesis, category and tag inference
   // were all prompted with an unnamed place. Read the live generated label
   // (coalesce(mesita_name, google_name)) instead, so an operator's Mesita name
-  // is what the Enricher reasons about.
+  // is what the Intaker reasons about.
   const { data: nameRow } = await admin
     .from("places")
     .select("name")
@@ -274,7 +274,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // would revert the correction on every scheduled run. Absent keys are
   // untouched by the persist contract, so dropping the key IS the guard.
   // Done before the blob below is sealed so the diagnostics can name the
-  // fields the Enricher stood down on. Only correctable columns are removed —
+  // fields the Intaker stood down on. Only correctable columns are removed —
   // description/category/tags are read further down and are not correctable.
   const { update: persisted, skipped: pinnedSkipped } = stripPinnedColumns(
     place,
@@ -496,7 +496,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       tags: inferredTags.length,
       reservation: reservationChannel,
       // A pin that silently eats a write is as confusing as one that does not
-      // hold, so the beacon says which fields the Enricher stood down on.
+      // hold, so the beacon says which fields the Intaker stood down on.
       ...(pinnedSkipped.length > 0 ? { pinned: pinnedSkipped } : {}),
       ...imagesMeta,
     },

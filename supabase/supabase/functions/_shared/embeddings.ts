@@ -4,7 +4,7 @@
 // near-pure (a SHA-1 digest, a cosine, an OpenAI HTTP call). The candidate-pool
 // query lives in `_shared/place-pool.ts`.
 //
-// Used by: supabase-edgefunc-recall-places (Memo's RAG leg) and the Enricher's
+// Used by: supabase-edgefunc-recall-places (Memo's RAG leg) and the Intaker's
 // On-Update synthesis. MESITA-1048 deleted the swipe/map rankers that were the
 // other callers; these helpers stay — the vectors are paid data, not the
 // algorithm, and the rebuilt engine wants them.

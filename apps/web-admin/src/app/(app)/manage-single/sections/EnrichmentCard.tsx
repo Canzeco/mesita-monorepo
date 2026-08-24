@@ -35,7 +35,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // The live enriching STATUS stays in the chrome (MESITA-896) — it belongs on
 // every tab; only the trigger moved.
 //
-// Admin tab, not Settings: the Enricher is Mesita's own pipeline burning
+// Admin tab, not Settings: the Intaker is Mesita's own pipeline burning
 // Mesita's own API budget. A business never schedules it.
 const CADENCES: { value: number | null; label: string; hint: string }[] = [
   { value: null, label: "Manual only", hint: "Nothing runs unless you press Run now." },
@@ -290,7 +290,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                 <span className="text-destructive">{runError}</span>
               ) : queued ? (
                 <span className="text-muted-foreground">
-                  Queued — the Enricher picks it up within seconds.
+                  Queued — the Intaker picks it up within seconds.
                 </span>
               ) : running ? (
                 <span className="text-muted-foreground">

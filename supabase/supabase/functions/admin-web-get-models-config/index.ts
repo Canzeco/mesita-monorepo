@@ -11,7 +11,7 @@
 // place-embedding model and nothing else, and renaming it needs a data
 // migration (see _shared/models-config.ts).
 //
-// Live binding (MESITA-941): Enricher/Memo/embeddings read models_config
+// Live binding (MESITA-941): Intaker/Memo/embeddings read models_config
 // via _shared/models-config.ts. Shape validation lives on the write path
 // (admin-web-update-models-config). Memo Config's legacy memo_openai_model is a
 // one-release fallback behind models_config.memo.model.

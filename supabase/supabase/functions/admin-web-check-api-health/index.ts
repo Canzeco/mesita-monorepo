@@ -175,7 +175,7 @@ const PROBES: ProbeSpec[] = [
     id: "firecrawl",
     label: "Firecrawl",
     impact:
-      "Enricher link discovery (S4 gather) — fails SOFT, returns no links",
+      "Intaker link discovery (S4 gather) — fails SOFT, returns no links",
     envKeys: ["FIRECRAWL_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["FIRECRAWL_KEY"])!;
@@ -209,7 +209,7 @@ const PROBES: ProbeSpec[] = [
   {
     id: "apify",
     label: "Apify",
-    impact: "Enricher Instagram/actor scraping",
+    impact: "Intaker Instagram/actor scraping",
     envKeys: ["APIFY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["APIFY_KEY"])!;
@@ -554,7 +554,7 @@ const PROBES: ProbeSpec[] = [
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Enricher S5 (Agent Y link select)",
+    impact: "Memo answers + Intaker S5 (Agent Y link select)",
     envKeys: ["PERPLEXITY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["PERPLEXITY_KEY"])!;
@@ -590,7 +590,7 @@ const PROBES: ProbeSpec[] = [
   {
     id: "google-places",
     label: "Google Places",
-    impact: "Identity spine for Atlas, the Enricher and place recall",
+    impact: "Identity spine for Atlas, the Intaker and place recall",
     envKeys: ["GMP_KEY", "SUPA_GMP_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["GMP_KEY", "SUPA_GMP_KEY"])!;

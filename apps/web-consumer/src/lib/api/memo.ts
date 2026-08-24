@@ -1,6 +1,6 @@
 // Memo — the consumer AI concierge (consumer-web-ask-memo).
 //
-// Memo is Mesita's third agent (with the Enricher and the Reservationist).
+// Memo is Mesita's third agent (with the Intaker and the Reservationist).
 // One call runs the server-side pipeline (Perplexity sonar-pro + Google Places
 // Text Search + Mesita catalog) and returns a natural-language answer plus
 // real place cards. See supabase/functions/consumer-web-ask-memo.

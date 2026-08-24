@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-enrich-place (product caller / admin)
 //
 // Manual re-enrich trigger for a single existing place. Given a project_id and a
-// `mode`, it reseeds the Enricher pipeline row (place_research) so the pg_cron
+// `mode`, it reseeds the Intaker pipeline row (place_research) so the pg_cron
 // poller (run_place_enrichment_stages) re-runs from a chosen stage:
 //
 //   mode 'full'      → reseed to stage='research' (fresh gather; nulls the stored

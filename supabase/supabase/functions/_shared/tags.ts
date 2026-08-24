@@ -106,7 +106,7 @@ export async function resolvePlaceTags(
   return data as PlaceTag[];
 }
 
-// Signals fed to the tag classifier (Enricher contents stage). All optional
+// Signals fed to the tag classifier (Intaker contents stage). All optional
 // except name — the richer the material, the sharper the picks.
 export type TagSignals = {
   name: string;

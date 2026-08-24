@@ -125,7 +125,7 @@ function PriceDisplay({ level }: { level: number | null | undefined }) {
 }
 
 type DayHours = { closed: boolean; open: string; close: string };
-// Address is deliberately absent: it is native (Google/Enricher-sourced) and
+// Address is deliberately absent: it is native (Google/Intaker-sourced) and
 // business-web-update-project rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
@@ -192,7 +192,7 @@ function boxToPatch(
       mesita_name: mesitaName.length > 0 ? mesitaName : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
-      // decision: Pato (MESITA-469) — admin may set category (Enricher + Admin + Business).
+      // decision: Pato (MESITA-469) — admin may set category (Intaker + Admin + Business).
       category: nz(f.category) || "undefined",
     };
   }
@@ -284,7 +284,7 @@ export function PlaceSection({
   // Four boxes, ONE patch. Only the dirty ones contribute, so a save never
   // rewrites columns nobody touched — which matters for Basics in particular,
   // where re-sending an untouched `description` would count as an operator
-  // overwrite of Enricher output.
+  // overwrite of Intaker output.
   useSectionSaver(
     "place",
     placeDirty,
@@ -388,7 +388,7 @@ export function PlaceSection({
 
   const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
 
-  // Per-place Enricher inspector data — per-photo metadata (source + vision
+  // Per-place Intaker inspector data — per-photo metadata (source + vision
   // analysis) for the ⓘ dialog, keyed by image URL. Loads once; the live
   // enriching status (and its poll) lives on the Admin tab's Metadata card.
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
@@ -576,7 +576,7 @@ export function PlaceSection({
           {errors.time ? <ErrorNote message={errors.time} /> : null}
         </div>
 
-        {/* Location is native — Google Places seed + Enricher synthesis.
+        {/* Location is native — Google Places seed + Intaker synthesis.
             The EF rejects manual address writes, so this group is read-only. */}
         <div className="border-border/60 mt-6 border-t pt-5">
           <GroupLabel>Location</GroupLabel>
@@ -963,7 +963,7 @@ function sourceMetaRows(
   return rows;
 }
 
-// Enricher inspector: shows one image's metadata — source, gallery order, save
+// Intaker inspector: shows one image's metadata — source, gallery order, save
 // status, the pre-analysis source signals (likes/comments/dims/…), and the
 // vision analysis text — in a small modal.
 //
@@ -1057,7 +1057,7 @@ function MediaMetaDialog({
           {!meta ? (
             <p className="text-muted-foreground text-sm italic">
               No information for this image yet — it hasn’t been analyzed by the
-              Enricher.
+              Intaker.
             </p>
           ) : (
             <>

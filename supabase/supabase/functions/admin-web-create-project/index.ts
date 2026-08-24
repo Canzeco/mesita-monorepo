@@ -2,7 +2,7 @@
 //
 // The admin-app equivalent of business-web-create-project: an admin operator
 // passes a Google Places `placeId` and gets back a MINIMAL 'generating' place;
-// deep enrichment then runs ASYNC in the Enricher pipeline
+// deep enrichment then runs ASYNC in the Intaker pipeline
 // (supabase-cron-enrich-place-*). Core: createMinimalPlace
 // (_shared/create-place.ts): dedupe → Google spine → save 'generating' row →
 // seed place_research.

@@ -5,10 +5,10 @@
 // footgun the Memo types file documents.
 //
 // This page is the SoT for app_config.models_config (MESITA-941). Live readers
-// (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
+// (_shared/models-config.ts → get-memo-config, Intaker stages, embeddings,
 // business-web-suggest-promo, ojo-engine) bind supabase / enricher.model /
 // embeddings / memo.* / ojo.model.
-// Enricher Perplexity is NOT read from this blob — app_config's
+// Intaker Perplexity is NOT read from this blob — app_config's
 // atlas_perplexity_preset is the live search preset (enricher.perplexity here
 // is staged). The synthesis / vision quality tiers are atlas_* columns too, and
 // since 2026-08-23 no console edits any of the three: the Intake page (the old
@@ -71,7 +71,7 @@ export const PERPLEXITY_OPTIONS = [
 
 // ── Subsystem map ──────────────────────────────────────────────────────────
 // Drives the page. `editableHere` is true for rows this page owns (supabase +
-// memo). Enricher / Embeddings stay read-only — their values live in atlas_*
+// memo). Intaker / Embeddings stay read-only — their values live in atlas_*
 // columns and models_config, and no page edits them since Enrichment emptied.
 export type ModelStatus = "live" | "staged" | "locked";
 
@@ -107,7 +107,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
   },
   {
     key: "enricher",
-    label: "Enricher",
+    label: "Intaker",
     Icon: Sparkles,
     status: "live",
     models: [
@@ -119,7 +119,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       },
     ],
     detail:
-      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Enricher reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. No console edits the three since Enrichment emptied.",
+      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Intaker reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. No console edits the three since Enrichment emptied.",
     editableHere: false,
     owner: null,
   },

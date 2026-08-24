@@ -1,6 +1,6 @@
 // consumer-web-ask-memo — Memo, the consumer AI concierge.
 //
-// Memo is Mesita's third agent (alongside the Enricher cron pipeline and the
+// Memo is Mesita's third agent (alongside the Intaker cron pipeline and the
 // ElevenLabs Reservationist). Unlike those two, Memo lives here, as an
 // Edge Function, because it sits on the consumer's synchronous chat path.
 //

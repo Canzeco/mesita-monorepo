@@ -14,14 +14,14 @@ import {
 } from "./types";
 
 // Models — one box, three selects (MESITA-1176). It was four cards for three
-// controls: Enricher and Embeddings held no control at all, just read-only
+// controls: Intaker and Embeddings held no control at all, just read-only
 // pointers at Enrichment, and the ModelChips above each select printed the
 // value the select already showed. The three-badge Live/Staged/Locked legend
 // went with them — after the cut every knob here is live, so the vocabulary
 // had one member left.
 //
 // SoT for app_config.models_config. supabase + memo are
-// edited here and read live by EFs (MESITA-941 loadModelsConfig). The Enricher
+// edited here and read live by EFs (MESITA-941 loadModelsConfig). The Intaker
 // and embedding values are not edited anywhere: they are atlas_* columns and a
 // locked embedding id, and the Intake page that used to carry them is a Soon
 // page. Failed GET blocks Save (MESITA-737) — never persist DEFAULTS over
@@ -190,7 +190,7 @@ export function ModelsConfigClient() {
       </div>
 
       <p className="text-muted-foreground mt-3 type-label leading-relaxed">
-        Enricher quality tiers and the embedding model live on Enrichment; the
+        Intaker quality tiers and the embedding model live on Enrichment; the
         embedding model is fixed by design — changing it re-vectors the catalog.
         Ojo&apos;s enabled/threshold/retry policy lives on Ojo Config.
       </p>

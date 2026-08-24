@@ -1,4 +1,4 @@
-// Media-asset helpers for the Enricher contents stage.
+// Media-asset helpers for the Intaker contents stage.
 // Extracted from enrich-pipeline.ts (pure transforms, no I/O).
 
 import type { MediaAssetPayload } from "./enrich-config.ts";

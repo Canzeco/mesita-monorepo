@@ -42,7 +42,7 @@ import {
   type ReservationsConfig,
 } from "./catalog";
 
-// Phone-only eligible set (MESITA-842). Written on every save so the Enricher
+// Phone-only eligible set (MESITA-842). Written on every save so the Intaker
 // and the update EF stay aligned with the voice-only serving path.
 const PHONE_ONLY_CHANNELS: Pick<ReservationsConfig, "priority" | "disabled"> = {
   priority: ["phone"],
@@ -175,7 +175,7 @@ export function ReservationsConfigClient({
     if (loadBlocked) return;
     setError(null);
     // Force the phone-only channel shape — there is no control for it, but the
-    // stored blob must stay a valid, phone-first policy for the Enricher.
+    // stored blob must stay a valid, phone-first policy for the Intaker.
     const payload: ReservationsConfig = {
       ...cfg,
       ...PHONE_ONLY_CHANNELS,
