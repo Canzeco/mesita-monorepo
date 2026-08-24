@@ -51,8 +51,19 @@ drop function if exists public.profiles_delete();
 
 -- postgres already revoked client default table grants (MESITA-942).
 -- supabase_admin still grants ALL on new public tables to anon/authenticated.
-alter default privileges for role supabase_admin in schema public
-  revoke all on tables from anon, authenticated;
+-- The migration role cannot ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin
+-- (42501). Best-effort; skip if denied. Do not fail the PIN close for it.
+do $$
+begin
+  execute $sql$
+    alter default privileges for role supabase_admin in schema public
+      revoke all on tables from anon, authenticated
+  $sql$;
+exception
+  when insufficient_privilege then
+    raise notice
+      'skipped supabase_admin default revoke — 42501 from this role';
+end $$;
 
 do $$
 begin
