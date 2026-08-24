@@ -544,7 +544,7 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
 }
 
 // ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
-// (Docs › Enrichment §A). NINE enrich functions —
+// (Docs › Intake §A). NINE enrich functions —
 //
 //   1 pulse · 2 details · 3 serp · 4 links · 5 social
 //   6 images · 7 menu · 8 reviews · 9 description

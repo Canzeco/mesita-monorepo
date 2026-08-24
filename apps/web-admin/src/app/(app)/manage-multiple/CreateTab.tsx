@@ -124,7 +124,7 @@ export function CreateTab({
         the Google lookup and catalog listing, then hands off to the Enricher —
         deep Enricher research runs in the background. Caps, levels and photo
         analysis run on the stored Intake settings; the console for them is
-        empty, and what each one means lives in Notion Docs › Enrichment.
+        empty, and what each one means lives in Notion Docs › Intake.
       </p>
 
       {/* Input */}

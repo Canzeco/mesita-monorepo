@@ -23,7 +23,7 @@ import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 // and the day this page comes back the controls come back with it. The sibling
 // modules stay for the same reason they were always shared: Manage Multiple
 // reads `actions.ts` for the settings and `cost-model.ts` to price a bulk
-// enrich. What every setting means lives in Notion Docs › Enrichment.
+// enrich. What every setting means lives in Notion Docs › Intake.
 export const dynamic = "force-dynamic";
 
 export default function IntakePage() {
@@ -32,7 +32,7 @@ export default function IntakePage() {
       Icon={Wand2}
       title="Intake settings are coming soon"
       body="The Enricher runs today on the triggers, caps and models stored the last time this page was saved — nothing about a run changed. What is gone is the wall of knobs that asked an operator to hold nine functions in their head to move one number. They come back as a page worth reading."
-      doc="Notion Docs › Enrichment"
+      doc="Notion Docs › Intake"
     />
   );
 }

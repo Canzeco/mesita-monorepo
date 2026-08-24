@@ -143,7 +143,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
         same re-enrich pipeline as the single-place control — the Enricher cron
         runs async after trigger. Caps and models are the stored Intake
         settings; the console for them is empty, and what each one means lives
-        in Notion Docs › Enrichment.
+        in Notion Docs › Intake.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
