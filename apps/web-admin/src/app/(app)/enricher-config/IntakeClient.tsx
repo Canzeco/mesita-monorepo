@@ -482,26 +482,15 @@ export function IntakeClient({
                 index="5 · $$"
                 flows="Enrich"
                 name="Social"
-                blurb="Instagram and Facebook. Runs before Images because its gather fills the pool the vision funnel ranks."
-                knobs="1 knob"
+                blurb="The Instagram and Facebook profiles — handle, followers, bio. It does not collect posts."
+                knobs="no knobs"
               >
-                <Fields>
-                  <NumberField
-                    icon={
-                      <Instagram className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Instagram posts to collect"
-                    value={settings.gatherInstagramDepth}
-                    min={1}
-                    max={MAX_INSTAGRAM_COLLECT}
-                    onChange={(v) => patch({ gatherInstagramDepth: v })}
-                    disabled={pending}
-                  />
-                </Fields>
-                <p className="text-muted-foreground mt-3 text-xs">
-                  Newest first, then top-K by likes. This number bounds the
-                  Instagram analyze cap at 6 · Images.
-                </p>
+                <NoKnobs>
+                  No knobs. Social attaches the accounts Links resolved. Post
+                  images are an Images job: that function collects them from
+                  Apify and then analyzes them, which is why the collect knob
+                  lives there.
+                </NoKnobs>
               </FunctionModule>
 
               <FunctionModule
@@ -509,8 +498,8 @@ export function IntakeClient({
                 index="6 · $$"
                 flows="Enrich"
                 name="Images"
-                blurb="Describe every candidate, rank them all in one shared bucket, keep the gallery. Largest cost driver here."
-                knobs="6 knobs"
+                blurb="Collects images from Apify, then describes and ranks them. Largest cost driver here."
+                knobs="7 knobs"
                 defaultOpen
               >
                 <Fields>
@@ -523,6 +512,17 @@ export function IntakeClient({
                     min={1}
                     max={MAX_GOOGLE_COLLECT}
                     onChange={(v) => patch({ gatherGoogleImages: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <Instagram className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Instagram posts to collect"
+                    value={settings.gatherInstagramDepth}
+                    min={1}
+                    max={MAX_INSTAGRAM_COLLECT}
+                    onChange={(v) => patch({ gatherInstagramDepth: v })}
                     disabled={pending}
                   />
                   <NumberField
@@ -540,7 +540,7 @@ export function IntakeClient({
                     icon={
                       <Instagram className="text-muted-foreground h-4 w-4" />
                     }
-                    label="Analyze Instagram (≤ collected at 5)"
+                    label="Analyze Instagram (≤ collected)"
                     value={settings.analyzeInstagramImages}
                     min={1}
                     max={settings.gatherInstagramDepth}
@@ -606,10 +606,11 @@ export function IntakeClient({
                   </div>
                 </Collapsible>
                 <p className="text-muted-foreground mt-3 text-xs">
-                  The funnel is a chain and the Edge Function rejects a broken
-                  one, so lowering a collect value pulls its analyze cap and the
-                  gallery down with it. Winners mirror into the place-images
-                  bucket; the model is in Models.
+                  Instagram posts: newest first, then top-K by likes. The funnel
+                  is a chain and the Edge Function rejects a broken one, so
+                  lowering a collect value pulls its analyze cap and the gallery
+                  down with it. Winners mirror into the place-images bucket; the
+                  model is in Models.
                 </p>
               </FunctionModule>
 

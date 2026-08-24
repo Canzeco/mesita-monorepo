@@ -3,6 +3,9 @@ import type { PerplexityPreset, SynthesisQuality } from "./actions";
 // Image-funnel clamps. The Edge Function rejects a broken chain with a 400,
 // so the page keeps analyze ≤ collect per source and the gallery ≤ everything
 // analyzed. Pure so the UI and the unit tests share one function.
+//
+// Instagram collect (`gatherInstagramDepth`) is an Images knob, not a Social
+// one. Social attaches profiles; Images collects posts from Apify and analyzes.
 
 export const MAX_GOOGLE_COLLECT = 10;
 export const MAX_INSTAGRAM_COLLECT = 30;
