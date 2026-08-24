@@ -138,7 +138,7 @@ jobs:
 
       - name: Start Postgres and replay every migration
         working-directory: supabase
-        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta,kong,rest
+        run: supabase start -x studio,imgproxy,edge-runtime,functions,realtime,storage,inbucket,vector,analytics,meta
 
       - name: Run pgTAP
         working-directory: supabase
