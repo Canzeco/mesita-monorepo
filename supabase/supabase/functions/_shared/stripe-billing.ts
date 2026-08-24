@@ -25,6 +25,20 @@ export { STRIPE_CATALOG };
 export const STRIPE_API_VERSION =
   "2025-03-31.basil" as Stripe.LatestApiVersion;
 
+// MESITA-37 — stay on TEST until a human is ready to take real money.
+// Checkout and catalog provisioning that would create live charges (or live
+// Prices that later get charged) refuse an `sk_live_` secret unless
+// STRIPE_ALLOW_LIVE=true. Cancels, webhooks, and the admin health probe are
+// not this gate. Flipping the env is the needs-human step; this helper never
+// does it.
+export function liveChargesBlocked(secretKey: string): string | null {
+  if (!secretKey.startsWith("sk_live_")) return null;
+  const allow = (Deno.env.get("STRIPE_ALLOW_LIVE") ?? "").toLowerCase() ===
+    "true";
+  if (allow) return null;
+  return "Stripe live charges are blocked. STRIPE_SECRET_KEY is sk_live_; set STRIPE_ALLOW_LIVE=true only when ready to take real money (MESITA-37).";
+}
+
 export type ResolvedPrice = {
   priceId: string;
   priceCents: number;
