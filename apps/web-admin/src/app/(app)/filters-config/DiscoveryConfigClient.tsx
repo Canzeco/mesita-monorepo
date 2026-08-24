@@ -23,6 +23,20 @@ const STEP = 0.05;
 const INPUT =
   "border-border bg-card focus:border-foreground h-8 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50";
 
+function CalledApis({ apis }: { apis: string[] }) {
+  const names = apis.length > 0 ? apis : ["None"];
+  return (
+    <p className="mt-1 type-label leading-snug">
+      {names.map((name, i) => (
+        <span key={name}>
+          {i > 0 ? " · " : null}
+          <strong>{name}</strong>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function Enforced({ on }: { on: string }) {
   return (
     <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
@@ -212,6 +226,7 @@ export function DiscoveryConfigClient({
                       >
                         {s.fn}
                       </div>
+                      <CalledApis apis={s.apis} />
                     </td>
                     <td className="text-muted-foreground max-w-[12rem] pr-3 type-label leading-relaxed">
                       {s.input}
@@ -302,6 +317,7 @@ export function DiscoveryConfigClient({
                       >
                         {e.fn}
                       </span>
+                      <CalledApis apis={e.apis} />
                     </td>
                     <td className="pr-3">
                       <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">

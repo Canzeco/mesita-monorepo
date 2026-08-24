@@ -117,6 +117,8 @@ export const ENGINES: {
   output: string;
   state: "LIVE" | "PARKED" | "UNBUILT";
   wired: WiredEngineKey | null;
+  /** Vendor APIs this function calls when it runs. Empty = none. */
+  apis: string[];
 }[] = [
   {
     key: "swipe",
@@ -127,6 +129,7 @@ export const ENGINES: {
     output: "Ordered Home deck.",
     state: "LIVE",
     wired: "swipe",
+    apis: [],
   },
   {
     key: "map",
@@ -137,6 +140,7 @@ export const ENGINES: {
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
+    apis: ["Google Places Autocomplete", "Place Details"],
   },
   {
     key: "favorites",
@@ -147,6 +151,7 @@ export const ENGINES: {
     output: "The saved list.",
     state: "LIVE",
     wired: null,
+    apis: [],
   },
   {
     key: "catalog",
@@ -157,6 +162,7 @@ export const ENGINES: {
     output: "A grid, when unparked.",
     state: "PARKED",
     wired: null,
+    apis: [],
   },
   {
     key: "chat",
@@ -167,6 +173,7 @@ export const ENGINES: {
     output: "A recommended set, when unparked.",
     state: "PARKED",
     wired: null,
+    apis: ["Google Places Text Search", "Perplexity", "OpenAI"],
   },
   {
     key: "social",
@@ -177,6 +184,7 @@ export const ENGINES: {
     output: "A live feed, when unparked.",
     state: "PARKED",
     wired: null,
+    apis: [],
   },
   {
     key: "name",
@@ -187,6 +195,7 @@ export const ENGINES: {
     output: "The right place.",
     state: "UNBUILT",
     wired: null,
+    apis: [],
   },
   {
     key: "web",
@@ -197,6 +206,7 @@ export const ENGINES: {
     output: "Places the catalog lacks.",
     state: "UNBUILT",
     wired: null,
+    apis: ["Perplexity"],
   },
 ];
 
@@ -229,6 +239,8 @@ export const SIGNALS: {
   process: string;
   output: string;
   fields: ParamField[];
+  /** Vendor APIs this function calls at rank time. Empty = none. */
+  apis: string[];
 }[] = [
   {
     key: "proximity",
@@ -237,6 +249,7 @@ export const SIGNALS: {
     input: "Place geo × guest geo. No guest geo → abstains at 1.",
     process: "Haversine km, then 1 − log1p(km / knee) / log1p(max / knee).",
     output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
+    apis: [],
     fields: [
       { key: "maxKm", label: "maxKm", min: 1, max: 200, step: 0.5 },
       { key: "kneeKm", label: "kneeKm", min: 0.1, max: 25, step: 0.1 },
@@ -250,6 +263,7 @@ export const SIGNALS: {
     input: "Weekly hours × the place's local clock.",
     process: "openShare × openOrFloor + (1 − openShare) × daypart(hour).",
     output: "Closed is demoted to closedFloor, never hidden.",
+    apis: [],
     fields: [
       ZERO_ONE("openShare", "openShare"),
       ZERO_ONE("closedFloor", "closedFloor"),
@@ -268,6 +282,7 @@ export const SIGNALS: {
     input: "Place category/family × guest categories. Swipe states none.",
     process: "exact hit, else family hit, else miss. No intent → abstain.",
     output: "One of exact / family / miss.",
+    apis: [],
     fields: [
       ZERO_ONE("exact", "exact"),
       ZERO_ONE("family", "family"),
@@ -281,6 +296,7 @@ export const SIGNALS: {
     input: "Google rating + review count.",
     process: "(v·r + m·prior) / (v + m), then stretch from floorRating to 5.",
     output: "Unrated place gets the prior, never an abstention.",
+    apis: [],
     fields: [
       { key: "priorRating", label: "priorRating", min: 0, max: 5, step: 0.1 },
       { key: "confidence", label: "confidence", min: 1, max: 1000, step: 1 },
@@ -294,6 +310,7 @@ export const SIGNALS: {
     input: "Query vector × places.embedding (Summary, never Presentation).",
     process: "(cosine + 1) / 2. No query → abstain.",
     output: "Unembedded place → unembedded, never deleted.",
+    apis: [],
     fields: [ZERO_ONE("unembedded", "unembedded")],
   },
   {
@@ -303,6 +320,7 @@ export const SIGNALS: {
     input: "Nothing about the place. A uniform draw.",
     process: "rng() in [0, 1). The exponent is the only knob.",
     output: "A number that only breaks near-ties when the exponent is soft.",
+    apis: [],
     fields: UNIT,
   },
 ];
