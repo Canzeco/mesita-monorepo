@@ -71,12 +71,28 @@ begin
     raise exception
       'anon still has table-level SELECT on public.projects — secrets leak';
   end if;
-  if has_column_privilege('anon', 'public.projects', 'check_pin', 'SELECT')
-     or has_column_privilege('anon', 'public.projects', 'staff_pin', 'SELECT')
-     or has_column_privilege('anon', 'public.projects', 'cfdi_rfc', 'SELECT')
-     or has_column_privilege('anon', 'public.projects', 'cfdi_cp', 'SELECT')
-     or has_column_privilege('anon', 'public.projects', 'cfdi_razon_social', 'SELECT')
-  then
+  -- CFDI columns exist on live and in the TypeScript write surface, but no
+  -- repo migration adds them. has_column_privilege on a missing name is 42703
+  -- and aborts local replay (pgTAP). Only pin secrets that exist.
+  if exists (
+    select 1
+    from information_schema.columns c
+    where c.table_schema = 'public'
+      and c.table_name = 'projects'
+      and c.column_name in (
+        'check_pin',
+        'staff_pin',
+        'cfdi_rfc',
+        'cfdi_cp',
+        'cfdi_razon_social'
+      )
+      and (
+        has_column_privilege('anon', 'public.projects', c.column_name, 'SELECT')
+        or has_column_privilege(
+          'authenticated', 'public.projects', c.column_name, 'SELECT'
+        )
+      )
+  ) then
     raise exception 'anon still has SELECT on a projects secret column';
   end if;
   if not has_column_privilege('anon', 'public.projects', 'plan', 'SELECT') then
