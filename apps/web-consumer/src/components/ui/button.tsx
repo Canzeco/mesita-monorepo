@@ -5,7 +5,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 // The consumer app's ONE shared primary-CTA primitive (MESITA-1223 item 2).
-// Shape copied from apps/web-check's src/components/ui/button.tsx (cva +
+// Shape copied from apps/web-validate's src/components/ui/button.tsx (cva +
 // asChild + a variant/size axis) — the colors are this app's own brand
 // system, not shadcn's default palette.
 //

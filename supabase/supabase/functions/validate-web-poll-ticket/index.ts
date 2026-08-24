@@ -1,9 +1,9 @@
-// Supabase Edge Function — check-web-poll-ticket (product caller: the public
+// Supabase Edge Function — validate-web-poll-ticket (product caller: the public
 // check page's live refresh)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
 // THE TICKET v4 (MESITA-1090): the AUDIT-FREE read the staff poll runs while
-// a ticket is open on screen. check-web-get-ticket logs a `scanned` event on
+// a ticket is open on screen. validate-web-get-ticket logs a `scanned` event on
 // every read, and the sliding-window limiter counts every event per ip_hash —
 // so a 2-3s poll through get-ticket would deposit 30 rows a minute, hit the
 // write ceiling, and rate-limit the waiter out of approving their own ticket

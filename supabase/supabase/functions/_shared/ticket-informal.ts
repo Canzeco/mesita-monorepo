@@ -1,5 +1,5 @@
 // Discount ticket math — shared by the check page and the business console
-// (check-web-mark-paid, business-web-mark-ticket-paid, via
+// (validate-web-mark-paid, business-web-mark-ticket-paid, via
 // business-ticket-billing.ts). Discounts only: Mesita never holds a balance,
 // so there is no redeem/ledger step — the discount is applied straight to the
 // bill.

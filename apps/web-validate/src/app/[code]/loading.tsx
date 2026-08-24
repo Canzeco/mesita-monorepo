@@ -1,4 +1,4 @@
-// Shown while the RSC awaits check-web-get-ticket. The page is
+// Shown while the RSC awaits validate-web-get-ticket. The page is
 // force-dynamic and the waiter is standing at the table, so a blank screen
 // reads as "the QR is broken" — this keeps the card's shape on screen.
 

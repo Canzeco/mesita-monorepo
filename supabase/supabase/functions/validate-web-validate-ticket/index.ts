@@ -1,4 +1,4 @@
-// Supabase Edge Function — check-web-validate-ticket (product caller: the
+// Supabase Edge Function — validate-web-validate-ticket (product caller: the
 // public check page)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
@@ -16,10 +16,10 @@
 // row; logged on MESITA-1092.)
 //
 // NOT gated on the bill again, deliberately (MESITA-1148 · MESITA-1095):
-// that gate fires at check-web-approve-ticket, the verdict. Everything this
+// that gate fires at validate-web-approve-ticket, the verdict. Everything this
 // EF accepts is already approved, so a second gate here could only strand a
 // ticket the floor had approved — the guest has paid and there would be no
-// way to close. The v3 close (check-web-mark-paid) keeps its own gate,
+// way to close. The v3 close (validate-web-mark-paid) keeps its own gate,
 // because it closes straight from `open` with no verdict in between.
 //
 // Body:     { code, pin? }

@@ -13,7 +13,7 @@
 // the product as it is rather than proposing a different one:
 //   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT`
 //   consumer poll   web-consumer TicketScreen, 10s
-//   staff poll      web-check BASE_POLL_MS 3s, backing off to MAX_POLL_MS 30s
+//   staff poll      web-validate BASE_POLL_MS 3s, backing off to MAX_POLL_MS 30s
 //   pay rails       cash live; card and Yums are STAGED panels
 //
 // Every knob is STAGED until the apps read it: the blob is live and editable,

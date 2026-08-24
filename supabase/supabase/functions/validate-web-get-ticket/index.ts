@@ -1,4 +1,4 @@
-// Supabase Edge Function — check-web-get-ticket (product caller: the public
+// Supabase Edge Function — validate-web-get-ticket (product caller: the public
 // check page at check.mesita.ai/<code> — nominally staff, really whoever
 // holds the freshly scanned QR)
 //

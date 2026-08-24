@@ -38,7 +38,7 @@ type RepriceTicketRow = {
 // The live best-of rate for a ticket, resolved fresh (v3b, MESITA-850):
 // place strategy × operator grid × the guest's current qualifying set
 // (class, first visit, story/review self-attestations, Mesita review).
-// Shared by the reprice below, check-web-get-ticket's cap-as-instruction
+// Shared by the reprice below, validate-web-get-ticket's cap-as-instruction
 // offer, and consumer-web-submit-ticket-total's fallback record.
 export async function resolveLiveTicketRate(
   admin: SupabaseClient,

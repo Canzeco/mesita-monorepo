@@ -1,4 +1,4 @@
-// Supabase Edge Function — check-web-request-fix (product caller: the public
+// Supabase Edge Function — validate-web-request-fix (product caller: the public
 // check page)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).

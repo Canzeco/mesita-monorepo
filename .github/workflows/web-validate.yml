@@ -1,23 +1,23 @@
-name: web-check CI
+name: web-validate CI
 
 on:
   push:
     branches: [main]
     paths:
-      - "apps/web-check/**"
-      - ".github/workflows/web-check.yml"
+      - "apps/web-validate/**"
+      - ".github/workflows/web-validate.yml"
   pull_request:
     paths:
-      - "apps/web-check/**"
-      - ".github/workflows/web-check.yml"
+      - "apps/web-validate/**"
+      - ".github/workflows/web-validate.yml"
 
 concurrency:
-  group: web-check-ci-${{ github.ref }}
+  group: web-validate-ci-${{ github.ref }}
   cancel-in-progress: true
 
 defaults:
   run:
-    working-directory: apps/web-check
+    working-directory: apps/web-validate
 
 jobs:
   check:
@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: apps/web-check/pnpm-lock.yaml
+          cache-dependency-path: apps/web-validate/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

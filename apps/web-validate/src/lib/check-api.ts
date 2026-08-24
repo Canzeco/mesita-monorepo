@@ -1,4 +1,4 @@
-// Tickets v2/v3 (MESITA-806/849/850) — plain-fetch client for the public check-web-*
+// Tickets v2/v3 (MESITA-806/849/850) — plain-fetch client for the public validate-web-*
 // Edge Functions. web-landing deliberately has NO supabase-js dependency:
 // these endpoints are verify_jwt=false and the 128-bit check code in the URL
 // is the whole authentication, so a bare fetch is the entire integration.
@@ -154,11 +154,11 @@ export function checkErrorMessage(res: EFFailure): string {
 }
 
 export function fetchCheck(code: string) {
-  return callCheckEF<{ check: CheckPayload }>("check-web-get-ticket", { code });
+  return callCheckEF<{ check: CheckPayload }>("validate-web-get-ticket", { code });
 }
 
 export function markPaid(code: string, pin?: string) {
-  return callCheckEF<{ alreadyPaid?: boolean }>("check-web-mark-paid", {
+  return callCheckEF<{ alreadyPaid?: boolean }>("validate-web-mark-paid", {
     code,
     ...(pin ? { pin } : {}),
   });
@@ -170,7 +170,7 @@ export function markPaid(code: string, pin?: string) {
  *  never a side effect of a read. Idempotent: already-past-open answers ok. */
 export function scanTicket(code: string, pin?: string) {
   return callCheckEF<{ status?: string; already?: boolean }>(
-    "check-web-scan-ticket",
+    "validate-web-scan-ticket",
     { code, ...(pin ? { pin } : {}) },
   );
 }
@@ -182,7 +182,7 @@ export function approveTicket(
   pin?: string,
 ) {
   return callCheckEF<{ approvedAt?: string; already?: boolean }>(
-    "check-web-approve-ticket",
+    "validate-web-approve-ticket",
     { code, expectedUpdatedAt, ...(pin ? { pin } : {}) },
   );
 }
@@ -198,21 +198,21 @@ export function requestFix(
   pin?: string,
 ) {
   return callCheckEF<{ fix?: string; already?: boolean }>(
-    "check-web-request-fix",
+    "validate-web-request-fix",
     { code, fix, expectedUpdatedAt, ...(pin ? { pin } : {}) },
   );
 }
 
 /** paying/approved → revealed. Payment confirmed; the ticket closes. */
 export function validateTicket(code: string, pin?: string) {
-  return callCheckEF<{ alreadyPaid?: boolean }>("check-web-validate-ticket", {
+  return callCheckEF<{ alreadyPaid?: boolean }>("validate-web-validate-ticket", {
     code,
     ...(pin ? { pin } : {}),
   });
 }
 
 /** The AUDIT-FREE live read the poll runs while a ticket is open on screen.
- *  check-web-get-ticket logs an event per read and the rate limiter counts
+ *  validate-web-get-ticket logs an event per read and the rate limiter counts
  *  events per ip — polling through it would rate-limit the waiter out of
  *  their own approve. This endpoint writes nothing. */
 export type CheckPollPayload = {
@@ -236,7 +236,7 @@ export type CheckPollPayload = {
 };
 
 export function pollTicket(code: string) {
-  return callCheckEF<{ poll: CheckPollPayload }>("check-web-poll-ticket", {
+  return callCheckEF<{ poll: CheckPollPayload }>("validate-web-poll-ticket", {
     code,
   });
 }

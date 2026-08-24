@@ -1,11 +1,11 @@
-// Supabase Edge Function — check-web-scan-ticket (product caller: the public
+// Supabase Edge Function — validate-web-scan-ticket (product caller: the public
 // check page at check.mesita.ai/<code>)
 //
 // verify_jwt = FALSE — code-possession auth (see _shared/ticket-check.ts).
 // THE TICKET v4 (MESITA-1090): `open → scanned` is an affirmative staff-side
 // WRITE, fired once by the check page after it renders — never a side effect
 // of a GET, so a WhatsApp unfurler or a curious tap can't advance a ticket
-// (check-web-get-ticket stays read-shaped and only stamps first_scanned_at).
+// (validate-web-get-ticket stays read-shaped and only stamps first_scanned_at).
 //
 // Idempotent by design: re-scans are a feature, so a ticket already past
 // `open` answers 200 with its current status instead of an error a waiter

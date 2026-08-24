@@ -10,7 +10,7 @@
 // three fix chips, and the proof IMAGE never renders here (that is Ojo's job,
 // MESITA-1034).
 //
-// LIVE: while a v4 ticket is on screen the page polls check-web-poll-ticket
+// LIVE: while a v4 ticket is on screen the page polls validate-web-poll-ticket
 // (audit-free — get-ticket logs an event per read and the limiter counts
 // events per ip, so polling through it would rate-limit the waiter out of
 // their own approve). visibilitychange + the Actualizar button are the
