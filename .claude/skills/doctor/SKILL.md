@@ -262,11 +262,17 @@ un-staged Ojo knob reads to an operator as a control that does something.
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
 6.7 **Git surface.** Local branches and worktrees on the operator's Mac, open PRs older
-    than 7 days, branches whose issue is already closed. Triage by **residual diff, never
-    ancestry** — squash-merges make `rev-list` call landed branches unmerged, so test with
-    `git cherry origin/main <branch>`: zero `+` lines means the work landed and the branch
-    should have died at merge (ASDM §A.5). Report the counts and the patch-equivalent
-    list; **never delete** — a branch belongs to the claim that created it.
+    than 7 days, branches whose issue is already closed. Platform-managed worktrees live in
+    `.claude/worktrees/` inside the repo (plus stray detached checkouts in tmp scratchpads),
+    so sweep `git worktree list`, never Finder. Triage landedness by **merge simulation,
+    never ancestry or patch-ids** — squash-merges make `rev-list` lie and multi-commit
+    squashes defeat `git cherry` — so the decisive test is
+    `git merge-tree --write-tree origin/main <branch>` equal to
+    `git rev-parse "origin/main^{tree}"`: equal trees mean the branch adds nothing to main
+    and should have died at merge (ASDM §A.5; any later session may sweep proven-landed
+    leftovers — 2026-08-24 baseline: 105/239 branches and 17/30 worktrees passed and were
+    reclaimed, 14 GB). Report the counts and the proven-landed list as *sweepable*; the
+    doctor itself **never deletes** — an unlanded tip belongs to the claim that created it.
 6.8 **CI budget.** Actions minutes headroom, red workflows on main.
 
 ## Scope 7 — Runtime observability (last 24h) · P2
