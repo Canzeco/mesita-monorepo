@@ -1,65 +1,81 @@
-import { Wand2 } from "lucide-react";
-import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { getSourcingConfig } from "../sourcing-config/actions";
-import { SourcingConfigClient } from "../sourcing-config/SourcingConfigClient";
 import { DEFAULT_CONFIG } from "../sourcing-config/catalog";
+import { getAtlasSettings } from "./actions";
+import { IntakeClient, type IntakeSettings } from "./IntakeClient";
 
-// INTAKE — one page for how a place gets into Mesita and becomes a profile
-// (Pato, 2026-08-23: "MOVE SOURCING INTO INTAKE TOO").
+// INTAKE — how a place gets into Mesita and becomes a profile, on one page.
+// Five sections in Pato's order (MESITA-1287): the sourcing gate · Create
+// explained · Enrich explained · the twelve functions with their params ·
+// the shared models and the cost ceiling.
 //
-// TWO BANDS, and the split is the whole point. Sourcing is NOT an Intaker
-// function — §8.4 lists only CREATE and ENRICH — it is the policy gate that
-// decides which surfaces may find and add a place AT ALL, before any row
-// exists. Drawn as one undivided list it would teach that a run performs
-// sourcing, and the next person would tune a channel floor expecting the next
-// enrichment run to honour it. The bands are the same ones the ladder table
-// will carry when the knobs come back (MESITA-1287).
-//
-// The Source band is LIVE and fully enforced. The Intaker band is still the
-// Soon panel from MESITA-1285 — its knobs are stored settings every EF reads,
-// with admin-web-update-enricher-config as the only door until the ladder
-// lands.
-//
-// THE MODULES DID NOT MOVE. `/sourcing-config` redirects and its sidebar row
-// is gone, but `sourcing-config/{actions,catalog,SourcingConfigClient}` stay
-// exactly where they are: `catalog.ts` is cited BY PATH from web-consumer,
-// mobile-consumer (frozen) and `_shared/sourcing.ts` as the FAMILIES authoring
-// source, and moving the file would break four comments to buy nothing. A
-// folder with no page.tsx is just a module folder — the same trick
-// `enricher-config/atlas-ui` already plays for six other pages.
+// TWO READS, seeded server-side so the page renders with real values and no
+// spinner. Either can fail on its own: a failed half renders its own note and
+// blocks Save, because a whole-blob write from a failed load would overwrite
+// the live singleton with defaults (MESITA-737).
 export const dynamic = "force-dynamic";
 
-function Band({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
-      {children}
-    </h2>
-  );
-}
+const SETTINGS_FALLBACK: IntakeSettings = {
+  gatherGoogleImages: 10,
+  gatherInstagramDepth: 30,
+  gatherReviews: 100,
+  imageVisionEnabled: true,
+  saveImagesToStorage: true,
+  saveTotalImages: 10,
+  analyzeGoogleImages: 10,
+  analyzeInstagramImages: 20,
+  imageAnalysisPrompt: "",
+  imageSortingPrompt: "",
+  synthesisQuality: "economy",
+  visionQuality: "economy",
+  perplexityPreset: "pro-search",
+  perRunCostCapUsd: 1,
+  discoverWebsiteN: 5,
+  discoverInstagramN: 5,
+  discoverFacebookN: 3,
+  discoverOpentableN: 3,
+  discoverUbereatsN: 0,
+};
 
 export default async function IntakePage() {
-  const res = await getSourcingConfig();
+  const [sourcing, settings] = await Promise.all([
+    getSourcingConfig(),
+    getAtlasSettings(),
+  ]);
 
   return (
-    <div className="flex flex-col gap-8 sm:gap-10">
-      <section className="flex flex-col gap-3">
-        <Band>Before the place exists</Band>
-        <SourcingConfigClient
-          initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-          initialUpdatedAt={res.ok ? res.updatedAt : null}
-          loadError={res.ok ? null : res.error}
-        />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <Band>Once it exists</Band>
-        <ConfigSoon
-          Icon={Wand2}
-          title="The Intaker's settings are coming soon"
-          body="Create runs once at the door — seed, pulse, details — and the nine enrich functions re-run on each place's own schedule. They run today on the triggers, caps and models stored the last time this page had knobs; nothing about a run changed. What is gone is the wall that asked an operator to hold nine functions in their head to move one number."
-          doc="Notion Docs › Intake"
-        />
-      </section>
-    </div>
+    <IntakeClient
+      initialSourcing={sourcing.ok ? sourcing.config : DEFAULT_CONFIG}
+      sourcingUpdatedAt={sourcing.ok ? sourcing.updatedAt : null}
+      sourcingLoadError={sourcing.ok ? null : sourcing.error}
+      initialSettings={
+        settings.ok
+          ? {
+              gatherGoogleImages: settings.data.atlasGatherGoogleImages,
+              gatherInstagramDepth: settings.data.atlasGatherInstagramDepth,
+              gatherReviews: settings.data.atlasGatherReviews,
+              imageVisionEnabled: settings.data.atlasImageVisionEnabled,
+              saveImagesToStorage: settings.data.atlasSaveImagesToStorage,
+              saveTotalImages: settings.data.atlasSaveTotalImages,
+              analyzeGoogleImages: settings.data.atlasAnalyzeGoogleImages,
+              analyzeInstagramImages:
+                settings.data.atlasAnalyzeInstagramImages,
+              imageAnalysisPrompt: settings.data.atlasImageAnalysisPrompt,
+              imageSortingPrompt: settings.data.atlasImageSortingPrompt,
+              synthesisQuality: settings.data.atlasSynthesisQuality,
+              visionQuality: settings.data.atlasVisionQuality ?? "economy",
+              perplexityPreset:
+                settings.data.atlasPerplexityPreset ?? "pro-search",
+              perRunCostCapUsd: settings.data.atlasPerRunCostCapUsd ?? 1,
+              discoverWebsiteN: settings.data.atlasDiscoverWebsiteN,
+              discoverInstagramN: settings.data.atlasDiscoverInstagramN,
+              discoverFacebookN: settings.data.atlasDiscoverFacebookN,
+              discoverOpentableN: settings.data.atlasDiscoverOpentableN,
+              discoverUbereatsN: settings.data.atlasDiscoverUbereatsN,
+            }
+          : SETTINGS_FALLBACK
+      }
+      settingsUpdatedAt={settings.ok ? settings.data.updatedAt : null}
+      settingsLoadError={settings.ok ? null : settings.error}
+    />
   );
 }
