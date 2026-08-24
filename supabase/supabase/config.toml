@@ -520,9 +520,6 @@ verify_jwt = true
 [functions.admin-web-get-place-verification]
 verify_jwt = true
 
-[functions.admin-web-set-auto-verify]
-verify_jwt = true
-
 # Verification Config — partner-badge create policy + ownership
 # auto-confirm knobs (phone / email / video). Distinct from the
 # ownership Verification Queue (list/decide above).
@@ -635,13 +632,11 @@ verify_jwt = true
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
 
-# --- Admin config surfaces (Atlas / Enricher / Sourcing / Memo / Reservations /
+# --- Admin config surfaces (Atlas / Enricher / Sourcing / Reservations /
 # Rewards / Models) — each re-checks super_admins. Listed explicitly so
 # the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
-[functions.admin-web-get-memo-config]
-verify_jwt = true
-[functions.admin-web-update-memo-config]
-verify_jwt = true
+# Memo left this list with its own two EFs: models_config carries the model and
+# the console reads it there.
 [functions.admin-web-get-sourcing-config]
 verify_jwt = true
 [functions.admin-web-update-sourcing-config]

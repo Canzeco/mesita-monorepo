@@ -42,6 +42,30 @@ jobs:
       - name: Test
         run: deno test --allow-all
 
+      # `supabase functions deploy` builds its list from config.toml's
+      # [functions.*] blocks, NOT from the folders on disk, and aborts the whole
+      # run on the first block whose entrypoint is missing — every function
+      # after it is skipped. Three orphan blocks left behind by two EF deletions
+      # (#1170, #1171) froze prod EFs across four merges before anyone noticed
+      # (MESITA-1286), because the deploy job is the only place that reads them
+      # and it runs after the merge. So the check runs on the PR.
+      #
+      # One direction only: a folder with no block is fine (config defaults
+      # apply). Deleting an EF is THREE deletions — the folder, this block, and
+      # the cloud function.
+      - name: Every declared function has a folder
+        working-directory: supabase/supabase
+        run: |
+          missing=$(grep -oE '^\[functions\.[^]]+\]' config.toml \
+            | sed -E 's/^\[functions\.(.*)\]$/\1/' \
+            | while read -r fn; do [ -f "functions/$fn/index.ts" ] || echo "$fn"; done)
+          if [ -n "$missing" ]; then
+            echo "config.toml declares functions with no functions/<name>/index.ts:"
+            echo "$missing"
+            echo "supabase functions deploy aborts on the first one, deploying nothing after it."
+            exit 1
+          fi
+
   # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
   # the root `rules` workflow (.github/workflows/rules.yml) since ASDM v5
   # (MESITA-456) — one checkout now covers the whole monorepo.
