@@ -312,7 +312,7 @@ never `FINDING`. Re-reporting deliberate, settled state every week is how a repo
 being ignored — and a doc that accurately declares its own drift is doing its job, not
 failing. **Quote both disagreeing values with `file:line` before promoting anything;** a
 grep count is not a finding. Verified 2026-08-22: reading `_shared/pulse-pieces.ts` against
-✨ Enrichment §A produces a real disagreement whose correct verdict is TRACKED (MESITA-1172),
+✨ Intake §A produces a real disagreement whose correct verdict is TRACKED (MESITA-1172),
 and reporting it as drift would be a false P1 on the doc that called it first.
 
 9.1 **Docs tree shape.** Every domain link on 📚 Docs resolves · exactly one page per domain
@@ -327,7 +327,7 @@ and reporting it as drift would be a false P1 on the doc that called it first.
     unless stated.
 
     Apps `apps/*/src/app` · Atlas `_shared/create-place.ts`, `_shared/categories*.ts`, `atlas-*` ·
-    Enrichment `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
+    Intake `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
     Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
     Passport `_shared/class-doors.ts`, `_shared/consumer-*.ts`, `admin-web-grant-class` ·
     Promos `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
