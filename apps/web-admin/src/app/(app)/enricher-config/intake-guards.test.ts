@@ -20,7 +20,6 @@ const seed: IntakeSettings = {
   synthesisQuality: "economy",
   visionQuality: "economy",
   perplexityPreset: "pro-search",
-  perRunCostCapUsd: 1,
   discoverWebsiteN: 5,
   discoverInstagramN: 5,
   discoverFacebookN: 3,

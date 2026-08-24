@@ -151,7 +151,6 @@ export async function updateAtlasConfig(patch: {
   synthesisQuality?: SynthesisQuality;
   visionQuality?: SynthesisQuality;
   perplexityPreset?: PerplexityPreset;
-  perRunCostCapUsd?: number;
   discoverWebsiteN?: number;
   discoverInstagramN?: number;
   discoverFacebookN?: number;

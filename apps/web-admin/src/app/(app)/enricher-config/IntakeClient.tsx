@@ -167,7 +167,6 @@ export function IntakeClient({
           synthesisQuality: settings.synthesisQuality,
           visionQuality: settings.visionQuality,
           perplexityPreset: settings.perplexityPreset,
-          perRunCostCapUsd: settings.perRunCostCapUsd,
           discoverWebsiteN: settings.discoverWebsiteN,
           discoverInstagramN: settings.discoverInstagramN,
           discoverFacebookN: settings.discoverFacebookN,
@@ -243,16 +242,6 @@ export function IntakeClient({
                   value={settings.perplexityPreset}
                   options={PERPLEXITY_OPTIONS}
                   onChange={(v) => patch({ perplexityPreset: v })}
-                  disabled={pending}
-                />
-                <NumberField
-                  icon={<Star className="text-muted-foreground h-4 w-4" />}
-                  label="Per-run cost cap (USD)"
-                  value={settings.perRunCostCapUsd}
-                  min={0}
-                  max={100}
-                  decimals
-                  onChange={(v) => patch({ perRunCostCapUsd: v })}
                   disabled={pending}
                 />
                 <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
@@ -375,11 +364,7 @@ export function IntakeClient({
                 {
                   term: "What stops it",
                   detail:
-                    "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9.",
-                },
-                {
-                  term: "Ceiling",
-                  detail: "The per-run cost cap in Models, enforced mid-run.",
+                    "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9. Spend is bounded by the collect and analyze knobs, and by five places per tick — not a dollar cap.",
                 },
               ]}
               steps={[
