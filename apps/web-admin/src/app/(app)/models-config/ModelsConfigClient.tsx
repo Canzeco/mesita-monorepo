@@ -192,7 +192,7 @@ export function ModelsConfigClient() {
       <p className="text-muted-foreground mt-3 type-label leading-relaxed">
         Intaker quality tiers and the embedding model live on Enrichment; the
         embedding model is fixed by design — changing it re-vectors the catalog.
-        Ojo&apos;s enabled/threshold/retry policy lives on Ojo Config.
+        Ojo&apos;s enabled/threshold/retry policy lives on Visits.
       </p>
 
       <SaveRow

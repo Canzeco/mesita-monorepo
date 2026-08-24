@@ -198,20 +198,18 @@ are really there, which is worse than no list.
 Not config pages, do not audit as one: any route whose page body is a
 `permanentRedirect` shim — grep for it rather than trusting a list. Today that
 covers `/adea-config` and `/db-config` (renamed routes → enricher-config,
-manage-database) plus `/models-config`, `/verification-config` and `/ojo-config`
-(folded into `/general-config`).
+manage-database) plus `/models-config` and `/verification-config` (folded into
+`/general-config`) and `/ojo-config` (folded into `/visits-config`).
 The `/aura-*` route tree is gone — Aura is a retired class, so a reference to it
 is stale doc, not a missing page. `agents_config` is EF-managed with no page yet.
 `scoring_config` belonged to the deleted Lineup engine (MESITA-1048) — if it
 still has no reader, that is a 4.3 dead-knob finding, not a page to check.
 
 **Ojo is the one that must not be skipped**, and it no longer has a rail row —
-its knobs render inside **General Config** (`/general-config`), so auditing the
-rail alone misses it. Every `ojo_config` knob is live and editable while the
-engine is unbuilt (MESITA-1034), so it is the repo's largest standing block of
-deliberately-unenforced config. The rule is that a staged knob
-is *labeled* staged — check that the console still says so. A silently
-un-staged Ojo knob reads to an operator as a control that does something.
+its knobs render inside **Visits** (`/visits-config`; blob still `ojo_config`),
+so auditing the rail alone misses it. The engine (`_shared/ojo-engine.ts`,
+MESITA-1034) reads them; `enabled` defaults off. A silently un-staged knob
+reads to an operator as a control that does something.
 
 4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
     admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**

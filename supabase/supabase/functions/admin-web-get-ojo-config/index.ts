@@ -3,13 +3,13 @@
 // Naming: caller-verb-words. Caller = admin, verb = get, words = ojo-config.
 //
 // Returns Ojo's policy blob from the public.app_config singleton for the
-// admin console's Ojo Config page. Ojo is the proof-verification engine: it
+// admin Visits page (Ojo card). Ojo is the proof-verification engine: it
 // reads the screenshot a guest posts for an Instagram story / Google review
 // (MESITA-1030 · ticket-proofs bucket) and returns a verdict. See
 // 20260811210000_ojo_config.sql for the shape and MESITA-1034 for the engine.
 //
-// The blob ships BEFORE the engine on purpose, so policy exists the moment
-// Ojo runs. Until then every knob is labeled STAGED in the console.
+// Engine shipped MESITA-1034. `enabled` defaults off so flipping it is the
+// only behaviour change. Policy blob is `app_config.ojo_config`.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

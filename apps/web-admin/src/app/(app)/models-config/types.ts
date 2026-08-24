@@ -152,7 +152,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Eye,
     status: "live",
     detail:
-      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. See Ojo Config for the enabled/threshold/retry policy this model serves.",
+      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. See Visits for the enabled/threshold/retry policy this model serves.",
     editableHere: true,
     owner: null,
   },

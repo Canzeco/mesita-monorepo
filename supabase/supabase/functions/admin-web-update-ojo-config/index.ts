@@ -2,7 +2,7 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = ojo-config.
 //
-// WHOLE-BLOB write of Ojo's policy from the admin console's Ojo Config page —
+// WHOLE-BLOB write of Ojo's policy from admin Visits (Ojo card) —
 // the house pattern for jsonb configs here. The thresholds are a related set
 // (auto-pass sits above the review floor by construction), so a per-key merge
 // could persist an inverted band; the client always sends the whole policy and

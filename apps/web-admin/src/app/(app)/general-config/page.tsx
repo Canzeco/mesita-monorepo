@@ -1,14 +1,10 @@
 import { getVerificationConfig, type VerificationConfig } from "../verification-config/actions";
 import { VerificationConfigClient } from "../verification-config/VerificationConfigClient";
 import { ModelsConfigClient } from "../models-config/ModelsConfigClient";
-import { getOjoConfig } from "../ojo-config/actions";
-import { OjoConfigClient } from "../ojo-config/OjoConfigClient";
-import { OJO_FALLBACK } from "../ojo-config/defaults";
 
 // General — Verification + Models, each keeping its own client, its own load
-// and its own Save. The two clients render cards only (their page chrome lived
-// in the layouts that this page replaces), so composing them needs no surgery
-// on either form.
+// and its own Save. Ojo's policy lives on Visits (who reads the proof);
+// Ojo · Vision stays in Models because it is a model picker, not visit policy.
 export const dynamic = "force-dynamic";
 
 const FALLBACK_CONFIG: VerificationConfig = {
@@ -18,7 +14,7 @@ const FALLBACK_CONFIG: VerificationConfig = {
 };
 
 export default async function GeneralConfigPage() {
-  const [res, ojo] = await Promise.all([getVerificationConfig(), getOjoConfig()]);
+  const res = await getVerificationConfig();
   return (
     <div className="flex flex-col gap-10">
       <section className="flex flex-col gap-4">
@@ -50,17 +46,6 @@ export default async function GeneralConfigPage() {
           </p>
         </div>
         <ModelsConfigClient />
-      </section>
-
-      {/* Ojo moved here (Pato, 2026-08-21): after its own reduction it is three
-          controls, which is the ≤3 rule this page runs on. Its own save stays
-          — a third write target, never fused with the other two. */}
-      <section className="flex flex-col gap-4">
-        <OjoConfigClient
-          initialConfig={ojo.ok ? ojo.config : OJO_FALLBACK}
-          initialUpdatedAt={ojo.ok ? ojo.updatedAt : null}
-          loadError={ojo.ok ? null : ojo.error}
-        />
       </section>
     </div>
   );
