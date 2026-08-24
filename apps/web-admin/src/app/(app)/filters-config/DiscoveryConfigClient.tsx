@@ -4,10 +4,9 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { Compass, Filter, Layers, Megaphone } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
-import { KnobStatus, SaveRow, SectionCard, Switch } from "@/components/admin-ui/config";
+import { Collapsible, SaveRow, SectionCard, Switch } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  DEFAULT_CONFIG,
   ENGINES,
   MAX_DISTANCE_KM_MAX,
   MIN_RATING_MAX,
@@ -16,7 +15,6 @@ import {
   SLOT_MIN_EVERY_NTH,
   WEIGHT_MAX,
   WEIGHT_MIN,
-  WIRED_ENGINES,
   weightMeaning,
   type DiscoveryConfig,
   type DiscoveryFilters,
@@ -26,6 +24,17 @@ import {
 
 /** The exponent step. Matches the two-decimal rounding in catalog.coerceConfig. */
 const STEP = 0.05;
+
+const INPUT =
+  "border-border bg-card focus:border-foreground h-9 w-20 shrink-0 rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50";
+
+function Enforced({ on }: { on: string }) {
+  return (
+    <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
+      Enforced · {on}
+    </span>
+  );
+}
 
 export function DiscoveryConfigClient({
   initialConfig,
@@ -121,34 +130,31 @@ export function DiscoveryConfigClient({
   const allOff = SIGNALS.every((s) => cfg.weights[s.key] <= 0);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4">
+      {error ? <ErrorNote message={error} /> : null}
+
       <SectionCard
         icon={<Compass className="text-secondary h-4 w-4" />}
         title="Signals"
-        subtitle="Weights are EXPONENTS, not multipliers: each signal enters the blend as s^w. Because every signal scores 0–1, a bigger exponent is harsher — it pushes everything short of near-perfect toward zero. 0 switches a signal off. What matters is the ratio between rows: Proximity at 2 against Popularity at 1 is what “twice as important” means."
+        subtitle="Exponents on the earned blend. 0 is off. Ratios between rows are what matter."
         status={
-          updatedAt ? (
-            <span className="text-muted-foreground text-xs">
-              Updated {formatShortDate(updatedAt)}
-            </span>
-          ) : null
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <Enforced on="Swipe" />
+            {updatedAt ? (
+              <span className="text-muted-foreground text-xs">
+                Updated {formatShortDate(updatedAt)}
+              </span>
+            ) : null}
+          </div>
         }
       >
-        <div className="mt-4">
-          <KnobStatus
-            kind="enforced"
-            reason={`Enforced on ${WIRED_ENGINES.join(", ")} today. Map, Favorites and the parked engines still serve their own order — each one is wired as it is rebuilt.`}
-          />
-        </div>
-
-        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[640px] border-separate border-spacing-0 px-4 sm:px-0">
+        <div className="mt-4 -mx-4 overflow-x-auto sm:mx-0">
+          <table className="w-full min-w-[28rem] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
                 <th className="pb-2 pl-1 font-medium">Signal</th>
-                <th className="pb-2 font-medium">Reads</th>
-                <th className="w-28 pb-2 text-right font-medium">Exponent</th>
-                <th className="w-48 pb-2 pr-1 font-medium">Effect</th>
+                <th className="w-24 pb-2 text-right font-medium">Exponent</th>
+                <th className="w-40 pb-2 pr-1 font-medium">Effect</th>
               </tr>
             </thead>
             <tbody>
@@ -158,18 +164,17 @@ export function DiscoveryConfigClient({
                 return (
                   <tr
                     key={s.key}
-                    className="border-border/50 align-top [&>td]:border-t [&>td]:py-3"
+                    className="border-border/50 align-middle [&>td]:border-t [&>td]:py-2.5"
                   >
                     <td className="pl-1 pr-4">
-                      <div className={"text-sm font-semibold" + (off ? " opacity-50" : "")}>
+                      <div
+                        className={"text-sm font-semibold" + (off ? " opacity-50" : "")}
+                        title={s.reads}
+                      >
                         {s.label}
                       </div>
-                      <div className="text-muted-foreground mt-0.5 type-label">
-                        {s.blurb}
-                      </div>
                     </td>
-                    <td className="text-muted-foreground pr-4 type-label">{s.reads}</td>
-                    <td className="pr-4">
+                    <td className="pr-4 text-right">
                       <input
                         type="number"
                         inputMode="decimal"
@@ -178,12 +183,13 @@ export function DiscoveryConfigClient({
                         step={STEP}
                         value={w}
                         disabled={pending}
+                        aria-label={`${s.label} exponent`}
                         onChange={(e) => {
                           const raw = Number(e.target.value);
                           if (Number.isNaN(raw)) return;
                           setWeight(s.key, raw);
                         }}
-                        className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+                        className={INPUT + " w-full max-w-24"}
                       />
                     </td>
                     <td
@@ -201,60 +207,45 @@ export function DiscoveryConfigClient({
           </table>
         </div>
 
-        {allOff && (
-          <p className="text-muted-foreground mt-4 type-label">
-            Every signal is off, so every place ties and the deck falls back to
-            the pool&rsquo;s own order. That is a legal setting — it is what
-            Discovery served before this model existed — but nothing is ranking.
+        {allOff ? (
+          <p className="text-muted-foreground mt-3 type-label">
+            Every signal is off — the deck falls back to pool order.
           </p>
-        )}
+        ) : null}
 
-        <p className="text-muted-foreground mt-4 type-label">
-          A signal with nothing to read abstains at 1 and drops out of the blend
-          rather than penalising the place — a guest who sent no location does
-          not make every place worse. There is no Promoting row here on purpose:
-          the bought lane is below, and it never touches a score.
-        </p>
+        <Collapsible summary="How exponents work">
+          <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
+            Each signal scores 0–1 and enters as s^w, so a bigger exponent is
+            harsher. Missing data abstains at 1 and drops out. Promoting is not
+            a row: money buys a slot below, never a score.
+          </p>
+        </Collapsible>
       </SectionCard>
 
       <SectionCard
         icon={<Megaphone className="text-secondary h-4 w-4" />}
         title="Bought slots"
-        subtitle="The second lane. Places that buy a Strategy do not score higher — every Nth position in the deck becomes a slot, and a promoting place is moved forward into it. Rank is never for sale: with slotting on or off, the relative order of every place that bought nothing is identical."
+        subtitle="Every Nth card is a paid seat. Rank itself is never for sale."
+        status={<Enforced on="Swipe" />}
       >
-        <div className="mt-4">
-          <KnobStatus
-            kind="enforced"
-            reason="Enforced on Swipe. Strategy tier decides who takes the next slot (Dominant › Aggressive › Conservative); inside a tier, the better-ranked place goes first."
-          />
-        </div>
-
-        <div className="mt-5 space-y-4">
-          <div className="border-border bg-background flex items-start justify-between gap-4 rounded-xl border p-4">
-            <div>
-              <div className="text-sm font-medium leading-snug">
-                Give promoting places bought slots
-              </div>
-              <div className="text-muted-foreground mt-0.5 type-label">
-                Off serves the earned order alone — no place is moved forward,
-                whatever it pays.
-              </div>
-            </div>
+        <div className="mt-4 divide-border border-border divide-y rounded-xl border">
+          <div className="flex items-center justify-between gap-4 p-4">
+            <p className="text-sm font-medium leading-snug">Give promoting places slots</p>
             <Switch
-              label="Give promoting places bought slots"
+              label="Give promoting places slots"
               on={cfg.slotting.enabled}
               pending={pending}
               onClick={() => setSlotting("enabled", !cfg.slotting.enabled)}
             />
           </div>
-
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              A bought slot every… (cards)
-            </span>
-            <span className="text-muted-foreground type-label">
-              {SLOT_MIN_EVERY_NTH} is the floor, so the top of the deck and at
-              least every other card are always earned. Higher is rarer.
+          <label className="flex items-center justify-between gap-4 p-4">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium leading-snug">
+                Slot every N cards
+              </span>
+              <span className="text-muted-foreground type-label">
+                Floor {SLOT_MIN_EVERY_NTH}, so the top of the deck stays earned.
+              </span>
             </span>
             <input
               type="number"
@@ -264,15 +255,19 @@ export function DiscoveryConfigClient({
               step={1}
               value={cfg.slotting.everyNth}
               disabled={pending || !cfg.slotting.enabled}
+              aria-label="Bought slot every N cards"
               onChange={(e) => {
                 const raw = Number(e.target.value);
                 if (Number.isNaN(raw)) return;
                 setSlotting(
                   "everyNth",
-                  Math.min(SLOT_MAX_EVERY_NTH, Math.max(SLOT_MIN_EVERY_NTH, Math.round(raw))),
+                  Math.min(
+                    SLOT_MAX_EVERY_NTH,
+                    Math.max(SLOT_MIN_EVERY_NTH, Math.round(raw)),
+                  ),
                 );
               }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
+              className={INPUT}
             />
           </label>
         </div>
@@ -281,27 +276,12 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<Filter className="text-secondary h-4 w-4" />}
         title="Filters"
-        subtitle="What may ENTER the pool at all. A signal DEMOTES, a filter EXCLUDES — that is why both boxes exist, and why a rule belongs to exactly one of them. These are catalog-wide operator policy: a guest never sees them and cannot express them."
+        subtitle="What may enter the pool. A signal demotes; a filter excludes."
+        status={<Enforced on="Swipe + Map" />}
       >
-        <div className="mt-4">
-          <KnobStatus
-            kind="enforced"
-            reason="Applied as query predicates on Swipe and Map, before anything ranks — never as a post-filter, which would thin the deck instead of narrowing the catalog."
-          />
-        </div>
-
-        <div className="mt-5 space-y-4">
-          <div className="border-border bg-background flex items-start justify-between gap-4 rounded-xl border p-4">
-            <div>
-              <div className="text-sm font-medium leading-snug">
-                Only fully enriched places
-              </div>
-              <div className="text-muted-foreground mt-0.5 type-label">
-                Requires <code>content_status = ready</code>. A half-enriched card
-                has no description, no images and no hours — it reads as a broken
-                listing rather than a pending one. Off shows them anyway.
-              </div>
-            </div>
+        <div className="mt-4 divide-border border-border divide-y rounded-xl border">
+          <div className="flex items-center justify-between gap-4 p-4">
+            <p className="text-sm font-medium leading-snug">Only fully enriched places</p>
             <Switch
               label="Only fully enriched places"
               on={cfg.filters.requireReady}
@@ -309,104 +289,59 @@ export function DiscoveryConfigClient({
               onClick={() => setFilter("requireReady", !cfg.filters.requireReady)}
             />
           </div>
-
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Minimum Google rating (0 = off)
-            </span>
-            <span className="text-muted-foreground type-label">
-              Above 0 this also EXCLUDES places with no rating at all — a floor
-              asks a place to clear a bar, and an unrated place has not. In a
-              young catalog that is most of them. Popularity already demotes a
-              weak place; use this only when you mean to remove it.
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={MIN_RATING_MAX}
-              step={0.1}
-              value={cfg.filters.minRating}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                setFilter(
-                  "minRating",
-                  Math.round(Math.min(MIN_RATING_MAX, Math.max(0, raw)) * 10) / 10,
-                );
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
-
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Minimum Google review count (0 = off)
-            </span>
-            <span className="text-muted-foreground type-label">
-              Same exclusion rule: above 0, a place with no reviews is out.
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={cfg.filters.minReviews}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                setFilter("minReviews", Math.max(0, Math.round(raw)));
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
-
-          <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-            <span className="text-sm font-medium leading-snug">
-              Hard radius in km (0 = off)
-            </span>
-            <span className="text-muted-foreground type-label">
-              Swipe only — Map passes no location, and a radius would fight the
-              viewport a guest is panning. Off by default on purpose: Proximity
-              already bends distance through a log curve, and a hard radius is
-              the model the filter teardown removed. Use it for a real city
-              boundary, not as the normal way distance is handled.
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={MAX_DISTANCE_KM_MAX}
-              step={1}
-              value={cfg.filters.maxDistanceKm}
-              disabled={pending}
-              onChange={(e) => {
-                const raw = Number(e.target.value);
-                if (Number.isNaN(raw)) return;
-                setFilter(
-                  "maxDistanceKm",
-                  Math.min(MAX_DISTANCE_KM_MAX, Math.max(0, Math.round(raw))),
-                );
-              }}
-              className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-            />
-          </label>
+          <FilterNumber
+            label="Minimum Google rating"
+            hint="0 is off. Above 0 also drops unrated places."
+            value={cfg.filters.minRating}
+            min={0}
+            max={MIN_RATING_MAX}
+            step={0.1}
+            decimals
+            pending={pending}
+            onChange={(v) =>
+              setFilter(
+                "minRating",
+                Math.round(Math.min(MIN_RATING_MAX, Math.max(0, v)) * 10) / 10,
+              )
+            }
+          />
+          <FilterNumber
+            label="Minimum Google reviews"
+            hint="0 is off. Above 0 also drops places with no reviews."
+            value={cfg.filters.minReviews}
+            min={0}
+            step={1}
+            pending={pending}
+            onChange={(v) => setFilter("minReviews", Math.max(0, Math.round(v)))}
+          />
+          <FilterNumber
+            label="Hard radius (km)"
+            hint="0 is off. Swipe only — Map uses the viewport."
+            value={cfg.filters.maxDistanceKm}
+            min={0}
+            max={MAX_DISTANCE_KM_MAX}
+            step={1}
+            pending={pending}
+            onChange={(v) =>
+              setFilter(
+                "maxDistanceKm",
+                Math.min(MAX_DISTANCE_KM_MAX, Math.max(0, Math.round(v))),
+              )
+            }
+          />
         </div>
       </SectionCard>
 
       <SectionCard
         icon={<Layers className="text-secondary h-4 w-4" />}
         title="Engines"
-        subtitle="The surfaces that answer with places. An engine takes params, calls the signals it needs, and returns places — signals never call engines, and no engine owns one. Only an engine actually wired to the library gets a control here."
+        subtitle="Surfaces that return places. Only a wired engine gets a ranking switch."
       >
-        <div className="mt-5 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[620px] border-separate border-spacing-0 px-4 sm:px-0">
+        <div className="mt-4 -mx-4 overflow-x-auto sm:mx-0">
+          <table className="w-full min-w-[22rem] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
                 <th className="pb-2 pl-1 font-medium">Engine</th>
-                <th className="pb-2 font-medium">What it is</th>
                 <th className="w-24 pb-2 font-medium">State</th>
                 <th className="w-40 pb-2 pr-1 text-right font-medium">Ranked</th>
               </tr>
@@ -417,7 +352,8 @@ export function DiscoveryConfigClient({
                 return (
                   <tr
                     key={e.key}
-                    className="border-border/50 align-top [&>td]:border-t [&>td]:py-3"
+                    title={e.what}
+                    className="border-border/50 align-middle [&>td]:border-t [&>td]:py-2.5"
                   >
                     <td className="pl-1 pr-4">
                       <span
@@ -426,7 +362,6 @@ export function DiscoveryConfigClient({
                         {e.label}
                       </span>
                     </td>
-                    <td className="text-muted-foreground pr-4 type-label">{e.what}</td>
                     <td className="pr-4">
                       <span className="text-muted-foreground type-meta font-semibold tracking-wide uppercase">
                         {e.state}
@@ -436,7 +371,7 @@ export function DiscoveryConfigClient({
                       {e.wired ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-muted-foreground type-label">
-                            {cfg.engines[e.wired].ranked ? "Signals" : "Pool order"}
+                            {cfg.engines[e.wired].ranked ? "Signals" : "Pool"}
                           </span>
                           <Switch
                             label={`${e.label} reads the signals`}
@@ -459,17 +394,7 @@ export function DiscoveryConfigClient({
             </tbody>
           </table>
         </div>
-
-        <p className="text-muted-foreground mt-4 type-label">
-          Turning an engine off ranking serves its pool in the pool&rsquo;s own
-          order — what Swipe did before this model existed. The Filters above
-          still apply either way: admission and ordering are different
-          questions. &ldquo;Not wired&rdquo; means that engine does not read the
-          signal library yet, so there is no knob to offer.
-        </p>
       </SectionCard>
-
-      {error && <ErrorNote message={error} />}
 
       <SaveRow
         pending={pending}
@@ -478,13 +403,53 @@ export function DiscoveryConfigClient({
         onClick={save}
         loadError={loadBlocked ? error : null}
       />
-
-      <p className="text-muted-foreground type-label">
-        Defaults: every earned signal at {DEFAULT_CONFIG.weights.proximity}, except Randomness at{" "}
-        {DEFAULT_CONFIG.weights.randomness} so it softens into a tiebreak. Flat is
-        the honest starting point — nothing has been measured yet, and a
-        fabricated weighting would read as a finding.
-      </p>
     </div>
+  );
+}
+
+function FilterNumber({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  decimals,
+  pending,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  min: number;
+  max?: number;
+  step: number;
+  decimals?: boolean;
+  pending: boolean;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-4 p-4">
+      <span className="min-w-0">
+        <span className="block text-sm font-medium leading-snug">{label}</span>
+        <span className="text-muted-foreground type-label">{hint}</span>
+      </span>
+      <input
+        type="number"
+        inputMode={decimals ? "decimal" : "numeric"}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={pending}
+        aria-label={label}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (Number.isNaN(raw)) return;
+          onChange(raw);
+        }}
+        className={INPUT}
+      />
+    </label>
   );
 }
