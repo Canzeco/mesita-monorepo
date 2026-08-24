@@ -7,6 +7,8 @@
 -- supported local-seed surface.
 
 insert into public.profiles (slug, name, category, vibe, price_level, listing_type, status, closes_at, free_rate, premium_rate)
-values
-  ('casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 'rooftop', 3, 'partner', 'active', '02:00', 20, 50)
-on conflict (slug) do nothing;
+select
+  'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 'rooftop', 3, 'partner', 'active', '02:00', 20, 50
+where not exists (
+  select 1 from public.profiles where slug = 'casa-luminar-seed'
+);
