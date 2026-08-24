@@ -1,9 +1,12 @@
 "use client";
 
-// Help — the single education home for the reward program (MESITA-809):
-// how rewards work plus the seven-rung tier ladder. Lives on Me, not on
-// Rewards: the wallet is for doing, this is for understanding. Opened from
-// the Me > Help row.
+// Help — the single education home for the reward program (MESITA-809).
+// Lives on Me, not on Rewards: the wallet is for doing, this is for
+// understanding. Opened from the Me > Help row.
+//
+// Numbers never live here. A static ladder quoted Aggressive defaults as
+// if they were every place's bill (MESITA-1017). The live sheet is the
+// place Rewards tab; this list is the rungs, named.
 
 import type { LucideIcon } from "lucide-react";
 import {
@@ -13,28 +16,158 @@ import {
   Percent,
   Sparkles,
   Star,
+  Store,
+  UtensilsCrossed,
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useConsumerClass } from "@/lib/class-context";
-import { CLASS_FLOOR, CLASS_ICONS, CLASS_MARK_ICON } from "@/lib/consumer-data";
 import {
-  PEAK_STRATEGY,
-  REWARD_SEGMENTS,
-  segmentKeyForClass,
-  type RewardSegmentKey,
-} from "@/lib/reward-segments";
+  CLASS_FLOOR,
+  CLASS_ICONS,
+  CLASS_MARK_ICON,
+  CLASS_ORDER,
+  PREMIUM_PLAN_ICON,
+  classProperLabel,
+  type PlanKey,
+} from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-const SEGMENT_ICON: Record<RewardSegmentKey, LucideIcon> = {
-  bronze: CLASS_ICONS.bronze,
-  silver: CLASS_ICONS.silver,
-  gold: CLASS_ICONS.gold,
-  diamond: CLASS_ICONS.diamond,
-  story: Instagram,
-  welcome: DoorOpen,
-  review: Star,
+type HelpRung = {
+  key: string;
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  mine: boolean;
 };
+
+function RungRow({ icon: Icon, label, hint, mine }: Omit<HelpRung, "key">) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 rounded-xl px-2.5 py-2",
+        mine
+          ? "bg-pink-gradient text-white"
+          : "bg-muted/40 ring-border/50 ring-1 ring-inset",
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-lg",
+          mine ? "bg-white/20 text-white" : "bg-secondary/10 text-secondary",
+        )}
+      >
+        <Icon className="size-[14px]" strokeWidth={2.25} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "type-body flex items-center gap-1.5 truncate leading-tight font-bold",
+            mine ? "text-white" : "text-foreground",
+          )}
+        >
+          {label}
+          {mine ? (
+            <span className="type-meta shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 font-extrabold tracking-widest uppercase">
+              You
+            </span>
+          ) : null}
+        </span>
+        <span
+          className={cn(
+            "type-label mt-0.5 block truncate",
+            mine ? "text-white/80" : "text-muted-foreground",
+          )}
+        >
+          {hint}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+export function HelpRungList({
+  classKey,
+  plan,
+}: {
+  classKey: string;
+  plan: PlanKey;
+}) {
+  const rungs: HelpRung[] = [
+    {
+      key: "base",
+      label: "Base",
+      hint: "Every guest, every visit",
+      icon: Store,
+      mine: false,
+    },
+    ...CLASS_ORDER.map((k) => ({
+      key: k,
+      label: classProperLabel(k),
+      hint: "Earned, not bought",
+      icon: CLASS_ICONS[k],
+      mine: k === classKey,
+    })),
+    {
+      key: "free",
+      label: "Free",
+      hint: "No subscription",
+      icon: Star,
+      mine: plan === "free",
+    },
+    {
+      key: "premium",
+      label: "Premium",
+      hint: "Raises the rate at any class",
+      icon: PREMIUM_PLAN_ICON,
+      mine: plan === "premium",
+    },
+    {
+      key: "welcome",
+      label: "Welcome",
+      hint: "First visit only",
+      icon: DoorOpen,
+      mine: false,
+    },
+    {
+      key: "story",
+      label: "Instagram Story",
+      hint: "Needs a connected handle",
+      icon: Instagram,
+      mine: false,
+    },
+    {
+      key: "google",
+      label: "Google Review",
+      hint: "Once per place",
+      icon: Star,
+      mine: false,
+    },
+    {
+      key: "mesita",
+      label: "Mesita Review",
+      hint: "In the app, once per place",
+      icon: UtensilsCrossed,
+      mine: false,
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-1.5 pt-1">
+      <div className="flex items-baseline justify-between px-1 pb-1">
+        <h3 className="text-foreground text-sm font-bold tracking-tight">
+          Every priced rung
+        </h3>
+        <span className="text-muted-foreground type-label">
+          They add together
+        </span>
+      </div>
+      {rungs.map(({ key, ...r }) => (
+        <RungRow key={key} {...r} />
+      ))}
+    </div>
+  );
+}
 
 export function HelpModal({
   open,
@@ -43,8 +176,7 @@ export function HelpModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { key: classKey } = useConsumerClass();
-  const mine = segmentKeyForClass(classKey);
+  const { key: classKey, plan } = useConsumerClass();
 
   return (
     <LocalSheet
@@ -83,14 +215,6 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Elevated classes boost them.
             </span>{" "}
-            {/* THE DOORS, NOT THE METALS (MESITA-1145). This used to name
-                all four rungs and assign each to a door, and it got one
-                flatly wrong: "Silver and Gold are free with Instagram reach"
-                promised a class nothing can grant — `classes` has no gold
-                row, so a 5,000-follower account stays Silver. Naming the two
-                ways in states the same thing, stays true as the ladder moves,
-                and leaves the bars to the ladder, which is the surface that
-                actually shows them. */}
             {CLASS_FLOOR.label} gets the base discount; every class above it
             unlocks a bigger one. Followers lift you automatically; an invite is
             by hand. Premium is a separate subscription that raises your rate at
@@ -108,70 +232,12 @@ export function HelpModal({
             </span>{" "}
             Welcome, Instagram Story, Google Review, and Mesita Review stack
             on your class and plan — not pick-one. The bill clamps at 100% and
-            applies to the first cap-pesos.
+            applies to the first cap-pesos. Live percents sit on each
+            place&apos;s Rewards tab.
           </p>
         </div>
 
-        {/* The ladder — compact rungs, the guest's own marked. */}
-        <div className="flex flex-col gap-1.5 pt-1">
-          <div className="flex items-baseline justify-between px-1 pb-1">
-            <h3 className="text-foreground text-sm font-bold tracking-tight">
-              Reward tiers
-            </h3>
-            <span className="text-muted-foreground type-label">
-              They add together
-            </span>
-          </div>
-          {REWARD_SEGMENTS.map((seg) => {
-            const Icon = SEGMENT_ICON[seg.key];
-            const isMine = seg.key === mine;
-            return (
-              <div
-                key={seg.key}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-xl px-2.5 py-2",
-                  isMine
-                    ? "bg-pink-gradient text-white"
-                    : "bg-muted/40 ring-border/50 ring-1 ring-inset",
-                )}
-              >
-                <span
-                  className={cn(
-                    "grid size-7 shrink-0 place-items-center rounded-lg",
-                    isMine
-                      ? "bg-white/20 text-white"
-                      : "bg-secondary/10 text-secondary",
-                  )}
-                >
-                  <Icon className="size-[14px]" strokeWidth={2.25} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={cn(
-                      "type-body flex items-center gap-1.5 truncate leading-tight font-bold",
-                      isMine ? "text-white" : "text-foreground",
-                    )}
-                  >
-                    {seg.name}
-                    {isMine ? (
-                      <span className="type-meta shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 font-extrabold tracking-widest uppercase">
-                        You
-                      </span>
-                    ) : null}
-                  </span>
-                </span>
-                <span
-                  className={cn(
-                    "type-body shrink-0 leading-none font-extrabold tabular-nums",
-                    isMine ? "text-white" : "text-foreground/80",
-                  )}
-                >
-                  {seg.rates[PEAK_STRATEGY]}%
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <HelpRungList classKey={classKey} plan={plan} />
       </div>
     </LocalSheet>
   );

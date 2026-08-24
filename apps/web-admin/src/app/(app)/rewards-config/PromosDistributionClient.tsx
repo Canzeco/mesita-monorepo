@@ -87,16 +87,6 @@ export function PromosDistributionClient({
               onChange={(v) => setAssumptions((a) => ({ ...a, welcomePct: v }))}
             />
             <PctField
-              label="Mesita Review"
-              value={assumptions.actionPct.mesita}
-              onChange={(v) =>
-                setAssumptions((a) => ({
-                  ...a,
-                  actionPct: { ...a.actionPct, mesita: v },
-                }))
-              }
-            />
-            <PctField
               label="Instagram Story"
               value={assumptions.actionPct.story}
               onChange={(v) =>
@@ -113,6 +103,16 @@ export function PromosDistributionClient({
                 setAssumptions((a) => ({
                   ...a,
                   actionPct: { ...a.actionPct, google: v },
+                }))
+              }
+            />
+            <PctField
+              label="Mesita Review"
+              value={assumptions.actionPct.mesita}
+              onChange={(v) =>
+                setAssumptions((a) => ({
+                  ...a,
+                  actionPct: { ...a.actionPct, mesita: v },
                 }))
               }
             />
@@ -139,6 +139,25 @@ export function PromosDistributionClient({
               Sums to {classSum}% — normalized proportionally.
             </p>
           )}
+        </SectionCard>
+
+        <SectionCard
+          icon={<Users className="text-secondary h-4 w-4" />}
+          title="Plan mix"
+          subtitle="Share of visits on Premium. Free is the rest."
+        >
+          <div className="mt-4">
+            <PctField
+              label="Premium"
+              value={assumptions.premiumPct}
+              onChange={(v) =>
+                setAssumptions((a) => ({ ...a, premiumPct: v }))
+              }
+            />
+            <p className="text-muted-foreground type-label pt-2">
+              Free {100 - assumptions.premiumPct}%
+            </p>
+          </div>
         </SectionCard>
       </div>
 
