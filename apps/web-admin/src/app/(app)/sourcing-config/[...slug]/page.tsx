@@ -1,7 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 
-// Retired Sourcing Config subpaths (Config/Playground tabs → one flat page).
-// Required `[...slug]` so the live root `page.tsx` stays authoritative.
+// Every retired Sourcing subpath lands on Intake, which is where the channel
+// matrix lives now.
 export default async function SourcingConfigLegacyRedirect() {
-  permanentRedirect("/sourcing-config");
+  permanentRedirect("/enricher-config");
 }

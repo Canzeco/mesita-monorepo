@@ -23,7 +23,6 @@ import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
-import { SOURCING_PARENT } from "@/app/(app)/sourcing-config/nav";
 import {
   parsePlaceId,
   TOOL_ROUTES,
@@ -89,10 +88,10 @@ const MANAGE_NAV: NavItem[] = [
 // Configurations — ordered as the product flows, not alphabetically or by age.
 // Two lifecycles end to end, a place's then a guest's:
 //   platform  who operates the console, then which model everything runs on
-//   supply    a place's life: eligible to enter (Sourcing) → the pipeline that
-//             fills its profile (Enrichment; the profile SPEC is Notion Atlas
-//             Rules — nothing to configure, so no page) → how ownership gets
-//             sealed (Verification)
+//   supply    a place's life, all of it on ONE page: eligible to enter, then
+//             the Intaker that fills its profile (Intake; the profile SPEC is
+//             Notion Atlas Rules — nothing to configure, so no page) → how
+//             ownership gets sealed (Verification)
 //   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
 //             the local context) → or ordering without going at all (Orders,
@@ -139,10 +138,10 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   // a page whose whole content is three controls does not earn a rail row.
   // Their routes survive as permanent redirects; only the rows are gone.
   { href: "/general-config", label: "General", Icon: Settings2 },
-  // Sourcing and Intake are one story told in two rows until MESITA-1287
-  // folds the channel matrix into the Intake page; then Sourcing's row goes
-  // and its route redirects. Intake keeps /enricher-config either way.
-  SOURCING_PARENT,
+  // INTAKE is one row for one story: which surfaces may find and add a place,
+  // then what Create and the nine enrich functions make of it. Sourcing's row
+  // and route are gone (2026-08-23) — /sourcing-config redirects here, and the
+  // channel matrix is Intake's "Before the place exists" band.
   INTAKE_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,
