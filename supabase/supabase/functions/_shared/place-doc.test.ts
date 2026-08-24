@@ -143,6 +143,33 @@ Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field i
   assert(!badPopular.ok, "a popular_times entry missing range must be rejected");
 });
 
+// MESITA-1249: places.enrichment (the materialized progress meter) — NOT
+// nullable, unlike details/google_reviews/popular_times above, since the
+// column carries a NOT NULL default. Full accept/reject coverage lives in
+// schema-catalog.test.ts next to EnrichmentMapSchema itself; these two just
+// prove the door actually wires that schema in for the "enrichment" key.
+Deno.test("validatePlacePatch: accepts a real places.enrichment patch", () => {
+  const res = validatePlacePatch({
+    enrichment: {
+      functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+      highWater: 1,
+      blockedAt: { key: "details", index: 2, status: "missing" },
+    },
+  });
+  assert(res.ok);
+});
+
+Deno.test("validatePlacePatch: rejects places.enrichment = null (the column is NOT NULL, unlike the other jsonb fields)", () => {
+  assert(!validatePlacePatch({ enrichment: null }).ok);
+});
+
+Deno.test("validatePlacePatch: rejects an enrichment patch smuggling the deliberately-not-folded schedule keys", () => {
+  const res = validatePlacePatch({
+    enrichment: { functions: {}, highWater: 0, blockedAt: null, everyDays: 30 },
+  });
+  assert(!res.ok);
+});
+
 Deno.test("validatePlacePatch: accepts a mesita_name override alone (google_name untouched)", () => {
   assert(validatePlacePatch({ mesita_name: "El Nuevo Nombre" }).ok);
 });

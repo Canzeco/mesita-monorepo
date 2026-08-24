@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_reset_preserve: {
@@ -77,10 +52,6 @@ export type Database = {
           atlas_save_total_images: number
           atlas_synthesis_quality: string
           atlas_vision_quality: string
-          auto_verify_ai_call: boolean
-          auto_verify_ai_email: boolean
-          auto_verify_video: boolean
-          create_places_as_verified: boolean
           discovery_config: Json
           enrichment_triggers: Json | null
           id: number
@@ -98,6 +69,7 @@ export type Database = {
           sourcing_config: Json
           updated_at: string
           updated_by: string | null
+          verification_config: Json
           visits_config: Json | null
         }
         Insert: {
@@ -122,10 +94,6 @@ export type Database = {
           atlas_save_total_images?: number
           atlas_synthesis_quality?: string
           atlas_vision_quality?: string
-          auto_verify_ai_call?: boolean
-          auto_verify_ai_email?: boolean
-          auto_verify_video?: boolean
-          create_places_as_verified?: boolean
           discovery_config?: Json
           enrichment_triggers?: Json | null
           id?: number
@@ -143,6 +111,7 @@ export type Database = {
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
+          verification_config?: Json
           visits_config?: Json | null
         }
         Update: {
@@ -167,10 +136,6 @@ export type Database = {
           atlas_save_total_images?: number
           atlas_synthesis_quality?: string
           atlas_vision_quality?: string
-          auto_verify_ai_call?: boolean
-          auto_verify_ai_email?: boolean
-          auto_verify_video?: boolean
-          create_places_as_verified?: boolean
           discovery_config?: Json
           enrichment_triggers?: Json | null
           id?: number
@@ -188,6 +153,7 @@ export type Database = {
           sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
+          verification_config?: Json
           visits_config?: Json | null
         }
         Relationships: []
@@ -622,6 +588,64 @@ export type Database = {
           },
         ]
       }
+      guest_make_goods: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          status: string
+          ticket_report_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          status?: string
+          ticket_report_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          status?: string
+          ticket_report_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_make_goods_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_make_goods_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_make_goods_ticket_report_id_fkey"
+            columns: ["ticket_report_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       managers: {
         Row: {
           created_at: string
@@ -993,6 +1017,8 @@ export type Database = {
       places: {
         Row: {
           address: string | null
+          business_status: string | null
+          business_status_at: string | null
           category: string | null
           category_label: string | null
           city: string | null
@@ -1012,6 +1038,7 @@ export type Database = {
           enrich_mode: string
           enrich_next_at: string | null
           enriched_at: string | null
+          enrichment: Json
           enrichment_sources: Json | null
           established_year: number | null
           executive_chef: string | null
@@ -1056,8 +1083,6 @@ export type Database = {
           products: Json | null
           reddit_url: string | null
           reservation_channel: string | null
-          reservation_contacts: Json
-          reservation_endpoint: string | null
           reservation_target: string | null
           resy_url: string | null
           story: string | null
@@ -1078,6 +1103,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_status?: string | null
+          business_status_at?: string | null
           category?: string | null
           category_label?: string | null
           city?: string | null
@@ -1097,6 +1124,7 @@ export type Database = {
           enrich_mode?: string
           enrich_next_at?: string | null
           enriched_at?: string | null
+          enrichment?: Json
           enrichment_sources?: Json | null
           established_year?: number | null
           executive_chef?: string | null
@@ -1141,8 +1169,6 @@ export type Database = {
           products?: Json | null
           reddit_url?: string | null
           reservation_channel?: string | null
-          reservation_contacts?: Json
-          reservation_endpoint?: string | null
           reservation_target?: string | null
           resy_url?: string | null
           story?: string | null
@@ -1163,6 +1189,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_status?: string | null
+          business_status_at?: string | null
           category?: string | null
           category_label?: string | null
           city?: string | null
@@ -1182,6 +1210,7 @@ export type Database = {
           enrich_mode?: string
           enrich_next_at?: string | null
           enriched_at?: string | null
+          enrichment?: Json
           enrichment_sources?: Json | null
           established_year?: number | null
           executive_chef?: string | null
@@ -1226,8 +1255,6 @@ export type Database = {
           products?: Json | null
           reddit_url?: string | null
           reservation_channel?: string | null
-          reservation_contacts?: Json
-          reservation_endpoint?: string | null
           reservation_target?: string | null
           resy_url?: string | null
           story?: string | null
@@ -1531,6 +1558,9 @@ export type Database = {
       }
       projects: {
         Row: {
+          cfdi_cp: string | null
+          cfdi_razon_social: string | null
+          cfdi_rfc: string | null
           check_pin: string | null
           check_require_bill: boolean
           content_status: Database["public"]["Enums"]["content_status"]
@@ -1551,6 +1581,7 @@ export type Database = {
           promo_paused_until: string | null
           require_bill: boolean
           requires_story: boolean
+          reward_lane_pending_review_at: string | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
@@ -1563,6 +1594,9 @@ export type Database = {
           welcome_premium_rate: number | null
         }
         Insert: {
+          cfdi_cp?: string | null
+          cfdi_razon_social?: string | null
+          cfdi_rfc?: string | null
           check_pin?: string | null
           check_require_bill?: boolean
           content_status?: Database["public"]["Enums"]["content_status"]
@@ -1583,6 +1617,7 @@ export type Database = {
           promo_paused_until?: string | null
           require_bill?: boolean
           requires_story?: boolean
+          reward_lane_pending_review_at?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
@@ -1595,6 +1630,9 @@ export type Database = {
           welcome_premium_rate?: number | null
         }
         Update: {
+          cfdi_cp?: string | null
+          cfdi_razon_social?: string | null
+          cfdi_rfc?: string | null
           check_pin?: string | null
           check_require_bill?: boolean
           content_status?: Database["public"]["Enums"]["content_status"]
@@ -1615,6 +1653,7 @@ export type Database = {
           promo_paused_until?: string | null
           require_bill?: boolean
           requires_story?: boolean
+          reward_lane_pending_review_at?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
@@ -1639,6 +1678,53 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refund_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          project_id: string
+          reason: string | null
+          requested_by: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          stripe_refund_completed_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          reason?: string | null
+          requested_by: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_refund_completed_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          reason?: string | null
+          requested_by?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          stripe_refund_completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1912,6 +1998,7 @@ export type Database = {
           created_at: string
           details: string | null
           id: string
+          outcome: string | null
           project_id: string
           reason: string
           reviewed_at: string | null
@@ -1924,6 +2011,7 @@ export type Database = {
           created_at?: string
           details?: string | null
           id?: string
+          outcome?: string | null
           project_id: string
           reason: string
           reviewed_at?: string | null
@@ -1936,6 +2024,7 @@ export type Database = {
           created_at?: string
           details?: string | null
           id?: string
+          outcome?: string | null
           project_id?: string
           reason?: string
           reviewed_at?: string | null
@@ -2059,6 +2148,11 @@ export type Database = {
           rates_snapshotted_at: string | null
           redeem_cents: number | null
           revealed_at: string | null
+          review_ojo_attempts: number
+          review_ojo_checked_at: string | null
+          review_ojo_confidence: number | null
+          review_ojo_reasons: string[] | null
+          review_ojo_verdict: string | null
           review_reject_reason: string | null
           review_screenshot_url: string | null
           review_status: Database["public"]["Enums"]["story_status"]
@@ -2066,6 +2160,11 @@ export type Database = {
           review_verified_at: string | null
           review_verified_by: string | null
           status: Database["public"]["Enums"]["ticket_status"]
+          story_ojo_attempts: number
+          story_ojo_checked_at: string | null
+          story_ojo_confidence: number | null
+          story_ojo_reasons: string[] | null
+          story_ojo_verdict: string | null
           story_reject_reason: string | null
           story_screenshot_url: string | null
           story_status: Database["public"]["Enums"]["story_status"]
@@ -2108,6 +2207,11 @@ export type Database = {
           rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           revealed_at?: string | null
+          review_ojo_attempts?: number
+          review_ojo_checked_at?: string | null
+          review_ojo_confidence?: number | null
+          review_ojo_reasons?: string[] | null
+          review_ojo_verdict?: string | null
           review_reject_reason?: string | null
           review_screenshot_url?: string | null
           review_status?: Database["public"]["Enums"]["story_status"]
@@ -2115,6 +2219,11 @@ export type Database = {
           review_verified_at?: string | null
           review_verified_by?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          story_ojo_attempts?: number
+          story_ojo_checked_at?: string | null
+          story_ojo_confidence?: number | null
+          story_ojo_reasons?: string[] | null
+          story_ojo_verdict?: string | null
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
           story_status?: Database["public"]["Enums"]["story_status"]
@@ -2157,6 +2266,11 @@ export type Database = {
           rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           revealed_at?: string | null
+          review_ojo_attempts?: number
+          review_ojo_checked_at?: string | null
+          review_ojo_confidence?: number | null
+          review_ojo_reasons?: string[] | null
+          review_ojo_verdict?: string | null
           review_reject_reason?: string | null
           review_screenshot_url?: string | null
           review_status?: Database["public"]["Enums"]["story_status"]
@@ -2164,6 +2278,11 @@ export type Database = {
           review_verified_at?: string | null
           review_verified_by?: string | null
           status?: Database["public"]["Enums"]["ticket_status"]
+          story_ojo_attempts?: number
+          story_ojo_checked_at?: string | null
+          story_ojo_confidence?: number | null
+          story_ojo_reasons?: string[] | null
+          story_ojo_verdict?: string | null
           story_reject_reason?: string | null
           story_screenshot_url?: string | null
           story_status?: Database["public"]["Enums"]["story_status"]
@@ -2208,6 +2327,8 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          business_status: string | null
+          business_status_at: string | null
           category: string | null
           category_label: string | null
           city: string | null
@@ -2283,8 +2404,6 @@ export type Database = {
           reddit_url: string | null
           requires_story: boolean | null
           reservation_channel: string | null
-          reservation_contacts: Json | null
-          reservation_endpoint: string | null
           reservation_target: string | null
           resy_url: string | null
           segmentation_advanced_enabled: boolean | null
@@ -2555,9 +2674,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       content_status: ["queued", "generating", "ready", "failed"],

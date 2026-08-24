@@ -19,13 +19,8 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
-import {
-  PULSE_LABELS_IN_ORDER,
-  PULSE_TOTAL,
-  pulseBlockedAt,
-  pulseHighWater,
-  type PulseEvent,
-} from "../_shared/pulse-pieces.ts";
+import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
 
 // Super-admin manage-single extra: the Embeddings card (MESITA-720). Keep it
 // off the business overview payload; only elevate when the caller is a
@@ -85,10 +80,15 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    // One round trip for both: the place row, and the PULSE events the Status
-    // box's `enriched` high-water is folded from. Parallel, so the extra fact
-    // costs no latency.
-    const [placeRow, eventsRow] = await Promise.all([
+    // One round trip for both: the place row, and the materialized enrichment
+    // map the Status box's `enriched` high-water reads from (MESITA-1249).
+    // Parallel, so the extra fact costs no latency. `enrichment` is read off
+    // `places` directly, not `profiles` — it is deliberately NOT in the
+    // profiles view's column list (same reasoning as the embedding/status
+    // columns just above staying admin-only: a heavy field only this file and
+    // admin-web-search-places need, and adding it to the view means rebuilding
+    // its two INSTEAD OF triggers, a documented recurring pain point).
+    const [placeRow, enrichmentRow] = await Promise.all([
       admin
         .from("profiles")
         .select(
@@ -96,10 +96,7 @@ Deno.serve(async (req) => {
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
-      // PULSE pieces, latest per piece (MESITA-1172). The Status box and the
-      // catalog table MUST show the same number — a status that disagrees with
-      // itself across two screens is worse than no status at all.
-      admin.rpc("place_enrich_events_latest", { p_place_ids: [requestedPlaceId] }),
+      admin.from("places").select("enrichment").eq("id", requestedPlaceId).maybeSingle(),
     ]);
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
@@ -108,18 +105,22 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Place not found" }, 404);
     }
     const placeFields = placeRow.data as unknown as Record<string, unknown>;
-    // Same best-effort posture: no events simply means the queue never
-    // reported, which reads as 0.
-    if (eventsRow.error) {
-      console.error("[get-overview] place_enrich_events_latest:", eventsRow.error.message);
+    // Same best-effort posture: a missing/null row simply falls back to the
+    // CREATED-floor default, which reads as 0 — the Status box and the
+    // catalog table MUST show the same number either way, a status that
+    // disagrees with itself across two screens being worse than no status.
+    if (enrichmentRow.error) {
+      console.error("[get-overview] places.enrichment:", enrichmentRow.error.message);
     }
-    const pulseEvents = (eventsRow.data ?? []) as PulseEvent[];
-    const enrichPulse = pulseHighWater(pulseEvents);
+    const enrichmentMap = (enrichmentRow.data?.enrichment as EnrichmentMap | null) ??
+      { functions: {}, highWater: 0, blockedAt: null };
+    const enrichPulse = enrichmentMap.highWater;
     // WHY it stopped, beside where. Function 1 can now FAIL a place Google
     // reports permanently closed, so the number 0 carries two different facts
     // — "seeded, nothing tried" and "we asked, and the listing is dead". The
-    // reason disambiguates them, from the same events the walk reads.
-    const enrichPulseBlocked = pulseBlockedAt(pulseEvents);
+    // reason rides along with the same map the number came from, so the two
+    // can never disagree.
+    const enrichPulseBlocked = enrichmentMap.blockedAt;
     // Tag as owner so any downstream UI that gates on role still works —
     // super-admin gets the broadest permission set the place role enum
     // can express. (The frontend MyPlace type only knows owner|business|staff.)

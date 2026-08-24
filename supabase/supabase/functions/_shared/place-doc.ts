@@ -72,6 +72,7 @@ import {
   PlaceDetailsSchema,
   PopularTimesSchema,
 } from "./place-jsonb-schemas.ts";
+import { EnrichmentMapSchema } from "./schema-catalog.ts";
 
 // ── PlaceRow — the full `places` row shape ──────────────────────────────────
 
@@ -156,6 +157,8 @@ export type PlaceRow = {
   enrich_every_days: number | null;
   enrich_mode: "full" | "analysis" | "contents";
   enrich_next_at: string | null;
+  /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
+  enrichment: unknown;
   reservation_channel: "phone" | null;
   reservation_target: string | null;
   order_channel: "phone" | null;
@@ -238,6 +241,7 @@ export const PLACE_PATCH_KEYS = [
   "enrich_every_days",
   "enrich_mode",
   "enrich_next_at",
+  "enrichment",
   "reservation_channel",
   "reservation_target",
   "order_channel",
@@ -439,6 +443,8 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   details: nullable(PlaceDetailsSchema),
   google_reviews: nullable(GoogleReviewsSchema),
   popular_times: nullable(PopularTimesSchema),
+  // NOT nullable — places.enrichment is NOT NULL with a default (MESITA-1249).
+  enrichment: EnrichmentMapSchema,
 };
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",

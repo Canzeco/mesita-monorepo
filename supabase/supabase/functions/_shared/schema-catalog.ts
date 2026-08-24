@@ -13,7 +13,17 @@
 // to prevent. Import the real thing; do not re-type it.
 
 import type { ChannelKey, Channels } from "./channels.ts";
-import { PULSE_EXTRAS, PULSE_PIECES, type PulseStep } from "./pulse-pieces.ts";
+import {
+  PULSE_EXTRAS,
+  PULSE_PIECES,
+  PULSE_TOTAL,
+  pulseBlockedAt,
+  pulseHighWater,
+  type PulseBlock,
+  type PulseEvent,
+  type PulseStep,
+} from "./pulse-pieces.ts";
+import { enumOf, nullable, num, object, refine, str, type Schema } from "./doc-schema.ts";
 
 // ── Money ────────────────────────────────────────────────────────────────
 //
@@ -155,3 +165,127 @@ export const FUNCTION_STATE_KEYS: readonly PulseStep[] = [
   ...PULSE_PIECES,
   ...PULSE_EXTRAS,
 ];
+
+export const FunctionStateSchema: Schema<FunctionState> = object({
+  status: enumOf(["pending", "completed", "failed"] as const),
+  at: nullable(str()),
+  detail: nullable(str()),
+});
+
+/**
+ * A `FunctionStateMap` is a PARTIAL record — most places have not run every
+ * one of the 11 steps yet, and an absent key means exactly that, not
+ * `{status:"pending",...}`. `object()` iterates every key of its shape
+ * regardless of presence, which is the right behavior for a fixed-shape
+ * document (place-doc.ts's own PlacePatch keys) but wrong here: a place
+ * that has only run `pulse` must round-trip as `{pulse: {...}}`, not as
+ * all 11 keys with 10 fabricated `pending` entries. Bespoke, small, and
+ * kept local rather than promoted into doc-schema.ts's core until a SECOND
+ * partial-record shape needs it too.
+ */
+export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
+  parse(raw) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      return { ok: false, error: `expected object, got ${typeof raw}` };
+    }
+    const rawObj = raw as Record<string, unknown>;
+    const unknownKeys = Object.keys(rawObj).filter(
+      (k) => !(FUNCTION_STATE_KEYS as readonly string[]).includes(k),
+    );
+    if (unknownKeys.length > 0) {
+      return { ok: false, error: `unknown pulse step(s): ${unknownKeys.join(", ")}` };
+    }
+    const value: Record<string, FunctionState> = {};
+    for (const key of Object.keys(rawObj)) {
+      const r = FunctionStateSchema.parse(rawObj[key]);
+      if (!r.ok) return { ok: false, error: `${key}: ${r.error}` };
+      value[key] = r.value;
+    }
+    return { ok: true, value: value as FunctionStateMap };
+  },
+};
+
+const PulseBlockSchema: Schema<PulseBlock> = object({
+  key: enumOf(PULSE_PIECES),
+  index: refine(num(), (v) => Number.isInteger(v) && v >= 1 && v <= PULSE_TOTAL ? null : `index must be an integer between 1 and ${PULSE_TOTAL}`),
+  status: enumOf(["failed", "missing"] as const),
+});
+
+// ── The materialized enrichment state map (MESITA-1249) ────────────────────
+//
+// `places.enrichment`: the ONE-READ replacement for "RPC + fold over
+// place_enrichment_events on every request" (admin-web-search-places,
+// business-web-get-overview). `functions`/`highWater`/`blockedAt` are the
+// exact three values `pulseHighWater`/`pulseBlockedAt` already compute from
+// the event log — this materializes their OUTPUT, kept current by
+// pulse-report.ts's `reportPulsePieces` merging into it on every write,
+// instead of re-deriving it from scratch on every read.
+//
+// DELIBERATELY NOT in this shape: `everyDays`/`mode`/`nextAt`/`lastRunAt`
+// (the schedule). The issue that named this map asked for those too, but
+// `places.enrich_every_days`/`enrich_mode`/`enrich_next_at` are read AND
+// WRITTEN directly by `queue_due_place_enrichments`, a live PL/pgSQL cron
+// function — the exact class of change (a rename/restructure a stored
+// function body doesn't auto-follow) that caused this repo's own documented
+// 2-day enrichment outage (MESITA-1143). Folding the meter (a pure read-path
+// win, zero cron risk) and folding the schedule (a real risk to a fragile
+// live function) are two different shapes of change; this ships the first
+// and leaves the second an explicit, separate decision. The three scalar
+// columns are unchanged and still the source of truth for scheduling.
+export type EnrichmentMap = {
+  functions: FunctionStateMap;
+  highWater: number;
+  blockedAt: PulseBlock | null;
+};
+
+export const EnrichmentMapSchema: Schema<EnrichmentMap> = object({
+  functions: FunctionStateMapSchema,
+  highWater: refine(num(), (v) => Number.isInteger(v) && v >= 0 && v <= PULSE_TOTAL ? null : `highWater must be an integer between 0 and ${PULSE_TOTAL}`),
+  blockedAt: nullable(PulseBlockSchema),
+});
+
+/**
+ * `pulseHighWater`/`pulseBlockedAt` (pulse-pieces.ts) walk a raw
+ * `PulseEvent[]` fetched fresh from `place_enrichment_events`. These two
+ * walk the SAME logic over an already-materialized `FunctionStateMap`
+ * instead, by converting the map back into the event shape those two
+ * functions (and their 28 pinned tests) already handle — not a second walk
+ * implementation to keep in sync by hand.
+ */
+function functionStateMapToEvents(map: FunctionStateMap): PulseEvent[] {
+  return PULSE_PIECES.flatMap((piece) => {
+    const rec = map[piece];
+    if (!rec) return [];
+    return [{ step_name: piece, status: rec.status, created_at: rec.at ?? "" }];
+  });
+}
+
+export function pulseHighWaterFromMap(map: FunctionStateMap): number {
+  return pulseHighWater(functionStateMapToEvents(map));
+}
+
+export function pulseBlockedAtFromMap(map: FunctionStateMap): PulseBlock | null {
+  return pulseBlockedAt(functionStateMapToEvents(map));
+}
+
+/**
+ * Raw `place_enrichment_events.status` -> `FunctionState.status`. Only
+ * needed for translating HISTORICAL event rows (the migration backfill) —
+ * the live write path (pulse-report.ts) only ever produces `PieceOutcome`,
+ * whose status is already `"completed" | "failed"`, a strict subset of
+ * `FunctionState.status`, so it never needs this mapping.
+ *
+ * `completed` stays itself. `started` (in-flight, no outcome yet) becomes
+ * `pending`. Everything else — `failed`, the `skipped` a legacy row might
+ * carry, or an unrecognized value — becomes `failed`. This is not a new
+ * rule: it is `pulseBlockedAt`'s own documented one ("anything not
+ * completed and not absent is the function having run and not delivered"),
+ * applied here rather than invented — the decision this map's header
+ * flagged as 1249's to make is "reuse the ladder's existing skipped-is-a-
+ * form-of-failed rule", not a fresh one.
+ */
+export function toFunctionStatus(rawStatus: string): FunctionState["status"] {
+  if (rawStatus === "completed") return "completed";
+  if (rawStatus === "started") return "pending";
+  return "failed";
+}
