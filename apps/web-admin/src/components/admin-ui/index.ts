@@ -36,5 +36,4 @@ export {
 } from "./manage";
 
 export { ErrorNote } from "@/components/ErrorNote";
-export { AtlasSettingsError } from "@/components/AtlasSettingsError";
 export { ERROR_BOX_CLASS } from "@/lib/ui-classes";

@@ -8,9 +8,11 @@
 // (_shared/models-config.ts → get-memo-config, Enricher stages, embeddings,
 // business-web-suggest-promo, ojo-engine) bind supabase / enricher.model /
 // embeddings / memo.* / ojo.model.
-// Enricher Perplexity is NOT read from this blob — Enricher
-// Config's atlas_perplexity_preset is the live search preset (enricher.perplexity
-// here is staged). Synthesis / vision quality tiers stay on Enricher Config.
+// Enricher Perplexity is NOT read from this blob — app_config's
+// atlas_perplexity_preset is the live search preset (enricher.perplexity here
+// is staged). The synthesis / vision quality tiers are atlas_* columns too, and
+// since 2026-08-23 no console edits any of the three: the Enrichment page is a
+// Soon page, so those three are whatever they were last saved as.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
@@ -18,8 +20,8 @@ import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
 type SubsystemKey = "supabase" | "enricher" | "embeddings" | "memo" | "ojo";
 
 // The persisted blob (app_config.models_config). supabase + memo + ojo are
-// edited here; enricher.model is informational (Enricher Config quality tiers
-// pick the live OpenAI model, with models_config.enricher.model as the
+// edited here; enricher.model is informational (the stored atlas_* quality
+// tiers pick the live OpenAI model, with models_config.enricher.model as the
 // cheap/default binding); enricher.perplexity is staged (unread — atlas_perplexity_preset wins).
 export type ModelsConfig = {
   v: number;
@@ -68,7 +70,8 @@ export const PERPLEXITY_OPTIONS = [
 
 // ── Subsystem map ──────────────────────────────────────────────────────────
 // Drives the page. `editableHere` is true for rows this page owns (supabase +
-// memo). Enricher / Embeddings stay read-only with links to Enricher Config.
+// memo). Enricher / Embeddings stay read-only — their values live in atlas_*
+// columns and models_config, and no page edits them since Enrichment emptied.
 export type ModelStatus = "live" | "staged" | "locked";
 
 // A model shown "up front" on a card — the id (rendered as a mono chip) plus a
@@ -107,17 +110,17 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Sparkles,
     status: "live",
     models: [
-      { id: "gpt-4o-mini · gpt-4o", note: "text — by synthesis quality on Enricher Config" },
-      { id: "gpt-4o-mini · gpt-4o", note: "vision — by image quality on Enricher Config" },
+      { id: "gpt-4o-mini · gpt-4o", note: "text — by the stored atlas_synthesis_quality" },
+      { id: "gpt-4o-mini · gpt-4o", note: "vision — by the stored atlas_vision_quality" },
       {
         id: "atlas_perplexity_preset",
-        note: "live search preset on Enricher Config — models_config.enricher.perplexity is staged (unread)",
+        note: "live search preset — models_config.enricher.perplexity is staged (unread)",
       },
     ],
     detail:
-      "OpenAI quality tiers + Perplexity Agent preset live on Enricher Config. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged.",
+      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Enricher reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. No console edits the three since Enrichment emptied.",
     editableHere: false,
-    owner: { label: "Enricher Config", href: "/enricher-config" },
+    owner: null,
   },
   {
     key: "embeddings",
@@ -128,7 +131,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.embeddings.model" },
     ],
     detail:
-      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.embeddings.model by _shared/embeddings.ts; shown read-only on Enricher Config.",
+      "Place vectors behind Memo recall. Fixed by design — changing it re-vectors the whole catalog. Read live as models_config.embeddings.model by _shared/embeddings.ts.",
     editableHere: false,
     owner: null,
   },

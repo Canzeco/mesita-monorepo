@@ -8,27 +8,31 @@ import {
   TRIGGER_META,
 } from "./enrich-triggers.ts";
 
-// THE SHIP GATE for folding the Triggers tab into the single Enrichment page
-// (Pato, 2026-08-21: "delete the triggers shit … only one tab in that section").
+// THE SHIP GATE for a grid no console renders any more.
 //
-// The tab could not be deleted — three independent audits confirmed on_create
-// and on_schedule are LIVE emitters whose resolved subprocess list gates real
-// Apify / Firecrawl / Perplexity spend, and this console is their ONLY write
-// surface. So the tab became a box, and the box renders LESS than the tab did:
-// the Cooldown column is gone entirely, and the emitterless rows moved behind a
-// disclosure.
+// It went in three steps. The Triggers TAB became a box (Pato, 2026-08-21:
+// "delete the triggers shit … only one tab in that section"), rendering less
+// than the tab did — no Cooldown column, emitterless rows behind a disclosure.
+// Then the box went with the whole page (Pato, 2026-08-23: "Fuck this page.
+// Just write it as soon"): apps/web-admin's Enrichment route is a Soon page,
+// and NOTHING writes app_config.enrichment_triggers from a UI today.
 //
-// That makes this the classic whole-blob hazard. The Triggers save posts the
-// entire `cfg` object, so a knob that stops being RENDERED still round-trips —
-// but only for as long as nobody "tidies" save() into rebuilding its payload
-// from the rows on screen. These tests are what goes red if someone does.
+// The gates did not move. on_create and on_schedule are still LIVE emitters
+// whose resolved subprocess list gates real Apify / Firecrawl / Perplexity
+// spend — three independent audits said so, and deleting the console changed
+// none of it. What changed is who can flip a cell: admin-web-update-enricher-
+// config, called directly, is the last write door.
+//
+// So the whole-blob hazard is now the ONLY hazard. Every write is a full `cfg`
+// post, and a key nothing renders round-trips only for as long as normalize
+// keeps carrying it. These tests are what goes red if it stops.
 
-/** Every key whose control the folded page no longer renders. */
+/** A key that no surface renders — carried by normalize alone. */
 const UNRENDERED_COLUMN = "cooldownHours";
 
 Deno.test("normalize: a stored cooldownHours survives a save that renders no cooldown control", () => {
-  // Exactly what the folded client posts: the seeded blob, patched only on the
-  // cells it still shows. cooldownHours rides along untouched.
+  // Exactly what a partial writer posts: the seeded blob, patched only on the
+  // cells it cares about. cooldownHours rides along untouched.
   const stored = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
   stored.on_create.cooldownHours = 72;
   stored.on_schedule.cooldownHours = 12;
@@ -59,10 +63,10 @@ Deno.test("normalize: an absent cooldownHours comes back at its default, never u
 });
 
 Deno.test("normalize: a STAGED row's cells survive a save made while it sat behind the disclosure", () => {
-  // The five emitterless rows are still rendered (inside a <details>), so their
-  // cells are still editable and still posted. This pins that an operator's
-  // stored choice on one of them is not quietly reset by a save driven from the
-  // live rows above it.
+  // The five emitterless rows were the ones behind the disclosure, and now no
+  // row is rendered at all. Either way their cells are still stored and still
+  // posted. This pins that a stored choice on one of them is not quietly reset
+  // by a save driven from the live rows.
   const stored = structuredClone(ENRICHMENT_TRIGGERS_DEFAULTS);
   stored.on_reservation_failed.enabled = true;
   stored.on_reservation_failed.subprocesses.links = true;
@@ -72,12 +76,13 @@ Deno.test("normalize: a STAGED row's cells survive a save made while it sat behi
   assertEquals(out.on_reservation_failed.subprocesses.links, true);
 });
 
-// ── the live/staged split the console now renders on ────────────────────────
+// ── the live/staged split, which outlived the console that rendered it ──────
 
 Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () => {
-  // The folded page splits the grid on `staged`, so this flag stopped being
-  // decoration the moment it decided which table a row lands in. `staged` means
-  // NOTHING READS THIS ROW — not "this row seeds no run".
+  // The folded page split the grid on `staged`, which is when this flag stopped
+  // being decoration. The page is gone and the flag is not: it is what tells the
+  // next reader which rows are wired. `staged` means NOTHING READS THIS ROW —
+  // not "this row seeds no run".
   //
   // The readers, exhaustively:
   //   on_create   — create-place.ts resolves subprocessesFor(t, "on_create")
