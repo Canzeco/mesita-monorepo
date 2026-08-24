@@ -60,7 +60,7 @@ export type Place = {
   zone?: string | null;
   reward_cap_mxn?: number | null;
   /**
-   * True while Enricher is still building the profile
+   * True while Intaker is still building the profile
    * (`projects.content_status` ∈ {queued, generating}). Drives the
    * Enriching chip on swipe cards — same signal as place detail.
    */

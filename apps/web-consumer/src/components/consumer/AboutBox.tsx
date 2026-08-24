@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 // description is extremely long (over ~600 characters, ≈ 10 mobile lines)
 // do we clamp to line-clamp-10 with a "Show more" toggle.
 //
-// Enricher Abouts are multi-paragraph (blank-line separated). Normalize
+// Intaker Abouts are multi-paragraph (blank-line separated). Normalize
 // to \n\n and render with whitespace-pre-wrap so paragraphs show and
 // line-clamp still works on one block.
 

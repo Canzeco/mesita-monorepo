@@ -148,7 +148,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     },
     instagram: { followers: num(row.instagram_followers_count) ?? 0 },
 
-    // Enricher (supabase-cron-enrich-place-*) stores each review as
+    // Intaker (supabase-cron-enrich-place-*) stores each review as
     // { author, rating, text, published } — map those onto the detail shape
     // (quote/date) and keep the legacy keys as fallbacks.
     google_reviews: arr<Record<string, unknown>>(row.google_reviews).map(
@@ -240,7 +240,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
 
     long_description:
       str(row.description) ?? str(row.story) ?? str(row.pitch) ?? "",
-    // Spanish About translation (MESITA-926). Empty until Enricher/admin fills it.
+    // Spanish About translation (MESITA-926). Empty until Intaker/admin fills it.
 
     hours_table: hoursTable(row.hours),
     popular_times: arr<Record<string, unknown>>(row.popular_times).map((p) => ({

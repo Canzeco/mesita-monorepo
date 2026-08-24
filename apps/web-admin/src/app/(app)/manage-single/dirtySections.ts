@@ -65,5 +65,5 @@ export function dirtyDialogReenrichBody(labels: string[]): string {
       : labels.length === 1
         ? `your unsaved ${labels[0]} edits`
         : `your unsaved edits (${labels.join(", ")})`;
-  return `Re-enrich can overwrite ${where}. Discard unsaved changes and queue the Enricher, or cancel and save first.`;
+  return `Re-enrich can overwrite ${where}. Discard unsaved changes and queue the Intaker, or cancel and save first.`;
 }

@@ -140,7 +140,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste place IDs (one per line) or upload a list. Each row queues the
-        same re-enrich pipeline as the single-place control — the Enricher cron
+        same re-enrich pipeline as the single-place control — the Intaker cron
         runs async after trigger. Caps and models are the stored Intake
         settings; the console for them is empty, and what each one means lives
         in Notion Docs › Intake.
@@ -293,7 +293,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
                     </span>
                     {r.status === "ok" && (
                       <p className="text-muted-foreground type-label">
-                        Enricher queued
+                        Intaker queued
                       </p>
                     )}
                     {r.status === "error" && (

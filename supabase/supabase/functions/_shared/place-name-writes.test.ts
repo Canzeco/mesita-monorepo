@@ -8,7 +8,7 @@
 // it either. This scan is the only check that runs before deploy.
 //
 // It also pins the two rules that replaced the old sticky-sync design:
-//   * the Enricher writes google_name and NEVER mesita_name
+//   * the Intaker writes google_name and NEVER mesita_name
 //   * _shared/place-display-name.ts is gone and stays gone
 //
 // See the phase 1/2 migrations (20260809201500, 20260809203000) for the model.
@@ -52,7 +52,7 @@ async function* walk(
       yield* walk(child);
     } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")) {
       // RELATIVE to the functions dir, never absolute (MESITA-1075). The
-      // Enricher scan below filters on /enrich/, and ASDM puts every agent in
+      // Intaker scan below filters on /enrich/, and ASDM puts every agent in
       // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so an absolute path inside any
       // worktree whose slug contains "enrich" matched EVERY file, and this guard
       // reported innocent operator-initiated writers as offenders. It cried wolf
@@ -100,7 +100,7 @@ Deno.test("no Edge Function writes places.name (it is a generated column)", asyn
     offenders,
     [],
     `places.name is generated and rejects writes. Write mesita_name (operator ` +
-      `override) or google_name (Enricher observation) instead.\n` +
+      `override) or google_name (Intaker observation) instead.\n` +
       offenders.join("\n"),
   );
 });
@@ -110,7 +110,7 @@ Deno.test("no Edge Function writes places.name (it is a generated column)", asyn
 // This is the regression pin. Reverting walk() to `child.pathname` puts the
 // checkout's own directory name inside every path, and ASDM runs agents from
 // `.claude/worktrees/<ISSUE-ID>-<slug>/` — so any issue whose slug contains
-// "enrich" (a whole subsystem's worth) silently widens the Enricher scan to
+// "enrich" (a whole subsystem's worth) silently widens the Intaker scan to
 // EVERY edge function. The observed damage was two innocent files reported as
 // offenders: `business-web-update-project/index.ts` and `_shared/save-place.ts`,
 // both operator-initiated writers, which is exactly what mesita_name is FOR.
@@ -128,7 +128,7 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   );
 
   // The exact false positive this fixes: an operator-write EF that lives
-  // nowhere near enrichment must not be caught by the Enricher filter, no
+  // nowhere near enrichment must not be caught by the Intaker filter, no
   // matter what the checkout is called.
   const innocent = sources.find(
     (s) => s.path === "business-web-update-project/index.ts",
@@ -141,7 +141,7 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   assertEquals(
     /enrich|cron-enrich/.test(innocent!.path),
     false,
-    "the Enricher filter matched a non-enrichment EF — path is not relative",
+    "the Intaker filter matched a non-enrichment EF — path is not relative",
   );
 
   // And the filter still catches what it is for.
@@ -149,7 +149,7 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   assertEquals(
     realEnricher.length > 0,
     true,
-    "the Enricher filter matched nothing — it is now too narrow",
+    "the Intaker filter matched nothing — it is now too narrow",
   );
   assertEquals(
     realEnricher.every((s) => s.path.includes("enrich")),
@@ -157,7 +157,7 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   );
 });
 
-Deno.test("the Enricher never writes mesita_name", async () => {
+Deno.test("the Intaker never writes mesita_name", async () => {
   const offenders: string[] = [];
   for (const { path, text } of await tsSources()) {
     if (!/enrich|cron-enrich/.test(path)) continue;
@@ -171,7 +171,7 @@ Deno.test("the Enricher never writes mesita_name", async () => {
   assertEquals(
     offenders,
     [],
-    `mesita_name is the operator's label. The Enricher refreshing it would ` +
+    `mesita_name is the operator's label. The Intaker refreshing it would ` +
       `reintroduce the clobber that sticky-sync caused.\n` + offenders.join("\n"),
   );
 });

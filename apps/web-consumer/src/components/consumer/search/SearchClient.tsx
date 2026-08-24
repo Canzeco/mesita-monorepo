@@ -15,7 +15,7 @@
 //     (red pin + rail card; the detail modal is one more tap away there),
 //     "From Google" rows open GooglePlaceSheet — a not-on-Mesita preview
 //     carrying the real Add flow (consumer-web-create-place creates the
-//     place immediately; the async Enricher builds the profile in minutes).
+//     place immediately; the async Intaker builds the profile in minutes).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -204,7 +204,7 @@ export function SearchClient({
   };
 
   // The REAL Add flow: the place is created immediately; only enrichment is
-  // scheduled (the cron-driven Enricher pipeline finishes asynchronously),
+  // scheduled (the cron-driven Intaker pipeline finishes asynchronously),
   // so hold the row in its "added / Enriching" state — nothing further to
   // await client-side.
   const handleAdd = useCallback(

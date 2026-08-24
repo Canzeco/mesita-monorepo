@@ -1,6 +1,6 @@
 // On-Update place embeddings (MESITA-720).
 //
-// Enricher On-Update S2/S3 contract:
+// Intaker On-Update S2/S3 contract:
 //   1. Read place profile fields (never tags)
 //   2. Synthesize a short human blurb (LLM; deterministic facts fallback)
 //   3. Embed with text-embedding-3-small and persist text + hash + vector

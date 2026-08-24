@@ -10,7 +10,7 @@ type ConfigSubRoute = {
   Icon: LucideIcon;
 };
 
-// Shared tab strip for the config pages that still have sub-tabs (Enricher /
+// Shared tab strip for the config pages that still have sub-tabs (Intaker /
 // Memo). One row of underline tabs, one per subroute. Matches the tablist
 // styling used across the admin console.
 export function ConfigTabNav({

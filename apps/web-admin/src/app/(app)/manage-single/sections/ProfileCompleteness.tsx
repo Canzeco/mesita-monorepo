@@ -118,7 +118,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
-  // Pipeline status lives in place chrome (MESITA-896). When Enricher is mid-
+  // Pipeline status lives in place chrome (MESITA-896). When Intaker is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
   const enriching =
     place.content_status === "generating" || place.content_status === "queued";
@@ -221,7 +221,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
           )}
           {enriching ? (
             <p className="text-muted-foreground type-label">
-              Enricher is still filling this profile — gaps may close on their own.
+              Intaker is still filling this profile — gaps may close on their own.
             </p>
           ) : null}
         </div>

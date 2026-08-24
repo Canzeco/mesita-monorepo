@@ -8,7 +8,7 @@
 //
 // The MAIN model is always OpenAI (a chat model, or an embedding model under
 // the `embeddings` key). Perplexity is NEVER a main model — it's an optional
-// web-grounding leg, and ONLY Enricher and Memo have one ("off" disables it).
+// web-grounding leg, and ONLY Intaker and Memo have one ("off" disables it).
 //
 // `embeddings` WAS `lineup` (MESITA-1216) — the name outlived the engine
 // MESITA-1048 deleted, and the key never ordered anything: it picks the
@@ -20,7 +20,7 @@
 // a missing/garbage key falls back to the migration default so the blob is
 // always complete). See 20260726010000_models_config_reshape.sql.
 //
-// Live binding (MESITA-941): Enricher/Memo/embeddings/suggest-promo read this
+// Live binding (MESITA-941): Intaker/Memo/embeddings/suggest-promo read this
 // blob via _shared/models-config.ts. (Until MESITA-1048 the Lineup rankers read
 // it too — recommender-rank-map is deleted, so don't look for it.)
 //

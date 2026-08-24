@@ -171,7 +171,7 @@ export type AdminPlace = {
   mesita_name?: string | null;
   /**
    * Cached Google Places displayName. Not an identity spine (google_place_id
-   * is) — it changes whenever the Google listing does. Enricher-only write.
+   * is) — it changes whenever the Google listing does. Intaker-only write.
    */
   google_name?: string | null;
   category: string | null;
@@ -240,7 +240,7 @@ export type AdminPlace = {
   facebook_followers: number | null;
   created_at: string | null;
   updated_at: string | null;
-  // Stamped by the Enricher's final write — lets the Meta box attribute
+  // Stamped by the Intaker's final write — lets the Meta box attribute
   // updated_at to the AI (≈ same instant) vs a human edit (later).
   enriched_at: string | null;
   // On-Update embeddings (MESITA-720) — human blurb + vector; super-admin
@@ -515,7 +515,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
   };
 }
 
-// ── Per-place Enricher inspector (admin-only) ────────────────────────────
+// ── Per-place Intaker inspector (admin-only) ────────────────────────────
 // Internal enricher output for the Place editor: per-photo metadata for the
 // ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
 // enrichment status. Super-admin gated EF.
@@ -593,14 +593,14 @@ export async function setPlaceEnrichmentSchedule(
   return { ok: true, data: r.data.schedule };
 }
 
-// Which slice of the Enricher pipeline a manual re-enrich re-runs:
+// Which slice of the Intaker pipeline a manual re-enrich re-runs:
 //   full     → research + analysis + contents (fresh gather; refreshes phone)
 //   analysis → analysis + contents, reusing stored gathered (no re-gather)
 //   contents → contents only, reusing stored gathered + analysis (cheapest)
 // The lighter modes need a prior full run; the EF rejects (422) otherwise.
 export type ReenrichMode = "full" | "analysis" | "contents";
 
-// Manually re-run the Enricher pipeline for one place. Re-seeds place_research
+// Manually re-run the Intaker pipeline for one place. Re-seeds place_research
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — poll getPlaceEnrichment to watch progress.
 export async function enrichPlace(

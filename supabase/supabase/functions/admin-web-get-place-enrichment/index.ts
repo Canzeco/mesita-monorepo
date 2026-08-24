@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-get-place-enrichment (product caller / admin)
 //
-// Read-only per-place Enricher inspector for the admin console. Given a
+// Read-only per-place Intaker inspector for the admin console. Given a
 // project_id, returns:
 //   • media  — one entry per stored image (keyed by public_url AND source_url,
 //     so it resolves whether places.photos[] holds the mirrored URL or the raw

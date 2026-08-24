@@ -3,7 +3,7 @@
 // The concurrency guards in create-place.ts only dedupe the SAME
 // google_place_id; nothing bounded how many DIFFERENT places one consumer
 // account could create. Each create burns a Google Basics call up front and
-// seeds a full Enricher run (real Apify/Firecrawl/Perplexity/OpenAI budget),
+// seeds a full Intaker run (real Apify/Firecrawl/Perplexity/OpenAI budget),
 // so an unbounded loop is a direct cost-amplification + catalog-spam vector.
 //
 // Model: rolling 24 h window over public.place_creation_attempts, counted

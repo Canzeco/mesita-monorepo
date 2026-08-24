@@ -9,7 +9,7 @@ import { Wand2 } from "lucide-react";
 //
 // THE ROUTE IS FROZEN. A label rename stops at the label: /enricher-config,
 // app_config's atlas_* columns and admin-web-*-enricher-config never follow
-// one. The ENGINE is still the Enricher (the cron pipeline that builds place
+// one. The ENGINE is still the Intaker (the cron pipeline that builds place
 // profiles from the open web; "Atlas" is its legacy brand) — Intake names the
 // console, not the machine.
 export const INTAKE_PARENT = {

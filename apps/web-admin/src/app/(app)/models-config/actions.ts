@@ -8,7 +8,7 @@
 // read and write the models_config jsonb blob on the public.app_config
 // singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
 // lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
-// is still staged (Enricher uses atlas_perplexity_preset). No client ever
+// is still staged (Intaker uses atlas_perplexity_preset). No client ever
 // touches the DB.
 //
 // Types + catalogs live in ./types (not here) — "use server" modules may only

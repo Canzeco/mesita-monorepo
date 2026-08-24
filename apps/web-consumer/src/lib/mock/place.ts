@@ -56,7 +56,7 @@ export type PlaceDetail = {
   updated_label: string;
   /** Alias of updated_label — kept for lean Place / overview callers. */
   last_updated_label: string;
-  // True while the Enricher is still building this place's profile across the
+  // True while the Intaker is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by
   // projects.content_status ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.

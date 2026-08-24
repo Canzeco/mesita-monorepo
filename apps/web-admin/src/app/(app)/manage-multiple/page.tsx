@@ -6,7 +6,7 @@ import type { EnrichCostSeed } from "./EnrichTab";
 // back when Search, Create and Enrich were three tabs — they are three steps of
 // one pipeline, so they are three sections now.
 //
-// The Enricher's cost seed is read here so step 3 can price a run before it is
+// The Intaker's cost seed is read here so step 3 can price a run before it is
 // queued; a failed read degrades to null and that step says it cannot price,
 // rather than the page failing.
 export const dynamic = "force-dynamic";

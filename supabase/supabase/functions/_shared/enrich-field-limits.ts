@@ -1,4 +1,4 @@
-// Shared Enricher place field limits — mirrored in business-web-update-project and
+// Shared Intaker place field limits — mirrored in business-web-update-project and
 // the business Place editor. Surfaced read-only in admin-web-get-atlas-fields.
 //
 // `unit` drives the admin card's format: "chars" → "N chars", "words" → "N
@@ -9,20 +9,20 @@
 export const ENRICH_FIELD_LIMITS = {
   placeName: { max: 80, unit: "chars", note: "Business Place editor" },
   // The business editor's own overwrite ceiling — see descriptionEnricherMax
-  // for what a fresh Enricher synthesis may write before any manual edit.
+  // for what a fresh Intaker synthesis may write before any manual edit.
   description: {
     max: 2000,
     unit: "chars",
-    note: "Presentation overwrite via the business Place editor (business-web-update-project). A freshly-enriched place can exceed this — see \"Description (Enricher synthesis)\".",
+    note: "Presentation overwrite via the business Place editor (business-web-update-project). A freshly-enriched place can exceed this — see \"Description (Intaker synthesis)\".",
   },
-  // The Enricher's own synthesis ceiling (enrich-synthesis-profile.ts) —
+  // The Intaker's own synthesis ceiling (enrich-synthesis-profile.ts) —
   // ENRICH_DESCRIPTION_MAX = 1,000-word target × 7. Not the same limit as the
   // business editor's 2,000-char overwrite cap above; a place enriched today
   // and never hand-edited can carry up to this many characters.
   descriptionEnricherMax: {
     max: 7000,
     unit: "chars",
-    note: "places.description as freshly written by an Enricher run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
+    note: "places.description as freshly written by an Intaker run, before any business-editor overwrite (7,000 = 1,000-word target × 7).",
   },
   // The Semantic Summary that OpenAI embeds (places.embedding_source_text) —
   // NOT the Presentation. One of the three enrichment texts, and the only one
@@ -36,7 +36,7 @@ export const ENRICH_FIELD_LIMITS = {
   tagsPerPlace: {
     max: 20,
     unit: "count",
-    note: "Enricher always writes exactly 20 tags; business editor allows up to 20 (places.tags)",
+    note: "Intaker always writes exactly 20 tags; business editor allows up to 20 (places.tags)",
   },
   tagCatalogSize: { max: 200, unit: "count", note: "Controlled tags in place_tags (Atlas taxonomy)" },
   tagSlugLength: { max: 40, unit: "chars", note: "Per-tag slug length cap" },
@@ -72,7 +72,7 @@ export const ENRICH_FIELD_LIMITS = {
     note: "Business Place editor / business-web-update-project — standard email-shape check.",
   },
   // DB CHECK, not just an EF-layer validation — the strongest enforcement of
-  // any field on this page. Google native: the Enricher writes it from Google
+  // any field on this page. Google native: the Intaker writes it from Google
   // Places' own 1–4 price level; business-web-update-project rejects manual
   // writes outright.
   priceLevel: {

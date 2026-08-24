@@ -36,7 +36,7 @@ export {
 } from "./enrich-reservation-policy.ts";
 
 /**
- * Select the reservation contact channel for Enricher seeding.
+ * Select the reservation contact channel for Intaker seeding.
  * Priority + parked channels come from the policy (Reservations Config); the
  * default is phone only. Sync + deterministic (no LLM). Admin override is
  * handled by the caller via hasReservationTarget before invoking this.

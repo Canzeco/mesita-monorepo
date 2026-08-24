@@ -3,7 +3,7 @@
 // 2026-08-23 21:58 comment for the per-aggregate write-surface count this
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
-//   • places   — the Google-observed / Enricher-owned profile
+//   • places   — the Google-observed / Intaker-owned profile
 //   • projects — the owned Mesita entity: status, billing, membership
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two

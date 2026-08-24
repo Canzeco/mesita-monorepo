@@ -6,7 +6,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 export type SynthesisQuality = "economy" | "standard" | "high";
 
-// Perplexity Agent preset — the "search model" for the Enricher's function 3
+// Perplexity Agent preset — the "search model" for the Intaker's function 3
 // (Agent X, the SERP Summary) + function 4 (Agent Y, channel link discovery,
 // which grounds on function 3's text). Mirrors the Perplexity Agent API
 // preset names (docs.perplexity.ai/docs/agent-api/presets).
@@ -105,7 +105,7 @@ export async function getAtlasSettings(): Promise<GetSettingsResult> {
   return { ok: true, data: r.data };
 }
 
-// ─── Enricher pipeline config ──────────────────────────────────────────────
+// ─── Intaker pipeline config ──────────────────────────────────────────────
 
 type AtlasConfigResponse = {
   atlasGatherGoogleImages: number;

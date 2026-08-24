@@ -18,7 +18,7 @@ export function NotificationRow({
   const phase =
     item.type === "atlas.enrichment_step" ? enricherPhase(item.meta ?? {}) : null;
   const tone = phase?.tone ?? cfg.tone;
-  const kicker = phase ? `Enricher · ${phase.label}` : cfg.label;
+  const kicker = phase ? `Intaker · ${phase.label}` : cfg.label;
   const when =
     now === null
       ? formatAbsoluteUtc(item.occurredAt)

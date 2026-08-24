@@ -4,7 +4,7 @@
 // row. Mirrors the place modal's header shape (name + address) but is
 // honest that the profile doesn't exist yet: the body says so and carries
 // the one real action, Add to Mesita (consumer-web-create-place → async
-// Enricher). State-driven (LocalSheet), not a route modal, because there is
+// Intaker). State-driven (LocalSheet), not a route modal, because there is
 // no Mesita place id to route to.
 //
 // So the consumer knows exactly WHICH profile they're adding, the sheet

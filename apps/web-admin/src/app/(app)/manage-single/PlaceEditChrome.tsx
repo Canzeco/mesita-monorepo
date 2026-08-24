@@ -12,7 +12,7 @@ import {
 import { PLACE_TAB_SECTIONS, placeSectionHref } from "./nav";
 import { usePlaceContext } from "./PlaceContext";
 
-/** True while the Enricher pipeline is mid-flight.
+/** True while the Intaker pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
  *  research OR analysis OR contents. Never clear after research alone. */
 function isEnriching(status: PlaceEnrichmentStatus | null): boolean {

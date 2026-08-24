@@ -1,4 +1,4 @@
-// Enricher pipeline: run-time config + shared types.
+// Intaker pipeline: run-time config + shared types.
 //
 // Every knob lives in app_config (columns still named atlas_* for
 // historical continuity with the admin console) and is read at run time —

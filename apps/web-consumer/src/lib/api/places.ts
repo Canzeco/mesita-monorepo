@@ -109,7 +109,7 @@ export type Place = {
   /** Per-visit reward ceiling in the place's currency. */
   reward_cap_mxn?: number | null;
   /**
-   * True while Enricher is still building the profile
+   * True while Intaker is still building the profile
    * (`projects.content_status` ∈ {queued, generating}). Drives the
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
@@ -133,7 +133,7 @@ export type Place = {
   enriched_at?: string | null;
   /** Per-visit promo cap in major currency units (source for `reward_cap_mxn`). */
   monthly_promo_cap?: number | null;
-  /** Enricher pipeline status (`queued` / `generating` / `ready` / …). */
+  /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
 };
 

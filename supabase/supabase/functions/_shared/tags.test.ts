@@ -1,4 +1,4 @@
-// Unit tests for Enricher tag selection (no network, no DB).
+// Unit tests for Intaker tag selection (no network, no DB).
 //   deno test supabase/functions/_shared/tags.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";

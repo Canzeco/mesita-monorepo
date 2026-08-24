@@ -26,7 +26,7 @@ type CreatedProject = {
  *
  * Calls consumer-web-create-place, which runs the shared create core
  * inline (dedupe → Google spine → 'generating' rows → seed place_research);
- * the cron-driven Enricher pipeline then enriches asynchronously. The place
+ * the cron-driven Intaker pipeline then enriches asynchronously. The place
  * lands with content_status='generating' and flips to 'ready' once enriched
  * — typically within ~5 minutes — so the UI should show a persistent
  * "being added" state rather than waiting on this promise.

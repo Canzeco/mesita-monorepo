@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-get-atlas-fields
 //
-// Read-only Enricher vocabulary for the admin console: place categories, tag
+// Read-only Intaker vocabulary for the admin console: place categories, tag
 // catalog, tag facets, and enforced field length limits.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

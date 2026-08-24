@@ -2,8 +2,8 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = enricher-config.
 //
-// Partial-update of the Enricher research knobs on public.app_config, written
-// from the admin console's Enricher → Configuration page. Each field is
+// Partial-update of the Intaker research knobs on public.app_config, written
+// from the admin console's Intaker → Configuration page. Each field is
 // optional; only the keys present in the body are written, so the UI can
 // save one control at a time:
 //

@@ -333,7 +333,7 @@ function mapGooglePlace(p: Record<string, unknown>): GooglePlace {
 }
 
 // ---- util -------------------------------------------------------------------
-// Shared with prod Enricher parse-utils (MESITA-192): tolerate fences, prose,
+// Shared with prod Intaker parse-utils (MESITA-192): tolerate fences, prose,
 // trailing commas, and truncated closing braces under concurrent Sonar load.
 function safeJson(text: string): Record<string, unknown> {
   const parsed = safeParseJson(text);

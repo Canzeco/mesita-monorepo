@@ -45,7 +45,7 @@ function isReservationChannel(v: unknown): v is ReservationChannel {
 /**
  * Coerce the app_config.reservations_config jsonb into a usable policy.
  * Anything malformed falls back to the default rather than throwing — a bad row
- * must never stop the Enricher from seeding an endpoint. Legacy whatsapp /
+ * must never stop the Intaker from seeding an endpoint. Legacy whatsapp /
  * instagram entries are dropped (not serving paths since MESITA-839/842).
  */
 export function coerceReservationsPolicy(raw: unknown): ReservationsPolicy {
@@ -124,7 +124,7 @@ export function buildReservationTarget(
 
 /**
  * True when the place already has a selected *serving* reservation channel
- * (an operator override the Enricher must not overwrite). Reads the typed
+ * (an operator override the Intaker must not overwrite). Reads the typed
  * column — routing left places.products in MESITA-1208. A legacy
  * whatsapp/instagram pick is not an override: it was never dialled
  * (MESITA-842), and the CHECK constraint no longer admits it.

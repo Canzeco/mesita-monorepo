@@ -89,7 +89,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
         </div>
       </div>
 
-      {/* decision: Pato — when the Enricher is still building the profile an
+      {/* decision: Pato — when the Intaker is still building the profile an
           "Enriching" chip leads the row; then verification · category ·
           price · zone · distance · hours · reward (swipe-style tags on
           light surface). MESITA-451: moved here off the header title.

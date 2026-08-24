@@ -6,7 +6,7 @@
 //               Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
 //               at the door, before any row exists. Don't seed corpses.
 //   3 details → the Google spine persisted (fetchGoogleBasics fields,
-//               category='undefined' until the Enricher infers the real one)
+//               category='undefined' until the Intaker infers the real one)
 //   · semantic summary → the first vector, queued in background
 //   · semantic name    → NOT BUILT (MESITA-1238)
 //
@@ -119,7 +119,7 @@ export async function createMinimalPlace(opts: {
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop); category stays 'undefined' until the
-  // Enricher pipeline's contents stage infers the real one. No
+  // Intaker pipeline's contents stage infers the real one. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
@@ -179,7 +179,7 @@ export async function createMinimalPlace(opts: {
     }
   }
 
-  // category 'undefined' until the Enricher resolves it; the category-label
+  // category 'undefined' until the Intaker resolves it; the category-label
   // trigger fills category_label from the 'undefined' catalog row.
   const place: Record<string, unknown> = {
     ...basicsRes.basics,
@@ -196,7 +196,7 @@ export async function createMinimalPlace(opts: {
   };
 
   // ── 2) Persist the minimal rows (in-process) — lands
-  // content_status='generating' until the Enricher pipeline's contents stage
+  // content_status='generating' until the Intaker pipeline's contents stage
   // flips it to 'ready'. ──
   const saveRes = await savePlaceData(admin, place, "generating");
   if (!saveRes.ok) {
@@ -223,8 +223,8 @@ export async function createMinimalPlace(opts: {
   // ── On-Create embeddings — the SUMMARY semantic function, run by CREATE
   // rather than by the queue (Docs › Intake §A): synthesize the first
   // Semantic Summary + vector for the new place right away, so it's
-  // semantically searchable before the Enricher fills the deep profile. Background (waitUntil) — never blocks or fails the create; the
-  // On-Update path re-embeds when the Enricher later changes profile fields.
+  // semantically searchable before the Intaker fills the deep profile. Background (waitUntil) — never blocks or fails the create; the
+  // On-Update path re-embeds when the Intaker later changes profile fields.
   // Tags never feed the source text. ──
   queuePlaceEmbeddingsOnUpdate({
     admin,

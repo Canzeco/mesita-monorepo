@@ -1,6 +1,6 @@
 // Supabase Edge Function — supabase-cron-enrich-place-research (internal / cron)
 //
-// Stage 1 of the Enricher pipeline (the Enricher is a PROCESS — a cron-driven
+// Stage 1 of the Intaker pipeline (the Intaker is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller
 // (run_place_enrichment_stages) claims place_research rows at stage='research'
 // and fires this EF with { project_id }. It acks 202 immediately and runs the
@@ -370,7 +370,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   //
   //   google_place_id ── identity spine, never changes here
   //   google_name     ── THIS write: what Google calls the place right now
-  //   mesita_name     ── operator's override; the Enricher must never touch it
+  //   mesita_name     ── operator's override; the Intaker must never touch it
   //   name            ── GENERATED display column, not writable at all
   //
   // There is no sticky/equality check any more. It compared the operator's name

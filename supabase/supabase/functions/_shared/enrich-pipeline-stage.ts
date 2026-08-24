@@ -1,4 +1,4 @@
-// Place-research row lifecycle helpers for the Enricher stage machine.
+// Place-research row lifecycle helpers for the Intaker stage machine.
 // Extracted from enrich-pipeline.ts (stage claim / advance / fail I/O).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -11,7 +11,7 @@ import type {
   ResearchStage,
 } from "./enrich-pipeline.ts";
 
-/** True while the Enricher is mid-pipeline (any of the three live stages). */
+/** True while the Intaker is mid-pipeline (any of the three live stages). */
 export function isEnrichingStage(
   stage: string | null | undefined,
 ): boolean {

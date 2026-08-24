@@ -15,7 +15,7 @@ import {
 // THE SHIP GATE for corrections (MESITA-1190).
 //
 // The whole feature is one claim: a fact an agent learned by CALLING the venue
-// outranks a fact the Enricher can refetch. Two things can break that claim
+// outranks a fact the Intaker can refetch. Two things can break that claim
 // quietly, and both are tested here.
 //
 //   1. The persist steps overwrite a pinned column anyway. Then a correction
@@ -71,7 +71,7 @@ Deno.test("an active pin is stripped from the persist payload", () => {
   assertEquals(update.description, "x");
 });
 
-Deno.test("an expired pin gives the field back to the Enricher", () => {
+Deno.test("an expired pin gives the field back to the Intaker", () => {
   const pins = activeFieldPins(readFieldPins(pinned("hours", PAST)));
   const { update, skipped } = stripPinnedColumns({ hours: { mon: "x" } }, pins);
   assertEquals(skipped, []);
@@ -101,7 +101,7 @@ Deno.test("a pin on a field the payload does not carry reports nothing", () => {
 });
 
 Deno.test("garbage in enrichment_sources never freezes a field", () => {
-  // The failure mode of guessing is a column the Enricher can never write
+  // The failure mode of guessing is a column the Intaker can never write
   // again, so anything that is not a recognisable pin record yields no pin.
   const cases: unknown[] = [
     null,
@@ -123,7 +123,7 @@ Deno.test("garbage in enrichment_sources never freezes a field", () => {
 });
 
 Deno.test("identity and generated prose are not correctable", () => {
-  // The spine and the Enricher's own output are outside the loop on purpose.
+  // The spine and the Intaker's own output are outside the loop on purpose.
   const columns = Object.values(CORRECTABLE_FIELD_COLUMNS).flat();
   for (const forbidden of ["name", "google_name", "google_place_id", "description"]) {
     assertEquals(

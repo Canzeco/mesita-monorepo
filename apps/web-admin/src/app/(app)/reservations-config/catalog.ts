@@ -9,7 +9,7 @@
 // Every place carries ONE selected reservation endpoint, in the typed pair
 // places.reservation_channel / places.reservation_target (MESITA-1208 moved it
 // out of the products jsonb; MESITA-1211 dropped the leftovers) — the address
-// the Reservationist dials. The Enricher seeds phone from places.phone.
+// the Reservationist dials. The Intaker seeds phone from places.phone.
 // WhatsApp / Instagram are not serving paths (no Twilio Messages.json; fleet
 // is voice-only).
 //
