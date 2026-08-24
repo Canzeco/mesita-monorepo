@@ -31,6 +31,7 @@ import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
+import { loadVisitsConfig, staffVisitsPolicy } from "../_shared/visits-config.ts";
 
 type Body = { code?: string };
 
@@ -118,6 +119,7 @@ Deno.serve(async (req) => {
   }
 
   const guest = consumerRow.data;
+  const visits = staffVisitsPolicy(await loadVisitsConfig(admin));
   return json({
     ok: true,
     check: {
@@ -142,6 +144,7 @@ Deno.serve(async (req) => {
         // MESITA-1095: the guest bill is always required.
         billRequired: true,
       }),
+      visits,
       scanned_before: wasScanned,
     },
   });

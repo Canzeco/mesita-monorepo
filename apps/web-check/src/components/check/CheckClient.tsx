@@ -146,11 +146,13 @@ function minutesAgo(iso: string | null): string | null {
 }
 
 // Poll cadence: foreground garnish only, with backoff on failure. The stale
-// gate below keys on BASE_POLL_MS — approve never fires against data older
-// than two intervals.
-const BASE_POLL_MS = 3_000;
-const MAX_POLL_MS = 30_000;
-const STALE_AFTER_MS = BASE_POLL_MS * 2 + 1_000;
+// gate below keys on the configured staff poll — approve never fires against
+// data older than two intervals. Fallbacks match visits_config defaults.
+function pollCadence(check: CheckPayload) {
+  const base = (check.visits?.staffPollSeconds ?? 3) * 1000;
+  const max = (check.visits?.staffPollMaxSeconds ?? 30) * 1000;
+  return { base, max, staleAfter: base * 2 + 1_000 };
+}
 
 export function CheckClient({
   code,
@@ -175,6 +177,7 @@ export function CheckClient({
   // one has no numbers to freeze, so it skips straight to the close.
   const v4 = check.bill != null && check.updated_at != null;
   const terminal = check.status === "revealed" || check.status === "cancelled";
+  const cadence = pollCadence(check);
 
   const mergePoll = useCallback((poll: CheckPollPayload) => {
     setCheck((prev) => ({
@@ -230,13 +233,13 @@ export function CheckClient({
   useEffect(() => {
     if (!v4 || terminal) return;
     let cancelled = false;
-    let delay = BASE_POLL_MS;
+    let delay = cadence.base;
     let timer: number | undefined;
     const loop = async () => {
       if (cancelled) return;
       if (document.visibilityState === "visible") {
         const ok = await refresh();
-        delay = ok ? BASE_POLL_MS : Math.min(delay * 2, MAX_POLL_MS);
+        delay = ok ? cadence.base : Math.min(delay * 2, cadence.max);
       }
       if (!cancelled) timer = window.setTimeout(() => void loop(), delay);
     };
@@ -250,17 +253,17 @@ export function CheckClient({
       if (timer) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [v4, terminal, refresh]);
+  }, [v4, terminal, refresh, cadence.base, cadence.max]);
 
   // The stale gate trips on its own clock, without needing a failed poll.
   useEffect(() => {
     if (!v4 || terminal) return;
     const t = window.setInterval(() => {
       const last = lastSyncedRef.current;
-      setStale(last !== null && Date.now() - last > STALE_AFTER_MS);
+      setStale(last !== null && Date.now() - last > cadence.staleAfter);
     }, 2_000);
     return () => window.clearInterval(t);
-  }, [v4, terminal]);
+  }, [v4, terminal, cadence.staleAfter]);
 
   const run = useCallback(
     async (key: string, fn: () => Promise<EFResult<unknown>>) => {
