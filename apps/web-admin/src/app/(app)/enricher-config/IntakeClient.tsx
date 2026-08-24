@@ -333,8 +333,8 @@ export function IntakeClient({
                 { href: "#f-seed", label: "Seed" },
                 { href: "#f-pulse", label: "Pulse" },
                 { href: "#f-details", label: "Details" },
-                { href: "#f-summary", label: "◇ Summary" },
                 { href: "#f-name", label: "◇ Name" },
+                { href: "#f-summary", label: "◇ Summary" },
               ]}
               footer="No knobs of its own. Everything Create does is a function below, and the semantic pair rides along outside the 0–9 count."
             />
@@ -379,8 +379,8 @@ export function IntakeClient({
                 { href: "#f-menu", label: "7 Menu" },
                 { href: "#f-reviews", label: "8 Reviews" },
                 { href: "#f-description", label: "9 Description" },
-                { href: "#f-summary", label: "◇ Summary" },
                 { href: "#f-name", label: "◇ Name" },
+                { href: "#f-summary", label: "◇ Summary" },
               ]}
               footer={
                 <>
@@ -408,8 +408,8 @@ export function IntakeClient({
               <FunctionFamily
                 tone="create"
                 label="Create"
-                kicker="One function. Seed, then Pulse and Details inline. Summary and Name ride along."
-                note="Pulse, Details, Summary and Name are the same functions Enrich uses. They are not a second ladder."
+                kicker="One function. Seed, then Pulse and Details inline. Name and Summary ride along."
+                note="Pulse, Details, Name and Summary are the same functions Enrich uses. They are not a second ladder."
               >
               <FunctionModule
                 id="f-seed"
@@ -458,15 +458,15 @@ export function IntakeClient({
                 tone="enrich"
                 label="Enrich"
                 kicker="Nine functions, in order. 1 Pulse and 2 Details live in Create — they are the same functions."
-                note="1 Pulse · 2 Details · ◇ Summary · ◇ Name are shared. Jump the chips; do not look for a second copy."
+                note="1 Pulse · 2 Details · ◇ Name · ◇ Summary are shared. Jump the chips; do not look for a second copy."
               >
               <div className="pt-3 pb-1">
                 <StepChips
                   steps={[
                     { href: "#f-pulse", label: "1 Pulse" },
                     { href: "#f-details", label: "2 Details" },
-                    { href: "#f-summary", label: "◇ Summary" },
                     { href: "#f-name", label: "◇ Name" },
+                    { href: "#f-summary", label: "◇ Summary" },
                   ]}
                 />
               </div>
@@ -749,21 +749,6 @@ export function IntakeClient({
                 kicker="No number. enriched never counts them. They run after Create and after Description."
               >
               <FunctionModule
-                id="f-summary"
-                index="◇"
-                flows="both flows"
-                name="Summary"
-                blurb="The 60-word text the index reads — never the prose a guest reads."
-                knobs="locked"
-              >
-                <NoKnobs>
-                  No knobs. The model is locked to <b>text-embedding-3-small</b>:
-                  swapping it re-embeds the whole catalog, so it is not a knob by
-                  design.
-                </NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
                 id="f-name"
                 index="◇"
                 flows="both flows"
@@ -775,6 +760,21 @@ export function IntakeClient({
                   Not built. The key is declared so this page can say
                   &ldquo;not built&rdquo; about something real, and nothing
                   stamps it.
+                </NoKnobs>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-summary"
+                index="◇"
+                flows="both flows"
+                name="Summary"
+                blurb="The 60-word text the index reads — never the prose a guest reads."
+                knobs="locked"
+              >
+                <NoKnobs>
+                  No knobs. The model is locked to <b>text-embedding-3-small</b>:
+                  swapping it re-embeds the whole catalog, so it is not a knob by
+                  design.
                 </NoKnobs>
               </FunctionModule>
               </FunctionFamily>
