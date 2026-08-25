@@ -22,6 +22,7 @@ type Body = {
   sessionToken?: string;
   lat?: number;
   lng?: number;
+  country?: string;
 };
 
 Deno.serve(async (req) => {
@@ -49,5 +50,6 @@ Deno.serve(async (req) => {
     sessionToken: body.sessionToken,
     lat,
     lng,
+    country: typeof body.country === "string" ? body.country : null,
   });
 });

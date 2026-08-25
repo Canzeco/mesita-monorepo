@@ -32,6 +32,7 @@ import {
 } from "./suggest-places-helpers.ts";
 import {
   applyPlacesAutocompleteRegion,
+  applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
   evaluatePlaceForChannel,
   readChannelPolicy,
@@ -39,7 +40,12 @@ import {
 } from "./sourcing.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
-import { cosineSim, parseVector } from "./embeddings-vector.ts";
+import {
+  cosineSim,
+  parseVector,
+  rankByCosine,
+  rankByNameCosine,
+} from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 
 export const SEARCH_LANE_CAP = 10;
@@ -170,6 +176,8 @@ export type ConsumerSearchArgs = {
   sessionToken?: string;
   lat?: number | null;
   lng?: number | null;
+  /** Guest country (ISO-2). Empty/omit = no Google country restrict. */
+  country?: string | null;
 };
 
 type ListedRow = {
@@ -201,24 +209,20 @@ function listedToLane(row: ListedRow): LaneItem | null {
   };
 }
 
-function rankByEmbedding(
-  rows: ListedRow[],
+function takeAboveFloor(
+  ranked: ListedRow[],
   queryVec: number[],
   kind: "name" | "summary",
   minCosine: number,
   limit: number,
 ): LaneItem[] {
-  const scored = rows.map((row) => {
+  const out: LaneItem[] = [];
+  for (const row of ranked) {
     const raw = kind === "name" ? row.name_embedding : row.embedding;
     const vec = parseVector(raw);
     const score = vec && vec.length === queryVec.length
       ? cosineSim(vec, queryVec)
       : -1;
-    return { row, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  const out: LaneItem[] = [];
-  for (const { row, score } of scored) {
     if (score < minCosine) continue;
     const item = listedToLane(row);
     if (!item || !item.mainText) continue;
@@ -265,10 +269,18 @@ export async function runConsumerSearchLane(
   const [googleAuto, googleText, catalog, queryVec] = await Promise.all([
     typeFilter === "skip"
       ? Promise.resolve({ predictions: [] as LaneItem[], errorEnvelope: undefined })
-      : fetchAutocomplete(input, sessionToken, apiKey, typeFilter, policy, origin),
+      : fetchAutocomplete(
+        input,
+        sessionToken,
+        apiKey,
+        typeFilter,
+        policy,
+        origin,
+        args.country,
+      ),
     typeFilter === "skip"
       ? Promise.resolve([] as LaneItem[])
-      : fetchTextSearch(input, apiKey, policy, origin),
+      : fetchTextSearch(input, apiKey, policy, origin, args.country),
     fetchListedCatalog(admin),
     embedQueryVector(admin, input, openaiKey),
   ]);
@@ -283,11 +295,17 @@ export async function runConsumerSearchLane(
   }
 
   const nameHits = queryVec
-    ? rankByEmbedding(catalog, queryVec, "name", NAME_MIN_COSINE, SEARCH_LANE_CAP)
+    ? takeAboveFloor(
+      rankByNameCosine(catalog, queryVec),
+      queryVec,
+      "name",
+      NAME_MIN_COSINE,
+      SEARCH_LANE_CAP,
+    )
     : [];
   const summaryHits = queryVec
-    ? rankByEmbedding(
-      catalog,
+    ? takeAboveFloor(
+      rankByCosine(catalog, queryVec),
       queryVec,
       "summary",
       SUMMARY_MIN_COSINE,
@@ -357,20 +375,29 @@ async function embedQueryVector(
   }
 }
 
+const CATALOG_PAGE = 1000;
+
 async function fetchListedCatalog(admin: SupabaseClient): Promise<ListedRow[]> {
-  const { data, error } = await admin
-    .from("profiles")
-    .select(
-      "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding",
-    )
-    .in("status", ["active", "lead"])
-    .not("google_place_id", "is", null)
-    .limit(500);
-  if (error) {
-    console.error("[consumer-search-lane] catalog:", error.message);
-    return [];
+  const rows: ListedRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("profiles")
+      .select(
+        "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding",
+      )
+      .in("status", ["active", "lead"])
+      .range(from, from + CATALOG_PAGE - 1);
+    if (error) {
+      console.error("[consumer-search-lane] catalog:", error.message);
+      return rows;
+    }
+    const page = (data ?? []) as ListedRow[];
+    rows.push(...page);
+    if (page.length < CATALOG_PAGE) break;
+    from += CATALOG_PAGE;
   }
-  return (data ?? []) as ListedRow[];
+  return rows;
 }
 
 async function fetchAutocomplete(
@@ -380,9 +407,11 @@ async function fetchAutocomplete(
   typeFilter: GoogleTypeFilter,
   policy: ChannelPolicy,
   origin: { lat: number; lng: number } | null,
+  country?: string | null,
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesAutocompleteRegion(body, policy, origin);
+  applyPlacesCallerRegion(body, country, "autocomplete");
   if (typeFilter === "legacy") {
     body.includedPrimaryTypes = [
       "restaurant",
@@ -444,12 +473,14 @@ async function fetchTextSearch(
   apiKey: string,
   policy: ChannelPolicy,
   origin: { lat: number; lng: number } | null,
+  country?: string | null,
 ): Promise<LaneItem[]> {
   const body: Record<string, unknown> = {
     textQuery: input,
     maxResultCount: SEARCH_LANE_CAP,
   };
   applyPlacesTextSearchRegion(body, policy, origin);
+  applyPlacesCallerRegion(body, country, "text");
   let r: Response;
   try {
     r = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {

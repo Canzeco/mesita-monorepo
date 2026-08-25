@@ -36,8 +36,8 @@ describe("Search overlays never use a fixed-height empty panel", () => {
   });
 });
 
-describe("SearchBar filter affordance", () => {
-  it("hides the tune control when Visit omits onOpenFilters", () => {
+describe("SearchBar scope affordance", () => {
+  it("hides the country + location chip when Visit omits onOpenScope", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -46,35 +46,42 @@ describe("SearchBar filter affordance", () => {
         onClear={() => {}}
       />,
     );
+    expect(html).not.toContain("any country");
     expect(html).not.toContain("Filters");
   });
 
-  it("shows Filters inside the pill when Search passes onOpenFilters", () => {
+  it("shows the country code and location circle on Search", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
         showClear={false}
         onQueryChange={() => {}}
         onClear={() => {}}
-        onOpenFilters={() => {}}
+        onOpenScope={() => {}}
+        countryCode="MX"
+        locationSet
       />,
     );
-    expect(html).toContain("Filters");
-    expect(html).not.toContain("Filters (active)");
+    expect(html).toContain("MX");
+    expect(html).toContain("location set");
+    expect(html).not.toContain("Filters");
+    expect(html).not.toContain("SlidersHorizontal");
   });
 
-  it("announces active filters on the trigger", () => {
+  it("renders an em dash when country is unset", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
         showClear={false}
         onQueryChange={() => {}}
         onClear={() => {}}
-        onOpenFilters={() => {}}
-        filtersActive
+        onOpenScope={() => {}}
+        countryCode={null}
+        locationSet={false}
       />,
     );
-    expect(html).toContain("Filters (active)");
+    expect(html).toContain("any country");
+    expect(html).toContain("location not set");
   });
 });
 
@@ -85,8 +92,9 @@ describe("Search pick and map center respect filters", () => {
     expect(src).toContain("picked ? [picked, ...filtered]");
   });
 
-  it("recenters the map on the filter zone, not only the device", () => {
+  it("recenters the map on the location param, not only the device", () => {
     expect(read("SearchClient.tsx")).toMatch(/viewCenter=\{center\}/);
+    expect(read("SearchClient.tsx")).toMatch(/locationOptOut/);
     expect(read("SearchMap.tsx")).toContain("viewCenter");
     expect(read("SearchMap.tsx")).toMatch(/Recentre target=\{lookAt\}/);
   });

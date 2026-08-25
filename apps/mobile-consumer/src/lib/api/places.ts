@@ -117,6 +117,7 @@ export async function apiSuggestPlaces(
   input: string,
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
+  country?: string | null,
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
@@ -127,6 +128,7 @@ export async function apiSuggestPlaces(
       input: trimmed,
       sessionToken,
       ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
+      ...(country ? { country } : {}),
     },
   );
   return predictions;

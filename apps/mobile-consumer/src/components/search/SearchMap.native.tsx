@@ -7,7 +7,33 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 import type { SearchMapProps } from '@/components/search/SearchMap';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { MONTERREY_CENTER } from '@/lib/map-defaults';
-import { membershipColor, placeMembershipTone } from '@/lib/search-membership';
+import {
+  membershipColor,
+  placeMembershipTone,
+  type MembershipTone,
+} from '@/lib/search-membership';
+
+function MembershipDot({
+  tone,
+  selected,
+}: {
+  tone: MembershipTone;
+  selected: boolean;
+}) {
+  const size = selected ? 22 : 16;
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: membershipColor(tone),
+        borderWidth: selected ? 3 : 2,
+        borderColor: '#ffffff',
+      }}
+    />
+  );
+}
 
 export function SearchMap({
   places,
@@ -23,16 +49,12 @@ export function SearchMap({
 }: SearchMapProps) {
   const mapRef = useRef<MapView>(null);
 
-  // Pan to whichever pin / rail card / on-Mesita result the consumer just
-  // picked. Primitive lat/lng deps (not the place object) so the camera moves
-  // only when the SELECTION changes — re-renders must never fight the user's
-  // panning. animateCamera pans without resetting the current zoom (mirrors
-  // web SearchMap's PanTo).
-  const selected = selectedId
+  const overlaySelected = pins?.find((p) => p.id === selectedId) ?? null;
+  const catalogSelected = selectedId
     ? (places.find((p) => p.id === selectedId) ?? null)
     : null;
-  const selLat = selected?.lat ?? null;
-  const selLng = selected?.lng ?? null;
+  const selLat = overlaySelected?.lat ?? catalogSelected?.lat ?? null;
+  const selLng = overlaySelected?.lng ?? catalogSelected?.lng ?? null;
   useEffect(() => {
     if (selLat == null || selLng == null) return;
     mapRef.current?.animateCamera(
@@ -41,9 +63,6 @@ export function SearchMap({
     );
   }, [selLat, selLng]);
 
-  // Recenter on the searched zone or the device location once it resolves —
-  // primitive deps so it fires on the center CHANGE, not every render (mirrors
-  // web SearchMap's Recentre).
   const cLat = center?.lat ?? null;
   const cLng = center?.lng ?? null;
   useEffect(() => {
@@ -96,32 +115,44 @@ export function SearchMap({
       onPress={onMapPress}
     >
       {pins != null
-        ? pins.map((pin) => (
-            <Marker
-              key={pin.id}
-              coordinate={{ latitude: pin.lat, longitude: pin.lng }}
-              title={pin.title}
-              pinColor={membershipColor(pin.tone)}
-              onPress={(e) => {
-                e.stopPropagation();
-                onSelectPin?.(pin);
-              }}
-            />
-          ))
+        ? pins.map((pin) => {
+            const selected = pin.id === selectedId;
+            return (
+              <Marker
+                key={pin.id}
+                coordinate={{ latitude: pin.lat, longitude: pin.lng }}
+                title={pin.title}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={selected ? 10 : 0}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onSelectPin?.(pin);
+                }}
+              >
+                <MembershipDot tone={pin.tone} selected={selected} />
+              </Marker>
+            );
+          })
         : places.map((place) => {
             if (place.lat == null || place.lng == null) return null;
-            const selectedPin = place.id === selectedId;
+            const selected = place.id === selectedId;
             return (
               <Marker
                 key={place.id}
                 coordinate={{ latitude: place.lat, longitude: place.lng }}
-                pinColor={membershipColor(placeMembershipTone(place))}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={selected ? 10 : 0}
                 onPress={(e) => {
                   e.stopPropagation();
-                  if (selectedPin) onOpenPlace(place);
+                  if (selected) onOpenPlace(place);
                   else onSelectPlace(place);
                 }}
-              />
+              >
+                <MembershipDot
+                  tone={placeMembershipTone(place)}
+                  selected={selected}
+                />
+              </Marker>
             );
           })}
     </MapView>

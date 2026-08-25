@@ -38,3 +38,53 @@ export function placeMembershipTone(place: {
   if (place.plan && place.plan.toLowerCase() !== "free") return "partner";
   return "listed";
 }
+
+/** Live-search overlay pins. Catalog is coords only — tone follows the EF row
+ *  so the list dot and the map pin cannot disagree. Empty coords → null so
+ *  the map keeps catalog markers instead of blanking. */
+export type SearchPinPrediction = {
+  placeId: string;
+  mainText: string;
+  status?: string | null;
+  partner?: boolean | null;
+  mesitaId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export type SearchPinPlace = {
+  id: string;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export type BuiltSearchPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  tone: MembershipTone;
+};
+
+export function buildSearchMapPins(
+  predictions: SearchPinPrediction[],
+  catalog: SearchPinPlace[],
+): BuiltSearchPin[] | null {
+  if (predictions.length === 0) return null;
+  const byId = new Map(catalog.map((place) => [place.id, place]));
+  const pins: BuiltSearchPin[] = [];
+  for (const prediction of predictions) {
+    const hit = prediction.mesitaId ? byId.get(prediction.mesitaId) : undefined;
+    const lat = prediction.lat ?? hit?.lat ?? null;
+    const lng = prediction.lng ?? hit?.lng ?? null;
+    if (typeof lat !== "number" || typeof lng !== "number") continue;
+    pins.push({
+      id: prediction.mesitaId ?? prediction.placeId,
+      lat,
+      lng,
+      title: prediction.mainText,
+      tone: membershipTone(prediction),
+    });
+  }
+  return pins.length > 0 ? pins : null;
+}
