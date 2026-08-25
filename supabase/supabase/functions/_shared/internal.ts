@@ -3,7 +3,7 @@
 //
 // Background: product / vendor callers authenticate end users or vendors via
 // these LIVE folder prefixes (code is SoT; Notion closed-set may lag):
-//   admin-web · business-web · consumer-web · check-web · staff-web ·
+//   admin-web · business-web · consumer-web · validate-web · staff-web ·
 //   consumer-mcp · eleven-a1 · eleven-a2 · eleven-a3 · eleven-a4 ·
 //   eleven-agent · stripe-webhook-handle-event
 // The product agent Reservationist runs as eleven-* mid-call tools — there is

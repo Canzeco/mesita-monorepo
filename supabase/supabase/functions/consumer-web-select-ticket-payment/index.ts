@@ -3,27 +3,26 @@
 // THE TICKET v4, step 5 (MESITA-1092): after approval — the last moment
 // anything can change the amount — the guest picks how they settle.
 //
-// C2 — exactly ONE live path: `at_place`. The guest pays the place directly,
+// Exactly ONE live path: `at_place`. The guest pays the place directly,
 // at the register, by whatever instrument the place accepts; the axis is WHO
-// takes the money, not the instrument. `mesita` (card through Mesita) is
-// STAGED: the client renders it as coming, and a client that calls it anyway
-// gets 501 code:"staged" and writes nothing. No PSP, no chargebacks, no
-// refunds this pass — the spec itself promises the restaurant never handles
-// a refund.
+// takes the money, not the instrument. Card-through-Mesita (old C2) is
+// RETIRED (MESITA-1114): a client that still sends `mesita` gets 410 and
+// writes nothing. No PSP on this ticket.
 //
 // method:null rolls `paying` back to `approved` (the guest changed their
 // mind before staff confirmed) — §12's one legal backward edge.
 //
 // Caller: consumer. Verb: select. Noun: ticket-payment.
 //
-// Body:     { ticketId, method: "at_place" | "mesita" | null }
-// Response: { ok: true, status } | 400 | 404 | 409 | 501 staged
+// Body:     { ticketId, method: "at_place" | null }
+// Response: { ok: true, status } | 400 | 404 | 409 | 410 retired
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
+import { parseSelectTicketPaymentMethod } from "../_shared/select-ticket-payment-method.ts";
 
 type Body = { ticketId?: string; method?: string | null };
 
@@ -42,24 +41,9 @@ Deno.serve(async (req) => {
   const ticketId = (bodyRes.body.ticketId ?? "").toString().trim();
   if (!ticketId) return json({ ok: false, error: "ticketId is required" }, 400);
 
-  const method = bodyRes.body.method ?? null;
-  if (method !== null && method !== "at_place" && method !== "mesita") {
-    return json(
-      { ok: false, error: "method must be at_place, mesita, or null" },
-      400,
-    );
-  }
-  if (method === "mesita") {
-    // Staged (C2): named so the UI can render the real shape, never charged.
-    return json(
-      {
-        ok: false,
-        code: "staged",
-        error: "Card through Mesita isn't live yet — pay at the place.",
-      },
-      501,
-    );
-  }
+  const parsed = parseSelectTicketPaymentMethod(bodyRes.body.method);
+  if (!parsed.ok) return json(parsed.body, parsed.status);
+  const method = parsed.method;
 
   const admin = adminClient(envRes.env);
   const ticketRow = await admin

@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
   }
 
   // A task completed AFTER the bill was snapshotted re-prices it upward
-  // (bump-only). Before the bill, this no-ops — check-web-submit-bill already
+  // (bump-only). Before the bill, this no-ops — validate-web-submit-bill already
   // prices with the verified story in the qualifying set.
   let repricedPercent: number | null = null;
   const reprice = await repriceTicketAfterAction(admin, ticketId);

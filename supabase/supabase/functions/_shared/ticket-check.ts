@@ -2,7 +2,7 @@
 // (MESITA-806). One home for: the possession token, the code→ticket lookup,
 // the PUBLIC PAYLOAD ALLOWLIST, and the audit/rate-limit plumbing.
 //
-// Security model, stated plainly: the check-web-* EFs are verify_jwt=false.
+// Security model, stated plainly: the validate-web-* EFs are verify_jwt=false.
 // The 128-bit check_code is the entire authentication — whoever holds the
 // URL can view the ticket, enter the bill, and mark it paid. That includes
 // the guest themselves (the QR is static; a

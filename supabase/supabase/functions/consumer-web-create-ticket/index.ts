@@ -4,12 +4,12 @@
 // staff involvement. Pick the place, opt into the story rung (any class with
 // a connected Instagram — MESITA-909), get back a check_code — the QR the
 // app renders is https://check.mesita.ai/<check_code>, and everything
-// staff-side happens on that public page (check-web-*). Replaces
+// staff-side happens on that public page (validate-web-*). Replaces
 // staff-initiated creation (business-web-create-ticket, retired in the same
 // change).
 //
 // Welcome is NEVER asserted here: it is detected server-side at billing time
-// (isConsumerFirstVisit inside check-web-submit-bill). The story opt-in is
+// (isConsumerFirstVisit inside validate-web-submit-bill). The story opt-in is
 // re-checked against Instagram connection + the place's grid (offersAction);
 // a non-eligible opt-in silently downgrades to not_required — same posture
 // the old staff create had, and the class never leaks in the response.

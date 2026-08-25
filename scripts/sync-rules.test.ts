@@ -98,14 +98,14 @@ Deno.test("rootTail falls back to the whole file when markers are unusable", () 
 // ── Word budgets ─────────────────────────────────────────────────────────────
 
 Deno.test("budgetsFor measures a package file whole, against the default ceiling", () => {
-  const [b] = budgetsFor(pkg("apps/web-check"), "word ".repeat(10));
+  const [b] = budgetsFor(pkg("apps/web-validate"), "word ".repeat(10));
   assertEquals(b.words, 10);
   assertEquals(b.budget, DEFAULT_PACKAGE_WORD_BUDGET);
   assertEquals(b.over, false);
 });
 
 Deno.test("budgetsFor flags an over-budget package file", () => {
-  const [b] = budgetsFor(pkg("apps/web-check"), "word ".repeat(DEFAULT_PACKAGE_WORD_BUDGET + 1));
+  const [b] = budgetsFor(pkg("apps/web-validate"), "word ".repeat(DEFAULT_PACKAGE_WORD_BUDGET + 1));
   assertEquals(b.over, true);
 });
 
