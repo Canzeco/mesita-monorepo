@@ -1,6 +1,6 @@
 "use client";
 
-// Status — the Statuses box: six bools (`true`/`false`) plus Promoting
+// Status — the Statuses box: six bools (`true`/`false`) plus Promoted
 // `0|1|2`, each from its own source. Intake (0. Seed … 10. Semantic)
 // lives in IntakeStatusCard.
 //
@@ -13,7 +13,7 @@
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
-//   Promoting  0 Zero · 1 Conservative · 2 Aggressive (not a bool)
+//   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -50,7 +50,7 @@ import {
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): six bools + Promoting 0|1|2. Intake
+// Statuses box (Pato, 2026-08-25): six bools + Promoted 0|1|2. Intake
 // is the next box — not chips under Enriched, and not a Create 1–4 /
 // Enrich 1–10 split. Chips never repeat the row name.
 //
@@ -67,7 +67,7 @@ import {
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
-//   Promoting  0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
+//   Promoted   0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
 //              only one of the six a guest is ever shown. Engine Dominant
 //              (3) displays as 2.
 //
@@ -77,7 +77,7 @@ import {
 // the box and the table can never disagree. That guarantee was only half true
 // until MESITA-1218: the chip read the 0-10 high-water while this box's prose
 // read a rival 0-3 stage level, and on every row they disagreed. Partner and
-// Promoting are derived here from columns on the row; Verified is a separate
+// Promoted are derived here from columns on the row; Verified is a separate
 // admin read hoisted into AdminSection.
 //
 // `listing_type` backs NONE of them, deliberately: it stores
@@ -110,7 +110,7 @@ export function isPromotingNow(place: AdminPlace): boolean {
   return state !== "paused" && state !== "forfeited";
 }
 
-/** Operator Promoting chip: 0 | 1 | 2 from the live lane + strategy. */
+/** Operator Promoted chip: 0 | 1 | 2 from the live lane + strategy. */
 export function placeOperatorPromotingLevel(place: AdminPlace): 0 | 1 | 2 {
   const strategy = strategyForPlace({
     welcome_free_rate: place.welcome_free_rate,
@@ -329,7 +329,7 @@ export function StatusCard({
           detail={partnerDetail}
         />
         <StatusRow
-          name="Promoting"
+          name="Promoted"
           on={promotingLevel > 0}
           chip={promotingLevelChip(promotingLevel)}
           tint="pink"
@@ -342,7 +342,7 @@ export function StatusCard({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
           <p className="type-label leading-relaxed text-amber-900">
             <span className="font-semibold">
-              Guest surfaces disagree with Promoting.
+              Guest surfaces disagree with Promoted.
             </span>{" "}
             {badged
               ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed promo lane."
@@ -370,7 +370,7 @@ function StatusRow({
 }: {
   name: string;
   on: boolean;
-  /** `true`/`false`/`?`/`…` for bools, `0`/`1`/`2` for Promoting. */
+  /** `true`/`false`/`?`/`…` for bools, `0`/`1`/`2` for Promoted. */
   chip: string;
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
@@ -414,7 +414,7 @@ function StatusRow({
 /**
  * The only control on this card, because Listed is the only fact here an
  * operator SETS rather than earns — Created, Enriched, Verified, Partner and
- * Promoting are all consequences of something else happening.
+ * Promoted are all consequences of something else happening.
  *
  * It writes projects.status through admin-web-set-place-listed, the column's
  * only write path. Unlisting is confirmed rather than immediate: the consumer

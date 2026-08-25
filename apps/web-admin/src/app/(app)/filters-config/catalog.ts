@@ -11,7 +11,7 @@
 //
 //   SIGNALS   six functions. One table: Input · Process · Output · exponent
 //             (the super-param, ink) plus the two mute knobs (maxKm,
-//             closedFloor). The rest of the curve lives in code. Promoting
+//             closedFloor). The rest of the curve lives in code. Promoted
 //             is not a row.
 //   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
 //             engine gets a knob, and today that knob is Swipe's `ranked`.

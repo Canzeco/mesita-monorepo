@@ -98,7 +98,7 @@ describe("intakeStatusLine", () => {
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
 
-  it("names Enriched · Verified · Partner · Promoting when those facts are on", () => {
+  it("names Enriched · Verified · Partner · Promoted when those facts are on", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -114,7 +114,7 @@ describe("intakeStatusLine", () => {
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Enriched · Verified · Partner · Promoting",
+      "Created · Active · Listed · Enriched · Verified · Partner · Promoted",
     );
   });
 

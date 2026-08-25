@@ -113,11 +113,11 @@ describe("generalHeaderFacts", () => {
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
   });
 
-  it("header facts keep Status-box chip encoding; Promoting is 0 | 1 | 2", () => {
+  it("header facts keep Status-box chip encoding; Promoted is 0 | 1 | 2", () => {
     const off = generalHeaderFacts(base);
     expect(off.find((f) => f.key === "partner")?.label).toBe("Partner");
     expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
-    expect(off.find((f) => f.key === "promoting")?.label).toBe("Promoting");
+    expect(off.find((f) => f.key === "promoting")?.label).toBe("Promoted");
     expect(off.find((f) => f.key === "promoting")?.chip).toBe("0");
     const on = generalHeaderFacts({
       ...base,
@@ -133,7 +133,7 @@ describe("generalHeaderFacts", () => {
     expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
   });
 
-  it("header display names stay Created … Promoting, never true/false/0", () => {
+  it("header display names stay Created … Promoted, never true/false/0", () => {
     const facts = generalHeaderFacts({
       ...base,
       seeded: true,
@@ -151,7 +151,7 @@ describe("generalHeaderFacts", () => {
       "Enriched",
       "Verified",
       "Partner",
-      "Promoting",
+      "Promoted",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
   });
