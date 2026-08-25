@@ -95,9 +95,14 @@ Deno.test("validatePlacePatch: accepts price_level 1..4", () => {
   assert(validatePlacePatch({ price_level: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts 'phone' or null on the routing channels", () => {
+Deno.test("validatePlacePatch: accepts every serving channel or null", () => {
   assert(validatePlacePatch({ reservation_channel: "phone", reservation_target: "+525512345678" }).ok);
+  assert(validatePlacePatch({ reservation_channel: "whatsapp" }).ok);
+  assert(validatePlacePatch({ reservation_channel: "instagram" }).ok);
+  assert(validatePlacePatch({ reservation_channel: "web" }).ok);
+  assert(validatePlacePatch({ reservation_channel: "none" }).ok);
   assert(validatePlacePatch({ order_channel: null, order_target: null }).ok);
+  assert(validatePlacePatch({ order_channel: "web", order_target: "https://example.com" }).ok);
 });
 
 Deno.test("validatePlacePatch: accepts string-array fields", () => {
@@ -221,8 +226,8 @@ Deno.test("validatePlacePatch: rejects price_level outside 1..4", () => {
   assert(!validatePlacePatch({ price_level: 5 }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a routing channel that isn't 'phone'", () => {
-  const res = validatePlacePatch({ reservation_channel: "whatsapp" });
+Deno.test("validatePlacePatch: rejects an unknown routing channel", () => {
+  const res = validatePlacePatch({ reservation_channel: "email" });
   assert(!res.ok);
 });
 

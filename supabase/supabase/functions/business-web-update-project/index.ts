@@ -18,7 +18,7 @@ import {
 } from "../_shared/auth.ts";
 import { isEmailish } from "../_shared/input.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
-import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
+import { isServingChannel, type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
 import { type PlaceHours, sanitiseHours } from "./project-hours.ts";
@@ -450,13 +450,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Order + reservation ROUTING — which contact each rail reaches the place on
-  // (MESITA-1208). Typed columns since routing left the products jsonb, so the
-  // two rails are now independent writes instead of a read-modify-write of one
-  // shared blob. `phone` is the only accepted channel: it is the only serving
-  // path (MESITA-842 / MESITA-839), and the DB CHECK rejects anything else —
-  // validate here so a stale client gets a 400 it can read, not a constraint
-  // violation. Null / empty clears the rail.
+  // Order + reservation ROUTING — which door each rail uses (MESITA-1208).
+  // Five picks: phone · whatsapp · instagram · web · none (Pato 2026-08-25).
+  // The Reservationist still only DIALS phone. Null / empty clears the rail.
   for (
     const [key, channelCol, targetCol] of [
       ["reservation", "reservation_channel", "reservation_target"],
@@ -470,26 +466,31 @@ Deno.serve(async (req) => {
       update[targetCol] = null;
       continue;
     }
-    if (raw !== "phone") {
+    if (!isServingChannel(raw)) {
       return json(
         {
           ok: false,
           code: "channel_not_served",
           error:
-            `${key} routing accepts only 'phone' today — the Reservationist is voice-only (MESITA-842).`,
+            `${key} routing accepts phone, whatsapp, instagram, web, or none.`,
         },
         400,
       );
+    }
+    if (raw === "none") {
+      update[channelCol] = "none";
+      update[targetCol] = null;
+      continue;
     }
     const target = (body as Record<string, unknown>)[targetCol];
     const value = typeof target === "string" ? target.trim().slice(0, 500) : "";
     if (!value) {
       return json(
-        { ok: false, error: `${targetCol} is required when ${channelCol} is set` },
+        { ok: false, error: `${targetCol} is required when ${channelCol} is ${raw}` },
         400,
       );
     }
-    update[channelCol] = "phone";
+    update[channelCol] = raw;
     update[targetCol] = value;
   }
 

@@ -103,6 +103,7 @@ import {
   validateReservationPatch,
   writeReservation,
 } from "../_shared/reservation-doc.ts";
+import { rowPlaceId } from "../_shared/place-id.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -1310,12 +1311,14 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
   if (rErr) return json({ ok: false, error: rErr.message }, 500);
   if (!r) return json({ ok: false, error: "reservation not found" }, 404);
+  const placeId = rowPlaceId(r);
+  if (!placeId) return json({ ok: false, error: "reservation has no place" }, 400);
   const guestNotify: "call" | "app" = r.consumer_notify === "app" ? "app" : "call";
   // Per-intent gates — each errand has its own idea of a live ticket.
   if (intent === "book") {
@@ -1396,7 +1399,7 @@ Deno.serve(async (req) => {
   const { data: placeRow } = await admin
     .from("places")
     .select("name, phone, reservation_channel, reservation_target, hours, lng")
-    .eq("id", r.project_id)
+    .eq("id", placeId)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
@@ -1415,14 +1418,23 @@ Deno.serve(async (req) => {
       businessNumber = cfg.testCall.number;
       via = "test-mode number";
     } else {
-      // Voice-only serving path (MESITA-842): the CHECK constraint admits
-      // only 'phone', so a stored channel is by definition dialable. Falls
-      // back to places.phone when no endpoint was ever selected.
-      const endpoint = place?.reservation_channel === "phone"
-        ? (place.reservation_target ?? "").trim()
-        : "";
-      businessNumber = endpoint || (place?.phone ?? "").trim();
-      via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      // Dial only when the door is Phone (or never picked — keep the
+      // places.phone fallback so existing rows still reach the venue).
+      // WhatsApp / Instagram / Web / Not are not voice endpoints.
+      const channel = place?.reservation_channel ?? null;
+      if (
+        channel === "none" || channel === "web" ||
+        channel === "whatsapp" || channel === "instagram"
+      ) {
+        businessNumber = "";
+        via = `place ${channel} endpoint — no voice dial`;
+      } else {
+        const endpoint = channel === "phone"
+          ? (place?.reservation_target ?? "").trim()
+          : "";
+        businessNumber = endpoint || (place?.phone ?? "").trim();
+        via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      }
     }
   }
   const dialsVenue = intent === "book" ||
@@ -1528,7 +1540,7 @@ Deno.serve(async (req) => {
         placeHours: place?.hours ?? null,
         placeLng,
         reservedAtIso: r.reserved_at,
-        projectId: r.project_id,
+        projectId: placeId,
         venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
         guestNotify,
       }),
@@ -1702,7 +1714,7 @@ Deno.serve(async (req) => {
       callbackAttemptsDone: 0,
       reservedAtIso: r.reserved_at,
       runId,
-      projectId: r.project_id,
+      projectId: placeId,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
       modificationOfIso,

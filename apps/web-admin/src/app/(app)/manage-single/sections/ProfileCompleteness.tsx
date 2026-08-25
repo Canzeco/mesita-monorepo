@@ -5,6 +5,7 @@ import type { AdminPlace } from "../actions";
 import { placeSectionHref } from "../nav";
 import { usePlaceContext } from "../PlaceContext";
 import { CrossTabLink } from "../ui";
+import { isServingChannel } from "./ChannelPicker";
 
 // Profile completeness banner (MESITA-586) — the one full-width element above
 // the Place-tab masonry. The score is computed ENTIRELY on the client from
@@ -92,7 +93,7 @@ const CHECKS: readonly CompletenessCheck[] = [
     label: "Reservations",
     hint: "Pick a reservation channel",
     weight: 10,
-    done: (p) => p.reservation_channel === "phone",
+    done: (p) => isServingChannel(p.reservation_channel),
     tab: "settings",
   },
   {

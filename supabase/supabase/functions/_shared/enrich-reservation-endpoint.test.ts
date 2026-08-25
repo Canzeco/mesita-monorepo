@@ -49,18 +49,16 @@ Deno.test("valueForReservationChannel / buildReservationTarget", () => {
   assertEquals(buildReservationTarget("phone", { phone: "  " }), null);
 });
 
-Deno.test("hasReservationTarget: only phone counts as a serving override", () => {
-  // Reads the typed column, not a products blob (MESITA-1208).
+Deno.test("hasReservationTarget: any of the five doors is an operator override", () => {
   assertEquals(hasReservationTarget(null), false);
   assertEquals(hasReservationTarget(undefined), false);
   assertEquals(hasReservationTarget({}), false);
   assertEquals(hasReservationTarget({ reservation_channel: null }), false);
   assertEquals(hasReservationTarget({ reservation_channel: "phone" }), true);
-  // Legacy picks were never dialed — not overrides (MESITA-842). The CHECK
-  // constraint no longer admits them, but a pre-migration row could still
-  // surface one, so the guard stays.
-  assertEquals(hasReservationTarget({ reservation_channel: "whatsapp" }), false);
-  assertEquals(hasReservationTarget({ reservation_channel: "instagram" }), false);
+  assertEquals(hasReservationTarget({ reservation_channel: "whatsapp" }), true);
+  assertEquals(hasReservationTarget({ reservation_channel: "instagram" }), true);
+  assertEquals(hasReservationTarget({ reservation_channel: "web" }), true);
+  assertEquals(hasReservationTarget({ reservation_channel: "none" }), true);
   assertEquals(hasReservationTarget({ reservation_channel: "email" }), false);
 });
 
