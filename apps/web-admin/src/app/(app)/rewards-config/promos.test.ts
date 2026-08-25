@@ -299,8 +299,6 @@ describe("bonuses are per strategy", () => {
 describe("Tiers HTML prices visits only", () => {
   it("has no Orders or prepaid knobs", () => {
     const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
-    expect(src).toContain("Visit rewards only");
-    expect(src).toContain("not prepaid");
     expect(src).not.toContain("OrdersPromosSoon");
     expect(src).not.toContain('context="orders"');
     expect(src).not.toContain("setOrders");
@@ -309,7 +307,7 @@ describe("Tiers HTML prices visits only", () => {
 });
 
 describe("Promos Config is one page", () => {
-  it("has no tab nav and composes knobs plus distribution", () => {
+  it("has three super boxes and no tab nav", () => {
     const shell = readFileSync(
       join(__dirname, "PromosLayoutShell.tsx"),
       "utf8",
@@ -318,10 +316,18 @@ describe("Promos Config is one page", () => {
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     expect(shell).not.toContain("ConfigTabNav");
     expect(nav).not.toContain("PROMOS_SUBROUTES");
+    expect(page).toContain('title="Visit Promos"');
+    expect(page).toContain('title="Discount Cap"');
+    expect(page).toContain('title="Expected Distribution"');
+    expect(page).toContain("Visit rewards only");
     expect(page).toContain("TiersClient");
+    expect(page).toContain("DiscountCapClient");
     expect(page).toContain("PromosDistributionClient");
     expect(page).toContain("PromosSaveFooter");
     expect(page).toContain("PromosCalculator");
+    expect(page.indexOf("Visit Promos")).toBeLessThan(
+      page.indexOf("Expected Distribution"),
+    );
     expect(page.indexOf("PromosDistributionClient")).toBeLessThan(
       page.indexOf("PromosCalculator"),
     );

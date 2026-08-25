@@ -1,18 +1,16 @@
 "use client";
 
-import { AlertTriangle, Coins } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 import {
   Collapsible,
   KnobStatus,
   SectionCard,
 } from "@/components/admin-ui/config";
-import { formatShortDate } from "@/lib/format";
 import { BoxRow, RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
   ACTION_KEYS,
-  ALLOWED_CAPS,
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
@@ -158,8 +156,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
 }
 
 export function TiersClient() {
-  const { cfg, setCap, pending, seeded, loadBlocked, updatedAt, ladderError } =
-    usePromosState();
+  const { cfg, seeded, loadBlocked, ladderError } = usePromosState();
   const warnings = modelWarnings(cfg);
 
   return (
@@ -169,10 +166,6 @@ export function TiersClient() {
           Nothing is saved yet — launch defaults. Review, then Save.
         </p>
       )}
-
-      <p className="text-muted-foreground type-label">
-        Visit rewards only — not orders, not prepaid.
-      </p>
 
       {ladderError && (
         <div className="rounded-lg border border-red-300/70 bg-red-50 px-3 py-2.5">
@@ -202,9 +195,6 @@ export function TiersClient() {
         </div>
       )}
 
-      <h2 className="font-display text-base font-semibold tracking-tight">
-        Visit Promos
-      </h2>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
@@ -297,40 +287,6 @@ export function TiersClient() {
           </p>
         </div>
       </Collapsible>
-
-      <SectionCard
-        icon={<Coins className="text-secondary h-4 w-4" />}
-        title="Discount Cap"
-        subtitle="Fallback when a place has not picked its own. First N of the bill."
-        status={<KnobStatus kind="fallback" reason="place cap wins" />}
-      >
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {ALLOWED_CAPS.map((c) => {
-            const active = cfg.cap === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                disabled={pending}
-                onClick={() => setCap(c)}
-                aria-pressed={active}
-                className={
-                  active
-                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                }
-              >
-                {c.toLocaleString("en-US")}
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
-      {updatedAt && (
-        <p className="text-muted-foreground text-right text-xs">
-          Updated {formatShortDate(updatedAt)}
-        </p>
-      )}
     </div>
   );
 }
