@@ -36,8 +36,8 @@ describe("PromosSection visit-only", () => {
     expect(src).toMatch(/\[capError, setCapError\]/);
     expect(src).toMatch(/setCapError\(r\.error\)/);
     // Stale Discount Cap ErrorNote must not survive a later strategy write.
-    expect(src).toMatch(/setSwitchError\(null\);\s*setCapError\(null\);/s);
-    expect(src).toMatch(/setModalError\(null\);\s*setCapError\(null\);/s);
-    expect(src).toMatch(/setDropError\(null\);\s*setCapError\(null\);/s);
+    expect(src).toMatch(/setSwitchError\(null\);\s*setCapError\(null\);/);
+    expect(src).toMatch(/setModalError\(null\);\s*setCapError\(null\);/);
+    expect(src).toMatch(/setDropError\(null\);\s*setCapError\(null\);/);
   });
 });
