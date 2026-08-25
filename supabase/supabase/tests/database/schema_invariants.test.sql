@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(55);
+select plan(56);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -469,6 +469,14 @@ select is_empty(
           and c.relkind in ('r', 'p')
      )$$,
   'every admin_reset_preserve row names a live public table (a stale row means the real table gets wiped)'
+);
+
+-- MESITA-709: n8n ×3, Serper, and TripAdvisor vault rows are gone. A re-seed
+-- of those names is the finding — never print decrypted values.
+select is_empty(
+  $$select name from vault.secrets
+     where name ~* '(n8n|serper|tripadvisor)'$$,
+  'vault.secrets has no retired n8n / serper / tripadvisor rows'
 );
 
 select * from finish();

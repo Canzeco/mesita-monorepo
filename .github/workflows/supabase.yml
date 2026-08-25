@@ -138,6 +138,17 @@ jobs:
   # Cost: `-x` drops every container except Postgres (and auth, which the CLI
   # always starts). Path-filtered to `supabase/**`, so a web-only PR never
   # pays for it.
+  #
+  # MESITA-1191 D3b: this job is NOT `supabase db lint` on a shadow DB. That
+  # would reverse the settled CI-cost posture. Stale PL/pgSQL is caught by
+  # doctor 2.10 (plpgsql_check + the grep that covers EXECUTE / LANGUAGE sql /
+  # cron.job.command) plus a same-session rebuild in the rename migration.
+  #
+  # MESITA-1296: when these jobs report, main-protection should require
+  # `deno lint · test`, `deno check`, `pgTAP · schema invariants`, plus
+  # `instruction files in sync` and `brand assets in sync`. Unreported
+  # path-filtered checks must not block. The GitHub token on this runner
+  # cannot PUT the ruleset (403); the law is the names, the click is residue.
   schema:
     name: pgTAP · schema invariants
     runs-on: ubuntu-latest
