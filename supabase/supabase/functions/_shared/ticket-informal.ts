@@ -148,7 +148,7 @@ export async function finalizeInformalTicket(
   const ticket = await admin
     .from("visit_tickets")
     .select(
-      "id, status, project_id, bill_subtotal_cents, total_cents, discount_cents, discount_percent",
+      "id, status, place_id, bill_subtotal_cents, total_cents, discount_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -180,8 +180,8 @@ export async function finalizeInformalTicket(
     (ticket.data.discount_cents as number | null) ??
     (ticket.data.discount_percent as number | null) ??
     0;
-  if ((!billed || discount > 0) && ticket.data.project_id) {
-    await recordFirstTicketHonored(admin, ticket.data.project_id as string);
+  if ((!billed || discount > 0) && ticket.data.place_id) {
+    await recordFirstTicketHonored(admin, ticket.data.place_id as string);
   }
 
   return { ok: true };

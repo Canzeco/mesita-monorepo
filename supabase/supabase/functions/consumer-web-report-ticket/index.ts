@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, project_id, status, created_at, revealed_at, cancelled_at")
+    .select("id, consumer_id, place_id, status, created_at, revealed_at, cancelled_at")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
     .insert({
       ticket_id: ticket.id,
       consumer_id: ticket.consumer_id,
-      project_id: ticket.project_id,
+      place_id: ticket.place_id,
       reason,
       details,
     })

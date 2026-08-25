@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     const ticketRes = await admin
       .from("visit_tickets")
       .select(
-        "id, status, story_status, story_submitted_at, first_scanned_at, discount_percent, project_id, total_cents, created_at",
+        "id, status, story_status, story_submitted_at, first_scanned_at, discount_percent, place_id, total_cents, created_at",
       )
       .in("id", ticketIds);
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     const placeIds = [
       ...new Set(
         (ticketRes.data ?? [])
-          .map((t) => t.project_id)
+          .map((t) => t.place_id)
           .filter((id): id is string => Boolean(id)),
       ),
     ];
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
         first_scanned_at: t.first_scanned_at,
         total_cents: t.total_cents,
         discount_percent: t.discount_percent,
-        capMxn: t.project_id ? (placeCapById.get(t.project_id) ?? null) : null,
+        capMxn: t.place_id ? (placeCapById.get(t.place_id) ?? null) : null,
         created_at: t.created_at,
       };
     }
@@ -141,8 +141,8 @@ Deno.serve(async (req) => {
     if (typeof body.ticketId === "string" && body.ticketId.trim()) {
       const ticketId = body.ticketId.trim();
       const ticketRow = ticketRes.data?.find((t) => t.id === ticketId);
-      if (ticketRow?.project_id) {
-        placeInstagramUrl = placeInstagramById.get(ticketRow.project_id) ?? null;
+      if (ticketRow?.place_id) {
+        placeInstagramUrl = placeInstagramById.get(ticketRow.place_id) ?? null;
       }
     }
   }

@@ -18,7 +18,7 @@ export async function prepareTicketForReview(
 ): Promise<{ ok: true; projectId: string } | { ok: false; error: string }> {
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, project_id, status")
+    .select("id, place_id, status")
     .eq("id", ticketId)
     .eq("consumer_id", consumerId)
     .maybeSingle();
@@ -32,9 +32,9 @@ export async function prepareTicketForReview(
       admin,
       consumerId,
       ticketId,
-      row.project_id,
+      row.place_id,
     );
-    return { ok: true, projectId: row.project_id };
+    return { ok: true, projectId: row.place_id };
   }
 
   return { ok: false, error: "Ticket is not ready for review" };
@@ -80,7 +80,7 @@ export async function ensureConsumerReviewNotification(
     kind: "review",
     status: "pending",
     payload: {
-      project_id: projectId,
+      place_id: projectId,
       place_slug: v?.slug ?? null,
       place_name: v?.name ?? "Partner place",
       place_photo_url: v?.photos?.[0] ?? null,

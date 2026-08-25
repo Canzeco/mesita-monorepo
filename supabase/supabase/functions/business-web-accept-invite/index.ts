@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
   const invite = await admin
     .from("project_invites")
-    .select("id, project_id, email, role, claimed_at, expires_at")
+    .select("id, place_id, email, role, claimed_at, expires_at")
     .eq("token", token)
     .maybeSingle();
   if (invite.error) {
@@ -83,11 +83,11 @@ Deno.serve(async (req) => {
     .from("project_members")
     .upsert(
       {
-        project_id: invite.data.project_id,
+        place_id: invite.data.place_id,
         manager_id: user.id,
         role: invite.data.role,
       },
-      { onConflict: "project_id,manager_id", ignoreDuplicates: false },
+      { onConflict: "place_id,manager_id", ignoreDuplicates: false },
     )
     .select("id, role")
     .single();
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    projectId: invite.data.project_id,
+    projectId: invite.data.place_id,
     role: upsert.data.role,
   });
 });

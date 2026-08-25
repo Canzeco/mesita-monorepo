@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, project_id, status, consumer_id")
+    .select("id, place_id, status, consumer_id")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error) {
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   }
   if (!ticket.data) return json({ ok: false, error: "Ticket not found" }, 404);
 
-  const membership = await requireEditor(admin, authRes.user, ticket.data.project_id);
+  const membership = await requireEditor(admin, authRes.user, ticket.data.place_id);
   if (!membership.ok) return membership.response;
 
   if (ticket.data.status === TICKET_STATUS.cancelled) {
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   let strike: unknown = null;
   if (isStrikeReason(reason)) {
     const result = await recordMembershipStrike(admin, {
-      projectId: ticket.data.project_id,
+      projectId: ticket.data.place_id,
       reason,
       consumerId: ticket.data.consumer_id,
       ticketId,

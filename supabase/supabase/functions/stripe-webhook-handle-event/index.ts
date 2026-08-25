@@ -236,7 +236,7 @@ async function reconcileProjectSubscription(
     const retire = await admin
       .from("project_subscriptions")
       .update({ status: "canceled" })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .neq("stripe_subscription_id", sub.id)
       .in("status", ["active", "past_due"]);
     if (retire.error) {
@@ -248,7 +248,7 @@ async function reconcileProjectSubscription(
     .from("project_subscriptions")
     .upsert(
       {
-        project_id: projectId,
+        place_id: projectId,
         plan_key: planKey,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,

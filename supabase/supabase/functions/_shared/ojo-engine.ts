@@ -87,6 +87,7 @@ import { OPENAI_URL } from "./enrich-config.ts";
 import { safeParseJson } from "./parse-utils.ts";
 import { loadOjoConfig, type OjoConfig } from "./ojo-config.ts";
 import { loadModelsConfig } from "./models-config.ts";
+import { rowPlaceId } from "./place-id.ts";
 import { TASKABLE_STATUS_SET } from "./ticket-status.ts";
 
 export type OjoKind = "story" | "review";
@@ -143,7 +144,7 @@ export async function verifyProof(
   const ticketRes = await admin
     .from("visit_tickets")
     .select(
-      `id, project_id, status, ${statusCol}, ${screenshotCol}, ${attemptsCol}, ` +
+      `id, place_id, status, ${statusCol}, ${screenshotCol}, ${attemptsCol}, ` +
         "bill_subtotal_cents, approved_at",
     )
     .eq("id", ticketId)
@@ -162,10 +163,13 @@ export async function verifyProof(
   const screenshotUrl = ticket[screenshotCol] as string | null;
   if (!screenshotUrl) return { ran: false, reason: "no_screenshot" };
 
+  const placeId = rowPlaceId(ticket);
+  if (!placeId) return { ran: false, reason: "ticket_lookup: no place" };
+
   const placeRes = await admin
     .from("profiles")
     .select("id, name")
-    .eq("id", ticket.project_id as string)
+    .eq("id", placeId)
     .maybeSingle();
   const placeName = (placeRes.data as { name?: string } | null)?.name ?? "";
 

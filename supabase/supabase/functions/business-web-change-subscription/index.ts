@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   const { data: liveSub } = await admin
     .from("project_subscriptions")
     .select("stripe_subscription_id, stripe_customer_id, plan_key, current_period_end")
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .in("status", ["active", "past_due"])
     .maybeSingle();
   const liveSubId = (liveSub?.stripe_subscription_id ?? "") as string;
@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       .from("project_subscriptions")
       .upsert(
         {
-          project_id: projectId,
+          place_id: projectId,
           plan_key: VERIFIED_PLAN,
           stripe_subscription_id: mockSubId,
           stripe_customer_id: `mock_cus_${projectId}`,
@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
   const { data: existing } = await admin
     .from("project_subscriptions")
     .select("stripe_customer_id")
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .not("stripe_customer_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -371,7 +371,7 @@ Deno.serve(async (req) => {
 
   await admin.from("project_subscriptions").upsert(
     {
-      project_id: projectId,
+      place_id: projectId,
       plan_key: VERIFIED_PLAN,
       stripe_customer_id: customerId,
       status: "incomplete",

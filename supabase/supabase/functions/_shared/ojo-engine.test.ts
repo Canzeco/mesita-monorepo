@@ -14,7 +14,7 @@ type Row = Record<string, unknown>;
 
 const BASE_TICKET: Row = {
   id: "t1",
-  project_id: "p1",
+  place_id: "p1",
   status: "open",
   story_status: "self_verified",
   story_screenshot_url: "https://storage.example.com/ticket-proofs/c1/t1-story-1.jpg",

@@ -23,6 +23,7 @@ import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { phoneDigits } from "./phone.ts";
 import { writeReservation } from "./reservation-doc.ts";
+import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
@@ -147,7 +148,7 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -158,6 +159,7 @@ export type TicketRow = {
   status: string;
   notes: string | null;
   is_test: boolean;
+  place_id: string;
   project_id: string;
   consumer_id: string;
   reported_verdict: string | null;
@@ -171,6 +173,16 @@ export type TicketRow = {
     phone: string | null;
   } | null;
 };
+
+function asTicket(row: Record<string, unknown> | null): TicketRow | null {
+  return (fromPlaceIdRow(row) as TicketRow | null) ?? null;
+}
+
+function asTickets(rows: unknown): TicketRow[] {
+  return ((rows ?? []) as unknown[]).map((row) =>
+    fromPlaceIdRow(row as Record<string, unknown>) as TicketRow
+  );
+}
 
 function guestNameOf(r: TicketRow): string {
   const c = r.consumer;
@@ -220,7 +232,7 @@ export async function ticketByCode(
     .select(TICKET_SELECT)
     .eq("reference_code", digits)
     .maybeSingle();
-  return (data ?? null) as TicketRow | null;
+  return asTicket((data ?? null) as Record<string, unknown> | null);
 }
 
 /** A verified consumer's newest tickets (is_test included — agent surface). */
@@ -239,7 +251,7 @@ export async function ticketsOfConsumers(
   // supabase-js types an embedded to-one relation as an ARRAY, so the direct
   // cast is "insufficiently overlapping" (TS2352). The runtime shape is a
   // single object; go through unknown rather than widen TicketRow to a lie.
-  return (data ?? []) as unknown as TicketRow[];
+  return asTickets(data);
 }
 
 /** A verified place's book, soonest first from six hours ago. */
@@ -252,14 +264,14 @@ export async function ticketsOfPlace(
   const { data } = await admin
     .from("reservation_tickets")
     .select(TICKET_SELECT)
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .gte("reserved_at", since)
     .order("reserved_at", { ascending: true })
     .limit(limit);
   // supabase-js types an embedded to-one relation as an ARRAY, so the direct
   // cast is "insufficiently overlapping" (TS2352). The runtime shape is a
   // single object; go through unknown rather than widen TicketRow to a lie.
-  return (data ?? []) as unknown as TicketRow[];
+  return asTickets(data);
 }
 
 // ── Mutations ────────────────────────────────────────────────────────────────

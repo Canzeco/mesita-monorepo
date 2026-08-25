@@ -103,6 +103,7 @@ import {
   validateReservationPatch,
   writeReservation,
 } from "../_shared/reservation-doc.ts";
+import { rowPlaceId } from "../_shared/place-id.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -1310,7 +1311,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -1396,7 +1397,7 @@ Deno.serve(async (req) => {
   const { data: placeRow } = await admin
     .from("places")
     .select("name, phone, reservation_channel, reservation_target, hours, lng")
-    .eq("id", r.project_id)
+    .eq("id", rowPlaceId(r))
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
@@ -1528,7 +1529,7 @@ Deno.serve(async (req) => {
         placeHours: place?.hours ?? null,
         placeLng,
         reservedAtIso: r.reserved_at,
-        projectId: r.project_id,
+        projectId: rowPlaceId(r),
         venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
         guestNotify,
       }),
@@ -1702,7 +1703,7 @@ Deno.serve(async (req) => {
       callbackAttemptsDone: 0,
       reservedAtIso: r.reserved_at,
       runId,
-      projectId: r.project_id,
+      projectId: rowPlaceId(r),
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
       modificationOfIso,

@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, project_id, status")
+    .select("id, consumer_id, place_id, status")
     .eq("id", ticketId)
     .eq("consumer_id", userId)
     .maybeSingle();
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       {
         ticket_id: ticketId,
         consumer_id: userId,
-        project_id: ticket.data.project_id,
+        place_id: ticket.data.place_id,
         food,
         service,
         ambience,
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
       // same place UPDATES the existing review instead of inserting a second
       // one; ticket_id above is rewritten to the ticket it was last edited
       // from, which is what the check page and notifications join on.
-      { onConflict: "consumer_id,project_id" },
+      { onConflict: "consumer_id,place_id" },
     )
     .select("id")
     .single();

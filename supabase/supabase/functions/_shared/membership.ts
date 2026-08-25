@@ -94,7 +94,7 @@ export async function isConsumerFirstVisit(
     .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   if (excludeTicketId) query = query.neq("id", excludeTicketId);
   const { count } = await query;
   return (count ?? 0) === 0;
@@ -111,7 +111,7 @@ export async function hasClaimedReview(
     .from("consumer_review_claims")
     .select("consumer_id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   return (count ?? 0) > 0;
 }
 
@@ -137,13 +137,13 @@ export async function consumerVisitedPlaceIds(
   if (projectIds.length === 0) return new Set();
   const { data } = await admin
     .from("visit_tickets")
-    .select("project_id")
+    .select("place_id")
     .eq("consumer_id", consumerId)
-    .in("project_id", projectIds);
-  const rows = (data ?? []) as { project_id: string | null }[];
+    .in("place_id", projectIds);
+  const rows = (data ?? []) as { place_id: string | null }[];
   return new Set(
     rows
-      .map((r) => r.project_id)
+      .map((r) => r.place_id)
       .filter((id): id is string => typeof id === "string"),
   );
 }

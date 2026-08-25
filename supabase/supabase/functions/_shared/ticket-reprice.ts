@@ -19,10 +19,11 @@ import { ratesForBilling } from "./ticket-rate-snapshot.ts";
 import { resolveBillCapPesos } from "./discount-cap.ts";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
 import { writeTicket } from "./ticket-doc.ts";
+import { rowPlaceId } from "./place-id.ts";
 
 type RepriceTicketRow = {
   id: string;
-  project_id: string;
+  place_id: string;
   consumer_id: string;
   status: string;
   story_status: string | null;
@@ -44,7 +45,8 @@ export async function resolveLiveTicketRate(
   admin: SupabaseClient,
   ticket: {
     id: string;
-    project_id: string;
+    project_id?: string;
+    place_id?: string;
     consumer_id: string;
     story_status: string | null;
     review_status: string | null;
@@ -53,6 +55,9 @@ export async function resolveLiveTicketRate(
   | { ok: true; ratePercent: number; capPesos: number }
   | { ok: false; error: string }
 > {
+  const placeId = rowPlaceId(ticket);
+  if (!placeId) return { ok: false, error: "place not found" };
+
   const [placeRes, consumerRes, grid, firstVisit, mesitaReviewed] = await Promise
     .all([
       admin
@@ -60,18 +65,18 @@ export async function resolveLiveTicketRate(
         .select(
           "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, monthly_promo_cap",
         )
-        .eq("id", ticket.project_id)
+        .eq("id", placeId)
         .maybeSingle(),
       admin
         .from("consumers")
-        .select("id, class_key")
+        .select("id, class_key, plan")
         .eq("id", ticket.consumer_id)
         .maybeSingle(),
       loadRewardsGrid(admin),
       isConsumerFirstVisit(
         admin,
         ticket.consumer_id,
-        ticket.project_id,
+        placeId,
         ticket.id,
       ),
       hasMesitaReview(admin, ticket.id),
@@ -128,7 +133,7 @@ export async function repriceTicketAfterAction(
   const ticketRes = await admin
     .from("visit_tickets")
     .select(
-      "id, project_id, consumer_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
+      "id, place_id, consumer_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -136,6 +141,8 @@ export async function repriceTicketAfterAction(
     return { ok: false, error: ticketRes.error?.message ?? "ticket not found" };
   }
   const ticket = ticketRes.data as RepriceTicketRow;
+  const placeId = rowPlaceId(ticket);
+  if (!placeId) return { ok: false, error: "ticket not found" };
 
   // v4 (MESITA-1092): approval FREEZES the amount. A task landing after
   // the staff approved still counts on a future visit, but this ticket's
@@ -149,7 +156,7 @@ export async function repriceTicketAfterAction(
   const placeRes = await admin
     .from("profiles")
     .select("id, name, slug, photos, instagram_url")
-    .eq("id", ticket.project_id)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeRes.error || !placeRes.data) {
     return { ok: false, error: "place not found" };

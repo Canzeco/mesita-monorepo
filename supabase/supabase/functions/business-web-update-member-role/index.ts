@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
   const target = await admin
     .from("project_members")
-    .select("id, project_id, manager_id, role")
+    .select("id, place_id, manager_id, role")
     .eq("id", memberId)
     .maybeSingle();
   if (target.error) {
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
   const owner = await requireOwner(
     admin,
     authRes.user,
-    target.data.project_id,
+    target.data.place_id,
     "Only owners can change roles.",
   );
   if (!owner.ok) return owner.response;
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   if (role === "owner") {
     const xfer = await transferPlaceOwnership(
       admin,
-      target.data.project_id,
+      target.data.place_id,
       memberId,
     );
     if (!xfer.ok) {
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
   // Demoting the sole owner leaves the place without an owner — blocked.
   if (target.data.role === "owner") {
-    if (await isLastOwnerOfPlace(admin, target.data.project_id)) {
+    if (await isLastOwnerOfPlace(admin, target.data.place_id)) {
       return json(
         {
           ok: false,

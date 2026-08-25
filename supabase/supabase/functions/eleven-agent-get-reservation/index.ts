@@ -97,7 +97,7 @@ async function searchReservations(
     status: string;
     notes: string | null;
     is_test: boolean;
-    project_id: string;
+    place_id: string;
     consumer: {
       full_name: string | null;
       first_name: string | null;
@@ -105,7 +105,7 @@ async function searchReservations(
     } | null;
   };
   const SELECT =
-    "reference_code, reserved_at, party_size, status, notes, is_test, project_id, consumer:consumers(full_name, first_name, last_name)";
+    "reference_code, reserved_at, party_size, status, notes, is_test, place_id, consumer:consumers(full_name, first_name, last_name)";
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
@@ -156,7 +156,7 @@ async function searchReservations(
 
   // reservations.project_id has no PostgREST FK hint to places — batch the
   // place names separately (same workaround as the engine).
-  const placeIds = [...new Set(rows.map((r) => r.project_id))];
+  const placeIds = [...new Set(rows.map((r) => r.place_id))];
   const { data: places } = await admin
     .from("places")
     .select("id, name")
@@ -174,7 +174,7 @@ async function searchReservations(
     return {
       reference_code: r.reference_code ?? null,
       guest_name: guest || "(sin nombre)",
-      place_name: placeName.get(r.project_id) ?? "",
+      place_name: placeName.get(r.place_id) ?? "",
       date_es: esDate(r.reserved_at),
       time_es: esTime(r.reserved_at),
       reserved_at: r.reserved_at,

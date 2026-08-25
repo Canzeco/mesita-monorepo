@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, project_id, consumer_id, status, story_status, fix_requested")
+    .select("id, place_id, consumer_id, status, story_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     .select(
       "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
-    .eq("id", ticket.project_id)
+    .eq("id", ticket.place_id)
     .maybeSingle();
   if (placeRow.error || !placeRow.data) {
     return json({ ok: false, error: "Place not found" }, 404);

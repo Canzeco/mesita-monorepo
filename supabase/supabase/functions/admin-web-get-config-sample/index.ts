@@ -114,12 +114,12 @@ Deno.serve(async (req) => {
     const [{ data: saves, error: sErr }, { data: visits, error: vErr }] = await Promise.all([
       admin
         .from("favorites")
-        .select("consumer_id, project_id")
+        .select("consumer_id, place_id")
         .in("consumer_id", consumerIds)
         .limit(300),
       admin
         .from("visit_tickets")
-        .select("consumer_id, project_id")
+        .select("consumer_id, place_id")
         .in("consumer_id", consumerIds)
         .not("paid_at", "is", null)
         .limit(300),
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
     if (vErr) return jsonError(`visits_failed: ${vErr.message}`, 500);
 
     const refIds = [
-      ...new Set([...(saves ?? []), ...(visits ?? [])].map((r) => r.project_id)),
+      ...new Set([...(saves ?? []), ...(visits ?? [])].map((r) => r.place_id)),
     ];
     const tasteMeta = new Map<string, { category: string | null; tags: string[] }>();
     if (refIds.length > 0) {
@@ -145,11 +145,11 @@ Deno.serve(async (req) => {
       }
     }
     const fold = (
-      rows: { consumer_id: string; project_id: string }[] | null,
+      rows: { consumer_id: string; place_id: string }[] | null,
       into: Map<string, string[]>,
     ) => {
       for (const row of rows ?? []) {
-        const meta = tasteMeta.get(row.project_id);
+        const meta = tasteMeta.get(row.place_id);
         if (!meta) continue;
         const list = into.get(row.consumer_id) ?? [];
         if (meta.category) list.push(meta.category);

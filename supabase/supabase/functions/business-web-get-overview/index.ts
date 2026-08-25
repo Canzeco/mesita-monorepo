@@ -149,16 +149,16 @@ Deno.serve(async (req) => {
     // project rate/plan fields round-trip with the place profile.
     const memberRows = await admin
       .from("project_members")
-      .select(`role, project_id`)
+      .select(`role, place_id`)
       .eq("manager_id", userId)
       .order("created_at", { ascending: false });
     if (memberRows.error) {
       return json({ ok: false, error: memberRows.error.message }, 500);
     }
-    type MemberRow = { role: string; project_id: string };
+    type MemberRow = { role: string; place_id: string };
     const members = (memberRows.data ?? []) as MemberRow[];
-    const ids = members.map((m) => m.project_id);
-    const roleById = new Map(members.map((m) => [m.project_id, m.role]));
+    const ids = members.map((m) => m.place_id);
+    const roleById = new Map(members.map((m) => [m.place_id, m.role]));
     if (ids.length === 0) {
       places = [];
     } else {
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
         // story_ojo_* (MESITA-1034): same rationale as business-web-list-tickets.
         "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
       )
-      .eq("project_id", activeId)
+      .eq("place_id", activeId)
       .order("created_at", { ascending: false })
       .limit(ticketsLimit);
     if (tx.error) {
