@@ -45,6 +45,7 @@ import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
 import { CHECK_DEDUPE_STATUSES, TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { snapshotRatesFromPlace } from "../_shared/ticket-rate-snapshot.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
+import { rejectDeletedConsumer } from "../_shared/delete-history-free.ts";
 
 type Body = {
   placeId?: string;
@@ -85,6 +86,8 @@ Deno.serve(async (req) => {
   const wantsStory = chosen ? chosen === "story" : body.wantsStory === true;
 
   const admin = adminClient(envRes.env);
+  const closed = await rejectDeletedConsumer(admin, consumerId);
+  if (closed) return closed;
 
   const placeRow = await admin
     .from("profiles")

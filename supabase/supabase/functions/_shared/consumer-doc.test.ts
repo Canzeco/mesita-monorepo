@@ -118,6 +118,16 @@ Deno.test("validateConsumerPatch: accepts the Instagram door fact (handle + foll
   assert(res.ok);
 });
 
+Deno.test("validateConsumerPatch: accepts deleted_at ISO or null", () => {
+  assert(validateConsumerPatch({ deleted_at: "2026-08-25T02:45:00.000Z" }).ok);
+  assert(validateConsumerPatch({ deleted_at: null }).ok);
+});
+
+Deno.test("validateConsumerPatch: rejects a non-string deleted_at", () => {
+  const res = validateConsumerPatch({ deleted_at: 1 });
+  assert(!res.ok);
+});
+
 // ── validateConsumerPatch: reject ──────────────────────────────────────────
 
 Deno.test("validateConsumerPatch: rejects a non-object input", () => {

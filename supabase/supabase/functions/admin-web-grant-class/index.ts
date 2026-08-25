@@ -92,7 +92,11 @@ async function resolveConsumer(
     };
   }
 
-  let query = admin.from("consumers").select(CONSUMER_SUMMARY_COLUMNS).limit(6);
+  let query = admin
+    .from("consumers")
+    .select(CONSUMER_SUMMARY_COLUMNS)
+    .is("deleted_at", null)
+    .limit(6);
   switch (lookup.kind) {
     case "id":
       query = query.eq("id", lookup.value);

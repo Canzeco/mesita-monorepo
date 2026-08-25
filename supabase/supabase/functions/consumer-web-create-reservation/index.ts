@@ -22,6 +22,7 @@ import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
+import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 
 type Body = {
   project_id?: string;
@@ -101,10 +102,11 @@ Deno.serve(async (req) => {
   // without a deploy. Cancelled reservations don't count against the cap.
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("class_key, plan")
+    .select("class_key, plan, deleted_at")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
+  if (isDeletedConsumer(consumerRow)) return accountDeletedResponse();
 
   // Admin testing switch (app_config.reservations_config.unlimitedReservations)
   // lifts the cap for EVERY consumer so a tester isn't blocked mid-run. Defaults

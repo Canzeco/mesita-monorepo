@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(53);
+select plan(55);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -229,6 +229,21 @@ select ok(
      where table_schema = 'public' and table_name = 'consumers' and column_name = 'plan'
   ),
   'consumers.plan exists (class and plan are two axes)'
+);
+
+select has_column(
+  'public', 'consumers', 'deleted_at',
+  'consumers.deleted_at exists (deletion is a status; tickets stay)'
+);
+
+select ok(
+  exists (
+    select 1 from pg_policy
+     where polrelid = 'public.consumers'::regclass
+       and polname = 'consumers_select_self'
+       and pg_get_expr(polqual, polrelid) ilike '%deleted_at%'
+  ),
+  'consumers_select_self hides tombstoned rows'
 );
 
 select is_empty(

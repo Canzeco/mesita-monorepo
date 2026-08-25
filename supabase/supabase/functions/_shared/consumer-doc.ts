@@ -40,6 +40,8 @@
 //     TOGETHER — both call sites that touch them (admin-web-grant-class,
 //     consumer-web-claim-invite-code) always write both in the same patch;
 //     nothing has ever needed to move one without the other.
+//   - deleted_at, if set, is a timestamp string or null — MESITA-1250:
+//     deletion is a status. Only `_shared/delete-history-free.ts` writes it.
 //
 // birthday format, avatar_url's bucket/path shape, and the age gate are
 // deliberately NOT here — they are HTTP-input business rules that need
@@ -76,6 +78,7 @@ export type ConsumerDoc = {
   invitation_granted_at: string | null;
   plan: "free" | "premium";
   created_at: string;
+  deleted_at: string | null;
 };
 
 // Every field a patch may touch — everything except `id` (identity, set only
@@ -104,6 +107,7 @@ export const CONSUMER_PATCH_KEYS = [
   "invitation_class_key",
   "invitation_granted_at",
   "plan",
+  "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction: if a field is ever
@@ -260,7 +264,7 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
     }
     patch.plan = v as ConsumerDoc["plan"];
   }
-  for (const key of ["class_expires_at", "class_granted_at", "invitation_granted_at"] as const) {
+  for (const key of ["class_expires_at", "class_granted_at", "invitation_granted_at", "deleted_at"] as const) {
     if (!(key in raw)) continue;
     const v = raw[key];
     if (!isNullableString(v)) {

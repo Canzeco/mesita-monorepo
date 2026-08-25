@@ -526,8 +526,9 @@ export type TicketWriteArgs =
  * patch is checked against the aggregate's shape, closed key set, and
  * cross-field invariants before Postgres ever sees it. `delete` carries no
  * patch (nothing to validate — deleting writes no field values) and matches
- * on the given columns verbatim, the same shape consumer-web-delete-account
- * already used for its cascade clean-up.
+ * on the given columns verbatim. MESITA-1250: consumer-web-delete-account
+ * must NOT use this path — tickets with history stay; the blessed consumer
+ * door is `_shared/delete-history-free.ts`.
  */
 export async function writeTicket(
   admin: SupabaseClient,

@@ -51,10 +51,10 @@ Deno.serve(async (req) => {
     const admin = adminClient(envRes.env);
     const { data, error } = await admin
       .from("consumers")
-      .select("first_name, full_name, sex, birthday")
+      .select("first_name, full_name, sex, birthday, deleted_at")
       .eq("id", userId)
       .maybeSingle();
-    if (error || !data) {
+    if (error || !data || data.deleted_at) {
       if (error) console.error("[get-consumer-context] read:", error.message);
       return json({ ok: true, clause: null, caller: callerRes.callerName });
     }
