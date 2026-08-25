@@ -91,7 +91,7 @@ export function FlowPanel({
   );
 }
 
-/** Live spend bound for one Create run or one Enrich tick. Not an input. */
+/** Live spend for one Create run or one Enrich of one place. Not an input. */
 export function FlowEstimate({
   caption,
   estimate,
@@ -106,9 +106,6 @@ export function FlowEstimate({
       </p>
       <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
         {money(estimate.perPlace)} / place · {fmtTime(estimate.perPlaceSecs)}
-        {estimate.places > 1
-          ? ` · ${money(estimate.total)} / ${estimate.places} places`
-          : ""}
       </p>
       <ul className="mt-2 space-y-0.5">
         {estimate.active.map((l) => (

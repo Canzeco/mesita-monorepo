@@ -348,7 +348,7 @@ export function IntakeClient({
               steps={chipsFor("enrich")}
               estimate={
                 <FlowEstimate
-                  caption="Knobs below × five places per tick."
+                  caption="Knobs below. One place."
                   estimate={enrichCost}
                 />
               }
