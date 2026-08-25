@@ -146,9 +146,11 @@ The business-truth layer. These are the "and shit" checks — pairs of facts tha
     consumers, members. Reservations/rewards/events pointing at nothing.
 3.3 **Taxonomy congruence.** Every `category` ∈ the canonical 100 · every tag ∈ the canonical
     200 · all snake_case · no free-text leakage.
-3.4 **Nomenclature lock.** Business `plan` ∈ {free, pro, ultra} · consumer `class` ∈
-    {standard, premium, influencer, aura}. Any other value = finding (incl. retired
-    `magnetic` / legacy 2-class rows).
+3.4 **Nomenclature lock.** Business `plan` ∈ {free, pro, ultra} · consumer `class_key`
+    is a metal ∈ {bronze, silver, gold, diamond} · consumer `plan` ∈ {free, premium}.
+    Leftover keys (`standard`/`premium`/`influencer`/`aura`) must already be mapped
+    by `identityForClassKey`; a live row still holding one is a finding. Retired
+    `magnetic` / legacy 2-class rows still findings.
 3.5 **Reservations shape.** `products.reservations` = primary `{channel, value}` + `fallbacks[]`;
     shape is load-bearing. Channels must be members of the order in
     `app_config.reservations_config`. Malformed blobs, empty primaries, unknown channels.
