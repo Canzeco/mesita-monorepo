@@ -49,60 +49,64 @@ function ResetCard() {
     setWarning(null);
     setError(null);
 
-    // Pass 1 wipes the DB and starts the purge; the rest only drain storage.
-    let r = await resetDatabase(confirm);
-    if (!r.ok) {
-      setBusy(false);
-      setError(r.error);
-      return;
-    }
-
-    const truncatedTables = r.truncatedTables;
-    const deletedAuthUsers = r.deletedAuthUsers;
-    let purged = r.purgedStorageObjects;
-    let passes = 1;
-
-    while (r.ok && !r.storageDone && !r.storagePurgeError) {
-      if (passes >= MAX_PURGE_PASSES) {
-        setWarning(
-          `Stopped after ${passes} storage passes with ${r.remainingStorageObjects} file(s) left. ` +
-            `The database is reset — press again to clear the rest.`,
-        );
-        break;
-      }
-      setProgress(
-        `Database emptied. Clearing stored files — ${purged} done, ` +
-          `${r.remainingStorageObjects} to go…`,
-      );
-      r = await continueStoragePurge(confirm);
-      passes += 1;
+    try {
+      // Pass 1 wipes the DB and starts the purge; the rest only drain storage.
+      let r = await resetDatabase(confirm);
       if (!r.ok) {
-        setBusy(false);
-        setProgress(null);
-        setError(
-          `The database was reset, but clearing stored files failed: ${r.error}. ` +
-            `Press again to clear the rest.`,
-        );
+        setError(r.error);
         return;
       }
-      purged += r.purgedStorageObjects;
-    }
 
-    setBusy(false);
-    setProgress(null);
-    setResult(
-      `Database reset complete. Emptied ${truncatedTables ?? "?"} table(s), ` +
-        `removed ${deletedAuthUsers ?? "?"} non-admin auth account(s) and ` +
-        `purged ${purged} stored file(s).`,
-    );
-    // The DB wipe committed either way — the purge is the part that stopped.
-    if (r.ok && r.storagePurgeError) {
-      setWarning(
-        `Storage purge stopped early (${r.storagePurgeError}) with ${r.remainingStorageObjects} file(s) left. ` +
-          `The database is reset; press again to clear them.`,
+      const truncatedTables = r.truncatedTables;
+      const deletedAuthUsers = r.deletedAuthUsers;
+      let purged = r.purgedStorageObjects;
+      let passes = 1;
+
+      while (r.ok && !r.storageDone && !r.storagePurgeError) {
+        if (passes >= MAX_PURGE_PASSES) {
+          setWarning(
+            `Stopped after ${passes} storage passes with ${r.remainingStorageObjects} file(s) left. ` +
+              `The database is reset — press again to clear the rest.`,
+          );
+          break;
+        }
+        setProgress(
+          `Database emptied. Clearing stored files — ${purged} done, ` +
+            `${r.remainingStorageObjects} to go…`,
+        );
+        r = await continueStoragePurge(confirm);
+        passes += 1;
+        if (!r.ok) {
+          setProgress(null);
+          setError(
+            `The database was reset, but clearing stored files failed: ${r.error}. ` +
+              `Press again to clear the rest.`,
+          );
+          return;
+        }
+        purged += r.purgedStorageObjects;
+      }
+
+      setProgress(null);
+      setResult(
+        `Database reset complete. Emptied ${truncatedTables ?? "?"} table(s), ` +
+          `removed ${deletedAuthUsers ?? "?"} non-admin auth account(s) and ` +
+          `purged ${purged} stored file(s).`,
       );
+      // The DB wipe committed either way — the purge is the part that stopped.
+      if (r.ok && r.storagePurgeError) {
+        setWarning(
+          `Storage purge stopped early (${r.storagePurgeError}) with ${r.remainingStorageObjects} file(s) left. ` +
+            `The database is reset; press again to clear them.`,
+        );
+      }
+      setConfirm("");
+    } catch (err) {
+      setProgress(null);
+      setError(err instanceof Error ? err.message : "Reset failed.");
+    } finally {
+      setBusy(false);
     }
-    setConfirm("");
   }
 
   return (
