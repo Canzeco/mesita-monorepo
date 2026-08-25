@@ -1,0 +1,1 @@
+../web-validate/next.config.ts
