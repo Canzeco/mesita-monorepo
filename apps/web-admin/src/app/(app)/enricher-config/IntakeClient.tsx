@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import {
   CheckCircle2,
   Facebook,
@@ -39,7 +39,6 @@ import {
   FunctionModule,
   KnobElsewhere,
   NoKnobs,
-  SelectField,
   Tag,
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
@@ -213,49 +212,52 @@ export function IntakeClient({
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
             title="Models & cost"
-            subtitle="Each of these serves several functions, which is why none of them lives inside one. Embeddings is locked by design."
+            subtitle="Shared spend. Embeddings is locked."
             status={<Tag tone="solid">shared</Tag>}
           >
-            <div className="mt-5">
-              <Fields>
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Text model</span>
-                  <QualityPicker
-                    value={settings.synthesisQuality}
-                    onChange={(v) => patch({ synthesisQuality: v })}
-                  />
-                  <span className="text-muted-foreground type-label">
-                    9 · Description and the image-rank leg of 6
-                  </span>
-                </div>
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Image model</span>
-                  <QualityPicker
-                    value={settings.visionQuality}
-                    onChange={(v) => patch({ visionQuality: v })}
-                  />
-                  <span className="text-muted-foreground type-label">
-                    6 · Images
-                  </span>
-                </div>
-                <SelectField
-                  label="Search model preset"
-                  hint="Agent X at 3 · Serp, Agent Y at 4 · Links"
-                  value={settings.perplexityPreset}
-                  options={PERPLEXITY_OPTIONS}
-                  onChange={(v) => patch({ perplexityPreset: v })}
-                  disabled={pending}
+            <div className="mt-4">
+              <ModelRow
+                label="Text"
+                hint="9 · Description, image-rank"
+              >
+                <QualityPicker
+                  value={settings.synthesisQuality}
+                  onChange={(v) => patch({ synthesisQuality: v })}
                 />
-                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-                  <span className="text-sm font-medium">Embeddings</span>
-                  <span className="text-sm">text-embedding-3-small</span>
-                  <span className="text-muted-foreground type-label">
-                    locked · 1536-d · swapping it re-embeds the catalog
-                  </span>
-                </div>
-              </Fields>
+              </ModelRow>
+              <ModelRow label="Image" hint="6 · Images">
+                <QualityPicker
+                  value={settings.visionQuality}
+                  onChange={(v) => patch({ visionQuality: v })}
+                />
+              </ModelRow>
+              <ModelRow
+                label="Search"
+                hint="3 · Serp · 4 · Links"
+              >
+                <select
+                  value={settings.perplexityPreset}
+                  disabled={pending}
+                  aria-label="Search model preset"
+                  onChange={(e) =>
+                    patch({
+                      perplexityPreset: e.target.value as PerplexityPreset,
+                    })
+                  }
+                  className="border-border bg-card focus:border-foreground h-8 w-full max-w-xs rounded-lg border px-2 text-xs font-semibold outline-none disabled:opacity-50"
+                >
+                  {PERPLEXITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </ModelRow>
+              <ModelRow label="Embeddings" hint="locked · 1536-d">
+                <span className="text-sm">text-embedding-3-small</span>
+              </ModelRow>
               {settingsStamp && (
-                <p className="text-muted-foreground mt-4 text-xs">
+                <p className="text-muted-foreground mt-3 text-xs">
                   Intaker settings last changed {formatShortDate(settingsStamp)}
                 </p>
               )}
@@ -267,7 +269,7 @@ export function IntakeClient({
           <SectionCard
             icon={<Layers className="text-secondary h-4 w-4" />}
             title="Sourcing"
-            subtitle="Who may find a place, who may add one, the Google floors each must clear, and one area for the whole gate."
+            subtitle="Who may find a place, and who may add one."
             status={<Tag tone="solid">the gate</Tag>}
           >
             {sourcingLoadError ? (
@@ -829,5 +831,25 @@ export function IntakeClient({
         )}
       </div>
     </>
+  );
+}
+
+function ModelRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="border-border grid grid-cols-1 items-center gap-2 border-t py-3 first:border-t-0 first:pt-0 sm:grid-cols-[6.5rem_minmax(12rem,20rem)_1fr] sm:gap-4">
+      <span className="text-sm font-medium">{label}</span>
+      <div className="min-w-0">{children}</div>
+      <span className="text-muted-foreground type-label sm:text-right">
+        {hint}
+      </span>
+    </div>
   );
 }
