@@ -2,9 +2,9 @@ import {
   ChartLine,
   MapPin,
   Settings,
-  Shield,
-  Store,
+  ShoppingBag,
   Tag,
+  User,
 } from "lucide-react";
 
 // Tab order — Pato live 2026-08-05 (MESITA-900): place · promos ·
@@ -14,7 +14,7 @@ import {
 /** Tabs shown in PlaceEditChrome. `soon: true` = parked: the tab renders
  *  disabled and its route serves a placeholder instead of the live section. */
 export const PLACE_TAB_SECTIONS = [
-  { id: "place", label: "Profile", Icon: Store, soon: false },
+  { id: "place", label: "Profile", Icon: ShoppingBag, soon: false },
   // decision: Pato live 2026-08-25 — Promos is live again. Visit ladder
   // only: membership, strategy, visit cap. Orders and prepaid stay off.
   { id: "promos", label: "Promos", Icon: Tag, soon: false },
@@ -24,7 +24,7 @@ export const PLACE_TAB_SECTIONS = [
   // flip this back to `false` to un-park it in one line.
   { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
   { id: "settings", label: "Settings", Icon: Settings, soon: false },
-  { id: "admin", label: "Admin", Icon: Shield, soon: false },
+  { id: "admin", label: "Admin", Icon: User, soon: false },
 ] as const;
 
 type PlaceSectionId = (typeof PLACE_TAB_SECTIONS)[number]["id"];

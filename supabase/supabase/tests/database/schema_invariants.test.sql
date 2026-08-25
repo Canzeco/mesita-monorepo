@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(56);
+select plan(58);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -263,6 +263,25 @@ select is_empty(
      where table_schema = 'public' and table_name = 'classes'
        and column_name = 'recommendation_weight'$$,
   'classes.recommendation_weight is gone'
+);
+
+-- MESITA-1305: Reset must reseed the live metals. A CREATE OR REPLACE that
+-- forgets the cutover writes a dropped column / retired keys and the button
+-- aborts. Probe the live function text, not a fixture.
+select ok(
+  pg_get_functiondef('public.admin_reset_database()'::regprocedure)
+    not like '%recommendation_weight%',
+  'admin_reset_database does not write dropped classes.recommendation_weight'
+);
+
+select ok(
+  pg_get_functiondef('public.admin_reset_database()'::regprocedure)
+    like '%''bronze''%'
+  and pg_get_functiondef('public.admin_reset_database()'::regprocedure)
+    like '%''diamond''%'
+  and pg_get_functiondef('public.admin_reset_database()'::regprocedure)
+    not like '%''Influencer''%',
+  'admin_reset_database reseeds metals, not v1 class keys'
 );
 
 select is(

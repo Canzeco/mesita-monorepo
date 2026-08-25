@@ -106,9 +106,8 @@ export type EnrichConfig = {
   perplexityPreset: string;
   // GATHER caps — how many to PULL per source before anything else.
   gatherGoogleImages: number;
-  // Instagram: DEPTH = posts pulled from the scrape (1–30); POSTS = kept after
-  // the likes-sort (0–10, ≤ depth). Google needs no depth — it returns photos
-  // pre-sorted best→worst, so gatherGoogleImages IS the preselection.
+  // Instagram: DEPTH = newest posts pulled. POSTS (likes-keep) follows vision Y
+  // from Intake (≤ depth). Google photos already come best-first — no likes step.
   gatherInstagramDepth: number;
   gatherInstagramPosts: number;
   // How many Google reviews the Apify Maps scrape pulls (0–googleReviews.max),
