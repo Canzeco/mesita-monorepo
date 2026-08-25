@@ -18,6 +18,7 @@ import {
   membershipPillState,
   placementWord,
   promoCardState,
+  RUNG_WORDS,
   visibilityDots,
 } from "./promo-state";
 
@@ -265,6 +266,7 @@ describe("visibilityDots", () => {
 
 describe("giveWord / placementWord — Single Place card face", () => {
   it("maps postures to Low · Mid · High with no Max", () => {
+    expect(RUNG_WORDS).toEqual(["Low", "Mid", "High"]);
     expect(giveWord("zero")).toBe("Low");
     expect(giveWord("conservative")).toBe("Mid");
     expect(giveWord("aggressive")).toBe("High");

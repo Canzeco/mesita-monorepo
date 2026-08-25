@@ -44,5 +44,17 @@ describe("PromosSection visit-only", () => {
     expect(src).not.toContain("[capError, setCapError]");
     // Dominant is leftover-only — not a picker option unless already stored.
     expect(src).toMatch(/s\.id !== "dominant" \|\| current === "dominant"/);
+    expect(src).toMatch(/RUNG_WORDS/);
+    expect(src).not.toMatch(/RewardsMatrix/);
+    expect(src).not.toMatch(/See full rates/);
+    expect(src).not.toMatch(/giveLevel/);
+    const card = src.slice(
+      src.indexOf("function StrategyCard"),
+      src.indexOf("function ArtBand"),
+    );
+    expect(card).toMatch(/Give/);
+    expect(card).toMatch(/Placement/);
+    expect(card).not.toMatch(/%/);
+    expect(card).not.toMatch(/~/);
   });
 });

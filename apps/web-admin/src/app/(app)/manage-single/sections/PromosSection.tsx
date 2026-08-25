@@ -19,19 +19,6 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
-import { getPromosConfig } from "@/app/(app)/rewards-config/actions";
-import {
-  ACTION_KEYS,
-  ACTION_META,
-  CLASS_KEYS,
-  CLASS_META,
-  DEFAULT_PROMOS,
-  RATE_MAX,
-  totalFor,
-  type ActionKey,
-  type ClassKey,
-  type PromosConfig,
-} from "@/app/(app)/rewards-config/promos";
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -44,9 +31,11 @@ import {
   membershipPillState,
   placementWord,
   promoCardState,
+  RUNG_WORDS,
   type CardState,
   type LifecycleStepState,
   type MembershipPillState,
+  type RungWord,
 } from "./promo-state";
 
 // Admin Promos — two boxes:
@@ -54,9 +43,8 @@ import {
 //      free). Lifecycle rail lives inside this box. Status pill, drop, rules
 //      in disclosure. Admin writes plan — no Stripe.
 //   2. Visit Promotions — Zero · Conservative · Aggressive. Give and placement
-//      are words (Low · Mid · High). Dominant stays in the engine for leftover
-//      rows and only appears here while this place is still on it. The 4×5
-//      rate matrix lives one tap deeper in the card modal.
+//      are a Low · Mid · High word ladder. Dominant stays in the engine for
+//      leftover rows and only appears here while this place is still on it.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -170,26 +158,6 @@ export function PromosSection({
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
-  // The promos matrix, read LIVE from promos_config (rates are never cached
-  // in code — MESITA-859), v11 shape since MESITA-1069. Identity defaults
-  // render until the fetch lands, so the cards never flash empty; on failure
-  // they keep the defaults and the grid carries a quiet "showing defaults"
-  // note.
-  const [matrix, setMatrix] = useState<PromosConfig>(DEFAULT_PROMOS);
-  const [matrixFailed, setMatrixFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getPromosConfig();
-      if (!active) return;
-      if (r.ok) setMatrix(r.config);
-      else setMatrixFailed(true);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
@@ -327,11 +295,9 @@ export function PromosSection({
           ))}
         </div>
 
-        {(matrixFailed || (storedStrategy === null && member)) && (
+        {storedStrategy === null && member && (
           <p className="text-muted-foreground mt-2.5 type-label">
-            {matrixFailed
-              ? "Live rates unavailable — showing defaults."
-              : "Current rates don't match a strategy — pick one to standardize."}
+            Current rates don&apos;t match a strategy — pick one to standardize.
           </p>
         )}
 
@@ -350,7 +316,6 @@ export function PromosSection({
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
-          matrix={matrix}
           currency={v.currency}
           state={promoCardState({
             member,
@@ -828,7 +793,7 @@ function StrategyCard({
             </span>
           )}
           <span className="text-muted-foreground group-hover:text-foreground text-center type-label font-medium transition">
-            See full rates & rules
+            How it works
           </span>
         </div>
       </div>
@@ -878,29 +843,37 @@ function ArtBand({
   );
 }
 
-/** Label · Low / Mid / High. No meters, no percents. */
+/** Give / Placement as a Low · Mid · High word ladder. No meters, no percents. */
 function RungStat({
   label,
   value,
   valueClass,
 }: {
   label: string;
-  value: string;
+  value: RungWord;
   valueClass: string;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
+    <div className="flex flex-col gap-1.5">
       <span className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
         {label}
       </span>
-      <span
-        className={cx(
-          "font-display truncate text-sm leading-none font-bold tracking-tight",
-          valueClass,
-        )}
+      <p
+        className="flex items-baseline gap-2.5"
+        aria-label={`${label} ${value}`}
       >
-        {value}
-      </span>
+        {RUNG_WORDS.map((rung) => (
+          <span
+            key={rung}
+            className={cx(
+              "font-display text-base leading-none font-bold tracking-tight",
+              rung === value ? valueClass : "text-muted-foreground/35",
+            )}
+          >
+            {rung}
+          </span>
+        ))}
+      </p>
     </div>
   );
 }
@@ -909,7 +882,6 @@ function RungStat({
 
 function ProductModal({
   strategy,
-  matrix,
   currency,
   state,
   member,
@@ -919,7 +891,6 @@ function ProductModal({
   onClose,
 }: {
   strategy: Strategy;
-  matrix: PromosConfig;
   currency: string | null;
   state: CardState;
   member: boolean;
@@ -1036,13 +1007,7 @@ function ProductModal({
         </div>
 
         {paid ? (
-          <>
-            <div className="flex flex-col gap-2">
-              <ModalLabel>Every rate</ModalLabel>
-              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
-            </div>
-
-            <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
               {/* Canonical step titles — mirror the page banner (Box 0),
                   with per-strategy detail lines. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
@@ -1059,7 +1024,6 @@ function ProductModal({
               </Step>
               <p className="text-muted-foreground type-meta leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
             </div>
-          </>
         ) : (
           <div className="flex flex-col gap-2">
             <ModalLabel>How it works</ModalLabel>
@@ -1148,89 +1112,6 @@ function Step({
           </p>
         )}
       </div>
-    </div>
-  );
-}
-
-// The v7 Strategy × Class matrix at this strategy (MESITA-862, replaces the
-// retired 2×2): rows = guest classes, columns = None (standing) + the four
-// rewarded actions, read live from promos_config. Story is universal
-// (MESITA-909) — every class row shows its priced cell; eligibility is
-// Instagram-connected at the consumer EF layer. Rates live in HTML text,
-// never artwork. Modal-only since MESITA-999 — the card face abstracts it
-// into the give meter.
-function RewardsMatrix({
-  matrix,
-  strategy,
-}: {
-  matrix: PromosConfig;
-  strategy: StrategyId;
-}) {
-  const cell = (v: number) => (v > 0 ? `${v}%` : "—");
-  const shortClass: Record<ClassKey, string> = {
-    bronze: "Bronze",
-    silver: "Silver",
-    gold: "Gold",
-    diamond: "Diamond",
-  };
-  // Zero has no rules — it is off by definition, and this table is only shown
-  // for the paid strategies anyway.
-  const paidStrategy = strategy === "zero" ? null : strategy;
-  const shortAction: Record<ActionKey, string> = {
-    standing: "None",
-    mesita_review: ACTION_META.mesita_review.emoji,
-    story: ACTION_META.story.emoji,
-    welcome: ACTION_META.welcome.emoji,
-    review: ACTION_META.review.emoji,
-  };
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border type-label">
-        <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
-        {ACTION_KEYS.map((a) => (
-          <span
-            key={a}
-            title={ACTION_META[a].name}
-            className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold"
-          >
-            {shortAction[a]}
-          </span>
-        ))}
-        {CLASS_KEYS.map((cls) => (
-          <div key={cls} className="contents">
-            <span
-              className="text-muted-foreground border-border/60 truncate border-t px-2 py-1.5 font-medium"
-              title={CLASS_META[cls].name}
-            >
-              {CLASS_META[cls].emoji} {shortClass[cls]}
-            </span>
-            {ACTION_KEYS.map((a) => (
-              <span
-                key={a}
-                className="text-foreground/80 border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums"
-              >
-                {!paidStrategy
-                  ? "—"
-                  : cell(
-                      Math.min(
-                        RATE_MAX,
-                        // The class ladder at the Free plan — the floor for
-                        // that class. Plan is the other axis and is never
-                        // attributed to a guest here.
-                        totalFor(matrix, paidStrategy, cls, "free", a),
-                      ),
-                    )}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <p className="text-muted-foreground/80 type-meta leading-snug">
-        {ACTION_KEYS.map(
-          (a, i) =>
-            `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
-        ).join("")}
-      </p>
     </div>
   );
 }

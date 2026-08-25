@@ -261,6 +261,7 @@ export function visibilityDots(v: StrategyVisibility): number {
 
 /** Card-face words — Single Place Promos never prints a give/placement number. */
 export type RungWord = "Low" | "Mid" | "High";
+export const RUNG_WORDS = ["Low", "Mid", "High"] as const;
 
 export function giveWord(id: StrategyId): RungWord {
   if (id === "zero") return "Low";
