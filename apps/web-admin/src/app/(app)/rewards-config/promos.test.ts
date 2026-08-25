@@ -316,7 +316,7 @@ describe("Promos Config is one page", () => {
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     expect(shell).not.toContain("ConfigTabNav");
     expect(nav).not.toContain("PROMOS_SUBROUTES");
-    expect(page).toContain('title="Visit Promos"');
+    expect(page).toContain('title="Strategies"');
     expect(page).toContain('title="Discount Cap"');
     expect(page).toContain('title="Expected Distribution"');
     expect(page).toContain("Visit rewards only");
@@ -325,7 +325,10 @@ describe("Promos Config is one page", () => {
     expect(page).toContain("PromosDistributionClient");
     expect(page).toContain("PromosSaveFooter");
     expect(page).toContain("PromosCalculator");
-    expect(page.indexOf("Visit Promos")).toBeLessThan(
+    expect(page.indexOf("Strategies")).toBeLessThan(
+      page.indexOf("Discount Cap"),
+    );
+    expect(page.indexOf("Discount Cap")).toBeLessThan(
       page.indexOf("Expected Distribution"),
     );
     expect(page.indexOf("PromosDistributionClient")).toBeLessThan(

@@ -45,7 +45,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
   const { cfg, visits, setVisits, setBonus, pending } = usePromosState();
 
   const bonuses = cfg.visits.bonuses[strategy];
-  const label = `${STRATEGY_META[strategy].name} · Visits`;
+  const label = STRATEGY_META[strategy].name;
 
   const setBase = (v: number) =>
     setVisits({ ...visits, [strategy]: { ...visits[strategy], base: v } });

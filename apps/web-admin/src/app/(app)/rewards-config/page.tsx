@@ -11,14 +11,14 @@ export default function PromosConfigPage() {
   return (
     <div className="flex flex-col gap-8">
       <PromosSuperBox
-        title="Visit Promos"
-        subtitle="Visit rewards only — not orders, not prepaid. A place picks one strategy — its column is the whole program."
+        title="Strategies"
+        subtitle="Visit rewards only — not orders, not prepaid. A place picks one column. That column is the whole program."
       >
         <TiersClient />
       </PromosSuperBox>
       <PromosSuperBox
         title="Discount Cap"
-        subtitle="Platform fallback for the first N pesos of a visit bill. A place cap wins when set."
+        subtitle="First N pesos of a visit bill. Platform fallback — a place cap wins when set."
       >
         <DiscountCapClient />
       </PromosSuperBox>
