@@ -55,6 +55,57 @@ export const DEFAULT_REGION: RegionPolicy = {
   restrict: false,
 };
 
+/** Named pins for the Where strip. Custom = operator-typed lat/lng. */
+export const REGION_CITIES = [
+  { id: "cdmx", label: "Mexico City", lat: 19.4326, lng: -99.1332 },
+  { id: "pvr", label: "Puerto Vallarta", lat: 20.6534, lng: -105.2253 },
+  { id: "gdl", label: "Guadalajara", lat: 20.6597, lng: -103.3496 },
+  { id: "mty", label: "Monterrey", lat: 25.6866, lng: -100.3161 },
+] as const;
+
+export type RegionCityId = (typeof REGION_CITIES)[number]["id"] | "custom";
+
+export function matchRegionCity(region: RegionPolicy): RegionCityId {
+  const hit = REGION_CITIES.find(
+    (c) =>
+      Math.abs(c.lat - region.lat) < 0.0002 &&
+      Math.abs(c.lng - region.lng) < 0.0002,
+  );
+  return hit?.id ?? "custom";
+}
+
+export function regionsEqual(a: RegionPolicy, b: RegionPolicy): boolean {
+  return (
+    a.country === b.country &&
+    a.lat === b.lat &&
+    a.lng === b.lng &&
+    a.radiusKm === b.radiusKm &&
+    a.restrict === b.restrict
+  );
+}
+
+export function sharedRegion(cfg: SourcingConfig): RegionPolicy {
+  return { ...(cfg[CHANNELS[0].key].region ?? DEFAULT_REGION) };
+}
+
+export function channelsShareRegion(cfg: SourcingConfig): boolean {
+  const first = sharedRegion(cfg);
+  return CHANNELS.every((ch) =>
+    regionsEqual(cfg[ch.key].region ?? DEFAULT_REGION, first),
+  );
+}
+
+export function applyRegionToAll(
+  cfg: SourcingConfig,
+  region: RegionPolicy,
+): SourcingConfig {
+  const next = { ...cfg };
+  for (const ch of CHANNELS) {
+    next[ch.key] = { ...next[ch.key], region: { ...region } };
+  }
+  return next;
+}
+
 type ChannelPolicy = {
   enabled: boolean;
   families: FamilyKey[];

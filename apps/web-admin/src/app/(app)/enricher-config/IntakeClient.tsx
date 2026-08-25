@@ -267,7 +267,7 @@ export function IntakeClient({
           <SectionCard
             icon={<Layers className="text-secondary h-4 w-4" />}
             title="Sourcing"
-            subtitle="Who may find a place, who may add one, and the Google bar and region each has to clear."
+            subtitle="Who may find a place, who may add one, the Google floors each must clear, and one area for the whole gate."
             status={<Tag tone="solid">the gate</Tag>}
           >
             {sourcingLoadError ? (
