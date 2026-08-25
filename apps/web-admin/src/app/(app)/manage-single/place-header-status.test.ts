@@ -108,6 +108,24 @@ describe("generalHeaderFacts", () => {
     expect(facts.find((f) => f.key === "enriched")?.on).toBe(true);
   });
 
+  it("Enriching is the live run and can stay true while Enriched is true", () => {
+    const facts = generalHeaderFacts({
+      ...base,
+      enriching: true,
+      enrich_pulse: 10,
+      enrich_pulse_total: 10,
+    });
+    expect(facts.find((f) => f.key === "enriching")?.on).toBe(true);
+    expect(facts.find((f) => f.key === "enriching")?.chip).toBe("true");
+    expect(facts.find((f) => f.key === "enriched")?.on).toBe(true);
+  });
+
+  it("missing enriching → unknown, not a false no", () => {
+    const facts = generalHeaderFacts(base);
+    expect(facts.find((f) => f.key === "enriching")?.on).toBe("unknown");
+    expect(facts.find((f) => f.key === "enriching")?.chip).toBe("?");
+  });
+
   it("missing seeded → unknown", () => {
     const facts = generalHeaderFacts(base);
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
@@ -148,6 +166,7 @@ describe("generalHeaderFacts", () => {
       "Created",
       "Active",
       "Listed",
+      "Enriching",
       "Enriched",
       "Verified",
       "Partner",

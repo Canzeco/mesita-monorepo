@@ -23,6 +23,7 @@ const STATUS_DOT: Record<StatusFactKey, string> = {
   seeded: TONES.indigo.dot,
   active: TONES.emerald.dot,
   listed: TONES.sky.dot,
+  enriching: TONES.emerald.dot,
   enriched: TONES.rose.dot,
   verified: TONES.amber.dot,
   partner: TONES.indigo.dot,

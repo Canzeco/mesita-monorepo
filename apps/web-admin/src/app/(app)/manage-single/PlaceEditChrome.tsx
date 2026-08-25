@@ -71,7 +71,18 @@ export function PlaceEditChrome({
     null,
   );
   const [enrichPollError, setEnrichPollError] = useState(false);
-  const enriching = isEnriching(enrichStatus);
+  const enriching =
+    isEnriching(enrichStatus) ||
+    isEnriching({
+      content_status:
+        typeof place.content_status === "string" ? place.content_status : null,
+      stage: null,
+      stage_status: null,
+      error: null,
+      last_enriched_at: null,
+      updated_at: null,
+      serp_summary: null,
+    });
   const enrichFailed = isEnrichFailed(enrichStatus);
   const enrichingRef = useRef(enriching);
   useEffect(() => {
@@ -116,6 +127,7 @@ export function PlaceEditChrome({
     seeded: place.seeded,
     listed: listedFromRow === "unknown" ? place.listed : listedFromRow,
     business_status: place.business_status,
+    enriching,
     enrich_pulse: place.enrich_pulse,
     enrich_pulse_total: place.enrich_pulse_total,
     partner: isMemberPlan(place.plan),

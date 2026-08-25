@@ -18,8 +18,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
 // Admin — Status is TWO boxes:
-//   Status      six bools (`true`/`false`) + Promoted `0|1|2`.
-//               Enriched is a yes (queue finished).
+//   Status      seven bools (`true`/`false`) + Promoted `0|1|2`.
+//               Enriching is live-run; Enriched is last-completed.
 //   Intake      0. Seed · 1. Pulse · 2. Details · 3. Serp · 4. Links ·
 //               5. Social · 6. Images · 7. Menu · 8. Reviews ·
 //               9. Description · 10. Semantic — green called / yellow not.

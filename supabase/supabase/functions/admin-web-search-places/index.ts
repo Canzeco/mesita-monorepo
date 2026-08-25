@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       ? Math.min(googlePlaceIds.length, 250)
       : 25;
 
-  // The catalog table is the PIPELINE in one row: seeded → active → listed →
+  // The catalog table is the PIPELINE in one row: seeded → active → listed → enriching →
   // enriched → verified → partner → promoting. Everything except the two
   // id-scoped reads below lives on profiles, so no join is required here.
   // google_place_id is the seeded spine; business_status is Google's
@@ -235,7 +235,7 @@ Deno.serve(async (req) => {
         typeof v.google_review_count === "number" ? v.google_review_count : null,
       content_status: contentStatus,
       listing_type: listingType,
-      // The seven status facts, in table order.
+      // The eight status facts, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
       // Google's OPERATIONAL fact — a FLAG, never a visibility gate.
       // NULL is silence, not "not operational".

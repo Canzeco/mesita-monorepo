@@ -316,7 +316,7 @@ export function PlaceSelectCatalog() {
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
               {/* The row IS the pipeline, left to right: created → active →
-                  listed → enriched → verified → partner → promoting. Category,
+                  listed → enriching → enriched → verified → partner → promoted. Category,
                   Zone and Google reviews are gone — they describe the place,
                   and this table answers "how far along is it". Active is
                   Google's OPERATIONAL fact, not Mesita Listed. */}
@@ -328,6 +328,7 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Created</th>
                     <th className="px-4 py-3 text-center font-semibold">Active</th>
                     <th className="px-4 py-3 text-center font-semibold">Listed</th>
+                    <th className="px-4 py-3 text-center font-semibold">Enriching</th>
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
                     <th className="px-4 py-3 text-center font-semibold">Partner</th>
@@ -513,6 +514,9 @@ function PlaceCatalogRow({
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.enriching} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell

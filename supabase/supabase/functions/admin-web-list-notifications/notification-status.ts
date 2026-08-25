@@ -1,4 +1,4 @@
-// Place Status facts for Global Monitor — same seven the Status box and
+// Place Status facts for Global Monitor — same eight the Status box and
 // the Single Place catalog use, derived from the same helpers. Never
 // listing_type. Never "claimed" as a fact (that's an owner row, not
 // Verified).
@@ -6,8 +6,8 @@
 //   created    google_place_id present (operator label Created; wire `seeded`)
 //   active     Google business_status === OPERATIONAL
 //   listed     projects.status ∈ (active, lead)
-//   enriched   PULSE high-water === 9 (complete). The compact line still
-//              prints n/9 when it is not.
+//   enriching  content_status generating/queued (live run)
+//   enriched   PULSE high-water complete. Independent of enriching.
 //   verified   an approved project_verifications row
 //   partner    plan ≠ free
 //   promoting  live discount (isPlacePromoting)
@@ -16,7 +16,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
-import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
+import { isPlaceEnriching, isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
@@ -25,6 +25,7 @@ export type PlaceStatusFacts = {
   seeded: boolean;
   active: boolean;
   listed: boolean;
+  enriching: boolean;
   enriched: boolean;
   enrichPulse: number;
   enrichPulseTotal: number;
@@ -35,7 +36,7 @@ export type PlaceStatusFacts = {
 };
 
 const PROFILE_COLS =
-  "id, google_place_id, status, business_status, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at";
+  "id, google_place_id, status, business_status, content_status, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at";
 
 const EMPTY_ENRICHMENT: EnrichmentMap = {
   functions: {},
@@ -59,6 +60,7 @@ export function placeStatusFacts(input: {
   googlePlaceId: unknown;
   status: unknown;
   businessStatus: unknown;
+  contentStatus?: unknown;
   plan: unknown;
   highWater: number;
   verified: boolean;
@@ -70,6 +72,7 @@ export function placeStatusFacts(input: {
     seeded: isPlaceSeeded(input.googlePlaceId),
     active: input.businessStatus === "OPERATIONAL",
     listed: isPlaceListed(input.status),
+    enriching: isPlaceEnriching(input.contentStatus),
     enriched: highWater === PULSE_TOTAL,
     enrichPulse: highWater,
     enrichPulseTotal: PULSE_TOTAL,
@@ -140,6 +143,7 @@ export async function attachPlaceStatusFacts(
         googlePlaceId: row.google_place_id,
         status: row.status,
         businessStatus: row.business_status,
+        contentStatus: row.content_status,
         plan: row.plan,
         highWater: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
         verified: verified.has(id),

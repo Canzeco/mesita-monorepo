@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("Manage Single catalog status columns", () => {
-  it("is Created · Active · Listed · Enriched · Verified · Partner · Promoted", () => {
+  it("is Created · Active · Listed · Enriching · Enriched · Verified · Partner · Promoted", () => {
     const src = readFileSync(join(here, "PlaceSelectCatalog.tsx"), "utf8");
     const headers = [...src.matchAll(/<th className="px-4 py-3 text-center font-semibold">(\w+)<\/th>/g)].map(
       (m) => m[1],
@@ -15,6 +15,7 @@ describe("Manage Single catalog status columns", () => {
       "Created",
       "Active",
       "Listed",
+      "Enriching",
       "Enriched",
       "Verified",
       "Partner",

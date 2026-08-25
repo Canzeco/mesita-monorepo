@@ -588,7 +588,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Stamp the seven Status facts on every item that has a place. Same
+  // Stamp the eight Status facts on every item that has a place. Same
   // helpers as the catalog / Status box so the Monitor cannot disagree.
   await attachPlaceStatusFacts(admin, items);
 

@@ -81,6 +81,8 @@ export function generalHeaderFacts(input: {
   seeded?: boolean;
   listed?: boolean;
   business_status?: string | null;
+  /** Live Intaker run. Independent of Enriched (last-completed). */
+  enriching?: boolean;
   enrich_pulse?: number;
   enrich_pulse_total?: number;
   partner: boolean;
@@ -107,10 +109,13 @@ export function generalHeaderFacts(input: {
         ? 2
         : 0,
   );
+  const enriching: boolean | "unknown" =
+    typeof input.enriching === "boolean" ? input.enriching : "unknown";
   return [
     { key: "seeded", label: "Created", on: created, chip: statusBoolChip(created) },
     { key: "active", label: "Active", on: active, chip: statusBoolChip(active) },
     { key: "listed", label: "Listed", on: listed, chip: statusBoolChip(listed) },
+    { key: "enriching", label: "Enriching", on: enriching, chip: statusBoolChip(enriching) },
     { key: "enriched", label: "Enriched", on: enriched, chip: statusBoolChip(enriched) },
     {
       key: "verified",

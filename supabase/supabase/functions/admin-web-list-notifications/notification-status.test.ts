@@ -17,6 +17,7 @@ Deno.test("catalog default: seeded · active · listed, not verified/partner/pro
   assertEquals(facts.seeded, true);
   assertEquals(facts.active, true);
   assertEquals(facts.listed, true);
+  assertEquals(facts.enriching, false);
   assertEquals(facts.enriched, false);
   assertEquals(facts.enrichPulse, 2);
   assertEquals(facts.enrichPulseTotal, PULSE_TOTAL);
@@ -60,4 +61,19 @@ Deno.test("functions map only completed Intake keys", () => {
   assertEquals(facts.functions.details, undefined);
   assertEquals(facts.functions.serp, undefined);
   assertEquals(completedFunctions(undefined), {});
+});
+
+Deno.test("Enriching is content_status generating/queued, independent of Enriched", () => {
+  const idle = placeStatusFacts({ ...BASE, highWater: PULSE_TOTAL });
+  assertEquals(idle.enriching, false);
+  assertEquals(idle.enriched, true);
+  const rerun = placeStatusFacts({
+    ...BASE,
+    contentStatus: "generating",
+    highWater: PULSE_TOTAL,
+  });
+  assertEquals(rerun.enriching, true);
+  assertEquals(rerun.enriched, true);
+  const queued = placeStatusFacts({ ...BASE, contentStatus: "queued" });
+  assertEquals(queued.enriching, true);
 });

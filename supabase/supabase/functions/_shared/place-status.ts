@@ -1,4 +1,4 @@
-// Status — the six facts that say where a place stands (MESITA-1171 · MESITA-1186).
+// Status — the facts that say where a place stands (MESITA-1171 · MESITA-1186 · MESITA-1323).
 // Renamed from `pulse` 2026-08-22: PULSE now names the enrichment pipeline.
 //
 //   seeded      a google_place_id exists — the identity spine every enrichment
@@ -53,4 +53,12 @@ export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
 
 export function isPlaceListed(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
+}
+
+/** Intaker pipeline mid-flight. content_status generating/queued covers the
+ *  whole run after MESITA-453 (re-enrich flips the column; never clear after
+ *  research alone). Stage research|analysis|contents is the other half, read
+ *  by admin-web-get-place-enrichment — notifications only have this column. */
+export function isPlaceEnriching(contentStatus: unknown): boolean {
+  return contentStatus === "generating" || contentStatus === "queued";
 }

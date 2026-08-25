@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isPlaceListed, isPlaceSeeded } from "./place-status.ts";
+import { isPlaceEnriching, isPlaceListed, isPlaceSeeded } from "./place-status.ts";
 
 Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
   assertEquals(isPlaceSeeded(null), false);
@@ -40,4 +40,12 @@ Deno.test("listed: a missing or non-string status is never listed", () => {
   for (const bad of [null, undefined, "", 0, {}, []]) {
     assertEquals(isPlaceListed(bad), false, `${JSON.stringify(bad)}`);
   }
+});
+
+Deno.test("enriching: generating or queued is mid-flight", () => {
+  assertEquals(isPlaceEnriching("generating"), true);
+  assertEquals(isPlaceEnriching("queued"), true);
+  assertEquals(isPlaceEnriching("ready"), false);
+  assertEquals(isPlaceEnriching("failed"), false);
+  assertEquals(isPlaceEnriching(null), false);
 });
