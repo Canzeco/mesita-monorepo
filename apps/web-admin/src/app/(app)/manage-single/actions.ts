@@ -273,7 +273,7 @@ export type AdminPlace = {
   enrich_pulse_labels?: string[];
   /** Why the queue stopped where it did. Absent on an older payload. */
   enrich_pulse_blocked?: PulseBlock | null;
-  /** Per Enrich subfunction (9 queue + Semantic). Overview payload only. */
+  /** Per Enrich subfunction (9 queue + Semantics). Overview payload only. */
   enrich_functions?: Record<string, {
     status: "pending" | "completed" | "failed";
     at: string | null;

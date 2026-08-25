@@ -247,7 +247,7 @@ export function IntakeClient({
                   ))}
                 </select>
               </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · Semantic">
+              <ModelRow label="Embeddings" hint="locked · Semantics">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
               {settingsStamp && (
@@ -317,7 +317,7 @@ export function IntakeClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details + Semantic. One place."
+                  caption="Pulse + Details + Semantics. One place."
                   estimate={createCost}
                 />
               }
@@ -585,14 +585,14 @@ export function IntakeClient({
                 id="f-semantic"
                 index="◇"
                 flows={flowTagFor("semantic")}
-                name="Semantic"
-                blurb="Mesita Name, Semantic Summary, and embeddings — one function. Create awaits it; Enrich ticks it."
+                name="Semantics"
+                blurb="Mesita Name and Semantic Summary — one function, two vectors. Create awaits it; Enrich ticks it."
                 knobs="locked"
               >
                 <NoKnobs>
-                  Locked to <b>text-embedding-3-small</b>. Name and Summary are
-                  two columns, one function. Swapping the model re-embeds the
-                  catalog.
+                  Locked to <b>text-embedding-3-small</b>. Name and Summary stay
+                  two columns. One function writes both. Swapping the model
+                  re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

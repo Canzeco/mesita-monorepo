@@ -407,7 +407,7 @@ export function costParamsFromSettings(
   };
 }
 
-/** One Create run: Pulse + Details + Semantic (first photo). Not functions 3–9. */
+/** One Create run: Pulse + Details + Semantics (first photo). Not functions 3–9. */
 export function computeCreateCost(s: IntakeSettings): CostEstimate {
   return computeEnrichmentCost({
     ...costParamsFromSettings(s, 1),

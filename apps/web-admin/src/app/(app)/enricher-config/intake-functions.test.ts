@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is eleven, Seed through Semantic", () => {
+  it("is eleven, Seed through Semantics", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -31,7 +31,7 @@ describe("intake subfunctions", () => {
       "Seed",
       "1 Pulse",
       "2 Details",
-      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
+      "◇ Semantics",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -43,7 +43,7 @@ describe("intake subfunctions", () => {
       "7 Menu",
       "8 Reviews",
       "9 Description (Category, Tags, Presentation)",
-      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
+      "◇ Semantics",
     ]);
   });
 
@@ -83,5 +83,16 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("f-semantic");
     expect(src).not.toContain("id=\"f-name\"");
     expect(src).not.toContain("id=\"f-summary\"");
+    expect(src).toContain("name=\"Semantics\"");
+  });
+});
+
+describe("Name and Summary share Semantics", () => {
+  it("is one chip, never two Name/Summary pills", () => {
+    const labels = INTAKE_SUBFUNCTIONS.map((s) => s.chip);
+    expect(labels).toContain("◇ Semantics");
+    expect(labels).not.toContain("◇ Name");
+    expect(labels).not.toContain("◇ Summary");
+    expect(labels.filter((l) => /Name|Summary/.test(l))).toEqual([]);
   });
 });

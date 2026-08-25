@@ -7,7 +7,7 @@
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
 //     → 6 images → 7 menu → 8 reviews → 9 description → semantic
 //
-// Pulse, Details and Semantic appear in BOTH flows because they are SHARED
+// Pulse, Details and Semantics appear in BOTH flows because they are SHARED
 // FUNCTIONS with two callers: CREATE awaits them inline (a place is born with
 // its liveness checked, its Google spine persisted, and both vectors written),
 // ENRICH runs them as ticks (a place is refreshed). Seed is NOT an enrich
@@ -22,7 +22,7 @@
 // writes NOTHING (MESITA-1172 blocker 2) — that rule is what lets two callers
 // share one ladder.
 //
-// WHY SEMANTIC IS ONE FUNCTION AND NOT A RUNG. One function writes the Mesita
+// WHY SEMANTICS IS ONE FUNCTION AND NOT A RUNG. One function writes the Mesita
 // Name vector AND the Semantic Summary vector together. The On-Update path
 // fires the same machinery whenever an operator edits the profile, and
 // `enriched` must not fall because someone renamed a place. Counting it would
@@ -44,7 +44,7 @@
 // BEFORE `images` because the Instagram/Facebook gathers fill the pools the
 // vision funnel ranks. `menu` sits after `links` (its source) and before
 // `description` (which would read it). `description` CLOSES the queue at 9,
-// and Semantic runs after it, vectorising the name and the text the queue just
+// and Semantics runs after it, vectorising the name and the text the queue just
 // wrote.
 //
 // THE THREE TEXTS, each with exactly one reader, never collapsed:
@@ -83,7 +83,7 @@ export const PULSE_PIECES = [
 ] as const;
 
 /**
- * Reported, never counted. Semantic is real work with a real outcome an
+ * Reported, never counted. Semantics is real work with a real outcome an
  * operator wants to see, but it is not a rung of the queue — see the header
  * for why it does not sit at 10. One function writes both vectors.
  *
@@ -125,7 +125,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
 };
 
 export const PULSE_EXTRA_LABELS: Record<PulseExtra, string> = {
-  semantic: "Semantic (Mesita Name & Semantic Summary & Embeddings)",
+  semantic: "Semantics",
 };
 
 /**
@@ -168,7 +168,7 @@ export const PULSE_LABELS_IN_ORDER: readonly string[] = [
 
 /**
  * The complete-profile number, so nothing hardcodes 9. Nine queue functions,
- * so it IS the array length; Semantic is not in it, and the CREATED
+ * so it IS the array length; Semantics is not in it, and the CREATED
  * floor (0) sits below the array.
  */
 export const PULSE_TOTAL = PULSE_PIECES.length;

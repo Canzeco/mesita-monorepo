@@ -42,14 +42,14 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
       `step S${PULSE_PIECE_META[piece].index} (${piece}) violates the DB CHECK`,
     );
   }
-  // Semantic functions carry no rung, so reportPulsePieces stamps them SX.
+  // Semantics carries no rung, so reportPulsePieces stamps it SX.
   assertEquals(DB_CHECK.test("SX"), true);
   assertEquals(PULSE_EXTRAS.length > 0, true);
 });
 
 Deno.test("pulse: the NINE enrich queue functions, in the decided order", () => {
-  // The law: ENRICH is ten functions (1–9 plus Semantic). Seed is NOT among
-  // them — it is step 1 of CREATE — and Semantic sits outside the high-water.
+  // The law: ENRICH is ten functions (1–9 plus Semantics). Seed is NOT among
+  // them — it is step 1 of CREATE — and Semantics sits outside the high-water.
   assertEquals([...PULSE_PIECES], [
     "pulse",
     "details",

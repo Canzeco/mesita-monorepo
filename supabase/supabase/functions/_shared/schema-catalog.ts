@@ -234,7 +234,7 @@ export function foldFunctionStateMap(
 
 
 /**
- * The ten Enrich operator functions (9 queue + Semantic), every key present
+ * The ten Enrich operator functions (9 queue + Semantics), every key present
  * so Status can list them without inventing a second ladder.
  */
 export function operatorFunctionStates(

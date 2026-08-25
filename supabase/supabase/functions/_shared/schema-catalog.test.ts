@@ -49,7 +49,7 @@ Deno.test("FUNCTION_STATE_KEYS is exactly PULSE_PIECES + PULSE_EXTRAS, in that o
   assertEquals(FUNCTION_STATE_KEYS, expected);
 });
 
-Deno.test("FUNCTION_STATE_KEYS has 10 members — 9 queue functions + Semantic", () => {
+Deno.test("FUNCTION_STATE_KEYS has 10 members — 9 queue functions + Semantics", () => {
   assertEquals(PULSE_PIECES.length, 9);
   assertEquals(PULSE_EXTRAS.length, 1);
   assertEquals(FUNCTION_STATE_KEYS.length, 10);
@@ -298,7 +298,7 @@ Deno.test("FunctionStateMapSchema: folds legacy name+summary into semantic", () 
   assertEquals("summary" in r.value, false);
 });
 
-Deno.test("operatorFunctionStates: ten keys, Semantic pending when never run", () => {
+Deno.test("operatorFunctionStates: ten keys, Semantics pending when never run", () => {
   const out = operatorFunctionStates({
     pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
@@ -308,7 +308,7 @@ Deno.test("operatorFunctionStates: ten keys, Semantic pending when never run", (
   assertEquals(out.description.status, "pending");
 });
 
-Deno.test("foldFunctionStateMap: either failed alias fails Semantic", () => {
+Deno.test("foldFunctionStateMap: either failed alias fails Semantics", () => {
   const folded = foldFunctionStateMap({
     name: { status: "completed", at: "a", detail: "n" },
     summary: { status: "failed", at: "b", detail: "s" },

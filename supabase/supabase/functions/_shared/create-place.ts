@@ -9,7 +9,7 @@
 //                category='undefined' until the Intaker infers the real one)
 //   4 semantic → Name vector + Summary vector, awaited in this same function
 //
-// Pulse, Details and Semantic are SHARED with the ENRICH queue — create
+// Pulse, Details and Semantics are SHARED with the ENRICH queue — create
 // AWAITS the four subfunctions; enrich runs each as its own tick with no nested
 // await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
 // reads 2/9 immediately and state accumulates across create and every later run

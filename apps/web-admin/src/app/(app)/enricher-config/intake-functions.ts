@@ -1,7 +1,7 @@
 // The eleven Intake subfunctions, and which of the two flows uses each.
 //
 // Create is ONE function that AWAITS four subfunctions (Seed, Pulse, Details,
-// Semantic). Enrich is TEN functions on sequential ticks — none await a nested
+// Semantics). Enrich is TEN functions on sequential ticks — none await a nested
 // run. Shared rows print once on the page. This file is the chip + tag source
 // so Create, Enrich, Status and the ladder cannot drift.
 
@@ -33,7 +33,7 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
   {
     id: "f-semantic",
     key: "semantic",
-    chip: "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
+    chip: "◇ Semantics",
     flows: ["create", "enrich"],
   },
 ];
