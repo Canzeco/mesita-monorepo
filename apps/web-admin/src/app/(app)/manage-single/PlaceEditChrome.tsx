@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeftRight, ImageOff, Loader2 } from "lucide-react";
 import {
   getPlaceEnrichment,
+  getPlaceVerification,
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "./actions";
@@ -13,25 +14,33 @@ import { PLACE_TAB_SECTIONS, placeSectionHref } from "./nav";
 import { usePlaceContext } from "./PlaceContext";
 import {
   formatHeaderCategory,
+  generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
 } from "./place-header-status";
+import { isMemberPlan } from "./sections/promo-state";
+import { isPromotingNow } from "./sections/StatusCard";
+import {
+  intakeFunctionRows,
+  type EnrichFunctionState,
+} from "./sections/status-enrichment";
 
-// LISTED, not "Active" (Pato live 2026-08-22). The header used to print
-// `projects.status` capitalized — the raw column value shown to a human — and
-// that is a second word for a fact Mesita already names. Listed is the word:
-// StatusCard defines it as projects.status ∈ (active, lead), which is exactly
-// what the consumer RLS policy projects_select_public_visible gates on. One
-// word, one meaning; the header and the Status box now agree by construction
-// because they read the same predicate.
-//
-// The old set also guarded "published" / "live" / "ready", three values this
-// system has never written. Listing is binary here, so the derivation is too.
-const LISTED_STATUSES = new Set(["active", "lead"]);
+type Verification = {
+  verifiedByEmail: string | null;
+  decidedAt: string | null;
+  method: string | null;
+  decidedVia: string | null;
+};
 
-/** Is this place reachable by a guest on Mesita at all? */
-function isListed(status: string | null | undefined): boolean {
-  return LISTED_STATUSES.has((status ?? "").trim().toLowerCase());
+function headerChipClass(on: boolean | "unknown"): string {
+  return (
+    "inline-flex items-center rounded-full px-2 py-0.5 type-label font-semibold " +
+    (on === "unknown"
+      ? "bg-muted text-muted-foreground"
+      : on
+        ? "bg-emerald-500/10 text-emerald-700"
+        : "bg-amber-500/10 text-amber-700")
+  );
 }
 
 /**
@@ -55,8 +64,13 @@ export function PlaceEditChrome({
   // used to bypass the chrome-local guard entirely.
   const { isDirty, guardNav } = usePlaceContext();
   const heroPhoto = place.photos?.[0] ?? null;
-  const listed = isListed(place.status);
   const category = formatHeaderCategory(place.category_label, place.category);
+  const [verification, setVerification] = useState<
+    Verification | null | undefined
+  >(undefined);
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
     null,
   );
@@ -67,6 +81,46 @@ export function PlaceEditChrome({
   useEffect(() => {
     enrichingRef.current = enriching;
   }, [enriching]);
+
+  useEffect(() => {
+    let alive = true;
+    getPlaceVerification(place.id).then((r) => {
+      if (!alive) return;
+      if (!r.ok) {
+        setVerificationError(r.error);
+        setVerification(null);
+        return;
+      }
+      setVerificationError(null);
+      setVerification(r.data);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+
+  const verified: boolean | "unknown" =
+    verificationError || verification === undefined
+      ? "unknown"
+      : Boolean(verification?.verifiedByEmail);
+  const seeded: boolean | "unknown" =
+    typeof place.seeded === "boolean" ? place.seeded : "unknown";
+  const facts = generalHeaderFacts({
+    seeded: place.seeded,
+    listed: place.listed,
+    business_status: place.business_status,
+    enrich_pulse: place.enrich_pulse,
+    enrich_pulse_total: place.enrich_pulse_total,
+    partner: isMemberPlan(place.plan),
+    promoting: isPromotingNow(place),
+    verified,
+  });
+  const intakeRows = intakeFunctionRows(
+    (place.enrich_functions ?? null) as
+      | Record<string, EnrichFunctionState>
+      | null,
+    seeded,
+  );
 
   // decision: MESITA-896 — the live enriching STATUS lives HERE, in the
   // chrome, so it is visible from every tab. The TRIGGER moved to Admin →
@@ -159,21 +213,10 @@ export function PlaceEditChrome({
           >
             {placeDisplayName(place)}
           </p>
-          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            <span className="text-foreground/80 inline-flex items-center gap-1.5 font-medium">
-              <span
-                className={
-                  "h-1.5 w-1.5 rounded-full " +
-                  (listed ? "bg-green-500" : "bg-amber-500")
-                }
-                aria-hidden
-              />
-              {listed ? "Listed" : "Not listed"}
-            </span>
-            {category ? (
-              <>
-                <span className="bg-border h-1 w-1 rounded-full" aria-hidden />
-                <span className="inline-flex min-w-0 items-center gap-1 truncate">
+          <div className="mt-1 flex flex-col gap-1.5">
+            <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+              {category ? (
+                <span className="text-foreground/80 inline-flex min-w-0 items-center gap-1 truncate font-medium">
                   {category.emoji ? (
                     <span aria-hidden className="shrink-0">
                       {category.emoji}
@@ -181,32 +224,62 @@ export function PlaceEditChrome({
                   ) : null}
                   <span className="truncate">{category.text}</span>
                 </span>
-              </>
-            ) : null}
-            {enriching ? (
-              <span
-                className="border-border bg-muted/70 text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 type-label font-medium"
-                aria-live="polite"
-              >
-                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                Enriching
-              </span>
-            ) : enrichFailed ? (
-              <span
-                className="border-destructive/30 bg-destructive/5 text-destructive inline-flex items-center rounded-full border px-2 py-0.5 type-label font-medium"
-                title={enrichStatus?.error ?? "Enrichment failed"}
-                aria-live="polite"
-              >
-                Enrich failed
-              </span>
-            ) : enrichPollError ? (
-              <span
-                className="text-muted-foreground type-label font-medium"
-                aria-live="polite"
-              >
-                Status unknown
-              </span>
-            ) : null}
+              ) : null}
+              {enriching ? (
+                <span
+                  className="border-border bg-muted/70 text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 type-label font-medium"
+                  aria-live="polite"
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Enriching
+                </span>
+              ) : enrichFailed ? (
+                <span
+                  className="border-destructive/30 bg-destructive/5 text-destructive inline-flex items-center rounded-full border px-2 py-0.5 type-label font-medium"
+                  title={enrichStatus?.error ?? "Enrichment failed"}
+                  aria-live="polite"
+                >
+                  Enrich failed
+                </span>
+              ) : enrichPollError ? (
+                <span
+                  className="text-muted-foreground type-label font-medium"
+                  aria-live="polite"
+                >
+                  Status unknown
+                </span>
+              ) : null}
+            </div>
+            <ul className="flex flex-wrap gap-1">
+              {facts.map((fact) => (
+                <li key={fact.key}>
+                  <span
+                    className={headerChipClass(fact.on)}
+                    aria-label={`${fact.label}: ${
+                      fact.on === true
+                        ? "yes"
+                        : fact.on === false
+                          ? "no"
+                          : "unknown"
+                    }`}
+                  >
+                    {fact.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <ul className="flex flex-wrap gap-1">
+              {intakeRows.map((row) => (
+                <li key={row.key}>
+                  <span
+                    className={headerChipClass(row.on)}
+                    aria-label={`${row.label}: ${row.on ? "called" : "not called"}`}
+                  >
+                    {row.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 

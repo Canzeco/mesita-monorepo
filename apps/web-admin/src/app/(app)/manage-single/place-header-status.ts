@@ -44,3 +44,43 @@ export function formatHeaderCategory(
     .join(" ");
   return { emoji, text: text || rest };
 }
+
+export type HeaderFact = {
+  key: string;
+  label: string;
+  on: boolean | "unknown";
+};
+
+export function generalHeaderFacts(input: {
+  seeded?: boolean;
+  listed?: boolean;
+  business_status?: string | null;
+  enrich_pulse?: number;
+  enrich_pulse_total?: number;
+  partner: boolean;
+  promoting: boolean;
+  verified: boolean | "unknown";
+}): HeaderFact[] {
+  const created: boolean | "unknown" =
+    typeof input.seeded === "boolean" ? input.seeded : "unknown";
+  const listed: boolean | "unknown" =
+    typeof input.listed === "boolean" ? input.listed : "unknown";
+  const active: boolean | "unknown" =
+    input.business_status == null || input.business_status === ""
+      ? "unknown"
+      : input.business_status === "OPERATIONAL";
+  const pulse = typeof input.enrich_pulse === "number" ? input.enrich_pulse : null;
+  const total = typeof input.enrich_pulse_total === "number" ? input.enrich_pulse_total : null;
+  const enriched: boolean | "unknown" =
+    pulse === null || total === null || total === 0 ? "unknown" : pulse >= total;
+  return [
+    { key: "seeded", label: "Created", on: created },
+    { key: "active", label: "Active", on: active },
+    { key: "listed", label: "Listed", on: listed },
+    { key: "enriched", label: "Enriched", on: enriched },
+    { key: "verified", label: "Verified", on: input.verified },
+    { key: "partner", label: "Partner", on: input.partner },
+    { key: "promoting", label: "Promoting", on: input.promoting },
+  ];
+}
+

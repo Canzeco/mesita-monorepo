@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { PlaceEnrichmentStatus } from "./actions";
+import { GENERAL_STATUS_FACTS } from "@/lib/status-vocabulary";
 import {
   formatHeaderCategory,
+  generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
 } from "./place-header-status";
@@ -69,3 +71,44 @@ describe("formatHeaderCategory", () => {
     expect(formatHeaderCategory(undefined, undefined)).toBeNull();
   });
 });
+
+describe("generalHeaderFacts", () => {
+  const base = {
+    partner: false,
+    promoting: false,
+    verified: false as boolean | "unknown",
+  };
+
+  it("labels match GENERAL_STATUS_FACTS", () => {
+    const facts = generalHeaderFacts(base);
+    expect(facts.map((f) => f.key)).toEqual(
+      GENERAL_STATUS_FACTS.map((f) => f.key),
+    );
+    expect(facts.map((f) => f.label)).toEqual(
+      GENERAL_STATUS_FACTS.map((f) => f.label),
+    );
+  });
+
+  it("operational → Active on", () => {
+    const facts = generalHeaderFacts({
+      ...base,
+      business_status: "OPERATIONAL",
+    });
+    expect(facts.find((f) => f.key === "active")?.on).toBe(true);
+  });
+
+  it("pulse 10/10 → Enriched on", () => {
+    const facts = generalHeaderFacts({
+      ...base,
+      enrich_pulse: 10,
+      enrich_pulse_total: 10,
+    });
+    expect(facts.find((f) => f.key === "enriched")?.on).toBe(true);
+  });
+
+  it("missing seeded → unknown", () => {
+    const facts = generalHeaderFacts(base);
+    expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
+  });
+});
+
