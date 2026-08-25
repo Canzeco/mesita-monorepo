@@ -304,25 +304,23 @@ describe("Tiers HTML prices visits only", () => {
     expect(src).not.toContain("setOrders");
     expect(src).not.toContain("ResolvedLedger");
     expect(src).not.toContain("SectionCard");
-    expect(src).toContain("items-stretch");
-    expect(src).toContain("h-full");
-    expect(src).toContain("grid-rows-subgrid");
-    expect(src).toContain("row-span-15");
-    expect(src).toContain("RowGroup");
+    expect(src).toContain("<table");
+    expect(src).not.toContain("grid-rows-subgrid");
+    expect(src).not.toContain("RowGroup");
+    expect(src).not.toContain("BoxRow");
     const ui = readFileSync(join(__dirname, "promos-ui.tsx"), "utf8");
-    expect(ui).toContain("h-14");
-    expect(ui).toContain("min-h-14");
     expect(ui).toContain("w-24");
-    expect(ui).toContain("h-8");
+    expect(ui).toContain("h-9");
     expect(ui).toContain("appearance-none");
-    expect(ui).toContain("STRATEGY_COLUMN_TRACKS = 15");
+    expect(ui).not.toContain("STRATEGY_COLUMN_TRACKS");
+    expect(ui).not.toContain("BoxRow");
   });
 
   it("picks Conservative and Aggressive only", () => {
     const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
     expect(src).toContain("LIVE_STRATEGY_KEYS");
-    expect(src).toContain("lg:grid-cols-2");
     expect(src).not.toContain("lg:grid-cols-3");
+    expect(src).not.toContain('"dominant"');
   });
 });
 

@@ -3,7 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 
 import { Collapsible, KnobStatus } from "@/components/admin-ui/config";
-import { BoxRow, RateSelect, RowGroup } from "./promos-ui";
+import { RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
   ACTION_KEYS,
@@ -17,14 +17,14 @@ import {
   modelWarnings,
   totalFor,
   type ActionKey,
+  type ClassKey,
   type StrategyKey,
 } from "./promos";
 
-// TIERS — two equal visit columns, Conservative and Aggressive. A place
-// picks ONE strategy; reading down a column is that place's whole program.
-// Each column is floor first, then signed adders. Pinned rungs (Bronze,
-// Free) are an em dash — "0%" is a real rate and would read as one. Columns
-// share one row grid so headers and knobs line up.
+// TIERS — one comparison table. Labels once on the left; Conservative and
+// Aggressive are columns. A place picks ONE column; that column is the whole
+// program. Floor first, then signed adders. Pinned rungs (Bronze, Free) are
+// an em dash — "0%" is a real rate and would read as one.
 //
 // Promos Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
@@ -39,16 +39,61 @@ const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   welcome: "+ Welcome",
 };
 
-function TierBox({ strategy }: { strategy: StrategyKey }) {
-  const { cfg, visits, setVisits, setBonus, pending } = usePromosState();
+const ACTION_BONUS_KEYS = ["story", "google", "mesita"] as const;
 
-  const bonuses = cfg.visits.bonuses[strategy];
-  const label = STRATEGY_META[strategy].name;
+const COL_COUNT = 1 + LIVE_STRATEGY_KEYS.length;
 
-  const setBase = (v: number) =>
+function GroupRow({ label }: { label: string }) {
+  return (
+    <tr>
+      <th
+        scope="colgroup"
+        colSpan={COL_COUNT}
+        className="text-muted-foreground pt-4 pb-1 type-meta font-bold tracking-[0.12em] uppercase"
+      >
+        {label}
+      </th>
+    </tr>
+  );
+}
+
+function LabelCell({
+  label,
+  hint,
+}: {
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <th scope="row" className="border-border/60 border-t py-2 pr-4 text-left">
+      <p className="text-foreground truncate type-body font-semibold">{label}</p>
+      <p
+        className="text-muted-foreground h-4 truncate type-label leading-4"
+        title={hint || undefined}
+      >
+        {hint || "\u00a0"}
+      </p>
+    </th>
+  );
+}
+
+function RateCell({ children }: { children: React.ReactNode }) {
+  return (
+    <td className="border-border/60 border-t py-2">
+      <div className="flex h-9 items-center justify-end">{children}</div>
+    </td>
+  );
+}
+
+export function TiersClient() {
+  const { cfg, visits, setVisits, setBonus, pending, seeded, loadBlocked, ladderError } =
+    usePromosState();
+  const warnings = modelWarnings(cfg);
+
+  const setBase = (strategy: StrategyKey, v: number) =>
     setVisits({ ...visits, [strategy]: { ...visits[strategy], base: v } });
 
-  const setClass = (c: (typeof CLASS_KEYS)[number], v: number) =>
+  const setClass = (strategy: StrategyKey, c: ClassKey, v: number) =>
     setVisits({
       ...visits,
       [strategy]: {
@@ -57,7 +102,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
       },
     });
 
-  const setPlan = (v: number) =>
+  const setPlanPremium = (strategy: StrategyKey, v: number) =>
     setVisits({
       ...visits,
       [strategy]: {
@@ -65,95 +110,6 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
         plan: { ...visits[strategy].plan, premium: v },
       },
     });
-
-  return (
-    <article className="border-border bg-background flex h-full min-h-0 flex-col rounded-2xl border p-4 lg:row-span-15 lg:grid lg:h-auto lg:grid-rows-subgrid lg:gap-0">
-      <header className="mb-2 shrink-0 lg:mb-0">
-        <h3 className="font-display truncate text-base font-semibold tracking-tight">
-          {label}
-        </h3>
-        <div className="mt-1.5 flex h-6 min-h-6 items-center overflow-hidden whitespace-nowrap">
-          <KnobStatus kind="enforced" reason="THE TICKET" />
-        </div>
-        <p className="text-muted-foreground mt-2 line-clamp-2 min-h-10 type-label leading-snug">
-          Floor, then signed adders. Class prices a body in the room.
-        </p>
-      </header>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <BoxRow label="Base" hint="Standing rate, before anything is earned">
-          <RateSelect
-            value={visits[strategy].base}
-            disabled={pending}
-            ariaLabel={`${label} base standing rate`}
-            onChange={setBase}
-          />
-        </BoxRow>
-
-        <BoxRow
-          label={BONUS_META.welcome.name}
-          hint={BONUS_META.welcome.qualifier}
-        >
-          <RateSelect
-            value={bonuses.welcome}
-            disabled={pending}
-            signed
-            ariaLabel={`${label} Welcome bonus, adds`}
-            onChange={(v) => setBonus("visits", strategy, "welcome", v)}
-          />
-        </BoxRow>
-
-        <RowGroup>Class</RowGroup>
-        {CLASS_KEYS.map((c) => (
-          <BoxRow key={c} label={CLASS_META[c].name}>
-            <RateSelect
-              value={visits[strategy].class[c]}
-              disabled={pending}
-              signed
-              pinned={c === "bronze"}
-              ariaLabel={`${label} ${CLASS_META[c].name} class bonus, adds`}
-              onChange={(v) => setClass(c, v)}
-            />
-          </BoxRow>
-        ))}
-
-        <RowGroup>Plan</RowGroup>
-        {PLAN_KEYS.map((k) => (
-          <BoxRow key={k} label={PLAN_META[k].name}>
-            <RateSelect
-              value={visits[strategy].plan[k]}
-              disabled={pending}
-              signed
-              pinned={k === "free"}
-              ariaLabel={`${label} ${PLAN_META[k].name} plan bonus, adds`}
-              onChange={setPlan}
-            />
-          </BoxRow>
-        ))}
-
-        <RowGroup>Actions</RowGroup>
-        {(["story", "google", "mesita"] as const).map((k) => (
-          <BoxRow
-            key={k}
-            label={BONUS_META[k].name}
-            hint={BONUS_META[k].qualifier}
-          >
-            <RateSelect
-              value={bonuses[k]}
-              disabled={pending}
-              signed
-              ariaLabel={`${label} ${BONUS_META[k].name} bonus, adds`}
-              onChange={(v) => setBonus("visits", strategy, k, v)}
-            />
-          </BoxRow>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-export function TiersClient() {
-  const { cfg, seeded, loadBlocked, ladderError } = usePromosState();
-  const warnings = modelWarnings(cfg);
 
   return (
     <div className="flex flex-col gap-4">
@@ -191,11 +147,129 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:grid-rows-[repeat(15,auto)]">
-        {LIVE_STRATEGY_KEYS.map((s) => (
-          <TierBox key={s} strategy={s} />
-        ))}
+      <div className="-mx-4 overflow-x-auto sm:mx-0">
+        <table className="w-full min-w-[36rem] border-separate border-spacing-0 px-4 sm:px-0">
+          <caption className="sr-only">
+            Visit strategy rates. Conservative and Aggressive. Floor, then
+            signed adders.
+          </caption>
+          <thead>
+            <tr className="text-left">
+              <th scope="col" className="w-[min(40%,16rem)] pb-3 pr-4">
+                <span className="sr-only">Rung</span>
+              </th>
+              {LIVE_STRATEGY_KEYS.map((s) => (
+                <th key={s} scope="col" className="pb-3">
+                  <p className="font-display text-base font-semibold tracking-tight">
+                    {STRATEGY_META[s].name}
+                  </p>
+                  <div className="mt-1.5">
+                    <KnobStatus kind="enforced" reason="THE TICKET" />
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <LabelCell
+                label="Base"
+                hint="Standing rate, before anything is earned"
+              />
+              {LIVE_STRATEGY_KEYS.map((s) => (
+                <RateCell key={s}>
+                  <RateSelect
+                    value={visits[s].base}
+                    disabled={pending}
+                    ariaLabel={`${STRATEGY_META[s].name} base standing rate`}
+                    onChange={(v) => setBase(s, v)}
+                  />
+                </RateCell>
+              ))}
+            </tr>
+            <tr>
+              <LabelCell
+                label={BONUS_META.welcome.name}
+                hint={BONUS_META.welcome.qualifier}
+              />
+              {LIVE_STRATEGY_KEYS.map((s) => (
+                <RateCell key={s}>
+                  <RateSelect
+                    value={cfg.visits.bonuses[s].welcome}
+                    disabled={pending}
+                    signed
+                    ariaLabel={`${STRATEGY_META[s].name} Welcome bonus, adds`}
+                    onChange={(v) => setBonus("visits", s, "welcome", v)}
+                  />
+                </RateCell>
+              ))}
+            </tr>
+
+            <GroupRow label="Class" />
+            {CLASS_KEYS.map((c) => (
+              <tr key={c}>
+                <LabelCell label={CLASS_META[c].name} />
+                {LIVE_STRATEGY_KEYS.map((s) => (
+                  <RateCell key={s}>
+                    <RateSelect
+                      value={visits[s].class[c]}
+                      disabled={pending}
+                      signed
+                      pinned={c === "bronze"}
+                      ariaLabel={`${STRATEGY_META[s].name} ${CLASS_META[c].name} class bonus, adds`}
+                      onChange={(v) => setClass(s, c, v)}
+                    />
+                  </RateCell>
+                ))}
+              </tr>
+            ))}
+
+            <GroupRow label="Plan" />
+            {PLAN_KEYS.map((p) => (
+              <tr key={p}>
+                <LabelCell label={PLAN_META[p].name} />
+                {LIVE_STRATEGY_KEYS.map((s) => (
+                  <RateCell key={s}>
+                    <RateSelect
+                      value={visits[s].plan[p]}
+                      disabled={pending}
+                      signed
+                      pinned={p === "free"}
+                      ariaLabel={`${STRATEGY_META[s].name} ${PLAN_META[p].name} plan bonus, adds`}
+                      onChange={(v) => setPlanPremium(s, v)}
+                    />
+                  </RateCell>
+                ))}
+              </tr>
+            ))}
+
+            <GroupRow label="Actions" />
+            {ACTION_BONUS_KEYS.map((k) => (
+              <tr key={k}>
+                <LabelCell
+                  label={BONUS_META[k].name}
+                  hint={BONUS_META[k].qualifier}
+                />
+                {LIVE_STRATEGY_KEYS.map((s) => (
+                  <RateCell key={s}>
+                    <RateSelect
+                      value={cfg.visits.bonuses[s][k]}
+                      disabled={pending}
+                      signed
+                      ariaLabel={`${STRATEGY_META[s].name} ${BONUS_META[k].name} bonus, adds`}
+                      onChange={(v) => setBonus("visits", s, k, v)}
+                    />
+                  </RateCell>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      <p className="text-muted-foreground type-label leading-snug">
+        Floor, then signed adders. Class prices a body in the room.
+      </p>
 
       <Collapsible summary="How a visit bill stacks">
         <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
