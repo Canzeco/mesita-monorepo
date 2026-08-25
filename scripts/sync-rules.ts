@@ -169,6 +169,7 @@ export const TARGETS: Target[] = [
   // Widest consumer surface: five tabs, four Inbox sections, the wallet, a five-mode hub.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 600 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
+  { label: "apps/web-check", dir: join(repoRoot, "apps", "web-check"), quickstart: false },
   { label: "apps/web-validate", dir: join(repoRoot, "apps", "web-validate"), quickstart: false },
   // Native divergences + the toolchain constraints that silently break the bundle.
   { label: "apps/mobile-consumer", dir: join(repoRoot, "apps", "mobile-consumer"), quickstart: false, budget: 725 },
