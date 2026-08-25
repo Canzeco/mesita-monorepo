@@ -33,7 +33,7 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
   // widening migration (20260823005422) went in FIRST because this failed.
   //
   // Keep asserting the real regex, not a count: the next rung past 99, or a
-  // semantic function stamped as anything but SX, has to fail here not in prod.
+  // function stamped as anything but S<n>, has to fail here not in prod.
   const DB_CHECK = /^S([0-9]{1,2}|X)$/;
   for (const piece of PULSE_PIECES) {
     assertEquals(
@@ -42,14 +42,14 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
       `step S${PULSE_PIECE_META[piece].index} (${piece}) violates the DB CHECK`,
     );
   }
-  // Semantic functions carry no rung, so reportPulsePieces stamps them SX.
+  // Semantics is function 10, so reportPulsePieces stamps it S10.
+  assertEquals(DB_CHECK.test("S10"), true);
   assertEquals(DB_CHECK.test("SX"), true);
-  assertEquals(PULSE_EXTRAS.length > 0, true);
 });
 
-Deno.test("pulse: the NINE enrich queue functions, in the decided order", () => {
-  // The law: ENRICH is ten functions (1–9 plus Semantic). Seed is NOT among
-  // them — it is step 1 of CREATE — and Semantic sits outside the high-water.
+Deno.test("pulse: the TEN enrich queue functions, in the decided order", () => {
+  // The law: ENRICH is ten functions, 1–10. Seed is NOT among them — it is
+  // step 1 of CREATE. Semantics CLOSES the queue at 10.
   assertEquals([...PULSE_PIECES], [
     "pulse",
     "details",
@@ -60,8 +60,9 @@ Deno.test("pulse: the NINE enrich queue functions, in the decided order", () => 
     "menu",
     "reviews",
     "description",
+    "semantic",
   ]);
-  assertEquals(PULSE_TOTAL, 9);
+  assertEquals(PULSE_TOTAL, 10);
 });
 
 Deno.test("pulse: `seed` is NOT an enrich function — it is step 1 of CREATE", () => {
@@ -74,18 +75,18 @@ Deno.test("pulse: `seed` is NOT an enrich function — it is step 1 of CREATE", 
   assertEquals(PULSE_PIECES[0], "pulse");
   assertEquals(PULSE_PIECE_META.pulse.index, 1);
 
-  // No seed event anywhere, and the queue still reaches 9.
+  // No seed event anywhere, and the queue still reaches 10.
   const events = fullQueue();
   assertEquals(events.some((e) => e.step_name === "seed"), false);
-  assertEquals(pulseHighWater(events), 9);
+  assertEquals(pulseHighWater(events), 10);
 
   // And a stray seed beacon cannot inflate a place that has done nothing.
   assertEquals(pulseHighWater([done("seed", 1)]), 0);
 });
 
-Deno.test("pulse: CREATE's stamps read as 2/9 — one ladder, two callers", () => {
+Deno.test("pulse: CREATE's stamps read as 2/10 — one ladder, two callers", () => {
   // The create function runs pulse + details inline and stamps them
-  // (create-place.ts), so a fresh healthy place is 2/9 the moment it exists.
+  // (create-place.ts), so a fresh healthy place is 2/10 the moment it exists.
   // State then accumulates: the first full enrich run continues from there.
   const created = [done("pulse", 1), done("details", 2)];
   assertEquals(pulseHighWater(created), 2);
@@ -98,7 +99,10 @@ Deno.test("pulse: CREATE's stamps read as 2/9 — one ladder, two callers", () =
 Deno.test("pulse: `semantic` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("name"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
-  assertEquals([...PULSE_EXTRAS], ["semantic"]);
+  assertEquals((PULSE_PIECES as readonly string[]).includes("semantic"), true);
+  assertEquals(PULSE_PIECE_META.semantic.index, 10);
+  assertEquals(PULSE_PIECE_META.semantic.label, "Semantics");
+  assertEquals([...PULSE_EXTRAS], []);
 });
 
 Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
@@ -149,31 +153,26 @@ Deno.test("pulse: serp runs BEFORE links — that is what serp is FOR", () => {
   assertEquals(i("details") < i("serp"), true);
 });
 
-Deno.test("pulse: description CLOSES the queue, semantics sits OUTSIDE it", () => {
-  assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "description");
-  assertEquals(PULSE_PIECE_META.description.index, PULSE_TOTAL);
-  // The whole point: a vector is not a rung. The On-Update path fires the same
-  // machinery, so counting one would make `enriched` fall when someone edits a
-  // name — which is not "how far did the queue get".
-  for (const extra of PULSE_EXTRAS) {
-    assertEquals((PULSE_PIECES as readonly string[]).includes(extra), false);
-  }
+Deno.test("pulse: Semantics CLOSES the queue at 10", () => {
+  assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "semantic");
+  assertEquals(PULSE_PIECE_META.semantic.index, PULSE_TOTAL);
+  assertEquals(PULSE_PIECE_META.description.index, 9);
 });
 
-Deno.test("high water: a semantic function never counts toward the number", () => {
-  // A completed one must not advance the queue, and a FAILED one must not hold
-  // it back: a place whose whole queue landed is 9 even if the vector did not
-  // write.
-  const full = fullQueue();
-  assertEquals(pulseHighWater(full), PULSE_TOTAL);
+Deno.test("high water: Semantics is 10 — a gap before it still reads 9", () => {
+  const throughDescription = PULSE_PIECES
+    .filter((p) => p !== "semantic")
+    .map((p, i) => done(p, i));
+  assertEquals(pulseHighWater(throughDescription), 9);
+  assertEquals(pulseHighWater(fullQueue()), PULSE_TOTAL);
   assertEquals(
     pulseHighWater([
-      ...full,
+      ...throughDescription,
       { step_name: "semantic", status: "failed", created_at: at(30) },
     ]),
-    PULSE_TOTAL,
+    9,
   );
-  // And a semantic function on its own is not progress.
+  // And Semantics on its own is not progress — 3–9 are still a gap.
   assertEquals(pulseHighWater([done("semantic", 1)]), 0);
 });
 
@@ -185,16 +184,16 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   // `S${index}` into the DB, so a drift corrupts both the meter and the beacon.
   assertEquals(
     PULSE_PIECES.map((p) => PULSE_PIECE_META[p].index),
-    [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
   );
   // The labels are indexed BY FUNCTION NUMBER, so the array is one longer than
   // the piece list — labels[0] is the CREATED floor (not a function),
-  // labels[9] is Description. A client renders labels[level] with no
+  // labels[10] is Semantics. A client renders labels[level] with no
   // off-by-one.
   assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL + 1);
   assertEquals(PULSE_LABELS_IN_ORDER[0], PULSE_FLOOR_LABEL);
   assertEquals(PULSE_FLOOR_LABEL, "Created");
-  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Description");
+  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Semantics");
   assertEquals(
     [...PULSE_LABELS_IN_ORDER],
     [PULSE_FLOOR_LABEL, ...PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label)],
@@ -206,13 +205,13 @@ Deno.test("high water: nothing recorded is 0 — CREATED, not a failure", () => 
   assertEquals(pulseHighWater([]), 0);
 });
 
-Deno.test("high water: a full queue is 9", () => {
-  assertEquals(pulseHighWater(fullQueue()), 9);
+Deno.test("high water: a full queue is 10", () => {
+  assertEquals(pulseHighWater(fullQueue()), 10);
 });
 
 Deno.test("high water: it is HOW FAR, not how many", () => {
-  // The distinction the whole model rests on. Eight functions completed, but
-  // `links` (4) never did, so the queue got to 3 — not 8. A profile built past
+  // The distinction the whole model rests on. Nine functions completed, but
+  // `links` (4) never did, so the queue got to 3 — not 9. A profile built past
   // a hole is built on incomplete data, which is why the queue is linear.
   const events = PULSE_PIECES
     .filter((p) => p !== "links")
@@ -220,7 +219,7 @@ Deno.test("high water: it is HOW FAR, not how many", () => {
   assertEquals(pulseHighWater(events), 3);
   // completedPulsePieces answers the OTHER question — which ones landed.
   const landed = completedPulsePieces(events);
-  assertEquals(landed.length, 8); // the eight that ran; created is implicit
+  assertEquals(landed.length, 9); // the nine that ran; created is implicit
   assertEquals(landed.includes("links"), false);
 });
 
@@ -254,10 +253,10 @@ Deno.test("high water: a function a run did not buy simply has no event", () => 
   assertEquals(pulseHighWater([...earlier, ...refresh]), 5);
 });
 
-Deno.test("high water: absence is a RESULT — no Instagram still reaches 9", () => {
+Deno.test("high water: absence is a RESULT — no Instagram still reaches 10", () => {
   // The function ran, resolved "there is nothing here", and is completed.
   // Marking it failed would punish a place for a fact about the world.
-  assertEquals(pulseHighWater(fullQueue()), 9);
+  assertEquals(pulseHighWater(fullQueue()), 10);
 });
 
 Deno.test("high water: a re-enrich that fixes a function RAISES the number", () => {
@@ -315,7 +314,7 @@ Deno.test("high water: `skipped` does not advance the queue", () => {
 Deno.test("high water: never exceeds the total, and never goes negative", () => {
   const n = pulseHighWater([...fullQueue(), ...fullQueue()]);
   assertEquals(n >= 0 && n <= PULSE_TOTAL, true);
-  assertEquals(n, 9);
+  assertEquals(n, 10);
 });
 
 // ── the guard MESITA-1209 needed ──────────────────────────────────────────

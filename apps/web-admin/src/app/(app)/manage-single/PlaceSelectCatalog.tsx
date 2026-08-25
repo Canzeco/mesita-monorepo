@@ -553,18 +553,17 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
   );
 }
 
-// ENRICHED is the only non-boolean flag: the PULSE high-water, 0-9
-// (Docs › Intake §A). NINE enrich functions —
+// ENRICHED is the only non-boolean flag: the PULSE high-water, 0-10
+// (Docs › Intake §A). TEN enrich functions —
 //
 //   1 pulse · 2 details · 3 serp · 4 links · 5 social
-//   6 images · 7 menu · 8 reviews · 9 description
+//   6 images · 7 menu · 8 reviews · 9 description · 10 semantics
 //
 // — with 0 as the CREATED floor (seed is step 1 of the CREATE function, not a
 // rung; MESITA-1253). Create stamps pulse+details, so a healthy fresh place
-// reads 2/9 immediately.
+// reads 2/10 immediately.
 //
-// — plus two SEMANTIC functions (Name, Summary) that sit outside the count and
-// never reach this cell. The number is HOW FAR THE QUEUE GOT: the index of the
+// Semantics is function 10. The number is HOW FAR THE QUEUE GOT: the index of the
 // last function such that it and everything before it completed. Not a count
 // of functions that worked; a gap stops it, because a profile built past a
 // hole is built on incomplete data.

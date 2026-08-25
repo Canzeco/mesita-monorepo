@@ -78,19 +78,19 @@ describe("intakeStatusLine", () => {
     listed: true,
     enriched: false,
     enrichPulse: 2,
-    enrichPulseTotal: 9,
+    enrichPulseTotal: 10,
     verified: false,
     partner: false,
     promoting: false,
   };
 
-  it("prints every true Status fact, plus n/9 until Enriched is complete", () => {
+  it("prints every true Status fact, plus n/10 until Enriched is complete", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStatusLine(created)).toBe("Seeded · Active · Listed · 2/9");
+    expect(intakeStatusLine(created)).toBe("Seeded · Active · Listed · 2/10");
     expect(intakeStatusLine(created)).not.toMatch(/claim/i);
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
@@ -103,7 +103,7 @@ describe("intakeStatusLine", () => {
         statusFacts: {
           ...facts,
           enriched: true,
-          enrichPulse: 9,
+          enrichPulse: 10,
           verified: true,
           partner: true,
           promoting: true,

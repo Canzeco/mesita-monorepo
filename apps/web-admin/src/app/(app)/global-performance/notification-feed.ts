@@ -175,7 +175,7 @@ export function readStatusFacts(
     listed: bool(f.listed),
     enriched: bool(f.enriched),
     enrichPulse: num(f.enrichPulse),
-    enrichPulseTotal: num(f.enrichPulseTotal) || 9,
+    enrichPulseTotal: num(f.enrichPulseTotal) || 10,
     verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),

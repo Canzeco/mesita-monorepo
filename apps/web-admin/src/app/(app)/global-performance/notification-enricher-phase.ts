@@ -33,7 +33,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   create: {
     label: "Create",
     blurb:
-      "The CREATE function awaits four subfunctions — seed, pulse, details, and Semantic (Name + Summary together).",
+      "The CREATE function awaits four subfunctions — seed, pulse, details, and Semantics (Name + Summary together).",
     tone: TONES.emerald,
   },
   research: {
@@ -51,7 +51,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   contents: {
     label: "Contents",
     blurb:
-      "Writes the profile — functions 7 menu · 9 description, then persists data and images and ticks Semantic (Name + Summary).",
+      "Writes the profile — functions 7 menu · 9 description, then persists data and images and ticks Semantics (Name + Summary).",
     tone: TONES.amber,
   },
 };
@@ -60,7 +60,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the NINE queue functions and Semantic (Docs › Intake
+//   1. the TEN enrich functions 1–10 (Docs › Intake
 //      §A) — pulse/details/semantic rows can ALSO come from the CREATE function
 //      or an on-update re-embed. Every semantic stamp carries meta.via
 //      ("create" | "update" | "contents", set where the vector write is
