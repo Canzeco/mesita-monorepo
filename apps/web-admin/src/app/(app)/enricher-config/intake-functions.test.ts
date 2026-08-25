@@ -85,6 +85,10 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).not.toContain("type=\"number\"");
     expect(src).not.toContain("× five");
     expect(src).not.toContain("/ 5 places");
+    const blocks = readFileSync(join(__dirname, "blocks.tsx"), "utf8");
+    expect(blocks).toContain("whitespace-nowrap");
+    expect(blocks).toContain("<details");
+    expect(blocks).toContain("Breakdown");
   });
 
   it("does not restack Create and Enrich as family boxes on Functions", () => {
@@ -95,9 +99,10 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("f-semantic");
     expect(src).not.toContain("id=\"f-name\"");
     expect(src).not.toContain("id=\"f-summary\"");
-    expect(src).toMatch(/id="f-seed"\s+index="1"/);
+    expect(src).toMatch(/id="f-seed"\s+index="·"/);
     expect(src).not.toContain("index=\"0\"");
     expect(src).not.toContain("index=\"SEED\"");
+    expect(src).not.toMatch(/id="f-seed"\s+index="1"/);
   });
 });
 

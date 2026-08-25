@@ -360,12 +360,12 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Create 1–4. Enrich 1–10. Two sequences, not one enum."
+            subtitle="Seed, then Enrich 1–10."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
-                index="1"
+                index="·"
                 name="Seed"
                 flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
