@@ -15,10 +15,9 @@ import {
  *  disabled and its route serves a placeholder instead of the live section. */
 export const PLACE_TAB_SECTIONS = [
   { id: "place", label: "Profile", Icon: Store, soon: false },
-  // decision: Pato live 2026-08-20 — Promos is parked behind Soon, "just
-  // soon". The v11 grid, the membership ladder and the strategy cards are
-  // untouched underneath; flip this to `false` to un-park it in one line.
-  { id: "promos", label: "Promos", Icon: Tag, soon: true },
+  // decision: Pato live 2026-08-25 — Promos is live again. Visit ladder
+  // only: membership, strategy, visit cap. Orders and prepaid stay off.
+  { id: "promos", label: "Promos", Icon: Tag, soon: false },
   // decision: Pato live 2026-08-09 — Performance is parked behind Soon. The
   // per-place feed reads as empty scaffolding on real places, so it's blocked
   // rather than shown half-true. The feed itself is untouched underneath —

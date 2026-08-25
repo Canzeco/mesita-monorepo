@@ -5,13 +5,9 @@ import { isSectionSoon } from "../../nav";
 import { PromosSection } from "../../sections/PromosSection";
 import { usePlaceContext } from "../../PlaceContext";
 
-// Per-place Promos — the membership ladder, the strategy cards and the v11
-// rate grid.
-//
-// PARKED (Pato live 2026-08-20, "just soon"): the whole tab sits behind the
-// Soon gate in `nav.ts`. The chrome renders the tab disabled and this route
-// serves the placeholder below; the grid underneath is untouched, so flipping
-// `soon: false` in nav.ts brings it all back.
+// Per-place Promos — membership, strategy cards, visit-rate grid, visit cap.
+// Visit rewards only: no orders knobs, no prepaid. Re-park with `soon: true`
+// in nav.ts; this route still honors that gate.
 export default function PlacePromosPage() {
   if (isSectionSoon("promos")) return <PromosSoon />;
   return <PromosGrid />;
@@ -39,7 +35,7 @@ function PromosSoon() {
   );
 }
 
-/** The live grid — parked behind the Soon gate above, not deleted. */
+/** Live visit-promo editor. */
 function PromosGrid() {
   const { place, setPlace } = usePlaceContext();
 

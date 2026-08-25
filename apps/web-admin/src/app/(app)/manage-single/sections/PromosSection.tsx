@@ -385,6 +385,10 @@ export function PromosSection({
           />
         )}
 
+        <p className="text-muted-foreground mt-3 type-label leading-snug">
+          Visit rewards only — orders and prepaid stay off.
+        </p>
+
         {(matrixFailed || (storedStrategy === null && member)) && (
           <p className="text-muted-foreground mt-2.5 type-label">
             {matrixFailed
