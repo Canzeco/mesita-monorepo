@@ -2,7 +2,8 @@
 //
 // Part of the Intaker namespace (place intelligence + encyclopaedia).
 // Runs many Google Places Text Search queries in one batch and returns
-// the union of Place IDs across all of them. Paginates each query up to
+// the union of Place IDs across all of them. Optional `placeIds` resolve
+// via Place Details (Text Search cannot). Paginates each query up to
 // the API max (3 pages × 20 = 60 results) and runs queries with bounded
 // concurrency so a 50-query batch completes well inside the EF timeout.
 //
@@ -38,6 +39,7 @@ import {
   type ChannelPolicy,
 } from "../_shared/sourcing.ts";
 import {
+  fetchPlaceLiteById,
   MAX_RESULTS_PER_QUERY,
   searchTextWithPagination,
   type PlaceLite,
@@ -52,6 +54,7 @@ const CONCURRENCY = 10;
 
 type RequestBody = {
   queries?: string[];
+  placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
   // Quality filters. minRating is 0–5 (Google ratings are 1–5); 0 = off.
@@ -104,13 +107,20 @@ Deno.serve(async (req) => {
         .filter((q) => q.length > 0),
     ),
   );
-  if (queries.length === 0) {
-    return json({ ok: false, error: "queries: empty" });
+  const placeIds = Array.from(
+    new Set(
+      (body.placeIds ?? [])
+        .map((q) => (typeof q === "string" ? q.trim() : ""))
+        .filter((q) => q.length >= 18),
+    ),
+  );
+  if (queries.length === 0 && placeIds.length === 0) {
+    return json({ ok: false, error: "queries or placeIds: empty" });
   }
-  if (queries.length > MAX_QUERIES_PER_BATCH) {
+  if (queries.length + placeIds.length > MAX_QUERIES_PER_BATCH) {
     return json({
       ok: false,
-      error: `queries: max ${MAX_QUERIES_PER_BATCH} per batch (got ${queries.length})`,
+      error: `queries + placeIds: max ${MAX_QUERIES_PER_BATCH} per batch (got ${queries.length + placeIds.length})`,
     });
   }
 
@@ -132,10 +142,10 @@ Deno.serve(async (req) => {
     Math.floor(Number(body.minUserRatingCount ?? adminSearchPolicy.minReviews ?? 0)),
   );
 
-  // --- Run queries with bounded concurrency ---
-  const results = new Array<QueryResult>(queries.length);
+  // --- Run text queries + Place ID lookups with bounded concurrency ---
+  const results = new Array<QueryResult>(queries.length + placeIds.length);
   let cursor = 0;
-  const worker = async () => {
+  const textWorker = async () => {
     while (true) {
       const i = cursor++;
       if (i >= queries.length) return;
@@ -168,9 +178,52 @@ Deno.serve(async (req) => {
       }
     }
   };
-  await Promise.all(
-    Array.from({ length: Math.min(CONCURRENCY, queries.length) }, () => worker()),
-  );
+  if (queries.length > 0) {
+    await Promise.all(
+      Array.from(
+        { length: Math.min(CONCURRENCY, queries.length) },
+        () => textWorker(),
+      ),
+    );
+  }
+
+  // Explicit Place IDs use Place Details. They skip quality filters —
+  // the operator named the place.
+  let idCursor = 0;
+  const idWorker = async () => {
+    while (true) {
+      const j = idCursor++;
+      if (j >= placeIds.length) return;
+      const id = placeIds[j];
+      const slot = queries.length + j;
+      try {
+        const place = await fetchPlaceLiteById(id, apiKey);
+        results[slot] = {
+          query: id,
+          places: [place],
+          rawCount: 1,
+          truncated: false,
+          error: null,
+        };
+      } catch (err) {
+        results[slot] = {
+          query: id,
+          places: [],
+          rawCount: 0,
+          truncated: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+  };
+  if (placeIds.length > 0) {
+    await Promise.all(
+      Array.from(
+        { length: Math.min(CONCURRENCY, placeIds.length) },
+        () => idWorker(),
+      ),
+    );
+  }
 
   // --- Dedupe ---
   const seen = new Set<string>();

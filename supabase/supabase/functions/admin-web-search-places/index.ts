@@ -31,7 +31,7 @@ import {
   placeIdsMatchingNameHistory,
 } from "../_shared/place-name-history.ts";
 
-type Body = { query?: unknown; limit?: unknown };
+type Body = { query?: unknown; limit?: unknown; googlePlaceIds?: unknown };
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,9 +53,21 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const q = typeof bodyRes.body.query === "string" ? bodyRes.body.query.trim() : "";
+  const googlePlaceIds = Array.isArray(bodyRes.body.googlePlaceIds)
+    ? [
+      ...new Set(
+        bodyRes.body.googlePlaceIds
+          .filter((id): id is string => typeof id === "string")
+          .map((id) => id.trim())
+          .filter((id) => id.length >= 18),
+      ),
+    ].slice(0, 250)
+    : [];
   const limit =
     typeof bodyRes.body.limit === "number" && Number.isInteger(bodyRes.body.limit)
-      ? Math.min(Math.max(bodyRes.body.limit, 1), 50)
+      ? Math.min(Math.max(bodyRes.body.limit, 1), googlePlaceIds.length > 0 ? 250 : 50)
+      : googlePlaceIds.length > 0
+      ? Math.min(googlePlaceIds.length, 250)
       : 25;
 
   // The catalog table is the PIPELINE in one row: seeded → active → listed →
@@ -69,7 +81,15 @@ Deno.serve(async (req) => {
     "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
   let rows: Record<string, unknown>[] = [];
 
-  if (q.length === 0) {
+  if (googlePlaceIds.length > 0) {
+    const { data, error } = await admin
+      .from("profiles")
+      .select(cols)
+      .in("google_place_id", googlePlaceIds)
+      .limit(limit);
+    if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
+    rows = (data ?? []) as Record<string, unknown>[];
+  } else if (q.length === 0) {
     // Empty query — browse recent places for the catalog landing state.
     const { data, error } = await admin
       .from("profiles")
@@ -202,6 +222,7 @@ Deno.serve(async (req) => {
       id: v.id,
       slug: v.slug,
       name: label,
+      google_place_id: (v.google_place_id as string | null) ?? null,
       google_name: (v.google_name as string | null) ?? null,
       category: v.category,
       category_label: v.category_label,

@@ -14,6 +14,8 @@ type CreatePlaceOk = {
   name: string;
   slug: string | null;
   photoCount: number;
+  /** Already on Mesita — the batch continues; this row was not re-created. */
+  alreadyExisted: boolean;
   /** The create call enqueued async enrichment (Intaker cron pipeline). */
   enrichmentTriggered: boolean;
   enrichmentError: string | null;
@@ -68,12 +70,19 @@ export async function createPlaceFromGooglePlaceId(
       (DUPLICATE_PLACE_CODES.has(r.code ?? "") ||
         DUPLICATE_PLACE_CODES.has(body.code ?? ""))
     ) {
-      const name = body.existing?.name;
+      const existingId = body.existing?.id;
+      if (!existingId) {
+        return { ok: false, error: "This place is already on Mesita." };
+      }
       return {
-        ok: false,
-        error: name
-          ? `${name} is already on Mesita.`
-          : "This place is already on Mesita.",
+        ok: true,
+        alreadyExisted: true,
+        projectId: existingId,
+        name: body.existing?.name ?? "(already on Mesita)",
+        slug: body.existing?.slug ?? null,
+        photoCount: 0,
+        enrichmentTriggered: false,
+        enrichmentError: null,
       };
     }
     return { ok: false, error: r.error };
@@ -83,6 +92,7 @@ export async function createPlaceFromGooglePlaceId(
   if (!place?.id) return { ok: false, error: "No place returned" };
   return {
     ok: true,
+    alreadyExisted: false,
     projectId: place.id,
     name: place.name ?? "(unnamed)",
     slug: place.slug ?? null,

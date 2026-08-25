@@ -1,4 +1,5 @@
 import {
+  GOOGLE_PLACES_DETAILS_BASE,
   GOOGLE_PLACES_TEXT_SEARCH_URL,
   googleErrorFromResponse,
 } from "../_shared/google-places.ts";
@@ -101,4 +102,48 @@ export async function searchTextWithPagination(
   }
 
   return out;
+}
+
+const PLACE_LITE_FIELD_MASK =
+  "id,displayName,formattedAddress,location,rating,userRatingCount,primaryType";
+
+/** Resolve one Google Place ID via Place Details — Text Search cannot. */
+export async function fetchPlaceLiteById(
+  placeId: string,
+  apiKey: string,
+): Promise<PlaceLite> {
+  const r = await fetch(
+    `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": PLACE_LITE_FIELD_MASK,
+      },
+    },
+  );
+  if (!r.ok) throw await googleErrorFromResponse(r);
+  const p = (await r.json()) as {
+    id?: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    location?: { latitude?: number; longitude?: number };
+    rating?: number;
+    userRatingCount?: number;
+    primaryType?: string;
+  };
+  const id = p.id ?? placeId;
+  return {
+    id,
+    displayName: p.displayName?.text ?? "",
+    formattedAddress: p.formattedAddress ?? "",
+    lat: typeof p.location?.latitude === "number" ? p.location.latitude : null,
+    lng: typeof p.location?.longitude === "number" ? p.location.longitude : null,
+    rating: typeof p.rating === "number" ? p.rating : null,
+    userRatingCount:
+      typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+    primaryType: typeof p.primaryType === "string" ? p.primaryType : null,
+    existsInMesita: false,
+    createdAt: null,
+    updatedAt: null,
+  };
 }

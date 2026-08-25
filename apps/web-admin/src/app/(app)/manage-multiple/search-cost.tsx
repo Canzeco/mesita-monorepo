@@ -10,12 +10,13 @@ type SearchCallEstimate = {
   totalCalls: number;
 };
 
-// Each page of PAGE_SIZE results is one Google request.
+// Text Search pages + one Place Details call per pasted Google Place ID.
 export function estimateSearchCost(
   queryCount: number,
   maxResults: number,
+  placeIdCount = 0,
 ): SearchCallEstimate {
   const pagesPerQuery = Math.ceil(maxResults / PAGE_SIZE);
-  const totalCalls = queryCount * pagesPerQuery;
+  const totalCalls = queryCount * pagesPerQuery + placeIdCount;
   return { pagesPerQuery, totalCalls };
 }
