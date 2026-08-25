@@ -9,7 +9,9 @@ import {
   getPlaceVerification,
   type AdminPlace,
   type PlaceEnrichmentStatus,
+  type PlaceVerificationGlance,
 } from "./actions";
+import { PLACE_VERIFICATION_CHANGED } from "./verification-events";
 import { PLACE_TAB_SECTIONS, placeSectionHref } from "./nav";
 import { usePlaceContext } from "./PlaceContext";
 import {
@@ -25,13 +27,6 @@ import {
   intakeFunctionRows,
   type EnrichFunctionState,
 } from "./sections/status-enrichment";
-
-type Verification = {
-  verifiedByEmail: string | null;
-  decidedAt: string | null;
-  method: string | null;
-  decidedVia: string | null;
-};
 
 function headerChipClass(on: boolean | "unknown"): string {
   return (
@@ -67,7 +62,7 @@ export function PlaceEditChrome({
   const heroPhoto = place.photos?.[0] ?? null;
   const category = formatHeaderCategory(place.category_label, place.category);
   const [verification, setVerification] = useState<
-    Verification | null | undefined
+    PlaceVerificationGlance | null | undefined
   >(undefined);
   const [verificationError, setVerificationError] = useState<string | null>(
     null,
@@ -85,18 +80,28 @@ export function PlaceEditChrome({
 
   useEffect(() => {
     let alive = true;
-    getPlaceVerification(place.id).then((r) => {
-      if (!alive) return;
-      if (!r.ok) {
-        setVerificationError(r.error);
-        setVerification(null);
-        return;
-      }
-      setVerificationError(null);
-      setVerification(r.data);
-    });
+    const read = () => {
+      getPlaceVerification(place.id).then((r) => {
+        if (!alive) return;
+        if (!r.ok) {
+          setVerificationError(r.error);
+          setVerification(null);
+          return;
+        }
+        setVerificationError(null);
+        setVerification(r.data);
+      });
+    };
+    read();
+    const onChanged = (event: Event) => {
+      const id = (event as CustomEvent<{ placeId?: string }>).detail?.placeId;
+      if (id && id !== place.id) return;
+      read();
+    };
+    window.addEventListener(PLACE_VERIFICATION_CHANGED, onChanged);
     return () => {
       alive = false;
+      window.removeEventListener(PLACE_VERIFICATION_CHANGED, onChanged);
     };
   }, [place.id]);
 

@@ -697,7 +697,7 @@ export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>>
 }
 
 /** Immutable email of who completed ownership verification (not team owners). */
-type PlaceVerificationGlance = {
+export type PlaceVerificationGlance = {
   verifiedByEmail: string | null;
   decidedAt: string | null;
   method: string | null;
@@ -721,6 +721,44 @@ export async function getPlaceVerification(
       decidedVia: r.data.decidedVia ?? null,
     },
   };
+}
+
+/** One row from admin-web-list-verifications in per-place mode. */
+export type PlaceVerificationRequest = {
+  id: string;
+  method: string;
+  requester_email: string;
+  status: "pending" | "approved" | "rejected";
+  reject_reason: string | null;
+  decided_at: string | null;
+  decided_via: "auto" | "admin" | null;
+  created_at: string;
+  payload: Record<string, unknown>;
+};
+
+export async function listPlaceVerifications(
+  projectId: string,
+): Promise<Result<PlaceVerificationRequest[]>> {
+  const r = await efInvoke<{ verifications: PlaceVerificationRequest[] }>(
+    "admin-web-list-verifications",
+    { projectId, limit: 50 },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.verifications ?? [] };
+}
+
+export async function decidePlaceVerification(
+  verificationId: string,
+  decision: "approved" | "rejected",
+  rejectReason: string,
+): Promise<Result<true>> {
+  const r = await efInvoke<unknown>("admin-web-decide-verification", {
+    verificationId,
+    decision,
+    rejectReason: decision === "rejected" ? rejectReason : undefined,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
 }
 
 export async function inviteEditor(

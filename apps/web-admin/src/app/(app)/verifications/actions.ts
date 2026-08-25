@@ -2,7 +2,12 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 
-type VerificationMethod = "ai_call" | "video" | "postcard";
+type VerificationMethod =
+  | "ai_call"
+  | "ai_email"
+  | "video"
+  | "postcard"
+  | "manual_contact";
 type VerificationStatus = "pending" | "approved" | "rejected";
 
 export type AdminVerification = {

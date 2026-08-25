@@ -6,11 +6,13 @@ import {
   getPlaceEnrichment,
   getPlaceVerification,
   type AdminPlace,
+  type PlaceVerificationGlance,
 } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StatusCard } from "./StatusCard";
 import { IntakeStatusCard } from "./IntakeStatusCard";
+import { VerificationCard } from "./VerificationCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -23,25 +25,16 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //               9. Description · 10. Semantic — green called / yellow not.
 // Then the rest:
 //   Enrichment  queues the full Intaker process
-//   SERP / Embedding / Metadata
-//
-// The ownership-verification read is hoisted to this component because two
-// boxes need it (Status for the boolean, Metadata for who and how) and it
-// should cost one request, not two.
-type Verification = {
-  verifiedByEmail: string | null;
-  decidedAt: string | null;
-  method: string | null;
-  decidedVia: string | null;
-};
-
+//   Verification ownership proof (who / when / method + queue decide)
+//   SERP / Embedding / Metadata (UID & audit — not ownership)
 export function AdminSection({ place }: { place: AdminPlace }) {
   // undefined = in flight. Distinguished from null so a failed read can render
   // as "?" rather than a false "not verified".
-  const [verification, setVerification] = useState<Verification | null | undefined>(
-    undefined,
-  );
+  const [verification, setVerification] = useState<
+    PlaceVerificationGlance | null | undefined
+  >(undefined);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationEpoch, setVerificationEpoch] = useState(0);
 
   // No sync reset in the effect body (react-hooks/set-state-in-effect): the
   // shell remounts this tab when the operator switches place, so state starts
@@ -61,7 +54,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     return () => {
       alive = false;
     };
-  }, [place.id]);
+  }, [place.id, verificationEpoch]);
 
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
@@ -74,13 +67,15 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       <IntakeStatusCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
-      <SerpSummaryCard place={place} />
-      <EmbeddingCard place={place} />
-      <MetaCard
+      <VerificationCard
         place={place}
         verification={verification}
         verificationError={verificationError}
+        onChanged={() => setVerificationEpoch((n) => n + 1)}
       />
+      <SerpSummaryCard place={place} />
+      <EmbeddingCard place={place} />
+      <MetaCard place={place} />
     </div>
   );
 }
@@ -98,22 +93,10 @@ function lastUpdatedBy(place: AdminPlace): "ai" | "human" | null {
   return updated - enriched <= 90_000 ? "ai" : "human";
 }
 
-// Metadata — EVERY identifier and timestamp on the place, and the only box in
-// the tab that carries one (MESITA-1161: "there the metadata of everything.
-// don't put other metadata in other boxes"). That includes the immutable
-// ownership-verification record: who proved it, how, and when — Status says
-// only whether it happened. Open by default (MESITA-588); collapsible.
-function MetaCard({
-  place,
-  verification,
-  verificationError,
-}: {
-  place: AdminPlace;
-  verification: Verification | null | undefined;
-  verificationError: string | null;
-}) {
+// Metadata — UID & audit trail only (MESITA-1320). Ownership proof lives
+// on the Verification box. Open by default (MESITA-588); collapsible.
+function MetaCard({ place }: { place: AdminPlace }) {
   const by = lastUpdatedBy(place);
-  const verifiedBy = verification?.verifiedByEmail ?? null;
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -166,32 +149,6 @@ function MetaCard({
               </span>
             )}
           </span>
-        </ReadField>
-        <ReadField label="Ownership verified by" boxed>
-          {verificationError ? (
-            <span className="text-destructive text-xs">{verificationError}</span>
-          ) : verification === undefined ? (
-            <span className="text-muted-foreground text-xs">Checking…</span>
-          ) : !verifiedBy ? (
-            <span className="text-muted-foreground text-xs italic">
-              Nobody has completed ownership verification yet.
-            </span>
-          ) : (
-            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="truncate font-mono type-body">{verifiedBy}</span>
-              <span className="text-muted-foreground type-label">
-                {[
-                  verification?.method?.replace(/_/g, " "),
-                  verification?.decidedVia?.replace(/_/g, " "),
-                  verification?.decidedAt
-                    ? formatAbsoluteUtc(verification.decidedAt)
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            </span>
-          )}
         </ReadField>
       </div>
     </details>

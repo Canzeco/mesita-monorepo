@@ -3,8 +3,9 @@
 import { AdminSection } from "../../sections/AdminSection";
 import { usePlaceContext } from "../../PlaceContext";
 
-// Admin — the Mesita-internal tab (Pato, 2026-08-04): Scores, Verification,
-// Metadata, Embeddings. Everything a business must never see or set.
+// Admin — the Mesita-internal tab: Status, Intake, Enrichment,
+// Verification, SERP, Embedding, Metadata. Everything a business must
+// never see or set.
 export default function PlaceAdminPage() {
   const { place } = usePlaceContext();
 
