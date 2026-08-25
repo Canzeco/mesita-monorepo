@@ -3,19 +3,18 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
-//   • Top overlay: full-width search bar. Nothing narrows the catalog — the
-//     filter surface went with MESITA-1183, so the rail and the map pins both
-//     render it whole. (Ask AI / Memo now lives as a tab on Home.)
+//   • Top overlay: floating search bar + optional Filters (same LocalSheet
+//     Swipe hosts). Predicates cut the rail and the pins together.
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
 //   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
-//     session token per autocomplete session) and swaps in SearchResultsPanel:
-//     plain one-line text rows. "On Mesita" rows select the place on the map
-//     (red pin + rail card; the detail modal is one more tap away there),
-//     "From Google" rows open GooglePlaceSheet — a not-on-Mesita preview
-//     carrying the real Add flow (consumer-web-create-place creates the
-//     place immediately; the async Intaker builds the profile in minutes).
+//     session token per autocomplete session) and hangs a content-height
+//     SearchResultsPanel under the bar. "On Mesita" rows select the place
+//     on the map (red pin + rail card; the detail modal is one more tap
+//     away there), "From Google" rows open GooglePlaceSheet — a not-on-Mesita
+//     preview carrying the real Add flow (consumer-web-create-place creates
+//     the place immediately; the async Intaker builds the profile in minutes).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,6 +30,14 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  discoveryFiltersAreActive,
+} from "@/lib/discovery-filters-engine";
+import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
+import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchMap } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
@@ -72,6 +79,7 @@ export function SearchClient({
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLButtonElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const [query, setQuery] = useState("");
   // Opened by tapping the search field — the results/suggest panel appears on
@@ -93,19 +101,31 @@ export function SearchClient({
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
 
   const trimmed = query.trim();
-  // Idle = the map moment: no text query, search panel closed. The chip row
-  // and catalog rail only exist here; the results panel owns the other state.
+  // Idle = the map moment: no text query, search panel closed. The catalog
+  // rail only exists here; the results dropdown owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Distances ride on the consumer's live location. Nothing narrows the
-  // catalog any more (MESITA-1183) — pins and rail render it whole.
+  // Distances measure from the chosen zone center or, with none, the device
+  // fix — the SAME center the distance filter rings, so "within 5 km" and
+  // the "5 km" on the rail card can never disagree.
+  const center = filters.zone ?? userLocation;
   const catalog = useMemo(
-    () => withDistances(places, userLocation),
-    [places, userLocation],
+    () => withDistances(places, center),
+    [places, center],
   );
-  const visible = catalog;
+  const visible = useMemo(
+    () => applyDiscoveryFilters(catalog, filters),
+    [catalog, filters],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(places),
+    [places],
+  );
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -280,14 +300,21 @@ export function SearchClient({
     setSearchOpen(false);
   };
 
+  const openSearch = () => {
+    setSearchOpen(true);
+    // Focus after the panel mounts so the keyboard comes up on tap-to-open
+    // (map tap or bar tap) without covering the map in a 70% sheet.
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
   const handleMapClick = () => {
-    // Bare map tap toggles search: open when idle, close when the panel
+    // Bare map tap toggles search: open when idle, close when the dropdown
     // (empty prompt or live results) is covering the top of the canvas.
     if (searchOpen || trimmed.length > 0) {
       dismissSearch();
       return;
     }
-    setSearchOpen(true);
+    openSearch();
   };
 
   const handleOpenPlace = (place: Place) =>
@@ -295,7 +322,7 @@ export function SearchClient({
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins reflect the same chip filtering as the rail. */}
+      {/* Base layer — pins reflect the same filter cut as the rail. */}
       <SearchMap
         apiKey={apiKey}
         places={visible}
@@ -306,21 +333,44 @@ export function SearchClient({
         onMapClick={handleMapClick}
       />
 
-      {/* Floating top overlay — full-width search bar + idle chip row.
-          (Ask AI moved to the Home tab's Memo concierge.) */}
-      <div className="absolute inset-x-3 top-3 z-30">
+      {/* Floating top overlay — search bar, then a content-height dropdown
+          (empty prompt or live results) that never uses a fixed 70% panel.
+          max-h-[70%] caps long lists so they scroll and the map stays visible
+          below. Ask AI lives on Home › Chat. */}
+      <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
         <SearchBar
           query={query}
           showClear={Boolean(query || searchOpen)}
           onQueryChange={updateQuery}
-          onFocus={() => setSearchOpen(true)}
+          onFocus={openSearch}
           onClear={dismissSearch}
+          inputRef={searchInputRef}
+          onOpenFilters={() => setFiltersOpen(true)}
+          filtersActive={filtersActive}
         />
 
         {fetchError && idle && (
-          <p className={cn(ERROR_BOX_CLASS, "mt-2 rounded-xl backdrop-blur")}>
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
             {fetchError}
           </p>
+        )}
+
+        {(searchOpen || trimmed.length > 0) && (
+          <div className="bg-card/95 border-border shadow-elev flex min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+            {trimmed.length > 0 ? (
+              <SearchResultsPanel
+                query={query}
+                searching={searching}
+                searchError={searchError}
+                predictions={predictions}
+                addStates={addStates}
+                onPickMesita={handlePickMesita}
+                onPickGoogle={handlePickGoogle}
+              />
+            ) : (
+              <EmptySearchPrompt />
+            )}
+          </div>
         )}
       </div>
 
@@ -328,6 +378,7 @@ export function SearchClient({
         idle={idle}
         places={visible}
         catalogCount={catalog.length}
+        filtersActive={filtersActive}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
         selectedId={selectedId}
@@ -337,31 +388,24 @@ export function SearchClient({
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
+        onOpenFilters={() => setFiltersOpen(true)}
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
       />
 
-      {/* Typing swaps in live results under the floating bar. Height fits the
-          result count (grows/shrinks with rows); max-h-[70%] caps long lists so
-          they scroll and the map stays visible below. Sits at z-20 below the
-          z-30 floating bar; pt-[60px] drops results below it. Dismiss via the
-          bar's X or a tap on the visible map strip. */}
-      {trimmed.length > 0 && (
-        <div className="bg-background border-border shadow-rest absolute inset-x-0 top-0 z-20 flex max-h-[70%] flex-col rounded-b-3xl border-b pt-[60px]">
-          <SearchResultsPanel
-            query={query}
-            searching={searching}
-            searchError={searchError}
-            predictions={predictions}
-            addStates={addStates}
-            onPickMesita={handlePickMesita}
-            onPickGoogle={handlePickGoogle}
-          />
-        </div>
-      )}
-
-      {searchOpen && trimmed.length === 0 && <EmptySearchPrompt />}
+      <LocalSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+      >
+        <DiscoveryFilters
+          onClose={() => setFiltersOpen(false)}
+          categoryOptions={categoryOptions}
+          count={visible.length}
+          hasLocation={userLocation != null}
+        />
+      </LocalSheet>
 
       <GooglePlaceSheet
         open={previewOpen}
