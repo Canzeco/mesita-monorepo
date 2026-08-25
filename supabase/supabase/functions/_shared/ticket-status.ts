@@ -13,7 +13,7 @@
 // open → scanned → approved → paying → revealed (plan §12), with
 // fix_requested as a COLUMN at scanned, never a status.
 // `awaiting_payment_confirm` remains LIVE only while the transitional staff
-// bill path (check-web-submit-bill) still writes it; it retires with
+// bill path (validate-web-submit-bill) still writes it; it retires with
 // MESITA-1093 and then moves to LEGACY.
 //
 // The web/mobile apps hold a mirror of LIVE_STATUSES as

@@ -342,7 +342,7 @@ Deno.test("writeTicket: update mode writes exactly the validated patch, no guard
   assertEquals(calls[0].eq, [["id", "ticket-1"]]);
 });
 
-Deno.test("writeTicket: update mode applies an is-null guard alongside the id (check-web-get-ticket's stamp)", async () => {
+Deno.test("writeTicket: update mode applies an is-null guard alongside the id (validate-web-get-ticket's stamp)", async () => {
   const { admin, calls } = fakeTicketAdmin();
   await writeTicket(admin, {
     mode: "update",
@@ -354,7 +354,7 @@ Deno.test("writeTicket: update mode applies an is-null guard alongside the id (c
   assertEquals(calls[0].is, [["first_scanned_at", null]]);
 });
 
-Deno.test("writeTicket: update mode applies an eq CAS guard and returns the re-read row via maybeSingle (check-web-scan-ticket's shape)", async () => {
+Deno.test("writeTicket: update mode applies an eq CAS guard and returns the re-read row via maybeSingle (validate-web-scan-ticket's shape)", async () => {
   const { admin, calls } = fakeTicketAdmin({ row: { id: "ticket-1", status: "scanned" } });
   const res = await writeTicket(admin, {
     mode: "update",
@@ -382,7 +382,7 @@ Deno.test("writeTicket: update mode's lost CAS surfaces as row:null under maybeS
   assertEquals(res.row, null);
 });
 
-Deno.test("writeTicket: update mode combines eq + is + in guards, single() terminal (check-web-approve-ticket's shape)", async () => {
+Deno.test("writeTicket: update mode combines eq + is + in guards, single() terminal (validate-web-approve-ticket's shape)", async () => {
   const { admin, calls } = fakeTicketAdmin({ row: { id: "ticket-1" } });
   await writeTicket(admin, {
     mode: "update",

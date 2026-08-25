@@ -12,8 +12,9 @@
 // The defaults MIRROR the constants the apps ship today, so the page describes
 // the product as it is rather than proposing a different one:
 //   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT` fallbacks
-//   consumer poll   web-consumer TicketScreen, via consumer-web-get-ticket
-//   staff poll      web-check, via check-web-get-ticket (not the poll EF)
+//   consumer poll   web-consumer TicketScreen, via consumer-web-get-ticket (10s)
+//   staff poll      web-validate, via validate-web-get-ticket (not the poll EF); BASE 3s, backoff to 30s
+//   pay rails       cash live; card and Yums are STAGED panels
 //   report          consumer-web-report-ticket
 //
 // Only WIRED knobs render on the admin page (Discovery law). Pay rails, proof,
@@ -184,7 +185,7 @@ export function guestVisitsPolicy(c: VisitsConfig): GuestVisitsPolicy {
   };
 }
 
-/** Staff-facing slice — rides check-web-get-ticket, never the poll EF. */
+/** Staff-facing slice — rides validate-web-get-ticket, never the poll EF. */
 export type StaffVisitsPolicy = {
   staffPollSeconds: number;
   staffPollMaxSeconds: number;

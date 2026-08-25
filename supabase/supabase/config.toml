@@ -295,7 +295,7 @@ verify_jwt = true
 [functions.consumer-web-report-ticket]
 verify_jwt = true
 
-# --- check-web (PUBLIC check page at mesita.ai/check/<code>) ---
+# --- validate-web (PUBLIC Validate page; live host still check.mesita.ai/<code>) ---
 # verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
 # authentication — whoever holds the freshly scanned QR (nominally staff) can
 # view, optionally bill (internal control, never a gate — MESITA-850), and
@@ -306,10 +306,10 @@ verify_jwt = true
 # ticket_check_events audit with self_view + daily-salted ip_hash, in-EF rate
 # limiting, uniform 404s). See _shared/ticket-check.ts.
 
-[functions.check-web-get-ticket]
+[functions.validate-web-get-ticket]
 verify_jwt = false
 
-[functions.check-web-mark-paid]
+[functions.validate-web-mark-paid]
 verify_jwt = false
 
 # THE TICKET v4 handshake (MESITA-1090/1092): scan (open→scanned, an
@@ -320,19 +320,19 @@ verify_jwt = false
 # confirmed → the ticket closes). Same code-possession posture as above;
 # omitting a stanza here would default verify_jwt=true and 401 the staff app
 # at the gateway.
-[functions.check-web-scan-ticket]
+[functions.validate-web-scan-ticket]
 verify_jwt = false
 
-[functions.check-web-approve-ticket]
+[functions.validate-web-approve-ticket]
 verify_jwt = false
 
-[functions.check-web-request-fix]
+[functions.validate-web-request-fix]
 verify_jwt = false
 
-[functions.check-web-poll-ticket]
+[functions.validate-web-poll-ticket]
 verify_jwt = false
 
-[functions.check-web-validate-ticket]
+[functions.validate-web-validate-ticket]
 verify_jwt = false
 
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for

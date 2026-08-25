@@ -94,7 +94,7 @@ export function LifecycleStepper({
         ? "Membership forfeited after 3 strikes — re-join by picking a strategy below."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
-        ? "Staff scan the guest's QR on Mesita Check — honor the first check at the bill to go live."
+        ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
         : view.honor === "done"
           ? "Activated — the first guest check was honored."
           : "The first honored check makes you live — turning a guest away is a strike.";

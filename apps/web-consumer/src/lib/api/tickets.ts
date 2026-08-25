@@ -302,9 +302,8 @@ export async function apiGetTicket(
 }
 
 // THE TICKET v4, step 5 (MESITA-1092): after approval the guest picks how
-// they settle. `at_place` is the one live path (C2); `mesita` is staged and
-// the EF answers 501 — never send it outside the staged UI. null rolls a
-// `paying` ticket back to `approved`.
+// they settle. `at_place` is the one live path; card-through-Mesita is
+// retired (MESITA-1114). null rolls a `paying` ticket back to `approved`.
 export async function apiSelectTicketPayment(
   client: SupabaseClient,
   ticketId: string,

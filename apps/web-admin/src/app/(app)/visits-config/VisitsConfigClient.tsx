@@ -228,7 +228,7 @@ export function VisitsConfigClient({
         <div className="mt-4">
           <KnobStatus
             kind="enforced"
-            reason="Guest poll on consumer-web-get-ticket · staff poll on check-web-get-ticket"
+            reason="Guest poll on consumer-web-get-ticket · staff poll on validate-web-get-ticket"
           />
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-3">

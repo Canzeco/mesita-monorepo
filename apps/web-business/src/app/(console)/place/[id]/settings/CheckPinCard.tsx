@@ -90,7 +90,7 @@ export function CheckPinCard({
                 Check PIN
               </h2>
               <p className="text-muted-foreground mt-0.5 text-[13px] leading-snug">
-                Optional 6-digit code staff must enter on Mesita Check before
+                Optional 6-digit code staff must enter on Mesita Validate before
                 billing or closing a ticket.
               </p>
             </div>

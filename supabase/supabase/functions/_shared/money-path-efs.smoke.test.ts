@@ -52,16 +52,16 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
 // missing/implausible code fires BEFORE any DB work (the plausibility gate
 // and the null ip-hash shortcut make these probes network-free).
 const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
-  { name: "check-web-get-ticket", path: "../check-web-get-ticket/index.ts" },
-  { name: "check-web-mark-paid", path: "../check-web-mark-paid/index.ts" },
-  // THE TICKET v4 handshake (MESITA-1090/1092). A check-web EF scaffolded
+  { name: "validate-web-get-ticket", path: "../validate-web-get-ticket/index.ts" },
+  { name: "validate-web-mark-paid", path: "../validate-web-mark-paid/index.ts" },
+  // THE TICKET v4 handshake (MESITA-1090/1092). A validate-web EF scaffolded
   // from a consumer template would inherit requireAuthedUser and 401 a
   // surface with no login by design — these probes are what catches it.
-  { name: "check-web-scan-ticket", path: "../check-web-scan-ticket/index.ts" },
-  { name: "check-web-approve-ticket", path: "../check-web-approve-ticket/index.ts" },
-  { name: "check-web-request-fix", path: "../check-web-request-fix/index.ts" },
-  { name: "check-web-poll-ticket", path: "../check-web-poll-ticket/index.ts" },
-  { name: "check-web-validate-ticket", path: "../check-web-validate-ticket/index.ts" },
+  { name: "validate-web-scan-ticket", path: "../validate-web-scan-ticket/index.ts" },
+  { name: "validate-web-approve-ticket", path: "../validate-web-approve-ticket/index.ts" },
+  { name: "validate-web-request-fix", path: "../validate-web-request-fix/index.ts" },
+  { name: "validate-web-poll-ticket", path: "../validate-web-poll-ticket/index.ts" },
+  { name: "validate-web-validate-ticket", path: "../validate-web-validate-ticket/index.ts" },
 ];
 
 for (const ef of PUBLIC_CHECK_EFS) {
@@ -179,10 +179,10 @@ Deno.test("stripe-webhook-handle-event: a bogus signature fails verification -> 
   await res.body?.cancel();
 });
 
-// check-web-request-fix validates its closed fix vocabulary BEFORE any DB
+// validate-web-request-fix validates its closed fix vocabulary BEFORE any DB
 // work — an unknown fix is a client bug, not a lookup, and must never 500.
-Deno.test("check-web-request-fix: unknown fix enum -> 400 before any DB work", async () => {
-  const h = await loadEFHandler("../check-web-request-fix/index.ts");
+Deno.test("validate-web-request-fix: unknown fix enum -> 400 before any DB work", async () => {
+  const h = await loadEFHandler("../validate-web-request-fix/index.ts");
   const res = await h(
     jsonRequest({ code: "abcdefghijklmnopqrstuv", fix: "vibes" }, {
       method: "POST",
@@ -193,8 +193,8 @@ Deno.test("check-web-request-fix: unknown fix enum -> 400 before any DB work", a
   await res.body?.cancel();
 });
 
-Deno.test("check-web-request-fix: over-length note -> 400, not 500", async () => {
-  const h = await loadEFHandler("../check-web-request-fix/index.ts");
+Deno.test("validate-web-request-fix: over-length note -> 400, not 500", async () => {
+  const h = await loadEFHandler("../validate-web-request-fix/index.ts");
   const res = await h(
     jsonRequest(
       { code: "abcdefghijklmnopqrstuv", fix: "bill", note: "x".repeat(300) },

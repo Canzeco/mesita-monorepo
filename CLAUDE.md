@@ -3,7 +3,7 @@
 
 **Notion is the library, and it is deep — it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8) §0. **Rules = the law:** 🤖 **ASDM Rules** — the one protocol for all agent work, your platform's ramp (isolation, branch naming, connectors) in **§K** · 🏛️ **Product Rules** = WHAT Mesita is · ⚙️ **Development Rules** = tooling gotchas + the knowledge chain. **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain: Apps, Atlas, Intake, Discovery, Passport, Promos, Visits, Orders, Reservations, Checkout, Yums, Vocabulary, Design. Read the matching doc first; mirror shipped changes back the same session. **Rules beat Docs.**
 
-**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-check,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen read-only history — never work in them. Package-specific rules: that package's `CLAUDE.md`.
+**The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-validate,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen read-only history — never work in them. Package-specific rules: that package's `CLAUDE.md`.
 
 **The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY (claims, `decision:` comments, statuses); **Linear documents and Claude Artifacts are prohibited**. **git/GitHub** carries the work — branches and squash PRs; `Closes <ID>` is the join. Chat is ephemeral: durable state → Linear, durable knowledge → Notion, same session.
 
@@ -33,7 +33,7 @@
 | `apps/web-business` | Business console · business.mesita.ai (Next.js · Vercel) |
 | `apps/web-consumer` | Consumer app · consumer.mesita.ai (Next.js · Vercel) |
 | `apps/web-landing` | Marketing landing · mesita.ai (Next.js · Vercel) |
-| `apps/web-check` | Mesita Check, the staff ticket page · check.mesita.ai (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
+| `apps/web-validate` | Mesita Validate, the staff ticket page · live host check.mesita.ai until DNS for validate.mesita.ai (Next.js · Vercel) — QRs encode `check.mesita.ai/<code>` |
 | `apps/mobile-consumer` | Native consumer app (Expo SDK 57 · RN · NativeWind) |
 | `apps/mobile-business` | Native business app (Expo SDK 57 · **scaffold only**) |
 | `supabase` | DB · RLS · Edge Functions — source of truth (Supabase CLI · Deno) |
@@ -43,4 +43,4 @@
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
 - **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard: no `.icns`/`.jxl`/`.heif`/`.heic` anywhere — `image-size`'s advisories are unpatched and those are the formats they parse) and `brand.yml` (brand sync).
 - **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
-- **Worktrees:** `.worktreeinclude` lists the gitignored state every new worktree needs. **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-check :3005 · mobile-consumer :8081 · mobile-business :8082.
+- **Worktrees:** `.worktreeinclude` lists the gitignored state every new worktree needs. **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-validate :3005 · mobile-consumer :8081 · mobile-business :8082.
