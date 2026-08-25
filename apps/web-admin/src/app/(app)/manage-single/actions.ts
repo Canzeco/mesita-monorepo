@@ -47,8 +47,8 @@ export type PlaceHit = {
   content_status: string | null;
   listing_type: string | null;
   // ── The eight status facts the catalog table renders, in order:
-  //    Created · Active · Listed · Enriching · Enriched · Verified · Partner · Promoting.
-  //    First seven are bools; Promoting is 0|1|2. All derived (or projected)
+  //    Created · Active · Listed · Enriching · Enriched · Verified · Partner · Promoted.
+  //    First seven are bools; Promoted is 0|1|2. All derived (or projected)
   //    in admin-web-search-places, except Enriching which is content_status
   //    generating/queued (MESITA-453 whole-pipeline).
   /** google_place_id present — the identity spine every run starts from. */

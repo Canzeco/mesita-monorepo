@@ -2,7 +2,7 @@
 //
 //   STATUSES (8)  Created · Active · Listed · Enriching · Enriched ·
 //                 Verified · Partner are bools (`true` / `false`).
-//                 Promoting is 0 | 1 | 2.
+//                 Promoted is 0 | 1 | 2.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -22,7 +22,7 @@ export function statusBoolChip(
 }
 
 /**
- * Operator Promoting: 0 Zero · 1 Conservative · 2 Aggressive.
+ * Operator Promoted: 0 Zero · 1 Conservative · 2 Aggressive.
  * Engine Dominant (3) displays as 2 — Promos already has three strategies.
  */
 export function operatorPromotingLevel(
@@ -64,7 +64,7 @@ export const GENERAL_STATUS_FACTS = [
   { key: "enriched", label: "Enriched" },
   { key: "verified", label: "Verified" },
   { key: "partner", label: "Partner" },
-  { key: "promoting", label: "Promoting" },
+  { key: "promoting", label: "Promoted" },
 ] as const;
 
 export type GeneralStatusKey = (typeof GENERAL_STATUS_FACTS)[number]["key"];

@@ -131,7 +131,7 @@ export function generalHeaderFacts(input: {
     },
     {
       key: "promoting",
-      label: "Promoting",
+      label: "Promoted",
       on: level > 0,
       chip: promotingLevelChip(level),
     },

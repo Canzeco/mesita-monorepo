@@ -124,8 +124,8 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 }
 
 // Status — two boxes (Pato, 2026-08-25):
-//   STATUSES (8)  seven bools + Promoting 0|1|2. Compact line still names
-//                 the true facts; Promoting here is the live-discount yes.
+//   STATUSES (8)  seven bools + Promoted 0|1|2. Compact line still names
+//                 the true facts; Promoted here is the live-discount yes.
 //   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
@@ -235,7 +235,7 @@ export function intakeStatusLine(item: NotificationItem): string | null {
     if (facts.enriched) parts.push("Enriched");
     if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partner");
-    if (facts.promoting) parts.push("Promoting");
+    if (facts.promoting) parts.push("Promoted");
     return parts.join(" · ");
   }
   // Pre-payload fallback (create events only carried status/enriched).
