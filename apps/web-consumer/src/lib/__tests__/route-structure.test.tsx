@@ -263,3 +263,36 @@ describe("T5 — exactly one tab lights per surface", () => {
     }
   });
 });
+
+// MESITA-1119 — a mockup showed a sixth "Agents" tab and "Me · {class}".
+// Product Rules §C (later, Pato-owned): five tabs, plain labels; class is
+// status on /me, never chrome; Inbox is not named for a mechanism.
+describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
+  async function tabLabels(): Promise<string[]> {
+    vi.resetModules();
+    vi.doMock("next/navigation", () => ({
+      usePathname: () => "/home/swipe",
+      useRouter: () => ({ push: () => {}, back: () => {} }),
+    }));
+    const { BottomNav } = await import("@/components/consumer/BottomNav");
+    const html = renderToStaticMarkup(<BottomNav />);
+    return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
+  }
+
+  it("is exactly Home · Search · Pay · Inbox · Me", async () => {
+    expect(await tabLabels()).toEqual([
+      "Home",
+      "Search",
+      "Pay",
+      "Inbox",
+      "Me",
+    ]);
+  });
+
+  it("does not stamp class into Me and does not add an Agents tab", async () => {
+    const labels = await tabLabels();
+    expect(labels.some((l) => l.includes("·"))).toBe(false);
+    expect(labels).not.toContain("Agents");
+    expect(labels).not.toContain("Agent");
+  });
+});

@@ -49,7 +49,7 @@ export const ENRICH_DESCRIPTION_MAX = ENRICH_DESCRIPTION_TARGET_WORDS * 7;
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
 // (apps/web-admin `enricher-config/cost-model.ts`). Used at run time by
-// enrich-cost.ts to enforce atlas_per_run_cost_cap_usd mid-run (MESITA-624).
+// enrich-cost.ts to record estimated USD on the run (the dollar abort is retired).
 // Approximate — enough to bound spend, not for billing. Keep the two in sync.
 //
 // Sources: Google Maps Platform pricing list (Places API New, first tier) ·
@@ -134,9 +134,8 @@ export type EnrichConfig = {
   analyzeInstagramImages: number;
   imageAnalysisPrompt: string;
   imageSortingPrompt: string;
-  // Hard ceiling on estimated USD spent across research→analysis→contents for
-  // one venue. Enforced mid-run by EnrichCostLedger (MESITA-624). 0 = no paid
-  // steps allowed.
+  // Retired operator knob (MESITA-624). Column still reads; the ledger
+  // records spend and does not abort on it.
   perRunCostCapUsd: number;
 };
 

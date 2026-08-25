@@ -1399,9 +1399,9 @@ function FaqsBox({
         <Faq q="How does visibility work?">
           <p>
             The ranking algorithm reads a stronger discount as a stronger card:
-            Zero sits at Low, Conservative at Mid, Aggressive at High.
-            Visibility is never a separate knob you can buy — it rises with what
-            you give.
+            Zero sits at Low, Conservative at Mid, Aggressive at High,
+            Dominant at Max. Visibility is never a separate knob you can buy —
+            it rises with what you give.
           </p>
         </Faq>
 
@@ -1595,8 +1595,8 @@ function ExampleRow({
           </p>
           <p className="text-muted-foreground type-label">
             {freeRate == null
-              ? "Standard gets no discount on this visit."
-              : `Standard ${freeRate}% → saves ${formatMoney(freeSaves, currency)}`}
+              ? "Free gets no discount on this visit."
+              : `Free ${freeRate}% → saves ${formatMoney(freeSaves, currency)}`}
           </p>
         </div>
       )}

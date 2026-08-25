@@ -98,6 +98,7 @@ import {
   apiSubmitTicketBill,
   checkUrlForCode,
   type ConsumerTicketRow,
+  type GuestVisitsPolicy,
   type ReportReason,
   type RewardQuote,
 } from "@/lib/api/tickets";
@@ -155,9 +156,9 @@ type ActionKind = "story" | "google" | "mesita";
 type RewardPick = ActionKind | "base";
 
 const ACTION_SHORT: Record<ActionKind, string> = {
-  story: "Instagram story",
-  google: "Google review",
-  mesita: "Mesita review",
+  story: "Instagram Story",
+  google: "Google Review",
+  mesita: "Mesita Review",
 };
 
 const PAY_METHOD_LABEL: Record<string, string> = {
@@ -221,6 +222,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   // the async handler, with stable copy. First observation only records a
   // baseline: arriving mid-wait is not a change worth announcing.
   const [announce, setAnnounce] = useState("");
+  const [visits, setVisits] = useState<GuestVisitsPolicy | null>(null);
+  const pollMs = (visits?.consumerPollSeconds ?? 10) * 1000;
   const stepBodyRef = useRef<HTMLDivElement | null>(null);
   const lastSyncRef = useRef<{ status: string | null; fix: string | null }>({
     status: null,
@@ -232,8 +235,12 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const { ticket: fresh } = await apiGetTicket(supabase, ticketId);
+        const { ticket: fresh, visits: policy } = await apiGetTicket(
+          supabase,
+          ticketId,
+        );
         if (cancelled) return;
+        if (policy) setVisits(policy);
         setPolled(fresh);
         setPollMisses(0);
         const prev = lastSyncRef.current;
@@ -274,7 +281,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       }
     };
     void tick();
-    const interval = window.setInterval(() => void tick(), 10_000);
+    const interval = window.setInterval(() => void tick(), pollMs);
     const onVisible = () => {
       if (document.visibilityState === "visible") void tick();
     };
@@ -284,7 +291,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [supabase, ticketId, live]);
+  }, [supabase, ticketId, live, pollMs]);
 
   // The pass quotes the ENGINE's number (MESITA-1013/1014) — stamped with the
   // place it describes so it can never be attributed to another ticket.
@@ -426,7 +433,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     setPayError(null);
     try {
       await apiSelectTicketPayment(supabase, ticketId, "at_place");
-      const { ticket: fresh } = await apiGetTicket(supabase, ticketId);
+      const { ticket: fresh, visits: policy } = await apiGetTicket(
+        supabase,
+        ticketId,
+      );
+      if (policy) setVisits(policy);
       setPolled(fresh);
       setStepChoice(null);
     } catch (err) {
@@ -799,6 +810,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             busy={billBusy}
             error={billError}
             fixActive={fix === "bill"}
+            tipEnabled={visits?.tipEnabled ?? true}
+            tipPresets={visits?.tipPresets ?? [10, 15, 20]}
+            defaultTipPct={visits?.defaultTipPct ?? 15}
             onSave={saveBill}
           />
         ) : null}
@@ -1154,7 +1168,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             ·
           </span>
         ) : null}
-        {!cancelled ? (
+        {!cancelled && (visits?.reportEnabled ?? true) ? (
           reported ? (
             <p className="text-muted-foreground flex min-h-11 items-center text-xs font-semibold">
               Reported — Mesita is looking at it
@@ -1480,7 +1494,7 @@ function RewardLanes({
       )}
 
       <Lane title="Sharing" note="pick one">
-        {(["google", "story", "mesita"] as const).map((a) => {
+        {(["story", "google", "mesita"] as const).map((a) => {
           const available =
             a === "story"
               ? Boolean(quote.storyEligible) && igConnected

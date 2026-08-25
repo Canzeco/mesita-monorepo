@@ -37,6 +37,7 @@ import {
   ticketByCode,
 } from "../_shared/agent-tools.ts";
 import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
+import { reminderParkPatch } from "../_shared/reservation-reminder.ts";
 
 const MAX_NEGOTIATION_ROUNDS = 2;
 
@@ -127,6 +128,12 @@ Deno.serve(async (req) => {
   // it here is a promise the venue already made, not an assumption.
   const offered = normalizeAlternatives(ticket.alternatives);
   if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
+    const { data: placeRow } = await admin
+      .from("places")
+      .select("lng")
+      .eq("id", ticket.project_id)
+      .maybeSingle();
+    const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
     const nowIso = new Date().toISOString();
     const patch: ReservationPatch = {
       reserved_at: next.toISOString(),
@@ -140,6 +147,7 @@ Deno.serve(async (req) => {
       // to call them back about.
       callback_state: "skipped",
       callback_next_attempt_at: null,
+      ...reminderParkPatch(lng, next, "call"),
       last_call_status: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
     };
     if (note) patch.outcome_note = note;
@@ -191,6 +199,8 @@ Deno.serve(async (req) => {
     negotiation_rounds: rounds + 1,
     callback_attempts: 0,
     callback_next_attempt_at: null,
+    reminder_state: "idle",
+    reminder_at: null,
   };
   if (note) patch.outcome_note = note;
   const write = await writeReservation(admin, { mode: "update", id: ticket.id, patch });

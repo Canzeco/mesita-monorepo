@@ -190,6 +190,7 @@ Deno.serve(async (req) => {
       geo,
       cfg.weights,
       cfg.slotting,
+      cfg.params,
     ).map((r) => r.row)
     : rows;
 

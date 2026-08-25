@@ -1,10 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, Gift, Layers } from "lucide-react";
 
-// Promos Config — two sub-tabs. "Tiers" prices every rate: four boxes, one per
-// (strategy × context), because a place picks ONE strategy and reading its
-// column gives that place's whole program. "Distribution" simulates how those
-// prices spread across 1,000 visits.
+// Promos Config — two sub-tabs. Tiers prices every rate: six boxes, one per
+// (paid strategy × context). Distribution simulates 1,000 visits.
 //
 // Labels are the bare nouns — the page heading already says Promos Config, and
 // a tab that repeats its own heading stutters.

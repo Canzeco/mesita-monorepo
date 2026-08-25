@@ -145,14 +145,9 @@ export type RewardQuote = {
    * public shape, from the same live config that prices the bill, so the
    * Rewards tab never reconstructs it from the static CLASS_STEP ladder.
    *
-   * KEYED BY THE FOUR LEGACY SEGMENTS, not by Classes v2 (MESITA-1079). The EF
-   * resolves each one through `identityForClassKey` into the real class × plan
-   * grid and then reports it back under the legacy key, because that is still
-   * what `consumers.class_key` stores. So this payload can only ever expose
-   * FOUR of the eight cells — bronze·free, silver·free, diamond·free and
-   * bronze·premium — and `gold` is absent entirely. The client bridges these
-   * onto the v2 axes for display and shows ★ where it has no number; widening
-   * the EF to return the whole grid belongs with MESITA-1076.
+   * KEYED BY THE FOUR LEGACY SEGMENTS for the best-of fallback. v11 quotes
+   * carry `breakdown.classes` instead — Bronze · Silver · Gold · Diamond
+   * standing rates, so Gold is a priced rung, not a star.
    *
    * Optional only to survive the deploy window where a cached client meets a
    * not-yet-redeployed EF; treat absent as "don't render the ladder", never
@@ -284,14 +279,22 @@ export async function apiSubmitTicketBill(
   });
 }
 
-// THE TICKET v4 live sync (MESITA-1091): one owner-scoped row, polled at 10s
-// while the ticket screen is mounted. Realtime stays off `tickets` on
-// purpose — this poll IS the design.
+// THE TICKET v4 live sync (MESITA-1091): one owner-scoped row, polled at
+// visits.consumerPollSeconds while the ticket screen is mounted. Realtime
+// stays off `tickets` on purpose — this poll IS the design.
+export type GuestVisitsPolicy = {
+  tipEnabled: boolean;
+  tipPresets: number[];
+  defaultTipPct: number;
+  consumerPollSeconds: number;
+  reportEnabled: boolean;
+};
+
 export async function apiGetTicket(
   client: SupabaseClient,
   ticketId: string,
-): Promise<{ ticket: ConsumerTicketRow }> {
-  return await invokeEF<{ ticket: ConsumerTicketRow }>(
+): Promise<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }> {
+  return await invokeEF<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }>(
     client,
     "consumer-web-get-ticket",
     { ticketId },

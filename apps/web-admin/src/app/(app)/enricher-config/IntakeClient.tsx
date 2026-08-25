@@ -4,19 +4,26 @@ import { useMemo, useState, useTransition } from "react";
 import {
   CheckCircle2,
   Facebook,
+  Gauge,
   Globe,
   Image as ImageIcon,
   Instagram,
+  Layers,
+  ListOrdered,
   Loader2,
   MessageSquareQuote,
+  RefreshCw,
   ShoppingBag,
+  Sparkles,
   Star,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
+  Collapsible,
   NumberField,
   QualityPicker,
+  SectionCard,
   Switch,
   TextAreaField,
 } from "@/components/admin-ui/config";
@@ -25,10 +32,11 @@ import { updateSourcingConfig } from "../sourcing-config/actions";
 import type { SourcingConfig } from "../sourcing-config/catalog";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
-  Band,
   Fields,
-  FlowCard,
-  FunctionBlock,
+  FlowPanel,
+  FunctionFamily,
+  FunctionModule,
+  StepChips,
   KnobElsewhere,
   NoKnobs,
   SelectField,
@@ -44,15 +52,18 @@ import {
   type IntakeSettings,
 } from "./intake-guards";
 
-// THE INTAKE PAGE. Five sections in Pato's order (MESITA-1287):
-//   1 Sourcing · 2 Create explained · 3 Enrich explained · 4 the functions · 5 Models
+export type { IntakeSettings };
+
+// THE INTAKE PAGE. Five modules, Discovery-shaped. Models sits FIRST (shared
+// spend, above even Sourcing), then Sourcing · Create · Enrich · Functions.
+// One page, no tabs. Functions are disclosure rows inside the Functions card,
+// not a second stack of cards.
 //
 // ONE SAVE over TWO write doors — app_config.sourcing_config through
 // admin-web-update-sourcing-config, and the atlas_* columns through
 // admin-web-update-enricher-config. They are not one transaction, so the bar
-// tells the truth about a half-landed write instead of claiming atomicity it
-// does not have: sourcing is written first, and if the second call fails the
-// bar says which half landed and only the failed half stays dirty.
+// tells the truth about a half-landed write: sourcing first; if the second
+// call fails the bar says which half landed and only the failed half stays dirty.
 //
 // NO TRIGGER GRID. What a run is allowed to buy lives in
 // app_config.enrichment_triggers and is written by the EF alone (Pato, three
@@ -68,8 +79,6 @@ const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] 
     { value: "deep-research", label: "deep-research" },
     { value: "advanced-deep-research", label: "advanced-deep-research" },
   ];
-
-export type { IntakeSettings };
 
 export function IntakeClient({
   initialSourcing,
@@ -141,7 +150,7 @@ export function IntakeClient({
           sourcingLanded = true;
         } else {
           setError(`Sourcing: ${r.error}`);
-          return; // nothing else was attempted, so nothing else can be half-saved
+          return;
         }
       }
 
@@ -160,7 +169,6 @@ export function IntakeClient({
           synthesisQuality: settings.synthesisQuality,
           visionQuality: settings.visionQuality,
           perplexityPreset: settings.perplexityPreset,
-          perRunCostCapUsd: settings.perRunCostCapUsd,
           discoverWebsiteN: settings.discoverWebsiteN,
           discoverInstagramN: settings.discoverInstagramN,
           discoverFacebookN: settings.discoverFacebookN,
@@ -176,8 +184,6 @@ export function IntakeClient({
       }
 
       if (failure) {
-        // The seam, said out loud. Sourcing is already committed; the Intaker
-        // half is not, stays dirty, and a retry writes only what is missing.
         setPartial(
           sourcingLanded
             ? "Sourcing saved · the Intaker did not."
@@ -202,539 +208,581 @@ export function IntakeClient({
     <>
       <SectionStrip />
 
-      <div className="pb-24">
-        {/* ══ 1 · SOURCING ══ */}
-        <Band
-          n="1"
-          id="s-sourcing"
-          title="Sourcing"
-          aside={<Tag tone="solid">the gate, before a place exists</Tag>}
-        />
-        {sourcingLoadError ? (
-          <ErrorNote message={`Sourcing failed to load: ${sourcingLoadError}`} />
-        ) : (
-          <SourcingChannels
-            config={sourcing}
-            onChange={(next) => {
-              setSourcing(next);
-              setOk(false);
-              setPartial(null);
-            }}
-            disabled={pending}
-            updatedAt={sourcingStamp}
-          />
-        )}
-
-        {/* ══ 2 · CREATE ══ */}
-        <Band
-          n="2"
-          id="s-create"
-          title="Create"
-          aside={<Tag>$ · one Google call</Tag>}
-        />
-        <FlowCard
-          title="One function, synchronous, at the door"
-          blurb="Runs inline for admin, business and consumer alike. The Intaker never calls it — a person or Memo does, by adding a place."
-          facts={[
-            {
-              term: "What starts it",
-              detail:
-                "Someone adds a place. There is no trigger for Create — it is unconditional, and the gate above is what decides whether the add is allowed at all.",
-            },
-            {
-              term: "The gate inside it",
-              detail: (
-                <>
-                  A listing Google reports{" "}
-                  <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                    CLOSED_PERMANENTLY
-                  </code>{" "}
-                  is refused <b>422</b> before any row exists. A dead place never
-                  enters the catalog.
-                </>
-              ),
-            },
-            {
-              term: "What it leaves behind",
-              detail:
-                "The paired place and project rows, the Google spine, a first photo, and a queued Summary vector. It stamps pulse and details, so a healthy fresh place reads Enriched 2/9 the moment it exists.",
-            },
-            {
-              term: "Then",
-              detail:
-                "It schedules the enrich queue — it never runs functions 3–9 inline.",
-            },
-          ]}
-          steps={[
-            { href: "#f-seed", label: "Seed" },
-            { href: "#f-pulse", label: "Pulse" },
-            { href: "#f-details", label: "Details" },
-            { href: "#f-summary", label: "◇ Summary" },
-            { href: "#f-name", label: "◇ Name" },
-          ]}
-          footer={
-            <>
-              No knobs of its own. Everything Create does is a function in §4,
-              and the semantic pair rides along outside the 0–9 count.
-            </>
-          }
-        />
-
-        {/* ══ 3 · ENRICH ══ */}
-        <Band
-          n="3"
-          id="s-enrich"
-          title="Enrich"
-          aside={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
-        />
-        <FlowCard
-          title="Nine functions, in order, queued per place"
-          blurb="Three cron Edge Functions over the place_research staging row: research runs 1·2·3·4·5·8, analysis runs 6, contents runs 7·9·◇summary. A ~20s poller claims staged rows and fires each stage."
-          facts={[
-            {
-              term: "Cadence",
-              detail: (
-                <>
-                  <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                    places.enrich_every_days
-                  </code>
-                  , set per place on the Place editor — not here. The queue runs
-                  every 15 minutes and seeds at most <b>5 places per tick,
-                  across all of Mesita</b>.
-                </>
-              ),
-            },
-            {
-              term: "What stops it",
-              detail:
-                "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9.",
-            },
-            {
-              term: "Ceiling",
-              detail: "The per-run cost cap in §5, enforced mid-run.",
-            },
-          ]}
-          steps={[
-            { href: "#f-pulse", label: "1 Pulse" },
-            { href: "#f-details", label: "2 Details" },
-            { href: "#f-serp", label: "3 Serp" },
-            { href: "#f-links", label: "4 Links" },
-            { href: "#f-social", label: "5 Social" },
-            { href: "#f-images", label: "6 Images" },
-            { href: "#f-menu", label: "7 Menu" },
-            { href: "#f-reviews", label: "8 Reviews" },
-            { href: "#f-description", label: "9 Description" },
-            { href: "#f-summary", label: "◇ Summary" },
-            { href: "#f-name", label: "◇ Name" },
-          ]}
-          footer={
-            <>
-              <b>What a run is allowed to buy is not set here.</b> That lives in{" "}
-              <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                app_config.enrichment_triggers
-              </code>
-              , written by{" "}
-              <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                admin-web-update-enricher-config
-              </code>
-              . Two events fire today: the run Create schedules, and the
-              per-place decay refresh. The Google spine is never gated — every
-              later function trusts it.
-            </>
-          }
-        />
-
-        {/* ══ 4 · THE FUNCTIONS ══ */}
-        <Band
-          n="4"
-          title="The functions"
-          aside={<Tag tone="solid">12 functions · 15 knobs</Tag>}
-        />
-        <p className="text-muted-foreground -mt-1 mb-4 max-w-3xl text-sm leading-relaxed">
-          In run order, each listed once with the flows that call it. Pulse,
-          Details and the semantic pair appear in both flows because they are the
-          same function with two callers — printing them twice would invent a
-          second ladder.
-        </p>
-
-        <FunctionBlock
-          id="f-seed"
-          index="SEED"
-          flows="Create"
-          name="Seed"
-          blurb="Dedupe on the Google Place ID and mint the paired rows at category='undefined'."
-        >
-          <NoKnobs>
-            No knobs. The row existing <b>is</b> the seed, which is why it is not
-            an enrich function and never gets stamped.
-          </NoKnobs>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-pulse"
-          index="1 · $"
-          flows="Create + Enrich"
-          name="Pulse"
-          blurb="One question: is this place still alive. Not the hours, not the address."
-        >
-          <NoKnobs>
-            No knobs. Google&apos;s <b>businessStatus</b> is the answer and it is
-            not tunable. It runs before the cost ledger opens — a gate that
-            reports at the end of the stage is not a gate.
-          </NoKnobs>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-details"
-          index="2 · $"
-          flows="Create + Enrich"
-          name="Details"
-          blurb="The Google spine: hours, address, geo, zone, city, timezone, price, phone, and the name."
-        >
-          <NoKnobs>
-            No knobs. Every field here is a fact Google states. The one override
-            is <b>mesita_name</b>, owned by a human on the Place editor —
-            enrichment never touches it.
-          </NoKnobs>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-serp"
-          index="3 · $"
-          flows="Enrich"
-          name="Serp"
-          blurb="Agent X writes the editorial read that Links spends to recognise the place. Never a source of facts."
-        >
-          <KnobElsewhere>
-            Its only knob is the <b>Search model preset</b> in §5 — one value
-            with one home, because Agent Y at 4 · Links reads the same setting.
-          </KnobElsewhere>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-links"
-          index="4 · $$"
-          flows="Enrich"
-          name="Links"
-          blurb="Firecrawl gathers candidates per source, Agent Y picks one or none. Seed first, discover second."
-        >
-          <Fields>
-            <NumberField
-              icon={<Globe className="text-muted-foreground h-4 w-4" />}
-              label="Website candidates"
-              value={settings.discoverWebsiteN}
-              min={0}
-              max={MAX_DISCOVERY_CANDIDATES}
-              onChange={(v) => patch({ discoverWebsiteN: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<Instagram className="text-muted-foreground h-4 w-4" />}
-              label="Instagram candidates"
-              value={settings.discoverInstagramN}
-              min={0}
-              max={MAX_DISCOVERY_CANDIDATES}
-              onChange={(v) => patch({ discoverInstagramN: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<Facebook className="text-muted-foreground h-4 w-4" />}
-              label="Facebook candidates"
-              value={settings.discoverFacebookN}
-              min={0}
-              max={MAX_DISCOVERY_CANDIDATES}
-              onChange={(v) => patch({ discoverFacebookN: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<Star className="text-muted-foreground h-4 w-4" />}
-              label="OpenTable candidates"
-              value={settings.discoverOpentableN}
-              min={0}
-              max={MAX_DISCOVERY_CANDIDATES}
-              onChange={(v) => patch({ discoverOpentableN: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<ShoppingBag className="text-muted-foreground h-4 w-4" />}
-              label="Uber Eats candidates"
-              value={settings.discoverUbereatsN}
-              min={0}
-              max={MAX_DISCOVERY_CANDIDATES}
-              onChange={(v) => patch({ discoverUbereatsN: v })}
-              disabled={pending}
-            />
-          </Fields>
-          <p className="text-muted-foreground mt-3 text-xs">
-            0 turns a source off. A channel the Google spine already supplied at
-            create is trusted as-is — discovery runs only for what is missing.
-          </p>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-social"
-          index="5 · $$"
-          flows="Enrich"
-          name="Social"
-          blurb="Instagram and Facebook. Runs before Images because its gather fills the pool the vision funnel ranks."
-        >
-          <Fields>
-            <NumberField
-              icon={<Instagram className="text-muted-foreground h-4 w-4" />}
-              label="Instagram posts to collect"
-              value={settings.gatherInstagramDepth}
-              min={1}
-              max={MAX_INSTAGRAM_COLLECT}
-              onChange={(v) => patch({ gatherInstagramDepth: v })}
-              disabled={pending}
-            />
-          </Fields>
-          <p className="text-muted-foreground mt-3 text-xs">
-            Newest first, then top-K by likes. This number bounds the Instagram
-            analyze cap at 6 · Images.
-          </p>
-        </FunctionBlock>
-
-        <FunctionBlock
-          id="f-images"
-          index="6 · $$"
-          flows="Enrich"
-          name="Images"
-          blurb="Describe every candidate, rank them all in one shared bucket, keep the gallery. Largest cost driver here."
-        >
-          <Fields>
-            <NumberField
-              icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
-              label="Google photos to collect"
-              value={settings.gatherGoogleImages}
-              min={1}
-              max={MAX_GOOGLE_COLLECT}
-              onChange={(v) => patch({ gatherGoogleImages: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
-              label="Analyze Google (≤ collected)"
-              value={settings.analyzeGoogleImages}
-              min={1}
-              max={settings.gatherGoogleImages}
-              onChange={(v) => patch({ analyzeGoogleImages: v })}
-              disabled={pending || !settings.imageVisionEnabled}
-            />
-            <NumberField
-              icon={<Instagram className="text-muted-foreground h-4 w-4" />}
-              label="Analyze Instagram (≤ collected at 5)"
-              value={settings.analyzeInstagramImages}
-              min={1}
-              max={settings.gatherInstagramDepth}
-              onChange={(v) => patch({ analyzeInstagramImages: v })}
-              disabled={pending || !settings.imageVisionEnabled}
-            />
-            <NumberField
-              icon={<ImageIcon className="text-muted-foreground h-4 w-4" />}
-              label="Photos kept on the profile"
-              value={settings.saveTotalImages}
-              min={1}
-              max={Math.min(
-                MAX_SAVE_IMAGES,
-                settings.analyzeGoogleImages + settings.analyzeInstagramImages,
+      <div className="space-y-6 pb-24">
+        <div id="s-models" className="scroll-mt-16">
+          <SectionCard
+            icon={<Gauge className="text-secondary h-4 w-4" />}
+            title="Models & cost"
+            subtitle="Each of these serves several functions, which is why none of them lives inside one. Embeddings is locked by design."
+            status={<Tag tone="solid">shared</Tag>}
+          >
+            <div className="mt-5">
+              <Fields>
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Text model</span>
+                  <QualityPicker
+                    value={settings.synthesisQuality}
+                    onChange={(v) => patch({ synthesisQuality: v })}
+                  />
+                  <span className="text-muted-foreground type-label">
+                    9 · Description and the image-rank leg of 6
+                  </span>
+                </div>
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Image model</span>
+                  <QualityPicker
+                    value={settings.visionQuality}
+                    onChange={(v) => patch({ visionQuality: v })}
+                  />
+                  <span className="text-muted-foreground type-label">
+                    6 · Images
+                  </span>
+                </div>
+                <SelectField
+                  label="Search model preset"
+                  hint="Agent X at 3 · Serp, Agent Y at 4 · Links"
+                  value={settings.perplexityPreset}
+                  options={PERPLEXITY_OPTIONS}
+                  onChange={(v) => patch({ perplexityPreset: v })}
+                  disabled={pending}
+                />
+                <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+                  <span className="text-sm font-medium">Embeddings</span>
+                  <span className="text-sm">text-embedding-3-small</span>
+                  <span className="text-muted-foreground type-label">
+                    locked · 1536-d · swapping it re-embeds the catalog
+                  </span>
+                </div>
+              </Fields>
+              {settingsStamp && (
+                <p className="text-muted-foreground mt-4 text-xs">
+                  Intaker settings last changed {formatShortDate(settingsStamp)}
+                </p>
               )}
-              onChange={(v) => patch({ saveTotalImages: v })}
-              disabled={pending}
-            />
-            <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
-              <span className="text-sm font-medium">Vision</span>
-              <Switch
-                on={settings.imageVisionEnabled}
-                pending={pending}
-                label="Toggle image vision"
-                onClick={() =>
-                  patch({ imageVisionEnabled: !settings.imageVisionEnabled })
-                }
-              />
             </div>
-            <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
-              <span className="text-sm font-medium">Mirror to storage</span>
-              <Switch
-                on={settings.saveImagesToStorage}
-                pending={pending}
-                label="Toggle image storage"
-                onClick={() =>
-                  patch({ saveImagesToStorage: !settings.saveImagesToStorage })
-                }
+          </SectionCard>
+        </div>
+
+        <div id="s-sourcing" className="scroll-mt-16">
+          <SectionCard
+            icon={<Layers className="text-secondary h-4 w-4" />}
+            title="Sourcing"
+            subtitle="Who may find a place, who may add one, and the Google bar and region each has to clear."
+            status={<Tag tone="solid">the gate</Tag>}
+          >
+            {sourcingLoadError ? (
+              <div className="mt-4">
+                <ErrorNote
+                  message={`Sourcing failed to load: ${sourcingLoadError}`}
+                />
+              </div>
+            ) : (
+              <SourcingChannels
+                config={sourcing}
+                onChange={(next) => {
+                  setSourcing(next);
+                  setOk(false);
+                  setPartial(null);
+                }}
+                disabled={pending}
+                updatedAt={sourcingStamp}
+                framed={false}
               />
-            </div>
-          </Fields>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <TextAreaField
-              label="Analysis prompt"
-              value={settings.imageAnalysisPrompt}
-              onChange={(v) => patch({ imageAnalysisPrompt: v })}
-              disabled={pending}
-            />
-            <TextAreaField
-              label="Sorting prompt"
-              value={settings.imageSortingPrompt}
-              onChange={(v) => patch({ imageSortingPrompt: v })}
-              disabled={pending}
-            />
-          </div>
-          <p className="text-muted-foreground mt-3 text-xs">
-            The funnel is a chain and the Edge Function rejects a broken one, so
-            lowering a collect value pulls its analyze cap and the gallery down
-            with it. Winners mirror into the place-images bucket; the model is in
-            §5.
-          </p>
-        </FunctionBlock>
+            )}
+          </SectionCard>
+        </div>
 
-        <FunctionBlock
-          id="f-menu"
-          index="7"
-          flows="Enrich"
-          name="Menu"
-          blurb="Holds its slot so the number stays stable the day a real menu source lands."
-        >
-          <NoKnobs>
-            No knobs, and nothing to configure — the website is not crawled, so
-            no menu source exists. It always passes and can never block the
-            queue.
-          </NoKnobs>
-        </FunctionBlock>
+        <div id="s-create" className="scroll-mt-16">
+          <SectionCard
+            icon={<Sparkles className="text-secondary h-4 w-4" />}
+            title="Create"
+            subtitle="One function, synchronous, at the door. Runs inline for admin, business and consumer alike. The Intaker never calls it — a person or Memo does, by adding a place."
+            status={<Tag>$ · one Google call</Tag>}
+          >
+            <FlowPanel
+              facts={[
+                {
+                  term: "What starts it",
+                  detail:
+                    "Someone adds a place. There is no trigger for Create — it is unconditional, and the gate above is what decides whether the add is allowed at all.",
+                },
+                {
+                  term: "The gate inside it",
+                  detail: (
+                    <>
+                      A listing Google reports{" "}
+                      <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                        CLOSED_PERMANENTLY
+                      </code>{" "}
+                      is refused <b>422</b> before any row exists.
+                    </>
+                  ),
+                },
+                {
+                  term: "What it leaves behind",
+                  detail:
+                    "The paired place and project rows, the Google spine, a first photo, and a queued Summary vector. Pulse and details stamp, so a healthy fresh place reads Enriched 2/9 the moment it exists.",
+                },
+                {
+                  term: "Then",
+                  detail:
+                    "It schedules the enrich queue — it never runs functions 3–9 inline.",
+                },
+              ]}
+              steps={[
+                { href: "#f-seed", label: "Seed" },
+                { href: "#f-pulse", label: "Pulse" },
+                { href: "#f-details", label: "Details" },
+                { href: "#f-name", label: "◇ Name" },
+                { href: "#f-summary", label: "◇ Summary" },
+              ]}
+              footer="No knobs of its own. Everything Create does is a function below, and the semantic pair rides along outside the 0–9 count."
+            />
+          </SectionCard>
+        </div>
 
-        <FunctionBlock
-          id="f-reviews"
-          index="8 · $$"
-          flows="Enrich"
-          name="Reviews"
-          blurb="The newest Google reviews — what 9 · Description grounds the Presentation on."
-        >
-          <Fields>
-            <NumberField
-              icon={
-                <MessageSquareQuote className="text-muted-foreground h-4 w-4" />
+        <div id="s-enrich" className="scroll-mt-16">
+          <SectionCard
+            icon={<RefreshCw className="text-secondary h-4 w-4" />}
+            title="Enrich"
+            subtitle="Nine functions, in order, queued per place. Three cron Edge Functions over the place_research staging row: research runs 1·2·3·4·5·8, analysis runs 6, contents runs 7·9·◇summary."
+            status={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
+          >
+            <FlowPanel
+              facts={[
+                {
+                  term: "Cadence",
+                  detail: (
+                    <>
+                      <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                        places.enrich_every_days
+                      </code>
+                      , set per place on the Place editor — not here. The queue
+                      runs every 15 minutes and seeds at most <b>5 places per
+                      tick, across all of Mesita</b>.
+                    </>
+                  ),
+                },
+                {
+                  term: "What stops it",
+                  detail:
+                    "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9. Spend is bounded by the collect and analyze knobs, and by five places per tick — not a dollar cap.",
+                },
+              ]}
+              steps={[
+                { href: "#f-pulse", label: "1 Pulse" },
+                { href: "#f-details", label: "2 Details" },
+                { href: "#f-serp", label: "3 Serp" },
+                { href: "#f-links", label: "4 Links" },
+                { href: "#f-social", label: "5 Social" },
+                { href: "#f-images", label: "6 Images" },
+                { href: "#f-menu", label: "7 Menu" },
+                { href: "#f-reviews", label: "8 Reviews" },
+                { href: "#f-description", label: "9 Description" },
+                { href: "#f-name", label: "◇ Name" },
+                { href: "#f-summary", label: "◇ Summary" },
+              ]}
+              footer={
+                <>
+                  What a run is allowed to buy is not set here. That lives in{" "}
+                  <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                    app_config.enrichment_triggers
+                  </code>
+                  , written by the enricher-config Edge Function. Two events fire
+                  today: the run Create schedules, and the per-place decay
+                  refresh.
+                </>
               }
-              label="Google reviews to pull"
-              value={settings.gatherReviews}
-              min={0}
-              max={100}
-              onChange={(v) => patch({ gatherReviews: v })}
-              disabled={pending}
             />
-          </Fields>
-          <p className="text-muted-foreground mt-3 text-xs">
-            0–100, about $0.50 per 100. Mesita&apos;s own cost and wall-clock
-            bound, not a Google one — the Places API itself returns 5.
-          </p>
-        </FunctionBlock>
+          </SectionCard>
+        </div>
 
-        <FunctionBlock
-          id="f-description"
-          index="9 · $"
-          flows="Enrich"
-          name="Description"
-          blurb="Closes the queue. Makes the Presentation, then Category, then Tags, in that order."
-        >
-          <KnobElsewhere>
-            Its only knob is the <b>Text model</b> in §5 — the same setting drives
-            the image-rank leg of 6 · Images, so it has one home.
-          </KnobElsewhere>
-        </FunctionBlock>
+        <div id="s-functions" className="scroll-mt-16">
+          <SectionCard
+            icon={<ListOrdered className="text-secondary h-4 w-4" />}
+            title="The functions"
+            subtitle="Three families. Create is one function. Enrich is nine. Name and Summary are semantic — they have no number and enriched never counts them."
+            status={<Tag tone="solid">12 modules · 15 knobs</Tag>}
+          >
+            <div className="mt-2">
+              <FunctionFamily
+                tone="create"
+                label="Create"
+                kicker="One function. Seed, then Pulse and Details inline. Name and Summary ride along."
+                note="Pulse, Details, Name and Summary are the same functions Enrich uses. They are not a second ladder."
+              >
+              <FunctionModule
+                id="f-seed"
+                index="SEED"
+                name="Seed"
+                blurb="Dedupe on the Google Place ID and mint the paired rows at category='undefined'."
+                knobs="no knobs"
+              >
+                <NoKnobs>
+                  No knobs. The row existing <b>is</b> the seed, which is why it
+                  is not an enrich function and never gets stamped.
+                </NoKnobs>
+              </FunctionModule>
 
-        <FunctionBlock
-          id="f-summary"
-          index="◇"
-          flows="Create + Enrich"
-          name="Summary"
-          blurb="The 60-word text the index reads — never the prose a guest reads."
-        >
-          <NoKnobs>
-            No knobs. The model is locked to <b>text-embedding-3-small</b>:
-            swapping it re-embeds the whole catalog, so it is not a knob by
-            design.
-          </NoKnobs>
-        </FunctionBlock>
+              <FunctionModule
+                id="f-pulse"
+                index="1 · $"
+                flows="also Enrich"
+                name="Pulse"
+                blurb="One question: is this place still alive. Not the hours, not the address."
+                knobs="no knobs"
+              >
+                <NoKnobs>
+                  No knobs. Google&apos;s <b>businessStatus</b> is the answer and
+                  it is not tunable. It runs before the cost ledger opens.
+                </NoKnobs>
+              </FunctionModule>
 
-        <FunctionBlock
-          id="f-name"
-          index="◇"
-          flows="Create + Enrich"
-          name="Name"
-          blurb="The Mesita name as its own vector, so a search by name scores on the name."
-        >
-          <NoKnobs>
-            Not built. The key is declared so this page can say &ldquo;not
-            built&rdquo; about something real, and nothing stamps it.
-          </NoKnobs>
-        </FunctionBlock>
+              <FunctionModule
+                id="f-details"
+                index="2 · $"
+                flows="also Enrich"
+                name="Details"
+                blurb="The Google spine: hours, address, geo, zone, city, timezone, price, phone, and the name."
+                knobs="no knobs"
+              >
+                <NoKnobs>
+                  No knobs. Every field here is a fact Google states. The one
+                  override is <b>mesita_name</b>, owned by a human on the Place
+                  editor — enrichment never touches it.
+                </NoKnobs>
+              </FunctionModule>
+              </FunctionFamily>
 
-        {/* ══ 5 · MODELS & COST ══ */}
-        <Band
-          n="5"
-          id="s-models"
-          title="Models & cost"
-          aside={<Tag tone="solid">shared, not a function</Tag>}
-        />
-        <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
-          <p className="text-muted-foreground mb-4 max-w-3xl text-sm leading-relaxed">
-            Each of these serves several functions, which is why none of them
-            lives inside one. Embeddings is locked by design.
-          </p>
-          <Fields>
-            <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-              <span className="text-sm font-medium">Text model</span>
-              <QualityPicker
-                value={settings.synthesisQuality}
-                onChange={(v) => patch({ synthesisQuality: v })}
-              />
-              <span className="text-muted-foreground type-label">
-                9 · Description and the image-rank leg of 6
-              </span>
+              <FunctionFamily
+                tone="enrich"
+                label="Enrich"
+                kicker="Nine functions, in order. 1 Pulse and 2 Details live in Create — they are the same functions."
+                note="1 Pulse · 2 Details · ◇ Name · ◇ Summary are shared. Jump the chips; do not look for a second copy."
+              >
+              <div className="pt-3 pb-1">
+                <StepChips
+                  steps={[
+                    { href: "#f-pulse", label: "1 Pulse" },
+                    { href: "#f-details", label: "2 Details" },
+                    { href: "#f-name", label: "◇ Name" },
+                    { href: "#f-summary", label: "◇ Summary" },
+                  ]}
+                />
+              </div>
+              <FunctionModule
+                id="f-serp"
+                index="3 · $"
+                name="Serp"
+                blurb="Agent X writes the editorial read that Links spends to recognise the place. Never a source of facts."
+                knobs="in Models"
+              >
+                <KnobElsewhere>
+                  Its only knob is the <b>Search model preset</b> in Models — one
+                  value with one home, because Agent Y at 4 · Links reads the
+                  same setting.
+                </KnobElsewhere>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-links"
+                index="4 · $$"
+                name="Links"
+                blurb="Firecrawl gathers candidates per source, Agent Y picks one or none. Seed first, discover second."
+                knobs="5 knobs"
+                defaultOpen
+              >
+                <Fields>
+                  <NumberField
+                    icon={<Globe className="text-muted-foreground h-4 w-4" />}
+                    label="Website candidates"
+                    value={settings.discoverWebsiteN}
+                    min={0}
+                    max={MAX_DISCOVERY_CANDIDATES}
+                    onChange={(v) => patch({ discoverWebsiteN: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <Instagram className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Instagram candidates"
+                    value={settings.discoverInstagramN}
+                    min={0}
+                    max={MAX_DISCOVERY_CANDIDATES}
+                    onChange={(v) => patch({ discoverInstagramN: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <Facebook className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Facebook candidates"
+                    value={settings.discoverFacebookN}
+                    min={0}
+                    max={MAX_DISCOVERY_CANDIDATES}
+                    onChange={(v) => patch({ discoverFacebookN: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={<Star className="text-muted-foreground h-4 w-4" />}
+                    label="OpenTable candidates"
+                    value={settings.discoverOpentableN}
+                    min={0}
+                    max={MAX_DISCOVERY_CANDIDATES}
+                    onChange={(v) => patch({ discoverOpentableN: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <ShoppingBag className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Uber Eats candidates"
+                    value={settings.discoverUbereatsN}
+                    min={0}
+                    max={MAX_DISCOVERY_CANDIDATES}
+                    onChange={(v) => patch({ discoverUbereatsN: v })}
+                    disabled={pending}
+                  />
+                </Fields>
+                <p className="text-muted-foreground mt-3 text-xs">
+                  0 turns a source off. A channel the Google spine already
+                  supplied at create is trusted as-is — discovery runs only for
+                  what is missing.
+                </p>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-social"
+                index="5 · $$"
+                name="Social"
+                blurb="The Instagram and Facebook profiles — handle, followers, bio. It does not collect posts."
+                knobs="no knobs"
+              >
+                <NoKnobs>
+                  No knobs. Social attaches the accounts Links resolved. Post
+                  images are an Images job: that function collects them from
+                  Apify and then analyzes them, which is why the collect knob
+                  lives there.
+                </NoKnobs>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-images"
+                index="6 · $$"
+                name="Images"
+                blurb="Collects images from Apify, then describes and ranks them. Largest cost driver here."
+                knobs="7 knobs"
+                defaultOpen
+              >
+                <Fields>
+                  <NumberField
+                    icon={
+                      <ImageIcon className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Google photos to collect"
+                    value={settings.gatherGoogleImages}
+                    min={1}
+                    max={MAX_GOOGLE_COLLECT}
+                    onChange={(v) => patch({ gatherGoogleImages: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <Instagram className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Instagram posts to collect"
+                    value={settings.gatherInstagramDepth}
+                    min={1}
+                    max={MAX_INSTAGRAM_COLLECT}
+                    onChange={(v) => patch({ gatherInstagramDepth: v })}
+                    disabled={pending}
+                  />
+                  <NumberField
+                    icon={
+                      <ImageIcon className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Analyze Google (≤ collected)"
+                    value={settings.analyzeGoogleImages}
+                    min={1}
+                    max={settings.gatherGoogleImages}
+                    onChange={(v) => patch({ analyzeGoogleImages: v })}
+                    disabled={pending || !settings.imageVisionEnabled}
+                  />
+                  <NumberField
+                    icon={
+                      <Instagram className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Analyze Instagram (≤ collected)"
+                    value={settings.analyzeInstagramImages}
+                    min={1}
+                    max={settings.gatherInstagramDepth}
+                    onChange={(v) => patch({ analyzeInstagramImages: v })}
+                    disabled={pending || !settings.imageVisionEnabled}
+                  />
+                  <NumberField
+                    icon={
+                      <ImageIcon className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Photos kept on the profile"
+                    value={settings.saveTotalImages}
+                    min={1}
+                    max={Math.min(
+                      MAX_SAVE_IMAGES,
+                      settings.analyzeGoogleImages +
+                        settings.analyzeInstagramImages,
+                    )}
+                    onChange={(v) => patch({ saveTotalImages: v })}
+                    disabled={pending}
+                  />
+                  <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
+                    <span className="text-sm font-medium">Vision</span>
+                    <Switch
+                      on={settings.imageVisionEnabled}
+                      pending={pending}
+                      label="Toggle image vision"
+                      onClick={() =>
+                        patch({
+                          imageVisionEnabled: !settings.imageVisionEnabled,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
+                    <span className="text-sm font-medium">Mirror to storage</span>
+                    <Switch
+                      on={settings.saveImagesToStorage}
+                      pending={pending}
+                      label="Toggle image storage"
+                      onClick={() =>
+                        patch({
+                          saveImagesToStorage: !settings.saveImagesToStorage,
+                        })
+                      }
+                    />
+                  </div>
+                </Fields>
+                <Collapsible summary="Analysis & sorting prompts">
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <TextAreaField
+                      label="Analysis prompt"
+                      value={settings.imageAnalysisPrompt}
+                      onChange={(v) => patch({ imageAnalysisPrompt: v })}
+                      disabled={pending}
+                    />
+                    <TextAreaField
+                      label="Sorting prompt"
+                      value={settings.imageSortingPrompt}
+                      onChange={(v) => patch({ imageSortingPrompt: v })}
+                      disabled={pending}
+                    />
+                  </div>
+                </Collapsible>
+                <p className="text-muted-foreground mt-3 text-xs">
+                  Instagram posts: newest first, then top-K by likes. The funnel
+                  is a chain and the Edge Function rejects a broken one, so
+                  lowering a collect value pulls its analyze cap and the gallery
+                  down with it. Winners mirror into the place-images bucket; the
+                  model is in Models.
+                </p>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-menu"
+                index="7"
+                name="Menu"
+                blurb="Holds its slot so the number stays stable the day a real menu source lands."
+                knobs="no knobs"
+              >
+                <NoKnobs>
+                  No knobs, and nothing to configure — the website is not
+                  crawled, so no menu source exists. It always passes and can
+                  never block the queue.
+                </NoKnobs>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-reviews"
+                index="8 · $$"
+                name="Reviews"
+                blurb="The newest Google reviews — what 9 · Description grounds the Presentation on."
+                knobs="1 knob"
+              >
+                <Fields>
+                  <NumberField
+                    icon={
+                      <MessageSquareQuote className="text-muted-foreground h-4 w-4" />
+                    }
+                    label="Google reviews to pull"
+                    value={settings.gatherReviews}
+                    min={0}
+                    max={100}
+                    onChange={(v) => patch({ gatherReviews: v })}
+                    disabled={pending}
+                  />
+                </Fields>
+                <p className="text-muted-foreground mt-3 text-xs">
+                  0–100, about $0.50 per 100. Mesita&apos;s own cost and
+                  wall-clock bound, not a Google one — the Places API itself
+                  returns 5.
+                </p>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-description"
+                index="9 · $"
+                name="Description"
+                blurb="Closes the queue. Makes the Presentation, then Category, then Tags, in that order."
+                knobs="in Models"
+              >
+                <KnobElsewhere>
+                  Its only knob is the <b>Text model</b> in Models — the same
+                  setting drives the image-rank leg of 6 · Images, so it has one
+                  home.
+                </KnobElsewhere>
+              </FunctionModule>
+              </FunctionFamily>
+
+              <FunctionFamily
+                tone="semantic"
+                label="Semantic"
+                kicker="No number. enriched never counts them. They run after Create and after Description."
+              >
+              <FunctionModule
+                id="f-name"
+                index="◇"
+                flows="both flows"
+                name="Name"
+                blurb="The Mesita name as its own vector, so a search by name scores on the name."
+                knobs="not built"
+              >
+                <NoKnobs>
+                  Not built. The key is declared so this page can say
+                  &ldquo;not built&rdquo; about something real, and nothing
+                  stamps it.
+                </NoKnobs>
+              </FunctionModule>
+
+              <FunctionModule
+                id="f-summary"
+                index="◇"
+                flows="both flows"
+                name="Summary"
+                blurb="The 60-word text the index reads — never the prose a guest reads."
+                knobs="locked"
+              >
+                <NoKnobs>
+                  No knobs. The model is locked to <b>text-embedding-3-small</b>:
+                  swapping it re-embeds the whole catalog, so it is not a knob by
+                  design.
+                </NoKnobs>
+              </FunctionModule>
+              </FunctionFamily>
             </div>
-            <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-              <span className="text-sm font-medium">Image model</span>
-              <QualityPicker
-                value={settings.visionQuality}
-                onChange={(v) => patch({ visionQuality: v })}
-              />
-              <span className="text-muted-foreground type-label">
-                6 · Images
-              </span>
-            </div>
-            <SelectField
-              label="Search model preset"
-              hint="Agent X at 3 · Serp, Agent Y at 4 · Links"
-              value={settings.perplexityPreset}
-              options={PERPLEXITY_OPTIONS}
-              onChange={(v) => patch({ perplexityPreset: v })}
-              disabled={pending}
-            />
-            <NumberField
-              icon={<Star className="text-muted-foreground h-4 w-4" />}
-              label="Per-run cost cap (USD)"
-              value={settings.perRunCostCapUsd}
-              min={0}
-              max={100}
-              decimals
-              onChange={(v) => patch({ perRunCostCapUsd: v })}
-              disabled={pending}
-            />
-            <div className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
-              <span className="text-sm font-medium">Embeddings</span>
-              <span className="text-sm">text-embedding-3-small</span>
-              <span className="text-muted-foreground type-label">
-                locked · 1536-d · swapping it re-embeds the catalog
-              </span>
-            </div>
-          </Fields>
-          {settingsStamp && (
-            <p className="text-muted-foreground mt-4 text-xs">
-              Intaker settings last changed {formatShortDate(settingsStamp)}
-            </p>
-          )}
-        </section>
+          </SectionCard>
+        </div>
       </div>
 
-      {/* ══ ONE SAVE, hoisted ══ */}
       <div className="border-border bg-card/90 fixed inset-x-0 bottom-0 z-20 border-t backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3 sm:px-6">
           <div className="min-w-0">

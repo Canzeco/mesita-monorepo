@@ -2,8 +2,8 @@ import { getDiscoveryConfig } from "./actions";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — the ranking model (MESITA-1196). TWO boxes: Signals · Engines.
-// Slotting and operator filters still ride the blob; this page does not edit them.
+// Discovery — two boxes: Signals (functions + hyperparameters) · Engines
+// (Engine(signal(),…)). Slotting and filters ride the blob with no knobs.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {

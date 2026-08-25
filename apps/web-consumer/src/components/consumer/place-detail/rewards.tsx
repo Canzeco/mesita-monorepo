@@ -10,6 +10,7 @@ import { isPromoting, placeOffersMesitaRewards } from "@/lib/promo-rates";
 
 import { Box, BoxLabel } from "./box";
 import {
+  BaseRow,
   BonusList,
   ClassLadder,
   PlanRow,
@@ -118,7 +119,14 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
         </p>
       </div>
 
-      {/* Every class's standing rate here, the guest's own marked. */}
+      {quote?.breakdown ? (
+        <div className="flex flex-col gap-3">
+          <BoxLabel>Base</BoxLabel>
+          <BaseRow quote={quote} />
+        </div>
+      ) : null}
+
+      {/* Every class rung here, the guest's own marked. */}
       <div className="flex flex-col gap-3">
         <BoxLabel>Rate by class</BoxLabel>
         {quote ? (

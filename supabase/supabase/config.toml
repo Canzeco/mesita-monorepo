@@ -295,7 +295,7 @@ verify_jwt = true
 [functions.consumer-web-report-ticket]
 verify_jwt = true
 
-# --- check-web (PUBLIC check page at mesita.ai/check/<code>) ---
+# --- validate-web (PUBLIC Validate page; live host still check.mesita.ai/<code>) ---
 # verify_jwt deliberately FALSE: the 128-bit tickets.check_code is the whole
 # authentication — whoever holds the freshly scanned QR (nominally staff) can
 # view, optionally bill (internal control, never a gate — MESITA-850), and

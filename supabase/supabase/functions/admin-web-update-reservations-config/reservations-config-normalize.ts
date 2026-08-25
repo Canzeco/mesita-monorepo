@@ -17,6 +17,8 @@ type ReservationsConfig = {
     venueCallsPerPlacePerDay: number;
     killSwitch: boolean;
   };
+  /** Leg 7 reminder call. Optional — older admin builds omit it → OFF. */
+  reminder: { enabled: boolean };
 };
 
 const KNOWN = new Set<string>(RESERVATION_CHANNELS);
@@ -167,6 +169,20 @@ export function normalizeConfig(
     };
   }
 
+  // reminder — optional, defaults OFF so an older admin save can never
+  // silently turn on +1 outbound call per confirmed reservation.
+  let reminder = { enabled: false };
+  if (c.reminder !== undefined) {
+    if (!c.reminder || typeof c.reminder !== "object" || Array.isArray(c.reminder)) {
+      return { ok: false, error: "config.reminder must be an object" };
+    }
+    const rem = c.reminder as Record<string, unknown>;
+    if (typeof rem.enabled !== "boolean") {
+      return { ok: false, error: "config.reminder.enabled must be a boolean" };
+    }
+    reminder = { enabled: rem.enabled };
+  }
+
   return {
     ok: true,
     value: {
@@ -177,6 +193,7 @@ export function normalizeConfig(
       attempts,
       unlimitedReservations,
       limits,
+      reminder,
     },
   };
 }

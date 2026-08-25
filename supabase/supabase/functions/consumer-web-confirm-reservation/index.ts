@@ -25,6 +25,7 @@ import {
   placeLocalTime,
 } from "../_shared/agent-tools.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
+import { reminderParkPatch } from "../_shared/reservation-reminder.ts";
 
 type Body = {
   reservation_id?: string;
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
   const { data: ticket, error: loadErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test",
+      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, project_id, consumer_notify",
     )
     .eq("id", body.reservation_id)
     .maybeSingle();
@@ -125,6 +126,14 @@ Deno.serve(async (req) => {
     }, 400);
   }
 
+  const { data: placeRow } = await admin
+    .from("places")
+    .select("lng")
+    .eq("id", ticket.project_id)
+    .maybeSingle();
+  const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
+  const guestNotify: "call" | "app" = ticket.consumer_notify === "app" ? "app" : "call";
+
   const nowIso = new Date().toISOString();
   const confirm = await writeReservation(admin, {
     mode: "update",
@@ -140,6 +149,7 @@ Deno.serve(async (req) => {
       attempts_state: "answered",
       callback_state: "skipped",
       callback_next_attempt_at: null,
+      ...reminderParkPatch(lng, next, guestNotify),
       last_call_status:
         `guest took the venue's own ${date} ${time} offer in the app — confirmed on the spot`,
     },

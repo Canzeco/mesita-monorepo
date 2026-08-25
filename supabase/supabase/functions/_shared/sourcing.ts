@@ -14,6 +14,7 @@
 // and transit are kept out without an explicit blocklist.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { haversineKm, radiusBoundingBox } from "./geo.ts";
 
 export type FamilyKey =
   | "restaurants"
@@ -32,11 +33,43 @@ export type ChannelKey =
   | "consumer_add"
   | "memo_search";
 
+/**
+ * How this channel talks to Google Places (New).
+ *
+ * `country` is a CLDR code (MX). Text Search sends it as `regionCode`
+ * (format + soft bias). Autocomplete sends it as `includedRegionCodes`
+ * (hard country filter). Empty = off.
+ *
+ * A radius > 0 adds a circle. Bias (`restrict: false`) prefers that area
+ * and may still return outsiders. Restrict (`restrict: true`) is a hard
+ * fence: Autocomplete gets a circle, Text Search gets the bounding
+ * rectangle Google requires, and add-paths reject outsiders.
+ *
+ * Guest geo, when the caller has it, is the circle centre. Otherwise the
+ * stored lat/lng are.
+ */
+export type RegionPolicy = {
+  country: string;
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  restrict: boolean;
+};
+
+export const DEFAULT_REGION: RegionPolicy = {
+  country: "MX",
+  lat: 19.4326,
+  lng: -99.1332,
+  radiusKm: 0,
+  restrict: false,
+};
+
 export type ChannelPolicy = {
   enabled: boolean;
   families: FamilyKey[];
   minRating: number;
   minReviews: number;
+  region: RegionPolicy;
 };
 
 // Machine expansion of each family — the Google `primaryType` values a place
@@ -128,16 +161,21 @@ export function familyForGoogleType(primaryType: string | null | undefined): Fam
 // a transient error still enforces the intended floors rather than failing open
 // to "allow anything". Live floors are authored in app_config; historical
 // migration seeds (20260708120000_sourcing_config.sql) may differ.
+function withRegion(
+  p: Omit<ChannelPolicy, "region">,
+  region: RegionPolicy = DEFAULT_REGION,
+): ChannelPolicy {
+  return { ...p, region: { ...region } };
+}
+
 const DEFAULT_POLICY: Record<ChannelKey, ChannelPolicy> = {
-  admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  // Live admin defaults (floors authored in app_config.sourcing_config;
-  // these are the read-fail fallback — not the old migration seed 3.5★ / 100).
-  consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 },
-  consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 },
-  memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
+  admin_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  admin_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  business_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  business_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  consumer_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 }),
+  consumer_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 }),
+  memo_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 }),
 };
 
 // Coerce the stored jsonb for one channel into a well-typed ChannelPolicy,
@@ -157,7 +195,136 @@ export function coerceChannelPolicy(raw: unknown, channel: ChannelKey): ChannelP
     families,
     minRating: typeof o.minRating === "number" ? o.minRating : d.minRating,
     minReviews: typeof o.minReviews === "number" ? o.minReviews : d.minReviews,
+    region: coerceRegion(o.region, d.region),
   };
+}
+
+export function coerceRegion(raw: unknown, fallback: RegionPolicy = DEFAULT_REGION): RegionPolicy {
+  const o = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  let country: string;
+  if (typeof o.country === "string") {
+    const c = o.country.trim().toUpperCase();
+    country = c === "" ? "" : /^[A-Z]{2}$/.test(c) ? c : fallback.country;
+  } else {
+    country = fallback.country;
+  }
+  const lat = typeof o.lat === "number" && Number.isFinite(o.lat)
+    ? Math.min(90, Math.max(-90, o.lat))
+    : fallback.lat;
+  const lng = typeof o.lng === "number" && Number.isFinite(o.lng)
+    ? Math.min(180, Math.max(-180, o.lng))
+    : fallback.lng;
+  const radiusKm = typeof o.radiusKm === "number" && Number.isFinite(o.radiusKm)
+    ? Math.min(2000, Math.max(0, Math.round(o.radiusKm * 10) / 10))
+    : fallback.radiusKm;
+  return {
+    country,
+    lat: Math.round(lat * 10000) / 10000,
+    lng: Math.round(lng * 10000) / 10000,
+    radiusKm,
+    restrict: typeof o.restrict === "boolean" ? o.restrict : fallback.restrict,
+  };
+}
+
+type GeoOrigin = { lat: number; lng: number };
+
+function regionCenter(region: RegionPolicy, origin?: GeoOrigin | null): GeoOrigin | null {
+  if (origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng)) {
+    return { lat: origin.lat, lng: origin.lng };
+  }
+  if (region.radiusKm > 0) return { lat: region.lat, lng: region.lng };
+  return null;
+}
+
+function regionRadiusKm(region: RegionPolicy, origin?: GeoOrigin | null): number {
+  if (region.radiusKm > 0) return region.radiusKm;
+  // Memo / consumer search with a guest pin and no operator radius: keep the
+  // 8 km bias that Text Search already used, so turning the table on does
+  // not flatten an existing deck.
+  if (origin) return 8;
+  return 0;
+}
+
+function rectangleAround(center: GeoOrigin, radiusKm: number) {
+  const { latDelta, lngDelta } = radiusBoundingBox(center.lat, radiusKm);
+  return {
+    rectangle: {
+      low: { latitude: center.lat - latDelta, longitude: center.lng - lngDelta },
+      high: { latitude: center.lat + latDelta, longitude: center.lng + lngDelta },
+    },
+  };
+}
+
+function circleAround(center: GeoOrigin, radiusKm: number) {
+  return {
+    circle: {
+      center: { latitude: center.lat, longitude: center.lng },
+      radius: Math.min(50_000, Math.max(1, radiusKm * 1000)),
+    },
+  };
+}
+
+/** Autocomplete (New): includedRegionCodes + circle bias or restriction. */
+export function applyPlacesAutocompleteRegion(
+  body: Record<string, unknown>,
+  policy: ChannelPolicy,
+  origin?: GeoOrigin | null,
+): void {
+  const region = policy.region;
+  if (region.country) {
+    body.regionCode = region.country;
+    body.includedRegionCodes = [region.country];
+  }
+  const center = regionCenter(region, origin);
+  const km = regionRadiusKm(region, origin);
+  if (!center || km <= 0) return;
+  const area = km > 50 ? rectangleAround(center, km) : circleAround(center, km);
+  if (region.restrict) body.locationRestriction = area;
+  else body.locationBias = area;
+}
+
+/** Text Search (New): regionCode + circle bias or rectangle restriction. */
+export function applyPlacesTextSearchRegion(
+  body: Record<string, unknown>,
+  policy: ChannelPolicy,
+  origin?: GeoOrigin | null,
+): void {
+  const region = policy.region;
+  if (region.country) body.regionCode = region.country;
+  const center = regionCenter(region, origin);
+  const km = regionRadiusKm(region, origin);
+  if (!center || km <= 0) return;
+  if (region.restrict) body.locationRestriction = rectangleAround(center, km);
+  else body.locationBias = km > 50 ? rectangleAround(center, km) : circleAround(center, km);
+}
+
+export function evaluatePlaceRegion(
+  policy: ChannelPolicy,
+  geo: { lat: number | null; lng: number | null; country?: string | null },
+): EligibilityResult {
+  const region = policy.region;
+  if (!region.restrict) return { eligible: true };
+  if (region.country) {
+    const got = (geo.country ?? "").trim().toUpperCase();
+    if (got && got !== region.country && !got.startsWith(region.country)) {
+      return {
+        eligible: false,
+        code: "outside_region",
+        reason: `This place is outside ${region.country}.`,
+      };
+    }
+  }
+  if (region.radiusKm > 0) {
+    const km = haversineKm(region.lat, region.lng, geo.lat, geo.lng);
+    if (km > region.radiusKm) {
+      return {
+        eligible: false,
+        code: "outside_region",
+        reason: `This place is outside the ${region.radiusKm} km sourcing radius.`,
+      };
+    }
+  }
+  return { eligible: true };
 }
 
 type PlaceSignals = {
@@ -205,6 +372,7 @@ export async function readChannelPolicy(
 export function evaluatePlaceForChannel(
   policy: ChannelPolicy,
   signals: PlaceSignals,
+  geo?: { lat: number | null; lng: number | null; country?: string | null },
 ): EligibilityResult {
   if (!policy.enabled) {
     return { eligible: false, code: "channel_disabled", reason: "Adding new places is currently turned off." };
@@ -236,5 +404,6 @@ export function evaluatePlaceForChannel(
     };
   }
 
+  if (geo) return evaluatePlaceRegion(policy, geo);
   return { eligible: true };
 }

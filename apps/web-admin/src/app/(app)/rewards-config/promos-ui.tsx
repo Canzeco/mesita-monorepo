@@ -2,19 +2,11 @@
 
 import { ALLOWED_RATES } from "./promos";
 
-// Shared chrome for the five-box editor. The one idea these primitives carry:
+// Shared chrome for the six-box editor. The one idea these primitives carry:
 // a number on this page is either a FLOOR or an INCREMENT, and the reader must
 // never have to guess which. Floors render plain ("20%"); increments render
 // signed ("+20"); a pinned-zero rung renders as an em dash, because "0%" is a
 // legitimate rate and would read as one.
-
-export function SoonPill() {
-  return (
-    <span className="border-border text-muted-foreground inline-flex items-center rounded-full border px-2 py-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-      Soon
-    </span>
-  );
-}
 
 /**
  * A rate on the 5% grid. `signed` renders it as an increment (+15) and, when
@@ -93,22 +85,6 @@ export function BoxRow({
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-/** Two right-aligned strategy column headers, matching the select width. */
-export function StrategyHeads({ names }: { names: readonly string[] }) {
-  return (
-    <div className="mb-1 flex items-center justify-end gap-2">
-      {names.map((n) => (
-        <span
-          key={n}
-          className="text-muted-foreground w-24 text-center type-meta font-bold tracking-[0.12em] uppercase"
-        >
-          {n}
-        </span>
-      ))}
     </div>
   );
 }

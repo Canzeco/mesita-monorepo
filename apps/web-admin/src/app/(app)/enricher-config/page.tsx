@@ -1,12 +1,12 @@
 import { getSourcingConfig } from "../sourcing-config/actions";
 import { DEFAULT_CONFIG } from "../sourcing-config/catalog";
 import { getAtlasSettings } from "./actions";
-import { IntakeClient, type IntakeSettings } from "./IntakeClient";
+import { IntakeClient } from "./IntakeClient";
+import { type IntakeSettings } from "./intake-guards";
 
 // INTAKE — how a place gets into Mesita and becomes a profile, on one page.
-// Five sections in Pato's order (MESITA-1287): the sourcing gate · Create
-// explained · Enrich explained · the twelve functions with their params ·
-// the shared models and the cost ceiling.
+// Five modules: shared models first (above Sourcing), then the gate · Create ·
+// Enrich · the twelve functions with their params.
 //
 // TWO READS, seeded server-side so the page renders with real values and no
 // spinner. Either can fail on its own: a failed half renders its own note and
@@ -28,7 +28,6 @@ const SETTINGS_FALLBACK: IntakeSettings = {
   synthesisQuality: "economy",
   visionQuality: "economy",
   perplexityPreset: "pro-search",
-  perRunCostCapUsd: 1,
   discoverWebsiteN: 5,
   discoverInstagramN: 5,
   discoverFacebookN: 3,
@@ -65,7 +64,6 @@ export default async function IntakePage() {
               visionQuality: settings.data.atlasVisionQuality ?? "economy",
               perplexityPreset:
                 settings.data.atlasPerplexityPreset ?? "pro-search",
-              perRunCostCapUsd: settings.data.atlasPerRunCostCapUsd ?? 1,
               discoverWebsiteN: settings.data.atlasDiscoverWebsiteN,
               discoverInstagramN: settings.data.atlasDiscoverInstagramN,
               discoverFacebookN: settings.data.atlasDiscoverFacebookN,

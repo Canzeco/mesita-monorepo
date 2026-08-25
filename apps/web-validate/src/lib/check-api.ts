@@ -65,6 +65,11 @@ export type CheckPayload = {
   /** MESITA-1095: the guest bill is always required. Older bundles still
    *  read this flag; new UI treats any missing bill as blocking. */
   bill_required?: boolean;
+  /** Staff poll cadence from visits_config. Absent on a stale EF. */
+  visits?: {
+    staffPollSeconds: number;
+    staffPollMaxSeconds: number;
+  };
 };
 
 /** A failed call. `status` is the HTTP status, or 0 when the request never

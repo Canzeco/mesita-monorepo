@@ -7,8 +7,8 @@
 //               at the door, before any row exists. Don't seed corpses.
 //   3 details → the Google spine persisted (fetchGoogleBasics fields,
 //               category='undefined' until the Intaker infers the real one)
-//   · semantic summary → the first vector, queued in background
 //   · semantic name    → NOT BUILT (MESITA-1238)
+//   · semantic summary → the first vector, queued in background
 //
 // Pulse, Details and the semantics are SHARED with the ENRICH queue (functions
 // 1, 2 and the extras there) — create runs them inline, enrich runs them as
@@ -169,6 +169,10 @@ export async function createMinimalPlace(opts: {
       primaryType: basicsRes.primaryType,
       rating: basicsRes.basics.google_stars_overall,
       reviewCount: basicsRes.basics.google_review_count,
+    }, {
+      lat: basicsRes.basics.lat,
+      lng: basicsRes.basics.lng,
+      country: basicsRes.basics.country,
     });
     if (!verdict.eligible) {
       return {

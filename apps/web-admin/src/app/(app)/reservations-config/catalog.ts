@@ -21,6 +21,14 @@
 
 type ReservationChannel = "phone";
 
+/** Four Reservationist agents. Direction is fixed; the errand is data. */
+export const FLEET = [
+  { key: "a1", arrow: "→", side: "place" },
+  { key: "a2", arrow: "→", side: "guest" },
+  { key: "a3", arrow: "←", side: "guest" },
+  { key: "a4", arrow: "←", side: "place" },
+] as const;
+
 export type ReservationsConfig = {
   /** Ordered, most preferred first. Order IS the rule. Always ranks every channel. */
   priority: ReservationChannel[];
@@ -65,6 +73,11 @@ export type ReservationsConfig = {
     venueCallsPerPlacePerDay: number;
     killSwitch: boolean;
   };
+  /**
+   * Leg 7 reminder call. Off until an operator flips it — each confirmed
+   * reservation becomes one extra a2 call (~3 h before the slot).
+   */
+  reminder: { enabled: boolean };
 };
 
 /** One reservation the operator must look at — see the get EF's feed query. */
@@ -78,6 +91,7 @@ export type NeedsAttentionRow = {
   notice_kind: string | null;
   attempts_state: string | null;
   callback_state: string | null;
+  reminder_state: string | null;
   consumer_confirmed_at: string | null;
   is_test: boolean | null;
 };
@@ -127,6 +141,7 @@ export const DEFAULT_CONFIG: ReservationsConfig = {
   attempts: ATTEMPTS,
   unlimitedReservations: false,
   limits: { ...LIMITS_SEED },
+  reminder: { enabled: false },
 };
 
 function isChannel(v: unknown): v is ReservationChannel {
@@ -185,7 +200,15 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
     attempts: ATTEMPTS,
     unlimitedReservations: c.unlimitedReservations === true,
     limits: coerceLimits(c.limits),
+    reminder: coerceReminder(c.reminder),
   };
+}
+
+function coerceReminder(raw: unknown): ReservationsConfig["reminder"] {
+  const r = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw as Record<string, unknown>)
+    : {};
+  return { enabled: r.enabled === true };
 }
 
 function coerceLimits(raw: unknown): ReservationsConfig["limits"] {

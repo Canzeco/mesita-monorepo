@@ -5,6 +5,7 @@ import {
 } from "../_shared/google-places.ts";
 import {
   type ChannelPolicy,
+  applyPlacesTextSearchRegion,
   evaluatePlaceForChannel,
 } from "../_shared/sourcing.ts";
 import { openScore } from "../_shared/local-time.ts";
@@ -16,8 +17,6 @@ import { openScore } from "../_shared/local-time.ts";
 import type { Prediction, PredictionStatus } from "../_shared/memo-types.ts";
 export type { Prediction, PredictionStatus };
 
-const GOOGLE_RADIUS_M = 8000;
-
 export async function googleTextSearch(
   key: string,
   query: string,
@@ -28,16 +27,12 @@ export async function googleTextSearch(
   const reqBody: Record<string, unknown> = {
     textQuery: query,
     maxResultCount: 10,
-    regionCode: "MX",
   };
-  if (lat !== null && lng !== null) {
-    reqBody.locationBias = {
-      circle: {
-        center: { latitude: lat, longitude: lng },
-        radius: GOOGLE_RADIUS_M,
-      },
-    };
-  }
+  applyPlacesTextSearchRegion(
+    reqBody,
+    memoPolicy,
+    lat !== null && lng !== null ? { lat, lng } : null,
+  );
 
   let r: Response;
   try {
@@ -50,7 +45,7 @@ export async function googleTextSearch(
         // billing: rating/userRatingCount already put this call on the
         // Enterprise+Atmosphere SKU; currentOpeningHours is a lower tier.
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryType,places.types,places.currentOpeningHours.openNow",
+          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.primaryType,places.types,places.currentOpeningHours.openNow",
       },
       body: JSON.stringify(reqBody),
     });
@@ -73,6 +68,7 @@ export async function googleTextSearch(
       id?: string;
       displayName?: { text?: string };
       formattedAddress?: string;
+      location?: { latitude?: number; longitude?: number };
       rating?: number;
       userRatingCount?: number;
       primaryType?: string;
@@ -87,6 +83,9 @@ export async function googleTextSearch(
         primaryType: p.primaryType ?? null,
         rating: p.rating ?? null,
         reviewCount: p.userRatingCount ?? null,
+      }, {
+        lat: typeof p.location?.latitude === "number" ? p.location.latitude : null,
+        lng: typeof p.location?.longitude === "number" ? p.location.longitude : null,
       }).eligible
     )
     .map<Prediction>((p) => ({
