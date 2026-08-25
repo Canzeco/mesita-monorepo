@@ -39,7 +39,7 @@ import {
   type StrategyKey,
 } from "@/app/(app)/rewards-config/promos";
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
-import { ConfirmDialog, SectionCard } from "../ui";
+import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   METER_SEGMENTS,

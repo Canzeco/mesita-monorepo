@@ -8,7 +8,7 @@ import { EventSuperBoxes } from "../../sections/EventSuperBoxes";
 import { PerformanceHeadline } from "../../sections/PerformanceHeadline";
 import { ReputationStrip } from "../../sections/ReputationStrip";
 import { ReservationsList } from "../../sections/ReservationsList";
-import { Spinner } from "../../ui";
+import { Spinner } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../../PlaceContext";
 
 // Per-place Performance (MESITA-900 — Reservations back inside this tab):

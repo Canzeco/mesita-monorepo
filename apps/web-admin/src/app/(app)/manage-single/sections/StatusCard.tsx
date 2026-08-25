@@ -23,7 +23,7 @@
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
 import { setPlaceListed, type AdminPlace } from "../actions";
-import { ConfirmDialog, SectionCard } from "../ui";
+import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
 import {

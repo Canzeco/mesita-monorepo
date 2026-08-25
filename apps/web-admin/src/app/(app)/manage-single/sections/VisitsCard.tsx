@@ -11,7 +11,7 @@ import {
 import { Receipt } from "lucide-react";
 import { setCheckGates, type AdminPlace } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
-import { SaveBar, SectionCard } from "../ui";
+import { SaveBar, SectionCard } from "@/components/admin-ui/manage";
 
 // Visits — ONE box for the visit ticket, the local context (MESITA-1148).
 //

@@ -16,7 +16,7 @@ import {
   SelectField,
   Spinner,
   TextField,
-} from "../ui";
+} from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 

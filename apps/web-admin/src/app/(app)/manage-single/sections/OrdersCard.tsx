@@ -5,7 +5,8 @@ import { ShoppingBag } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { useSectionSaver } from "../useSectionDirty";
 import { usePlaceContext } from "../PlaceContext";
-import { CrossTabLink, SectionCard } from "../ui";
+import { SectionCard } from "@/components/admin-ui/manage";
+import { CrossTabLink } from "../ui";
 import {
   ChannelPicker,
   readChannel,

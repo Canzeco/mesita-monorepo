@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
+import { Button, TextField } from "@/components/admin-ui/config";
 import { continueStoragePurge, resetDatabase } from "./actions";
 
 // Manage Database — database-wide operator actions. Today: reset the
@@ -123,10 +124,9 @@ function ResetCard() {
         reservations, consumers, accounts, invites, verifications, enrichment —
         deletes every stored image and menu file, and removes every auth account
         that isn&apos;t an admin.{" "}
-        <strong>Preserved:</strong> admin allowlist, all admin console configs
-        (Atlas / Intaker / Memo / Sourcing / Reservations / Rewards / Models /
-        Agents / Verification), reward payout rules, and the
-        category / tag / class / plan vocabularies. This cannot be undone.
+        <strong>Preserved:</strong> admin allowlist, every admin console
+        config, reward payout rules, and the category / tag / class / plan
+        vocabularies. This cannot be undone.
       </p>
 
       <label className="flex flex-col gap-1.5">
@@ -137,30 +137,24 @@ function ResetCard() {
           </span>{" "}
           to confirm
         </span>
-        <input
+        <TextField
           value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+          onChange={setConfirm}
           placeholder={CONFIRM_PHRASE}
           autoComplete="off"
           spellCheck={false}
-          className="border-border bg-card h-11 rounded-xl border px-3 font-mono text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200"
+          className="font-mono focus:border-red-400 focus:ring-2 focus:ring-red-200"
         />
       </label>
 
-      <button
-        type="button"
+      <Button
+        tone="danger"
+        pending={busy}
+        disabled={!armed}
         onClick={onReset}
-        disabled={!armed || busy}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {busy ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" /> Resetting…
-          </>
-        ) : (
-          "Reset database"
-        )}
-      </button>
+        {busy ? "Resetting…" : "Reset database"}
+      </Button>
 
       {progress && (
         <p className="text-muted-foreground bg-muted inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm">

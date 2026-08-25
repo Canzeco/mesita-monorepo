@@ -141,7 +141,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: MessagesSquare,
     status: "live",
     detail:
-      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.* (the openai/perplexity fields under Filters › Chat › Memo are legacy fallback / not wired).",
+      "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.*. Memo has no editor page — it runs on these picks plus in-code defaults.",
     editableHere: true,
     owner: null,
   },

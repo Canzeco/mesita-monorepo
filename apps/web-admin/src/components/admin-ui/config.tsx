@@ -4,8 +4,8 @@ import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 
 // Shared admin config kit — `@/components/admin-ui/config`.
 // Light-themed; semantic tokens only. Canonical for new config pages
-// (see the web-admin design map (Notion Docs › Design)). Intaker/Atlas/Memo/Promos/… import from here
-// (or via the thin `enricher-config/atlas-ui` re-export shim).
+// (see the web-admin design map (Notion Docs › Design)). Config pages
+// import from here.
 
 /** Matches enricher `SynthesisQuality` — kept local so the kit does not import app routes. */
 export type SynthesisQuality = "economy" | "standard" | "high";
@@ -212,6 +212,129 @@ export function NumberField({
   );
 }
 
+const COMPACT_FIELD =
+  "border-border bg-background focus:border-foreground h-10 w-full rounded-xl border px-3 text-sm outline-none disabled:opacity-50";
+
+/** Config-skin text input. Labelled = stacked well (like NumberField). No label = compact toolbar field. */
+export function TextField({
+  label,
+  value,
+  onChange,
+  disabled,
+  type = "text",
+  placeholder,
+  autoComplete,
+  spellCheck,
+  maxLength,
+  onKeyDown,
+  className,
+}: {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  type?: "text" | "email";
+  placeholder?: string;
+  autoComplete?: string;
+  spellCheck?: boolean;
+  maxLength?: number;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  className?: string;
+}) {
+  const field = (
+    <input
+      type={type}
+      value={value}
+      disabled={disabled}
+      placeholder={placeholder}
+      autoComplete={autoComplete}
+      spellCheck={spellCheck}
+      maxLength={maxLength}
+      onKeyDown={onKeyDown}
+      onChange={(e) => onChange(e.target.value)}
+      className={className ? `${COMPACT_FIELD} ${className}` : COMPACT_FIELD}
+    />
+  );
+  if (!label) return field;
+  return (
+    <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
+      <span className="text-sm font-medium">{label}</span>
+      {field}
+    </label>
+  );
+}
+
+const BUTTON_TONE = {
+  primary: "bg-foreground text-background hover:opacity-90",
+  secondary:
+    "border-border text-muted-foreground hover:bg-muted hover:text-foreground border",
+  /** Filled raw-red (Database reset). `size="icon"` is quiet: glyph, red on hover. */
+  danger: "bg-red-600 text-white hover:bg-red-700",
+  ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+} as const;
+
+const BUTTON_SIZE = {
+  md: "h-10 px-5 text-sm",
+  sm: "h-8 px-3 text-xs",
+  icon: "h-8 w-8 p-0",
+} as const;
+
+const BUTTON_ICON_DANGER =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
+
+/** Config-skin button. `danger` is the raw-red exception (Database reset). */
+export function Button({
+  tone = "primary",
+  size = "md",
+  pending = false,
+  disabled,
+  type = "button",
+  onClick,
+  icon,
+  title,
+  "aria-label": ariaLabel,
+  children,
+}: {
+  tone?: keyof typeof BUTTON_TONE;
+  size?: keyof typeof BUTTON_SIZE;
+  pending?: boolean;
+  disabled?: boolean;
+  type?: "button" | "submit";
+  onClick?: () => void;
+  /** Leading glyph on labelled buttons; omitted while `pending`. */
+  icon?: React.ReactNode;
+  title?: string;
+  "aria-label"?: string;
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    size === "icon" && tone === "danger" ? BUTTON_ICON_DANGER : BUTTON_TONE[tone];
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled || pending}
+      title={title}
+      aria-label={ariaLabel}
+      className={
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 " +
+        toneClass +
+        " " +
+        BUTTON_SIZE[size]
+      }
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : size === "icon" ? (
+        children
+      ) : (
+        icon
+      )}
+      {size === "icon" ? null : children}
+    </button>
+  );
+}
+
 export function SaveRow({
   pending,
   dirty,
@@ -228,21 +351,13 @@ export function SaveRow({
 }) {
   return (
     <div className="mt-5 flex items-center gap-3">
-      <button
-        type="button"
+      <Button
+        pending={pending}
+        disabled={!dirty || !!loadError}
         onClick={onClick}
-        disabled={pending || !dirty || !!loadError}
-        className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
       >
-        {pending ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Saving…
-          </>
-        ) : (
-          "Save"
-        )}
-      </button>
+        {pending ? "Saving…" : "Save"}
+      </Button>
       {ok && !dirty && (
         <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
           <CheckCircle2 className="h-3.5 w-3.5" />
