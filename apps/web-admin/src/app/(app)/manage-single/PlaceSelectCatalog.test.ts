@@ -23,3 +23,20 @@ describe("Manage Single catalog status columns", () => {
     expect(src).toContain("ActiveCell");
   });
 });
+
+describe("Manage Single search chrome", () => {
+  const src = readFileSync(join(here, "PlaceSelectCatalog.tsx"), "utf8");
+
+  it("does not repeat the page title as a Searching eyebrow", () => {
+    expect(src).not.toContain("Manage Single Place results");
+    expect(src).not.toContain("Google results · Searching");
+  });
+
+  it("fits loading and empty states to content — no padded empty sheet", () => {
+    expect(src).not.toMatch(/py-12/);
+    expect(src).not.toMatch(/min-h-\[70%\]/);
+    expect(src).not.toMatch(/h-\[70%\]/);
+    expect(src).toContain("Looking up Google Places");
+    expect(src).toContain("awaitingHits");
+  });
+});

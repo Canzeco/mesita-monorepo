@@ -57,6 +57,7 @@ export function SearchMap({
   apiKey,
   places,
   userLocation,
+  viewCenter,
   selectedId,
   onSelectPlace,
   onOpenPlace,
@@ -65,6 +66,9 @@ export function SearchMap({
   apiKey: string;
   places: Place[];
   userLocation: Coords | null;
+  /** Filter zone, or the device fix — where the map looks. The blue dot
+   *  stays on `userLocation` so a remote zone never moves "you're here". */
+  viewCenter: Coords | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -98,6 +102,7 @@ export function SearchMap({
         <SearchMapCanvas
           places={places}
           userLocation={userLocation}
+          viewCenter={viewCenter}
           selectedId={selectedId}
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
@@ -144,6 +149,7 @@ function hasCoords(
 function SearchMapCanvas({
   places,
   userLocation,
+  viewCenter,
   selectedId,
   onSelectPlace,
   onOpenPlace,
@@ -152,6 +158,7 @@ function SearchMapCanvas({
 }: {
   places: Place[];
   userLocation: Coords | null;
+  viewCenter: Coords | null;
   selectedId: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
@@ -162,11 +169,12 @@ function SearchMapCanvas({
   const selected = selectedId
     ? (located.find((p) => p.id === selectedId) ?? null)
     : null;
+  const lookAt = viewCenter ?? userLocation;
 
   return (
     <Map
-      defaultCenter={userLocation ?? MONTERREY_CENTER}
-      defaultZoom={userLocation ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
+      defaultCenter={lookAt ?? MONTERREY_CENTER}
+      defaultZoom={lookAt ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
       gestureHandling="greedy"
       disableDefaultUI
       clickableIcons={false}
@@ -202,7 +210,7 @@ function SearchMapCanvas({
           }
         />
       ))}
-      <Recentre target={userLocation} />
+      <Recentre target={lookAt} />
       {selected && <PanTo lat={selected.lat} lng={selected.lng} />}
     </Map>
   );
@@ -221,7 +229,7 @@ function panAndEnsureZoom(
   }
 }
 
-// Pan to the consumer once geolocation resolves.
+// Pan to the look-at center (filter zone, else the device) once it resolves.
 function Recentre({ target }: { target: Coords | null }) {
   const map = useMap();
   useEffect(() => {

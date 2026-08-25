@@ -178,9 +178,9 @@ function Deck({ places }: { places: Place[] }) {
   const [goMounted, setGoMounted] = useState(false);
   // The filter sheet is LOCAL, not a route (MESITA-1236). The pre-teardown
   // version was a routed @modal at /filters with a host-context bus feeding it
-  // the deck's count and categories; both are gone. One host, props passed
-  // straight down — the bus only ever existed because three surfaces shared
-  // the route, and Swipe is the only host now.
+  // the deck's count and categories; both are gone. Hosts pass props straight
+  // down — Swipe and Search both mount this sheet. The bus only ever existed
+  // because three surfaces shared a route.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);

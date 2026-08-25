@@ -9,6 +9,7 @@ export function SearchRailOverlay({
   idle,
   places,
   catalogCount,
+  filtersActive,
   railCollapsed,
   railIndex,
   selectedId,
@@ -18,11 +19,13 @@ export function SearchRailOverlay({
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
+  onOpenFilters,
   setRailCardRef,
 }: {
   idle: boolean;
   places: Place[];
   catalogCount: number;
+  filtersActive: boolean;
   railCollapsed: boolean;
   railIndex: number;
   selectedId: string | null;
@@ -32,6 +35,7 @@ export function SearchRailOverlay({
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onOpenFilters: () => void;
   setRailCardRef: (placeId: string, el: HTMLButtonElement | null) => void;
 }) {
   if (!idle) return null;
@@ -101,10 +105,21 @@ export function SearchRailOverlay({
         )
       ) : (
         catalogCount > 0 && (
-          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
+          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
-              No places to show here yet.
+              {filtersActive
+                ? "No places match these filters."
+                : "No places to show here yet."}
             </p>
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={onOpenFilters}
+                className="text-primary type-label font-semibold"
+              >
+                Adjust
+              </button>
+            )}
           </div>
         )
       )}
@@ -113,24 +128,22 @@ export function SearchRailOverlay({
 }
 
 export function EmptySearchPrompt() {
+  // Content-sized hint that hangs under the search bar. A fixed 70% sheet
+  // here is the "tall empty panel" Design §D forbids — the map is the
+  // Search tab's dominant visual and has to stay on screen.
   return (
-    // Focused but empty -> a solid prompt panel over the TOP ~70% only, so the
-    // live map stays visible in the strip below (the search moment still
-    // reads as "browse the map"). Sits at z-20 below the z-30 floating
-    // search bar (which the user types into).
-    <div className="bg-background border-border shadow-rest absolute inset-x-0 top-0 z-20 flex h-[70%] flex-col items-center justify-center rounded-b-3xl border-b px-8 text-center">
-      {/* decision: Lucide line Search in a tinted circle -- not the emoji, which
-          Apple renders as a heavy 3D lupa that clashes with the rest of the
-          consumer icon language. */}
+    <div className="flex flex-col items-center px-6 py-5 text-center">
       <span
-        className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-full"
+        className="bg-primary/10 text-primary flex h-12 w-12 items-center justify-center rounded-full"
         aria-hidden="true"
       >
-        <Search className="h-6 w-6" strokeWidth={1.75} />
+        <Search className="h-5 w-5" strokeWidth={1.75} />
       </span>
-      <p className="mt-4 text-lg font-semibold">Where to today?</p>
-      <p className="text-muted-foreground mt-1.5 max-w-[260px] text-sm">
-        Find the perfect place by name or category.
+      <p className="font-display mt-3 text-base font-semibold tracking-tight">
+        Where to today?
+      </p>
+      <p className="text-muted-foreground mt-1 max-w-[240px] text-sm">
+        Find a place by name or category.
       </p>
     </div>
   );

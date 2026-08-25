@@ -39,16 +39,16 @@ import {
 //
 // NOT A ROUTE ANY MORE (MESITA-1236). This was the body of a routed @modal at
 // /filters, fed by a host-context bus because three surfaces shared one route.
-// It is mounted directly by the swipe deck now, so the route, its hard twin
-// and the bus are all gone and the host passes `count`, `categoryOptions` and
+// It is mounted directly by its hosts now, so the route, its hard twin and
+// the bus are all gone and the host passes `count`, `categoryOptions` and
 // `hasLocation` as props. `onClose` is the host's setState, not router.back().
+// Swipe and Search both host it; Catalogue stays parked.
 //
 // Random is gone too: a 0..4 deck reorder is one of the seven named discovery
 // signals, and the server already shuffles.
 //
-// Still host-agnostic on purpose — it reads its state from
-// use-discovery-filters and takes everything else as props, so adding Search
-// or Catalogue back as a second host is props, not a rewrite.
+// Host-agnostic on purpose — it reads its state from use-discovery-filters
+// and takes everything else as props.
 
 export function DiscoveryFilters({
   onClose,

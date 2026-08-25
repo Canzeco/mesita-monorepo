@@ -139,6 +139,7 @@ export function usePlaceCatalogSearch(options: Options = {}) {
     mode,
     metaLabel,
     searchedQuery,
+    catalogLoaded,
     clear,
   };
 }
