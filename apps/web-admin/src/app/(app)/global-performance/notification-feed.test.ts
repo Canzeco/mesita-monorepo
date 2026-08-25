@@ -155,12 +155,12 @@ describe("itemMatchesIntakeFilter", () => {
     expect(itemMatchesIntakeFilter(created, "create:seed")).toBe(true);
     expect(itemMatchesIntakeFilter(created, "create:pulse")).toBe(true);
     expect(itemMatchesIntakeFilter(created, "enrich:serp")).toBe(false);
-    expect(itemMatchesIntakeFilter(created, "create:semantics")).toBe(false);
+    expect(itemMatchesIntakeFilter(created, "create:semantic")).toBe(false);
   });
 });
 
 describe("intakeCreateChips", () => {
-  it("numbers Seed 0 and shows Semantics 1/2 when only Name is done", () => {
+  it("numbers Seed 0 and turns Semantics on from the semantic stamp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -175,15 +175,15 @@ describe("intakeCreateChips", () => {
           verified: false,
           partner: false,
           promoting: false,
-          functions: { name: true },
+          functions: { semantic: true },
         },
       },
     });
     const chips = intakeCreateChips(created);
     expect(chips[0]).toMatchObject({ key: "seed", label: "0 Seed", on: true });
-    expect(chips.find((c) => c.key === "semantics")).toMatchObject({
-      label: "10 Semantics 1/2",
-      on: false,
+    expect(chips.find((c) => c.key === "semantic")).toMatchObject({
+      label: "10 Semantics",
+      on: true,
     });
   });
 });

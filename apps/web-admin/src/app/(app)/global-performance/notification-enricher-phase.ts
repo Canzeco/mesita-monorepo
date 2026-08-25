@@ -33,7 +33,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   create: {
     label: "Create",
     blurb:
-      "The CREATE function — seed, the pulse gate and the Google spine run inline at the front door; the vector is queued (MESITA-1253).",
+      "The CREATE function awaits four subfunctions — seed, pulse, details, and Semantic (Name + Summary together).",
     tone: TONES.emerald,
   },
   research: {
@@ -51,7 +51,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   contents: {
     label: "Contents",
     blurb:
-      "Writes the profile — functions 7 menu · 9 description, then persists data and images and vectorizes (semantic Summary).",
+      "Writes the profile — functions 7 menu · 9 description, then persists data and images and ticks Semantic (Name + Summary).",
     tone: TONES.amber,
   },
 };
@@ -60,9 +60,9 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the NINE enrich functions and the two semantic ones (Docs › Intake
-//      §A) — pulse/details/summary rows can ALSO come from the CREATE function
-//      or an on-update re-embed. Every summary stamp carries meta.via
+//   1. the NINE queue functions and Semantic (Docs › Intake
+//      §A) — pulse/details/semantic rows can ALSO come from the CREATE function
+//      or an on-update re-embed. Every semantic stamp carries meta.via
 //      ("create" | "update" | "contents", set where the vector write is
 //      observed in _shared/place-embeddings.ts), and create's pulse/details
 //      carry via: "create". The caller check below routes create's rows to
@@ -97,6 +97,7 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
   description: "contents",
   summary: "contents",
   name: "contents",
+  semantic: "contents",
 
   // ── 2. the legacy stage beacons ──
   gather: "research",
@@ -123,12 +124,12 @@ const PHASE_BY_STEP_NAME: Record<string, PhaseKey> = {
  */
 export function enricherPhase(meta: Record<string, unknown>): EnricherPhase | null {
   // meta.via names the caller, stamped at the write. "create" wears the Create
-  // chip — pulse/details from create-place.ts AND the summary the embeddings
+  // chip — pulse/details from create-place.ts AND the semantic the embeddings
   // module stamps for it. "update" wears NO chip: an on-update re-embed runs
   // in-process in whatever EF edited the profile, and any stage chip would be
   // a lie (null rather than a guess — the step chip beside it still names the
   // function). "contents" and legacy via-less rows fall through to the
-  // step_name map, where summary → Contents is the truth.
+  // step_name map, where semantic → Contents is the truth.
   if (meta.via === "create") return ENRICHER_PHASES.create;
   if (meta.via === "update") return null;
   const stepName = typeof meta.stepName === "string" ? meta.stepName.trim() : "";

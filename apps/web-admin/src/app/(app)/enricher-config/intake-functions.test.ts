@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is twelve, Seed through Summary, Name before Summary", () => {
+  it("is eleven, Seed through Semantic", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -22,8 +22,7 @@ describe("intake subfunctions", () => {
       "menu",
       "reviews",
       "description",
-      "name",
-      "summary",
+      "semantic",
     ]);
   });
 
@@ -43,7 +42,7 @@ describe("intake subfunctions", () => {
       "6 Images",
       "7 Menu",
       "8 Reviews",
-      "9 Description",
+      "9 Description (Category, Tags, Presentation)",
       "10 Semantics",
     ]);
   });
@@ -61,7 +60,7 @@ describe("intake subfunctions", () => {
     expect(flowTagFor("seed")).toBe("Create");
     expect(flowTagFor("pulse")).toBe("Create + Enrich");
     expect(flowTagFor("menu")).toBe("Enrich");
-    expect(flowTagFor("name")).toBe("Create + Enrich");
+    expect(flowTagFor("semantic")).toBe("Create + Enrich");
   });
 });
 
@@ -72,6 +71,8 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("computeCreateCost");
     expect(src).toContain("computeEnrichTickCost");
     expect(src).not.toContain("type=\"number\"");
+    expect(src).not.toContain("× five");
+    expect(src).not.toContain("/ 5 places");
   });
 
   it("does not restack Create and Enrich as family boxes on Functions", () => {
@@ -79,5 +80,8 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).not.toContain("FunctionFamily");
     expect(src).not.toContain("12 modules");
     expect(src).not.toContain("Create explained");
+    expect(src).toContain("f-semantic");
+    expect(src).not.toContain("id=\"f-name\"");
+    expect(src).not.toContain("id=\"f-summary\"");
   });
 });

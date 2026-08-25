@@ -152,7 +152,7 @@ export function SourcingChannels({
                         />
                       </span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
+                    <div className="mt-2 grid grid-cols-3 gap-1.5">
                       {FAMILIES.map((fam) => {
                         const on = p.families.includes(fam.key);
                         return (
@@ -164,7 +164,7 @@ export function SourcingChannels({
                             title={fam.blurb}
                             aria-pressed={on}
                             className={
-                              "rounded-md border px-2 py-0.5 type-label font-medium transition disabled:cursor-not-allowed " +
+                              "min-h-9 rounded-lg border px-2 py-1.5 text-center text-sm leading-snug font-medium transition disabled:cursor-not-allowed " +
                               (on
                                 ? "border-foreground text-foreground"
                                 : "border-transparent text-muted-foreground hover:bg-muted")

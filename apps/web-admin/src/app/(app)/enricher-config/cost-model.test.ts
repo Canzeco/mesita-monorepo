@@ -4,7 +4,6 @@ import {
   computeCreateCost,
   computeEnrichTickCost,
   computeEnrichmentCost,
-  ENRICH_TICK_PLACES,
 } from "./cost-model";
 import type { IntakeSettings } from "./intake-guards";
 
@@ -111,10 +110,10 @@ describe("instance estimates", () => {
     expect(c.active.some((l) => l.label.startsWith("9 ·"))).toBe(false);
   });
 
-  it("Enrich tick multiplies live knobs by the 5-place cap", () => {
+  it("Enrich is live knobs for one place", () => {
     const e = computeEnrichTickCost(settings);
-    expect(e.places).toBe(ENRICH_TICK_PLACES);
-    expect(e.total).toBeCloseTo(e.perPlace * ENRICH_TICK_PLACES);
+    expect(e.places).toBe(1);
+    expect(e.total).toBeCloseTo(e.perPlace);
     expect(e.perPlace).toBeGreaterThan(computeCreateCost(settings).perPlace);
   });
 

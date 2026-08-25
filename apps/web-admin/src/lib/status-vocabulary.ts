@@ -6,7 +6,7 @@
 //   INTAKE ENRICH (10) Enrich box · Pulse … Description · Semantics
 //
 // Create Serp is not a create function in shipped code (✨ Intake · pulse-pieces).
-// Semantics is Name + Summary, not a queue rung; copy still numbers it 10.
+// Semantics is one function (`semantic`; Name + Summary + embeddings). Copy still numbers it 10.
 
 export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },
@@ -24,7 +24,7 @@ export const INTAKE_CREATE_FACTS = [
   { key: "seed", label: "Seed", n: 0 },
   { key: "pulse", label: "Pulse", n: 1 },
   { key: "details", label: "Details", n: 2 },
-  { key: "semantics", label: "Semantics", n: 10 },
+  { key: "semantic", label: "Semantics", n: 10 },
 ] as const;
 
 export type IntakeCreateKey = (typeof INTAKE_CREATE_FACTS)[number]["key"];
@@ -39,7 +39,7 @@ export const INTAKE_ENRICH_FACTS = [
   { key: "menu", label: "Menu", n: 7 },
   { key: "reviews", label: "Reviews", n: 8 },
   { key: "description", label: "Description", n: 9 },
-  { key: "semantics", label: "Semantics", n: 10 },
+  { key: "semantic", label: "Semantics", n: 10 },
 ] as const;
 
 export type IntakeEnrichKey = (typeof INTAKE_ENRICH_FACTS)[number]["key"];

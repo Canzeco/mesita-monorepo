@@ -14,6 +14,7 @@
 
 import type { ChannelKey, Channels } from "./channels.ts";
 import {
+  PULSE_EXTRA_ALIASES,
   PULSE_EXTRAS,
   PULSE_PIECES,
   PULSE_TOTAL,
@@ -114,8 +115,8 @@ export type ChannelSet = Channels;
 
 // ── FunctionState ────────────────────────────────────────────────────────
 //
-// "{status, at, detail} x 11 enrichment functions" — the 11 is not a round
-// number, it is PULSE_PIECES.length (9) + PULSE_EXTRAS.length (2), the exact
+// "{status, at, detail} x 10 enrichment functions" — the 10 is not a round
+// number, it is PULSE_PIECES.length (9) + PULSE_EXTRAS.length (1), the exact
 // closed set pulse-pieces.ts already defines and pulse-report.ts already
 // writes through StampablePulseStep. FunctionState formalizes the PER-STEP
 // record that MESITA-1249 (materializing the enrichment state map onto the
@@ -174,15 +175,79 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
 
 /**
  * A `FunctionStateMap` is a PARTIAL record — most places have not run every
- * one of the 11 steps yet, and an absent key means exactly that, not
+ * one of the 10 steps yet, and an absent key means exactly that, not
  * `{status:"pending",...}`. `object()` iterates every key of its shape
  * regardless of presence, which is the right behavior for a fixed-shape
  * document (place-doc.ts's own PlacePatch keys) but wrong here: a place
  * that has only run `pulse` must round-trip as `{pulse: {...}}`, not as
- * all 11 keys with 10 fabricated `pending` entries. Bespoke, small, and
+ * all 10 keys with 9 fabricated `pending` entries. Bespoke, small, and
  * kept local rather than promoted into doc-schema.ts's core until a SECOND
  * partial-record shape needs it too.
  */
+const FUNCTION_STATE_PARSE_KEYS: readonly string[] = [
+  ...FUNCTION_STATE_KEYS,
+  ...PULSE_EXTRA_ALIASES,
+];
+
+function laterAt(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
+function foldSemanticPair(
+  name: FunctionState | undefined,
+  summary: FunctionState | undefined,
+): FunctionState | undefined {
+  const parts = [name, summary].filter((p): p is FunctionState => p != null);
+  if (parts.length === 0) return undefined;
+  const failed = parts.find((p) => p.status === "failed");
+  const completed = parts.filter((p) => p.status === "completed");
+  const at = parts.reduce<string | null>((acc, p) => laterAt(acc, p.at), null);
+  if (failed) {
+    return { status: "failed", at, detail: failed.detail };
+  }
+  if (completed.length > 0) {
+    const detail = completed
+      .map((p) => p.detail)
+      .filter((d): d is string => typeof d === "string" && d.length > 0)
+      .join(" · ") || null;
+    return { status: "completed", at, detail };
+  }
+  return { status: "pending", at, detail: null };
+}
+
+/** Fold legacy `name`/`summary` stamps into one `semantic` key. */
+export function foldFunctionStateMap(
+  map: Partial<Record<string, FunctionState>>,
+): FunctionStateMap {
+  const semantic = map.semantic ??
+    foldSemanticPair(map.name, map.summary);
+  const out: FunctionStateMap = {};
+  for (const key of PULSE_PIECES) {
+    const rec = map[key];
+    if (rec) out[key] = rec;
+  }
+  if (semantic) out.semantic = semantic;
+  return out;
+}
+
+
+/**
+ * The ten Enrich operator functions (9 queue + Semantic), every key present
+ * so Status can list them without inventing a second ladder.
+ */
+export function operatorFunctionStates(
+  map: Partial<Record<string, FunctionState>>,
+): Record<string, FunctionState> {
+  const folded = foldFunctionStateMap(map);
+  const out: Record<string, FunctionState> = {};
+  for (const key of FUNCTION_STATE_KEYS) {
+    out[key] = folded[key] ?? { status: "pending", at: null, detail: null };
+  }
+  return out;
+}
+
 export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
   parse(raw) {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -190,7 +255,7 @@ export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
     }
     const rawObj = raw as Record<string, unknown>;
     const unknownKeys = Object.keys(rawObj).filter(
-      (k) => !(FUNCTION_STATE_KEYS as readonly string[]).includes(k),
+      (k) => !FUNCTION_STATE_PARSE_KEYS.includes(k),
     );
     if (unknownKeys.length > 0) {
       return { ok: false, error: `unknown pulse step(s): ${unknownKeys.join(", ")}` };
@@ -201,7 +266,7 @@ export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
       if (!r.ok) return { ok: false, error: `${key}: ${r.error}` };
       value[key] = r.value;
     }
-    return { ok: true, value: value as FunctionStateMap };
+    return { ok: true, value: foldFunctionStateMap(value) };
   },
 };
 

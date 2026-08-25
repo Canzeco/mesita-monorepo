@@ -252,24 +252,21 @@ async function computeAndPersistPlaceEmbedding(
     return null;
   }
 
-  // ── SEMANTIC stamps (MESITA-1253 / MESITA-1238) ─────────────────────────
-  // Summary and Name are separate vectors. A hash-match skip does not
-  // re-stamp. `via` names the caller so the Monitor attributes the beacon.
-  const extras: Parameters<typeof reportPulsePieces>[2] = {};
-  if (wroteSummary) {
-    extras.summary = pieceDone(
-      `Semantic Summary written and embedded — ${countWords(text)} word(s).`,
-      { via },
-    );
-  }
-  if (wroteName) {
-    extras.name = pieceDone(
-      `Semantic Name written and embedded — ${nameText}.`,
-      { via },
-    );
-  }
-  if (Object.keys(extras).length > 0) {
-    await reportPulsePieces(admin, place.id, extras);
+  // ── SEMANTIC stamp ──────────────────────────────────────────────────────
+  // One function writes both vectors. A hash-match skip does not re-stamp.
+  // `via` names the caller so the Monitor attributes the beacon.
+  if (wroteSummary || wroteName) {
+    const bits = [
+      wroteSummary
+        ? `Semantic Summary written and embedded — ${countWords(text)} word(s).`
+        : null,
+      wroteName
+        ? `Semantic Name written and embedded — ${nameText}.`
+        : null,
+    ].filter((s): s is string => s != null);
+    await reportPulsePieces(admin, place.id, {
+      semantic: pieceDone(bits.join(" "), { via }),
+    });
   }
 
   return {

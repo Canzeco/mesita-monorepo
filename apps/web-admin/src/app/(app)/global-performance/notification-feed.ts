@@ -193,13 +193,14 @@ export function readStatusFacts(
   };
 }
 
-function semanticsDone(facts: PlaceStatusFacts): number {
-  return (facts.functions.name === true ? 1 : 0) + (facts.functions.summary === true ? 1 : 0);
+function semanticOn(facts: PlaceStatusFacts): boolean {
+  if (facts.functions.semantic === true) return true;
+  return facts.functions.name === true && facts.functions.summary === true;
 }
 
 function fnOn(facts: PlaceStatusFacts, key: string): boolean {
   if (key === "seed") return facts.seeded;
-  if (key === "semantics") return semanticsDone(facts) === 2;
+  if (key === "semantic") return semanticOn(facts);
   return facts.functions[key] === true;
 }
 
@@ -335,35 +336,21 @@ export type IntakeFnChip = {
 export function intakeCreateChips(item: NotificationItem): IntakeFnChip[] {
   const facts = readStatusFacts(item.meta);
   if (!facts) return [];
-  return INTAKE_CREATE_FACTS.map((def) => {
-    const on = fnOn(facts, def.key);
-    const done = def.key === "semantics" ? semanticsDone(facts) : null;
-    return {
-      key: def.key,
-      label:
-        done !== null && done < 2
-          ? `${def.n} ${def.label} ${done}/2`
-          : `${def.n} ${def.label}`,
-      on,
-    };
-  });
+  return INTAKE_CREATE_FACTS.map((def) => ({
+    key: def.key,
+    label: `${def.n} ${def.label}`,
+    on: fnOn(facts, def.key),
+  }));
 }
 
 export function intakeEnrichChips(item: NotificationItem): IntakeFnChip[] {
   const facts = readStatusFacts(item.meta);
   if (!facts) return [];
-  return INTAKE_ENRICH_FACTS.map((def) => {
-    const on = fnOn(facts, def.key);
-    const done = def.key === "semantics" ? semanticsDone(facts) : null;
-    return {
-      key: def.key,
-      label:
-        done !== null && done < 2
-          ? `${def.n} ${def.label} ${done}/2`
-          : `${def.n} ${def.label}`,
-      on,
-    };
-  });
+  return INTAKE_ENRICH_FACTS.map((def) => ({
+    key: def.key,
+    label: `${def.n} ${def.label}`,
+    on: fnOn(facts, def.key),
+  }));
 }
 
 /** Category is a taxonomy, not a status — keep it off Intake compact lines. */

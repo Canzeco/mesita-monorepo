@@ -20,7 +20,8 @@ import {
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
-import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
+import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
+import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
 
 // Super-admin manage-single extra: the Embeddings card (MESITA-720). Keep it
 // off the business overview payload; only elevate when the caller is a
@@ -141,6 +142,9 @@ Deno.serve(async (req) => {
         enrich_pulse_total: PULSE_TOTAL,
         enrich_pulse_labels: PULSE_LABELS_IN_ORDER,
         enrich_pulse_blocked: enrichPulseBlocked,
+        enrich_functions: operatorFunctionStates(
+          enrichmentMap.functions as Partial<Record<string, FunctionState>>,
+        ),
       } as unknown as PlaceRow,
     ];
   } else {
