@@ -477,10 +477,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
       : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
-    // SEMANTICS — one function, not a rung. It writes Mesita Name + Semantic
-    // Summary + embeddings after function 9. Reported, never counted: the same
-    // machinery fires on any profile edit, and `enriched` must not fall because
-    // someone renamed a place.
+    // SEMANTICS — function 10. It writes Mesita Name + Semantic
+    // Summary + embeddings after function 9. It CLOSES the queue.
     contentPieces.semantic = embeddingWrote
       ? pieceDone("Semantics — Mesita Name, Semantic Summary, and embeddings written.")
       : pieceFailed("Semantics did not write. Re-enrich to retry — there is no backfill.");
@@ -489,7 +487,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
   // One beacon for the whole contents stage — one notification per Edge
   // Function. Its own `step` is decorative and does not track the ladder: the
-  // stage runs 7 menu, 9 description and Semantics, all stamped
+  // stage runs 7 menu, 9 description and 10 Semantics, all stamped
   // above. Reports synthesis + persist + image outcome in a single line.
   await reportEnrichmentStep(
     admin,

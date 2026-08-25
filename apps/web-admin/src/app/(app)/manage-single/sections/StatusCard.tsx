@@ -49,7 +49,7 @@ import { enrichFunctionRows, type EnrichFunctionState } from "./status-enrichmen
 //              constant either: archive a place and every guest surface stops
 //              resolving it. Today it is true for every row only because
 //              nothing writes any status but 'active'.
-//   Enriched   HOW FAR the PULSE queue got, 0-9, off place_enrichment_events.
+//   Enriched   HOW FAR the PULSE queue got, 0-10, off place_enrichment_events.
 //              A high-water, not a yes: the index of the last rung such that
 //              it and every rung before it completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
@@ -61,7 +61,7 @@ import { enrichFunctionRows, type EnrichFunctionState } from "./status-enrichmen
 // payload (business-web-get-overview → _shared/place-status.ts and
 // _shared/pulse-pieces.ts), the same helpers the Single Place table uses, so
 // the box and the table can never disagree. That guarantee was only half true
-// until MESITA-1218: the chip read the 0-9 high-water while this box's prose
+// until MESITA-1218: the chip read the 0-10 high-water while this box's prose
 // read a rival 0-3 stage level, and on every row they disagreed. Partner and
 // Promoting are derived here from columns on the row; Verified is a separate
 // admin read hoisted into AdminSection.
@@ -133,7 +133,7 @@ export function StatusCard({
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const listed: boolean | "unknown" =
     typeof place.listed === "boolean" ? place.listed : "unknown";
-  // The PULSE high-water, 0-9 (MESITA-1172) — the SAME number the catalog
+  // The PULSE high-water, 0-10 (MESITA-1172) — the SAME number the catalog
   // table shows, from the same helper, so the two screens cannot disagree.
   // There is no fallback: a payload without it renders "?" rather than a 0,
   // because 0 is a real rung ("seeded, nothing since") and claiming it for a
@@ -145,7 +145,7 @@ export function StatusCard({
     ? (place.enrich_pulse_labels as string[])
     : [];
   // The scale tops out at the LAST index, not the label count: labels[0] is
-  // the Created floor label (not a function), so ten labels describe a 0-9
+  // the Created floor label (not a function), so eleven labels describe a 0-10
   // scale (MESITA-1253).
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
@@ -407,8 +407,8 @@ function StatusRow({
   value: boolean | "unknown" | "loading";
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
-  /** Overrides the chip text in BOTH states. Enriched is a 0-9 high-water, not
-   *  a yes, so its chip reads "5/9" whether or not the queue finished. */
+  /** Overrides the chip text in BOTH states. Enriched is a 0-10 high-water, not
+   *  a yes, so its chip reads "5/10" whether or not the queue finished. */
   chipLabel?: string;
   /** Control rendered under the detail line. Only Listed has one: it is the
    *  only fact on this card an operator sets directly rather than earns. */

@@ -33,7 +33,7 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
   {
     id: "f-semantic",
     key: "semantic",
-    chip: "◇ Semantics",
+    chip: "10 Semantics",
     flows: ["create", "enrich"],
   },
 ];

@@ -5,7 +5,7 @@
 //               run starts from. Without it nothing can be gathered.
 //   listed      a guest can reach the place at all. projects.status is what the
 //               consumer RLS policy gates on.
-//   enriched    HOW FAR the PULSE queue got — a 0-9 high-water off
+//   enriched    HOW FAR the PULSE queue got — a 0-10 high-water off
 //               place_enrichment_events, never a boolean. It does NOT live
 //               here: `pulseHighWater` in pulse-pieces.ts owns it, beside the
 //               ladder it counts. This file kept a rival 0-3 stage level until

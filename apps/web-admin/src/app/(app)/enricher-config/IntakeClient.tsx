@@ -342,7 +342,7 @@ export function IntakeClient({
                 {
                   term: "Stops",
                   detail:
-                    "Infrastructure failure or permanently closed. Absence still reaches 9.",
+                    "Infrastructure failure or permanently closed. Absence still reaches 10.",
                 },
               ]}
               steps={chipsFor("enrich")}
@@ -574,7 +574,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Closes the queue. Category, Tags, Presentation."
+                blurb="Category, Tags, Presentation."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -583,10 +583,10 @@ export function IntakeClient({
               </FunctionModule>
               <FunctionModule
                 id="f-semantic"
-                index="◇"
+                index="10 · $"
                 flows={flowTagFor("semantic")}
                 name="Semantics"
-                blurb="Mesita Name and Semantic Summary — one function, two vectors. Create awaits it; Enrich ticks it."
+                blurb="Closes the queue. Mesita Name and Semantic Summary — one function, two vectors."
                 knobs="locked"
               >
                 <NoKnobs>

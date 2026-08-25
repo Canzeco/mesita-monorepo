@@ -121,7 +121,7 @@ Deno.test("reportPulsePieces: a failed piece lowers highWater and sets blockedAt
   assertEquals(enrichment.blockedAt, { key: "links", index: 4, status: "failed" });
 });
 
-Deno.test("reportPulsePieces: a semantic function never advances highWater", async () => {
+Deno.test("reportPulsePieces: Semantics at 10 cannot skip a gap", async () => {
   const seeded: EnrichmentMap = {
     functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
@@ -133,7 +133,7 @@ Deno.test("reportPulsePieces: a semantic function never advances highWater", asy
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
   assertEquals(enrichment.functions.semantic?.status, "completed");
-  assertEquals(enrichment.highWater, 1, "semantic is not a rung — it must not move the ladder");
+  assertEquals(enrichment.highWater, 1, "function 10 cannot skip 3–9");
 });
 
 Deno.test("reportPulsePieces: an unknown key is silently dropped, same as the event log — no place update at all if nothing else was stamped", async () => {

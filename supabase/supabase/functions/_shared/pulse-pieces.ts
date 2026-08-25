@@ -1,11 +1,11 @@
 // PULSE — the enrichment machinery, as TWO FLOWS over SHARED FUNCTIONS
-// (MESITA-1253, superseding the function-0 framing of MESITA-1243).
+// (MESITA-1253, Semantics numbered 10).
 //
 //   CREATE (ONE FUNCTION, awaits four subfunctions):
 //     seed → pulse → details → semantic
 //   ENRICH (TEN FUNCTIONS, sequential ticks, none await a nested run):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
-//     → 6 images → 7 menu → 8 reviews → 9 description → semantic
+//     → 6 images → 7 menu → 8 reviews → 9 description → 10 semantic
 //
 // Pulse, Details and Semantics appear in BOTH flows because they are SHARED
 // FUNCTIONS with two callers: CREATE awaits them inline (a place is born with
@@ -17,24 +17,25 @@
 //
 // CREATE IS A RUN LIKE ANY OTHER. It stamps the functions it actually ran
 // (pulse, details — and semantic when the vector write lands), so a healthy
-// fresh place reads 2/9 the moment it exists, and state accumulates across
-// create and every later run under one rule. A function a run did not buy
-// writes NOTHING (MESITA-1172 blocker 2) — that rule is what lets two callers
-// share one ladder.
+// fresh place reads 2/10 the moment it exists, and state accumulates across
+// create and every later run under one rule. Semantic is 10, so a create
+// stamp does not jump the high-water past 2: 3–9 are still a gap. A function
+// a run did not buy writes NOTHING (MESITA-1172 blocker 2) — that rule is
+// what lets two callers share one ladder.
 //
-// WHY SEMANTICS IS ONE FUNCTION AND NOT A RUNG. One function writes the Mesita
-// Name vector AND the Semantic Summary vector together. The On-Update path
-// fires the same machinery whenever an operator edits the profile, and
-// `enriched` must not fall because someone renamed a place. Counting it would
-// stop answering "how far did the queue get". Both vectors are BUILT
-// (MESITA-1238): `places.name_embedding` and `places.embedding`.
+// SEMANTICS IS FUNCTION 10. One function writes the Mesita Name vector AND
+// the Semantic Summary vector together. It CLOSES the enrich queue. The
+// On-Update path fires the same machinery when an operator edits the profile:
+// a successful re-embed keeps 10; a failed one drops to 9. Both vectors are
+// BUILT (MESITA-1238): `places.name_embedding` and `places.embedding`.
 //
 // RENUMBERING IS SURVIVABLE BECAUSE NOTHING MATCHES ON THE NUMBER. The reader
 // keys on `step_name` (the function KEY); the `S<n>` written beside it is
 // decorative. Dropping `seed` from this array moved NO number: pulse was
 // already 1 and description already 9. Rows from every previous ladder still
 // count correctly; retired keys (`name` as a rung, `semantics`, `seed` if any
-// ever existed) fall out of the walk.
+// ever existed) fall out of the walk. Legacy `name`/`summary` extras fold
+// into `semantic` on read.
 //
 // THE ORDER IS LOAD-BEARING. `serp` runs BEFORE `links` because that is what
 // serp is FOR: Agent Y cannot pick between five Instagram candidates on a name
@@ -43,31 +44,29 @@
 // bought for the first — do not reorder the queue to serve it. `social` runs
 // BEFORE `images` because the Instagram/Facebook gathers fill the pools the
 // vision funnel ranks. `menu` sits after `links` (its source) and before
-// `description` (which would read it). `description` CLOSES the queue at 9,
-// and Semantics runs after it, vectorising the name and the text the queue just
-// wrote.
+// `description` (which would read it). `description` is 9; Semantics CLOSES
+// the queue at 10, vectorising the name and the text function 9 just wrote.
 //
 // THE THREE TEXTS, each with exactly one reader, never collapsed:
 //   SERP Summary        function 3 — soft context the PIPELINE reads
 //   Presentation        function 9 — places.description, what a GUEST reads
-//   Semantic Summary    semantic   — embedding_source_text, what the INDEX reads
+//   Semantic Summary    function 10 — embedding_source_text, what the INDEX reads
 //
 // `enriched` is NOT a count of functions that worked. It is HOW FAR THE QUEUE
-// GOT: the index of the last good function, 0-9, where 0 is the CREATED floor.
-// The queue is strictly linear, so ">= N" is a MEANINGFUL question to ask of
-// it. It is not, today, a question anything can ask in SQL: this value is a
-// read-time fold over the run-event log, not a column, so it cannot appear in
-// a WHERE clause. Consumer visibility therefore gates on `content_status =
-// 'ready'` instead (MESITA-1228) — a real predicate, applied before the pool
-// cap. If MESITA-1249 materializes this meter onto the place, a finer-grained
-// ">= N" gate becomes possible; until then, do not promise one.
+// GOT: the index of the last good function, 0-10, where 0 is the CREATED floor
+// and 10 is a complete profile including both vectors. The queue is strictly
+// linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
+// question anything can ask in SQL: this value is a read-time fold over the
+// run-event log, not a column, so it cannot appear in a WHERE clause. Consumer
+// visibility therefore gates on `content_status = 'ready'` instead
+// (MESITA-1228) — a real predicate, applied before the pool cap.
 //
 // THIS IS NOT THE TRIGGER MATRIX'S VOCABULARY. `enrich-triggers.ts` keys what a
 // run may BUY (purchase units); these are what an operator is told. Different
 // questions; the name overlap is a coincidence of subject.
 //
 // AND ABSENCE IS A RESULT, NOT A FAILURE. A place with no Instagram must still
-// reach 9. The function ran, resolved "there is nothing here", and is
+// reach 10. The function ran, resolved "there is nothing here", and is
 // `completed`.
 
 export const PULSE_PIECES = [
@@ -80,26 +79,21 @@ export const PULSE_PIECES = [
   "menu",
   "reviews",
   "description",
+  "semantic",
 ] as const;
 
 /**
- * Reported, never counted. Semantics is real work with a real outcome an
- * operator wants to see, but it is not a rung of the queue — see the header
- * for why it does not sit at 10. One function writes both vectors.
- *
- * `places.name_embedding` is the 1536-d Mesita Name. `places.embedding` is the
- * Semantic Summary. The two answer different questions and must never share a
- * column — they just share one function, one stamp, two callers (Create and
- * Enrich).
+ * Retired extra keys. Empty: Semantics is function 10, not an unnumbered
+ * extra. Kept as an array so FUNCTION_STATE_KEYS can still spread it.
  */
-export const PULSE_EXTRAS = ["semantic"] as const;
+export const PULSE_EXTRAS = [] as const;
 
 /** Pre-merge event / map keys. Folded into `semantic` on read. */
 export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
 
 export type PulsePiece = (typeof PULSE_PIECES)[number];
 export type PulseExtra = (typeof PULSE_EXTRAS)[number];
-/** Anything a stage may stamp: a queue function or a semantic one. */
+/** Anything a stage may stamp: a queue function. */
 export type PulseStep = PulsePiece | PulseExtra;
 
 /**
@@ -122,9 +116,6 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
   menu: "Menu",
   reviews: "Reviews",
   description: "Description",
-};
-
-export const PULSE_EXTRA_LABELS: Record<PulseExtra, string> = {
   semantic: "Semantics",
 };
 
@@ -139,7 +130,7 @@ export const PULSE_EXTRA_LABELS: Record<PulseExtra, string> = {
  * real position. PR #1072 reordered the array and renumbered by hand and got it
  * right; nothing would have caught it if it hadn't.
  *
- * The index is `i + 1`: the ENRICH queue counts 1-9 and 0 is the CREATED
+ * The index is `i + 1`: the ENRICH queue counts 1-10 and 0 is the CREATED
  * floor, which is not a member (MESITA-1253).
  */
 export const PULSE_PIECE_META: Record<
@@ -158,7 +149,7 @@ export const PULSE_PIECE_META: Record<
  * beside every number if a reorder had missed it.
  *
  * INDEXED BY FUNCTION NUMBER: `labels[0]` is the CREATED floor (not a
- * function) and `labels[9]` is Description, so a reader renders
+ * function) and `labels[10]` is Semantics, so a reader renders
  * `labels[level]` with no off-by-one.
  */
 export const PULSE_LABELS_IN_ORDER: readonly string[] = [
@@ -167,9 +158,8 @@ export const PULSE_LABELS_IN_ORDER: readonly string[] = [
 ];
 
 /**
- * The complete-profile number, so nothing hardcodes 9. Nine queue functions,
- * so it IS the array length; Semantics is not in it, and the CREATED
- * floor (0) sits below the array.
+ * The complete-profile number, so nothing hardcodes 10. Ten enrich functions,
+ * so it IS the array length; the CREATED floor (0) sits below the array.
  */
 export const PULSE_TOTAL = PULSE_PIECES.length;
 
@@ -192,7 +182,9 @@ function latestByPiece(
   for (const e of events) {
     const key = (e.step_name ?? "").trim();
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
-    // `publish`), semantic functions, and the rungs of previous ladders.
+    // `publish`), retired rungs (`semantics`), and pre-merge `name`/`summary`
+    // extras (those fold into `semantic` on the Status map, not this walk —
+    // an old `name` rung must not count as function 10).
     if (!INDEX.has(key)) continue;
     const at = e.created_at ?? "";
     const prev = latest.get(key);
@@ -204,7 +196,7 @@ function latestByPiece(
 }
 
 /**
- * How far the queue got, 0-9.
+ * How far the queue got, 0-10.
  *
  * The index of the last function such that IT AND EVERY FUNCTION BEFORE IT
  * completed. A gap stops the count: if `links` (4) failed but `social` (5)
@@ -215,7 +207,8 @@ function latestByPiece(
  * 0 is the base case, and it is the FLOOR rather than a failure: the place is
  * seeded and nothing after it has landed. `seed` is never stamped, so the walk
  * starts at function 1 — see THE FLOOR in the header for why stamping it would
- * pin the whole catalog at 0.
+ * pin the whole catalog at 0. Semantics is 10: a place that finished
+ * description without vectors reads 9.
  *
  * Events are an APPEND-ONLY log, so only the LATEST event per function counts.
  * A re-enrich that fixes function 4 raises the number; one that breaks it

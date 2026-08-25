@@ -98,8 +98,7 @@ export type CostTier = "free" | "low" | "high";
  * operator reading "SERP · S2" beside a doc that calls SERP function 3 has two
  * answers to one question. The mapping is deliberately one-way and not
  * one-to-one — `google` buys two functions, `photos` buys none (it is the
- * storage mirror), `embedding` buys the semantic pair that sits outside the
- * count entirely.
+ * storage mirror), `embedding` buys Semantics (function 10).
  */
 export const SUBPROCESS_META: Record<
   SubprocessKey,
@@ -160,7 +159,7 @@ export const SUBPROCESS_META: Record<
   },
   embedding: {
     label: "Embedding",
-    functions: "◇",
+    functions: "10",
     cost: "free",
     blurb: "Re-vectorize the place so search and recall see the new text.",
   },

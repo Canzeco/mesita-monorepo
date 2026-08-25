@@ -31,7 +31,7 @@ describe("intake subfunctions", () => {
       "Seed",
       "1 Pulse",
       "2 Details",
-      "◇ Semantics",
+      "10 Semantics",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -43,7 +43,7 @@ describe("intake subfunctions", () => {
       "7 Menu",
       "8 Reviews",
       "9 Description (Category, Tags, Presentation)",
-      "◇ Semantics",
+      "10 Semantics",
     ]);
   });
 
@@ -90,7 +90,7 @@ describe("Create and Enrich boxes pin live estimates", () => {
 describe("Name and Summary share Semantics", () => {
   it("is one chip, never two Name/Summary pills", () => {
     const labels = INTAKE_SUBFUNCTIONS.map((s) => s.chip);
-    expect(labels).toContain("◇ Semantics");
+    expect(labels).toContain("10 Semantics");
     expect(labels).not.toContain("◇ Name");
     expect(labels).not.toContain("◇ Summary");
     expect(labels.filter((l) => /Name|Summary/.test(l))).toEqual([]);

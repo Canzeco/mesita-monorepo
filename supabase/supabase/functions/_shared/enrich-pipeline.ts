@@ -137,8 +137,7 @@ export type AnalysisPayload = {
 export async function reportEnrichmentStep(
   admin: SupabaseClient,
   projectId: string,
-  // `SX` is the EXTRA marker: semantics runs outside the queue, so it has no
-  // rung to number. Anything else is a real position (MESITA-1230).
+  // `SX` is kept in the union for historical rows. New stamps are `S<n>`.
   step: `S${number}` | "SX",
   stepName: string,
   status: "started" | "completed" | "failed" | "skipped",

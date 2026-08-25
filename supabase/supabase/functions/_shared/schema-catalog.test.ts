@@ -49,9 +49,9 @@ Deno.test("FUNCTION_STATE_KEYS is exactly PULSE_PIECES + PULSE_EXTRAS, in that o
   assertEquals(FUNCTION_STATE_KEYS, expected);
 });
 
-Deno.test("FUNCTION_STATE_KEYS has 10 members — 9 queue functions + Semantics", () => {
-  assertEquals(PULSE_PIECES.length, 9);
-  assertEquals(PULSE_EXTRAS.length, 1);
+Deno.test("FUNCTION_STATE_KEYS has 10 members — Pulse through Semantics", () => {
+  assertEquals(PULSE_PIECES.length, 10);
+  assertEquals(PULSE_EXTRAS.length, 0);
   assertEquals(FUNCTION_STATE_KEYS.length, 10);
 });
 
@@ -192,7 +192,7 @@ Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null
   for (const key of FUNCTION_STATE_KEYS) {
     full[key] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
   }
-  const r = EnrichmentMapSchema.parse({ functions: full, highWater: 9, blockedAt: null });
+  const r = EnrichmentMapSchema.parse({ functions: full, highWater: 10, blockedAt: null });
   assert(r.ok);
 });
 
@@ -205,8 +205,8 @@ Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", (
   assert(r.ok);
 });
 
-Deno.test("EnrichmentMapSchema: rejects highWater out of 0-9 range, a non-integer, and a bad blockedAt.status", () => {
-  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 10, blockedAt: null }).ok, "10 is over PULSE_TOTAL");
+Deno.test("EnrichmentMapSchema: rejects highWater out of 0-10 range, a non-integer, and a bad blockedAt.status", () => {
+  assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 11, blockedAt: null }).ok, "11 is over PULSE_TOTAL");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: -1, blockedAt: null }).ok, "negative");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 3.5, blockedAt: null }).ok, "non-integer");
   assert(
@@ -240,9 +240,9 @@ function stamped(...pieces: string[]): FunctionStateMap {
   return map as FunctionStateMap;
 }
 
-Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 9", () => {
+Deno.test("pulseHighWaterFromMap: empty map -> 0, full map -> 10", () => {
   assertEquals(pulseHighWaterFromMap({}), 0);
-  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 9);
+  assertEquals(pulseHighWaterFromMap(stamped(...PULSE_PIECES)), 10);
 });
 
 Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece completed", () => {
@@ -251,12 +251,12 @@ Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece co
   assertEquals(pulseHighWaterFromMap(map), 3);
 });
 
-Deno.test("pulseHighWaterFromMap: semantic never counts toward the queue", () => {
+Deno.test("pulseHighWaterFromMap: Semantics at 10 cannot skip a gap", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse", "details"),
     semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
-  assertEquals(pulseHighWaterFromMap(map), 2, "the semantic function must not advance the ladder");
+  assertEquals(pulseHighWaterFromMap(map), 2, "function 10 cannot skip 3–9");
 });
 
 Deno.test("pulseBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {

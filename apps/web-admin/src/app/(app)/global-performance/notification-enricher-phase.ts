@@ -60,7 +60,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
 // it. THREE families live here, and the third is the one a hand-written list
 // forgets:
 //
-//   1. the NINE queue functions and Semantics (Docs › Intake
+//   1. the TEN enrich functions 1–10 (Docs › Intake
 //      §A) — pulse/details/semantic rows can ALSO come from the CREATE function
 //      or an on-update re-embed. Every semantic stamp carries meta.via
 //      ("create" | "update" | "contents", set where the vector write is

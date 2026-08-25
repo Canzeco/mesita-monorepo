@@ -59,7 +59,7 @@ export type PlaceHit = {
   business_status: string | null;
   /** When Operating was last observed. Without it a stale claim reads current. */
   business_status_at: string | null;
-  /** PULSE: how far the nine-piece queue got, 0-9. 0 means it never started
+  /** PULSE: how far the ten-piece queue got, 0-10. 0 means it never started
    *  — or the place predates piece reporting and has no events. */
   enrich_pulse: number;
   /** The ladder's length, so nothing hardcodes 9. */
@@ -125,8 +125,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // No `?? 9` here any more: the total and the labels come from the same
     // server list, so a client fallback could only ever disagree with it. The
     // label fallback subtracts one — the labels are indexed by function number
-    // with the Created floor label at 0, so ten of them describe a 0-9 scale
-    // (MESITA-1253).
+    // with the Created floor label at 0, so eleven of them describe a 0-10 scale.
     enrich_pulse_total: raw.enrich_pulse_total ??
       (raw.enrich_pulse_labels ? raw.enrich_pulse_labels.length - 1 : 0),
     enrich_pulse_labels: raw.enrich_pulse_labels ?? [],
@@ -263,7 +262,7 @@ export type AdminPlace = {
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_status?: string | null;
   business_status_at?: string | null;
-  /** PULSE: how far the NINE-function ENRICH queue got, 0-9 (0 = created).
+  /** PULSE: how far the TEN-function ENRICH queue got, 0-10 (0 = created).
    *  Absent on a payload that
    *  predates it; the box renders "?" rather than a false 0. */
   enrich_pulse?: number;
@@ -273,7 +272,7 @@ export type AdminPlace = {
   enrich_pulse_labels?: string[];
   /** Why the queue stopped where it did. Absent on an older payload. */
   enrich_pulse_blocked?: PulseBlock | null;
-  /** Per Enrich subfunction (9 queue + Semantics). Overview payload only. */
+  /** Per Enrich subfunction (1–10). Overview payload only. */
   enrich_functions?: Record<string, {
     status: "pending" | "completed" | "failed";
     at: string | null;
