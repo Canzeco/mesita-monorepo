@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { FamilyKey } from "./catalog";
@@ -26,5 +28,13 @@ describe("familySummary", () => {
       kind: "some",
       label: "2 of 6",
     });
+  });
+});
+
+describe("Sourcing family chips", () => {
+  it("lays six families in a 3-column grid so they read on two lines", () => {
+    const src = readFileSync(join(__dirname, "SourcingConfigClient.tsx"), "utf8");
+    expect(src).toContain("grid grid-cols-3");
+    expect(src).toContain("text-sm leading-snug");
   });
 });
