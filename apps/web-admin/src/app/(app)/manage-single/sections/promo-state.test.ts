@@ -13,8 +13,10 @@ import {
   describeMembershipStatus,
   effectiveStrikeCount,
   giveLevel,
+  giveWord,
   lifecycleView,
   membershipPillState,
+  placementWord,
   promoCardState,
   visibilityDots,
 } from "./promo-state";
@@ -258,6 +260,19 @@ describe("visibilityDots", () => {
     // ladder longer than the rail would render Max and High identically —
     // the top posture would look like the one below it.
     expect(METER_SEGMENTS).toBe(4);
+  });
+});
+
+describe("giveWord / placementWord — Single Place card face", () => {
+  it("maps postures to Low · Mid · High with no Max", () => {
+    expect(giveWord("zero")).toBe("Low");
+    expect(giveWord("conservative")).toBe("Mid");
+    expect(giveWord("aggressive")).toBe("High");
+    expect(giveWord("dominant")).toBe("High");
+    expect(placementWord("Low")).toBe("Low");
+    expect(placementWord("Mid")).toBe("Mid");
+    expect(placementWord("High")).toBe("High");
+    expect(placementWord("Max")).toBe("High");
   });
 });
 

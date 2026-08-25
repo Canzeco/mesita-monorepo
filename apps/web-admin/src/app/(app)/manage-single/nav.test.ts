@@ -23,21 +23,26 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("does not edit orders or prepaid", () => {
+  it("is two boxes — Partnership and Visit Promotions", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/Visit Promos/);
-    expect(src).toMatch(/Discount Cap/);
-    expect(src).toMatch(/title="Calculator"/);
+    expect(src).toMatch(/title="Mesita Partnership"/);
+    expect(src).toMatch(/title="Visit Promotions"/);
+    expect(src).toMatch(/pickerStrategies/);
+    expect(src).toMatch(/giveWord/);
+    expect(src).toMatch(/placementWord/);
     expect(src).toMatch(/orders and prepaid stay off/);
     expect(src).not.toMatch(/matrix\.orders/);
-    expect(src).toMatch(/\[capError, setCapError\]/);
-    expect(src).toMatch(/setCapError\(r\.error\)/);
-    // Stale Discount Cap ErrorNote must not survive a later strategy write.
-    expect(src).toMatch(/setSwitchError\(null\);\s*setCapError\(null\);/);
-    expect(src).toMatch(/setModalError\(null\);\s*setCapError\(null\);/);
-    expect(src).toMatch(/setDropError\(null\);\s*setCapError\(null\);/);
+    expect(src).not.toMatch(/title="FAQs"/);
+    expect(src).not.toMatch(/title="Calculator"/);
+    expect(src).not.toMatch(/title="Discount Cap"/);
+    expect(src).not.toMatch(/FaqsBox/);
+    expect(src).not.toMatch(/VisitDistributionCalculator/);
+    expect(src).not.toMatch(/DiscountCapPicker/);
+    expect(src).not.toContain("[capError, setCapError]");
+    // Dominant is leftover-only — not a picker option unless already stored.
+    expect(src).toMatch(/s\.id !== "dominant" \|\| current === "dominant"/);
   });
 });
