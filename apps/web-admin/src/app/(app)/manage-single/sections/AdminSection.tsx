@@ -10,16 +10,17 @@ import {
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StatusCard } from "./StatusCard";
+import { IntakeStatusCard } from "./IntakeStatusCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — Status is ONE box (7 general bools + 11 Intake chips):
-//   Status      GENERAL — Created · Active · Listed · Enriched · Verified ·
+// Admin — Status is TWO boxes:
+//   Status      Created · Active · Listed · Enriched · Verified ·
 //               Partner · Promoting. Enriched is a yes (queue finished).
-//               INTAKE — 0 Seed · 1 Pulse · 2 Details · 3 Serp · 4 Links ·
-//               5 Social · 6 Images · 7 Menu · 8 Reviews · 9 Description ·
-//               10 Semantics — green called / yellow not.
+//   Intake      0. Seed · 1. Pulse · 2. Details · 3. Serp · 4. Links ·
+//               5. Social · 6. Images · 7. Menu · 8. Reviews ·
+//               9. Description · 10. Semantic — green called / yellow not.
 // Then the rest:
 //   Enrichment  queues the full Intaker process
 //   SERP / Embedding / Metadata
@@ -70,6 +71,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
         verification={verification}
         verificationError={verificationError}
       />
+      <IntakeStatusCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <SerpSummaryCard place={place} />

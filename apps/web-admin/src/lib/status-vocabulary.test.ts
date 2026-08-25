@@ -4,6 +4,7 @@ import {
   GENERAL_STATUS_FACTS,
   INTAKE_FUNCTION_COUNT,
   INTAKE_FUNCTIONS,
+  intakeFunctionLabel,
 } from "./status-vocabulary";
 
 describe("status vocabulary", () => {
@@ -19,18 +20,21 @@ describe("status vocabulary", () => {
       "Partner",
       "Promoting",
     ]);
-    expect(INTAKE_FUNCTIONS.map((f) => `${f.n} ${f.label}`)).toEqual([
-      "0 Seed",
-      "1 Pulse",
-      "2 Details",
-      "3 Serp",
-      "4 Links",
-      "5 Social",
-      "6 Images",
-      "7 Menu",
-      "8 Reviews",
-      "9 Description",
-      "10 Semantics",
+    expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([
+      "0. Seed",
+      "1. Pulse",
+      "2. Details",
+      "3. Serp",
+      "4. Links",
+      "5. Social",
+      "6. Images",
+      "7. Menu",
+      "8. Reviews",
+      "9. Description",
+      "10. Semantic",
     ]);
+    expect(INTAKE_FUNCTIONS.map((f) => intakeFunctionLabel(f.n, f.label))).toEqual(
+      INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`),
+    );
   });
 });

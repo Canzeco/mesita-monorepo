@@ -1,9 +1,10 @@
 "use client";
 
-// Status — where a place stands, in ONE box.
+// Status — the Statuses box: seven facts, each a bool, each from its own
+// source. Intake (0. Seed … 10. Semantic) lives in IntakeStatusCard.
 //
-// Seven facts, each a bool, each from its own source. The state is Created;
-// Seed is Intake function 0. Wire key `seeded` / `isPlaceSeeded` stays.
+// The state is Created; Seed is Intake function 0. Wire key `seeded` /
+// `isPlaceSeeded` stays.
 //
 //   Created    google_place_id present (identity spine)
 //   Active     Google OPERATIONAL
@@ -40,12 +41,9 @@ import {
   membershipPillState,
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
-import { intakeFunctionRows, type EnrichFunctionState } from "./status-enrichment";
 
-// Pato: "i don't want lots of fucking boxes. just create a box called Status.
-// it mention verified, partner, promoting." They were three cards; they are
-// rows, because they are answers to one question — where does this place
-// stand.
+// Statuses box (Pato, 2026-08-25): seven bools. Intake is the next box —
+// not chips under Enriched, and not a Create 1–4 / Enrich 1–10 split.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
@@ -203,11 +201,6 @@ export function StatusCard({
         ? `Google reports a temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Still a real business; nothing is unlisted automatically.`
         : `Google reports this business as PERMANENTLY CLOSED${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Flag only — review and unlist by hand if it is right.`;
 
-  const enrichFunctions = (place.enrich_functions ?? null) as
-    | Record<string, EnrichFunctionState>
-    | null;
-  const intakeRows = intakeFunctionRows(enrichFunctions, seeded);
-
   const enrichedDetail =
     enriched === "unknown"
       ? "Couldn't read the pipeline events."
@@ -317,29 +310,6 @@ export function StatusCard({
           tint="pink"
           detail={promotingDetail}
         />
-        <div className="border-border/60 py-3.5 last:pb-0">
-          <span className="text-foreground/90 type-body font-medium">Intake</span>
-          <p className="text-foreground/70 mt-1 type-label font-medium">
-            The eleven functions, in order — green called, yellow not.
-          </p>
-          <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {intakeRows.map((row) => (
-              <li key={row.key}>
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2.5 py-1 type-label font-semibold " +
-                    (row.on
-                      ? "bg-emerald-500/10 text-emerald-700"
-                      : "bg-amber-500/10 text-amber-700")
-                  }
-                  aria-label={`${row.label}: ${row.on ? "called" : "not called"}`}
-                >
-                  {row.label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
 
       {badged !== promoting ? (

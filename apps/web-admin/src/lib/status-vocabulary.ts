@@ -1,7 +1,7 @@
-// Status — two layers (Pato, 2026-08-25).
+// Status — two boxes (Pato, 2026-08-25).
 //
-//   GENERAL (7)  bools on the Status box, catalog, Monitor fact chips
-//   INTAKE (11)  0–10 in order, each a bool: called or not
+//   STATUSES (7)  bools on the Status box, catalog, Monitor fact chips
+//   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
 // Enriched is a yes, not a high-water. Intake just names the eleven
 // functions. Create 1–4 / Enrich 1–10 stay Config sequences; they are
@@ -30,10 +30,15 @@ export const INTAKE_FUNCTIONS = [
   { key: "menu", label: "Menu", n: 7 },
   { key: "reviews", label: "Reviews", n: 8 },
   { key: "description", label: "Description", n: 9 },
-  { key: "semantic", label: "Semantics", n: 10 },
+  { key: "semantic", label: "Semantic", n: 10 },
 ] as const;
 
 export type IntakeFunctionKey = (typeof INTAKE_FUNCTIONS)[number]["key"];
 
 export const GENERAL_STATUS_COUNT = GENERAL_STATUS_FACTS.length;
 export const INTAKE_FUNCTION_COUNT = INTAKE_FUNCTIONS.length;
+
+/** Operator label: `0. Seed` … `10. Semantic`. */
+export function intakeFunctionLabel(n: number, label: string): string {
+  return `${n}. ${label}`;
+}

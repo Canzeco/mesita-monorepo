@@ -28,17 +28,17 @@ describe("intakeFunctionRows", () => {
       "semantic",
     ]);
     expect(rows.map((r) => r.label)).toEqual([
-      "0 Seed",
-      "1 Pulse",
-      "2 Details",
-      "3 Serp",
-      "4 Links",
-      "5 Social",
-      "6 Images",
-      "7 Menu",
-      "8 Reviews",
-      "9 Description",
-      "10 Semantics",
+      "0. Seed",
+      "1. Pulse",
+      "2. Details",
+      "3. Serp",
+      "4. Links",
+      "5. Social",
+      "6. Images",
+      "7. Menu",
+      "8. Reviews",
+      "9. Description",
+      "10. Semantic",
     ]);
     expect(rows[0]?.on).toBe(true);
     expect(rows[1]?.on).toBe(true);
@@ -48,13 +48,22 @@ describe("intakeFunctionRows", () => {
   });
 });
 
-describe("StatusCard source", () => {
-  it("keeps Enriched a bool and lists Intake as eleven chips", () => {
-    const src = readFileSync(join(__dirname, "StatusCard.tsx"), "utf8");
-    expect(src).toContain("intakeFunctionRows");
-    expect(src).toContain("enrich_functions");
-    expect(src).not.toContain("chipLabel={pulse === null");
-    expect(src).toContain('name="Enriched"');
-    expect(src).toContain("Intake");
+describe("Status + Intake boxes", () => {
+  it("keeps Enriched a bool on Status; Intake is its own card", () => {
+    const status = readFileSync(join(__dirname, "StatusCard.tsx"), "utf8");
+    expect(status).toContain('name="Enriched"');
+    expect(status).not.toContain("intakeFunctionRows");
+    expect(status).not.toContain("CreateStatusCard");
+    expect(status).not.toContain("chipLabel={pulse === null");
+
+    const intake = readFileSync(join(__dirname, "IntakeStatusCard.tsx"), "utf8");
+    expect(intake).toContain("intakeFunctionRows");
+    expect(intake).toContain('title="Intake"');
+    expect(intake).not.toContain("CreateStatusCard");
+
+    const admin = readFileSync(join(__dirname, "AdminSection.tsx"), "utf8");
+    expect(admin).toContain("IntakeStatusCard");
+    expect(admin).not.toContain("IntakeStatusCards");
+    expect(admin).not.toContain("CreateStatusCard");
   });
 });
