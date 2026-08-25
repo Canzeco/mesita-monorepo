@@ -31,7 +31,7 @@ describe("intake subfunctions", () => {
       "Seed",
       "1 Pulse",
       "2 Details",
-      "◇ Semantic",
+      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -42,8 +42,8 @@ describe("intake subfunctions", () => {
       "6 Images",
       "7 Menu",
       "8 Reviews",
-      "9 Description",
-      "◇ Semantic",
+      "9 Description (Category, Tags, Presentation)",
+      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
   });
 

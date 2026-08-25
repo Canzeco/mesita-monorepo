@@ -477,19 +477,13 @@ serveEnrichStage("contents", async (admin, env, row) => {
       : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
-    // SEMANTIC · SUMMARY — a semantic function, not a rung. It writes the
-    // Semantic Summary and vectorises it, after function 9, because it embeds
-    // the text the queue just wrote. It is reported so an operator can see it
-    // and NEVER counted: the same machinery fires on any profile edit, and
-    // `enriched` must not fall because someone renamed a place (MESITA-1243).
-    //
-    // Its sibling, SEMANTIC · NAME, is declared in pulse-pieces.ts and is NOT
-    // BUILT — `places` carries one embedding over the whole facts block today,
-    // so there is no separate name vector to stamp (MESITA-1238). Nothing is
-    // written for it rather than something fake being written.
-    contentPieces.summary = embeddingWrote
-      ? pieceDone("Semantic Summary written and embedded.")
-      : pieceFailed("Embedding did not write. Re-enrich to retry — there is no backfill.");
+    // SEMANTIC — one function, not a rung. It writes Mesita Name + Semantic
+    // Summary + embeddings after function 9. Reported, never counted: the same
+    // machinery fires on any profile edit, and `enriched` must not fall because
+    // someone renamed a place.
+    contentPieces.semantic = embeddingWrote
+      ? pieceDone("Semantic — Mesita Name, Semantic Summary, and embeddings written.")
+      : pieceFailed("Semantic did not write. Re-enrich to retry — there is no backfill.");
   }
   await reportPulsePieces(admin, projectId, contentPieces);
 

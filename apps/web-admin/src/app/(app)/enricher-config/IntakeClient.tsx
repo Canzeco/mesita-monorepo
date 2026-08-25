@@ -574,7 +574,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Closes the queue. Presentation, then Category, then Tags."
+                blurb="Closes the queue. Category, Tags, Presentation."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -586,7 +586,7 @@ export function IntakeClient({
                 index="◇"
                 flows={flowTagFor("semantic")}
                 name="Semantic"
-                blurb="One function writes the Mesita Name vector and the Semantic Summary together. Create awaits it; Enrich ticks it."
+                blurb="Mesita Name, Semantic Summary, and embeddings — one function. Create awaits it; Enrich ticks it."
                 knobs="locked"
               >
                 <NoKnobs>

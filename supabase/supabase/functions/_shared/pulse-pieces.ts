@@ -125,7 +125,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
 };
 
 export const PULSE_EXTRA_LABELS: Record<PulseExtra, string> = {
-  semantic: "Semantic",
+  semantic: "Semantic (Mesita Name & Semantic Summary & Embeddings)",
 };
 
 /**

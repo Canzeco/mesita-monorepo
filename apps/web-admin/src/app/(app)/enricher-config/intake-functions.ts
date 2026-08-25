@@ -24,11 +24,16 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
   { id: "f-images", key: "images", chip: "6 Images", flows: ["enrich"] },
   { id: "f-menu", key: "menu", chip: "7 Menu", flows: ["enrich"] },
   { id: "f-reviews", key: "reviews", chip: "8 Reviews", flows: ["enrich"] },
-  { id: "f-description", key: "description", chip: "9 Description", flows: ["enrich"] },
+  {
+    id: "f-description",
+    key: "description",
+    chip: "9 Description (Category, Tags, Presentation)",
+    flows: ["enrich"],
+  },
   {
     id: "f-semantic",
     key: "semantic",
-    chip: "◇ Semantic",
+    chip: "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
     flows: ["create", "enrich"],
   },
 ];
