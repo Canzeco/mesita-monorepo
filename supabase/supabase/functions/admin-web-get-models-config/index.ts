@@ -13,7 +13,7 @@
 //
 // Live binding (MESITA-941): Intaker/Memo/embeddings read models_config
 // via _shared/models-config.ts. Shape validation lives on the write path
-// (admin-web-update-models-config). Memo Config's legacy memo_openai_model is a
+// (admin-web-update-models-config). Memo Config's legacy memo_config.openaiModel is a
 // one-release fallback behind models_config.memo.model.
 //
 // Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults

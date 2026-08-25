@@ -1,9 +1,8 @@
 // memo-prompt.ts — Memo's voice.
 //
 // The default persona lives here in code; the operator-tunable override lives in
-// app_config.memo_instructions, written by the admin console's Memo Config
-// page and SERVED to Memo by supabase-edgefunc-get-memo-config (Memo holds no
-// database client — see memo-data.ts).
+// app_config.memo_config.instructions, served to Memo by
+// supabase-edgefunc-get-memo-config (Memo holds no database client — see memo-data.ts).
 //
 // So this file is pure: it owns the default and the fallback rule, not the read.
 // A blank or unreadable config falls back to SYSTEM_PROMPT — a config hiccup

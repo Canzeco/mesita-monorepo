@@ -32,35 +32,11 @@ export type Database = {
       app_config: {
         Row: {
           agents_config: Json
-          atlas_analyze_google_images: number
-          atlas_analyze_instagram_images: number
-          atlas_discover_facebook_n: number
-          atlas_discover_instagram_n: number
-          atlas_discover_opentable_n: number
-          atlas_discover_ubereats_n: number
-          atlas_discover_website_n: number
-          atlas_gather_google_images: number
-          atlas_gather_instagram_depth: number
-          atlas_gather_instagram_posts: number
-          atlas_gather_reviews: number
-          atlas_image_analysis_prompt: string
-          atlas_image_sorting_prompt: string
-          atlas_image_vision_enabled: boolean
-          atlas_per_run_cost_cap_usd: number
-          atlas_perplexity_preset: string
-          atlas_save_images_to_storage: boolean
-          atlas_save_total_images: number
-          atlas_synthesis_quality: string
-          atlas_vision_quality: string
           discovery_config: Json
+          enrichment_config: Json
           enrichment_triggers: Json | null
           id: number
-          memo_greeting: string
-          memo_instructions: string
-          memo_openai_model: string
-          memo_perplexity_model: string
-          memo_provider: string
-          memo_web_grounding: boolean
+          memo_config: Json
           models_config: Json
           ojo_config: Json | null
           orders_config: Json | null
@@ -74,35 +50,11 @@ export type Database = {
         }
         Insert: {
           agents_config?: Json
-          atlas_analyze_google_images?: number
-          atlas_analyze_instagram_images?: number
-          atlas_discover_facebook_n?: number
-          atlas_discover_instagram_n?: number
-          atlas_discover_opentable_n?: number
-          atlas_discover_ubereats_n?: number
-          atlas_discover_website_n?: number
-          atlas_gather_google_images?: number
-          atlas_gather_instagram_depth?: number
-          atlas_gather_instagram_posts?: number
-          atlas_gather_reviews?: number
-          atlas_image_analysis_prompt?: string
-          atlas_image_sorting_prompt?: string
-          atlas_image_vision_enabled?: boolean
-          atlas_per_run_cost_cap_usd?: number
-          atlas_perplexity_preset?: string
-          atlas_save_images_to_storage?: boolean
-          atlas_save_total_images?: number
-          atlas_synthesis_quality?: string
-          atlas_vision_quality?: string
           discovery_config?: Json
+          enrichment_config?: Json
           enrichment_triggers?: Json | null
           id?: number
-          memo_greeting?: string
-          memo_instructions?: string
-          memo_openai_model?: string
-          memo_perplexity_model?: string
-          memo_provider?: string
-          memo_web_grounding?: boolean
+          memo_config?: Json
           models_config?: Json
           ojo_config?: Json | null
           orders_config?: Json | null
@@ -116,35 +68,11 @@ export type Database = {
         }
         Update: {
           agents_config?: Json
-          atlas_analyze_google_images?: number
-          atlas_analyze_instagram_images?: number
-          atlas_discover_facebook_n?: number
-          atlas_discover_instagram_n?: number
-          atlas_discover_opentable_n?: number
-          atlas_discover_ubereats_n?: number
-          atlas_discover_website_n?: number
-          atlas_gather_google_images?: number
-          atlas_gather_instagram_depth?: number
-          atlas_gather_instagram_posts?: number
-          atlas_gather_reviews?: number
-          atlas_image_analysis_prompt?: string
-          atlas_image_sorting_prompt?: string
-          atlas_image_vision_enabled?: boolean
-          atlas_per_run_cost_cap_usd?: number
-          atlas_perplexity_preset?: string
-          atlas_save_images_to_storage?: boolean
-          atlas_save_total_images?: number
-          atlas_synthesis_quality?: string
-          atlas_vision_quality?: string
           discovery_config?: Json
+          enrichment_config?: Json
           enrichment_triggers?: Json | null
           id?: number
-          memo_greeting?: string
-          memo_instructions?: string
-          memo_openai_model?: string
-          memo_perplexity_model?: string
-          memo_provider?: string
-          memo_web_grounding?: boolean
+          memo_config?: Json
           models_config?: Json
           ojo_config?: Json | null
           orders_config?: Json | null

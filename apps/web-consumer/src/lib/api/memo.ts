@@ -21,7 +21,7 @@ export type MemoAnswer = {
   // True when the card rail is a Mesita sample (Google leg empty) rather
   // than query-specific results — the prose stays real either way.
   mocked: boolean;
-  // Operator-configured Ask AI opener (app_config.memo_greeting). Present on
+  // Operator-configured Ask AI opener (app_config.memo_config.greeting). Present on
   // every successful ask-memo response, including the empty-query bootstrap.
   greeting?: string | null;
 };

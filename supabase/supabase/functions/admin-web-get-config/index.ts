@@ -30,6 +30,7 @@ import {
   enrichmentTriggersMeta,
   normalizeEnrichmentTriggers,
 } from "../_shared/enrich-triggers.ts";
+import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("app_config")
     .select(
-      "verification_config, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
+      "verification_config, enrichment_config, enrichment_triggers, updated_at",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -61,30 +62,14 @@ Deno.serve(async (req) => {
   }
 
   const verificationConfig = normalizeVerificationConfig(data.verification_config);
+  const enrichmentConfig = normalizeEnrichmentConfig(
+    (data as { enrichment_config?: unknown }).enrichment_config,
+  );
 
   return jsonOk({
     autoVerifyAiCall: verificationConfig.autoVerifyAiCall,
     autoVerifyAiEmail: verificationConfig.autoVerifyAiEmail,
-    atlasGatherGoogleImages: data.atlas_gather_google_images,
-    atlasGatherInstagramDepth: data.atlas_gather_instagram_depth,
-    atlasGatherInstagramPosts: data.atlas_gather_instagram_posts,
-    atlasGatherReviews: data.atlas_gather_reviews,
-    atlasImageVisionEnabled: data.atlas_image_vision_enabled,
-    atlasAnalyzeGoogleImages: data.atlas_analyze_google_images,
-    atlasAnalyzeInstagramImages: data.atlas_analyze_instagram_images,
-    atlasSaveTotalImages: data.atlas_save_total_images,
-    atlasSaveImagesToStorage: data.atlas_save_images_to_storage,
-    atlasImageAnalysisPrompt: data.atlas_image_analysis_prompt,
-    atlasImageSortingPrompt: data.atlas_image_sorting_prompt,
-    atlasSynthesisQuality: data.atlas_synthesis_quality,
-    atlasVisionQuality: data.atlas_vision_quality,
-    atlasPerplexityPreset: data.atlas_perplexity_preset,
-    atlasPerRunCostCapUsd: data.atlas_per_run_cost_cap_usd,
-    atlasDiscoverWebsiteN: data.atlas_discover_website_n,
-    atlasDiscoverInstagramN: data.atlas_discover_instagram_n,
-    atlasDiscoverFacebookN: data.atlas_discover_facebook_n,
-    atlasDiscoverOpentableN: data.atlas_discover_opentable_n,
-    atlasDiscoverUbereatsN: data.atlas_discover_ubereats_n,
+    ...enrichmentConfig,
     enrichmentTriggersMeta: enrichmentTriggersMeta(),
     enrichmentTriggers: normalizeEnrichmentTriggers(
       (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,

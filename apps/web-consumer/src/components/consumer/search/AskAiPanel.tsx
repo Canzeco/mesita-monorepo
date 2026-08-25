@@ -85,7 +85,7 @@ export function AskAiPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, thinking, related]);
 
-  // Pull memo_greeting from ask-memo bootstrap; keep FALLBACK on failure.
+  // Pull memo greeting from ask-memo bootstrap; keep FALLBACK on failure.
   useEffect(() => {
     if (!loadGreeting) return;
     let cancelled = false;

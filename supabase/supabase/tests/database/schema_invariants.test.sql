@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(50);
+select plan(53);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -390,6 +390,26 @@ select ok(
      where relname = 'places_embedding_hnsw' and relkind = 'i'
   ),
   'places_embedding_hnsw exists'
+);
+
+-- MESITA-1248: leftover atlas_* / memo_* scalars folded into jsonb.
+select is(
+  (select count(*)::bigint from information_schema.columns
+    where table_schema = 'public' and table_name = 'app_config'
+      and column_name ~ '^(atlas_|memo_)'
+      and column_name <> 'memo_config'),
+  0::bigint,
+  'app_config has no leftover atlas_* / memo_* scalars (folded into enrichment_config / memo_config)'
+);
+
+select has_column(
+  'public', 'app_config', 'enrichment_config',
+  'app_config.enrichment_config holds the Intake knobs'
+);
+
+select has_column(
+  'public', 'app_config', 'memo_config',
+  'app_config.memo_config holds Memo greeting/instructions/legacy model keys'
 );
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━

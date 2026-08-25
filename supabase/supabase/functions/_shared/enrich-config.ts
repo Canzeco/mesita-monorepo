@@ -1,12 +1,12 @@
 // Intaker pipeline: run-time config + shared types.
 //
-// Every knob lives in app_config (columns still named atlas_* for
-// historical continuity with the admin console) and is read at run time —
-// the DB is the single source of truth; callers never pass overrides.
+// Every knob lives in app_config.enrichment_config (MESITA-1248 fold of the
+// leftover atlas_* scalars) and is read at run time — the DB is the single
+// source of truth; callers never pass overrides.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
+import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -38,7 +38,7 @@ export function visionModelFor(quality: string): string {
 
 // Hard ceiling on photos persisted to the place, regardless of per-source caps.
 // Safety bound on the candidate pool before save (the real, source-independent
-// save cap is atlas_save_total_images, applied at the end).
+// save cap is enrichment_config.atlasSaveTotalImages, applied at the end).
 export const PHOTO_CEILING = 50;
 
 // Presentation target: a full public narrative, not a blurb. ~7 chars/word
@@ -134,57 +134,48 @@ export type EnrichConfig = {
   analyzeInstagramImages: number;
   imageAnalysisPrompt: string;
   imageSortingPrompt: string;
-  // Retired operator knob (MESITA-624). Column still reads; the ledger
+  // Retired operator knob (MESITA-624). Blob still reads; the ledger
   // records spend and does not abort on it.
   perRunCostCapUsd: number;
 };
 
-const DEFAULT_ANALYSIS_PROMPT =
-  "Describe this place photo: subject (ambience / interior / exterior / food / people / detail), visual quality, lighting, and whether it is representative and appealing. Be concise and factual.";
-const DEFAULT_SORTING_PROMPT =
-  "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambience / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images.";
-
-// Read the Atlas admin knobs from app_config (row id=1) and derive the step
-// gates. The select is a single string LITERAL on purpose: supabase-js infers
-// the row type only from a literal argument — anything that widens to `string`
-// falls back to GenericStringError and untypes cfg.atlas_*.
+// Read the Intake admin knobs from app_config.enrichment_config (row id=1).
+// The select is a single string LITERAL on purpose: supabase-js infers the
+// row type only from a literal argument — anything that widens to `string`
+// falls back to GenericStringError.
 export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichConfig> {
   const { data: cfg } = await admin
     .from("app_config")
-    .select(
-      "atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n",
-    )
+    .select("enrichment_config")
     .eq("id", 1)
     .maybeSingle();
 
-  const num = (v: unknown, d: number) =>
-    typeof v === "number" && Number.isFinite(v) ? v : d;
+  const blob = normalizeEnrichmentConfig(
+    (cfg as { enrichment_config?: unknown } | null)?.enrichment_config,
+  );
 
   return {
-    synthesisQuality: (cfg?.atlas_synthesis_quality as string | undefined) ?? "economy",
-    visionQuality: (cfg?.atlas_vision_quality as string | undefined) ?? "economy",
-    perplexityPreset: (cfg?.atlas_perplexity_preset as string | undefined) ?? "pro-search",
-    gatherGoogleImages: num(cfg?.atlas_gather_google_images, 10),
-    gatherInstagramDepth: num(cfg?.atlas_gather_instagram_depth, 30),
-    gatherInstagramPosts: num(cfg?.atlas_gather_instagram_posts, 10),
-    gatherReviews: num(cfg?.atlas_gather_reviews, ENRICH_FIELD_LIMITS.googleReviews.max),
+    synthesisQuality: blob.atlasSynthesisQuality,
+    visionQuality: blob.atlasVisionQuality,
+    perplexityPreset: blob.atlasPerplexityPreset,
+    gatherGoogleImages: blob.atlasGatherGoogleImages,
+    gatherInstagramDepth: blob.atlasGatherInstagramDepth,
+    gatherInstagramPosts: blob.atlasGatherInstagramPosts,
+    gatherReviews: blob.atlasGatherReviews,
     discoverCandidates: {
-      website_url: num(cfg?.atlas_discover_website_n, 5),
-      instagram_url: num(cfg?.atlas_discover_instagram_n, 5),
-      facebook_url: num(cfg?.atlas_discover_facebook_n, 5),
-      opentable_url: num(cfg?.atlas_discover_opentable_n, 3),
-      uber_eats_url: num(cfg?.atlas_discover_ubereats_n, 2),
+      website_url: blob.atlasDiscoverWebsiteN,
+      instagram_url: blob.atlasDiscoverInstagramN,
+      facebook_url: blob.atlasDiscoverFacebookN,
+      opentable_url: blob.atlasDiscoverOpentableN,
+      uber_eats_url: blob.atlasDiscoverUbereatsN,
     },
-    saveTotalImages: num(cfg?.atlas_save_total_images, 10),
-    saveImagesToStorage: (cfg?.atlas_save_images_to_storage as boolean) ?? true,
-    visionEnabled: (cfg?.atlas_image_vision_enabled as boolean) ?? true,
-    analyzeGoogleImages: num(cfg?.atlas_analyze_google_images, 10),
-    analyzeInstagramImages: num(cfg?.atlas_analyze_instagram_images, 10),
-    imageAnalysisPrompt:
-      (cfg?.atlas_image_analysis_prompt as string | undefined)?.trim() || DEFAULT_ANALYSIS_PROMPT,
-    imageSortingPrompt:
-      (cfg?.atlas_image_sorting_prompt as string | undefined)?.trim() || DEFAULT_SORTING_PROMPT,
-    // Default matches migration 0042 / live app_config row.
-    perRunCostCapUsd: num(cfg?.atlas_per_run_cost_cap_usd, 1.0),
+    saveTotalImages: blob.atlasSaveTotalImages,
+    saveImagesToStorage: blob.atlasSaveImagesToStorage,
+    visionEnabled: blob.atlasImageVisionEnabled,
+    analyzeGoogleImages: blob.atlasAnalyzeGoogleImages,
+    analyzeInstagramImages: blob.atlasAnalyzeInstagramImages,
+    imageAnalysisPrompt: blob.atlasImageAnalysisPrompt,
+    imageSortingPrompt: blob.atlasImageSortingPrompt,
+    perRunCostCapUsd: blob.atlasPerRunCostCapUsd,
   };
 }
