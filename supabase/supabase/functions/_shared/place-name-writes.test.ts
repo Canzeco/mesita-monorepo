@@ -176,6 +176,18 @@ Deno.test("the Intaker never writes mesita_name", async () => {
   );
 });
 
+Deno.test("contents persist drops google_place_id before the writePlace update", async () => {
+  const src = await Deno.readTextFile(
+    new URL("../supabase-cron-enrich-place-contents/index.ts", import.meta.url),
+  );
+  assertEquals(
+    /google_place_id:\s*_dropGooglePlaceId/.test(src),
+    true,
+    "gathered.place carries google_place_id; writePlace refuses that key on " +
+      "UPDATE. Drop it in the persist destructure or Contents S7 dies on every place.",
+  );
+});
+
 Deno.test("place-display-name.ts stays deleted", async () => {
   let exists = true;
   try {
