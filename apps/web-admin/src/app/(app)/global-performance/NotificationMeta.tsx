@@ -3,7 +3,7 @@ import { CheckCircle2, Clock, ExternalLink, XCircle } from "lucide-react";
 import type { NotificationItem } from "./actions";
 import { enricherPhase } from "./notification-enricher-phase";
 import { TONES } from "./notification-config";
-import { intakeCreateChips, intakeEnrichChips, intakeFactChips } from "./notification-feed";
+import { intakeFactChips, intakeFunctionChips } from "./notification-feed";
 
 const CLAIM_METHOD_LABEL: Record<string, string> = {
   ai_call: "Phone OTP",
@@ -35,23 +35,13 @@ export function MetaRow({ item }: { item: NotificationItem }) {
         </MetaTag>,
       );
     }
-    for (const chip of intakeCreateChips(item)) {
+    for (const chip of intakeFunctionChips(item)) {
       tags.push(
         <MetaTag
-          key={`create:${chip.key}`}
-          className={chip.on ? TONES.sky.chip : TONES.muted.chip}
+          key={`fn:${chip.key}`}
+          className={chip.on ? TONES.emerald.chip : TONES.amber.chip}
         >
-          Create {chip.label}
-        </MetaTag>,
-      );
-    }
-    for (const chip of intakeEnrichChips(item)) {
-      tags.push(
-        <MetaTag
-          key={`enrich:${chip.key}`}
-          className={chip.on ? TONES.rose.chip : TONES.muted.chip}
-        >
-          Enrich {chip.label}
+          {chip.label}
         </MetaTag>,
       );
     }

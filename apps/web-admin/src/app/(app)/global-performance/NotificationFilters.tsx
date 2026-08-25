@@ -6,15 +6,13 @@ import type { NotificationsPayload, NotificationType } from "./actions";
 import { TYPE_CONFIG, TYPE_ORDER, TONES } from "./notification-config";
 import {
   DOMAINS,
-  INTAKE_CREATE_FACTS,
-  INTAKE_ENRICH_FACTS,
+  INTAKE_FUNCTIONS,
   STATUS_FACTS,
   STEP_TYPE,
   typesInDomain,
   type DomainKey,
-  type IntakeCreateKey,
-  type IntakeEnrichKey,
   type IntakeFilter,
+  type IntakeFunctionKey,
   type StatusFactKey,
 } from "./notification-feed";
 
@@ -39,8 +37,7 @@ export function NotificationFilters({
   total,
   counts,
   statusCounts,
-  createCounts,
-  enrichCounts,
+  functionCounts,
   placeQuery,
   updatedLabel,
   pending,
@@ -60,8 +57,7 @@ export function NotificationFilters({
   total: number;
   counts: NotificationsPayload["counts"];
   statusCounts: Record<StatusFactKey, number>;
-  createCounts: Record<IntakeCreateKey, number>;
-  enrichCounts: Record<IntakeEnrichKey, number>;
+  functionCounts: Record<IntakeFunctionKey, number>;
   placeQuery: string;
   updatedLabel: string;
   pending: boolean;
@@ -193,30 +189,17 @@ export function NotificationFilters({
       </div>
 
       {intake && (
-        <>
-          <ChipRow>
-            {INTAKE_CREATE_FACTS.map((fact) => (
-              <FilterSegment
-                key={fact.key}
-                active={statusFilter === `create:${fact.key}`}
-                label={`${fact.n} ${fact.label}`}
-                count={createCounts[fact.key] ?? 0}
-                onClick={() => onStatusFilterChange(`create:${fact.key}`)}
-              />
-            ))}
-          </ChipRow>
-          <ChipRow>
-            {INTAKE_ENRICH_FACTS.map((fact) => (
-              <FilterSegment
-                key={fact.key}
-                active={statusFilter === `enrich:${fact.key}`}
-                label={`${fact.n} ${fact.label}`}
-                count={enrichCounts[fact.key] ?? 0}
-                onClick={() => onStatusFilterChange(`enrich:${fact.key}`)}
-              />
-            ))}
-          </ChipRow>
-        </>
+        <ChipRow>
+          {INTAKE_FUNCTIONS.map((fact) => (
+            <FilterSegment
+              key={fact.key}
+              active={statusFilter === `fn:${fact.key}`}
+              label={`${fact.n} ${fact.label}`}
+              count={functionCounts[fact.key] ?? 0}
+              onClick={() => onStatusFilterChange(`fn:${fact.key}`)}
+            />
+          ))}
+        </ChipRow>
       )}
     </div>
   );

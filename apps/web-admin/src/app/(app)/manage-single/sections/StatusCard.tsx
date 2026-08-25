@@ -1,20 +1,17 @@
 "use client";
 
-// Status — GENERAL facts, one of three Admin Status boxes.
+// Status — where a place stands, in ONE box.
 //
-// Seven facts, each read from its own source. The state is Created, not
-// Seeded — Seeded is Create Seed, the first Intake Create subfunction.
-// Wire key `seeded` / `isPlaceSeeded` stays. Operator label is Created.
+// Seven facts, each a bool, each from its own source. The state is Created;
+// Seed is Intake function 0. Wire key `seeded` / `isPlaceSeeded` stays.
 //
 //   Created    google_place_id present (identity spine)
 //   Active     Google OPERATIONAL
 //   Listed     projects.status ∈ (active, lead)
-//   Enriched   PULSE high-water === 10
+//   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
 //   Promoting  live discount
-//
-// Create and Enrich functions live in their own boxes (MESITA-1314).
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -43,6 +40,7 @@ import {
   membershipPillState,
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
+import { intakeFunctionRows, type EnrichFunctionState } from "./status-enrichment";
 
 // Pato: "i don't want lots of fucking boxes. just create a box called Status.
 // it mention verified, partner, promoting." They were three cards; they are
@@ -59,9 +57,7 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //              constant either: archive a place and every guest surface stops
 //              resolving it. Today it is true for every row only because
 //              nothing writes any status but 'active'.
-//   Enriched   HOW FAR the PULSE queue got, 0-10, off place_enrichment_events.
-//              A high-water, not a yes: the index of the last rung such that
-//              it and every rung before it completed.
+//   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
 //   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
@@ -143,23 +139,16 @@ export function StatusCard({
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const listed: boolean | "unknown" =
     typeof place.listed === "boolean" ? place.listed : "unknown";
-  // The PULSE high-water, 0-10 (MESITA-1172) — the SAME number the catalog
-  // table shows, from the same helper, so the two screens cannot disagree.
-  // There is no fallback: a payload without it renders "?" rather than a 0,
-  // because 0 is a real rung ("seeded, nothing since") and claiming it for a
-  // failed read would report a complete place as an untouched one.
+  // Enriched is complete-or-not, from the same high-water the catalog uses.
+  // A missing number is unknown, not a no.
   const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
-  // Names and total both come from the server list, so they cannot disagree
-  // with each other or with the ladder they describe.
-  const pulseLabels = Array.isArray(place.enrich_pulse_labels)
-    ? (place.enrich_pulse_labels as string[])
-    : [];
-  // The scale tops out at the LAST index, not the label count: labels[0] is
-  // the Created floor label (not a function), so eleven labels describe a 0-10
-  // scale (MESITA-1253).
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
-    : Math.max(0, pulseLabels.length - 1);
+    : null;
+  const enriched: boolean | "unknown" =
+    pulse === null || pulseTotal === null || pulseTotal === 0
+      ? "unknown"
+      : pulse >= pulseTotal;
   const placeStatus = typeof place.status === "string" ? place.status : null;
 
   const seededDetail =
@@ -214,37 +203,20 @@ export function StatusCard({
         ? `Google reports a temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Still a real business; nothing is unlisted automatically.`
         : `Google reports this business as PERMANENTLY CLOSED${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Flag only — review and unlist by hand if it is right.`;
 
-  // Names the function the queue actually reached — off the SAME number the
-  // chip shows. The one after it is what has not completed, which is the
-  // question an operator looking at a stalled place is actually asking.
-  //
-  // `pulseLabels` is indexed BY FUNCTION NUMBER (labels[0] is the Created
-  // floor label), so this is a direct lookup.
-  const rung = (n: number) => pulseLabels[n] ?? `function ${n}`;
-
-  // WHY it stopped, when the server said. 0 is ambiguous on its own: function 1
-  // FAILS a place Google reports permanently closed, so 0 means both "seeded,
-  // nothing tried" and "we asked, and the listing is dead". Asserting the first
-  // for both is a confident lie about a place someone may re-enrich.
-  const blocked = (place.enrich_pulse_blocked ?? null) as
-    | { key: string; index: number; status: "failed" | "missing" }
+  const enrichFunctions = (place.enrich_functions ?? null) as
+    | Record<string, EnrichFunctionState>
     | null;
-  const failedAt = blocked?.status === "failed" ? blocked : null;
+  const intakeRows = intakeFunctionRows(enrichFunctions, seeded);
+
   const enrichedDetail =
-    pulse === null || pulseTotal === 0
+    enriched === "unknown"
       ? "Couldn't read the pipeline events."
-      : (failedAt
-        ? `Stopped at ${rung(failedAt.index)} (${pulse}/${pulseTotal}) — that function ran and failed.`
-        : pulse === 0
-        ? "Created — nothing enriched yet."
-        : pulse >= pulseTotal
-          ? `All ${pulseTotal} functions completed — the queue finished.`
-          : `Reached ${rung(pulse)} (${pulse}/${pulseTotal}). ${
-              rung(pulse + 1)
-            } has not completed.`) +
-        (place.enriched_at
-          ? ` · last run ${String(place.enriched_at).slice(0, 10)}`
-          : "");
+      : enriched
+        ? "The Intake queue finished." +
+          (place.enriched_at
+            ? ` Last run ${String(place.enriched_at).slice(0, 10)}.`
+            : "")
+        : "The Intake queue has not finished.";
 
   // An unknown must never render as a false negative: misreporting a real
   // place's standing is worse than admitting the lookup failed.
@@ -323,9 +295,8 @@ export function StatusCard({
         />
         <StatusRow
           name="Enriched"
-          value={pulse === pulseTotal}
+          value={enriched}
           tint="violet"
-          chipLabel={pulse === null ? undefined : `${pulse}/${pulseTotal}`}
           detail={enrichedDetail}
         />
         <StatusRow
@@ -346,6 +317,29 @@ export function StatusCard({
           tint="pink"
           detail={promotingDetail}
         />
+        <div className="border-border/60 py-3.5 last:pb-0">
+          <span className="text-foreground/90 type-body font-medium">Intake</span>
+          <p className="text-foreground/70 mt-1 type-label font-medium">
+            The eleven functions, in order — green called, yellow not.
+          </p>
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {intakeRows.map((row) => (
+              <li key={row.key}>
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2.5 py-1 type-label font-semibold " +
+                    (row.on
+                      ? "bg-emerald-500/10 text-emerald-700"
+                      : "bg-amber-500/10 text-amber-700")
+                  }
+                  aria-label={`${row.label}: ${row.on ? "called" : "not called"}`}
+                >
+                  {row.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {badged !== promoting ? (
@@ -377,17 +371,19 @@ function StatusRow({
   detail,
   chipLabel,
   action,
+  children,
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
-  /** Overrides the chip text in BOTH states. Enriched is a 0-10 high-water, not
-   *  a yes, so its chip reads "5/10" whether or not the queue finished. */
+  /** Overrides the chip text in BOTH states. Active uses this for Google's
+   *  CLOSED_* wording. */
   chipLabel?: string;
   /** Control rendered under the detail line. Only Listed has one: it is the
    *  only fact on this card an operator sets directly rather than earns. */
   action?: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const on = value === true;
   const chipClass = {
@@ -405,6 +401,7 @@ function StatusRow({
       <div className="min-w-0">
         <span className="text-foreground/90 type-body font-medium">{name}</span>
         <p className="text-foreground/70 mt-1 type-label font-medium">{detail}</p>
+        {children}
         {action ? <div className="mt-2.5">{action}</div> : null}
       </div>
       <span

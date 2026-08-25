@@ -1,4 +1,4 @@
-import { chipsFor, type IntakeFlow } from "../../enricher-config/intake-functions";
+import { INTAKE_FUNCTIONS, type IntakeFunctionKey } from "@/lib/status-vocabulary";
 
 export type EnrichFunctionState = {
   status: "pending" | "completed" | "failed";
@@ -6,46 +6,32 @@ export type EnrichFunctionState = {
   detail: string | null;
 };
 
-export type EnrichFunctionRow = {
-  key: string;
+export type IntakeFunctionRow = {
+  key: IntakeFunctionKey;
+  n: number;
   label: string;
-  status: EnrichFunctionState["status"];
+  on: boolean;
 };
 
-function rowsFor(
-  flow: IntakeFlow,
-  functions: Record<string, EnrichFunctionState> | null | undefined,
-): EnrichFunctionRow[] {
-  return chipsFor(flow).map((chip) => {
-    const key = chip.href.replace(/^#f-/, "");
-    const rec = functions?.[key];
-    return {
-      key,
-      label: chip.label,
-      status: rec?.status ?? "pending",
-    };
-  });
+function called(status: EnrichFunctionState["status"] | undefined): boolean {
+  return status === "completed" || status === "failed";
 }
 
 /**
- * Intake Create (1 Seed · 2 Pulse · 3 Details · 4 Semantic).
- * Seed is the row existing (`google_place_id`) — nothing stamps a `seed` event.
- * Pulse / Details / Semantic reuse the same function map Enrich reads.
+ * The eleven Intake functions Status mentions — 0 Seed … 10 Semantics —
+ * each a bool: called or not. Same keys as Intake, never a second ladder.
  */
-export function createFunctionRows(
+export function intakeFunctionRows(
   functions: Record<string, EnrichFunctionState> | null | undefined,
-  seeded: boolean,
-): EnrichFunctionRow[] {
-  return rowsFor("create", functions).map((row) =>
-    row.key === "seed"
-      ? { ...row, status: seeded ? "completed" : "pending" }
-      : row,
-  );
-}
-
-/** Intake Enrich 1–10 — same keys as Intake chips, never a second ladder. */
-export function enrichFunctionRows(
-  functions: Record<string, EnrichFunctionState> | null | undefined,
-): EnrichFunctionRow[] {
-  return rowsFor("enrich", functions);
+  seeded: boolean | "unknown",
+): IntakeFunctionRow[] {
+  return INTAKE_FUNCTIONS.map((def) => ({
+    key: def.key,
+    n: def.n,
+    label: `${def.n} ${def.label}`,
+    on:
+      def.key === "seed"
+        ? seeded === true
+        : called(functions?.[def.key]?.status),
+  }));
 }
