@@ -56,6 +56,7 @@ import {
   selectReservationEndpoint,
 } from "../_shared/enrich-reservation-endpoint.ts";
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
+import { persistGoogleReviews } from "../_shared/enrich-google-review-snippets.ts";
 import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 import {
   advanceResearchStage,
@@ -348,6 +349,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
     yelp_url?: unknown;
     requires_story?: unknown;
   };
+  if ("google_reviews" in placeUpdate) {
+    placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);
+  }
   const placeRes = await writePlace(admin, {
     table: "places",
     mode: "update",
