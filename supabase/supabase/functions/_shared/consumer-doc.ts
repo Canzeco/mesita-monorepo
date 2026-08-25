@@ -23,24 +23,19 @@
 // THE INVARIANTS, and why each is real (not invented):
 //   - code, if set, is "0000-0000" — the exact DB CHECK
 //     (consumers_code_format_check, 20260602130000).
-//   - sex, if set, is 'male' | 'female' — the DB CHECK is wider ('other' is
-//     still a legal value at the column) but "other" was dropped from the
-//     PRODUCT in MESITA-727 (see update-profile-fields.ts's parseSex); the
-//     validator enforces today's product law, which is stricter than the
-//     historical DB constraint.
+//   - sex, if set, is 'male' | 'female' — the DB CHECK matches.
 //   - instagram_handle, if set, matches ^[a-z0-9._]{1,30}$ — the exact DB
 //     CHECK (20260705090000).
 //   - instagram_followers_count, if set, is a non-negative integer — the
 //     exact DB CHECK (0034_consumer_membership, "consumer_instagram_
 //     followers_count >= 0").
-//   - class_origin, if set, is one of default/instagram/subscription/
-//     invitation — the exact DB CHECK (0034_consumer_membership, unchanged
-//     through the tier->class rename).
-//   - class_expires_at is non-null ONLY when class_origin is 'subscription'
-//     in the SAME patch — this is not a DB constraint, it's the invariant
-//     class-doors.ts's pickEffectiveClass has always upheld in code (every
-//     other origin candidate hardcodes expiresAt: null) but never enforced
-//     against a future writer that isn't class-doors.ts.
+//   - class_origin, if set, is one of default/instagram/invitation —
+//     subscription is a PLAN, never a class origin.
+//   - plan, if set, is 'free' | 'premium'. Independent of class_key.
+//   - class_key / invitation_class_key, if set, are metals (bronze/silver/
+//     gold/diamond) — FK to public.classes.
+//   - class_expires_at, if set, must be null. The slot no longer expires
+//     with a Stripe period; plan does.
 //   - invitation_class_key and invitation_granted_at are set or cleared
 //     TOGETHER — both call sites that touch them (admin-web-grant-class,
 //     consumer-web-claim-invite-code) always write both in the same patch;
@@ -74,11 +69,12 @@ export type ConsumerDoc = {
   privacy_show_visits: boolean;
   privacy_show_stories: boolean;
   class_key: string;
-  class_origin: "default" | "instagram" | "subscription" | "invitation";
+  class_origin: "default" | "instagram" | "invitation";
   class_expires_at: string | null;
   class_granted_at: string | null;
   invitation_class_key: string | null;
   invitation_granted_at: string | null;
+  plan: "free" | "premium";
   created_at: string;
 };
 
@@ -107,6 +103,7 @@ export const CONSUMER_PATCH_KEYS = [
   "class_granted_at",
   "invitation_class_key",
   "invitation_granted_at",
+  "plan",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction: if a field is ever
@@ -135,29 +132,18 @@ const SEX_VALUES = new Set(["male", "female"]);
 const CLASS_ORIGIN_VALUES = new Set([
   "default",
   "instagram",
-  "subscription",
   "invitation",
 ]);
-// consumers.class_key IS a closed set — FK-enforced by Postgres
-// (consumers_tier_key_fkey, a "tier" rename fossil, so a plain grep for
-// "class" on constraint NAMES misses it), not a free string. Verified live:
-// public.classes holds exactly these 4 rows today. These are the LEGACY v11
-// bridge keys (Notion Classes v2 §2.7-2.8) — never compare one to a metal
-// name (bronze/silver/gold/diamond are earned display labels the DB never
-// stores; MESITA-1076 renames the table and retires this bridge, paused
-// pending Pato's own "not shipping this in-session" hold on that issue).
-// Two other files hand-type this identical 4-value set today —
-// admin-web-update-rewards-config/{promos-v11-normalize,
-// rewards-config-normalize}.ts — pre-existing drift risk this issue
-// (MESITA-1282) is scoped to the guard test, not to. Both COULD safely
-// import a shared export from here (no circular dependency — neither file
-// is imported by consumer-doc.ts); left as a documented follow-up rather
-// than touching two live pricing files in a guard-test-scoped change.
+const PLAN_VALUES = new Set(["free", "premium"]);
+// consumers.class_key IS a closed set — FK-enforced by Postgres against
+// public.classes. Live rows are the four metals. identityForClassKey still
+// maps leftover legacy keys on the way INTO pricing; this validator only
+// accepts what Postgres will store.
 const CLASS_KEY_VALUES = new Set([
-  "standard",
-  "influencer",
-  "premium",
-  "aura",
+  "bronze",
+  "silver",
+  "gold",
+  "diamond",
 ]);
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
@@ -262,10 +248,17 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
     if (typeof v !== "string" || !CLASS_ORIGIN_VALUES.has(v)) {
       return {
         ok: false,
-        error: "class_origin must be one of default, instagram, subscription, invitation",
+        error: "class_origin must be one of default, instagram, invitation",
       };
     }
     patch.class_origin = v as ConsumerDoc["class_origin"];
+  }
+  if ("plan" in raw) {
+    const v = raw.plan;
+    if (typeof v !== "string" || !PLAN_VALUES.has(v)) {
+      return { ok: false, error: "plan must be 'free' or 'premium'" };
+    }
+    patch.plan = v as ConsumerDoc["plan"];
   }
   for (const key of ["class_expires_at", "class_granted_at", "invitation_granted_at"] as const) {
     if (!(key in raw)) continue;
@@ -289,14 +282,11 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
   }
 
   // ── Cross-field invariants ────────────────────────────────────────────
-  if (patch.class_origin !== undefined && patch.class_expires_at !== undefined) {
-    const expiresAllowed = patch.class_origin === "subscription";
-    if (!expiresAllowed && patch.class_expires_at !== null) {
-      return {
-        ok: false,
-        error: "class_expires_at must be null unless class_origin is 'subscription'",
-      };
-    }
+  if (patch.class_expires_at !== undefined && patch.class_expires_at !== null) {
+    return {
+      ok: false,
+      error: "class_expires_at must be null (plan, not class, is what a subscription opens)",
+    };
   }
   if (patch.invitation_class_key !== undefined && patch.invitation_granted_at !== undefined) {
     const bothNull = patch.invitation_class_key === null && patch.invitation_granted_at === null;

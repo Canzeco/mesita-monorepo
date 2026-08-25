@@ -5,7 +5,7 @@
 // leaks into any business/staff response.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isClassSegment } from "./rewards-config.ts";
+import { identityForClassKey } from "./rewards-config.ts";
 
 // The subset of place columns the rate resolver needs. Any place row read
 // with PLACE_*_COLUMNS satisfies this.
@@ -25,7 +25,6 @@ export type TierConfig = {
   rank: number;
   follower_threshold: number | null;
   monthly_reservation_limit: number | null;
-  recommendation_weight: number;
 };
 
 // Promos v5 (MESITA-723): the promo rate resolver moved to the grid-authoritative
@@ -38,8 +37,43 @@ export type TierConfig = {
 // class" bar. Every elevated class passes; the base class / null / unknown do
 // not. Generic on purpose (rank > 0 in classes-table terms): a future class
 // INSERT inherits the elevated perks without touching this gate.
-export function isElevatedClass(classKey: string | null | undefined): boolean {
-  return isClassSegment(classKey) && classKey !== "standard";
+export function isElevatedClass(
+  classKey: string | null | undefined,
+  plan?: string | null,
+): boolean {
+  const id = identityForClassKey(
+    classKey,
+    plan === "premium" || plan === "free" ? plan : null,
+  );
+  return id.cls !== "bronze" || id.plan === "premium";
+}
+
+/** True when the guest pays Premium — leftover `premium` class_key still counts. */
+export function isPremiumPlan(
+  classKey: string | null | undefined,
+  plan?: string | null,
+): boolean {
+  return identityForClassKey(
+    classKey,
+    plan === "premium" || plan === "free" ? plan : null,
+  ).plan === "premium";
+}
+
+/**
+ * Class row whose perk numbers (reservation cap) apply. Premium plan at
+ * Bronze shares Silver's elevated perks — money is not a metal, but it
+ * clears the same perk bar.
+ */
+export function perkClassKey(
+  classKey: string | null | undefined,
+  plan?: string | null,
+): string {
+  const id = identityForClassKey(
+    classKey,
+    plan === "premium" || plan === "free" ? plan : null,
+  );
+  if (id.plan === "premium" && id.cls === "bronze") return "silver";
+  return id.cls;
 }
 
 // Loads a tier's config row. Returns null if the key isn't in the lookup.
@@ -50,7 +84,7 @@ export async function getTierConfig(
   const { data } = await admin
     .from("classes")
     .select(
-      "key, label, rank, follower_threshold, monthly_reservation_limit, recommendation_weight",
+      "key, label, rank, follower_threshold, monthly_reservation_limit",
     )
     .eq("key", tierKey)
     .maybeSingle();
@@ -94,7 +128,7 @@ export async function isConsumerFirstVisit(
     .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   if (excludeTicketId) query = query.neq("id", excludeTicketId);
   const { count } = await query;
   return (count ?? 0) === 0;
@@ -111,7 +145,7 @@ export async function hasClaimedReview(
     .from("consumer_review_claims")
     .select("consumer_id", { count: "exact", head: true })
     .eq("consumer_id", consumerId)
-    .eq("project_id", projectId);
+    .eq("place_id", projectId);
   return (count ?? 0) > 0;
 }
 
@@ -137,13 +171,13 @@ export async function consumerVisitedPlaceIds(
   if (projectIds.length === 0) return new Set();
   const { data } = await admin
     .from("visit_tickets")
-    .select("project_id")
+    .select("place_id")
     .eq("consumer_id", consumerId)
-    .in("project_id", projectIds);
-  const rows = (data ?? []) as { project_id: string | null }[];
+    .in("place_id", projectIds);
+  const rows = (data ?? []) as { place_id: string | null }[];
   return new Set(
     rows
-      .map((r) => r.project_id)
+      .map((r) => r.place_id)
       .filter((id): id is string => typeof id === "string"),
   );
 }

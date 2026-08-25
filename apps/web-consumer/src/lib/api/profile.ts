@@ -43,12 +43,12 @@ export type ConsumerProfile = {
 // the (shell) layout feeds into the ClassProvider so every client
 // surface renders the consumer's actual class instead of a hardcoded mock.
 export type ConsumerClass = {
-  // THE SERVER'S key, still a LEGACY class key — `consumers.class_key` has not
-  // moved to Classes v2 (MESITA-1076). Everything downstream reads the v2 axes
-  // instead; `class-context.normalize` is the one place this is bridged, via
-  // identityForClassKey. Do not compare this against "bronze"/"silver"/….
-  key: "standard" | "premium" | "influencer" | "aura";
-  origin: "default" | "instagram" | "subscription" | "invitation";
+  // Live metals (bronze/silver/gold/diamond). Leftover legacy keys still
+  // arrive mid-cutover and are bridged in class-context.
+  key: string;
+  origin: "default" | "instagram" | "invitation" | "subscription";
+  /** What the guest pays. Absent on a stale EF; the bridge then infers. */
+  plan?: "free" | "premium";
   label: string;
   followers: number | null;
   /** consumers.class_expires_at — when a non-default class lapses. */

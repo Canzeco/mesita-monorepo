@@ -219,11 +219,11 @@ Deno.serve(async (req) => {
             // project_verifications has no FK to places — it references the
             // projects entity (shared PK with places). Hop through projects to
             // reach the profile; slug lives on projects, the rest on places.
-            "id, project_id, method, requester_email, status, created_at, project:projects(id, slug, place:places(name, address, category_label, google_place_id))",
+            "id, place_id, method, requester_email, status, created_at, project:projects(id, slug, place:places(name, address, category_label, google_place_id))",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("project_id", projectId);
+        if (projectId) qb = qb.eq("place_id", projectId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -260,14 +260,14 @@ Deno.serve(async (req) => {
         // project_members.manager_id → managers (the business-account table;
         // no compat view exists, so embedding any older name 500s). Alias the
         // result back to `business`.
-        .select("project_id, business:managers(email, full_name, first_name, last_name)")
+        .select("place_id, business:managers(email, full_name, first_name, last_name)")
         .eq("role", "owner")
-        .in("project_id", createdIds);
+        .in("place_id", createdIds);
       if (ownersErr) {
         return json({ ok: false, error: `owners: ${ownersErr.message}` }, 500);
       }
       for (const row of (owners ?? []) as Array<{
-        project_id: string;
+        place_id: string;
         business:
           | { email: string | null; full_name: string | null; first_name: string | null; last_name: string | null }
           | Array<{ email: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>
@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
         const joined = [b?.first_name, b?.last_name].filter(Boolean).join(" ").trim();
         const fullName = b?.full_name?.trim() || null;
         const name = fullName || (joined.length > 0 ? joined : null);
-        ownerByPlace.set(row.project_id, { email: b?.email ?? null, name });
+        ownerByPlace.set(row.place_id, { email: b?.email ?? null, name });
       }
     }
 
@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
     // ── atlas.ownership_claimed ──────────────────────────────────────────
     for (const c of (claimsRes.data ?? []) as Array<{
       id: string;
-      project_id: string;
+      place_id: string;
       method: string | null;
       requester_email: string | null;
       status: string | null;
@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
             )
             .order(orderCol, { ascending: false })
             .limit(limit);
-          if (projectId) qb = qb.eq("project_id", projectId);
+          if (projectId) qb = qb.eq("place_id", projectId);
           if (orderCol !== "created_at") qb = qb.not(orderCol, "is", null);
           for (const [col, val] of Object.entries(eqFilters)) {
             qb = qb.eq(col, val);

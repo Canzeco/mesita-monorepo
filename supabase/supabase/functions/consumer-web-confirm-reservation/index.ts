@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   const { data: ticket, error: loadErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, project_id, consumer_notify",
+      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
     )
     .eq("id", body.reservation_id)
     .maybeSingle();
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const { data: placeRow } = await admin
     .from("places")
     .select("lng")
-    .eq("id", ticket.project_id)
+    .eq("id", ticket.place_id)
     .maybeSingle();
   const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
   const guestNotify: "call" | "app" = ticket.consumer_notify === "app" ? "app" : "call";

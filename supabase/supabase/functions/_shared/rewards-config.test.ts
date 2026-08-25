@@ -21,12 +21,12 @@ const GRID = DEFAULT_REWARDS_GRID;
 
 Deno.test("resolveTicketRate: every dimension steps up (v9 spot-checks)", () => {
   // Strategy: same guest, same rung, two paid strategies.
-  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "standard", isFirstVisit: false }), 5);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false }), 15);
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "bronze", isFirstVisit: false }), 5);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: false }), 15);
   // Class: standard < influencer < premium < aura, strictly (MESITA-877).
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false }), 20);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "premium", isFirstVisit: false }), 25);
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }), 30);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "silver", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "gold", isFirstVisit: false }), 25);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "diamond", isFirstVisit: false }), 30);
   assertEquals(resolveTicketRate("aggressive", GRID, { classKey: null, isFirstVisit: false }), 15);
 });
 
@@ -40,8 +40,8 @@ Deno.test("resolveTicketRate: unknown class key falls to the Standard floor", ()
 Deno.test("resolveTicketRate: a first visit ALONE pays only the standing rate", () => {
   // v9 (MESITA-877): Welcome is unlocked by the Google review, so arriving
   // for the first time and doing nothing is worth exactly the base bonus.
-  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true }), 15);
-  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "premium", isFirstVisit: true }), 15);
+  assertEquals(resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true }), 15);
+  assertEquals(resolveTicketRate("conservative", GRID, { classKey: "gold", isFirstVisit: true }), 15);
 });
 
 Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled upstream)", () => {
@@ -51,21 +51,21 @@ Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled 
   // live class, so a reach lapse between the post and the check can't strip
   // an already-earned reward. The rate is read on the guest's OWN class row.
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "influencer", isFirstVisit: false, storyVerified: true }),
+    resolveTicketRate("aggressive", GRID, { classKey: "silver", isFirstVisit: false, storyVerified: true }),
     30,
   );
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: false, storyVerified: true }),
+    resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: false, storyVerified: true }),
     25,
   );
   // Aura's own standing (30) loses to an earned story on the Aura row (40).
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false, storyVerified: true }),
+    resolveTicketRate("aggressive", GRID, { classKey: "diamond", isFirstVisit: false, storyVerified: true }),
     40,
   );
   // No verified story: every class just takes its standing rung.
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "aura", isFirstVisit: false }),
+    resolveTicketRate("aggressive", GRID, { classKey: "diamond", isFirstVisit: false }),
     30,
   );
 });
@@ -73,7 +73,7 @@ Deno.test("resolveTicketRate: a VERIFIED story always pays (eligibility settled 
 Deno.test("resolveTicketRate: verified actions bump, best-of never stacks", () => {
   // First visit + Google review → the coupled Welcome rung, the top rung.
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true, reviewVerified: true }),
+    resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true, reviewVerified: true }),
     35,
   );
   // Story + Review + first visit for an influencer: still just the max
@@ -92,7 +92,7 @@ Deno.test("resolveTicketRate: verified actions bump, best-of never stacks", () =
 Deno.test("resolveTicketRate: zero strategy pays nothing", () => {
   assertEquals(
     resolveTicketRate("zero", GRID, {
-      classKey: "aura",
+      classKey: "diamond",
       isFirstVisit: true,
       storyVerified: true,
       reviewVerified: true,
@@ -102,10 +102,10 @@ Deno.test("resolveTicketRate: zero strategy pays nothing", () => {
 });
 
 Deno.test("isClassSegment: the four classes and nothing else", () => {
-  assertEquals(isClassSegment("standard"), true);
-  assertEquals(isClassSegment("premium"), true);
-  assertEquals(isClassSegment("influencer"), true);
-  assertEquals(isClassSegment("aura"), true);
+  assertEquals(isClassSegment("bronze"), true);
+  assertEquals(isClassSegment("gold"), true);
+  assertEquals(isClassSegment("silver"), true);
+  assertEquals(isClassSegment("diamond"), true);
   assertEquals(isClassSegment("magnetic"), false); // retired
   assertEquals(isClassSegment("story"), false); // action, not class
   assertEquals(isClassSegment(null), false);
@@ -140,10 +140,10 @@ Deno.test("placeStrategy: derives from v4 columns, all four strategies", () => {
 
 Deno.test("coerceRewardsGrid: partial blob snaps to locked defaults (v13)", () => {
   const g = coerceRewardsGrid({ grid: { standard: { conservative: 25 } } });
-  assertEquals(g.grid.standard.conservative, 25);
-  assertEquals(g.actions.review.standard.aggressive, 30); // filled from defaults
-  assertEquals(g.grid.aura.aggressive, 30); // class filled from defaults
-  assertEquals(g.grid.standard.zero, 0); // off by definition
+  assertEquals(g.grid.bronze.conservative, 25);
+  assertEquals(g.actions.review.bronze.aggressive, 30); // filled from defaults
+  assertEquals(g.grid.diamond.aggressive, 30); // class filled from defaults
+  assertEquals(g.grid.bronze.zero, 0); // off by definition
   assertEquals(g.cap, 500);
 });
 
@@ -159,14 +159,14 @@ Deno.test("coerceRewardsGrid: v12 blob migrates by IDENTITY — flat action rows
     },
   });
   // The flat legacy value lands on EVERY class of the action.
-  assertEquals(g.actions.review.standard.aggressive, 44);
-  assertEquals(g.actions.review.premium.aggressive, 44);
-  assertEquals(g.actions.review.aura.aggressive, 44);
-  assertEquals(g.actions.story.influencer.conservative, 20);
+  assertEquals(g.actions.review.bronze.aggressive, 44);
+  assertEquals(g.actions.review.gold.aggressive, 44);
+  assertEquals(g.actions.review.diamond.aggressive, 44);
+  assertEquals(g.actions.story.silver.conservative, 20);
   // mesita_review didn't exist in v12, so it takes today's DEFAULTS rather
   // than a legacy value — it is priced now (MESITA-876), not 0.
-  assertEquals(g.actions.mesita_review.standard.aggressive, 20);
-  assertEquals(g.actions.mesita_review.aura.aggressive, 35);
+  assertEquals(g.actions.mesita_review.bronze.aggressive, 20);
+  assertEquals(g.actions.mesita_review.diamond.aggressive, 35);
 });
 
 Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's row", () => {
@@ -181,13 +181,13 @@ Deno.test("resolveTicketRate: v7 per-class action rates resolve on the guest's r
   // Same verified review, different class row → different rate.
   assertEquals(
     resolveTicketRate("conservative", g, {
-      classKey: "standard", isFirstVisit: false, reviewVerified: true,
+      classKey: "bronze", isFirstVisit: false, reviewVerified: true,
     }),
     30,
   );
   assertEquals(
     resolveTicketRate("conservative", g, {
-      classKey: "premium", isFirstVisit: false, reviewVerified: true,
+      classKey: "gold", isFirstVisit: false, reviewVerified: true,
     }),
     35,
   );
@@ -257,7 +257,7 @@ Deno.test("isActionVerified: verified states only", () => {
 
 const STRATEGY_ORDER = ["conservative", "aggressive"] as const;
 // Worst → best.
-const CLASS_ORDER = ["standard", "influencer", "premium", "aura"] as const;
+const CLASS_ORDER = ["bronze", "silver", "gold", "diamond"] as const;
 // Worst → best, by the business value each creates.
 const TYPE_ORDER = [
   "standing",
@@ -351,31 +351,31 @@ Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its 
   // welcome rung is coupled, so the business gets acquisition AND a
   // permanent public review from one mechanism.
   assertEquals(
-    resolveTicketRate("aggressive", GRID, { classKey: "standard", isFirstVisit: true }),
-    GRID.grid.standard.aggressive,
+    resolveTicketRate("aggressive", GRID, { classKey: "bronze", isFirstVisit: true }),
+    GRID.grid.bronze.aggressive,
   );
   // Review on a first visit → the welcome rung, the top of the table.
   assertEquals(
     resolveTicketRate("aggressive", GRID, {
-      classKey: "standard", isFirstVisit: true, reviewVerified: true,
+      classKey: "bronze", isFirstVisit: true, reviewVerified: true,
     }),
-    GRID.actions.welcome.standard.aggressive,
+    GRID.actions.welcome.bronze.aggressive,
   );
   // Same review on a RETURNING visit → the review rung, one step lower.
   assertEquals(
     resolveTicketRate("aggressive", GRID, {
-      classKey: "standard", isFirstVisit: false, reviewVerified: true,
+      classKey: "bronze", isFirstVisit: false, reviewVerified: true,
     }),
-    GRID.actions.review.standard.aggressive,
+    GRID.actions.review.bronze.aggressive,
   );
 });
 
 
 // ── v11 additive (MESITA-1069) ───────────────────────────────────────────
 //
-// The engine still receives the LEGACY `class_key` on the ticket context, so
-// every case below also exercises identityForClassKey — the bridge that reads
-// the (class, plan) pair back out of it until `consumers.plan` lands:
+// The engine still accepts leftover LEGACY `class_key` values on the ticket
+// context (frozen mobile). identityForClassKey maps them; consumers.plan wins
+// when the caller passes it:
 //   standard → bronze·free    influencer → silver·free
 //   premium  → bronze·premium aura       → diamond·free
 
@@ -389,17 +389,23 @@ function withPromos(grid = DEFAULT_REWARDS_GRID) {
 
 Deno.test("resolveTicketRate: v11 additive — base alone, per legacy class", () => {
   const g = withPromos();
-  assertEquals(resolveTicketRate("conservative", g, { classKey: "standard", isFirstVisit: false }), 10);
-  assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: false }), 20);
-  assertEquals(resolveTicketRate("aggressive", g, { classKey: "aura", isFirstVisit: false }), 50);
+  assertEquals(resolveTicketRate("conservative", g, { classKey: "bronze", isFirstVisit: false }), 10);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "bronze", isFirstVisit: false }), 20);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "diamond", isFirstVisit: false }), 50);
 });
 
-Deno.test("resolveTicketRate: v11 — the legacy `premium` class resolves as the PLAN", () => {
+Deno.test("resolveTicketRate: v11 — leftover `premium` class_key and consumers.plan both price the PLAN", () => {
   const g = withPromos();
-  // premium → bronze·premium: the paid subscription at the base class, which
-  // is exactly what the v10 `premium` class row used to pay.
   assertEquals(resolveTicketRate("conservative", g, { classKey: "premium", isFirstVisit: false }), 20);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "premium", isFirstVisit: false }), 40);
+  assertEquals(
+    resolveTicketRate("aggressive", g, { classKey: "bronze", plan: "premium", isFirstVisit: false }),
+    40,
+  );
+  assertEquals(
+    resolveTicketRate("aggressive", g, { classKey: "silver", plan: "free", isFirstVisit: false }),
+    30,
+  );
 });
 
 Deno.test("resolveTicketRate: v11 — an unknown class prices at the floor", () => {
@@ -412,7 +418,7 @@ Deno.test("resolveTicketRate: v11 — an unknown class prices at the floor", () 
 Deno.test("resolveTicketRate: v11 additive — welcome on first visit alone (D3-A)", () => {
   const g = withPromos();
   // Welcome is NOT gated on a Google review.
-  assertEquals(resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: true }), 30); // 20+10
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "bronze", isFirstVisit: true }), 30); // 20+10
   assertEquals(
     resolveTicketRate("aggressive", g, {
       classKey: "standard",
@@ -444,7 +450,7 @@ Deno.test("resolveTicketRate: v11 additive — zero still pays nothing", () => {
   const g = withPromos();
   assertEquals(
     resolveTicketRate("zero", g, {
-      classKey: "aura",
+      classKey: "diamond",
       isFirstVisit: true,
       storyVerified: true,
       reviewVerified: true,
@@ -466,7 +472,7 @@ Deno.test("resolveTicketRate: v11 additive — clamps at 100", () => {
   const g = { ...DEFAULT_REWARDS_GRID, promos: hot, cap: hot.cap };
   assertEquals(
     resolveTicketRate("aggressive", g, {
-      classKey: "aura",
+      classKey: "diamond",
       isFirstVisit: true,
       storyVerified: true,
       reviewVerified: true,

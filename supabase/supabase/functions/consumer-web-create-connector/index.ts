@@ -12,7 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { mintMcpTokenPlaintext } from "../_shared/mcp-tokens.ts";
-import { isElevatedClass } from "../_shared/membership.ts";
+import { isPremiumPlan } from "../_shared/membership.ts";
 
 type Body = { label?: string };
 
@@ -43,13 +43,13 @@ Deno.serve(async (req) => {
   // decision: Pato — Consumer MCP is Premium-only (MESITA-266).
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("class_key")
+    .select("class_key, plan")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) {
     return json({ ok: false, error: `consumer_read: ${consumerErr.message}` }, 500);
   }
-  if (!isElevatedClass(consumerRow?.class_key)) {
+  if (!isPremiumPlan(consumerRow?.class_key, consumerRow?.plan)) {
     return json(
       {
         ok: false,

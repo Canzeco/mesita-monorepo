@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   let query = admin
     .from("project_verifications")
     .select(
-      "id, project_id, requester_id, method, payload, requester_email, status, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, status, place:places(name, address, phone, google_place_id))",
+      "id, place_id, requester_id, method, payload, requester_email, status, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, status, place:places(name, address, phone, google_place_id))",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   }
   const projectId = readPlaceIdAlias(body) || null;
   if (projectId) {
-    query = query.eq("project_id", projectId);
+    query = query.eq("place_id", projectId);
   } else {
     // Method gate (queue surface only): video always shows; ai_call only
     // shows once the operator has confirmed the OTP (codeVerifiedAt stamped

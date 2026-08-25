@@ -25,14 +25,14 @@ export async function loadTarget(
     case "editor": {
       const row = await admin
         .from("project_members")
-        .select("project_id, manager_id, role")
+        .select("place_id, manager_id, role")
         .eq("id", id)
         .maybeSingle();
       if (row.error) return notFound(`member_read: ${row.error.message}`, 500);
       if (!row.data) return notFound("Member not found.", 404);
       return {
         ok: true,
-        projectId: row.data.project_id,
+        projectId: row.data.place_id,
         isSelfRemoval: row.data.manager_id === callerId,
         targetIsOwner: row.data.role === "owner",
       };
@@ -47,12 +47,12 @@ export async function loadInvite(
   table: "project_invites",
   id: string,
 ): Promise<LoadedTarget> {
-  const row = await admin.from(table).select("project_id").eq("id", id).maybeSingle();
+  const row = await admin.from(table).select("place_id").eq("id", id).maybeSingle();
   if (row.error) return notFound(`invite_read: ${row.error.message}`, 500);
   if (!row.data) return notFound("Invite not found.", 404);
   return {
     ok: true,
-    projectId: row.data.project_id,
+    projectId: row.data.place_id,
     isSelfRemoval: false,
     targetIsOwner: false,
   };

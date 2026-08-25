@@ -16,6 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { fromPlaceIdRow } from "../_shared/place-id.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { guestVisitsPolicy, loadVisitsConfig } from "../_shared/visits-config.ts";
 
@@ -28,7 +29,7 @@ const TICKET_COLUMNS =
   "discount_percent, discount_cents, bill_source, revealed_at, " +
   "approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, " +
   "currency, created_at, paid_at, cancelled_at, cancel_reason, " +
-  "project_id, updated_at";
+  "place_id, updated_at";
 
 type Body = { ticketId?: string };
 
@@ -61,7 +62,10 @@ Deno.serve(async (req) => {
   // select() the type parameter can't resolve degrades the row to
   // `GenericStringError`, and narrowing `null` away first leaves attachPlaces
   // nothing to match its `project_id` constraint against (MESITA-1140).
-  const row = data as (Record<string, unknown> & { project_id: string | null }) | null;
+  // fromPlaceIdRow copies the live `place_id` column onto the frozen HTTP
+  // field `project_id` that attachPlaces and clients still speak.
+  const row = fromPlaceIdRow(data as Record<string, unknown> | null) as
+    (Record<string, unknown> & { project_id: string | null }) | null;
   if (!row) {
     // Uniform miss — never confirms someone else's ticket exists.
     return json({ ok: false, error: "Ticket not found" }, 404);

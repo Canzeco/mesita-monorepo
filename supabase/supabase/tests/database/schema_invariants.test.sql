@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(18);
+select plan(50);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -154,6 +154,243 @@ select throws_ok(
 );
 
 rollback to savepoint before_name_probe;
+
+-- ━━━ Wave 0 — project secrets stay off the publishable key ━━━━━━━━━━━━━━━━━
+
+select ok(
+  not has_table_privilege('anon', 'public.projects', 'SELECT'),
+  'anon has no table-level SELECT on public.projects (table SELECT implies every column, including PIN)'
+);
+
+select ok(
+  not has_table_privilege('authenticated', 'public.projects', 'SELECT'),
+  'authenticated has no table-level SELECT on public.projects'
+);
+
+select ok(
+  has_table_privilege('service_role', 'public.projects', 'SELECT'),
+  'service_role keeps table SELECT on public.projects (Check + set-check-pin)'
+);
+
+select is_empty(
+  $$select c.column_name
+      from information_schema.columns c
+     where c.table_schema = 'public'
+       and c.table_name = 'projects'
+       and c.column_name in (
+         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
+       )
+       and (
+         has_column_privilege('anon', 'public.projects', c.column_name, 'SELECT')
+         or has_column_privilege(
+           'authenticated', 'public.projects', c.column_name, 'SELECT'
+         )
+       )$$,
+  'anon and authenticated have no SELECT on existing PIN / CFDI columns'
+);
+
+select ok(
+  has_column_privilege('anon', 'public.projects', 'plan', 'SELECT'),
+  'anon keeps SELECT on projects.plan (profiles invoker reads it)'
+);
+
+select ok(
+  has_table_privilege('anon', 'public.places', 'SELECT'),
+  'anon keeps table SELECT on public.places (Approach D is unimplementable)'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.consumer_plans', 'SELECT'),
+  'anon has no leftover SELECT on public.consumer_plans'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.consumers', 'SELECT'),
+  'anon has no leftover SELECT on public.consumers'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.consumers', 'SELECT'),
+  'authenticated keeps SELECT on public.consumers (self policy id = auth.uid())'
+);
+
+select is_empty(
+  $$select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'profiles_delete'$$,
+  'profiles_delete is gone (no DELETE trigger; it hard-deleted both rows)'
+);
+
+-- ━━━ Identity — metals + consumers.plan ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select ok(
+  exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'consumers' and column_name = 'plan'
+  ),
+  'consumers.plan exists (class and plan are two axes)'
+);
+
+select is_empty(
+  $$select key from public.classes
+     where key not in ('bronze', 'silver', 'gold', 'diamond')$$,
+  'classes holds only the four metals'
+);
+
+select is(
+  (select rank from public.classes where key = 'bronze'),
+  0::smallint,
+  'bronze is rank 0'
+);
+
+select is_empty(
+  $$select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'classes'
+       and column_name = 'recommendation_weight'$$,
+  'classes.recommendation_weight is gone'
+);
+
+select is(
+  (select label from public.project_plans where key = 'pro'),
+  'Partner'::text,
+  'project_plans.pro is labelled Partner'
+);
+
+select is(
+  (select column_default::text from information_schema.columns
+    where table_schema = 'public' and table_name = 'consumers'
+      and column_name = 'class_key'),
+  '''bronze''::text'::text,
+  'new consumers default to bronze'
+);
+
+select is_empty(
+  $$select 1 from pg_constraint
+     where conrelid = 'public.consumers'::regclass
+       and pg_get_constraintdef(oid) ilike '%subscription%'$$,
+  'class_origin no longer includes subscription'
+);
+
+-- ━━━ Attics — twins, dead tables, dead URLs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is_empty(
+  $$select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'projects'
+       and column_name in ('staff_pin', 'requires_story')$$,
+  'projects.staff_pin and requires_story are gone'
+);
+
+select is_empty(
+  $$select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'visit_tickets'
+       and column_name = 'ticket_code'$$,
+  'visit_tickets.ticket_code is gone (check_code stays)'
+);
+
+select has_column(
+  'public', 'projects', 'check_pin',
+  'projects.check_pin stays (the twin staff_pin is what dropped)'
+);
+
+select has_column(
+  'public', 'visit_tickets', 'check_code',
+  'visit_tickets.check_code stays (the twin ticket_code is what dropped)'
+);
+
+select is_empty(
+  $$select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'places'
+       and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url')$$,
+  'dead place URL columns are gone'
+);
+
+select ok(
+  (
+    select count(*) from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story')
+  ) = 4,
+  'profiles still projects dummy leftover columns so pre-redeploy EFs can SELECT them'
+);
+
+select ok(
+  to_regclass('public.guest_make_goods') is null,
+  'guest_make_goods is gone'
+);
+
+select ok(
+  to_regclass('public.refund_requests') is null,
+  'refund_requests is gone'
+);
+
+select ok(
+  exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'projects'
+       and column_name = 'cfdi_rfc'
+  ),
+  'projects.cfdi_rfc is in the ledger (local replay matches live)'
+);
+
+-- ━━━ Honest keys — no project_id column left ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is_empty(
+  $$select c.relname
+      from pg_attribute a
+      join pg_class c on c.oid = a.attrelid
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and a.attname = 'project_id'
+       and a.attnum > 0 and not a.attisdropped
+       and c.relkind in ('r', 'p')$$,
+  'no public base table still has a project_id column'
+);
+
+select ok(
+  exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'visit_tickets'
+       and column_name = 'place_id'
+  ),
+  'visit_tickets.place_id exists'
+);
+
+select ok(
+  exists (
+    select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'is_project_member'
+  ),
+  'is_project_member keeps its name (RPC JSON does not move)'
+);
+
+-- ━━━ Ghost names + HNSW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is_empty(
+  $$select tgname from pg_trigger t
+      join pg_class c on c.oid = t.tgrelid
+     where c.relname = 'projects' and not tgisinternal
+       and tgname = 'units_set_updated_at'$$,
+  'units_set_updated_at is gone from projects'
+);
+
+select ok(
+  exists (
+    select 1 from pg_trigger t
+      join pg_class c on c.oid = t.tgrelid
+     where c.relname = 'projects' and not tgisinternal
+       and tgname = 'projects_set_updated_at'
+  ),
+  'projects_set_updated_at is bound'
+);
+
+select ok(
+  exists (
+    select 1 from pg_class
+     where relname = 'places_embedding_hnsw' and relkind = 'i'
+  ),
+  'places_embedding_hnsw exists'
+);
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━
 

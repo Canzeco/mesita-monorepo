@@ -17,7 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { getTierConfig } from "../_shared/membership.ts";
+import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   // without a deploy. Cancelled reservations don't count against the cap.
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("class_key")
+    .select("class_key, plan")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
@@ -118,7 +118,10 @@ Deno.serve(async (req) => {
     (settingsRow?.reservations_config as { unlimitedReservations?: unknown } | null)
       ?.unlimitedReservations === true;
 
-  const tier = await getTierConfig(admin, consumerRow?.class_key ?? "standard");
+  const tier = await getTierConfig(
+    admin,
+    perkClassKey(consumerRow?.class_key, consumerRow?.plan),
+  );
   const monthlyLimit = capLifted ? null : (tier?.monthly_reservation_limit ?? null);
   if (monthlyLimit != null) {
     const monthStart = new Date();
@@ -140,7 +143,7 @@ Deno.serve(async (req) => {
           error:
             "You've reached your monthly reservation limit. Upgrade to Mesita Premium for unlimited reservations.",
           limit: monthlyLimit,
-          tier: consumerRow?.class_key ?? "standard",
+          tier: consumerRow?.class_key ?? "bronze",
         },
         409,
       );
@@ -170,7 +173,7 @@ Deno.serve(async (req) => {
         status: "pending",
       },
       select:
-        "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
+        "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, place_id",
     });
     if (ins.ok) {
       reservation = ins.row as { id: string } & Record<string, unknown>;

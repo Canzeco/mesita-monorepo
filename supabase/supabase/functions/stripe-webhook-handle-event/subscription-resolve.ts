@@ -40,19 +40,19 @@ export async function resolveProjectId(
 ): Promise<string | null> {
   const { data: bySub } = await admin
     .from("project_subscriptions")
-    .select("project_id")
+    .select("place_id")
     .eq("stripe_subscription_id", sub.id)
     .maybeSingle();
-  if (bySub?.project_id) return bySub.project_id as string;
+  if (bySub?.place_id) return bySub.place_id as string;
 
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const { data: byCustomer } = await admin
     .from("project_subscriptions")
-    .select("project_id")
+    .select("place_id")
     .eq("stripe_customer_id", customerId)
     .limit(1)
     .maybeSingle();
-  return (byCustomer?.project_id as string | undefined) ?? null;
+  return (byCustomer?.place_id as string | undefined) ?? null;
 }
 
 // Resolves which Mesita plan a Stripe subscription pays for: subscription

@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("favorites")
     .select(
-      "id, created_at, project_id",
+      "id, created_at, place_id",
     )
     .eq("consumer_id", consumerId)
     .order("created_at", { ascending: false })

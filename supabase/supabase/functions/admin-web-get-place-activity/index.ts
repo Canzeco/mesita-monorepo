@@ -95,7 +95,7 @@ async function fetchAllClosedMoney(
     const { data, error } = await admin
       .from("visit_tickets")
       .select("bill_subtotal_cents, total_cents, discount_cents, bill_source")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS)
       .order("created_at", { ascending: false })
       .range(from, from + CLOSED_PAGE - 1);
@@ -142,25 +142,25 @@ Deno.serve(async (req) => {
     admin
       .from("favorites")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
       .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     fetchAllClosedMoney(admin, projectId),
     admin
       .from("reservation_tickets")
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
         "id, reserved_at, party_size, status, is_test, " +
           "consumer:consumers(full_name, first_name, instagram_handle)",
       )
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(limit),
   ]);

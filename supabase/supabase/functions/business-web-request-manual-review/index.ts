@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   const { data: existingOwner } = await admin
     .from("project_members")
     .select("manager_id")
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("role", "owner")
     .maybeSingle();
   if (existingOwner) {
@@ -114,14 +114,14 @@ Deno.serve(async (req) => {
   await admin
     .from("project_verifications")
     .delete()
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("requester_id", userId)
     .eq("status", "pending");
 
   const { data: verification, error: insertError } = await admin
     .from("project_verifications")
     .insert({
-      project_id: projectId,
+      place_id: projectId,
       requester_id: userId,
       method: "manual_contact",
       payload: {

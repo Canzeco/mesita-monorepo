@@ -42,14 +42,14 @@ export async function insertPendingOtpVerification(
   await admin
     .from("project_verifications")
     .delete()
-    .eq("project_id", args.projectId)
+    .eq("place_id", args.projectId)
     .eq("requester_id", args.userId)
     .eq("status", "pending");
 
   const { data, error } = await admin
     .from("project_verifications")
     .insert({
-      project_id: args.projectId,
+      place_id: args.projectId,
       requester_id: args.userId,
       method: args.method,
       payload: { ...args.payload, codeHash: args.codeHash },
@@ -95,7 +95,7 @@ export async function redeemOtpVerification(
 
   const { data: verification, error: lookupError } = await admin
     .from("project_verifications")
-    .select("id, project_id, requester_id, method, payload, status")
+    .select("id, place_id, requester_id, method, payload, status")
     .eq("id", args.verificationId)
     .maybeSingle();
   if (lookupError) {
@@ -173,7 +173,7 @@ export async function redeemOtpVerification(
         500,
       );
     }
-    return json({ ok: true, projectId: verification.project_id, awaitingAdmin: true });
+    return json({ ok: true, projectId: verification.place_id, awaitingAdmin: true });
   }
 
   // Auto-approve: mark approved + grant ownership.
@@ -194,7 +194,7 @@ export async function redeemOtpVerification(
   }
 
   const { error: memberError } = await admin.from("project_members").insert({
-    project_id: verification.project_id,
+    place_id: verification.place_id,
     manager_id: args.userId,
     role: "owner",
   });
@@ -217,5 +217,5 @@ export async function redeemOtpVerification(
     );
   }
 
-  return json({ ok: true, projectId: verification.project_id, awaitingAdmin: false });
+  return json({ ok: true, projectId: verification.place_id, awaitingAdmin: false });
 }

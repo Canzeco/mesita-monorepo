@@ -37,15 +37,10 @@ export type ClassIdentity = { cls: ClassKey; plan: PlanKey };
 
 // ── The bridge ─────────────────────────────────────────────────────────────
 //
-// DELIBERATELY TEMPORARY, and a MIRROR rather than an invention. `consumers`
-// has no plan column yet (MESITA-1076), so the paid subscription is still
-// stored as the `premium` CLASS row and every server payload still speaks the
-// four legacy keys. `consumer-web-get-discount-quote` already resolves them
-// through the identical map in `promos-v11-normalize.ts` before it prices a
-// real bill — so reading the same rule here means the name a guest sees and
-// the number they are charged come from ONE definition, not two that drift.
-//
-// When `consumers.plan` lands, this and its server twin delete together.
+// Leftover-key bridge. The DB stores metals on consumers.class_key and
+// free|premium on consumers.plan. Frozen mobile and older payloads still
+// speak standard/influencer/premium/aura; this map (mirrored in
+// promos-v11-normalize.ts) is the one definition both sides read.
 export const LEGACY_CLASS_KEYS = [
   "standard",
   "influencer",
@@ -64,17 +59,22 @@ export const LEGACY_CLASS_IDENTITY: Record<LegacyClassKey, ClassIdentity> = {
 /**
  * Resolve a stored `consumers.class_key` onto the two v2 axes.
  *
- * An unknown or missing key resolves to bronze·free — the floor — rather than
- * throwing or leaking that it wasn't recognised. Nothing is ever gated OPEN by
- * that fallback.
+ * Metals pass through. Leftover legacy keys still map. `plan` from
+ * `consumers.plan` wins when provided.
  */
 export function identityForClassKey(
   key: string | null | undefined,
+  plan?: PlanKey | null,
 ): ClassIdentity {
+  const planArg = plan === "premium" || plan === "free" ? plan : null;
+  if (key && (CLASS_ORDER as readonly string[]).includes(key)) {
+    return { cls: key as ClassKey, plan: planArg ?? "free" };
+  }
   const hit = (LEGACY_CLASS_KEYS as readonly string[]).includes(key ?? "")
     ? LEGACY_CLASS_IDENTITY[key as LegacyClassKey]
     : undefined;
-  return hit ?? LEGACY_CLASS_IDENTITY.standard;
+  if (hit) return { cls: hit.cls, plan: planArg ?? hit.plan };
+  return { cls: "bronze", plan: planArg ?? "free" };
 }
 
 // Elevated = off the floor on EITHER axis — a class above the floor, or the
@@ -91,8 +91,11 @@ export function isElevatedIdentity({ cls, plan }: ClassIdentity): boolean {
 }
 
 /** Convenience for the many call sites still holding a raw server class_key. */
-export function isElevatedClassKey(key: string | null | undefined): boolean {
-  return isElevatedIdentity(identityForClassKey(key));
+export function isElevatedClassKey(
+  key: string | null | undefined,
+  plan?: PlanKey | null,
+): boolean {
+  return isElevatedIdentity(identityForClassKey(key, plan));
 }
 
 // NOTE: The original Lovable export shipped a large local `Place` type

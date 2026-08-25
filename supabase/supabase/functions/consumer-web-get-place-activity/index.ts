@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
           `id, story_status, story_screenshot_url, story_submitted_at, ` +
             `story_verified_at, created_at, ${CONSUMER_JOIN}`,
         )
-        .eq("project_id", projectId)
+        .eq("place_id", projectId)
         .not("story_screenshot_url", "is", null)
         .order("story_submitted_at", { ascending: false, nullsFirst: false })
         .limit(FEED_LIMIT),
@@ -103,21 +103,21 @@ Deno.serve(async (req) => {
           `id, status, discount_percent, paid_at, validated_at, created_at, ` +
             CONSUMER_JOIN,
         )
-        .eq("project_id", projectId)
+        .eq("place_id", projectId)
         .in("status", COMPLETED_VISIT_STATUSES)
         .order("paid_at", { ascending: false, nullsFirst: false })
         .limit(FEED_LIMIT),
       admin
         .from("reservation_tickets")
         .select(`id, status, reserved_at, party_size, created_at, ${CONSUMER_JOIN}`)
-        .eq("project_id", projectId)
+        .eq("place_id", projectId)
         .in("status", FEATURED_RESERVATION_STATUSES)
         .order("reserved_at", { ascending: false, nullsFirst: false })
         .limit(FEED_LIMIT),
       admin
         .from("ticket_reviews")
         .select("ticket_id")
-        .eq("project_id", projectId),
+        .eq("place_id", projectId),
     ]);
 
   // Best-effort per feed, matching consumer-web-get-place: one failing rail

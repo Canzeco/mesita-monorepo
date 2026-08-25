@@ -202,11 +202,9 @@ async function reconcileConsumerSubscription(
     throw new Error(`consumer_subscription_mirror: ${mirror.error.message}`);
   }
 
-  // The paid-door fact is the mirror row above; the slot is derived. The
-  // shared recompute lands the highest-ranked open door either way: a live
-  // sub grants Premium unless Aura outranks it, and a lapse falls back to the
-  // best remaining door (reach → Influencer, else Standard) instead of the
-  // old hardcoded standard. Throws propagate → 500 → Stripe retries.
+  // The paid-door fact is the mirror row above; plan is derived. The shared
+  // recompute writes consumers.plan from the live sub and the class slot from
+  // the highest-ranked open CLASS door. Throws propagate → 500 → Stripe retries.
   await recomputeConsumerClass(admin, consumerId);
 }
 
@@ -236,7 +234,7 @@ async function reconcileProjectSubscription(
     const retire = await admin
       .from("project_subscriptions")
       .update({ status: "canceled" })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .neq("stripe_subscription_id", sub.id)
       .in("status", ["active", "past_due"]);
     if (retire.error) {
@@ -248,7 +246,7 @@ async function reconcileProjectSubscription(
     .from("project_subscriptions")
     .upsert(
       {
-        project_id: projectId,
+        place_id: projectId,
         plan_key: planKey,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,

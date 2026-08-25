@@ -148,6 +148,9 @@ Deno.test("migration: a v10-shaped body without an explicit version still migrat
 
 Deno.test("identityForClassKey: maps every live class row, floors the unknown", () => {
   assertEquals(identityForClassKey("standard"), { cls: "bronze", plan: "free" });
+  assertEquals(identityForClassKey("silver"), { cls: "silver", plan: "free" });
+  assertEquals(identityForClassKey("silver", "premium"), { cls: "silver", plan: "premium" });
+  assertEquals(identityForClassKey("bronze", "premium"), { cls: "bronze", plan: "premium" });
   assertEquals(identityForClassKey("influencer"), { cls: "silver", plan: "free" });
   assertEquals(identityForClassKey("premium"), { cls: "bronze", plan: "premium" });
   assertEquals(identityForClassKey("aura"), { cls: "diamond", plan: "free" });

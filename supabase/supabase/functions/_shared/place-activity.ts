@@ -26,12 +26,9 @@ import {
   storiesVisibleOnMesita,
   visitsVisibleOnMesita,
 } from "./consumer-privacy.ts";
+import { identityForClassKey } from "./rewards-config.ts";
 
-// The server still speaks LEGACY class keys — the v2 metal bridge lives on
-// the client (`identityForClassKey`). Mirrors mapTicketReviewsToVisitors so
-// both feeds hand the client the same vocabulary (MESITA-1079).
-const CLASS_KEYS = new Set(["standard", "premium", "influencer", "aura"]);
-export type LegacyClassKey = "standard" | "premium" | "influencer" | "aura";
+export type MetalClassKey = "bronze" | "silver" | "gold" | "diamond";
 
 /** Story proof states that count as a verified, publishable story. */
 const VERIFIED_STORY = new Set([
@@ -61,7 +58,7 @@ type ConsumerJoin = {
 type GuestFields = {
   name: string;
   handle: string;
-  class_key: LegacyClassKey;
+  class_key: MetalClassKey;
   followers: number;
 };
 
@@ -92,9 +89,8 @@ function asConsumer(c: unknown): ConsumerJoin {
   return (Array.isArray(c) ? (c[0] ?? {}) : c) as ConsumerJoin;
 }
 
-function classKey(raw: string | null | undefined): LegacyClassKey {
-  const k = (raw ?? "standard").toLowerCase();
-  return CLASS_KEYS.has(k) ? (k as LegacyClassKey) : "standard";
+function classKey(raw: string | null | undefined): MetalClassKey {
+  return identityForClassKey(raw).cls;
 }
 
 function guestFields(consumer: ConsumerJoin): GuestFields {

@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
         "consumer:consumers(first_name, last_name, full_name, instagram_handle, " +
         "privacy_public, class_key, instagram_followers_count)",
     )
-    .eq("project_id", placeId)
+    .eq("place_id", placeId)
     .order("created_at", { ascending: false })
     .limit(MESITA_REVIEW_LIMIT);
 

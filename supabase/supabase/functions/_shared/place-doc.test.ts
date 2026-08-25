@@ -281,9 +281,9 @@ Deno.test("validateProjectPatch: accepts strike_count at the boundaries", () => 
   assert(validateProjectPatch({ strike_count: 3 }).ok);
 });
 
-Deno.test("validateProjectPatch: accepts a well-formed check_pin/staff_pin, and null", () => {
+Deno.test("validateProjectPatch: accepts a well-formed check_pin, and null", () => {
   assert(validateProjectPatch({ check_pin: "123456" }).ok);
-  assert(validateProjectPatch({ staff_pin: null }).ok);
+  assert(validateProjectPatch({ check_pin: null }).ok);
 });
 
 Deno.test("validateProjectPatch: accepts well-formed CFDI fields", () => {
@@ -342,7 +342,7 @@ Deno.test("validateProjectPatch: rejects a discount_cap_cents that is negative",
 });
 
 Deno.test("validateProjectPatch: rejects null on a NOT NULL boolean/enum", () => {
-  assert(!validateProjectPatch({ requires_story: null }).ok);
+  assert(!validateProjectPatch({ segmentation_basic_enabled: null }).ok);
   assert(!validateProjectPatch({ plan: null }).ok);
 });
 

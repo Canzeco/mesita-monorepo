@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
 
   const consumerRes = await admin
     .from("consumers")
-    .select("id, class_key, instagram_handle")
+    .select("id, class_key, plan, instagram_handle")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerRes.error || !consumerRes.data) {
@@ -141,10 +141,10 @@ Deno.serve(async (req) => {
     ),
   ]);
 
-  const rawClass = consumerRes.data.class_key;
-  // Same generic resolution the engine uses: an unknown/legacy class key
-  // prices as standard rather than erroring or leaking that it was unknown.
-  const classKey = isClassSegment(rawClass) ? rawClass : "standard";
+  const { cls: classKey, plan } = identityForClassKey(
+    consumerRes.data.class_key,
+    consumerRes.data.plan as "free" | "premium" | null,
+  );
   const igConnected = Boolean(
     (consumerRes.data.instagram_handle ?? "").toString().trim(),
   );
@@ -179,7 +179,10 @@ Deno.serve(async (req) => {
     // `consumers.class_key` stores and what the client renders. Under v11 each
     // one resolves through identityForClassKey to its (class, plan) cell of the
     // visits grid — so the legacy `premium` rung correctly prices the PLAN.
-    const ladder = Object.fromEntries(
+    // Metals are the live keys. Legacy aliases stay on the wire so frozen
+    // clients that still read ladder.standard / ladder.premium keep working.
+    // `premium` is the PLAN cell (bronze·premium), not Gold.
+    const metalLadder = Object.fromEntries(
       CLASS_SEGMENTS.map((segment) => {
         if (strategy === "zero") return [segment, 0];
         if (!promos) return [segment, grid.grid[segment][strategy]];
@@ -187,6 +190,17 @@ Deno.serve(async (req) => {
         return [segment, promos.visits.base[strategy][id.cls][id.plan]];
       }),
     ) as Record<ClassSegment, number>;
+    const ladder = {
+      ...metalLadder,
+      standard: metalLadder.bronze,
+      influencer: metalLadder.silver,
+      premium: strategy === "zero"
+        ? 0
+        : promos
+        ? promos.visits.base[strategy].bronze.premium
+        : metalLadder.gold,
+      aura: metalLadder.diamond,
+    };
 
     // A zero-strategy place runs no program at all — every component is 0 and
     // the client shows the no-discount path rather than a 0% ladder.
@@ -209,7 +223,7 @@ Deno.serve(async (req) => {
     // bonuses over a best-of engine would over-promise, which is the one
     // direction of error a discount quote must never make.
     if (!promos) {
-      const cls = classKey;
+      const cls = isClassSegment(classKey) ? classKey : "bronze";
       return {
         strategy,
         classKey,
@@ -232,7 +246,7 @@ Deno.serve(async (req) => {
     // the VISITS ladder is quoted: orders is parked, and every ticket today is
     // a visit. The per-class story override is gone with the `influencer`
     // class; class is paid for once, in the base.
-    const { cls, plan } = identityForClassKey(classKey);
+    const { cls, plan: resolvedPlan } = identityForClassKey(classKey, plan);
     const b = promos.visits.bonuses[strategy];
 
     // THE TICKET v4's Reward step (MESITA-1089) renders the base as LANES —
@@ -254,7 +268,7 @@ Deno.serve(async (req) => {
         diamond: visitsBase.diamond.free - automatic,
       },
       cls,
-      plan,
+      plan: resolvedPlan,
       planUplift: visitsBase[cls].premium - visitsBase[cls].free,
     };
 
@@ -264,7 +278,7 @@ Deno.serve(async (req) => {
       additive: true,
       isFirstVisit,
       breakdown,
-      base: promos.visits.base[strategy][cls][plan],
+      base: promos.visits.base[strategy][cls][resolvedPlan],
       bonuses: {
         // Welcome is a state of the visit, not an action the guest picks, so
         // it reports 0 once they've been here before — the client renders it

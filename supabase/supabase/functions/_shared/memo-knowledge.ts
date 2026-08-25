@@ -212,7 +212,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "The legacy class_key bridge",
     terms: ["class_key", "standard", "influencer", "identityforclasskey", "legacy class"],
     fact:
-      "The database still stores legacy class_key values (standard, influencer, premium, aura) and there is no consumers.plan column yet. identityForClassKey maps them: standard→bronze·free, influencer→silver·free, premium→bronze·premium, aura→diamond·free. Never compare a server class_key to a metal.",
+      "The database stores metals on consumers.class_key (bronze, silver, gold, diamond) and what the guest pays on consumers.plan (free, premium). identityForClassKey still maps leftover legacy keys: standard→bronze·free, influencer→silver·free, premium→bronze·premium, aura→diamond·free. Never treat premium as a class.",
   },
   {
     id: "reach-self-declared",

@@ -1306,8 +1306,8 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // Fetch place by project_id separately — reservations.project_id has no
-  // PostgREST FK hint to places, so an embed 500s. places.id == project_id.
+  // Fetch place separately — reservation_tickets.place_id has no
+  // PostgREST FK hint to places, so an embed 500s. places.id == projects.id.
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(

@@ -7,11 +7,9 @@
 // Diamond." So the unit of work is a batch with a label, not a single code —
 // the label is what later answers "the agency handed out 37 of the 50".
 //
-// classKey takes a LEGACY class key because consumer_invite_codes.class_key
-// FKs to public.classes: Diamond is 'aura', Silver is 'influencer'. The FK is
-// the point — the database refuses a PIN for a class nothing can grant, so a
-// 'gold' batch fails at MINT time rather than silently failing for 50 people
-// at redemption time.
+// classKey is a live `classes.key` (bronze/silver/gold/diamond). The FK
+// refuses a PIN for a class nothing can grant, so a bad batch fails at MINT
+// time rather than silently failing for 50 people at redemption.
 //
 // Codes are 10 digits from crypto.getRandomValues, not Math.random. A PIN is a
 // bearer credential; a predictable generator would make the whole batch

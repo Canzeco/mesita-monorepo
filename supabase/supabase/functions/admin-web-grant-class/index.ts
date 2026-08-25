@@ -2,18 +2,16 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = grant, words = class.
 //
-// The Aura door (segments v6): Aura is the invite-only presence class, and for
-// launch the only granter is the admin console. Grant/revoke write the
-// INVITATION DOOR FACT (consumers.invitation_class_key /
-// invitation_granted_at) and then let the shared recompute
-// (_shared/class-doors.ts, MESITA-972) settle the slot from every open door —
-// a revoked Aura member with a live subscription lands premium/'subscription',
-// one with reach lands influencer/'instagram', else standard/'default'. The
-// invitation never cancels the other doors: a paying member granted Aura
-// keeps their subscription running underneath.
+// The invitation door: grant/revoke write the invitation FACT
+// (consumers.invitation_class_key / invitation_granted_at) and then let the
+// shared recompute (_shared/class-doors.ts) settle the class slot from every
+// open CLASS door. A live subscription opens consumers.plan = premium, never
+// a class. Revoking an invitation with reach still open lands silver; else
+// bronze. The invitation never cancels the paid plan.
 //
 // Generic on purpose: `classKey` accepts any invitation-grantable class row
-// (today just 'aura'; a future tier INSERT works unchanged). Granting never
+// (Diamond today; Silver for a reach-band grant without waiting on
+// followers). Granting never
 // needs a rank guard — an explicit admin grant is the highest-intent write
 // (and the recompute keeps the slot honest anyway).
 //
@@ -23,7 +21,7 @@
 // consumer; several matches come back as a 409 listing the candidates, because
 // guessing which guest gets an invitation is not this function's call.
 //
-// Body: { consumerId?: string, lookup?: string, classKey: "aura" | null }
+// Body: { consumerId?: string, lookup?: string, classKey: metal | null }
 //       (classKey null = revoke; exactly one of consumerId / lookup)
 // Response: { ok: true, consumerId, classKey, origin, consumer }
 //
@@ -234,8 +232,8 @@ Deno.serve(async (req) => {
 
   // ── Revoke ───────────────────────────────────────────────────────────────
   // Only the invitation DOOR is revocable here — clearing the fact and
-  // recomputing lands the best remaining door (subscription → premium,
-  // reach → influencer, else standard) via the shared precedence.
+  // recomputing lands the best remaining class door (reach → silver, else
+  // bronze). A live subscription stays on consumers.plan.
   if (!consumer.invitation_class_key) {
     return json(
       {

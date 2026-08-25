@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     .select(
       "id, method, payload, requester_email, status, reject_reason, decided_at, decided_via, created_at",
     )
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("requester_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)

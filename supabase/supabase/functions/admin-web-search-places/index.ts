@@ -164,9 +164,9 @@ Deno.serve(async (req) => {
     const [verificationRes, enrichmentRes] = await Promise.all([
       admin
         .from("project_verifications")
-        .select("project_id")
+        .select("place_id")
         .eq("status", "approved")
-        .in("project_id", ids),
+        .in("place_id", ids),
       admin.from("places").select("id, enrichment").in("id", ids),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
       console.error("[search-places] project_verifications:", verificationRes.error.message);
     }
     for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
-      verified.add(String(v.project_id));
+      verified.add(String(v.place_id));
     }
     // Same best-effort posture: a missing/null row simply falls back to the
     // CREATED-floor default below.

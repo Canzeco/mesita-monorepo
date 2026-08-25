@@ -2,43 +2,44 @@
 //
 // Model: a consumer can hold several OPEN DOORS at once; the slot columns on
 // consumers (class_key / class_origin / class_granted_at / class_expires_at)
-// are a CACHE of the highest-ranked open door, never independent state.
+// are a CACHE of the highest-ranked open CLASS door. Plan is a second axis
+// (`consumers.plan`) and is never a class.
 //
 //   door           fact                                        origin written
 //   ─────────────  ──────────────────────────────────────────  ──────────────
 //   invitation     consumers.invitation_class_key              'invitation'
-//   subscription   live consumer_subscriptions row (Stripe)    'subscription'
-//   reach          instagram_followers_count vs the   'instagram'
+//   reach          instagram_followers_count vs the            'instagram'
 //                  highest classes.follower_threshold cleared
-//   standard       always open                                 'default'
+//   bronze         always open                                 'default'
 //
-// Doors never cancel each other: granting Aura does not touch a running
-// subscription, and cancelling the subscription falls back to the next-best
-// open door. Every writer that changes a FACT calls recomputeConsumerClass
-// afterwards instead of hand-rolling precedence (the old per-writer guards
-// disagreed with each other whenever the rank order changed).
+// Subscription opens the Premium PLAN, not a class. Doors never cancel each
+// other: granting Diamond does not touch a running subscription, and
+// cancelling the subscription leaves the metal the guest earned. Every writer
+// that changes a FACT calls recomputeConsumerClass afterwards instead of
+// hand-rolling precedence.
 //
 // Concurrency: read-facts-then-write-slot is not atomic, but every writer
 // recomputes from live facts, so any interleaving is healed by whichever
-// recompute runs last (and by the next one after that). No guard on
-// class_origin is needed — the slot is derived state.
+// recompute runs last. No guard on class_origin is needed — the slot is
+// derived state.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { writeConsumer } from "./consumer-doc.ts";
+import { writeConsumer, type ConsumerPatch } from "./consumer-doc.ts";
 
 export type ConsumerDoors = {
   /** Reach door — the follower count clears a classes.follower_threshold. */
   influencer: boolean;
-  /** Paid door — a live (active/past_due) subscription exists. */
+  /** Paid door — a live (active/past_due) subscription exists. Plan, not class. */
   premium: boolean;
-  /** Invitation door — admin-granted Aura membership. */
+  /** Invitation door — an invitation_class_key is set to a live metal. */
   aura: boolean;
 };
 
 export type EffectiveClass = {
   classKey: string;
-  origin: "default" | "instagram" | "subscription" | "invitation";
-  expiresAt: string | null;
+  origin: "default" | "instagram" | "invitation";
+  expiresAt: null;
+  plan: "free" | "premium";
   doors: ConsumerDoors;
 };
 
@@ -48,8 +49,6 @@ type DoorFacts = {
   classes: ClassRow[];
   followers: number;
   invitationClassKey: string | null;
-  /** null = no live subscription. */
-  subscriptionPeriodEnd: string | null | undefined;
   hasLiveSubscription: boolean;
 };
 
@@ -71,28 +70,18 @@ export function pickEffectiveClass(facts: DoorFacts): EffectiveClass {
   const candidates: Array<{
     key: string;
     origin: EffectiveClass["origin"];
-    expiresAt: string | null;
   }> = [];
-  // Listed highest-intent first — on an (impossible today) rank tie the
-  // earlier entry wins: invitation > subscription > reach > default.
+  // Highest-intent first on a rank tie: invitation > reach > default.
   if (facts.invitationClassKey && rankOf(facts.invitationClassKey) >= 0) {
     candidates.push({
       key: facts.invitationClassKey,
       origin: "invitation",
-      expiresAt: null,
-    });
-  }
-  if (facts.hasLiveSubscription) {
-    candidates.push({
-      key: "premium",
-      origin: "subscription",
-      expiresAt: facts.subscriptionPeriodEnd ?? null,
     });
   }
   if (reach) {
-    candidates.push({ key: reach.key, origin: "instagram", expiresAt: null });
+    candidates.push({ key: reach.key, origin: "instagram" });
   }
-  candidates.push({ key: "standard", origin: "default", expiresAt: null });
+  candidates.push({ key: "bronze", origin: "default" });
 
   let winner = candidates[0];
   for (const c of candidates) {
@@ -102,19 +91,22 @@ export function pickEffectiveClass(facts: DoorFacts): EffectiveClass {
   return {
     classKey: winner.key,
     origin: winner.origin,
-    expiresAt: winner.expiresAt,
+    expiresAt: null,
+    plan: facts.hasLiveSubscription ? "premium" : "free",
     doors: {
       influencer: reach != null,
       premium: facts.hasLiveSubscription,
-      aura: facts.invitationClassKey === "aura",
+      aura: facts.invitationClassKey != null &&
+        rankOf(facts.invitationClassKey) >= 0,
     },
   };
 }
 
 /**
- * Recompute a consumer's effective class from their door facts and persist it
- * to the slot when it changed. Throws on DB errors (webhook callers turn that
- * into a retry; product callers turn it into their own error response).
+ * Recompute a consumer's effective class and plan from their door facts and
+ * persist the slot when it changed. Throws on DB errors (webhook callers
+ * turn that into a retry; product callers turn it into their own error
+ * response).
  */
 export async function recomputeConsumerClass(
   admin: SupabaseClient,
@@ -131,7 +123,7 @@ export async function recomputeConsumerClass(
   const consumerRes = await admin
     .from("consumers")
     .select(
-      "id, class_key, class_origin, class_expires_at, instagram_followers_count, invitation_class_key",
+      "id, class_key, class_origin, class_expires_at, plan, instagram_followers_count, invitation_class_key",
     )
     .eq("id", consumerId)
     .maybeSingle();
@@ -140,11 +132,11 @@ export async function recomputeConsumerClass(
   }
   const consumer = consumerRes.data;
   if (!consumer) {
-    // No row (e.g. profile not created yet) — nothing to write.
     return {
-      classKey: "standard",
+      classKey: "bronze",
       origin: "default",
       expiresAt: null,
+      plan: "free",
       doors: { influencer: false, premium: false, aura: false },
     };
   }
@@ -166,30 +158,30 @@ export async function recomputeConsumerClass(
     followers: (consumer.instagram_followers_count as number) ?? 0,
     invitationClassKey: (consumer.invitation_class_key as string) ?? null,
     hasLiveSubscription: subRes.data != null,
-    subscriptionPeriodEnd: subRes.data?.current_period_end as
-      | string
-      | null
-      | undefined,
   });
 
   const changed = consumer.class_key !== effective.classKey ||
     consumer.class_origin !== effective.origin ||
-    (consumer.class_expires_at ?? null) !== effective.expiresAt;
+    (consumer.class_expires_at ?? null) !== effective.expiresAt ||
+    (consumer.plan ?? "free") !== effective.plan;
   if (changed) {
-    const patch: Record<string, unknown> = {
+    const patch: ConsumerPatch = {
       class_key: effective.classKey,
       class_origin: effective.origin,
-      class_expires_at: effective.expiresAt,
+      class_expires_at: null,
+      plan: effective.plan,
     };
-    // Stamp granted_at only when the class identity moves — an expires_at
-    // refresh (renewal) is not a new grant.
     if (
       consumer.class_key !== effective.classKey ||
       consumer.class_origin !== effective.origin
     ) {
       patch.class_granted_at = new Date().toISOString();
     }
-    const write = await writeConsumer(admin, { mode: "update", id: consumerId, patch });
+    const write = await writeConsumer(admin, {
+      mode: "update",
+      id: consumerId,
+      patch,
+    });
     if (!write.ok) {
       throw new Error(`class_doors_write: ${write.error}`);
     }

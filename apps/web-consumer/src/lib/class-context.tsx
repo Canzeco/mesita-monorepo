@@ -113,11 +113,8 @@ function normalize(
   // THE BRIDGE, applied at the one boundary where server truth enters the
   // client: `consumers.class_key` still stores a legacy key, so it is split
   // onto the two axes here and nowhere downstream (MESITA-1079).
-  const { cls, plan: bridgedPlan } = identityForClassKey(c.key);
+  const { cls, plan: bridgedPlan } = identityForClassKey(c.key, c.plan);
   const followers = c.followers ?? 0;
-  // A live subscription proves Premium independently of the key. Today the two
-  // always agree (a payer's class_key IS "premium"), but trusting either alone
-  // would break the moment consumers.plan lands and the key stops carrying it.
   const plan: PlanKey =
     bridgedPlan === "premium" || c.subscription != null ? "premium" : "free";
   return {

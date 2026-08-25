@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     .from("reservation_tickets")
     .select("reserved_at, consumer_confirmed_at, consumer_notify")
     .eq("id", reservationId)
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .maybeSingle();
   const { data: placeRow } = await admin
     .from("places")
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     .from("reservation_tickets")
     .update(validated.patch)
     .eq("id", reservationId)
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .in("status", ["pending", "confirmed"])
     .select(RESERVATION_SELECT)
     .maybeSingle();

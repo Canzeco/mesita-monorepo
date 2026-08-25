@@ -60,13 +60,13 @@ Deno.serve(async (req) => {
   if (ticketId) {
     const ticket = await admin
       .from("visit_tickets")
-      .select("id, project_id, consumer_id")
+      .select("id, place_id, consumer_id")
       .eq("id", ticketId)
       .maybeSingle();
     if (ticket.error) {
       return json({ ok: false, error: ticket.error.message }, 500);
     }
-    if (!ticket.data || ticket.data.project_id !== projectId) {
+    if (!ticket.data || ticket.data.place_id !== projectId) {
       return json({ ok: false, error: "Ticket not found for this place" }, 404);
     }
     consumerId = (ticket.data.consumer_id as string) ?? consumerId;

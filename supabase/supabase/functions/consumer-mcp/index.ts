@@ -20,7 +20,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { resolveMcpBearer } from "../_shared/mcp-tokens.ts";
 import { PLACE_PUBLIC_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
-import { getTierConfig, isElevatedClass } from "../_shared/membership.ts";
+import { getTierConfig, isPremiumPlan, perkClassKey } from "../_shared/membership.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
@@ -65,7 +65,7 @@ async function runTool(
         // favorites.project_id → projects → places is two hops; a direct
         // places embed 500s. Stitch instead (_shared/reservation-places.ts).
         .from("favorites")
-        .select("id, created_at, project_id")
+        .select("id, created_at, place_id")
         .eq("consumer_id", consumerId)
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -85,10 +85,10 @@ async function runTool(
         const { data: row, error } = await admin
           .from("favorites")
           .upsert(
-            { consumer_id: consumerId, project_id: placeId },
-            { onConflict: "consumer_id,project_id" },
+            { consumer_id: consumerId, place_id: placeId },
+            { onConflict: "consumer_id,place_id" },
           )
-          .select("id, project_id, created_at")
+          .select("id, place_id, created_at")
           .single();
         if (error) return toolError(error.message);
         // A favorite is a pure bookmark — it issues nothing.
@@ -99,7 +99,7 @@ async function runTool(
         .from("favorites")
         .delete()
         .eq("consumer_id", consumerId)
-        .eq("project_id", placeId);
+        .eq("place_id", placeId);
       if (error) return toolError(error.message);
       return toolText({ ok: true, saved: false });
     }
@@ -157,7 +157,7 @@ async function runTool(
       let q = admin
         .from("reservation_tickets")
         .select(
-          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, project_id",
+          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, place_id",
         )
         .eq("consumer_id", consumerId)
         // Operator test tickets (is_test) reference real consumers — hidden.
@@ -181,10 +181,10 @@ async function runTool(
 
       const { data: consumerRow } = await admin
         .from("consumers")
-        .select("class_key")
+        .select("class_key, plan")
         .eq("id", consumerId)
         .maybeSingle();
-      const classKey = consumerRow?.class_key ?? "standard";
+      const classKey = perkClassKey(consumerRow?.class_key, consumerRow?.plan);
       let tier = null;
       try {
         tier = await getTierConfig(admin, classKey);
@@ -285,10 +285,10 @@ Deno.serve(async (req) => {
   // decision: Pato — Consumer MCP is Premium-only (MESITA-266).
   const { data: consumerRow } = await admin
     .from("consumers")
-    .select("class_key")
+    .select("class_key, plan")
     .eq("id", consumerId)
     .maybeSingle();
-  if (!isElevatedClass(consumerRow?.class_key)) {
+  if (!isPremiumPlan(consumerRow?.class_key, consumerRow?.plan)) {
     return json(
       {
         ok: false,

@@ -229,46 +229,46 @@ async function loadPerfContext(
     admin
       .from("favorites")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .in("story_status", [...attested]),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .in("review_status", [...attested]),
     admin
       .from("ticket_reviews")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("consumer_id, story_status, review_status")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS)
       .order("created_at", { ascending: false })
       .limit(1000),
     admin
       .from("ticket_reviews")
       .select("comments, overall")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(REVIEW_SNIPPET_LIMIT),
   ]);

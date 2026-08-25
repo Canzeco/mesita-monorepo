@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, project_id, consumer_id, status, review_status, fix_requested")
+    .select("id, place_id, consumer_id, status, review_status, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     .select(
       "id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
-    .eq("id", ticket.project_id)
+    .eq("id", ticket.place_id)
     .maybeSingle();
   if (placeRow.error || !placeRow.data) {
     return json({ ok: false, error: "Place not found" }, 404);
@@ -136,14 +136,14 @@ Deno.serve(async (req) => {
 
   // Once per consumer × place — friendly check first, the primary key wins
   // any race.
-  if (await hasClaimedReview(admin, userId, ticket.project_id)) {
+  if (await hasClaimedReview(admin, userId, ticket.place_id)) {
     return json(ALREADY_CLAIMED, 409);
   }
   const claim = await admin
     .from("consumer_review_claims")
     .insert({
       consumer_id: userId,
-      project_id: ticket.project_id,
+      place_id: ticket.place_id,
       ticket_id: ticket.id,
     })
     .select("consumer_id")
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
       .from("consumer_review_claims")
       .delete()
       .eq("consumer_id", userId)
-      .eq("project_id", ticket.project_id);
+      .eq("place_id", ticket.place_id);
     return json(
       { ok: false, error: `review_submit: ${updated.error}` },
       500,

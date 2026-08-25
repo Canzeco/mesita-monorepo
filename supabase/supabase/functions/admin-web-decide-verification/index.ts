@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   // reject double-decides.
   const { data: verification, error: lookupError } = await admin
     .from("project_verifications")
-    .select("id, project_id, requester_id, status")
+    .select("id, place_id, requester_id, status")
     .eq("id", verificationId)
     .maybeSingle();
   if (lookupError) {
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     // Grant the requester ownership. The place is already active+web;
     // membership is what gates business access on /unit/<id>/*.
     const { error: memberError } = await admin.from("project_members").insert({
-      project_id: verification.project_id,
+      place_id: verification.place_id,
       manager_id: verification.requester_id,
       role: "owner",
     });

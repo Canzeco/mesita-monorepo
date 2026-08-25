@@ -49,10 +49,10 @@ Deno.serve(async (req) => {
     const { data: saved, error: saveErr } = await admin
       .from("favorites")
       .upsert(
-        { consumer_id: consumerId, project_id: body.project_id },
-        { onConflict: "consumer_id,project_id" },
+        { consumer_id: consumerId, place_id: body.project_id },
+        { onConflict: "consumer_id,place_id" },
       )
-      .select("id, project_id, created_at")
+      .select("id, place_id, created_at")
       .single();
     if (saveErr) return json({ ok: false, error: saveErr.message }, 500);
 
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     .from("favorites")
     .delete()
     .eq("consumer_id", consumerId)
-    .eq("project_id", body.project_id);
+    .eq("place_id", body.project_id);
   if (delErr) return json({ ok: false, error: delErr.message }, 500);
 
   return json({ ok: true });
