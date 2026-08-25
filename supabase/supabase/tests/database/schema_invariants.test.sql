@@ -396,7 +396,8 @@ select ok(
 select is(
   (select count(*)::bigint from information_schema.columns
     where table_schema = 'public' and table_name = 'app_config'
-      and column_name ~ '^(atlas_|memo_)'),
+      and column_name ~ '^(atlas_|memo_)'
+      and column_name <> 'memo_config'),
   0::bigint,
   'app_config has no leftover atlas_* / memo_* scalars (folded into enrichment_config / memo_config)'
 );
