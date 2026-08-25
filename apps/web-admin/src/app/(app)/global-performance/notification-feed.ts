@@ -115,3 +115,51 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   if (typeof meta.reason !== "string") return null;
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
+
+// Status — six independent facts (Atlas): seeded · listed · enriched ·
+// verified · partner · promoting. The Monitor only sees the first four on
+// Intake events. `listing_type` (`web`/`unclaimed`/`partner`) backs NONE of
+// them — never print it as a status. `meta.claimed` is "has an owner row",
+// which is not Verified (an approved project_verifications proof).
+//
+// Same listed test as `_shared/place-status.ts` / the Status box: a guest
+// can reach the place iff projects.status ∈ (active, lead).
+
+export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
+
+export function isListedStatus(status: unknown): boolean {
+  return typeof status === "string" && LISTED_STATUSES.includes(status);
+}
+
+export type IntakeFactChip = { key: string; label: string };
+
+/** Create-event facts we can derive from the existing EF payload. */
+export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
+  if (item.type !== "atlas.place_created") return [];
+  const chips: IntakeFactChip[] = [{ key: "seeded", label: "Seeded" }];
+  const status = item.meta?.status;
+  if (isListedStatus(status)) chips.push({ key: "listed", label: "Listed" });
+  else if (typeof status === "string") chips.push({ key: "listed", label: "Unlisted" });
+  if (item.meta?.enriched === true) chips.push({ key: "enriched", label: "Enriched" });
+  return chips;
+}
+
+/**
+ * Compact Intake verb. Create rows speak the facts (Seeded · Listed), never
+ * "New place" and never the category. Ownership proof is Verified.
+ */
+export function intakeStatusLine(item: NotificationItem): string | null {
+  if (item.type === "atlas.place_created") {
+    return intakeFactChips(item)
+      .map((c) => c.label)
+      .join(" · ");
+  }
+  if (item.type === "atlas.place_enriched") return "Enriched";
+  if (item.type === "atlas.ownership_claimed") return "Verified";
+  return null;
+}
+
+/** Category is a taxonomy, not a status — keep it off Intake compact lines. */
+export function showCategoryOnCompact(item: NotificationItem): boolean {
+  return !item.type.startsWith("atlas.");
+}
