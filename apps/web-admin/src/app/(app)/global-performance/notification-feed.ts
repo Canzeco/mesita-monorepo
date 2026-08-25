@@ -1,6 +1,7 @@
 import {
   GENERAL_STATUS_FACTS,
   INTAKE_FUNCTIONS,
+  intakeFunctionLabel,
   type GeneralStatusKey,
   type IntakeFunctionKey,
 } from "@/lib/status-vocabulary";
@@ -122,9 +123,9 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
 
-// Status — two layers (Pato, 2026-08-25):
-//   GENERAL (7)  Created · Active · Listed · Enriched · Verified · Partner · Promoting
-//   INTAKE (11)  0 Seed … 10 Semantics — each a bool, called or not
+// Status — two boxes (Pato, 2026-08-25):
+//   STATUSES (7)  Created · Active · Listed · Enriched · Verified · Partner · Promoting
+//   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
 export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
@@ -310,7 +311,7 @@ export function intakeFunctionChips(item: NotificationItem): IntakeFnChip[] {
   if (!facts) return [];
   return INTAKE_FUNCTIONS.map((def) => ({
     key: def.key,
-    label: `${def.n} ${def.label}`,
+    label: intakeFunctionLabel(def.n, def.label),
     on: fnOn(facts, def.key),
   }));
 }

@@ -161,7 +161,7 @@ describe("itemMatchesIntakeFilter", () => {
 });
 
 describe("intakeFunctionChips", () => {
-  it("lists eleven functions 0–10 and turns Semantics on from the semantic stamp", () => {
+  it("lists eleven functions 0–10 and turns Semantic on from the semantic stamp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -182,13 +182,13 @@ describe("intakeFunctionChips", () => {
     });
     const chips = intakeFunctionChips(created);
     expect(chips).toHaveLength(11);
-    expect(chips[0]).toMatchObject({ key: "seed", label: "0 Seed", on: true });
+    expect(chips[0]).toMatchObject({ key: "seed", label: "0. Seed", on: true });
     expect(chips.find((c) => c.key === "semantic")).toMatchObject({
-      label: "10 Semantics",
+      label: "10. Semantic",
       on: true,
     });
     expect(chips.find((c) => c.key === "serp")).toMatchObject({
-      label: "3 Serp",
+      label: "3. Serp",
       on: false,
     });
   });

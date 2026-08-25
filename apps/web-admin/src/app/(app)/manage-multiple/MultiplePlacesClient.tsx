@@ -90,7 +90,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Place IDs in, places out — Create Seed · Pulse · Details · Semantics. Caps live on Intake."
+        blurb="Place IDs in, places out — Create Seed · Pulse · Details · Semantic. Caps live on Intake."
       >
         <CreateTab
           text={createText}
@@ -118,7 +118,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Enrich 1–10: Pulse through Description, then Semantics. Paste Mesita IDs. Same full Intaker run."
+        blurb="Enrich 1–10: Pulse through Description, then Semantic. Paste Mesita IDs. Same full Intaker run."
       >
         <EnrichTab text={enrichText} onTextChange={setEnrichText} />
       </Step>
