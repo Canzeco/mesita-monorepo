@@ -186,6 +186,13 @@ Deno.test("contents persist drops google_place_id before the writePlace update",
     "gathered.place carries google_place_id; writePlace refuses that key on " +
       "UPDATE. Drop it in the persist destructure or Contents S7 dies on every place.",
   );
+  assertEquals(
+    /yelp_url:\s*_dropYelp/.test(src) &&
+      /tiktok_url:\s*_dropTiktok/.test(src) &&
+      /tripadvisor_url:\s*_dropTripadvisor/.test(src),
+    true,
+    "Wave 040 dropped those URL columns. A gathered leftover must not ride the UPDATE.",
+  );
 });
 
 Deno.test("place-display-name.ts stays deleted", async () => {
