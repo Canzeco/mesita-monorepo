@@ -54,21 +54,23 @@ export const LEGACY_CLASS_IDENTITY: Record<
 /**
  * Resolve a stored `consumers.class_key` onto the two v11 identity axes.
  *
- * THE BRIDGE, and deliberately temporary: `consumers` has no plan column yet,
- * so today the paid subscription is still encoded as the `premium` CLASS row.
- * Reading the plan back out of it is what lets v11 price real bills before the
- * schema catches up. When `consumers.plan` lands this function deletes itself.
- *
- * An unknown or missing key prices as bronze·free — the floor — rather than
- * erroring or leaking that it was unrecognised.
+ * Metals (bronze/silver/gold/diamond) pass through. Leftover legacy keys
+ * (standard/influencer/premium/aura) still map. `plan` from `consumers.plan`
+ * wins when provided; otherwise the legacy key's implied plan (or free).
  */
 export function identityForClassKey(
   key: string | null | undefined,
+  plan?: PlanKey | null,
 ): { cls: ClassKey; plan: PlanKey } {
+  const planArg = plan === "premium" || plan === "free" ? plan : null;
+  if (key && (CLASS_KEYS as readonly string[]).includes(key)) {
+    return { cls: key as ClassKey, plan: planArg ?? "free" };
+  }
   const hit = (LEGACY_CLASS_KEYS as readonly string[]).includes(key ?? "")
     ? LEGACY_CLASS_IDENTITY[key as LegacyClassKey]
     : undefined;
-  return hit ?? LEGACY_CLASS_IDENTITY.standard;
+  if (hit) return { cls: hit.cls, plan: planArg ?? hit.plan };
+  return { cls: "bronze", plan: planArg ?? "free" };
 }
 
 /**

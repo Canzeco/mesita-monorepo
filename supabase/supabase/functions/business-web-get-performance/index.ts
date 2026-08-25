@@ -135,7 +135,7 @@ async function fetchAllClosedTickets(
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, " +
           "bill_source, currency, created_at, revealed_at, first_scanned_at",
       )
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS)
       .order("created_at", { ascending: false })
       .range(from, from + CLOSED_PAGE - 1);
@@ -197,53 +197,53 @@ Deno.serve(async (req) => {
     admin
       .from("favorites")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .not("first_scanned_at", "is", null),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", CLOSED_STATUS),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("status", TICKET_STATUS.cancelled),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .in("story_status", [...ATTESTED_STATUSES]),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .in("review_status", [...ATTESTED_STATUSES]),
     admin
       .from("ticket_reviews")
       .select("id", { count: "exact", head: true })
-      .eq("project_id", projectId),
+      .eq("place_id", projectId),
     admin
       .from("ticket_reviews")
       .select(
         "id, food, service, ambience, value, overall, comments, created_at, " +
           "consumer:consumers(first_name)",
       )
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(reviewLimit),
     admin
       .from("favorites")
       .select("id, created_at")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
     admin
@@ -252,13 +252,13 @@ Deno.serve(async (req) => {
         "id, status, first_scanned_at, created_at, revealed_at, cancelled_at, " +
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
       )
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(FEED_TICKET_PAGE),
     admin
       .from("reservation_tickets")
       .select("id, status, party_size, reserved_at, created_at")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
   ]);

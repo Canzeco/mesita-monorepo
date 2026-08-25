@@ -30,6 +30,7 @@
 // strategyForPromoMatrix) — no rates blob, no extra EF, no extra query.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { rowPlaceId } from "./place-id.ts";
 
 export type PlaceSummary = {
   id: string;
@@ -52,17 +53,24 @@ export type PlaceSummary = {
   lng: number | null;
 };
 
-type RowWithProject = { project_id?: string | null };
+type RowWithProject = {
+  project_id?: string | null;
+  place_id?: string | null;
+};
 
 /**
  * Returns the rows with `place` populated (null when the place is missing).
- * Order and every other field are preserved.
+ * Order and every other field are preserved. Callers may select `place_id`
+ * (the live column) or leftover `project_id`; the wire field `project_id`
+ * is always filled so frozen clients keep reading the same JSON key.
  */
 export async function attachPlaces<T extends RowWithProject>(
   admin: SupabaseClient,
   rows: T[],
-): Promise<Array<T & { place: PlaceSummary | null }>> {
-  const ids = [...new Set(rows.map((r) => r.project_id).filter((v): v is string => !!v))];
+): Promise<Array<T & { place: PlaceSummary | null; project_id: string | null }>> {
+  const ids = [
+    ...new Set(rows.map((r) => rowPlaceId(r)).filter((v): v is string => !!v)),
+  ];
   const byId = new Map<string, PlaceSummary>();
 
   if (ids.length > 0) {
@@ -122,8 +130,12 @@ export async function attachPlaces<T extends RowWithProject>(
     }
   }
 
-  return rows.map((r) => ({
-    ...r,
-    place: (r.project_id ? byId.get(r.project_id) : undefined) ?? null,
-  }));
+  return rows.map((r) => {
+    const id = rowPlaceId(r);
+    return {
+      ...r,
+      project_id: id,
+      place: (id ? byId.get(id) : undefined) ?? null,
+    };
+  });
 }

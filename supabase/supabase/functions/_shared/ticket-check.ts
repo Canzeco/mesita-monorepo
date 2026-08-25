@@ -16,6 +16,7 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { amountDueCents } from "./business-ticket-billing.ts";
+import { fromPlaceIdRow } from "./place-id.ts";
 
 // Canonical public URL of a check — the QR encodes exactly this.
 export const CHECK_URL_BASE = "https://check.mesita.ai/";
@@ -44,7 +45,7 @@ export function isPlausibleCheckCode(code: string): boolean {
 // ── Lookup ──────────────────────────────────────────────────────────────
 
 export const CHECK_TICKET_COLUMNS =
-  "id, project_id, consumer_id, status, check_code, first_scanned_at, " +
+  "id, place_id, consumer_id, status, check_code, first_scanned_at, " +
   "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
   "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "bill_source, currency, created_at, revealed_at, cancelled_at, " +
@@ -90,7 +91,8 @@ export async function loadTicketByCheckCode(
     .select(CHECK_TICKET_COLUMNS)
     .eq("check_code", code)
     .maybeSingle();
-  return (data as CheckTicketRow | null) ?? null;
+  return (fromPlaceIdRow(data as Record<string, unknown> | null) as CheckTicketRow | null) ??
+    null;
 }
 
 // ── The public payload allowlist ────────────────────────────────────────

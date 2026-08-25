@@ -9,13 +9,13 @@ export async function getProfileTool(
   const { data: consumer, error } = await admin
     .from("consumers")
     .select(
-      "id, code, full_name, first_name, last_name, phone, instagram_handle, class_key, class_origin, instagram_followers_count, class_expires_at",
+      "id, code, full_name, first_name, last_name, phone, instagram_handle, class_key, class_origin, plan, instagram_followers_count, class_expires_at",
     )
     .eq("id", consumerId)
     .maybeSingle();
   if (error) return toolError(error.message);
   if (!consumer) return toolError("Consumer profile not found");
-  const classKey = consumer.class_key ?? "standard";
+  const classKey = consumer.class_key ?? "bronze";
   let tier = null;
   try {
     tier = await getTierConfig(admin, classKey);
@@ -38,7 +38,8 @@ export async function getProfileTool(
     class: {
       key: classKey,
       origin: consumer.class_origin ?? "default",
-      label: tier?.label ?? "Standard",
+      plan: consumer.plan ?? "free",
+      label: tier?.label ?? "Bronze",
       followers: consumer.instagram_followers_count ?? null,
       expires_at: consumer.class_expires_at ?? null,
       usage: {

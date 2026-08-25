@@ -32,9 +32,6 @@ export function fromPlaceIdRow(
   if (!row) return null;
   const out: Record<string, unknown> = { ...row };
   if ("place_id" in out) out.project_id = out.place_id;
-  if ("check_code" in out && !("ticket_code" in out)) {
-    out.ticket_code = out.check_code;
-  }
   return out;
 }
 

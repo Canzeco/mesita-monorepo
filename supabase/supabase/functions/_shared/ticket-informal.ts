@@ -55,6 +55,7 @@ export type ConsumerRow = {
   first_name: string | null;
   last_name: string | null;
   class_key: string | null;
+  plan?: "free" | "premium" | null;
   class_origin: string | null;
   instagram_followers_count: number | null;
   phone: string | null;
@@ -110,6 +111,7 @@ export async function computeInformalBill(
     grid,
     {
       classKey: consumer.class_key,
+      plan: consumer.plan,
       isFirstVisit: firstVisit,
       mesitaReviewed,
     },

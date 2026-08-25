@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     admin
       .from("project_invites")
       .select("id, expires_at, claimed_at")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .ilike("email", email)
       .is("claimed_at", null)
       .gt("expires_at", new Date().toISOString())
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     const { data: existingMember } = await admin
       .from("project_members")
       .select("id")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("manager_id", existingBusiness.data.id)
       .maybeSingle();
     if (existingMember) {
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     }
     const ins = await admin
       .from("project_members")
-      .insert({ project_id: projectId, manager_id: existingBusiness.data.id, role })
+      .insert({ place_id: projectId, manager_id: existingBusiness.data.id, role })
       .select("id")
       .single();
     if (ins.error) {
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const invite = await admin
     .from("project_invites")
     .insert({
-      project_id: projectId,
+      place_id: projectId,
       email,
       role,
       token,

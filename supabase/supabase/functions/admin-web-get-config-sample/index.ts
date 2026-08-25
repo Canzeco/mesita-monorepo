@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
       id: c.id,
       // First name only.
       label: c.first_name ?? (c.full_name ? String(c.full_name).split(" ")[0] : null),
-      class_key: c.class_key ?? "standard",
+      class_key: c.class_key ?? "bronze",
       instagram_followers: c.instagram_followers_count ?? null,
       sex: typeof c.sex === "string" ? c.sex : null,
       age,

@@ -21,7 +21,7 @@ Deno.test("mapTicketReviewsToVisitors: anonymizes private accounts", () => {
   ]);
   assertEquals(card.name, ANONYMOUS_GUEST_NAME);
   assertEquals(card.handle, "");
-  assertEquals(card.class_key, "premium");
+  assertEquals(card.class_key, "bronze");
   assertEquals(card.quote, "Loved it");
 });
 

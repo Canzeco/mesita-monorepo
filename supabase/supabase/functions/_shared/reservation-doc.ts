@@ -95,6 +95,12 @@
 // remains.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  fromPlaceIdRow,
+  remapPlaceIdIdent,
+  remapPlaceIdSelect,
+  toPlaceIdPatch,
+} from "./place-id.ts";
 
 // ── ReservationDoc — the full row shape ─────────────────────────────────────
 
@@ -668,30 +674,37 @@ export async function writeReservation(
 ): Promise<ReservationWriteResult> {
   const validated = validateReservationPatch(args.patch);
   if (!validated.ok) return { ok: false, error: validated.error };
+  const dbPatch = toPlaceIdPatch(validated.patch as Record<string, unknown>);
 
   if (args.mode === "insert") {
     if (args.select) {
       const { data, error } = await admin
         .from("reservation_tickets")
-        .insert(validated.patch)
-        .select(args.select)
+        .insert(dbPatch)
+        .select(remapPlaceIdSelect(args.select))
         .single();
       if (error) return { ok: false, error: error.message, code: error.code };
-      return { ok: true, row: data as unknown as Record<string, unknown> };
+      return {
+        ok: true,
+        row: fromPlaceIdRow(data as unknown as Record<string, unknown>),
+      };
     }
-    const { error } = await admin.from("reservation_tickets").insert(validated.patch);
+    const { error } = await admin.from("reservation_tickets").insert(dbPatch);
     if (error) return { ok: false, error: error.message, code: error.code };
     return { ok: true, row: null };
   }
 
-  let q = admin.from("reservation_tickets").update(validated.patch).eq("id", args.id);
+  let q = admin.from("reservation_tickets").update(dbPatch).eq("id", args.id);
   for (const [col, val] of Object.entries(args.match ?? {})) {
-    q = q.eq(col, val);
+    q = q.eq(remapPlaceIdIdent(col), val);
   }
   if (args.select) {
-    const { data, error } = await q.select(args.select).single();
+    const { data, error } = await q.select(remapPlaceIdSelect(args.select)).single();
     if (error) return { ok: false, error: error.message, code: error.code };
-    return { ok: true, row: data as unknown as Record<string, unknown> };
+    return {
+      ok: true,
+      row: fromPlaceIdRow(data as unknown as Record<string, unknown>),
+    };
   }
   const { error } = await q;
   if (error) return { ok: false, error: error.message, code: error.code };

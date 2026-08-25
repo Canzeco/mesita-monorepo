@@ -12,8 +12,8 @@
 // nothing here looks at those rates.
 //
 // IDENTITY: v11 prices two axes, class (bronze/silver/gold/diamond) and plan
-// (free/premium), but `consumers` still stores only the legacy `class_key`.
-// identityForClassKey bridges the two until `consumers.plan` lands.
+// (free/premium). `consumers.plan` is live; identityForClassKey still maps
+// leftover legacy class_key values on the way in.
 //
 // A stored v10 blob is migrated forward on read, so the engine keeps pricing
 // correctly between the config-shape deploy and the operator's first save.
@@ -28,12 +28,10 @@
 // aggressive is gone — such a row resolves to dominant, its own preset.
 // Rates matching NO preset still fall to null → the zero rung.
 //
-// Segments v6 (2026-08-01) + Story gate v2 (MESITA-909) + doors rank flip
-// (MESITA-972): four classes — standard, influencer (Instagram ≥ 2,000
-// followers, automatic), premium (paid), aura (invite-only) — plus actions.
+// Segments: four metals — bronze < silver < gold < diamond — plus actions.
 // Story is a UNIVERSAL
 // action gated on a connected Instagram (`instagram_handle`), not on
-// Influencer class; Review / Welcome / Mesita stay universal too. Class
+// a reach class; Review / Welcome / Mesita stay universal too. Class
 // segments resolve generically (any known class key qualifies for its own
 // grid row), so a future class/tier is a classes-table INSERT + one entry
 // here — never per-class branches.
@@ -51,12 +49,12 @@ export type { PromosConfigV11 };
 export { identityForClassKey };
 
 // Class segments in rank order (mirrors public.classes: rank 0..3 —
-// MESITA-972: standard < influencer < premium < aura).
+// bronze < silver < gold < diamond).
 export const CLASS_SEGMENTS = [
-  "standard",
-  "influencer",
-  "premium",
-  "aura",
+  "bronze",
+  "silver",
+  "gold",
+  "diamond",
 ] as const;
 export type ClassSegment = (typeof CLASS_SEGMENTS)[number];
 
@@ -123,7 +121,7 @@ export type RewardsGrid = {
 //   type      Base & Mesita (retention + Mesita's own data)
 //               < Story (social reach)
 //               < Google & Welcome (acquisition + permanent public proof)
-//   class     Standard < Influencer < Premium < Aura
+//   class     Bronze < Silver < Gold < Diamond
 //   strategy  Zero < Conservative < Aggressive
 //
 // The two groupings Pato wrote as ties are made STRICT by one step each —
@@ -142,10 +140,10 @@ const TYPE_STEP = {
 } as const;
 
 const CLASS_STEP: Record<ClassSegment, number> = {
-  standard: 0,
-  influencer: 5,
-  premium: 10,
-  aura: 15,
+  bronze: 0,
+  silver: 5,
+  gold: 10,
+  diamond: 15,
 };
 
 const STRATEGY_STEP = { conservative: 0, aggressive: 10, dominant: 20 } as const;
@@ -171,10 +169,10 @@ const defaultRow = (
 const defaultMatrix = (
   type: keyof typeof TYPE_STEP,
 ): Record<ClassSegment, SegmentRates> => ({
-  standard: defaultRow(type, "standard"),
-  influencer: defaultRow(type, "influencer"),
-  premium: defaultRow(type, "premium"),
-  aura: defaultRow(type, "aura"),
+  bronze: defaultRow(type, "bronze"),
+  silver: defaultRow(type, "silver"),
+  gold: defaultRow(type, "gold"),
+  diamond: defaultRow(type, "diamond"),
 });
 
 export const DEFAULT_REWARDS_GRID: RewardsGrid = {
@@ -223,9 +221,19 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
     };
   };
 
+  const LEGACY_GRID_KEY: Record<ClassSegment, string> = {
+    bronze: "standard",
+    silver: "influencer",
+    gold: "premium",
+    diamond: "aura",
+  };
+
   const grid = {} as Record<ClassSegment, SegmentRates>;
   for (const cls of CLASS_SEGMENTS) {
-    grid[cls] = rates(rawGrid[cls], DEFAULT_REWARDS_GRID.grid[cls]);
+    grid[cls] = rates(
+      rawGrid[cls] ?? rawGrid[LEGACY_GRID_KEY[cls]],
+      DEFAULT_REWARDS_GRID.grid[cls],
+    );
   }
 
   const actions = {} as ActionMatrix;
@@ -239,7 +247,10 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
     const perClass = {} as Record<ClassSegment, SegmentRates>;
     for (const cls of CLASS_SEGMENTS) {
       const d = DEFAULT_REWARDS_GRID.actions[action][cls];
-      perClass[cls] = rates(rawAction?.[cls] ?? legacyFlat, d);
+      perClass[cls] = rates(
+        rawAction?.[cls] ?? rawAction?.[LEGACY_GRID_KEY[cls]] ?? legacyFlat,
+        d,
+      );
     }
     actions[action] = perClass;
   }
@@ -291,7 +302,15 @@ export function gridFromRuleRows(
     ) {
       continue;
     }
-    const cls = CLASS_SEGMENTS.find((c) => c === row.class);
+    const cls = CLASS_SEGMENTS.find((c) => c === row.class) ??
+      (
+        {
+          standard: "bronze",
+          influencer: "silver",
+          premium: "gold",
+          aura: "diamond",
+        } as Record<string, ClassSegment>
+      )[row.class];
     if (!cls) continue;
     const value = num(row.discount_percent, 0);
     if (row.action === "standing") {
@@ -382,6 +401,8 @@ export function isActionVerified(status: string | null | undefined): boolean {
 
 export type RateContext = {
   classKey: string | null | undefined;
+  /** consumers.plan when known. Leftover class_key values still imply a plan. */
+  plan?: "free" | "premium" | null;
   isFirstVisit: boolean;
   storyVerified?: boolean;
   reviewVerified?: boolean;
@@ -413,7 +434,7 @@ function resolveAdditiveRate(
   cfg: PromosConfigV11,
   ctx: RateContext,
 ): number {
-  const { cls, plan } = identityForClassKey(ctx.classKey);
+  const { cls, plan } = identityForClassKey(ctx.classKey, ctx.plan);
   // Bonuses are per strategy: Aggressive out-pays Conservative on the actions
   // exactly as it does on standing.
   const b = cfg.visits.bonuses[strategy];
@@ -436,21 +457,20 @@ function resolveBestOfRate(
   grid: RewardsGrid,
   ctx: RateContext,
 ): number {
-  const cls: ClassSegment = isClassSegment(ctx.classKey)
-    ? ctx.classKey
-    : "standard";
+  const { cls } = identityForClassKey(ctx.classKey, ctx.plan);
+  const segment: ClassSegment = isClassSegment(cls) ? cls : "bronze";
   const a = grid.actions;
   const qualifying: number[] = [
-    grid.grid.standard[strategy],
-    grid.grid[cls][strategy],
+    grid.grid.bronze[strategy],
+    grid.grid[segment][strategy],
   ];
   // v9 coupling kept for the legacy path only.
   if (ctx.isFirstVisit && ctx.reviewVerified) {
-    qualifying.push(a.welcome[cls][strategy]);
+    qualifying.push(a.welcome[segment][strategy]);
   }
-  if (ctx.storyVerified) qualifying.push(a.story[cls][strategy]);
-  if (ctx.reviewVerified) qualifying.push(a.review[cls][strategy]);
-  if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[cls][strategy]);
+  if (ctx.storyVerified) qualifying.push(a.story[segment][strategy]);
+  if (ctx.reviewVerified) qualifying.push(a.review[segment][strategy]);
+  if (ctx.mesitaReviewed) qualifying.push(a.mesita_review[segment][strategy]);
   return clampPercent(qualifying.reduce((m, r) => (r > m ? r : m), 0));
 }
 

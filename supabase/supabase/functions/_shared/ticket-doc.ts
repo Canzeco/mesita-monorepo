@@ -41,12 +41,7 @@
 // landmine to not step on.
 //
 // THE CHECK -> VALIDATE RENAME (MESITA-1114/1115) touches visit_tickets only
-// through check_code / ticket_code — both live, trigger-synced
-// (sync_visit_ticket_validate_columns, 20260823070057). staff_pin lives on
-// `projects` (twin of check_pin), gating writes through
-// _shared/ticket-check.ts's requireCheckPin — entirely outside this
-// aggregate's table and this door. The bill is always required (MESITA-1095);
-// there is no per-place require_bill column any more.
+// through check_code. The ticket_code twin and its sync trigger are gone.
 //
 // THE INVARIANTS, and why each is real (not invented) — every one below is a
 // verbatim mirror of a live Postgres CHECK on visit_tickets (confirmed via
@@ -83,11 +78,15 @@
 //
 // welcome_free_rate / welcome_premium_rate / free_rate / premium_rate carry
 // NO live CHECK (confirmed absent from pg_constraint) — validated as number
-// or null only, no invented range. check_code / ticket_code likewise carry
-// no format CHECK (the EXPAND migration says so explicitly, to keep the two
-// columns' sync symmetric) — validated as string or null only.
+// or null only, no invented range. check_code is a string or null.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  fromPlaceIdRow,
+  remapPlaceIdIdent,
+  remapPlaceIdSelect,
+  toPlaceIdPatch,
+} from "./place-id.ts";
 import { ALL_TICKET_STATUSES, type TicketStatus } from "./ticket-status.ts";
 
 // ── TicketDoc — the full row shape ──────────────────────────────────────
@@ -166,7 +165,6 @@ export type TicketDoc = {
   fix_note: string | null;
   paid_method: "at_place" | "mesita" | null;
   validated_at: string | null;
-  ticket_code: string | null;
   story_ojo_verdict: "pass" | "unsure" | "fail" | null;
   story_ojo_confidence: number | null;
   story_ojo_reasons: string[] | null;
@@ -227,7 +225,6 @@ export const TICKET_PATCH_KEYS = [
   "fix_note",
   "paid_method",
   "validated_at",
-  "ticket_code",
   "story_ojo_verdict",
   "story_ojo_confidence",
   "story_ojo_reasons",
@@ -463,7 +460,6 @@ export function validateTicketPatch(input: unknown): TicketValidationResult {
       "rates_snapshotted_at",
       "approved_at",
       "validated_at",
-      "ticket_code",
       "story_ojo_checked_at",
       "review_ojo_checked_at",
     ] as const
@@ -541,7 +537,7 @@ export async function writeTicket(
     // deno-lint-ignore no-explicit-any
     let q: any = admin.from("visit_tickets").delete();
     for (const [column, value] of Object.entries(args.match)) {
-      q = q.eq(column, value);
+      q = q.eq(remapPlaceIdIdent(column), value);
     }
     const { error } = await q;
     if (error) return { ok: false, error: error.message, code: error.code };
@@ -550,15 +546,16 @@ export async function writeTicket(
 
   const validated = validateTicketPatch(args.patch);
   if (!validated.ok) return { ok: false, error: validated.error };
+  const dbPatch = toPlaceIdPatch(validated.patch as Record<string, unknown>);
 
   if (args.mode === "insert") {
     // deno-lint-ignore no-explicit-any
-    let q: any = admin.from("visit_tickets").insert(validated.patch);
+    let q: any = admin.from("visit_tickets").insert(dbPatch);
     if (args.select) {
-      q = q.select(args.select).single();
+      q = q.select(remapPlaceIdSelect(args.select)).single();
       const { data, error } = await q;
       if (error) return { ok: false, error: error.message, code: error.code };
-      return { ok: true, row: data as unknown as Record<string, unknown> };
+      return { ok: true, row: fromPlaceIdRow(data as unknown as Record<string, unknown>) };
     }
     const { error } = await q;
     if (error) return { ok: false, error: error.message, code: error.code };
@@ -567,32 +564,38 @@ export async function writeTicket(
 
   // update
   // deno-lint-ignore no-explicit-any
-  let q: any = admin.from("visit_tickets").update(validated.patch).eq(
+  let q: any = admin.from("visit_tickets").update(dbPatch).eq(
     "id",
     args.id,
   );
   if (args.guard?.eq) {
     for (const [column, value] of Object.entries(args.guard.eq)) {
-      q = q.eq(column, value);
+      q = q.eq(remapPlaceIdIdent(column), value);
     }
   }
   if (args.guard?.is) {
     for (const [column, value] of Object.entries(args.guard.is)) {
-      q = q.is(column, value);
+      q = q.is(remapPlaceIdIdent(column), value);
     }
   }
   if (args.guard?.in) {
     for (const [column, values] of Object.entries(args.guard.in)) {
-      q = q.in(column, values);
+      q = q.in(remapPlaceIdIdent(column), values);
     }
   }
   if (args.select) {
+    const select = remapPlaceIdSelect(args.select);
     q = args.single
-      ? q.select(args.select).single()
-      : q.select(args.select).maybeSingle();
+      ? q.select(select).single()
+      : q.select(select).maybeSingle();
     const { data, error } = await q;
     if (error) return { ok: false, error: error.message, code: error.code };
-    return { ok: true, row: (data as unknown as Record<string, unknown>) ?? null };
+    return {
+      ok: true,
+      row: fromPlaceIdRow(
+        (data as unknown as Record<string, unknown>) ?? null,
+      ),
+    };
   }
   const { error } = await q;
   if (error) return { ok: false, error: error.message, code: error.code };

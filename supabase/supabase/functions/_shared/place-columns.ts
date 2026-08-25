@@ -109,7 +109,6 @@ const COLUMNS: readonly string[] = [
   "established_year",
   "executive_chef",
   "discount_cap_cents",
-  "requires_story",
   "details",
   // Generic product payload. Menus live under products.menu.
   "products",

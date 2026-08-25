@@ -268,7 +268,7 @@ export async function recordMembershipStrike(
   if (!update.ok) return { ok: false, error: update.error };
 
   const insert = await admin.from("project_strikes").insert({
-    project_id: opts.projectId,
+    place_id: opts.projectId,
     consumer_id: opts.consumerId ?? null,
     ticket_id: opts.ticketId ?? null,
     reason: opts.reason,

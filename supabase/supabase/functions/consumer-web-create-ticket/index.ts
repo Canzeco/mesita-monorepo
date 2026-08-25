@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     .from("visit_tickets")
     .select("id, check_code, status")
     .eq("consumer_id", consumerId)
-    .eq("project_id", placeId)
+    .eq("place_id", placeId)
     .in("status", [...CHECK_DEDUPE_STATUSES])
     .not("check_code", "is", null)
     .maybeSingle();

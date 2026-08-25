@@ -98,7 +98,6 @@ export type PlaceRow = {
   photos: string[];
   website_url: string | null;
   instagram_url: string | null;
-  tiktok_url: string | null;
   facebook_url: string | null;
   whatsapp_url: string | null;
   opentable_url: string | null;
@@ -108,7 +107,6 @@ export type PlaceRow = {
   threads_url: string | null;
   reddit_url: string | null;
   google_maps_url: string | null;
-  tripadvisor_url: string | null;
   didi_food_url: string | null;
   email: string | null;
   hours: unknown | null;
@@ -152,7 +150,6 @@ export type PlaceRow = {
   popular_times: unknown | null;
   products: unknown | null;
   category_label: string | null;
-  yelp_url: string | null;
   embedding_source_text: string | null;
   google_name: string | null;
   description_es: string | null;
@@ -186,7 +183,6 @@ export const PLACE_PATCH_KEYS = [
   "photos",
   "website_url",
   "instagram_url",
-  "tiktok_url",
   "facebook_url",
   "whatsapp_url",
   "opentable_url",
@@ -196,7 +192,6 @@ export const PLACE_PATCH_KEYS = [
   "threads_url",
   "reddit_url",
   "google_maps_url",
-  "tripadvisor_url",
   "didi_food_url",
   "email",
   "hours",
@@ -238,7 +233,6 @@ export const PLACE_PATCH_KEYS = [
   "popular_times",
   "products",
   "category_label",
-  "yelp_url",
   "embedding_source_text",
   "google_name",
   "description_es",
@@ -280,7 +274,6 @@ export type ProjectRow = {
   plan: "free" | "pro" | "ultra";
   fiscal_type: "formal" | "informal";
   content_status: "queued" | "generating" | "ready" | "failed";
-  requires_story: boolean;
   currency: string;
   segmentation_basic_enabled: boolean;
   segmentation_advanced_enabled: boolean;
@@ -298,7 +291,6 @@ export type ProjectRow = {
   promo_paused_until: string | null;
   plan_forfeited_at: string | null;
   check_pin: string | null;
-  staff_pin: string | null;
   cfdi_rfc: string | null;
   cfdi_razon_social: string | null;
   cfdi_cp: string | null;
@@ -312,7 +304,6 @@ export const PROJECT_PATCH_KEYS = [
   "plan",
   "fiscal_type",
   "content_status",
-  "requires_story",
   "currency",
   "segmentation_basic_enabled",
   "segmentation_advanced_enabled",
@@ -330,7 +321,6 @@ export const PROJECT_PATCH_KEYS = [
   "promo_paused_until",
   "plan_forfeited_at",
   "check_pin",
-  "staff_pin",
   "cfdi_rfc",
   "cfdi_razon_social",
   "cfdi_cp",
@@ -397,12 +387,12 @@ function isNonNullEnum<T extends string>(v: unknown, legal: ReadonlySet<T>): v i
 
 const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "category", "vibe", "address", "timezone", "closes_at", "phone", "pitch",
-  "story", "website_url", "instagram_url", "tiktok_url", "facebook_url",
+  "story", "website_url", "instagram_url", "facebook_url",
   "whatsapp_url", "opentable_url", "resy_url", "uber_eats_url", "x_url",
-  "threads_url", "reddit_url", "google_maps_url", "tripadvisor_url",
+  "threads_url", "reddit_url", "google_maps_url",
   "didi_food_url", "email", "embedding_source_hash", "country", "description",
   "menu_pdf_url", "google_business_url", "menu_pdf_name", "editorial_summary",
-  "zone", "city", "executive_chef", "category_label", "yelp_url",
+  "zone", "city", "executive_chef", "category_label",
   "embedding_source_text", "google_name", "description_es", "mesita_name",
   "reservation_target", "order_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
@@ -547,7 +537,7 @@ export function validatePlacePatch(input: unknown): PlacePatchValidation {
 
 const PROJECT_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
 const PROJECT_BOOLEAN_KEYS = new Set<string>([
-  "requires_story", "segmentation_basic_enabled", "segmentation_advanced_enabled",
+  "segmentation_basic_enabled", "segmentation_advanced_enabled",
 ]);
 // projects_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
 const PROJECT_RATE_KEYS = new Set<string>([
@@ -613,9 +603,8 @@ function checkProjectField(key: string, v: unknown): string | null {
     // projects_strike_count_range — NOT NULL
     case "strike_count":
       return isIntInRange(v, 0, 3) ? null : "strike_count must be an integer between 0 and 3";
-    // projects_check_pin_format / projects_staff_pin_format
+    // projects_check_pin_format
     case "check_pin":
-    case "staff_pin":
       return isNullableRegex(v, SIX_DIGIT_PIN_RE) ? null
         : `${key} must be exactly 6 digits, or null`;
     // projects_cfdi_rfc_shape

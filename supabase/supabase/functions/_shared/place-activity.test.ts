@@ -14,7 +14,7 @@ const PUBLIC_GUEST = {
   first_name: "Ada",
   last_name: "Lovelace",
   instagram_handle: "ada",
-  class_key: "premium",
+  class_key: "gold",
   instagram_followers_count: 1200,
 };
 
@@ -33,7 +33,7 @@ Deno.test("mapStoryTickets: publishes a verified story from a public guest", () 
   assertEquals(cards.length, 1);
   assertEquals(cards[0].name, "Ada Lovelace");
   assertEquals(cards[0].handle, "@ada");
-  assertEquals(cards[0].class_key, "premium");
+  assertEquals(cards[0].class_key, "gold");
   assertEquals(cards[0].followers, 1200);
   assertEquals(cards[0].verified, true);
 });
@@ -255,7 +255,7 @@ Deno.test("mapReservationTickets: absent party_size reads as 0", () => {
 
 // ── Shared shaping ──────────────────────────────────────────────────────
 
-Deno.test("all mappers: unknown class keys fall back to standard", () => {
+Deno.test("all mappers: unknown class keys fall back to bronze", () => {
   const consumer = { ...PUBLIC_GUEST, class_key: "unobtanium" };
   assertEquals(
     mapStoryTickets([
@@ -266,16 +266,16 @@ Deno.test("all mappers: unknown class keys fall back to standard", () => {
         consumer,
       },
     ])[0].class_key,
-    "standard",
+    "bronze",
   );
   assertEquals(
     mapVisitTickets([{ id: "v", status: "paid", consumer }])[0].class_key,
-    "standard",
+    "bronze",
   );
   assertEquals(
     mapReservationTickets([{ id: "r", status: "confirmed", consumer }])[0]
       .class_key,
-    "standard",
+    "bronze",
   );
 });
 
@@ -291,6 +291,6 @@ Deno.test("all mappers: a supabase array-shaped join resolves to its first row",
 Deno.test("all mappers: a missing consumer join degrades to anonymous", () => {
   const [card] = mapVisitTickets([{ id: "v", status: "paid", consumer: null }]);
   assertEquals(card.name, ANONYMOUS_GUEST_NAME);
-  assertEquals(card.class_key, "standard");
+  assertEquals(card.class_key, "bronze");
   assertEquals(card.followers, 0);
 });

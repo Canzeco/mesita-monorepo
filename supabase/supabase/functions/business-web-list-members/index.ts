@@ -53,12 +53,12 @@ Deno.serve(async (req) => {
       // manager_id → managers (the business-account table; no compat view).
       // Result stays aliased `business`.
       .select("id, role, created_at, business:managers(id, full_name, email)")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .order("created_at", { ascending: true }),
     admin
       .from("project_invites")
       .select("id, email, role, token, created_at, expires_at")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .is("claimed_at", null)
       .gt("expires_at", nowIso)
       .order("created_at", { ascending: false }),

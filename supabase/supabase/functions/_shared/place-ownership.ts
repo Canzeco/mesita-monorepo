@@ -14,7 +14,7 @@ export async function placeHasVerifiedOwner(
   const { count, error } = await admin
     .from("project_members")
     .select("id", { count: "exact", head: true })
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("role", "owner");
   if (error) return false;
   return (count ?? 0) > 0;
@@ -27,7 +27,7 @@ export async function isLastOwnerOfPlace(
   const { count } = await admin
     .from("project_members")
     .select("id", { count: "exact", head: true })
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("role", "owner");
   return (count ?? 0) <= 1;
 }
@@ -44,7 +44,7 @@ export async function transferPlaceOwnership(
   const demote = await admin
     .from("project_members")
     .update({ role: "editor" })
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("role", "owner")
     .neq("id", memberId);
   if (demote.error) {
@@ -55,7 +55,7 @@ export async function transferPlaceOwnership(
     .from("project_members")
     .update({ role: "owner" })
     .eq("id", memberId)
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .select("id, role")
     .single();
   if (promote.error) {

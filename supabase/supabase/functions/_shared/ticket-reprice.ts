@@ -106,6 +106,7 @@ export async function resolveLiveTicketRate(
     grid,
     {
       classKey: consumerRes.data.class_key,
+      plan: consumerRes.data.plan as "free" | "premium" | null,
       isFirstVisit: firstVisit,
       storyVerified: isActionVerified(ticket.story_status),
       reviewVerified: isActionVerified(ticket.review_status),

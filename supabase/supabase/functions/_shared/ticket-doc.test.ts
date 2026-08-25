@@ -420,6 +420,11 @@ Deno.test("writeTicket: insert mode with select returns the re-read row", async 
   assert(res.ok);
   assertEquals(res.row, { id: "ticket-1", check_code: "abc123", status: "open" });
   assertEquals(calls[0].op, "insert");
+  assertEquals(
+    calls[0].value?.place_id,
+    "11111111-1111-1111-1111-111111111111",
+  );
+  assertEquals(calls[0].value?.project_id, undefined);
 });
 
 Deno.test("writeTicket: surfaces the Postgres error code for a check_code collision retry", async () => {

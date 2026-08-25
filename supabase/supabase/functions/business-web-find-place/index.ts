@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   const { data: owner } = await admin
     .from("project_members")
     .select("manager_id, role")
-    .eq("project_id", place.id)
+    .eq("place_id", place.id)
     .eq("role", "owner")
     .maybeSingle();
 
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
     .select(
       "id, method, payload, requester_email, status, reject_reason, decided_at, decided_via, created_at",
     )
-    .eq("project_id", place.id)
+    .eq("place_id", place.id)
     .eq("requester_id", userId)
     .eq("status", "pending")
     .order("created_at", { ascending: false })
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
   const { data: pendingByOther } = await admin
     .from("project_verifications")
     .select("id")
-    .eq("project_id", place.id)
+    .eq("place_id", place.id)
     .eq("status", "pending")
     .neq("requester_id", userId)
     .limit(1)

@@ -4,13 +4,12 @@
  */
 
 import { publicGuestIdentity } from "./consumer-privacy.ts";
-
-const CLASS_KEYS = new Set(["standard", "premium", "influencer", "aura"]);
+import { identityForClassKey } from "./rewards-config.ts";
 
 export type MesitaVisitorCard = {
   name: string;
   handle: string;
-  class_key: "standard" | "premium" | "influencer" | "aura";
+  class_key: "bronze" | "silver" | "gold" | "diamond";
   community: string;
   followers: number;
   quote: string;
@@ -47,10 +46,7 @@ function asConsumer(c: ReviewRow["consumer"]): ConsumerJoin {
 function classKey(
   raw: string | null | undefined,
 ): MesitaVisitorCard["class_key"] {
-  const k = (raw ?? "standard").toLowerCase();
-  return CLASS_KEYS.has(k)
-    ? (k as MesitaVisitorCard["class_key"])
-    : "standard";
+  return identityForClassKey(raw).cls;
 }
 
 export function mapTicketReviewsToVisitors(

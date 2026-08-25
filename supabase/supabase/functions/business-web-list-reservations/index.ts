@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
   let q = admin
     .from("reservation_tickets")
     .select(SELECT, { count: "exact" })
-    .eq("project_id", projectId)
+    .eq("place_id", projectId)
     .eq("is_test", false)
     .order("reserved_at", { ascending: false })
     .limit(limit);

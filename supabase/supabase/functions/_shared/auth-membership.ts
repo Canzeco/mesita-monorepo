@@ -33,7 +33,7 @@ export async function checkMembership(
     admin
       .from("project_members")
       .select("role")
-      .eq("project_id", projectId)
+      .eq("place_id", projectId)
       .eq("manager_id", user.id)
       .maybeSingle(),
   ]);

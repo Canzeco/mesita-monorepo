@@ -14,7 +14,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { getTierConfig } from "../_shared/membership.ts";
+import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, instagram_followers_count, class_expires_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, plan, instagram_followers_count, class_expires_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -103,9 +103,11 @@ Deno.serve(async (req) => {
   // Class tab on a stale slot. Everything below is best-effort: a transient
   // recompute failure falls back to the stored slot, a missing `classes` row
   // degrades to Free defaults — never a 500 on the user-facing Profile tab.
-  let classKey = consumer.class_key ?? "standard";
+  let classKey = consumer.class_key ?? "bronze";
   let classOrigin = consumer.class_origin ?? "default";
   let classExpiresAt = consumer.class_expires_at ?? null;
+  let plan: "free" | "premium" =
+    consumer.plan === "premium" ? "premium" : "free";
   let doors = {
     influencer: false,
     premium: false,
@@ -116,17 +118,19 @@ Deno.serve(async (req) => {
     classKey = effective.classKey;
     classOrigin = effective.origin;
     classExpiresAt = effective.expiresAt;
+    plan = effective.plan;
     doors = effective.doors;
     // Keep the embedded consumer blob consistent with the healed slot.
     consumer.class_key = classKey;
     consumer.class_origin = classOrigin;
     consumer.class_expires_at = classExpiresAt;
+    consumer.plan = plan;
   } catch (_err) {
     // stored slot stands
   }
   let tier = null;
   try {
-    tier = await getTierConfig(admin, classKey);
+    tier = await getTierConfig(admin, perkClassKey(classKey, plan));
   } catch (_err) {
     tier = null; // fall through to Free defaults below
   }
@@ -161,7 +165,8 @@ Deno.serve(async (req) => {
   const subscriptionClass = {
     key: classKey,
     origin: classOrigin,
-    label: tier?.label ?? "Standard",
+    plan,
+    label: tier?.label ?? "Bronze",
     followers: consumer.instagram_followers_count ?? null,
     expires_at: classExpiresAt,
     // Open doors, independent of which one currently wins the slot — the

@@ -49,20 +49,21 @@ Deno.test("validateConsumerPatch: accepts code in canonical 0000-0000 format, an
   assert(validateConsumerPatch({ code: null }).ok);
 });
 
-Deno.test("validateConsumerPatch: accepts the class slot when origin is 'subscription' with a real expiry", () => {
+Deno.test("validateConsumerPatch: accepts the class slot when origin is 'invitation' with null expiry", () => {
   const res = validateConsumerPatch({
-    class_key: "premium",
-    class_origin: "subscription",
-    class_expires_at: "2026-09-01T00:00:00Z",
+    class_key: "diamond",
+    class_origin: "invitation",
+    class_expires_at: null,
   });
   assert(res.ok);
 });
 
-Deno.test("validateConsumerPatch: accepts the class slot when origin is not 'subscription' and expiry is null", () => {
+Deno.test("validateConsumerPatch: accepts the class slot when origin is default and expiry is null", () => {
   const res = validateConsumerPatch({
-    class_key: "standard",
+    class_key: "bronze",
     class_origin: "default",
     class_expires_at: null,
+    plan: "free",
   });
   assert(res.ok);
 });
@@ -73,16 +74,16 @@ Deno.test("validateConsumerPatch: accepts the class slot when origin is not 'sub
 // LEGACY v11 bridge keys — verified live: public.classes holds exactly
 // standard/influencer/premium/aura today. Mirrors ChannelSet/
 // FUNCTION_STATE_KEYS's accept-every-legal-reject-one-unknown pattern.
-Deno.test("validateConsumerPatch: class_key accepts every legacy key, rejects an unknown one", () => {
-  for (const key of ["standard", "influencer", "premium", "aura"]) {
+Deno.test("validateConsumerPatch: class_key accepts every metal, rejects an unknown one", () => {
+  for (const key of ["bronze", "silver", "gold", "diamond"]) {
     assert(validateConsumerPatch({ class_key: key }).ok, `${key} should be legal`);
   }
-  const res = validateConsumerPatch({ class_key: "gold" });
-  assert(!res.ok, "gold is an EARNED DISPLAY LABEL, never a DB class_key value");
+  const res = validateConsumerPatch({ class_key: "standard" });
+  assert(!res.ok, "legacy keys are no longer stored");
 });
 
 Deno.test("invitation_class_key: same closed set as class_key, plus null to clear", () => {
-  for (const key of ["standard", "influencer", "premium", "aura"]) {
+  for (const key of ["bronze", "silver", "gold", "diamond"]) {
     assert(
       validateConsumerPatch({ invitation_class_key: key, invitation_granted_at: "2026-08-23T00:00:00Z" }).ok,
       `${key} should be legal`,
@@ -90,15 +91,15 @@ Deno.test("invitation_class_key: same closed set as class_key, plus null to clea
   }
   assert(validateConsumerPatch({ invitation_class_key: null, invitation_granted_at: null }).ok);
   const res = validateConsumerPatch({
-    invitation_class_key: "diamond",
+    invitation_class_key: "aura",
     invitation_granted_at: "2026-08-23T00:00:00Z",
   });
-  assert(!res.ok, "diamond is an EARNED DISPLAY LABEL, never a DB class_key value");
+  assert(!res.ok, "aura is a retired class_key");
 });
 
 Deno.test("validateConsumerPatch: accepts a matched invitation grant and a matched revoke", () => {
   const grant = validateConsumerPatch({
-    invitation_class_key: "aura",
+    invitation_class_key: "diamond",
     invitation_granted_at: "2026-08-23T00:00:00Z",
   });
   const revoke = validateConsumerPatch({
@@ -158,9 +159,11 @@ Deno.test("validateConsumerPatch: rejects a negative or fractional follower coun
 Deno.test("validateConsumerPatch: rejects a class_origin outside the closed set", () => {
   const res = validateConsumerPatch({ class_origin: "gifted" });
   assert(!res.ok);
+  const sub = validateConsumerPatch({ class_origin: "subscription" });
+  assert(!sub.ok, "subscription is a plan, not a class origin");
 });
 
-Deno.test("validateConsumerPatch: rejects a non-subscription origin carrying a real expiry", () => {
+Deno.test("validateConsumerPatch: rejects a non-null class_expires_at", () => {
   const res = validateConsumerPatch({
     class_origin: "instagram",
     class_expires_at: "2026-09-01T00:00:00Z",
@@ -170,7 +173,7 @@ Deno.test("validateConsumerPatch: rejects a non-subscription origin carrying a r
 
 Deno.test("validateConsumerPatch: rejects an invitation pair that's half-set", () => {
   const halfGrant = validateConsumerPatch({
-    invitation_class_key: "aura",
+    invitation_class_key: "diamond",
     invitation_granted_at: null,
   });
   const halfRevoke = validateConsumerPatch({
@@ -179,6 +182,12 @@ Deno.test("validateConsumerPatch: rejects an invitation pair that's half-set", (
   });
   assert(!halfGrant.ok);
   assert(!halfRevoke.ok);
+});
+
+Deno.test("validateConsumerPatch: accepts plan free|premium", () => {
+  assert(validateConsumerPatch({ plan: "free" }).ok);
+  assert(validateConsumerPatch({ plan: "premium" }).ok);
+  assert(!validateConsumerPatch({ plan: "pro" }).ok);
 });
 
 Deno.test("validateConsumerPatch: rejects a malformed birthday", () => {
