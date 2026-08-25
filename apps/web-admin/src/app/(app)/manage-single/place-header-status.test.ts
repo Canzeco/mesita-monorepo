@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { PlaceEnrichmentStatus } from "./actions";
-import { isEnrichFailed, isEnriching } from "./place-header-status";
+import {
+  formatHeaderCategory,
+  isEnrichFailed,
+  isEnriching,
+} from "./place-header-status";
 
 function status(
   partial: Partial<PlaceEnrichmentStatus>,
@@ -42,5 +46,26 @@ describe("isEnrichFailed", () => {
     expect(isEnrichFailed(status({ stage: "failed" }))).toBe(true);
     expect(isEnrichFailed(status({ stage: "research" }))).toBe(false);
     expect(isEnrichFailed(null)).toBe(false);
+  });
+});
+
+describe("formatHeaderCategory", () => {
+  it("keeps the catalog emoji and titleizes the name", () => {
+    expect(formatHeaderCategory("🪩 Nightclub", null)).toEqual({
+      emoji: "🪩",
+      text: "Nightclub",
+    });
+  });
+
+  it("titleizes a slug when the label is missing", () => {
+    expect(formatHeaderCategory(null, "fine_dining")).toEqual({
+      emoji: "",
+      text: "Fine Dining",
+    });
+  });
+
+  it("is null when both are empty", () => {
+    expect(formatHeaderCategory(null, "")).toBeNull();
+    expect(formatHeaderCategory(undefined, undefined)).toBeNull();
   });
 });

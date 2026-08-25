@@ -270,7 +270,7 @@ export function PlaceSelectCatalog() {
         )}
 
         {hits.length > 0 ? (
-          <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
+          <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
               {/* The row IS the pipeline, left to right: seeded → listed →
                   enriched →
@@ -280,15 +280,15 @@ export function PlaceSelectCatalog() {
               <table className="w-full min-w-[840px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
-                    <th className="w-14 px-3 py-2.5 font-semibold">Photo</th>
-                    <th className="px-3 py-2.5 font-semibold">Name</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Seeded</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Listed</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Enriched</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Verified</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Partner</th>
-                    <th className="px-3 py-2.5 text-center font-semibold">Promoting</th>
-                    <th className="w-10 px-3 py-2.5" aria-hidden />
+                    <th className="w-14 px-4 py-3 font-semibold">Photo</th>
+                    <th className="px-4 py-3 font-semibold">Name</th>
+                    <th className="px-4 py-3 text-center font-semibold">Seeded</th>
+                    <th className="px-4 py-3 text-center font-semibold">Listed</th>
+                    <th className="px-4 py-3 text-center font-semibold">Enriched</th>
+                    <th className="px-4 py-3 text-center font-semibold">Verified</th>
+                    <th className="px-4 py-3 text-center font-semibold">Partner</th>
+                    <th className="px-4 py-3 text-center font-semibold">Promoting</th>
+                    <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
                 </thead>
                 <tbody>
@@ -468,19 +468,19 @@ function PlaceCatalogRow({
         (disabled ? "pointer-events-none opacity-50" : "")
       }
     >
-      <td className="px-3 py-2.5">
-        <PlaceThumb photo={place.photo} name={place.name} size="sm" />
+      <td className="px-4 py-3.5">
+        <PlaceThumb photo={place.photo} name={place.name} size="md" />
       </td>
-      <td className="max-w-[260px] px-3 py-2.5">
-        <p className="truncate font-medium">{googleName}</p>
+      <td className="max-w-[260px] px-4 py-3.5">
+        <p className="truncate font-semibold">{googleName}</p>
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.seeded} trueLabel="Yes" falseLabel="No" />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <LevelCell
           level={place.enrich_pulse}
           total={place.enrich_pulse_total}
@@ -488,16 +488,16 @@ function PlaceCatalogRow({
           blocked={place.enrich_pulse_blocked}
         />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.partner} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
       </td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="px-4 py-3.5 text-center">
         <PromoLevelCell level={place.promoting_level} />
       </td>
-      <td className="px-3 py-2.5 text-right">
+      <td className="px-4 py-3.5 text-right">
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
       </td>
     </tr>
@@ -532,8 +532,8 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
           <span
             key={rung}
             className={
-              "h-1.5 w-1.5 rounded-[1px] " +
-              (level >= rung ? "bg-amber-500" : "bg-muted-foreground/25")
+              "h-2 w-1.5 rounded-[1px] " +
+              (level >= rung ? "bg-muted-foreground/40" : "bg-muted-foreground/15")
             }
           />
         ))}
@@ -615,7 +615,7 @@ function LevelCell(
           <span
             key={step}
             className={
-              "h-1.5 w-1.5 rounded-[1px] " +
+              "h-2 w-1.5 rounded-[1px] " +
               (level >= step
                 ? "bg-green-600"
                 : level === 0
@@ -649,7 +649,7 @@ function BoolCell({
   falseTone?: "pending" | "neutral";
 }) {
   const pill =
-    "inline-flex items-center justify-center rounded-md px-2 py-0.5 type-label font-semibold ";
+    "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold ";
   if (value) {
     return (
       <span
