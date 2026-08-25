@@ -33,7 +33,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   create: {
     label: "Create",
     blurb:
-      "The CREATE function awaits four subfunctions — seed, pulse, details, and Semantics (Name + Summary together).",
+      "The CREATE function awaits four subfunctions — 1 Seed · 2 Pulse · 3 Details · 4 Semantic (Mesita Name & Semantic Summary & Embeddings).",
     tone: TONES.emerald,
   },
   research: {
@@ -51,7 +51,7 @@ const ENRICHER_PHASES: Record<PhaseKey, EnricherPhase> = {
   contents: {
     label: "Contents",
     blurb:
-      "Writes the profile — functions 7 menu · 9 description, then persists data and images and ticks Semantics (Name + Summary).",
+      "Writes the profile — functions 7 menu · 9 description, then persists data and images and ticks Semantic (Mesita Name & Semantic Summary).",
     tone: TONES.amber,
   },
 };

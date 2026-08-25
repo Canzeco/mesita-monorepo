@@ -51,7 +51,7 @@ export function StepChips({
         <Link
           key={s.href}
           href={s.href}
-          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring rounded-lg px-2.5 py-1 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none"
+          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring rounded-lg px-2.5 py-1 text-xs font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:outline-none"
         >
           {s.label}
         </Link>
@@ -107,19 +107,26 @@ export function FlowEstimate({
       <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
         {money(estimate.perPlace)} / place · {fmtTime(estimate.perPlaceSecs)}
       </p>
-      <ul className="mt-2 space-y-0.5">
-        {estimate.active.map((l) => (
-          <li
-            key={l.label}
-            className="text-muted-foreground flex justify-between gap-3 type-label leading-snug"
-          >
-            <span>{l.label}</span>
-            <span className="shrink-0 font-mono tabular-nums">
-              {money(l.cost)}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {estimate.active.length > 0 ? (
+        <details className="mt-2">
+          <summary className="text-muted-foreground type-label cursor-pointer font-semibold tracking-wide">
+            Breakdown
+          </summary>
+          <ul className="mt-2 space-y-0.5">
+            {estimate.active.map((l) => (
+              <li
+                key={l.label}
+                className="text-muted-foreground flex justify-between gap-3 type-label leading-snug"
+              >
+                <span>{l.label}</span>
+                <span className="shrink-0 font-mono tabular-nums">
+                  {money(l.cost)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
       <p className="text-muted-foreground mt-2 type-label leading-snug">
         {caption} Published rates, not a bill.
       </p>

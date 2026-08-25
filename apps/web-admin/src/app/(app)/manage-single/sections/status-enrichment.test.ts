@@ -26,7 +26,9 @@ describe("enrichFunctionRows", () => {
     expect(rows[0]?.status).toBe("completed");
     expect(rows[1]?.status).toBe("failed");
     expect(rows[2]?.status).toBe("pending");
-    expect(rows[9]?.label).toBe("Semantics");
+    expect(rows[9]?.label).toBe(
+      "Semantic (Mesita Name & Semantic Summary & Embeddings)",
+    );
     expect(rows[9]?.status).toBe("completed");
   });
 });

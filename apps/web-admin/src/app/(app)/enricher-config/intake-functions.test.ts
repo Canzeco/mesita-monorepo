@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is eleven, Seed through Semantics", () => {
+  it("is eleven, Seed through Semantic", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -26,12 +26,12 @@ describe("intake subfunctions", () => {
     ]);
   });
 
-  it("Create is Seed · Pulse · Details · Semantics; Enrich is 1–10", () => {
+  it("Create is 1–4; Enrich is 1–10 — two sequences, not one enum", () => {
     expect(chipsFor("create").map((c) => c.label)).toEqual([
-      "0 Seed",
-      "1 Pulse",
-      "2 Details",
-      "10 Semantics",
+      "1 Seed",
+      "2 Pulse",
+      "3 Details",
+      "4 Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -43,17 +43,23 @@ describe("intake subfunctions", () => {
       "7 Menu",
       "8 Reviews",
       "9 Description (Category, Tags, Presentation)",
-      "10 Semantics",
+      "10 Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
   });
 
-  it("numbers every subfunction 0–10", () => {
-    expect(
-      INTAKE_SUBFUNCTIONS.map((s) => s.chip.match(/^\d+/)?.[0]),
-    ).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+  it("Pulse is 2 on Create and 1 on Enrich; Semantic is 4 and 10", () => {
+    const create = chipsFor("create").map((c) => c.label);
+    const enrich = chipsFor("enrich").map((c) => c.label);
+    expect(create[1]).toBe("2 Pulse");
+    expect(enrich[0]).toBe("1 Pulse");
+    expect(create[3]).toMatch(/^4 Semantic/);
+    expect(enrich[9]).toMatch(/^10 Semantic/);
+    expect(create[0]).toBe("1 Seed");
+    expect(create.some((l) => l.startsWith("0 "))).toBe(false);
+    expect(create.some((l) => l.startsWith("10 "))).toBe(false);
   });
 
-  it("Seed is Create-only; numbered 3–9 are Enrich-only", () => {
+  it("Seed is Create-only; numbered 3–9 of Enrich are Enrich-only", () => {
     expect(flowTag(["create"])).toBe("Create");
     expect(flowTag(["enrich"])).toBe("Enrich");
     expect(flowTag(["create", "enrich"])).toBe("Create + Enrich");
@@ -79,6 +85,10 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).not.toContain("type=\"number\"");
     expect(src).not.toContain("× five");
     expect(src).not.toContain("/ 5 places");
+    const blocks = readFileSync(join(__dirname, "blocks.tsx"), "utf8");
+    expect(blocks).toContain("whitespace-nowrap");
+    expect(blocks).toContain("<details");
+    expect(blocks).toContain("Breakdown");
   });
 
   it("does not restack Create and Enrich as family boxes on Functions", () => {
@@ -89,17 +99,21 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("f-semantic");
     expect(src).not.toContain("id=\"f-name\"");
     expect(src).not.toContain("id=\"f-summary\"");
-    expect(src).toContain("index=\"0\"");
+    expect(src).toMatch(/id="f-seed"\s+index="·"/);
+    expect(src).not.toContain("index=\"0\"");
     expect(src).not.toContain("index=\"SEED\"");
+    expect(src).not.toMatch(/id="f-seed"\s+index="1"/);
   });
 });
 
-describe("Name and Summary share Semantics", () => {
+describe("Name and Summary share Semantic", () => {
   it("is one chip, never two Name/Summary pills", () => {
-    const labels = INTAKE_SUBFUNCTIONS.map((s) => s.chip);
-    expect(labels).toContain("10 Semantics");
-    expect(labels).not.toContain("◇ Name");
-    expect(labels).not.toContain("◇ Summary");
-    expect(labels.filter((l) => /Name|Summary/.test(l))).toEqual([]);
+    const names = INTAKE_SUBFUNCTIONS.map((s) => s.name);
+    expect(names).toContain(
+      "Semantic (Mesita Name & Semantic Summary & Embeddings)",
+    );
+    expect(names).not.toContain("Name");
+    expect(names).not.toContain("Summary");
+    expect(names.filter((n) => n === "Name" || n === "Summary")).toEqual([]);
   });
 });

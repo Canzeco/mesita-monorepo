@@ -51,10 +51,10 @@ describe("computeEnrichmentCost", () => {
         ubereats: 0,
       },
     });
-    const firecrawl = none.lines.find((l) => l.label.startsWith("4 · link"));
+    const firecrawl = none.lines.find((l) => l.label === "Link discovery");
     expect(firecrawl?.active).toBe(false);
     expect(firecrawl?.cost).toBe(0);
-    expect(none.active.some((l) => l.label.startsWith("4 ·"))).toBe(false);
+    expect(none.active.some((l) => l.label === "Link discovery")).toBe(false);
   });
 
   it("zero analyze counts drop vision spend", () => {
@@ -63,7 +63,7 @@ describe("computeEnrichmentCost", () => {
       gAnalyze: 0,
       igAnalyze: 0,
     });
-    expect(off.lines.find((l) => l.label.startsWith("6 · image descriptions"))?.active).toBe(
+    expect(off.lines.find((l) => l.label === "Image descriptions")?.active).toBe(
       false,
     );
     const on = computeEnrichmentCost(base);
@@ -72,7 +72,7 @@ describe("computeEnrichmentCost", () => {
 
   it("reviews = 0 drops the Apify Google Maps line", () => {
     const off = computeEnrichmentCost({ ...base, reviews: 0 });
-    expect(off.lines.find((l) => l.label.startsWith("8 ·"))?.active).toBe(false);
+    expect(off.lines.find((l) => l.label === "Google reviews + images")?.active).toBe(false);
     expect(computeEnrichmentCost(base).perPlace).toBeGreaterThan(off.perPlace);
   });
 });
@@ -102,12 +102,11 @@ describe("instance estimates", () => {
   it("Create is Google Pulse+Details only, one place", () => {
     const c = computeCreateCost(settings);
     expect(c.places).toBe(1);
-    expect(c.active.every((l) => l.label.startsWith("1–2") || l.label.startsWith("2 ·"))).toBe(
-      true,
-    );
-    expect(c.active.some((l) => l.label.startsWith("3 ·"))).toBe(false);
-    expect(c.active.some((l) => l.label.startsWith("5 ·"))).toBe(false);
-    expect(c.active.some((l) => l.label.startsWith("9 ·"))).toBe(false);
+    expect(c.active.map((l) => l.label)).toEqual([
+      "Google profile",
+      "Google photos",
+      "Timezone",
+    ]);
   });
 
   it("Enrich is live knobs for one place", () => {
@@ -123,7 +122,9 @@ describe("instance estimates", () => {
       imageVisionEnabled: false,
       gatherReviews: 0,
     });
-    expect(e.active.some((l) => l.label.startsWith("6 ·"))).toBe(false);
-    expect(e.active.some((l) => l.label.startsWith("8 ·"))).toBe(false);
+    expect(e.active.some((l) => l.label === "Image descriptions")).toBe(false);
+    expect(e.active.some((l) => l.label === "Google reviews + images")).toBe(
+      false,
+    );
   });
 });

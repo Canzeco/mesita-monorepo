@@ -204,7 +204,7 @@ export function computeEnrichmentCost({
   // pre = serial before gather · gather = concurrent · post = serial after.
   const lines: CostLine[] = [
     {
-      label: "1–2 · Google profile",
+      label: "Google profile",
       detail: "Places Details — Enterprise+Atmosphere SKU",
       pricing: "$25 / 1k calls",
       note: "1 call · field mask pulls reviews + editorial/generative summaries → Atmosphere tier",
@@ -214,7 +214,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "2 · Google photos",
+      label: "Google photos",
       detail: "Place Photo media fetch",
       pricing: "$7 / 1k photos",
       note: `Google collect = ${gCollect} photo${gCollect === 1 ? "" : "s"} fetched (≤10 refs) × ${money(COST_RATES.googlePhoto)}`,
@@ -224,7 +224,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "2 · Timezone",
+      label: "Timezone",
       detail: "Time Zone API",
       pricing: "$5 / 1k calls",
       note: "1 call from the place lat/lng",
@@ -234,7 +234,7 @@ export function computeEnrichmentCost({
       active: true,
     },
     {
-      label: "3 · SERP summary",
+      label: "SERP summary",
       detail: "Perplexity Agent X (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · web search + sonar tokens",
@@ -244,7 +244,7 @@ export function computeEnrichmentCost({
       active: serp,
     },
     {
-      label: "4 · link discovery",
+      label: "Link discovery",
       detail: "Firecrawl Search × channels",
       pricing: "2 credits / 10 results",
       note: discoveryActive
@@ -256,7 +256,7 @@ export function computeEnrichmentCost({
       active: discoveryActive,
     },
     {
-      label: "4 · agent validate + contacts",
+      label: "Agent validate + contacts",
       detail: "Perplexity Agent Y (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · selects links + phone/email",
@@ -270,7 +270,7 @@ export function computeEnrichmentCost({
       // the Apify Google Maps scrape fires into the background early and is
       // collected at the end, so it overlaps everything after it. The rows are
       // in SPEND order, which is wall-clock order — not queue order.
-      label: "8 · Google reviews + images",
+      label: "Google reviews + images",
       detail: "Apify compass/crawler-google-places",
       pricing: "$1.50/1k + $0.50/100 reviews",
       note: reviewsActive
@@ -282,7 +282,7 @@ export function computeEnrichmentCost({
       active: reviewsActive,
     },
     {
-      label: "5 · Instagram",
+      label: "Instagram",
       detail: "Apify IG profile + post scrapers",
       pricing: "$2.60/1k + $2.70/1k posts",
       note: `profile + Instagram collect = ${igCollect} post${igCollect === 1 ? "" : "s"} pulled + identity verify`,
@@ -292,7 +292,7 @@ export function computeEnrichmentCost({
       active: igActive,
     },
     {
-      label: "5 · Facebook",
+      label: "Facebook",
       detail: "Apify facebook-pages-scraper",
       pricing: "$10 / 1k pages",
       note: "1 page",
@@ -302,7 +302,7 @@ export function computeEnrichmentCost({
       active: social,
     },
     {
-      label: "6 · image descriptions",
+      label: "Image descriptions",
       detail: imageModel === "economy" ? "gpt-4o-mini vision" : "gpt-4o vision",
       pricing:
         imageModel === "economy" ? "~$0.001 / image" : "~$0.008 / image",
@@ -315,7 +315,7 @@ export function computeEnrichmentCost({
       active: visionActive,
     },
     {
-      label: "6 · image ranking",
+      label: "Image ranking",
       detail: "gpt-4o-mini text sort",
       pricing: "~$0.001 / call",
       note: "1 sort call over the analyzed images",
@@ -325,7 +325,7 @@ export function computeEnrichmentCost({
       active: visionActive,
     },
     {
-      label: `9 · Presentation synthesis — ${quality}`,
+      label: `Presentation synthesis — ${quality}`,
       detail: quality === "economy" ? "gpt-4o-mini" : "gpt-4o",
       pricing: quality === "economy" ? "$0.15/$0.60 per 1M" : "$2.50/$10 per 1M",
       note: "~1000-word Presentation from gathered sources (no web)",
@@ -335,7 +335,7 @@ export function computeEnrichmentCost({
       active: synth,
     },
     {
-      label: "9 · category → tags",
+      label: "Category → tags",
       detail: "2 × gpt-4o-mini (sequential)",
       pricing: "~$0.001 / call",
       note: "Category then tags, both grounded on the fresh Presentation",
@@ -345,7 +345,7 @@ export function computeEnrichmentCost({
       active: synth,
     },
     {
-      label: "9 · persist data + images",
+      label: "Persist data + images",
       detail: "Edge Functions + Supabase Storage",
       pricing: "no metered cost",
       note: "DB writes + image mirroring — not separately billed",

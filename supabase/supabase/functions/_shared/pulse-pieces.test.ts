@@ -101,7 +101,7 @@ Deno.test("pulse: `semantic` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("semantic"), true);
   assertEquals(PULSE_PIECE_META.semantic.index, 10);
-  assertEquals(PULSE_PIECE_META.semantic.label, "Semantics");
+  assertEquals(PULSE_PIECE_META.semantic.label, "Semantic");
   assertEquals([...PULSE_EXTRAS], []);
 });
 
@@ -193,7 +193,7 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL + 1);
   assertEquals(PULSE_LABELS_IN_ORDER[0], PULSE_FLOOR_LABEL);
   assertEquals(PULSE_FLOOR_LABEL, "Created");
-  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Semantics");
+  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Semantic");
   assertEquals(
     [...PULSE_LABELS_IN_ORDER],
     [PULSE_FLOOR_LABEL, ...PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label)],

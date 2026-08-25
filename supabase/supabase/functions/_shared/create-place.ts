@@ -1,20 +1,21 @@
-// Shared create-place core — THE CREATE RUN (MESITA-1253): one run,
-// synchronous, the front door. Its subfunctions, in the spec's words:
+// Shared create-place core — THE CREATE RUN (Main §8.4): one run,
+// synchronous, the front door. Create numbers 1–4 (not Enrich 1–10):
 //
-//   0 seed      → dedupe on google_place_id, mint the minimal 'generating' rows
-//   1 pulse     → the liveness gate: Google's businessStatus, read from the same
+//   1 seed      → dedupe on google_place_id, mint the minimal 'generating' rows
+//   2 pulse     → the liveness gate: Google's businessStatus, read from the same
 //                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
 //                 at the door, before any row exists. Don't seed corpses.
-//   2 details   → the Google spine persisted (fetchGoogleBasics fields,
+//   3 details   → the Google spine persisted (fetchGoogleBasics fields,
 //                 category='undefined' until the Intaker infers the real one)
-//  10 semantic  → Name vector + Summary vector, awaited in this same function
+//   4 semantic  → Name vector + Summary vector, awaited in this same function
 //
-// Pulse, Details and Semantics are SHARED with the ENRICH queue — create
+// Pulse, Details and Semantic are SHARED with the ENRICH queue — create
 // AWAITS the four subfunctions; enrich runs each as its own tick with no nested
 // await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
-// reads 2/10 immediately and state accumulates across create and every later run
-// under one rule. Then it queues deep enrichment (functions 3-9 and re-runs of
-// 1-2) per the on_create trigger row.
+// reads 2/10 immediately (Enrich high-water: pulse=1, details=2; 3–9 still a
+// gap even if semantic stamps as 10) and state accumulates across create and
+// every later run under one rule. Then it queues deep enrichment (Enrich
+// functions 3-9 and re-runs of 1-2) per the on_create trigger row.
 //
 // Callers: admin-web-create-project, business-web-create-project,
 // consumer-web-create-place (+ its consumer-web-schedule-project-creation
