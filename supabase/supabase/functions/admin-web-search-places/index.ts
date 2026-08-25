@@ -58,14 +58,15 @@ Deno.serve(async (req) => {
       ? Math.min(Math.max(bodyRes.body.limit, 1), 50)
       : 25;
 
-  // The catalog table is now the PIPELINE in one row (MESITA-1166): seeded →
-  // enriched 0-3 → verified → partner → promoting. Everything except the two
+  // The catalog table is the PIPELINE in one row: seeded → active → listed →
+  // enriched → verified → partner → promoting. Everything except the two
   // id-scoped reads below lives on profiles, so no join is required here.
-  // google_place_id is the seeded spine; plan + the four rate columns + the
+  // google_place_id is the seeded spine; business_status is Google's
+  // OPERATIONAL fact (Active); plan + the four rate columns + the
   // strike/pause fields are what isPlacePromoting weighs.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
   let rows: Record<string, unknown>[] = [];
 
   if (q.length === 0) {
@@ -213,11 +214,13 @@ Deno.serve(async (req) => {
         typeof v.google_review_count === "number" ? v.google_review_count : null,
       content_status: contentStatus,
       listing_type: listingType,
-      // The five status flags, in table order.
+      // The seven status facts, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
-      // The second status fact. MESITA-1186 put it on the Pulse box and in the
-      // shared helper but never on this payload, so the catalog table still
-      // could not render it. No extra read — `status` is already selected.
+      // Google's OPERATIONAL fact — a FLAG, never a visibility gate.
+      // NULL is silence, not "not operational".
+      business_status: (v.business_status as string | null) ?? null,
+      business_status_at: (v.business_status_at as string | null) ?? null,
+      // The Listed fact. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
       // PULSE: how far the NINE-function ENRICH queue got, 0-9
       // (MESITA-1253). Not a count of functions that worked — the index of

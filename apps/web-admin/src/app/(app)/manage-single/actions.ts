@@ -46,8 +46,9 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  // ── The five status flags the catalog table renders (MESITA-1166). All
-  //    derived server-side in admin-web-search-places; none is a column.
+  // ── The seven status facts the catalog table renders, in order:
+  //    Seeded · Active · Listed · Enriched · Verified · Partner · Promoting.
+  //    All derived (or projected) in admin-web-search-places.
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */

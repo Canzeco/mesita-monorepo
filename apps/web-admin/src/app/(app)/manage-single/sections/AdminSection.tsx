@@ -17,8 +17,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
 // want lots of fucking boxes"):
 //
-//   Status      the six status fields — seeded · listed · enriched · verified ·
-//               partner · promoting — one row each, in one box.
+//   Status      the seven status fields — seeded · active · listed · enriched ·
+//               verified · partner · promoting — one row each, in one box.
 //   Enrichment  when the Intaker refreshes this place, and the run-now button.
 //   Embedding   the Semantic Summary and the vector it becomes.
 //   Metadata    every identifier and timestamp on the place. Nothing else in
