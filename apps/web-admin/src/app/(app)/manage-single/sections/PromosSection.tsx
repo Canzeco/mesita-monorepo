@@ -740,7 +740,7 @@ function StripeJoinButton({
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="inline-flex h-12 w-full max-w-md items-center justify-center gap-2.5 rounded-[6px] bg-[#635BFF] px-5 text-[15px] font-semibold text-white shadow-sm transition hover:bg-[#5851EA] active:scale-[0.99] disabled:opacity-70"
+      className="inline-flex h-12 w-full max-w-md items-center justify-center gap-2.5 rounded-md bg-[#635BFF] px-5 type-body font-semibold text-white shadow-sm transition hover:bg-[#5851EA] active:scale-[0.99] disabled:opacity-70"
     >
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin" />
