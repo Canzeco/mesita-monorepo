@@ -6,7 +6,6 @@ import {
   Facebook,
   Gauge,
   Globe,
-  Image as ImageIcon,
   Instagram,
   Layers,
   ListOrdered,
@@ -24,7 +23,6 @@ import {
   NumberField,
   QualityPicker,
   SectionCard,
-  Switch,
   TextAreaField,
 } from "@/components/admin-ui/config";
 import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
@@ -35,6 +33,7 @@ import {
   computeCreateCost,
   computeEnrichTickCost,
 } from "./cost-model";
+import { ImageFunnel } from "./ImageFunnel";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
@@ -47,14 +46,7 @@ import {
   Tag,
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
-import {
-  MAX_GOOGLE_COLLECT,
-  MAX_INSTAGRAM_COLLECT,
-  MAX_SAVE_IMAGES,
-  clampFunnel,
-  intakeSaveBlocked,
-  type IntakeSettings,
-} from "./intake-guards";
+import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-guards";
 
 export type { IntakeSettings };
 
@@ -162,6 +154,7 @@ export function IntakeClient({
         const r = await updateAtlasConfig({
           gatherGoogleImages: settings.gatherGoogleImages,
           gatherInstagramDepth: settings.gatherInstagramDepth,
+          gatherInstagramPosts: settings.analyzeInstagramImages,
           gatherReviews: settings.gatherReviews,
           imageVisionEnabled: settings.imageVisionEnabled,
           saveImagesToStorage: settings.saveImagesToStorage,
@@ -574,97 +567,15 @@ export function IntakeClient({
                 index="6 · $$"
                 flows={flowTagFor("images")}
                 name="Images"
-                blurb="Collects images from Apify, then describes and ranks them. Largest cost driver here."
-                knobs="7 knobs"
+                blurb="Instagram: last X newest, rank by likes, vision top Y. Google is already ranked. Largest cost driver here."
+                knobs="2 funnels"
                 defaultOpen
               >
-                <Fields>
-                  <NumberField
-                    icon={
-                      <ImageIcon className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Google photos to collect"
-                    value={settings.gatherGoogleImages}
-                    min={1}
-                    max={MAX_GOOGLE_COLLECT}
-                    onChange={(v) => patch({ gatherGoogleImages: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={
-                      <Instagram className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Instagram posts to collect"
-                    value={settings.gatherInstagramDepth}
-                    min={1}
-                    max={MAX_INSTAGRAM_COLLECT}
-                    onChange={(v) => patch({ gatherInstagramDepth: v })}
-                    disabled={pending}
-                  />
-                  <NumberField
-                    icon={
-                      <ImageIcon className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Analyze Google (≤ collected)"
-                    value={settings.analyzeGoogleImages}
-                    min={1}
-                    max={settings.gatherGoogleImages}
-                    onChange={(v) => patch({ analyzeGoogleImages: v })}
-                    disabled={pending || !settings.imageVisionEnabled}
-                  />
-                  <NumberField
-                    icon={
-                      <Instagram className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Analyze Instagram (≤ collected)"
-                    value={settings.analyzeInstagramImages}
-                    min={1}
-                    max={settings.gatherInstagramDepth}
-                    onChange={(v) => patch({ analyzeInstagramImages: v })}
-                    disabled={pending || !settings.imageVisionEnabled}
-                  />
-                  <NumberField
-                    icon={
-                      <ImageIcon className="text-muted-foreground h-4 w-4" />
-                    }
-                    label="Photos kept on the profile"
-                    value={settings.saveTotalImages}
-                    min={1}
-                    max={Math.min(
-                      MAX_SAVE_IMAGES,
-                      settings.analyzeGoogleImages +
-                        settings.analyzeInstagramImages,
-                    )}
-                    onChange={(v) => patch({ saveTotalImages: v })}
-                    disabled={pending}
-                  />
-                  <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
-                    <span className="text-sm font-medium">Vision</span>
-                    <Switch
-                      on={settings.imageVisionEnabled}
-                      pending={pending}
-                      label="Toggle image vision"
-                      onClick={() =>
-                        patch({
-                          imageVisionEnabled: !settings.imageVisionEnabled,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="border-border bg-background flex items-center justify-between gap-3 rounded-xl border p-4">
-                    <span className="text-sm font-medium">Mirror to storage</span>
-                    <Switch
-                      on={settings.saveImagesToStorage}
-                      pending={pending}
-                      label="Toggle image storage"
-                      onClick={() =>
-                        patch({
-                          saveImagesToStorage: !settings.saveImagesToStorage,
-                        })
-                      }
-                    />
-                  </div>
-                </Fields>
+                <ImageFunnel
+                  settings={settings}
+                  pending={pending}
+                  onPatch={patch}
+                />
                 <Collapsible summary="Analysis & sorting prompts">
                   <div className="grid gap-4 lg:grid-cols-2">
                     <TextAreaField
@@ -682,11 +593,10 @@ export function IntakeClient({
                   </div>
                 </Collapsible>
                 <p className="text-muted-foreground mt-3 text-xs">
-                  Instagram posts: newest first, then top-K by likes. The funnel
-                  is a chain and the Edge Function rejects a broken one, so
-                  lowering a collect value pulls its analyze cap and the gallery
-                  down with it. Winners mirror into the place-images bucket; the
-                  model is in Models.
+                  Lowering last/take pulls vision and the gallery with it. After
+                  vision, one sort ranks the shared bucket onto the profile.
+                  Winners mirror into the place-images bucket; the model is in
+                  Models.
                 </p>
               </FunctionModule>
 
