@@ -1,21 +1,36 @@
 import { RefreshCw } from "lucide-react";
 import type { NotificationsPayload, NotificationType } from "./actions";
-import { TYPE_CONFIG, TYPE_ORDER } from "./notification-config";
+import { TYPE_CONFIG, TYPE_ORDER, TONES } from "./notification-config";
 import {
   DOMAINS,
+  STATUS_FACTS,
   STEP_TYPE,
   typesInDomain,
   type DomainKey,
+  type StatusFactKey,
 } from "./notification-feed";
 
 export type TypeFilter = "all" | NotificationType;
+export type StatusFilter = "all" | StatusFactKey;
+
+const STATUS_DOT: Record<StatusFactKey, string> = {
+  seeded: TONES.indigo.dot,
+  active: TONES.emerald.dot,
+  listed: TONES.sky.dot,
+  enriched: TONES.rose.dot,
+  verified: TONES.amber.dot,
+  partner: TONES.indigo.dot,
+  promoting: TONES.rose.dot,
+};
 
 export function NotificationFilters({
   domain,
   typeFilter,
+  statusFilter,
   includeSteps,
   total,
   counts,
+  statusCounts,
   placeQuery,
   updatedLabel,
   pending,
@@ -23,15 +38,18 @@ export function NotificationFilters({
   showDomains = true,
   onDomainChange,
   onTypeFilterChange,
+  onStatusFilterChange,
   onIncludeStepsChange,
   onPlaceQueryChange,
   onRefresh,
 }: {
   domain: DomainKey;
   typeFilter: TypeFilter;
+  statusFilter: StatusFilter;
   includeSteps: boolean;
   total: number;
   counts: NotificationsPayload["counts"];
+  statusCounts: Record<StatusFactKey, number>;
   placeQuery: string;
   updatedLabel: string;
   pending: boolean;
@@ -39,6 +57,7 @@ export function NotificationFilters({
   showDomains?: boolean;
   onDomainChange: (domain: DomainKey) => void;
   onTypeFilterChange: (filter: TypeFilter) => void;
+  onStatusFilterChange: (filter: StatusFilter) => void;
   onIncludeStepsChange: (next: boolean) => void;
   onPlaceQueryChange?: (query: string) => void;
   onRefresh: () => void;
@@ -81,21 +100,40 @@ export function NotificationFilters({
 
       <div className="flex items-stretch overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <FilterSegment
-          active={typeFilter === "all"}
+          active={
+            domain === "atlas"
+              ? statusFilter === "all"
+              : typeFilter === "all"
+          }
           label="All"
           count={total}
-          onClick={() => onTypeFilterChange("all")}
+          onClick={() =>
+            domain === "atlas"
+              ? onStatusFilterChange("all")
+              : onTypeFilterChange("all")
+          }
         />
-        {domainTypes.map((t) => (
-          <FilterSegment
-            key={t}
-            active={typeFilter === t}
-            label={TYPE_CONFIG[t].shortLabel}
-            count={counts[t] ?? 0}
-            dot={TYPE_CONFIG[t].tone.dot}
-            onClick={() => onTypeFilterChange(t)}
-          />
-        ))}
+        {domain === "atlas"
+          ? STATUS_FACTS.map((fact) => (
+              <FilterSegment
+                key={fact.key}
+                active={statusFilter === fact.key}
+                label={fact.label}
+                count={statusCounts[fact.key] ?? 0}
+                dot={STATUS_DOT[fact.key]}
+                onClick={() => onStatusFilterChange(fact.key)}
+              />
+            ))
+          : domainTypes.map((t) => (
+              <FilterSegment
+                key={t}
+                active={typeFilter === t}
+                label={TYPE_CONFIG[t].shortLabel}
+                count={counts[t] ?? 0}
+                dot={TYPE_CONFIG[t].tone.dot}
+                onClick={() => onTypeFilterChange(t)}
+              />
+            ))}
 
         <div className="ml-auto flex shrink-0 items-center gap-2 border-l px-3 py-2 sm:px-4">
           {showStepsToggle && (

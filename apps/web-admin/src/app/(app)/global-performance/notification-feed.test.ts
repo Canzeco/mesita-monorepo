@@ -72,39 +72,56 @@ describe("pinReports", () => {
 });
 
 describe("intakeStatusLine", () => {
-  it("prints Seeded · Listed for a created catalog place, never claimed", () => {
+  const facts = {
+    seeded: true,
+    active: true,
+    listed: true,
+    enriched: false,
+    enrichPulse: 2,
+    enrichPulseTotal: 9,
+    verified: false,
+    partner: false,
+    promoting: false,
+  };
+
+  it("prints every true Status fact, plus n/9 until Enriched is complete", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
-      meta: { status: "active", listingType: "unclaimed", claimed: false },
+      meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStatusLine(created)).toBe("Seeded · Listed");
+    expect(intakeStatusLine(created)).toBe("Seeded · Active · Listed · 2/9");
     expect(intakeStatusLine(created)).not.toMatch(/claim/i);
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
 
-  it("prints Unlisted when projects.status is not active/lead", () => {
+  it("names Enriched · Verified · Partner · Promoting when those facts are on", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: {
+        statusFacts: {
+          ...facts,
+          enriched: true,
+          enrichPulse: 9,
+          verified: true,
+          partner: true,
+          promoting: true,
+        },
+      },
+    });
+    expect(intakeStatusLine(created)).toBe(
+      "Seeded · Active · Listed · Enriched · Verified · Partner · Promoting",
+    );
+  });
+
+  it("falls back for create events that predate statusFacts", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: { status: "paused" },
     });
     expect(intakeStatusLine(created)).toBe("Seeded · Unlisted");
-  });
-
-  it("appends Enriched when the create payload already ran", () => {
-    const created = item({
-      id: "c",
-      type: "atlas.place_created",
-      meta: { status: "lead", enriched: true },
-    });
-    expect(intakeStatusLine(created)).toBe("Seeded · Listed · Enriched");
-  });
-
-  it("names ownership proof Verified", () => {
-    expect(
-      intakeStatusLine(item({ id: "v", type: "atlas.ownership_claimed" })),
-    ).toBe("Verified");
   });
 });
 
