@@ -257,7 +257,7 @@ select is(
 );
 
 select is(
-  (select column_default from information_schema.columns
+  (select column_default::text from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'class_key'),
   '''bronze''::text'::text,
@@ -304,11 +304,12 @@ select is_empty(
   'dead place URL columns are gone'
 );
 
-select is(
-  (select count(*)::int from information_schema.columns
-    where table_schema = 'public' and table_name = 'profiles'
-      and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story')),
-  4,
+select ok(
+  (
+    select count(*) from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story')
+  ) = 4,
   'profiles still projects dummy leftover columns so pre-redeploy EFs can SELECT them'
 );
 
