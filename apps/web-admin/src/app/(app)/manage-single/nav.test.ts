@@ -23,14 +23,17 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("is two boxes — Partnership and Visit Promotions", () => {
+  it("is three boxes — Tutorial, Partnership, Promos", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/title="Mesita Partnership"/);
-    expect(src).toMatch(/title="Visit Promotions"/);
-    expect((src.match(/<SectionCard/g) ?? []).length).toBe(2);
+    expect(src).toMatch(/title="Tutorial"/);
+    expect(src).toMatch(/title="Partnership"/);
+    expect(src).toMatch(/title="Promos"/);
+    expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
+    expect(src).not.toMatch(/title="Mesita Partnership"/);
+    expect(src).not.toMatch(/title="Visit Promotions"/);
     expect(src).toMatch(/pickerStrategies/);
     expect(src).toMatch(/giveWord/);
     expect(src).toMatch(/placementWord/);
@@ -49,6 +52,7 @@ describe("PromosSection visit-only", () => {
     expect(src).toMatch(/RUNG_WORDS/);
     expect(src).not.toMatch(/RewardsMatrix/);
     expect(src).not.toMatch(/See full rates/);
+    expect(src).toMatch(/Details/);
     expect(src).not.toMatch(/giveLevel/);
     const card = src.slice(
       src.indexOf("function StrategyCard"),
