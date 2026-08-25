@@ -31,9 +31,11 @@ type RowStatus =
 export function CreateTab({
   text,
   onTextChange,
+  onCreated,
 }: {
   text: string;
   onTextChange: (next: string) => void;
+  onCreated?: (projectIds: string[]) => void;
 }) {
   const setText = onTextChange;
   const [results, setResults] = useState<Record<string, RowStatus>>({});
@@ -76,6 +78,7 @@ export function CreateTab({
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
     const ids = [...placeIds];
+    const minted: string[] = [];
     let cursor = 0;
     const worker = async () => {
       while (cursor < ids.length) {
@@ -83,6 +86,7 @@ export function CreateTab({
         setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
         try {
           const r = await createPlaceFromGooglePlaceId(id);
+          if (r.ok) minted.push(r.projectId);
           setResults((prev) => ({
             ...prev,
             [id]: r.ok
@@ -110,6 +114,7 @@ export function CreateTab({
       Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
     );
     setRunning(false);
+    onCreated?.(minted);
   }
 
   function copyFailed() {
@@ -129,11 +134,11 @@ export function CreateTab({
 
       {/* Input */}
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
-        <label className="text-sm font-medium" htmlFor="place-ids">
+        <label className="text-sm font-medium" htmlFor="create-place-ids">
           Google Place IDs
         </label>
         <textarea
-          id="place-ids"
+          id="create-place-ids"
           value={text}
           disabled={running}
           rows={8}
