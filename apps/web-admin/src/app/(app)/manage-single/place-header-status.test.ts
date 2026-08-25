@@ -135,7 +135,6 @@ describe("generalHeaderFacts", () => {
     const facts = generalHeaderFacts({
       ...base,
       seeded: true,
-      active: false,
       listed: true,
       enrich_pulse: 10,
       enrich_pulse_total: 10,
