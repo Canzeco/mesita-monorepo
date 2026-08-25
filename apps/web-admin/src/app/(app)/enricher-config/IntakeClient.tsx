@@ -39,7 +39,6 @@ import {
   Fields,
   FlowEstimate,
   FlowPanel,
-  FunctionFamily,
   FunctionModule,
   KnobElsewhere,
   NoKnobs,
@@ -50,21 +49,13 @@ import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-gu
 
 export type { IntakeSettings };
 
-// THE INTAKE PAGE. Five modules, Discovery-shaped. Models sits FIRST (shared
-// spend, above even Sourcing), then Sourcing · Create · Enrich · Functions.
-// One page, no tabs. Functions are disclosure rows inside the Functions card,
-// not a second stack of cards.
+// THE INTAKE PAGE. Five modules, Discovery-shaped. Models first, then
+// Sourcing · Create · Enrich · Functions. One page, no tabs.
 //
-// ONE SAVE over TWO write doors — app_config.sourcing_config through
-// admin-web-update-sourcing-config, and the atlas_* columns through
-// admin-web-update-enricher-config. They are not one transaction, so the bar
-// tells the truth about a half-landed write: sourcing first; if the second
-// call fails the bar says which half landed and only the failed half stays dirty.
+// ONE SAVE over TWO write doors — sourcing_config then atlas_* columns.
+// They are not one transaction; the bar names which half landed.
 //
-// NO TRIGGER GRID. What a run is allowed to buy lives in
-// app_config.enrichment_triggers and is written by the EF alone (Pato, three
-// times: 2026-08-21 "delete the triggers shit", 2026-08-23 "Fuck this page",
-// 2026-08-23 "delete this stupid box"). Do not restore it as a fix.
+// NO TRIGGER GRID. Do not restore it.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
@@ -211,13 +202,12 @@ export function IntakeClient({
     <>
       <SectionStrip />
 
-      <div className="space-y-6 pb-24">
+      <div className="flex flex-col gap-4 pb-24">
         <div id="s-models" className="scroll-mt-16">
           <SectionCard
             icon={<Gauge className="text-secondary h-4 w-4" />}
-            title="Models & cost"
+            title="Models"
             subtitle="Shared spend. Embeddings is locked."
-            status={<Tag tone="solid">shared</Tag>}
           >
             <div className="mt-4">
               <ModelRow
@@ -274,7 +264,6 @@ export function IntakeClient({
             icon={<Layers className="text-secondary h-4 w-4" />}
             title="Sourcing"
             subtitle="Who may find a place, and who may add one."
-            status={<Tag tone="solid">the gate</Tag>}
           >
             {sourcingLoadError ? (
               <div className="mt-4">
@@ -302,47 +291,36 @@ export function IntakeClient({
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
-            subtitle="One run. Seed, then Pulse and Details inline; Name and Summary ride along. Synchronous, at the door — admin, business and consumer alike. The Intaker never calls it — a person or Memo does, by adding a place."
+            subtitle="One run when someone adds a place."
             status={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
               facts={[
                 {
-                  term: "What starts it",
+                  term: "Starts",
                   detail:
-                    "Someone adds a place. There is no trigger for Create — it is unconditional, and the gate above is what decides whether the add is allowed at all.",
+                    "A person or Memo adds a place. The gate above decides whether the add is allowed.",
                 },
                 {
-                  term: "The gate inside it",
+                  term: "Stops",
                   detail: (
                     <>
-                      A listing Google reports{" "}
+                      Google{" "}
                       <code className="bg-muted rounded px-1 py-0.5 text-xs">
                         CLOSED_PERMANENTLY
                       </code>{" "}
-                      is refused <b>422</b> before any row exists.
+                      is refused 422 before any row exists.
                     </>
                   ),
-                },
-                {
-                  term: "What it leaves behind",
-                  detail:
-                    "The paired place and project rows, the Google spine, a first photo, and a queued Summary vector. Pulse and details stamp, so a healthy fresh place reads Enriched 2/9 the moment it exists.",
-                },
-                {
-                  term: "Then",
-                  detail:
-                    "It schedules the enrich queue — it never runs functions 3–9 inline.",
                 },
               ]}
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details on this page's knobs. One place."
+                  caption="Pulse + Details. One place."
                   estimate={createCost}
                 />
               }
-              footer="No knobs of its own. Everything Create does is a function below, and the semantic pair rides along outside the 0–9 count."
             />
           </SectionCard>
         </div>
@@ -351,47 +329,28 @@ export function IntakeClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="Sequential runs — one subfunction per cron tick, in order. Three cron Edge Functions over the place_research staging row: research runs 1·2·3·4·5·8, analysis runs 6, contents runs 7·9·◇summary."
+            subtitle="One subfunction per cron tick, in order."
             status={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
               facts={[
                 {
                   term: "Cadence",
-                  detail: (
-                    <>
-                      <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                        places.enrich_every_days
-                      </code>
-                      , set per place on the Place editor — not here. The queue
-                      runs every 15 minutes and seeds at most <b>5 places per
-                      tick, across all of Mesita</b>.
-                    </>
-                  ),
+                  detail:
+                    "Place editor sets the days. Queue every 15 minutes, five places per tick.",
                 },
                 {
-                  term: "What stops it",
+                  term: "Stops",
                   detail:
-                    "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9. Spend is bounded by the collect and analyze knobs, and by five places per tick — not a dollar cap.",
+                    "Infrastructure failure or permanently closed. Absence still reaches 9.",
                 },
               ]}
               steps={chipsFor("enrich")}
               estimate={
                 <FlowEstimate
-                  caption="Collect, analyze, links and reviews as set below. Five places per tick."
+                  caption="Knobs below × five places per tick."
                   estimate={enrichCost}
                 />
-              }
-              footer={
-                <>
-                  What a run is allowed to buy is not set here. That lives in{" "}
-                  <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                    app_config.enrichment_triggers
-                  </code>
-                  , written by the enricher-config Edge Function. Two events fire
-                  today: the run Create schedules, and the per-place decay
-                  refresh.
-                </>
               }
             />
           </SectionCard>
@@ -400,37 +359,20 @@ export function IntakeClient({
         <div id="s-functions" className="scroll-mt-16">
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
-            title="The functions"
-            subtitle="12 subfunctions, listed once. Create is one run. Enrich is sequential runs. Each card says which function uses it. Name and Summary have no number and enriched never counts them."
-            status={<Tag tone="solid">12 modules · 15 knobs</Tag>}
+            title="Functions"
+            subtitle="Twelve, listed once. Create is one run; Enrich is sequential."
           >
-            <div className="mt-2">
-              <FunctionFamily
-                tone="create"
-                label="Create"
-                kicker="One run. Seed, Pulse, Details, then Name and Summary ride along."
-                note="Pulse, Details, Name and Summary are the same subfunctions Enrich uses. They are not a second ladder."
-                chips={chipsFor("create")}
-              />
-              <FunctionFamily
-                tone="enrich"
-                label="Enrich"
-                kicker="Sequential runs — one subfunction per cron tick, in this order. Name and Summary ride along. enriched is the nine, not the pair."
-                note="Seed is Create-only. 3–9 are Enrich-only. Shared rows print once below."
-                chips={chipsFor("enrich")}
-              />
-              <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
+            <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
                 index="SEED"
                 name="Seed"
                 flows={flowTagFor("seed")}
-                blurb="Dedupe on the Google Place ID and mint the paired rows at category='undefined'."
+                blurb="Dedupe on the Google Place ID and mint the paired rows."
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. The row existing <b>is</b> the seed, which is why it
-                  is not an enrich function and never gets stamped.
+                  No knobs. The row existing is the seed. It is never stamped.
                 </NoKnobs>
               </FunctionModule>
 
@@ -439,12 +381,11 @@ export function IntakeClient({
                 index="1 · $"
                 flows={flowTagFor("pulse")}
                 name="Pulse"
-                blurb="One question: is this place still alive. Not the hours, not the address."
+                blurb="Is this place still alive."
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. Google&apos;s <b>businessStatus</b> is the answer and
-                  it is not tunable. It runs before the cost ledger opens.
+                  No knobs. Google&apos;s <b>businessStatus</b> is the answer.
                 </NoKnobs>
               </FunctionModule>
 
@@ -453,13 +394,12 @@ export function IntakeClient({
                 index="2 · $"
                 flows={flowTagFor("details")}
                 name="Details"
-                blurb="The Google spine: hours, address, geo, zone, city, timezone, price, phone, and the name."
+                blurb="Hours, address, geo, timezone, price, phone, and the name."
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. Every field here is a fact Google states. The one
-                  override is <b>mesita_name</b>, owned by a human on the Place
-                  editor — enrichment never touches it.
+                  No knobs. Facts Google states. <b>mesita_name</b> is the Place
+                  editor override.
                 </NoKnobs>
               </FunctionModule>
               <FunctionModule
@@ -467,12 +407,11 @@ export function IntakeClient({
                 index="3 · $"
                 flows={flowTagFor("serp")}
                 name="Serp"
-                blurb="Agent X writes the editorial read that Links spends to recognise the place. Never a source of facts."
+                blurb="Editorial read Links spends to recognise the place. Never a fact source."
                 knobs="in Models"
               >
                 <KnobElsewhere>
-                  Its only knob is the <b>Search model preset</b> in Models — one
-                  value with one home, because Agent Y at 4 · Links reads the
+                  The <b>Search model</b> in Models. Agent Y at Links reads the
                   same setting.
                 </KnobElsewhere>
               </FunctionModule>
@@ -482,7 +421,7 @@ export function IntakeClient({
                 index="4 · $$"
                 flows={flowTagFor("links")}
                 name="Links"
-                blurb="Firecrawl gathers candidates per source, Agent Y picks one or none. Seed first, discover second."
+                blurb="Firecrawl candidates, Agent Y picks one or none. Seed first, discover second."
                 knobs="5 knobs"
                 defaultOpen
               >
@@ -540,9 +479,7 @@ export function IntakeClient({
                   />
                 </Fields>
                 <p className="text-muted-foreground mt-3 text-xs">
-                  0 turns a source off. A channel the Google spine already
-                  supplied at create is trusted as-is — discovery runs only for
-                  what is missing.
+                  0 turns a source off. Google-seeded channels skip discovery.
                 </p>
               </FunctionModule>
 
@@ -551,14 +488,11 @@ export function IntakeClient({
                 index="5 · $$"
                 flows={flowTagFor("social")}
                 name="Social"
-                blurb="The Instagram and Facebook profiles — handle, followers, bio. It does not collect posts."
+                blurb="Instagram and Facebook profiles. Does not collect posts."
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. Social attaches the accounts Links resolved. Post
-                  images are an Images job: that function collects them from
-                  Apify and then analyzes them, which is why the collect knob
-                  lives there.
+                  No knobs. Posts are an Images job.
                 </NoKnobs>
               </FunctionModule>
 
@@ -567,7 +501,7 @@ export function IntakeClient({
                 index="6 · $$"
                 flows={flowTagFor("images")}
                 name="Images"
-                blurb="Instagram: last X newest, rank by likes, vision top Y. Google is already ranked. Largest cost driver here."
+                blurb="Instagram: last X newest, rank by likes, vision top Y. Google is already ranked."
                 knobs="2 funnels"
                 defaultOpen
               >
@@ -593,10 +527,8 @@ export function IntakeClient({
                   </div>
                 </Collapsible>
                 <p className="text-muted-foreground mt-3 text-xs">
-                  Lowering last/take pulls vision and the gallery with it. After
-                  vision, one sort ranks the shared bucket onto the profile.
-                  Winners mirror into the place-images bucket; the model is in
-                  Models.
+                  Lowering last/take pulls vision and the gallery with it. The
+                  model is in Models.
                 </p>
               </FunctionModule>
 
@@ -605,14 +537,10 @@ export function IntakeClient({
                 index="7"
                 flows={flowTagFor("menu")}
                 name="Menu"
-                blurb="Holds its slot so the number stays stable the day a real menu source lands."
+                blurb="Holds the slot until a real menu source lands."
                 knobs="no knobs"
               >
-                <NoKnobs>
-                  No knobs, and nothing to configure — the website is not
-                  crawled, so no menu source exists. It always passes and can
-                  never block the queue.
-                </NoKnobs>
+                <NoKnobs>No knobs. Always passes. Never blocks the queue.</NoKnobs>
               </FunctionModule>
 
               <FunctionModule
@@ -620,7 +548,7 @@ export function IntakeClient({
                 index="8 · $$"
                 flows={flowTagFor("reviews")}
                 name="Reviews"
-                blurb="The newest Google reviews — what 9 · Description grounds the Presentation on."
+                blurb="Newest Google reviews. Description grounds the Presentation on these."
                 knobs="1 knob"
               >
                 <Fields>
@@ -637,9 +565,7 @@ export function IntakeClient({
                   />
                 </Fields>
                 <p className="text-muted-foreground mt-3 text-xs">
-                  0–100, about $0.50 per 100. Mesita&apos;s own cost and
-                  wall-clock bound, not a Google one — the Places API itself
-                  returns 5.
+                  0–100. Places API itself returns 5.
                 </p>
               </FunctionModule>
 
@@ -648,13 +574,11 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Closes the queue. Makes the Presentation, then Category, then Tags, in that order."
+                blurb="Closes the queue. Presentation, then Category, then Tags."
                 knobs="in Models"
               >
                 <KnobElsewhere>
-                  Its only knob is the <b>Text model</b> in Models — the same
-                  setting drives the image-rank leg of 6 · Images, so it has one
-                  home.
+                  The <b>Text model</b> in Models. Same setting ranks images.
                 </KnobElsewhere>
               </FunctionModule>
               <FunctionModule
@@ -662,14 +586,10 @@ export function IntakeClient({
                 index="◇"
                 flows={flowTagFor("name")}
                 name="Name"
-                blurb="The Mesita name as its own vector, so a search by name scores on the name."
+                blurb="The Mesita name as its own vector."
                 knobs="not built"
               >
-                <NoKnobs>
-                  Not built. The key is declared so this page can say
-                  &ldquo;not built&rdquo; about something real, and nothing
-                  stamps it.
-                </NoKnobs>
+                <NoKnobs>Not built. Nothing stamps it.</NoKnobs>
               </FunctionModule>
 
               <FunctionModule
@@ -677,16 +597,14 @@ export function IntakeClient({
                 index="◇"
                 flows={flowTagFor("summary")}
                 name="Summary"
-                blurb="The 60-word text the index reads — never the prose a guest reads."
+                blurb="The 60-word text the index reads. Never guest prose."
                 knobs="locked"
               >
                 <NoKnobs>
-                  No knobs. The model is locked to <b>text-embedding-3-small</b>:
-                  swapping it re-embeds the whole catalog, so it is not a knob by
-                  design.
+                  Locked to <b>text-embedding-3-small</b>. Swapping re-embeds
+                  the catalog.
                 </NoKnobs>
               </FunctionModule>
-              </div>
             </div>
           </SectionCard>
         </div>

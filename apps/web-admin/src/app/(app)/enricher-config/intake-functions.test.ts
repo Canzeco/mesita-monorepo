@@ -75,4 +75,11 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("computeEnrichTickCost");
     expect(src).not.toContain("type=\"number\"");
   });
+
+  it("does not restack Create and Enrich as family boxes on Functions", () => {
+    const src = readFileSync(join(__dirname, "IntakeClient.tsx"), "utf8");
+    expect(src).not.toContain("FunctionFamily");
+    expect(src).not.toContain("12 modules");
+    expect(src).not.toContain("Create explained");
+  });
 });

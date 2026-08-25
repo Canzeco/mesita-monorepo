@@ -12,7 +12,7 @@ import {
 // Intake's page-local layout kit. Structural only — controls come from
 // `@/components/admin-ui/config`. Five SectionCards own the page; these
 // primitives live *inside* a card. A function is a disclosure row, never a
-// card of its own (twelve stacked cards is design hard-rejection #7).
+// card of its own.
 
 /** Muted pill. Used for flow membership, cost tier and enforcement state. */
 export function Tag({
@@ -61,46 +61,32 @@ export function StepChips({
 }
 
 /**
- * Facts + step chips inside a SectionCard. No second chrome — the card is
- * already the module.
+ * Chips + estimate inside a SectionCard, then a couple of one-line facts.
+ * The card is already the module — no second chrome, no essay column.
  */
 export function FlowPanel({
   facts,
   steps,
   estimate,
-  footer,
 }: {
   facts: { term: string; detail: React.ReactNode }[];
   steps: { href: string; label: string }[];
   estimate?: React.ReactNode;
-  footer?: React.ReactNode;
 }) {
   return (
-    <div className="mt-5">
-      <div className="grid gap-7 lg:grid-cols-[1fr_240px]">
-        <dl className="m-0">
-          {facts.map((f) => (
-            <div key={f.term} className="mb-3.5 last:mb-0">
-              <dt className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
-                {f.term}
-              </dt>
-              <dd className="m-0 mt-1 type-body leading-relaxed">{f.detail}</dd>
-            </div>
-          ))}
-        </dl>
-        <div>
-          <p className="text-muted-foreground type-meta mb-2 font-bold tracking-wider uppercase">
-            Subfunctions
-          </p>
-          <StepChips steps={steps} />
-        </div>
-      </div>
+    <div className="mt-4 space-y-4">
+      <StepChips steps={steps} />
       {estimate}
-      {footer ? (
-        <p className="text-muted-foreground mt-5 border-border border-t pt-4 text-xs leading-relaxed">
-          {footer}
-        </p>
-      ) : null}
+      <dl className="m-0 grid gap-3 sm:grid-cols-2">
+        {facts.map((f) => (
+          <div key={f.term}>
+            <dt className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
+              {f.term}
+            </dt>
+            <dd className="m-0 mt-1 text-sm leading-snug">{f.detail}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
@@ -114,7 +100,7 @@ export function FlowEstimate({
   estimate: CostEstimate;
 }) {
   return (
-    <div className="border-border mt-5 rounded-lg border px-3 py-2.5">
+    <div className="border-border rounded-lg border px-3 py-2.5">
       <p className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
         Estimate
       </p>
@@ -145,71 +131,8 @@ export function FlowEstimate({
 }
 
 /**
- * CREATE · ENRICH — a box that names a flow, not a second ladder.
- * Subfunctions print once below. Chips are the run order.
- */
-export function FunctionFamily({
-  label,
-  kicker,
-  tone,
-  note,
-  chips,
-  children,
-}: {
-  label: string;
-  kicker: string;
-  tone: "create" | "enrich" | "semantic";
-  note?: React.ReactNode;
-  chips?: { href: string; label: string }[];
-  children?: React.ReactNode;
-}) {
-  const box =
-    tone === "create"
-      ? "border-primary/30 bg-primary/[0.035]"
-      : tone === "semantic"
-        ? "border-border bg-muted/60"
-        : "border-border bg-card";
-  const dot =
-    tone === "create"
-      ? "bg-primary"
-      : tone === "semantic"
-        ? "bg-muted-foreground"
-        : "bg-foreground";
-  return (
-    <section className={"mt-4 first:mt-2 overflow-hidden rounded-xl border " + box}>
-      <header className="border-border flex items-start gap-3 border-b px-4 py-3">
-        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + dot} aria-hidden />
-        <div className="min-w-0">
-          <p className="type-label font-semibold tracking-[0.14em] uppercase">
-            {label}
-          </p>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
-            {kicker}
-          </p>
-        </div>
-      </header>
-      {chips || children ? (
-        <div className="px-3 sm:px-4">
-          {chips ? (
-            <div className="py-3">
-              <StepChips steps={chips} />
-            </div>
-          ) : null}
-          {children}
-        </div>
-      ) : null}
-      {note ? (
-        <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs leading-relaxed">
-          {note}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-/**
- * One function of the ladder, as a disclosure inside a FunctionFamily.
- * Shared functions print once. A family box is what names the type.
+ * One function of the ladder, as a disclosure row. Shared functions print
+ * once. Create and Enrich name the run shape on their own cards.
  */
 export function FunctionModule({
   id,
