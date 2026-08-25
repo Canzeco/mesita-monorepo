@@ -10,8 +10,9 @@
 // TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
 //
 //   SIGNALS   six functions. One table: Input · Process · Output · exponent
-//             plus the two operator knobs (maxKm, closedFloor). The rest of
-//             the curve lives in code. Promoting is not a row.
+//             (the super-param, ink) plus the two mute knobs (maxKm,
+//             closedFloor). The rest of the curve lives in code. Promoting
+//             is not a row.
 //   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
 //             engine gets a knob, and today that knob is Swipe's `ranked`.
 //
