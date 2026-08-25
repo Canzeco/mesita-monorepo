@@ -247,6 +247,7 @@ export function PromosSection({
 
     setModalBusy(true);
     setModalError(null);
+    setCapError(null);
     const r = await setPlacePlan(v.id, plan, rates);
     setModalBusy(false);
     if (!r.ok) {
@@ -264,6 +265,7 @@ export function PromosSection({
 
     setDropBusy(true);
     setDropError(null);
+    setCapError(null);
     const r = await setPlacePlan(v.id, plan, rates);
     setDropBusy(false);
     if (!r.ok) {
@@ -283,6 +285,7 @@ export function PromosSection({
     const optimistic: AdminPlace = { ...v, ...rates };
     applyPlace(optimistic);
     setSwitchError(null);
+    setCapError(null);
 
     startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
