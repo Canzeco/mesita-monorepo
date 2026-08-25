@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Loader2, MessageSquare, X } from "lucide-react";
 import { type AdminVerification, decideVerification } from "./actions";
 import { METHOD_ICON, METHOD_LABEL } from "./verification-config";
 import { KV, StatusBadge, formatDate } from "./verification-ui";
@@ -17,7 +17,7 @@ export function VerificationRow({
     rejectReason: string,
   ) => void;
 }) {
-  const Icon = METHOD_ICON[verification.method];
+  const Icon = METHOD_ICON[verification.method] ?? MessageSquare;
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [pending, startDecide] = useTransition();
