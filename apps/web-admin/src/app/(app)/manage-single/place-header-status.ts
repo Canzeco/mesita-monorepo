@@ -58,6 +58,25 @@ export type HeaderFact = {
   chip: string;
 };
 
+/** Same predicate as `_shared/place-status.ts::isPlaceListed` and the
+ *  consumer RLS policy: only `active` and `lead` are reachable. */
+export const LISTED_STATUSES = ["active", "lead"] as const;
+
+export function listedFromStatus(status: unknown): boolean | "unknown" {
+  if (typeof status !== "string" || status === "") return "unknown";
+  return (LISTED_STATUSES as readonly string[]).includes(status);
+}
+
+/** Stamp `listed` from `status` so a merged write payload cannot keep a
+ *  stale overview flag (Unlist wrote `paused` but left `listed: true`). */
+export function withListedFromStatus<T extends { status?: unknown; listed?: boolean }>(
+  place: T,
+): T {
+  const listed = listedFromStatus(place.status);
+  if (listed === "unknown") return place;
+  return { ...place, listed };
+}
+
 export function generalHeaderFacts(input: {
   seeded?: boolean;
   listed?: boolean;

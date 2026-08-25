@@ -33,6 +33,7 @@
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
 import { setPlaceListed, type AdminPlace } from "../actions";
+import { listedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -60,9 +61,9 @@ import {
 //              leg is a tautology (all four labels of the enum are allowed),
 //              so status alone decides. Product Rules §B is right that Listed
 //              is not a RUNG — nothing progresses through it — but it is not a
-//              constant either: archive a place and every guest surface stops
-//              resolving it. Today it is true for every row only because
-//              nothing writes any status but 'active'.
+//              constant either: Unlist writes `paused` and every guest surface
+//              stops resolving it. Read it from `status`, never from a merged
+//              overview `listed` flag that can go stale after that write.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
@@ -156,8 +157,13 @@ export function StatusCard({
   // failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
+  const listedFromRow = listedFromStatus(place.status);
   const listed: boolean | "unknown" =
-    typeof place.listed === "boolean" ? place.listed : "unknown";
+    listedFromRow !== "unknown"
+      ? listedFromRow
+      : typeof place.listed === "boolean"
+        ? place.listed
+        : "unknown";
   // Enriched is complete-or-not, from the same high-water the catalog uses.
   // A missing number is unknown, not a no.
   const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;

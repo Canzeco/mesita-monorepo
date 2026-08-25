@@ -7,6 +7,8 @@ import {
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
+  listedFromStatus,
+  withListedFromStatus,
 } from "./place-header-status";
 
 function status(
@@ -152,6 +154,27 @@ describe("generalHeaderFacts", () => {
       "Promoting",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
+  });
+});
+
+describe("listedFromStatus", () => {
+  it("active and lead are listed; paused is not", () => {
+    expect(listedFromStatus("active")).toBe(true);
+    expect(listedFromStatus("lead")).toBe(true);
+    expect(listedFromStatus("paused")).toBe(false);
+    expect(listedFromStatus("archived")).toBe(false);
+    expect(listedFromStatus(null)).toBe("unknown");
+  });
+
+  it("withListedFromStatus overwrites a stale listed flag after Unlist", () => {
+    const merged = withListedFromStatus({
+      status: "paused",
+      listed: true,
+    });
+    expect(merged.listed).toBe(false);
+    expect(withListedFromStatus({ status: "active", listed: false }).listed).toBe(
+      true,
+    );
   });
 });
 

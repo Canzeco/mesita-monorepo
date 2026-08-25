@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { getPlace, type AdminPlace } from "./actions";
+import { withListedFromStatus } from "./place-header-status";
 import { PlaceEditChrome } from "./PlaceEditChrome";
 import { PlaceProvider } from "./PlaceContext";
 import { PlaceSaveBar } from "./PlaceSaveBar";
@@ -34,7 +35,7 @@ export function PlaceEditShell({
       setPlace(null);
       setLoadError(r.error);
     } else {
-      setPlace(r.data);
+      setPlace(withListedFromStatus(r.data));
       setLoadError(null);
     }
     setLoadedId(id);
@@ -45,8 +46,12 @@ export function PlaceEditShell({
   // the embedding columns, and now the Status block. MERGE it over the loaded
   // place rather than replacing: every real column is present in the response
   // (so a cleared field still clears), and the extras survive the save.
+  // Re-stamp `listed` from `status` after the merge: Unlist writes `paused`
+  // but the overview's computed `listed: true` would otherwise stick.
   const mergePlace = useCallback((next: AdminPlace) => {
-    setPlace((prev) => (prev ? { ...prev, ...next } : next));
+    setPlace((prev) =>
+      withListedFromStatus(prev ? { ...prev, ...next } : next),
+    );
   }, []);
 
   // Fetch inline (not via loadPlace) so every setState sits after the await —
@@ -60,7 +65,7 @@ export function PlaceEditShell({
         setPlace(null);
         setLoadError(r.error);
       } else {
-        setPlace(r.data);
+        setPlace(withListedFromStatus(r.data));
         setLoadError(null);
       }
       setLoadedId(projectId);
