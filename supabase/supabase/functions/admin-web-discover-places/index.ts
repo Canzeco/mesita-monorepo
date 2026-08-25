@@ -22,6 +22,7 @@ import { invokeInternalCaller } from "../_shared/internal.ts";
 
 type RequestBody = {
   queries?: string[];
+  placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
   minRating?: number;

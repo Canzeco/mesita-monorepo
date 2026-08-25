@@ -1,19 +1,15 @@
 "use client";
 
-// Manage Multiple Places — ONE page, three boxes: Search · Create · Enrich.
-// That is the pipeline, in order. Search is a box of its own (Pato, 2026-08-25:
-// keep it; do not fold Google search into Create or name a combined card).
-//
-// Two handoffs are buttons: Search → Create (new Google IDs) and Create →
-// Enrich (minted Mesita IDs). Spend estimates live on Intake, not here.
+// Manage Multiple Places — three boxes plus Edit at the bottom.
+// Sticky rail so none scroll away. Spend estimates live on Intake, not here.
 
 import { useEffect, useState } from "react";
-import { ListPlus } from "lucide-react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
-import { CreateTab } from "./CreateTab";
-import { EnrichTab } from "./EnrichTab";
-import { LEGACY_COMBO_HASH, PIPELINE_STEPS } from "./pipeline";
+import { MesitaSearchTab } from "./MesitaSearchTab";
+import { IntakeTab } from "./IntakeTab";
+import { EditTab } from "./EditTab";
+import { LEGACY_HASHES, PIPELINE_STEPS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
 function Step({
@@ -50,9 +46,7 @@ function Step({
 }
 
 export function MultiplePlacesClient() {
-  const [createText, setCreateText] = useState("");
-  const [enrichText, setEnrichText] = useState("");
-  const [createdProjectIds, setCreatedProjectIds] = useState<string[]>([]);
+  const [sharedIds, setSharedIds] = useState("");
 
   function jump(id: string) {
     document.getElementById(id)?.scrollIntoView({
@@ -63,8 +57,9 @@ export function MultiplePlacesClient() {
 
   useEffect(() => {
     const raw = window.location.hash.replace(/^#/, "");
-    if (raw !== LEGACY_COMBO_HASH) return;
-    jump("bulk-create");
+    const dest = LEGACY_HASHES[raw];
+    if (!dest) return;
+    jump(dest);
   }, []);
 
   return (
@@ -75,12 +70,12 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="One Google Places query per line. The deduped union of Place IDs comes back below."
+        blurb="A search bar. Free text or Google Place IDs. Country is optional."
       >
         <SearchTab
-          onSendToCreate={(ids) => {
-            setCreateText(ids.join("\n"));
-            jump("bulk-create");
+          onSendIds={(ids) => {
+            setSharedIds(ids.join("\n"));
+            jump("mesita-search");
           }}
         />
       </Step>
@@ -90,27 +85,9 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Place IDs in, places out — Create Seed · Pulse · Details · Semantic. Caps live on Intake."
+        blurb="Google Place IDs in. Mesita states out. Read-only — no create, no enrich."
       >
-        <CreateTab
-          text={createText}
-          onTextChange={setCreateText}
-          onCreated={(ids) => setCreatedProjectIds(ids)}
-        />
-        {createdProjectIds.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => {
-              setEnrichText(createdProjectIds.join("\n"));
-              jump("bulk-enrich");
-            }}
-            className="border-border bg-card hover:border-foreground mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
-          >
-            <ListPlus className="h-4 w-4" />
-            Send {createdProjectIds.length} created{" "}
-            {createdProjectIds.length === 1 ? "place" : "places"} to Enrich
-          </button>
-        ) : null}
+        <MesitaSearchTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>
 
       <Step
@@ -118,9 +95,19 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Enrich 1–10: Pulse through Description, then Semantic. Paste Mesita IDs. Same full Intaker run."
+        blurb="Create · Enrich · Create + Enrich. Same stored Intake config. Re-enrich runs 1–10 from zero."
       >
-        <EnrichTab text={enrichText} onTextChange={setEnrichText} />
+        <IntakeTab text={sharedIds} onTextChange={setSharedIds} />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[3].n}
+        id={PIPELINE_STEPS[3].id}
+        tint="rose"
+        title={PIPELINE_STEPS[3].label}
+        blurb="The only edit. Listed · Verified · Partner · Promoting."
+      >
+        <EditTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>
     </div>
   );

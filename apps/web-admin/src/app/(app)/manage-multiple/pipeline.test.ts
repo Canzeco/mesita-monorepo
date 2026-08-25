@@ -8,32 +8,33 @@ import { PIPELINE_STEPS } from "./pipeline";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PIPELINE_STEPS", () => {
-  it("is Search, Create, Enrich — the page must show all three", () => {
+  it("is Google Search, Mesita Search, Mesita Intake, Edit", () => {
     expect(PIPELINE_STEPS.map((s) => s.label)).toEqual([
-      "Search",
-      "Create",
-      "Enrich",
+      "Google Search",
+      "Mesita Search",
+      "Mesita Intake",
+      "Edit",
     ]);
-    expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3]);
-    expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(3);
-    expect(PIPELINE_STEPS.map((s) => s.label).join(" ")).not.toMatch(
-      /Create \+ Enrich/,
-    );
+    expect(PIPELINE_STEPS.map((s) => s.n)).toEqual([1, 2, 3, 4]);
+    expect(new Set(PIPELINE_STEPS.map((s) => s.id)).size).toBe(4);
   });
 });
 
-describe("the page chrome never names a Create + Enrich box", () => {
-  it("keeps Search as its own step", () => {
+describe("the page chrome names the four surfaces", () => {
+  it("keeps Google Search, Mesita Search, Mesita Intake, and Edit", () => {
     const client = readFileSync(join(here, "MultiplePlacesClient.tsx"), "utf8");
-    const layout = readFileSync(join(here, "layout.tsx"), "utf8");
-    const nav = readFileSync(join(here, "PipelineNav.tsx"), "utf8");
-    const create = readFileSync(join(here, "CreateTab.tsx"), "utf8");
-    for (const src of [client, layout, nav, create]) {
-      expect(src).not.toMatch(/Create \+ Enrich/);
-    }
+    const intake = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
+    const edit = readFileSync(join(here, "EditTab.tsx"), "utf8");
     expect(client).toContain("SearchTab");
-    expect(client).toContain("CreateTab");
-    expect(client).toContain("EnrichTab");
+    expect(client).toContain("MesitaSearchTab");
+    expect(client).toContain("IntakeTab");
+    expect(client).toContain("EditTab");
+    expect(intake).toContain("Re-enrich from zero");
+    expect(intake).toContain("alreadyExisted");
+    expect(edit).toContain("Listed");
+    expect(edit).toContain("Verified");
+    expect(edit).toContain("Partner");
+    expect(edit).toContain("Promoting");
   });
 });
 
@@ -41,12 +42,12 @@ describe("spend calculator stays off this page", () => {
   it("does not mount CostCalculator — Create/Enrich estimates live on Intake", () => {
     const params = readFileSync(join(here, "SearchParametersSection.tsx"), "utf8");
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
-    const enrichTab = readFileSync(join(here, "EnrichTab.tsx"), "utf8");
+    const intakeTab = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
     const costUi = readFileSync(join(here, "search-cost.tsx"), "utf8");
     expect(params).not.toContain("CostCalculator");
     expect(searchTab).not.toContain("CostCalculator");
-    expect(enrichTab).not.toContain("computeEnrichmentCost");
-    expect(enrichTab).not.toContain("costSeed");
+    expect(intakeTab).not.toContain("computeEnrichmentCost");
+    expect(intakeTab).not.toContain("costSeed");
     expect(costUi).not.toContain("export function CostCalculator");
   });
 });
