@@ -72,6 +72,14 @@ export function NotificationRow({
             {item.detail}
           </p>
         )}
+        {item.type === "atlas.enrichment_step" &&
+        typeof item.meta.error === "string" &&
+        item.meta.error &&
+        !item.detail?.includes(item.meta.error) ? (
+          <p className="text-destructive/90 mt-1 text-xs leading-relaxed">
+            {item.meta.error}
+          </p>
+        ) : null}
 
         <MetaRow item={item} />
       </div>

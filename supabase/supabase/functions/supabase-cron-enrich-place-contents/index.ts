@@ -312,6 +312,12 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // Same for names (MESITA-917): google_name + sticky Mesita name are written in
   // research only. Contents must NEVER write `name` / `google_name` — otherwise
   // Re-enrich silently reverts an admin Mesita rename (the landmine this closes).
+  // Same for google_place_id: gathered.place still carries the spine (research
+  // writes it on create). writePlace refuses it on UPDATE — leaving the key
+  // in this patch is what printed "Profile persist failed" on Global Monitor
+  // with the real reason only in meta.error (Strana, 2026-08-25).
+  // Wave 040 already dropped tiktok/tripadvisor/yelp + requires_story on the
+  // live row. A gathered blob that still carries them 42703s the UPDATE.
   const {
     id: _dropId,
     created_at: _dropCreated,
@@ -321,6 +327,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
     whatsapp_url: _dropWhatsapp,
     name: _dropName,
     google_name: _dropGoogleName,
+    google_place_id: _dropGooglePlaceId,
+    tiktok_url: _dropTiktok,
+    tripadvisor_url: _dropTripadvisor,
+    yelp_url: _dropYelp,
+    requires_story: _dropRequiresStory,
     ...placeUpdate
   } = persisted as Record<string, unknown> & {
     id?: unknown;
@@ -331,6 +342,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
     whatsapp_url?: unknown;
     name?: unknown;
     google_name?: unknown;
+    google_place_id?: unknown;
+    tiktok_url?: unknown;
+    tripadvisor_url?: unknown;
+    yelp_url?: unknown;
+    requires_story?: unknown;
   };
   const placeRes = await writePlace(admin, {
     table: "places",
@@ -347,7 +363,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       "S7",
       "publish",
       "failed",
-      "Profile persist failed — the place record was not updated.",
+      `Profile persist failed — ${placeRes.error}`,
       { error: placeRes.error },
     );
     await releaseResearchRow(
