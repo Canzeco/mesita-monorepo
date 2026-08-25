@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { computeEnrichmentCost } from "./cost-model";
+import {
+  computeCreateCost,
+  computeEnrichTickCost,
+  computeEnrichmentCost,
+  ENRICH_TICK_PLACES,
+} from "./cost-model";
+import type { IntakeSettings } from "./intake-guards";
 
 const base = {
   quality: "economy" as const,
@@ -63,5 +69,62 @@ describe("computeEnrichmentCost", () => {
     );
     const on = computeEnrichmentCost(base);
     expect(on.perPlace).toBeGreaterThan(off.perPlace);
+  });
+
+  it("reviews = 0 drops the Apify Google Maps line", () => {
+    const off = computeEnrichmentCost({ ...base, reviews: 0 });
+    expect(off.lines.find((l) => l.label.startsWith("8 ·"))?.active).toBe(false);
+    expect(computeEnrichmentCost(base).perPlace).toBeGreaterThan(off.perPlace);
+  });
+});
+
+const settings: IntakeSettings = {
+  gatherGoogleImages: 10,
+  gatherInstagramDepth: 30,
+  gatherReviews: 100,
+  imageVisionEnabled: true,
+  saveImagesToStorage: true,
+  saveTotalImages: 10,
+  analyzeGoogleImages: 10,
+  analyzeInstagramImages: 20,
+  imageAnalysisPrompt: "",
+  imageSortingPrompt: "",
+  synthesisQuality: "economy",
+  visionQuality: "economy",
+  perplexityPreset: "pro-search",
+  discoverWebsiteN: 5,
+  discoverInstagramN: 5,
+  discoverFacebookN: 3,
+  discoverOpentableN: 3,
+  discoverUbereatsN: 0,
+};
+
+describe("instance estimates", () => {
+  it("Create is Google Pulse+Details only, one place", () => {
+    const c = computeCreateCost(settings);
+    expect(c.places).toBe(1);
+    expect(c.active.every((l) => l.label.startsWith("1–2") || l.label.startsWith("2 ·"))).toBe(
+      true,
+    );
+    expect(c.active.some((l) => l.label.startsWith("3 ·"))).toBe(false);
+    expect(c.active.some((l) => l.label.startsWith("5 ·"))).toBe(false);
+    expect(c.active.some((l) => l.label.startsWith("9 ·"))).toBe(false);
+  });
+
+  it("Enrich tick multiplies live knobs by the 5-place cap", () => {
+    const e = computeEnrichTickCost(settings);
+    expect(e.places).toBe(ENRICH_TICK_PLACES);
+    expect(e.total).toBeCloseTo(e.perPlace * ENRICH_TICK_PLACES);
+    expect(e.perPlace).toBeGreaterThan(computeCreateCost(settings).perPlace);
+  });
+
+  it("vision off and reviews 0 drop those Enrich lines", () => {
+    const e = computeEnrichTickCost({
+      ...settings,
+      imageVisionEnabled: false,
+      gatherReviews: 0,
+    });
+    expect(e.active.some((l) => l.label.startsWith("6 ·"))).toBe(false);
+    expect(e.active.some((l) => l.label.startsWith("8 ·"))).toBe(false);
   });
 });

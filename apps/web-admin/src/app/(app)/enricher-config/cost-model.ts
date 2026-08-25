@@ -1,4 +1,5 @@
 import type { SynthesisQuality } from "./actions";
+import type { IntakeSettings } from "./intake-guards";
 
 // Cost estimate — the pure model behind the calculator + the inline cost card.
 //
@@ -128,16 +129,28 @@ type CostParams = {
   // Links box — per-channel Firecrawl Search candidate counts (0 disables).
   links: LinkCounts;
   places: number;
+  // Reviews box — 0 skips the Apify Google Maps scrape.
+  reviews?: number;
+  // Social (5) has no knobs; Create never runs it. Default on for a full enrich.
+  social?: boolean;
+  // 3 · Serp. Create never runs it.
+  serp?: boolean;
+  // 9 · Description. Create does not write the Presentation.
+  synth?: boolean;
 };
 
-type CostEstimate = {
+export type CostEstimate = {
   lines: CostLine[];
   active: CostLine[];
   perPlace: number;
   total: number;
   perPlaceSecs: number;
   totalSecs: number;
+  places: number;
 };
+
+/** Cron tick ceiling — same number the Enrich card prints. */
+export const ENRICH_TICK_PLACES = 5;
 
 // Build the per-function rate rows and the aggregate cost/time for one
 // enrichment. Every function runs on every full enrichment (no tiers). Rows
@@ -162,6 +175,10 @@ export function computeEnrichmentCost({
   igAnalyze,
   links,
   places,
+  reviews = 55,
+  social = true,
+  serp = true,
+  synth = true,
 }: CostParams): CostEstimate {
   const synthCost =
     quality === "economy" ? COST_RATES.synthEconomy : COST_RATES.synthStandard;
@@ -180,6 +197,8 @@ export function computeEnrichmentCost({
     COST_RATES.apifyInstagramProfile +
     COST_RATES.apifyInstagramPost * igCollect +
     COST_RATES.apifyInstagramVerify;
+  const reviewsActive = reviews > 0;
+  const igActive = social && igCollect > 0;
   const enabledChannels = LINK_CHANNELS.filter((c) => links[c] > 0).length;
   const discoverySearchCost = COST_RATES.firecrawlSearchPerField * enabledChannels;
   const discoveryActive = enabledChannels > 0;
@@ -225,7 +244,7 @@ export function computeEnrichmentCost({
       cost: COST_RATES.perplexityAgent,
       secs: TIME_RATES.discoveryAgent,
       stage: "gather",
-      active: true,
+      active: serp,
     },
     {
       label: "4 · link discovery",
@@ -257,11 +276,13 @@ export function computeEnrichmentCost({
       label: "8 · Google reviews + images",
       detail: "Apify compass/crawler-google-places",
       pricing: "$1.50/1k + $0.50/100 reviews",
-      note: "base place + details add-on + up to 100 reviews (maxReviews:100); ~$0.65 worst case",
+      note: reviewsActive
+        ? `base place + details add-on + ${reviews} review${reviews === 1 ? "" : "s"} @ $0.50/100; ~$0.65 worst case`
+        : "reviews knob is 0 — Apify Google Maps scrape skipped",
       cost: COST_RATES.apifyGoogleMaps,
       secs: TIME_RATES.apifyGoogleMaps,
       stage: "gather",
-      active: true,
+      active: reviewsActive,
     },
     {
       label: "5 · Instagram",
@@ -271,7 +292,7 @@ export function computeEnrichmentCost({
       cost: igApifyCost,
       secs: TIME_RATES.apifyInstagram,
       stage: "gather",
-      active: true,
+      active: igActive,
     },
     {
       label: "5 · Facebook",
@@ -281,7 +302,7 @@ export function computeEnrichmentCost({
       cost: COST_RATES.apifyFacebook,
       secs: TIME_RATES.apifyFacebook,
       stage: "gather",
-      active: true,
+      active: social,
     },
     {
       label: "6 · image descriptions",
@@ -314,7 +335,7 @@ export function computeEnrichmentCost({
       cost: synthCost,
       secs: synthSecs,
       stage: "post",
-      active: true,
+      active: synth,
     },
     {
       label: "9 · category → tags",
@@ -324,7 +345,7 @@ export function computeEnrichmentCost({
       cost: COST_RATES.sort * 2,
       secs: TIME_RATES.sort * 2,
       stage: "post",
-      active: true,
+      active: synth,
     },
     {
       label: "9 · persist data + images",
@@ -334,7 +355,7 @@ export function computeEnrichmentCost({
       cost: 0,
       secs: 5,
       stage: "post",
-      active: true,
+      active: synth,
     },
   ];
 
@@ -350,5 +371,63 @@ export function computeEnrichmentCost({
   const perPlaceSecs = preSecs + gatherSecs + postSecs;
   const totalSecs = perPlaceSecs * Math.max(1, places);
 
-  return { lines, active, perPlace, total, perPlaceSecs, totalSecs };
+  return { lines, active, perPlace, total, perPlaceSecs, totalSecs, places: Math.max(1, places) };
 }
+
+const ZERO_LINKS: LinkCounts = {
+  website: 0,
+  instagram: 0,
+  facebook: 0,
+  opentable: 0,
+  ubereats: 0,
+};
+
+/** Live Intake knobs → the cost model. Vision off zeroes analyze counts. */
+export function costParamsFromSettings(
+  s: IntakeSettings,
+  places: number,
+): CostParams {
+  const vision = s.imageVisionEnabled;
+  return {
+    quality: s.synthesisQuality,
+    imageModel: s.visionQuality,
+    gCollect: s.gatherGoogleImages,
+    igCollect: s.gatherInstagramDepth,
+    gAnalyze: vision ? s.analyzeGoogleImages : 0,
+    igAnalyze: vision ? s.analyzeInstagramImages : 0,
+    links: {
+      website: s.discoverWebsiteN,
+      instagram: s.discoverInstagramN,
+      facebook: s.discoverFacebookN,
+      opentable: s.discoverOpentableN,
+      ubereats: s.discoverUbereatsN,
+    },
+    places,
+    reviews: s.gatherReviews,
+    social: true,
+    serp: true,
+    synth: true,
+  };
+}
+
+/** One Create run: Pulse + Details (first photo). Not functions 3–9. */
+export function computeCreateCost(s: IntakeSettings): CostEstimate {
+  return computeEnrichmentCost({
+    ...costParamsFromSettings(s, 1),
+    gCollect: 1,
+    igCollect: 0,
+    gAnalyze: 0,
+    igAnalyze: 0,
+    links: ZERO_LINKS,
+    reviews: 0,
+    social: false,
+    serp: false,
+    synth: false,
+  });
+}
+
+/** One Enrich cron tick: live knobs × the 5-place seed cap. */
+export function computeEnrichTickCost(s: IntakeSettings): CostEstimate {
+  return computeEnrichmentCost(costParamsFromSettings(s, ENRICH_TICK_PLACES));
+}
+
