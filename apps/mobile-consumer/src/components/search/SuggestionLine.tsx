@@ -1,31 +1,30 @@
-import { BadgeCheck } from 'lucide-react-native';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import type { AddState } from '@/components/memo/types';
-import { COLORS } from '@/constants/brand';
 import type { PlacePrediction } from '@/lib/api/place-search';
+import {
+  membershipColor,
+  membershipTone,
+} from '@/lib/search-membership';
 
 /** Plain one-line suggestion — mirrors web SearchResultsPanel SuggestionLine. */
 export function SuggestionLine({
   prediction,
-  source,
   addState,
   onPick,
 }: {
   prediction: PlacePrediction;
-  source: 'mesita' | 'google';
   addState?: AddState;
   onPick: (prediction: PlacePrediction) => void;
 }) {
-  const verified =
-    prediction.status === 'verified_partner_other' ||
-    prediction.status === 'verified_partner_self';
+  const tone = membershipTone(prediction);
   const added = addState === 'added';
+  const membershipLabel =
+    tone === 'partner' ? 'Partner' : tone === 'listed' ? 'Listed' : 'Google only';
   const label = [
     prediction.mainText,
     prediction.secondaryText,
-    source === 'mesita' ? 'On Mesita' : 'From Google',
-    verified ? 'Mesita partner' : null,
+    membershipLabel,
     added ? 'Enriching' : null,
   ]
     .filter(Boolean)
@@ -41,9 +40,8 @@ export function SuggestionLine({
       <View
         accessibilityElementsHidden
         importantForAccessibility="no"
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          source === 'mesita' ? 'bg-pink-500' : 'bg-blue-500'
-        }`}
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: membershipColor(tone) }}
       />
       <Text className="min-w-0 flex-1 text-sm" numberOfLines={1}>
         <Text className="font-medium text-foreground">
@@ -56,13 +54,6 @@ export function SuggestionLine({
           </Text>
         ) : null}
       </Text>
-      {verified ? (
-        <BadgeCheck
-          color={COLORS.primary}
-          size={14}
-          accessibilityLabel="Mesita Partner"
-        />
-      ) : null}
       {added ? (
         <View className="flex-row items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5">
           <ActivityIndicator color="#047857" size="small" />

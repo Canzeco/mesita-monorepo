@@ -13,7 +13,7 @@ import {
   EmptySearchPrompt,
   IdleCatalogRail,
 } from '@/components/search/SearchCatalogRail';
-import { SearchMap } from '@/components/search/SearchMap';
+import { SearchMap, type SearchMapPin } from '@/components/search/SearchMap';
 import {
   SearchResultsPanel,
   type SearchFailureKind,
@@ -37,6 +37,10 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
+import {
+  membershipTone,
+  placeMembershipTone,
+} from '@/lib/search-membership';
 import { supabase } from '@/lib/supabase';
 import {
   resetDiscoveryFilters,
@@ -172,6 +176,28 @@ export function SearchClient() {
     return filtered;
   }, [catalog, filters, selectedId]);
 
+  const searchPins = useMemo((): SearchMapPin[] | null => {
+    if (predictions.length === 0) return null;
+    const pins: SearchMapPin[] = [];
+    for (const p of predictions) {
+      const tone = membershipTone(p);
+      const catalogHit = p.mesitaId
+        ? catalog.find((place) => place.id === p.mesitaId)
+        : null;
+      const lat = p.lat ?? catalogHit?.lat ?? null;
+      const lng = p.lng ?? catalogHit?.lng ?? null;
+      if (typeof lat !== 'number' || typeof lng !== 'number') continue;
+      pins.push({
+        id: p.mesitaId ?? p.placeId,
+        lat,
+        lng,
+        title: p.mainText,
+        tone: catalogHit ? placeMembershipTone(catalogHit) : tone,
+      });
+    }
+    return pins;
+  }, [predictions, catalog]);
+
   useEffect(() => {
     publishFiltersHostContext({
       surface: 'search',
@@ -220,6 +246,7 @@ export function SearchClient() {
             supabase,
             trimmed,
             sessionTokenRef.current,
+            center,
           );
           if (!cancelled) {
             setPredictions(rows);
@@ -241,7 +268,7 @@ export function SearchClient() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [trimmed, retryTick]);
+  }, [trimmed, retryTick, center]);
 
   // Retry re-runs the suggest effect for the SAME query (the effect is keyed on
   // retryTick), so the consumer never has to retype after a network blip.
@@ -291,6 +318,19 @@ export function SearchClient() {
     resetSearchSession();
   };
 
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction = predictions.find(
+      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+    );
+    if (prediction && prediction.status === 'not_in_mesita') {
+      handlePickGoogle(prediction);
+      return;
+    }
+    if (prediction) {
+      handlePickMesita(prediction);
+    }
+  };
+
   const handleAdd = (prediction: PlacePrediction) => {
     if (addStates[prediction.placeId]) return;
     setAddStates((s) => ({ ...s, [prediction.placeId]: 'adding' }));
@@ -330,8 +370,10 @@ export function SearchClient() {
           userLocation={coords}
           center={center}
           apiKey={GMP_KEY}
+          pins={searchPins}
           onSelectPlace={(place) => selectPlace(place.id)}
           onOpenPlace={(place) => router.push(`/place/${place.id}`)}
+          onSelectPin={handleSelectPin}
           onMapPress={() => {
             if (searchOpen) closeSearch();
           }}

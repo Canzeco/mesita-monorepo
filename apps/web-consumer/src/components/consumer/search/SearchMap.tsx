@@ -28,15 +28,18 @@ import {
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
   MAP_CIRCLE_PATH,
-  MAP_WEB_PIN_COLOR,
-  MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
+import {
+  membershipColor,
+  placeMembershipTone,
+  type MembershipTone,
+} from "@/lib/search-membership";
 
-function placeIcon(isSelected: boolean) {
+function placeIcon(tone: MembershipTone, isSelected: boolean) {
   return {
     path: MAP_CIRCLE_PATH,
-    fillColor: isSelected ? MAP_SELECTED_PIN_COLOR : MAP_WEB_PIN_COLOR,
+    fillColor: membershipColor(tone),
     fillOpacity: 1,
     strokeColor: "#ffffff",
     strokeWeight: isSelected ? 3.5 : 2.5,
@@ -53,14 +56,24 @@ const USER_ICON = {
   scale: 1,
 };
 
+export type SearchMapPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  tone: MembershipTone;
+};
+
 export function SearchMap({
   apiKey,
   places,
   userLocation,
   viewCenter,
   selectedId,
+  pins,
   onSelectPlace,
   onOpenPlace,
+  onSelectPin,
   onMapClick,
 }: {
   apiKey: string;
@@ -70,8 +83,11 @@ export function SearchMap({
    *  stays on `userLocation` so a remote zone never moves "you're here". */
   viewCenter: Coords | null;
   selectedId: string | null;
+  /** When set, these replace catalog pins (live search results). */
+  pins?: SearchMapPin[] | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onSelectPin?: (pin: SearchMapPin) => void;
   // Fires on a tap of the bare map canvas (not a pin) — toggles the search
   // panel: opens when idle, closes when the results/prompt overlay is up.
   // Marker taps have their own onClick and don't trigger this.
@@ -104,8 +120,10 @@ export function SearchMap({
           userLocation={userLocation}
           viewCenter={viewCenter}
           selectedId={selectedId}
+          pins={pins}
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
+          onSelectPin={onSelectPin}
           onMapClick={onMapClick}
           onReady={handleMapReady}
         />
@@ -151,8 +169,10 @@ function SearchMapCanvas({
   userLocation,
   viewCenter,
   selectedId,
+  pins,
   onSelectPlace,
   onOpenPlace,
+  onSelectPin,
   onMapClick,
   onReady,
 }: {
@@ -160,16 +180,20 @@ function SearchMapCanvas({
   userLocation: Coords | null;
   viewCenter: Coords | null;
   selectedId: string | null;
+  pins?: SearchMapPin[] | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onSelectPin?: (pin: SearchMapPin) => void;
   onMapClick?: () => void;
   onReady: () => void;
 }) {
   const located = places.filter(hasCoords);
-  const selected = selectedId
-    ? (located.find((p) => p.id === selectedId) ?? null)
-    : null;
   const lookAt = viewCenter ?? userLocation;
+  const selected = pins != null
+    ? (pins.find((p) => p.id === selectedId) ?? null)
+    : (located.find((p) => p.id === selectedId) ?? null);
+  const selectedLat = selected?.lat ?? null;
+  const selectedLng = selected?.lng ?? null;
 
   return (
     <Map
@@ -197,21 +221,38 @@ function SearchMapCanvas({
           clickable={false}
         />
       )}
-      {located.map((place) => (
-        <Marker
-          key={place.id}
-          position={{ lat: place.lat, lng: place.lng }}
-          title={place.name}
-          icon={placeIcon(place.id === selectedId)}
-          // First tap picks the place (pin turns red, rail syncs); tapping
-          // the already-selected pin again opens it.
-          onClick={() =>
-            place.id === selectedId ? onOpenPlace(place) : onSelectPlace(place)
-          }
-        />
-      ))}
+      {pins != null
+        ? pins.map((pin) => (
+            <Marker
+              key={pin.id}
+              position={{ lat: pin.lat, lng: pin.lng }}
+              title={pin.title}
+              icon={placeIcon(pin.tone, pin.id === selectedId)}
+              onClick={() => onSelectPin?.(pin)}
+            />
+          ))
+        : located.map((place) => (
+            <Marker
+              key={place.id}
+              position={{ lat: place.lat, lng: place.lng }}
+              title={place.name}
+              icon={placeIcon(
+                placeMembershipTone(place),
+                place.id === selectedId,
+              )}
+              // First tap picks the place (stroke thickens, rail syncs); tapping
+              // the already-selected pin again opens it.
+              onClick={() =>
+                place.id === selectedId
+                  ? onOpenPlace(place)
+                  : onSelectPlace(place)
+              }
+            />
+          ))}
       <Recentre target={lookAt} />
-      {selected && <PanTo lat={selected.lat} lng={selected.lng} />}
+      {selectedLat != null && selectedLng != null && (
+        <PanTo lat={selectedLat} lng={selectedLng} />
+      )}
     </Map>
   );
 }

@@ -13,6 +13,9 @@ type FiscalType = 'formal' | 'informal';
 type PlacePlan = 'free' | 'pro' | 'ultra';
 
 export type Place = {
+  /** Server-computed: this place PAYS Mesita. Independent of promoting. */
+  partner?: boolean | null;
+  promoting?: boolean | null;
   id: string;
   slug: string;
   name: string;
@@ -113,13 +116,18 @@ export async function apiSuggestPlaces(
   client: SupabaseClient,
   input: string,
   sessionToken: string,
+  origin?: { lat: number; lng: number } | null,
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
   const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
     client,
     'consumer-web-suggest-places',
-    { input: trimmed, sessionToken },
+    {
+      input: trimmed,
+      sessionToken,
+      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
+    },
   );
   return predictions;
 }
@@ -161,6 +169,9 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   status: PlacePredictionStatus;
+  partner?: boolean;
   mesitaId?: string;
   mesitaSlug?: string;
+  lat?: number | null;
+  lng?: number | null;
 };

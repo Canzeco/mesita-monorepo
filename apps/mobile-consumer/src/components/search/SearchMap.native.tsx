@@ -6,12 +6,8 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 
 import type { SearchMapProps } from '@/components/search/SearchMap';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import {
-  MAP_PARTNER_PIN_COLOR,
-  MAP_SELECTED_PIN_COLOR,
-  MAP_WEB_PIN_COLOR,
-  MONTERREY_CENTER,
-} from '@/lib/map-defaults';
+import { MONTERREY_CENTER } from '@/lib/map-defaults';
+import { membershipColor, placeMembershipTone } from '@/lib/search-membership';
 
 export function SearchMap({
   places,
@@ -19,8 +15,10 @@ export function SearchMap({
   userLocation,
   center,
   apiKey,
+  pins,
   onSelectPlace,
   onOpenPlace,
+  onSelectPin,
   onMapPress,
 }: SearchMapProps) {
   const mapRef = useRef<MapView>(null);
@@ -97,31 +95,35 @@ export function SearchMap({
       showsMyLocationButton={false}
       onPress={onMapPress}
     >
-      {places.map((place) => {
-        if (place.lat == null || place.lng == null) return null;
-        const selectedPin = place.id === selectedId;
-        const partner = place.listing_type === 'partner';
-        return (
-          <Marker
-            key={place.id}
-            coordinate={{ latitude: place.lat, longitude: place.lng }}
-            pinColor={
-              selectedPin
-                ? MAP_SELECTED_PIN_COLOR
-                : partner
-                  ? MAP_PARTNER_PIN_COLOR
-                  : MAP_WEB_PIN_COLOR
-            }
-            onPress={(e) => {
-              e.stopPropagation();
-              // First tap selects; tapping the already-selected pin opens
-              // the place (web SearchMap parity).
-              if (selectedPin) onOpenPlace(place);
-              else onSelectPlace(place);
-            }}
-          />
-        );
-      })}
+      {pins != null
+        ? pins.map((pin) => (
+            <Marker
+              key={pin.id}
+              coordinate={{ latitude: pin.lat, longitude: pin.lng }}
+              title={pin.title}
+              pinColor={membershipColor(pin.tone)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onSelectPin?.(pin);
+              }}
+            />
+          ))
+        : places.map((place) => {
+            if (place.lat == null || place.lng == null) return null;
+            const selectedPin = place.id === selectedId;
+            return (
+              <Marker
+                key={place.id}
+                coordinate={{ latitude: place.lat, longitude: place.lng }}
+                pinColor={membershipColor(placeMembershipTone(place))}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  if (selectedPin) onOpenPlace(place);
+                  else onSelectPlace(place);
+                }}
+              />
+            );
+          })}
     </MapView>
   );
 }

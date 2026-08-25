@@ -8,13 +8,12 @@
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
-//   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
+//   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
-//     SearchResultsPanel under the bar. "On Mesita" rows select the place
-//     on the map (red pin + rail card; the detail modal is one more tap
-//     away there), "From Google" rows open GooglePlaceSheet — a not-on-Mesita
-//     preview carrying the real Add flow (consumer-web-create-place creates
-//     the place immediately; the async Intaker builds the profile in minutes).
+//     SearchResultsPanel under the bar. One merged lane, no source labels —
+//     the colored point is membership (partner / listed / Google-only).
+//     On-Mesita rows select the place on the map; Google-only rows open
+//     GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,7 +37,7 @@ import {
 import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SearchMap } from "./SearchMap";
+import { SearchMap, type SearchMapPin } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
@@ -52,6 +51,10 @@ import {
   newSessionToken,
   withDistances,
 } from "./search-utils";
+import {
+  membershipTone,
+  placeMembershipTone,
+} from "@/lib/search-membership";
 
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
@@ -132,6 +135,28 @@ export function SearchClient({
     [places],
   );
 
+  const searchPins = useMemo((): SearchMapPin[] | null => {
+    if (predictions.length === 0) return null;
+    const pins: SearchMapPin[] = [];
+    for (const p of predictions) {
+      const tone = membershipTone(p);
+      const catalogHit = p.mesitaId
+        ? catalog.find((place) => place.id === p.mesitaId)
+        : null;
+      const lat = p.lat ?? catalogHit?.lat ?? null;
+      const lng = p.lng ?? catalogHit?.lng ?? null;
+      if (typeof lat !== "number" || typeof lng !== "number") continue;
+      pins.push({
+        id: p.mesitaId ?? p.placeId,
+        lat,
+        lng,
+        title: p.mainText,
+        tone: catalogHit ? placeMembershipTone(catalogHit) : tone,
+      });
+    }
+    return pins;
+  }, [predictions, catalog]);
+
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -168,6 +193,7 @@ export function SearchClient({
           supabase,
           trimmed,
           sessionTokenRef.current,
+          center,
         );
         if (!cancelled) {
           setPredictions(rows);
@@ -186,7 +212,7 @@ export function SearchClient({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [supabase, trimmed]);
+  }, [supabase, trimmed, center]);
 
   // On-Mesita row tap → show the place on the map (red selected pin + rail
   // card) instead of opening the detail modal; the modal is one more tap
@@ -226,6 +252,25 @@ export function SearchClient({
     resetSearchSession();
     setPreview(prediction);
     setPreviewOpen(true);
+  };
+
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction = predictions.find(
+      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+    );
+    if (prediction && prediction.status === "not_in_mesita") {
+      handlePickGoogle(prediction);
+      return;
+    }
+    if (prediction) {
+      handlePickMesita(prediction);
+      return;
+    }
+    const place = catalog.find((p) => p.id === pin.id);
+    if (place) {
+      setRailCollapsed(false);
+      setSelectedId(place.id);
+    }
   };
 
   // The REAL Add flow: the place is created immediately; only enrichment is
@@ -334,8 +379,10 @@ export function SearchClient({
         userLocation={userLocation}
         viewCenter={center}
         selectedId={selectedId}
+        pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
+        onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
       />
 

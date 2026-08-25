@@ -91,3 +91,14 @@ describe("Search pick and map center respect filters", () => {
     expect(read("SearchMap.tsx")).toMatch(/Recentre target=\{lookAt\}/);
   });
 });
+
+describe("Search results are one unlabeled lane", () => {
+  it("does not print On Mesita / From Google section headers", () => {
+    const src = read("SearchResultsPanel.tsx");
+    expect(src).not.toMatch(/On Mesita/);
+    expect(src).not.toMatch(/From Google/);
+    expect(src).not.toMatch(/ON GOOGLE/i);
+    expect(src).toContain("membershipColor");
+    expect(src).toContain("predictions.map");
+  });
+});

@@ -47,8 +47,6 @@ export function SearchResultsPanel({
   onPickGoogle: (prediction: PlacePrediction) => void;
   onRetry: () => void;
 }) {
-  const onMesita = predictions.filter((p) => p.status !== 'not_in_mesita');
-  const fromGoogle = predictions.filter((p) => p.status === 'not_in_mesita');
   const settled = !searching && query.trim().length >= 2;
   const rowCount = predictions.length;
 
@@ -77,7 +75,7 @@ export function SearchResultsPanel({
       {searching && predictions.length === 0 ? (
         <View
           accessibilityRole="progressbar"
-          accessibilityLabel="Searching Mesita and Google"
+          accessibilityLabel="Searching"
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -88,7 +86,7 @@ export function SearchResultsPanel({
         >
           <ActivityIndicator color={COLORS.primary} size="small" />
           <Text className="text-muted-foreground" style={{ fontSize: 13 }}>
-            Searching Mesita and Google…
+            Searching…
           </Text>
         </View>
       ) : null}
@@ -150,59 +148,21 @@ export function SearchResultsPanel({
             className="mt-1 text-center text-muted-foreground"
             style={{ fontSize: 13 }}
           >
-            Try the place’s full name, or ask the AI concierge.
+            Try the place’s full name.
           </Text>
         </View>
       ) : null}
 
-      {onMesita.length > 0 ? (
+      {predictions.length > 0 ? (
         <View>
-          <Text
-            className="px-1 font-semibold uppercase text-muted-foreground"
-            style={{ fontSize: 11, letterSpacing: 1 }}
-            accessibilityRole="header"
-          >
-            On Mesita
-          </Text>
-          <View className="divide-y divide-border/60">
-            {onMesita.map((p) => (
-              <SuggestionLine
-                key={p.placeId}
-                prediction={p}
-                source="mesita"
-                addState={addStates[p.placeId]}
-                onPick={onPickMesita}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      {fromGoogle.length > 0 ? (
-        <View>
-          <Text
-            className="px-1 font-semibold uppercase text-muted-foreground"
-            style={{ fontSize: 11, letterSpacing: 1 }}
-            accessibilityRole="header"
-          >
-            From Google
-          </Text>
-          {onMesita.length === 0 && settled ? (
-            <Text
-              className="px-1 pt-1 text-muted-foreground"
-              style={{ fontSize: 11 }}
-            >
-              Not on Mesita yet? Tap a place and we’ll build its profile for
-              everyone.
-            </Text>
-          ) : null}
-          {fromGoogle.map((p) => (
+          {predictions.map((p) => (
             <SuggestionLine
-              key={p.placeId}
+              key={p.mesitaId ?? p.placeId}
               prediction={p}
-              source="google"
               addState={addStates[p.placeId]}
-              onPick={onPickGoogle}
+              onPick={
+                p.status === 'not_in_mesita' ? onPickGoogle : onPickMesita
+              }
             />
           ))}
         </View>

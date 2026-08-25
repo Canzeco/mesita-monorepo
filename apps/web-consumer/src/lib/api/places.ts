@@ -226,31 +226,39 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   status: PlacePredictionStatus;
+  /** True when the place PAYS Mesita (plan, not strategy). Google-only is false. */
+  partner?: boolean;
   // Forward-compatible Mesita identity: consumer-suggest-places is adding
   // these to its payload for on-Mesita rows. When present, clients navigate
   // via placeHref(slug ?? id) directly instead of the fuzzy name join.
   mesitaId?: string;
   mesitaSlug?: string;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 /**
- * Google Places autocomplete + Mesita merge for the consumer
- * /search picker. Calls consumer-suggest-places, which
- * forwards to atlas-suggest-places. Mirrors the business /add page
- * mechanic — same shape, same atlas pipeline — so a consumer can
- * find places that haven't onboarded to Mesita yet.
+ * Four-source merged name search for the consumer /search bar.
+ * Calls consumer-web-suggest-places (already merged, ranked, capped at 10).
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
   input: string,
   sessionToken: string,
+  origin?: { lat: number; lng: number } | null,
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
   const { predictions } = await invokeEF<{ predictions: PlacePrediction[] }>(
     client,
     "consumer-web-suggest-places",
-    { input: trimmed, sessionToken },
+    {
+      input: trimmed,
+      sessionToken,
+      ...(origin
+        ? { lat: origin.lat, lng: origin.lng }
+        : {}),
+    },
   );
   return predictions;
 }
