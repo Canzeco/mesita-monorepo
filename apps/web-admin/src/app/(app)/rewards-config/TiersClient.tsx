@@ -1,19 +1,16 @@
 "use client";
 
-import { AlertTriangle, Coins } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 import {
   Collapsible,
   KnobStatus,
   SectionCard,
 } from "@/components/admin-ui/config";
-import { formatShortDate } from "@/lib/format";
-import { ResolvedLedger } from "./ResolvedLedger";
 import { BoxRow, RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
   ACTION_KEYS,
-  ALLOWED_CAPS,
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
@@ -32,8 +29,9 @@ import {
 // floor first, then signed adders. Pinned rungs (Bronze, Free) are an em
 // dash — "0%" is a real rate and would read as one.
 //
-// Orders Promos is Soon: no remote ticket, so no knobs. The blob still
-// carries an orders grid; this page does not edit it.
+// Promos Config prices VISITS only. Orders and prepaid are not reward
+// contexts on this page. The blob still carries a parked orders grid;
+// Save round-trips it without knobs.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -47,7 +45,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
   const { cfg, visits, setVisits, setBonus, pending } = usePromosState();
 
   const bonuses = cfg.visits.bonuses[strategy];
-  const label = `${STRATEGY_META[strategy].name} · Visits`;
+  const label = STRATEGY_META[strategy].name;
 
   const setBase = (v: number) =>
     setVisits({ ...visits, [strategy]: { ...visits[strategy], base: v } });
@@ -157,24 +155,8 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
   );
 }
 
-function OrdersPromosSoon() {
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:px-6">
-      <BoxRow
-        label="Orders"
-        hint="Promos for a remote ticket — later, when Orders has a rail."
-      >
-        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 type-meta font-bold tracking-wider uppercase">
-          Soon
-        </span>
-      </BoxRow>
-    </section>
-  );
-}
-
 export function TiersClient() {
-  const { cfg, setCap, pending, seeded, loadBlocked, updatedAt, ladderError } =
-    usePromosState();
+  const { cfg, seeded, loadBlocked, ladderError } = usePromosState();
   const warnings = modelWarnings(cfg);
 
   return (
@@ -213,23 +195,13 @@ export function TiersClient() {
         </div>
       )}
 
-      <ResolvedLedger cfg={cfg} />
-
-      {updatedAt && (
-        <p className="text-muted-foreground -mb-1 text-right text-xs">
-          Updated {formatShortDate(updatedAt)}
-        </p>
-      )}
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
         ))}
       </div>
 
-      <OrdersPromosSoon />
-
-      <Collapsible summary="How a bill stacks">
+      <Collapsible summary="How a visit bill stacks">
         <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
           Standing (base + class + plan) plus Welcome plus every earned action,
           clamped to 100%, on the first cap-pesos. Only the integer percent
@@ -315,35 +287,6 @@ export function TiersClient() {
           </p>
         </div>
       </Collapsible>
-
-      <SectionCard
-        icon={<Coins className="text-secondary h-4 w-4" />}
-        title="Default discount cap"
-        subtitle="Fallback when a place has not picked its own. First N of the bill."
-        status={<KnobStatus kind="fallback" reason="place cap wins" />}
-      >
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {ALLOWED_CAPS.map((c) => {
-            const active = cfg.cap === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                disabled={pending}
-                onClick={() => setCap(c)}
-                aria-pressed={active}
-                className={
-                  active
-                    ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                    : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                }
-              >
-                {c.toLocaleString("en-US")}
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
     </div>
   );
 }

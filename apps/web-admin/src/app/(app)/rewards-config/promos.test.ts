@@ -296,19 +296,18 @@ describe("bonuses are per strategy", () => {
   });
 });
 
-describe("Tiers HTML does not price Orders Promos", () => {
-  it("has a Soon field and no Orders knobs", () => {
+describe("Tiers HTML prices visits only", () => {
+  it("has no Orders or prepaid knobs", () => {
     const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
-    expect(src).toContain("OrdersPromosSoon");
-    expect(src).toContain("Soon");
+    expect(src).not.toContain("OrdersPromosSoon");
     expect(src).not.toContain('context="orders"');
-    expect(src).not.toContain("not-wired");
     expect(src).not.toContain("setOrders");
+    expect(src).not.toContain("ResolvedLedger");
   });
 });
 
 describe("Promos Config is one page", () => {
-  it("has no tab nav and composes knobs plus distribution", () => {
+  it("has three super boxes and no tab nav", () => {
     const shell = readFileSync(
       join(__dirname, "PromosLayoutShell.tsx"),
       "utf8",
@@ -317,9 +316,27 @@ describe("Promos Config is one page", () => {
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     expect(shell).not.toContain("ConfigTabNav");
     expect(nav).not.toContain("PROMOS_SUBROUTES");
+    expect(page).toContain('title="Strategies"');
+    expect(page).toContain('title="Discount Cap"');
+    expect(page).toContain('title="Expected Distribution"');
+    expect(page).toContain("Visit rewards only");
     expect(page).toContain("TiersClient");
+    expect(page).toContain("DiscountCapClient");
     expect(page).toContain("PromosDistributionClient");
     expect(page).toContain("PromosSaveFooter");
+    expect(page).toContain("PromosCalculator");
+    expect(page.indexOf("Strategies")).toBeLessThan(
+      page.indexOf("Discount Cap"),
+    );
+    expect(page.indexOf("Discount Cap")).toBeLessThan(
+      page.indexOf("Expected Distribution"),
+    );
+    expect(page.indexOf("PromosDistributionClient")).toBeLessThan(
+      page.indexOf("PromosCalculator"),
+    );
+    const ledger = readFileSync(join(__dirname, "ResolvedLedger.tsx"), "utf8");
+    expect(ledger).toContain('title="Calculator"');
+    expect(ledger).not.toMatch(/>\s*Resolved\s*</);
     const tiers = readFileSync(join(__dirname, "tiers/page.tsx"), "utf8");
     const dist = readFileSync(
       join(__dirname, "distribution/page.tsx"),

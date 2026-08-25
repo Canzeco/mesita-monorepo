@@ -9,7 +9,7 @@ export function PromosLayoutShell({ children }: { children: React.ReactNode }) {
       <PageHeader
         eyebrow="Product · Promos"
         title="Promos Config"
-        description="Components that build every rate. A place picks one strategy — its column is the whole program."
+        description="Visit rewards only — not orders, not prepaid. One page. Three boxes."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </>

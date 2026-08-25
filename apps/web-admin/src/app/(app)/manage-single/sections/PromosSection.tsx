@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import {
+  Calculator,
   Check,
   ChevronDown,
   CircleHelp,
   Loader2,
   Percent,
   TrendingUp,
+  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -41,6 +43,11 @@ import {
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
+import {
+  DEFAULT_ASSUMPTIONS,
+  distributionFor,
+  type Assumptions,
+} from "@/app/(app)/rewards-config/distribution-model";
 import {
   METER_SEGMENTS,
   describeMembershipStatus,
@@ -184,6 +191,7 @@ export function PromosSection({
   const [switchPending, startSwitch] = useTransition();
   const [capPending, startCap] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [capError, setCapError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -292,13 +300,13 @@ export function PromosSection({
     const prev = v;
     const optimistic: AdminPlace = { ...v, monthly_promo_cap: cap };
     applyPlace(optimistic);
-    setSwitchError(null);
+    setCapError(null);
 
     startCap(async () => {
       const r = await setPlaceStrategy(prev.id, { monthly_promo_cap: cap });
       if (!r.ok) {
         revertPlace(prev);
-        setSwitchError(r.error);
+        setCapError(r.error);
         return;
       }
       applyPlace(r.data);
@@ -346,13 +354,14 @@ export function PromosSection({
         }}
       />
 
-      {/* ── Box 2 · Strategy ───────────────────────────────────────────── */}
+      {/* Three super boxes: Visit Promos · Discount Cap · Calculator. */}
       <SectionCard
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
-        title="Strategy"
+        title="Visit Promos"
+        subtitle="Visit ladder only — orders and prepaid stay off."
         action={
-          switchPending || capPending ? (
+          switchPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
           ) : undefined
         }
@@ -376,15 +385,6 @@ export function PromosSection({
           ))}
         </div>
 
-        {showCapPicker && (
-          <DiscountCapPicker
-            cap={placeCap}
-            currency={v.currency}
-            pending={capPending}
-            onSelect={commitCap}
-          />
-        )}
-
         {(matrixFailed || (storedStrategy === null && member)) && (
           <p className="text-muted-foreground mt-2.5 type-label">
             {matrixFailed
@@ -405,13 +405,50 @@ export function PromosSection({
         </div>
       </SectionCard>
 
-      {/* ── Box 3 · FAQs ───────────────────────────────────────────────── */}
+      <SectionCard
+        icon={<Wallet className="h-4 w-4" />}
+        tint="amber"
+        title="Discount Cap"
+        subtitle="First N pesos of a visit bill — independent of strategy."
+        action={
+          capPending ? (
+            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+          ) : undefined
+        }
+      >
+        {showCapPicker ? (
+          <DiscountCapPicker
+            cap={placeCap}
+            currency={v.currency}
+            pending={capPending}
+            onSelect={commitCap}
+          />
+        ) : (
+          <p className="text-muted-foreground mt-4 type-body leading-snug">
+            Join a paid visit strategy to set the cap. Zero and non-partners
+            have nothing to cap.
+          </p>
+        )}
+        <div aria-live="polite">
+          {capError && (
+            <div className="mt-3">
+              <ErrorNote message={capError} />
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
       <FaqsBox
         place={v}
         storedStrategy={storedStrategy}
         member={member}
         capMxn={placeCap}
         matrix={matrix}
+      />
+
+      <VisitDistributionCalculator
+        matrix={matrix}
+        strategyId={storedStrategy}
       />
 
       {modalStrategy && (
@@ -1604,6 +1641,124 @@ function ExampleRow({
   );
 }
 
+// ─── Calculator — expected visit distribution (bottom of the page) ──────────
+
+function VisitDistributionCalculator({
+  matrix,
+  strategyId,
+}: {
+  matrix: PromosConfig;
+  strategyId: StrategyId | null;
+}) {
+  const [assumptions, setAssumptions] =
+    useState<Assumptions>(DEFAULT_ASSUMPTIONS);
+  const paid =
+    strategyId && strategyId !== ZERO_STRATEGY_ID
+      ? (strategyId as StrategyKey)
+      : null;
+  const dist = useMemo(
+    () => (paid ? distributionFor(matrix, assumptions, paid) : null),
+    [paid, matrix, assumptions],
+  );
+
+  return (
+    <SectionCard
+      icon={<Calculator className="h-4 w-4" />}
+      tint="indigo"
+      title="Calculator"
+      subtitle="Expected visit distribution from this place's visit rates. Assumptions, not live tickets."
+    >
+      {!paid || !dist ? (
+        <p className="text-muted-foreground mt-4 type-body leading-snug">
+          Pick a paid visit strategy above to model the spread. Orders and
+          prepaid are not in this calculator.
+        </p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-4">
+          <p className="text-foreground font-display text-2xl font-semibold tracking-tight">
+            ~{Math.round(dist.mean)}%
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
+              expected per visit · typical {dist.p10}–{dist.p90}%
+            </span>
+          </p>
+          <div className="flex flex-col">
+            <CalcPct
+              label="First visits"
+              value={assumptions.welcomePct}
+              onChange={(v) =>
+                setAssumptions((a) => ({ ...a, welcomePct: v }))
+              }
+            />
+            <CalcPct
+              label="Instagram Story"
+              value={assumptions.actionPct.story}
+              onChange={(v) =>
+                setAssumptions((a) => ({
+                  ...a,
+                  actionPct: { ...a.actionPct, story: v },
+                }))
+              }
+            />
+            <CalcPct
+              label="Google Review"
+              value={assumptions.actionPct.google}
+              onChange={(v) =>
+                setAssumptions((a) => ({
+                  ...a,
+                  actionPct: { ...a.actionPct, google: v },
+                }))
+              }
+            />
+            <CalcPct
+              label="Mesita Review"
+              value={assumptions.actionPct.mesita}
+              onChange={(v) =>
+                setAssumptions((a) => ({
+                  ...a,
+                  actionPct: { ...a.actionPct, mesita: v },
+                }))
+              }
+            />
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
+function CalcPct({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2.5 last:border-0">
+      <span className="type-body font-medium">{label}</span>
+      <label className="flex shrink-0 items-center gap-1.5">
+        <input
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          value={value}
+          aria-label={`${label} — share of visits`}
+          onChange={(e) => {
+            const raw = Number(e.target.value);
+            if (Number.isNaN(raw)) return;
+            onChange(Math.max(0, Math.min(100, Math.round(raw))));
+          }}
+          className="border-border bg-card focus:border-foreground h-9 w-20 rounded-lg border px-2 text-right type-body font-semibold tabular-nums outline-none"
+        />
+        <span className="text-muted-foreground type-label">%</span>
+      </label>
+    </div>
+  );
+}
+
 // ─── Discount cap picker — independent of strategy ─────────────────────────
 
 function DiscountCapPicker({
@@ -1618,41 +1773,27 @@ function DiscountCapPicker({
   onSelect: (cap: DiscountCapMxn) => void;
 }) {
   return (
-    <div className="border-border/60 mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-xl border px-3.5 py-3">
-      <div className="min-w-0">
-        <p className="text-foreground/90 text-xs font-semibold">
-          Discount cap
-        </p>
-        <p className="text-muted-foreground type-label leading-snug">
-          Every discount applies to the first N pesos of the bill — separate
-          from strategy.
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {pending && (
-          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-        )}
-        {DISCOUNT_CAPS_MXN.map((option) => {
-          const active = cap === option;
-          return (
-            <button
-              key={option}
-              type="button"
-              disabled={pending}
-              onClick={() => onSelect(option)}
-              aria-pressed={active}
-              className={cx(
-                "inline-flex h-9 items-center rounded-lg px-3 type-body tabular-nums transition disabled:opacity-50",
-                active
-                  ? "bg-foreground text-background font-bold"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
-              )}
-            >
-              {formatMoney(option, currency)}
-            </button>
-          );
-        })}
-      </div>
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      {DISCOUNT_CAPS_MXN.map((option) => {
+        const active = cap === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            disabled={pending}
+            onClick={() => onSelect(option)}
+            aria-pressed={active}
+            className={cx(
+              "inline-flex h-9 items-center rounded-lg px-3 type-body tabular-nums transition disabled:opacity-50",
+              active
+                ? "bg-foreground text-background font-bold"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
+            )}
+          >
+            {formatMoney(option, currency)}
+          </button>
+        );
+      })}
     </div>
   );
 }
