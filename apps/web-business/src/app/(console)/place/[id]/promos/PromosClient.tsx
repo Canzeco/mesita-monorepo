@@ -250,10 +250,10 @@ export function PromosClient({
 
       <Section
         title="Strategy"
-        description="Three discount postures — switch free anytime while membership is active."
+        description="Zero, Conservative, or Aggressive — switch free anytime while membership is active."
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
-          {STRATEGIES.map((s) => (
+          {STRATEGIES.filter((s) => s.id !== "dominant").map((s) => (
             <PricingCard
               key={s.id}
               strategy={s}

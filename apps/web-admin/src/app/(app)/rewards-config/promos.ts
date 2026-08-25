@@ -84,6 +84,8 @@ export const STRATEGY_KEYS: readonly StrategyKey[] = [
   "aggressive",
   "dominant",
 ];
+/** Columns a place can pick. Dominant stays in the blob for leftover rows. */
+export const LIVE_STRATEGY_KEYS = ["conservative", "aggressive"] as const;
 // Worst → best. The ladder a guest climbs; rates must rise with it.
 export const CLASS_KEYS: readonly ClassKey[] = [
   "bronze",

@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 
 import { ALLOWED_RATES } from "./promos";
 
-// Shared chrome for the three-column visit editor. A number is a FLOOR or
+// Shared chrome for the two-column visit editor. A number is a FLOOR or
 // an INCREMENT. Floors render plain ("20%"); increments render signed
 // ("+20"); a pinned-zero rung is an em dash — "0%" is a real rate.
 //

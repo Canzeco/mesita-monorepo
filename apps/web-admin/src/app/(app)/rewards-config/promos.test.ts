@@ -317,6 +317,13 @@ describe("Tiers HTML prices visits only", () => {
     expect(ui).toContain("appearance-none");
     expect(ui).toContain("STRATEGY_COLUMN_TRACKS = 15");
   });
+
+  it("picks Conservative and Aggressive only", () => {
+    const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
+    expect(src).toContain("LIVE_STRATEGY_KEYS");
+    expect(src).toContain("lg:grid-cols-2");
+    expect(src).not.toContain("lg:grid-cols-3");
+  });
 });
 
 describe("Promos Config is one page", () => {
