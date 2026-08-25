@@ -77,3 +77,17 @@ describe("SearchBar filter affordance", () => {
     expect(html).toContain("Filters (active)");
   });
 });
+
+describe("Search pick and map center respect filters", () => {
+  it("keeps an explicit On Mesita pick on the map when filters cut it", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(/filtered\.some\(\(p\) => p\.id === selectedId\)/);
+    expect(src).toContain("picked ? [picked, ...filtered]");
+  });
+
+  it("recenters the map on the filter zone, not only the device", () => {
+    expect(read("SearchClient.tsx")).toMatch(/viewCenter=\{center\}/);
+    expect(read("SearchMap.tsx")).toContain("viewCenter");
+    expect(read("SearchMap.tsx")).toMatch(/Recentre target=\{lookAt\}/);
+  });
+});

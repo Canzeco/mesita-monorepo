@@ -118,10 +118,15 @@ export function SearchClient({
     () => withDistances(places, center),
     [places, center],
   );
-  const visible = useMemo(
-    () => applyDiscoveryFilters(catalog, filters),
-    [catalog, filters],
-  );
+  const visible = useMemo(() => {
+    const filtered = applyDiscoveryFilters(catalog, filters);
+    if (!selectedId) return filtered;
+    if (filtered.some((p) => p.id === selectedId)) return filtered;
+    // An explicit Search pick wins the cut: the pin and rail card must
+    // still appear, or the tap looks like a no-op with filters on.
+    const picked = catalog.find((p) => p.id === selectedId);
+    return picked ? [picked, ...filtered] : filtered;
+  }, [catalog, filters, selectedId]);
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(places),
     [places],
@@ -327,6 +332,7 @@ export function SearchClient({
         apiKey={apiKey}
         places={visible}
         userLocation={userLocation}
+        viewCenter={center}
         selectedId={selectedId}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
