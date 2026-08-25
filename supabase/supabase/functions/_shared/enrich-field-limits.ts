@@ -40,7 +40,7 @@ export const ENRICH_FIELD_LIMITS = {
   },
   tagCatalogSize: { max: 200, unit: "count", note: "Controlled tags in place_tags (Atlas taxonomy)" },
   tagSlugLength: { max: 40, unit: "chars", note: "Per-tag slug length cap" },
-  // Mirrors app_config.atlas_save_total_images (1–10; DB CHECK 0–10). Set
+  // Mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10; DB CHECK 0–10). Set
   // through admin-web-update-enricher-config, which is the only writer left
   // now that the admin Enrichment page renders no knobs. Lowering this number
   // is what lowers the server validator too — that EF derives
@@ -51,10 +51,10 @@ export const ENRICH_FIELD_LIMITS = {
   photos: {
     max: 10,
     unit: "count",
-    note: "places.photos array (hero + gallery) — mirrors app_config.atlas_save_total_images (1–10, DB max 10, enforced by app_config_atlas_save_total_images_range); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
+    note: "places.photos array (hero + gallery) — mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10, DB max 10); a separate storage-mirror step (PHOTO_CEILING=50) caps the array at 50 regardless.",
   },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
-  // app_config.atlas_gather_reviews (0–100); this is the profile-spec max the
+  // app_config.enrichment_config.atlasGatherReviews (0–100); this is the profile-spec max the
   // pipeline may never exceed.
   googleReviews: {
     max: 100,

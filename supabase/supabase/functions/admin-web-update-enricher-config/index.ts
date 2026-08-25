@@ -2,22 +2,23 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = update, words = enricher-config.
 //
-// Partial-update of the Intaker research knobs on public.app_config, written
-// from the admin console's Intaker → Configuration page. Each field is
-// optional; only the keys present in the body are written, so the UI can
-// save one control at a time:
+// Partial-update of the Intaker research knobs on public.app_config.enrichment_config
+// (MESITA-1248 fold of the leftover atlas_* scalars), written from the admin
+// console's Intake → Configuration page. Each field is optional; only the keys
+// present in the body are merged, so the UI can save one control at a time.
 //
 //   gatherGoogleImages (1–10)
-//   gatherInstagramDepth (1–50, download) / gatherInstagramPosts (1–50, keep ≤ depth)
-//   gatherReviews (0–100) → atlas_gather_reviews (Apify Google reviews pulled)
+//   gatherInstagramDepth (1–30, download) / gatherInstagramPosts (1–30, keep ≤ depth)
+//   gatherReviews (0–100)
 //   analyzeGoogleImages (1–10, ≤ gatherGoogleImages) /
-//     analyzeInstagramImages (1–50, ≤ gatherInstagramPosts)
-//   saveTotalImages (1–10, ≤ analyzeGoogle + analyzeInstagram) → atlas_save_total_images
-//     (DB CHECK 0–20; PHOTO_CEILING=50 is a separate S9 storage-mirror constant)
-//   saveImagesToStorage (boolean) → atlas_save_images_to_storage (S9 Storage-mirror gate)
-//   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10, per-source
-//     Firecrawl Search candidate counts for link discovery)
+//     analyzeInstagramImages (1–30, ≤ gatherInstagramPosts)
+//   saveTotalImages (1–10, ≤ analyzeGoogle + analyzeInstagram)
+//   saveImagesToStorage (boolean)
+//   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10)
 //   imageAnalysisPrompt / imageSortingPrompt
+//
+// READ-MERGE-WRITE of the jsonb (same lost-update accept as verification_config:
+// one super-admin). enrichment_triggers stays its own column.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -32,53 +33,31 @@ import {
 import { normalizeEnrichmentTriggers } from "../_shared/enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
-  effectiveFunnelValue,
-  FUNNEL_COLS,
-  funnelLockError,
-  intInRange,
-} from "./atlas-config-validate.ts";
+  normalizeEnrichmentConfig,
+} from "../_shared/enrichment-config.ts";
+import { funnelLockError, intInRange } from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
-
-// The DB is the authority here, not this file. Three CHECK constraints —
-// app_config_atlas_gather_instagram_depth_range,
-// app_config_atlas_gather_instagram_posts_range and
-// app_config_atlas_analyze_instagram_images_range — all cap at 30. This EF
-// used to validate 1-50, so 31-50 passed the console AND passed here and then
-// died at the write with a raw constraint violation (MESITA-1195). Raising
-// this is a deliberate Apify spend decision that needs a migration first.
 const INSTAGRAM_MAX = 30;
 const SAVE_TOTAL_IMAGES_MAX = ENRICH_FIELD_LIMITS.photos.max;
 
 type Body = {
-  // The trigger x subprocess matrix. Saved WHOLE: the console always sends the
-  // full grid, and it is normalized (locked cells forced, unknown keys dropped)
-  // before it lands, so a stale client can never write a shape the EFs cannot
-  // read. Vocabulary lives in _shared/enrich-triggers.ts, never in the blob.
   enrichmentTriggers?: unknown;
-  // Image funnel — GATHER. Google: single pre-sorted cap (1–10). Instagram: split
-  // into download DEPTH (1–30) + keep-count (1–30, ≤ depth).
   gatherGoogleImages?: number;
   gatherInstagramDepth?: number;
   gatherInstagramPosts?: number;
-  // Google reviews pulled by the Apify Maps scrape (0–100).
   gatherReviews?: number;
-  // Image funnel — ANALYZE (per source: Google ≤ its keep, IG ≤ its keep) +
-  // final SAVE (1–20, ≤ analyzed total, all sources).
   imageVisionEnabled?: boolean;
   analyzeGoogleImages?: number;
   analyzeInstagramImages?: number;
   saveTotalImages?: number;
-  // S9 gate — mirror the selected gallery into Supabase Storage (default true).
   saveImagesToStorage?: boolean;
   imageAnalysisPrompt?: string;
   imageSortingPrompt?: string;
   synthesisQuality?: string;
   visionQuality?: string;
-  // Perplexity Agent preset for S2/S3 ("search model").
   perplexityPreset?: string;
   perRunCostCapUsd?: number;
-  // Link discovery — per-source Firecrawl Search candidate counts (0–10).
   discoverWebsiteN?: number;
   discoverInstagramN?: number;
   discoverFacebookN?: number;
@@ -113,37 +92,48 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const patch: Record<string, unknown> = {};
+  const { data: current, error: readError } = await admin
+    .from("app_config")
+    .select("enrichment_config")
+    .eq("id", 1)
+    .maybeSingle();
+  if (readError) {
+    return jsonError(`enrichment_config_read: ${readError.message}`, 500);
+  }
 
-  // ── Gather caps (pull per source) ───────────────────────────────────────
+  const next = normalizeEnrichmentConfig(
+    (current as { enrichment_config?: unknown } | null)?.enrichment_config,
+  );
+  let funnelTouched = false;
+  let blobTouched = false;
+  let triggers: unknown | undefined;
+
   if (body.gatherGoogleImages !== undefined) {
     const n = intInRange(body.gatherGoogleImages, 1, 10);
-    if (n === null) {
-      return jsonError("gatherGoogleImages must be an integer 1-10", 400);
-    }
-    patch.atlas_gather_google_images = n;
+    if (n === null) return jsonError("gatherGoogleImages must be an integer 1-10", 400);
+    next.atlasGatherGoogleImages = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.gatherInstagramDepth !== undefined) {
     const n = intInRange(body.gatherInstagramDepth, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError(
-        `gatherInstagramDepth must be an integer 1-${INSTAGRAM_MAX}`,
-        400,
-      );
+      return jsonError(`gatherInstagramDepth must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    patch.atlas_gather_instagram_depth = n;
+    next.atlasGatherInstagramDepth = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.gatherInstagramPosts !== undefined) {
     const n = intInRange(body.gatherInstagramPosts, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError(
-        `gatherInstagramPosts must be an integer 1-${INSTAGRAM_MAX}`,
-        400,
-      );
+      return jsonError(`gatherInstagramPosts must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    patch.atlas_gather_instagram_posts = n;
+    next.atlasGatherInstagramPosts = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.gatherReviews !== undefined) {
@@ -151,15 +141,16 @@ Deno.serve(async (req) => {
     if (n === null) {
       return jsonError(`gatherReviews must be an integer 0-${GOOGLE_REVIEWS_MAX}`, 400);
     }
-    patch.atlas_gather_reviews = n;
+    next.atlasGatherReviews = n;
+    blobTouched = true;
   }
 
-  // ── Analysis ──────────────────────────────────────────────────────────
   if (body.imageVisionEnabled !== undefined) {
     if (typeof body.imageVisionEnabled !== "boolean") {
       return jsonError("imageVisionEnabled must be a boolean", 400);
     }
-    patch.atlas_image_vision_enabled = body.imageVisionEnabled;
+    next.atlasImageVisionEnabled = body.imageVisionEnabled;
+    blobTouched = true;
   }
 
   if (body.saveTotalImages !== undefined) {
@@ -167,67 +158,67 @@ Deno.serve(async (req) => {
     if (n === null) {
       return jsonError(`saveTotalImages must be an integer 1-${SAVE_TOTAL_IMAGES_MAX}`, 400);
     }
-    patch.atlas_save_total_images = n;
+    next.atlasSaveTotalImages = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.saveImagesToStorage !== undefined) {
     if (typeof body.saveImagesToStorage !== "boolean") {
       return jsonError("saveImagesToStorage must be a boolean", 400);
     }
-    patch.atlas_save_images_to_storage = body.saveImagesToStorage;
+    next.atlasSaveImagesToStorage = body.saveImagesToStorage;
+    blobTouched = true;
   }
 
   if (body.analyzeGoogleImages !== undefined) {
     const n = intInRange(body.analyzeGoogleImages, 1, 10);
-    if (n === null) {
-      return jsonError("analyzeGoogleImages must be an integer 1-10", 400);
-    }
-    patch.atlas_analyze_google_images = n;
+    if (n === null) return jsonError("analyzeGoogleImages must be an integer 1-10", 400);
+    next.atlasAnalyzeGoogleImages = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.imageAnalysisPrompt !== undefined) {
     if (typeof body.imageAnalysisPrompt !== "string" || body.imageAnalysisPrompt.length > 4000) {
       return jsonError("imageAnalysisPrompt must be a string up to 4000 chars", 400);
     }
-    patch.atlas_image_analysis_prompt = body.imageAnalysisPrompt;
+    next.atlasImageAnalysisPrompt = body.imageAnalysisPrompt;
+    blobTouched = true;
   }
 
   if (body.imageSortingPrompt !== undefined) {
     if (typeof body.imageSortingPrompt !== "string" || body.imageSortingPrompt.length > 4000) {
       return jsonError("imageSortingPrompt must be a string up to 4000 chars", 400);
     }
-    patch.atlas_image_sorting_prompt = body.imageSortingPrompt;
+    next.atlasImageSortingPrompt = body.imageSortingPrompt;
+    blobTouched = true;
   }
 
   if (body.analyzeInstagramImages !== undefined) {
     const n = intInRange(body.analyzeInstagramImages, 1, INSTAGRAM_MAX);
     if (n === null) {
-      return jsonError(
-        `analyzeInstagramImages must be an integer 1-${INSTAGRAM_MAX}`,
-        400,
-      );
+      return jsonError(`analyzeInstagramImages must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    patch.atlas_analyze_instagram_images = n;
+    next.atlasAnalyzeInstagramImages = n;
+    funnelTouched = true;
+    blobTouched = true;
   }
 
   if (body.synthesisQuality !== undefined) {
-    if (
-      typeof body.synthesisQuality !== "string" ||
-      !QUALITY_VALUES.has(body.synthesisQuality)
-    ) {
+    if (typeof body.synthesisQuality !== "string" || !QUALITY_VALUES.has(body.synthesisQuality)) {
       return jsonError("synthesisQuality must be economy, standard, or high", 400);
     }
-    patch.atlas_synthesis_quality = body.synthesisQuality;
+    next.atlasSynthesisQuality = body.synthesisQuality;
+    blobTouched = true;
   }
 
   if (body.visionQuality !== undefined) {
-    if (
-      typeof body.visionQuality !== "string" ||
-      !QUALITY_VALUES.has(body.visionQuality)
-    ) {
+    if (typeof body.visionQuality !== "string" || !QUALITY_VALUES.has(body.visionQuality)) {
       return jsonError("visionQuality must be economy, standard, or high", 400);
     }
-    patch.atlas_vision_quality = body.visionQuality;
+    next.atlasVisionQuality = body.visionQuality;
+    blobTouched = true;
   }
 
   if (body.perplexityPreset !== undefined) {
@@ -240,64 +231,57 @@ Deno.serve(async (req) => {
         400,
       );
     }
-    patch.atlas_perplexity_preset = body.perplexityPreset;
+    next.atlasPerplexityPreset = body.perplexityPreset;
+    blobTouched = true;
   }
 
   if (body.perRunCostCapUsd !== undefined) {
     if (typeof body.perRunCostCapUsd !== "number" || body.perRunCostCapUsd < 0) {
       return jsonError("perRunCostCapUsd must be a number >= 0", 400);
     }
-    // Cap precision to 2 decimals to match numeric(8,2).
-    patch.atlas_per_run_cost_cap_usd = Math.round(body.perRunCostCapUsd * 100) / 100;
+    next.atlasPerRunCostCapUsd = Math.round(body.perRunCostCapUsd * 100) / 100;
+    blobTouched = true;
   }
 
-  // ── Link discovery — per-source Firecrawl Search candidate counts (0–10) ──
-  const discoverKnobs: [keyof Body, string][] = [
-    ["discoverWebsiteN", "atlas_discover_website_n"],
-    ["discoverInstagramN", "atlas_discover_instagram_n"],
-    ["discoverFacebookN", "atlas_discover_facebook_n"],
-    ["discoverOpentableN", "atlas_discover_opentable_n"],
-    ["discoverUbereatsN", "atlas_discover_ubereats_n"],
-  ];
-  for (const [bodyKey, col] of discoverKnobs) {
-    const raw = body[bodyKey];
-    if (raw === undefined) continue;
-    const n = intInRange(raw, 0, 10);
-    if (n === null) {
-      return jsonError(`${bodyKey} must be an integer 0-10`, 400);
-    }
-    patch[col] = n;
+  if (body.discoverWebsiteN !== undefined) {
+    const n = intInRange(body.discoverWebsiteN, 0, 10);
+    if (n === null) return jsonError("discoverWebsiteN must be an integer 0-10", 400);
+    next.atlasDiscoverWebsiteN = n;
+    blobTouched = true;
+  }
+  if (body.discoverInstagramN !== undefined) {
+    const n = intInRange(body.discoverInstagramN, 0, 10);
+    if (n === null) return jsonError("discoverInstagramN must be an integer 0-10", 400);
+    next.atlasDiscoverInstagramN = n;
+    blobTouched = true;
+  }
+  if (body.discoverFacebookN !== undefined) {
+    const n = intInRange(body.discoverFacebookN, 0, 10);
+    if (n === null) return jsonError("discoverFacebookN must be an integer 0-10", 400);
+    next.atlasDiscoverFacebookN = n;
+    blobTouched = true;
+  }
+  if (body.discoverOpentableN !== undefined) {
+    const n = intInRange(body.discoverOpentableN, 0, 10);
+    if (n === null) return jsonError("discoverOpentableN must be an integer 0-10", 400);
+    next.atlasDiscoverOpentableN = n;
+    blobTouched = true;
+  }
+  if (body.discoverUbereatsN !== undefined) {
+    const n = intInRange(body.discoverUbereatsN, 0, 10);
+    if (n === null) return jsonError("discoverUbereatsN must be an integer 0-10", 400);
+    next.atlasDiscoverUbereatsN = n;
+    blobTouched = true;
   }
 
-  // ── Image-funnel per-source lock ────────────────────────────────────────
-  // Authoritative backstop for the admin console's client-side clamp. Every
-  // downstream count is bounded by its OWN source upstream — not by a shared
-  // sum, which would let one source's slack mask another's overflow (e.g.
-  // analyze 15 IG posts when only 10 were kept). Partial updates touch one
-  // field at a time, so merge the patch over the current row before checking:
-  //   IG keep ≤ IG depth · analyze ≤ keep per source · save ≤ analyzed total.
-  if (FUNNEL_COLS.some((c) => c in patch)) {
-    const { data: cur } = await admin
-      .from("app_config")
-      .select(
-        "atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images",
-      )
-      .eq("id", 1)
-      .maybeSingle();
-    const row = cur as Record<string, unknown> | null;
-    const googleKeep = effectiveFunnelValue(patch, row, "atlas_gather_google_images");
-    const igDepth = effectiveFunnelValue(patch, row, "atlas_gather_instagram_depth");
-    const igKeep = effectiveFunnelValue(patch, row, "atlas_gather_instagram_posts");
-    const googleAnalyze = effectiveFunnelValue(patch, row, "atlas_analyze_google_images");
-    const igAnalyze = effectiveFunnelValue(patch, row, "atlas_analyze_instagram_images");
-    const save = effectiveFunnelValue(patch, row, "atlas_save_total_images");
+  if (funnelTouched) {
     const lockErr = funnelLockError(
-      googleKeep,
-      igDepth,
-      igKeep,
-      googleAnalyze,
-      igAnalyze,
-      save,
+      next.atlasGatherGoogleImages,
+      next.atlasGatherInstagramDepth,
+      next.atlasGatherInstagramPosts,
+      next.atlasAnalyzeGoogleImages,
+      next.atlasAnalyzeInstagramImages,
+      next.atlasSaveTotalImages,
     );
     if (lockErr) return jsonError(lockErr, 400);
   }
@@ -306,51 +290,36 @@ Deno.serve(async (req) => {
     if (body.enrichmentTriggers === null || typeof body.enrichmentTriggers !== "object") {
       return jsonError("enrichmentTriggers must be an object", 400);
     }
-    patch.enrichment_triggers = normalizeEnrichmentTriggers(body.enrichmentTriggers);
+    triggers = normalizeEnrichmentTriggers(body.enrichmentTriggers);
   }
 
-  if (Object.keys(patch).length === 0) {
+  if (!blobTouched && triggers === undefined) {
     return jsonError("Nothing to update", 400);
   }
-  patch.updated_by = userId;
+
+  const patch: Record<string, unknown> = { updated_by: userId };
+  if (blobTouched) patch.enrichment_config = next;
+  if (triggers !== undefined) patch.enrichment_triggers = triggers;
 
   const { data, error } = await admin
     .from("app_config")
     .update(patch)
     .eq("id", 1)
-    .select(
-      "atlas_gather_google_images, atlas_gather_instagram_depth, atlas_gather_instagram_posts, atlas_gather_reviews, atlas_image_vision_enabled, atlas_analyze_google_images, atlas_analyze_instagram_images, atlas_save_total_images, atlas_save_images_to_storage, atlas_image_analysis_prompt, atlas_image_sorting_prompt, atlas_synthesis_quality, atlas_vision_quality, atlas_perplexity_preset, atlas_per_run_cost_cap_usd, atlas_discover_website_n, atlas_discover_instagram_n, atlas_discover_facebook_n, atlas_discover_opentable_n, atlas_discover_ubereats_n, enrichment_triggers, updated_at",
-    )
+    .select("enrichment_config, enrichment_triggers, updated_at")
     .single();
   if (error) {
     return jsonError(`settings_update: ${error.message}`, 500);
   }
 
+  const saved = normalizeEnrichmentConfig(
+    (data as { enrichment_config?: unknown }).enrichment_config,
+  );
   return json({
     ok: true,
     enrichmentTriggers: normalizeEnrichmentTriggers(
       (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
     ),
-    atlasGatherGoogleImages: data.atlas_gather_google_images,
-    atlasGatherInstagramDepth: data.atlas_gather_instagram_depth,
-    atlasGatherInstagramPosts: data.atlas_gather_instagram_posts,
-    atlasGatherReviews: data.atlas_gather_reviews,
-    atlasImageVisionEnabled: data.atlas_image_vision_enabled,
-    atlasAnalyzeGoogleImages: data.atlas_analyze_google_images,
-    atlasAnalyzeInstagramImages: data.atlas_analyze_instagram_images,
-    atlasSaveTotalImages: data.atlas_save_total_images,
-    atlasSaveImagesToStorage: data.atlas_save_images_to_storage,
-    atlasImageAnalysisPrompt: data.atlas_image_analysis_prompt,
-    atlasImageSortingPrompt: data.atlas_image_sorting_prompt,
-    atlasSynthesisQuality: data.atlas_synthesis_quality,
-    atlasVisionQuality: data.atlas_vision_quality,
-    atlasPerplexityPreset: data.atlas_perplexity_preset,
-    atlasPerRunCostCapUsd: data.atlas_per_run_cost_cap_usd,
-    atlasDiscoverWebsiteN: data.atlas_discover_website_n,
-    atlasDiscoverInstagramN: data.atlas_discover_instagram_n,
-    atlasDiscoverFacebookN: data.atlas_discover_facebook_n,
-    atlasDiscoverOpentableN: data.atlas_discover_opentable_n,
-    atlasDiscoverUbereatsN: data.atlas_discover_ubereats_n,
+    ...saved,
     updatedAt: data.updated_at,
   });
 });

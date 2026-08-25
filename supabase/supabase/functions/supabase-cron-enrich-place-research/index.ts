@@ -186,7 +186,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   }
 
   const cfg = await loadEnrichConfig(admin);
-  // MESITA-624 — accumulate estimated USD against atlas_per_run_cost_cap_usd.
+  // MESITA-624 — accumulate estimated USD against enrichment_config.atlasPerRunCostCapUsd.
   // Throws EnrichCostCapError → serveEnrichStage hard-fails the row (no retry).
   const ledger = createEnrichCostLedger(cfg.perRunCostCapUsd);
   chargeGoogleSpine(ledger, basics.photos.length);

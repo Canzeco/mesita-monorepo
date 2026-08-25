@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
   const configPromise = data.config();
 
   // Empty query = thread bootstrap: return the configured opener only (no AI
-  // spend). Consumers use this so memo_greeting is not a dead admin knob.
+  // spend). Consumers use this so memo_config.greeting is not a dead admin knob.
   // A 1-char query is still rejected — that is not a real ask.
   if (query.length === 0) {
     const cfg = await configPromise;

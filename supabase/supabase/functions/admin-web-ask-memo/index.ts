@@ -44,7 +44,7 @@ import type { TraceSink } from "../_shared/memo-trace.ts";
 
 import { DEFAULT_MODELS_CONFIG } from "../_shared/models-config.ts";
 
-// Fallback when models_config + memo_openai_model are both unset.
+// Fallback when models_config + memo_config.openaiModel are both unset.
 const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.memo.model!;
 // The same picker the admin Memo Config offers (types.ts OPENAI_MODELS) — an
 // override outside this set is ignored in favour of the saved/default model.
@@ -69,7 +69,7 @@ type Body = {
   longitude?: unknown;
   // OPTIONAL persona draft override (test unsaved Config edits without saving).
   instructions?: unknown;
-  // OPTIONAL model override (else the saved memo_openai_model, else default).
+  // OPTIONAL model override (else the saved memo_config.openaiModel, else default).
   model?: unknown;
 };
 
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     ? override
     : resolveMemoSystemPrompt(cfg.instructions);
 
-  // Model: the operator's pick (if valid), else the saved memo_openai_model,
+  // Model: the operator's pick (if valid), else the saved memo_config.openaiModel,
   // else the default — so the playground reflects the configured brain.
   const modelOverride = typeof body.model === "string" ? body.model.trim() : "";
   const model = modelOverride && OPENAI_MODELS.has(modelOverride)

@@ -35,7 +35,7 @@ export type PlaceRecallResult = {
 };
 
 export type MemoConfigResult = {
-  // Consumer Ask AI opener from memo_greeting, or null when blank/unreadable.
+  // Consumer Ask AI opener from memo_config.greeting, or null when blank/unreadable.
   greeting: string | null;
   // Saved persona override, or null to use the in-code default (memo-prompt.ts).
   instructions: string | null;

@@ -5,14 +5,14 @@
 // no database client.
 //
 // Four slices of the `app_config` singleton in ONE read:
-//   • greeting     — memo_greeting, the consumer Ask AI opener. Null when blank
-//                    so clients keep their in-code fallback.
-//   • instructions — memo_instructions, the operator-tunable persona. Null
-//                    when blank, so the caller falls back to the in-code
+//   • greeting     — memo_config.greeting, the consumer Ask AI opener. Null
+//                    when blank so clients keep their in-code fallback.
+//   • instructions — memo_config.instructions, the operator-tunable persona.
+//                    Null when blank, so the caller falls back to the in-code
 //                    SYSTEM_PROMPT and a config hiccup never costs Memo its
 //                    voice.
 //   • model        — models_config.memo.model (admin Models page), falling
-//                    back to legacy memo_openai_model when unset.
+//                    back to legacy memo_config.openaiModel when unset.
 //   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
 //   • searchPolicy — the `memo_search` slice of sourcing_config, coerced
 //                    against the launch policy.
@@ -21,7 +21,7 @@
 // instructions have no live write path (MESITA-1248: admin-web-get-memo-config
 // / admin-web-update-memo-config were deleted as dead code, orphaned since
 // whatever session retired the admin console's Memo Config page — no frontend
-// route called them). Setting these two columns is a direct DB write today;
+// route called them). Setting these two keys is a direct DB write today;
 // building a real editor is its own decision, not implied by this cleanup.
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · get · memo-config.
@@ -36,6 +36,7 @@ import {
   type SourcingConfigRow,
 } from "../_shared/sourcing.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
+import { normalizeMemoConfig } from "../_shared/memo-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
       admin
         .from("app_config")
         .select(
-          "memo_greeting, memo_instructions, memo_openai_model, sourcing_config",
+          "memo_config, sourcing_config",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -82,10 +83,13 @@ Deno.serve(async (req) => {
       return json(fallback);
     }
 
-    const greeting = (data.memo_greeting ?? "").toString().trim();
-    const instructions = (data.memo_instructions ?? "").toString().trim();
-    // Models page is SoT; legacy memo_openai_model remains a one-release fallback.
-    const legacyModel = (data.memo_openai_model ?? "").toString().trim();
+    const memo = normalizeMemoConfig(
+      (data as { memo_config?: unknown }).memo_config,
+    );
+    const greeting = memo.greeting.trim();
+    const instructions = memo.instructions.trim();
+    // Models page is SoT; legacy memo_config.openaiModel remains a one-release fallback.
+    const legacyModel = memo.openaiModel.trim();
     const model = models.memoModel || legacyModel;
     const perplexity = models.memoPerplexity;
     const sourcing = data.sourcing_config as SourcingConfigRow | null;
