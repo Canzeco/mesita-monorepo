@@ -123,17 +123,17 @@ export function buildReservationTarget(
 }
 
 /**
- * True when the place already has a selected *serving* reservation channel
- * (an operator override the Intaker must not overwrite). Reads the typed
- * column — routing left places.products in MESITA-1208. A legacy
- * whatsapp/instagram pick is not an override: it was never dialled
- * (MESITA-842), and the CHECK constraint no longer admits it.
+ * True when an operator already picked a reservation door. The Intaker must
+ * not overwrite any of the five stored keys (phone · whatsapp · instagram ·
+ * web · none). Auto-seed remains phone-only.
  */
 export function hasReservationTarget(
   place: { reservation_channel?: unknown } | null | undefined,
 ): boolean {
   if (!place || typeof place !== "object") return false;
-  return isReservationChannel(place.reservation_channel);
+  const ch = place.reservation_channel;
+  return ch === "phone" || ch === "whatsapp" || ch === "instagram" ||
+    ch === "web" || ch === "none";
 }
 
 /** The column patch that pins a reservation target. */

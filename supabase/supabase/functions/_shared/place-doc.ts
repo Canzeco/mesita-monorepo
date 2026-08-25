@@ -76,6 +76,22 @@ import { EnrichmentMapSchema } from "./schema-catalog.ts";
 
 // ── PlaceRow — the full `places` row shape ──────────────────────────────────
 
+/** How a guest reaches the place on Reservations or Orders (Pato 2026-08-25). */
+export type ServingChannel = "phone" | "whatsapp" | "instagram" | "web" | "none";
+
+export const SERVING_CHANNELS: readonly ServingChannel[] = [
+  "phone",
+  "whatsapp",
+  "instagram",
+  "web",
+  "none",
+];
+
+export function isServingChannel(value: unknown): value is ServingChannel {
+  return typeof value === "string" &&
+    (SERVING_CHANNELS as readonly string[]).includes(value);
+}
+
 export type PlaceRow = {
   id: string;
   created_at: string;
@@ -159,9 +175,9 @@ export type PlaceRow = {
   enrich_next_at: string | null;
   /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
   enrichment: unknown;
-  reservation_channel: "phone" | null;
+  reservation_channel: ServingChannel | null;
   reservation_target: string | null;
-  order_channel: "phone" | null;
+  order_channel: ServingChannel | null;
   order_target: string | null;
   business_status: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
   business_status_at: string | null;
@@ -486,7 +502,8 @@ function checkPlaceField(key: string, v: unknown): string | null {
     // places_reservation_channel_check / places_order_channel_check
     case "reservation_channel":
     case "order_channel":
-      return v === null || v === "phone" ? null : `${key} must be 'phone' or null`;
+      return v === null || isServingChannel(v) ? null
+        : `${key} must be phone, whatsapp, instagram, web, none, or null`;
     default:
       return `unknown place field: ${key}`;
   }

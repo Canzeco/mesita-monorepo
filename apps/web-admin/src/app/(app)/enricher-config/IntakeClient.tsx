@@ -30,13 +30,13 @@ import {
 import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
 import { updateSourcingConfig } from "../sourcing-config/actions";
 import type { SourcingConfig } from "../sourcing-config/catalog";
+import { chipsFor, flowTagFor } from "./intake-functions";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
   FlowPanel,
   FunctionFamily,
   FunctionModule,
-  StepChips,
   KnobElsewhere,
   NoKnobs,
   SelectField,
@@ -296,7 +296,7 @@ export function IntakeClient({
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
-            subtitle="One function, synchronous, at the door. Runs inline for admin, business and consumer alike. The Intaker never calls it — a person or Memo does, by adding a place."
+            subtitle="One run. Seed, then Pulse and Details inline; Name and Summary ride along. Synchronous, at the door — admin, business and consumer alike. The Intaker never calls it — a person or Memo does, by adding a place."
             status={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
@@ -329,13 +329,7 @@ export function IntakeClient({
                     "It schedules the enrich queue — it never runs functions 3–9 inline.",
                 },
               ]}
-              steps={[
-                { href: "#f-seed", label: "Seed" },
-                { href: "#f-pulse", label: "Pulse" },
-                { href: "#f-details", label: "Details" },
-                { href: "#f-name", label: "◇ Name" },
-                { href: "#f-summary", label: "◇ Summary" },
-              ]}
+              steps={chipsFor("create")}
               footer="No knobs of its own. Everything Create does is a function below, and the semantic pair rides along outside the 0–9 count."
             />
           </SectionCard>
@@ -345,7 +339,7 @@ export function IntakeClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="Nine functions, in order, queued per place. Three cron Edge Functions over the place_research staging row: research runs 1·2·3·4·5·8, analysis runs 6, contents runs 7·9·◇summary."
+            subtitle="Sequential runs — one subfunction per cron tick, in order. Three cron Edge Functions over the place_research staging row: research runs 1·2·3·4·5·8, analysis runs 6, contents runs 7·9·◇summary."
             status={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
@@ -369,19 +363,7 @@ export function IntakeClient({
                     "Infrastructure failure halts the queue, and so does a permanently-closed listing. Absence is a result, not a failure — a place with no Instagram still reaches 9. Spend is bounded by the collect and analyze knobs, and by five places per tick — not a dollar cap.",
                 },
               ]}
-              steps={[
-                { href: "#f-pulse", label: "1 Pulse" },
-                { href: "#f-details", label: "2 Details" },
-                { href: "#f-serp", label: "3 Serp" },
-                { href: "#f-links", label: "4 Links" },
-                { href: "#f-social", label: "5 Social" },
-                { href: "#f-images", label: "6 Images" },
-                { href: "#f-menu", label: "7 Menu" },
-                { href: "#f-reviews", label: "8 Reviews" },
-                { href: "#f-description", label: "9 Description" },
-                { href: "#f-name", label: "◇ Name" },
-                { href: "#f-summary", label: "◇ Summary" },
-              ]}
+              steps={chipsFor("enrich")}
               footer={
                 <>
                   What a run is allowed to buy is not set here. That lives in{" "}
@@ -401,20 +383,30 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="The functions"
-            subtitle="Three families. Create is one function. Enrich is nine. Name and Summary are semantic — they have no number and enriched never counts them."
+            subtitle="12 subfunctions, listed once. Create is one run. Enrich is sequential runs. Each card says which function uses it. Name and Summary have no number and enriched never counts them."
             status={<Tag tone="solid">12 modules · 15 knobs</Tag>}
           >
             <div className="mt-2">
               <FunctionFamily
                 tone="create"
                 label="Create"
-                kicker="One function. Seed, then Pulse and Details inline. Name and Summary ride along."
-                note="Pulse, Details, Name and Summary are the same functions Enrich uses. They are not a second ladder."
-              >
+                kicker="One run. Seed, Pulse, Details, then Name and Summary ride along."
+                note="Pulse, Details, Name and Summary are the same subfunctions Enrich uses. They are not a second ladder."
+                chips={chipsFor("create")}
+              />
+              <FunctionFamily
+                tone="enrich"
+                label="Enrich"
+                kicker="Sequential runs — one subfunction per cron tick, in this order. Name and Summary ride along. enriched is the nine, not the pair."
+                note="Seed is Create-only. 3–9 are Enrich-only. Shared rows print once below."
+                chips={chipsFor("enrich")}
+              />
+              <div className="border-border bg-card mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
                 index="SEED"
                 name="Seed"
+                flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows at category='undefined'."
                 knobs="no knobs"
               >
@@ -427,7 +419,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-pulse"
                 index="1 · $"
-                flows="also Enrich"
+                flows={flowTagFor("pulse")}
                 name="Pulse"
                 blurb="One question: is this place still alive. Not the hours, not the address."
                 knobs="no knobs"
@@ -441,7 +433,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-details"
                 index="2 · $"
-                flows="also Enrich"
+                flows={flowTagFor("details")}
                 name="Details"
                 blurb="The Google spine: hours, address, geo, zone, city, timezone, price, phone, and the name."
                 knobs="no knobs"
@@ -452,27 +444,10 @@ export function IntakeClient({
                   editor — enrichment never touches it.
                 </NoKnobs>
               </FunctionModule>
-              </FunctionFamily>
-
-              <FunctionFamily
-                tone="enrich"
-                label="Enrich"
-                kicker="Nine functions, in order. 1 Pulse and 2 Details live in Create — they are the same functions."
-                note="1 Pulse · 2 Details · ◇ Name · ◇ Summary are shared. Jump the chips; do not look for a second copy."
-              >
-              <div className="pt-3 pb-1">
-                <StepChips
-                  steps={[
-                    { href: "#f-pulse", label: "1 Pulse" },
-                    { href: "#f-details", label: "2 Details" },
-                    { href: "#f-name", label: "◇ Name" },
-                    { href: "#f-summary", label: "◇ Summary" },
-                  ]}
-                />
-              </div>
               <FunctionModule
                 id="f-serp"
                 index="3 · $"
+                flows={flowTagFor("serp")}
                 name="Serp"
                 blurb="Agent X writes the editorial read that Links spends to recognise the place. Never a source of facts."
                 knobs="in Models"
@@ -487,6 +462,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-links"
                 index="4 · $$"
+                flows={flowTagFor("links")}
                 name="Links"
                 blurb="Firecrawl gathers candidates per source, Agent Y picks one or none. Seed first, discover second."
                 knobs="5 knobs"
@@ -555,6 +531,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-social"
                 index="5 · $$"
+                flows={flowTagFor("social")}
                 name="Social"
                 blurb="The Instagram and Facebook profiles — handle, followers, bio. It does not collect posts."
                 knobs="no knobs"
@@ -570,6 +547,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-images"
                 index="6 · $$"
+                flows={flowTagFor("images")}
                 name="Images"
                 blurb="Collects images from Apify, then describes and ranks them. Largest cost driver here."
                 knobs="7 knobs"
@@ -690,6 +668,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-menu"
                 index="7"
+                flows={flowTagFor("menu")}
                 name="Menu"
                 blurb="Holds its slot so the number stays stable the day a real menu source lands."
                 knobs="no knobs"
@@ -704,6 +683,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-reviews"
                 index="8 · $$"
+                flows={flowTagFor("reviews")}
                 name="Reviews"
                 blurb="The newest Google reviews — what 9 · Description grounds the Presentation on."
                 knobs="1 knob"
@@ -731,6 +711,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-description"
                 index="9 · $"
+                flows={flowTagFor("description")}
                 name="Description"
                 blurb="Closes the queue. Makes the Presentation, then Category, then Tags, in that order."
                 knobs="in Models"
@@ -741,17 +722,10 @@ export function IntakeClient({
                   home.
                 </KnobElsewhere>
               </FunctionModule>
-              </FunctionFamily>
-
-              <FunctionFamily
-                tone="semantic"
-                label="Semantic"
-                kicker="No number. enriched never counts them. They run after Create and after Description."
-              >
               <FunctionModule
                 id="f-name"
                 index="◇"
-                flows="both flows"
+                flows={flowTagFor("name")}
                 name="Name"
                 blurb="The Mesita name as its own vector, so a search by name scores on the name."
                 knobs="not built"
@@ -766,7 +740,7 @@ export function IntakeClient({
               <FunctionModule
                 id="f-summary"
                 index="◇"
-                flows="both flows"
+                flows={flowTagFor("summary")}
                 name="Summary"
                 blurb="The 60-word text the index reads — never the prose a guest reads."
                 knobs="locked"
@@ -777,7 +751,7 @@ export function IntakeClient({
                   design.
                 </NoKnobs>
               </FunctionModule>
-              </FunctionFamily>
+              </div>
             </div>
           </SectionCard>
         </div>

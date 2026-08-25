@@ -83,7 +83,7 @@ export function FlowPanel({
         </dl>
         <div>
           <p className="text-muted-foreground type-meta mb-2 font-bold tracking-wider uppercase">
-            Its steps
+            Subfunctions
           </p>
           <StepChips steps={steps} />
         </div>
@@ -98,22 +98,23 @@ export function FlowPanel({
 }
 
 /**
- * CREATE · ENRICH · SEMANTIC — the three families of §8.4–8.5. A box around
- * a slice of the ladder, not a second card. Color is a rail + header mark;
- * the page stays one pink accent, not a carnival of hues.
+ * CREATE · ENRICH — a box that names a flow, not a second ladder.
+ * Subfunctions print once below. Chips are the run order.
  */
 export function FunctionFamily({
   label,
   kicker,
   tone,
   note,
+  chips,
   children,
 }: {
   label: string;
   kicker: string;
   tone: "create" | "enrich" | "semantic";
   note?: React.ReactNode;
-  children: React.ReactNode;
+  chips?: { href: string; label: string }[];
+  children?: React.ReactNode;
 }) {
   const box =
     tone === "create"
@@ -140,7 +141,16 @@ export function FunctionFamily({
           </p>
         </div>
       </header>
-      <div className="px-3 sm:px-4">{children}</div>
+      {chips || children ? (
+        <div className="px-3 sm:px-4">
+          {chips ? (
+            <div className="py-3">
+              <StepChips steps={chips} />
+            </div>
+          ) : null}
+          {children}
+        </div>
+      ) : null}
       {note ? (
         <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs leading-relaxed">
           {note}

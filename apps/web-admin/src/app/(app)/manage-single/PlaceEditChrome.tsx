@@ -11,18 +11,7 @@ import {
 } from "./actions";
 import { PLACE_TAB_SECTIONS, placeSectionHref } from "./nav";
 import { usePlaceContext } from "./PlaceContext";
-
-/** True while the Intaker pipeline is mid-flight.
- *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
- *  research OR analysis OR contents. Never clear after research alone. */
-function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
-  const stage = status?.stage ?? null;
-  if (stage === "research" || stage === "analysis" || stage === "contents") {
-    return true;
-  }
-  const contentStatus = status?.content_status ?? null;
-  return contentStatus === "generating" || contentStatus === "queued";
-}
+import { isEnrichFailed, isEnriching } from "./place-header-status";
 
 // LISTED, not "Active" (Pato live 2026-08-22). The header used to print
 // `projects.status` capitalized — the raw column value shown to a human — and
@@ -68,7 +57,7 @@ export function PlaceEditChrome({
   );
   const [enrichPollError, setEnrichPollError] = useState(false);
   const enriching = isEnriching(enrichStatus);
-  const enrichFailed = enrichStatus?.stage === "failed";
+  const enrichFailed = isEnrichFailed(enrichStatus);
   const enrichingRef = useRef(enriching);
   useEffect(() => {
     enrichingRef.current = enriching;
@@ -154,45 +143,15 @@ export function PlaceEditChrome({
         <PlaceThumb photo={heroPhoto} name={placeDisplayName(place)} size="lg" />
 
         <div className="min-w-0 flex-1">
+          {/* The name is the name. Run state is a pill on the meta row —
+              never a parenthetical on the Fraunces title, never a raw
+              pipeline stage (research / analysis / contents). Those live
+              in Admin → Enrichment. */}
           <p
-            className="font-display flex min-w-0 items-center gap-1.5 text-base font-semibold tracking-tight sm:text-lg"
-            title={
-              enriching
-                ? `${placeDisplayName(place)} (Enriching)`
-                : placeDisplayName(place)
-            }
+            className="font-display min-w-0 truncate text-base font-semibold tracking-tight sm:text-lg"
+            title={placeDisplayName(place)}
           >
-            <span className="truncate">{placeDisplayName(place)}</span>
-            {enriching ? (
-              <span
-                className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-blue-600"
-                aria-live="polite"
-              >
-                <span className="whitespace-nowrap">
-                  {enrichStatus?.stage === "research" ||
-                  enrichStatus?.stage === "analysis" ||
-                  enrichStatus?.stage === "contents"
-                    ? `(Enriching… ${enrichStatus.stage})`
-                    : "(Enriching…)"}
-                </span>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              </span>
-            ) : enrichFailed ? (
-              <span
-                className="inline-flex shrink-0 items-center text-sm font-semibold text-red-600"
-                title={enrichStatus?.error ?? "Enrichment failed"}
-                aria-live="polite"
-              >
-                (Enrich failed)
-              </span>
-            ) : enrichPollError ? (
-              <span
-                className="text-muted-foreground inline-flex shrink-0 items-center text-xs font-medium"
-                aria-live="polite"
-              >
-                (status unknown)
-              </span>
-            ) : null}
+            {placeDisplayName(place)}
           </p>
           {/* Show what Google calls it only when an operator override hides it. */}
           {(place.mesita_name ?? "").trim() && (place.google_name ?? "").trim() ? (
@@ -218,6 +177,30 @@ export function PlaceEditChrome({
                   {place.category_label || place.category}
                 </span>
               </>
+            ) : null}
+            {enriching ? (
+              <span
+                className="border-border bg-muted/70 text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 type-label font-medium"
+                aria-live="polite"
+              >
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                Enriching
+              </span>
+            ) : enrichFailed ? (
+              <span
+                className="border-destructive/30 bg-destructive/5 text-destructive inline-flex items-center rounded-full border px-2 py-0.5 type-label font-medium"
+                title={enrichStatus?.error ?? "Enrichment failed"}
+                aria-live="polite"
+              >
+                Enrich failed
+              </span>
+            ) : enrichPollError ? (
+              <span
+                className="text-muted-foreground type-label font-medium"
+                aria-live="polite"
+              >
+                Status unknown
+              </span>
             ) : null}
           </div>
         </div>

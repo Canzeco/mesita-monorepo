@@ -184,7 +184,7 @@ export function StatusCard({
     ? "unknown"
     : bizStatus === "OPERATIONAL";
   const operatingChip = bizStatus === "OPERATIONAL"
-    ? "Operational"
+    ? "Active"
     : bizStatus === "CLOSED_TEMPORARILY"
       ? "Temporarily closed"
       : bizStatus === "CLOSED_PERMANENTLY"
@@ -298,7 +298,7 @@ export function StatusCard({
           detail={seededDetail}
         />
         <StatusRow
-          name="Operating"
+          name="Active"
           value={operating}
           tint="teal"
           chipLabel={operatingChip}

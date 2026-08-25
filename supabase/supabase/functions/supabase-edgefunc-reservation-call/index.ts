@@ -1306,8 +1306,8 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // Fetch place by project_id separately — reservations.project_id has no
-  // PostgREST FK hint to places, so an embed 500s. places.id == project_id.
+  // Fetch place separately — reservation_tickets.place_id has no
+  // PostgREST FK hint to places, so an embed 500s. places.id == projects.id.
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
@@ -1317,6 +1317,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (rErr) return json({ ok: false, error: rErr.message }, 500);
   if (!r) return json({ ok: false, error: "reservation not found" }, 404);
+  const placeId = rowPlaceId(r);
+  if (!placeId) return json({ ok: false, error: "reservation has no place" }, 400);
   const guestNotify: "call" | "app" = r.consumer_notify === "app" ? "app" : "call";
   // Per-intent gates — each errand has its own idea of a live ticket.
   if (intent === "book") {
@@ -1397,7 +1399,7 @@ Deno.serve(async (req) => {
   const { data: placeRow } = await admin
     .from("places")
     .select("name, phone, reservation_channel, reservation_target, hours, lng")
-    .eq("id", rowPlaceId(r))
+    .eq("id", placeId)
     .maybeSingle();
   const place = (placeRow ?? null) as {
     name?: string | null;
@@ -1416,14 +1418,23 @@ Deno.serve(async (req) => {
       businessNumber = cfg.testCall.number;
       via = "test-mode number";
     } else {
-      // Voice-only serving path (MESITA-842): the CHECK constraint admits
-      // only 'phone', so a stored channel is by definition dialable. Falls
-      // back to places.phone when no endpoint was ever selected.
-      const endpoint = place?.reservation_channel === "phone"
-        ? (place.reservation_target ?? "").trim()
-        : "";
-      businessNumber = endpoint || (place?.phone ?? "").trim();
-      via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      // Dial only when the door is Phone (or never picked — keep the
+      // places.phone fallback so existing rows still reach the venue).
+      // WhatsApp / Instagram / Web / Not are not voice endpoints.
+      const channel = place?.reservation_channel ?? null;
+      if (
+        channel === "none" || channel === "web" ||
+        channel === "whatsapp" || channel === "instagram"
+      ) {
+        businessNumber = "";
+        via = `place ${channel} endpoint — no voice dial`;
+      } else {
+        const endpoint = channel === "phone"
+          ? (place?.reservation_target ?? "").trim()
+          : "";
+        businessNumber = endpoint || (place?.phone ?? "").trim();
+        via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      }
     }
   }
   const dialsVenue = intent === "book" ||
@@ -1529,7 +1540,7 @@ Deno.serve(async (req) => {
         placeHours: place?.hours ?? null,
         placeLng,
         reservedAtIso: r.reserved_at,
-        projectId: rowPlaceId(r),
+        projectId: placeId,
         venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
         guestNotify,
       }),
@@ -1703,7 +1714,7 @@ Deno.serve(async (req) => {
       callbackAttemptsDone: 0,
       reservedAtIso: r.reserved_at,
       runId,
-      projectId: rowPlaceId(r),
+      projectId: placeId,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
       modificationOfIso,

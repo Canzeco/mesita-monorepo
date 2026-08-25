@@ -209,9 +209,9 @@ export type AdminPlace = {
   // this blob for typed columns in MESITA-1208: they are separate decisions
   // and must not share one read-modify-written cell with the menu.
   products?: { menu?: AdminMenuItem[] | null } | null;
-  // Which contact each rail reaches the place on. 'phone' is the only served
-  // channel (MESITA-842). order_* is STAGED — stored now, read when the order
-  // rail ships, which is why the Orders box wears Soon (MESITA-1155).
+  // How each rail reaches the place: phone · whatsapp · instagram · web · none.
+  // The Reservationist only DIALS phone. order_* is STAGED until the order rail
+  // ships (MESITA-1155).
   reservation_channel?: string | null;
   reservation_target?: string | null;
   order_channel?: string | null;
