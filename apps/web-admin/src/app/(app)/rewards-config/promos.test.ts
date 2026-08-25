@@ -303,6 +303,19 @@ describe("Tiers HTML prices visits only", () => {
     expect(src).not.toContain('context="orders"');
     expect(src).not.toContain("setOrders");
     expect(src).not.toContain("ResolvedLedger");
+    expect(src).not.toContain("SectionCard");
+    expect(src).toContain("items-stretch");
+    expect(src).toContain("h-full");
+    expect(src).toContain("grid-rows-subgrid");
+    expect(src).toContain("row-span-15");
+    expect(src).toContain("RowGroup");
+    const ui = readFileSync(join(__dirname, "promos-ui.tsx"), "utf8");
+    expect(ui).toContain("h-14");
+    expect(ui).toContain("min-h-14");
+    expect(ui).toContain("w-24");
+    expect(ui).toContain("h-8");
+    expect(ui).toContain("appearance-none");
+    expect(ui).toContain("STRATEGY_COLUMN_TRACKS = 15");
   });
 
   it("picks Conservative and Aggressive only", () => {
