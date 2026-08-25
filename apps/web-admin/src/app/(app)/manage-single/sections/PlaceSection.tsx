@@ -31,7 +31,7 @@ import {
   SectionCard,
   TextArea,
   TextField,
-} from "../ui";
+} from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
 import { ErrorNote } from "@/components/ErrorNote";

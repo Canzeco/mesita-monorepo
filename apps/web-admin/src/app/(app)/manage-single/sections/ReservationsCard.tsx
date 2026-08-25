@@ -5,7 +5,7 @@ import { CalendarCheck } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { useSectionSaver } from "../useSectionDirty";
 import { usePlaceContext } from "../PlaceContext";
-import { SectionCard } from "../ui";
+import { SectionCard } from "@/components/admin-ui/manage";
 import {
   ChannelPicker,
   readChannel,

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { Button, SectionCard, TextField } from "@/components/admin-ui/config";
 import { grantAdmin, revokeAdmin, type AdminRow } from "./actions";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
@@ -89,54 +90,45 @@ function AdminsCard({
   const onlyOne = admins.length <= 1;
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="text-muted-foreground h-4 w-4" />
-        <h2 className="font-display text-base font-semibold tracking-tight">
-          Admins
-        </h2>
+    <SectionCard
+      icon={<ShieldCheck className="text-muted-foreground h-4 w-4" />}
+      title="Admins"
+      subtitle="Everyone on the super-admin allowlist. Add or remove by email — the account doesn't need to exist yet."
+      status={
         <span className="text-muted-foreground text-xs tabular-nums">
-          · {admins.length}
+          {admins.length}
         </span>
-      </div>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-relaxed">
-        Everyone on the super-admin allowlist. Add or remove by email — the
-        account doesn&apos;t need to exist yet.
-      </p>
-
+      }
+    >
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="name@example.com"
-          autoComplete="off"
-          spellCheck={false}
-          className="border-border bg-background focus:border-foreground h-10 flex-1 rounded-xl border px-3 text-sm outline-none"
-        />
-        <input
-          type="text"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Note (optional)"
-          maxLength={280}
-          className="border-border bg-background focus:border-foreground h-10 flex-1 rounded-xl border px-3 text-sm outline-none"
-        />
-        <button
-          type="button"
+        <div className="min-w-0 flex-1">
+          <TextField
+            type="email"
+            value={email}
+            onChange={setEmail}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            placeholder="name@example.com"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <TextField
+            value={note}
+            onChange={setNote}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            placeholder="Note (optional)"
+            maxLength={280}
+          />
+        </div>
+        <Button
+          pending={adding}
+          disabled={email.trim().length === 0}
+          icon={<UserPlus className="h-3.5 w-3.5" />}
           onClick={add}
-          disabled={adding || email.trim().length === 0}
-          className="bg-foreground text-background inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
         >
-          {adding ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <UserPlus className="h-3.5 w-3.5" />
-          )}
           Add
-        </button>
+        </Button>
       </div>
 
       {error && <ErrorNote message={error} />}
@@ -170,10 +162,11 @@ function AdminsCard({
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => remove(a.email)}
-                disabled={isSelf || onlyOne || busy || removing}
+              <Button
+                tone="danger"
+                size="icon"
+                pending={busy}
+                disabled={isSelf || onlyOne || removing}
                 title={
                   isSelf
                     ? "You can't remove yourself"
@@ -181,19 +174,16 @@ function AdminsCard({
                       ? "Can't remove the last admin"
                       : "Remove admin"
                 }
-                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="Remove admin"
+                onClick={() => remove(a.email)}
               >
-                {busy ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </button>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </li>
           );
         })}
       </ul>
-    </section>
+    </SectionCard>
   );
 }
 

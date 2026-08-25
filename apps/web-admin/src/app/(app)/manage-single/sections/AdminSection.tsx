@@ -7,7 +7,7 @@ import {
   getPlaceVerification,
   type AdminPlace,
 } from "../actions";
-import { CopyIdButton, ReadField } from "../ui";
+import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StatusCard } from "./StatusCard";
 import { formatAbsoluteUtc } from "@/lib/format";

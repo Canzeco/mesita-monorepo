@@ -4,26 +4,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { usePlaceContext } from "./PlaceContext";
 
-// Thin re-export shim — implementation lives in `@/components/admin-ui/manage`.
-// Prefer importing from `@/components/admin-ui` (or `/manage`) in new code.
-// CrossTabLink stays here: it needs PlaceContext (route-local).
-
-export {
-  SectionCard,
-  GroupLabel,
-  TextField,
-  PhoneField,
-  TextArea,
-  SelectField,
-  SaveBar,
-  ConfirmDialog,
-  Spinner,
-  ReadField,
-  OpenLink,
-  CopyIdButton,
-  type Tint,
-} from "@/components/admin-ui/manage";
-
 /** Link out to another place tab, routed through the discard guard. */
 export function CrossTabLink({
   href,

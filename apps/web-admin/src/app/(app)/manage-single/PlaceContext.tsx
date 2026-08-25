@@ -23,7 +23,7 @@ import {
   reduceHistoryGuard,
   type HistoryGuardState,
 } from "./historyGuard";
-import { ConfirmDialog } from "./ui";
+import { ConfirmDialog } from "@/components/admin-ui/manage";
 
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {

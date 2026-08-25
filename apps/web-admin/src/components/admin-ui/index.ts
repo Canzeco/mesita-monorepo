@@ -4,8 +4,8 @@
 //   config  — flat/tabbed config pages (canonical for greenfield)
 //   manage  — single-place records editor
 //
-// Prefer `@/components/admin-ui` (or `/config` `/manage`) over the legacy
-// route-local shims (`enricher-config/atlas-ui`, `manage-single/ui`).
+// Prefer `@/components/admin-ui` (or `/config` `/manage`) over route-local
+// files. `manage-single/ui` is only `CrossTabLink` (needs PlaceContext).
 
 export {
   KnobStatus,
@@ -14,6 +14,7 @@ export {
   Switch,
   TextAreaField,
   NumberField,
+  Button,
   SaveRow,
   QualityPicker,
   type SynthesisQuality,

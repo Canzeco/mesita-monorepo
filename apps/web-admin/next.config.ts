@@ -3,27 +3,26 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
-      // Memo Config moved into Filters Config › Chat (MESITA-1097): Home › Chat
-      // IS Memo, so the surface and the agent behind it stopped being two
-      // pages. Permanent — operators bookmark these.
+      // Memo has no editor (in-code defaults). Discovery Chat subroutes died
+      // with MESITA-1182. Bookmarks land on Discovery.
       {
         source: "/memo-config",
-        destination: "/filters-config/chat/memo",
+        destination: "/filters-config",
         permanent: true,
       },
       {
-        source: "/memo-config/config",
-        destination: "/filters-config/chat/memo",
+        source: "/memo-config/:path*",
+        destination: "/filters-config",
         permanent: true,
       },
       {
-        source: "/memo-config/playground",
-        destination: "/filters-config/chat/playground",
+        source: "/filters-config/chat",
+        destination: "/filters-config",
         permanent: true,
       },
       {
-        source: "/memo-config/data-access",
-        destination: "/filters-config/chat/data-access",
+        source: "/filters-config/chat/:path*",
+        destination: "/filters-config",
         permanent: true,
       },
     ];

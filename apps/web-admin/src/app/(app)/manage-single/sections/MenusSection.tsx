@@ -27,7 +27,7 @@ import {
 import { type AdminMenuItem, type AdminPlace } from "../actions";
 import { usePlaceContext, type PatchResult } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
-import { SectionCard, TextField } from "../ui";
+import { SectionCard, TextField } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 
 const MENU_NAME_MAX = 80;

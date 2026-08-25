@@ -7,7 +7,7 @@ import { getPlace, type AdminPlace } from "./actions";
 import { PlaceEditChrome } from "./PlaceEditChrome";
 import { PlaceProvider } from "./PlaceContext";
 import { PlaceSaveBar } from "./PlaceSaveBar";
-import {Spinner} from "./ui";
+import { Spinner } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 
 export function PlaceEditShell({

@@ -5,12 +5,12 @@ import {
   AlertTriangle,
   CircleDashed,
   CircleSlash,
-  Loader2,
   Play,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
+import { Button } from "@/components/admin-ui/config";
 import { runApiHealthProbes } from "./actions";
 import { ALL_PROBE_IDS, KNOWN_PROBES, type ProbeResult, type Verdict } from "./catalog";
 
@@ -66,7 +66,7 @@ function ProbeCard({
   onRun: () => void;
 }) {
   return (
-    <div className="border-border bg-card shadow-elev flex flex-col gap-3 rounded-2xl border p-4">
+    <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-display truncate text-sm font-semibold tracking-tight">
@@ -99,19 +99,15 @@ function ProbeCard({
         </div>
       ) : null}
 
-      <button
-        type="button"
+      <Button
+        tone="secondary"
+        size="sm"
+        pending={busy}
+        icon={<Play className="h-3 w-3" />}
         onClick={onRun}
-        disabled={busy}
-        className="border-border hover:bg-muted inline-flex h-8 items-center justify-center gap-1.5 self-start rounded-full border px-3 text-xs font-semibold transition disabled:opacity-50"
       >
-        {busy ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : (
-          <Play className="h-3 w-3" />
-        )}
         Run
-      </button>
+      </Button>
     </div>
   );
 }
@@ -155,7 +151,7 @@ export function BillingTestClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="border-border bg-card shadow-elev flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
+      <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
         <div>
           <p className="text-sm font-semibold">Run every probe</p>
           <p className="text-muted-foreground mt-0.5 text-xs">
@@ -167,19 +163,13 @@ export function BillingTestClient() {
               : ""}
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          pending={sweeping}
+          icon={<Play className="h-3.5 w-3.5" />}
           onClick={() => run([...ALL_PROBE_IDS], true)}
-          disabled={sweeping}
-          className="bg-foreground text-background inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 disabled:opacity-50"
         >
-          {sweeping ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
-          )}
           Run all tests
-        </button>
+        </Button>
       </div>
 
       {notDeployed ? (

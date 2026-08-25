@@ -8,7 +8,7 @@ import {
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "../actions";
-import { SectionCard, Spinner } from "../ui";
+import { SectionCard, Spinner } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-status";
