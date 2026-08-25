@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import {
+  fmtTime,
+  money,
+  type CostEstimate,
+} from "./cost-model";
 
 // Intake's page-local layout kit. Structural only — controls come from
 // `@/components/admin-ui/config`. Five SectionCards own the page; these
@@ -62,10 +67,12 @@ export function StepChips({
 export function FlowPanel({
   facts,
   steps,
+  estimate,
   footer,
 }: {
   facts: { term: string; detail: React.ReactNode }[];
   steps: { href: string; label: string }[];
+  estimate?: React.ReactNode;
   footer?: React.ReactNode;
 }) {
   return (
@@ -88,11 +95,51 @@ export function FlowPanel({
           <StepChips steps={steps} />
         </div>
       </div>
+      {estimate}
       {footer ? (
         <p className="text-muted-foreground mt-5 border-border border-t pt-4 text-xs leading-relaxed">
           {footer}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/** Live spend bound for one Create run or one Enrich tick. Not an input. */
+export function FlowEstimate({
+  caption,
+  estimate,
+}: {
+  caption: string;
+  estimate: CostEstimate;
+}) {
+  return (
+    <div className="border-border mt-5 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
+        Estimate
+      </p>
+      <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
+        {money(estimate.perPlace)} / place · {fmtTime(estimate.perPlaceSecs)}
+        {estimate.places > 1
+          ? ` · ${money(estimate.total)} / ${estimate.places} places`
+          : ""}
+      </p>
+      <ul className="mt-2 space-y-0.5">
+        {estimate.active.map((l) => (
+          <li
+            key={l.label}
+            className="text-muted-foreground flex justify-between gap-3 type-label leading-snug"
+          >
+            <span>{l.label}</span>
+            <span className="shrink-0 font-mono tabular-nums">
+              {money(l.cost)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground mt-2 type-label leading-snug">
+        {caption} Published rates, not a bill.
+      </p>
     </div>
   );
 }

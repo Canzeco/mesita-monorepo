@@ -31,9 +31,14 @@ import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
 import { updateSourcingConfig } from "../sourcing-config/actions";
 import type { SourcingConfig } from "../sourcing-config/catalog";
 import { chipsFor, flowTagFor } from "./intake-functions";
+import {
+  computeCreateCost,
+  computeEnrichTickCost,
+} from "./cost-model";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
+  FlowEstimate,
   FlowPanel,
   FunctionFamily,
   FunctionModule,
@@ -203,6 +208,12 @@ export function IntakeClient({
     setOk(false);
   };
 
+  const createCost = useMemo(() => computeCreateCost(settings), [settings]);
+  const enrichCost = useMemo(
+    () => computeEnrichTickCost(settings),
+    [settings],
+  );
+
   return (
     <>
       <SectionStrip />
@@ -332,6 +343,12 @@ export function IntakeClient({
                 },
               ]}
               steps={chipsFor("create")}
+              estimate={
+                <FlowEstimate
+                  caption="Pulse + Details on this page's knobs. One place."
+                  estimate={createCost}
+                />
+              }
               footer="No knobs of its own. Everything Create does is a function below, and the semantic pair rides along outside the 0–9 count."
             />
           </SectionCard>
@@ -366,6 +383,12 @@ export function IntakeClient({
                 },
               ]}
               steps={chipsFor("enrich")}
+              estimate={
+                <FlowEstimate
+                  caption="Collect, analyze, links and reviews as set below. Five places per tick."
+                  estimate={enrichCost}
+                />
+              }
               footer={
                 <>
                   What a run is allowed to buy is not set here. That lives in{" "}

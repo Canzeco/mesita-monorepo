@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   chipsFor,
@@ -62,5 +64,15 @@ describe("intake subfunctions", () => {
     expect(flowTagFor("pulse")).toBe("Create + Enrich");
     expect(flowTagFor("menu")).toBe("Enrich");
     expect(flowTagFor("name")).toBe("Create + Enrich");
+  });
+});
+
+describe("Create and Enrich boxes pin live estimates", () => {
+  it("renders a FlowEstimate on both instances", () => {
+    const src = readFileSync(join(__dirname, "IntakeClient.tsx"), "utf8");
+    expect(src.match(/FlowEstimate/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(src).toContain("computeCreateCost");
+    expect(src).toContain("computeEnrichTickCost");
+    expect(src).not.toContain("type=\"number\"");
   });
 });
