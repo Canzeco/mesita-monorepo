@@ -221,7 +221,7 @@ async function runTool(
           mode: "insert",
           patch: {
             consumer_id: consumerId,
-            place_id: placeId,
+            project_id: placeId,
             reference_code: generateReservationCode(),
             reserved_at: reservedAt.toISOString(),
             party_size: partySize,
