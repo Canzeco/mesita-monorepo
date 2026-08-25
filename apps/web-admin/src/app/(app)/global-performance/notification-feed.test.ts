@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { NotificationItem, NotificationType } from "./actions";
 import {
   groupConsecutiveSteps,
+  intakeStatusLine,
   pinReports,
+  showCategoryOnCompact,
   typesForFetch,
   typesInDomain,
 } from "./notification-feed";
@@ -66,6 +68,54 @@ describe("pinReports", () => {
       reports: [r],
       rest: [a, b],
     });
+  });
+});
+
+describe("intakeStatusLine", () => {
+  it("prints Seeded · Listed for a created catalog place, never claimed", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: { status: "active", listingType: "unclaimed", claimed: false },
+    });
+    expect(intakeStatusLine(created)).toBe("Seeded · Listed");
+    expect(intakeStatusLine(created)).not.toMatch(/claim/i);
+    expect(intakeStatusLine(created)).not.toMatch(/new place/i);
+  });
+
+  it("prints Unlisted when projects.status is not active/lead", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: { status: "paused" },
+    });
+    expect(intakeStatusLine(created)).toBe("Seeded · Unlisted");
+  });
+
+  it("appends Enriched when the create payload already ran", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: { status: "lead", enriched: true },
+    });
+    expect(intakeStatusLine(created)).toBe("Seeded · Listed · Enriched");
+  });
+
+  it("names ownership proof Verified", () => {
+    expect(
+      intakeStatusLine(item({ id: "v", type: "atlas.ownership_claimed" })),
+    ).toBe("Verified");
+  });
+});
+
+describe("showCategoryOnCompact", () => {
+  it("hides category on Intake rows so it cannot pass as a status", () => {
+    expect(
+      showCategoryOnCompact(item({ id: "c", type: "atlas.place_created" })),
+    ).toBe(false);
+    expect(
+      showCategoryOnCompact(item({ id: "s", type: "consumer.place_saved" })),
+    ).toBe(true);
   });
 });
 

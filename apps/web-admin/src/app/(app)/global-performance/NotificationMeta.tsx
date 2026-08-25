@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { CheckCircle2, Clock, ExternalLink, XCircle } from "lucide-react";
 import type { NotificationItem } from "./actions";
 import { enricherPhase } from "./notification-enricher-phase";
+import { TONES } from "./notification-config";
+import { intakeFactChips } from "./notification-feed";
 
 const CLAIM_METHOD_LABEL: Record<string, string> = {
   ai_call: "Phone OTP",
@@ -14,9 +16,22 @@ export function MetaRow({ item }: { item: NotificationItem }) {
   const m = item.meta ?? {};
 
   if (item.type === "atlas.place_created") {
-    if (typeof m.listingType === "string") tags.push(<MetaTag key="lt">{m.listingType}</MetaTag>);
-    if (typeof m.status === "string") tags.push(<MetaTag key="st">{m.status}</MetaTag>);
-    if (m.enriched === true) tags.push(<MetaTag key="en">enriched</MetaTag>);
+    const FACT_TONE: Record<string, string> = {
+      seeded: TONES.indigo.chip,
+      listed: TONES.emerald.chip,
+      enriched: TONES.rose.chip,
+    };
+    for (const fact of intakeFactChips(item)) {
+      const tone =
+        fact.label === "Unlisted"
+          ? TONES.muted.chip
+          : (FACT_TONE[fact.key] ?? TONES.muted.chip);
+      tags.push(
+        <MetaTag key={fact.key} className={tone}>
+          {fact.label}
+        </MetaTag>,
+      );
+    }
   }
 
   if (item.type === "atlas.place_enriched") {

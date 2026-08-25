@@ -83,8 +83,8 @@ type TypeConfig = {
 
 export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
   "atlas.place_created": {
-    label: "New place created",
-    shortLabel: "New place",
+    label: "Place seeded",
+    shortLabel: "Seeded",
     Icon: Building2,
     tone: TONES.indigo,
   },
@@ -95,8 +95,8 @@ export const TYPE_CONFIG: Record<NotificationType, TypeConfig> = {
     tone: TONES.rose,
   },
   "atlas.ownership_claimed": {
-    label: "Ownership claimed",
-    shortLabel: "Claimed",
+    label: "Ownership verified",
+    shortLabel: "Verified",
     Icon: BadgeCheck,
     tone: TONES.amber,
   },

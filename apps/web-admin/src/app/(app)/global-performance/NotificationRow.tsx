@@ -10,7 +10,9 @@ import {
   REPORT_TYPE,
   STEP_TYPE,
   groupHasFailure,
+  intakeStatusLine,
   reportReasonLabel,
+  showCategoryOnCompact,
 } from "./notification-feed";
 
 export function NotificationRow({
@@ -65,7 +67,10 @@ function verbFor(item: NotificationItem): string {
     if (phase) return phase.label;
     return TYPE_CONFIG[STEP_TYPE].shortLabel;
   }
-  return (TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG).shortLabel;
+  return (
+    intakeStatusLine(item) ??
+    (TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG).shortLabel
+  );
 }
 
 function ExpandableRow({
@@ -131,7 +136,7 @@ function ExpandableRow({
           </span>
           <span className={`mt-0.5 block truncate text-xs ${tone.kicker}`}>
             {verb}
-            {place?.categoryLabel && !group ? (
+            {place?.categoryLabel && !group && showCategoryOnCompact(item) ? (
               <span className="text-muted-foreground font-normal">
                 {" "}
                 · {place.categoryLabel}
@@ -220,9 +225,8 @@ function ExpandedBody({
 }
 
 function ActorLine({ item }: { item: NotificationItem }) {
-  if (item.type === "atlas.place_created" && !item.actor) {
-    return <p className="text-muted-foreground text-xs">Unclaimed</p>;
-  }
+  // No owner on create is the catalog default (seeded / listed), not a
+  // missing "claim". Unclaimed is listing_type — it is not a status fact.
   if (!item.actor) return null;
   if (item.actor === "Intaker") return null;
 
@@ -230,7 +234,7 @@ function ActorLine({ item }: { item: NotificationItem }) {
     item.type === "atlas.place_created"
       ? "Owner"
       : item.type === "atlas.ownership_claimed"
-        ? "Claimed by"
+        ? "Verified by"
         : "By";
 
   return (
