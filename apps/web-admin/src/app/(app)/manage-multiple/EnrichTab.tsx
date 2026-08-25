@@ -9,22 +9,13 @@ import {
   type LinkCounts,
 } from "../enricher-config/cost-model";
 import type { SynthesisQuality } from "../enricher-config/actions";
-import { enrichPlace, type ReenrichMode } from "../manage-single/actions";
-import { REENRICH_MODES } from "../manage-single/reenrich-modes";
+import { enrichPlace } from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
 
 const PROJECT_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_IDS = 100;
 const CONCURRENCY = 4;
-
-// Lighter modes skip gather (and contents skips analysis). Factors are
-// approximate — the banner is a spend bound, not a bill.
-const MODE_COST_FACTOR: Record<ReenrichMode, number> = {
-  full: 1,
-  analysis: 0.35,
-  contents: 0.08,
-};
 
 type RowStatus =
   | { status: "pending" }
@@ -42,8 +33,6 @@ export type EnrichCostSeed = {
   links: LinkCounts;
 };
 
-const MODES = REENRICH_MODES;
-
 export function EnrichTab({
   costSeed,
   text,
@@ -54,7 +43,6 @@ export function EnrichTab({
   onTextChange: (next: string) => void;
 }) {
   const setText = onTextChange;
-  const [mode, setMode] = useState<ReenrichMode>("full");
   const [results, setResults] = useState<Record<string, RowStatus>>({});
   const [running, setRunning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -79,13 +67,12 @@ export function EnrichTab({
       ...costSeed,
       places: projectIds.length,
     });
-    const factor = MODE_COST_FACTOR[mode];
     return {
-      total: base.total * factor,
-      perPlace: base.perPlace * factor,
-      totalSecs: base.totalSecs * factor,
+      total: base.total,
+      perPlace: base.perPlace,
+      totalSecs: base.totalSecs,
     };
-  }, [costSeed, projectIds.length, mode]);
+  }, [costSeed, projectIds.length]);
 
   const done = projectIds.filter((id) => {
     const s = results[id]?.status;
@@ -115,7 +102,7 @@ export function EnrichTab({
         const id = ids[cursor++];
         setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
         try {
-          const r = await enrichPlace(id, mode);
+          const r = await enrichPlace(id, "full");
           setResults((prev) => ({
             ...prev,
             [id]: r.ok
@@ -147,49 +134,12 @@ export function EnrichTab({
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Paste place IDs (one per line) or upload a list. Each row queues the
-        same re-enrich pipeline as the single-place control — the Intaker cron
-        runs async after trigger. Caps and models are the stored Intake
-        settings; the console for them is empty, and what each one means lives
-        in Notion Docs › Intake.
+        Paste place IDs (one per line) or upload a list. First time is Enrich.
+        Again is Re-enrich. Same full Intaker run either way — gather, then
+        write. Caps and models are the stored Intake settings.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
-        <fieldset disabled={running}>
-          <legend className="text-sm font-medium">Mode</legend>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {MODES.map((m) => {
-              const selected = mode === m.value;
-              return (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMode(m.value)}
-                  className={
-                    selected
-                      ? "border-foreground bg-foreground/5 rounded-xl border px-3 py-3 text-left"
-                      : "border-border hover:border-foreground/40 rounded-xl border px-3 py-3 text-left transition"
-                  }
-                >
-                  <span className="block text-sm font-semibold">{m.label}</span>
-                  <span className="text-muted-foreground mt-1 block type-label leading-snug">
-                    {m.hint}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        {MODES.find((m) => m.value === mode)?.needsPriorRun && (
-          <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-            This mode reuses what an earlier full run stored. Any place without
-            that payload is refused — it is not silently upgraded to a full run,
-            so a list that never enriched comes back all failures. Run Full on
-            those first.
-          </p>
-        )}
-
         <label className="mt-6 block text-sm font-medium" htmlFor="enrich-place-ids">
           Place IDs
         </label>
@@ -236,9 +186,7 @@ export function EnrichTab({
             </p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               ~{money(estimate.perPlace)} / place at the current Intake
-              settings{mode !== "full" ? " (scaled for lighter mode)" : ""}.
-              Approximate — not a bill. This estimate is the last calculator
-              standing: the box on the Intake page went with its knobs.
+              settings. Approximate — not a bill.
             </p>
           </div>
         ) : costSeed === null ? (

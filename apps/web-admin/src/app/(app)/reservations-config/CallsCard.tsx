@@ -86,7 +86,7 @@ export function CallsCard({
           help={
             cfg.respectAdminOverride
               ? undefined
-              : "Next enrich overwrites contacts an operator chose."
+              : "The next Enrich or Re-enrich overwrites contacts an operator chose."
           }
           danger={!cfg.respectAdminOverride}
           on={cfg.respectAdminOverride}

@@ -150,7 +150,7 @@ export function MultiplePlacesClient({
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Re-run the Intaker over many places. Pick a mode and see the spend before you queue."
+        blurb="Enrich, or Re-enrich. Same full Intaker run. See the spend before you queue."
       >
         <EnrichTab
           costSeed={costSeed}
