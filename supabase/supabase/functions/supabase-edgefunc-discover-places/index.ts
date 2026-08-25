@@ -33,6 +33,7 @@ import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
   evaluatePlaceForChannel,
+  parseCldrRegionCode,
   readChannelPolicy,
   type ChannelPolicy,
 } from "../_shared/sourcing.ts";
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  const regionCode = ((body.regionCode ?? "MX") || "MX").toUpperCase();
+  const regionCode = parseCldrRegionCode(body.regionCode);
   const maxResults = Math.min(
     MAX_RESULTS_PER_QUERY,
     Math.max(1, body.maxResultsPerQuery ?? MAX_RESULTS_PER_QUERY),
@@ -142,7 +143,6 @@ Deno.serve(async (req) => {
       try {
         const fetched = await searchTextWithPagination(
           q,
-          adminSearchPolicy,
           maxResults,
           apiKey,
           regionCode,
@@ -266,7 +266,7 @@ function passesSourcingFilter(
     primaryType: p.primaryType,
     rating: p.rating,
     reviewCount: p.userRatingCount,
-  }, { lat: p.lat, lng: p.lng }).eligible;
+  }).eligible;
 }
 
 function clamp(n: number, lo: number, hi: number): number {

@@ -33,8 +33,8 @@ export function ResultSummary({
             unique {result.uniqueCount === 1 ? "Place ID" : "Place IDs"} · from{" "}
             {result.queries.length}{" "}
             {result.queries.length === 1 ? "query" : "queries"}
-            {duplicatesCount > 0 && <> · {duplicatesCount} duplicates filtered</>}{" "}
-            · region {result.regionCode}
+            {duplicatesCount > 0 && <> · {duplicatesCount} duplicates filtered</>}
+            {result.regionCode ? <> · region {result.regionCode}</> : null}
             {result.mesitaLookupError === null && (
               <>
                 {" · "}

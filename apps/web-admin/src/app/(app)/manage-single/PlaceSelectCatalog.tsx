@@ -25,6 +25,7 @@ import { placeSectionHref } from "./nav";
 import { PlaceThumb } from "./PlaceEditChrome";
 import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
 import { ErrorNote } from "@/components/ErrorNote";
+import { CldrRegionInput } from "@/components/CldrRegionInput";
 
 // Minimum characters before a query triggers Mesita/Google search logic.
 const MIN_QUERY_LENGTH = 2;
@@ -72,6 +73,7 @@ export function PlaceSelectCatalog() {
   // The Google prediction awaiting an explicit "Add to Mesita" confirmation.
   // Set only for creatable (not_in_mesita) results — existing places open directly.
   const [confirm, setConfirm] = useState<PlacePrediction | null>(null);
+  const [regionCode, setRegionCode] = useState("");
 
   const trimmed = q.trim();
   const placeIdMode = looksLikePlaceId(trimmed);
@@ -101,7 +103,7 @@ export function PlaceSelectCatalog() {
 
     const id = ++googleRequestIdRef.current;
     void (async () => {
-      const r = await suggestPlaces(query, sessionTokenRef.current);
+      const r = await suggestPlaces(query, sessionTokenRef.current, regionCode);
       if (id !== googleRequestIdRef.current) return;
       if (!r.ok) {
         setGoogleRemoteError({ query, message: r.error });
@@ -110,7 +112,7 @@ export function PlaceSelectCatalog() {
       setGoogleRemoteError(null);
       setGoogleRemote({ query, predictions: r.data });
     })();
-  }, [debouncedQuery]);
+  }, [debouncedQuery, regionCode]);
 
   const googleReady = googleRemote !== null && googleRemote.query === trimmed;
   const googleFailed =
@@ -227,6 +229,7 @@ export function PlaceSelectCatalog() {
               spellCheck={false}
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
             />
+            <CldrRegionInput value={regionCode} onChange={setRegionCode} />
             {(anySearching) && trimmed.length >= MIN_QUERY_LENGTH && (
               <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
             )}

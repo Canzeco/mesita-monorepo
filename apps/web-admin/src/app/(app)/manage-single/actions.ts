@@ -777,14 +777,17 @@ export type PlacePrediction = {
 export async function suggestPlaces(
   input: string,
   sessionToken: string,
+  regionCode?: string,
 ): Promise<Result<PlacePrediction[]>> {
   const q = (input ?? "").trim();
   if (q.length < 2) return { ok: true, data: [] };
   if (!sessionToken.trim()) return { ok: false, error: "Missing session token" };
 
+  const code = (regionCode ?? "").trim().toUpperCase();
   const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-web-suggest-places", {
     input: q,
     sessionToken,
+    ...(code.length === 2 ? { regionCode: code } : {}),
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.predictions ?? [] };

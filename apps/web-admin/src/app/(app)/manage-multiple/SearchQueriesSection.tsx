@@ -1,3 +1,4 @@
+import { CldrRegionInput } from "@/components/CldrRegionInput";
 import { EXAMPLE_QUERIES, MAX_QUERIES } from "./search-tab-constants";
 import { StepHeading } from "./SearchFormPrimitives";
 
@@ -7,18 +8,22 @@ export function SearchQueriesSection({
   estimatedApiCalls,
   overLimit,
   onQueriesTextChange,
+  regionCode,
+  onRegionCodeChange,
 }: {
   queriesText: string;
   queriesCount: number;
   estimatedApiCalls: number;
   overLimit: boolean;
   onQueriesTextChange: (value: string) => void;
+  regionCode: string;
+  onRegionCodeChange: (value: string) => void;
 }) {
   return (
     <div className="space-y-3">
       <StepHeading
         title="Queries"
-        hint="One search per line. Duplicates and blank lines are ignored."
+        hint="One search per line. Duplicates and blank lines are ignored. Optional country sits on this bar — Google does not require it."
       />
       <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
         <div>
@@ -61,6 +66,10 @@ export function SearchQueriesSection({
                 </>
               )}
             </div>
+            <CldrRegionInput
+              value={regionCode}
+              onChange={onRegionCodeChange}
+            />
           </div>
         </div>
       </div>
