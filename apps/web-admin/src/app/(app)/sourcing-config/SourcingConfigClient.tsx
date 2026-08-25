@@ -1,13 +1,17 @@
 "use client";
 
-import { Globe, Layers, Lock, Star, Users } from "lucide-react";
+import { Layers, MapPin, Star, Users } from "lucide-react";
 import { formatShortDate } from "@/lib/format";
 import { SectionCard, Switch } from "@/components/admin-ui/config";
 import {
   ALL_FAMILY_KEYS,
+  applyRegionToAll,
   CHANNELS,
-  DEFAULT_REGION,
+  channelsShareRegion,
   FAMILIES,
+  matchRegionCity,
+  REGION_CITIES,
+  sharedRegion,
   type ChannelKey,
   type FamilyKey,
   type RegionPolicy,
@@ -20,7 +24,7 @@ function enforcedLiveCopy(): string {
   const live = CHANNELS.filter((c) => c.live);
   const pending = CHANNELS.filter((c) => !c.live);
   if (live.length === CHANNELS.length) {
-    return "Enforced live today: every floor, family and region above gates real search / add traffic.";
+    return "Enforced live today: every floor, family and the one area above gate real search / add traffic.";
   }
   if (live.length === 0) {
     return "No channels are marked enforced live yet.";
@@ -31,7 +35,7 @@ function enforcedLiveCopy(): string {
 const ACTORS = [...new Set(CHANNELS.map((c) => c.actor))];
 
 const ROW =
-  "grid grid-cols-[4.5rem_minmax(7rem,1fr)_minmax(10.5rem,13rem)_4.75rem_5.75rem_2.75rem] items-start gap-x-3";
+  "grid grid-cols-[4.5rem_minmax(7rem,1fr)_4.75rem_5.75rem_2.75rem] items-start gap-x-3";
 
 // CONTROLLED. Intake owns the config and the one Save button on the page, so
 // this renders the matrix and nothing else — no state, no fetch, no save. It
@@ -76,6 +80,12 @@ export function SourcingChannels({
 
   const body = (
     <>
+      <WhereBar
+        region={sharedRegion(cfg)}
+        shared={channelsShareRegion(cfg)}
+        disabled={pending}
+        onChange={(region) => onChange(applyRegionToAll(cfg, region))}
+      />
       <div className="mt-5">
         <div
           className={
@@ -84,9 +94,6 @@ export function SourcingChannels({
         >
           <span />
           <span>Families</span>
-          <span className="inline-flex items-center gap-1">
-            <Globe className="h-3 w-3" /> Region
-          </span>
           <span className="inline-flex items-center justify-end gap-1">
             <Star className="h-3 w-3" /> Min ★
           </span>
@@ -171,11 +178,6 @@ export function SourcingChannels({
                         </p>
                       )}
                     </div>
-                    <RegionCell
-                      region={p.region ?? DEFAULT_REGION}
-                      disabled={off || pending}
-                      onChange={(region) => patch(ch.key, "region", region)}
-                    />
                     <div className="flex justify-end">
                       <FloorInput
                         value={p.minRating}
@@ -223,7 +225,7 @@ export function SourcingChannels({
     <SectionCard
       icon={<Layers className="text-secondary h-4 w-4" />}
       title="Channels"
-      subtitle="Search = what may appear in that surface's searchbar. Add = what may be onboarded. Floors are Google rating / review counts; 0 = no floor. Region is the Places country + optional circle; lock is a hard fence."
+      subtitle="Search = what may appear in that surface's searchbar. Add = what may be onboarded. Floors are Google rating / review counts; 0 = no floor. Where is one country + city (or whole country) for every row."
       status={
         updatedAt ? (
           <span className="text-muted-foreground text-xs">
@@ -237,19 +239,40 @@ export function SourcingChannels({
   );
 }
 
-function RegionCell({
+function WhereBar({
   region,
+  shared,
   disabled,
   onChange,
 }: {
   region: RegionPolicy;
+  shared: boolean;
   disabled: boolean;
   onChange: (next: RegionPolicy) => void;
 }) {
   const set = (patch: Partial<RegionPolicy>) => onChange({ ...region, ...patch });
+  const countryOn = region.country.trim() !== "";
+  const cityId = matchRegionCity(region);
+  const placeValue =
+    !countryOn || region.radiusKm === 0 ? "country" : cityId;
+  const showPin = countryOn && region.radiusKm > 0 && cityId === "custom";
+
   return (
-    <div className="min-w-0 space-y-1">
-      <div className="flex items-center gap-1">
+    <div className="border-border mt-5 rounded-lg border px-3 py-2.5">
+      <div className="mb-2 flex items-center gap-1.5">
+        <MapPin className="text-muted-foreground h-3.5 w-3.5" />
+        <span className="text-sm font-medium">Where</span>
+        <span className="text-muted-foreground text-xs">
+          one area for every Search and Add
+        </span>
+      </div>
+      {!shared && (
+        <p className="text-muted-foreground mb-2 text-xs">
+          Channels had different areas — editing here applies one area to all of
+          them.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
           inputMode="text"
@@ -260,91 +283,143 @@ function RegionCell({
           aria-label="Country"
           title="CLDR country (MX). Empty = off."
           onChange={(e) => {
-            const raw = e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 2);
+            const raw = e.target.value
+              .replace(/[^a-zA-Z]/g, "")
+              .toUpperCase()
+              .slice(0, 2);
             set({ country: raw });
           }}
           className="border-border bg-card focus:border-foreground h-9 w-11 rounded-lg border px-1.5 text-center text-sm uppercase tabular-nums outline-none placeholder:text-xs placeholder:normal-case placeholder:font-normal disabled:cursor-not-allowed"
         />
-        <input
-          type="number"
-          inputMode="decimal"
-          min={0}
-          max={2000}
-          step={1}
-          value={region.radiusKm === 0 ? "" : region.radiusKm}
-          placeholder="km"
-          disabled={disabled}
-          aria-label="Radius kilometers"
-          title="Circle radius. 0 = country only. Guest pin, if present, is the centre."
+        <select
+          value={placeValue}
+          disabled={disabled || !countryOn}
+          aria-label="Area"
           onChange={(e) => {
-            const raw = e.target.value;
-            if (raw === "") {
+            const v = e.target.value;
+            if (v === "country") {
               set({ radiusKm: 0 });
               return;
             }
-            const n = Number(raw);
-            if (Number.isNaN(n)) return;
-            set({ radiusKm: Math.min(2000, Math.max(0, Math.round(n * 10) / 10)) });
+            if (v === "custom") {
+              set({
+                radiusKm: region.radiusKm > 0 ? region.radiusKm : 40,
+              });
+              return;
+            }
+            const city = REGION_CITIES.find((c) => c.id === v);
+            if (!city) return;
+            set({
+              lat: city.lat,
+              lng: city.lng,
+              radiusKm: region.radiusKm > 0 ? region.radiusKm : 40,
+            });
           }}
-          className="border-border bg-card focus:border-foreground h-9 w-14 rounded-lg border px-1.5 text-right text-sm tabular-nums outline-none placeholder:text-xs placeholder:font-normal disabled:cursor-not-allowed"
-        />
-        <button
-          type="button"
-          disabled={disabled}
-          aria-pressed={region.restrict}
-          title={
-            region.restrict
-              ? "Lock on: Google restriction + add-path reject outsiders"
-              : "Lock off: Google bias only — outsiders may still appear"
-          }
-          onClick={() => set({ restrict: !region.restrict })}
-          className={
-            "inline-flex h-9 w-9 items-center justify-center rounded-lg border type-label disabled:cursor-not-allowed " +
-            (region.restrict
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted-foreground hover:bg-muted")
-          }
+          className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:cursor-not-allowed"
         >
-          <Lock className="h-3.5 w-3.5" aria-hidden />
-          <span className="sr-only">Lock region</span>
-        </button>
+          <option value="country">Whole country</option>
+          {REGION_CITIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+          <option value="custom">Custom pin</option>
+        </select>
+        {countryOn && region.radiusKm > 0 && (
+          <label className="text-muted-foreground flex items-center gap-1 text-xs">
+            <input
+              type="number"
+              inputMode="decimal"
+              min={1}
+              max={2000}
+              step={1}
+              value={region.radiusKm}
+              disabled={disabled}
+              aria-label="Radius kilometers"
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isNaN(n)) return;
+                set({
+                  radiusKm: Math.min(2000, Math.max(1, Math.round(n * 10) / 10)),
+                });
+              }}
+              className="border-border bg-card focus:border-foreground h-9 w-14 rounded-lg border px-1.5 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
+            />
+            km
+          </label>
+        )}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={disabled || !countryOn}
+            aria-pressed={!region.restrict}
+            onClick={() => set({ restrict: false })}
+            className={
+              "h-9 rounded-lg border px-2.5 type-label disabled:cursor-not-allowed " +
+              (!region.restrict
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:bg-muted")
+            }
+          >
+            Prefer
+          </button>
+          <button
+            type="button"
+            disabled={disabled || !countryOn}
+            aria-pressed={region.restrict}
+            onClick={() => set({ restrict: true })}
+            className={
+              "h-9 rounded-lg border px-2.5 type-label disabled:cursor-not-allowed " +
+              (region.restrict
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:bg-muted")
+            }
+          >
+            Only this area
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-1">
-        <input
-          type="number"
-          inputMode="decimal"
-          step={0.0001}
-          min={-90}
-          max={90}
-          value={region.lat}
-          disabled={disabled}
-          aria-label="Latitude"
-          title="Fallback circle centre when the guest has no pin"
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (Number.isNaN(n)) return;
-            set({ lat: Math.round(Math.min(90, Math.max(-90, n)) * 10000) / 10000 });
-          }}
-          className="border-border bg-card focus:border-foreground h-8 min-w-0 flex-1 rounded-lg border px-1.5 text-right type-meta tabular-nums outline-none disabled:cursor-not-allowed"
-        />
-        <input
-          type="number"
-          inputMode="decimal"
-          step={0.0001}
-          min={-180}
-          max={180}
-          value={region.lng}
-          disabled={disabled}
-          aria-label="Longitude"
-          title="Fallback circle centre when the guest has no pin"
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (Number.isNaN(n)) return;
-            set({ lng: Math.round(Math.min(180, Math.max(-180, n)) * 10000) / 10000 });
-          }}
-          className="border-border bg-card focus:border-foreground h-8 min-w-0 flex-1 rounded-lg border px-1.5 text-right type-meta tabular-nums outline-none disabled:cursor-not-allowed"
-        />
-      </div>
+      {showPin && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.0001}
+            min={-90}
+            max={90}
+            value={region.lat}
+            disabled={disabled}
+            aria-label="Latitude"
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isNaN(n)) return;
+              set({
+                lat: Math.round(Math.min(90, Math.max(-90, n)) * 10000) / 10000,
+              });
+            }}
+            className="border-border bg-card focus:border-foreground h-9 w-28 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
+          />
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.0001}
+            min={-180}
+            max={180}
+            value={region.lng}
+            disabled={disabled}
+            aria-label="Longitude"
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (Number.isNaN(n)) return;
+              set({
+                lng:
+                  Math.round(Math.min(180, Math.max(-180, n)) * 10000) / 10000,
+              });
+            }}
+            className="border-border bg-card focus:border-foreground h-9 w-28 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
+          />
+        </div>
+      )}
     </div>
   );
 }
