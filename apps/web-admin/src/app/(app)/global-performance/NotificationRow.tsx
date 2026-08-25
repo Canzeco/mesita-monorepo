@@ -5,12 +5,12 @@ import { formatAbsoluteUtc, timeAgo } from "@/lib/format";
 import type { NotificationItem } from "./actions";
 import { MetaRow } from "./NotificationMeta";
 import { enricherPhase } from "./notification-enricher-phase";
-import { TYPE_CONFIG, UNKNOWN_TYPE_CONFIG } from "./notification-config";
+import { TONES, TYPE_CONFIG, UNKNOWN_TYPE_CONFIG } from "./notification-config";
 import {
   REPORT_TYPE,
   STEP_TYPE,
   groupHasFailure,
-  intakeStatusLine,
+  intakeFactChips,
   reportReasonLabel,
   showCategoryOnCompact,
 } from "./notification-feed";
@@ -67,10 +67,7 @@ function verbFor(item: NotificationItem): string {
     if (phase) return phase.label;
     return TYPE_CONFIG[STEP_TYPE].shortLabel;
   }
-  return (
-    intakeStatusLine(item) ??
-    (TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG).shortLabel
-  );
+  return (TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG).shortLabel;
 }
 
 function ExpandableRow({
@@ -134,15 +131,18 @@ function ExpandableRow({
               {when}
             </time>
           </span>
-          <span className={`mt-0.5 block truncate text-xs ${tone.kicker}`}>
+          <span className={`mt-0.5 block truncate text-xs ${failed ? tone.kicker : "text-muted-foreground"}`}>
             {verb}
             {place?.categoryLabel && !group && showCategoryOnCompact(item) ? (
-              <span className="text-muted-foreground font-normal">
+              <span className="font-normal">
                 {" "}
                 · {place.categoryLabel}
               </span>
             ) : null}
           </span>
+          {!group && item.type.startsWith("atlas.") ? (
+            <CompactStatusChips item={item} />
+          ) : null}
         </span>
         <ChevronDown
           className={
@@ -224,8 +224,28 @@ function ExpandedBody({
   );
 }
 
+function CompactStatusChips({ item }: { item: NotificationItem }) {
+  const general = intakeFactChips(item);
+  if (general.length === 0) return null;
+  return (
+    <span className="mt-1.5 flex flex-wrap gap-1">
+      {general.map((chip) => (
+        <span
+          key={chip.key}
+          className={
+            "inline-flex rounded px-1.5 py-0.5 type-meta font-medium " +
+            (chip.on ? TONES.indigo.chip : TONES.muted.chip)
+          }
+        >
+          {chip.label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ActorLine({ item }: { item: NotificationItem }) {
-  // No owner on create is the catalog default (seeded / listed), not a
+  // No owner on create is the catalog default (Created / Listed), not a
   // missing "claim". Unclaimed is listing_type — it is not a status fact.
   if (!item.actor) return null;
   if (item.actor === "Intaker") return null;

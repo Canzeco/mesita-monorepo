@@ -26,7 +26,7 @@ describe("intake subfunctions", () => {
     ]);
   });
 
-  it("Create awaits four; Enrich is ten sequential ticks", () => {
+  it("Create is Seed · Pulse · Details · Semantics; Enrich is 1–10", () => {
     expect(chipsFor("create").map((c) => c.label)).toEqual([
       "0 Seed",
       "1 Pulse",

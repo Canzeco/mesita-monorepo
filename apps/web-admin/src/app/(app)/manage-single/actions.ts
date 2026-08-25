@@ -47,7 +47,7 @@ export type PlaceHit = {
   content_status: string | null;
   listing_type: string | null;
   // ── The seven status facts the catalog table renders, in order:
-  //    Seeded · Active · Listed · Enriched · Verified · Partner · Promoting.
+  //    Created · Active · Listed · Enriched · Verified · Partner · Promoting.
   //    All derived (or projected) in admin-web-search-places.
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;

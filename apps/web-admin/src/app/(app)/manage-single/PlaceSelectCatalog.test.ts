@@ -6,13 +6,13 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("Manage Single catalog status columns", () => {
-  it("is Seeded · Active · Listed · Enriched · Verified · Partner · Promoting", () => {
+  it("is Created · Active · Listed · Enriched · Verified · Partner · Promoting", () => {
     const src = readFileSync(join(here, "PlaceSelectCatalog.tsx"), "utf8");
     const headers = [...src.matchAll(/<th className="px-4 py-3 text-center font-semibold">(\w+)<\/th>/g)].map(
       (m) => m[1],
     );
     expect(headers).toEqual([
-      "Seeded",
+      "Created",
       "Active",
       "Listed",
       "Enriched",
