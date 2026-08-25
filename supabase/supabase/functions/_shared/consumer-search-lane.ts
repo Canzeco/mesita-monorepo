@@ -47,6 +47,7 @@ import {
   rankByNameCosine,
 } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
+import { radiusBoundingBox } from "./geo.ts";
 
 export const SEARCH_LANE_CAP = 10;
 
@@ -266,7 +267,7 @@ export async function runConsumerSearchLane(
 
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
 
-  const [googleAuto, googleText, catalog, queryVec] = await Promise.all([
+  const [googleAuto, googleText, stamp, embedPool, queryVec] = await Promise.all([
     typeFilter === "skip"
       ? Promise.resolve({ predictions: [] as LaneItem[], errorEnvelope: undefined })
       : fetchAutocomplete(
@@ -281,22 +282,23 @@ export async function runConsumerSearchLane(
     typeFilter === "skip"
       ? Promise.resolve([] as LaneItem[])
       : fetchTextSearch(input, apiKey, policy, origin, args.country),
-    fetchListedCatalog(admin),
+    fetchStampCatalog(admin),
+    fetchEmbedPool(admin, origin),
     embedQueryVector(admin, input, openaiKey),
   ]);
 
-  if (googleAuto.errorEnvelope && googleText.length === 0 && catalog.length === 0) {
+  if (googleAuto.errorEnvelope && googleText.length === 0 && stamp.length === 0) {
     return json(googleAuto.errorEnvelope);
   }
 
   const byGoogleId = new Map<string, ListedRow>();
-  for (const row of catalog) {
+  for (const row of stamp) {
     if (row.google_place_id) byGoogleId.set(row.google_place_id, row);
   }
 
   const nameHits = queryVec
     ? takeAboveFloor(
-      rankByNameCosine(catalog, queryVec),
+      rankByNameCosine(embedPool, queryVec),
       queryVec,
       "name",
       NAME_MIN_COSINE,
@@ -305,7 +307,7 @@ export async function runConsumerSearchLane(
     : [];
   const summaryHits = queryVec
     ? takeAboveFloor(
-      rankByCosine(catalog, queryVec),
+      rankByCosine(embedPool, queryVec),
       queryVec,
       "summary",
       SUMMARY_MIN_COSINE,
@@ -375,29 +377,58 @@ async function embedQueryVector(
   }
 }
 
-const CATALOG_PAGE = 1000;
+const STAMP_COLUMNS =
+  "id, slug, google_place_id, name, address, lat, lng, plan";
+const EMBED_COLUMNS = STAMP_COLUMNS + ", name_embedding, embedding";
+const STAMP_PAGE = 1000;
+/** In-process cosine budget — same order as recall-places, not every vector. */
+const EMBED_POOL = 300;
+const EMBED_RADIUS_KM = 40;
 
-async function fetchListedCatalog(admin: SupabaseClient): Promise<ListedRow[]> {
+async function fetchStampCatalog(admin: SupabaseClient): Promise<ListedRow[]> {
   const rows: ListedRow[] = [];
   let from = 0;
   for (;;) {
     const { data, error } = await admin
       .from("profiles")
-      .select(
-        "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding",
-      )
+      .select(STAMP_COLUMNS)
       .in("status", ["active", "lead"])
-      .range(from, from + CATALOG_PAGE - 1);
+      .range(from, from + STAMP_PAGE - 1);
     if (error) {
-      console.error("[consumer-search-lane] catalog:", error.message);
+      console.error("[consumer-search-lane] stamp:", error.message);
       return rows;
     }
     const page = (data ?? []) as ListedRow[];
     rows.push(...page);
-    if (page.length < CATALOG_PAGE) break;
-    from += CATALOG_PAGE;
+    if (page.length < STAMP_PAGE) break;
+    from += STAMP_PAGE;
   }
   return rows;
+}
+
+async function fetchEmbedPool(
+  admin: SupabaseClient,
+  origin: { lat: number; lng: number } | null,
+): Promise<ListedRow[]> {
+  let query = admin
+    .from("profiles")
+    .select(EMBED_COLUMNS)
+    .in("status", ["active", "lead"])
+    .not("name_embedding", "is", null);
+  if (origin) {
+    const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
+    query = query
+      .gte("lat", origin.lat - latDelta)
+      .lte("lat", origin.lat + latDelta)
+      .gte("lng", origin.lng - lngDelta)
+      .lte("lng", origin.lng + lngDelta);
+  }
+  const { data, error } = await query.limit(EMBED_POOL);
+  if (error) {
+    console.error("[consumer-search-lane] embed pool:", error.message);
+    return [];
+  }
+  return (data ?? []) as unknown as ListedRow[];
 }
 
 async function fetchAutocomplete(

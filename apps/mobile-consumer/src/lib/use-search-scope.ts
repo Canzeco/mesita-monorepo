@@ -1,47 +1,90 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useSyncExternalStore } from 'react';
 
 import {
   DEFAULT_SEARCH_COUNTRY,
-  readStoredLocationOptOut,
-  readStoredSearchCountry,
-  writeStoredLocationOptOut,
-  writeStoredSearchCountry,
+  SEARCH_COUNTRY_KEY,
+  SEARCH_LOCATION_OPTOUT_KEY,
+  parseSearchCountry,
 } from '@/lib/search-scope';
 
-const SCOPE_EVENT = 'mesita-search-scope';
+type ScopeState = {
+  country: string | null;
+  locationOptOut: boolean;
+};
 
-function subscribe(onStoreChange: () => void) {
-  if (typeof window === 'undefined') return () => {};
-  window.addEventListener(SCOPE_EVENT, onStoreChange);
-  return () => window.removeEventListener(SCOPE_EVENT, onStoreChange);
+let state: ScopeState = {
+  country: DEFAULT_SEARCH_COUNTRY,
+  locationOptOut: false,
+};
+let hydrated = false;
+let hydrating: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+
+function emit() {
+  for (const listener of listeners) listener();
 }
 
-function emitScope() {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new Event(SCOPE_EVENT));
+async function hydrate(): Promise<void> {
+  if (hydrated) return;
+  if (hydrating) return hydrating;
+  hydrating = (async () => {
+    try {
+      const [countryRaw, optOutRaw] = await Promise.all([
+        AsyncStorage.getItem(SEARCH_COUNTRY_KEY),
+        AsyncStorage.getItem(SEARCH_LOCATION_OPTOUT_KEY),
+      ]);
+      if (countryRaw !== null) state = { ...state, country: parseSearchCountry(countryRaw) };
+      if (optOutRaw !== null) {
+        state = { ...state, locationOptOut: optOutRaw === '1' };
+      }
+    } catch {
+      /* degrade silently */
+    } finally {
+      hydrated = true;
+      hydrating = null;
+      emit();
+    }
+  })();
+  return hydrating;
+}
+
+function persist() {
+  void Promise.all([
+    AsyncStorage.setItem(SEARCH_COUNTRY_KEY, state.country ?? ''),
+    state.locationOptOut
+      ? AsyncStorage.setItem(SEARCH_LOCATION_OPTOUT_KEY, '1')
+      : AsyncStorage.removeItem(SEARCH_LOCATION_OPTOUT_KEY),
+  ]).catch(() => undefined);
+}
+
+function subscribe(listener: () => void): () => void {
+  void hydrate();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 export function useSearchScope() {
-  const country = useSyncExternalStore(
-    subscribe,
-    readStoredSearchCountry,
-    () => DEFAULT_SEARCH_COUNTRY,
-  );
-  const locationOptOut = useSyncExternalStore(
-    subscribe,
-    readStoredLocationOptOut,
-    () => false,
-  );
+  const snap = useSyncExternalStore(subscribe, () => state, () => state);
 
   const setCountry = useCallback((next: string | null) => {
-    writeStoredSearchCountry(next);
-    emitScope();
+    state = { ...state, country: next };
+    persist();
+    emit();
   }, []);
 
   const setLocationOptOut = useCallback((next: boolean) => {
-    writeStoredLocationOptOut(next);
-    emitScope();
+    state = { ...state, locationOptOut: next };
+    persist();
+    emit();
   }, []);
 
-  return { country, setCountry, locationOptOut, setLocationOptOut };
+  return {
+    country: snap.country,
+    locationOptOut: snap.locationOptOut,
+    setCountry,
+    setLocationOptOut,
+  };
 }
