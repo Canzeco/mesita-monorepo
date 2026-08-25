@@ -285,7 +285,7 @@ export function DiscoveryConfigClient({
           <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
             Each signal is a function: indexes in, one number in 0–1 out. The
             engine multiplies s^exponent. Exponent 0 turns the function off.
-            Missing intent abstains at 1 and drops out. Promoting is not a
+            Missing intent abstains at 1 and drops out. Promoted is not a
             function here: money never buys a score.
           </p>
         </Collapsible>

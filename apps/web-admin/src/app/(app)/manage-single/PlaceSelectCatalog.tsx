@@ -327,7 +327,7 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
                     <th className="px-4 py-3 text-center font-semibold">Partner</th>
-                    <th className="px-4 py-3 text-center font-semibold">Promoting</th>
+                    <th className="px-4 py-3 text-center font-semibold">Promoted</th>
                     <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
                 </thead>
