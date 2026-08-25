@@ -132,9 +132,8 @@ The singleton rule is the one that silently breaks. Check it first.
     Substitute the OLD name for the pattern; a hit means a stored body still names something
     that no longer exists:
     `with needle as (select '%OLD_NAME%'::text as pat) select 'function' as kind, n.nspname::text as where_, p.proname::text as name, l.lanname::text as lang from pg_proc p join pg_namespace n on n.oid = p.pronamespace join pg_language l on l.oid = p.prolang cross join needle where p.prosrc ilike needle.pat and n.nspname not in ('pg_catalog','information_schema') union all select 'cron_job', 'cron', j.jobname::text, 'command' from cron.job j cross join needle where j.command ilike needle.pat order by 1,2,3`
-    It over-reports by design — a body legitimately mentioning the new name that contains the
-    old one as a substring will match. Read the hits, do not count them. Grep beats parse here
-    precisely because it understands nothing.
+    Over-reports on substring hits — read them, do not count them. CI does not run a
+    shadow-DB `supabase db lint` (MESITA-1191 D3b).
 
 ## Scope 3 — Data integrity / incongruences · P1
 
@@ -251,24 +250,22 @@ reads to an operator as a control that does something.
     `package.json` instead of `pnpm-workspace.yaml` (pnpm 10+ ignores the former) ·
     known-vulnerable deps · Node/pnpm version pins.
 6.4 **Env parity.** Required env keys per app vs what each Vercel project has ·
-    every `Deno.env.get(...)` in EFs vs the Supabase secrets that exist. Names only —
-    **never read, print, or log a secret value.**
+    every `Deno.env.get(...)` in EFs vs the Supabase secrets that exist ·
+    `vault.secrets` names must not match n8n / serper / tripadvisor (MESITA-709).
+    Names only — **never read, print, or log a secret value.**
 6.5 **Vercel wiring.** All 5 projects → `Canzeco/mesita-monorepo`, Root Directory
     `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
-6.7 **Git surface.** Local branches and worktrees on the operator's Mac, open PRs older
-    than 7 days, branches whose issue is already closed. Platform-managed worktrees live in
-    `.claude/worktrees/` inside the repo (plus stray detached checkouts in tmp scratchpads),
-    so sweep `git worktree list`, never Finder. Triage landedness by **merge simulation,
-    never ancestry or patch-ids** — squash-merges make `rev-list` lie and multi-commit
-    squashes defeat `git cherry` — so the decisive test is
-    `git merge-tree --write-tree origin/main <branch>` equal to
-    `git rev-parse "origin/main^{tree}"`: equal trees mean the branch adds nothing to main
-    and should have died at merge (ASDM §A.5; any later session may sweep proven-landed
-    leftovers). Report the counts and the proven-landed list as *sweepable*; the
-    doctor itself **never deletes** — an unlanded tip belongs to the claim that created it.
+6.7 **Git surface.** Local branches and worktrees, open PRs older than 7 days, branches
+    whose issue is already closed. Sweep `git worktree list` (fleet lives in
+    `.claude/worktrees/`). Landedness = `git merge-tree --write-tree origin/main <branch>`
+    equal to `origin/main^{tree}` (ASDM §A.5) — report proven-landed as *sweepable*;
+    the doctor **never deletes**. An unlanded tip belongs to its claim.
 6.8 **CI budget.** Actions minutes headroom, red workflows on main.
+    `main-protection` should require `deno lint · test` · `deno check` ·
+    `pgTAP · schema invariants` · `instruction files in sync` · `brand assets in sync`
+    when they report (MESITA-1296; path-filtered skips do not block).
 
 ## Scope 7 — Runtime observability (last 24h) · P2
 
