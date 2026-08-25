@@ -69,4 +69,13 @@ describe("clampFunnel", () => {
     });
     expect(next.saveTotalImages).toBe(10);
   });
+
+  it("Instagram vision Y cannot exceed last-X newest", () => {
+    const out = clampFunnel({
+      ...seed,
+      gatherInstagramDepth: 8,
+      analyzeInstagramImages: 30,
+    });
+    expect(out.analyzeInstagramImages).toBe(8);
+  });
 });
