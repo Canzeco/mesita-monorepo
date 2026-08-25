@@ -47,3 +47,34 @@ jobs:
         run: supabase functions deploy --project-ref yjalywfzdelacdzccpgb
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # MESITA-1117: staff callers are validate-web-*. MCP cannot delete a
+      # function, so the old check-web-* names stayed live as 410 stubs after
+      # the repo pin. This job has SUPABASE_ACCESS_TOKEN; delete is the third
+      # of the three deletions (folder · config.toml · cloud). Idempotent:
+      # a name already gone is a skip, not a failure. check-web-submit-bill
+      # was removed earlier (MESITA-1093).
+      - name: Delete leftover check-web functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          leftover=(
+            check-web-get-ticket
+            check-web-mark-paid
+            check-web-scan-ticket
+            check-web-approve-ticket
+            check-web-request-fix
+            check-web-poll-ticket
+            check-web-validate-ticket
+          )
+          listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
+          echo "$listed"
+          for fn in "${leftover[@]}"; do
+            if echo "$listed" | grep -Fqw "$fn"; then
+              echo "deleting $fn"
+              supabase functions delete "$fn" --project-ref yjalywfzdelacdzccpgb --yes
+            else
+              echo "$fn already absent"
+            fi
+          done
