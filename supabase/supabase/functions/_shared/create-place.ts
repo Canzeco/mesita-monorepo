@@ -1,5 +1,5 @@
-// Shared create-place core — THE CREATE FUNCTION (MESITA-1253): one function,
-// synchronous, the front door. Its steps, in the spec's words:
+// Shared create-place core — THE CREATE RUN (MESITA-1253): one run,
+// synchronous, the front door. Its subfunctions, in the spec's words:
 //
 //   1 seed    → dedupe on google_place_id, mint the minimal 'generating' rows
 //   2 pulse   → the liveness gate: Google's businessStatus, read from the same
