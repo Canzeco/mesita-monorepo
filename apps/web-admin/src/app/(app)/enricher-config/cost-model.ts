@@ -157,7 +157,7 @@ export type CostEstimate = {
 //
 // LABELS CARRY THE FUNCTION NUMBER (Docs › Intake §A), not a stage
 // S-number. They held S1–S9 — the retired three-stage numbering — which put a
-// second ladder on the very page that states the queue is 0–9, and disagreed
+// second ladder on the very page that states the queue is 0–10, and disagreed
 // with it: "S3 · link discovery" sat beside a Links box labelled 4. Several
 // functions legitimately own more than one line (6 describes AND ranks; 9
 // writes, categorises and persists), and one line legitimately serves two
@@ -407,7 +407,7 @@ export function costParamsFromSettings(
   };
 }
 
-/** One Create run: Pulse + Details + Semantic (first photo). Not functions 3–9. */
+/** One Create run: Pulse + Details + Semantics (first photo). Not functions 3–9. */
 export function computeCreateCost(s: IntakeSettings): CostEstimate {
   return computeEnrichmentCost({
     ...costParamsFromSettings(s, 1),

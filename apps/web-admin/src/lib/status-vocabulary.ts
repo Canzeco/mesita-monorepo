@@ -6,7 +6,7 @@
 //   INTAKE ENRICH (10) Enrich box · Pulse … Description · Semantics
 //
 // Create Serp is not a create function in shipped code (✨ Intake · pulse-pieces).
-// Semantics is one function (`semantic`; Name + Summary + embeddings). Copy still numbers it 10.
+// Semantics is function 10 (`semantic`; Name + Summary + embeddings). Copy still numbers it 10.
 
 export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },

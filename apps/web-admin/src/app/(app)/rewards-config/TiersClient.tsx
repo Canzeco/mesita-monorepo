@@ -10,9 +10,9 @@ import {
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
+  LIVE_STRATEGY_KEYS,
   PLAN_KEYS,
   PLAN_META,
-  STRATEGY_KEYS,
   STRATEGY_META,
   modelWarnings,
   totalFor,
@@ -20,15 +20,16 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// TIERS — three equal visit columns, one per paid strategy. A place picks
-// ONE strategy; reading down a column is that place's whole program. Each
-// column is floor first, then signed adders. Pinned rungs (Bronze, Free)
-// are an em dash — "0%" is a real rate and would read as one. Columns share
-// one row grid so headers and knobs line up.
+// TIERS — two equal visit columns, Conservative and Aggressive. A place
+// picks ONE strategy; reading down a column is that place's whole program.
+// Each column is floor first, then signed adders. Pinned rungs (Bronze,
+// Free) are an em dash — "0%" is a real rate and would read as one. Columns
+// share one row grid so headers and knobs line up.
 //
 // Promos Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
-// Save round-trips it without knobs.
+// Save round-trips it without knobs. Dominant stays in the blob for leftover
+// rows and is not a column here.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -190,8 +191,8 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:grid-rows-[repeat(15,auto)]">
-        {STRATEGY_KEYS.map((s) => (
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2 lg:grid-rows-[repeat(15,auto)]">
+        {LIVE_STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
         ))}
       </div>
@@ -233,7 +234,7 @@ export function TiersClient() {
               </tr>
             </thead>
             <tbody>
-              {STRATEGY_KEYS.map((s) =>
+              {LIVE_STRATEGY_KEYS.map((s) =>
                 CLASS_KEYS.map((cls, ci) =>
                   PLAN_KEYS.map((p, pi) => {
                     const last =

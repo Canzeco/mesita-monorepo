@@ -116,7 +116,7 @@ export type ChannelSet = Channels;
 // ── FunctionState ────────────────────────────────────────────────────────
 //
 // "{status, at, detail} x 10 enrichment functions" — the 10 is not a round
-// number, it is PULSE_PIECES.length (9) + PULSE_EXTRAS.length (1), the exact
+// number, it is PULSE_PIECES.length (Pulse through Semantics), the exact
 // closed set pulse-pieces.ts already defines and pulse-report.ts already
 // writes through StampablePulseStep. FunctionState formalizes the PER-STEP
 // record that MESITA-1249 (materializing the enrichment state map onto the
@@ -234,7 +234,7 @@ export function foldFunctionStateMap(
 
 
 /**
- * The ten Enrich operator functions (9 queue + Semantic), every key present
+ * The ten Enrich operator functions (1–10), every key present
  * so Status can list them without inventing a second ladder.
  */
 export function operatorFunctionStates(

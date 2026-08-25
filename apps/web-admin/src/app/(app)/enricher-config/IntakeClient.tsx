@@ -247,7 +247,7 @@ export function IntakeClient({
                   ))}
                 </select>
               </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · Semantic">
+              <ModelRow label="Embeddings" hint="locked · Semantics">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
               {settingsStamp && (
@@ -317,7 +317,7 @@ export function IntakeClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details + Semantic. One place."
+                  caption="Pulse + Details + Semantics. One place."
                   estimate={createCost}
                 />
               }
@@ -342,7 +342,7 @@ export function IntakeClient({
                 {
                   term: "Stops",
                   detail:
-                    "Infrastructure failure or permanently closed. Absence still reaches 9.",
+                    "Infrastructure failure or permanently closed. Absence still reaches 10.",
                 },
               ]}
               steps={chipsFor("enrich")}
@@ -360,7 +360,7 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Eleven, listed once. Create awaits four; Enrich is ten ticks."
+            subtitle="Eleven, 0–10. Create awaits four; Enrich is ten ticks."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
@@ -368,7 +368,7 @@ export function IntakeClient({
                 index="0"
                 name="Seed"
                 flows={flowTagFor("seed")}
-                blurb="Dedupe on the Google Place ID and mint the paired rows."
+                blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
                 knobs="no knobs"
               >
                 <NoKnobs>
@@ -574,7 +574,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Closes the queue. Category, Tags, Presentation."
+                blurb="Category, Tags, Presentation."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -583,16 +583,16 @@ export function IntakeClient({
               </FunctionModule>
               <FunctionModule
                 id="f-semantic"
-                index="10"
+                index="10 · $"
                 flows={flowTagFor("semantic")}
-                name="Semantic"
-                blurb="Mesita Name, Semantic Summary, and embeddings — one function. Create awaits it; Enrich ticks it."
+                name="Semantics"
+                blurb="Closes the queue. Mesita Name and Semantic Summary — one function, two vectors."
                 knobs="locked"
               >
                 <NoKnobs>
-                  Locked to <b>text-embedding-3-small</b>. Name and Summary are
-                  two columns, one function. Swapping the model re-embeds the
-                  catalog.
+                  Locked to <b>text-embedding-3-small</b>. Name and Summary stay
+                  two columns. One function writes both. Swapping the model
+                  re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

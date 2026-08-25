@@ -1,18 +1,18 @@
 // Shared create-place core — THE CREATE RUN (MESITA-1253): one run,
 // synchronous, the front door. Its subfunctions, in the spec's words:
 //
-//   1 seed     → dedupe on google_place_id, mint the minimal 'generating' rows
-//   2 pulse    → the liveness gate: Google's businessStatus, read from the same
-//                Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
-//                at the door, before any row exists. Don't seed corpses.
-//   3 details  → the Google spine persisted (fetchGoogleBasics fields,
-//                category='undefined' until the Intaker infers the real one)
-//   4 semantic → Name vector + Summary vector, awaited in this same function
+//   0 seed      → dedupe on google_place_id, mint the minimal 'generating' rows
+//   1 pulse     → the liveness gate: Google's businessStatus, read from the same
+//                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
+//                 at the door, before any row exists. Don't seed corpses.
+//   2 details   → the Google spine persisted (fetchGoogleBasics fields,
+//                 category='undefined' until the Intaker infers the real one)
+//  10 semantic  → Name vector + Summary vector, awaited in this same function
 //
-// Pulse, Details and Semantic are SHARED with the ENRICH queue — create
+// Pulse, Details and Semantics are SHARED with the ENRICH queue — create
 // AWAITS the four subfunctions; enrich runs each as its own tick with no nested
 // await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
-// reads 2/9 immediately and state accumulates across create and every later run
+// reads 2/10 immediately and state accumulates across create and every later run
 // under one rule. Then it queues deep enrichment (functions 3-9 and re-runs of
 // 1-2) per the on_create trigger row.
 //
@@ -212,7 +212,7 @@ export async function createMinimalPlace(opts: {
   // closed. details: the spine the save just persisted IS the observed effect.
   // Both best-effort (a stamp failure never fails a create); the semantic stamp
   // lands where the vector write is observed (place-embeddings).
-  // Result: a fresh, healthy place reads enriched 2/9 the moment it exists.
+  // Result: a fresh, healthy place reads enriched 2/10 the moment it exists.
   await reportPulsePieces(admin, saved.project_id, {
     pulse: pieceDone(
       basicsRes.businessStatus

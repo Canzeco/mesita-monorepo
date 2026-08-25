@@ -1,7 +1,7 @@
 // The eleven Intake subfunctions, and which of the two flows uses each.
 //
-// Create is ONE function that AWAITS four subfunctions (Seed, Pulse, Details,
-// Semantic). Enrich is TEN functions on sequential ticks — none await a nested
+// Create is ONE function that AWAITS four subfunctions (0 Seed, 1 Pulse,
+// 2 Details, 10 Semantics). Enrich is TEN ticks, 1–10 — none await a nested
 // run. Shared rows print once on the page. This file is the chip + tag source
 // so Create, Enrich, Status and the ladder cannot drift.
 

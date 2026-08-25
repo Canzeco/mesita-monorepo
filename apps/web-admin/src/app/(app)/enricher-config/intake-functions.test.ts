@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is eleven, Seed through Semantic", () => {
+  it("is eleven, Seed through Semantics", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -45,6 +45,12 @@ describe("intake subfunctions", () => {
       "9 Description (Category, Tags, Presentation)",
       "10 Semantics",
     ]);
+  });
+
+  it("numbers every subfunction 0–10", () => {
+    expect(
+      INTAKE_SUBFUNCTIONS.map((s) => s.chip.match(/^\d+/)?.[0]),
+    ).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
   });
 
   it("Seed is Create-only; numbered 3–9 are Enrich-only", () => {
@@ -83,5 +89,17 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("f-semantic");
     expect(src).not.toContain("id=\"f-name\"");
     expect(src).not.toContain("id=\"f-summary\"");
+    expect(src).toContain("index=\"0\"");
+    expect(src).not.toContain("index=\"SEED\"");
+  });
+});
+
+describe("Name and Summary share Semantics", () => {
+  it("is one chip, never two Name/Summary pills", () => {
+    const labels = INTAKE_SUBFUNCTIONS.map((s) => s.chip);
+    expect(labels).toContain("10 Semantics");
+    expect(labels).not.toContain("◇ Name");
+    expect(labels).not.toContain("◇ Summary");
+    expect(labels.filter((l) => /Name|Summary/.test(l))).toEqual([]);
   });
 });

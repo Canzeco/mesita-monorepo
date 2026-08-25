@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
 
   // ── Two id-scoped reads for the flags that are NOT on profiles. ──
   //
-  // ENRICHED is the PULSE high-water, 0-9, folded from place_enrichment_events
+  // ENRICHED is the PULSE high-water, 0-10, folded from place_enrichment_events
   // by pulseHighWater. There used to be a SECOND enriched number here — a 0-3
   // stage level off place_research — and the two disagreed on every row: the
   // chip read one, the detail prose read the other (MESITA-1218). One fact,
@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
       business_status_at: (v.business_status_at as string | null) ?? null,
       // The Listed fact. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
-      // PULSE: how far the NINE-function ENRICH queue got, 0-9
+      // PULSE: how far the TEN-function ENRICH queue got, 0-10
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.
       // 0 is the CREATED floor; create stamps pulse+details, so a healthy

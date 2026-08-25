@@ -185,7 +185,7 @@ export function readStatusFacts(
     listed: bool(f.listed),
     enriched: bool(f.enriched),
     enrichPulse: num(f.enrichPulse),
-    enrichPulseTotal: num(f.enrichPulseTotal) || 9,
+    enrichPulseTotal: num(f.enrichPulseTotal) || 10,
     verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),
@@ -226,7 +226,7 @@ export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
 
 /**
  * Compact Intake verb: every TRUE fact, Status-box order. Incomplete
- * enrichment still prints n/9 so that fact is never silent.
+ * enrichment still prints n/10 so that fact is never silent.
  */
 export function intakeStatusLine(item: NotificationItem): string | null {
   const facts = readStatusFacts(item.meta);

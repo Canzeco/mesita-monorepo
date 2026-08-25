@@ -10,7 +10,7 @@ import {
   CLASS_META,
   PLAN_KEYS,
   PLAN_META,
-  STRATEGY_KEYS,
+  LIVE_STRATEGY_KEYS,
   STRATEGY_META,
   type ClassKey,
   type PlanKey,
@@ -82,7 +82,7 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
       subtitle="Pick a guest. The visit bill adds up. Not orders, not prepaid."
     >
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        {STRATEGY_KEYS.map((s) => (
+        {LIVE_STRATEGY_KEYS.map((s) => (
           <button
             key={s}
             type="button"

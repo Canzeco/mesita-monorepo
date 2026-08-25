@@ -1,83 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import {
-  Calculator,
   Check,
   ChevronDown,
-  CircleHelp,
   Loader2,
   Percent,
   TrendingUp,
-  Wallet,
   X,
 } from "lucide-react";
 import {
-  DISCOUNT_CAPS_MXN,
   DEFAULT_DISCOUNT_CAP_MXN,
   STRATEGIES,
   STRATEGY_BY_ID,
-  snapDiscountCap,
   strategyForPlace,
-  type DiscountCapMxn,
   type Strategy,
   type StrategyId,
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
-import { getPromosConfig } from "@/app/(app)/rewards-config/actions";
-import {
-  ACTION_KEYS,
-  ACTION_META,
-  CLASS_KEYS,
-  CLASS_META,
-  DEFAULT_PROMOS,
-  RATE_MAX,
-  totalFor,
-  type ActionKey,
-  type ClassKey,
-  type PlanKey,
-  type PromosConfig,
-  type StrategyKey,
-} from "@/app/(app)/rewards-config/promos";
 import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
-  DEFAULT_ASSUMPTIONS,
-  distributionFor,
-  type Assumptions,
-} from "@/app/(app)/rewards-config/distribution-model";
-import {
-  METER_SEGMENTS,
   describeMembershipStatus,
   effectiveStrikeCount,
-  giveLevel,
+  giveWord,
   isMemberPlan,
   lifecycleView,
   membershipPillState,
+  placementWord,
   promoCardState,
-  visibilityDots,
+  RUNG_WORDS,
   type CardState,
   type LifecycleStepState,
   type MembershipPillState,
+  type RungWord,
 } from "./promo-state";
 
-// Admin Promos — banner + three boxes (MESITA-912 membership unbundle,
-// re-cut for density 2026-08-09):
-//   0. Lifecycle banner — the canonical three steps (join → pick a strategy →
-//      honor guest checks) as a one-line rail plus ONE detail line for the
-//      step you're actually on; collapses to a slim strip once the place is
-//      live on a paid strategy. THE one numbered lifecycle story on the page —
-//      the modal steps mirror its titles, never fork them.
-//   1. Membership — MX$1,000/year unlocks paid strategies (Zero stays free).
-//      Status pill, drop, rules in disclosure. Admin writes plan — no Stripe.
-//   2. Strategy — three ABSTRACT cards: a give meter and a placement meter,
-//      nothing else. The 4×5 rate matrix and every rule live one tap deeper,
-//      in the card's modal. Non-members: tap a paid card to join with that
-//      posture. Members: free switch.
-//   3. FAQs — how the model works, Premium worked example under CURRENT
-//      strategy.
+// Admin Promos — two boxes:
+//   1. Mesita Partnership — MX$1,000/year unlocks paid strategies (Zero stays
+//      free). Lifecycle rail lives inside this box. Status pill, drop, rules
+//      in disclosure. Admin writes plan — no Stripe.
+//   2. Visit Promotions — Zero · Conservative · Aggressive. Give and placement
+//      are a Low · Mid · High word ladder. Dominant is not a picker option.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -85,37 +51,35 @@ const MEMBERSHIP_PRICE_MXN = 1000;
 // throughout this file.
 const ZERO_STRATEGY_ID: StrategyId = "zero";
 
-// Sample ticket for the worked example — deliberately above the discount cap
-// so the "first MX$500" rule is visible in the math.
-const EXAMPLE_BILL_MXN = 700;
+/** Zero · Conservative · Aggressive. Dominant is not a picker option. */
+function pickerStrategies(): readonly Strategy[] {
+  return STRATEGIES.filter((s) => s.id !== "dominant");
+}
 
 // Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
 // in pixels — copy stays HTML); the gradient paints behind the image so a
-// slow or missing asset still renders a branded band. `meter`/`accent` carry
-// the identity into the two card meters.
+// slow or missing asset still renders a branded band. `accent` colours the
+// Give / Placement words.
 const CARD_ART: Record<
   StrategyId,
-  { src: string; fallback: string; cta: string; meter: string; accent: string }
+  { src: string; fallback: string; cta: string; accent: string }
 > = {
   zero: {
     src: "/promos/strategy-zero.jpg",
     fallback: "from-slate-800 to-slate-500",
     cta: "",
-    meter: "bg-slate-400",
     accent: "text-slate-500",
   },
   conservative: {
     src: "/promos/strategy-conservative.jpg",
     fallback: "from-emerald-900 to-teal-500",
     cta: "from-emerald-600 to-teal-500",
-    meter: "bg-emerald-500",
     accent: "text-emerald-600",
   },
   aggressive: {
     src: "/promos/strategy-aggressive.jpg",
     fallback: "from-red-800 to-orange-500",
     cta: "from-red-600 to-orange-500",
-    meter: "bg-orange-500",
     accent: "text-orange-600",
   },
   // No art file yet — the gradient IS the fallback, which is why it exists.
@@ -125,7 +89,6 @@ const CARD_ART: Record<
     src: "/promos/strategy-dominant.jpg",
     fallback: "from-violet-900 to-fuchsia-500",
     cta: "from-violet-600 to-fuchsia-500",
-    meter: "bg-violet-500",
     accent: "text-violet-600",
   },
 };
@@ -168,10 +131,6 @@ function strategySwitchPatch(
   return rates;
 }
 
-function displayCapMxn(place: AdminPlace): DiscountCapMxn {
-  return snapDiscountCap(place.monthly_promo_cap);
-}
-
 export function PromosSection({
   place,
   onSaved,
@@ -189,43 +148,18 @@ export function PromosSection({
   // the confirm dialog.
 
   const [switchPending, startSwitch] = useTransition();
-  const [capPending, startCap] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
-  const [capError, setCapError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
-  // The promos matrix, read LIVE from promos_config (rates are never cached
-  // in code — MESITA-859), v11 shape since MESITA-1069. Identity defaults
-  // render until the fetch lands, so the cards never flash empty; on failure
-  // they keep the defaults and the grid carries a quiet "showing defaults"
-  // note.
-  const [matrix, setMatrix] = useState<PromosConfig>(DEFAULT_PROMOS);
-  const [matrixFailed, setMatrixFailed] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const r = await getPromosConfig();
-      if (!active) return;
-      if (r.ok) setMatrix(r.config);
-      else setMatrixFailed(true);
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
   const storedStrategy = strategyForPlace(v);
   const forfeited = pillState === "forfeited";
-  const placeCap = displayCapMxn(v);
-  const showCapPicker =
-    member && !forfeited && storedStrategy !== ZERO_STRATEGY_ID;
 
   const applyPlace = (next: AdminPlace) => {
     setV(next);
@@ -247,7 +181,6 @@ export function PromosSection({
 
     setModalBusy(true);
     setModalError(null);
-    setCapError(null);
     const r = await setPlacePlan(v.id, plan, rates);
     setModalBusy(false);
     if (!r.ok) {
@@ -265,7 +198,6 @@ export function PromosSection({
 
     setDropBusy(true);
     setDropError(null);
-    setCapError(null);
     const r = await setPlacePlan(v.id, plan, rates);
     setDropBusy(false);
     if (!r.ok) {
@@ -285,31 +217,12 @@ export function PromosSection({
     const optimistic: AdminPlace = { ...v, ...rates };
     applyPlace(optimistic);
     setSwitchError(null);
-    setCapError(null);
 
     startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
       if (!r.ok) {
         revertPlace(prev);
         setSwitchError(r.error);
-        return;
-      }
-      applyPlace(r.data);
-    });
-  };
-
-  const commitCap = (cap: DiscountCapMxn) => {
-    if (capPending || !showCapPicker || cap === placeCap) return;
-    const prev = v;
-    const optimistic: AdminPlace = { ...v, monthly_promo_cap: cap };
-    applyPlace(optimistic);
-    setCapError(null);
-
-    startCap(async () => {
-      const r = await setPlaceStrategy(prev.id, { monthly_promo_cap: cap });
-      if (!r.ok) {
-        revertPlace(prev);
-        setCapError(r.error);
         return;
       }
       applyPlace(r.data);
@@ -339,29 +252,21 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* ── Box 0 · Lifecycle banner ───────────────────────────────────── */}
-      <LifecycleBanner
+      <MembershipBox
         place={v}
         pillState={pillState}
         storedStrategy={storedStrategy}
         member={member}
-      />
-
-      {/* ── Box 1 · Membership ─────────────────────────────────────────── */}
-      <MembershipBox
-        place={v}
-        pillState={pillState}
         onDropClick={() => {
           setDropError(null);
           setDropOpen(true);
         }}
       />
 
-      {/* Three super boxes: Visit Promos · Discount Cap · Calculator. */}
       <SectionCard
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
-        title="Visit Promos"
+        title="Visit Promotions"
         subtitle="Visit ladder only — orders and prepaid stay off."
         action={
           switchPending ? (
@@ -370,11 +275,10 @@ export function PromosSection({
         }
       >
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {STRATEGIES.map((s) => (
+          {pickerStrategies().map((s) => (
             <StrategyCard
               key={s.id}
               strategy={s}
-              matrix={matrix}
               state={promoCardState({
                 member,
                 forfeited,
@@ -388,11 +292,9 @@ export function PromosSection({
           ))}
         </div>
 
-        {(matrixFailed || (storedStrategy === null && member)) && (
+        {(storedStrategy === null || storedStrategy === "dominant") && member && (
           <p className="text-muted-foreground mt-2.5 type-label">
-            {matrixFailed
-              ? "Live rates unavailable — showing defaults."
-              : "Current rates don't match a strategy — pick one to standardize."}
+            Current rates don&apos;t match a strategy — pick one to standardize.
           </p>
         )}
 
@@ -408,56 +310,9 @@ export function PromosSection({
         </div>
       </SectionCard>
 
-      <SectionCard
-        icon={<Wallet className="h-4 w-4" />}
-        tint="amber"
-        title="Discount Cap"
-        subtitle="First N pesos of a visit bill — independent of strategy."
-        action={
-          capPending ? (
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-          ) : undefined
-        }
-      >
-        {showCapPicker ? (
-          <DiscountCapPicker
-            cap={placeCap}
-            currency={v.currency}
-            pending={capPending}
-            onSelect={commitCap}
-          />
-        ) : (
-          <p className="text-muted-foreground mt-4 type-body leading-snug">
-            Join a paid visit strategy to set the cap. Zero and non-partners
-            have nothing to cap.
-          </p>
-        )}
-        <div aria-live="polite">
-          {capError && (
-            <div className="mt-3">
-              <ErrorNote message={capError} />
-            </div>
-          )}
-        </div>
-      </SectionCard>
-
-      <FaqsBox
-        place={v}
-        storedStrategy={storedStrategy}
-        member={member}
-        capMxn={placeCap}
-        matrix={matrix}
-      />
-
-      <VisitDistributionCalculator
-        matrix={matrix}
-        strategyId={storedStrategy}
-      />
-
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
-          matrix={matrix}
           currency={v.currency}
           state={promoCardState({
             member,
@@ -531,7 +386,7 @@ function LifecycleBanner({
   if (view.kind === "strip") {
     const warn = view.tone === "warn";
     return (
-      <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-3 sm:px-6">
+      <section className="border-border/60 rounded-xl border px-4 py-3">
         <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 type-body">
           <span
             aria-hidden
@@ -568,7 +423,7 @@ function LifecycleBanner({
         ? storedStrategy === ZERO_STRATEGY_ID
           ? "Zero pauses discounts — pick a paid strategy to reopen the lane."
           : "Custom rates — pick a strategy to standardize."
-        : "Three paid postures plus Zero — switch free anytime.";
+          : "Conservative or Aggressive — switch free anytime.";
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
@@ -597,7 +452,7 @@ function LifecycleBanner({
     steps.find((s) => s.state === "current");
 
   return (
-    <section className="border-border bg-card shadow-card rounded-2xl border px-5 py-4 sm:px-6">
+    <section className="border-border/60 rounded-xl border px-4 py-3">
       {/* The rail replaced a visible "How promos go live" heading — the steps
           say it. Keep the label for screen readers. */}
       <h2 className="sr-only">How promos go live</h2>
@@ -706,10 +561,14 @@ const STRIKES: { n: string; consequence: string }[] = [
 function MembershipBox({
   place,
   pillState,
+  storedStrategy,
+  member,
   onDropClick,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
+  storedStrategy: StrategyId | null;
+  member: boolean;
   onDropClick: () => void;
 }) {
   // Pending's note lives in the lifecycle banner now (absorption rule) —
@@ -746,6 +605,12 @@ function MembershipBox({
       action={<MembershipStatusPill state={pillState} />}
     >
       <div className="mt-4 flex flex-col gap-3">
+        <LifecycleBanner
+          place={place}
+          pillState={pillState}
+          storedStrategy={storedStrategy}
+          member={member}
+        />
         {statusNote && (
           <p
             className={cx(
@@ -831,23 +696,18 @@ function MembershipBox({
   );
 }
 
-// ─── Box 2 · Strategy card — two meters, nothing else ──────────────────────
+// ─── Box 2 · Strategy card — Give and Placement as Low · Mid · High ────────
 //
-// MESITA-999: the face used to carry the whole 4×5 rate matrix, three times
-// over, which made the grid a spreadsheet you had to read before you could
-// choose. It now answers the only two questions a posture has — how much do I
-// give, what do I get — on one shared five-segment rail. Every number behind
-// them is one tap away in the modal.
+// The face answers two questions — how much do I give, what do I get — in
+// words. Every rate behind them is one tap away in the modal.
 
 function StrategyCard({
   strategy,
-  matrix,
   state,
   pending,
   onOpen,
 }: {
   strategy: Strategy;
-  matrix: PromosConfig;
   state: CardState;
   pending: boolean;
   onOpen: () => void;
@@ -855,7 +715,8 @@ function StrategyCard({
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== ZERO_STRATEGY_ID;
   const { selected, cta } = state;
-  const give = giveLevel(matrix, strategy.id);
+  const give = giveWord(strategy.id);
+  const placement = placementWord(strategy.visibility);
   const ariaState = selected
     ? " (current)"
     : cta === "reinstate"
@@ -889,26 +750,15 @@ function StrategyCard({
       </ArtBand>
 
       <div className="flex w-full flex-1 flex-col gap-3.5 p-4">
-        <MeterStat
-          label="You give"
-          value={paid ? `~${give.mean}%` : "0%"}
+        <RungStat
+          label="Give"
+          value={give}
           valueClass={paid ? art.accent : "text-muted-foreground"}
-          dots={give.dots}
-          meterClass={art.meter}
-          note={
-            paid
-              ? `Projected average · 9 in 10 bills land ${give.p10}–${give.p90}%`
-              : "No discounts — Zero is free."
-          }
         />
-
-        <MeterStat
-          label="You get"
-          value={`${strategy.visibility} visibility`}
+        <RungStat
+          label="Placement"
+          value={placement}
           valueClass={paid ? art.accent : "text-muted-foreground"}
-          dots={visibilityDots(strategy.visibility)}
-          meterClass={art.meter}
-          note="Placement in the discovery algorithm"
         />
 
         {/* Presentational CTA — the whole card is the button; the modal
@@ -940,7 +790,7 @@ function StrategyCard({
             </span>
           )}
           <span className="text-muted-foreground group-hover:text-foreground text-center type-label font-medium transition">
-            See full rates & rules
+            How it works
           </span>
         </div>
       </div>
@@ -990,49 +840,37 @@ function ArtBand({
   );
 }
 
-/** Label · level · five-segment rail · one grounding line. */
-function MeterStat({
+/** Give / Placement as a Low · Mid · High word ladder. No meters, no percents. */
+function RungStat({
   label,
   value,
   valueClass,
-  dots,
-  meterClass,
-  note,
 }: {
   label: string;
-  value: string;
+  value: RungWord;
   valueClass: string;
-  dots: number;
-  meterClass: string;
-  note: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-          {label}
-        </span>
-        <span
-          className={cx(
-            "font-display truncate text-sm leading-none font-bold tracking-tight",
-            valueClass,
-          )}
-        >
-          {value}
-        </span>
-      </div>
-      <div className="flex gap-1" aria-hidden>
-        {Array.from({ length: METER_SEGMENTS }, (_, i) => (
+      <span className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
+        {label}
+      </span>
+      <p
+        className="flex items-baseline gap-2.5"
+        aria-label={`${label} ${value}`}
+      >
+        {RUNG_WORDS.map((rung) => (
           <span
-            key={i}
+            key={rung}
             className={cx(
-              "h-1.5 flex-1 rounded-full",
-              i < dots ? meterClass : "bg-muted",
+              "font-display text-base leading-none font-bold tracking-tight",
+              rung === value ? valueClass : "text-muted-foreground/35",
             )}
-          />
+          >
+            {rung}
+          </span>
         ))}
-      </div>
-      <p className="text-muted-foreground type-label leading-snug">{note}</p>
+      </p>
     </div>
   );
 }
@@ -1041,7 +879,6 @@ function MeterStat({
 
 function ProductModal({
   strategy,
-  matrix,
   currency,
   state,
   member,
@@ -1051,7 +888,6 @@ function ProductModal({
   onClose,
 }: {
   strategy: Strategy;
-  matrix: PromosConfig;
   currency: string | null;
   state: CardState;
   member: boolean;
@@ -1082,7 +918,8 @@ function ProductModal({
   const kind = state.cta;
   const isCurrent = kind === "current";
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
-  const give = giveLevel(matrix, strategy.id);
+  const give = giveWord(strategy.id);
+  const placement = placementWord(strategy.visibility);
 
   const primaryLabel =
     kind === "current"
@@ -1154,32 +991,20 @@ function ProductModal({
         </p>
 
         <div className="grid grid-cols-2 gap-4">
-          <MeterStat
-            label="You give"
-            value={paid ? `~${give.mean}%` : "0%"}
+          <RungStat
+            label="Give"
+            value={give}
             valueClass={paid ? art.accent : "text-muted-foreground"}
-            dots={give.dots}
-            meterClass={art.meter}
-            note={paid ? "Projected avg / bill" : "No discounts"}
           />
-          <MeterStat
-            label="You get"
-            value={strategy.visibility}
+          <RungStat
+            label="Placement"
+            value={placement}
             valueClass={paid ? art.accent : "text-muted-foreground"}
-            dots={visibilityDots(strategy.visibility)}
-            meterClass={art.meter}
-            note="Algorithm placement"
           />
         </div>
 
         {paid ? (
-          <>
-            <div className="flex flex-col gap-2">
-              <ModalLabel>Every rate</ModalLabel>
-              <RewardsMatrix matrix={matrix} strategy={strategy.id} />
-            </div>
-
-            <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3">
               {/* Canonical step titles — mirror the page banner (Box 0),
                   with per-strategy detail lines. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
@@ -1196,7 +1021,6 @@ function ProductModal({
               </Step>
               <p className="text-muted-foreground type-meta leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
             </div>
-          </>
         ) : (
           <div className="flex flex-col gap-2">
             <ModalLabel>How it works</ModalLabel>
@@ -1285,518 +1109,6 @@ function Step({
           </p>
         )}
       </div>
-    </div>
-  );
-}
-
-// The v7 Strategy × Class matrix at this strategy (MESITA-862, replaces the
-// retired 2×2): rows = guest classes, columns = None (standing) + the four
-// rewarded actions, read live from promos_config. Story is universal
-// (MESITA-909) — every class row shows its priced cell; eligibility is
-// Instagram-connected at the consumer EF layer. Rates live in HTML text,
-// never artwork. Modal-only since MESITA-999 — the card face abstracts it
-// into the give meter.
-function RewardsMatrix({
-  matrix,
-  strategy,
-}: {
-  matrix: PromosConfig;
-  strategy: StrategyId;
-}) {
-  const cell = (v: number) => (v > 0 ? `${v}%` : "—");
-  const shortClass: Record<ClassKey, string> = {
-    bronze: "Bronze",
-    silver: "Silver",
-    gold: "Gold",
-    diamond: "Diamond",
-  };
-  // Zero has no rules — it is off by definition, and this table is only shown
-  // for the paid strategies anyway.
-  const paidStrategy = strategy === "zero" ? null : strategy;
-  const shortAction: Record<ActionKey, string> = {
-    standing: "None",
-    mesita_review: ACTION_META.mesita_review.emoji,
-    story: ACTION_META.story.emoji,
-    welcome: ACTION_META.welcome.emoji,
-    review: ACTION_META.review.emoji,
-  };
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="border-border/60 grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border type-label">
-        <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
-        {ACTION_KEYS.map((a) => (
-          <span
-            key={a}
-            title={ACTION_META[a].name}
-            className="text-muted-foreground bg-muted/40 px-1 py-1.5 text-center font-semibold"
-          >
-            {shortAction[a]}
-          </span>
-        ))}
-        {CLASS_KEYS.map((cls) => (
-          <div key={cls} className="contents">
-            <span
-              className="text-muted-foreground border-border/60 truncate border-t px-2 py-1.5 font-medium"
-              title={CLASS_META[cls].name}
-            >
-              {CLASS_META[cls].emoji} {shortClass[cls]}
-            </span>
-            {ACTION_KEYS.map((a) => (
-              <span
-                key={a}
-                className="text-foreground/80 border-border/60 border-t px-1 py-1.5 text-center font-bold tabular-nums"
-              >
-                {!paidStrategy
-                  ? "—"
-                  : cell(
-                      Math.min(
-                        RATE_MAX,
-                        // The class ladder at the Free plan — the floor for
-                        // that class. Plan is the other axis and is never
-                        // attributed to a guest here.
-                        totalFor(matrix, paidStrategy, cls, "free", a),
-                      ),
-                    )}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-      <p className="text-muted-foreground/80 type-meta leading-snug">
-        {ACTION_KEYS.map(
-          (a, i) =>
-            `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
-        ).join("")}
-      </p>
-    </div>
-  );
-}
-
-// ─── Box 3 · FAQs — how the membership works, with real numbers ────────────
-
-function FaqsBox({
-  place,
-  storedStrategy,
-  member,
-  capMxn,
-  matrix,
-}: {
-  place: AdminPlace;
-  storedStrategy: StrategyId | null;
-  member: boolean;
-  capMxn: DiscountCapMxn;
-  matrix: PromosConfig;
-}) {
-  const currency = place.currency;
-  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
-  const cap = formatMoney(capMxn, currency);
-  const exampleSavesMxn = capMxn * 0.5;
-
-  return (
-    <SectionCard
-      icon={<CircleHelp className="h-4 w-4" />}
-      tint="sky"
-      title="FAQs"
-    >
-      {/* One divided list, everything closed: the answers are reference, not
-          reading. The worked example opens first because it is the only one
-          that shows this place's own numbers. */}
-      <div className="border-border/60 divide-border/60 mt-4 divide-y overflow-hidden rounded-xl border">
-        <Faq q="What does a Premium guest actually get?" defaultOpen>
-          <PremiumExamples
-            place={place}
-            storedStrategy={storedStrategy}
-            matrix={matrix}
-          />
-        </Faq>
-
-        <Faq q={`What exactly does the ${price}/year buy?`}>
-          <p>
-            The right to leave Zero. The partnership unlocks Conservative,
-            Aggressive and Dominant — pick any, switch free anytime while
-            you&apos;re a partner. Zero stays free with no discounts. Being
-            listed on Mesita never costs anything, partner or not. The fee is a
-            commitment filter (keeps half-hearted places out of rewards), not a
-            feature tier and not a rank you can buy.
-          </p>
-        </Faq>
-
-        <Faq q="Can I switch strategies — or move to Zero?">
-          <p>
-            Yes — free, anytime, while your partnership is active. Strategy is
-            the discount posture you promise guests; switching only changes your
-            rates. New tickets pick up the new rates; open tickets keep what
-            they were created with.
-          </p>
-          <p>
-            Switching to Zero pauses discounts: the partnership stays active,
-            activation state and strikes carry on, but the promo lane closes and
-            visibility drops to Low. Cancelling the partnership is a separate
-            action in the Partnership box.
-          </p>
-        </Faq>
-
-        <Faq q="How does visibility work?">
-          <p>
-            The ranking algorithm reads a stronger discount as a stronger card:
-            Zero sits at Low, Conservative at Mid, Aggressive at High,
-            Dominant at Max. Visibility is never a separate knob you can buy —
-            it rises with what you give.
-          </p>
-        </Faq>
-
-        <Faq q={`What is the ${cap} cap?`}>
-          <p>
-            Every discount applies only to the first {cap} of the bill — a
-            per-place choice (MX$200, MX$500, or MX$1,000), always shown to
-            guests. Example: 50% off a{" "}
-            {formatMoney(EXAMPLE_BILL_MXN, currency)} bill touches the first{" "}
-            {cap}, so the guest saves {formatMoney(exampleSavesMxn, currency)}{" "}
-            and pays {formatMoney(EXAMPLE_BILL_MXN - exampleSavesMxn, currency)}
-            . The headline stays big; the cost stays bounded.
-          </p>
-        </Faq>
-
-        <Faq q="How does a place activate?">
-          <p>
-            Two steps: the staff WhatsApp channel passes a test ping, and the
-            first guest ticket is honored at the bill. Mesita runs both — no
-            self-serve switch.
-          </p>
-        </Faq>
-
-        <Faq q="What happens if a guest is turned away?">
-          <p>
-            A refused or ignored QR is a strike: 1 — warning and the activation
-            test re-runs · 2 — your discounts pause for 30 days · 3 —
-            partnership forfeited (the place stays listed on Mesita). Strikes
-            decay after 6 months clean, and the turned-away guest is
-            compensated instantly.
-          </p>
-        </Faq>
-
-        <Faq q="How do I cancel the partnership?">
-          <p>
-            Use Drop partnership in the Partnership box — it clears your plan
-            and rates.{" "}
-            {member
-              ? "This place is currently a partner."
-              : "This place is not currently a partner."}
-          </p>
-        </Faq>
-      </div>
-    </SectionCard>
-  );
-}
-
-// Native details/summary accordion row — no state, keyboard-accessible.
-function Faq({
-  q,
-  defaultOpen,
-  children,
-}: {
-  q: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <details open={defaultOpen} className="group">
-      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2.5 type-body font-semibold transition [&::-webkit-details-marker]:hidden">
-        {q}
-        <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0 transition group-open:rotate-180" />
-      </summary>
-      <div className="text-muted-foreground flex flex-col gap-2 px-3.5 pb-3.5 text-xs leading-relaxed">
-        {children}
-      </div>
-    </details>
-  );
-}
-
-// The Premium-guest worked example.
-//
-// MESITA-1001: this used to compute from the place's `*_rate` COLUMNS. Since
-// the engine went additive-v10 (MESITA-992) `resolveTicketRate` never reads
-// those columns — they only carry strategy IDENTITY now — so the example was
-// quoting pre-v10 numbers. On Aggressive that under-reported returning visits
-// by 10 points (Standard 10 vs the 20 the engine pays, Premium 30 vs 40).
-// Read the live v10 config instead, exactly like the engine does.
-function PremiumExamples({
-  place,
-  storedStrategy,
-  matrix,
-}: {
-  place: AdminPlace;
-  storedStrategy: StrategyId | null;
-  matrix: PromosConfig;
-}) {
-  const paidStrategy =
-    storedStrategy && storedStrategy !== ZERO_STRATEGY_ID
-      ? (storedStrategy as StrategyKey)
-      : null;
-  const strategy = storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
-  const cap = place.monthly_promo_cap ?? DEFAULT_DISCOUNT_CAP_MXN;
-
-  // Welcome is the automatic first-ticket bonus; returning is the bare base.
-  // The two example rows are the PLAN axis (v11) at the base class: what the
-  // same Bronze guest pays on Free versus on the paid subscription.
-  const rate = (plan: PlanKey, welcome: boolean) =>
-    paidStrategy
-      ? Math.min(
-          RATE_MAX,
-          matrix.visits.base[paidStrategy].bronze[plan] +
-            (welcome ? matrix.visits.bonuses[paidStrategy].welcome : 0),
-        )
-      : null;
-
-  if (!paidStrategy) {
-    return (
-      <p className="text-muted-foreground leading-snug">
-        No promos right now — Premium guests see this place in the catalog with
-        no discount card. Pick a strategy above to preview the deal.
-      </p>
-    );
-  }
-
-  return (
-    <>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-        <p className="text-foreground/80">
-          Current rates on a sample{" "}
-          {formatMoney(EXAMPLE_BILL_MXN, place.currency)} ticket:
-        </p>
-        <span className="text-muted-foreground type-meta font-bold tracking-wide uppercase">
-          {strategy && strategy.id !== ZERO_STRATEGY_ID
-            ? `${strategy.emoji} ${strategy.name}`
-            : "Custom rates"}
-        </span>
-      </div>
-      <div className="border-border/60 divide-border/60 divide-y rounded-lg border">
-        <ExampleRow
-          visit="Welcome"
-          premiumRate={rate("premium", true)}
-          freeRate={rate("free", true)}
-          cap={cap}
-          currency={place.currency}
-        />
-        <ExampleRow
-          visit="Returning"
-          premiumRate={rate("premium", false)}
-          freeRate={rate("free", false)}
-          cap={cap}
-          currency={place.currency}
-        />
-      </div>
-      <p>
-        Premium ≥ Free in every strategy — subscribers always get the better
-        deal. They are what the partnership buys. Action bonuses (story,
-        reviews) stack on top of these.
-      </p>
-    </>
-  );
-}
-
-function ExampleRow({
-  visit,
-  premiumRate,
-  freeRate,
-  cap,
-  currency,
-}: {
-  visit: string;
-  premiumRate: number | null;
-  freeRate: number | null;
-  cap: number;
-  currency: string | null;
-}) {
-  // The discount only touches the first `cap` of the ticket.
-  const base = Math.min(EXAMPLE_BILL_MXN, cap);
-  const saves =
-    premiumRate == null ? 0 : Math.round((base * premiumRate) / 100);
-  const pays = EXAMPLE_BILL_MXN - saves;
-  const freeSaves = freeRate == null ? 0 : Math.round((base * freeRate) / 100);
-
-  return (
-    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <span className="text-muted-foreground shrink-0 type-label font-bold tracking-wide uppercase">
-        {visit}
-      </span>
-      {premiumRate == null ? (
-        <span className="text-muted-foreground type-label">
-          No discount for this visit type.
-        </span>
-      ) : (
-        <div className="text-right">
-          <p className="text-foreground/85 text-xs">
-            Premium{" "}
-            <span className="font-bold tabular-nums">{premiumRate}%</span> →
-            pays{" "}
-            <span className="font-bold">{formatMoney(pays, currency)}</span>,
-            saves {formatMoney(saves, currency)}
-          </p>
-          <p className="text-muted-foreground type-label">
-            {freeRate == null
-              ? "Free gets no discount on this visit."
-              : `Free ${freeRate}% → saves ${formatMoney(freeSaves, currency)}`}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Calculator — expected visit distribution (bottom of the page) ──────────
-
-function VisitDistributionCalculator({
-  matrix,
-  strategyId,
-}: {
-  matrix: PromosConfig;
-  strategyId: StrategyId | null;
-}) {
-  const [assumptions, setAssumptions] =
-    useState<Assumptions>(DEFAULT_ASSUMPTIONS);
-  const paid =
-    strategyId && strategyId !== ZERO_STRATEGY_ID
-      ? (strategyId as StrategyKey)
-      : null;
-  const dist = useMemo(
-    () => (paid ? distributionFor(matrix, assumptions, paid) : null),
-    [paid, matrix, assumptions],
-  );
-
-  return (
-    <SectionCard
-      icon={<Calculator className="h-4 w-4" />}
-      tint="indigo"
-      title="Calculator"
-      subtitle="Expected visit distribution from this place's visit rates. Assumptions, not live tickets."
-    >
-      {!paid || !dist ? (
-        <p className="text-muted-foreground mt-4 type-body leading-snug">
-          Pick a paid visit strategy above to model the spread. Orders and
-          prepaid are not in this calculator.
-        </p>
-      ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          <p className="text-foreground font-display text-2xl font-semibold tracking-tight">
-            ~{Math.round(dist.mean)}%
-            <span className="text-muted-foreground ml-2 text-xs font-normal">
-              expected per visit · typical {dist.p10}–{dist.p90}%
-            </span>
-          </p>
-          <div className="flex flex-col">
-            <CalcPct
-              label="First visits"
-              value={assumptions.welcomePct}
-              onChange={(v) =>
-                setAssumptions((a) => ({ ...a, welcomePct: v }))
-              }
-            />
-            <CalcPct
-              label="Instagram Story"
-              value={assumptions.actionPct.story}
-              onChange={(v) =>
-                setAssumptions((a) => ({
-                  ...a,
-                  actionPct: { ...a.actionPct, story: v },
-                }))
-              }
-            />
-            <CalcPct
-              label="Google Review"
-              value={assumptions.actionPct.google}
-              onChange={(v) =>
-                setAssumptions((a) => ({
-                  ...a,
-                  actionPct: { ...a.actionPct, google: v },
-                }))
-              }
-            />
-            <CalcPct
-              label="Mesita Review"
-              value={assumptions.actionPct.mesita}
-              onChange={(v) =>
-                setAssumptions((a) => ({
-                  ...a,
-                  actionPct: { ...a.actionPct, mesita: v },
-                }))
-              }
-            />
-          </div>
-        </div>
-      )}
-    </SectionCard>
-  );
-}
-
-function CalcPct({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2.5 last:border-0">
-      <span className="type-body font-medium">{label}</span>
-      <label className="flex shrink-0 items-center gap-1.5">
-        <input
-          type="number"
-          min={0}
-          max={100}
-          step={1}
-          value={value}
-          aria-label={`${label} — share of visits`}
-          onChange={(e) => {
-            const raw = Number(e.target.value);
-            if (Number.isNaN(raw)) return;
-            onChange(Math.max(0, Math.min(100, Math.round(raw))));
-          }}
-          className="border-border bg-card focus:border-foreground h-9 w-20 rounded-lg border px-2 text-right type-body font-semibold tabular-nums outline-none"
-        />
-        <span className="text-muted-foreground type-label">%</span>
-      </label>
-    </div>
-  );
-}
-
-// ─── Discount cap picker — independent of strategy ─────────────────────────
-
-function DiscountCapPicker({
-  cap,
-  currency,
-  pending,
-  onSelect,
-}: {
-  cap: DiscountCapMxn;
-  currency: string | null;
-  pending: boolean;
-  onSelect: (cap: DiscountCapMxn) => void;
-}) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
-      {DISCOUNT_CAPS_MXN.map((option) => {
-        const active = cap === option;
-        return (
-          <button
-            key={option}
-            type="button"
-            disabled={pending}
-            onClick={() => onSelect(option)}
-            aria-pressed={active}
-            className={cx(
-              "inline-flex h-9 items-center rounded-lg px-3 type-body tabular-nums transition disabled:opacity-50",
-              active
-                ? "bg-foreground text-background font-bold"
-                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
-            )}
-          >
-            {formatMoney(option, currency)}
-          </button>
-        );
-      })}
     </div>
   );
 }

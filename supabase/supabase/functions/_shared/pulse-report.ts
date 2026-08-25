@@ -26,7 +26,7 @@
 //      by the cheapest run that touched the place (MESITA-1172 blocker 2).
 //
 //   4. ABSENCE IS A RESULT, NOT A FAILURE. A place with no Instagram must be
-//      able to reach 9. The function ran, resolved "there is nothing here", and
+//      able to reach 10. The function ran, resolved "there is nothing here", and
 //      is `completed`. Only a function that had something to do and could not
 //      do it fails. Callers must make that distinction explicitly — it is the
 //      one place where a wrong call quietly punishes a place for a fact about
@@ -40,13 +40,12 @@
 //
 //   6. CREATE IS A CALLER OF THIS REPORTER TOO. The create function stamps
 //      the enrich functions it ran inline (pulse, details), so a fresh place
-//      reads 2/9 immediately and state accumulates across create and every
+//      reads 2/10 immediately and state accumulates across create and every
 //      later run under one rule.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportEnrichmentStep } from "./enrich-pipeline.ts";
 import {
-  PULSE_EXTRA_LABELS,
   PULSE_PIECE_META,
   type PulsePiece,
   type PulseStep,
@@ -60,7 +59,7 @@ import {
 import { writePlace } from "./place-doc.ts";
 
 /**
- * What a caller may stamp: any enrich function or semantic function. `seed`
+ * What a caller may stamp: any enrich function. `seed`
  * is not among them by construction — it left PULSE_PIECES in MESITA-1253 —
  * so the old floor-exclusion type collapsed into the union itself. The alias
  * survives because call sites read better naming what they hold.
@@ -106,28 +105,24 @@ export async function reportPulsePieces(
   //      the run reporting success. `socail` for `social` pinned every place at
   //      3 and nothing in the type system, the tests or CI said a word
   //      (MESITA-1219). The unknown-key check below stays as the belt.
-  //   8. SEMANTIC IS STAMPED HERE TOO, and marked `SX` rather
-  //      than given a rung. It is real work with a real outcome,
-  //      but counting it would make `enriched` fall when someone edits a
-  //      name — the On-Update path fires the same machinery (MESITA-1243).
+  //   8. SEMANTICS IS FUNCTION 10. It stamps `S10` like every other
+  //      enrich function. Create also stamps it; the high-water stays at 2
+  //      until 3–9 land, because 10 cannot skip a gap.
   pieces: Partial<Record<StampablePulseStep, PieceOutcome>>,
 ): Promise<void> {
   const stamped: Partial<Record<StampablePulseStep, PieceOutcome>> = {};
   for (const [key, outcome] of Object.entries(pieces)) {
     if (!outcome) continue;
     const meta = PULSE_PIECE_META[key as PulsePiece];
-    const extraLabel = PULSE_EXTRA_LABELS[key as keyof typeof PULSE_EXTRA_LABELS];
-    if (!meta && !extraLabel) continue;
+    if (!meta) continue;
     await reportEnrichmentStep(
       admin,
       projectId,
-      meta ? `S${meta.index}` : "SX",
+      `S${meta.index}`,
       key,
       outcome.status,
       outcome.detail,
-      meta
-        ? { piece: key, index: meta.index, ...(outcome.meta ?? {}) }
-        : { piece: key, extra: true, ...(outcome.meta ?? {}) },
+      { piece: key, index: meta.index, ...(outcome.meta ?? {}) },
     );
     stamped[key as StampablePulseStep] = outcome;
   }

@@ -259,6 +259,22 @@ export function visibilityDots(v: StrategyVisibility): number {
   return idx < 0 ? 1 : idx + 1;
 }
 
+/** Card-face words — Single Place Promos never prints a give/placement number. */
+export type RungWord = "Low" | "Mid" | "High";
+export const RUNG_WORDS = ["Low", "Mid", "High"] as const;
+
+export function giveWord(id: StrategyId): RungWord {
+  if (id === "zero") return "Low";
+  if (id === "conservative") return "Mid";
+  return "High";
+}
+
+/** Max collapses to High — this surface has no Dominant picker. */
+export function placementWord(v: StrategyVisibility): RungWord {
+  if (v === "Low" || v === "Mid") return v;
+  return "High";
+}
+
 type CardCta =
   "current" | "join" | "reinstate" | "switch" | "switch_zero";
 
