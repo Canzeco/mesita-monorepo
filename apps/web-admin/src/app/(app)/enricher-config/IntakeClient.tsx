@@ -247,7 +247,7 @@ export function IntakeClient({
                   ))}
                 </select>
               </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · Semantics">
+              <ModelRow label="Embeddings" hint="locked · Semantic">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
               {settingsStamp && (
@@ -317,7 +317,7 @@ export function IntakeClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details + Semantics. One place."
+                  caption="Pulse + Details + Semantic. One place."
                   estimate={createCost}
                 />
               }
@@ -360,12 +360,12 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Eleven, 0–10. Create awaits four; Enrich is ten ticks."
+            subtitle="Create 1–4. Enrich 1–10. Two sequences, not one enum."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
-                index="0"
+                index="1"
                 name="Seed"
                 flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
@@ -585,8 +585,8 @@ export function IntakeClient({
                 id="f-semantic"
                 index="10 · $"
                 flows={flowTagFor("semantic")}
-                name="Semantics"
-                blurb="Closes the queue. Mesita Name and Semantic Summary — one function, two vectors."
+                name="Semantic"
+                blurb="Mesita Name & Semantic Summary & Embeddings. One function, two vectors. Closes Enrich at 10."
                 knobs="locked"
               >
                 <NoKnobs>

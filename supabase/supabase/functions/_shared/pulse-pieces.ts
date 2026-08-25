@@ -1,19 +1,20 @@
 // PULSE — the enrichment machinery, as TWO FLOWS over SHARED FUNCTIONS
-// (MESITA-1253, Semantics numbered 10).
+// (Main §8.4). Two sequences — not one global enum:
 //
 //   CREATE (ONE FUNCTION, awaits four subfunctions):
-//     0 seed → 1 pulse → 2 details → 10 semantic
+//     1 seed → 2 pulse → 3 details → 4 semantic
 //   ENRICH (TEN FUNCTIONS, sequential ticks, none await a nested run):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
 //     → 6 images → 7 menu → 8 reviews → 9 description → 10 semantic
 //
-// Pulse, Details and Semantics appear in BOTH flows because they are SHARED
+// Pulse, Details and Semantic appear in BOTH flows because they are SHARED
 // FUNCTIONS with two callers: CREATE awaits them inline (a place is born with
 // its liveness checked, its Google spine persisted, and both vectors written),
 // ENRICH runs them as ticks (a place is refreshed). Seed is NOT an enrich
 // function at all — it is step 1 of CREATE, and the row existing IS the seed.
 // That is why this array starts at pulse and why `enriched = 0` means CREATED:
-// the place exists and no enrich function has completed.
+// the place exists and no enrich function has completed. The 0 is the
+// persistence floor, not Create's number for Seed.
 //
 // CREATE IS A RUN LIKE ANY OTHER. It stamps the functions it actually ran
 // (pulse, details — and semantic when the vector write lands), so a healthy
@@ -97,9 +98,9 @@ export type PulseExtra = (typeof PULSE_EXTRAS)[number];
 export type PulseStep = PulsePiece | PulseExtra;
 
 /**
- * What level 0 is CALLED on the meter: Created. Operator-facing, Seed is
- * function 0 of the 0–10 enum — same slot, still never stamped. The row
- * existing IS the seed, so there is no enrich rung below pulse.
+ * What level 0 is CALLED on the meter: Created. Seed is Create step 1, never
+ * stamped, never an enrich rung. The row existing IS the seed, so there is
+ * no enrich rung below pulse. 0 on the meter is the persistence floor.
  */
 export const PULSE_FLOOR_LABEL = "Created";
 
@@ -114,7 +115,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
   menu: "Menu",
   reviews: "Reviews",
   description: "Description",
-  semantic: "Semantics",
+  semantic: "Semantic",
 };
 
 /**
