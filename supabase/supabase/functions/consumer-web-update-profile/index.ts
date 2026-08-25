@@ -16,6 +16,7 @@ import {
 } from "../_shared/auth.ts";
 import { clean } from "../_shared/input.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import {
   buildProfilePatch,
   parseAvatarUrl,
@@ -78,12 +79,13 @@ Deno.serve(async (req) => {
   // the validator can scan the QR immediately after onboarding.
   const existing = await admin
     .from("consumers")
-    .select("id, code")
+    .select("id, code, deleted_at")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
     return json({ ok: false, error: `consumer_read: ${existing.error.message}` }, 500);
   }
+  if (isDeletedConsumer(existing.data)) return accountDeletedResponse();
   if (!existing.data) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const codeResult = await admin.rpc("generate_consumer_code");

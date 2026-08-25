@@ -22,6 +22,10 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import {
+  accountDeletedResponse,
+  isDeletedConsumer,
+} from "../_shared/delete-history-free.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -60,7 +64,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  const SIGNIN_SELECT = "id, code, full_name, first_name, last_name, phone, birthday, sex";
+  const SIGNIN_SELECT =
+    "id, code, full_name, first_name, last_name, phone, birthday, sex, deleted_at";
 
   // Lazy-create consumers row. Race: two parallel sign-ins on a brand-new
   // account can both insert — handle 23505 by reading the row back.
@@ -74,6 +79,7 @@ Deno.serve(async (req) => {
   }
 
   let consumerRow = existing.data;
+  if (isDeletedConsumer(consumerRow)) return accountDeletedResponse();
   if (!consumerRow) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const codeResult = await admin.rpc("generate_consumer_code");
@@ -117,6 +123,10 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `consumer_phone_sync: ${sync.error}` }, 500);
     }
     consumerRow = sync.row as typeof consumerRow;
+  }
+
+  if (consumerRow && "deleted_at" in consumerRow) {
+    delete (consumerRow as { deleted_at?: unknown }).deleted_at;
   }
 
   return json({

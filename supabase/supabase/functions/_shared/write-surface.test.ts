@@ -11,8 +11,8 @@
 //     its door and that baseline — migrating an allowlisted caller onto its
 //     door only ever SHRINKS the allowlist, never breaks this test.
 //  2. Guard test 4's refusal half: a hard DELETE on an aggregate's own row,
-//     ratcheted the same way. The visibility half needs a status column
-//     that doesn't exist yet — that's MESITA-1250's, not this file's.
+//     ratcheted the same way. The visibility half is consumers.deleted_at
+//     plus `_shared/delete-history-free.ts` (MESITA-1250).
 //
 // CONSUMER note: PR #1157 (merged 2026-08-23, same issue) already built a
 // comprehensive consumer validator + write door — `_shared/consumer-doc.ts`,
@@ -285,9 +285,8 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // tightened later without this file silently going stale.
 const HARD_DELETE_ALLOWLIST = [
   "_shared/save-place.ts", // real: deletes the places row it just inserted, on a failed downstream step (compensating-write pattern)
-  "_shared/ticket-doc.ts", // real, but a CONSOLIDATION not a new bypass: writeTicket's own `mode: "delete"` is THE door's sanctioned delete path, replacing what consumer-web-delete-account's cascade clean-up already did as a scattered raw call (see the door's own docstring) — a chokepoint appearing here is the deletion law getting MORE enforceable, not less
+  "_shared/ticket-doc.ts", // writeTicket still exposes mode: "delete"; account close must not call it (MESITA-1250 — tickets stay)
   "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets project_verifications (dedup-before-insert), not profiles
-  "consumer-web-delete-account/index.ts", // real: deletes the consumer's own visit_tickets as part of account deletion — VERIFIED it does NOT hard-delete the consumers row itself (no delete() on consumers exists anywhere in the codebase today)
   "consumer-web-submit-review/index.ts", // windowing false positive — real delete() targets consumer_review_claims (claim rollback on a failed write), not profiles or visit_tickets
 ];
 

@@ -398,6 +398,7 @@ export type Database = {
           code: string | null
           country: string | null
           created_at: string
+          deleted_at: string | null
           first_name: string | null
           full_name: string | null
           id: string
@@ -423,6 +424,7 @@ export type Database = {
           code?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           first_name?: string | null
           full_name?: string | null
           id: string
@@ -448,6 +450,7 @@ export type Database = {
           code?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           first_name?: string | null
           full_name?: string | null
           id?: string

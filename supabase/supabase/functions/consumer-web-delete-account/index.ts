@@ -1,26 +1,20 @@
 // Supabase Edge Function — consumer-web-delete-account
 //
-// Authenticated. Deletes the caller's own consumer account along with every
-// dependent row (tickets). Also deletes the
-// underlying auth.users row so the email is freed up for re-signup.
-// Self-contained: verifies the JWT, then deletes via service role. Does
-// NOT call any other Edge Function.
+// Authenticated. Closes the caller's own consumer account. Tickets are NEVER
+// wiped here (Atlas §C / MESITA-1250): visit and reservation rows stay so
+// ON DELETE RESTRICT remains honest. THE blessed door is
+// `_shared/delete-history-free.ts` — history → `consumers.deleted_at` + auth
+// tombstone (phone/email freed for a new uid); history-free → delete auth
+// (consumers cascades). Self-contained: verifies the JWT, then writes via
+// the service role. Does NOT call any other Edge Function.
 //
-// Cascade order matters: tickets reference consumers with ON DELETE
-// RESTRICT, so they must be removed first. The
-// public.consumers row PK references auth.users(id) ON DELETE CASCADE, so
-// deleting the auth row drops the consumers row too — we delete the auth
-// row last for that reason.
-//
-// BILLING FIRST, though. consumer_subscriptions also cascades from the
-// consumer row, so deleting the account used to silently drop our only
-// record of a live Stripe subscription while Stripe kept charging the card
-// every month — with the row that would let us find it destroyed. Stripe is
+// BILLING FIRST. consumer_subscriptions would vanish with a hard-delete, and
+// even a tombstone must not leave Stripe charging a closed guest. Stripe is
 // the system of record for money; it has to be told before we lose ours.
 //
-// Cancelled immediately, not at period end: the account is gone, there is
+// Cancelled immediately, not at period end: the account is closed, there is
 // nobody left to serve out the remainder. If Stripe refuses, we ABORT the
-// deletion rather than orphan a live subscription — the user can retry, and
+// close rather than orphan a live subscription — the user can retry, and
 // a retryable error beats billing a ghost.
 //
 // Local:  supabase functions serve consumer-web-delete-account
@@ -35,7 +29,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
-import { writeTicket } from "../_shared/ticket-doc.ts";
+import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 
 // Statuses that still bill (or still owe us money). `canceled` / `incomplete_
 // expired` are terminal at Stripe already, so there is nothing to cancel.
@@ -46,8 +40,8 @@ Deno.serve(async (req) => {
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
 
-  // Account deletion is self-only — the JWT identifies which row to
-  // drop. No body needed.
+  // Account close is self-only — the JWT identifies which row to
+  // tombstone or hard-delete. No body needed.
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
   const authRes = await getAuthedUser(req, envRes.env);
@@ -104,22 +98,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Cascade clean-up of dependent rows (RESTRICT FKs).
-  const ticketsRes = await writeTicket(admin, {
-    mode: "delete",
-    match: { consumer_id: userId },
+  const closed = await deleteConsumerAccount(admin, userId);
+  if (!closed.ok) {
+    return json({ ok: false, error: closed.error }, 500);
+  }
+
+  return json({
+    ok: true,
+    id: userId,
+    mode: closed.mode,
+    subscriptions_cancelled: liveSubIds.length,
   });
-  if (!ticketsRes.ok) {
-    return json({ ok: false, error: `tickets_delete: ${ticketsRes.error}` }, 500);
-  }
-
-  // public.consumers is ON DELETE CASCADE from auth.users — dropping the
-  // auth row removes the consumer row automatically. We delete the auth
-  // user via the admin API to also kill the session + free the email.
-  const { error: authErr } = await admin.auth.admin.deleteUser(userId);
-  if (authErr) {
-    return json({ ok: false, error: `auth_delete: ${authErr.message}` }, 500);
-  }
-
-  return json({ ok: true, id: userId, subscriptions_cancelled: liveSubIds.length });
 });

@@ -18,6 +18,10 @@ import { getTierConfig, perkClassKey } from "../_shared/membership.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { isCanonicalConsumerCode } from "../_shared/consumer-code.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import {
+  accountDeletedResponse,
+  isDeletedConsumer,
+} from "../_shared/delete-history-free.ts";
 import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
 
 Deno.serve(async (req) => {
@@ -34,7 +38,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, plan, instagram_followers_count, class_expires_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, country, phone, avatar_url, instagram_handle, privacy_public, privacy_show_saves, privacy_show_visits, privacy_show_stories, class_key, class_origin, plan, instagram_followers_count, class_expires_at, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -47,6 +51,10 @@ Deno.serve(async (req) => {
   }
 
   let consumer = existing.data;
+  if (isDeletedConsumer(consumer)) return accountDeletedResponse();
+  if (consumer && "deleted_at" in consumer) {
+    delete (consumer as { deleted_at?: unknown }).deleted_at;
+  }
   if (!consumer) {
     // Generate a code by calling the SQL helper (race-safe via unique
     // constraint; we retry once on conflict).
