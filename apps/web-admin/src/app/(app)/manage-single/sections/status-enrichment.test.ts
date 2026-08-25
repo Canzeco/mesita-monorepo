@@ -63,7 +63,26 @@ describe("Status + Intake boxes", () => {
 
     const admin = readFileSync(join(__dirname, "AdminSection.tsx"), "utf8");
     expect(admin).toContain("IntakeStatusCard");
+    expect(admin).toContain("VerificationCard");
     expect(admin).not.toContain("IntakeStatusCards");
     expect(admin).not.toContain("CreateStatusCard");
+    expect(admin).not.toContain("Ownership verified by");
+  });
+});
+
+describe("Verification box", () => {
+  it("owns ownership proof and wires the existing queue decide", () => {
+    const card = readFileSync(join(__dirname, "VerificationCard.tsx"), "utf8");
+    expect(card).toContain('title="Verification"');
+    expect(card).toContain("listPlaceVerifications");
+    expect(card).toContain("decidePlaceVerification");
+    expect(card).toContain('href="/verifications"');
+    expect(card).toContain("never lapses");
+    expect(card).not.toContain(".from(");
+
+    const admin = readFileSync(join(__dirname, "AdminSection.tsx"), "utf8");
+    expect(admin).toContain("<VerificationCard");
+    expect(admin).toContain("<MetaCard place={place} />");
+    expect(admin).not.toContain("Ownership verified by");
   });
 });
