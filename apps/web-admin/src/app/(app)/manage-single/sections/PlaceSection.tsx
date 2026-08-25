@@ -38,6 +38,11 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import {
+  formatPlacePriceRange,
+  MAX_PRICE_LEVEL,
+  priceLevelName,
+} from "../place-price";
+import {
   ALLOWED_IMAGE_ACCEPT,
   PLACE_IMAGES_BUCKET,
   placeImageObjectPath,
@@ -105,21 +110,31 @@ function ChannelLabelIcon({
   return null;
 }
 
-const PRICE_NAMES = ["", "Budget", "Casual", "Upscale", "Fine dining"] as const;
-const MAX_PRICE_LEVEL = PRICE_NAMES.length - 1;
-
-// Price is Google-Places inferred — read-only. Filled $ + dimmed remainder.
-function PriceDisplay({ level }: { level: number | null | undefined }) {
-  if (level == null || level < 1) return <span className="text-muted-foreground">—</span>;
-  // level is already >= 1 here, so clamping only needs an upper bound.
-  const n = Math.min(MAX_PRICE_LEVEL, level);
+// Price is Google-Places inferred — read-only. Filled $ + dimmed remainder
+// plus the numeric band already implied by price_level + currency.
+function PriceDisplay({
+  level,
+  currency,
+}: {
+  level: number | null | undefined;
+  currency: string | null | undefined;
+}) {
+  const name = priceLevelName(level);
+  if (name == null || level == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  const n = Math.min(MAX_PRICE_LEVEL, Math.round(level));
+  const range = formatPlacePriceRange(level, currency);
   return (
-    <span className="flex items-center gap-2">
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
       <span className="font-semibold tracking-wide">
         <span className="text-foreground">{"$".repeat(n)}</span>
-        <span className="text-muted-foreground/40">{"$".repeat(MAX_PRICE_LEVEL - n)}</span>
+        <span className="text-muted-foreground/40">
+          {"$".repeat(MAX_PRICE_LEVEL - n)}
+        </span>
       </span>
-      <span className="text-muted-foreground">{PRICE_NAMES[n]}</span>
+      <span className="text-muted-foreground">{name}</span>
+      {range ? <span className="text-muted-foreground">{range}</span> : null}
     </span>
   );
 }
@@ -460,7 +475,10 @@ export function PlaceSection({
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">
           <ReadField label="Google price" auto boxed>
-            <PriceDisplay level={place.price_level} />
+            <PriceDisplay
+              level={place.price_level}
+              currency={place.currency}
+            />
           </ReadField>
           <PlaceCategorySelect
             value={form.category === "undefined" ? "" : form.category}
