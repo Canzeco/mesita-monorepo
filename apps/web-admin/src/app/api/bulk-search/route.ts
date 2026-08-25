@@ -4,6 +4,7 @@ import type { SearchResponse } from "@/lib/places-types";
 
 type RequestBody = {
   queries?: unknown;
+  placeIds?: unknown;
   regionCode?: unknown;
   maxResultsPerQuery?: unknown;
   minRating?: unknown;
@@ -24,6 +25,12 @@ export async function POST(req: NextRequest) {
         .map((q) => q.trim())
         .filter((q) => q.length > 0)
     : [];
+  const placeIds = Array.isArray(body.placeIds)
+    ? body.placeIds
+        .filter((q): q is string => typeof q === "string")
+        .map((q) => q.trim())
+        .filter((q) => q.length >= 18)
+    : [];
   const regionCode =
     typeof body.regionCode === "string" ? body.regionCode.trim().toUpperCase() : "";
   const maxResultsPerQuery =
@@ -39,6 +46,7 @@ export async function POST(req: NextRequest) {
 
   const result = await efInvoke<SearchResponse>("admin-web-discover-places", {
     queries,
+    placeIds,
     regionCode,
     maxResultsPerQuery,
     minRating,

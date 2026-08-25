@@ -288,11 +288,9 @@ async function applyOne(
     };
   }
   if (fact === "partner") {
-    const r = await setPlacePlan(
-      hit.id,
-      values.partnerOn ? "pro" : "free",
-      strategyRates("zero"),
-    );
+    // Plan-only write. Rates ride Promoting, not Partner — do not zero
+    // a live strategy when flipping membership.
+    const r = await setPlacePlan(hit.id, values.partnerOn ? "pro" : "free");
     if (!r.ok) return { status: "error", name, error: r.error };
     return {
       status: "ok",

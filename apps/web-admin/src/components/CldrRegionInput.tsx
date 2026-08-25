@@ -22,10 +22,13 @@ export function CldrRegionInput({
   value,
   onChange,
   disabled,
+  compact = false,
 }: {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  /** Inline trigger for a sticky search row (no stacked label). */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -40,33 +43,50 @@ export function CldrRegionInput({
     );
   }, [q]);
 
+  const trigger = (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-label="Optional country"
+      title="Optional country for Google Places. Empty = no country param."
+      onClick={() => {
+        setQ("");
+        setOpen((v) => !v);
+      }}
+      className={
+        compact
+          ? "border-border bg-background focus:border-foreground inline-flex h-8 max-w-[10.5rem] shrink-0 items-center justify-between gap-1.5 rounded-lg border px-2 text-left text-xs outline-none disabled:cursor-not-allowed"
+          : "border-border bg-background focus:border-foreground inline-flex h-8 min-w-40 items-center justify-between gap-2 rounded-lg border px-2.5 text-left text-xs outline-none disabled:cursor-not-allowed"
+      }
+    >
+      <span
+        className={
+          (selected ? "text-foreground" : "text-muted-foreground") +
+          (compact ? " truncate" : "")
+        }
+      >
+        {selected ? selected.name : compact ? "Country" : "Any"}
+      </span>
+      <span aria-hidden className="text-muted-foreground">
+        ▾
+      </span>
+    </button>
+  );
+
   return (
-    <div className="relative">
-      <label className="text-muted-foreground flex shrink-0 flex-col gap-1">
-        <span className="type-label font-semibold tracking-[0.12em] uppercase">
-          Country
-        </span>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-label="Optional country"
-          title="Optional country for Google Places. Empty = no country param."
-          onClick={() => {
-            setQ("");
-            setOpen((v) => !v);
-          }}
-          className="border-border bg-background focus:border-foreground inline-flex h-8 min-w-40 items-center justify-between gap-2 rounded-lg border px-2.5 text-left text-xs outline-none disabled:cursor-not-allowed"
-        >
-          <span className={selected ? "text-foreground" : "text-muted-foreground"}>
-            {selected ? selected.name : "Any"}
+    <div className="relative shrink-0">
+      {compact ? (
+        trigger
+      ) : (
+        <label className="text-muted-foreground flex shrink-0 flex-col gap-1">
+          <span className="type-label font-semibold tracking-[0.12em] uppercase">
+            Country
           </span>
-          <span aria-hidden className="text-muted-foreground">
-            ▾
-          </span>
-        </button>
-      </label>
+          {trigger}
+        </label>
+      )}
       {open && !disabled ? (
         <div className="border-border bg-card absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-xl border shadow-card">
           <input

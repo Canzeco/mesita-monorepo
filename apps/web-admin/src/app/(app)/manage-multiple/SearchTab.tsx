@@ -62,22 +62,23 @@ export function SearchTab({
   const [copied, setCopied] = useState<string | null>(null);
 
   const parsed = useMemo(() => splitSearchBarInput(bar), [bar]);
-  const queries = useMemo(() => {
-    const out: string[] = [];
-    if (parsed.query) out.push(parsed.query);
-    out.push(...parsed.placeIds);
-    return Array.from(new Set(out));
-  }, [parsed]);
+  const queries = useMemo(
+    () => (parsed.query ? [parsed.query] : []),
+    [parsed],
+  );
+  const placeIds = parsed.placeIds;
+  const unitCount = queries.length + placeIds.length;
 
-  const overLimit = queries.length > MAX_QUERIES;
+  const overLimit = unitCount > MAX_QUERIES;
   const { totalCalls: estimatedApiCalls } = estimateSearchCost(
     queries.length,
     maxResults,
+    placeIds.length,
   );
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
 
   async function runSearch() {
-    if (queries.length === 0 || overLimit) return;
+    if (unitCount === 0 || overLimit) return;
     setRunning(true);
     setError(null);
     setResult(null);
@@ -87,6 +88,7 @@ export function SearchTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           queries,
+          placeIds,
           regionCode: regionCode.trim().toUpperCase(),
           maxResultsPerQuery: maxResults,
           minRating,
@@ -163,7 +165,7 @@ export function SearchTab({
             />
             <button
               type="submit"
-              disabled={running || queries.length === 0 || overLimit}
+              disabled={running || unitCount === 0 || overLimit}
               className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-50"
             >
               {running ? (
@@ -181,7 +183,7 @@ export function SearchTab({
                 ? ` · ${parsed.placeIds.length} Place ID${parsed.placeIds.length === 1 ? "" : "s"}`
                 : ""}
               {overLimit ? ` · over the ${MAX_QUERIES} max` : ""}
-              {queries.length > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
+              {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
             </span>
             <CldrRegionInput
               value={regionCode}
@@ -198,7 +200,7 @@ export function SearchTab({
           minRating={minRating}
           minReviews={minReviews}
           running={running}
-          queriesCount={queries.length}
+          queriesCount={unitCount}
           overLimit={overLimit}
           onMaxResultsChange={setMaxResults}
           onMinRatingChange={setMinRating}

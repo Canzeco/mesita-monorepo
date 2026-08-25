@@ -250,7 +250,11 @@ export function PlaceSelectCatalog() {
               spellCheck={false}
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none sm:text-lg"
             />
-            <CldrRegionInput value={regionCode} onChange={setRegionCode} />
+            <CldrRegionInput
+              compact
+              value={regionCode}
+              onChange={setRegionCode}
+            />
             {(anySearching) && trimmed.length >= MIN_QUERY_LENGTH && (
               <Loader2 className="text-primary h-5 w-5 shrink-0 animate-spin sm:h-6 sm:w-6" />
             )}
