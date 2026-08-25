@@ -1,13 +1,13 @@
 // Shared create-place core — THE CREATE RUN (MESITA-1253): one run,
 // synchronous, the front door. Its subfunctions, in the spec's words:
 //
-//   1 seed     → dedupe on google_place_id, mint the minimal 'generating' rows
-//   2 pulse    → the liveness gate: Google's businessStatus, read from the same
-//                Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
-//                at the door, before any row exists. Don't seed corpses.
-//   3 details  → the Google spine persisted (fetchGoogleBasics fields,
-//                category='undefined' until the Intaker infers the real one)
-//   4 semantic → Name vector + Summary vector, awaited in this same function
+//   0 seed      → dedupe on google_place_id, mint the minimal 'generating' rows
+//   1 pulse     → the liveness gate: Google's businessStatus, read from the same
+//                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
+//                 at the door, before any row exists. Don't seed corpses.
+//   2 details   → the Google spine persisted (fetchGoogleBasics fields,
+//                 category='undefined' until the Intaker infers the real one)
+//  10 semantic  → Name vector + Summary vector, awaited in this same function
 //
 // Pulse, Details and Semantics are SHARED with the ENRICH queue — create
 // AWAITS the four subfunctions; enrich runs each as its own tick with no nested

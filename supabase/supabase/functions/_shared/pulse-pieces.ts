@@ -2,7 +2,7 @@
 // (MESITA-1253, Semantics numbered 10).
 //
 //   CREATE (ONE FUNCTION, awaits four subfunctions):
-//     seed → pulse → details → semantic
+//     0 seed → 1 pulse → 2 details → 10 semantic
 //   ENRICH (TEN FUNCTIONS, sequential ticks, none await a nested run):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
 //     → 6 images → 7 menu → 8 reviews → 9 description → 10 semantic
@@ -97,11 +97,9 @@ export type PulseExtra = (typeof PULSE_EXTRAS)[number];
 export type PulseStep = PulsePiece | PulseExtra;
 
 /**
- * What level 0 is CALLED. Not a function: seed is step 1 of CREATE and the row
- * existing IS the seed, so there is no rung below pulse and nothing to stamp.
- * Clients render `PULSE_LABELS_IN_ORDER[0]` for a place no enrich function has
- * reached — which, with create stamping pulse+details, is a place whose create
- * stamps failed or that predates them.
+ * What level 0 is CALLED on the meter: Created. Operator-facing, Seed is
+ * function 0 of the 0–10 enum — same slot, still never stamped. The row
+ * existing IS the seed, so there is no enrich rung below pulse.
  */
 export const PULSE_FLOOR_LABEL = "Created";
 

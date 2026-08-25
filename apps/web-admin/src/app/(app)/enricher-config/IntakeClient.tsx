@@ -360,15 +360,15 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Eleven, listed once. Create awaits four; Enrich is ten ticks."
+            subtitle="Eleven, 0–10. Create awaits four; Enrich is ten ticks."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
-                index="SEED"
+                index="0"
                 name="Seed"
                 flows={flowTagFor("seed")}
-                blurb="Dedupe on the Google Place ID and mint the paired rows."
+                blurb="Dedupe on the Google Place ID and mint the paired rows. The row existing is the seed."
                 knobs="no knobs"
               >
                 <NoKnobs>
