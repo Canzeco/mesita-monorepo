@@ -247,7 +247,7 @@ export function IntakeClient({
                   ))}
                 </select>
               </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · 1536-d">
+              <ModelRow label="Embeddings" hint="locked · Semantic">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
               {settingsStamp && (
@@ -291,7 +291,7 @@ export function IntakeClient({
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
-            subtitle="One run when someone adds a place."
+            subtitle="One function. It awaits four subfunctions."
             status={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
@@ -317,7 +317,7 @@ export function IntakeClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details. One place."
+                  caption="Pulse + Details + Semantic. One place."
                   estimate={createCost}
                 />
               }
@@ -329,7 +329,7 @@ export function IntakeClient({
           <SectionCard
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
-            subtitle="One subfunction per cron tick, in order."
+            subtitle="Ten functions. One tick each — none await a nested run."
             status={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
@@ -360,7 +360,7 @@ export function IntakeClient({
           <SectionCard
             icon={<ListOrdered className="text-secondary h-4 w-4" />}
             title="Functions"
-            subtitle="Twelve, listed once. Create is one run; Enrich is sequential."
+            subtitle="Eleven, listed once. Create awaits four; Enrich is ten ticks."
           >
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
@@ -582,27 +582,17 @@ export function IntakeClient({
                 </KnobElsewhere>
               </FunctionModule>
               <FunctionModule
-                id="f-name"
+                id="f-semantic"
                 index="◇"
-                flows={flowTagFor("name")}
-                name="Name"
-                blurb="The Mesita name as its own vector."
-                knobs="not built"
-              >
-                <NoKnobs>Not built. Nothing stamps it.</NoKnobs>
-              </FunctionModule>
-
-              <FunctionModule
-                id="f-summary"
-                index="◇"
-                flows={flowTagFor("summary")}
-                name="Summary"
-                blurb="The 60-word text the index reads. Never guest prose."
+                flows={flowTagFor("semantic")}
+                name="Semantic"
+                blurb="One function writes the Mesita Name vector and the Semantic Summary together. Create awaits it; Enrich ticks it."
                 knobs="locked"
               >
                 <NoKnobs>
-                  Locked to <b>text-embedding-3-small</b>. Swapping re-embeds
-                  the catalog.
+                  Locked to <b>text-embedding-3-small</b>. Name and Summary are
+                  two columns, one function. Swapping the model re-embeds the
+                  catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

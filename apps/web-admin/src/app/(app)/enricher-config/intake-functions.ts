@@ -1,9 +1,9 @@
-// The twelve Intake subfunctions, and which of the two flows uses each.
+// The eleven Intake subfunctions, and which of the two flows uses each.
 //
-// Create is ONE run (seed → pulse → details, Name and Summary ride along).
-// Enrich is SEQUENTIAL runs (1–9 across cron ticks, then Name and Summary).
-// Shared rows print once on the page. This file is the chip + tag source so
-// Create, Enrich and the ladder cannot drift.
+// Create is ONE function that AWAITS four subfunctions (Seed, Pulse, Details,
+// Semantic). Enrich is TEN functions on sequential ticks — none await a nested
+// run. Shared rows print once on the page. This file is the chip + tag source
+// so Create, Enrich, Status and the ladder cannot drift.
 
 export type IntakeFlow = "create" | "enrich";
 
@@ -25,8 +25,12 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
   { id: "f-menu", key: "menu", chip: "7 Menu", flows: ["enrich"] },
   { id: "f-reviews", key: "reviews", chip: "8 Reviews", flows: ["enrich"] },
   { id: "f-description", key: "description", chip: "9 Description", flows: ["enrich"] },
-  { id: "f-name", key: "name", chip: "◇ Name", flows: ["create", "enrich"] },
-  { id: "f-summary", key: "summary", chip: "◇ Summary", flows: ["create", "enrich"] },
+  {
+    id: "f-semantic",
+    key: "semantic",
+    chip: "◇ Semantic",
+    flows: ["create", "enrich"],
+  },
 ];
 
 export function chipsFor(flow: IntakeFlow): { href: string; label: string }[] {

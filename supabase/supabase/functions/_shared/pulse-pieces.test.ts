@@ -47,9 +47,9 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
   assertEquals(PULSE_EXTRAS.length > 0, true);
 });
 
-Deno.test("pulse: the NINE enrich functions, in the decided order", () => {
-  // The law (MESITA-1253): ENRICH is nine functions, 1-9. Seed is NOT among
-  // them — it is step 1 of CREATE — and the two semantic functions sit outside.
+Deno.test("pulse: the NINE enrich queue functions, in the decided order", () => {
+  // The law: ENRICH is ten functions (1–9 plus Semantic). Seed is NOT among
+  // them — it is step 1 of CREATE — and Semantic sits outside the high-water.
   assertEquals([...PULSE_PIECES], [
     "pulse",
     "details",
@@ -95,13 +95,10 @@ Deno.test("pulse: CREATE's stamps read as 2/9 — one ladder, two callers", () =
   assertEquals(b?.status, "missing");
 });
 
-Deno.test("pulse: `name` is a SEMANTIC function now, not rung 3", () => {
-  // It was a rung until MESITA-1243. The google_name refresh is one field on
-  // function 2's call, not a stage of its own; what deserves a function is the
-  // Mesita Name as a VECTOR, and that cannot be a rung because the On-Update
-  // path fires it whenever an operator renames a place.
+Deno.test("pulse: `semantic` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("name"), false);
-  assertEquals([...PULSE_EXTRAS], ["summary", "name"]);
+  assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
+  assertEquals([...PULSE_EXTRAS], ["semantic"]);
 });
 
 Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
@@ -172,13 +169,12 @@ Deno.test("high water: a semantic function never counts toward the number", () =
   assertEquals(
     pulseHighWater([
       ...full,
-      { step_name: "summary", status: "failed", created_at: at(30) },
-      { step_name: "name", status: "failed", created_at: at(31) },
+      { step_name: "semantic", status: "failed", created_at: at(30) },
     ]),
     PULSE_TOTAL,
   );
   // And a semantic function on its own is not progress.
-  assertEquals(pulseHighWater([done("summary", 1)]), 0);
+  assertEquals(pulseHighWater([done("semantic", 1)]), 0);
 });
 
 Deno.test("pulse: the index is the position, and the labels ride in order", () => {

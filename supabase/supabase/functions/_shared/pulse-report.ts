@@ -106,9 +106,9 @@ export async function reportPulsePieces(
   //      the run reporting success. `socail` for `social` pinned every place at
   //      3 and nothing in the type system, the tests or CI said a word
   //      (MESITA-1219). The unknown-key check below stays as the belt.
-  //   8. THE SEMANTIC FUNCTIONS ARE STAMPED HERE TOO, and marked `SX` rather
-  //      than given a rung. Name and Summary are real work with real outcomes,
-  //      but counting either would make `enriched` fall when someone edits a
+  //   8. SEMANTIC IS STAMPED HERE TOO, and marked `SX` rather
+  //      than given a rung. It is real work with a real outcome,
+  //      but counting it would make `enriched` fall when someone edits a
   //      name — the On-Update path fires the same machinery (MESITA-1243).
   pieces: Partial<Record<StampablePulseStep, PieceOutcome>>,
 ): Promise<void> {

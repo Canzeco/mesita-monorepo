@@ -1,33 +1,33 @@
 // PULSE — the enrichment machinery, as TWO FLOWS over SHARED FUNCTIONS
 // (MESITA-1253, superseding the function-0 framing of MESITA-1243).
 //
-//   CREATE (ONE RUN, synchronous, the front door):
-//     seed → pulse → details      · semantic: name · summary
-//   ENRICH (SEQUENTIAL RUNS, the queue, strictly in order):
+//   CREATE (ONE FUNCTION, awaits four subfunctions):
+//     seed → pulse → details → semantic
+//   ENRICH (TEN FUNCTIONS, sequential ticks, none await a nested run):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
-//     → 6 images → 7 menu → 8 reviews → 9 description
-//                                       · semantic: name · summary
+//     → 6 images → 7 menu → 8 reviews → 9 description → semantic
 //
-// Pulse, Details, Name and Summary appear in BOTH flows because they are
-// SHARED FUNCTIONS with two callers: CREATE runs them inline (a place is born
-// with its liveness checked, its Google spine persisted, and its vector
-// queued), ENRICH runs them as queue rungs (a place is refreshed). Seed is NOT
-// an enrich function at all — it is step 1 of CREATE, and the row existing IS
-// the seed. That is why this array starts at pulse and why `enriched = 0`
-// means CREATED: the place exists and no enrich function has completed.
+// Pulse, Details and Semantic appear in BOTH flows because they are SHARED
+// FUNCTIONS with two callers: CREATE awaits them inline (a place is born with
+// its liveness checked, its Google spine persisted, and both vectors written),
+// ENRICH runs them as ticks (a place is refreshed). Seed is NOT an enrich
+// function at all — it is step 1 of CREATE, and the row existing IS the seed.
+// That is why this array starts at pulse and why `enriched = 0` means CREATED:
+// the place exists and no enrich function has completed.
 //
 // CREATE IS A RUN LIKE ANY OTHER. It stamps the functions it actually ran
-// (pulse, details — and summary when the vector write lands), so a healthy
+// (pulse, details — and semantic when the vector write lands), so a healthy
 // fresh place reads 2/9 the moment it exists, and state accumulates across
 // create and every later run under one rule. A function a run did not buy
 // writes NOTHING (MESITA-1172 blocker 2) — that rule is what lets two callers
 // share one ladder.
 //
-// WHY NAME AND SUMMARY ARE SEMANTIC FUNCTIONS AND NOT RUNGS. The On-Update
-// path fires the same machinery whenever an operator edits the profile, and
-// `enriched` must not fall because someone renamed a place. Counting either
-// would stop answering "how far did the queue get". `name` (the Mesita Name as
-// its own vector) is BUILT (MESITA-1238): `places.name_embedding`.
+// WHY SEMANTIC IS ONE FUNCTION AND NOT A RUNG. One function writes the Mesita
+// Name vector AND the Semantic Summary vector together. The On-Update path
+// fires the same machinery whenever an operator edits the profile, and
+// `enriched` must not fall because someone renamed a place. Counting it would
+// stop answering "how far did the queue get". Both vectors are BUILT
+// (MESITA-1238): `places.name_embedding` and `places.embedding`.
 //
 // RENUMBERING IS SURVIVABLE BECAUSE NOTHING MATCHES ON THE NUMBER. The reader
 // keys on `step_name` (the function KEY); the `S<n>` written beside it is
@@ -44,7 +44,7 @@
 // BEFORE `images` because the Instagram/Facebook gathers fill the pools the
 // vision funnel ranks. `menu` sits after `links` (its source) and before
 // `description` (which would read it). `description` CLOSES the queue at 9,
-// and the semantic functions run after it, vectorising the text the queue just
+// and Semantic runs after it, vectorising the name and the text the queue just
 // wrote.
 //
 // THE THREE TEXTS, each with exactly one reader, never collapsed:
@@ -83,15 +83,19 @@ export const PULSE_PIECES = [
 ] as const;
 
 /**
- * Reported, never counted. A semantic function is real work with a real outcome
- * an operator wants to see, but it is not a rung of the queue — see the header
- * for why neither sits at 10. Order follows the spec: summary, then name.
+ * Reported, never counted. Semantic is real work with a real outcome an
+ * operator wants to see, but it is not a rung of the queue — see the header
+ * for why it does not sit at 10. One function writes both vectors.
  *
- * `name` is BUILT (MESITA-1238): `places.name_embedding` is the 1536-d vector
- * of the resolved display name. `places.embedding` stays the Semantic Summary.
- * The two answers different questions and must never share a column.
+ * `places.name_embedding` is the 1536-d Mesita Name. `places.embedding` is the
+ * Semantic Summary. The two answer different questions and must never share a
+ * column — they just share one function, one stamp, two callers (Create and
+ * Enrich).
  */
-export const PULSE_EXTRAS = ["summary", "name"] as const;
+export const PULSE_EXTRAS = ["semantic"] as const;
+
+/** Pre-merge event / map keys. Folded into `semantic` on read. */
+export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
 
 export type PulsePiece = (typeof PULSE_PIECES)[number];
 export type PulseExtra = (typeof PULSE_EXTRAS)[number];
@@ -121,8 +125,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
 };
 
 export const PULSE_EXTRA_LABELS: Record<PulseExtra, string> = {
-  summary: "Semantic · Summary",
-  name: "Semantic · Name",
+  semantic: "Semantic",
 };
 
 /**
@@ -164,8 +167,8 @@ export const PULSE_LABELS_IN_ORDER: readonly string[] = [
 ];
 
 /**
- * The complete-profile number, so nothing hardcodes 9. Nine enrich functions,
- * so it IS the array length; semantic functions are not in it, and the CREATED
+ * The complete-profile number, so nothing hardcodes 9. Nine queue functions,
+ * so it IS the array length; Semantic is not in it, and the CREATED
  * floor (0) sits below the array.
  */
 export const PULSE_TOTAL = PULSE_PIECES.length;
