@@ -275,17 +275,18 @@ export function PlaceSelectCatalog() {
         {hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The row IS the pipeline, left to right: seeded → listed →
-                  enriched →
-                  verified → partner → promoting (MESITA-1166). Category, Zone
-                  and Google reviews are gone — they describe the place, and
-                  this table answers "how far along is it". */}
-              <table className="w-full min-w-[840px] border-separate border-spacing-0 text-sm">
+              {/* The row IS the pipeline, left to right: seeded → active →
+                  listed → enriched → verified → partner → promoting. Category,
+                  Zone and Google reviews are gone — they describe the place,
+                  and this table answers "how far along is it". Active is
+                  Google's OPERATIONAL fact, not Mesita Listed. */}
+              <table className="w-full min-w-[960px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-4 py-3 font-semibold">Photo</th>
                     <th className="px-4 py-3 font-semibold">Name</th>
                     <th className="px-4 py-3 text-center font-semibold">Seeded</th>
+                    <th className="px-4 py-3 text-center font-semibold">Active</th>
                     <th className="px-4 py-3 text-center font-semibold">Listed</th>
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
@@ -481,6 +482,12 @@ function PlaceCatalogRow({
         <BoolCell value={place.seeded} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
+        <ActiveCell
+          status={place.business_status}
+          seenAt={place.business_status_at}
+        />
+      </td>
+      <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
@@ -629,6 +636,48 @@ function LevelCell(
         ))}
       </span>
       <span className="sr-only">{title}</span>
+    </span>
+  );
+}
+
+function ActiveCell({
+  status,
+  seenAt,
+}: {
+  status: string | null;
+  seenAt: string | null;
+}) {
+  const seen =
+    seenAt && !Number.isNaN(new Date(seenAt).getTime())
+      ? ` (seen ${new Date(seenAt).toLocaleDateString()})`
+      : "";
+  if (status === "OPERATIONAL") {
+    return (
+      <span title={`Google reports this business as open and trading${seen}`}>
+        <BoolCell value={true} trueLabel="Yes" falseLabel="No" />
+      </span>
+    );
+  }
+  if (status === "CLOSED_TEMPORARILY") {
+    return (
+      <span title={`Temporarily closed${seen}`}>
+        <BoolCell value={false} trueLabel="Yes" falseLabel="No" />
+      </span>
+    );
+  }
+  if (status === "CLOSED_PERMANENTLY") {
+    return (
+      <span title={`Permanently closed${seen}`}>
+        <BoolCell value={false} trueLabel="Yes" falseLabel="No" />
+      </span>
+    );
+  }
+  return (
+    <span
+      title="Google has not reported a business status for this listing yet."
+      className="text-muted-foreground type-label font-semibold"
+    >
+      ?
     </span>
   );
 }
