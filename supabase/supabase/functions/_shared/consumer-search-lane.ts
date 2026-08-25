@@ -414,7 +414,7 @@ async function fetchEmbedPool(
     .from("profiles")
     .select(EMBED_COLUMNS)
     .in("status", ["active", "lead"])
-    .not("name_embedding", "is", null);
+    .or("name_embedding.not.is.null,embedding.not.is.null");
   if (origin) {
     const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
     query = query
@@ -422,6 +422,8 @@ async function fetchEmbedPool(
       .lte("lat", origin.lat + latDelta)
       .gte("lng", origin.lng - lngDelta)
       .lte("lng", origin.lng + lngDelta);
+  } else {
+    query = query.order("created_at", { ascending: false });
   }
   const { data, error } = await query.limit(EMBED_POOL);
   if (error) {

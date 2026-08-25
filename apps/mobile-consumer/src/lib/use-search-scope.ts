@@ -70,15 +70,19 @@ export function useSearchScope() {
   const snap = useSyncExternalStore(subscribe, () => state, () => state);
 
   const setCountry = useCallback((next: string | null) => {
-    state = { ...state, country: next };
-    persist();
-    emit();
+    void hydrate().then(() => {
+      state = { ...state, country: next };
+      persist();
+      emit();
+    });
   }, []);
 
   const setLocationOptOut = useCallback((next: boolean) => {
-    state = { ...state, locationOptOut: next };
-    persist();
-    emit();
+    void hydrate().then(() => {
+      state = { ...state, locationOptOut: next };
+      persist();
+      emit();
+    });
   }, []);
 
   return {
