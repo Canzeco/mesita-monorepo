@@ -34,9 +34,6 @@ function enforcedLiveCopy(): string {
 
 const ACTORS = [...new Set(CHANNELS.map((c) => c.actor))];
 
-const ROW =
-  "grid grid-cols-[4.5rem_minmax(7rem,1fr)_4.75rem_5.75rem_2.75rem] items-start gap-x-3";
-
 // CONTROLLED. Intake owns the config and the one Save button on the page, so
 // this renders the matrix and nothing else — no state, no fetch, no save. It
 // stays in this folder because `catalog.ts` beside it is cited BY PATH from
@@ -86,31 +83,15 @@ export function SourcingChannels({
         disabled={pending}
         onChange={(region) => onChange(applyRegionToAll(cfg, region))}
       />
-      <div className="mt-5">
-        <div
-          className={
-            ROW + " text-muted-foreground type-label pb-2 font-medium"
-          }
-        >
-          <span />
-          <span>Families</span>
-          <span className="inline-flex items-center justify-end gap-1">
-            <Star className="h-3 w-3" /> Min ★
-          </span>
-          <span className="inline-flex items-center justify-end gap-1">
-            <Users className="h-3 w-3" /> Reviews
-          </span>
-          <span className="text-right">On</span>
-        </div>
-
+      <div className="mt-2">
         {ACTORS.map((actor) => {
           const rows = CHANNELS.filter((c) => c.actor === actor);
           return (
             <div
               key={actor}
-              className="border-border border-t pt-3 pb-1 first:border-t-0 first:pt-0"
+              className="border-border border-t pt-3 pb-2 first:border-t-0 first:pt-1"
             >
-              <p className="text-muted-foreground mb-1.5 type-label font-semibold tracking-[0.12em] uppercase">
+              <p className="text-muted-foreground mb-1 type-label font-semibold tracking-[0.12em] uppercase">
                 {actor}
               </p>
               {rows.map((ch) => {
@@ -120,16 +101,16 @@ export function SourcingChannels({
                 return (
                   <div
                     key={ch.key}
-                    className={ROW + " py-2 " + (off ? "opacity-50" : "")}
+                    className={"py-2.5 " + (off ? "opacity-50" : "")}
                   >
-                    <span
-                      className="pt-1.5 text-sm"
-                      title={ch.description}
-                    >
-                      {ch.verb === "search" ? "Search" : "Add"}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="mb-1.5 flex gap-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span
+                        className="w-14 shrink-0 text-sm font-medium"
+                        title={ch.description}
+                      >
+                        {ch.verb === "search" ? "Search" : "Add"}
+                      </span>
+                      <div className="flex gap-2">
                         <button
                           type="button"
                           disabled={off || pending}
@@ -149,64 +130,68 @@ export function SourcingChannels({
                           None
                         </button>
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {FAMILIES.map((fam) => {
-                          const on = p.families.includes(fam.key);
-                          return (
-                            <button
-                              key={fam.key}
-                              type="button"
-                              disabled={off || pending}
-                              onClick={() => toggleFamily(ch.key, fam.key)}
-                              title={fam.blurb}
-                              aria-pressed={on}
-                              className={
-                                "rounded-lg border px-2 py-1 type-label font-medium transition disabled:cursor-not-allowed " +
-                                (on
-                                  ? "border-foreground bg-foreground text-background"
-                                  : "border-border text-muted-foreground hover:bg-muted")
-                              }
-                            >
-                              {fam.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {summary.kind === "none" && !off && (
-                        <p className="mt-1.5 text-xs text-amber-600">
-                          Nothing is eligible for this channel.
-                        </p>
-                      )}
+                      <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                        <label className="text-muted-foreground flex items-center gap-1 type-label">
+                          <Star className="h-3 w-3" aria-hidden />
+                          <FloorInput
+                            value={p.minRating}
+                            min={0}
+                            max={5}
+                            step={0.1}
+                            decimals
+                            disabled={off || pending}
+                            onChange={(v) => patch(ch.key, "minRating", v)}
+                            ariaLabel={`Min rating for ${ch.label}`}
+                          />
+                        </label>
+                        <label className="text-muted-foreground flex items-center gap-1 type-label">
+                          <Users className="h-3 w-3" aria-hidden />
+                          <FloorInput
+                            value={p.minReviews}
+                            min={0}
+                            max={100000}
+                            step={10}
+                            disabled={off || pending}
+                            onChange={(v) => patch(ch.key, "minReviews", v)}
+                            ariaLabel={`Min reviews for ${ch.label}`}
+                          />
+                        </label>
+                        <Switch
+                          on={p.enabled}
+                          pending={pending}
+                          label={`Enable ${ch.label}`}
+                          onClick={() => patch(ch.key, "enabled", !p.enabled)}
+                        />
+                      </span>
                     </div>
-                    <div className="flex justify-end">
-                      <FloorInput
-                        value={p.minRating}
-                        min={0}
-                        max={5}
-                        step={0.1}
-                        decimals
-                        disabled={off || pending}
-                        onChange={(v) => patch(ch.key, "minRating", v)}
-                      />
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {FAMILIES.map((fam) => {
+                        const on = p.families.includes(fam.key);
+                        return (
+                          <button
+                            key={fam.key}
+                            type="button"
+                            disabled={off || pending}
+                            onClick={() => toggleFamily(ch.key, fam.key)}
+                            title={fam.blurb}
+                            aria-pressed={on}
+                            className={
+                              "rounded-md border px-2 py-0.5 type-label font-medium transition disabled:cursor-not-allowed " +
+                              (on
+                                ? "border-foreground text-foreground"
+                                : "border-transparent text-muted-foreground hover:bg-muted")
+                            }
+                          >
+                            {fam.label}
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div className="flex justify-end">
-                      <FloorInput
-                        value={p.minReviews}
-                        min={0}
-                        max={100000}
-                        step={10}
-                        disabled={off || pending}
-                        onChange={(v) => patch(ch.key, "minReviews", v)}
-                      />
-                    </div>
-                    <div className="flex justify-end pt-0.5">
-                      <Switch
-                        on={p.enabled}
-                        pending={pending}
-                        label={`Enable ${ch.label}`}
-                        onClick={() => patch(ch.key, "enabled", !p.enabled)}
-                      />
-                    </div>
+                    {summary.kind === "none" && !off && (
+                      <p className="mt-1.5 text-xs text-amber-600">
+                        Nothing is eligible for this channel.
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -215,7 +200,7 @@ export function SourcingChannels({
         })}
       </div>
 
-      <p className="text-muted-foreground mt-3 text-xs">{enforcedLiveCopy()}</p>
+      <p className="text-muted-foreground mt-2 text-xs">{enforcedLiveCopy()}</p>
     </>
   );
 
@@ -225,7 +210,7 @@ export function SourcingChannels({
     <SectionCard
       icon={<Layers className="text-secondary h-4 w-4" />}
       title="Channels"
-      subtitle="Search = what may appear in that surface's searchbar. Add = what may be onboarded. Floors are Google rating / review counts; 0 = no floor. Where is one country + city (or whole country) for every row."
+      subtitle="Search = who may appear. Add = who may be onboarded. One Where for every row."
       status={
         updatedAt ? (
           <span className="text-muted-foreground text-xs">
@@ -258,14 +243,7 @@ function WhereBar({
   const showPin = countryOn && region.radiusKm > 0 && cityId === "custom";
 
   return (
-    <div className="border-border mt-5 rounded-lg border px-3 py-2.5">
-      <div className="mb-2 flex items-center gap-1.5">
-        <MapPin className="text-muted-foreground h-3.5 w-3.5" />
-        <span className="text-sm font-medium">Where</span>
-        <span className="text-muted-foreground text-xs">
-          one area for every Search and Add
-        </span>
-      </div>
+    <div className="border-border mt-4 border-b pb-3">
       {!shared && (
         <p className="text-muted-foreground mb-2 text-xs">
           Channels had different areas — editing here applies one area to all of
@@ -273,6 +251,10 @@ function WhereBar({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground inline-flex items-center gap-1 type-label font-semibold tracking-[0.12em] uppercase">
+          <MapPin className="h-3 w-3" aria-hidden />
+          Where
+        </span>
         <input
           type="text"
           inputMode="text"
@@ -289,7 +271,7 @@ function WhereBar({
               .slice(0, 2);
             set({ country: raw });
           }}
-          className="border-border bg-card focus:border-foreground h-9 w-11 rounded-lg border px-1.5 text-center text-sm uppercase tabular-nums outline-none placeholder:text-xs placeholder:normal-case placeholder:font-normal disabled:cursor-not-allowed"
+          className="border-border bg-card focus:border-foreground h-8 w-11 rounded-lg border px-1.5 text-center text-xs uppercase tabular-nums outline-none placeholder:text-xs placeholder:normal-case placeholder:font-normal disabled:cursor-not-allowed"
         />
         <select
           value={placeValue}
@@ -315,7 +297,7 @@ function WhereBar({
               radiusKm: region.radiusKm > 0 ? region.radiusKm : 40,
             });
           }}
-          className="border-border bg-card focus:border-foreground h-9 rounded-lg border px-2 text-sm outline-none disabled:cursor-not-allowed"
+          className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-xs outline-none disabled:cursor-not-allowed"
         >
           <option value="country">Whole country</option>
           {REGION_CITIES.map((c) => (
@@ -343,7 +325,7 @@ function WhereBar({
                   radiusKm: Math.min(2000, Math.max(1, Math.round(n * 10) / 10)),
                 });
               }}
-              className="border-border bg-card focus:border-foreground h-9 w-14 rounded-lg border px-1.5 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
+              className="border-border bg-card focus:border-foreground h-8 w-14 rounded-lg border px-1.5 text-right text-xs tabular-nums outline-none disabled:cursor-not-allowed"
             />
             km
           </label>
@@ -355,10 +337,10 @@ function WhereBar({
             aria-pressed={!region.restrict}
             onClick={() => set({ restrict: false })}
             className={
-              "h-9 rounded-lg border px-2.5 type-label disabled:cursor-not-allowed " +
+              "h-8 rounded-lg border px-2.5 text-xs font-semibold disabled:cursor-not-allowed " +
               (!region.restrict
                 ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:bg-muted")
+                : "border-border bg-card hover:border-foreground/40")
             }
           >
             Prefer
@@ -367,15 +349,17 @@ function WhereBar({
             type="button"
             disabled={disabled || !countryOn}
             aria-pressed={region.restrict}
+            aria-label="Only this area"
+            title="Hard fence — drop anything outside this country or circle"
             onClick={() => set({ restrict: true })}
             className={
-              "h-9 rounded-lg border px-2.5 type-label disabled:cursor-not-allowed " +
+              "h-8 rounded-lg border px-2.5 text-xs font-semibold disabled:cursor-not-allowed " +
               (region.restrict
                 ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:bg-muted")
+                : "border-border bg-card hover:border-foreground/40")
             }
           >
-            Only this area
+            Only
           </button>
         </div>
       </div>
@@ -432,6 +416,7 @@ function FloorInput({
   decimals,
   disabled,
   onChange,
+  ariaLabel,
 }: {
   value: number;
   min: number;
@@ -440,6 +425,7 @@ function FloorInput({
   decimals?: boolean;
   disabled: boolean;
   onChange: (v: number) => void;
+  ariaLabel?: string;
 }) {
   return (
     <input
@@ -451,6 +437,7 @@ function FloorInput({
       value={value === 0 ? "" : value}
       placeholder="off"
       disabled={disabled}
+      aria-label={ariaLabel}
       onChange={(e) => {
         const raw = e.target.value;
         if (raw === "") {
@@ -464,7 +451,7 @@ function FloorInput({
           : Math.min(Math.max(Math.round(n), min), max);
         onChange(clamped);
       }}
-      className="border-border bg-card focus:border-foreground h-9 w-full max-w-[5.5rem] rounded-lg border px-2 text-right text-sm tabular-nums outline-none placeholder:text-xs placeholder:font-normal disabled:cursor-not-allowed"
+      className="border-border bg-card focus:border-foreground h-8 w-14 rounded-lg border px-1.5 text-right text-xs tabular-nums outline-none placeholder:font-normal disabled:cursor-not-allowed"
     />
   );
 }
