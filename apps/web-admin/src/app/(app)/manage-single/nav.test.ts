@@ -28,7 +28,10 @@ describe("PromosSection visit-only", () => {
       join(here, "sections/PromosSection.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/Visit rewards only — orders and prepaid stay off/);
+    expect(src).toMatch(/Visit Promos/);
+    expect(src).toMatch(/Discount Cap/);
+    expect(src).toMatch(/title="Calculator"/);
+    expect(src).toMatch(/orders and prepaid stay off/);
     expect(src).not.toMatch(/matrix\.orders/);
   });
 });
