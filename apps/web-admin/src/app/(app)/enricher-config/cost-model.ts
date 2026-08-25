@@ -149,9 +149,6 @@ export type CostEstimate = {
   places: number;
 };
 
-/** Cron tick ceiling — same number the Enrich card prints. */
-export const ENRICH_TICK_PLACES = 5;
-
 // Build the per-function rate rows and the aggregate cost/time for one
 // enrichment. Every function runs on every full enrichment (no tiers). Rows
 // scale with the live config knobs — Collection drives the Google-photo &
@@ -426,8 +423,8 @@ export function computeCreateCost(s: IntakeSettings): CostEstimate {
   });
 }
 
-/** One Enrich cron tick: live knobs × the 5-place seed cap. */
+/** One Enrich of one place: live knobs. Queue cadence (5/tick) is not this card. */
 export function computeEnrichTickCost(s: IntakeSettings): CostEstimate {
-  return computeEnrichmentCost(costParamsFromSettings(s, ENRICH_TICK_PLACES));
+  return computeEnrichmentCost(costParamsFromSettings(s, 1));
 }
 

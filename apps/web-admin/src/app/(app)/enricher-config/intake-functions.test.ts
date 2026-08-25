@@ -71,6 +71,8 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).toContain("computeCreateCost");
     expect(src).toContain("computeEnrichTickCost");
     expect(src).not.toContain("type=\"number\"");
+    expect(src).not.toContain("× five");
+    expect(src).not.toContain("/ 5 places");
   });
 
   it("does not restack Create and Enrich as family boxes on Functions", () => {
