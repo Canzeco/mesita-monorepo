@@ -16,12 +16,13 @@ import {
   type SignalKey,
   type WiredEngineKey,
 } from "./catalog";
+import {
+  discoveryParamChrome,
+  type DiscoveryParamKind,
+} from "./param-tone";
 
 /** Matches the two-decimal rounding in catalog.coerceConfig. */
 const STEP = 0.05;
-
-const INPUT =
-  "border-border bg-card focus:border-foreground h-8 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50";
 
 function CalledApis({ apis }: { apis: string[] }) {
   const names = apis.length > 0 ? apis : ["None"];
@@ -47,6 +48,7 @@ function Enforced({ on }: { on: string }) {
 
 function ParamInput({
   label,
+  kind = "normal",
   value,
   min,
   max,
@@ -55,6 +57,7 @@ function ParamInput({
   onChange,
 }: {
   label: string;
+  kind?: DiscoveryParamKind;
   value: number;
   min: number;
   max: number;
@@ -62,9 +65,10 @@ function ParamInput({
   disabled: boolean;
   onChange: (n: number) => void;
 }) {
+  const chrome = discoveryParamChrome(kind);
   return (
     <label className="flex items-center justify-between gap-2">
-      <span className="text-muted-foreground type-label font-mono">{label}</span>
+      <span className={chrome.label}>{label}</span>
       <input
         type="number"
         inputMode="decimal"
@@ -79,7 +83,7 @@ function ParamInput({
           if (Number.isNaN(raw)) return;
           onChange(raw);
         }}
-        className={INPUT}
+        className={chrome.input}
       />
     </label>
   );
@@ -188,7 +192,7 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<Compass className="text-secondary h-4 w-4" />}
         title="Signals"
-        subtitle="Six functions. Exponent on every row. Extra knobs: maxKm and closedFloor. The rest of each curve is the function."
+        subtitle="Six functions. Exponent is the super-param (ink). Other knobs stay mute. Extra knobs: maxKm and closedFloor. The rest of each curve is the function."
         status={
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <Enforced on="Swipe" />
@@ -241,6 +245,7 @@ export function DiscoveryConfigClient({
                       <div className="flex flex-col gap-1.5">
                         <ParamInput
                           label="exponent"
+                          kind="super"
                           value={w}
                           min={WEIGHT_MIN}
                           max={WEIGHT_MAX}
