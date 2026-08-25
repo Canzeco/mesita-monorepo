@@ -6,8 +6,8 @@
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
-//   params     the rest of each signal's hyperparameters (curve knees,
-//              floors, priors). Same table as the exponent on the console.
+//   params     shape numbers. The console edits maxKm and closedFloor;
+//              the rest stay on the blob as the function's defaults.
 //   slotting   the bought lane: whether promoting places get slots at all, and
 //              how often. Not a weight, because it is not a signal.
 //   filters    what may ENTER the pool at all. The counterpart to a signal, and

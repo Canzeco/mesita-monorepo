@@ -188,7 +188,7 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<Compass className="text-secondary h-4 w-4" />}
         title="Signals"
-        subtitle="Six functions. Engine(signal(), …) reads these. One table for every hyperparameter."
+        subtitle="Six functions. Exponent on every row. Extra knobs: maxKm and closedFloor. The rest of each curve is the function."
         status={
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <Enforced on="Swipe" />
@@ -201,14 +201,14 @@ export function DiscoveryConfigClient({
         }
       >
         <div className="mt-4 -mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[56rem] border-separate border-spacing-0 px-4 sm:px-0">
+          <table className="w-full min-w-[48rem] border-separate border-spacing-0 px-4 sm:px-0">
             <thead>
               <tr className="text-muted-foreground text-left text-xs">
                 <th className="w-28 pb-2 pl-1 font-medium">Function</th>
                 <th className="pb-2 font-medium">Input</th>
                 <th className="pb-2 font-medium">Process</th>
                 <th className="pb-2 font-medium">Output</th>
-                <th className="w-52 pb-2 pr-1 font-medium">Params</th>
+                <th className="w-40 pb-2 pr-1 font-medium">Params</th>
               </tr>
             </thead>
             <tbody>

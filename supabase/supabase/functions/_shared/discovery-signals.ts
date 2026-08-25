@@ -67,11 +67,10 @@ export function clamp01(n: number): number {
 }
 
 /**
- * Operator knobs a signal may read besides its exponent. The exponent lives
- * on `weights` (the blend's `w` in `s^w`). These are the shape numbers that
- * used to be file-level constants — they are still the defaults, and a
- * missing or invalid key falls back to them so an old blob keeps scoring
- * the same way.
+ * Shape numbers a signal may read besides its exponent. The exponent lives
+ * on `weights` (the blend's `w` in `s^w`). The console edits maxKm and
+ * closedFloor; the rest stay file-level defaults. A missing key falls back
+ * so an old blob keeps scoring the same way.
  */
 export type SignalParamBag = Record<string, number>;
 
@@ -182,9 +181,8 @@ export const TIMING_CLOSED_FLOOR = 0.2;
  * Is this the place's hour? Read off the place's own local clock, not the
  * server's — a multi-city pool is judged in each place's own time.
  *
- * This is deliberately COARSE. Hour bands stay in code (the function's
- * shape). The scores on each band are operator knobs, because a number
- * nobody can edit is the house definition of a bug.
+ * This is deliberately COARSE. Hour bands and their scores stay in code
+ * (the function's shape). The console only edits closedFloor.
  */
 export const DAYPART_DEAD = 0.25;
 export const DAYPART_DAWN = 0.55;

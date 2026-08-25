@@ -9,8 +9,9 @@
 //
 // TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
 //
-//   SIGNALS   six functions. One table: Input · Process · Output · every
-//             hyperparameter including the exponent. Promoting is not a row.
+//   SIGNALS   six functions. One table: Input · Process · Output · exponent
+//             plus the two operator knobs (maxKm, closedFloor). The rest of
+//             the curve lives in code. Promoting is not a row.
 //   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
 //             engine gets a knob, and today that knob is Swipe's `ranked`.
 //
@@ -231,6 +232,26 @@ const ZERO_ONE = (key: string, label: string): ParamField => ({
   step: 0.05,
 });
 
+/** Ranges for shape numbers that stay in the blob but are not console knobs. */
+const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
+  kneeKm: { min: 0.1, max: 25, step: 0.1 },
+  missingGeo: { min: 0, max: 1, step: 0.05 },
+  openShare: { min: 0, max: 1, step: 0.05 },
+  dead: { min: 0, max: 1, step: 0.05 },
+  dawn: { min: 0, max: 1, step: 0.05 },
+  breakfast: { min: 0, max: 1, step: 0.05 },
+  midday: { min: 0, max: 1, step: 0.05 },
+  evening: { min: 0, max: 1, step: 0.05 },
+  late: { min: 0, max: 1, step: 0.05 },
+  exact: { min: 0, max: 1, step: 0.05 },
+  family: { min: 0, max: 1, step: 0.05 },
+  miss: { min: 0, max: 1, step: 0.05 },
+  priorRating: { min: 0, max: 5, step: 0.1 },
+  confidence: { min: 1, max: 1000, step: 1 },
+  floorRating: { min: 0, max: 4.9, step: 0.1 },
+  unembedded: { min: 0, max: 1, step: 0.05 },
+};
+
 export const SIGNALS: {
   key: SignalKey;
   label: string;
@@ -250,11 +271,7 @@ export const SIGNALS: {
     process: "Haversine km, then 1 − log1p(km / knee) / log1p(max / knee).",
     output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
     apis: [],
-    fields: [
-      { key: "maxKm", label: "maxKm", min: 1, max: 200, step: 0.5 },
-      { key: "kneeKm", label: "kneeKm", min: 0.1, max: 25, step: 0.1 },
-      ZERO_ONE("missingGeo", "missingGeo"),
-    ],
+    fields: [{ key: "maxKm", label: "maxKm", min: 1, max: 200, step: 0.5 }],
   },
   {
     key: "timing",
@@ -264,16 +281,7 @@ export const SIGNALS: {
     process: "openShare × openOrFloor + (1 − openShare) × daypart(hour).",
     output: "Closed is demoted to closedFloor, never hidden.",
     apis: [],
-    fields: [
-      ZERO_ONE("openShare", "openShare"),
-      ZERO_ONE("closedFloor", "closedFloor"),
-      ZERO_ONE("dead", "daypart dead"),
-      ZERO_ONE("dawn", "daypart dawn"),
-      ZERO_ONE("breakfast", "daypart breakfast"),
-      ZERO_ONE("midday", "daypart midday"),
-      ZERO_ONE("evening", "daypart evening"),
-      ZERO_ONE("late", "daypart late"),
-    ],
+    fields: [ZERO_ONE("closedFloor", "closedFloor")],
   },
   {
     key: "category",
@@ -283,11 +291,7 @@ export const SIGNALS: {
     process: "exact hit, else family hit, else miss. No intent → abstain.",
     output: "One of exact / family / miss.",
     apis: [],
-    fields: [
-      ZERO_ONE("exact", "exact"),
-      ZERO_ONE("family", "family"),
-      ZERO_ONE("miss", "miss"),
-    ],
+    fields: UNIT,
   },
   {
     key: "popularity",
@@ -297,11 +301,7 @@ export const SIGNALS: {
     process: "(v·r + m·prior) / (v + m), then stretch from floorRating to 5.",
     output: "Unrated place gets the prior, never an abstention.",
     apis: [],
-    fields: [
-      { key: "priorRating", label: "priorRating", min: 0, max: 5, step: 0.1 },
-      { key: "confidence", label: "confidence", min: 1, max: 1000, step: 1 },
-      { key: "floorRating", label: "floorRating", min: 0, max: 4.9, step: 0.1 },
-    ],
+    fields: UNIT,
   },
   {
     key: "semantic",
@@ -311,7 +311,7 @@ export const SIGNALS: {
     process: "(cosine + 1) / 2. No query → abstain.",
     output: "Unembedded place → unembedded, never deleted.",
     apis: [],
-    fields: [ZERO_ONE("unembedded", "unembedded")],
+    fields: UNIT,
   },
   {
     key: "randomness",
@@ -369,12 +369,17 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;
     const next: SignalParamBag = {};
     const spec = SIGNALS.find((s) => s.key === key);
-    for (const field of spec?.fields ?? []) {
-      const fallback = DEFAULT_SIGNAL_PARAMS[key][field.key];
-      const v = num(bag[field.key], fallback, field.min, field.max);
-      const decimals = field.step >= 1 ? 0 : field.step >= 0.5 ? 1 : 2;
+    for (const fieldKey of Object.keys(DEFAULT_SIGNAL_PARAMS[key])) {
+      const field = spec?.fields.find((f) => f.key === fieldKey);
+      const hidden = HIDDEN_FIELD[fieldKey];
+      const fallback = DEFAULT_SIGNAL_PARAMS[key][fieldKey];
+      const min = field?.min ?? hidden?.min ?? 0;
+      const max = field?.max ?? hidden?.max ?? 1_000_000;
+      const step = field?.step ?? hidden?.step ?? 0.01;
+      const v = num(bag[fieldKey], fallback, min, max);
+      const decimals = step >= 1 ? 0 : step >= 0.5 ? 1 : 2;
       const factor = 10 ** decimals;
-      next[field.key] = Math.round(v * factor) / factor;
+      next[fieldKey] = Math.round(v * factor) / factor;
     }
     params[key] = next;
   }
