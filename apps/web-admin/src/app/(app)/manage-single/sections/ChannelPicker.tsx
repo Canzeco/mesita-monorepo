@@ -1,43 +1,33 @@
 "use client";
 
-import { Phone } from "lucide-react";
+import { Ban, Globe, Phone } from "lucide-react";
 import { type AdminPlace } from "../actions";
 
-// The three-tile channel picker, shared by Reservations and Orders
-// (MESITA-1155). Both rails ask the same question — which of the place's own
-// contacts does Mesita use to reach it — so they ask it with the same control.
-//
-// Phone is the only live channel on either rail. WhatsApp and Instagram render
-// as Soon tiles rather than being hidden, so the operator sees that each
-// channel binds a DIFFERENT contact (`phone` / `whatsapp_url` /
-// `instagram_url`) and that the contact itself is edited under Place →
-// Channels, never here.
+// Reservations and Orders ask the same question: how does a guest reach
+// the place, or do they not. Five picks (Pato 2026-08-25): Phone,
+// WhatsApp, Instagram, Web Link, Not. The Reservationist still only
+// DIALS phone — the other four are the place's own door, or no door.
 
-/** Only phone is selectable today on either rail. */
-export type ChannelKey = "phone";
+export const SERVING_CHANNELS = [
+  "phone",
+  "whatsapp",
+  "instagram",
+  "web",
+  "none",
+] as const;
 
-export type ChannelTarget = {
-  channel: ChannelKey;
-  value?: string | null;
-  fallbacks?: { channel: ChannelKey; value?: string | null }[];
-};
+export type ChannelKey = (typeof SERVING_CHANNELS)[number];
 
-export type ChannelOption =
-  | {
-      id: "phone";
-      label: "Phone";
-      selectable: true;
-      contact: string;
-      contactKind: "Phone";
-    }
-  | {
-      id: "whatsapp" | "instagram";
-      label: "WhatsApp" | "Instagram";
-      selectable: false;
-      contact: string;
-      contactKind: "WhatsApp" | "Instagram";
-      logo: string;
-    };
+export function isServingChannel(v: unknown): v is ChannelKey {
+  return (
+    typeof v === "string" &&
+    (SERVING_CHANNELS as readonly string[]).includes(v)
+  );
+}
+
+export function readChannel(raw: unknown): ChannelKey | "" {
+  return isServingChannel(raw) ? raw : "";
+}
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
@@ -67,157 +57,172 @@ export function displayInstagram(raw: string): string {
   return t;
 }
 
-/** The place's three contacts, in tile order. */
-export function channelOptions(place: AdminPlace): ChannelOption[] {
-  return [
-    {
-      id: "phone",
-      label: "Phone",
-      selectable: true,
-      contact: str(place.phone).trim(),
-      contactKind: "Phone",
-    },
-    {
-      id: "whatsapp",
-      label: "WhatsApp",
-      selectable: false,
-      contact: displayWhatsApp(str(place.whatsapp_url)),
-      contactKind: "WhatsApp",
-      logo: "/channels/whatsapp.svg",
-    },
-    {
-      id: "instagram",
-      label: "Instagram",
-      selectable: false,
-      contact: displayInstagram(str(place.instagram_url)),
-      contactKind: "Instagram",
-      logo: "/channels/instagram.svg",
-    },
-  ];
+export function contactForChannel(
+  place: AdminPlace,
+  channel: ChannelKey,
+): string {
+  if (channel === "phone") return str(place.phone).trim();
+  if (channel === "whatsapp") return displayWhatsApp(str(place.whatsapp_url));
+  if (channel === "instagram") return displayInstagram(str(place.instagram_url));
+  if (channel === "web") return str(place.website_url).trim();
+  return "";
 }
 
-/** Read a stored channel column. Only 'phone' is a served pick (MESITA-842). */
-export function readChannel(raw: unknown): ChannelKey | "" {
-  return raw === "phone" ? "phone" : "";
+export function targetForChannel(
+  place: AdminPlace,
+  channel: ChannelKey,
+): string | null {
+  if (channel === "none") return null;
+  const v = contactForChannel(place, channel);
+  return v || null;
 }
+
+type Tile = {
+  id: ChannelKey;
+  label: string;
+  kind: "phone" | "logo" | "web" | "none";
+  logo?: string;
+};
+
+const TILES: Tile[] = [
+  { id: "phone", label: "Phone", kind: "phone" },
+  {
+    id: "whatsapp",
+    label: "WhatsApp",
+    kind: "logo",
+    logo: "/channels/whatsapp.svg",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    kind: "logo",
+    logo: "/channels/instagram.svg",
+  },
+  { id: "web", label: "Web Link", kind: "web" },
+  { id: "none", label: "Not", kind: "none" },
+];
 
 export function ChannelPicker({
-  options,
+  place,
   selected,
   onSelect,
   disabled,
   ariaLabel,
-  soonVerb,
+  noneHint,
 }: {
-  options: ChannelOption[];
+  place: AdminPlace;
   selected: ChannelKey | "";
   onSelect: (id: ChannelKey) => void;
   disabled: boolean;
   ariaLabel: string;
-  /** "booking" | "ordering" — only used in the Soon tooltips. */
-  soonVerb: string;
+  /** What "Not" means on this rail. */
+  noneHint: string;
 }) {
-  const hasPhone = options[0].contact !== "";
-  const resolved = options.find((o) => o.id === selected) ?? null;
+  const resolved = selected ? TILES.find((t) => t.id === selected) : null;
+  const contact = selected ? contactForChannel(place, selected) : "";
 
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-foreground/90 flex min-h-4 items-center type-body font-medium">
         Channel
       </span>
-      <div role="group" aria-label={ariaLabel} className="grid grid-cols-3 gap-2">
-        {options.map((opt) => {
-          if (opt.selectable) {
-            const pressed = selected === "phone";
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => hasPhone && onSelect("phone")}
-                disabled={disabled || !hasPhone}
-                aria-pressed={pressed}
-                title={
-                  !hasPhone
-                    ? "Add a Phone contact under Place → Channels to use it"
+      <div
+        role="group"
+        aria-label={ariaLabel}
+        className="grid grid-cols-2 gap-2 sm:grid-cols-5"
+      >
+        {TILES.map((opt) => {
+          const contactValue = contactForChannel(place, opt.id);
+          const needsContact = opt.id !== "none";
+          const missing = needsContact && !contactValue;
+          const pressed = selected === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => onSelect(opt.id)}
+              disabled={disabled || missing}
+              aria-pressed={pressed}
+              title={
+                missing
+                  ? `Add a ${opt.label} contact under Place → Channels`
+                  : opt.id === "none"
+                    ? noneHint
                     : undefined
-                }
-                className={
-                  "relative flex min-h-[5.25rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
-                  (pressed
-                    ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
-                    : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
-                }
-              >
+              }
+              className={
+                "relative flex min-h-[5.25rem] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 " +
+                (pressed
+                  ? "border-primary/50 bg-primary/8 text-primary ring-primary/15 ring-2"
+                  : "border-border/60 bg-muted/40 text-foreground/70 hover:border-foreground/25 hover:bg-muted/70")
+              }
+            >
+              {opt.kind === "phone" ? (
                 <Phone
                   className={
                     "h-6 w-6 shrink-0 " +
                     (pressed ? "text-primary" : "text-muted-foreground")
                   }
                 />
-                Phone
-                {!hasPhone ? (
-                  <span className="text-muted-foreground/70 type-meta font-medium">
-                    not set
-                  </span>
-                ) : null}
-              </button>
-            );
-          }
-
-          return (
-            <div
-              key={opt.id}
-              aria-disabled
-              title={`${opt.label} ${soonVerb} — coming soon`}
-              className="border-border/60 bg-muted/25 relative flex min-h-[5.25rem] cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl border border-dashed px-1.5 py-2 text-xs font-semibold opacity-60"
-            >
-              <span className="bg-muted text-muted-foreground absolute top-1.5 right-1.5 rounded-full px-1.5 py-0 type-meta font-bold tracking-wider uppercase">
-                Soon
-              </span>
-              {/* Static brand SVG — same pattern as Place → Channels. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={opt.logo}
-                alt=""
-                aria-hidden
-                className="h-6 w-6 shrink-0 opacity-80"
-              />
-              <span className="text-foreground/70">{opt.label}</span>
-              {!opt.contact ? (
+              ) : opt.kind === "web" ? (
+                <Globe
+                  className={
+                    "h-6 w-6 shrink-0 " +
+                    (pressed ? "text-primary" : "text-muted-foreground")
+                  }
+                />
+              ) : opt.kind === "none" ? (
+                <Ban
+                  className={
+                    "h-6 w-6 shrink-0 " +
+                    (pressed ? "text-primary" : "text-muted-foreground")
+                  }
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={opt.logo}
+                  alt=""
+                  aria-hidden
+                  className="h-6 w-6 shrink-0 opacity-80"
+                />
+              )}
+              {opt.label}
+              {missing ? (
                 <span className="text-muted-foreground/70 type-meta font-medium">
                   not set
                 </span>
               ) : null}
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* ONE line, not three (design pass 2026-08-22). This used to list every
-          channel's contact — Phone, WhatsApp, Instagram — and BOTH the Orders
-          and the Reservations box render this picker, so the Settings tab
-          restated the same three place-level facts six times in one viewport.
-          The tiles above already say which channels are unset; the only thing
-          left worth stating is what the CURRENT selection actually resolves
-          to, which is the one fact that differs between the two boxes. */}
       {resolved ? (
         <p className="text-muted-foreground mt-1 text-xs">
-          <span className="text-foreground/80 font-medium">
-            {resolved.contactKind}:
-          </span>{" "}
-          {resolved.contact ? (
-            <span className="text-foreground/90 font-medium break-all">
-              {resolved.contact}
-            </span>
+          {resolved.id === "none" ? (
+            <span className="text-foreground/80 font-medium">{noneHint}</span>
           ) : (
-            <span className="text-amber-700/90 font-medium">
-              not set — add under Place → Channels
-            </span>
+            <>
+              <span className="text-foreground/80 font-medium">
+                {resolved.label}:
+              </span>{" "}
+              {contact ? (
+                <span className="text-foreground/90 font-medium break-all">
+                  {contact}
+                </span>
+              ) : (
+                <span className="text-amber-700/90 font-medium">
+                  not set — add under Place → Channels
+                </span>
+              )}
+            </>
           )}
         </p>
       ) : (
         <p className="text-muted-foreground mt-1 text-xs">
-          Pick a channel. Contacts are edited under Place → Channels.
+          Pick how a guest reaches this place — or Not. Contacts live under
+          Place → Channels.
         </p>
       )}
     </div>

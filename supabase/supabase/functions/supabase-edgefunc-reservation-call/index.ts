@@ -1415,14 +1415,23 @@ Deno.serve(async (req) => {
       businessNumber = cfg.testCall.number;
       via = "test-mode number";
     } else {
-      // Voice-only serving path (MESITA-842): the CHECK constraint admits
-      // only 'phone', so a stored channel is by definition dialable. Falls
-      // back to places.phone when no endpoint was ever selected.
-      const endpoint = place?.reservation_channel === "phone"
-        ? (place.reservation_target ?? "").trim()
-        : "";
-      businessNumber = endpoint || (place?.phone ?? "").trim();
-      via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      // Dial only when the door is Phone (or never picked — keep the
+      // places.phone fallback so existing rows still reach the venue).
+      // WhatsApp / Instagram / Web / Not are not voice endpoints.
+      const channel = place?.reservation_channel ?? null;
+      if (
+        channel === "none" || channel === "web" ||
+        channel === "whatsapp" || channel === "instagram"
+      ) {
+        businessNumber = "";
+        via = `place ${channel} endpoint — no voice dial`;
+      } else {
+        const endpoint = channel === "phone"
+          ? (place.reservation_target ?? "").trim()
+          : "";
+        businessNumber = endpoint || (place?.phone ?? "").trim();
+        via = endpoint ? "place phone endpoint" : "place.phone fallback";
+      }
     }
   }
   const dialsVenue = intent === "book" ||

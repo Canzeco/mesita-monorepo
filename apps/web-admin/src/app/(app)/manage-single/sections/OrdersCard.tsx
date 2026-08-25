@@ -8,69 +8,56 @@ import { usePlaceContext } from "../PlaceContext";
 import { CrossTabLink, SectionCard } from "../ui";
 import {
   ChannelPicker,
-  channelOptions,
   readChannel,
+  targetForChannel,
   type ChannelKey,
 } from "./ChannelPicker";
 
-// Orders — the REMOTE context (MESITA-1148 · MESITA-1155).
-//
-// Mesita prices exactly two contexts: a VISIT (the guest is at the place) and
-// an ORDER (the guest is not). Visits shipped; orders have no table, no EF and
-// no consumer type, so the box wears Soon.
-//
-// It still carries ONE real decision, and Pato asked for it explicitly: which
-// contact an order reaches the place on. Same picker as Reservations, same
-// storage shape (the typed `order_channel` / `order_target` columns), phone the only live
-// channel. It is a STAGED knob — stored now, read when the rail ships — and
-// the box says so rather than pretending the switch does something today.
+// Orders — the REMOTE context. Same five picks as Reservations. The rail
+// is still Soon; the channel saves now so the day it ships there is a door.
+
 export function OrdersCard({
   place,
 }: {
   place: AdminPlace;
 }) {
-  const options = useMemo(() => channelOptions(place), [place]);
-  const hasPhone = options[0].contact !== "";
   const saved = useMemo(
     () => readChannel(place.order_channel),
     [place.order_channel],
   );
 
-  const [channel, setChannel] = useState<ChannelKey | "">(
-    saved || (hasPhone ? "phone" : ""),
-  );
+  const [channel, setChannel] = useState<ChannelKey | "">(saved);
   const { savePending } = usePlaceContext();
 
   const dirty = channel !== saved;
 
   const resetDraft = useCallback(() => {
-    setChannel(saved || (hasPhone ? "phone" : ""));
-  }, [saved, hasPhone]);
+    setChannel(saved);
+  }, [saved]);
 
   useSectionSaver(
     "orders",
     dirty,
     () => {
       if (!dirty) return { kind: "clean" };
-      if (!channel || !hasPhone) {
+      if (!channel) {
+        return { kind: "invalid", error: "Pick an order channel, or Not." };
+      }
+      if (channel !== "none" && !targetForChannel(place, channel)) {
         return {
           kind: "invalid",
-          error:
-            "Set a phone under Place → Channels — ordering is voice-only for now.",
+          error: `Add a ${channel} contact under Place → Channels first.`,
         };
       }
       return {
         kind: "patch",
         patch: {
-          order_channel: "phone",
-          order_target: options[0].contact || null,
+          order_channel: channel,
+          order_target: targetForChannel(place, channel),
         },
       };
     },
-    () => {
-      // `saved` is derived from the place row the page just refreshed, so the
-      // draft re-derives itself; nothing local to re-seed.
-    },
+    () => {},
     resetDraft,
   );
 
@@ -92,18 +79,18 @@ export function OrdersCard({
     >
       <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
         Order tickets don&apos;t exist yet — no rail, no ticket, no receipt to
-        read. The channel below is the one thing worth deciding in advance:
-        it saves now and the rail reads it the day it ships. Quotas, minimums
-        and fulfilment are Mesita-wide, under Configurations → Orders.
+        read. The channel below saves now; the rail reads it the day it ships.
+        Quotas, minimums and fulfilment are Mesita-wide, under Configurations
+        → Orders.
       </p>
       <div className="mt-3.5">
         <ChannelPicker
-          options={options}
+          place={place}
           selected={channel}
           onSelect={setChannel}
           disabled={savePending}
           ariaLabel="Order channel"
-          soonVerb="ordering"
+          noneHint="This place does not take orders."
         />
       </div>
 
