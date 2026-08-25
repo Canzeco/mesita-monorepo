@@ -66,15 +66,15 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
     });
 
   return (
-    <article className="border-border bg-background flex h-full min-h-0 flex-col rounded-2xl border p-4">
-      <header className="mb-2 shrink-0">
-        <h3 className="font-display text-base font-semibold tracking-tight">
+    <article className="border-border bg-background flex h-full min-h-0 flex-col rounded-2xl border p-4 lg:row-span-15 lg:grid lg:h-auto lg:grid-rows-subgrid lg:gap-0">
+      <header className="mb-2 shrink-0 lg:mb-0">
+        <h3 className="font-display truncate text-base font-semibold tracking-tight">
           {label}
         </h3>
-        <div className="mt-1.5 min-h-6">
+        <div className="mt-1.5 flex h-6 min-h-6 items-center overflow-hidden whitespace-nowrap">
           <KnobStatus kind="enforced" reason="THE TICKET" />
         </div>
-        <p className="text-muted-foreground mt-2 min-h-10 type-label leading-snug">
+        <p className="text-muted-foreground mt-2 line-clamp-2 min-h-10 type-label leading-snug">
           Floor, then signed adders. Class prices a body in the room.
         </p>
       </header>
@@ -190,7 +190,7 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3 lg:grid-rows-[repeat(15,auto)]">
         {STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
         ))}
