@@ -1,6 +1,5 @@
 import { Loader2, Play, SlidersHorizontal } from "lucide-react";
 
-import { CostCalculator } from "./search-cost";
 import {
   MAX_RESULTS,
   MIN_RESULTS,
@@ -16,9 +15,6 @@ export function SearchParametersSection({
   running,
   queriesCount,
   overLimit,
-  pagesPerQuery,
-  estimatedApiCalls,
-  estimatedCostUsd,
   onMaxResultsChange,
   onMinRatingChange,
   onMinReviewsChange,
@@ -30,9 +26,6 @@ export function SearchParametersSection({
   running: boolean;
   queriesCount: number;
   overLimit: boolean;
-  pagesPerQuery: number;
-  estimatedApiCalls: number;
-  estimatedCostUsd: number;
   onMaxResultsChange: (value: number) => void;
   onMinRatingChange: (value: number) => void;
   onMinReviewsChange: (value: number) => void;
@@ -48,7 +41,7 @@ export function SearchParametersSection({
         <div className="grid grid-cols-1 gap-3">
           <ParamCard
             label="Results per query"
-            footer={`${MIN_RESULTS}–${MAX_RESULTS} · more = higher cost`}
+            footer={`${MIN_RESULTS}–${MAX_RESULTS} · more = more Google calls`}
           >
             <input
               type="number"
@@ -100,13 +93,6 @@ export function SearchParametersSection({
           </FilterCard>
         </div>
       </div>
-
-      <CostCalculator
-        queries={queriesCount}
-        pagesPerQuery={pagesPerQuery}
-        totalCalls={estimatedApiCalls}
-        totalCostUsd={estimatedCostUsd}
-      />
 
       <div className="flex items-center justify-end pt-1">
         <button

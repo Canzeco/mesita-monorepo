@@ -2,13 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Loader2, Play, Upload } from "lucide-react";
-import {
-  computeEnrichmentCost,
-  fmtTime,
-  money,
-  type LinkCounts,
-} from "../enricher-config/cost-model";
-import type { SynthesisQuality } from "../enricher-config/actions";
 import { enrichPlace } from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
 
@@ -23,22 +16,10 @@ type RowStatus =
   | { status: "ok" }
   | { status: "error"; error: string };
 
-export type EnrichCostSeed = {
-  quality: SynthesisQuality;
-  imageModel: SynthesisQuality;
-  gCollect: number;
-  igCollect: number;
-  gAnalyze: number;
-  igAnalyze: number;
-  links: LinkCounts;
-};
-
 export function EnrichTab({
-  costSeed,
   text,
   onTextChange,
 }: {
-  costSeed: EnrichCostSeed | null;
   text: string;
   onTextChange: (next: string) => void;
 }) {
@@ -60,19 +41,6 @@ export function EnrichTab({
     }
     return out;
   }, [text]);
-
-  const estimate = useMemo(() => {
-    if (!costSeed || projectIds.length === 0) return null;
-    const base = computeEnrichmentCost({
-      ...costSeed,
-      places: projectIds.length,
-    });
-    return {
-      total: base.total,
-      perPlace: base.perPlace,
-      totalSecs: base.totalSecs,
-    };
-  }, [costSeed, projectIds.length]);
 
   const done = projectIds.filter((id) => {
     const s = results[id]?.status;
@@ -135,8 +103,8 @@ export function EnrichTab({
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
         Paste place IDs (one per line) or upload a list. First time is Enrich.
-        Again is Re-enrich. Same full Intaker run either way — gather, then
-        write. Caps and models are the stored Intake settings.
+        Again is Re-enrich. Same full Intaker run either way. Caps and models
+        are the stored Intake settings — that page is the calculator.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
@@ -177,24 +145,6 @@ export function EnrichTab({
             {projectIds.length >= MAX_IDS ? ` (capped at ${MAX_IDS})` : ""}
           </span>
         </div>
-
-        {estimate ? (
-          <div className="border-border bg-muted/40 mt-5 rounded-xl border px-4 py-3 text-sm">
-            <p className="font-medium">
-              Est. ~{money(estimate.total)} · ~{fmtTime(estimate.totalSecs)} for{" "}
-              {projectIds.length} place{projectIds.length === 1 ? "" : "s"}
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              ~{money(estimate.perPlace)} / place at the current Intake
-              settings. Approximate — not a bill.
-            </p>
-          </div>
-        ) : costSeed === null ? (
-          <p className="text-muted-foreground mt-5 text-xs">
-            Cost estimate unavailable — Intake settings failed to load. You
-            can still queue re-enrich.
-          </p>
-        ) : null}
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <button

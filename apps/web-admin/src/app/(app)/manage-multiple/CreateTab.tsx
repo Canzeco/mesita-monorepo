@@ -2,7 +2,10 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Loader2, Play, Upload } from "lucide-react";
-import { createPlaceFromGooglePlaceId } from "../manage-single/actions";
+import {
+  createPlaceFromGooglePlaceId,
+  enrichPlace,
+} from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
 
 // Google Place IDs are base64url-ish tokens (commonly 27 chars, but length
@@ -21,26 +24,34 @@ type RowStatus =
       name: string;
       photoCount: number;
       enrichmentTriggered: boolean;
+      enrichQueued?: boolean;
+      enrichError?: string;
     }
   | { status: "error"; error: string };
 
-// The textarea is CONTROLLED by the page (MESITA-1203): step 1's results push
-// Place IDs straight in, so the operator no longer copies them across a tab
-// boundary. Everything else — per-row results, the running flag — stays local,
-// because nothing outside this step has any use for it.
+export type CreateTabMode = "create" | "create-and-enrich";
+
+// The textarea is CONTROLLED by the page: search results in this same box
+// push Place IDs in. Per-row results stay local.
 export function CreateTab({
   text,
   onTextChange,
   onCreated,
+  mode = "create",
+  inputId = "create-place-ids",
 }: {
   text: string;
   onTextChange: (next: string) => void;
   onCreated?: (projectIds: string[]) => void;
+  mode?: CreateTabMode;
+  inputId?: string;
 }) {
   const setText = onTextChange;
   const [results, setResults] = useState<Record<string, RowStatus>>({});
   const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<"create" | "enrich">("create");
   const fileRef = useRef<HTMLInputElement>(null);
+  const combined = mode === "create-and-enrich";
 
   const placeIds = useMemo(() => {
     const seen = new Set<string>();
@@ -74,11 +85,12 @@ export function CreateTab({
   async function runAll() {
     if (running || placeIds.length === 0) return;
     setRunning(true);
+    setPhase("create");
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
     const ids = [...placeIds];
-    const minted: string[] = [];
+    const minted: { googleId: string; projectId: string }[] = [];
     let cursor = 0;
     const worker = async () => {
       while (cursor < ids.length) {
@@ -86,7 +98,7 @@ export function CreateTab({
         setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
         try {
           const r = await createPlaceFromGooglePlaceId(id);
-          if (r.ok) minted.push(r.projectId);
+          if (r.ok) minted.push({ googleId: id, projectId: r.projectId });
           setResults((prev) => ({
             ...prev,
             [id]: r.ok
@@ -113,8 +125,49 @@ export function CreateTab({
     await Promise.all(
       Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
     );
+
+    if (combined && minted.length > 0) {
+      setPhase("enrich");
+      let eCursor = 0;
+      const eWorker = async () => {
+        while (eCursor < minted.length) {
+          const row = minted[eCursor++];
+          try {
+            const r = await enrichPlace(row.projectId, "full");
+            setResults((prev) => {
+              const cur = prev[row.googleId];
+              if (!cur || cur.status !== "ok") return prev;
+              return {
+                ...prev,
+                [row.googleId]: r.ok
+                  ? { ...cur, enrichQueued: true }
+                  : { ...cur, enrichQueued: false, enrichError: r.error },
+              };
+            });
+          } catch (err) {
+            setResults((prev) => {
+              const cur = prev[row.googleId];
+              if (!cur || cur.status !== "ok") return prev;
+              return {
+                ...prev,
+                [row.googleId]: {
+                  ...cur,
+                  enrichQueued: false,
+                  enrichError:
+                    err instanceof Error ? err.message : "Unexpected error",
+                },
+              };
+            });
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, minted.length) }, eWorker),
+      );
+    }
+
     setRunning(false);
-    onCreated?.(minted);
+    onCreated?.(minted.map((m) => m.projectId));
   }
 
   function copyFailed() {
@@ -122,23 +175,24 @@ export function CreateTab({
     void navigator.clipboard.writeText(ids.join("\n"));
   }
 
+  const actionLabel = combined
+    ? `Create + Enrich ${placeIds.length} place${placeIds.length === 1 ? "" : "s"}`
+    : `Create ${placeIds.length} place${placeIds.length === 1 ? "" : "s"}`;
+
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Paste Google Place IDs (one per line) or upload a CSV. Each create does
-        the Google lookup and catalog listing, then hands off to the Intaker —
-        deep Intaker research runs in the background. Caps, levels and photo
-        analysis run on the stored Intake settings; the console for them is
-        empty, and what each one means lives in Notion Docs › Intake.
+        {combined
+          ? "Paste Google Place IDs (one per line) or upload a CSV. Each row is minted, then a full Intaker run is queued — Create then Enrich, without hopping boxes. Caps and models live on Intake."
+          : "Paste Google Place IDs (one per line) or upload a CSV. Each create does the Google lookup and catalog listing, then hands off to the Intaker. Caps, levels and photo analysis are the stored Intake settings — that page is the calculator."}
       </p>
 
-      {/* Input */}
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
-        <label className="text-sm font-medium" htmlFor="create-place-ids">
+        <label className="text-sm font-medium" htmlFor={inputId}>
           Google Place IDs
         </label>
         <textarea
-          id="create-place-ids"
+          id={inputId}
           value={text}
           disabled={running}
           rows={8}
@@ -179,12 +233,14 @@ export function CreateTab({
             {running ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Creating… {done}/{placeIds.length}
+                {phase === "enrich"
+                  ? `Queuing enrich… ${created}/${placeIds.length}`
+                  : `Creating… ${done}/${placeIds.length}`}
               </>
             ) : (
               <>
                 <Play className="h-3.5 w-3.5" />
-                Create {placeIds.length} place{placeIds.length === 1 ? "" : "s"}
+                {actionLabel}
               </>
             )}
           </button>
@@ -205,7 +261,6 @@ export function CreateTab({
         </div>
       </div>
 
-      {/* Results */}
       {Object.keys(results).length > 0 && (
         <div className="border-border bg-card mt-6 overflow-hidden rounded-2xl border">
           <ul className="divide-border/60 divide-y">
@@ -226,7 +281,21 @@ export function CreateTab({
                     {r.status === "ok" && (
                       <p className="text-muted-foreground type-label">
                         {r.photoCount} photo{r.photoCount === 1 ? "" : "s"} ·{" "}
-                        {r.enrichmentTriggered ? (
+                        {combined ? (
+                          r.enrichQueued ? (
+                            "Intaker queued"
+                          ) : r.enrichError ? (
+                            <span className="text-destructive font-medium">
+                              {r.enrichError}
+                            </span>
+                          ) : r.enrichmentTriggered ? (
+                            "created · enriching…"
+                          ) : (
+                            <span className="text-destructive font-medium">
+                              enrich trigger failed
+                            </span>
+                          )
+                        ) : r.enrichmentTriggered ? (
                           "enriching…"
                         ) : (
                           <span className="text-destructive font-medium">

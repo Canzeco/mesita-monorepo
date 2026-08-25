@@ -3,6 +3,7 @@ import { EXAMPLE_QUERIES, MAX_QUERIES } from "./search-tab-constants";
 import { StepHeading } from "./SearchFormPrimitives";
 
 export function SearchQueriesSection({
+  queriesId = "queries",
   queriesText,
   queriesCount,
   estimatedApiCalls,
@@ -11,6 +12,7 @@ export function SearchQueriesSection({
   regionCode,
   onRegionCodeChange,
 }: {
+  queriesId?: string;
   queriesText: string;
   queriesCount: number;
   estimatedApiCalls: number;
@@ -28,7 +30,7 @@ export function SearchQueriesSection({
       <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
         <div>
           <textarea
-            id="queries"
+            id={queriesId}
             value={queriesText}
             onChange={(e) => onQueriesTextChange(e.target.value)}
             rows={7}
