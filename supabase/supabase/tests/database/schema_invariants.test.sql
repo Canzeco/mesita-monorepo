@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(49);
+select plan(50);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -302,6 +302,14 @@ select is_empty(
      where table_schema = 'public' and table_name = 'places'
        and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url')$$,
   'dead place URL columns are gone'
+);
+
+select is(
+  (select count(*)::int from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles'
+      and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url', 'requires_story')),
+  4,
+  'profiles still projects dummy leftover columns so pre-redeploy EFs can SELECT them'
 );
 
 select ok(
