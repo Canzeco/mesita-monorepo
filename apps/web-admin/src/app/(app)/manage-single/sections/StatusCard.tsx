@@ -1,6 +1,6 @@
 "use client";
 
-// Status — where a place stands, in ONE box.
+// Status — one box: seven general bools, then Intake as eleven chips.
 //
 // Seven facts, each a bool, each from its own source. The state is Created;
 // Seed is Intake function 0. Wire key `seeded` / `isPlaceSeeded` stays.
@@ -12,6 +12,9 @@
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
 //   Promoting  live discount
+//
+// Intake names 0 Seed … 10 Semantics as called/not. Create 1–4 / Enrich 1–10
+// stay Config sequences, never extra Status boxes.
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -371,7 +374,6 @@ function StatusRow({
   detail,
   chipLabel,
   action,
-  children,
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
@@ -383,7 +385,6 @@ function StatusRow({
   /** Control rendered under the detail line. Only Listed has one: it is the
    *  only fact on this card an operator sets directly rather than earns. */
   action?: React.ReactNode;
-  children?: React.ReactNode;
 }) {
   const on = value === true;
   const chipClass = {
@@ -401,7 +402,6 @@ function StatusRow({
       <div className="min-w-0">
         <span className="text-foreground/90 type-body font-medium">{name}</span>
         <p className="text-foreground/70 mt-1 type-label font-medium">{detail}</p>
-        {children}
         {action ? <div className="mt-2.5">{action}</div> : null}
       </div>
       <span

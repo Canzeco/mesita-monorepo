@@ -14,15 +14,13 @@ import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
-// want lots of fucking boxes"):
-//
-//   Status      the seven status fields — Created · Active · Listed · Enriched ·
-//               verified · partner · promoting — one row each, in one box.
+// Admin — FOUR boxes (Pato, MESITA-1161: "i don't want lots of fucking boxes"):
+//   Status      seven bools, then Intake as eleven called/not chips
+//               (0 Seed … 10 Semantics). Enriched is a yes, not n/10.
 //   Enrichment  when the Intaker refreshes this place, and the run-now button.
 //   Embedding   the Semantic Summary and the vector it becomes.
-//   Metadata    every identifier and timestamp on the place. Nothing else in
-//               the tab carries an id or a date — they all live here.
+//   Metadata    every identifier and timestamp on the place.
+// SERP Summary sits beside them. Create/Enrich Status boxes do not.
 //
 // The ownership-verification read is hoisted to this component because two
 // boxes need it (Status for the boolean, Metadata for who and how) and it

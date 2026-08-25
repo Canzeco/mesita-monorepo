@@ -57,4 +57,12 @@ describe("StatusCard source", () => {
     expect(src).toContain('name="Enriched"');
     expect(src).toContain("Intake");
   });
+
+  it("AdminSection does not mount Create or Enrich status boxes", () => {
+    const src = readFileSync(join(__dirname, "AdminSection.tsx"), "utf8");
+    expect(src).toContain("<StatusCard");
+    expect(src).not.toContain("CreateStatusCard");
+    expect(src).not.toContain("EnrichStatusCard");
+    expect(src).not.toContain("IntakeStatusCards");
+  });
 });
