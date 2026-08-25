@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import {
+  BookOpen,
   Check,
-  ChevronDown,
   Loader2,
   Percent,
   TrendingUp,
@@ -24,7 +24,6 @@ import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   describeMembershipStatus,
-  effectiveStrikeCount,
   giveWord,
   isMemberPlan,
   lifecycleView,
@@ -38,12 +37,12 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Promos — two boxes:
-//   1. Mesita Partnership — MX$1,000/year unlocks paid strategies (Zero stays
-//      free). Lifecycle rail lives inside this box. Status pill, drop, rules
-//      in disclosure. Admin writes plan — no Stripe.
-//   2. Visit Promotions — Zero · Conservative · Aggressive. Give and placement
-//      are a Low · Mid · High word ladder. Dominant is not a picker option.
+// Admin Promos — three boxes:
+//   1. Tutorial — join, pick a strategy, honor guest checks. Strikes ladder.
+//   2. Partnership — MX$1,000/year unlocks paid strategies (Zero stays free).
+//      Lifecycle rail, status pill, drop. Admin writes plan — no Stripe.
+//   3. Promos — Zero · Conservative · Aggressive. Give and placement are a
+//      Low · Mid · High word ladder. Dominant is not a picker option.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -252,6 +251,8 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-4">
+      <TutorialBox currency={v.currency} />
+
       <MembershipBox
         place={v}
         pillState={pillState}
@@ -266,7 +267,7 @@ export function PromosSection({
       <SectionCard
         icon={<TrendingUp className="h-4 w-4" />}
         tint="violet"
-        title="Visit Promotions"
+        title="Promos"
         subtitle="Visit ladder only — orders and prepaid stay off."
         action={
           switchPending ? (
@@ -349,7 +350,7 @@ export function PromosSection({
   );
 }
 
-// ─── Box 0 · Lifecycle banner — the canonical three-step story ─────────────
+// ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //
 // One rail of three markers + ONE detail line for the step you're on. The
 // earlier three-column stepper printed all three details at once, which read
@@ -546,7 +547,7 @@ function StepMarker({
   );
 }
 
-// ─── Box 1 · Membership ────────────────────────────────────────────────────
+// ─── Box 1 · Tutorial — the three-step story, always on the page ───────────
 
 const STRIKES: { n: string; consequence: string }[] = [
   { n: "1", consequence: "A warning — your discounts keep running." },
@@ -557,6 +558,62 @@ const STRIKES: { n: string; consequence: string }[] = [
       "Partnership forfeited — promos off, place stays listed on Mesita.",
   },
 ];
+
+function TutorialBox({ currency }: { currency: string | null }) {
+  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
+  return (
+    <SectionCard
+      icon={<BookOpen className="h-4 w-4" />}
+      tint="sky"
+      title="Tutorial"
+      subtitle="Join, pick a strategy, honor guest checks."
+    >
+      <div className="mt-4 flex flex-col gap-4">
+        <Step n={1} title="Join the partnership">
+          {price}/year — one fee, switch strategies free anytime.
+        </Step>
+        <Step n={2} title="Pick a strategy">
+          Zero · Conservative · Aggressive. Give and placement are Low · Mid ·
+          High. Rank is never for sale.
+        </Step>
+        <Step n={3} title="Honor guest checks">
+          Staff scan the guest&apos;s QR on Mesita Validate — honoring the first
+          check at the bill makes you live.
+        </Step>
+        <div className="border-border flex flex-col gap-2.5 border-t pt-3">
+          <p className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
+            If a guest is turned away
+          </p>
+          <ol className="flex flex-col gap-1">
+            {STRIKES.map((s) => (
+              <li key={s.n} className="flex items-start gap-2">
+                <span
+                  className={cx(
+                    "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full type-meta font-bold",
+                    s.n === "3"
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-amber-500/15 text-amber-700",
+                  )}
+                >
+                  {s.n}
+                </span>
+                <span className="text-foreground/80 type-label leading-snug">
+                  {s.consequence}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-muted-foreground text-xs leading-snug">
+            Admin writes plan directly — no Stripe charge from here. Strikes
+            decay after 6 months clean.
+          </p>
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+// ─── Box 2 · Partnership ───────────────────────────────────────────────────
 
 function MembershipBox({
   place,
@@ -581,13 +638,6 @@ function MembershipBox({
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
   const canDrop = !notMember && !forfeited;
-  // Decay-aware: raw strike_count keeps stale values until the EF lazily
-  // rewrites it; the disclosure must not auto-open over phantom strikes.
-  const strikes = effectiveStrikeCount(place);
-  const rulesOpen =
-    pillState === "paused" ||
-    pillState === "forfeited" ||
-    (strikes > 0 && pillState === "live");
 
   // One contextual line — the price and what it unlocks are already stated
   // once above it; this only says what to do next.
@@ -601,7 +651,7 @@ function MembershipBox({
     <SectionCard
       icon={<Percent className="h-4 w-4" />}
       tint="pink"
-      title="Mesita Partnership"
+      title="Partnership"
       action={<MembershipStatusPill state={pillState} />}
     >
       <div className="mt-4 flex flex-col gap-3">
@@ -647,41 +697,6 @@ function MembershipBox({
           {nextLine}
         </p>
 
-        <details open={rulesOpen} className="border-border group border-t">
-          <summary className="text-muted-foreground hover:text-foreground flex min-h-10 cursor-pointer list-none items-center gap-1.5 text-xs font-semibold transition [&::-webkit-details-marker]:hidden">
-            How it works
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 transition group-open:rotate-180" />
-          </summary>
-          {/* Activation lives in the lifecycle banner (Box 0) — only the
-              strikes ladder and the admin-write note are unique here. */}
-          <div className="text-muted-foreground flex flex-col gap-2.5 pb-3 text-xs leading-snug">
-            <p className="type-meta font-bold tracking-[0.14em] uppercase">
-              If a guest is turned away
-            </p>
-            <ol className="flex flex-col gap-1">
-              {STRIKES.map((s) => (
-                <li key={s.n} className="flex items-start gap-2">
-                  <span
-                    className={cx(
-                      "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full type-meta font-bold",
-                      s.n === "3"
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-amber-500/15 text-amber-700",
-                    )}
-                  >
-                    {s.n}
-                  </span>
-                  <span className="text-foreground/80">{s.consequence}</span>
-                </li>
-              ))}
-            </ol>
-            <p>
-              Admin writes plan directly — no Stripe charge from here. Strikes
-              decay after 6 months clean.
-            </p>
-          </div>
-        </details>
-
         {canDrop && (
           <button
             type="button"
@@ -696,7 +711,7 @@ function MembershipBox({
   );
 }
 
-// ─── Box 2 · Strategy card — Give and Placement as Low · Mid · High ────────
+// ─── Box 3 · Strategy card — Give and Placement as Low · Mid · High ────────
 //
 // The face answers two questions — how much do I give, what do I get — in
 // words. Every rate behind them is one tap away in the modal.
@@ -790,7 +805,7 @@ function StrategyCard({
             </span>
           )}
           <span className="text-muted-foreground group-hover:text-foreground text-center type-label font-medium transition">
-            How it works
+            Details
           </span>
         </div>
       </div>
@@ -1005,8 +1020,8 @@ function ProductModal({
 
         {paid ? (
           <div className="flex flex-col gap-3">
-              {/* Canonical step titles — mirror the page banner (Box 0),
-                  with per-strategy detail lines. Never fork the wording. */}
+              {/* Canonical step titles — mirror Tutorial and the Partnership
+                  lifecycle rail. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the partnership">
                 {price}/year — one fee, switch strategies free anytime.
@@ -1016,8 +1031,8 @@ function ProductModal({
                 anytime.
               </Step>
               <Step n={3} title="Honor guest checks">
-                We ping your staff WhatsApp, then honoring the first guest check
-                at the bill makes you live.
+                Staff scan the guest&apos;s QR on Mesita Validate — honoring the
+                first check at the bill makes you live.
               </Step>
               <p className="text-muted-foreground type-meta leading-snug">Refusing a guest is a strike: 1 warning · 2 paused 30 days · 3 removed.</p>
             </div>
