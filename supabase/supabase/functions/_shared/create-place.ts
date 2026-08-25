@@ -1,19 +1,18 @@
 // Shared create-place core — THE CREATE RUN (MESITA-1253): one run,
 // synchronous, the front door. Its subfunctions, in the spec's words:
 //
-//   1 seed    → dedupe on google_place_id, mint the minimal 'generating' rows
-//   2 pulse   → the liveness gate: Google's businessStatus, read from the same
-//               Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
-//               at the door, before any row exists. Don't seed corpses.
-//   3 details → the Google spine persisted (fetchGoogleBasics fields,
-//               category='undefined' until the Intaker infers the real one)
-//   · semantic name    → NOT BUILT (MESITA-1238)
-//   · semantic summary → the first vector, queued in background
+//   1 seed     → dedupe on google_place_id, mint the minimal 'generating' rows
+//   2 pulse    → the liveness gate: Google's businessStatus, read from the same
+//                Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
+//                at the door, before any row exists. Don't seed corpses.
+//   3 details  → the Google spine persisted (fetchGoogleBasics fields,
+//                category='undefined' until the Intaker infers the real one)
+//   4 semantic → Name vector + Summary vector, awaited in this same function
 //
-// Pulse, Details and the semantics are SHARED with the ENRICH queue (functions
-// 1, 2 and the extras there) — create runs them inline, enrich runs them as
-// rungs. Create STAMPS what it ran (pulse, details) so a fresh place reads
-// 2/9 immediately and state accumulates across create and every later run
+// Pulse, Details and Semantic are SHARED with the ENRICH queue — create
+// AWAITS the four subfunctions; enrich runs each as its own tick with no nested
+// await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
+// reads 2/9 immediately and state accumulates across create and every later run
 // under one rule. Then it queues deep enrichment (functions 3-9 and re-runs of
 // 1-2) per the on_create trigger row.
 //
@@ -30,7 +29,7 @@ import {
 } from "./enrich-pipeline.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
-import { queuePlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
+import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 import {
   type ChannelKey,
@@ -211,8 +210,8 @@ export async function createMinimalPlace(opts: {
   // ── CREATE stamps what it ran (MESITA-1253) ─────────────────────────────
   // pulse: the gate above passed — the listing resolves and is not permanently
   // closed. details: the spine the save just persisted IS the observed effect.
-  // Both best-effort (a stamp failure never fails a create); the summary stamp
-  // lands separately, where the vector write is observed (place-embeddings).
+  // Both best-effort (a stamp failure never fails a create); the semantic stamp
+  // lands where the vector write is observed (place-embeddings).
   // Result: a fresh, healthy place reads enriched 2/9 the moment it exists.
   await reportPulsePieces(admin, saved.project_id, {
     pulse: pieceDone(
@@ -224,21 +223,23 @@ export async function createMinimalPlace(opts: {
     details: pieceDone("Google spine persisted at create.", { via: "create" }),
   });
 
-  // ── On-Create embeddings — the SUMMARY semantic function, run by CREATE
-  // rather than by the queue (Docs › Intake §A): synthesize the first
-  // Semantic Summary + vector for the new place right away, so it's
-  // semantically searchable before the Intaker fills the deep profile. Background (waitUntil) — never blocks or fails the create; the
-  // On-Update path re-embeds when the Intaker later changes profile fields.
-  // Tags never feed the source text. ──
-  queuePlaceEmbeddingsOnUpdate({
-    admin,
-    placeId: saved.project_id,
-    apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
-    logPrefix: `${callerName}/on-create`,
-    // The summary stamp carries the caller, so the Monitor wears the Create
-    // chip on it — not a guessed "Contents" (MESITA-1253 audit).
-    via: "create",
-  });
+  // ── On-Create embeddings — the SEMANTIC subfunction, AWAITED by CREATE
+  // (Docs › Intake §A): write Name + Summary together so the place is
+  // searchable before the Intaker fills the deep profile. Best-effort — a
+  // missing key or a write miss never fails the create; On-Update re-embeds
+  // when the Intaker later changes profile fields. Tags never feed the source
+  // text. ──
+  try {
+    await runPlaceEmbeddingsOnUpdate(
+      admin,
+      saved.project_id,
+      Deno.env.get("OPENAI_KEY")?.trim(),
+      `${callerName}/on-create`,
+      "create",
+    );
+  } catch (err) {
+    console.error(`[${callerName}/on-create] semantic:`, err);
+  }
 
   // ── 3) Queue deep enrichment (async): seed the place_research row at
   // stage='research'; the pg_cron poller picks it up

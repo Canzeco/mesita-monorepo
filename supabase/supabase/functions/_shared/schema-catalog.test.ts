@@ -25,9 +25,11 @@ import {
   EnrichmentMapSchema,
   FUNCTION_STATE_KEYS,
   FunctionStateMapSchema,
+  foldFunctionStateMap,
   isBillingState,
   isFunctionState,
   isMoney,
+  operatorFunctionStates,
   pulseBlockedAtFromMap,
   pulseHighWaterFromMap,
   toFunctionStatus,
@@ -47,10 +49,10 @@ Deno.test("FUNCTION_STATE_KEYS is exactly PULSE_PIECES + PULSE_EXTRAS, in that o
   assertEquals(FUNCTION_STATE_KEYS, expected);
 });
 
-Deno.test("FUNCTION_STATE_KEYS has 11 members — 9 enrich functions + 2 semantic", () => {
+Deno.test("FUNCTION_STATE_KEYS has 10 members — 9 queue functions + Semantic", () => {
   assertEquals(PULSE_PIECES.length, 9);
-  assertEquals(PULSE_EXTRAS.length, 2);
-  assertEquals(FUNCTION_STATE_KEYS.length, 11);
+  assertEquals(PULSE_EXTRAS.length, 1);
+  assertEquals(FUNCTION_STATE_KEYS.length, 10);
 });
 
 Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never overlap", () => {
@@ -170,7 +172,7 @@ Deno.test("FunctionStateMapSchema: accepts an empty map (a brand-new place)", ()
   if (r.ok) assertEquals(r.value, {});
 });
 
-Deno.test("FunctionStateMapSchema: rejects a key outside the 11 PulseSteps", () => {
+Deno.test("FunctionStateMapSchema: rejects a key outside the PulseSteps", () => {
   const r = FunctionStateMapSchema.parse({ seed: { status: "completed", at: null, detail: null } });
   assert(!r.ok);
 });
@@ -249,10 +251,10 @@ Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece co
   assertEquals(pulseHighWaterFromMap(map), 3);
 });
 
-Deno.test("pulseHighWaterFromMap: summary/name never count toward the queue", () => {
+Deno.test("pulseHighWaterFromMap: semantic never counts toward the queue", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse", "details"),
-    summary: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
   assertEquals(pulseHighWaterFromMap(map), 2, "the semantic function must not advance the ladder");
 });
@@ -281,4 +283,35 @@ Deno.test("toFunctionStatus: completed stays completed, started becomes pending,
   assertEquals(toFunctionStatus("failed"), "failed");
   assertEquals(toFunctionStatus("skipped"), "failed");
   assertEquals(toFunctionStatus("some-future-unknown-status"), "failed");
+});
+
+Deno.test("FunctionStateMapSchema: folds legacy name+summary into semantic", () => {
+  const r = FunctionStateMapSchema.parse({
+    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    name: { status: "completed", at: "2026-08-23T00:01:00Z", detail: "name ok" },
+    summary: { status: "completed", at: "2026-08-23T00:02:00Z", detail: "summary ok" },
+  });
+  assert(r.ok);
+  if (!r.ok) return;
+  assertEquals(r.value.semantic?.status, "completed");
+  assertEquals("name" in r.value, false);
+  assertEquals("summary" in r.value, false);
+});
+
+Deno.test("operatorFunctionStates: ten keys, Semantic pending when never run", () => {
+  const out = operatorFunctionStates({
+    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+  });
+  assertEquals(Object.keys(out).length, 10);
+  assertEquals(out.pulse.status, "completed");
+  assertEquals(out.semantic.status, "pending");
+  assertEquals(out.description.status, "pending");
+});
+
+Deno.test("foldFunctionStateMap: either failed alias fails Semantic", () => {
+  const folded = foldFunctionStateMap({
+    name: { status: "completed", at: "a", detail: "n" },
+    summary: { status: "failed", at: "b", detail: "s" },
+  });
+  assertEquals(folded.semantic?.status, "failed");
 });

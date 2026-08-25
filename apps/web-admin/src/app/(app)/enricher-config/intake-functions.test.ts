@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is twelve, Seed through Summary, Name before Summary", () => {
+  it("is eleven, Seed through Semantic", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -22,18 +22,16 @@ describe("intake subfunctions", () => {
       "menu",
       "reviews",
       "description",
-      "name",
-      "summary",
+      "semantic",
     ]);
   });
 
-  it("Create is one run of five; Enrich is sequential over eleven", () => {
+  it("Create awaits four; Enrich is ten sequential ticks", () => {
     expect(chipsFor("create").map((c) => c.label)).toEqual([
       "Seed",
       "1 Pulse",
       "2 Details",
-      "◇ Name",
-      "◇ Summary",
+      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -44,9 +42,8 @@ describe("intake subfunctions", () => {
       "6 Images",
       "7 Menu",
       "8 Reviews",
-      "9 Description",
-      "◇ Name",
-      "◇ Summary",
+      "9 Description (Category, Tags, Presentation)",
+      "◇ Semantic (Mesita Name & Semantic Summary & Embeddings)",
     ]);
   });
 
@@ -63,7 +60,7 @@ describe("intake subfunctions", () => {
     expect(flowTagFor("seed")).toBe("Create");
     expect(flowTagFor("pulse")).toBe("Create + Enrich");
     expect(flowTagFor("menu")).toBe("Enrich");
-    expect(flowTagFor("name")).toBe("Create + Enrich");
+    expect(flowTagFor("semantic")).toBe("Create + Enrich");
   });
 });
 
@@ -81,5 +78,8 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).not.toContain("FunctionFamily");
     expect(src).not.toContain("12 modules");
     expect(src).not.toContain("Create explained");
+    expect(src).toContain("f-semantic");
+    expect(src).not.toContain("id=\"f-name\"");
+    expect(src).not.toContain("id=\"f-summary\"");
   });
 });
