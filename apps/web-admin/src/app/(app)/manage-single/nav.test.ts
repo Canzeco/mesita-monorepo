@@ -27,6 +27,10 @@ describe("PLACE_TAB_SECTIONS", () => {
     expect(byId.performance?.soon).toBe(true);
     expect(isSectionSoon("promos")).toBe(false);
     expect(isSectionSoon("performance")).toBe(true);
+    // Profile = the place; Partner = membership/promos. Distinct glyphs.
+    expect(byId.place?.Icon.displayName).toBe("Store");
+    expect(byId.promos?.Icon.displayName).toBe("Percent");
+    expect(byId.admin?.Icon.displayName).toBe("User");
   });
 });
 
