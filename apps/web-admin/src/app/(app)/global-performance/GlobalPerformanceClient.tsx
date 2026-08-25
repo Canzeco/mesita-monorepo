@@ -8,7 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { AlertTriangle, Inbox } from "lucide-react";
+import { AlertTriangle, Flag, Inbox } from "lucide-react";
 import { formatAbsoluteUtc, timeAgo } from "@/lib/format";
 import {
   listNotifications,
@@ -19,10 +19,15 @@ import {
   NotificationFilters,
   type TypeFilter,
 } from "./NotificationFilters";
-import { NotificationRow } from "./NotificationRow";
+import { NotificationRow, NotificationStepGroup } from "./NotificationRow";
+import {
+  type DomainKey,
+  feedEntryKey,
+  groupConsecutiveSteps,
+  pinReports,
+  typesForFetch,
+} from "./notification-feed";
 
-// Poll cadence for the background auto-refresh (paused while the tab is
-// hidden — the operator still has the manual Refresh button).
 const AUTO_REFRESH_MS = 30_000;
 
 export function GlobalPerformanceClient({
@@ -33,7 +38,7 @@ export function GlobalPerformanceClient({
 }: {
   initial: NotificationsPayload;
   /** Scope the feed to one place (per-place Performance tab). Hides the
-   *  category chips + place-name filter and threads the id into refreshes. */
+   *  domain tabs + place-name filter and threads the id into refreshes. */
   projectId?: string;
   /** Narrow the filter segments (defaults to every known type). */
   types?: NotificationType[];
@@ -44,7 +49,9 @@ export function GlobalPerformanceClient({
 }) {
   const [data, setData] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const [domain, setDomain] = useState<DomainKey>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [includeSteps, setIncludeSteps] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [pending, startRefresh] = useTransition();
 
@@ -59,16 +66,16 @@ export function GlobalPerformanceClient({
     };
   }, []);
 
-  // Guard against overlapping fetches (manual click + poll tick).
   const inFlightRef = useRef(false);
   const refresh = useCallback(() => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setError(null);
+    const fetchTypes = typesForFetch(domain, includeSteps, types);
     startRefresh(async () => {
-      const r = await listNotifications("all", {
+      const r = await listNotifications(domain, {
         ...(projectId ? { projectId } : {}),
-        ...(types && types.length > 0 ? { types } : {}),
+        ...(fetchTypes && fetchTypes.length > 0 ? { types: fetchTypes } : {}),
       });
       inFlightRef.current = false;
       if (!r.ok) {
@@ -77,9 +84,8 @@ export function GlobalPerformanceClient({
       }
       setData(r.data);
     });
-  }, [projectId, types]);
+  }, [projectId, types, domain, includeSteps]);
 
-  // Auto-refresh while the tab is visible; document.hidden pauses the poll.
   useEffect(() => {
     const iv = setInterval(() => {
       if (document.hidden) return;
@@ -88,6 +94,27 @@ export function GlobalPerformanceClient({
     return () => clearInterval(iv);
   }, [refresh]);
 
+  const domainRef = useRef(domain);
+  const includeRef = useRef(includeSteps);
+  useEffect(() => {
+    const domainChanged = domainRef.current !== domain;
+    const stepsChanged = includeRef.current !== includeSteps;
+    domainRef.current = domain;
+    includeRef.current = includeSteps;
+    if (domainChanged || stepsChanged) refresh();
+  }, [domain, includeSteps, refresh]);
+
+  const onDomainChange = useCallback((next: DomainKey) => {
+    setDomain(next);
+    setTypeFilter("all");
+    if (next !== "all" && next !== "atlas") setIncludeSteps(false);
+  }, []);
+
+  const onTypeFilterChange = useCallback((next: TypeFilter) => {
+    setTypeFilter(next);
+    if (next === "atlas.enrichment_step") setIncludeSteps(true);
+  }, []);
+
   const visible = useMemo(() => {
     const q = placeQuery.trim().toLowerCase();
     return data.notifications.filter(
@@ -95,7 +122,10 @@ export function GlobalPerformanceClient({
         (typeFilter === "all" || n.type === typeFilter) &&
         (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
     );
-  }, [data.notifications, typeFilter, placeQuery]);
+  }, [data.notifications, placeQuery, typeFilter]);
+
+  const { reports, rest } = useMemo(() => pinReports(visible), [visible]);
+  const entries = useMemo(() => groupConsecutiveSteps(rest), [rest]);
 
   const updatedLabel =
     now === null
@@ -105,15 +135,24 @@ export function GlobalPerformanceClient({
   return (
     <div className={bleed ? "-mx-4 mt-6 sm:-mx-6 sm:mt-8 lg:-mx-8" : ""}>
       <NotificationFilters
+        domain={domain}
         typeFilter={typeFilter}
+        includeSteps={includeSteps}
         total={data.total}
         counts={data.counts}
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
         pending={pending}
         types={types}
-        showCategories={!projectId}
-        onTypeFilterChange={setTypeFilter}
+        showDomains={!projectId}
+        onDomainChange={onDomainChange}
+        onTypeFilterChange={onTypeFilterChange}
+        onIncludeStepsChange={(next) => {
+          setIncludeSteps(next);
+          if (!next && typeFilter === "atlas.enrichment_step") {
+            setTypeFilter("all");
+          }
+        }}
         onPlaceQueryChange={projectId ? undefined : setPlaceQuery}
         onRefresh={refresh}
       />
@@ -126,22 +165,48 @@ export function GlobalPerformanceClient({
           </div>
         )}
 
-        {visible.length === 0 ? (
+        {reports.length > 0 && (
+          <section className="mb-4">
+            <p className="text-destructive mb-2 flex items-center gap-1.5 type-eyebrow">
+              <Flag className="h-3 w-3" />
+              Needs you · {reports.length}
+            </p>
+            <ul className="border-destructive/30 bg-card divide-border overflow-hidden rounded-xl border">
+              {reports.map((n) => (
+                <NotificationRow key={n.id} item={n} now={now} pinned />
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {entries.length === 0 && reports.length === 0 ? (
           <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed px-4 py-16 text-center">
             <Inbox className="h-5 w-5" />
             <p className="text-sm">
               {data.total === 0
-                ? "No notifications yet. They'll show up here as places are created, enriched, and claimed."
+                ? "Nothing yet. Places, visits and bookings will land here."
                 : placeQuery.trim() !== ""
                   ? "Nothing matches this place filter."
                   : "Nothing in this filter."}
             </p>
           </div>
-        ) : (
+        ) : entries.length === 0 ? null : (
           <ul className="border-border bg-card divide-border overflow-hidden rounded-xl border">
-            {visible.map((n) => (
-              <NotificationRow key={n.id} item={n} now={now} />
-            ))}
+            {entries.map((entry) =>
+              entry.kind === "steps" ? (
+                <NotificationStepGroup
+                  key={feedEntryKey(entry)}
+                  items={entry.items}
+                  now={now}
+                />
+              ) : (
+                <NotificationRow
+                  key={feedEntryKey(entry)}
+                  item={entry.item}
+                  now={now}
+                />
+              ),
+            )}
           </ul>
         )}
       </div>

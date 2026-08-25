@@ -1,61 +1,92 @@
 import { RefreshCw } from "lucide-react";
 import type { NotificationsPayload, NotificationType } from "./actions";
-import { CATEGORIES, TYPE_CONFIG, TYPE_ORDER } from "./notification-config";
+import { TYPE_CONFIG, TYPE_ORDER } from "./notification-config";
+import {
+  DOMAINS,
+  STEP_TYPE,
+  typesInDomain,
+  type DomainKey,
+} from "./notification-feed";
 
 export type TypeFilter = "all" | NotificationType;
 
 export function NotificationFilters({
+  domain,
   typeFilter,
+  includeSteps,
   total,
   counts,
   placeQuery,
   updatedLabel,
   pending,
   types = TYPE_ORDER,
-  showCategories = true,
+  showDomains = true,
+  onDomainChange,
   onTypeFilterChange,
+  onIncludeStepsChange,
   onPlaceQueryChange,
   onRefresh,
 }: {
+  domain: DomainKey;
   typeFilter: TypeFilter;
+  includeSteps: boolean;
   total: number;
   counts: NotificationsPayload["counts"];
   placeQuery: string;
   updatedLabel: string;
   pending: boolean;
-  /** Which type segments to render — the per-place feed narrows this. */
   types?: NotificationType[];
-  /** Hide the static category chips (redundant on a scoped feed). */
-  showCategories?: boolean;
+  showDomains?: boolean;
+  onDomainChange: (domain: DomainKey) => void;
   onTypeFilterChange: (filter: TypeFilter) => void;
-  /** Omit to hide the place-name input (per-place feed is already one place). */
+  onIncludeStepsChange: (next: boolean) => void;
   onPlaceQueryChange?: (query: string) => void;
   onRefresh: () => void;
 }) {
+  const domainTypes = typesInDomain(domain, types).filter(
+    (t) => includeSteps || t !== STEP_TYPE,
+  );
+  const showStepsToggle = showDomains && (domain === "all" || domain === "atlas");
+
   return (
     <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-y backdrop-blur-md">
-      <div className="flex items-stretch overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {showCategories &&
-          CATEGORIES.filter((c) => c.live).map((c) => {
-            const Icon = c.Icon;
+      {showDomains && (
+        <div
+          role="tablist"
+          aria-label="Domain"
+          className="border-border flex gap-1 overflow-x-auto border-b px-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-5 [&::-webkit-scrollbar]:hidden"
+        >
+          {DOMAINS.map((d) => {
+            const active = domain === d.key;
             return (
-              <span
-                key={c.key}
-                className="bg-secondary/10 text-secondary inline-flex shrink-0 items-center gap-1.5 border-r px-3 py-2.5 text-sm font-medium sm:px-4"
+              <button
+                key={d.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onDomainChange(d.key)}
+                className={
+                  "-mb-px inline-flex shrink-0 items-center border-b-2 px-3 py-2.5 text-sm font-medium transition sm:px-4 " +
+                  (active
+                    ? "border-secondary text-secondary"
+                    : "text-muted-foreground hover:text-foreground border-transparent")
+                }
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                {c.label}
-              </span>
+                {d.label}
+              </button>
             );
           })}
+        </div>
+      )}
 
+      <div className="flex items-stretch overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <FilterSegment
           active={typeFilter === "all"}
           label="All"
           count={total}
           onClick={() => onTypeFilterChange("all")}
         />
-        {types.map((t) => (
+        {domainTypes.map((t) => (
           <FilterSegment
             key={t}
             active={typeFilter === t}
@@ -67,6 +98,21 @@ export function NotificationFilters({
         ))}
 
         <div className="ml-auto flex shrink-0 items-center gap-2 border-l px-3 py-2 sm:px-4">
+          {showStepsToggle && (
+            <button
+              type="button"
+              aria-pressed={includeSteps}
+              onClick={() => onIncludeStepsChange(!includeSteps)}
+              className={
+                "rounded-lg px-2.5 py-1.5 type-eyebrow transition " +
+                (includeSteps
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")
+              }
+            >
+              Intaker steps
+            </button>
+          )}
           {onPlaceQueryChange && (
             <input
               type="text"
@@ -78,7 +124,7 @@ export function NotificationFilters({
             />
           )}
           <span
-            className="text-muted-foreground hidden type-label sm:inline"
+            className="text-muted-foreground type-label hidden sm:inline"
             suppressHydrationWarning
           >
             {updatedLabel}
@@ -126,7 +172,7 @@ function FilterSegment({
       {label}
       <span
         className={
-          "rounded-full px-1.5 py-0.5 type-meta tabular-nums " +
+          "type-meta rounded-full px-1.5 py-0.5 tabular-nums " +
           (active ? "bg-background text-foreground" : "bg-muted text-muted-foreground")
         }
       >
