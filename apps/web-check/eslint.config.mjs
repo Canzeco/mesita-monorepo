@@ -1,0 +1,1 @@
+../web-validate/eslint.config.mjs
