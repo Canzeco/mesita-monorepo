@@ -43,8 +43,7 @@ import {
 //      free). Lifecycle rail lives inside this box. Status pill, drop, rules
 //      in disclosure. Admin writes plan — no Stripe.
 //   2. Visit Promotions — Zero · Conservative · Aggressive. Give and placement
-//      are a Low · Mid · High word ladder. Dominant stays in the engine for
-//      leftover rows and only appears here while this place is still on it.
+//      are a Low · Mid · High word ladder. Dominant is not a picker option.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -52,11 +51,9 @@ const MEMBERSHIP_PRICE_MXN = 1000;
 // throughout this file.
 const ZERO_STRATEGY_ID: StrategyId = "zero";
 
-/** Zero · Conservative · Aggressive. Dominant only while this place is on it. */
-function pickerStrategies(current: StrategyId | null): readonly Strategy[] {
-  return STRATEGIES.filter(
-    (s) => s.id !== "dominant" || current === "dominant",
-  );
+/** Zero · Conservative · Aggressive. Dominant is not a picker option. */
+function pickerStrategies(): readonly Strategy[] {
+  return STRATEGIES.filter((s) => s.id !== "dominant");
 }
 
 // Per-strategy visual identity. Art = generated 1:1 abstract waves (no text
@@ -278,7 +275,7 @@ export function PromosSection({
         }
       >
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {pickerStrategies(storedStrategy).map((s) => (
+          {pickerStrategies().map((s) => (
             <StrategyCard
               key={s.id}
               strategy={s}
@@ -295,7 +292,7 @@ export function PromosSection({
           ))}
         </div>
 
-        {storedStrategy === null && member && (
+        {(storedStrategy === null || storedStrategy === "dominant") && member && (
           <p className="text-muted-foreground mt-2.5 type-label">
             Current rates don&apos;t match a strategy — pick one to standardize.
           </p>

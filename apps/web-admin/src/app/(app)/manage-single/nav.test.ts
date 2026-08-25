@@ -43,8 +43,9 @@ describe("PromosSection visit-only", () => {
     expect(src).not.toMatch(/VisitDistributionCalculator/);
     expect(src).not.toMatch(/DiscountCapPicker/);
     expect(src).not.toContain("[capError, setCapError]");
-    // Dominant is leftover-only — not a picker option unless already stored.
-    expect(src).toMatch(/s\.id !== "dominant" \|\| current === "dominant"/);
+    // Dominant is not a picker option.
+    expect(src).toMatch(/s\.id !== "dominant"/);
+    expect(src).not.toMatch(/current === "dominant"/);
     expect(src).toMatch(/RUNG_WORDS/);
     expect(src).not.toMatch(/RewardsMatrix/);
     expect(src).not.toMatch(/See full rates/);

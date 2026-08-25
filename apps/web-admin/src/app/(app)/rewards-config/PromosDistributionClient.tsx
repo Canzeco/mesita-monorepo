@@ -16,7 +16,7 @@ import { usePromosState } from "./PromosState";
 import {
   CLASS_KEYS,
   CLASS_META,
-  STRATEGY_KEYS,
+  LIVE_STRATEGY_KEYS,
   STRATEGY_META,
   type ClassKey,
   type StrategyKey,
@@ -49,8 +49,11 @@ export function PromosDistributionClient() {
     useState<Assumptions>(DEFAULT_ASSUMPTIONS);
 
   const results = useMemo(() => {
-    const out = {} as Record<StrategyKey, StrategyDistribution>;
-    for (const s of STRATEGY_KEYS) {
+    const out = {} as Record<
+      (typeof LIVE_STRATEGY_KEYS)[number],
+      StrategyDistribution
+    >;
+    for (const s of LIVE_STRATEGY_KEYS) {
       out[s] = distributionFor(cfg, assumptions, s);
     }
     return out;
@@ -156,7 +159,7 @@ export function PromosDistributionClient() {
         </SectionCard>
       </div>
 
-      {STRATEGY_KEYS.map((s) => (
+      {LIVE_STRATEGY_KEYS.map((s) => (
         <DistributionCard
           key={s}
           strategy={s}

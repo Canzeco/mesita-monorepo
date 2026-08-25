@@ -14,9 +14,9 @@ import {
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
+  LIVE_STRATEGY_KEYS,
   PLAN_KEYS,
   PLAN_META,
-  STRATEGY_KEYS,
   STRATEGY_META,
   modelWarnings,
   totalFor,
@@ -24,14 +24,15 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// TIERS — three visit boxes, one per paid strategy. A place picks ONE
+// TIERS — two visit boxes, Conservative and Aggressive. A place picks ONE
 // strategy; reading down a column is that place's whole program. Each box:
 // floor first, then signed adders. Pinned rungs (Bronze, Free) are an em
 // dash — "0%" is a real rate and would read as one.
 //
 // Promos Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
-// Save round-trips it without knobs.
+// Save round-trips it without knobs. Dominant stays in the blob for leftover
+// rows and is not a column here.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -195,8 +196,8 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {STRATEGY_KEYS.map((s) => (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {LIVE_STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
         ))}
       </div>
@@ -238,7 +239,7 @@ export function TiersClient() {
               </tr>
             </thead>
             <tbody>
-              {STRATEGY_KEYS.map((s) =>
+              {LIVE_STRATEGY_KEYS.map((s) =>
                 CLASS_KEYS.map((cls, ci) =>
                   PLAN_KEYS.map((p, pi) => {
                     const last =

@@ -77,8 +77,8 @@ export function FaqsBox({
 
         <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative,
-            Aggressive and Dominant — pick any, switch free anytime while
+            The right to leave Zero. Membership unlocks Conservative and
+            Aggressive — pick either, switch free anytime while
             you&apos;re a member. Zero stays free with no discounts. Being listed
             on Mesita never costs anything. The fee is a commitment filter (keeps
             half-hearted places out of rewards), not a feature tier and not a rank
@@ -102,8 +102,8 @@ export function FaqsBox({
 
         <Faq q="How does visibility work?">
           <p>
-            Zero sits at Low, Conservative at Mid, Aggressive at High,
-            Dominant at Max. Visibility rises with what you give — it is never
+            Zero sits at Low, Conservative at Mid, Aggressive at High.
+            Visibility rises with what you give — it is never
             a separate knob you can buy.
           </p>
         </Faq>

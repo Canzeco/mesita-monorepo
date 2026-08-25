@@ -87,7 +87,7 @@ export function LifecycleStepper({
         ? storedStrategy === ZERO_STRATEGY_ID
           ? "Zero pauses discounts — pick a paid strategy to reopen the lane."
           : "Custom rates — pick a strategy to standardize."
-        : "Three discount postures — switch free anytime.";
+        : "Zero, Conservative, or Aggressive — switch free anytime.";
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
