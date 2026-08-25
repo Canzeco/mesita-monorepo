@@ -1,4 +1,4 @@
-import { chipsFor } from "../../enricher-config/intake-functions";
+import { chipsFor, type IntakeFlow } from "../../enricher-config/intake-functions";
 
 export type EnrichFunctionState = {
   status: "pending" | "completed" | "failed";
@@ -12,26 +12,40 @@ export type EnrichFunctionRow = {
   status: EnrichFunctionState["status"];
 };
 
-const ENRICH_CHIPS = chipsFor("enrich");
-
-function stripChipPrefix(label: string): string {
-  return label.replace(/^(?:\d+\s+|◇\s+)/, "");
-}
-
-/**
- * The ten Enrich subfunctions Status lists under Enriched — same keys as
- * Intake chips, never a second ladder.
- */
-export function enrichFunctionRows(
+function rowsFor(
+  flow: IntakeFlow,
   functions: Record<string, EnrichFunctionState> | null | undefined,
 ): EnrichFunctionRow[] {
-  return ENRICH_CHIPS.map((chip) => {
+  return chipsFor(flow).map((chip) => {
     const key = chip.href.replace(/^#f-/, "");
     const rec = functions?.[key];
     return {
       key,
-      label: stripChipPrefix(chip.label),
+      label: chip.label,
       status: rec?.status ?? "pending",
     };
   });
+}
+
+/**
+ * Intake Create (1 Seed · 2 Pulse · 3 Details · 4 Semantic).
+ * Seed is the row existing (`google_place_id`) — nothing stamps a `seed` event.
+ * Pulse / Details / Semantic reuse the same function map Enrich reads.
+ */
+export function createFunctionRows(
+  functions: Record<string, EnrichFunctionState> | null | undefined,
+  seeded: boolean,
+): EnrichFunctionRow[] {
+  return rowsFor("create", functions).map((row) =>
+    row.key === "seed"
+      ? { ...row, status: seeded ? "completed" : "pending" }
+      : row,
+  );
+}
+
+/** Intake Enrich 1–10 — same keys as Intake chips, never a second ladder. */
+export function enrichFunctionRows(
+  functions: Record<string, EnrichFunctionState> | null | undefined,
+): EnrichFunctionRow[] {
+  return rowsFor("enrich", functions);
 }
