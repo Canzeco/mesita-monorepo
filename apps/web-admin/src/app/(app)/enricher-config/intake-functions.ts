@@ -15,7 +15,7 @@ export type IntakeSubfunction = {
 };
 
 export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
-  { id: "f-seed", key: "seed", chip: "Seed", flows: ["create"] },
+  { id: "f-seed", key: "seed", chip: "0 Seed", flows: ["create"] },
   { id: "f-pulse", key: "pulse", chip: "1 Pulse", flows: ["create", "enrich"] },
   { id: "f-details", key: "details", chip: "2 Details", flows: ["create", "enrich"] },
   { id: "f-serp", key: "serp", chip: "3 Serp", flows: ["enrich"] },
@@ -30,10 +30,17 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
 ];
 
 export function chipsFor(flow: IntakeFlow): { href: string; label: string }[] {
-  return INTAKE_SUBFUNCTIONS.filter((s) => s.flows.includes(flow)).map((s) => ({
-    href: `#${s.id}`,
-    label: s.chip,
-  }));
+  const chips: { href: string; label: string }[] = [];
+  for (const s of INTAKE_SUBFUNCTIONS) {
+    if (!s.flows.includes(flow)) continue;
+    if (s.key === "name") {
+      chips.push({ href: `#${s.id}`, label: "10 Semantics" });
+      continue;
+    }
+    if (s.key === "summary") continue;
+    chips.push({ href: `#${s.id}`, label: s.chip });
+  }
+  return chips;
 }
 
 export function flowTag(flows: readonly IntakeFlow[]): string {

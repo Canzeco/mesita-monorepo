@@ -2,8 +2,17 @@
 
 // Status — where a place stands, in ONE box.
 //
-// Seven facts, each read from its own source: seeded · operating · listed ·
-// enriched · verified · partner · promoting.
+// Seven facts, each read from its own source. The state is Created, not
+// Seeded — Seeded is Create Seed, the first Intake Create subfunction.
+// Wire key `seeded` / `isPlaceSeeded` stays. Operator label is Created.
+//
+//   Created    google_place_id present (identity spine)
+//   Active     Google OPERATIONAL
+//   Listed     projects.status ∈ (active, lead)
+//   Enriched   PULSE high-water === 9
+//   Verified   approved project_verifications
+//   Partner    plan ≠ free
+//   Promoting  live discount
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -38,7 +47,7 @@ import { strategyForPlace } from "@/lib/business/strategies";
 // rows, because they are answers to one question — where does this place
 // stand.
 //
-//   Seeded     a google_place_id exists. Nothing enriches without it.
+//   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
 //              (active, lead) is what the consumer RLS policy
 //              projects_select_public_visible gates on — its content_status
@@ -56,7 +65,7 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
 //              one of the six a guest is ever shown.
 //
-// Seeded, Listed and Enriched arrive computed on the super-admin overview
+// Created, Listed and Enriched arrive computed on the super-admin overview
 // payload (business-web-get-overview → _shared/place-status.ts and
 // _shared/pulse-pieces.ts), the same helpers the Single Place table uses, so
 // the box and the table can never disagree. That guarantee was only half true
@@ -173,7 +182,7 @@ export function StatusCard({
   //
   // Three Google values plus silence, collapsed onto the row's tri-state:
   // OPERATIONAL is a yes, either CLOSED_* is a no, and an absent value is
-  // "unknown" rather than a false no — the same rule Seeded and Listed follow.
+  // "unknown" rather than a false no — the same rule Created and Listed follow.
   // The chip keeps the verbatim distinction, because CLOSED_TEMPORARILY (a
   // refurb, still a real business) and CLOSED_PERMANENTLY (dead) are not the
   // same operational fact and a bare "No" would erase the difference.
@@ -292,7 +301,7 @@ export function StatusCard({
     >
       <div className="mt-5 flex flex-col">
         <StatusRow
-          name="Seeded"
+          name="Created"
           value={seeded}
           tint="slate"
           detail={seededDetail}
@@ -423,7 +432,7 @@ function StatusRow({
 
 /**
  * The only control on this card, because Listed is the only fact here an
- * operator SETS rather than earns — Seeded, Enriched, Verified, Partner and
+ * operator SETS rather than earns — Created, Enriched, Verified, Partner and
  * Promoting are all consequences of something else happening.
  *
  * It writes projects.status through admin-web-set-place-listed, the column's

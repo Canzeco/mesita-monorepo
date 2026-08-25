@@ -1,17 +1,25 @@
+"use client";
+
+import type { ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import type { NotificationsPayload, NotificationType } from "./actions";
 import { TYPE_CONFIG, TYPE_ORDER, TONES } from "./notification-config";
 import {
   DOMAINS,
+  INTAKE_CREATE_FACTS,
+  INTAKE_ENRICH_FACTS,
   STATUS_FACTS,
   STEP_TYPE,
   typesInDomain,
   type DomainKey,
+  type IntakeCreateKey,
+  type IntakeEnrichKey,
+  type IntakeFilter,
   type StatusFactKey,
 } from "./notification-feed";
 
 export type TypeFilter = "all" | NotificationType;
-export type StatusFilter = "all" | StatusFactKey;
+export type StatusFilter = IntakeFilter;
 
 const STATUS_DOT: Record<StatusFactKey, string> = {
   seeded: TONES.indigo.dot,
@@ -31,6 +39,8 @@ export function NotificationFilters({
   total,
   counts,
   statusCounts,
+  createCounts,
+  enrichCounts,
   placeQuery,
   updatedLabel,
   pending,
@@ -50,6 +60,8 @@ export function NotificationFilters({
   total: number;
   counts: NotificationsPayload["counts"];
   statusCounts: Record<StatusFactKey, number>;
+  createCounts: Record<IntakeCreateKey, number>;
+  enrichCounts: Record<IntakeEnrichKey, number>;
   placeQuery: string;
   updatedLabel: string;
   pending: boolean;
@@ -66,6 +78,7 @@ export function NotificationFilters({
     (t) => includeSteps || t !== STEP_TYPE,
   );
   const showStepsToggle = showDomains && (domain === "all" || domain === "atlas");
+  const intake = domain === "atlas";
 
   return (
     <div className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/85 sticky top-0 z-30 border-y backdrop-blur-md">
@@ -98,42 +111,42 @@ export function NotificationFilters({
         </div>
       )}
 
-      <div className="flex items-stretch overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <FilterSegment
-          active={
-            domain === "atlas"
-              ? statusFilter === "all"
-              : typeFilter === "all"
-          }
-          label="All"
-          count={total}
-          onClick={() =>
-            domain === "atlas"
-              ? onStatusFilterChange("all")
-              : onTypeFilterChange("all")
-          }
-        />
-        {domain === "atlas"
-          ? STATUS_FACTS.map((fact) => (
-              <FilterSegment
-                key={fact.key}
-                active={statusFilter === fact.key}
-                label={fact.label}
-                count={statusCounts[fact.key] ?? 0}
-                dot={STATUS_DOT[fact.key]}
-                onClick={() => onStatusFilterChange(fact.key)}
-              />
-            ))
-          : domainTypes.map((t) => (
-              <FilterSegment
-                key={t}
-                active={typeFilter === t}
-                label={TYPE_CONFIG[t].shortLabel}
-                count={counts[t] ?? 0}
-                dot={TYPE_CONFIG[t].tone.dot}
-                onClick={() => onTypeFilterChange(t)}
-              />
-            ))}
+      <div className="flex items-stretch">
+        <div className="flex min-w-0 flex-1">
+          <FilterSegment
+            active={
+              intake ? statusFilter === "all" : typeFilter === "all"
+            }
+            label="All"
+            count={total}
+            onClick={() =>
+              intake
+                ? onStatusFilterChange("all")
+                : onTypeFilterChange("all")
+            }
+          />
+          {intake
+            ? STATUS_FACTS.map((fact) => (
+                <FilterSegment
+                  key={fact.key}
+                  active={statusFilter === fact.key}
+                  label={fact.label}
+                  count={statusCounts[fact.key] ?? 0}
+                  dot={STATUS_DOT[fact.key]}
+                  onClick={() => onStatusFilterChange(fact.key)}
+                />
+              ))
+            : domainTypes.map((t) => (
+                <FilterSegment
+                  key={t}
+                  active={typeFilter === t}
+                  label={TYPE_CONFIG[t].shortLabel}
+                  count={counts[t] ?? 0}
+                  dot={TYPE_CONFIG[t].tone.dot}
+                  onClick={() => onTypeFilterChange(t)}
+                />
+              ))}
+        </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 border-l px-3 py-2 sm:px-4">
           {showStepsToggle && (
@@ -178,8 +191,39 @@ export function NotificationFilters({
           </button>
         </div>
       </div>
+
+      {intake && (
+        <>
+          <ChipRow>
+            {INTAKE_CREATE_FACTS.map((fact) => (
+              <FilterSegment
+                key={fact.key}
+                active={statusFilter === `create:${fact.key}`}
+                label={`${fact.n} ${fact.label}`}
+                count={createCounts[fact.key] ?? 0}
+                onClick={() => onStatusFilterChange(`create:${fact.key}`)}
+              />
+            ))}
+          </ChipRow>
+          <ChipRow>
+            {INTAKE_ENRICH_FACTS.map((fact) => (
+              <FilterSegment
+                key={fact.key}
+                active={statusFilter === `enrich:${fact.key}`}
+                label={`${fact.n} ${fact.label}`}
+                count={enrichCounts[fact.key] ?? 0}
+                onClick={() => onStatusFilterChange(`enrich:${fact.key}`)}
+              />
+            ))}
+          </ChipRow>
+        </>
+      )}
     </div>
   );
+}
+
+function ChipRow({ children }: { children: ReactNode }) {
+  return <div className="border-border flex w-full border-t">{children}</div>;
 }
 
 function FilterSegment({
@@ -200,17 +244,17 @@ function FilterSegment({
       type="button"
       onClick={onClick}
       className={
-        "inline-flex shrink-0 items-center gap-1.5 border-r px-3 py-2.5 text-sm font-medium transition sm:px-4 " +
+        "inline-flex min-w-0 flex-1 items-center justify-center gap-1 border-r px-1 py-2 type-label font-medium leading-tight transition sm:gap-1.5 sm:px-2 sm:text-sm " +
         (active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")
       }
     >
       {dot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />}
-      {label}
+      <span className="truncate">{label}</span>
       <span
         className={
-          "type-meta rounded-full px-1.5 py-0.5 tabular-nums " +
+          "type-meta shrink-0 rounded-full px-1.5 py-0.5 tabular-nums " +
           (active ? "bg-background text-foreground" : "bg-muted text-muted-foreground")
         }
       >

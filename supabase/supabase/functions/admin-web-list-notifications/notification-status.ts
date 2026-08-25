@@ -3,7 +3,7 @@
 // listing_type. Never "claimed" as a fact (that's an owner row, not
 // Verified).
 //
-//   seeded     google_place_id present
+//   created    google_place_id present (operator label Created; wire `seeded`)
 //   active     Google business_status === OPERATIONAL
 //   listed     projects.status ∈ (active, lead)
 //   enriched   PULSE high-water === 9 (complete). The compact line still
@@ -11,13 +11,14 @@
 //   verified   an approved project_verifications row
 //   partner    plan ≠ free
 //   promoting  live discount (isPlacePromoting)
+//   functions  completed Intake Create/Enrich subfunctions (pulse, details, …)
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
 import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
-import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
+import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
 
 export type PlaceStatusFacts = {
@@ -30,6 +31,7 @@ export type PlaceStatusFacts = {
   verified: boolean;
   partner: boolean;
   promoting: boolean;
+  functions: Record<string, boolean>;
 };
 
 const PROFILE_COLS =
@@ -41,6 +43,18 @@ const EMPTY_ENRICHMENT: EnrichmentMap = {
   blockedAt: null,
 };
 
+export function completedFunctions(
+  map: FunctionStateMap | undefined,
+): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  if (!map) return out;
+  for (const [key, rec] of Object.entries(map)) {
+    if (!rec) continue;
+    if (rec.status === "completed") out[key] = true;
+  }
+  return out;
+}
+
 export function placeStatusFacts(input: {
   googlePlaceId: unknown;
   status: unknown;
@@ -49,6 +63,7 @@ export function placeStatusFacts(input: {
   highWater: number;
   verified: boolean;
   promotingRow: Parameters<typeof isPlacePromoting>[0];
+  functions?: FunctionStateMap;
 }): PlaceStatusFacts {
   const highWater = Number.isFinite(input.highWater) ? input.highWater : 0;
   return {
@@ -61,6 +76,7 @@ export function placeStatusFacts(input: {
     verified: input.verified,
     partner: isPaidPlan(typeof input.plan === "string" ? input.plan : null),
     promoting: isPlacePromoting(input.promotingRow),
+    functions: completedFunctions(input.functions),
   };
 }
 
@@ -128,6 +144,7 @@ export async function attachPlaceStatusFacts(
         highWater: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
         verified: verified.has(id),
         promotingRow: row,
+        functions: (enrichment.get(id) ?? EMPTY_ENRICHMENT).functions,
       }),
     );
   }

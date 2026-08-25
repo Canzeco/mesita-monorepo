@@ -275,7 +275,7 @@ export function PlaceSelectCatalog() {
         {hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The row IS the pipeline, left to right: seeded → active →
+              {/* The row IS the pipeline, left to right: created → active →
                   listed → enriched → verified → partner → promoting. Category,
                   Zone and Google reviews are gone — they describe the place,
                   and this table answers "how far along is it". Active is
@@ -285,7 +285,7 @@ export function PlaceSelectCatalog() {
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-4 py-3 font-semibold">Photo</th>
                     <th className="px-4 py-3 font-semibold">Name</th>
-                    <th className="px-4 py-3 text-center font-semibold">Seeded</th>
+                    <th className="px-4 py-3 text-center font-semibold">Created</th>
                     <th className="px-4 py-3 text-center font-semibold">Active</th>
                     <th className="px-4 py-3 text-center font-semibold">Listed</th>
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
@@ -683,7 +683,7 @@ function ActiveCell({
 }
 
 // A false cell used to render as plain grey text, which read as "no data" for
-// every column alike. It isn't the same fact twice: Seeded/Listed/Verified are
+// every column alike. It isn't the same fact twice: Created/Listed/Verified are
 // PENDING — something the pipeline or an operator still owes — while Partner is
 // simply a state (a free place is not a defect). So a false state gets a real
 // pill, and `falseTone` says which kind of false it is: rose for pending, plain

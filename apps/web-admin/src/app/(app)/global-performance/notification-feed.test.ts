@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { NotificationItem, NotificationType } from "./actions";
 import {
   groupConsecutiveSteps,
+  intakeCreateChips,
   intakeStatusLine,
+  itemMatchesIntakeFilter,
   pinReports,
   showCategoryOnCompact,
   typesForFetch,
@@ -90,7 +92,7 @@ describe("intakeStatusLine", () => {
       type: "atlas.place_created",
       meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStatusLine(created)).toBe("Seeded · Active · Listed · 2/9");
+    expect(intakeStatusLine(created)).toBe("Created · Active · Listed · 2/9");
     expect(intakeStatusLine(created)).not.toMatch(/claim/i);
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
@@ -111,7 +113,7 @@ describe("intakeStatusLine", () => {
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Seeded · Active · Listed · Enriched · Verified · Partner · Promoting",
+      "Created · Active · Listed · Enriched · Verified · Partner · Promoting",
     );
   });
 
@@ -121,7 +123,68 @@ describe("intakeStatusLine", () => {
       type: "atlas.place_created",
       meta: { status: "paused" },
     });
-    expect(intakeStatusLine(created)).toBe("Seeded · Unlisted");
+    expect(intakeStatusLine(created)).toBe("Created · Unlisted");
+  });
+});
+
+describe("itemMatchesIntakeFilter", () => {
+  const facts = {
+    seeded: true,
+    active: true,
+    listed: true,
+    enriched: false,
+    enrichPulse: 2,
+    enrichPulseTotal: 9,
+    verified: false,
+    partner: false,
+    promoting: false,
+    functions: {
+      pulse: true,
+      details: true,
+      name: true,
+    },
+  };
+
+  it("matches general Created and Create Pulse, not Create Serp", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: { statusFacts: facts },
+    });
+    expect(itemMatchesIntakeFilter(created, "seeded")).toBe(true);
+    expect(itemMatchesIntakeFilter(created, "create:seed")).toBe(true);
+    expect(itemMatchesIntakeFilter(created, "create:pulse")).toBe(true);
+    expect(itemMatchesIntakeFilter(created, "enrich:serp")).toBe(false);
+    expect(itemMatchesIntakeFilter(created, "create:semantics")).toBe(false);
+  });
+});
+
+describe("intakeCreateChips", () => {
+  it("numbers Seed 0 and shows Semantics 1/2 when only Name is done", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: {
+        statusFacts: {
+          seeded: true,
+          active: false,
+          listed: false,
+          enriched: false,
+          enrichPulse: 0,
+          enrichPulseTotal: 9,
+          verified: false,
+          partner: false,
+          promoting: false,
+          functions: { name: true },
+        },
+      },
+    });
+    const chips = intakeCreateChips(created);
+    expect(chips[0]).toMatchObject({ key: "seed", label: "0 Seed", on: true });
+    expect(chips.find((c) => c.key === "semantics")).toMatchObject({
+      label: "10 Semantics 1/2",
+      on: false,
+    });
   });
 });
 

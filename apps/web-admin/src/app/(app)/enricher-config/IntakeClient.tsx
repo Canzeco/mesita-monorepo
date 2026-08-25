@@ -365,7 +365,7 @@ export function IntakeClient({
             <div className="border-border mt-4 overflow-hidden rounded-xl border">
               <FunctionModule
                 id="f-seed"
-                index="SEED"
+                index="0"
                 name="Seed"
                 flows={flowTagFor("seed")}
                 blurb="Dedupe on the Google Place ID and mint the paired rows."

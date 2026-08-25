@@ -25,7 +25,9 @@ import {
   type DomainKey,
   feedEntryKey,
   groupConsecutiveSteps,
-  itemHasStatusFact,
+  intakeCreateCounts,
+  intakeEnrichCounts,
+  itemMatchesIntakeFilter,
   pinReports,
   statusFactCounts,
   typesForFetch,
@@ -125,13 +127,21 @@ export function GlobalPerformanceClient({
     return data.notifications.filter(
       (n) =>
         (typeFilter === "all" || n.type === typeFilter) &&
-        (statusFilter === "all" || itemHasStatusFact(n, statusFilter)) &&
+        (statusFilter === "all" || itemMatchesIntakeFilter(n, statusFilter)) &&
         (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
     );
   }, [data.notifications, placeQuery, typeFilter, statusFilter]);
 
   const factCounts = useMemo(
     () => statusFactCounts(data.notifications),
+    [data.notifications],
+  );
+  const createCounts = useMemo(
+    () => intakeCreateCounts(data.notifications),
+    [data.notifications],
+  );
+  const enrichCounts = useMemo(
+    () => intakeEnrichCounts(data.notifications),
     [data.notifications],
   );
 
@@ -153,6 +163,8 @@ export function GlobalPerformanceClient({
         total={data.total}
         counts={data.counts}
         statusCounts={factCounts}
+        createCounts={createCounts}
+        enrichCounts={enrichCounts}
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
         pending={pending}

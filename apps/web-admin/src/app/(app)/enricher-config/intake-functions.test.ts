@@ -27,13 +27,12 @@ describe("intake subfunctions", () => {
     ]);
   });
 
-  it("Create is one run of five; Enrich is sequential over eleven", () => {
+  it("Create is Seed · Pulse · Details · Semantics; Enrich is 1–10", () => {
     expect(chipsFor("create").map((c) => c.label)).toEqual([
-      "Seed",
+      "0 Seed",
       "1 Pulse",
       "2 Details",
-      "◇ Name",
-      "◇ Summary",
+      "10 Semantics",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -45,8 +44,7 @@ describe("intake subfunctions", () => {
       "7 Menu",
       "8 Reviews",
       "9 Description",
-      "◇ Name",
-      "◇ Summary",
+      "10 Semantics",
     ]);
   });
 

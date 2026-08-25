@@ -98,7 +98,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="Find Place IDs, or paste them. Mints Mesita places. Caps live on Intake."
+        blurb="Create Seed · Pulse · Details · Semantics. Find Place IDs, or paste them. Caps live on Intake."
       >
         <FindThenPaste
           queriesId="create-queries"
@@ -114,7 +114,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Paste Mesita place IDs. Enrich, or Re-enrich. Same full Intaker run."
+        blurb="Enrich 1–10: Pulse through Description, then Semantics. Paste Mesita IDs. Same full Intaker run."
       >
         <EnrichTab text={enrichText} onTextChange={setEnrichText} />
       </Step>
@@ -124,7 +124,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Mint, then queue a full Intaker run in this box. No hop."
+        blurb="Create Seed · Pulse · Details · Semantics, then Enrich 1–10 in this box. No hop."
       >
         <FindThenPaste
           queriesId="combo-queries"
