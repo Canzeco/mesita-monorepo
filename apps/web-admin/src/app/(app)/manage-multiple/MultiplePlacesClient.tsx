@@ -1,49 +1,20 @@
 "use client";
 
-// Manage Multiple Places — ONE page (Pato, 2026-08-22: "all into one page. not
-// three subpages").
+// Manage Multiple Places — ONE page, three boxes (Pato, 2026-08-25):
+// Create · Enrich · Create + Enrich. Same pill chrome as before. Search is
+// not a fourth box — it lives inside Create (and Create + Enrich) as how you
+// get Google Place IDs without already having them.
 //
-// It was three tabs, and the tabs were hiding the shape of the thing. Search,
-// Create and Enrich are not three tools an operator picks between — they are
-// one PIPELINE, run in order:
-//
-//   queries → Place IDs → places → enrichment runs
-//
-// Each tab held its own local state and nothing was shared, so the handoff was
-// manual: run a search, copy the IDs, switch tab, paste, create, switch tab,
-// paste again. The tab strip made three steps of one job look like three jobs,
-// and made the only thing connecting them — the IDs — the operator's problem.
-//
-// Stacked in order, the pipeline is the page. Two handoffs are buttons:
-// Search → Create (new Google IDs) and Create → Enrich (minted Mesita IDs).
-// The sticky rail keeps all three named while you work any step.
-//
-// The button sends only places NOT already in Mesita. Sending the rest would
-// queue creates for places that already exist — work the operator would then
-// have to read past in the results.
+// Spend math does not live here. Create and Enrich estimates are on Intake.
 
-import { useState } from "react";
-import { ListPlus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { CreateTab } from "./CreateTab";
-import { EnrichTab, type EnrichCostSeed } from "./EnrichTab";
-import { PIPELINE_STEPS } from "./pipeline";
+import { EnrichTab } from "./EnrichTab";
+import { LEGACY_SEARCH_HASH, PIPELINE_STEPS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
-// THE CARD, not a bare section (design pass 2026-08-22). This page was the
-// only one in the console whose content floated directly on the page
-// background: no border, no card, no icon chip, a plain `font-semibold`
-// heading where every other page uses the Fraunces `SectionCard` title. Two
-// adjacent entries in the same MANAGE rail group shared zero vocabulary, and
-// that — not the spacing — is why the page read as unfinished next to Single
-// Place.
-//
-// The step NUMBER takes the icon-chip slot rather than sitting beside it as a
-// second circle. `SectionCard` already reserves a 36px tinted square there,
-// so the number gets the affordance the system already has instead of
-// introducing a competing one. Each step takes its own tint, per the palette's
-// keep-siblings-different rule.
 function Step({
   n,
   id,
@@ -59,9 +30,6 @@ function Step({
   tint: Tint;
   children: React.ReactNode;
 }) {
-  // The id rides the wrapper, not SectionCard: `scroll-mt-24` only offsets the
-  // element that scrollIntoView actually targets, and step 2's "send to
-  // create" jump would otherwise land under the sticky page header.
   return (
     <div id={id} className="scroll-mt-36">
       <SectionCard
@@ -80,24 +48,47 @@ function Step({
   );
 }
 
-export function MultiplePlacesClient({
-  costSeed,
+function FindThenPaste({
+  queriesId,
+  createText,
+  onCreateText,
+  mode,
+  inputId,
 }: {
-  costSeed: EnrichCostSeed | null;
+  queriesId: string;
+  createText: string;
+  onCreateText: (next: string) => void;
+  mode: "create" | "create-and-enrich";
+  inputId: string;
 }) {
-  // The ONE lifted piece: step 1's output is step 2's input. Controlled rather
-  // than seeded-through-an-effect, so there is no setState-in-effect to sync
-  // and no remount that would discard step 2's per-row results.
-  const [createText, setCreateText] = useState("");
-  const [enrichText, setEnrichText] = useState("");
-  const [createdProjectIds, setCreatedProjectIds] = useState<string[]>([]);
+  return (
+    <div className="flex flex-col gap-10">
+      <SearchTab
+        queriesId={queriesId}
+        onSendToCreate={(ids) => onCreateText(ids.join("\n"))}
+      />
+      <CreateTab
+        text={createText}
+        onTextChange={onCreateText}
+        mode={mode}
+        inputId={inputId}
+      />
+    </div>
+  );
+}
 
-  function jump(id: string) {
-    document.getElementById(id)?.scrollIntoView({
-      behavior: "smooth",
+export function MultiplePlacesClient() {
+  const [createText, setCreateText] = useState("");
+  const [comboText, setComboText] = useState("");
+  const [enrichText, setEnrichText] = useState("");
+
+  useEffect(() => {
+    const raw = window.location.hash.replace(/^#/, "");
+    if (raw !== LEGACY_SEARCH_HASH) return;
+    document.getElementById(PIPELINE_STEPS[0].id)?.scrollIntoView({
       block: "start",
     });
-  }
+  }, []);
 
   return (
     <div className="flex flex-col gap-5">
@@ -107,13 +98,14 @@ export function MultiplePlacesClient({
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="One Google Places query per line. The deduped union of Place IDs comes back below."
+        blurb="Find Place IDs, or paste them. Mints Mesita places. Caps live on Intake."
       >
-        <SearchTab
-          onSendToCreate={(ids) => {
-            setCreateText(ids.join("\n"));
-            jump("bulk-create");
-          }}
+        <FindThenPaste
+          queriesId="create-queries"
+          createText={createText}
+          onCreateText={setCreateText}
+          mode="create"
+          inputId="create-place-ids"
         />
       </Step>
 
@@ -122,27 +114,9 @@ export function MultiplePlacesClient({
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Place IDs in, places out — the same pipeline as a single create, with progress per row."
+        blurb="Paste Mesita place IDs. Enrich, or Re-enrich. Same full Intaker run."
       >
-        <CreateTab
-          text={createText}
-          onTextChange={setCreateText}
-          onCreated={(ids) => setCreatedProjectIds(ids)}
-        />
-        {createdProjectIds.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => {
-              setEnrichText(createdProjectIds.join("\n"));
-              jump("bulk-enrich");
-            }}
-            className="border-border bg-card hover:border-foreground mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
-          >
-            <ListPlus className="h-4 w-4" />
-            Send {createdProjectIds.length} created{" "}
-            {createdProjectIds.length === 1 ? "place" : "places"} to Enrich
-          </button>
-        ) : null}
+        <EnrichTab text={enrichText} onTextChange={setEnrichText} />
       </Step>
 
       <Step
@@ -150,12 +124,14 @@ export function MultiplePlacesClient({
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Enrich, or Re-enrich. Same full Intaker run. See the spend before you queue."
+        blurb="Mint, then queue a full Intaker run in this box. No hop."
       >
-        <EnrichTab
-          costSeed={costSeed}
-          text={enrichText}
-          onTextChange={setEnrichText}
+        <FindThenPaste
+          queriesId="combo-queries"
+          createText={comboText}
+          onCreateText={setComboText}
+          mode="create-and-enrich"
+          inputId="create-enrich-place-ids"
         />
       </Step>
     </div>

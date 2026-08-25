@@ -46,13 +46,16 @@ function buildSearchCsvRows(result: SearchResponse): string[] {
   return rows;
 }
 
-// `onSendToCreate` is the pipeline handoff (MESITA-1203). On one page, step 1's
-// output IS step 2's input, so the operator should never have to carry the IDs
-// across by hand.
+// `onSendToCreate` fills the Place ID form in this same box. The operator
+// should never have to carry IDs across by hand.
 export function SearchTab({
   onSendToCreate,
+  queriesId = "queries",
+  sendLabel,
 }: {
   onSendToCreate?: (placeIds: string[]) => void;
+  queriesId?: string;
+  sendLabel?: string;
 }) {
   const [queriesText, setQueriesText] = useState("");
   const [regionCode, setRegionCode] = useState("");
@@ -78,8 +81,10 @@ export function SearchTab({
   );
 
   const overLimit = queries.length > MAX_QUERIES;
-  const { pagesPerQuery, totalCalls: estimatedApiCalls, totalCostUsd: estimatedCostUsd } =
-    estimateSearchCost(queries.length, maxResults);
+  const { totalCalls: estimatedApiCalls } = estimateSearchCost(
+    queries.length,
+    maxResults,
+  );
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
 
   async function runSearch() {
@@ -148,14 +153,14 @@ export function SearchTab({
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Paste one Google Places query per line — each runs through the Places
-        Text Search API, and the deduped union of Place IDs comes back below,
-        ready for bulk create. Use the quality filters to drop low-signal
-        listings before they hit the results.
+        Find Google Place IDs with one query per line. The deduped union
+        comes back below — send the new ones into the form under this search.
+        Spend for Create and Enrich is on Intake, not here.
       </p>
 
       <section className="mt-8 space-y-8">
         <SearchQueriesSection
+          queriesId={queriesId}
           queriesText={queriesText}
           queriesCount={queries.length}
           estimatedApiCalls={estimatedApiCalls}
@@ -172,9 +177,6 @@ export function SearchTab({
           running={running}
           queriesCount={queries.length}
           overLimit={overLimit}
-          pagesPerQuery={pagesPerQuery}
-          estimatedApiCalls={estimatedApiCalls}
-          estimatedCostUsd={estimatedCostUsd}
           onMaxResultsChange={setMaxResults}
           onMinRatingChange={setMinRating}
           onMinReviewsChange={setMinReviews}
@@ -213,8 +215,8 @@ export function SearchTab({
               className="border-border bg-card hover:border-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
             >
               <ListPlus className="h-4 w-4" />
-              Send {newPlaceIds.length} new{" "}
-              {newPlaceIds.length === 1 ? "place" : "places"} to Create
+              {sendLabel ??
+                `Use ${newPlaceIds.length} new ${newPlaceIds.length === 1 ? "place" : "places"} below`}
             </button>
           )}
 
