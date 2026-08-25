@@ -1,23 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
 import { SaveRow } from "@/components/admin-ui/config";
 import { usePromosState } from "./PromosState";
 
-// ONE Save for the whole document, mounted by the layout so it persists across
-// tabs. Both contexts edit the same blob; a per-tab Save would revert the
-// other tab's unsaved edits.
-//
-// Distribution is READ-ONLY — it simulates the saved config and edits nothing,
-// so it gets no Save bar. A disabled Save on a page with no inputs is a
-// control that does not belong to it.
-export function PromosSaveFooter() {
-  const pathname = usePathname();
-  const editable = pathname?.startsWith("/rewards-config/tiers");
+// ONE Save for the whole document. Sits after the visit knobs. Distribution
+// below is assumptions-only and never writes the blob.
 
+export function PromosSaveFooter() {
   const {
     dirty,
     pending,
@@ -29,13 +21,12 @@ export function PromosSaveFooter() {
     resetDefaults,
   } = usePromosState();
 
-  if (!editable) return null;
-
   return (
     <div className="mt-6">
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted-foreground text-xs">
-          Base + class + plan, plus what the guest earned. Six boxes, one Save.
+          Base + class + plan, plus what the guest earned. Three visit boxes,
+          one Save.
         </p>
         <button
           type="button"

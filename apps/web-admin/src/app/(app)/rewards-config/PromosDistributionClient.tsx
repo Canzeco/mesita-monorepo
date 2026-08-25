@@ -12,20 +12,19 @@ import {
   type Assumptions,
   type StrategyDistribution,
 } from "./distribution-model";
+import { usePromosState } from "./PromosState";
 import {
   CLASS_KEYS,
   CLASS_META,
   STRATEGY_KEYS,
   STRATEGY_META,
   type ClassKey,
-  type PromosConfig,
   type StrategyKey,
 } from "./promos";
 
-// Promos · Distribution (MESITA-991, cleaned up MESITA-996) — the reward
-// distribution simulator. The operator sets assumptions; the chart shows the
-// EXACT expected distribution (every class × visit-type × action combination
-// enumerated and weighted — no random sampling, so nothing jitters).
+// Promos · Distribution — visit-spread simulator on the same page as the
+// knobs. Assumptions stay local; rates follow live PromosState so an unsaved
+// ladder is what the chart quotes. No random sampling (MESITA-991 / 996).
 //
 // Chart grammar, chosen so labels can NEVER collide (MESITA-996): no text is
 // positioned at a data x. The quartiles read as a shaded IQR band plus one
@@ -43,23 +42,19 @@ const STRATEGY_RAMP: Record<StrategyKey, [string, string, string]> = {
 
 const BONUS_SEGMENT_LABEL = ["Base only", "+1 bonus", "+2 or more"] as const;
 
-export function PromosDistributionClient({
-  initialConfig,
-  loadError,
-}: {
-  initialConfig: PromosConfig;
-  loadError: string | null;
-}) {
+export function PromosDistributionClient() {
+  const { cfg, loadBlocked, error } = usePromosState();
+  const loadError = loadBlocked ? error : null;
   const [assumptions, setAssumptions] =
     useState<Assumptions>(DEFAULT_ASSUMPTIONS);
 
   const results = useMemo(() => {
     const out = {} as Record<StrategyKey, StrategyDistribution>;
     for (const s of STRATEGY_KEYS) {
-      out[s] = distributionFor(initialConfig, assumptions, s);
+      out[s] = distributionFor(cfg, assumptions, s);
     }
     return out;
-  }, [initialConfig, assumptions]);
+  }, [cfg, assumptions]);
 
   const classSum = CLASS_KEYS.reduce((t, c) => t + assumptions.classPct[c], 0);
 
