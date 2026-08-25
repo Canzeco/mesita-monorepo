@@ -32,8 +32,9 @@ import {
 // floor first, then signed adders. Pinned rungs (Bronze, Free) are an em
 // dash — "0%" is a real rate and would read as one.
 //
-// Orders Promos is Soon: no remote ticket, so no knobs. The blob still
-// carries an orders grid; this page does not edit it.
+// Promos Config prices VISITS only. Orders and prepaid are not reward
+// contexts on this page. The blob still carries a parked orders grid;
+// Save round-trips it without knobs.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -157,21 +158,6 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
   );
 }
 
-function OrdersPromosSoon() {
-  return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:px-6">
-      <BoxRow
-        label="Orders"
-        hint="Promos for a remote ticket — later, when Orders has a rail."
-      >
-        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 type-meta font-bold tracking-wider uppercase">
-          Soon
-        </span>
-      </BoxRow>
-    </section>
-  );
-}
-
 export function TiersClient() {
   const { cfg, setCap, pending, seeded, loadBlocked, updatedAt, ladderError } =
     usePromosState();
@@ -184,6 +170,10 @@ export function TiersClient() {
           Nothing is saved yet — launch defaults. Review, then Save.
         </p>
       )}
+
+      <p className="text-muted-foreground type-label">
+        Visit rewards only — not orders, not prepaid.
+      </p>
 
       {ladderError && (
         <div className="rounded-lg border border-red-300/70 bg-red-50 px-3 py-2.5">
@@ -227,9 +217,7 @@ export function TiersClient() {
         ))}
       </div>
 
-      <OrdersPromosSoon />
-
-      <Collapsible summary="How a bill stacks">
+      <Collapsible summary="How a visit bill stacks">
         <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
           Standing (base + class + plan) plus Welcome plus every earned action,
           clamped to 100%, on the first cap-pesos. Only the integer percent

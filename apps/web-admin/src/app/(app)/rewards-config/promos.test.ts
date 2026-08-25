@@ -296,13 +296,13 @@ describe("bonuses are per strategy", () => {
   });
 });
 
-describe("Tiers HTML does not price Orders Promos", () => {
-  it("has a Soon field and no Orders knobs", () => {
+describe("Tiers HTML prices visits only", () => {
+  it("has no Orders or prepaid knobs", () => {
     const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
-    expect(src).toContain("OrdersPromosSoon");
-    expect(src).toContain("Soon");
+    expect(src).toContain("Visit rewards only");
+    expect(src).toContain("not prepaid");
+    expect(src).not.toContain("OrdersPromosSoon");
     expect(src).not.toContain('context="orders"');
-    expect(src).not.toContain("not-wired");
     expect(src).not.toContain("setOrders");
   });
 });
