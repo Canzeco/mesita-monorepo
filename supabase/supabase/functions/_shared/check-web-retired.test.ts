@@ -1,7 +1,8 @@
 // MESITA-1117: the staff ticket EFs live at validate-web-*. The old
-// check-web-* folders, config.toml blocks, and cloud functions are gone.
-// A leftover name would re-deploy a second public surface that the staff
-// app no longer calls.
+// check-web-* folders and config.toml blocks are gone; leftover cloud
+// names are deleted by supabase-deploy.yml (MCP cannot delete). A leftover
+// folder or config block would re-deploy a second public surface that the
+// staff app no longer calls.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
