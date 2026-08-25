@@ -50,6 +50,8 @@ export type PlaceHit = {
   //    Created · Active · Listed · Enriched · Verified · Partner · Promoting.
   //    First six are bools; Promoting is 0|1|2. All derived (or projected)
   //    in admin-web-search-places.
+  /** Google Place ID spine — used to match a Mesita Search paste. */
+  google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
@@ -116,6 +118,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // No listing_type fallbacks here any more: it fuses paying and promoting
     // into one stale enum, so guessing from it would put a wrong flag on
     // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
+    google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
     business_status:
@@ -148,6 +151,20 @@ export async function searchPlacesCatalog(query: string): Promise<Result<PlaceHi
   const q = (query ?? "").trim();
   if (q.length < 2) return { ok: true, data: [] };
   return fetchPlaces(q);
+}
+
+/** Mesita catalog lookup by Google Place IDs — read-only, no create/enrich. */
+export async function searchPlacesByGoogleIds(
+  googlePlaceIds: string[],
+): Promise<Result<PlaceHit[]>> {
+  const ids = googlePlaceIds.map((id) => id.trim()).filter((id) => id.length >= 18);
+  if (ids.length === 0) return { ok: true, data: [] };
+  const r = await efInvoke<{ places: RawPlaceHit[] }>("admin-web-search-places", {
+    googlePlaceIds: ids.slice(0, 250),
+    limit: Math.min(ids.length, 250),
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
 }
 
 // One menu / catalog entry under products.menu (and legacy menus).
@@ -352,6 +369,24 @@ export async function setPlaceListed(
   return {
     ok: true,
     data: { ...r.data.place, listed: r.data.listed ?? listed },
+  };
+}
+
+/** Admin attestation of ownership proof. Verified is one-time; yes only. */
+export async function setPlaceVerified(
+  placeId: string,
+): Promise<Result<{ verified: true; alreadyVerified: boolean }>> {
+  const r = await efInvoke<{ verified?: boolean; alreadyVerified?: boolean }>(
+    "admin-web-set-place-verified",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      verified: true,
+      alreadyVerified: r.data.alreadyVerified === true,
+    },
   };
 }
 

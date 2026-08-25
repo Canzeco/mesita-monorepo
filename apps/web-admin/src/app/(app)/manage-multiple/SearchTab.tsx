@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ListPlus } from "lucide-react";
+import { AlertTriangle, ListPlus, Loader2, Search } from "lucide-react";
 
+import { CldrRegionInput } from "@/components/CldrRegionInput";
 import { PlacesMap } from "@/components/PlacesMap";
 import type { SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 
 import { estimateSearchCost } from "./search-cost";
 import { MAX_QUERIES, MAX_RESULTS } from "./search-tab-constants";
+import { splitSearchBarInput } from "./google-place-ids";
 import { QueryRow } from "./SearchQueryRows";
 import { SearchParametersSection } from "./SearchParametersSection";
-import { SearchQueriesSection } from "./SearchQueriesSection";
 import { ResultSummary } from "./SearchResultSummary";
 
 const SEARCH_CSV_HEADER =
@@ -21,7 +22,6 @@ function csvCell(s: string): string {
   return s;
 }
 
-/** Flatten a bulk-search response into CSV rows (header first). */
 function buildSearchCsvRows(result: SearchResponse): string[] {
   const rows: string[] = [SEARCH_CSV_HEADER];
   for (const q of result.queries) {
@@ -46,18 +46,12 @@ function buildSearchCsvRows(result: SearchResponse): string[] {
   return rows;
 }
 
-// `onSendToCreate` fills the Place ID form in the Create box. The operator
-// should never have to carry IDs across by hand.
 export function SearchTab({
-  onSendToCreate,
-  queriesId = "queries",
-  sendLabel,
+  onSendIds,
 }: {
-  onSendToCreate?: (placeIds: string[]) => void;
-  queriesId?: string;
-  sendLabel?: string;
+  onSendIds?: (placeIds: string[]) => void;
 }) {
-  const [queriesText, setQueriesText] = useState("");
+  const [bar, setBar] = useState("");
   const [regionCode, setRegionCode] = useState("");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
   const [minRating, setMinRating] = useState(0);
@@ -67,18 +61,13 @@ export function SearchTab({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const queries = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          queriesText
-            .split("\n")
-            .map((q) => q.trim())
-            .filter((q) => q.length > 0),
-        ),
-      ),
-    [queriesText],
-  );
+  const parsed = useMemo(() => splitSearchBarInput(bar), [bar]);
+  const queries = useMemo(() => {
+    const out: string[] = [];
+    if (parsed.query) out.push(parsed.query);
+    out.push(...parsed.placeIds);
+    return Array.from(new Set(out));
+  }, [parsed]);
 
   const overLimit = queries.length > MAX_QUERIES;
   const { totalCalls: estimatedApiCalls } = estimateSearchCost(
@@ -117,12 +106,7 @@ export function SearchTab({
     }
   }
 
-  // Unique hits Mesita does not already have — what step 2 would actually act
-  // on. `existsInMesita` is null-safe: the Supabase lookup can fail while the
-  // search still succeeds, and in that case nothing is claimed to be new.
-  const newPlaceIds = (result?.uniquePlaces ?? [])
-    .filter((p) => !p.existsInMesita)
-    .map((p) => p.id);
+  const allPlaceIds = (result?.uniquePlaces ?? []).map((p) => p.id);
 
   async function copyText(text: string, key: string) {
     try {
@@ -143,7 +127,7 @@ export function SearchTab({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `bulk-search-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `google-search-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -153,23 +137,62 @@ export function SearchTab({
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Find Google Place IDs with one query per line. The deduped union
-        comes back below — send the new ones into the form under this search.
-        Spend for Create and Enrich is on Intake, not here.
+        Google-side lookup. Type a query or paste Google Place IDs. Country
+        is optional — Google does not require it. This box does not create
+        or enrich.
       </p>
 
-      <section className="mt-8 space-y-8">
-        <SearchQueriesSection
-          queriesId={queriesId}
-          queriesText={queriesText}
-          queriesCount={queries.length}
-          estimatedApiCalls={estimatedApiCalls}
-          overLimit={overLimit}
-          onQueriesTextChange={setQueriesText}
-          regionCode={regionCode}
-          onRegionCodeChange={setRegionCode}
-        />
+      <form
+        className="mt-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void runSearch();
+        }}
+      >
+        <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
+          <div className="flex items-center gap-2 px-3">
+            <Search className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+            <input
+              type="search"
+              value={bar}
+              onChange={(e) => setBar(e.target.value)}
+              placeholder="Free text or Google Place IDs"
+              aria-label="Google search"
+              spellCheck={false}
+              className="placeholder:text-muted-foreground/50 h-12 min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+            <button
+              type="submit"
+              disabled={running || queries.length === 0 || overLimit}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-50"
+            >
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              {running ? "Searching…" : "Search"}
+            </button>
+          </div>
+          <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2 text-xs">
+            <span>
+              {parsed.query ? "1 query" : "0 queries"}
+              {parsed.placeIds.length > 0
+                ? ` · ${parsed.placeIds.length} Place ID${parsed.placeIds.length === 1 ? "" : "s"}`
+                : ""}
+              {overLimit ? ` · over the ${MAX_QUERIES} max` : ""}
+              {queries.length > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
+            </span>
+            <CldrRegionInput
+              value={regionCode}
+              onChange={setRegionCode}
+              disabled={running}
+            />
+          </div>
+        </div>
+      </form>
 
+      <section className="mt-8 space-y-8">
         <SearchParametersSection
           maxResults={maxResults}
           minRating={minRating}
@@ -180,11 +203,10 @@ export function SearchTab({
           onMaxResultsChange={setMaxResults}
           onMinRatingChange={setMinRating}
           onMinReviewsChange={setMinReviews}
-          onRunSearch={runSearch}
+          onRunSearch={() => void runSearch()}
         />
       </section>
 
-      {/* Error */}
       {error && (
         <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -195,7 +217,6 @@ export function SearchTab({
         </div>
       )}
 
-      {/* Results */}
       {result && (
         <div className="mt-10 space-y-6">
           <ResultSummary
@@ -205,18 +226,15 @@ export function SearchTab({
             onDownload={downloadCsv}
           />
 
-          {/* Only places NOT already in Mesita. Sending the rest would queue
-              creates for places that already exist, which the operator would
-              then have to read past in step 2's results. */}
-          {onSendToCreate && newPlaceIds.length > 0 && (
+          {onSendIds && allPlaceIds.length > 0 && (
             <button
               type="button"
-              onClick={() => onSendToCreate(newPlaceIds)}
+              onClick={() => onSendIds(allPlaceIds)}
               className="border-border bg-card hover:border-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
             >
               <ListPlus className="h-4 w-4" />
-              {sendLabel ??
-                `Send ${newPlaceIds.length} new ${newPlaceIds.length === 1 ? "place" : "places"} to Create`}
+              Send {allPlaceIds.length}{" "}
+              {allPlaceIds.length === 1 ? "ID" : "IDs"} to Mesita Search / Intake / Edit
             </button>
           )}
 
@@ -252,9 +270,7 @@ export function SearchTab({
           <PlacesMap places={result.uniquePlaces} />
 
           <section>
-            <h2 className="text-foreground type-eyebrow">
-              By query
-            </h2>
+            <h2 className="text-foreground type-eyebrow">By query</h2>
             <ul className="border-border bg-card divide-border mt-3 divide-y rounded-2xl border">
               {result.queries.map((q) => (
                 <QueryRow

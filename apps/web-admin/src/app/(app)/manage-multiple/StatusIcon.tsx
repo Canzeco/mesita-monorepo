@@ -1,11 +1,21 @@
-import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, CircleDot, Loader2, Sparkles, XCircle } from "lucide-react";
 
-type BatchRowStatus = "pending" | "running" | "ok" | "error";
+export type BatchRowStatus =
+  | "pending"
+  | "running"
+  | "ok"
+  | "existed"
+  | "enriching"
+  | "error";
 
-/** Shared pending/running/ok/error glyph for Search / Create / Enrich batch tables. */
+/** Shared glyph for batch rows. Distinguishes created / already existed / enriching / failed. */
 export function StatusIcon({ status }: { status: BatchRowStatus }) {
   if (status === "ok")
     return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />;
+  if (status === "existed")
+    return <CircleDot className="h-4 w-4 shrink-0 text-sky-600" />;
+  if (status === "enriching")
+    return <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />;
   if (status === "error")
     return <XCircle className="text-destructive h-4 w-4 shrink-0" />;
   if (status === "running")
