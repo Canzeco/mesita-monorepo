@@ -14,19 +14,22 @@
 // paste again. The tab strip made three steps of one job look like three jobs,
 // and made the only thing connecting them — the IDs — the operator's problem.
 //
-// Stacked in order, the pipeline is the page, and the handoff becomes a button:
-// step 1's results push straight into step 2's input. That is the one piece of
-// state lifted here; everything else stays inside its own step.
+// Stacked in order, the pipeline is the page. Two handoffs are buttons:
+// Search → Create (new Google IDs) and Create → Enrich (minted Mesita IDs).
+// The sticky rail keeps all three named while you work any step.
 //
 // The button sends only places NOT already in Mesita. Sending the rest would
 // queue creates for places that already exist — work the operator would then
 // have to read past in the results.
 
 import { useState } from "react";
+import { ListPlus } from "lucide-react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { CreateTab } from "./CreateTab";
 import { EnrichTab, type EnrichCostSeed } from "./EnrichTab";
+import { PIPELINE_STEPS } from "./pipeline";
+import { PipelineNav } from "./PipelineNav";
 
 // THE CARD, not a bare section (design pass 2026-08-22). This page was the
 // only one in the console whose content floated directly on the page
@@ -60,7 +63,7 @@ function Step({
   // element that scrollIntoView actually targets, and step 2's "send to
   // create" jump would otherwise land under the sticky page header.
   return (
-    <div id={id} className="scroll-mt-24">
+    <div id={id} className="scroll-mt-36">
       <SectionCard
         tint={tint}
         title={title}
@@ -86,42 +89,74 @@ export function MultiplePlacesClient({
   // than seeded-through-an-effect, so there is no setState-in-effect to sync
   // and no remount that would discard step 2's per-row results.
   const [createText, setCreateText] = useState("");
+  const [enrichText, setEnrichText] = useState("");
+  const [createdProjectIds, setCreatedProjectIds] = useState<string[]>([]);
+
+  function jump(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
 
   return (
     <div className="flex flex-col gap-5">
+      <PipelineNav />
       <Step
-        n={1}
+        n={PIPELINE_STEPS[0].n}
+        id={PIPELINE_STEPS[0].id}
         tint="sky"
-        title="Search"
+        title={PIPELINE_STEPS[0].label}
         blurb="One Google Places query per line. The deduped union of Place IDs comes back below."
       >
         <SearchTab
           onSendToCreate={(ids) => {
             setCreateText(ids.join("\n"));
-            document
-              .getElementById("bulk-create")
-              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            jump("bulk-create");
           }}
         />
       </Step>
 
       <Step
-        n={2}
-        id="bulk-create"
+        n={PIPELINE_STEPS[1].n}
+        id={PIPELINE_STEPS[1].id}
         tint="violet"
-        title="Create"
+        title={PIPELINE_STEPS[1].label}
         blurb="Place IDs in, places out — the same pipeline as a single create, with progress per row."
       >
-        <CreateTab text={createText} onTextChange={setCreateText} />
+        <CreateTab
+          text={createText}
+          onTextChange={setCreateText}
+          onCreated={(ids) => setCreatedProjectIds(ids)}
+        />
+        {createdProjectIds.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setEnrichText(createdProjectIds.join("\n"));
+              jump("bulk-enrich");
+            }}
+            className="border-border bg-card hover:border-foreground mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
+          >
+            <ListPlus className="h-4 w-4" />
+            Send {createdProjectIds.length} created{" "}
+            {createdProjectIds.length === 1 ? "place" : "places"} to Enrich
+          </button>
+        ) : null}
       </Step>
 
       <Step
-        n={3}
+        n={PIPELINE_STEPS[2].n}
+        id={PIPELINE_STEPS[2].id}
         tint="amber"
-        title="Enrich"
+        title={PIPELINE_STEPS[2].label}
         blurb="Re-run the Intaker over many places. Pick a mode and see the spend before you queue."
       >
-        <EnrichTab costSeed={costSeed} />
+        <EnrichTab
+          costSeed={costSeed}
+          text={enrichText}
+          onTextChange={setEnrichText}
+        />
       </Step>
     </div>
   );

@@ -17,7 +17,7 @@ export default function ManageMultipleLayout({
       <PageHeader
         eyebrow="Manage · Places"
         title="Manage Multiple Places"
-        description="Search Google for many places, create them, and enrich them — in that order."
+        description="Search, then Create, then Enrich. All three stay on this page — the rail at the top jumps to each."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

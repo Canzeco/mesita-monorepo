@@ -44,8 +44,16 @@ export type EnrichCostSeed = {
 
 const MODES = REENRICH_MODES;
 
-export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
-  const [text, setText] = useState("");
+export function EnrichTab({
+  costSeed,
+  text,
+  onTextChange,
+}: {
+  costSeed: EnrichCostSeed | null;
+  text: string;
+  onTextChange: (next: string) => void;
+}) {
+  const setText = onTextChange;
   const [mode, setMode] = useState<ReenrichMode>("full");
   const [results, setResults] = useState<Record<string, RowStatus>>({});
   const [running, setRunning] = useState(false);
@@ -90,7 +98,7 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
     const file = e.target.files?.[0];
     if (!file) return;
     const content = await file.text();
-    setText((prev) => (prev ? `${prev}\n${content}` : content));
+    setText(text ? `${text}\n${content}` : content);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -182,11 +190,11 @@ export function EnrichTab({ costSeed }: { costSeed: EnrichCostSeed | null }) {
           </p>
         )}
 
-        <label className="mt-6 block text-sm font-medium" htmlFor="place-ids">
+        <label className="mt-6 block text-sm font-medium" htmlFor="enrich-place-ids">
           Place IDs
         </label>
         <textarea
-          id="place-ids"
+          id="enrich-place-ids"
           value={text}
           disabled={running}
           rows={8}
