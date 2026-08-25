@@ -319,6 +319,13 @@ describe("Promos Config is one page", () => {
     expect(nav).not.toContain("PROMOS_SUBROUTES");
     expect(page).toContain("TiersClient");
     expect(page).toContain("PromosDistributionClient");
-    expect(page).not.toContain("redirect");
+    expect(page).toContain("PromosSaveFooter");
+    const tiers = readFileSync(join(__dirname, "tiers/page.tsx"), "utf8");
+    const dist = readFileSync(
+      join(__dirname, "distribution/page.tsx"),
+      "utf8",
+    );
+    expect(tiers).toContain('redirect("/rewards-config")');
+    expect(dist).toContain('redirect("/rewards-config")');
   });
 });
