@@ -39,7 +39,7 @@ function headerChipClass(on: boolean | "unknown"): string {
       ? "bg-muted text-muted-foreground"
       : on
         ? "bg-emerald-500/10 text-emerald-700"
-        : "bg-amber-500/10 text-amber-700")
+        : "bg-destructive/10 text-destructive")
   );
 }
 
@@ -255,9 +255,9 @@ export function PlaceEditChrome({
                 <li key={fact.key}>
                   <span
                     className={headerChipClass(fact.on)}
-                    aria-label={`${fact.label}: ${fact.chip}`}
+                    aria-label={`${fact.label}: ${fact.on === "unknown" ? "unknown" : fact.on ? "yes" : "no"}`}
                   >
-                    {fact.chip}
+                    {fact.label}
                   </span>
                 </li>
               ))}
