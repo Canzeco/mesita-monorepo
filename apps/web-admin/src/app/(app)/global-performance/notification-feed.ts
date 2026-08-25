@@ -1,3 +1,11 @@
+import {
+  GENERAL_STATUS_FACTS,
+  INTAKE_CREATE_FACTS,
+  INTAKE_ENRICH_FACTS,
+  type GeneralStatusKey,
+  type IntakeCreateKey,
+  type IntakeEnrichKey,
+} from "@/lib/status-vocabulary";
 import type { NotificationItem, NotificationType } from "./actions";
 import { TYPE_ORDER } from "./notification-config";
 
@@ -116,9 +124,11 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
 
-// Status — the seven facts the Status box lists left to right:
-//   seeded · active · listed · enriched · verified · partner · promoting
-// Active is Google OPERATIONAL. Enriched is PULSE complete (n/9).
+// Status — three categories (Pato, 2026-08-25):
+//   GENERAL (7)        Created · Active · Listed · Enriched · Verified · Partner · Promoting
+//   INTAKE CREATE (4)  Seed · Pulse · Details · Semantics
+//   INTAKE ENRICH (10) Pulse … Description · Semantics
+// The state is Created, not Seeded. Seeded is Create Seed. Wire key `seeded`.
 // `listing_type` backs NONE of them. `meta.claimed` is not Verified.
 
 export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
@@ -127,27 +137,16 @@ export function isListedStatus(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
 }
 
-export type StatusFactKey =
-  | "seeded"
-  | "active"
-  | "listed"
-  | "enriched"
-  | "verified"
-  | "partner"
-  | "promoting";
+export type StatusFactKey = GeneralStatusKey;
+export const STATUS_FACTS = GENERAL_STATUS_FACTS;
+export { INTAKE_CREATE_FACTS, INTAKE_ENRICH_FACTS };
+export type { IntakeCreateKey, IntakeEnrichKey };
 
-export const STATUS_FACTS: ReadonlyArray<{
-  key: StatusFactKey;
-  label: string;
-}> = [
-  { key: "seeded", label: "Seeded" },
-  { key: "active", label: "Active" },
-  { key: "listed", label: "Listed" },
-  { key: "enriched", label: "Enriched" },
-  { key: "verified", label: "Verified" },
-  { key: "partner", label: "Partner" },
-  { key: "promoting", label: "Promoting" },
-];
+export type IntakeFilter =
+  | "all"
+  | StatusFactKey
+  | `create:${IntakeCreateKey}`
+  | `enrich:${IntakeEnrichKey}`;
 
 export type PlaceStatusFacts = {
   seeded: boolean;
@@ -159,6 +158,7 @@ export type PlaceStatusFacts = {
   verified: boolean;
   partner: boolean;
   promoting: boolean;
+  functions: Record<string, boolean>;
 };
 
 export function readStatusFacts(
@@ -169,6 +169,16 @@ export function readStatusFacts(
   const f = raw as Record<string, unknown>;
   const bool = (v: unknown) => v === true;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const functions: Record<string, boolean> = {};
+  if (f.functions && typeof f.functions === "object" && !Array.isArray(f.functions)) {
+    for (const [k, v] of Object.entries(f.functions as Record<string, unknown>)) {
+      if (v === true) functions[k] = true;
+      else if (v && typeof v === "object" && !Array.isArray(v)) {
+        const status = (v as { status?: unknown }).status;
+        if (status === "completed") functions[k] = true;
+      }
+    }
+  }
   return {
     seeded: bool(f.seeded),
     active: bool(f.active),
@@ -179,7 +189,19 @@ export function readStatusFacts(
     verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),
+    functions,
   };
+}
+
+function semanticOn(facts: PlaceStatusFacts): boolean {
+  if (facts.functions.semantic === true) return true;
+  return facts.functions.name === true && facts.functions.summary === true;
+}
+
+function fnOn(facts: PlaceStatusFacts, key: string): boolean {
+  if (key === "seed") return facts.seeded;
+  if (key === "semantic") return semanticOn(facts);
+  return facts.functions[key] === true;
 }
 
 export type IntakeFactChip = {
@@ -204,13 +226,13 @@ export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
 
 /**
  * Compact Intake verb: every TRUE fact, Status-box order. Incomplete
- * enrichment still prints n/9 so that fact is never silent.
+ * enrichment still prints n/10 so that fact is never silent.
  */
 export function intakeStatusLine(item: NotificationItem): string | null {
   const facts = readStatusFacts(item.meta);
   if (facts) {
     const parts: string[] = [];
-    if (facts.seeded) parts.push("Seeded");
+    if (facts.seeded) parts.push("Created");
     if (facts.active) parts.push("Active");
     if (facts.listed) parts.push("Listed");
     if (facts.enriched) parts.push("Enriched");
@@ -222,7 +244,7 @@ export function intakeStatusLine(item: NotificationItem): string | null {
   }
   // Pre-payload fallback (create events only carried status/enriched).
   if (item.type === "atlas.place_created") {
-    const parts = ["Seeded"];
+    const parts = ["Created"];
     if (isListedStatus(item.meta?.status)) parts.push("Listed");
     else if (typeof item.meta?.status === "string") parts.push("Unlisted");
     if (item.meta?.enriched === true) parts.push("Enriched");
@@ -241,6 +263,22 @@ export function itemHasStatusFact(
   return facts ? facts[key] : false;
 }
 
+export function itemMatchesIntakeFilter(
+  item: NotificationItem,
+  filter: IntakeFilter,
+): boolean {
+  if (filter === "all") return true;
+  const facts = readStatusFacts(item.meta);
+  if (!facts) return false;
+  if (filter.startsWith("create:")) {
+    return fnOn(facts, filter.slice("create:".length));
+  }
+  if (filter.startsWith("enrich:")) {
+    return fnOn(facts, filter.slice("enrich:".length));
+  }
+  return facts[filter as StatusFactKey];
+}
+
 export function statusFactCounts(
   items: NotificationItem[],
 ): Record<StatusFactKey, number> {
@@ -255,6 +293,64 @@ export function statusFactCounts(
     }
   }
   return counts;
+}
+
+export function intakeCreateCounts(
+  items: NotificationItem[],
+): Record<IntakeCreateKey, number> {
+  const counts = Object.fromEntries(
+    INTAKE_CREATE_FACTS.map((f) => [f.key, 0]),
+  ) as Record<IntakeCreateKey, number>;
+  for (const item of items) {
+    const facts = readStatusFacts(item.meta);
+    if (!facts) continue;
+    for (const def of INTAKE_CREATE_FACTS) {
+      if (fnOn(facts, def.key)) counts[def.key] += 1;
+    }
+  }
+  return counts;
+}
+
+export function intakeEnrichCounts(
+  items: NotificationItem[],
+): Record<IntakeEnrichKey, number> {
+  const counts = Object.fromEntries(
+    INTAKE_ENRICH_FACTS.map((f) => [f.key, 0]),
+  ) as Record<IntakeEnrichKey, number>;
+  for (const item of items) {
+    const facts = readStatusFacts(item.meta);
+    if (!facts) continue;
+    for (const def of INTAKE_ENRICH_FACTS) {
+      if (fnOn(facts, def.key)) counts[def.key] += 1;
+    }
+  }
+  return counts;
+}
+
+export type IntakeFnChip = {
+  key: string;
+  label: string;
+  on: boolean;
+};
+
+export function intakeCreateChips(item: NotificationItem): IntakeFnChip[] {
+  const facts = readStatusFacts(item.meta);
+  if (!facts) return [];
+  return INTAKE_CREATE_FACTS.map((def) => ({
+    key: def.key,
+    label: `${def.n} ${def.label}`,
+    on: fnOn(facts, def.key),
+  }));
+}
+
+export function intakeEnrichChips(item: NotificationItem): IntakeFnChip[] {
+  const facts = readStatusFacts(item.meta);
+  if (!facts) return [];
+  return INTAKE_ENRICH_FACTS.map((def) => ({
+    key: def.key,
+    label: `${def.n} ${def.label}`,
+    on: fnOn(facts, def.key),
+  }));
 }
 
 /** Category is a taxonomy, not a status — keep it off Intake compact lines. */

@@ -1,6 +1,6 @@
 import { assertEquals } from "jsr:@std/assert";
 import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
-import { placeStatusFacts } from "./notification-status.ts";
+import { completedFunctions, placeStatusFacts } from "./notification-status.ts";
 
 const BASE = {
   googlePlaceId: "ChIJxxxx",
@@ -45,4 +45,19 @@ Deno.test("Enriched is complete PULSE, not a boolean from enriched_at", () => {
 
 Deno.test("Verified is the approved-proof flag, never an owner row", () => {
   assertEquals(placeStatusFacts({ ...BASE, verified: true }).verified, true);
+});
+
+Deno.test("functions map only completed Intake keys", () => {
+  const facts = placeStatusFacts({
+    ...BASE,
+    functions: {
+      pulse: { status: "completed", at: "2026-08-25T00:00:00.000Z", detail: null },
+      details: { status: "failed", at: "2026-08-25T00:00:00.000Z", detail: "x" },
+      serp: { status: "pending", at: null, detail: null },
+    },
+  });
+  assertEquals(facts.functions.pulse, true);
+  assertEquals(facts.functions.details, undefined);
+  assertEquals(facts.functions.serp, undefined);
+  assertEquals(completedFunctions(undefined), {});
 });
