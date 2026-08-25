@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   PULSE_EXTRAS,
+  PULSE_EXTRA_LABELS,
   PULSE_FLOOR_LABEL,
   PULSE_LABELS_IN_ORDER,
   PULSE_PIECES,
@@ -99,6 +100,7 @@ Deno.test("pulse: `semantic` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("name"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
   assertEquals([...PULSE_EXTRAS], ["semantic"]);
+  assertEquals(PULSE_EXTRA_LABELS.semantic, "Semantics");
 });
 
 Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
