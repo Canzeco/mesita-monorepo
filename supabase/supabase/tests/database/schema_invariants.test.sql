@@ -173,19 +173,19 @@ select ok(
 );
 
 select is_empty(
-  $$select c from unnest(array[
-      'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
-    ]) c
-    where exists (
-      select 1 from information_schema.columns col
-      where col.table_schema = 'public'
-        and col.table_name = 'projects'
-        and col.column_name = c
-    )
-      and (
-        has_column_privilege('anon', 'public.projects', c, 'SELECT')
-        or has_column_privilege('authenticated', 'public.projects', c, 'SELECT')
-      )$$,
+  $$select c.column_name
+      from information_schema.columns c
+     where c.table_schema = 'public'
+       and c.table_name = 'projects'
+       and c.column_name in (
+         'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
+       )
+       and (
+         has_column_privilege('anon', 'public.projects', c.column_name, 'SELECT')
+         or has_column_privilege(
+           'authenticated', 'public.projects', c.column_name, 'SELECT'
+         )
+       )$$,
   'anon and authenticated have no SELECT on existing PIN / CFDI columns'
 );
 
