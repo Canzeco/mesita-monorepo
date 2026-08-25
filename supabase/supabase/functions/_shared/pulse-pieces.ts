@@ -1,9 +1,9 @@
 // PULSE — the enrichment machinery, as TWO FLOWS over SHARED FUNCTIONS
 // (MESITA-1253, superseding the function-0 framing of MESITA-1243).
 //
-//   CREATE (ONE function, synchronous, the front door):
-//     1 seed → 2 pulse → 3 details      · semantic: name · summary
-//   ENRICH (NINE functions, the queue, strictly in order):
+//   CREATE (ONE RUN, synchronous, the front door):
+//     seed → pulse → details      · semantic: name · summary
+//   ENRICH (SEQUENTIAL RUNS, the queue, strictly in order):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
 //     → 6 images → 7 menu → 8 reviews → 9 description
 //                                       · semantic: name · summary
