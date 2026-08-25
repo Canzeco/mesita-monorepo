@@ -14,15 +14,15 @@ import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
-// want lots of fucking boxes"):
-//
-//   Status      the seven status fields — Created · Active · Listed · Enriched ·
-//               verified · partner · promoting — one row each, in one box.
-//   Enrichment  when the Intaker refreshes this place, and the run-now button.
-//   Embedding   the Semantic Summary and the vector it becomes.
-//   Metadata    every identifier and timestamp on the place. Nothing else in
-//               the tab carries an id or a date — they all live here.
+// Admin — Status is ONE box (7 general bools + 11 Intake chips):
+//   Status      GENERAL — Created · Active · Listed · Enriched · Verified ·
+//               Partner · Promoting. Enriched is a yes (queue finished).
+//               INTAKE — 0 Seed · 1 Pulse · 2 Details · 3 Serp · 4 Links ·
+//               5 Social · 6 Images · 7 Menu · 8 Reviews · 9 Description ·
+//               10 Semantics — green called / yellow not.
+// Then the rest:
+//   Enrichment  queues the full Intaker process
+//   SERP / Embedding / Metadata
 //
 // The ownership-verification read is hoisted to this component because two
 // boxes need it (Status for the boolean, Metadata for who and how) and it

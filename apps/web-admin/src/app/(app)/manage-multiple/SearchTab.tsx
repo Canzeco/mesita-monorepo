@@ -46,7 +46,7 @@ function buildSearchCsvRows(result: SearchResponse): string[] {
   return rows;
 }
 
-// `onSendToCreate` fills the Place ID form in this same box. The operator
+// `onSendToCreate` fills the Place ID form in the Create box. The operator
 // should never have to carry IDs across by hand.
 export function SearchTab({
   onSendToCreate,
@@ -216,7 +216,7 @@ export function SearchTab({
             >
               <ListPlus className="h-4 w-4" />
               {sendLabel ??
-                `Use ${newPlaceIds.length} new ${newPlaceIds.length === 1 ? "place" : "places"} below`}
+                `Send ${newPlaceIds.length} new ${newPlaceIds.length === 1 ? "place" : "places"} to Create`}
             </button>
           )}
 

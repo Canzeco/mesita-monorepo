@@ -49,9 +49,10 @@ export function matchPredictionToPlace(
 }
 
 /**
- * Fill distance_km from the consumer's live location. Real data only —
- * places without coordinates (or before the geolocation grant) keep
- * distance_km null and the chip simply hides.
+ * Fill distance_km from a center (the chosen Filters zone, or the
+ * consumer's live location). Real data only — places without coordinates
+ * (or before the geolocation grant) keep distance_km null and the chip
+ * simply hides.
  */
 export function withDistances(
   places: Place[],

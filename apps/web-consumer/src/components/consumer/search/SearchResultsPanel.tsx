@@ -40,13 +40,13 @@ export function SearchResultsPanel({
     <div className="flex min-h-0 flex-col overflow-hidden">
       <div className="min-h-0 space-y-3 overflow-y-auto p-3">
         {query.trim().length < 2 && (
-          <p className="text-muted-foreground px-1 py-6 text-center text-xs">
+          <p className="text-muted-foreground px-1 py-3 text-center text-xs">
             Keep typing — at least two letters to search.
           </p>
         )}
 
         {searching && predictions.length === 0 && (
-          <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-xs">
+          <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
             <Spinner size="sm" label="Searching" />
             Searching Mesita and Google…
           </div>
@@ -57,13 +57,13 @@ export function SearchResultsPanel({
         )}
 
         {settled && !searchError && predictions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-2xl">
-              <SearchX className="h-5 w-5" />
+          <div className="flex flex-col items-center justify-center py-5 text-center">
+            <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-2xl">
+              <SearchX className="h-4 w-4" />
             </span>
-            <p className="mt-3 text-sm font-semibold">No matches found</p>
+            <p className="mt-2.5 text-sm font-semibold">No matches found</p>
             <p className="text-muted-foreground mt-1 text-xs">
-              Try the place&apos;s full name, or ask the AI concierge.
+              Try the place&apos;s full name.
             </p>
           </div>
         )}
@@ -151,7 +151,7 @@ function SuggestionLine({
         aria-hidden
         className={cn(
           "h-2 w-2 shrink-0 rounded-full",
-          source === "mesita" ? "bg-pink-500" : "bg-blue-500",
+          source === "mesita" ? "bg-primary" : "bg-sky-600",
         )}
       />
       <span className="min-w-0 flex-1 truncate text-sm">

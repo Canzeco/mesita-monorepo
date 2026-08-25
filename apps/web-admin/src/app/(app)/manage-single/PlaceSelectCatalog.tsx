@@ -52,8 +52,18 @@ const STATUS_BADGE: Record<
 
 export function PlaceSelectCatalog() {
   const router = useRouter();
-  const { q, setQ, debouncedQuery, hits, pending, error, metaLabel, searchedQuery, clear } =
-    usePlaceCatalogSearch();
+  const {
+    q,
+    setQ,
+    debouncedQuery,
+    hits,
+    pending,
+    error,
+    metaLabel,
+    searchedQuery,
+    catalogLoaded,
+    clear,
+  } = usePlaceCatalogSearch();
 
   const sessionTokenRef = useRef(newSessionToken());
   const googleRequestIdRef = useRef(0);
@@ -84,14 +94,45 @@ export function PlaceSelectCatalog() {
     hits.length === 0 &&
     trimmed.length >= MIN_QUERY_LENGTH;
 
-  // Show Google lane when Mesita has nothing for this query — including while
-  // Mesita is still in flight (optimistic empty) so both spinners are visible.
-  // Hide once Mesita returns hits (create-from-Google path not needed).
+  const googleReady = googleRemote !== null && googleRemote.query === trimmed;
+  const googleFailed =
+    googleRemoteError !== null && googleRemoteError.query === trimmed;
+  // In-flight for the settled query (prefetch or display) — independent of Mesita.
+  const googleFetching =
+    debouncedQuery.length >= MIN_QUERY_LENGTH &&
+    debouncedQuery === trimmed &&
+    !placeIdMode &&
+    !googleReady &&
+    !googleFailed;
+  // Fetch Google in parallel with Mesita (MESITA-467). Chrome waits until
+  // Google has rows/an error, or Mesita has settled empty — never open an
+  // empty "Searching…" sheet just to hold a second spinner.
   const showGoogleSection =
     !placeIdMode &&
     trimmed.length >= MIN_QUERY_LENGTH &&
     hits.length === 0 &&
-    (pending || catalogSettledEmpty);
+    (catalogSettledEmpty ||
+      googleFailed ||
+      (googleRemote !== null &&
+        googleRemote.query === trimmed &&
+        googleRemote.predictions.length > 0));
+  const googleSearching = showGoogleSection && googleFetching;
+  const googlePredictions = googleReady ? googleRemote.predictions : [];
+  const googleError =
+    googleFailed && googleRemoteError ? googleRemoteError.message : null;
+  // Search-bar spinner covers either pipeline so it never blanks mid-flight.
+  const anySearching = pending || googleFetching || createPending;
+  const awaitingHits =
+    trimmed.length >= MIN_QUERY_LENGTH &&
+    !placeIdMode &&
+    hits.length === 0 &&
+    (pending || googleFetching) &&
+    !showGoogleSection;
+  const catalogIdleEmpty =
+    trimmed.length === 0 &&
+    !error &&
+    catalogLoaded &&
+    hits.length === 0;
 
   // decision: Pato (MESITA-467) — fire Google suggest on the same debounced
   // query as Mesita, not after Mesita settles empty. Sequential fetch left a
@@ -112,26 +153,6 @@ export function PlaceSelectCatalog() {
       setGoogleRemote({ query, predictions: r.data });
     })();
   }, [debouncedQuery, regionCode]);
-
-  const googleReady = googleRemote !== null && googleRemote.query === trimmed;
-  const googleFailed =
-    googleRemoteError !== null && googleRemoteError.query === trimmed;
-  // In-flight for the settled query (prefetch or display) — independent of Mesita.
-  const googleFetching =
-    debouncedQuery.length >= MIN_QUERY_LENGTH &&
-    debouncedQuery === trimmed &&
-    !placeIdMode &&
-    !googleReady &&
-    !googleFailed;
-  // Section spinner: Google still loading, OR Mesita still searching (Google
-  // section is already open on optimistic-empty) while we wait for settle.
-  const googleSearching =
-    showGoogleSection && (googleFetching || (pending && !googleReady && !googleFailed));
-  const googlePredictions = googleReady ? googleRemote.predictions : [];
-  const googleError =
-    googleFailed && googleRemoteError ? googleRemoteError.message : null;
-  // Search-bar spinner covers either pipeline so it never blanks mid-flight.
-  const anySearching = pending || googleFetching || createPending;
 
   const pickPlace = (projectId: string) => {
     router.push(placeSectionHref(projectId, "place"));
@@ -252,12 +273,27 @@ export function PlaceSelectCatalog() {
       </div>
 
       <div className="px-4 pt-5 sm:px-6 lg:px-8">
-        <p className={sectionLabelClass(pending)}>
-          {pending && (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-          )}
-          Manage Single Place results · {metaLabel}
-        </p>
+        {hits.length > 0 && (
+          <p className="text-muted-foreground type-eyebrow">{metaLabel}</p>
+        )}
+        {awaitingHits && (
+          <p
+            className="text-muted-foreground flex items-center gap-2 text-sm"
+            aria-live="polite"
+          >
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            Searching…
+          </p>
+        )}
+        {!catalogLoaded && trimmed.length === 0 && (
+          <p
+            className="text-muted-foreground flex items-center gap-2 text-sm"
+            aria-live="polite"
+          >
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            Loading catalog…
+          </p>
+        )}
 
         {error && <ErrorNote message={error} />}
         {createError && <ErrorNote message={createError} />}
@@ -266,7 +302,7 @@ export function PlaceSelectCatalog() {
           <div className="border-border bg-card mt-4 rounded-xl border p-4">
             <p className="text-sm font-medium">{creatingLabel}</p>
             <p className="text-muted-foreground mt-2 text-xs">
-              Creating place… 
+              Creating place…
             </p>
           </div>
         )}
@@ -308,40 +344,33 @@ export function PlaceSelectCatalog() {
             </div>
           </div>
         ) : (
-          !pending &&
-          !error &&
-          searchedQuery === null &&
-          trimmed.length === 0 && (
-            <div className="border-border bg-card mt-4 rounded-2xl border px-4 py-12 text-center">
-              <p className="text-muted-foreground text-sm">
-                No places in the catalog yet. Search a place name to create one from Google.
-              </p>
-            </div>
+          catalogIdleEmpty && (
+            <p className="text-muted-foreground mt-4 text-sm">
+              No places in the catalog yet. Search a place name to create one from Google.
+            </p>
           )
         )}
 
         {showGoogleSection && (
-          <div className="mt-8">
-            <p className={sectionLabelClass(googleSearching)}>
-              {googleSearching && (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-              )}
-              Not on Mesita · Google results
-              {googleSearching
-                ? " · Searching…"
-                : googleReady
-                  ? ` · ${googlePredictions.length}`
-                  : ""}
-            </p>
+          <div className={hits.length > 0 ? "mt-8" : awaitingHits ? "mt-4" : "mt-2"}>
+            {!googleSearching && (
+              <p className="text-muted-foreground type-eyebrow">
+                Not on Mesita
+                {googleReady ? ` · ${googlePredictions.length}` : ""}
+              </p>
+            )}
 
             {googleError && <ErrorNote message={googleError} />}
 
-            <div className="mt-4 flex flex-col gap-2">
-              {googleSearching && (
-                <div className="border-border bg-card text-muted-foreground flex items-center gap-2 rounded-xl border px-4 py-6 text-sm">
+            <div className="mt-3 flex flex-col gap-2">
+              {googleSearching && googlePredictions.length === 0 && (
+                <p
+                  className="text-muted-foreground flex items-center gap-2 px-0.5 py-1 text-sm"
+                  aria-live="polite"
+                >
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
                   Looking up Google Places…
-                </div>
+                </p>
               )}
 
               {googlePredictions.map((p) => {
@@ -403,11 +432,9 @@ export function PlaceSelectCatalog() {
                 googleReady &&
                 googlePredictions.length === 0 &&
                 catalogSettledEmpty && (
-                <div className="border-border bg-card rounded-2xl border px-4 py-12 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    {`No Mesita places or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
-                  </p>
-                </div>
+                <p className="text-muted-foreground text-sm">
+                  {`No Mesita places or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
+                </p>
               )}
             </div>
           </div>
@@ -428,13 +455,6 @@ export function PlaceSelectCatalog() {
         />
       )}
     </div>
-  );
-}
-
-function sectionLabelClass(active: boolean): string {
-  return (
-    "flex items-center gap-2 type-eyebrow transition-colors " +
-    (active ? "text-primary" : "text-muted-foreground")
   );
 }
 
