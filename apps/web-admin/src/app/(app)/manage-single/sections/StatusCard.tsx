@@ -1,6 +1,6 @@
 "use client";
 
-// Status — where a place stands, in ONE box.
+// Status — GENERAL facts, one of three Admin Status boxes.
 //
 // Seven facts, each read from its own source. The state is Created, not
 // Seeded — Seeded is Create Seed, the first Intake Create subfunction.
@@ -13,6 +13,8 @@
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
 //   Promoting  live discount
+//
+// Create and Enrich functions live in their own boxes (MESITA-1314).
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -41,7 +43,6 @@ import {
   membershipPillState,
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
-import { enrichFunctionRows, type EnrichFunctionState } from "./status-enrichment";
 
 // Pato: "i don't want lots of fucking boxes. just create a box called Status.
 // it mention verified, partner, promoting." They were three cards; they are
@@ -229,11 +230,6 @@ export function StatusCard({
     | { key: string; index: number; status: "failed" | "missing" }
     | null;
   const failedAt = blocked?.status === "failed" ? blocked : null;
-  const enrichFunctions = (place.enrich_functions ?? null) as
-    | Record<string, EnrichFunctionState>
-    | null;
-  const enrichRows = enrichFunctionRows(enrichFunctions);
-
   const enrichedDetail =
     pulse === null || pulseTotal === 0
       ? "Couldn't read the pipeline events."
@@ -331,36 +327,7 @@ export function StatusCard({
           tint="violet"
           chipLabel={pulse === null ? undefined : `${pulse}/${pulseTotal}`}
           detail={enrichedDetail}
-        >
-          <ul className="mt-2.5 flex flex-col gap-1">
-            {enrichRows.map((row) => (
-              <li
-                key={row.key}
-                className="flex items-baseline justify-between gap-3"
-              >
-                <span className="text-foreground/80 type-label">
-                  {row.label}
-                </span>
-                <span
-                  className={
-                    "type-label shrink-0 font-semibold tabular-nums " +
-                    (row.status === "completed"
-                      ? "text-violet-700"
-                      : row.status === "failed"
-                        ? "text-destructive"
-                        : "text-muted-foreground")
-                  }
-                >
-                  {row.status === "completed"
-                    ? "done"
-                    : row.status === "failed"
-                      ? "failed"
-                      : "—"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </StatusRow>
+        />
         <StatusRow
           name="Verified"
           value={verified}
@@ -410,7 +377,6 @@ function StatusRow({
   detail,
   chipLabel,
   action,
-  children,
 }: {
   name: string;
   value: boolean | "unknown" | "loading";
@@ -422,8 +388,6 @@ function StatusRow({
   /** Control rendered under the detail line. Only Listed has one: it is the
    *  only fact on this card an operator sets directly rather than earns. */
   action?: React.ReactNode;
-  /** Extra readout under the detail. Enriched lists every Enrich subfunction. */
-  children?: React.ReactNode;
 }) {
   const on = value === true;
   const chipClass = {
@@ -441,7 +405,6 @@ function StatusRow({
       <div className="min-w-0">
         <span className="text-foreground/90 type-body font-medium">{name}</span>
         <p className="text-foreground/70 mt-1 type-label font-medium">{detail}</p>
-        {children}
         {action ? <div className="mt-2.5">{action}</div> : null}
       </div>
       <span

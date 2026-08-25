@@ -10,19 +10,19 @@ import {
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StatusCard } from "./StatusCard";
+import { CreateStatusCard, EnrichStatusCard } from "./IntakeStatusCards";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — the Mesita-internal tab, FOUR boxes (Pato, MESITA-1161: "i don't
-// want lots of fucking boxes"):
-//
-//   Status      the seven status fields — Created · Active · Listed · Enriched ·
-//               verified · partner · promoting — one row each, in one box.
-//   Enrichment  when the Intaker refreshes this place, and the run-now button.
-//   Embedding   the Semantic Summary and the vector it becomes.
-//   Metadata    every identifier and timestamp on the place. Nothing else in
-//               the tab carries an id or a date — they all live here.
+// Admin — Status is THREE boxes (MESITA-1314):
+//   Status      GENERAL — Created · Active · Listed · Enriched · Verified ·
+//               Partner · Promoting
+//   Create      INTAKE CREATE — 1 Seed · 2 Pulse · 3 Details · 4 Semantic
+//   Enrich      INTAKE ENRICH — 1 Pulse … 10 Semantic
+// Then the run button and the rest:
+//   Enrichment  queues the full Intaker process
+//   SERP / Embedding / Metadata
 //
 // The ownership-verification read is hoisted to this component because two
 // boxes need it (Status for the boolean, Metadata for who and how) and it
@@ -70,6 +70,8 @@ export function AdminSection({ place }: { place: AdminPlace }) {
         verification={verification}
         verificationError={verificationError}
       />
+      <CreateStatusCard place={place} />
+      <EnrichStatusCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <SerpSummaryCard place={place} />
