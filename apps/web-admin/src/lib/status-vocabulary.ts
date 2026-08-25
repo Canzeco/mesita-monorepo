@@ -1,13 +1,14 @@
 // Status — two boxes (Pato, 2026-08-25).
 //
-//   STATUSES (7)  Created · Active · Listed · Enriched · Verified · Partner
-//                 are bools (`true` / `false`). Promoting is 0 | 1 | 2.
+//   STATUSES (8)  Created · Active · Listed · Enriching · Enriched ·
+//                 Verified · Partner are bools (`true` / `false`).
+//                 Promoting is 0 | 1 | 2.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
-// Repeating the row name on the chip is redundant. Enriched is a yes, not a
-// high-water. Intake just names the eleven functions. Create 1–4 / Enrich
-// 1–10 stay Config sequences; they are not a third Status ladder. Wire key
-// `seeded` stays; the label is Created.
+// Repeating the row name on the chip is redundant. Enriching is the live run;
+// Enriched is last-completed — they are independent. Intake just names the
+// eleven functions. Create 1–4 / Enrich 1–10 stay Config sequences; they are
+// not a third Status ladder. Wire key `seeded` stays; the label is Created.
 
 export type StatusBoolChip = "true" | "false" | "?" | "…";
 
@@ -59,6 +60,7 @@ export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "active", label: "Active" },
   { key: "listed", label: "Listed" },
+  { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
   { key: "verified", label: "Verified" },
   { key: "partner", label: "Partner" },

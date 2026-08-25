@@ -1,6 +1,6 @@
 "use client";
 
-// Status — the Statuses box: six bools (`true`/`false`) plus Promoting
+// Status — the Statuses box: seven bools (`true`/`false`) plus Promoting
 // `0|1|2`, each from its own source. Intake (0. Seed … 10. Semantic)
 // lives in IntakeStatusCard.
 //
@@ -10,6 +10,7 @@
 //   Created    google_place_id present (identity spine)
 //   Active     Google OPERATIONAL
 //   Listed     projects.status ∈ (active, lead)
+//   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
@@ -30,10 +31,15 @@
 // when the entity was split, and never came back. The collision is handled by
 // each row's own detail line naming the column value, not by renaming the box.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
-import { setPlaceListed, type AdminPlace } from "../actions";
-import { listedFromStatus } from "../place-header-status";
+import {
+  getPlaceEnrichment,
+  setPlaceListed,
+  type AdminPlace,
+  type PlaceEnrichmentStatus,
+} from "../actions";
+import { isEnriching, listedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -50,7 +56,7 @@ import {
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): six bools + Promoting 0|1|2. Intake
+// Statuses box (Pato, 2026-08-25): seven bools + Promoting 0|1|2. Intake
 // is the next box — not chips under Enriched, and not a Create 1–4 /
 // Enrich 1–10 split. Chips never repeat the row name.
 //
@@ -64,6 +70,7 @@ import {
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `status`, never from a merged
 //              overview `listed` flag that can go stale after that write.
+//   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
@@ -166,6 +173,33 @@ export function StatusCard({
         : "unknown";
   // Enriched is complete-or-not, from the same high-water the catalog uses.
   // A missing number is unknown, not a no.
+  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
+    null,
+  );
+  useEffect(() => {
+    let alive = true;
+    getPlaceEnrichment(place.id).then((r) => {
+      if (!alive) return;
+      if (r.ok) setEnrichStatus(r.data.status);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+  const contentStatus =
+    typeof place.content_status === "string" ? place.content_status : null;
+  const enriching = isEnriching(
+    enrichStatus ?? {
+      content_status: contentStatus,
+      stage: null,
+      stage_status: null,
+      error: null,
+      last_enriched_at: null,
+      updated_at: null,
+      serp_summary: null,
+    },
+  );
+
   const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
   const pulseTotal = typeof place.enrich_pulse_total === "number"
     ? place.enrich_pulse_total
@@ -218,6 +252,10 @@ export function StatusCard({
       : bizStatus === "CLOSED_TEMPORARILY"
         ? `Google reports a temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Still a real business; nothing is unlisted automatically.`
         : `Google reports this business as PERMANENTLY CLOSED${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Flag only — review and unlist by hand if it is right.`;
+
+  const enrichingDetail = enriching
+    ? "The Intaker pipeline is mid-flight — research, analysis, or contents is running."
+    : "No Intaker run is in flight.";
 
   const enrichedDetail =
     enriched === "unknown"
@@ -306,6 +344,13 @@ export function StatusCard({
           tint="indigo"
           detail={listedDetail}
           action={<ListedToggle place={place} listed={listed} />}
+        />
+        <StatusRow
+          name="Enriching"
+          on={enriching}
+          chip={statusBoolChip(enriching)}
+          tint="violet"
+          detail={enrichingDetail}
         />
         <StatusRow
           name="Enriched"

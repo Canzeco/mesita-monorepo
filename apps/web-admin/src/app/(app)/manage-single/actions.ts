@@ -46,14 +46,17 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  // ── The seven status facts the catalog table renders, in order:
-  //    Created · Active · Listed · Enriched · Verified · Partner · Promoting.
-  //    First six are bools; Promoting is 0|1|2. All derived (or projected)
-  //    in admin-web-search-places.
+  // ── The eight status facts the catalog table renders, in order:
+  //    Created · Active · Listed · Enriching · Enriched · Verified · Partner · Promoting.
+  //    First seven are bools; Promoting is 0|1|2. All derived (or projected)
+  //    in admin-web-search-places, except Enriching which is content_status
+  //    generating/queued (MESITA-453 whole-pipeline).
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
   listed: boolean;
+  /** Intaker pipeline mid-flight (content_status generating/queued). */
+  enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
@@ -113,6 +116,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
     content_status: contentStatus,
     listing_type: listingType,
+    enriching: contentStatus === "generating" || contentStatus === "queued",
     // No listing_type fallbacks here any more: it fuses paying and promoting
     // into one stale enum, so guessing from it would put a wrong flag on
     // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
@@ -279,6 +283,8 @@ export type AdminPlace = {
     at: string | null;
     detail: string | null;
   }> | null;
+  /** Intaker lifecycle on the project row. Overview already carries this. */
+  content_status?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
   [k: string]: unknown;

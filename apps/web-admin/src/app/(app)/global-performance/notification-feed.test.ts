@@ -78,6 +78,7 @@ describe("intakeStatusLine", () => {
     seeded: true,
     active: true,
     listed: true,
+    enriching: false,
     enriched: false,
     enrichPulse: 2,
     enrichPulseTotal: 10,
@@ -115,6 +116,23 @@ describe("intakeStatusLine", () => {
     });
     expect(intakeStatusLine(created)).toBe(
       "Created · Active · Listed · Enriched · Verified · Partner · Promoting",
+    );
+  });
+
+  it("names Enriching between Listed and Enriched when a run is in flight", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: {
+        statusFacts: {
+          ...facts,
+          enriching: true,
+          enriched: true,
+        },
+      },
+    });
+    expect(intakeStatusLine(created)).toBe(
+      "Created · Active · Listed · Enriching · Enriched",
     );
   });
 

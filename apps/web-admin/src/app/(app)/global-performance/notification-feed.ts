@@ -124,7 +124,7 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 }
 
 // Status — two boxes (Pato, 2026-08-25):
-//   STATUSES (7)  six bools + Promoting 0|1|2. Compact line still names
+//   STATUSES (8)  seven bools + Promoting 0|1|2. Compact line still names
 //                 the true facts; Promoting here is the live-discount yes.
 //   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
@@ -149,6 +149,7 @@ export type PlaceStatusFacts = {
   seeded: boolean;
   active: boolean;
   listed: boolean;
+  enriching: boolean;
   enriched: boolean;
   enrichPulse: number;
   enrichPulseTotal: number;
@@ -180,6 +181,7 @@ export function readStatusFacts(
     seeded: bool(f.seeded),
     active: bool(f.active),
     listed: bool(f.listed),
+    enriching: bool(f.enriching),
     enriched: bool(f.enriched),
     enrichPulse: num(f.enrichPulse),
     enrichPulseTotal: num(f.enrichPulseTotal) || 10,
@@ -207,7 +209,7 @@ export type IntakeFactChip = {
   on: boolean;
 };
 
-/** All seven facts for expand chips. */
+/** All eight facts for expand chips. */
 export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
   const facts = readStatusFacts(item.meta);
   if (!facts) return [];
@@ -229,6 +231,7 @@ export function intakeStatusLine(item: NotificationItem): string | null {
     if (facts.seeded) parts.push("Created");
     if (facts.active) parts.push("Active");
     if (facts.listed) parts.push("Listed");
+    if (facts.enriching) parts.push("Enriching");
     if (facts.enriched) parts.push("Enriched");
     if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partner");
