@@ -3,14 +3,12 @@ import { VerificationConfigClient } from "../verification-config/VerificationCon
 import { getModelsConfig } from "../models-config/actions";
 import { ModelsConfigClient } from "../models-config/ModelsConfigClient";
 import { DEFAULT_MODELS_CONFIG } from "../models-config/types";
-import { getOjoConfig } from "../ojo-config/actions";
-import { OjoConfigClient } from "../ojo-config/OjoConfigClient";
-import { OJO_FALLBACK } from "../ojo-config/defaults";
 
 // General — Models first (Pato, 2026-08-24: "in general, models must be
-// on top"), then Verification, then Ojo. Each keeps its own client, load
-// and Save. Do not wrap them in a second heading — SectionCard already
-// owns the title.
+// on top"), then Verification. Each keeps its own client, load and Save.
+// Ojo's policy lives on Visits (who reads the proof); Ojo · Vision stays
+// in Models because it is a model picker, not visit policy. Do not wrap
+// them in a second heading — SectionCard already owns the title.
 export const dynamic = "force-dynamic";
 
 const FALLBACK_CONFIG: VerificationConfig = {
@@ -20,10 +18,9 @@ const FALLBACK_CONFIG: VerificationConfig = {
 };
 
 export default async function GeneralConfigPage() {
-  const [res, models, ojo] = await Promise.all([
+  const [res, models] = await Promise.all([
     getVerificationConfig(),
     getModelsConfig(),
-    getOjoConfig(),
   ]);
   return (
     <div className="flex flex-col gap-10">
@@ -35,11 +32,6 @@ export default async function GeneralConfigPage() {
         initialConfig={res.ok ? res.config : FALLBACK_CONFIG}
         initialUpdatedAt={res.ok ? res.updatedAt : null}
         loadError={res.ok ? null : res.error}
-      />
-      <OjoConfigClient
-        initialConfig={ojo.ok ? ojo.config : OJO_FALLBACK}
-        initialUpdatedAt={ojo.ok ? ojo.updatedAt : null}
-        loadError={ojo.ok ? null : ojo.error}
       />
     </div>
   );

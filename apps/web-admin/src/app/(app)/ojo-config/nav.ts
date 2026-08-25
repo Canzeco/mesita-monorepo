@@ -1,10 +1,10 @@
 import { Eye } from "lucide-react";
 
-// Folded into General (MESITA-1178). Ojo (Spanish "eye"; "¡Ojo!" = watch out)
-// reads the screenshot a guest posts for an Instagram story or a Google
-// review. Distinct from Verification, which governs PLACE ownership proof.
+// Kept for bookmarks: /ojo-config permanently redirects to Visits. Ojo
+// (Spanish "eye"; "¡Ojo!" = watch out) reads the screenshot a guest posts
+// for a story or Google review. Distinct from Verification (place ownership).
 export const OJO_PARENT = {
-  href: "/ojo-config",
+  href: "/visits-config",
   label: "Ojo",
   Icon: Eye,
 } as const;

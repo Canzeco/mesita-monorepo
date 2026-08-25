@@ -96,12 +96,11 @@ const MANAGE_NAV: NavItem[] = [
 //             book it (Reservations) → the journey once they sit down (Visits,
 //             the local context) → or ordering without going at all (Orders,
 //             the remote one) → what either context pays them (Promos)
-//   proof     what happens after they leave: is the screenshot real (Ojo)
+//   proof     who reads the screenshot (Ojo) — composed onto Visits, not a
+//             rail row; blob stays ojo_config
 //
-// Ojo trails everything because it reads a proof submitted AFTER the visit —
-// it is the last step of the last lifecycle. Visits, Orders and Ojo all run
-// ahead of what reads them: they save, nothing consumes them yet, and every
-// knob on those three pages is labeled STAGED.
+// Ojo is not a sidebar row: it is the proof reader for THE TICKET, so its
+// knobs live on Visits. Orders still runs ahead of a reader (Soon).
 //
 // Memo is NOT a row here: Home › Chat is Memo, and it belongs to Discovery
 // because it IS the chat engine. It has no editor at all — it runs on in-code
@@ -134,9 +133,10 @@ const ACCESS_NAV: NavItem[] = [
  * NAME it points here instead of enumerating.
  */
 export const CONFIGURATIONS_NAV: NavItem[] = [
-  // General absorbed Models, Verification and Ojo (MESITA-1175, MESITA-1178):
-  // a page whose whole content is three controls does not earn a rail row.
-  // Their routes survive as permanent redirects; only the rows are gone.
+  // General absorbed Models and Verification (MESITA-1175): a page whose
+  // whole content is three controls does not earn a rail row. Ojo's policy
+  // lives on Visits (who reads the proof); /ojo-config redirects there.
+  // Models and Verification routes still redirect into General.
   { href: "/general-config", label: "General", Icon: Settings2 },
   // INTAKE is one row for one story: which surfaces may find and add a place,
   // then what Create and the nine enrich functions make of it. Sourcing's row

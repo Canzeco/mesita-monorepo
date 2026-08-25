@@ -10,7 +10,7 @@
 // THE MODEL RETURNS A CALIBRATED CONFIDENCE, NEVER ITS OWN PASS/FAIL LABEL.
 // deriveVerdict() computes pass/unsure/fail by comparing that confidence
 // against ojo_config.autoPassScore / reviewFloorScore — the two admin-tunable
-// thresholds already live on the Ojo Config console. Asking the model for a
+// thresholds already live on admin Visits (ojo_config). Asking the model for a
 // categorical verdict and trusting it directly would leave those two knobs
 // presented as live controls while doing nothing: this house's own rule is
 // that an unenforced config is a bug, and a config that LOOKS enforced while
@@ -371,7 +371,7 @@ async function callVisionModel(opts: {
  * The verdict is DERIVED from the model's confidence against the admin's own
  * thresholds, never trusted as a categorical judgment straight from the
  * model. autoPassScore / reviewFloorScore are live, admin-editable knobs on
- * the Ojo Config console — asking the model for its own "pass"/"fail" label
+ * admin Visits — asking the model for its own "pass"/"fail" label
  * and ignoring those two fields would leave them presented as live controls
  * while doing nothing, the exact "unenforced config" bug this house treats
  * as a P1.

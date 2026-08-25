@@ -5,8 +5,8 @@ import { Armchair } from "lucide-react";
 // Orders because that is a guest's night — find a place, book it, sit down, or
 // order instead — with Promos pricing whatever happened.
 //
-// What a visit PAYS is not configured here (the Promos grid), and neither is
-// who reads a proof (Ojo). This page is how the journey behaves.
+// What a visit PAYS is not configured here (the Promos grid). Who reads a
+// proof (Ojo) IS — same page, own blob (`ojo_config`), own Save.
 export const VISITS_PARENT = {
   href: "/visits-config",
   label: "Visits",

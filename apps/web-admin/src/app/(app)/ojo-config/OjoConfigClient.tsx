@@ -17,15 +17,11 @@
 // withholds the bonus (pre-bill only — see withholdEligible()); the four
 // `checks` and `prompt` compose the vision prompt directly.
 //
-// The disclosure STAYS. This page is composed into General
-// (apps/web-admin/src/app/(app)/general-config/page.tsx, MESITA-1178) under
-// an explicit "three controls, or it doesn't earn a spot there" budget —
-// un-collapsing all seven fields on ship day would have honored the "STAGED
-// hides behind a disclosure" rule while breaking that separate, real
-// constraint. What was actually false was the LABEL, not the collapse: it
-// said "not built yet" about a rubric the engine now reads on every call.
-// Renamed to "Detection detail" — still one disclosure, now honestly
-// describing optional depth rather than a nonexistent feature.
+// The disclosure STAYS. This card is composed into Visits (who reads the
+// proof), not General. Three always-visible controls (enabled / auto-pass /
+// fail-withholds) plus one disclosure for detection depth — same operator
+// budget as MESITA-1178, now on the page the ticket lives. The label is
+// "Detection detail", not "not built yet": the engine reads the rubric.
 //
 // STOP RENDERING, NEVER STOP CARRYING still applies to showGuestReason and
 // maxRetries: both are genuinely read by the engine too, deliberately with
@@ -181,12 +177,9 @@ export function OjoConfigClient({
           />
         </div>
 
-        {/* Stays behind ONE disclosure — General Config composes this whole
-            card under a "three controls, or it doesn't earn a spot here"
-            budget (general-config/page.tsx, MESITA-1178). enabled /
-            autoPassScore / failAction above are the three; everything below
-            is real, engine-read detail (MESITA-1034), not a placeholder —
-            the label says so, not "not built yet". */}
+        {/* Stays behind ONE disclosure — Visits shows three always-visible
+            controls (enabled / autoPassScore / failAction) and this optional
+            depth. Everything below is engine-read (MESITA-1034). */}
         <Collapsible summary="Detection detail">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
