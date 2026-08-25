@@ -306,6 +306,8 @@ verify_jwt = true
 # ticket_check_events audit with self_view + daily-salted ip_hash, in-EF rate
 # limiting, uniform 404s). See _shared/ticket-check.ts.
 
+# MESITA-1117: the 7 check-web-* twins are deleted. Staff callers
+# (apps/web-check · apps/web-validate) hit these validate-web-* names.
 [functions.validate-web-get-ticket]
 verify_jwt = false
 

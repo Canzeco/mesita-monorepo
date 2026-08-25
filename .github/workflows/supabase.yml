@@ -66,6 +66,24 @@ jobs:
             exit 1
           fi
 
+      # MESITA-1117: staff callers are validate-web-*. A leftover check-web-*
+      # folder or config.toml block would re-deploy the old name and strand
+      # the live staff bundle on two parallel function sets.
+      - name: No leftover check-web functions
+        working-directory: supabase/supabase
+        run: |
+          leftovers=$(
+            {
+              find functions -maxdepth 1 -type d -name 'check-web-*' 2>/dev/null
+              grep -E '^\[functions\.check-web-' config.toml || true
+            } | sed '/^$/d'
+          )
+          if [ -n "$leftovers" ]; then
+            echo "leftover check-web-* still in the repo (MESITA-1117):"
+            echo "$leftovers"
+            exit 1
+          fi
+
   # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
   # the root `rules` workflow (.github/workflows/rules.yml) since ASDM v5
   # (MESITA-456) — one checkout now covers the whole monorepo.
