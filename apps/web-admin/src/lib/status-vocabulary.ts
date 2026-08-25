@@ -1,12 +1,11 @@
-// Three status categories. The place STATE is Created, not Seeded —
-// Seeded is Create Seed, the first Intake Create subfunction.
+// Status — two layers (Pato, 2026-08-25).
 //
-//   GENERAL (7)        Status box · catalog columns · Monitor fact chips
-//   INTAKE CREATE (4)  Create box · Create Seed · Pulse · Details · Semantics
-//   INTAKE ENRICH (10) Enrich box · Pulse … Description · Semantics
+//   GENERAL (7)  bools on the Status box, catalog, Monitor fact chips
+//   INTAKE (11)  0–10 in order, each a bool: called or not
 //
-// Create Serp is not a create function in shipped code (✨ Intake · pulse-pieces).
-// Semantics is function 10 (`semantic`; Name + Summary + embeddings). Copy still numbers it 10.
+// Enriched is a yes, not a high-water. Intake just names the eleven
+// functions. Create 1–4 / Enrich 1–10 stay Config sequences; they are
+// not a third Status ladder. Wire key `seeded` stays; the label is Created.
 
 export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },
@@ -20,16 +19,8 @@ export const GENERAL_STATUS_FACTS = [
 
 export type GeneralStatusKey = (typeof GENERAL_STATUS_FACTS)[number]["key"];
 
-export const INTAKE_CREATE_FACTS = [
+export const INTAKE_FUNCTIONS = [
   { key: "seed", label: "Seed", n: 0 },
-  { key: "pulse", label: "Pulse", n: 1 },
-  { key: "details", label: "Details", n: 2 },
-  { key: "semantic", label: "Semantics", n: 10 },
-] as const;
-
-export type IntakeCreateKey = (typeof INTAKE_CREATE_FACTS)[number]["key"];
-
-export const INTAKE_ENRICH_FACTS = [
   { key: "pulse", label: "Pulse", n: 1 },
   { key: "details", label: "Details", n: 2 },
   { key: "serp", label: "Serp", n: 3 },
@@ -42,8 +33,7 @@ export const INTAKE_ENRICH_FACTS = [
   { key: "semantic", label: "Semantics", n: 10 },
 ] as const;
 
-export type IntakeEnrichKey = (typeof INTAKE_ENRICH_FACTS)[number]["key"];
+export type IntakeFunctionKey = (typeof INTAKE_FUNCTIONS)[number]["key"];
 
 export const GENERAL_STATUS_COUNT = GENERAL_STATUS_FACTS.length;
-export const INTAKE_CREATE_COUNT = INTAKE_CREATE_FACTS.length;
-export const INTAKE_ENRICH_COUNT = INTAKE_ENRICH_FACTS.length;
+export const INTAKE_FUNCTION_COUNT = INTAKE_FUNCTIONS.length;

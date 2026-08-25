@@ -19,8 +19,7 @@ import {
   suggestPlaces,
   type PlacePrediction,
   type PlacePredictionStatus,
-  type PlaceHit,
-  type PulseBlock } from "./actions";
+  type PlaceHit } from "./actions";
 import { placeSectionHref } from "./nav";
 import { PlaceThumb } from "./PlaceEditChrome";
 import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
@@ -491,11 +490,13 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
-        <LevelCell
-          level={place.enrich_pulse}
-          total={place.enrich_pulse_total}
-          labels={place.enrich_pulse_labels}
-          blocked={place.enrich_pulse_blocked}
+        <BoolCell
+          value={
+            place.enrich_pulse_total > 0 &&
+            place.enrich_pulse === place.enrich_pulse_total
+          }
+          trueLabel="Yes"
+          falseLabel="No"
         />
       </td>
       <td className="px-4 py-3.5 text-center">
@@ -544,92 +545,6 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
             className={
               "h-2 w-1.5 rounded-[1px] " +
               (level >= rung ? "bg-muted-foreground/40" : "bg-muted-foreground/15")
-            }
-          />
-        ))}
-      </span>
-      <span className="sr-only">{title}</span>
-    </span>
-  );
-}
-
-// ENRICHED is the only non-boolean flag: the PULSE high-water, 0-10
-// (Docs › Intake §A). TEN enrich functions —
-//
-//   1 pulse · 2 details · 3 serp · 4 links · 5 social
-//   6 images · 7 menu · 8 reviews · 9 description · 10 semantics
-//
-// — with 0 as the CREATED floor (seed is step 1 of the CREATE function, not a
-// rung; MESITA-1253). Create stamps pulse+details, so a healthy fresh place
-// reads 2/10 immediately.
-//
-// Semantics is function 10. The number is HOW FAR THE QUEUE GOT: the index of the
-// last function such that it and everything before it completed. Not a count
-// of functions that worked; a gap stops it, because a profile built past a
-// hole is built on incomplete data.
-//
-// 0 is the CREATED floor, not a failure — though with create stamping 1-2 a
-// healthy fresh place never rests there, so a lingering 0 is worth a look
-// (create stamps failed, a pre-stamping place, or ENRICH pulse failed — the
-// blocked reason tells those apart).
-//
-// The function NAMES arrive with the number, from PULSE_LABELS_IN_ORDER on the
-// admin-web-search-places payload. This file used to keep its own positional
-// copy — no shared import, no test and no CI gate — so a reorder in the backend
-// would have shown the wrong name beside every row and nothing would have
-// caught it (MESITA-1222).
-function LevelCell(
-  { level, total, labels, blocked }: {
-    level: number;
-    total: number;
-    labels: string[];
-    blocked?: PulseBlock | null;
-  },
-) {
-  // `labels` is indexed BY FUNCTION NUMBER — labels[0] is the Created floor
-  // label, not a function — so function N is labels[N], with no off-by-one.
-  const reached = level > 0 ? labels[level] : null;
-
-  // WHY it stopped, when the server told us. 0 alone is ambiguous: function 1
-  // FAILS a place Google reports permanently closed, so "0" means both
-  // "seeded, nothing tried" and "we asked, and the listing is dead". This cell
-  // used to assert the first for both, which is a confident lie about a place
-  // an operator may be about to spend money re-enriching.
-  const stoppedBy = blocked?.status === "failed"
-    ? `${blocked.index} ${labels[blocked.index] ?? blocked.key} failed`
-    : null;
-
-  const title = level === 0
-    ? (stoppedBy
-      ? `0/${total} — ${stoppedBy}`
-      : "Created — nothing enriched yet")
-    : `${level}/${total} — reached ${reached ?? `function ${level}`}` +
-      (level === total ? " — complete" : stoppedBy ? ` · ${stoppedBy}` : "");
-  return (
-    <span className="inline-flex items-center gap-1.5" title={title}>
-      <span
-        className={
-          "type-label font-semibold tabular-nums " +
-          (level === 0 || stoppedBy
-            ? "text-rose-700"
-            : level >= total
-              ? "text-green-700"
-              : "text-amber-700")
-        }
-      >
-        {level}/{total}
-      </span>
-      <span className="flex gap-[2px]" aria-hidden>
-        {Array.from({ length: total }, (_, i) => i + 1).map((step) => (
-          <span
-            key={step}
-            className={
-              "h-2 w-1.5 rounded-[1px] " +
-              (level >= step
-                ? "bg-green-600"
-                : level === 0
-                  ? "bg-rose-500/30"
-                  : "bg-amber-500/25")
             }
           />
         ))}

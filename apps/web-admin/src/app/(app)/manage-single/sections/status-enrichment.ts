@@ -1,4 +1,4 @@
-import { chipsFor } from "../../enricher-config/intake-functions";
+import { INTAKE_FUNCTIONS, type IntakeFunctionKey } from "@/lib/status-vocabulary";
 
 export type EnrichFunctionState = {
   status: "pending" | "completed" | "failed";
@@ -6,32 +6,32 @@ export type EnrichFunctionState = {
   detail: string | null;
 };
 
-export type EnrichFunctionRow = {
-  key: string;
+export type IntakeFunctionRow = {
+  key: IntakeFunctionKey;
+  n: number;
   label: string;
-  status: EnrichFunctionState["status"];
+  on: boolean;
 };
 
-const ENRICH_CHIPS = chipsFor("enrich");
-
-function stripChipPrefix(label: string): string {
-  return label.replace(/^(?:\d+\s+|◇\s+)/, "");
+function called(status: EnrichFunctionState["status"] | undefined): boolean {
+  return status === "completed" || status === "failed";
 }
 
 /**
- * The ten Enrich subfunctions Status lists under Enriched — same keys as
- * Intake chips, never a second ladder.
+ * The eleven Intake functions Status mentions — 0 Seed … 10 Semantics —
+ * each a bool: called or not. Same keys as Intake, never a second ladder.
  */
-export function enrichFunctionRows(
+export function intakeFunctionRows(
   functions: Record<string, EnrichFunctionState> | null | undefined,
-): EnrichFunctionRow[] {
-  return ENRICH_CHIPS.map((chip) => {
-    const key = chip.href.replace(/^#f-/, "");
-    const rec = functions?.[key];
-    return {
-      key,
-      label: stripChipPrefix(chip.label),
-      status: rec?.status ?? "pending",
-    };
-  });
+  seeded: boolean | "unknown",
+): IntakeFunctionRow[] {
+  return INTAKE_FUNCTIONS.map((def) => ({
+    key: def.key,
+    n: def.n,
+    label: `${def.n} ${def.label}`,
+    on:
+      def.key === "seed"
+        ? seeded === true
+        : called(functions?.[def.key]?.status),
+  }));
 }

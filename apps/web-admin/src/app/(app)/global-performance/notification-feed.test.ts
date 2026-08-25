@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { NotificationItem, NotificationType } from "./actions";
 import {
   groupConsecutiveSteps,
-  intakeCreateChips,
+  intakeFunctionChips,
   intakeStatusLine,
   itemMatchesIntakeFilter,
   pinReports,
@@ -86,13 +86,14 @@ describe("intakeStatusLine", () => {
     promoting: false,
   };
 
-  it("prints every true Status fact, plus n/10 until Enriched is complete", () => {
+  it("prints every true general fact and never a high-water n/10", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStatusLine(created)).toBe("Created · Active · Listed · 2/10");
+    expect(intakeStatusLine(created)).toBe("Created · Active · Listed");
+    expect(intakeStatusLine(created)).not.toMatch(/\d+\/\d+/);
     expect(intakeStatusLine(created)).not.toMatch(/claim/i);
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
@@ -145,22 +146,22 @@ describe("itemMatchesIntakeFilter", () => {
     },
   };
 
-  it("matches general Created and Create Pulse, not Create Serp", () => {
+  it("matches general Created and Intake Pulse, not Serp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: { statusFacts: facts },
     });
     expect(itemMatchesIntakeFilter(created, "seeded")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "create:seed")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "create:pulse")).toBe(true);
-    expect(itemMatchesIntakeFilter(created, "enrich:serp")).toBe(false);
-    expect(itemMatchesIntakeFilter(created, "create:semantic")).toBe(false);
+    expect(itemMatchesIntakeFilter(created, "fn:seed")).toBe(true);
+    expect(itemMatchesIntakeFilter(created, "fn:pulse")).toBe(true);
+    expect(itemMatchesIntakeFilter(created, "fn:serp")).toBe(false);
+    expect(itemMatchesIntakeFilter(created, "fn:semantic")).toBe(false);
   });
 });
 
-describe("intakeCreateChips", () => {
-  it("numbers Seed 0 and turns Semantics on from the semantic stamp", () => {
+describe("intakeFunctionChips", () => {
+  it("lists eleven functions 0–10 and turns Semantics on from the semantic stamp", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -179,11 +180,16 @@ describe("intakeCreateChips", () => {
         },
       },
     });
-    const chips = intakeCreateChips(created);
+    const chips = intakeFunctionChips(created);
+    expect(chips).toHaveLength(11);
     expect(chips[0]).toMatchObject({ key: "seed", label: "0 Seed", on: true });
     expect(chips.find((c) => c.key === "semantic")).toMatchObject({
       label: "10 Semantics",
       on: true,
+    });
+    expect(chips.find((c) => c.key === "serp")).toMatchObject({
+      label: "3 Serp",
+      on: false,
     });
   });
 });

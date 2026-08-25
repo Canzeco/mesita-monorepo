@@ -25,8 +25,7 @@ import {
   type DomainKey,
   feedEntryKey,
   groupConsecutiveSteps,
-  intakeCreateCounts,
-  intakeEnrichCounts,
+  intakeFunctionCounts,
   itemMatchesIntakeFilter,
   pinReports,
   statusFactCounts,
@@ -136,12 +135,8 @@ export function GlobalPerformanceClient({
     () => statusFactCounts(data.notifications),
     [data.notifications],
   );
-  const createCounts = useMemo(
-    () => intakeCreateCounts(data.notifications),
-    [data.notifications],
-  );
-  const enrichCounts = useMemo(
-    () => intakeEnrichCounts(data.notifications),
+  const functionCounts = useMemo(
+    () => intakeFunctionCounts(data.notifications),
     [data.notifications],
   );
 
@@ -163,8 +158,7 @@ export function GlobalPerformanceClient({
         total={data.total}
         counts={data.counts}
         statusCounts={factCounts}
-        createCounts={createCounts}
-        enrichCounts={enrichCounts}
+        functionCounts={functionCounts}
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
         pending={pending}
