@@ -37,10 +37,11 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Promos — three boxes:
+// Admin Partner tab — three boxes:
 //   1. Tutorial — join, pick a strategy, honor guest checks. Strikes ladder.
-//   2. Partnership — MX$1,000/year unlocks paid strategies (Zero stays free).
-//      Lifecycle rail, status pill, drop. Admin writes plan — no Stripe.
+//   2. Partnership — MX$1,000/month is the subscription. Stripe-look mock
+//      Join writes plan=pro at Zero (admin-web-set-plan, no charge).
+//      Strategy unlocks after. Lifecycle rail, status pill, drop.
 //   3. Promos — Zero · Conservative · Aggressive. Give and placement are a
 //      Low · Mid · High word ladder. Dominant is not a picker option.
 
@@ -140,17 +141,15 @@ export function PromosSection({
   const [v, setV] = useState(place);
   // Write-through / optimistic — no draft dirtyMap (E-R0). Strategy SWITCH
   // stays optimistic (rates-only; the moving ring is the feedback).
-  // Membership writes — join, reinstate, drop — are PESSIMISTIC: they apply
-  // on EF success only, so the pill and cards never render a half-state
-  // mid-write. Errors follow the gesture: switch failures land under the
-  // grid, join/reinstate failures inside the modal, drop failures inside
-  // the confirm dialog.
+  // Membership writes — join, drop — are PESSIMISTIC: they apply on EF
+  // success only. Switch is optimistic. Join errors land on Partnership;
+  // switch errors under the strategy grid; drop errors in the confirm.
 
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
-  const [modalBusy, setModalBusy] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
@@ -170,24 +169,22 @@ export function PromosSection({
     onSaved(prev);
   };
 
-  // Join and Reinstate share the same door (setPlacePlan; the EF clears the
-  // forfeit stamp + strikes on re-grant). The modal stays open with a busy
-  // primary until the write settles.
-  const commitJoin = async (target: StrategyId) => {
-    if (modalBusy || member) return;
-    const rates = strategySwitchPatch(target, v, storedStrategy);
+  // Partnership join is its own door (setPlacePlan at Zero). The EF clears
+  // the forfeit stamp + strikes on re-grant. Strategy is a later switch.
+  const commitJoinPartnership = async () => {
+    if (joinBusy || (member && !forfeited)) return;
+    const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
     const plan = planForSubscription("pro_discount");
 
-    setModalBusy(true);
-    setModalError(null);
+    setJoinBusy(true);
+    setJoinError(null);
     const r = await setPlacePlan(v.id, plan, rates);
-    setModalBusy(false);
+    setJoinBusy(false);
     if (!r.ok) {
-      setModalError(r.error);
+      setJoinError(r.error);
       return;
     }
     applyPlace(r.data);
-    setModalId(null);
   };
 
   const commitDrop = async () => {
@@ -229,22 +226,16 @@ export function PromosSection({
   };
 
   const onCardOpen = (id: StrategyId) => {
-    setModalError(null);
     setModalId(id);
   };
 
   const onModalConfirm = (target: StrategyId) => {
-    if (!member) {
-      void commitJoin(target);
-      return;
-    }
+    if (!member || forfeited) return;
     commitSwitch(target);
   };
 
   const onModalClose = () => {
-    if (modalBusy) return;
     setModalId(null);
-    setModalError(null);
   };
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
@@ -258,6 +249,9 @@ export function PromosSection({
         pillState={pillState}
         storedStrategy={storedStrategy}
         member={member}
+        joinBusy={joinBusy}
+        joinError={joinError}
+        onJoinClick={() => void commitJoinPartnership()}
         onDropClick={() => {
           setDropError(null);
           setDropOpen(true);
@@ -323,8 +317,8 @@ export function PromosSection({
             paid: modalStrategy.id !== ZERO_STRATEGY_ID,
           })}
           member={member}
-          busy={modalBusy}
-          error={modalError}
+          busy={switchPending}
+          error={null}
           onConfirm={() => onModalConfirm(modalStrategy.id)}
           onClose={onModalClose}
         />
@@ -397,7 +391,7 @@ function LifecycleBanner({
             )}
           />
           <span className="font-display font-semibold tracking-tight">
-            Promos live
+            Partner live
           </span>
           <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
             {warn
@@ -415,8 +409,8 @@ function LifecycleBanner({
   // step's line renders.
   const joinDetail =
     view.join === "current"
-      ? `${price}/year — join by picking a strategy below.`
-      : `${price}/year — switch strategies free anytime.`;
+      ? `${price}/month — Join Partnership with the Stripe mock below.`
+      : `${price}/month — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -428,7 +422,7 @@ function LifecycleBanner({
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Partnership forfeited after 3 strikes — re-join by picking a strategy below."
+        ? "Partnership forfeited after 3 strikes — Re-join Partnership below."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
@@ -570,7 +564,7 @@ function TutorialBox({ currency }: { currency: string | null }) {
     >
       <div className="mt-4 flex flex-col gap-4">
         <Step n={1} title="Join the partnership">
-          {price}/year — one fee, switch strategies free anytime.
+          {price}/month — one membership, then pick a strategy freely.
         </Step>
         <Step n={2} title="Pick a strategy">
           Zero · Conservative · Aggressive. Give and placement are Low · Mid ·
@@ -604,7 +598,7 @@ function TutorialBox({ currency }: { currency: string | null }) {
             ))}
           </ol>
           <p className="text-muted-foreground text-xs leading-snug">
-            Admin writes plan directly — no Stripe charge from here. Strikes
+            Join is a mock Stripe checkout — it writes plan, no charge. Strikes
             decay after 6 months clean.
           </p>
         </div>
@@ -620,31 +614,32 @@ function MembershipBox({
   pillState,
   storedStrategy,
   member,
+  joinBusy,
+  joinError,
+  onJoinClick,
   onDropClick,
 }: {
   place: AdminPlace;
   pillState: MembershipPillState;
   storedStrategy: StrategyId | null;
   member: boolean;
+  joinBusy: boolean;
+  joinError: string | null;
+  onJoinClick: () => void;
   onDropClick: () => void;
 }) {
-  // Pending's note lives in the lifecycle banner now (absorption rule) —
-  // repeating it here would put two identical amber banners in the same
-  // viewport. The paused/forfeited/strike notes stay: they carry dates and
-  // consequences.
   const statusNote =
     pillState === "pending" ? null : describeMembershipStatus(place, pillState);
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
   const canDrop = !notMember && !forfeited;
+  const showJoin = notMember || forfeited;
 
-  // One contextual line — the price and what it unlocks are already stated
-  // once above it; this only says what to do next.
   const nextLine = notMember
-    ? "Choose a strategy below to join. Rank is never for sale — visibility rises with what you give."
+    ? "The subscription is Partnership. After you join, pick a strategy below — switch free anytime."
     : forfeited
-      ? "Re-join by picking a strategy below — reinstating clears the forfeit and strikes; activation is earned again."
+      ? "Re-join Partnership to clear the forfeit and strikes; then pick a strategy again."
       : "Switching to Zero pauses discounts without ending the partnership. Dropping is separate.";
 
   return (
@@ -681,21 +676,38 @@ function MembershipBox({
             {price}
             <span className="text-muted-foreground text-xs font-normal">
               {" "}
-              / year
+              / month
             </span>
           </p>
           <p className="text-muted-foreground type-body leading-snug">
             Unlocks{" "}
             <span className="text-foreground font-semibold">Conservative</span>{" "}
             and{" "}
-            <span className="text-foreground font-semibold">Aggressive</span> —
-            switch free anytime. Zero stays free.
+            <span className="text-foreground font-semibold">Aggressive</span>{" "}
+            after you join. Zero stays free.
           </p>
         </div>
 
         <p className="text-muted-foreground text-xs leading-snug">
           {nextLine}
         </p>
+
+        {showJoin && (
+          <div className="flex flex-col gap-2">
+            <StripeJoinButton
+              price={price}
+              busy={joinBusy}
+              forfeited={forfeited}
+              onClick={onJoinClick}
+            />
+            <p className="text-muted-foreground type-meta leading-snug">
+              Mock checkout — writes partner status, no Stripe charge.
+            </p>
+            <div aria-live="polite">
+              {joinError && <ErrorNote message={joinError} />}
+            </div>
+          </div>
+        )}
 
         {canDrop && (
           <button
@@ -708,6 +720,50 @@ function MembershipBox({
         )}
       </div>
     </SectionCard>
+  );
+}
+
+/** Stripe Checkout-shaped mock. Writes plan via admin-web-set-plan. */
+function StripeJoinButton({
+  price,
+  busy,
+  forfeited,
+  onClick,
+}: {
+  price: string;
+  busy: boolean;
+  forfeited: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="inline-flex h-12 w-full max-w-md items-center justify-center gap-2.5 rounded-md bg-[#635BFF] px-5 type-body font-semibold text-white shadow-sm transition hover:bg-[#5851EA] active:scale-[0.99] disabled:opacity-70"
+    >
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <StripeMark className="h-5 w-5 shrink-0" />
+      )}
+      {forfeited
+        ? `Re-join Partnership · ${price}/month`
+        : `Join Partnership · ${price}/month`}
+    </button>
+  );
+}
+
+function StripeMark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.115 1.787-1.115 1.634 0 3.415.66 4.64 1.25v-3.2C15.82 2.89 14.196 2.4 12.407 2.4c-3.96 0-6.582 2.075-6.582 5.546 0 2.705 1.94 4.14 5.162 5.29 2.28.811 3.056 1.426 3.056 2.348 0 .96-.84 1.258-2.12 1.258-1.732 0-3.9-.757-5.492-1.76V18.4c1.632.88 3.53 1.34 5.49 1.34 4.082 0 6.75-2.02 6.75-5.604 0-2.873-1.875-4.406-5.695-5.986z" />
+    </svg>
   );
 }
 
@@ -734,8 +790,8 @@ function StrategyCard({
   const placement = placementWord(strategy.visibility);
   const ariaState = selected
     ? " (current)"
-    : cta === "reinstate"
-      ? " (forfeited — reinstate)"
+    : cta === "locked"
+      ? " (join partnership first)"
       : "";
 
   return (
@@ -777,9 +833,7 @@ function StrategyCard({
         />
 
         {/* Presentational CTA — the whole card is the button; the modal
-            carries the real action. Every state names one honestly:
-            Join (non-member, Zero included) · Reinstate (forfeited) ·
-            Switch / Switch to Zero (member) · Current. */}
+            carries the real action. Join lives on Partnership, not here. */}
         <div className="mt-auto flex flex-col gap-1.5 pt-1">
           {cta === "current" ? (
             <span className="border-border text-muted-foreground inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full border text-xs font-bold">
@@ -790,18 +844,18 @@ function StrategyCard({
             <span
               className={cx(
                 "inline-flex h-11 w-full items-center justify-center rounded-full text-xs font-bold",
-                paid
-                  ? cx("bg-gradient-to-r text-white", art.cta)
-                  : "border-border text-foreground/75 border",
+                cta === "locked"
+                  ? "border-border text-muted-foreground border"
+                  : paid
+                    ? cx("bg-gradient-to-r text-white", art.cta)
+                    : "border-border text-foreground/75 border",
               )}
             >
-              {cta === "join"
-                ? "Join"
-                : cta === "reinstate"
-                  ? "Reinstate"
-                  : paid
-                    ? "Switch"
-                    : "Switch to Zero"}
+              {cta === "locked"
+                ? "Join partnership first"
+                : paid
+                  ? "Switch"
+                  : "Switch to Zero"}
             </span>
           )}
           <span className="text-muted-foreground group-hover:text-foreground text-center type-label font-medium transition">
@@ -939,26 +993,20 @@ function ProductModal({
   const primaryLabel =
     kind === "current"
       ? "Current strategy"
-      : kind === "join"
-        ? `Join — ${price}/year`
-        : kind === "reinstate"
-          ? `Reinstate — ${price}/year`
-          : kind === "switch"
-            ? `Switch to ${strategy.name}`
-            : "Switch to Zero";
+      : kind === "locked"
+        ? "Join partnership first"
+        : kind === "switch"
+          ? `Switch to ${strategy.name}`
+          : "Switch to Zero";
 
   const footerNote =
     kind === "current"
       ? ""
-      : kind === "join"
-        ? `Starts the partnership at ${price}/year with ${strategy.name} rates. Admin write — no Stripe charge.`
-        : kind === "reinstate"
-          ? paid
-            ? "Clears the forfeit and strikes; partnership restarts in pending activation."
-            : "Clears the forfeit and strikes; reinstates the partnership with no discounts — promo lane stays closed until a paid strategy is picked."
-          : kind === "switch_zero"
-            ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
-            : "Applies to new tickets only — open tickets keep the rates they were created with.";
+      : kind === "locked"
+        ? `The subscription is Partnership at ${price}/month. Join there, then switch strategies free.`
+        : kind === "switch_zero"
+          ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+          : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   return (
     <dialog
@@ -1024,7 +1072,7 @@ function ProductModal({
                   lifecycle rail. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the partnership">
-                {price}/year — one fee, switch strategies free anytime.
+                {price}/month — one membership, then switch strategies free.
               </Step>
               <Step n={2} title="Pick a strategy">
                 Confirming makes {strategy.name} your posture — switch free
@@ -1059,11 +1107,11 @@ function ProductModal({
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
-            disabled={isCurrent || busy}
+            disabled={isCurrent || busy || kind === "locked"}
             onClick={onConfirm}
             className={cx(
               "inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-5 type-body font-bold transition disabled:opacity-70",
-              isCurrent
+              isCurrent || kind === "locked"
                 ? "border-border text-muted-foreground border"
                 : !member || paid
                   ? cx(

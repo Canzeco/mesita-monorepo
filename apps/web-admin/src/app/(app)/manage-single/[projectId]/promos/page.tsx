@@ -1,13 +1,11 @@
 "use client";
 
-import { Tag } from "lucide-react";
+import { Handshake } from "lucide-react";
 import { isSectionSoon } from "../../nav";
 import { PromosSection } from "../../sections/PromosSection";
 import { usePlaceContext } from "../../PlaceContext";
 
-// Per-place Promos — membership, strategy cards, visit-rate grid, visit cap.
-// Visit rewards only: no orders knobs, no prepaid. Re-park with `soon: true`
-// in nav.ts; this route still honors that gate.
+// Per-place Partner tab — membership, strategy cards. Route stays /promos.
 export default function PlacePromosPage() {
   if (isSectionSoon("promos")) return <PromosSoon />;
   return <PromosGrid />;
@@ -18,10 +16,10 @@ function PromosSoon() {
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 pb-10">
       <div className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
         <span className="bg-muted/60 text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full">
-          <Tag className="h-5 w-5" />
+          <Handshake className="h-5 w-5" />
         </span>
         <p className="font-display text-foreground text-lg font-semibold tracking-tight">
-          Promos is coming soon
+          Partner is coming soon
         </p>
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           Partnership, strategy and the per-place reward grid are parked.
