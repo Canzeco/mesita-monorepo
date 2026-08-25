@@ -19,7 +19,7 @@ import {
   isEnriching,
 } from "./place-header-status";
 import { isMemberPlan } from "./sections/promo-state";
-import { isPromotingNow } from "./sections/StatusCard";
+import { placeOperatorPromotingLevel } from "./sections/StatusCard";
 import {
   intakeFunctionRows,
   type EnrichFunctionState,
@@ -112,7 +112,7 @@ export function PlaceEditChrome({
     enrich_pulse: place.enrich_pulse,
     enrich_pulse_total: place.enrich_pulse_total,
     partner: isMemberPlan(place.plan),
-    promoting: isPromotingNow(place),
+    promotingLevel: placeOperatorPromotingLevel(place),
     verified,
   });
   const intakeRows = intakeFunctionRows(
@@ -255,15 +255,9 @@ export function PlaceEditChrome({
                 <li key={fact.key}>
                   <span
                     className={headerChipClass(fact.on)}
-                    aria-label={`${fact.label}: ${
-                      fact.on === true
-                        ? "yes"
-                        : fact.on === false
-                          ? "no"
-                          : "unknown"
-                    }`}
+                    aria-label={`${fact.label}: ${fact.chip}`}
                   >
-                    {fact.label}
+                    {fact.chip}
                   </span>
                 </li>
               ))}

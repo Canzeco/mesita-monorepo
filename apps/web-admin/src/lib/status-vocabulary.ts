@@ -1,11 +1,59 @@
 // Status — two boxes (Pato, 2026-08-25).
 //
-//   STATUSES (7)  bools on the Status box, catalog, Monitor fact chips
+//   STATUSES (7)  Created · Active · Listed · Enriched · Verified · Partner
+//                 are bools (`true` / `false`). Promoting is 0 | 1 | 2.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
-// Enriched is a yes, not a high-water. Intake just names the eleven
-// functions. Create 1–4 / Enrich 1–10 stay Config sequences; they are
-// not a third Status ladder. Wire key `seeded` stays; the label is Created.
+// Repeating the row name on the chip is redundant. Enriched is a yes, not a
+// high-water. Intake just names the eleven functions. Create 1–4 / Enrich
+// 1–10 stay Config sequences; they are not a third Status ladder. Wire key
+// `seeded` stays; the label is Created.
+
+export type StatusBoolChip = "true" | "false" | "?" | "…";
+
+/** Chip for a binary Status fact. Loading and unknown stay distinct. */
+export function statusBoolChip(
+  value: boolean | "unknown" | "loading" | null | undefined,
+): StatusBoolChip {
+  if (value === "loading") return "…";
+  if (value === "unknown" || value == null) return "?";
+  return value ? "true" : "false";
+}
+
+/**
+ * Operator Promoting: 0 Zero · 1 Conservative · 2 Aggressive.
+ * Engine Dominant (3) displays as 2 — Promos already has three strategies.
+ */
+export function operatorPromotingLevel(
+  raw: number | null | undefined,
+): 0 | 1 | 2 {
+  const n = typeof raw === "number" && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+  if (n <= 0) return 0;
+  if (n === 1) return 1;
+  return 2;
+}
+
+export function promotingLevelChip(
+  raw: number | null | undefined,
+): "0" | "1" | "2" {
+  return String(operatorPromotingLevel(raw)) as "0" | "1" | "2";
+}
+
+export const OPERATOR_PROMOTING_LABEL: Record<0 | 1 | 2, string> = {
+  0: "Zero",
+  1: "Conservative",
+  2: "Aggressive",
+};
+
+/** Live strategy → operator 0|1|2. Dominant and custom rates display as 2. */
+export function promotingLevelFromStrategy(
+  live: boolean,
+  strategy: string | null | undefined,
+): 0 | 1 | 2 {
+  if (!live) return 0;
+  if (strategy === "conservative") return 1;
+  return 2;
+}
 
 export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },

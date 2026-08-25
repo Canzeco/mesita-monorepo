@@ -48,7 +48,8 @@ export type PlaceHit = {
   listing_type: string | null;
   // ── The seven status facts the catalog table renders, in order:
   //    Created · Active · Listed · Enriched · Verified · Partner · Promoting.
-  //    All derived (or projected) in admin-web-search-places.
+  //    First six are bools; Promoting is 0|1|2. All derived (or projected)
+  //    in admin-web-search-places.
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
@@ -75,7 +76,7 @@ export type PlaceHit = {
   partner: boolean;
   /** Live: paid ∧ strategy above Zero ∧ promo lane open. */
   promoting: boolean;
-  /** How hard, 0-3: zero · conservative · aggressive · dominant. 0 ⟺ !promoting. */
+  /** How hard. Engine 0-3; operator display is 0|1|2 (Dominant → 2). */
   promoting_level: 0 | 1 | 2 | 3;
 };
 

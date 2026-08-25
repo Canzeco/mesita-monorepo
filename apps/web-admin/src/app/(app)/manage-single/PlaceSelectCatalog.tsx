@@ -25,6 +25,7 @@ import { PlaceThumb } from "./PlaceEditChrome";
 import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
 import { ErrorNote } from "@/components/ErrorNote";
 import { CldrRegionInput } from "@/components/CldrRegionInput";
+import { OPERATOR_PROMOTING_LABEL, operatorPromotingLevel } from "@/lib/status-vocabulary";
 
 // Minimum characters before a query triggers Mesita/Google search logic.
 const MIN_QUERY_LENGTH = 2;
@@ -535,36 +536,31 @@ function PlaceCatalogRow({
   );
 }
 
-// PROMOTING is a 0-3 rung, not a yes/no: how hard a place is discounting right
-// now. 0 is not "no data" — it means a guest gets nothing here at this moment,
-// which is also true of a paid Aggressive place whose promo lane is paused. The
-// server derives it so the boolean and the rung can never disagree.
-const PROMO_TITLE: Record<number, string> = {
-  0: "Zero — no live discount",
-  1: "Conservative",
-  2: "Aggressive",
-  3: "Dominant",
-};
+// PROMOTING is 0 | 1 | 2, not a yes/no: how hard a place is discounting
+// right now. 0 is not "no data" — it means a guest gets nothing here at this
+// moment, which is also true of a paid Aggressive place whose promo lane is
+// paused. Engine Dominant (3) displays as 2.
 
 function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
-  const title = PROMO_TITLE[level] ?? `Level ${level}`;
+  const shown = operatorPromotingLevel(level);
+  const title = `${OPERATOR_PROMOTING_LABEL[shown]}${shown === 0 ? " — no live discount" : ""}`;
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span
         className={
           "type-label font-semibold tabular-nums " +
-          (level === 0 ? "text-muted-foreground" : "text-foreground")
+          (shown === 0 ? "text-muted-foreground" : "text-foreground")
         }
       >
-        {level}
+        {shown}
       </span>
       <span className="flex gap-[2px]" aria-hidden>
-        {[1, 2, 3].map((rung) => (
+        {[1, 2].map((rung) => (
           <span
             key={rung}
             className={
               "h-2 w-1.5 rounded-[1px] " +
-              (level >= rung ? "bg-muted-foreground/40" : "bg-muted-foreground/15")
+              (shown >= rung ? "bg-muted-foreground/40" : "bg-muted-foreground/15")
             }
           />
         ))}

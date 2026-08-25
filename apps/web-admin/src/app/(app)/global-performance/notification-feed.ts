@@ -124,7 +124,8 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 }
 
 // Status — two boxes (Pato, 2026-08-25):
-//   STATUSES (7)  Created · Active · Listed · Enriched · Verified · Partner · Promoting
+//   STATUSES (7)  six bools + Promoting 0|1|2. Compact line still names
+//                 the true facts; Promoting here is the live-discount yes.
 //   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
