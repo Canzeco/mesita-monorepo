@@ -1,6 +1,6 @@
 import { MultiplePlacesClient } from "./MultiplePlacesClient";
 
-// The whole tool, one page. Three boxes: Create, Enrich, Create + Enrich.
+// The whole tool, one page. Three boxes: Search, Create, Enrich.
 // Spend estimates are on Intake — this page does not price a run.
 
 export const dynamic = "force-dynamic";

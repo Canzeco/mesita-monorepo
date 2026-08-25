@@ -1,18 +1,19 @@
 "use client";
 
-// Manage Multiple Places — ONE page, three boxes (Pato, 2026-08-25):
-// Create · Enrich · Create + Enrich. Same pill chrome as before. Search is
-// not a fourth box — it lives inside Create (and Create + Enrich) as how you
-// get Google Place IDs without already having them.
+// Manage Multiple Places — ONE page, three boxes: Search · Create · Enrich.
+// That is the pipeline, in order. Search is a box of its own (Pato, 2026-08-25:
+// keep it; do not fold Google search into Create or name a combined card).
 //
-// Spend math does not live here. Create and Enrich estimates are on Intake.
+// Two handoffs are buttons: Search → Create (new Google IDs) and Create →
+// Enrich (minted Mesita IDs). Spend estimates live on Intake, not here.
 
 import { useEffect, useState } from "react";
+import { ListPlus } from "lucide-react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { CreateTab } from "./CreateTab";
 import { EnrichTab } from "./EnrichTab";
-import { LEGACY_SEARCH_HASH, PIPELINE_STEPS } from "./pipeline";
+import { LEGACY_COMBO_HASH, PIPELINE_STEPS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
 function Step({
@@ -48,46 +49,22 @@ function Step({
   );
 }
 
-function FindThenPaste({
-  queriesId,
-  createText,
-  onCreateText,
-  mode,
-  inputId,
-}: {
-  queriesId: string;
-  createText: string;
-  onCreateText: (next: string) => void;
-  mode: "create" | "create-and-enrich";
-  inputId: string;
-}) {
-  return (
-    <div className="flex flex-col gap-10">
-      <SearchTab
-        queriesId={queriesId}
-        onSendToCreate={(ids) => onCreateText(ids.join("\n"))}
-      />
-      <CreateTab
-        text={createText}
-        onTextChange={onCreateText}
-        mode={mode}
-        inputId={inputId}
-      />
-    </div>
-  );
-}
-
 export function MultiplePlacesClient() {
   const [createText, setCreateText] = useState("");
-  const [comboText, setComboText] = useState("");
   const [enrichText, setEnrichText] = useState("");
+  const [createdProjectIds, setCreatedProjectIds] = useState<string[]>([]);
+
+  function jump(id: string) {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
 
   useEffect(() => {
     const raw = window.location.hash.replace(/^#/, "");
-    if (raw !== LEGACY_SEARCH_HASH) return;
-    document.getElementById(PIPELINE_STEPS[0].id)?.scrollIntoView({
-      block: "start",
-    });
+    if (raw !== LEGACY_COMBO_HASH) return;
+    jump("bulk-create");
   }, []);
 
   return (
@@ -98,14 +75,13 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="Create Seed · Pulse · Details · Semantics. Find Place IDs, or paste them. Caps live on Intake."
+        blurb="One Google Places query per line. The deduped union of Place IDs comes back below."
       >
-        <FindThenPaste
-          queriesId="create-queries"
-          createText={createText}
-          onCreateText={setCreateText}
-          mode="create"
-          inputId="create-place-ids"
+        <SearchTab
+          onSendToCreate={(ids) => {
+            setCreateText(ids.join("\n"));
+            jump("bulk-create");
+          }}
         />
       </Step>
 
@@ -114,9 +90,27 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Enrich 1–10: Pulse through Description, then Semantics. Paste Mesita IDs. Same full Intaker run."
+        blurb="Place IDs in, places out — Create Seed · Pulse · Details · Semantics. Caps live on Intake."
       >
-        <EnrichTab text={enrichText} onTextChange={setEnrichText} />
+        <CreateTab
+          text={createText}
+          onTextChange={setCreateText}
+          onCreated={(ids) => setCreatedProjectIds(ids)}
+        />
+        {createdProjectIds.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setEnrichText(createdProjectIds.join("\n"));
+              jump("bulk-enrich");
+            }}
+            className="border-border bg-card hover:border-foreground mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
+          >
+            <ListPlus className="h-4 w-4" />
+            Send {createdProjectIds.length} created{" "}
+            {createdProjectIds.length === 1 ? "place" : "places"} to Enrich
+          </button>
+        ) : null}
       </Step>
 
       <Step
@@ -124,15 +118,9 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Create Seed · Pulse · Details · Semantics, then Enrich 1–10 in this box. No hop."
+        blurb="Enrich 1–10: Pulse through Description, then Semantics. Paste Mesita IDs. Same full Intaker run."
       >
-        <FindThenPaste
-          queriesId="combo-queries"
-          createText={comboText}
-          onCreateText={setComboText}
-          mode="create-and-enrich"
-          inputId="create-enrich-place-ids"
-        />
+        <EnrichTab text={enrichText} onTextChange={setEnrichText} />
       </Step>
     </div>
   );

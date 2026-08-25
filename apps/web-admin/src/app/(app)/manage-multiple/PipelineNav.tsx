@@ -2,14 +2,13 @@
 
 import { PIPELINE_STEPS } from "./pipeline";
 
-// Sticks under the mobile hamburger (and at the top on desktop) so Create
-// cannot scroll off and leave Enrich + Create + Enrich looking like the
-// whole tool.
+// Sticks under the mobile hamburger (and at the top on desktop) so Search
+// cannot scroll off and leave Create looking like the whole tool.
 
 export function PipelineNav() {
   return (
     <nav
-      aria-label="Create, Enrich, Create + Enrich"
+      aria-label="Search, Create, Enrich"
       className="border-border bg-background/90 sticky top-14 z-20 -mx-1 mb-4 border-b px-1 py-2 backdrop-blur lg:top-0"
     >
       <ol className="flex flex-wrap gap-2">

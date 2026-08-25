@@ -2,10 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Loader2, Play, Upload } from "lucide-react";
-import {
-  createPlaceFromGooglePlaceId,
-  enrichPlace,
-} from "../manage-single/actions";
+import { createPlaceFromGooglePlaceId } from "../manage-single/actions";
 import { StatusIcon } from "./StatusIcon";
 
 // Google Place IDs are base64url-ish tokens (commonly 27 chars, but length
@@ -24,34 +21,26 @@ type RowStatus =
       name: string;
       photoCount: number;
       enrichmentTriggered: boolean;
-      enrichQueued?: boolean;
-      enrichError?: string;
     }
   | { status: "error"; error: string };
 
-export type CreateTabMode = "create" | "create-and-enrich";
-
-// The textarea is CONTROLLED by the page: search results in this same box
-// push Place IDs in. Per-row results stay local.
+// The textarea is CONTROLLED by the page: Search's "send to Create" button
+// pushes Place IDs in. Per-row results stay local.
 export function CreateTab({
   text,
   onTextChange,
   onCreated,
-  mode = "create",
   inputId = "create-place-ids",
 }: {
   text: string;
   onTextChange: (next: string) => void;
   onCreated?: (projectIds: string[]) => void;
-  mode?: CreateTabMode;
   inputId?: string;
 }) {
   const setText = onTextChange;
   const [results, setResults] = useState<Record<string, RowStatus>>({});
   const [running, setRunning] = useState(false);
-  const [phase, setPhase] = useState<"create" | "enrich">("create");
   const fileRef = useRef<HTMLInputElement>(null);
-  const combined = mode === "create-and-enrich";
 
   const placeIds = useMemo(() => {
     const seen = new Set<string>();
@@ -85,7 +74,6 @@ export function CreateTab({
   async function runAll() {
     if (running || placeIds.length === 0) return;
     setRunning(true);
-    setPhase("create");
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
@@ -126,46 +114,6 @@ export function CreateTab({
       Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
     );
 
-    if (combined && minted.length > 0) {
-      setPhase("enrich");
-      let eCursor = 0;
-      const eWorker = async () => {
-        while (eCursor < minted.length) {
-          const row = minted[eCursor++];
-          try {
-            const r = await enrichPlace(row.projectId, "full");
-            setResults((prev) => {
-              const cur = prev[row.googleId];
-              if (!cur || cur.status !== "ok") return prev;
-              return {
-                ...prev,
-                [row.googleId]: r.ok
-                  ? { ...cur, enrichQueued: true }
-                  : { ...cur, enrichQueued: false, enrichError: r.error },
-              };
-            });
-          } catch (err) {
-            setResults((prev) => {
-              const cur = prev[row.googleId];
-              if (!cur || cur.status !== "ok") return prev;
-              return {
-                ...prev,
-                [row.googleId]: {
-                  ...cur,
-                  enrichQueued: false,
-                  enrichError:
-                    err instanceof Error ? err.message : "Unexpected error",
-                },
-              };
-            });
-          }
-        }
-      };
-      await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, minted.length) }, eWorker),
-      );
-    }
-
     setRunning(false);
     onCreated?.(minted.map((m) => m.projectId));
   }
@@ -175,16 +123,15 @@ export function CreateTab({
     void navigator.clipboard.writeText(ids.join("\n"));
   }
 
-  const actionLabel = combined
-    ? `Create + Enrich ${placeIds.length} place${placeIds.length === 1 ? "" : "s"}`
-    : `Create ${placeIds.length} place${placeIds.length === 1 ? "" : "s"}`;
+  const actionLabel = `Create ${placeIds.length} place${placeIds.length === 1 ? "" : "s"}`;
 
   return (
     <div>
       <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        {combined
-          ? "Paste Google Place IDs (one per line) or upload a CSV. Each row is minted, then a full Intaker run is queued — Create then Enrich, without hopping boxes. Caps and models live on Intake."
-          : "Paste Google Place IDs (one per line) or upload a CSV. Each create does the Google lookup and catalog listing, then hands off to the Intaker. Caps, levels and photo analysis are the stored Intake settings — that page is the calculator."}
+        Paste Google Place IDs (one per line) or upload a CSV. Each create does
+        the Google lookup and catalog listing, then hands off to the Intaker.
+        Caps, levels and photo analysis are the stored Intake settings — that
+        page is the calculator.
       </p>
 
       <div className="border-border bg-card mt-8 rounded-2xl border p-6">
@@ -233,9 +180,7 @@ export function CreateTab({
             {running ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {phase === "enrich"
-                  ? `Queuing enrich… ${created}/${placeIds.length}`
-                  : `Creating… ${done}/${placeIds.length}`}
+                Creating… {done}/{placeIds.length}
               </>
             ) : (
               <>
@@ -281,21 +226,7 @@ export function CreateTab({
                     {r.status === "ok" && (
                       <p className="text-muted-foreground type-label">
                         {r.photoCount} photo{r.photoCount === 1 ? "" : "s"} ·{" "}
-                        {combined ? (
-                          r.enrichQueued ? (
-                            "Intaker queued"
-                          ) : r.enrichError ? (
-                            <span className="text-destructive font-medium">
-                              {r.enrichError}
-                            </span>
-                          ) : r.enrichmentTriggered ? (
-                            "created · enriching…"
-                          ) : (
-                            <span className="text-destructive font-medium">
-                              enrich trigger failed
-                            </span>
-                          )
-                        ) : r.enrichmentTriggered ? (
+                        {r.enrichmentTriggered ? (
                           "enriching…"
                         ) : (
                           <span className="text-destructive font-medium">
