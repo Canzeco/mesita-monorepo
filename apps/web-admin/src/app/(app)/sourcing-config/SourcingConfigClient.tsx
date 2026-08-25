@@ -1,20 +1,14 @@
 "use client";
 
-import { Layers, MapPin, Star, Users } from "lucide-react";
+import { Layers, Star, Users } from "lucide-react";
 import { formatShortDate } from "@/lib/format";
 import { SectionCard, Switch } from "@/components/admin-ui/config";
 import {
   ALL_FAMILY_KEYS,
-  applyRegionToAll,
   CHANNELS,
-  channelsShareRegion,
   FAMILIES,
-  matchRegionCity,
-  REGION_CITIES,
-  sharedRegion,
   type ChannelKey,
   type FamilyKey,
-  type RegionPolicy,
   type SourcingConfig,
 } from "./catalog";
 import { familySummary } from "./family-summary";
@@ -24,7 +18,7 @@ function enforcedLiveCopy(): string {
   const live = CHANNELS.filter((c) => c.live);
   const pending = CHANNELS.filter((c) => !c.live);
   if (live.length === CHANNELS.length) {
-    return "Enforced live today: every floor, family and the one area above gate real search / add traffic.";
+    return "Enforced live today: every floor and family gate real search / add traffic.";
   }
   if (live.length === 0) {
     return "No channels are marked enforced live yet.";
@@ -77,12 +71,6 @@ export function SourcingChannels({
 
   const body = (
     <>
-      <WhereBar
-        region={sharedRegion(cfg)}
-        shared={channelsShareRegion(cfg)}
-        disabled={pending}
-        onChange={(region) => onChange(applyRegionToAll(cfg, region))}
-      />
       <div className="mt-2">
         {ACTORS.map((actor) => {
           const rows = CHANNELS.filter((c) => c.actor === actor);
@@ -210,7 +198,7 @@ export function SourcingChannels({
     <SectionCard
       icon={<Layers className="text-secondary h-4 w-4" />}
       title="Channels"
-      subtitle="Search = who may appear. Add = who may be onboarded. One Where for every row."
+      subtitle="Search = who may appear. Add = who may be onboarded."
       status={
         updatedAt ? (
           <span className="text-muted-foreground text-xs">
@@ -221,190 +209,6 @@ export function SourcingChannels({
     >
       {body}
     </SectionCard>
-  );
-}
-
-function WhereBar({
-  region,
-  shared,
-  disabled,
-  onChange,
-}: {
-  region: RegionPolicy;
-  shared: boolean;
-  disabled: boolean;
-  onChange: (next: RegionPolicy) => void;
-}) {
-  const set = (patch: Partial<RegionPolicy>) => onChange({ ...region, ...patch });
-  const countryOn = region.country.trim() !== "";
-  const cityId = matchRegionCity(region);
-  const placeValue =
-    !countryOn || region.radiusKm === 0 ? "country" : cityId;
-  const showPin = countryOn && region.radiusKm > 0 && cityId === "custom";
-
-  return (
-    <div className="border-border mt-4 border-b pb-3">
-      {!shared && (
-        <p className="text-muted-foreground mb-2 text-xs">
-          Channels had different areas — editing here applies one area to all of
-          them.
-        </p>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground inline-flex items-center gap-1 type-label font-semibold tracking-[0.12em] uppercase">
-          <MapPin className="h-3 w-3" aria-hidden />
-          Where
-        </span>
-        <input
-          type="text"
-          inputMode="text"
-          maxLength={2}
-          value={region.country}
-          placeholder="off"
-          disabled={disabled}
-          aria-label="Country"
-          title="CLDR country (MX). Empty = off."
-          onChange={(e) => {
-            const raw = e.target.value
-              .replace(/[^a-zA-Z]/g, "")
-              .toUpperCase()
-              .slice(0, 2);
-            set({ country: raw });
-          }}
-          className="border-border bg-card focus:border-foreground h-8 w-11 rounded-lg border px-1.5 text-center text-xs uppercase tabular-nums outline-none placeholder:text-xs placeholder:normal-case placeholder:font-normal disabled:cursor-not-allowed"
-        />
-        <select
-          value={placeValue}
-          disabled={disabled || !countryOn}
-          aria-label="Area"
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "country") {
-              set({ radiusKm: 0 });
-              return;
-            }
-            if (v === "custom") {
-              set({
-                radiusKm: region.radiusKm > 0 ? region.radiusKm : 40,
-              });
-              return;
-            }
-            const city = REGION_CITIES.find((c) => c.id === v);
-            if (!city) return;
-            set({
-              lat: city.lat,
-              lng: city.lng,
-              radiusKm: region.radiusKm > 0 ? region.radiusKm : 40,
-            });
-          }}
-          className="border-border bg-card focus:border-foreground h-8 rounded-lg border px-2 text-xs outline-none disabled:cursor-not-allowed"
-        >
-          <option value="country">Whole country</option>
-          {REGION_CITIES.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.label}
-            </option>
-          ))}
-          <option value="custom">Custom pin</option>
-        </select>
-        {countryOn && region.radiusKm > 0 && (
-          <label className="text-muted-foreground flex items-center gap-1 text-xs">
-            <input
-              type="number"
-              inputMode="decimal"
-              min={1}
-              max={2000}
-              step={1}
-              value={region.radiusKm}
-              disabled={disabled}
-              aria-label="Radius kilometers"
-              onChange={(e) => {
-                const n = Number(e.target.value);
-                if (Number.isNaN(n)) return;
-                set({
-                  radiusKm: Math.min(2000, Math.max(1, Math.round(n * 10) / 10)),
-                });
-              }}
-              className="border-border bg-card focus:border-foreground h-8 w-14 rounded-lg border px-1.5 text-right text-xs tabular-nums outline-none disabled:cursor-not-allowed"
-            />
-            km
-          </label>
-        )}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            disabled={disabled || !countryOn}
-            aria-pressed={!region.restrict}
-            onClick={() => set({ restrict: false })}
-            className={
-              "h-8 rounded-lg border px-2.5 text-xs font-semibold disabled:cursor-not-allowed " +
-              (!region.restrict
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-card hover:border-foreground/40")
-            }
-          >
-            Prefer
-          </button>
-          <button
-            type="button"
-            disabled={disabled || !countryOn}
-            aria-pressed={region.restrict}
-            aria-label="Only this area"
-            title="Hard fence — drop anything outside this country or circle"
-            onClick={() => set({ restrict: true })}
-            className={
-              "h-8 rounded-lg border px-2.5 text-xs font-semibold disabled:cursor-not-allowed " +
-              (region.restrict
-                ? "border-foreground bg-foreground text-background"
-                : "border-border bg-card hover:border-foreground/40")
-            }
-          >
-            Only
-          </button>
-        </div>
-      </div>
-      {showPin && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            step={0.0001}
-            min={-90}
-            max={90}
-            value={region.lat}
-            disabled={disabled}
-            aria-label="Latitude"
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              if (Number.isNaN(n)) return;
-              set({
-                lat: Math.round(Math.min(90, Math.max(-90, n)) * 10000) / 10000,
-              });
-            }}
-            className="border-border bg-card focus:border-foreground h-9 w-28 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
-          />
-          <input
-            type="number"
-            inputMode="decimal"
-            step={0.0001}
-            min={-180}
-            max={180}
-            value={region.lng}
-            disabled={disabled}
-            aria-label="Longitude"
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              if (Number.isNaN(n)) return;
-              set({
-                lng:
-                  Math.round(Math.min(180, Math.max(-180, n)) * 10000) / 10000,
-              });
-            }}
-            className="border-border bg-card focus:border-foreground h-9 w-28 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:cursor-not-allowed"
-          />
-        </div>
-      )}
-    </div>
   );
 }
 

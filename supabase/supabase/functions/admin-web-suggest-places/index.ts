@@ -18,7 +18,7 @@ import {
 } from "../_shared/auth.ts";
 import { suggestPlaces } from "../_shared/suggest-places.ts";
 
-type Body = { input?: string; sessionToken?: string };
+type Body = { input?: string; sessionToken?: string; regionCode?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
   return await suggestPlaces(env, "admin-web-suggest-places", {
     input: body.input,
     sessionToken: body.sessionToken,
+    regionCode: body.regionCode,
     // Admin surface — no self/other split; claimed rows show as _other.
     callerUserId: null,
     sourcingChannel: "admin_search",

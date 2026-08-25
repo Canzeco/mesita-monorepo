@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
         .filter((q) => q.length > 0)
     : [];
   const regionCode =
-    typeof body.regionCode === "string" ? body.regionCode.trim().toUpperCase() : "MX";
+    typeof body.regionCode === "string" ? body.regionCode.trim().toUpperCase() : "";
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
   // Quality filters. The edge function clamps these too, but keep the wire

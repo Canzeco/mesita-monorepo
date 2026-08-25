@@ -14,7 +14,6 @@
 // and transit are kept out without an explicit blocklist.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { haversineKm, radiusBoundingBox } from "./geo.ts";
 
 export type FamilyKey =
   | "restaurants"
@@ -34,19 +33,10 @@ export type ChannelKey =
   | "memo_search";
 
 /**
- * How this channel talks to Google Places (New).
- *
- * `country` is a CLDR code (MX). Text Search sends it as `regionCode`
- * (format + soft bias). Autocomplete sends it as `includedRegionCodes`
- * (hard country filter). Empty = off.
- *
- * A radius > 0 adds a circle. Bias (`restrict: false`) prefers that area
- * and may still return outsiders. Restrict (`restrict: true`) is a hard
- * fence: Autocomplete gets a circle, Text Search gets the bounding
- * rectangle Google requires, and add-paths reject outsiders.
- *
- * Guest geo, when the caller has it, is the circle centre. Otherwise the
- * stored lat/lng are.
+ * Leftover blob shape. Country / pin / restrict are NOT a sourcing gate —
+ * Google does not require a country, and the operator types a CLDR code
+ * (if at all) on Manage name search. Guest lat/lng, when a caller has it,
+ * still bias Text Search / Autocomplete toward the pin.
  */
 export type RegionPolicy = {
   country: string;
@@ -228,31 +218,27 @@ export function coerceRegion(raw: unknown, fallback: RegionPolicy = DEFAULT_REGI
 
 type GeoOrigin = { lat: number; lng: number };
 
-function regionCenter(region: RegionPolicy, origin?: GeoOrigin | null): GeoOrigin | null {
-  if (origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng)) {
-    return { lat: origin.lat, lng: origin.lng };
-  }
-  if (region.radiusKm > 0) return { lat: region.lat, lng: region.lng };
-  return null;
+/** CLDR / ISO-3166-1 alpha-2. Empty = omit Google's optional country params. */
+export function parseCldrRegionCode(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  const c = raw.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(c) ? c : "";
 }
 
-function regionRadiusKm(region: RegionPolicy, origin?: GeoOrigin | null): number {
-  if (region.radiusKm > 0) return region.radiusKm;
-  // Memo / consumer search with a guest pin and no operator radius: keep the
-  // 8 km bias that Text Search already used, so turning the table on does
-  // not flatten an existing deck.
-  if (origin) return 8;
-  return 0;
-}
-
-function rectangleAround(center: GeoOrigin, radiusKm: number) {
-  const { latDelta, lngDelta } = radiusBoundingBox(center.lat, radiusKm);
-  return {
-    rectangle: {
-      low: { latitude: center.lat - latDelta, longitude: center.lng - lngDelta },
-      high: { latitude: center.lat + latDelta, longitude: center.lng + lngDelta },
-    },
-  };
+/**
+ * Places (New): `regionCode` is optional (format + soft bias; Text Search has
+ * no country restrict). Autocomplete may also send `includedRegionCodes` (hard
+ * list; empty = no restrict). Callers pass this from the name searchbar.
+ */
+export function applyPlacesCallerRegion(
+  body: Record<string, unknown>,
+  raw: unknown,
+  kind: "autocomplete" | "text",
+): void {
+  const code = parseCldrRegionCode(raw);
+  if (!code) return;
+  body.regionCode = code;
+  if (kind === "autocomplete") body.includedRegionCodes = [code];
 }
 
 function circleAround(center: GeoOrigin, radiusKm: number) {
@@ -264,66 +250,41 @@ function circleAround(center: GeoOrigin, radiusKm: number) {
   };
 }
 
-/** Autocomplete (New): includedRegionCodes + circle bias or restriction. */
-export function applyPlacesAutocompleteRegion(
+function applyGuestLocationBias(
   body: Record<string, unknown>,
-  policy: ChannelPolicy,
   origin?: GeoOrigin | null,
 ): void {
-  const region = policy.region;
-  if (region.country) {
-    body.regionCode = region.country;
-    body.includedRegionCodes = [region.country];
+  if (!origin || !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng)) {
+    return;
   }
-  const center = regionCenter(region, origin);
-  const km = regionRadiusKm(region, origin);
-  if (!center || km <= 0) return;
-  const area = km > 50 ? rectangleAround(center, km) : circleAround(center, km);
-  if (region.restrict) body.locationRestriction = area;
-  else body.locationBias = area;
+  body.locationBias = circleAround(
+    { lat: origin.lat, lng: origin.lng },
+    8,
+  );
 }
 
-/** Text Search (New): regionCode + circle bias or rectangle restriction. */
-export function applyPlacesTextSearchRegion(
+/** Autocomplete (New): guest pin bias only. Country is not read from policy. */
+export function applyPlacesAutocompleteRegion(
   body: Record<string, unknown>,
-  policy: ChannelPolicy,
+  _policy: ChannelPolicy,
   origin?: GeoOrigin | null,
 ): void {
-  const region = policy.region;
-  if (region.country) body.regionCode = region.country;
-  const center = regionCenter(region, origin);
-  const km = regionRadiusKm(region, origin);
-  if (!center || km <= 0) return;
-  if (region.restrict) body.locationRestriction = rectangleAround(center, km);
-  else body.locationBias = km > 50 ? rectangleAround(center, km) : circleAround(center, km);
+  applyGuestLocationBias(body, origin);
+}
+
+/** Text Search (New): guest pin bias only. Country is not read from policy. */
+export function applyPlacesTextSearchRegion(
+  body: Record<string, unknown>,
+  _policy: ChannelPolicy,
+  origin?: GeoOrigin | null,
+): void {
+  applyGuestLocationBias(body, origin);
 }
 
 export function evaluatePlaceRegion(
-  policy: ChannelPolicy,
-  geo: { lat: number | null; lng: number | null; country?: string | null },
+  _policy: ChannelPolicy,
+  _geo: { lat: number | null; lng: number | null; country?: string | null },
 ): EligibilityResult {
-  const region = policy.region;
-  if (!region.restrict) return { eligible: true };
-  if (region.country) {
-    const got = (geo.country ?? "").trim().toUpperCase();
-    if (got && got !== region.country && !got.startsWith(region.country)) {
-      return {
-        eligible: false,
-        code: "outside_region",
-        reason: `This place is outside ${region.country}.`,
-      };
-    }
-  }
-  if (region.radiusKm > 0) {
-    const km = haversineKm(region.lat, region.lng, geo.lat, geo.lng);
-    if (km > region.radiusKm) {
-      return {
-        eligible: false,
-        code: "outside_region",
-        reason: `This place is outside the ${region.radiusKm} km sourcing radius.`,
-      };
-    }
-  }
   return { eligible: true };
 }
 

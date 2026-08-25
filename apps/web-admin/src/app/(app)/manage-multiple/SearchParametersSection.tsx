@@ -11,7 +11,6 @@ import { ChipRow, FilterCard, ParamCard, StepHeading } from "./SearchFormPrimiti
 
 export function SearchParametersSection({
   maxResults,
-  regionCode,
   minRating,
   minReviews,
   running,
@@ -21,13 +20,11 @@ export function SearchParametersSection({
   estimatedApiCalls,
   estimatedCostUsd,
   onMaxResultsChange,
-  onRegionCodeChange,
   onMinRatingChange,
   onMinReviewsChange,
   onRunSearch,
 }: {
   maxResults: number;
-  regionCode: string;
   minRating: number;
   minReviews: number;
   running: boolean;
@@ -37,7 +34,6 @@ export function SearchParametersSection({
   estimatedApiCalls: number;
   estimatedCostUsd: number;
   onMaxResultsChange: (value: number) => void;
-  onRegionCodeChange: (value: string) => void;
   onMinRatingChange: (value: number) => void;
   onMinReviewsChange: (value: number) => void;
   onRunSearch: () => void;
@@ -47,9 +43,9 @@ export function SearchParametersSection({
       <div className="space-y-3">
         <StepHeading
             title="Search settings"
-          hint="How many results to pull per query, and which country to bias toward."
+          hint="How many results to pull per query."
         />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3">
           <ParamCard
             label="Results per query"
             footer={`${MIN_RESULTS}–${MAX_RESULTS} · more = higher cost`}
@@ -68,21 +64,6 @@ export function SearchParametersSection({
               }}
               aria-label="Max results per query"
               className="font-display w-full bg-transparent text-center text-5xl font-semibold tracking-tight tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-          </ParamCard>
-
-          <ParamCard label="Region" footer="ISO-3166-1 alpha-2">
-            <input
-              value={regionCode}
-              onChange={(e) =>
-                onRegionCodeChange(
-                  e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase(),
-                )
-              }
-              maxLength={2}
-              placeholder="MX"
-              aria-label="Region code"
-              className="font-display block w-full bg-transparent text-center font-mono text-5xl font-semibold tracking-tight uppercase outline-none"
             />
           </ParamCard>
         </div>

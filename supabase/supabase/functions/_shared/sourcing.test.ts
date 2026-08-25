@@ -1,12 +1,14 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
   applyPlacesAutocompleteRegion,
+  applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
   coerceChannelPolicy,
   DEFAULT_REGION,
   evaluatePlaceForChannel,
   familiesForGoogleType,
   familyForGoogleType,
+  parseCldrRegionCode,
 } from "./sourcing.ts";
 
 Deno.test("familyForGoogleType maps known types", () => {
@@ -132,15 +134,19 @@ Deno.test("dual-family type is admitted by either family", () => {
   assertEquals(evaluatePlaceForChannel(barsOnly, nightClub).eligible, true);
 });
 
-Deno.test("old blob without region keeps country-only MX bias", () => {
+Deno.test("old blob without region still stores MX; engine ignores it", () => {
   const policy = coerceChannelPolicy(
     { enabled: true, families: ["restaurants"], minRating: 0, minReviews: 0 },
     "admin_search",
   );
   assertEquals(policy.region, DEFAULT_REGION);
+  const body: Record<string, unknown> = { textQuery: "tacos" };
+  applyPlacesTextSearchRegion(body, policy);
+  assertEquals(body.regionCode, undefined);
+  assertEquals("locationBias" in body, false);
 });
 
-Deno.test("empty country turns region off", () => {
+Deno.test("empty country on the blob does not send Google country params", () => {
   const policy = coerceChannelPolicy(
     {
       enabled: true,
@@ -154,32 +160,12 @@ Deno.test("empty country turns region off", () => {
   const body: Record<string, unknown> = { textQuery: "tacos" };
   applyPlacesTextSearchRegion(body, policy);
   assertEquals(body.regionCode, undefined);
-  assertEquals("locationBias" in body, true);
+  assertEquals("locationBias" in body, false);
 });
 
 const restaurant = { primaryType: "restaurant", rating: 4.5, reviewCount: 200 };
 
-Deno.test("restrict rejects a place outside the country", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 0, restrict: true },
-    },
-    "consumer_add",
-  );
-  const verdict = evaluatePlaceForChannel(policy, restaurant, {
-    lat: 40.7,
-    lng: -74.0,
-    country: "US",
-  });
-  assertEquals(verdict.eligible, false);
-  if (!verdict.eligible) assertEquals(verdict.code, "outside_region");
-});
-
-Deno.test("restrict rejects a place outside the radius", () => {
+Deno.test("sourcing does not reject a place by country or radius", () => {
   const policy = coerceChannelPolicy(
     {
       enabled: true,
@@ -191,34 +177,14 @@ Deno.test("restrict rejects a place outside the radius", () => {
     "consumer_add",
   );
   const verdict = evaluatePlaceForChannel(policy, restaurant, {
-    lat: 25.6866,
-    lng: -100.3161,
-    country: "MX",
-  });
-  assertEquals(verdict.eligible, false);
-  if (!verdict.eligible) assertEquals(verdict.code, "outside_region");
-});
-
-Deno.test("bias does not reject an outsider after Google returns it", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 20, restrict: false },
-    },
-    "consumer_add",
-  );
-  const verdict = evaluatePlaceForChannel(policy, restaurant, {
-    lat: 25.6866,
-    lng: -100.3161,
-    country: "MX",
+    lat: 40.7,
+    lng: -74.0,
+    country: "US",
   });
   assertEquals(verdict, { eligible: true });
 });
 
-Deno.test("Autocomplete gets includedRegionCodes and a circle bias", () => {
+Deno.test("Autocomplete policy region is not applied; caller code is", () => {
   const policy = coerceChannelPolicy(
     {
       enabled: true,
@@ -231,13 +197,15 @@ Deno.test("Autocomplete gets includedRegionCodes and a circle bias", () => {
   );
   const body: Record<string, unknown> = { input: "taco" };
   applyPlacesAutocompleteRegion(body, policy);
+  assertEquals(body.regionCode, undefined);
+  assertEquals(body.includedRegionCodes, undefined);
+  assertEquals("locationBias" in body, false);
+  applyPlacesCallerRegion(body, "MX", "autocomplete");
   assertEquals(body.regionCode, "MX");
   assertEquals(body.includedRegionCodes, ["MX"]);
-  assertEquals("locationBias" in body, true);
-  assertEquals("locationRestriction" in body, false);
 });
 
-Deno.test("Text Search restrict uses a rectangle, never a circle", () => {
+Deno.test("guest pin biases Text Search without a country", () => {
   const policy = coerceChannelPolicy(
     {
       enabled: true,
@@ -249,26 +217,16 @@ Deno.test("Text Search restrict uses a rectangle, never a circle", () => {
     "memo_search",
   );
   const body: Record<string, unknown> = { textQuery: "mezcal" };
-  applyPlacesTextSearchRegion(body, policy);
-  const restriction = body.locationRestriction as { rectangle?: unknown; circle?: unknown };
-  assertEquals(Boolean(restriction?.rectangle), true);
-  assertEquals(restriction?.circle, undefined);
+  applyPlacesTextSearchRegion(body, policy, { lat: 19.43, lng: -99.13 });
+  assertEquals(body.regionCode, undefined);
+  assertEquals("locationRestriction" in body, false);
+  const bias = body.locationBias as { circle?: unknown };
+  assertEquals(Boolean(bias?.circle), true);
 });
 
-Deno.test("Text Search bias over 50 km uses a rectangle", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 80, restrict: false },
-    },
-    "admin_search",
-  );
-  const body: Record<string, unknown> = { textQuery: "taco" };
-  applyPlacesTextSearchRegion(body, policy);
-  const bias = body.locationBias as { rectangle?: unknown; circle?: unknown };
-  assertEquals(Boolean(bias?.rectangle), true);
-  assertEquals(bias?.circle, undefined);
+Deno.test("parseCldrRegionCode drops junk and accepts two letters", () => {
+  assertEquals(parseCldrRegionCode(""), "");
+  assertEquals(parseCldrRegionCode("mx"), "MX");
+  assertEquals(parseCldrRegionCode("MEX"), "");
+  assertEquals(parseCldrRegionCode("12"), "");
 });

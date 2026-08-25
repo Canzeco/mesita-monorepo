@@ -41,6 +41,7 @@ import {
   type ChannelKey,
   type ChannelPolicy,
   applyPlacesAutocompleteRegion,
+  applyPlacesCallerRegion,
   evaluatePlaceForChannel,
   readChannelPolicy,
 } from "./sourcing.ts";
@@ -68,6 +69,9 @@ export type SuggestPlacesArgs = {
   // app_config.sourcing_config[sourcingChannel]. On-Mesita rows always
   // pass — they're already onboarded.
   sourcingChannel?: ChannelKey;
+  // Optional CLDR country from the name searchbar (Manage Single). Empty
+  // omits Google's regionCode / includedRegionCodes — neither API requires them.
+  regionCode?: string;
 };
 
 // Runs the merge and returns the full HTTP response for the facade to
@@ -107,7 +111,14 @@ export async function suggestPlaces(
   // Fire Google + Mesita searches in parallel. Either can fail
   // independently; we merge whatever comes back.
   const [googleResult, mesitaResult] = await Promise.allSettled([
-    fetchGooglePredictions(input, sessionToken, apiKey, googleTypeFilter, sourcingPolicy),
+    fetchGooglePredictions(
+      input,
+      sessionToken,
+      apiKey,
+      googleTypeFilter,
+      sourcingPolicy,
+      args.regionCode,
+    ),
     fetchMesitaPredictions(admin, input, callerUserId),
   ]);
 
@@ -179,6 +190,7 @@ async function fetchGooglePredictions(
   apiKey: string,
   typeFilter: GoogleTypeFilter,
   policy: ChannelPolicy | null,
+  regionCode?: string,
 ): Promise<{
   predictions: Prediction[];
   errorEnvelope?: Record<string, unknown>;
@@ -189,6 +201,7 @@ async function fetchGooglePredictions(
 
   const body: Record<string, unknown> = { input, sessionToken };
   if (policy) applyPlacesAutocompleteRegion(body, policy);
+  applyPlacesCallerRegion(body, regionCode, "autocomplete");
   if (typeFilter === "legacy") {
     // Legacy path (no sourcing channel): broad static hospitality filter.
     body.includedPrimaryTypes = [

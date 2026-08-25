@@ -55,7 +55,7 @@ export function SearchTab({
   onSendToCreate?: (placeIds: string[]) => void;
 }) {
   const [queriesText, setQueriesText] = useState("");
-  const [regionCode, setRegionCode] = useState("MX");
+  const [regionCode, setRegionCode] = useState("");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
   const [minRating, setMinRating] = useState(0);
   const [minReviews, setMinReviews] = useState(0);
@@ -93,7 +93,7 @@ export function SearchTab({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           queries,
-          regionCode: regionCode.trim().toUpperCase() || "MX",
+          regionCode: regionCode.trim().toUpperCase(),
           maxResultsPerQuery: maxResults,
           minRating,
           minUserRatingCount: minReviews,
@@ -161,11 +161,12 @@ export function SearchTab({
           estimatedApiCalls={estimatedApiCalls}
           overLimit={overLimit}
           onQueriesTextChange={setQueriesText}
+          regionCode={regionCode}
+          onRegionCodeChange={setRegionCode}
         />
 
         <SearchParametersSection
           maxResults={maxResults}
-          regionCode={regionCode}
           minRating={minRating}
           minReviews={minReviews}
           running={running}
@@ -175,7 +176,6 @@ export function SearchTab({
           estimatedApiCalls={estimatedApiCalls}
           estimatedCostUsd={estimatedCostUsd}
           onMaxResultsChange={setMaxResults}
-          onRegionCodeChange={setRegionCode}
           onMinRatingChange={setMinRating}
           onMinReviewsChange={setMinReviews}
           onRunSearch={runSearch}

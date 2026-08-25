@@ -2,10 +2,7 @@ import {
   GOOGLE_PLACES_TEXT_SEARCH_URL,
   googleErrorFromResponse,
 } from "../_shared/google-places.ts";
-import {
-  applyPlacesTextSearchRegion,
-  type ChannelPolicy,
-} from "../_shared/sourcing.ts";
+import { applyPlacesCallerRegion } from "../_shared/sourcing.ts";
 
 const PAGE_SIZE = 20;
 const MAX_PAGES = 3;
@@ -34,7 +31,6 @@ export type PlaceLite = {
 
 export async function searchTextWithPagination(
   textQuery: string,
-  policy: ChannelPolicy,
   maxResults: number,
   apiKey: string,
   regionCodeOverride?: string,
@@ -49,9 +45,7 @@ export async function searchTextWithPagination(
       textQuery,
       pageSize: Math.min(PAGE_SIZE, maxResults - out.length),
     };
-    applyPlacesTextSearchRegion(body, policy);
-    const override = (regionCodeOverride ?? "").trim().toUpperCase();
-    if (override) body.regionCode = override;
+    applyPlacesCallerRegion(body, regionCodeOverride, "text");
     if (pageToken) body.pageToken = pageToken;
 
     const r = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
