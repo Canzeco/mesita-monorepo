@@ -1,13 +1,12 @@
 import { PageContainer } from "@/components/PageContainer";
 import { PromosLayoutShell } from "./PromosLayoutShell";
 import { PromosState } from "./PromosState";
-import { PromosSaveFooter } from "./PromosSaveFooter";
 import { getPromosConfig } from "./actions";
 import { DEFAULT_PROMOS } from "./promos";
 
-// Promos Config — tabs Tiers · Distribution. The layout owns the DOCUMENT:
-// server-seed, dirty flag, one Save. Both contexts live on Tiers; a Save per
-// tab would revert the other tab's unsaved edits.
+// Promos Config — one page. The layout owns the DOCUMENT: server-seed, dirty
+// flag, one Save. Save sits on the page after the knobs so the simulator
+// below does not own a control.
 //
 // Server-seeded like the other blob editors so a failed GET surfaces as
 // loadError and Save stays blocked (MESITA-737) — never silently edit code
@@ -30,7 +29,6 @@ export default async function PromosConfigLayout({
           loadError={res.ok ? null : res.error}
         >
           {children}
-          <PromosSaveFooter />
         </PromosState>
       </PromosLayoutShell>
     </PageContainer>

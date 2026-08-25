@@ -1,7 +1,6 @@
-import { TiersClient } from "../TiersClient";
+import { redirect } from "next/navigation";
 
-// Tiers — three visit ladders. Orders Promos is Soon. Config state lives in
-// the layout.
-export default function PromosTiersPage() {
-  return <TiersClient />;
+// Bookmarks to the old Tiers tab land on the one Promos Config page.
+export default function PromosTiersRedirect() {
+  redirect("/rewards-config");
 }

@@ -306,3 +306,19 @@ describe("Tiers HTML does not price Orders Promos", () => {
     expect(src).not.toContain("setOrders");
   });
 });
+
+describe("Promos Config is one page", () => {
+  it("has no tab nav and composes knobs plus distribution", () => {
+    const shell = readFileSync(
+      join(__dirname, "PromosLayoutShell.tsx"),
+      "utf8",
+    );
+    const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
+    expect(shell).not.toContain("ConfigTabNav");
+    expect(nav).not.toContain("PROMOS_SUBROUTES");
+    expect(page).toContain("TiersClient");
+    expect(page).toContain("PromosDistributionClient");
+    expect(page).not.toContain("redirect");
+  });
+});

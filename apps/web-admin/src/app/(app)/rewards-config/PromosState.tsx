@@ -24,9 +24,8 @@ import {
   type VisitsComponents,
 } from "./promos";
 
-// ONE document, several views (D5). Visits and Orders are subpages of the same
-// blob, so config state, the dirty flag, the Save action and the load error all
-// live HERE, in the layout, not in either subpage.
+// ONE document. Visit knobs, the Soon field, and the distribution simulator
+// share this state. The dirty flag, Save, and load error live HERE.
 //
 // The alternative — a Save button per subpage, each sending the whole blob —
 // would let a Save on Visits revert unsaved Orders edits, with a success
