@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { snapDiscountCap } from "@/lib/business/strategies";
 import {
@@ -291,5 +293,16 @@ describe("bonuses are per strategy", () => {
     expect(totalFor(cfg, "conservative", "bronze", "free", "story")).toBe(
       10 + cfg.visits.bonuses.conservative.story,
     );
+  });
+});
+
+describe("Tiers HTML does not price Orders Promos", () => {
+  it("has a Soon field and no Orders knobs", () => {
+    const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
+    expect(src).toContain("OrdersPromosSoon");
+    expect(src).toContain("Soon");
+    expect(src).not.toContain('context="orders"');
+    expect(src).not.toContain("not-wired");
+    expect(src).not.toContain("setOrders");
   });
 });

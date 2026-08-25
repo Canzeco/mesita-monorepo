@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, Gift, Layers } from "lucide-react";
 
-// Promos Config — two sub-tabs. Tiers prices every rate: six boxes, one per
-// (paid strategy × context). Distribution simulates 1,000 visits.
+// Promos Config — two sub-tabs. Tiers prices every visit rate: three boxes,
+// one per paid strategy. Orders Promos is a Soon field — no remote ticket.
 //
 // Labels are the bare nouns — the page heading already says Promos Config, and
 // a tab that repeats its own heading stutters.

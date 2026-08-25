@@ -17,7 +17,6 @@ import {
   BONUS_META,
   CLASS_KEYS,
   CLASS_META,
-  CONTEXT_META,
   PLAN_KEYS,
   PLAN_META,
   STRATEGY_KEYS,
@@ -25,18 +24,16 @@ import {
   modelWarnings,
   totalFor,
   type ActionKey,
-  type ContextKey,
   type StrategyKey,
 } from "./promos";
 
-// TIERS — six boxes, one per (paid strategy × context).
+// TIERS — three visit boxes, one per paid strategy. A place picks ONE
+// strategy; reading down a column is that place's whole program. Each box:
+// floor first, then signed adders. Pinned rungs (Bronze, Free) are an em
+// dash — "0%" is a real rate and would read as one.
 //
-// A place picks ONE strategy, so reading down a column is that place's whole
-// program. Each box: floor first, then signed adders. Pinned rungs (Bronze,
-// Free) are an em dash — "0%" is a real rate and would read as one.
-//
-// Orders has no Class rows (presence is what class buys) and is not wired:
-// the knobs save, nothing reads them.
+// Orders Promos is Soon: no remote ticket, so no knobs. The blob still
+// carries an orders grid; this page does not edit it.
 
 const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   standing: "Base",
@@ -46,24 +43,14 @@ const PREVIEW_ACTION_LABEL: Record<ActionKey, string> = {
   welcome: "+ Welcome",
 };
 
-function TierBox({
-  strategy,
-  context,
-}: {
-  strategy: StrategyKey;
-  context: ContextKey;
-}) {
-  const { cfg, visits, orders, setVisits, setOrders, setBonus, pending } =
-    usePromosState();
+function TierBox({ strategy }: { strategy: StrategyKey }) {
+  const { cfg, visits, setVisits, setBonus, pending } = usePromosState();
 
-  const isVisits = context === "visits";
-  const comp = isVisits ? visits[strategy] : orders[strategy];
-  const bonuses = cfg[context].bonuses[strategy];
+  const bonuses = cfg.visits.bonuses[strategy];
+  const label = `${STRATEGY_META[strategy].name} · Visits`;
 
   const setBase = (v: number) =>
-    isVisits
-      ? setVisits({ ...visits, [strategy]: { ...visits[strategy], base: v } })
-      : setOrders({ ...orders, [strategy]: { ...orders[strategy], base: v } });
+    setVisits({ ...visits, [strategy]: { ...visits[strategy], base: v } });
 
   const setClass = (c: (typeof CLASS_KEYS)[number], v: number) =>
     setVisits({
@@ -75,46 +62,26 @@ function TierBox({
     });
 
   const setPlan = (v: number) =>
-    isVisits
-      ? setVisits({
-          ...visits,
-          [strategy]: {
-            ...visits[strategy],
-            plan: { ...visits[strategy].plan, premium: v },
-          },
-        })
-      : setOrders({
-          ...orders,
-          [strategy]: {
-            ...orders[strategy],
-            plan: { ...orders[strategy].plan, premium: v },
-          },
-        });
-
-  const label = `${STRATEGY_META[strategy].name} · ${CONTEXT_META[context].name}`;
+    setVisits({
+      ...visits,
+      [strategy]: {
+        ...visits[strategy],
+        plan: { ...visits[strategy].plan, premium: v },
+      },
+    });
 
   return (
     <SectionCard
       icon={<span className="bg-muted h-2.5 w-2.5 rounded-full" aria-hidden />}
       title={label}
-      subtitle={
-        isVisits
-          ? "Floor, then signed adders. Class prices a body in the room."
-          : "Floor, then signed adders. No class — a delivery fills no chair."
-      }
-      status={
-        isVisits ? (
-          <KnobStatus kind="enforced" reason="THE TICKET" />
-        ) : (
-          <KnobStatus kind="not-wired" reason="no remote ticket yet" />
-        )
-      }
+      subtitle="Floor, then signed adders. Class prices a body in the room."
+      status={<KnobStatus kind="enforced" reason="THE TICKET" />}
     >
       <div className="mt-3">
         <div className="bg-muted/40 border-border/70 mb-2 rounded-lg border px-3 py-1">
           <BoxRow label="Base" hint="Standing rate, before anything is earned">
             <RateSelect
-              value={comp.base}
+              value={visits[strategy].base}
               disabled={pending}
               ariaLabel={`${label} base standing rate`}
               onChange={setBase}
@@ -131,29 +98,25 @@ function TierBox({
             disabled={pending}
             signed
             ariaLabel={`${label} Welcome bonus, adds`}
-            onChange={(v) => setBonus(context, strategy, "welcome", v)}
+            onChange={(v) => setBonus("visits", strategy, "welcome", v)}
           />
         </BoxRow>
 
-        {isVisits && (
-          <>
-            <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-              Class
-            </p>
-            {CLASS_KEYS.map((c) => (
-              <BoxRow key={c} label={CLASS_META[c].name}>
-                <RateSelect
-                  value={visits[strategy].class[c]}
-                  disabled={pending}
-                  signed
-                  pinned={c === "bronze"}
-                  ariaLabel={`${label} ${CLASS_META[c].name} class bonus, adds`}
-                  onChange={(v) => setClass(c, v)}
-                />
-              </BoxRow>
-            ))}
-          </>
-        )}
+        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
+          Class
+        </p>
+        {CLASS_KEYS.map((c) => (
+          <BoxRow key={c} label={CLASS_META[c].name}>
+            <RateSelect
+              value={visits[strategy].class[c]}
+              disabled={pending}
+              signed
+              pinned={c === "bronze"}
+              ariaLabel={`${label} ${CLASS_META[c].name} class bonus, adds`}
+              onChange={(v) => setClass(c, v)}
+            />
+          </BoxRow>
+        ))}
 
         <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
           Plan
@@ -161,7 +124,7 @@ function TierBox({
         {PLAN_KEYS.map((k) => (
           <BoxRow key={k} label={PLAN_META[k].name}>
             <RateSelect
-              value={comp.plan[k]}
+              value={visits[strategy].plan[k]}
               disabled={pending}
               signed
               pinned={k === "free"}
@@ -185,12 +148,27 @@ function TierBox({
               disabled={pending}
               signed
               ariaLabel={`${label} ${BONUS_META[k].name} bonus, adds`}
-              onChange={(v) => setBonus(context, strategy, k, v)}
+              onChange={(v) => setBonus("visits", strategy, k, v)}
             />
           </BoxRow>
         ))}
       </div>
     </SectionCard>
+  );
+}
+
+function OrdersPromosSoon() {
+  return (
+    <section className="border-border bg-card rounded-2xl border p-4 sm:px-6">
+      <BoxRow
+        label="Orders"
+        hint="Promos for a remote ticket — later, when Orders has a rail."
+      >
+        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 type-meta font-bold tracking-wider uppercase">
+          Soon
+        </span>
+      </BoxRow>
+    </section>
   );
 }
 
@@ -245,18 +223,17 @@ export function TiersClient() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
-          <div key={s} className="space-y-4">
-            <TierBox strategy={s} context="visits" />
-            <TierBox strategy={s} context="orders" />
-          </div>
+          <TierBox key={s} strategy={s} />
         ))}
       </div>
 
+      <OrdersPromosSoon />
+
       <Collapsible summary="How a bill stacks">
         <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
-          Standing (base + class locally + plan) plus Welcome plus every earned
-          action, clamped to 100%, on the first cap-pesos. Only the integer
-          percent leaves the server. Orders knobs save; no ticket reads them.
+          Standing (base + class + plan) plus Welcome plus every earned action,
+          clamped to 100%, on the first cap-pesos. Only the integer percent
+          leaves the server.
         </p>
       </Collapsible>
 

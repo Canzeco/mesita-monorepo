@@ -2,7 +2,7 @@
 
 import { ALLOWED_RATES } from "./promos";
 
-// Shared chrome for the six-box editor. The one idea these primitives carry:
+// Shared chrome for the three-box visit editor. The one idea these primitives carry:
 // a number on this page is either a FLOOR or an INCREMENT, and the reader must
 // never have to guess which. Floors render plain ("20%"); increments render
 // signed ("+20"); a pinned-zero rung renders as an em dash, because "0%" is a
