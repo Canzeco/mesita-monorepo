@@ -54,7 +54,7 @@ export type HeaderFact = {
   key: string;
   label: string;
   on: boolean | "unknown";
-  /** Chip text: `true`/`false`/`?` for bools, `0`/`1`/`2` for Promoting. */
+  /** Status-box chip (`true`/`false`/`0|1|2`). Header prints `label` only. */
   chip: string;
 };
 
