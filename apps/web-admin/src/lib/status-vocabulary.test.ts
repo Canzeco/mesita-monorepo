@@ -5,10 +5,14 @@ import {
   INTAKE_FUNCTION_COUNT,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
+  operatorPromotingLevel,
+  promotingLevelChip,
+  promotingLevelFromStrategy,
+  statusBoolChip,
 } from "./status-vocabulary";
 
 describe("status vocabulary", () => {
-  it("is seven general bools plus eleven Intake functions 0–10", () => {
+  it("is seven general facts plus eleven Intake functions 0–10", () => {
     expect(GENERAL_STATUS_COUNT).toBe(7);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);
     expect(GENERAL_STATUS_FACTS.map((f) => f.label)).toEqual([
@@ -36,5 +40,28 @@ describe("status vocabulary", () => {
     expect(INTAKE_FUNCTIONS.map((f) => intakeFunctionLabel(f.n, f.label))).toEqual(
       INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`),
     );
+  });
+
+  it("binary chips are true / false, not the fact name", () => {
+    expect(statusBoolChip(true)).toBe("true");
+    expect(statusBoolChip(false)).toBe("false");
+    expect(statusBoolChip("unknown")).toBe("?");
+    expect(statusBoolChip("loading")).toBe("…");
+    expect(statusBoolChip(null)).toBe("?");
+  });
+
+  it("Promoting is 0 | 1 | 2 — engine Dominant displays as 2", () => {
+    expect(operatorPromotingLevel(0)).toBe(0);
+    expect(operatorPromotingLevel(1)).toBe(1);
+    expect(operatorPromotingLevel(2)).toBe(2);
+    expect(operatorPromotingLevel(3)).toBe(2);
+    expect(operatorPromotingLevel(-1)).toBe(0);
+    expect(operatorPromotingLevel(undefined)).toBe(0);
+    expect(promotingLevelChip(3)).toBe("2");
+    expect(promotingLevelFromStrategy(false, "aggressive")).toBe(0);
+    expect(promotingLevelFromStrategy(true, "conservative")).toBe(1);
+    expect(promotingLevelFromStrategy(true, "aggressive")).toBe(2);
+    expect(promotingLevelFromStrategy(true, "dominant")).toBe(2);
+    expect(promotingLevelFromStrategy(true, null)).toBe(2);
   });
 });

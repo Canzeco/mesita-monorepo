@@ -1,4 +1,9 @@
 import type { PlaceEnrichmentStatus } from "./actions";
+import {
+  operatorPromotingLevel,
+  promotingLevelChip,
+  statusBoolChip,
+} from "@/lib/status-vocabulary";
 
 /** True while the Intaker pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
@@ -49,6 +54,8 @@ export type HeaderFact = {
   key: string;
   label: string;
   on: boolean | "unknown";
+  /** Chip text: `true`/`false`/`?` for bools, `0`/`1`/`2` for Promoting. */
+  chip: string;
 };
 
 export function generalHeaderFacts(input: {
@@ -58,7 +65,8 @@ export function generalHeaderFacts(input: {
   enrich_pulse?: number;
   enrich_pulse_total?: number;
   partner: boolean;
-  promoting: boolean;
+  promoting?: boolean;
+  promotingLevel?: number;
   verified: boolean | "unknown";
 }): HeaderFact[] {
   const created: boolean | "unknown" =
@@ -73,14 +81,36 @@ export function generalHeaderFacts(input: {
   const total = typeof input.enrich_pulse_total === "number" ? input.enrich_pulse_total : null;
   const enriched: boolean | "unknown" =
     pulse === null || total === null || total === 0 ? "unknown" : pulse >= total;
+  const level = operatorPromotingLevel(
+    typeof input.promotingLevel === "number"
+      ? input.promotingLevel
+      : input.promoting
+        ? 2
+        : 0,
+  );
   return [
-    { key: "seeded", label: "Created", on: created },
-    { key: "active", label: "Active", on: active },
-    { key: "listed", label: "Listed", on: listed },
-    { key: "enriched", label: "Enriched", on: enriched },
-    { key: "verified", label: "Verified", on: input.verified },
-    { key: "partner", label: "Partner", on: input.partner },
-    { key: "promoting", label: "Promoting", on: input.promoting },
+    { key: "seeded", label: "Created", on: created, chip: statusBoolChip(created) },
+    { key: "active", label: "Active", on: active, chip: statusBoolChip(active) },
+    { key: "listed", label: "Listed", on: listed, chip: statusBoolChip(listed) },
+    { key: "enriched", label: "Enriched", on: enriched, chip: statusBoolChip(enriched) },
+    {
+      key: "verified",
+      label: "Verified",
+      on: input.verified,
+      chip: statusBoolChip(input.verified),
+    },
+    {
+      key: "partner",
+      label: "Partner",
+      on: input.partner,
+      chip: statusBoolChip(input.partner),
+    },
+    {
+      key: "promoting",
+      label: "Promoting",
+      on: level > 0,
+      chip: promotingLevelChip(level),
+    },
   ];
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
-// Status — the Statuses box: seven facts, each a bool, each from its own
-// source. Intake (0. Seed … 10. Semantic) lives in IntakeStatusCard.
+// Status — the Statuses box: six bools (`true`/`false`) plus Promoting
+// `0|1|2`, each from its own source. Intake (0. Seed … 10. Semantic)
+// lives in IntakeStatusCard.
 //
 // The state is Created; Seed is Intake function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
@@ -12,7 +13,7 @@
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Verified   approved project_verifications
 //   Partner    plan ≠ free
-//   Promoting  live discount
+//   Promoting  0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -41,9 +42,16 @@ import {
   membershipPillState,
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
+import {
+  OPERATOR_PROMOTING_LABEL,
+  promotingLevelChip,
+  promotingLevelFromStrategy,
+  statusBoolChip,
+} from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): seven bools. Intake is the next box —
-// not chips under Enriched, and not a Create 1–4 / Enrich 1–10 split.
+// Statuses box (Pato, 2026-08-25): six bools + Promoting 0|1|2. Intake
+// is the next box — not chips under Enriched, and not a Create 1–4 /
+// Enrich 1–10 split. Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
@@ -58,8 +66,9 @@ import { strategyForPlace } from "@/lib/business/strategies";
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partner    the place pays Mesita. A deal: stable, internal.
-//   Promoting  a guest gets a discount here RIGHT NOW. Volatile, and the only
-//              one of the six a guest is ever shown.
+//   Promoting  0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
+//              only one of the six a guest is ever shown. Engine Dominant
+//              (3) displays as 2.
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
 // payload (business-web-get-overview → _shared/place-status.ts and
@@ -100,6 +109,17 @@ export function isPromotingNow(place: AdminPlace): boolean {
   return state !== "paused" && state !== "forfeited";
 }
 
+/** Operator Promoting chip: 0 | 1 | 2 from the live lane + strategy. */
+export function placeOperatorPromotingLevel(place: AdminPlace): 0 | 1 | 2 {
+  const strategy = strategyForPlace({
+    welcome_free_rate: place.welcome_free_rate,
+    welcome_premium_rate: place.welcome_premium_rate,
+    free_rate: place.free_rate,
+    premium_rate: place.premium_rate,
+  });
+  return promotingLevelFromStrategy(isPromotingNow(place), strategy);
+}
+
 const PLAN_LABEL: Record<string, string> = {
   free: "Free",
   pro: "Pro",
@@ -119,6 +139,7 @@ export function StatusCard({
   const plan = typeof place.plan === "string" ? place.plan : "free";
   const partner = isMemberPlan(plan);
   const promoting = isPromotingNow(place);
+  const promotingLevel = placeOperatorPromotingLevel(place);
   const state = membershipPillState(place);
   const strikes = effectiveStrikeCount(place);
   const strategy = strategyForPlace({
@@ -172,22 +193,13 @@ export function StatusCard({
   // Three Google values plus silence, collapsed onto the row's tri-state:
   // OPERATIONAL is a yes, either CLOSED_* is a no, and an absent value is
   // "unknown" rather than a false no — the same rule Created and Listed follow.
-  // The chip keeps the verbatim distinction, because CLOSED_TEMPORARILY (a
-  // refurb, still a real business) and CLOSED_PERMANENTLY (dead) are not the
-  // same operational fact and a bare "No" would erase the difference.
+  // The chip is the bool; CLOSED_* wording stays in the detail line.
   const bizStatus = typeof place.business_status === "string"
     ? place.business_status
     : null;
   const operating: boolean | "unknown" = bizStatus === null
     ? "unknown"
     : bizStatus === "OPERATIONAL";
-  const operatingChip = bizStatus === "OPERATIONAL"
-    ? "Active"
-    : bizStatus === "CLOSED_TEMPORARILY"
-      ? "Temporarily closed"
-      : bizStatus === "CLOSED_PERMANENTLY"
-        ? "Permanently closed"
-        : undefined;
   // A liveness claim with no date reads as current however old it is, so the
   // row says when Google last told us.
   const operatingSeen = typeof place.business_status_at === "string"
@@ -246,18 +258,19 @@ export function StatusCard({
               ? " · live"
               : " · costs them nothing");
 
+  const promotingName = OPERATOR_PROMOTING_LABEL[promotingLevel];
   const promotingDetail =
     strategy === null
-      ? "Custom rates — no preset strategy."
-      : strategy === "zero"
-        ? "Zero strategy — no discount offered."
-        : state === "paused"
-          ? "Lane paused — the strategy is set but nothing is claimable."
+      ? `Custom rates (${promotingLevel}) — no preset strategy.`
+      : strategy === "zero" || promotingLevel === 0
+        ? state === "paused"
+          ? "Lane paused — the strategy is set but nothing is claimable (0)."
           : state === "forfeited"
-            ? "Lane closed after three strikes."
+            ? "Lane closed after three strikes (0)."
             : !partner
-              ? "No paid plan, so no discount resolves."
-              : `${strategy.charAt(0).toUpperCase() + strategy.slice(1)} strategy, lane open.`;
+              ? "No paid plan, so no discount resolves (0)."
+              : "Zero (0) — no discount offered."
+        : `${promotingName} (${promotingLevel}) strategy, lane open.`;
 
   return (
     <SectionCard
@@ -268,45 +281,51 @@ export function StatusCard({
       <div className="mt-5 flex flex-col">
         <StatusRow
           name="Created"
-          value={seeded}
+          on={seeded === true}
+          chip={statusBoolChip(seeded)}
           tint="slate"
           detail={seededDetail}
         />
         <StatusRow
           name="Active"
-          value={operating}
+          on={operating === true}
+          chip={statusBoolChip(operating)}
           tint="teal"
-          chipLabel={operatingChip}
           detail={operatingDetail}
         />
         <StatusRow
           name="Listed"
-          value={listed}
+          on={listed === true}
+          chip={statusBoolChip(listed)}
           tint="indigo"
           detail={listedDetail}
           action={<ListedToggle place={place} listed={listed} />}
         />
         <StatusRow
           name="Enriched"
-          value={enriched}
+          on={enriched === true}
+          chip={statusBoolChip(enriched)}
           tint="violet"
           detail={enrichedDetail}
         />
         <StatusRow
           name="Verified"
-          value={verified}
+          on={verified === true}
+          chip={statusBoolChip(verified)}
           tint="emerald"
           detail={verifiedDetail}
         />
         <StatusRow
           name="Partner"
-          value={partner}
+          on={partner}
+          chip={statusBoolChip(partner)}
           tint="sky"
           detail={partnerDetail}
         />
         <StatusRow
           name="Promoting"
-          value={promoting}
+          on={promotingLevel > 0}
+          chip={promotingLevelChip(promotingLevel)}
           tint="pink"
           detail={promotingDetail}
         />
@@ -336,26 +355,24 @@ function methodLabel(method: string): string {
 
 function StatusRow({
   name,
-  value,
+  on,
+  chip,
   tint,
   detail,
-  chipLabel,
   action,
   children,
 }: {
   name: string;
-  value: boolean | "unknown" | "loading";
+  on: boolean;
+  /** `true`/`false`/`?`/`…` for bools, `0`/`1`/`2` for Promoting. */
+  chip: string;
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
-  /** Overrides the chip text in BOTH states. Active uses this for Google's
-   *  CLOSED_* wording. */
-  chipLabel?: string;
   /** Control rendered under the detail line. Only Listed has one: it is the
    *  only fact on this card an operator sets directly rather than earns. */
   action?: React.ReactNode;
   children?: React.ReactNode;
 }) {
-  const on = value === true;
   const chipClass = {
     slate: "bg-slate-500/10 text-slate-700",
     teal: "bg-teal-500/10 text-teal-700",
@@ -379,19 +396,9 @@ function StatusRow({
           "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold tabular-nums " +
           (on ? chipClass : "bg-muted text-muted-foreground")
         }
-        aria-label={`${name}: ${
-          value === "loading"
-            ? "checking"
-            : value === "unknown"
-              ? "unknown"
-              : (chipLabel ?? (on ? "yes" : "no"))
-        }`}
+        aria-label={`${name}: ${chip}`}
       >
-        {value === "loading"
-          ? "…"
-          : value === "unknown"
-            ? "?"
-            : (chipLabel ?? (on ? name : "—"))}
+        {chip}
       </span>
     </div>
   );

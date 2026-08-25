@@ -110,5 +110,23 @@ describe("generalHeaderFacts", () => {
     const facts = generalHeaderFacts(base);
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
   });
+
+  it("bool chips are true / false; Promoting is 0 | 1 | 2", () => {
+    const off = generalHeaderFacts(base);
+    expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
+    expect(off.find((f) => f.key === "promoting")?.chip).toBe("0");
+    const on = generalHeaderFacts({
+      ...base,
+      partner: true,
+      promotingLevel: 1,
+      verified: true,
+    });
+    expect(on.find((f) => f.key === "partner")?.chip).toBe("true");
+    expect(on.find((f) => f.key === "verified")?.chip).toBe("true");
+    expect(on.find((f) => f.key === "promoting")?.chip).toBe("1");
+    expect(on.find((f) => f.key === "promoting")?.on).toBe(true);
+    const dominant = generalHeaderFacts({ ...base, promotingLevel: 3 });
+    expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
+  });
 });
 
