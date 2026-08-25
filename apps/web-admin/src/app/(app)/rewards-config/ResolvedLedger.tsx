@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { Calculator } from "lucide-react";
+
+import { SectionCard } from "@/components/admin-ui/config";
 import {
   CLASS_KEYS,
   CLASS_META,
@@ -73,11 +76,11 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
   );
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:p-5">
-      <p className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-        Resolved
-      </p>
-
+    <SectionCard
+      icon={<Calculator className="text-secondary h-4 w-4" />}
+      title="Calculator"
+      subtitle="Pick a guest. The visit bill adds up. Not orders, not prepaid."
+    >
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {STRATEGY_KEYS.map((s) => (
           <button
@@ -169,6 +172,6 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
           </dd>
         </div>
       </dl>
-    </section>
+    </SectionCard>
   );
 }

@@ -191,6 +191,7 @@ export function PromosSection({
   const [switchPending, startSwitch] = useTransition();
   const [capPending, startCap] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [capError, setCapError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
   const [modalBusy, setModalBusy] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
@@ -299,13 +300,13 @@ export function PromosSection({
     const prev = v;
     const optimistic: AdminPlace = { ...v, monthly_promo_cap: cap };
     applyPlace(optimistic);
-    setSwitchError(null);
+    setCapError(null);
 
     startCap(async () => {
       const r = await setPlaceStrategy(prev.id, { monthly_promo_cap: cap });
       if (!r.ok) {
         revertPlace(prev);
-        setSwitchError(r.error);
+        setCapError(r.error);
         return;
       }
       applyPlace(r.data);
@@ -428,6 +429,13 @@ export function PromosSection({
             have nothing to cap.
           </p>
         )}
+        <div aria-live="polite">
+          {capError && (
+            <div className="mt-3">
+              <ErrorNote message={capError} />
+            </div>
+          )}
+        </div>
       </SectionCard>
 
       <FaqsBox

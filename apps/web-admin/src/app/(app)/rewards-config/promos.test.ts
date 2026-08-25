@@ -304,6 +304,7 @@ describe("Tiers HTML prices visits only", () => {
     expect(src).not.toContain("OrdersPromosSoon");
     expect(src).not.toContain('context="orders"');
     expect(src).not.toContain("setOrders");
+    expect(src).not.toContain("ResolvedLedger");
   });
 });
 
@@ -320,6 +321,13 @@ describe("Promos Config is one page", () => {
     expect(page).toContain("TiersClient");
     expect(page).toContain("PromosDistributionClient");
     expect(page).toContain("PromosSaveFooter");
+    expect(page).toContain("PromosCalculator");
+    expect(page.indexOf("PromosDistributionClient")).toBeLessThan(
+      page.indexOf("PromosCalculator"),
+    );
+    const ledger = readFileSync(join(__dirname, "ResolvedLedger.tsx"), "utf8");
+    expect(ledger).toContain('title="Calculator"');
+    expect(ledger).not.toMatch(/>\s*Resolved\s*</);
     const tiers = readFileSync(join(__dirname, "tiers/page.tsx"), "utf8");
     const dist = readFileSync(
       join(__dirname, "distribution/page.tsx"),

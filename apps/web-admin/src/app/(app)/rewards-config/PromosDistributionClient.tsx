@@ -63,6 +63,9 @@ export function PromosDistributionClient() {
 
   return (
     <div className="space-y-6">
+      <h2 className="font-display text-base font-semibold tracking-tight">
+        Expected Distribution
+      </h2>
       {loadError && (
         <ErrorNote
           message={`Failed to load the saved Promos config — simulating over launch defaults. (${loadError})`}

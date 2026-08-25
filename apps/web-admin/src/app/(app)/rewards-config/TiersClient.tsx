@@ -8,7 +8,6 @@ import {
   SectionCard,
 } from "@/components/admin-ui/config";
 import { formatShortDate } from "@/lib/format";
-import { ResolvedLedger } from "./ResolvedLedger";
 import { BoxRow, RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
@@ -203,14 +202,9 @@ export function TiersClient() {
         </div>
       )}
 
-      <ResolvedLedger cfg={cfg} />
-
-      {updatedAt && (
-        <p className="text-muted-foreground -mb-1 text-right text-xs">
-          Updated {formatShortDate(updatedAt)}
-        </p>
-      )}
-
+      <h2 className="font-display text-base font-semibold tracking-tight">
+        Visit Promos
+      </h2>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
@@ -306,7 +300,7 @@ export function TiersClient() {
 
       <SectionCard
         icon={<Coins className="text-secondary h-4 w-4" />}
-        title="Default discount cap"
+        title="Discount Cap"
         subtitle="Fallback when a place has not picked its own. First N of the bill."
         status={<KnobStatus kind="fallback" reason="place cap wins" />}
       >
@@ -332,6 +326,11 @@ export function TiersClient() {
           })}
         </div>
       </SectionCard>
+      {updatedAt && (
+        <p className="text-muted-foreground text-right text-xs">
+          Updated {formatShortDate(updatedAt)}
+        </p>
+      )}
     </div>
   );
 }

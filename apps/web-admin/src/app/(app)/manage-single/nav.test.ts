@@ -33,5 +33,7 @@ describe("PromosSection visit-only", () => {
     expect(src).toMatch(/title="Calculator"/);
     expect(src).toMatch(/orders and prepaid stay off/);
     expect(src).not.toMatch(/matrix\.orders/);
+    expect(src).toMatch(/\[capError, setCapError\]/);
+    expect(src).toMatch(/setCapError\(r\.error\)/);
   });
 });
