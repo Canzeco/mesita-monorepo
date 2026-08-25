@@ -95,6 +95,7 @@ import {
   type NotificationItem,
   type NotificationType,
 } from "./notification-mappers.ts";
+import { attachPlaceStatusFacts } from "./notification-status.ts";
 
 const ALL_TYPES: NotificationType[] = [
   "atlas.place_created",
@@ -586,6 +587,10 @@ Deno.serve(async (req) => {
       });
     }
   }
+
+  // Stamp the seven Status facts on every item that has a place. Same
+  // helpers as the catalog / Status box so the Monitor cannot disagree.
+  await attachPlaceStatusFacts(admin, items);
 
   // Place-name substring filter, then newest-first across every type, then cap
   // to the requested window. Counts reflect the filtered set so the client's

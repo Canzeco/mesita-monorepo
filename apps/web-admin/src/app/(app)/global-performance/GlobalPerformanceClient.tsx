@@ -17,6 +17,7 @@ import {
 } from "./actions";
 import {
   NotificationFilters,
+  type StatusFilter,
   type TypeFilter,
 } from "./NotificationFilters";
 import { NotificationRow, NotificationStepGroup } from "./NotificationRow";
@@ -24,7 +25,9 @@ import {
   type DomainKey,
   feedEntryKey,
   groupConsecutiveSteps,
+  itemHasStatusFact,
   pinReports,
+  statusFactCounts,
   typesForFetch,
 } from "./notification-feed";
 
@@ -51,6 +54,7 @@ export function GlobalPerformanceClient({
   const [error, setError] = useState<string | null>(null);
   const [domain, setDomain] = useState<DomainKey>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [includeSteps, setIncludeSteps] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [pending, startRefresh] = useTransition();
@@ -107,6 +111,7 @@ export function GlobalPerformanceClient({
   const onDomainChange = useCallback((next: DomainKey) => {
     setDomain(next);
     setTypeFilter("all");
+    setStatusFilter("all");
     if (next !== "all" && next !== "atlas") setIncludeSteps(false);
   }, []);
 
@@ -120,9 +125,15 @@ export function GlobalPerformanceClient({
     return data.notifications.filter(
       (n) =>
         (typeFilter === "all" || n.type === typeFilter) &&
+        (statusFilter === "all" || itemHasStatusFact(n, statusFilter)) &&
         (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
     );
-  }, [data.notifications, placeQuery, typeFilter]);
+  }, [data.notifications, placeQuery, typeFilter, statusFilter]);
+
+  const factCounts = useMemo(
+    () => statusFactCounts(data.notifications),
+    [data.notifications],
+  );
 
   const { reports, rest } = useMemo(() => pinReports(visible), [visible]);
   const entries = useMemo(() => groupConsecutiveSteps(rest), [rest]);
@@ -137,9 +148,11 @@ export function GlobalPerformanceClient({
       <NotificationFilters
         domain={domain}
         typeFilter={typeFilter}
+        statusFilter={statusFilter}
         includeSteps={includeSteps}
         total={data.total}
         counts={data.counts}
+        statusCounts={factCounts}
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
         pending={pending}
@@ -147,6 +160,7 @@ export function GlobalPerformanceClient({
         showDomains={!projectId}
         onDomainChange={onDomainChange}
         onTypeFilterChange={onTypeFilterChange}
+        onStatusFilterChange={setStatusFilter}
         onIncludeStepsChange={(next) => {
           setIncludeSteps(next);
           if (!next && typeFilter === "atlas.enrichment_step") {

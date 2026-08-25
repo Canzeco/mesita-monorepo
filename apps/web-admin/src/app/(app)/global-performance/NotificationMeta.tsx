@@ -15,19 +15,22 @@ export function MetaRow({ item }: { item: NotificationItem }) {
   const tags: ReactNode[] = [];
   const m = item.meta ?? {};
 
-  if (item.type === "atlas.place_created") {
+  if (item.type.startsWith("atlas.")) {
     const FACT_TONE: Record<string, string> = {
       seeded: TONES.indigo.chip,
-      listed: TONES.emerald.chip,
+      active: TONES.emerald.chip,
+      listed: TONES.sky.chip,
       enriched: TONES.rose.chip,
+      verified: TONES.amber.chip,
+      partner: TONES.indigo.chip,
+      promoting: TONES.rose.chip,
     };
     for (const fact of intakeFactChips(item)) {
-      const tone =
-        fact.label === "Unlisted"
-          ? TONES.muted.chip
-          : (FACT_TONE[fact.key] ?? TONES.muted.chip);
       tags.push(
-        <MetaTag key={fact.key} className={tone}>
+        <MetaTag
+          key={fact.key}
+          className={fact.on ? FACT_TONE[fact.key] : TONES.muted.chip}
+        >
           {fact.label}
         </MetaTag>,
       );

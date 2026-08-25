@@ -116,14 +116,10 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
 
-// Status — six independent facts (Atlas): seeded · listed · enriched ·
-// verified · partner · promoting. The Monitor only sees the first four on
-// Intake events. `listing_type` (`web`/`unclaimed`/`partner`) backs NONE of
-// them — never print it as a status. `meta.claimed` is "has an owner row",
-// which is not Verified (an approved project_verifications proof).
-//
-// Same listed test as `_shared/place-status.ts` / the Status box: a guest
-// can reach the place iff projects.status ∈ (active, lead).
+// Status — the seven facts the Status box lists left to right:
+//   seeded · active · listed · enriched · verified · partner · promoting
+// Active is Google OPERATIONAL. Enriched is PULSE complete (n/9).
+// `listing_type` backs NONE of them. `meta.claimed` is not Verified.
 
 export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
 
@@ -131,32 +127,134 @@ export function isListedStatus(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
 }
 
-export type IntakeFactChip = { key: string; label: string };
+export type StatusFactKey =
+  | "seeded"
+  | "active"
+  | "listed"
+  | "enriched"
+  | "verified"
+  | "partner"
+  | "promoting";
 
-/** Create-event facts we can derive from the existing EF payload. */
+export const STATUS_FACTS: ReadonlyArray<{
+  key: StatusFactKey;
+  label: string;
+}> = [
+  { key: "seeded", label: "Seeded" },
+  { key: "active", label: "Active" },
+  { key: "listed", label: "Listed" },
+  { key: "enriched", label: "Enriched" },
+  { key: "verified", label: "Verified" },
+  { key: "partner", label: "Partner" },
+  { key: "promoting", label: "Promoting" },
+];
+
+export type PlaceStatusFacts = {
+  seeded: boolean;
+  active: boolean;
+  listed: boolean;
+  enriched: boolean;
+  enrichPulse: number;
+  enrichPulseTotal: number;
+  verified: boolean;
+  partner: boolean;
+  promoting: boolean;
+};
+
+export function readStatusFacts(
+  meta: Record<string, unknown> | undefined,
+): PlaceStatusFacts | null {
+  const raw = meta?.statusFacts;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const f = raw as Record<string, unknown>;
+  const bool = (v: unknown) => v === true;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  return {
+    seeded: bool(f.seeded),
+    active: bool(f.active),
+    listed: bool(f.listed),
+    enriched: bool(f.enriched),
+    enrichPulse: num(f.enrichPulse),
+    enrichPulseTotal: num(f.enrichPulseTotal) || 9,
+    verified: bool(f.verified),
+    partner: bool(f.partner),
+    promoting: bool(f.promoting),
+  };
+}
+
+export type IntakeFactChip = {
+  key: StatusFactKey;
+  label: string;
+  on: boolean;
+};
+
+/** All seven facts for expand chips. */
 export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
-  if (item.type !== "atlas.place_created") return [];
-  const chips: IntakeFactChip[] = [{ key: "seeded", label: "Seeded" }];
-  const status = item.meta?.status;
-  if (isListedStatus(status)) chips.push({ key: "listed", label: "Listed" });
-  else if (typeof status === "string") chips.push({ key: "listed", label: "Unlisted" });
-  if (item.meta?.enriched === true) chips.push({ key: "enriched", label: "Enriched" });
-  return chips;
+  const facts = readStatusFacts(item.meta);
+  if (!facts) return [];
+  return STATUS_FACTS.map((def) => ({
+    key: def.key,
+    on: facts[def.key],
+    label:
+      def.key === "enriched" && !facts.enriched
+        ? `${facts.enrichPulse}/${facts.enrichPulseTotal}`
+        : def.label,
+  }));
 }
 
 /**
- * Compact Intake verb. Create rows speak the facts (Seeded · Listed), never
- * "New place" and never the category. Ownership proof is Verified.
+ * Compact Intake verb: every TRUE fact, Status-box order. Incomplete
+ * enrichment still prints n/9 so that fact is never silent.
  */
 export function intakeStatusLine(item: NotificationItem): string | null {
+  const facts = readStatusFacts(item.meta);
+  if (facts) {
+    const parts: string[] = [];
+    if (facts.seeded) parts.push("Seeded");
+    if (facts.active) parts.push("Active");
+    if (facts.listed) parts.push("Listed");
+    if (facts.enriched) parts.push("Enriched");
+    else parts.push(`${facts.enrichPulse}/${facts.enrichPulseTotal}`);
+    if (facts.verified) parts.push("Verified");
+    if (facts.partner) parts.push("Partner");
+    if (facts.promoting) parts.push("Promoting");
+    return parts.join(" · ");
+  }
+  // Pre-payload fallback (create events only carried status/enriched).
   if (item.type === "atlas.place_created") {
-    return intakeFactChips(item)
-      .map((c) => c.label)
-      .join(" · ");
+    const parts = ["Seeded"];
+    if (isListedStatus(item.meta?.status)) parts.push("Listed");
+    else if (typeof item.meta?.status === "string") parts.push("Unlisted");
+    if (item.meta?.enriched === true) parts.push("Enriched");
+    return parts.join(" · ");
   }
   if (item.type === "atlas.place_enriched") return "Enriched";
   if (item.type === "atlas.ownership_claimed") return "Verified";
   return null;
+}
+
+export function itemHasStatusFact(
+  item: NotificationItem,
+  key: StatusFactKey,
+): boolean {
+  const facts = readStatusFacts(item.meta);
+  return facts ? facts[key] : false;
+}
+
+export function statusFactCounts(
+  items: NotificationItem[],
+): Record<StatusFactKey, number> {
+  const counts = Object.fromEntries(
+    STATUS_FACTS.map((f) => [f.key, 0]),
+  ) as Record<StatusFactKey, number>;
+  for (const item of items) {
+    const facts = readStatusFacts(item.meta);
+    if (!facts) continue;
+    for (const def of STATUS_FACTS) {
+      if (facts[def.key]) counts[def.key] += 1;
+    }
+  }
+  return counts;
 }
 
 /** Category is a taxonomy, not a status — keep it off Intake compact lines. */
