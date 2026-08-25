@@ -303,6 +303,14 @@ describe("Tiers HTML prices visits only", () => {
     expect(src).not.toContain('context="orders"');
     expect(src).not.toContain("setOrders");
     expect(src).not.toContain("ResolvedLedger");
+    expect(src).not.toContain("SectionCard");
+    expect(src).toContain("items-stretch");
+    expect(src).toContain("h-full");
+    expect(src).toContain("RowGroup");
+    const ui = readFileSync(join(__dirname, "promos-ui.tsx"), "utf8");
+    expect(ui).toContain("h-14");
+    expect(ui).toContain("w-24");
+    expect(ui).toContain("h-8");
   });
 });
 

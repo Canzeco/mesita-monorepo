@@ -2,12 +2,8 @@
 
 import { AlertTriangle } from "lucide-react";
 
-import {
-  Collapsible,
-  KnobStatus,
-  SectionCard,
-} from "@/components/admin-ui/config";
-import { BoxRow, RateSelect } from "./promos-ui";
+import { Collapsible, KnobStatus } from "@/components/admin-ui/config";
+import { BoxRow, RateSelect, RowGroup } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
   ACTION_KEYS,
@@ -24,10 +20,11 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// TIERS — three visit boxes, one per paid strategy. A place picks ONE
-// strategy; reading down a column is that place's whole program. Each box:
-// floor first, then signed adders. Pinned rungs (Bronze, Free) are an em
-// dash — "0%" is a real rate and would read as one.
+// TIERS — three equal visit columns, one per paid strategy. A place picks
+// ONE strategy; reading down a column is that place's whole program. Each
+// column is floor first, then signed adders. Pinned rungs (Bronze, Free)
+// are an em dash — "0%" is a real rate and would read as one. Columns share
+// one row grid so headers and knobs line up.
 //
 // Promos Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
@@ -69,23 +66,27 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
     });
 
   return (
-    <SectionCard
-      icon={<span className="bg-muted h-2.5 w-2.5 rounded-full" aria-hidden />}
-      title={label}
-      subtitle="Floor, then signed adders. Class prices a body in the room."
-      status={<KnobStatus kind="enforced" reason="THE TICKET" />}
-    >
-      <div className="mt-3">
-        <div className="bg-muted/40 border-border/70 mb-2 rounded-lg border px-3 py-1">
-          <BoxRow label="Base" hint="Standing rate, before anything is earned">
-            <RateSelect
-              value={visits[strategy].base}
-              disabled={pending}
-              ariaLabel={`${label} base standing rate`}
-              onChange={setBase}
-            />
-          </BoxRow>
+    <article className="border-border bg-background flex h-full min-h-0 flex-col rounded-2xl border p-4">
+      <header className="mb-2 shrink-0">
+        <h3 className="font-display text-base font-semibold tracking-tight">
+          {label}
+        </h3>
+        <div className="mt-1.5 min-h-6">
+          <KnobStatus kind="enforced" reason="THE TICKET" />
         </div>
+        <p className="text-muted-foreground mt-2 min-h-10 type-label leading-snug">
+          Floor, then signed adders. Class prices a body in the room.
+        </p>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BoxRow label="Base" hint="Standing rate, before anything is earned">
+          <RateSelect
+            value={visits[strategy].base}
+            disabled={pending}
+            ariaLabel={`${label} base standing rate`}
+            onChange={setBase}
+          />
+        </BoxRow>
 
         <BoxRow
           label={BONUS_META.welcome.name}
@@ -100,9 +101,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
           />
         </BoxRow>
 
-        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-          Class
-        </p>
+        <RowGroup>Class</RowGroup>
         {CLASS_KEYS.map((c) => (
           <BoxRow key={c} label={CLASS_META[c].name}>
             <RateSelect
@@ -116,9 +115,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
           </BoxRow>
         ))}
 
-        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-          Plan
-        </p>
+        <RowGroup>Plan</RowGroup>
         {PLAN_KEYS.map((k) => (
           <BoxRow key={k} label={PLAN_META[k].name}>
             <RateSelect
@@ -132,9 +129,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
           </BoxRow>
         ))}
 
-        <p className="text-muted-foreground pt-3 pb-0.5 type-meta font-bold tracking-[0.12em] uppercase">
-          Actions
-        </p>
+        <RowGroup>Actions</RowGroup>
         {(["story", "google", "mesita"] as const).map((k) => (
           <BoxRow
             key={k}
@@ -151,7 +146,7 @@ function TierBox({ strategy }: { strategy: StrategyKey }) {
           </BoxRow>
         ))}
       </div>
-    </SectionCard>
+    </article>
   );
 }
 
@@ -195,7 +190,7 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-3">
         {STRATEGY_KEYS.map((s) => (
           <TierBox key={s} strategy={s} />
         ))}

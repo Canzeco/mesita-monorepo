@@ -7,6 +7,12 @@ import { ALLOWED_RATES } from "./promos";
 // never have to guess which. Floors render plain ("20%"); increments render
 // signed ("+20"); a pinned-zero rung renders as an em dash, because "0%" is a
 // legitimate rate and would read as one.
+//
+// Rows are a fixed 3.5rem grid so Conservative / Aggressive / Dominant stay
+// the same height and every control lines up across columns.
+
+const RATE_CONTROL =
+  "inline-flex h-9 w-24 items-center justify-center rounded-lg border type-body tabular-nums";
 
 /**
  * A rate on the 5% grid. `signed` renders it as an increment (+15) and, when
@@ -34,7 +40,7 @@ export function RateSelect({
       <span
         role="presentation"
         title="The baseline rung — it adds nothing by definition"
-        className="border-border/70 text-muted-foreground bg-muted/50 inline-flex h-9 w-24 items-center justify-center rounded-lg border border-dashed type-body"
+        className={`${RATE_CONTROL} border-border/70 text-muted-foreground bg-muted/50 border-dashed`}
       >
         —
       </span>
@@ -46,7 +52,7 @@ export function RateSelect({
       disabled={disabled}
       onChange={(e) => onChange(Number(e.target.value))}
       aria-label={ariaLabel}
-      className="border-border bg-card focus:border-foreground h-9 w-24 rounded-lg border px-1.5 text-center type-body font-semibold tabular-nums outline-none disabled:opacity-50"
+      className={`${RATE_CONTROL} border-border bg-card focus:border-foreground px-1.5 text-center font-semibold outline-none disabled:opacity-50`}
     >
       {ALLOWED_RATES.map((r) => (
         <option key={r} value={r}>
@@ -57,7 +63,7 @@ export function RateSelect({
   );
 }
 
-/** One labelled row inside a box. */
+/** One labelled row inside a strategy column — always the same height. */
 export function BoxRow({
   label,
   emoji,
@@ -70,9 +76,9 @@ export function BoxRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border/60 flex items-center justify-between gap-4 border-b py-2 last:border-0">
+    <div className="border-border/60 grid h-14 grid-cols-[minmax(0,1fr)_6rem] items-center gap-3 border-b last:border-0">
       <div className="min-w-0">
-        <p className="text-foreground type-body font-semibold">
+        <p className="text-foreground truncate type-body font-semibold">
           {emoji ? (
             <span className="mr-1.5" aria-hidden>
               {emoji}
@@ -80,11 +86,23 @@ export function BoxRow({
           ) : null}
           {label}
         </p>
-        {hint ? (
-          <p className="text-muted-foreground truncate type-label">{hint}</p>
-        ) : null}
+        <p
+          className="text-muted-foreground truncate type-label"
+          title={hint || undefined}
+        >
+          {hint || "\u00a0"}
+        </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
+      <div className="flex shrink-0 justify-end">{children}</div>
     </div>
+  );
+}
+
+/** Class / Plan / Actions — same cap height in every column. */
+export function RowGroup({ children }: { children: string }) {
+  return (
+    <p className="text-muted-foreground flex h-8 items-end type-meta font-bold tracking-[0.12em] uppercase">
+      {children}
+    </p>
   );
 }
