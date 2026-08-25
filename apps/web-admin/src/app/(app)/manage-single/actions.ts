@@ -338,12 +338,21 @@ export async function setPlaceListed(
   placeId: string,
   listed: boolean,
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("admin-web-set-place-listed", {
-    placeId,
-    listed,
-  });
+  const r = await efInvoke<{ place: AdminPlace; listed?: boolean }>(
+    "admin-web-set-place-listed",
+    {
+      placeId,
+      listed,
+    },
+  );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: r.data.place };
+  // The EF returns `listed` beside `place`. Stamp it onto the row so
+  // PlaceEditShell's merge cannot keep the overview's stale `listed: true`
+  // after Unlist wrote `paused`.
+  return {
+    ok: true,
+    data: { ...r.data.place, listed: r.data.listed ?? listed },
+  };
 }
 
 /** Rates-only strategy switch — no plan write (MESITA-912).

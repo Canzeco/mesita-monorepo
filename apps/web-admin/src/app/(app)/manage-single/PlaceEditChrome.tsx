@@ -17,6 +17,7 @@ import {
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
+  listedFromStatus,
 } from "./place-header-status";
 import { isMemberPlan } from "./sections/promo-state";
 import { placeOperatorPromotingLevel } from "./sections/StatusCard";
@@ -105,9 +106,10 @@ export function PlaceEditChrome({
       : Boolean(verification?.verifiedByEmail);
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
+  const listedFromRow = listedFromStatus(place.status);
   const facts = generalHeaderFacts({
     seeded: place.seeded,
-    listed: place.listed,
+    listed: listedFromRow === "unknown" ? place.listed : listedFromRow,
     business_status: place.business_status,
     enrich_pulse: place.enrich_pulse,
     enrich_pulse_total: place.enrich_pulse_total,
