@@ -276,17 +276,19 @@ export function placementWord(v: StrategyVisibility): RungWord {
 }
 
 type CardCta =
-  "current" | "join" | "reinstate" | "switch" | "switch_zero";
+  | "current"
+  | "locked"
+  | "switch"
+  | "switch_zero";
 
 export type CardState = { selected: boolean; cta: CardCta };
 
 // The card/modal state machine — the F1 regression class lives here.
 // `selected` MUST be member-gated: strategyForPlace maps all-null rates to
 // Zero, so without the gate a non-member (or forfeited, or freshly dropped)
-// place renders the Zero card as ringed "Current" — which also makes
-// join-onto-Zero impossible (its modal primary is the disabled "Current
-// strategy"). Forfeited wins over member defensively: strike-3 sets
-// plan→free, so the combination should not exist in stored data.
+// place renders the Zero card as ringed "Current". Join lives on the
+// Partnership Stripe mock, not on strategy cards — non-members and
+// forfeited places lock the picker until plan=pro is written.
 export function promoCardState(input: {
   member: boolean;
   forfeited: boolean;
@@ -294,8 +296,9 @@ export function promoCardState(input: {
   cardId: StrategyId;
   paid: boolean;
 }): CardState {
-  if (input.forfeited) return { selected: false, cta: "reinstate" };
-  if (!input.member) return { selected: false, cta: "join" };
+  if (input.forfeited || !input.member) {
+    return { selected: false, cta: "locked" };
+  }
   if (input.cardId === input.storedStrategy) {
     return { selected: true, cta: "current" };
   }

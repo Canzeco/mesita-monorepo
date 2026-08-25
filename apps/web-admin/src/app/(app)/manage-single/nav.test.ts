@@ -11,10 +11,18 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PLACE_TAB_SECTIONS", () => {
-  it("unparks Promos and keeps Performance Soon", () => {
+  it("labels Partner on the frozen /promos id; Performance stays Soon", () => {
+    expect(PLACE_TAB_SECTIONS.map((s) => s.label)).toEqual([
+      "Profile",
+      "Partner",
+      "Performance",
+      "Settings",
+      "Admin",
+    ]);
     const byId = Object.fromEntries(
       PLACE_TAB_SECTIONS.map((s) => [s.id, s]),
     );
+    expect(byId.promos?.label).toBe("Partner");
     expect(byId.promos?.soon).toBe(false);
     expect(byId.performance?.soon).toBe(true);
     expect(isSectionSoon("promos")).toBe(false);

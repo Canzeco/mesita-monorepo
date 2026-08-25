@@ -279,7 +279,7 @@ describe("giveWord / placementWord — Single Place card face", () => {
 });
 
 describe("promoCardState — the F1 regression class", () => {
-  it("non-member: NEVER selected, every card is a Join door (Zero included)", () => {
+  it("non-member: NEVER selected, every card is locked (join lives on Partnership)", () => {
     for (const cardId of [
       "zero",
       "conservative",
@@ -295,11 +295,11 @@ describe("promoCardState — the F1 regression class", () => {
         paid: cardId !== "zero",
       });
       expect(st.selected).toBe(false);
-      expect(st.cta).toBe("join");
+      expect(st.cta).toBe("locked");
     }
   });
 
-  it("forfeited: every card reinstates (and wins over member, defensively)", () => {
+  it("forfeited: every card locked (re-join lives on Partnership)", () => {
     for (const member of [false, true]) {
       const st = promoCardState({
         member,
@@ -309,7 +309,7 @@ describe("promoCardState — the F1 regression class", () => {
         paid: true,
       });
       expect(st.selected).toBe(false);
-      expect(st.cta).toBe("reinstate");
+      expect(st.cta).toBe("locked");
     }
   });
 
