@@ -30,6 +30,7 @@ describe("PromosSection visit-only", () => {
     );
     expect(src).toMatch(/title="Mesita Partnership"/);
     expect(src).toMatch(/title="Visit Promotions"/);
+    expect((src.match(/<SectionCard/g) ?? []).length).toBe(2);
     expect(src).toMatch(/pickerStrategies/);
     expect(src).toMatch(/giveWord/);
     expect(src).toMatch(/placementWord/);
