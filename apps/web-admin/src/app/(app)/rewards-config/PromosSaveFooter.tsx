@@ -4,12 +4,12 @@ import { usePathname } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 
 import { ErrorNote } from "@/components/ErrorNote";
-import { SaveRow } from "../enricher-config/atlas-ui";
+import { SaveRow } from "@/components/admin-ui/config";
 import { usePromosState } from "./PromosState";
 
 // ONE Save for the whole document, mounted by the layout so it persists across
-// the Visits/Orders tabs. Both subpages edit the same blob; a per-tab Save
-// would let one revert the other's unsaved edits (D5).
+// tabs. Both contexts edit the same blob; a per-tab Save would revert the
+// other tab's unsaved edits.
 //
 // Distribution is READ-ONLY — it simulates the saved config and edits nothing,
 // so it gets no Save bar. A disabled Save on a page with no inputs is a
@@ -35,10 +35,7 @@ export function PromosSaveFooter() {
     <div className="mt-6">
       <div className="flex items-start justify-between gap-3">
         <p className="text-muted-foreground text-xs">
-          Rates are built from components: base + class + plan, plus whatever the
-          guest earned. Class is earned or invited, never sold — this page
-          prices the rungs, it does not seat anyone on them. All four tiers
-          share one Save.
+          Base + class + plan, plus what the guest earned. Six boxes, one Save.
         </p>
         <button
           type="button"

@@ -59,12 +59,13 @@ Deno.serve(async (req) => {
   const { data: attention } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, status, reserved_at, last_call_status, notice_state, notice_kind, attempts_state, callback_state, consumer_confirmed_at, is_test",
+      "id, reference_code, status, reserved_at, last_call_status, notice_state, notice_kind, attempts_state, callback_state, reminder_state, consumer_confirmed_at, is_test",
     )
     .or(
       "notice_state.eq.failed," +
         "attempts_state.eq.error," +
         "callback_state.eq.failed," +
+        "reminder_state.eq.failed," +
         "and(status.eq.confirmed,consumer_confirmed_at.is.null,callback_state.in.(no_answer,unknown),callback_next_attempt_at.is.null)",
     )
     .order("reserved_at", { ascending: false })

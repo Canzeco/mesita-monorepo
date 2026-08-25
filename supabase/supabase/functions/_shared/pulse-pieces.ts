@@ -2,13 +2,13 @@
 // (MESITA-1253, superseding the function-0 framing of MESITA-1243).
 //
 //   CREATE (ONE function, synchronous, the front door):
-//     1 seed → 2 pulse → 3 details      · semantic: summary · name
+//     1 seed → 2 pulse → 3 details      · semantic: name · summary
 //   ENRICH (NINE functions, the queue, strictly in order):
 //     1 pulse → 2 details → 3 serp → 4 links → 5 social
 //     → 6 images → 7 menu → 8 reviews → 9 description
-//                                       · semantic: summary · name
+//                                       · semantic: name · summary
 //
-// Pulse, Details, Summary and Name appear in BOTH flows because they are
+// Pulse, Details, Name and Summary appear in BOTH flows because they are
 // SHARED FUNCTIONS with two callers: CREATE runs them inline (a place is born
 // with its liveness checked, its Google spine persisted, and its vector
 // queued), ENRICH runs them as queue rungs (a place is refreshed). Seed is NOT

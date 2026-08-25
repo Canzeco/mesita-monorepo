@@ -5,13 +5,9 @@ import { PromosSaveFooter } from "./PromosSaveFooter";
 import { getPromosConfig } from "./actions";
 import { DEFAULT_PROMOS } from "./promos";
 
-// Promos Config — tabbed (Visits · Orders · Distribution). CONTEXT cuts before
-// identity (Notion §2.8), so the tabs split by context first.
-//
-// The layout owns the DOCUMENT: it server-seeds the config, holds the dirty
-// flag and the Save action, and mounts one Save footer under whichever tab is
-// open. Visits and Orders are views onto that one blob, never separate
-// documents — a Save per tab would revert the other tab's unsaved edits (D5).
+// Promos Config — tabs Tiers · Distribution. The layout owns the DOCUMENT:
+// server-seed, dirty flag, one Save. Both contexts live on Tiers; a Save per
+// tab would revert the other tab's unsaved edits.
 //
 // Server-seeded like the other blob editors so a failed GET surfaces as
 // loadError and Save stays blocked (MESITA-737) — never silently edit code

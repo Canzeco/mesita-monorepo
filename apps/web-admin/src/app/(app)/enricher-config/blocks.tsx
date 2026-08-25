@@ -1,41 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
-// Intake's page-local layout kit. Three primitives, all structural — the
-// controls themselves come from `@/components/admin-ui/config` as the package
-// rules require. These are page structure, not chrome: promote any of them to
-// admin-ui the day a second page needs one.
-//
-// A FUNCTION BLOCK IS A LABEL RAIL PLUS FIELDS, NEVER A CARD. Twelve stacked
-// cards is design hard-rejection #7 ("app UI made of stacked cards instead of
-// layout") and is exactly what the deleted version of this page did.
-
-/** Numbered section heading. The page reads 1 Sourcing · 2 Create · 3 Enrich · 4 Functions · 5 Models. */
-export function Band({
-  n,
-  title,
-  id,
-  aside,
-}: {
-  n: string;
-  title: string;
-  id?: string;
-  aside?: React.ReactNode;
-}) {
-  return (
-    <div id={id} className="mt-11 mb-3.5 flex scroll-mt-4 items-baseline gap-3">
-      <span className="font-display text-muted-foreground type-body font-bold">
-        {n}
-      </span>
-      <h2 className="font-display text-xl font-semibold tracking-tight">
-        {title}
-      </h2>
-      <span className="flex-1" />
-      {aside}
-    </div>
-  );
-}
+// Intake's page-local layout kit. Structural only — controls come from
+// `@/components/admin-ui/config`. Five SectionCards own the page; these
+// primitives live *inside* a card. A function is a disclosure row, never a
+// card of its own (twelve stacked cards is design hard-rejection #7).
 
 /** Muted pill. Used for flow membership, cost tier and enforcement state. */
 export function Tag({
@@ -60,8 +32,8 @@ export function Tag({
 }
 
 /**
- * Jump chips into §4. Anchors, not buttons — Tab reaches them and Enter jumps,
- * which is the whole reason the flow blocks can act as the page's index.
+ * Jump chips into a function module. Anchors, not buttons — Tab reaches them
+ * and Enter jumps. The hash handler on the page opens the target disclosure.
  */
 export function StepChips({
   steps,
@@ -84,43 +56,28 @@ export function StepChips({
 }
 
 /**
- * A flow explained: what it is, a fact list, and its steps as jump chips.
- *
- * This is what replaced the ladder table. A table row can say what a step IS;
- * only a flow block can also say WHAT STARTS IT, which is the question an
- * operator actually arrives with.
+ * Facts + step chips inside a SectionCard. No second chrome — the card is
+ * already the module.
  */
-export function FlowCard({
-  title,
-  blurb,
+export function FlowPanel({
   facts,
   steps,
   footer,
 }: {
-  title: string;
-  blurb: string;
   facts: { term: string; detail: React.ReactNode }[];
   steps: { href: string; label: string }[];
   footer?: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card overflow-hidden rounded-2xl border">
-      <div className="border-border border-b px-5 py-4 sm:px-6">
-        <h3 className="text-base font-semibold">{title}</h3>
-        <p className="text-muted-foreground mt-1 max-w-3xl text-sm leading-relaxed">
-          {blurb}
-        </p>
-      </div>
-      <div className="grid gap-7 px-5 py-5 sm:px-6 lg:grid-cols-[1fr_300px]">
+    <div className="mt-5">
+      <div className="grid gap-7 lg:grid-cols-[1fr_240px]">
         <dl className="m-0">
           {facts.map((f) => (
             <div key={f.term} className="mb-3.5 last:mb-0">
               <dt className="text-muted-foreground type-meta font-bold tracking-wider uppercase">
                 {f.term}
               </dt>
-              <dd className="m-0 mt-1 type-body leading-relaxed">
-                {f.detail}
-              </dd>
+              <dd className="m-0 mt-1 type-body leading-relaxed">{f.detail}</dd>
             </div>
           ))}
         </dl>
@@ -132,57 +89,130 @@ export function FlowCard({
         </div>
       </div>
       {footer ? (
-        <div className="border-border text-muted-foreground border-t px-5 py-4 text-xs leading-relaxed sm:px-6">
+        <p className="text-muted-foreground mt-5 border-border border-t pt-4 text-xs leading-relaxed">
           {footer}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * CREATE · ENRICH · SEMANTIC — the three families of §8.4–8.5. A box around
+ * a slice of the ladder, not a second card. Color is a rail + header mark;
+ * the page stays one pink accent, not a carnival of hues.
+ */
+export function FunctionFamily({
+  label,
+  kicker,
+  tone,
+  note,
+  children,
+}: {
+  label: string;
+  kicker: string;
+  tone: "create" | "enrich" | "semantic";
+  note?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const box =
+    tone === "create"
+      ? "border-primary/30 bg-primary/[0.035]"
+      : tone === "semantic"
+        ? "border-border bg-muted/60"
+        : "border-border bg-card";
+  const dot =
+    tone === "create"
+      ? "bg-primary"
+      : tone === "semantic"
+        ? "bg-muted-foreground"
+        : "bg-foreground";
+  return (
+    <section className={"mt-4 first:mt-2 overflow-hidden rounded-xl border " + box}>
+      <header className="border-border flex items-start gap-3 border-b px-4 py-3">
+        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + dot} aria-hidden />
+        <div className="min-w-0">
+          <p className="type-label font-semibold tracking-[0.14em] uppercase">
+            {label}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+            {kicker}
+          </p>
         </div>
+      </header>
+      <div className="px-3 sm:px-4">{children}</div>
+      {note ? (
+        <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-xs leading-relaxed">
+          {note}
+        </p>
       ) : null}
     </section>
   );
 }
 
 /**
- * One function of the ladder. Shared functions (pulse, details, the semantic
- * pair) are printed ONCE with both flows on the chip — printing them under each
- * flow would invent a second ladder, and there is only ever one set of knobs.
- *
- * A function with no knobs still gets a block, and says WHY in one sentence: a
- * sentence reads as finished, an empty panel reads as broken, and hiding the
- * knobless ones is what made the old page look like the Intaker has five steps.
+ * One function of the ladder, as a disclosure inside a FunctionFamily.
+ * Shared functions print once. A family box is what names the type.
  */
-export function FunctionBlock({
+export function FunctionModule({
   id,
   index,
   name,
   flows,
   blurb,
+  knobs,
+  defaultOpen = false,
   children,
 }: {
   id: string;
   index: string;
   name: string;
-  flows: string;
+  flows?: string;
   blurb: string;
+  knobs: string;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    const sync = () => {
+      if (decodeURIComponent(location.hash) === `#${id}`) setOpen(true);
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [id]);
+
   return (
-    <div
+    <details
       id={id}
-      className="border-border grid scroll-mt-16 gap-4 border-t py-6 first:border-t-0 sm:gap-8 lg:grid-cols-[220px_1fr]"
+      className="border-border group/fn scroll-mt-16 border-t first:border-t-0"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
     >
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-muted-foreground type-meta font-bold tracking-wider">
-            {index}
+      <summary className="hover:bg-muted/40 flex cursor-pointer list-none items-start gap-3 py-3.5 [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0 transition-transform group-open/fn:rotate-90"
+        />
+        <span className="text-muted-foreground type-meta mt-1 w-16 shrink-0 font-bold tracking-wider sm:w-20">
+          {index}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">{name}</span>
+            {flows ? <Tag>{flows}</Tag> : null}
           </span>
-          <Tag>{flows}</Tag>
-        </div>
-        <h3 className="mb-1.5 text-base font-semibold">{name}</h3>
-        <p className="text-muted-foreground m-0 text-xs leading-snug">
-          {blurb}
-        </p>
-      </div>
-      <div>{children}</div>
-    </div>
+          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+            {blurb}
+          </span>
+        </span>
+        <span className="text-muted-foreground type-label mt-1 hidden shrink-0 sm:inline">
+          {knobs}
+        </span>
+      </summary>
+      <div className="pb-5 pl-7 sm:pl-[7.25rem]">{children}</div>
+    </details>
   );
 }
 
@@ -196,9 +226,8 @@ export function NoKnobs({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A function whose only knob lives in §5 Models. Says where, rather than
- * rendering the same control twice — one value must have exactly one home, or
- * setting it from either place makes it look like two knobs.
+ * A function whose only knob lives in Models. Says where, rather than
+ * rendering the same control twice — one value must have exactly one home.
  */
 export function KnobElsewhere({ children }: { children: React.ReactNode }) {
   return (
@@ -208,7 +237,7 @@ export function KnobElsewhere({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Grid the control fields share, so every block lines up at the same rhythm. */
+/** Grid the control fields share, so every module lines up at the same rhythm. */
 export function Fields({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>

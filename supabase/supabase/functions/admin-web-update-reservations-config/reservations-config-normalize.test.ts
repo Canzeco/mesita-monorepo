@@ -66,7 +66,7 @@ Deno.test("normalizeConfig: the three required keys are load-bearing", () => {
 Deno.test("normalizeConfig: optional keys may be omitted (older admin builds)", () => {
   // testCall / attempts / unlimitedReservations are optional ON PURPOSE so a
   // shipped-but-stale admin build keeps saving. Guard that promise.
-  for (const key of ["testCall", "attempts", "unlimitedReservations"] as const) {
+  for (const key of ["testCall", "attempts", "unlimitedReservations", "reminder"] as const) {
     const blob = canonicalBlob() as Record<string, unknown>;
     delete blob[key];
     const r = normalizeConfig(blob);
@@ -95,6 +95,22 @@ Deno.test("normalizeConfig: an enabled test-call override needs a real number", 
 
   blob.testCall = { enabled: true, number: "+5215512345678", consumerNumber: "" };
   assert(normalizeConfig(blob).ok);
+});
+
+Deno.test("normalizeConfig: reminder defaults OFF when omitted, and refuses a bad shape", () => {
+  const omitted = normalizeConfig(canonicalBlob());
+  assert(omitted.ok);
+  assertEquals(omitted.value.reminder, { enabled: false });
+
+  const on = canonicalBlob() as Record<string, unknown>;
+  on.reminder = { enabled: true };
+  const r = normalizeConfig(on);
+  assert(r.ok);
+  assertEquals(r.value.reminder, { enabled: true });
+
+  const bad = canonicalBlob() as Record<string, unknown>;
+  bad.reminder = true;
+  assert(!normalizeConfig(bad).ok);
 });
 
 Deno.test("normalizeConfig: attempts is fixed at 2 whatever the client sends", () => {

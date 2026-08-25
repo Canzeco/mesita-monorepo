@@ -40,6 +40,7 @@ import {
 import {
   type ChannelKey,
   type ChannelPolicy,
+  applyPlacesAutocompleteRegion,
   evaluatePlaceForChannel,
   readChannelPolicy,
 } from "./sourcing.ts";
@@ -51,6 +52,10 @@ import {
   sortMesitaPredictionsFirst,
 } from "./suggest-places-helpers.ts";
 import { statusesForPlaces } from "./suggest-place-status.ts";
+import {
+  mergePlaceRowsById,
+  placeIdsMatchingNameHistory,
+} from "./place-name-history.ts";
 
 export type SuggestPlacesArgs = {
   input?: string;
@@ -102,7 +107,7 @@ export async function suggestPlaces(
   // Fire Google + Mesita searches in parallel. Either can fail
   // independently; we merge whatever comes back.
   const [googleResult, mesitaResult] = await Promise.allSettled([
-    fetchGooglePredictions(input, sessionToken, apiKey, googleTypeFilter),
+    fetchGooglePredictions(input, sessionToken, apiKey, googleTypeFilter, sourcingPolicy),
     fetchMesitaPredictions(admin, input, callerUserId),
   ]);
 
@@ -173,6 +178,7 @@ async function fetchGooglePredictions(
   sessionToken: string,
   apiKey: string,
   typeFilter: GoogleTypeFilter,
+  policy: ChannelPolicy | null,
 ): Promise<{
   predictions: Prediction[];
   errorEnvelope?: Record<string, unknown>;
@@ -182,6 +188,7 @@ async function fetchGooglePredictions(
   }
 
   const body: Record<string, unknown> = { input, sessionToken };
+  if (policy) applyPlacesAutocompleteRegion(body, policy);
   if (typeFilter === "legacy") {
     // Legacy path (no sourcing channel): broad static hospitality filter.
     body.includedPrimaryTypes = [
@@ -252,18 +259,23 @@ async function fetchMesitaPredictions(
   callerId: string | null,
 ): Promise<Prediction[]> {
   // ILIKE prefix-and-contains so "strana" finds both "Strana" and "Casa
-  // Strana, Monterrey". Match Mesita name OR google_name (MESITA-917);
-  // one row per place id. Limit small — Google is the primary surface; this
-  // is a fallback for the long-tail case where Google misses.
+  // Strana, Monterrey". Match Mesita name OR google_name (MESITA-917) OR a
+  // prior Google label in place_name_history (MESITA-1051); one row per
+  // place id. Limit small — Google is the primary surface; this is a
+  // fallback for the long-tail case where Google misses.
   // Quote the pattern like admin-web-search-places — unquoted `%…%` breaks
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id, slug, google_place_id, name, google_name, address")
-    .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
-    .not("google_place_id", "is", null)
-    .limit(8);
+  const cols = "id, slug, google_place_id, name, google_name, address";
+  const [{ data, error }, historyIds] = await Promise.all([
+    admin
+      .from("profiles")
+      .select(cols)
+      .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
+      .not("google_place_id", "is", null)
+      .limit(8),
+    placeIdsMatchingNameHistory(admin, pattern),
+  ]);
   if (error) {
     console.error("[suggest-places] mesita search:", error.message);
     return [];
@@ -277,6 +289,21 @@ async function fetchMesitaPredictions(
     address: string | null;
   };
   let rows = (data ?? []) as Row[];
+  const missingHistoryIds = historyIds.filter((id) =>
+    !rows.some((r) => r.id === id)
+  );
+  if (missingHistoryIds.length > 0) {
+    const { data: extra, error: extraErr } = await admin
+      .from("profiles")
+      .select(cols)
+      .in("id", missingHistoryIds)
+      .not("google_place_id", "is", null);
+    if (extraErr) {
+      console.error("[suggest-places] history backfill:", extraErr.message);
+    } else {
+      rows = mergePlaceRowsById(rows, (extra ?? []) as Row[], 8);
+    }
+  }
   if (rows.length === 0) return [];
 
   // Prefer Mesita-name hits ahead of google-only matches.
@@ -345,11 +372,7 @@ async function filterPredictionsBySourcing(
 
   const signalsByPlaceId = new Map<
     string,
-    {
-      primaryType: string | null;
-      rating: number | null;
-      reviewCount: number | null;
-    }
+    NonNullable<Awaited<ReturnType<typeof fetchPlaceSignals>>>
   >();
   await Promise.all(
     googleOnly.map(async (p) => {
@@ -362,6 +385,10 @@ async function filterPredictionsBySourcing(
     if (p.status !== "not_in_mesita") return true;
     const sig = signalsByPlaceId.get(p.placeId);
     if (!sig) return false;
-    return evaluatePlaceForChannel(policy, sig).eligible;
+    return evaluatePlaceForChannel(policy, sig, {
+      lat: sig.lat,
+      lng: sig.lng,
+      country: sig.country,
+    }).eligible;
   });
 }

@@ -16,7 +16,7 @@
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
 //     keeping one (retention discounts are partly deadweight).
-//   - Premium ≥ Standard in every row — Premium guests always get more.
+  //   - Premium ≥ Free in every row — Premium guests always get more.
 //   - Rates live on a tens grid, max 50% — "half off" is the strongest
 //     credible headline.
 //   - Every discount applies to the first N pesos of the bill — N is the

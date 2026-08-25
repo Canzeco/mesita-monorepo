@@ -1,9 +1,7 @@
-// Intaker per-run spend ledger + cost-cap enforcement (MESITA-624).
-//
-// Uses the shared COST rate card in enrich-config.ts (mirrors the admin
-// calculator). Accumulates estimated USD as each paid step completes; aborts
-// the run when a charge would push spent over app_config.atlas_per_run_cost_cap_usd.
-// Approximate — enough to bound spend, not for billing.
+// Intaker per-run spend ledger. Records estimated USD as each paid step
+// completes so a run can persist gathered.cost. It does NOT abort a run.
+// A dollar cap was MESITA-624; Pato retired it — collect / analyze knobs and
+// the five-places-per-tick cron are the spend bounds.
 
 import { COST, type EnrichConfig } from "./enrich-config.ts";
 
@@ -14,6 +12,7 @@ export type EnrichCostSnapshot = {
   charges: EnrichCostCharge[];
 };
 
+/** Kept so existing fail-path type checks compile. Nothing throws this now. */
 export class EnrichCostCapError extends Error {
   readonly spentUsd: number;
   readonly capUsd: number;
@@ -27,53 +26,40 @@ export class EnrichCostCapError extends Error {
     kind: "exceeded" | "blocked" = "exceeded",
   ) {
     const spent = ledger.spentUsd;
-    const cap = ledger.capUsd;
-    const msg = kind === "blocked"
-      ? `enricher_cost_cap: cannot afford ${lastCharge} — spent $${spent.toFixed(3)} / cap $${cap.toFixed(2)}`
-      : `enricher_cost_cap: spent $${spent.toFixed(3)} exceeds cap $${cap.toFixed(2)} after ${lastCharge}`;
-    super(msg);
+    super(`enricher_cost_cap: retired — last ${lastCharge} spent $${spent.toFixed(3)}`);
     this.name = "EnrichCostCapError";
     this.spentUsd = spent;
-    this.capUsd = cap;
+    this.capUsd = Number.POSITIVE_INFINITY;
     this.lastCharge = lastCharge;
     this.charges = [...ledger.charges];
     this.kind = kind;
   }
 }
 
-const EPS = 1e-9;
-
 export class EnrichCostLedger {
   spentUsd: number;
   charges: EnrichCostCharge[];
-  readonly capUsd: number;
+  readonly capUsd = Number.POSITIVE_INFINITY;
 
-  constructor(capUsd: number, prior?: EnrichCostSnapshot | null) {
-    this.capUsd = Number.isFinite(capUsd) ? Math.max(0, capUsd) : 0;
+  constructor(prior?: EnrichCostSnapshot | null) {
     this.spentUsd = prior && Number.isFinite(prior.spentUsd) ? Math.max(0, prior.spentUsd) : 0;
     this.charges = prior?.charges ? [...prior.charges] : [];
   }
 
   remaining(): number {
-    return Math.max(0, this.capUsd - this.spentUsd);
+    return Number.POSITIVE_INFINITY;
   }
 
-  /** Throw without recording spend when the next paid call would breach the cap. */
-  assertCanAfford(usd: number, key: string): void {
-    if (!(usd > 0)) return;
-    if (this.spentUsd + usd > this.capUsd + EPS) {
-      throw new EnrichCostCapError(this, key, "blocked");
-    }
+  /** No-op: a dollar cap does not gate paid calls. */
+  assertCanAfford(_usd: number, _key: string): void {
+    return;
   }
 
-  /** Record a completed paid call; throw if accumulated spend is now over cap. */
+  /** Record a completed paid call. Never throws. */
   charge(key: string, usd: number): void {
     if (!(usd > 0)) return;
     this.spentUsd = Math.round((this.spentUsd + usd) * 10_000) / 10_000;
     this.charges.push({ key, usd });
-    if (this.spentUsd > this.capUsd + EPS) {
-      throw new EnrichCostCapError(this, key, "exceeded");
-    }
   }
 
   snapshot(): EnrichCostSnapshot {
@@ -82,10 +68,10 @@ export class EnrichCostLedger {
 }
 
 export function createEnrichCostLedger(
-  capUsd: number,
+  _capUsd?: number,
   prior?: EnrichCostSnapshot | null,
 ): EnrichCostLedger {
-  return new EnrichCostLedger(capUsd, prior);
+  return new EnrichCostLedger(prior);
 }
 
 export function costFromGathered(

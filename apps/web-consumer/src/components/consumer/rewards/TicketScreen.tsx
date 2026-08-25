@@ -156,9 +156,9 @@ type ActionKind = "story" | "google" | "mesita";
 type RewardPick = ActionKind | "base";
 
 const ACTION_SHORT: Record<ActionKind, string> = {
-  story: "Instagram story",
-  google: "Google review",
-  mesita: "Mesita review",
+  story: "Instagram Story",
+  google: "Google Review",
+  mesita: "Mesita Review",
 };
 
 const PAY_METHOD_LABEL: Record<string, string> = {
@@ -1494,7 +1494,7 @@ function RewardLanes({
       )}
 
       <Lane title="Sharing" note="pick one">
-        {(["google", "story", "mesita"] as const).map((a) => {
+        {(["story", "google", "mesita"] as const).map((a) => {
           const available =
             a === "story"
               ? Boolean(quote.storyEligible) && igConnected

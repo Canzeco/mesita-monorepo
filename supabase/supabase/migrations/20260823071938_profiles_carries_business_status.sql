@@ -66,7 +66,7 @@ begin
       'could not locate the FROM seam in public.profiles; refusing to guess';
   end if;
 
-  execute 'create or replace view public.profiles as ' || v_new;
+  execute 'create or replace view public.profiles with (security_invoker = true) as ' || v_new;
   raise notice 'profiles now projects business_status';
 end $$;
 

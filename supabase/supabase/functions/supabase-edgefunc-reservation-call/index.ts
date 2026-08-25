@@ -73,6 +73,7 @@ import {
 } from "../_shared/elevenlabs.ts";
 import { nextAttemptAt } from "../_shared/reservation-retry.ts";
 import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
+import { reminderParkPatch, REMINDER_MAX_ATTEMPTS } from "../_shared/reservation-reminder.ts";
 import {
   classifyFailedConversation,
   classifyPlacementFailure,
@@ -90,6 +91,8 @@ import {
   guestCancelNoticePrompt,
   guestLegFirstMessage,
   guestLegPrompt,
+  guestReminderFirstMessage,
+  guestReminderPrompt,
   legDynamicVariables,
   type ReservationLegVars,
   placeCancelNoticeFirstMessage,
@@ -482,6 +485,151 @@ async function runCallbackRetry(input: {
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     console.error(`[reservation-call] callback retry crashed: ${e}`);
+  }
+}
+
+// Leg 7 · reminder — a2, ~3 h before a confirmed slot. Cap 1, never retried
+// (Docs › Reservations). Quiet hours are NEVER waived. Platform outages
+// still park on the outage clock without charging the one attempt.
+async function runReminder(input: {
+  admin: SupabaseClient;
+  reservationId: string;
+  runId: string;
+  key: string;
+  consumerNumber: string;
+  confirmerAgentId: string;
+  legVars: ReservationLegVars;
+  outageRetries: number;
+  reservedAtIso: string;
+  placeLng: number | null;
+  guestNotify: "call" | "app";
+  reminderEnabled: boolean;
+}): Promise<void> {
+  const { admin, reservationId } = input;
+  const record = (patch: Record<string, unknown>) =>
+    guardedRecord(admin, reservationId, input.runId, patch);
+  try {
+    if (input.guestNotify === "app") {
+      await record({
+        reminder_state: "skipped",
+        reminder_at: null,
+        last_call_status: "reminder — guest prefers app-only; no call",
+      });
+      return;
+    }
+    // Knob-off after a race with cron: restore the park. Never skip-then-lose
+    // the timestamp — flipping ON must still cover this held table.
+    if (!input.reminderEnabled) {
+      const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
+      await record({
+        ...reminderParkPatch(input.placeLng, reservedAt, input.guestNotify),
+        last_call_status: "reminder — operator knob off; park kept",
+      });
+      return;
+    }
+    const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
+    const cutoff = reservedAt ? reservedAt.getTime() - 30 * 60_000 : 0;
+    if (!reservedAt || Date.now() > cutoff) {
+      await record({
+        reminder_state: "skipped",
+        reminder_at: null,
+        last_call_status: "reminder skipped — past the 30 min cutoff (or no slot)",
+      });
+      return;
+    }
+    const lines = await resolveLines(input.key);
+    if (!lines.ok) {
+      await record({
+        reminder_state: "failed",
+        reminder_at: null,
+        last_call_status: `reminder — line resolution failed: ${lines.error}`.slice(0, 200),
+      });
+      return;
+    }
+    if (!input.consumerNumber) {
+      await record({
+        reminder_state: "skipped",
+        reminder_at: null,
+        last_call_status: "reminder — no guest number",
+      });
+      return;
+    }
+    const outagePark = async (why: string) => {
+      const next = outageRetryAt(input.outageRetries);
+      if (next) {
+        await record({
+          outage_retries: input.outageRetries + 1,
+          reminder_state: "scheduled",
+          reminder_at: next.at.toISOString(),
+          last_call_status: `reminder — ${why} — ${next.reason}`.slice(0, 200),
+        });
+      } else {
+        await record({
+          reminder_state: "failed",
+          reminder_at: null,
+          last_call_status: `reminder — ${why} — platform outage persisted; needs attention`
+            .slice(0, 200),
+        });
+      }
+    };
+    const call = await placeOutboundCall(input.key, {
+      agentId: input.confirmerAgentId,
+      agentPhoneNumberId: lines.guestLineId,
+      toNumber: input.consumerNumber,
+      dynamicVariables: legDynamicVariables("guest_confirmation", input.legVars, {
+        callContext: "reminder",
+      }),
+      overrides: {
+        prompt: guestReminderPrompt(input.legVars),
+        firstMessage: guestReminderFirstMessage(input.legVars),
+        language: "es",
+      },
+    });
+    if (!call.ok) {
+      if (classifyPlacementFailure(call.httpStatus) === "platform") {
+        await outagePark(`not placed (HTTP ${call.httpStatus ?? "network"})`);
+      } else {
+        await record({
+          reminder_attempts: REMINDER_MAX_ATTEMPTS,
+          reminder_state: "skipped",
+          reminder_at: null,
+          last_call_status: `reminder failed: ${call.error} — app is the fallback`.slice(0, 200),
+        });
+      }
+      return;
+    }
+    await record({
+      reminder_state: "ringing",
+      reminder_conversation_id: call.conversationId,
+      last_call_status: "reminder — calling the guest",
+    });
+    const watch: AnswerWatch = call.conversationId
+      ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
+      : { outcome: "unknown", errorCode: null };
+    if (watch.outcome === "answered") {
+      await record({
+        reminder_attempts: REMINDER_MAX_ATTEMPTS,
+        reminder_state: "answered",
+        reminder_at: null,
+        outage_retries: 0,
+        last_call_status: "reminder — guest reached",
+      });
+      return;
+    }
+    if (watch.outcome === "no_answer" && classifyFailedConversation(watch.errorCode) === "platform") {
+      await outagePark(`platform killed the call (code ${watch.errorCode})`);
+      return;
+    }
+    // Cap 1: voicemail / no-answer is NOT retried. The app is the fallback.
+    await record({
+      reminder_attempts: REMINDER_MAX_ATTEMPTS,
+      reminder_state: "skipped",
+      reminder_at: null,
+      last_call_status: "reminder — guest didn't answer; app is the fallback",
+    });
+  } catch (e) {
+    if (e instanceof OrphanedRunError) return;
+    console.error(`[reservation-call] reminder crashed: ${e}`);
   }
 }
 
@@ -1048,6 +1196,11 @@ async function runIntents(input: {
           // A confirmed MODIFICATION means the venue moved the booking on
           // this very call — the old hold is gone conversationally.
           modification_of: null,
+          ...reminderParkPatch(
+            input.placeLng,
+            input.reservedAtIso ? new Date(input.reservedAtIso) : null,
+            input.guestNotify,
+          ),
           last_call_status: `intent ${n}: venue confirmed — calling the guest`,
         });
         await guestCall(key, lines.guestLineId, "confirmation", "");
@@ -1139,7 +1292,9 @@ Deno.serve(async (req) => {
   if (!reservationId || typeof reservationId !== "string") {
     return json({ ok: false, error: "reservation_id required" }, 400);
   }
-  const intent = bodyRes.body.intent === "callback_retry" || bodyRes.body.intent === "cancel_notice"
+  const intent = bodyRes.body.intent === "callback_retry" ||
+      bodyRes.body.intent === "cancel_notice" ||
+      bodyRes.body.intent === "reminder"
     ? bodyRes.body.intent
     : "book";
 
@@ -1155,7 +1310,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, status, project_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -1181,6 +1336,13 @@ Deno.serve(async (req) => {
     if (r.notice_kind !== "venue_cancel" && r.notice_kind !== "guest_cancel") {
       return json({ ok: true, skipped: "no cancellation notice owed" });
     }
+  } else if (intent === "reminder") {
+    if (r.status !== "confirmed") {
+      return json({ ok: true, skipped: `reservation is ${r.status}, not confirmed` });
+    }
+    if (r.reminder_state !== "scheduled") {
+      return json({ ok: true, skipped: "reminder not scheduled" });
+    }
   } else {
     // callback_retry: only a still-live verdict warrants re-ringing the guest.
     const confirmationDue = r.status === "confirmed" && !r.consumer_confirmed_at;
@@ -1198,6 +1360,10 @@ Deno.serve(async (req) => {
     .maybeSingle();
   const cfg = coerceReservationsCallConfig(settings?.reservations_config);
 
+  if (intent === "reminder" && !cfg.reminder.enabled) {
+    return json({ ok: true, skipped: "reminder knob off" });
+  }
+
   // ── Kill switch: no outbound reservation call of ANY kind while on ────────
   // Park (not drop) so flipping the switch off resumes everything via the
   // cron within a minute of each parked clock coming due.
@@ -1207,6 +1373,8 @@ Deno.serve(async (req) => {
       ? { attempts_state: "scheduled", next_attempt_at: inHalfHour }
       : intent === "callback_retry"
       ? { callback_state: "scheduled", callback_next_attempt_at: inHalfHour }
+      : intent === "reminder"
+      ? { reminder_state: "scheduled", reminder_at: inHalfHour }
       : { notice_state: "scheduled", notice_next_at: inHalfHour };
     await writeReservation(admin, {
       mode: "update",
@@ -1429,6 +1597,53 @@ Deno.serve(async (req) => {
         placeLng,
         reservedAtIso: r.reserved_at,
         guestNotify,
+      }),
+    );
+    return json({ ok: true, started: true, intent, reservation_id: reservationId });
+  }
+
+  if (intent === "reminder") {
+    if (guestNotify === "app") {
+      await writeReservation(admin, {
+        mode: "update",
+        id: reservationId,
+        patch: {
+          reminder_state: "skipped",
+          reminder_at: null,
+          last_call_status: "reminder — guest prefers app-only; no call",
+        },
+      });
+      return json({ ok: true, skipped: "guest prefers app-only" });
+    }
+    const reminderClaim = await writeReservation(admin, {
+      mode: "update",
+      id: reservationId,
+      patch: {
+        reminder_state: "calling",
+        reminder_at: null,
+        run_id: runId,
+        claimed_at: new Date().toISOString(),
+      },
+      match: { reminder_state: "scheduled" },
+      select: "id",
+    });
+    if (!reminderClaim.ok || !reminderClaim.row) {
+      return json({ ok: true, skipped: "reminder already claimed" });
+    }
+    runInBackground(
+      runReminder({
+        admin,
+        reservationId,
+        runId,
+        key: elevenKey,
+        consumerNumber,
+        confirmerAgentId,
+        legVars,
+        outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
+        reservedAtIso: r.reserved_at,
+        placeLng,
+        guestNotify,
+        reminderEnabled: cfg.reminder.enabled,
       }),
     );
     return json({ ok: true, started: true, intent, reservation_id: reservationId });

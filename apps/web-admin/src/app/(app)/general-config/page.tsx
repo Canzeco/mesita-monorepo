@@ -1,10 +1,14 @@
 import { getVerificationConfig, type VerificationConfig } from "../verification-config/actions";
 import { VerificationConfigClient } from "../verification-config/VerificationConfigClient";
+import { getModelsConfig } from "../models-config/actions";
 import { ModelsConfigClient } from "../models-config/ModelsConfigClient";
+import { DEFAULT_MODELS_CONFIG } from "../models-config/types";
 
-// General — Verification + Models, each keeping its own client, its own load
-// and its own Save. Ojo's policy lives on Visits (who reads the proof);
-// Ojo · Vision stays in Models because it is a model picker, not visit policy.
+// General — Models first (Pato, 2026-08-24: "in general, models must be
+// on top"), then Verification. Each keeps its own client, load and Save.
+// Ojo's policy lives on Visits (who reads the proof); Ojo · Vision stays
+// in Models because it is a model picker, not visit policy. Do not wrap
+// them in a second heading — SectionCard already owns the title.
 export const dynamic = "force-dynamic";
 
 const FALLBACK_CONFIG: VerificationConfig = {
@@ -14,39 +18,21 @@ const FALLBACK_CONFIG: VerificationConfig = {
 };
 
 export default async function GeneralConfigPage() {
-  const res = await getVerificationConfig();
+  const [res, models] = await Promise.all([
+    getVerificationConfig(),
+    getModelsConfig(),
+  ]);
   return (
     <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="font-display text-base font-semibold tracking-tight">
-            Verification
-          </h2>
-          <p className="text-muted-foreground mt-1 type-body leading-relaxed">
-            The Mesita Partner badge is separate from ownership proof. These
-            decide whether a successful phone or email OTP grants ownership
-            outright, or waits on the Verification Queue under Alerts.
-          </p>
-        </div>
-        <VerificationConfigClient
-          initialConfig={res.ok ? res.config : FALLBACK_CONFIG}
-          initialUpdatedAt={res.ok ? res.updatedAt : null}
-          loadError={res.ok ? null : res.error}
-        />
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <div>
-          <h2 className="font-display text-base font-semibold tracking-tight">
-            Models
-          </h2>
-          <p className="text-muted-foreground mt-1 type-body leading-relaxed">
-            Which model each subsystem thinks with. Every one of these is read
-            at run time by an Edge Function — changing it changes token spend.
-          </p>
-        </div>
-        <ModelsConfigClient />
-      </section>
+      <ModelsConfigClient
+        initialConfig={models.ok ? models.data : DEFAULT_MODELS_CONFIG}
+        loadError={models.ok ? null : models.error}
+      />
+      <VerificationConfigClient
+        initialConfig={res.ok ? res.config : FALLBACK_CONFIG}
+        initialUpdatedAt={res.ok ? res.updatedAt : null}
+        loadError={res.ok ? null : res.error}
+      />
     </div>
   );
 }

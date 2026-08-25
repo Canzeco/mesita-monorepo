@@ -28,6 +28,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 
 type Body = {
   reservation_id?: string;
@@ -155,6 +156,7 @@ Deno.serve(async (req) => {
     callback_next_attempt_at: null,
     callback_conversation_id: null,
     callback_at: null,
+    ...REMINDER_CLEAR,
     // MUST clear: if the old ticket was parked for a retry, the pg_cron poller
     // (run-reservation-retries) would still fire on that stale timestamp — a
     // second call to the venue on top of the one this EF triggers below.

@@ -127,6 +127,22 @@ export function guestCancelNoticeFirstMessage(v: ReservationLegVars): string {
   return `¡Hola ${v.guestName}! Le llamo de Mesita por su reservación en ${v.placeName}.`;
 }
 
+/** Leg 7 · a2 reminder ~3 h before a confirmed slot. */
+export function guestReminderPrompt(v: ReservationLegVars): string {
+  return [
+    `Eres el asistente de reservaciones de Mesita. Esta llamada es un RECORDATORIO al comensal ${v.guestName}: en unas horas tiene mesa en ${v.placeName} para ${v.partySize} ${
+      v.partySize === 1 ? "persona" : "personas"
+    } el ${v.dateEs} a las ${v.timeEs}.`,
+    `PRIMERO confirma que hablas con ${v.guestName}; hasta entonces no des ningún detalle. Confirmado, recuérdale los datos con calidez. Puede confirmar que asiste, pedir un cambio de hora o fecha (usa a2_confirm_reservation con new_date / new_time), o cancelar (a2_cancel_reservation). Si pregunta por una referencia, su código es ${v.referenceCode}.`,
+    `No inventes disponibilidad. Habla natural, cálido y breve. Español de México, trato de usted.`,
+    HANGUP_POLICY,
+  ].join("\n\n");
+}
+
+export function guestReminderFirstMessage(v: ReservationLegVars): string {
+  return `¡Hola ${v.guestName}! Le llamo de Mesita para recordarle su reservación.`;
+}
+
 /** Guest-leg context: what the Confirmer call is about. */
 export type GuestLegContext = {
   /** "confirmation" (place said yes) · "counter_offer" (place offered options). */

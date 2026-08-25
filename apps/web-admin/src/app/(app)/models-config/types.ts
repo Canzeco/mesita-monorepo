@@ -10,10 +10,8 @@
 // embeddings / memo.* / ojo.model.
 // Intaker Perplexity is NOT read from this blob — app_config's
 // atlas_perplexity_preset is the live search preset (enricher.perplexity here
-// is staged). The synthesis / vision quality tiers are atlas_* columns too, and
-// since 2026-08-23 no console edits any of the three: the Intake page (the old
-// Enrichment row) is a Soon page, so those three are whatever they were last
-// saved as.
+// is staged). The synthesis / vision quality tiers are atlas_* columns too;
+// Intake (MESITA-1287) edits those three. This page does not.
 
 import type { LucideIcon } from "lucide-react";
 import { Database, Eye, Layers, MessagesSquare, Sparkles } from "lucide-react";
@@ -72,7 +70,8 @@ export const PERPLEXITY_OPTIONS = [
 // ── Subsystem map ──────────────────────────────────────────────────────────
 // Drives the page. `editableHere` is true for rows this page owns (supabase +
 // memo). Intaker / Embeddings stay read-only — their values live in atlas_*
-// columns and models_config, and no page edits them since Enrichment emptied.
+// columns and models_config. Intake edits the atlas_* quality/preset knobs;
+// this page does not.
 export type ModelStatus = "live" | "staged" | "locked";
 
 // A model shown "up front" on a card — the id (rendered as a mono chip) plus a
@@ -119,7 +118,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
       },
     ],
     detail:
-      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Intaker reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. No console edits the three since Enrichment emptied.",
+      "OpenAI quality tiers + Perplexity Agent preset are atlas_* columns the Intaker reads live. models_config.enricher.model binds the cheap/default OpenAI id; enricher.perplexity in this blob is staged. Intake edits the three atlas_* knobs.",
     editableHere: false,
     owner: null,
   },
@@ -152,7 +151,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     Icon: Eye,
     status: "live",
     detail:
-      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. See Visits for the enabled/threshold/retry policy this model serves.",
+      "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. Enabled / threshold / fail-action live on Visits.",
     editableHere: true,
     owner: null,
   },

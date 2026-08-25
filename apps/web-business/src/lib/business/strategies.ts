@@ -16,7 +16,7 @@
 //
 //   - Welcome ≥ Returning inside a class — winning a guest is worth more than
 //     keeping one (retention discounts are partly deadweight).
-//   - Premium ≥ Standard in every row — Premium guests always get more.
+  //   - Premium ≥ Free in every row — Premium guests always get more.
 //   - Rates live on a tens grid, max 50% — "half off" is the strongest
 //     credible headline.
 //   - Every discount applies to the first N pesos of the bill — N is the
@@ -43,7 +43,7 @@ export type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
 // The four discount cells, keyed by the exact projects column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
-//   *_free_*  → Standard guests         · *_premium_* → Premium guests.
+//   *_free_*  → Free guests             · *_premium_* → Premium guests.
 type StrategyRates = {
   welcome_free_rate: number | null; // FW — Free · Welcome (first visit)
   welcome_premium_rate: number | null; // PW — Premium · Welcome

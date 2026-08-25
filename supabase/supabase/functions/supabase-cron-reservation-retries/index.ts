@@ -21,6 +21,7 @@
 //                  now, attempts intact; the engine re-claims and resumes.
 //   4 · wakes      due bookings (reserved_at-bounded) → intent book · due
 //                  callbacks → callback_retry · owed notices → cancel_notice
+//                  · due reminders (config-gated) → reminder
 //                  ('pending' rides regardless of clock — that state means a
 //                  cancel EF's fire-and-forget invoke was lost).
 //
@@ -36,6 +37,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
+import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import { validateReservationPatch } from "../_shared/reservation-doc.ts";
 
 /** Throws if the patch fails validateReservationPatch — every bulk sweep
@@ -101,9 +103,20 @@ Deno.serve(async (req) => {
     .lt("reserved_at", expiryFloor)
     .select("id");
 
+  const { data: mootReminderRows } = await admin
+    .from("reservation_tickets")
+    .update(validated({
+      reminder_state: "skipped",
+      reminder_at: null,
+      last_call_status: "reminder skipped — the slot already passed",
+    }))
+    .in("reminder_state", ["scheduled", "idle"])
+    .lt("reserved_at", expiryFloor)
+    .select("id");
+
   // ── 3 · Reaper: zombie claims self-heal here ───────────────────────────────
   const reap = async (
-    field: "attempts_state" | "callback_state" | "notice_state",
+    field: "attempts_state" | "callback_state" | "notice_state" | "reminder_state",
     zombieStates: string[],
     patch: Record<string, unknown>,
   ) => {
@@ -132,13 +145,20 @@ Deno.serve(async (req) => {
       notice_state: "scheduled",
       notice_next_at: nowIso,
     }),
+    reminders: await reap("reminder_state", ["calling", "ringing"], {
+      reminder_state: "scheduled",
+      reminder_at: nowIso,
+    }),
   };
 
   // ── 4 · Wakes ──────────────────────────────────────────────────────────────
   // Sequential on purpose: each engine call acks early (its legs run in the
   // background), so these loops are cheap, and a serial walk keeps a burst of
   // due tickets from opening a pile of simultaneous outbound calls.
-  const wake = async (ids: string[], intent: "book" | "callback_retry" | "cancel_notice") => {
+  const wake = async (
+    ids: string[],
+    intent: "book" | "callback_retry" | "cancel_notice" | "reminder",
+  ) => {
     let woken = 0;
     for (const id of ids) {
       const res = await invokeInternalCaller(
@@ -192,14 +212,38 @@ Deno.serve(async (req) => {
   const notices = { due: (ntRows ?? []).length, woken: 0 };
   notices.woken = await wake((ntRows ?? []).map((r) => r.id), "cancel_notice");
 
+  const { data: cfgRow } = await admin
+    .from("app_config")
+    .select("reservations_config")
+    .eq("id", 1)
+    .maybeSingle();
+  const reminderOn = coerceReservationsCallConfig(cfgRow?.reservations_config).reminder.enabled;
+  const reminders = { due: 0, woken: 0, skipped_knob: !reminderOn };
+  if (reminderOn) {
+    const { data: rmRows } = await admin
+      .from("reservation_tickets")
+      .select("id")
+      .eq("status", "confirmed")
+      .eq("reminder_state", "scheduled")
+      .not("reminder_at", "is", null)
+      .lte("reminder_at", nowIso)
+      .gte("reserved_at", expiryFloor)
+      .order("reminder_at", { ascending: true })
+      .limit(limit);
+    reminders.due = (rmRows ?? []).length;
+    reminders.woken = await wake((rmRows ?? []).map((r) => r.id), "reminder");
+  }
+
   return json({
     ok: true,
     expired: (expRows ?? []).length,
     moot_notices: (mootRows ?? []).length,
+    moot_reminders: (mootReminderRows ?? []).length,
     reaped,
     bookings,
     callbacks,
     notices,
+    reminders,
     failed,
   });
 });

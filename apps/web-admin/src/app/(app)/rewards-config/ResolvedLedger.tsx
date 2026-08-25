@@ -15,13 +15,8 @@ import {
   type StrategyKey,
 } from "./promos";
 
-// THE LEDGER. Splitting the grid into components removed every visible total:
-// no box answers "what does a Diamond on Premium actually pay here?". A single
-// hardcoded example under-serves a model where nothing else shows a sum, so
-// the operator picks the guest and watches the arithmetic.
-//
-// It shows dashes, never 0%, when a term does not apply — zero is a real rate
-// and would misreport as one.
+// THE LEDGER. Component boxes never show a sum, so the operator picks a guest
+// and watches the arithmetic. Dashes, never 0%, when a term does not apply.
 
 type Picked = {
   strategy: StrategyKey;
@@ -33,13 +28,10 @@ type Picked = {
   google: boolean;
 };
 
-const CHIP =
-  "rounded-md px-2 py-0.5 type-label font-semibold transition border";
-// On the dark ledger surface the "selected" state inverts to the page
-// background, so the chip states are written inline rather than as shared
-// light-surface constants.
-const CHIP_ON = "bg-background text-foreground border-transparent";
-const CHIP_OFF = "border-white/25 text-white/70 hover:text-white";
+const CHIP = "rounded-md px-2 py-0.5 type-label font-semibold transition border";
+const CHIP_ON = "bg-foreground text-background border-transparent";
+const CHIP_OFF =
+  "border-border text-muted-foreground hover:text-foreground hover:bg-muted";
 
 export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
   const [p, setP] = useState<Picked>({
@@ -55,7 +47,9 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
   const b = cfg.visits.bonuses[p.strategy];
   const base = cfg.visits.base[p.strategy].bronze.free;
   const classAdds = cfg.visits.base[p.strategy][p.cls].free - base;
-  const planAdds = cfg.visits.base[p.strategy].bronze.premium - base;
+  const planAdds =
+    cfg.visits.base[p.strategy][p.cls].premium -
+    cfg.visits.base[p.strategy][p.cls].free;
 
   const terms: { label: string; value: number | null }[] = [
     { label: "Base", value: base },
@@ -69,8 +63,8 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
     },
     { label: "Welcome", value: p.firstVisit ? b.welcome : null },
     { label: "Instagram Story", value: p.story ? b.story : null },
-    { label: "Mesita Review", value: p.mesita ? b.mesita : null },
     { label: "Google Review", value: p.google ? b.google : null },
+    { label: "Mesita Review", value: p.mesita ? b.mesita : null },
   ];
 
   const total = Math.min(
@@ -79,9 +73,9 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
   );
 
   return (
-    <section className="bg-foreground text-background rounded-2xl p-4 sm:p-5">
-      <p className="type-meta font-bold tracking-[0.14em] uppercase opacity-60">
-        Resolved — pick a guest
+    <section className="border-border bg-card rounded-2xl border p-4 sm:p-5">
+      <p className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
+        Resolved
       </p>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -93,10 +87,10 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
             onClick={() => setP((v) => ({ ...v, strategy: s }))}
             className={`${CHIP} ${p.strategy === s ? CHIP_ON : CHIP_OFF}`}
           >
-            {STRATEGY_META[s].emoji} {STRATEGY_META[s].name}
+            {STRATEGY_META[s].name}
           </button>
         ))}
-        <span className="mx-1 opacity-30">·</span>
+        <span className="text-muted-foreground mx-1">·</span>
         {CLASS_KEYS.map((c) => (
           <button
             key={c}
@@ -105,10 +99,10 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
             onClick={() => setP((v) => ({ ...v, cls: c }))}
             className={`${CHIP} ${p.cls === c ? CHIP_ON : CHIP_OFF}`}
           >
-            {CLASS_META[c].emoji} {CLASS_META[c].name}
+            {CLASS_META[c].name}
           </button>
         ))}
-        <span className="mx-1 opacity-30">·</span>
+        <span className="text-muted-foreground mx-1">·</span>
         {PLAN_KEYS.map((k) => (
           <button
             key={k}
@@ -125,10 +119,10 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {(
           [
-            ["firstVisit", "First visit"],
-            ["story", "Story"],
-            ["mesita", "Mesita review"],
-            ["google", "Google review"],
+            ["firstVisit", "Welcome"],
+            ["story", "Instagram Story"],
+            ["google", "Google Review"],
+            ["mesita", "Mesita Review"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -138,36 +132,39 @@ export function ResolvedLedger({ cfg }: { cfg: PromosConfig }) {
             onClick={() => setP((v) => ({ ...v, [key]: !v[key] }))}
             className={`${CHIP} ${p[key] ? CHIP_ON : CHIP_OFF}`}
           >
-            {p[key] ? "✓ " : ""}
             {label}
           </button>
         ))}
       </div>
 
-      <dl className="mt-3.5 border-t border-white/20 pt-2.5">
+      <dl className="border-border mt-3.5 border-t pt-2.5">
         {terms.map((t) => (
           <div
             key={t.label}
             className="flex items-baseline justify-between py-[3px] type-body"
           >
-            <dt className={t.value == null ? "opacity-40" : "opacity-85"}>
+            <dt
+              className={
+                t.value == null ? "text-muted-foreground" : "text-foreground"
+              }
+            >
               {t.label}
             </dt>
             <dd className="font-mono tabular-nums">
               {t.value == null ? (
-                <span className="opacity-40">—</span>
+                <span className="text-muted-foreground">—</span>
               ) : (
                 `${t.label === "Base" ? "" : "+"}${t.value}%`
               )}
             </dd>
           </div>
         ))}
-        <div className="mt-1.5 flex items-baseline justify-between border-t border-white/20 pt-2 text-sm font-bold">
+        <div className="border-border mt-1.5 flex items-baseline justify-between border-t pt-2 text-sm font-bold">
           <dt>Pays</dt>
           <dd className="font-mono tabular-nums">
             {total}%{" "}
-            <span className="type-label font-medium opacity-60">
-              · first MX${cfg.cap.toLocaleString("en-US")}
+            <span className="text-muted-foreground type-label font-medium">
+              · first {cfg.cap.toLocaleString("en-US")}
             </span>
           </dd>
         </div>

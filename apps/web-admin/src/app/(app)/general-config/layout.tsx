@@ -5,7 +5,7 @@ import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 // trivials there too").
 //
 // The rule: a config page whose ENTIRE content is three controls or fewer
-// becomes a card group here. Verification and Models qualified.
+// becomes a card group here. Models and Verification qualified.
 // Reservations kept its row. Ojo's policy lives on Visits (who reads the
 // proof); the Ojo · Vision model picker stays in Models.
 //
@@ -22,7 +22,7 @@ export default function GeneralConfigLayout({
     <ConfigPageLayout
       eyebrow="Operations · General"
       title="General"
-      description="Platform settings small enough to share a page. Who may prove they own a place, and which model each subsystem thinks with."
+      description="Platform settings small enough to share a page: which model each subsystem thinks with, and who may prove they own a place."
     >
       {children}
     </ConfigPageLayout>

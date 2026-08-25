@@ -28,10 +28,17 @@ export const LIMITS_SEED: ReservationLimits = {
   killSwitch: false,
 };
 
+export type ReminderConfig = {
+  /** OFF by default — +1 call per confirmed reservation; flipped deliberately. */
+  enabled: boolean;
+};
+export const REMINDER_SEED: ReminderConfig = { enabled: false };
+
 export type ReservationsCallConfig = {
   testCall: TestCall;
   attempts: number;
   limits: ReservationLimits;
+  reminder: ReminderConfig;
 };
 
 // FIXED at 2 by protocol — not configurable. Attempt 1 fires immediately;
@@ -72,7 +79,15 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
     },
     attempts: ATTEMPTS,
     limits: coerceLimits(c.limits),
+    reminder: coerceReminder(c.reminder),
   };
+}
+
+function coerceReminder(raw: unknown): ReminderConfig {
+  const r = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? raw as Record<string, unknown>
+    : {};
+  return { enabled: r.enabled === true };
 }
 
 function coerceLimits(raw: unknown): ReservationLimits {

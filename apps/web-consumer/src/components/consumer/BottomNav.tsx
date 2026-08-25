@@ -23,7 +23,8 @@ import {
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
 // label names a DESTINATION; the class is status, and status belongs on the Me
 // page where it can be read and acted on, not stamped into the chrome of every
-// screen.
+// screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
+// by Product Rules §C; `route-structure.test.tsx` pins the five plain labels.
 
 // Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
 // a className and (harmlessly) a strokeWidth, so the render stays uniform.

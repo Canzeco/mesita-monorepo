@@ -3,29 +3,18 @@
 import { useEffect, useState, useTransition } from "react";
 import { Cpu } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
-import { SectionCard } from "@/components/admin-ui/config";
-import { SaveRow } from "../enricher-config/atlas-ui";
+import { SaveRow, SectionCard } from "@/components/admin-ui/config";
 import { getModelsConfig, updateModelsConfig } from "./actions";
 import {
-  DEFAULT_MODELS_CONFIG,
   OPENAI_CHAT_MODELS,
   PERPLEXITY_OPTIONS,
   type ModelsConfig,
 } from "./types";
 
-// Models — one box, three selects (MESITA-1176). It was four cards for three
-// controls: Intaker and Embeddings held no control at all, just read-only
-// pointers at Enrichment, and the ModelChips above each select printed the
-// value the select already showed. The three-badge Live/Staged/Locked legend
-// went with them — after the cut every knob here is live, so the vocabulary
-// had one member left.
-//
-// SoT for app_config.models_config. supabase + memo are
-// edited here and read live by EFs (MESITA-941 loadModelsConfig). The Intaker
-// and embedding values are not edited anywhere: they are atlas_* columns and a
-// locked embedding id, and the Intake page that used to carry them is a Soon
-// page. Failed GET blocks Save (MESITA-737) — never persist DEFAULTS over
-// a live blob.
+// Models — one box, four live picks (MESITA-1176 cut the empty Intaker /
+// Embeddings cards; Ojo's vision model joined the same row). Every knob
+// here is live. SoT for app_config.models_config. Failed GET blocks Save
+// (MESITA-737) — never persist DEFAULTS over a live blob.
 
 function Select({
   value,
@@ -56,18 +45,21 @@ function Select({
   );
 }
 
-export function ModelsConfigClient() {
-  const [cfg, setCfg] = useState<ModelsConfig>(DEFAULT_MODELS_CONFIG);
-  const [saved, setSaved] = useState<ModelsConfig>(DEFAULT_MODELS_CONFIG);
+export function ModelsConfigClient({
+  initialConfig,
+  loadError,
+}: {
+  initialConfig: ModelsConfig;
+  loadError: string | null;
+}) {
+  const [cfg, setCfg] = useState<ModelsConfig>(initialConfig);
+  const [saved, setSaved] = useState<ModelsConfig>(initialConfig);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [loadBlocked, setLoadBlocked] = useState(false);
+  const [error, setError] = useState<string | null>(loadError);
+  const [loadBlocked, setLoadBlocked] = useState(!!loadError);
   const [ok, setOk] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // Load the persisted blob on mount. On failure keep DEFAULTS visible but
-  // block Save so we never overwrite a live singleton from a failed GET
-  // (MESITA-737 — same pattern as Sourcing / Memo).
+  // Re-fetch on mount so client-side nav shows the live blob.
   useEffect(() => {
     let active = true;
     (async () => {
@@ -82,14 +74,13 @@ export function ModelsConfigClient() {
         setError(r.error);
         setLoadBlocked(true);
       }
-      setLoading(false);
     })();
     return () => {
       active = false;
     };
   }, []);
 
-  const busy = pending || loading || loadBlocked;
+  const busy = pending || loadBlocked;
   const dirty =
     cfg.supabase.model !== saved.supabase.model ||
     cfg.memo.model !== saved.memo.model ||
@@ -135,7 +126,7 @@ export function ModelsConfigClient() {
     <SectionCard
       icon={<Cpu className="h-4 w-4" />}
       title="Models"
-      subtitle="Which model each subsystem thinks with. Both are read at run time, so changing one changes token spend."
+      subtitle="Which model each subsystem thinks with. Every pick here is read at run time — changing one changes token spend."
     >
       {error && <ErrorNote message={error} />}
 
@@ -190,9 +181,9 @@ export function ModelsConfigClient() {
       </div>
 
       <p className="text-muted-foreground mt-3 type-label leading-relaxed">
-        Intaker quality tiers and the embedding model live on Enrichment; the
+        Intaker quality tiers and the embedding model live on Intake; the
         embedding model is fixed by design — changing it re-vectors the catalog.
-        Ojo&apos;s enabled/threshold/retry policy lives on Visits.
+        Ojo&apos;s enabled, threshold and fail-action policy lives on Visits.
       </p>
 
       <SaveRow

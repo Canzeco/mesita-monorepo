@@ -65,12 +65,20 @@ export function escapeIlike(s: string): string {
 export async function fetchPlaceSignals(
   placeId: string,
   apiKey: string,
-): Promise<{ primaryType: string | null; rating: number | null; reviewCount: number | null } | null> {
+): Promise<{
+  primaryType: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  lat: number | null;
+  lng: number | null;
+  country: string | null;
+} | null> {
   try {
     const r = await fetch(`${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`, {
       headers: {
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "primaryType,rating,userRatingCount",
+        "X-Goog-FieldMask":
+          "primaryType,rating,userRatingCount,location,addressComponents",
       },
     });
     if (!r.ok) return null;
@@ -78,11 +86,22 @@ export async function fetchPlaceSignals(
       primaryType?: string;
       rating?: number;
       userRatingCount?: number;
+      location?: { latitude?: number; longitude?: number };
+      addressComponents?: Array<{
+        shortText?: string;
+        types?: string[];
+      }>;
     };
+    const country =
+      d.addressComponents?.find((c) => c.types?.includes("country"))?.shortText ??
+      null;
     return {
       primaryType: d.primaryType ?? null,
       rating: typeof d.rating === "number" ? d.rating : null,
       reviewCount: typeof d.userRatingCount === "number" ? d.userRatingCount : null,
+      lat: typeof d.location?.latitude === "number" ? d.location.latitude : null,
+      lng: typeof d.location?.longitude === "number" ? d.location.longitude : null,
+      country,
     };
   } catch {
     return null;

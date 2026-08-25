@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 import { type Strategy } from "@/lib/business/strategies";
 import {
-  ACTION_KEYS,
   ACTION_META,
   CLASS_KEYS,
   CLASS_META,
   METER_SEGMENTS,
+  PLAN_KEYS,
   giveLevel,
+  premiumUplift,
   totalFor,
   visibilityDots,
+  type ActionKey,
   type PromosConfig,
   type StrategyKey,
 } from "@/lib/business/promos";
@@ -52,12 +54,17 @@ export function Step({
   );
 }
 
-// Every rate this posture pays — rows are guest classes, columns are what the
-// guest did. Modal-only since MESITA-1001 (the card face abstracts it into the
-// give meter), and read from the LIVE v10 config rather than the frozen
-// `strategies.ts` presets: the engine went additive-v10 in MESITA-992 and
-// stopped consulting those presets, so the old 2×2 under-reported returning
-// visits on Aggressive by 10 points. Rates live in HTML text, never artwork.
+// Every rate this posture pays — class rows at Free (the floor a place is
+// guaranteed to pay). Premium is private, so it is one uplift line, not a
+// second guest column. Columns follow the guest rung order.
+const MATRIX_ACTIONS: readonly ActionKey[] = [
+  "standing",
+  "welcome",
+  "story",
+  "review",
+  "mesita_review",
+];
+
 export function RateMatrix({
   cfg,
   strategy,
@@ -66,18 +73,20 @@ export function RateMatrix({
   strategy: StrategyKey;
 }) {
   const cell = (v: number) => (v > 0 ? `${v}%` : "—");
-  const shortAction: Record<string, string> = {
-    standing: "None",
-    mesita_review: ACTION_META.mesita_review.emoji,
-    story: ACTION_META.story.emoji,
-    welcome: ACTION_META.welcome.emoji,
-    review: ACTION_META.review.emoji,
+  const shortAction: Record<ActionKey, string> = {
+    standing: "Base",
+    welcome: "Welcome",
+    story: "Story",
+    review: "Google",
+    mesita_review: "Mesita",
   };
+  const uplifts = CLASS_KEYS.map((cls) => premiumUplift(cfg, strategy, cls));
+  const sameUplift = uplifts.every((u) => u === uplifts[0]);
   return (
     <div className="flex flex-col gap-1">
       <div className="border-border grid grid-cols-[minmax(0,1.4fr)_repeat(5,minmax(0,1fr))] overflow-hidden rounded-lg border text-[10.5px]">
         <span className="bg-muted/40 px-2 py-1.5" aria-hidden />
-        {ACTION_KEYS.map((a) => (
+        {MATRIX_ACTIONS.map((a) => (
           <span
             key={a}
             title={ACTION_META[a].name}
@@ -94,22 +103,25 @@ export function RateMatrix({
             >
               {CLASS_META[cls].emoji} {CLASS_META[cls].name}
             </span>
-            {ACTION_KEYS.map((a) => (
+            {MATRIX_ACTIONS.map((a) => (
               <span
                 key={a}
                 className="text-foreground/80 border-border border-t px-1 py-1.5 text-center font-bold tabular-nums"
               >
-                {cell(totalFor(cfg, strategy, cls, a))}
+                {cell(totalFor(cfg, strategy, cls, a, PLAN_KEYS[0]))}
               </span>
             ))}
           </div>
         ))}
       </div>
       <p className="text-muted-foreground/80 text-[10px] leading-snug">
-        {ACTION_KEYS.map(
+        {MATRIX_ACTIONS.map(
           (a, i) =>
             `${i > 0 ? " · " : ""}${ACTION_META[a].emoji} ${ACTION_META[a].name}`,
         ).join("")}
+        {sameUplift
+          ? ` · Premium +${uplifts[0]}%`
+          : ` · Premium ${CLASS_KEYS.map((cls, i) => `${CLASS_META[cls].name} +${uplifts[i]}`).join(" / ")}`}
       </p>
     </div>
   );

@@ -31,11 +31,36 @@ export type ChannelKey =
   | "consumer_add"
   | "memo_search";
 
+/**
+ * Places (New) scope for this channel. `country` is a CLDR code (MX).
+ * Text Search sends it as `regionCode` (soft). Autocomplete also sends
+ * `includedRegionCodes` (hard country filter). Empty country = off.
+ * `radiusKm` 0 = country only. `restrict` = hard fence (Google restriction
+ * + add-path reject). Bias (`restrict` off) prefers the circle and may
+ * still return outsiders.
+ */
+export type RegionPolicy = {
+  country: string;
+  lat: number;
+  lng: number;
+  radiusKm: number;
+  restrict: boolean;
+};
+
+export const DEFAULT_REGION: RegionPolicy = {
+  country: "MX",
+  lat: 19.4326,
+  lng: -99.1332,
+  radiusKm: 0,
+  restrict: false,
+};
+
 type ChannelPolicy = {
   enabled: boolean;
   families: FamilyKey[];
   minRating: number;
   minReviews: number;
+  region: RegionPolicy;
 };
 
 export type SourcingConfig = Record<ChannelKey, ChannelPolicy>;
@@ -214,7 +239,7 @@ export const FAMILIES: Family[] = [
   },
 ];
 
-const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
+export const ALL_FAMILY_KEYS: FamilyKey[] = FAMILIES.map((f) => f.key);
 
 type ChannelVerb = "search" | "add";
 
@@ -310,15 +335,55 @@ export const CHANNELS: Channel[] = [
 // seed). Used as the pre-load placeholder and as the fallback if the config
 // read fails. consumer_search minRating is 1★; consumer_add is 2★ / 50 reviews
 // (live app_config floors — not the old migration seed 3.5★ / 100).
+function withRegion(
+  p: Omit<ChannelPolicy, "region">,
+  region: RegionPolicy = DEFAULT_REGION,
+): ChannelPolicy {
+  return { ...p, region: { ...region } };
+}
+
 export const DEFAULT_CONFIG: SourcingConfig = {
-  admin_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  admin_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  business_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  business_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 },
-  consumer_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 },
-  consumer_add: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 },
-  memo_search: { enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 },
+  admin_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  admin_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  business_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  business_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 0, minReviews: 0 }),
+  consumer_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 1, minReviews: 50 }),
+  consumer_add: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 2, minReviews: 50 }),
+  memo_search: withRegion({ enabled: true, families: [...ALL_FAMILY_KEYS], minRating: 4.0, minReviews: 50 }),
 };
+
+export function coerceRegion(
+  raw: unknown,
+  fallback: RegionPolicy = DEFAULT_REGION,
+): RegionPolicy {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  let country: string;
+  if (typeof o.country === "string") {
+    const c = o.country.trim().toUpperCase();
+    country = c === "" ? "" : /^[A-Z]{2}$/.test(c) ? c : fallback.country;
+  } else {
+    country = fallback.country;
+  }
+  const lat =
+    typeof o.lat === "number" && Number.isFinite(o.lat)
+      ? Math.min(90, Math.max(-90, o.lat))
+      : fallback.lat;
+  const lng =
+    typeof o.lng === "number" && Number.isFinite(o.lng)
+      ? Math.min(180, Math.max(-180, o.lng))
+      : fallback.lng;
+  const radiusKm =
+    typeof o.radiusKm === "number" && Number.isFinite(o.radiusKm)
+      ? Math.min(2000, Math.max(0, Math.round(o.radiusKm * 10) / 10))
+      : fallback.radiusKm;
+  return {
+    country,
+    lat: Math.round(lat * 10000) / 10000,
+    lng: Math.round(lng * 10000) / 10000,
+    radiusKm,
+    restrict: typeof o.restrict === "boolean" ? o.restrict : fallback.restrict,
+  };
+}
 
 // Coerce an arbitrary loaded object into a full, well-typed SourcingConfig,
 // filling any missing channel from DEFAULT_CONFIG and dropping unknown families.
@@ -330,7 +395,7 @@ export function coerceConfig(raw: unknown): SourcingConfig {
     const d = DEFAULT_CONFIG[ch.key];
     const p = src[ch.key];
     if (!p || typeof p !== "object") {
-      out[ch.key] = { ...d, families: [...d.families] };
+      out[ch.key] = { ...d, families: [...d.families], region: { ...d.region } };
       continue;
     }
     const o = p as Record<string, unknown>;
@@ -344,6 +409,7 @@ export function coerceConfig(raw: unknown): SourcingConfig {
       families,
       minRating: typeof o.minRating === "number" ? o.minRating : d.minRating,
       minReviews: typeof o.minReviews === "number" ? o.minReviews : d.minReviews,
+      region: coerceRegion(o.region, d.region),
     };
   }
   return out;

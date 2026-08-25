@@ -140,7 +140,13 @@ Deno.serve(async (req) => {
       if (i >= queries.length) return;
       const q = queries[i];
       try {
-        const fetched = await searchTextWithPagination(q, regionCode, maxResults, apiKey);
+        const fetched = await searchTextWithPagination(
+          q,
+          adminSearchPolicy,
+          maxResults,
+          apiKey,
+          regionCode,
+        );
         const places = fetched.filter((p) =>
           passesSourcingFilter(p, adminSearchPolicy, minRating, minUserRatingCount),
         );
@@ -260,7 +266,7 @@ function passesSourcingFilter(
     primaryType: p.primaryType,
     rating: p.rating,
     reviewCount: p.userRatingCount,
-  }).eligible;
+  }, { lat: p.lat, lng: p.lng }).eligible;
 }
 
 function clamp(n: number, lo: number, hi: number): number {
