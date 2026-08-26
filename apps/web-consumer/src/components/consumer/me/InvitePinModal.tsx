@@ -8,6 +8,7 @@ import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { classProperLabel, identityForClassKey } from "@/lib/consumer-data";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
@@ -55,7 +56,7 @@ export function InvitePinModal({
       const label = classProperLabel(identityForClassKey(result.classKey).cls);
       // Full reload so every surface reads the new class from a fresh server
       // seed, the same thing the Instagram claim does on success.
-      window.location.href = `/me?invite=${encodeURIComponent(label)}`;
+      window.location.href = `${CONSUMER_ROUTES.me}?invite=${encodeURIComponent(label)}`;
     } catch (e) {
       toast(errMsg(e, "That PIN didn't work."));
       setClaiming(false);
@@ -67,7 +68,7 @@ export function InvitePinModal({
       <div className={cn(SHEET_BODY_CLASS, "pt-3")}>
         <div className="mb-4 flex items-center gap-3">
           <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
-            <KeyRound className="h-5 w-5" />
+            <KeyRound className="h-5 w-5" aria-hidden />
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Invitation PIN</h2>

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { formatCurrency } from "@/lib/api/profile";
 import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 // ── Shared receipt row (mock `Row`): one bordered line, label left, number
 //    right. Every surface that shows a total builds from these. ────────────
@@ -263,7 +264,7 @@ export function StepBill({
       ) : null}
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
+        <p className={ERROR_BOX_CLASS}>
           {error}
         </p>
       ) : null}
@@ -373,7 +374,7 @@ export function StepPay({
       </div>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
+        <p className={ERROR_BOX_CLASS}>
           {error}
         </p>
       ) : null}

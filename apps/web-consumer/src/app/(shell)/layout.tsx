@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { Z_ROUTE_MODAL } from "@/lib/z-index";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
@@ -15,6 +15,7 @@ import { apiFetchConsumerProfile, type ConsumerClass } from "@/lib/api/profile";
 import { ClassProvider } from "@/lib/class-context";
 import { DiscountQuotesProvider } from "@/lib/discount-quotes";
 import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
@@ -103,12 +104,15 @@ export default async function ConsumerShellLayout({
       null;
     avatarUrl = profile.avatar_url ?? null;
   } catch (err) {
-    console.error("[consumer/shell] consumer-get-profile:", err);
+    console.error(
+      "[consumer/shell] consumer-get-profile:",
+      errMsg(err, "profile fetch failed"),
+    );
     classUnavailable = true;
   }
   // Carry the destination into onboarding so finishing the form lands the
   // guest on what they originally opened, not a generic home tab.
-  if (needsOnboarding) redirect(withNext("/onboard", here));
+  if (needsOnboarding) redirect(withNext(CONSUMER_ROUTES.onboard, here));
 
   // Two-box layout strategy (per user spec):
   //   - Bottom: BottomNav (shrink-0).

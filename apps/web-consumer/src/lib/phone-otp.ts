@@ -22,7 +22,7 @@ export const OTP_LENGTH = 6;
 // National-number length by ISO country, for the markets we actually sell
 // in. Anything not listed falls back to the E.164 floor/ceiling, which
 // still catches the common "typed 4 digits and hit send" case.
-const NATIONAL_LENGTH: Record<string, { min: number; max: number }> = {
+const NATIONAL_LENGTH = {
   MX: { min: 10, max: 10 },
   US: { min: 10, max: 10 },
   CA: { min: 10, max: 10 },
@@ -42,13 +42,20 @@ const NATIONAL_LENGTH: Record<string, { min: number; max: number }> = {
   PT: { min: 9, max: 9 },
   JP: { min: 10, max: 10 },
   AU: { min: 9, max: 9 },
-};
+} as const satisfies Record<string, { min: number; max: number }>;
 const DEFAULT_LENGTH = { min: 7, max: 15 };
 
 // Countries where people habitually dial a national trunk prefix that must
 // NOT survive into E.164. Mexico is the one that bites us daily: "1 55…"
 // (the old cellular prefix) and "044/045 55…" are still muscle memory.
-const TRUNK_PREFIX_ZERO = new Set(["UK", "DE", "FR", "NL", "AU", "AR"]);
+const TRUNK_PREFIX_ZERO: ReadonlySet<string> = new Set([
+  "UK",
+  "DE",
+  "FR",
+  "NL",
+  "AU",
+  "AR",
+]);
 
 /**
  * Strip formatting and national trunk prefixes so what's left is the true
@@ -83,7 +90,9 @@ export function parsePhone(countryCode: string, raw: string): PhoneParseResult {
   const digits = normalizeNationalDigits(countryCode, raw);
   if (!digits) return { ok: false, error: "Enter your phone number." };
 
-  const { min, max } = NATIONAL_LENGTH[countryCode] ?? DEFAULT_LENGTH;
+  const { min, max } =
+    NATIONAL_LENGTH[countryCode as keyof typeof NATIONAL_LENGTH] ??
+    DEFAULT_LENGTH;
   if (digits.length < min) {
     return {
       ok: false,
@@ -108,7 +117,7 @@ export function parsePhone(countryCode: string, raw: string): PhoneParseResult {
 // Supabase surfaces the provider's failure verbatim; Twilio's numeric code
 // is the only reliable part of it. These are the ones a real consumer can
 // actually trigger.
-const TWILIO_MESSAGES: Record<string, string> = {
+const TWILIO_MESSAGES = {
   "21211": "That number doesn't look valid. Check it and try again.",
   "21408":
     "We can't text that country yet. Try another number or reach out to us.",
@@ -118,7 +127,7 @@ const TWILIO_MESSAGES: Record<string, string> = {
   "30003": "That phone is unreachable — check it's on and has signal.",
   "30005": "That number doesn't exist. Check it and try again.",
   "30006": "That's a landline. Use a mobile number.",
-};
+} as const satisfies Record<string, string>;
 
 type MaybeAuthError = {
   message?: string;
@@ -157,8 +166,8 @@ export function otpErrorMessage(error: MaybeAuthError | null): string {
     return "That code isn't right. Check the 6 digits and try again.";
   }
   const twilioCode = message.match(/twilio\.com\/docs\/errors\/(\d+)/i)?.[1];
-  if (twilioCode && TWILIO_MESSAGES[twilioCode]) {
-    return TWILIO_MESSAGES[twilioCode];
+  if (twilioCode && twilioCode in TWILIO_MESSAGES) {
+    return TWILIO_MESSAGES[twilioCode as keyof typeof TWILIO_MESSAGES];
   }
   if (code === "sms_send_failed") {
     return "We couldn't send the code. Check the number and try again.";

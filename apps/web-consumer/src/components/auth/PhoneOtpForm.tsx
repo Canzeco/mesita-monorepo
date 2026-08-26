@@ -55,8 +55,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
   }, [cooldown]);
 
   const sendCode = async () => {

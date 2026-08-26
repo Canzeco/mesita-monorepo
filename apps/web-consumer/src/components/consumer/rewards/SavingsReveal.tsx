@@ -13,6 +13,7 @@ import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { formatCurrency } from "@/lib/api/profile";
 
 const REVEAL_MS = 900;
+const HOLD_MS = 4200;
 
 export function SavingsReveal({
   placeName,
@@ -49,7 +50,7 @@ export function SavingsReveal({
   }, [savedCents]);
 
   useEffect(() => {
-    const t = window.setTimeout(onDone, 4200);
+    const t = window.setTimeout(onDone, HOLD_MS);
     return () => window.clearTimeout(t);
   }, [onDone]);
 
@@ -59,7 +60,7 @@ export function SavingsReveal({
       className="bg-pink-gradient flex flex-col items-center gap-2 px-5 py-7 text-center"
     >
       <span className="grid size-11 place-items-center rounded-full bg-white/20">
-        <PartyPopper className="size-5" />
+        <PartyPopper className="size-5" aria-hidden />
       </span>
       <p className="type-label font-bold tracking-[0.14em] uppercase opacity-85">
         Visit complete at {placeName}

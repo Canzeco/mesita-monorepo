@@ -10,6 +10,7 @@ import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { isPromoting } from "@/lib/promo-rates";
 
 // The place-detail action bar (MESITA-1065): Visit · Order · Reserve, pinned.
@@ -65,7 +66,7 @@ export function PlaceActionBar({
             room for a panel, but swallowing it would leave a tap that visibly
             did nothing — one line, above the row, in place. */}
         {error ? (
-          <p className="bg-destructive/10 text-destructive mb-2 rounded-lg px-3 py-1.5 text-xs">
+          <p className={cn(ERROR_BOX_CLASS, "mb-2 py-1.5")}>
             {error}
           </p>
         ) : null}

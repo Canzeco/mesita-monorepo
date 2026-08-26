@@ -16,6 +16,11 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  MESITA_PRIVACY_EMAIL,
+  MESITA_PRIVACY_URL,
+  MESITA_TERMS_URL,
+} from "@/lib/mesita-contact";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -53,12 +58,12 @@ const PREF_KEYS = {
   contacts: "mesita:perm:contacts",
   language: "mesita:pref:language",
   defaultCity: "mesita:pref:default-city",
-};
+} as const;
 
 const LANGUAGE_OPTIONS = [
   { value: "es", label: "Español" },
   { value: "en", label: "English" },
-];
+] as const;
 
 // Fallback location used to seed recommendations when the consumer hasn't
 // shared their live location.
@@ -70,11 +75,7 @@ const CITY_OPTIONS = [
   { value: "pue", label: "Puebla" },
   { value: "cun", label: "Cancún" },
   { value: "tij", label: "Tijuana" },
-];
-
-const TERMS_URL = "https://www.mesita.ai/terms";
-const PRIVACY_URL = "https://www.mesita.ai/privacy";
-const PRIVACY_EMAIL = "privacy@mesita.ai";
+] as const;
 
 export function SettingsModal({
   open,
@@ -253,7 +254,7 @@ export function SettingsModal({
             <SettingsLinkRow
               Icon={ScrollText}
               tint="muted"
-              href={TERMS_URL}
+              href={MESITA_TERMS_URL}
               label="Terms of use"
               sub="mesita.ai/terms"
               external
@@ -262,7 +263,7 @@ export function SettingsModal({
             <SettingsLinkRow
               Icon={FileText}
               tint="muted"
-              href={PRIVACY_URL}
+              href={MESITA_PRIVACY_URL}
               label="Privacy policy"
               sub="mesita.ai/privacy"
               external
@@ -273,11 +274,11 @@ export function SettingsModal({
             <SettingsLinkRow
               Icon={Download}
               tint="emerald"
-              href={`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent(
+              href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
                 "Export my Mesita data",
               )}`}
               label="Export my data"
-              sub={PRIVACY_EMAIL}
+              sub={MESITA_PRIVACY_EMAIL}
             />
             <RowDivider />
             <SettingsActionRow

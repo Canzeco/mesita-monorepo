@@ -123,6 +123,7 @@ import {
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn, errMsg } from "@/lib/utils";
+import { ERROR_BOX_CLASS, TEXTAREA_CLASS } from "@/lib/ui-classes";
 
 const FOCUS_AFTER_APPROVE_MS = 900;
 const SCAN_PULSE_MS = 1400;
@@ -161,16 +162,16 @@ type ActionKind = "story" | "google" | "mesita";
 /** "base" = no action selected — the QR at the guest's floor. */
 type RewardPick = ActionKind | "base";
 
-const ACTION_SHORT: Record<ActionKind, string> = {
+const ACTION_SHORT = {
   story: "Instagram Story",
   google: "Google Review",
   mesita: "Mesita Review",
-};
+} as const satisfies Record<ActionKind, string>;
 
-const PAY_METHOD_LABEL: Record<string, string> = {
+const PAY_METHOD_LABEL = {
   at_place: "Paid at the place",
   mesita: "Card through Mesita",
-};
+} as const satisfies Record<string, string>;
 
 /** The freshest of the wallet row and the 10s poll, by updated_at. */
 function freshest(
@@ -1107,8 +1108,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               tipPct={tipPct}
               paidCents={amountDueCents}
               paidMethodLabel={
-                ticket.paid_method
-                  ? (PAY_METHOD_LABEL[ticket.paid_method] ?? null)
+                ticket.paid_method && ticket.paid_method in PAY_METHOD_LABEL
+                  ? PAY_METHOD_LABEL[
+                      ticket.paid_method as keyof typeof PAY_METHOD_LABEL
+                    ]
                   : null
               }
               capPesos={capPesos}
@@ -1261,11 +1264,14 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             onChange={(e) => setReportDetails(e.target.value.slice(0, 1000))}
             rows={3}
             placeholder="Anything else we should know? (optional)"
-            className="border-border bg-card focus:border-foreground type-body w-full resize-none rounded-2xl border px-3.5 py-3 outline-none"
+            className={cn(
+              TEXTAREA_CLASS,
+              "focus:border-foreground type-body rounded-2xl px-3.5 py-3",
+            )}
           />
 
           {reportError ? (
-            <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
+            <p className={ERROR_BOX_CLASS}>
               {reportError}
             </p>
           ) : null}
@@ -1326,7 +1332,7 @@ function RewardLanes({
   if (quoteError) {
     return (
       <div className="flex flex-col items-center gap-2 pt-1">
-        <p className="bg-destructive/10 text-destructive w-full rounded-lg px-3 py-2 text-center text-xs">
+        <p className={cn(ERROR_BOX_CLASS, "w-full text-center")}>
           Couldn&apos;t load your rates here.
         </p>
         <div className="flex items-center gap-5">

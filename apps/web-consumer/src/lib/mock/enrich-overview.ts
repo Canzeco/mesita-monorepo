@@ -29,6 +29,7 @@ import {
 import { num, str } from "@/lib/adapters/place-to-detail-helpers";
 import { formatPlacePriceChip } from "@/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
+import { DEFAULT_CURRENCY } from "@/lib/money";
 
 // Derives the overview-parity fields from the raw places columns on Place.
 // Mirrors placeRowToDetail so the card and the detail modal compute
@@ -38,7 +39,7 @@ export function enrichPlaceOverview(v: Place): Place {
   const count = num(v.google_review_count);
   const igFollowers = num(v.instagram_followers_count);
   const priceLevel = num(v.price_level);
-  const currency = str(v.currency) ?? "MXN";
+  const currency = str(v.currency) ?? DEFAULT_CURRENCY;
   // Neighborhood (zone) priority: the real zone column → the colonia
   // parsed out of the formatted address → the city. Most places have no
   // zone column yet but DO carry the colonia inside `address`

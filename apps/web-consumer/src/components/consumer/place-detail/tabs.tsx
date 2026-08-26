@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils";
 // the words a guest reads. "Menus", never "Products" (Pato 2026-08-22).
 export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
-const PLACE_TABS: Array<{ key: PlaceTab; label: string }> = [
+const PLACE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Menus" },
   { key: "rewards", label: "Rewards" },
-];
+] as const satisfies ReadonlyArray<{ key: PlaceTab; label: string }>;
 
 export function PlaceTabBar({
   tab,

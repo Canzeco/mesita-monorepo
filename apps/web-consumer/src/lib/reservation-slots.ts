@@ -60,6 +60,7 @@ const BASELINE_SLOTS = [
 const ANCHOR_MINUTES = slotMinutes("20:00");
 
 const STEP_MINUTES = 30;
+const MS_PER_DAY = 86_400_000;
 
 /** Sunday-first to match `placeDateParts().weekday` / JS `getDay()`. */
 const WEEK_KEYS = [
@@ -94,7 +95,7 @@ export type ReservationSlot = {
   afterMidnight: boolean;
 };
 
-const DAY_LABEL_TO_KEY: Record<string, DayKey> = {
+const DAY_LABEL_TO_KEY = {
   monday: "monday",
   tuesday: "tuesday",
   wednesday: "wednesday",
@@ -102,7 +103,7 @@ const DAY_LABEL_TO_KEY: Record<string, DayKey> = {
   friday: "friday",
   saturday: "saturday",
   sunday: "sunday",
-};
+} as const satisfies Record<string, DayKey>;
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -132,7 +133,7 @@ function horizonDateIso(at: number = Date.now()): string {
 export function bookingWindowDays(at: number = Date.now()): number {
   const start = Date.parse(`${placeDateIso(0, at)}T00:00:00Z`);
   const end = Date.parse(`${horizonDateIso(at)}T00:00:00Z`);
-  return Math.round((end - start) / 86_400_000) + 1;
+  return Math.round((end - start) / MS_PER_DAY) + 1;
 }
 
 function parseHhmm(t: string | undefined): number | null {
@@ -163,7 +164,11 @@ export function parseHoursTable(
   const out: WeeklyHours = {};
   let found = 0;
   for (const entry of table) {
-    const key = DAY_LABEL_TO_KEY[String(entry?.day ?? "").toLowerCase()];
+    const label = String(entry?.day ?? "").toLowerCase();
+    const key =
+      label in DAY_LABEL_TO_KEY
+        ? DAY_LABEL_TO_KEY[label as keyof typeof DAY_LABEL_TO_KEY]
+        : undefined;
     if (!key) continue;
     const ranges: HourRange[] = [];
     for (const part of String(entry?.range ?? "").split(",")) {

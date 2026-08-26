@@ -153,8 +153,8 @@ export function ImageCarousel({
     const next = !muted;
     setMuted(next);
     // Pause non-active videos, play+unmute the active one.
-    videoRefs.current.forEach((vid, i) => {
-      if (!vid) return;
+    for (const [i, vid] of videoRefs.current.entries()) {
+      if (!vid) continue;
       vid.muted = next;
       if (!next && i === idx) {
         // Browsers require the play() to be tied to the same user gesture as the unmute.
@@ -164,16 +164,16 @@ export function ImageCarousel({
           vid.muted = true;
         });
       }
-    });
+    }
   };
 
   // Keep videos muted when they're not the visible slide so audio doesn't overlap.
   useEffect(() => {
-    videoRefs.current.forEach((vid, i) => {
-      if (!vid) return;
+    for (const [i, vid] of videoRefs.current.entries()) {
+      if (!vid) continue;
       const shouldHaveSound = !muted && i === idx;
       vid.muted = !shouldHaveSound;
-    });
+    }
   }, [idx, muted]);
 
   return (

@@ -82,6 +82,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
             "h-3 w-3 transition-transform",
             expanded && "rotate-180",
           )}
+          aria-hidden
         />
       </span>
     </button>

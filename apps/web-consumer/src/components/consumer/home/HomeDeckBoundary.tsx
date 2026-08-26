@@ -31,7 +31,7 @@ export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
   } catch (err) {
     console.warn(
       "[home] consumer-web-recommend-swipe failed, falling back:",
-      err,
+      errMsg(err, "recommend failed"),
     );
     try {
       places = await apiFetchPublicPlaces(supabase);

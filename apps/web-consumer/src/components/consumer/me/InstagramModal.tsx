@@ -32,7 +32,7 @@ const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 const WHY_LINES = [
   `Your class updates automatically — ${REACH_ENTRY_CLASS.followerThreshold.toLocaleString("en-US")}+ followers puts you on ${REACH_ENTRY_CLASS.label}, free, and a better class means better Rewards.`,
   `Post Stories on your visits for even better Rewards.`,
-];
+] as const;
 
 export function InstagramModal({
   open,

@@ -34,7 +34,7 @@ type Listener = (next: Toast[]) => void;
 
 let toasts: Toast[] = [];
 const listeners = new Set<Listener>();
-const dismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const dismissTimers = new Map<string, number>();
 
 function emit() {
   // Hand each listener a fresh array reference so React state setters
@@ -46,7 +46,7 @@ function emit() {
 function dismiss(id: string) {
   const timer = dismissTimers.get(id);
   if (timer) {
-    clearTimeout(timer);
+    window.clearTimeout(timer);
     dismissTimers.delete(id);
   }
   toasts = toasts.filter((t) => t.id !== id);
@@ -72,7 +72,7 @@ function push(input: ToastInput | string): string {
   if (t.durationMs > 0) {
     dismissTimers.set(
       t.id,
-      setTimeout(() => dismiss(t.id), t.durationMs),
+      window.setTimeout(() => dismiss(t.id), t.durationMs),
     );
   }
   return t.id;

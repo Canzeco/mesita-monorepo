@@ -23,7 +23,7 @@ export function ComingSoonModal({
   return (
     <LocalDialog open={open} onClose={onClose} ariaLabel={title}>
       <div className="flex flex-col items-center px-6 pt-7 pb-6 text-center">
-        <span className="bg-muted text-muted-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
+        <span className="bg-muted text-muted-foreground flex h-14 w-14 items-center justify-center rounded-2xl" aria-hidden>
           <Icon className="h-6 w-6" strokeWidth={1.75} />
         </span>
         <p className="mt-4 text-base font-semibold">{title}</p>

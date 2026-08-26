@@ -20,6 +20,7 @@ import {
   type PromoRateFields,
 } from "@/lib/promo-rates";
 import { relativeLabel } from "@/lib/utils";
+import { DEFAULT_CURRENCY } from "@/lib/money";
 import type { Row } from "./place-to-detail-helpers";
 import {
   arr,
@@ -67,7 +68,7 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       categoryLabel: str(row.category_label),
       category: str(row.category),
     }) ?? "Place";
-  const currency = str(row.currency) ?? "MXN";
+  const currency = str(row.currency) ?? DEFAULT_CURRENCY;
   const priceLevel = (num(row.price_level) ?? 2) as 1 | 2 | 3 | 4;
   const listingType = row.listing_type === "partner" ? "partner" : "web";
   const promoRates = promoRateFieldsFromRow(row);

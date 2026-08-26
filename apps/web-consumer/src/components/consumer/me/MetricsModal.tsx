@@ -24,7 +24,7 @@ type Tile =
 // decision: funnel then value pair at the end — view → save → visit/claim →
 // book → reviews → stories → Total Spent → Total Saved. Money last so the
 // activity scan stays clean and the payoff pair reads as a closing beat.
-const TILES: Tile[] = [
+const TILES = [
   { key: "places_viewed", label: "Places viewed" },
   { key: "places_saved", label: "Places saved" },
   { key: "places_visited", label: "Places visited" },
@@ -35,7 +35,7 @@ const TILES: Tile[] = [
   { key: "instagram_stories", label: "Instagram stories" },
   { key: "spent_cents", label: "Total spent", money: true },
   { key: "saved_cents", label: "Total saved", money: true },
-];
+] as const satisfies readonly Tile[];
 
 function formatTileValue(metrics: ConsumerMetrics, tile: Tile): string {
   if (tile.money) return formatCurrency(metrics[tile.key]);
@@ -80,7 +80,7 @@ export function MetricsModal({
       <div className="space-y-4 px-5 pt-4 pb-8">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary grid size-9 place-items-center rounded-xl">
-            <BarChart3 className="size-[18px]" strokeWidth={2.25} />
+            <BarChart3 className="size-[18px]" strokeWidth={2.25} aria-hidden />
           </span>
           <div>
             <h2 className="text-foreground text-lg leading-tight font-bold tracking-tight">

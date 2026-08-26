@@ -3,6 +3,7 @@
 import { Clock, MapPin } from "lucide-react";
 
 import type { PlaceDetail } from "@/lib/mock/place";
+import { FALLBACK_IANA_TZ } from "@/lib/place-time";
 import { buildUberDropoffUrl } from "@/lib/uber-link";
 import { cn, formatDistanceKm } from "@/lib/utils";
 
@@ -95,7 +96,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
 function todayWeekdayLabel(tz: string | undefined): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
-      timeZone: tz ?? "UTC",
+      timeZone: tz ?? FALLBACK_IANA_TZ,
       weekday: "long",
     }).format(new Date());
   } catch {
