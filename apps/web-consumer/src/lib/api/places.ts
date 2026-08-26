@@ -135,6 +135,10 @@ export type Place = {
   monthly_promo_cap?: number | null;
   /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
+  /** Google Places identity. Present on nearby fill stubs and some list rows. */
+  google_place_id?: string | null;
+  /** Nearby fill: not a Mesita row — open GooglePlaceSheet, not /place/{id}. */
+  from_google?: boolean;
 };
 
 // Discover surfaces (swipe + catalog) go through dedicated EFs. The deck EF
@@ -182,6 +186,20 @@ export type ViewportPlaces = {
   overspan: boolean;
   totalInBox: number | null;
 };
+
+/** Search map only. Guest pin / Monterrey + large radius, distance order. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = 50,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-list-places",
+    { nearby: true, lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
+}
 
 /** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
 export async function apiFetchPlacesInBbox(

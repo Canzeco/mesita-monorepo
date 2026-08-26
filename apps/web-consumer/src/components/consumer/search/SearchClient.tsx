@@ -5,9 +5,10 @@
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
 //   • Top overlay: floating search bar. Far-right chip is country + location
 //     (two knobs, one sheet). Discovery cuisine/when/rewards stay on Swipe.
-//   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
-//     highlights + scrolls to the matching rail card, tapping a card opens
-//     the place page.
+//   • Bottom overlay (idle): horizontal catalog rail of the nearest 50
+//     (guest pin / Monterrey). Tapping a Mesita pin highlights + scrolls
+//     the rail; tapping a card opens the place page. Google-only fill
+//     pins open GooglePlaceSheet.
 //   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
 //     SearchResultsPanel under the bar. One merged lane, no source labels —
@@ -19,11 +20,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
-import {
-  apiFetchPlacesInBbox,
-  BBOX_MAX_SPAN_DEG,
-  LIST_PLACES_MAX,
-} from "@/lib/api/places";
+import { apiFetchNearbyPlaces } from "@/lib/api/places";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiCreateProject,
   apiSuggestPlaces,
@@ -43,7 +41,7 @@ import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
+import { SearchMap, type SearchMapPin } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
@@ -63,8 +61,19 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
-const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
+const SEARCH_NEARBY_LIMIT = 50;
+
+function googlePredictionFromPlace(place: Place): PlacePrediction | null {
+  const placeId = place.google_place_id;
+  if (!place.from_google || !placeId) return null;
+  return {
+    placeId,
+    mainText: place.name,
+    secondaryText: place.address ?? "",
+    status: "not_in_mesita",
+  };
+}
 
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
@@ -73,10 +82,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
-  const [overspan, setOverspan] = useState(false);
-  const [totalInBox, setTotalInBox] = useState<number | null>(null);
-  const viewportGen = useRef(0);
-  const userViewportTimer = useRef<number | null>(null);
+  const nearbyGen = useRef(0);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
@@ -124,8 +130,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idle = trimmed.length === 0 && !searchOpen;
 
   // Location (not country) centers the map and distances. Discovery zone
-  // stays a Swipe predicate — it does not drive this bar.
+  // stays a Swipe predicate — it does not drive this bar. Catalog fetch
+  // always has an origin (Monterrey) so Search never loads a 4-pin viewport.
   const center = location;
+  const fetchOrigin = location ?? MONTERREY_CENTER;
   const catalog = useMemo(
     () => withDistances(places, center),
     [places, center],
@@ -149,98 +157,32 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [predictions, catalog],
   );
 
-  const idleRef = useRef(idle);
-  const lastBoxRef = useRef<ViewportBox | null>(null);
-  const skippedRef = useRef(false);
-  const lastFetchedKey = useRef<string | null>(null);
-
-  const loadViewport = useCallback(
-    async (box: ViewportBox) => {
-      lastBoxRef.current = box;
-      if (!idleRef.current) {
-        skippedRef.current = true;
-        return;
-      }
-      const key = `${box.south.toFixed(4)}:${box.west.toFixed(4)}:${box.north.toFixed(4)}:${box.east.toFixed(4)}`;
-      if (key === lastFetchedKey.current) return;
-      skippedRef.current = false;
-      const gen = ++viewportGen.current;
-      setCatalogLoading(true);
-      setFetchError(null);
-      const latSpan = box.north - box.south;
-      const lngSpan =
-        box.west <= box.east
-          ? box.east - box.west
-          : 180 - box.west + (box.east + 180);
-      if (Math.max(latSpan, lngSpan) > BBOX_MAX_SPAN_DEG) {
-        lastFetchedKey.current = key;
-        setPlaces([]);
-        setOverspan(true);
-        setTotalInBox(null);
-        setCatalogLoading(false);
-        return;
-      }
+  useEffect(() => {
+    let cancelled = false;
+    const gen = ++nearbyGen.current;
+    setCatalogLoading(true);
+    setFetchError(null);
+    void (async () => {
       try {
-        const result = await apiFetchPlacesInBbox(
+        const rows = await apiFetchNearbyPlaces(
           supabase,
-          box,
-          LIST_PLACES_MAX,
+          fetchOrigin,
+          SEARCH_NEARBY_LIMIT,
         );
-        if (gen !== viewportGen.current) return;
-        lastFetchedKey.current = key;
-        setPlaces(result.places);
-        setOverspan(result.overspan);
-        setTotalInBox(result.totalInBox);
+        if (cancelled || gen !== nearbyGen.current) return;
+        setPlaces(rows);
       } catch (err) {
-        if (gen !== viewportGen.current) return;
-        lastFetchedKey.current = key;
+        if (cancelled || gen !== nearbyGen.current) return;
         setPlaces([]);
-        setOverspan(false);
-        setTotalInBox(null);
-        setFetchError(errMsg(err, "Couldn't load places in this area."));
+        setFetchError(errMsg(err, "Couldn't load places around you."));
       } finally {
-        if (gen === viewportGen.current) setCatalogLoading(false);
+        if (!cancelled && gen === nearbyGen.current) setCatalogLoading(false);
       }
-    },
-    [supabase],
-  );
-
-  const onFirstViewport = useCallback(
-    (box: ViewportBox) => {
-      void loadViewport(box);
-    },
-    [loadViewport],
-  );
-
-  const onUserViewport = useCallback(
-    (box: ViewportBox) => {
-      if (userViewportTimer.current != null) {
-        window.clearTimeout(userViewportTimer.current);
-      }
-      userViewportTimer.current = window.setTimeout(() => {
-        void loadViewport(box);
-      }, VIEWPORT_IDLE_MS);
-    },
-    [loadViewport],
-  );
-
-  useEffect(() => {
-    idleRef.current = idle;
-  }, [idle]);
-
-  useEffect(() => {
+    })();
     return () => {
-      if (userViewportTimer.current != null) {
-        window.clearTimeout(userViewportTimer.current);
-      }
+      cancelled = true;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!idle || !skippedRef.current || !lastBoxRef.current) return;
-    lastFetchedKey.current = null;
-    void loadViewport(lastBoxRef.current);
-  }, [idle, loadViewport]);
+  }, [supabase, fetchOrigin.lat, fetchOrigin.lng]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -414,6 +356,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
     setRailCollapsed(false);
     setSelectedId(place.id);
   };
@@ -474,8 +421,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     openSearch();
   };
 
-  const handleOpenPlace = (place: Place) =>
+  const handleOpenPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
     router.push(placeHref(place.slug || place.id));
+  };
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -491,8 +444,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
-        onFirstViewport={onFirstViewport}
-        onUserViewport={onUserViewport}
       />
 
       {/* Floating top overlay — search bar, then a content-height dropdown
@@ -542,12 +493,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         places={visible}
         catalogCount={catalog.length}
         catalogLoading={catalogLoading}
-        overspan={overspan}
-        truncated={
-          totalInBox != null && totalInBox > places.length
-            ? `Showing ${places.length} of ${totalInBox} in this area`
-            : null
-        }
         filtersActive={filtersActive}
         railCollapsed={railCollapsed}
         railIndex={railIndex}

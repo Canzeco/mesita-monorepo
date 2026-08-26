@@ -27,7 +27,8 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from '@/lib/api/place-search';
-import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import { apiFetchNearbyPlaces, type Place } from '@/lib/api/places';
+import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -50,6 +51,17 @@ const SUGGEST_DEBOUNCE_MS = 300;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
+
+function googlePredictionFromPlace(place: Place): PlacePrediction | null {
+  const placeId = place.google_place_id;
+  if (!place.from_google || !placeId) return null;
+  return {
+    placeId,
+    mainText: place.name,
+    secondaryText: place.address ?? '',
+    status: 'not_in_mesita',
+  };
+}
 
 /**
  * Which failure the results panel should explain. `timeout` and `network` get
@@ -100,15 +112,17 @@ export function SearchClient() {
   const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
+  const fetchOrigin = location ?? MONTERREY_CENTER;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
 
   useEffect(() => {
     let cancelled = false;
+    setCatalogLoading(true);
     void (async () => {
       try {
-        const rows = await apiFetchPublicPlaces(supabase, 200);
+        const rows = await apiFetchNearbyPlaces(supabase, fetchOrigin, 50);
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);
@@ -124,7 +138,7 @@ export function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fetchOrigin.lat, fetchOrigin.lng]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -324,7 +338,28 @@ export function SearchClient() {
     }
     if (prediction) {
       handlePickMesita(prediction);
+      return;
     }
+    const place = catalog.find((p) => p.id === pin.id);
+    if (place) openCatalogPlace(place);
+  };
+
+  const openCatalogPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
+    router.push(`/place/${place.slug || place.id}`);
+  };
+
+  const selectCatalogPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
+    selectPlace(place.id);
   };
 
   const handleAdd = (prediction: PlacePrediction) => {
@@ -367,8 +402,8 @@ export function SearchClient() {
           center={center}
           apiKey={GMP_KEY}
           pins={searchPins}
-          onSelectPlace={(place) => selectPlace(place.id)}
-          onOpenPlace={(place) => router.push(`/place/${place.id}`)}
+          onSelectPlace={selectCatalogPlace}
+          onOpenPlace={openCatalogPlace}
           onSelectPin={handleSelectPin}
           onMapPress={() => {
             if (searchOpen) closeSearch();
@@ -427,14 +462,22 @@ export function SearchClient() {
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
         onClearFilters={clearFilters}
-        onSelectPlace={setSelectedId}
-        onOpenPlace={(id) => router.push(`/place/${id}`)}
+        onSelectPlace={(id) => {
+          const place = catalog.find((p) => p.id === id);
+          if (place) selectCatalogPlace(place);
+          else setSelectedId(id);
+        }}
+        onOpenPlace={(id) => {
+          const place = catalog.find((p) => p.id === id);
+          if (place) openCatalogPlace(place);
+          else router.push(`/place/${id}`);
+        }}
       />
 
       {/* Selected chip when rail collapsed */}
       {selectedPlace && railCollapsed ? (
         <Pressable
-          onPress={() => router.push(`/place/${selectedPlace.id}`)}
+          onPress={() => openCatalogPlace(selectedPlace)}
           className="absolute z-20 mx-4 rounded-2xl border border-border bg-card px-4 py-3"
           style={{
             bottom: Math.max(insets.bottom, 8) + 52,
