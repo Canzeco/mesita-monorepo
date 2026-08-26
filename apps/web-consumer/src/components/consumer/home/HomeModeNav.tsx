@@ -67,7 +67,11 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  { href: CONSUMER_ROUTES.homeTabs.catalog, label: "Catalog", Icon: LayoutGrid },
+  {
+    href: CONSUMER_ROUTES.homeTabs.catalog,
+    label: "Catalog",
+    Icon: LayoutGrid,
+  },
   {
     href: CONSUMER_ROUTES.homeTabs.chat,
     label: "Chat",
@@ -115,6 +119,7 @@ export function HomeModeNav() {
                   key={href}
                   type="button"
                   onClick={() => setSoonTab(tab)}
+                  aria-haspopup="dialog"
                   className={cn(baseClass, restingClass)}
                 >
                   <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.2} />

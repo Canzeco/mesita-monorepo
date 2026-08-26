@@ -52,3 +52,7 @@ export const INSTAGRAM_ICON_GRADIENT_CLASS =
 // Secondary Cancel action used in LocalSheet footers (bordered, card fill).
 export const SHEET_CANCEL_BUTTON_CLASS =
   "border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition";
+
+// Sheet grabber — the 40×4 pill that says "this pulls from the bottom".
+export const SHEET_GRABBER_CLASS =
+  "bg-foreground/20 mx-auto mt-2 h-1 w-10 shrink-0 rounded-full";

@@ -66,26 +66,39 @@ export function CarouselTapZones({
   onPointerDown,
   onPointerUpLeft,
   onPointerUpRight,
+  onKeyLeft,
+  onKeyRight,
 }: {
   onPointerDown: (e: React.PointerEvent) => void;
-  onPointerUpLeft: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onPointerUpRight: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUpLeft: (e: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerUpRight: (e: React.PointerEvent<HTMLButtonElement>) => void;
+  onKeyLeft: () => void;
+  onKeyRight: () => void;
 }) {
+  const onKey =
+    (activate: () => void) => (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      activate();
+    };
   return (
     <>
-      <div
-        role="button"
+      <button
+        type="button"
         aria-label="Previous photo"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUpLeft}
-        className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default"
+        onKeyDown={onKey(onKeyLeft)}
+        className="absolute inset-y-0 left-0 z-10 w-1/3 cursor-default bg-transparent"
       />
-      <div
-        role="button"
+      <button
+        type="button"
         aria-label="Next photo"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUpRight}
-        className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default"
+        onKeyDown={onKey(onKeyRight)}
+        className="absolute inset-y-0 right-0 z-10 w-1/3 cursor-default bg-transparent"
       />
     </>
   );

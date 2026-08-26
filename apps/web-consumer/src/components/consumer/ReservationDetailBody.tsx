@@ -5,7 +5,7 @@ import { Calendar, Hash, Users } from "lucide-react";
 import { useState } from "react";
 
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
-import { cn, guestNoun } from "@/lib/utils";
+import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { RESERVATION_FLOW, statusMeta } from "@/lib/reservation-status";
 import { MetaRow } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
@@ -87,7 +87,7 @@ export function ReservationDetailBody({
       });
       onChanged?.();
     } catch (e) {
-      setConfirmError(e instanceof Error ? e.message : "Couldn't confirm");
+      setConfirmError(errMsg(e, "Couldn't confirm"));
     } finally {
       setConfirmBusy(false);
     }

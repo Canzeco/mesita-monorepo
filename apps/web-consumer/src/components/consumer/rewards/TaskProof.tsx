@@ -30,7 +30,7 @@ import {
   GoogleGlyph,
   InstagramGlyph,
 } from "@/components/consumer/rewards/BrandGlyph";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 
 export type TaskKind = "review" | "story";
 
@@ -85,6 +85,8 @@ export function TaskProof({
   // The attached screenshot. Preview via object URL, revoked on replace.
   const [shot, setShot] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openTimer = useRef<number | null>(null);
+  const confirmTimer = useRef<number | null>(null);
   const previewUrl = useMemo(
     () => (shot ? URL.createObjectURL(shot) : null),
     [shot],
@@ -94,6 +96,14 @@ export function TaskProof({
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+  useEffect(
+    () => () => {
+      if (openTimer.current !== null) window.clearTimeout(openTimer.current);
+      if (confirmTimer.current !== null)
+        window.clearTimeout(confirmTimer.current);
+    },
+    [],
+  );
 
   const openTarget = useCallback(() => {
     setPhase("opening");
@@ -104,7 +114,8 @@ export function TaskProof({
       "_blank",
       "noopener,noreferrer",
     );
-    window.setTimeout(() => setPhase("idle"), 600);
+    if (openTimer.current !== null) window.clearTimeout(openTimer.current);
+    openTimer.current = window.setTimeout(() => setPhase("idle"), 600);
   }, [isReview, placeName, placeAddress]);
 
   const confirm = useCallback(async () => {
@@ -121,11 +132,11 @@ export function TaskProof({
       );
       await onConfirm(url);
       setPhase("success");
-      window.setTimeout(() => onDone(), 400);
+      if (confirmTimer.current !== null)
+        window.clearTimeout(confirmTimer.current);
+      confirmTimer.current = window.setTimeout(() => onDone(), 400);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Couldn't confirm that just yet.",
-      );
+      setError(errMsg(err, "Couldn't confirm that just yet."));
       setPhase("error");
     }
   }, [shot, supabase, userId, ticketId, isReview, onConfirm, onDone]);

@@ -11,9 +11,14 @@ import {
   apiListConsumerTickets,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
-import { seedTicket, ticketRowFromCreate, type SeedPlace } from "@/lib/ticket-seed";
+import {
+  seedTicket,
+  ticketRowFromCreate,
+  type SeedPlace,
+} from "@/lib/ticket-seed";
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { errMsg } from "@/lib/utils";
 
 // Starting a visit, extracted (MESITA-1065). This was NewVisitClient's private
 // `startTicket`/`onPick` pair until the place-detail action bar grew a Visit
@@ -98,9 +103,7 @@ export function useStartVisit({
             return;
           }
         }
-        setError(
-          err instanceof Error ? err.message : "Couldn't start your ticket.",
-        );
+        setError(errMsg(err, "Couldn't start your ticket."));
       } finally {
         setStartingId(null);
       }

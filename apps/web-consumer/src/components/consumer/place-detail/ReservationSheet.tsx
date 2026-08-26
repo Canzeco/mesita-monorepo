@@ -22,7 +22,7 @@ import {
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
-import { cn, guestNoun } from "@/lib/utils";
+import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
 
 const DEFAULT_PARTY = 2;
@@ -206,7 +206,7 @@ export function ReservationSheet({
       }
       setDone(true);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
+      const msg = errMsg(e, "");
       // The card came from a cached deck whose place no longer exists (an admin
       // reset re-creates places under fresh uuids). Drop the snapshot so the
       // next mount refetches instead of re-offering the same dead card.

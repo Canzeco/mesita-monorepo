@@ -17,7 +17,7 @@ export function usePayNotificationPoll(
       void refresh();
     };
 
-    const id = setInterval(tick, intervalMs);
+    const id = window.setInterval(tick, intervalMs);
 
     const onVisible = () => {
       if (document.visibilityState === "visible") tick();
@@ -25,7 +25,7 @@ export function usePayNotificationPoll(
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      clearInterval(id);
+      window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [refresh, enabled, intervalMs]);

@@ -104,7 +104,7 @@ export function SocialProfileModal({
               <a
                 href={`https://instagram.com/${shown.igHandle.replace(/^@/, "")}`}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="text-foreground font-semibold underline decoration-[#d62976]/40 underline-offset-2 hover:decoration-[#d62976]"
               >
                 {shown.igHandle}

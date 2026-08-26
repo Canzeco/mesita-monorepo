@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import { DEFAULT_CURRENCY } from "@/lib/money";
 
 // ─── Consumer profile ───────────────────────────────────────────────────────
 
@@ -239,7 +240,7 @@ export async function apiClaimInviteCode(
 
 export function formatCurrency(
   cents: number | null | undefined,
-  currency = "MXN",
+  currency = DEFAULT_CURRENCY,
 ): string {
   if (cents == null) return "—";
   const value = cents / 100;

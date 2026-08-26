@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Briefcase,
   Check,
@@ -13,6 +13,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/lib/toast";
+import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 
 // The five referral gift cards — one per audience — shared by the /share page
 // and the Me page's Share modal so both render the identical deck. Each card is
@@ -28,13 +30,10 @@ import { cn } from "@/lib/utils";
 // Order (Pato, 2026-07-05): Consumers · Businesses · Influencers · Marketing
 // agencies · Modeling agencies.
 
-// Where the partner-card "Contact" button routes — same mailto pattern used
-// across Profile / account flows.
-const MESITA_CONTACT_EMAIL = "support@mesita.ai";
-
 // How long the "Shared" / "Copied" confirmation shows before the button
 // reverts to its default label.
 const FLASH_DURATION_MS = 1600;
+const ISO_ID1_ASPECT_CLASS = "aspect-[85.6/53.98]";
 
 type GiftCard = {
   id: string;
@@ -132,9 +131,20 @@ export function GiftCardDeck() {
 
 function GiftCardTile({ card }: { card: GiftCard }) {
   const [flash, setFlash] = useState<null | "shared" | "copied">(null);
+  const flashTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    },
+    [],
+  );
   const showFlash = (state: "shared" | "copied") => {
     setFlash(state);
-    window.setTimeout(() => setFlash(null), FLASH_DURATION_MS);
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      flashTimer.current = null;
+      setFlash(null);
+    }, FLASH_DURATION_MS);
   };
   const onShare = async () => {
     const payload = {
@@ -155,7 +165,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
       await navigator.clipboard.writeText(`${payload.text} ${payload.url}`);
       showFlash("copied");
     } catch {
-      // Clipboard unavailable — fail silently.
+      toast.error("Couldn't copy the link — try again.");
     }
   };
 
@@ -164,7 +174,8 @@ function GiftCardTile({ card }: { card: GiftCard }) {
   return (
     <div
       className={cn(
-        "shadow-glow relative flex aspect-[85.6/53.98] flex-col overflow-hidden rounded-2xl p-5 text-white",
+        "shadow-glow relative flex flex-col overflow-hidden rounded-2xl p-5 text-white",
+        ISO_ID1_ASPECT_CLASS,
         card.gradient,
       )}
     >
@@ -188,7 +199,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
         <div className="flex shrink-0 items-center gap-2">
           {card.contact && (
             <a
-              href={`mailto:${MESITA_CONTACT_EMAIL}?subject=${encodeURIComponent(
+              href={`mailto:${MESITA_SUPPORT_EMAIL}?subject=${encodeURIComponent(
                 card.contact.subject,
               )}`}
               className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/25"

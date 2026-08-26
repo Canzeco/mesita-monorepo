@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { cn } from "@/lib/utils";
 
 // Me › More (decision: Pato, MESITA-1123). The Me page keeps SEVEN boxes —
@@ -102,7 +103,7 @@ export function MoreModal({
       key: "contact",
       Icon: Mail,
       title: "Contact",
-      summary: "support@mesita.ai",
+      summary: MESITA_SUPPORT_EMAIL,
       onClick: onOpenContact,
     },
   ];

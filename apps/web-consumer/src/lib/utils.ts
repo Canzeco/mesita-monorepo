@@ -69,13 +69,15 @@ export function relativeLabel(iso: string | undefined): string | undefined {
 // coordinates + the consumer's geolocation into the "X km" card chip.
 // Accuracy is plenty for a "how far is this" signal — we round to one
 // decimal under 10 km and to the nearest km beyond.
+const EARTH_RADIUS_KM = 6371;
+
 export function haversineKm(
   aLat: number,
   aLng: number,
   bLat: number,
   bLng: number,
 ): number {
-  const R = 6371;
+  const R = EARTH_RADIUS_KM;
   const dLat = toRad(bLat - aLat);
   const dLng = toRad(bLng - aLng);
   const lat1 = toRad(aLat);

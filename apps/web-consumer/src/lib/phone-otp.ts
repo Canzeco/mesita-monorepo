@@ -58,8 +58,10 @@ function normalizeNationalDigits(countryCode: string, raw: string): string {
   let digits = raw.replace(/\D/g, "");
   if (countryCode === "MX") {
     // 045 / 044 <10-digit mobile>, and the legacy "1" long-distance prefix.
-    if (digits.length === 13 && /^04[45]/.test(digits)) digits = digits.slice(3);
-    if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+    if (digits.length === 13 && /^04[45]/.test(digits))
+      digits = digits.slice(3);
+    if (digits.length === 11 && digits.startsWith("1"))
+      digits = digits.slice(1);
   }
   if (TRUNK_PREFIX_ZERO.has(countryCode)) {
     digits = digits.replace(/^0+/, "");
@@ -133,7 +135,10 @@ export function otpErrorMessage(error: MaybeAuthError | null): string {
   const message = error.message ?? "";
   const code = error.code ?? "";
 
-  if (code === "over_sms_send_rate_limit" || /only request this after/i.test(message)) {
+  if (
+    code === "over_sms_send_rate_limit" ||
+    /only request this after/i.test(message)
+  ) {
     const seconds = message.match(/after (\d+) seconds?/i)?.[1];
     return seconds
       ? `Hold on — you can ask for a new code in ${seconds}s.`
@@ -158,5 +163,5 @@ export function otpErrorMessage(error: MaybeAuthError | null): string {
   if (code === "sms_send_failed") {
     return "We couldn't send the code. Check the number and try again.";
   }
-  return message || "Something went wrong. Try again.";
+  return message ?? "Something went wrong. Try again.";
 }

@@ -232,7 +232,7 @@ function subscribeToStore(onChange: () => void): () => void {
 }
 
 function notifyStore(): void {
-  storeListeners.forEach((l) => l());
+  for (const l of storeListeners) l();
 }
 
 // Parse + validate the stored blob. The snapshot is CACHED on the raw string:

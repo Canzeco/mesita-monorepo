@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { invokeEF } from "./_invoke";
+import { DEFAULT_CURRENCY } from "@/lib/money";
 
 type PayNotificationRow =
   Database["public"]["Tables"]["consumer_notifications"]["Row"];
@@ -26,8 +27,6 @@ export type TicketBillPayload = {
   amount_due_cents?: number;
   currency?: string;
 };
-
-const DEFAULT_CURRENCY = "MXN";
 
 export function formatPayMx(
   cents: number | undefined | null,

@@ -85,10 +85,7 @@ export function discoveryContextIsSoon(context: DiscoveryContext): boolean {
 }
 
 /** Pill copy + the honest one-liner under the module. */
-export const DISCOVERY_CONTEXT_META: Record<
-  DiscoveryContext,
-  { label: string; caption: string }
-> = {
+export const DISCOVERY_CONTEXT_META = {
   any: {
     label: "Any",
     caption: "No preference — everything your other filters leave standing.",
@@ -101,7 +98,10 @@ export const DISCOVERY_CONTEXT_META: Record<
     label: "Order",
     caption: "Ordering in lands when places start rewarding remote bills.",
   },
-};
+} as const satisfies Record<
+  DiscoveryContext,
+  { label: string; caption: string }
+>;
 
 /** Whether a context actually excludes places (only `visit` does today). */
 function contextNarrows(context: DiscoveryContext): boolean {

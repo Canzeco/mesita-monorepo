@@ -122,7 +122,11 @@ import {
 } from "@/lib/ticket-journey";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
+
+const FOCUS_AFTER_APPROVE_MS = 900;
+const SCAN_PULSE_MS = 1400;
+const WAITING_TICK_MS = 15_000;
 
 // The ticket's own gradient, by CLASS (Classes v2). Takes a string because the
 // caller hands it the context key straight through; unknown values fall to the
@@ -226,6 +230,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const [announce, setAnnounce] = useState("");
   const [visits, setVisits] = useState<GuestVisitsPolicy | null>(null);
   const pollMs = (visits?.consumerPollSeconds ?? 10) * 1000;
+  const approveFocusTimer = useRef<number | null>(null);
   const stepBodyRef = useRef<HTMLDivElement | null>(null);
   const lastSyncRef = useRef<{ status: string | null; fix: string | null }>({
     status: null,
@@ -256,11 +261,15 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
               setAnnounce(`Approved by ${placeName}.`);
               // Auto-advance lands on Pay via the machine after ~900ms; move
               // focus with it so the change is never a silent teleport.
-              window.setTimeout(() => {
+              if (approveFocusTimer.current !== null) {
+                window.clearTimeout(approveFocusTimer.current);
+              }
+              approveFocusTimer.current = window.setTimeout(() => {
+                approveFocusTimer.current = null;
                 if (cancelled) return;
                 setStepChoice(null);
                 stepBodyRef.current?.focus();
-              }, 900);
+              }, FOCUS_AFTER_APPROVE_MS);
             } else if (fresh.status === "revealed") {
               setAnnounce("Visit complete.");
               setStepChoice(null);
@@ -292,6 +301,10 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       cancelled = true;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
+      if (approveFocusTimer.current !== null) {
+        window.clearTimeout(approveFocusTimer.current);
+        approveFocusTimer.current = null;
+      }
     };
   }, [supabase, ticketId, live, pollMs]);
 
@@ -345,7 +358,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   useEffect(() => {
     if (scanned && !wasScannedRef.current) {
       setPulse(true);
-      const t = window.setTimeout(() => setPulse(false), 1400);
+      const t = window.setTimeout(() => setPulse(false), SCAN_PULSE_MS);
       return () => window.clearTimeout(t);
     }
     wasScannedRef.current = scanned;
@@ -389,9 +402,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       setSheet(null);
       return true;
     } catch (err) {
-      setReviewError(
-        err instanceof Error ? err.message : "Couldn't save your review.",
-      );
+      setReviewError(errMsg(err, "Couldn't save your review."));
       return false;
     } finally {
       setReviewBusy(false);
@@ -417,9 +428,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         await tickets.refresh();
         setStepChoice(null); // let the journey walk forward naturally
       } catch (err) {
-        setBillError(
-          err instanceof Error ? err.message : "Couldn't save the bill.",
-        );
+        setBillError(errMsg(err, "Couldn't save the bill."));
       } finally {
         setBillBusy(false);
       }
@@ -443,9 +452,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       setPolled(fresh);
       setStepChoice(null);
     } catch (err) {
-      setPayError(
-        err instanceof Error ? err.message : "Couldn't start the payment.",
-      );
+      setPayError(errMsg(err, "Couldn't start the payment."));
     } finally {
       setPayBusy(false);
     }
@@ -465,9 +472,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       setReported(true);
       setSheet(null);
     } catch (err) {
-      setReportError(
-        err instanceof Error ? err.message : "Couldn't send that just yet.",
-      );
+      setReportError(errMsg(err, "Couldn't send that just yet."));
     } finally {
       setReportBusy(false);
     }
@@ -1690,7 +1695,7 @@ function ElapsedWaiting({ iso }: { iso: string | null | undefined }) {
         Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000)),
       );
     const raf = window.requestAnimationFrame(compute);
-    const interval = window.setInterval(compute, 15_000);
+    const interval = window.setInterval(compute, WAITING_TICK_MS);
     return () => {
       window.cancelAnimationFrame(raf);
       window.clearInterval(interval);
