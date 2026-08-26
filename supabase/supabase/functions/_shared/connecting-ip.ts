@@ -26,12 +26,12 @@ export function parseIp(raw: string | null | undefined): string | null {
   return null;
 }
 
-/** Visitor IP for hashing. Not the leftmost XFF hop. */
+/** Visitor IP for hashing. Not the leftmost XFF hop, and not
+ *  client-settable True-Client-IP / X-Real-IP (those are spoofable on a
+ *  direct hit to the function URL). */
 export function connectingIp(req: Request): string | null {
   const cf = parseIp(req.headers.get("cf-connecting-ip"));
   if (cf) return cf;
-  const trueClient = parseIp(req.headers.get("true-client-ip"));
-  if (trueClient) return trueClient;
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const hops = xff.split(",").map((h) => h.trim()).filter(Boolean);
@@ -40,7 +40,7 @@ export function connectingIp(req: Request): string | null {
       if (ip) return ip;
     }
   }
-  return parseIp(req.headers.get("x-real-ip"));
+  return null;
 }
 
 export async function hashConnectingIp(

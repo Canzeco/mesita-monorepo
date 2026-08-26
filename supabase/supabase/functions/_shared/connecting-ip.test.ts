@@ -32,11 +32,26 @@ Deno.test("connectingIp: CF-Connecting-IP wins over a spoofed XFF chain", () => 
   assertEquals(connectingIp(req), "203.0.113.50");
 });
 
-Deno.test("connectingIp: x-real-ip when XFF is absent", () => {
+Deno.test("connectingIp: True-Client-IP and X-Real-IP do not override XFF", () => {
   const req = new Request("https://example.test", {
+    headers: {
+      "true-client-ip": "198.51.100.1",
+      "x-real-ip": "198.51.100.2",
+      "x-forwarded-for": "198.51.100.1, 203.0.113.10",
+    },
+  });
+  assertEquals(connectingIp(req), "203.0.113.10");
+});
+
+Deno.test("connectingIp: True-Client-IP or X-Real-IP alone is not an identity", () => {
+  const a = new Request("https://example.test", {
+    headers: { "true-client-ip": "203.0.113.77" },
+  });
+  const b = new Request("https://example.test", {
     headers: { "x-real-ip": "203.0.113.77" },
   });
-  assertEquals(connectingIp(req), "203.0.113.77");
+  assertEquals(connectingIp(a), null);
+  assertEquals(connectingIp(b), null);
 });
 
 Deno.test("connectingIp: no headers is null", () => {
