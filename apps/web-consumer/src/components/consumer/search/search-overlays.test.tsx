@@ -86,6 +86,21 @@ describe("SearchBar scope affordance", () => {
   });
 });
 
+describe("Search map catalog is the viewport", () => {
+  it("loads listed pins from bbox, not an SSR 200 dump", () => {
+    expect(read("SearchClient.tsx")).toContain("apiFetchPlacesInBbox");
+    expect(read("SearchClient.tsx")).toContain("onFirstViewport");
+    expect(read("SearchClient.tsx")).toContain("VIEWPORT_IDLE_MS");
+    expect(read("SearchMap.tsx")).toContain("ViewportReporter");
+    expect(read("search-catalog-overlays.tsx")).toContain(
+      "Zoom in to see this area",
+    );
+    expect(read("search-catalog-overlays.tsx")).toContain(
+      "Finding places around you",
+    );
+  });
+});
+
 describe("Search pick and map center respect filters", () => {
   it("keeps an explicit On Mesita pick on the map when filters cut it", () => {
     const src = read("SearchClient.tsx");

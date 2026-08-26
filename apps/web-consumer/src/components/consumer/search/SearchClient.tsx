@@ -20,6 +20,11 @@ import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import {
+  apiFetchPlacesInBbox,
+  BBOX_MAX_SPAN_DEG,
+  LIST_PLACES_MAX,
+} from "@/lib/api/places";
+import {
   apiCreateProject,
   apiSuggestPlaces,
   type PlacePrediction,
@@ -38,7 +43,7 @@ import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { SearchMap, type SearchMapPin } from "./SearchMap";
+import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
@@ -58,22 +63,20 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
-// Below this, the query is too short to suggest against — the results panel
-// stays closed and no autocomplete call goes out.
+const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
-export function SearchClient({
-  apiKey,
-  places,
-  fetchError,
-}: {
-  apiKey: string;
-  places: Place[];
-  fetchError: string | null;
-}) {
+export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [overspan, setOverspan] = useState(false);
+  const [totalInBox, setTotalInBox] = useState<number | null>(null);
+  const viewportGen = useRef(0);
+  const userViewportTimer = useRef<number | null>(null);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
@@ -145,6 +148,100 @@ export function SearchClient({
     () => buildSearchMapPins(predictions, catalog),
     [predictions, catalog],
   );
+
+  const idleRef = useRef(idle);
+  idleRef.current = idle;
+  const lastBoxRef = useRef<ViewportBox | null>(null);
+  const skippedRef = useRef(false);
+  const lastFetchedKey = useRef<string | null>(null);
+
+  const loadViewport = useCallback(
+    async (box: ViewportBox) => {
+      lastBoxRef.current = box;
+      if (!idleRef.current) {
+        skippedRef.current = true;
+        return;
+      }
+      const key = `${box.south.toFixed(4)}:${box.west.toFixed(4)}:${box.north.toFixed(4)}:${box.east.toFixed(4)}`;
+      if (key === lastFetchedKey.current) return;
+      skippedRef.current = false;
+      const gen = ++viewportGen.current;
+      setCatalogLoading(true);
+      setFetchError(null);
+      const latSpan = box.north - box.south;
+      const lngSpan =
+        box.west <= box.east
+          ? box.east - box.west
+          : 180 - box.west + (box.east + 180);
+      if (Math.max(latSpan, lngSpan) > BBOX_MAX_SPAN_DEG) {
+        lastFetchedKey.current = key;
+        setPlaces([]);
+        setOverspan(true);
+        setTotalInBox(null);
+        setCatalogLoading(false);
+        return;
+      }
+      try {
+        const result = await apiFetchPlacesInBbox(
+          supabase,
+          box,
+          LIST_PLACES_MAX,
+        );
+        if (gen !== viewportGen.current) return;
+        lastFetchedKey.current = key;
+        setPlaces(result.places);
+        setOverspan(result.overspan);
+        setTotalInBox(result.totalInBox);
+      } catch (err) {
+        if (gen !== viewportGen.current) return;
+        lastFetchedKey.current = key;
+        setPlaces([]);
+        setOverspan(false);
+        setTotalInBox(null);
+        setFetchError(errMsg(err, "Couldn't load places in this area."));
+      } finally {
+        if (gen === viewportGen.current) setCatalogLoading(false);
+      }
+    },
+    [supabase],
+  );
+
+  const onFirstViewport = useCallback(
+    (box: ViewportBox) => {
+      void loadViewport(box);
+    },
+    [loadViewport],
+  );
+
+  const onUserViewport = useCallback(
+    (box: ViewportBox) => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+      userViewportTimer.current = window.setTimeout(() => {
+        void loadViewport(box);
+      }, VIEWPORT_IDLE_MS);
+    },
+    [loadViewport],
+  );
+
+  useEffect(() => {
+    if (!apiKey) setCatalogLoading(false);
+  }, [apiKey]);
+
+  useEffect(() => {
+    return () => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!idle || !skippedRef.current || !lastBoxRef.current) return;
+    lastFetchedKey.current = null;
+    void loadViewport(lastBoxRef.current);
+  }, [idle, loadViewport]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -395,6 +492,8 @@ export function SearchClient({
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
+        onFirstViewport={onFirstViewport}
+        onUserViewport={onUserViewport}
       />
 
       {/* Floating top overlay — search bar, then a content-height dropdown
@@ -443,6 +542,13 @@ export function SearchClient({
         idle={idle}
         places={visible}
         catalogCount={catalog.length}
+        catalogLoading={catalogLoading}
+        overspan={overspan}
+        truncated={
+          totalInBox != null && totalInBox > places.length
+            ? `Showing ${places.length} of ${totalInBox} in this area`
+            : null
+        }
         filtersActive={filtersActive}
         railCollapsed={railCollapsed}
         railIndex={railIndex}

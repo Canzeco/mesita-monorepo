@@ -23,11 +23,18 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
+import { applyBboxPredicate, decideBbox } from "../_shared/geo.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
-type ListBody = { limit?: number };
+type ListBody = {
+  limit?: number;
+  south?: number;
+  west?: number;
+  north?: number;
+  east?: number;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -44,15 +51,30 @@ Deno.serve(async (req) => {
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
   // a query string (?limit=… for raw GETs). Body wins if both are present.
+  // Viewport bbox is POST-only. GET ignores geo so Pay / Home / mobile
+  // no-bbox callers stay on today's global newest-first path.
   let limit = DEFAULT_LIMIT;
+  let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
       limit = clampIntRange(body.limit, 1, MAX_LIMIT);
     }
+    bboxDecision = decideBbox(body as Record<string, unknown>);
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
     if (Number.isFinite(q)) limit = clampIntRange(q, 1, MAX_LIMIT);
+  }
+
+  if (bboxDecision.mode === "invalid") {
+    return json({
+      ok: false,
+      error: "bbox needs finite south, west, north, east (south < north)",
+      code: "invalid_bbox",
+    }, 400);
+  }
+  if (bboxDecision.mode === "overspan") {
+    return json({ ok: true, places: [], overspan: true });
   }
 
   // Pool admission comes from the Filters box, shared with Swipe. The
@@ -63,10 +85,9 @@ Deno.serve(async (req) => {
   // PREDICATE so `limit` fills with eligible rows instead of being spent on
   // ineligible ones.
   //
-  // Map passes NO geo, so the radius filter never engages here; that one is
-  // Swipe's, and applying it to a map the guest is panning would fight the
-  // viewport. Every other filter applies to both, which is the point of a
-  // shared box — the same admission question deserves one answer.
+  // Operator maxDistanceKm is Swipe's radius. Map never sends guest geo
+  // here, so that filter stays off. Viewport bbox (optional POST) is a
+  // different question: which listed pins sit in the camera rectangle.
   const efEnv = readEFEnv();
   const filters = efEnv.ok
     ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
@@ -76,14 +97,20 @@ Deno.serve(async (req) => {
   // (every public column except the five enrichment-filled jsonb ones), not
   // the full single-place read. Nothing here reads those five; verified
   // against discovery-filters.ts and this file before wiring.
+  const wantCount = bboxDecision.mode === "ok";
   const base = supabase
     .from("profiles")
-    .select(PLACE_CARD_COLUMNS);
+    .select(PLACE_CARD_COLUMNS, wantCount ? { count: "exact" } : undefined);
 
-  const { data, error } = await applyDiscoveryFilters(base, filters, {
+  let filtered = applyDiscoveryFilters(base, filters, {
     lat: null,
     lng: null,
-  })
+  });
+  if (bboxDecision.mode === "ok") {
+    filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
+  }
+
+  const { data, error, count } = await filtered
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -100,5 +127,13 @@ Deno.serve(async (req) => {
       category?: string | null;
     }>,
   );
+  if (bboxDecision.mode === "ok") {
+    return json({
+      ok: true,
+      places,
+      overspan: false,
+      totalInBox: typeof count === "number" ? count : places.length,
+    });
+  }
   return json({ ok: true, places });
 });

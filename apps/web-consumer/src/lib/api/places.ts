@@ -167,6 +167,40 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
+export const LIST_PLACES_MAX = 200;
+export const BBOX_MAX_SPAN_DEG = 0.75;
+
+export type PlacesBbox = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
+
+export type ViewportPlaces = {
+  places: Place[];
+  overspan: boolean;
+  totalInBox: number | null;
+};
+
+/** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
+export async function apiFetchPlacesInBbox(
+  client: SupabaseClient,
+  bbox: PlacesBbox,
+  limit = LIST_PLACES_MAX,
+): Promise<ViewportPlaces> {
+  const data = await invokeEF<{
+    places: Place[];
+    overspan?: boolean;
+    totalInBox?: number;
+  }>(client, "consumer-web-list-places", { limit, ...bbox });
+  return {
+    places: (data.places ?? []).map(stripInsecurePhotos),
+    overspan: data.overspan === true,
+    totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
+  };
+}
+
 // Fetch one fully-enriched place (by uuid or slug) and adapt it into the
 // rich PlaceDetail shape the detail modal renders. Returns null so the 4
 // detail server components can fall back gracefully (redirect to swipe)
