@@ -13,49 +13,24 @@
 // NEXT_PUBLIC_GMP_KEY the map runs on. Pato-directed exception to the
 // EF-only rule: this is Google's API, not our DB, nothing is persisted
 // (display-only, session-cached in memory), and every field degrades
-// gracefully if the key can't reach Places.
+// gracefully if the key can't reach Places. Details + one photo fire only
+// when this sheet opens — map pins and the nearby 50 never pay that SKU.
 
 import { useEffect, useState } from "react";
 import { ExternalLink, MapPinPlus, Wand2, X } from "lucide-react";
-import { Spinner } from "@/components/shared";
+import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import type { PlacePrediction } from "@/lib/api/place-search";
+import {
+  fetchGooglePlacePreview,
+  type GooglePlacePreview,
+} from "@/lib/google-place-preview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import type { AddState } from "./add-state";
 
-type GoogleProfile = {
-  photoUrl?: string;
-  formattedAddress?: string;
-  googleMapsUri?: string;
-};
-
 // Session-scoped memo so reopening the same result never refetches.
 // Front-only by design — nothing about the preview is saved on the back.
-const profileCache = new Map<string, GoogleProfile>();
-
-async function fetchGoogleProfile(
-  placeId: string,
-  apiKey: string,
-): Promise<GoogleProfile> {
-  const res = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}` +
-      `?fields=photos,formattedAddress,googleMapsUri&key=${apiKey}`,
-  );
-  if (!res.ok) throw new Error(`places details ${res.status}`);
-  const data = (await res.json()) as {
-    photos?: Array<{ name: string }>;
-    formattedAddress?: string;
-    googleMapsUri?: string;
-  };
-  const photoName = data.photos?.[0]?.name;
-  return {
-    photoUrl: photoName
-      ? `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=1200&key=${apiKey}`
-      : undefined,
-    formattedAddress: data.formattedAddress,
-    googleMapsUri: data.googleMapsUri,
-  };
-}
+const profileCache = new Map<string, GooglePlacePreview>();
 
 export function GooglePlaceSheet({
   open,
@@ -80,7 +55,9 @@ export function GooglePlaceSheet({
   // Cache is read during render; the state value only exists to re-render
   // once a miss resolves (the effect writes the cache before setting it).
   const [, setFetchedId] = useState<string | null>(null);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const profile = prediction ? profileCache.get(prediction.placeId) : undefined;
+  const waiting = Boolean(open && prediction && apiKey && !profile);
 
   useEffect(() => {
     if (!open || !prediction || !apiKey) return;
@@ -88,15 +65,18 @@ export function GooglePlaceSheet({
     if (profileCache.has(id)) return;
     let stale = false;
     (async () => {
-      let fetched: GoogleProfile = {};
+      let fetched: GooglePlacePreview = {};
       try {
-        fetched = await fetchGoogleProfile(id, apiKey);
+        fetched = await fetchGooglePlacePreview(id, apiKey);
       } catch {
         // Key can't reach Places (or network blip) — cache the empty
         // profile so we don't hammer, and let the fallbacks render.
       }
       profileCache.set(id, fetched);
-      if (!stale) setFetchedId(id);
+      if (!stale) {
+        setPhotoFailed(false);
+        setFetchedId(id);
+      }
     })();
     return () => {
       stale = true;
@@ -113,16 +93,40 @@ export function GooglePlaceSheet({
         prediction.mainText,
       )}&query_place_id=${encodeURIComponent(prediction.placeId)}`)
     : "#";
+  const photoUrl = profile?.photoUrl && !photoFailed ? profile.photoUrl : null;
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Place preview">
       {prediction && (
-        <div className="flex flex-col px-4 pt-3 pb-5">
-          <div className="flex items-start gap-3">
-            <span className="bg-primary/10 text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
-              <MapPinPlus className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="bg-muted relative h-44 w-full shrink-0 overflow-hidden">
+            {photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Google Places photo URI (or a 302 media URL), not a static asset for next/image
+              <img
+                src={photoUrl}
+                alt={`${prediction.mainText} — photo from Google`}
+                className="h-full w-full object-cover"
+                onError={() => setPhotoFailed(true)}
+              />
+            ) : waiting ? (
+              <Skeleton className="h-full w-full rounded-none" />
+            ) : (
+              <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center">
+                <MapPinPlus className="h-10 w-10" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white transition hover:bg-black/55"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3 pb-5">
+            <div className="min-w-0">
               <p className="font-display text-lg leading-tight font-semibold">
                 {prediction.mainText}
               </p>
@@ -141,68 +145,46 @@ export function GooglePlaceSheet({
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="text-muted-foreground hover:text-foreground hover:bg-muted/60 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
 
-          {profile?.photoUrl && (
-            // Google's own profile photo, display-only, so the consumer can
-            // confirm this is the place they mean before adding it.
-            // eslint-disable-next-line @next/next/no-img-element -- remote Google media URL (302s to googleusercontent), not a static asset for next/image
-            <img
-              src={profile.photoUrl}
-              alt={`${prediction.mainText} — photo from Google`}
-              className="mt-4 aspect-[5/2] w-full rounded-2xl object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          )}
-
-          <div className="bg-muted/60 mt-4 rounded-2xl px-4 py-3">
-            <p className="text-sm font-semibold">
-              This place isn&apos;t on Mesita yet.
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Google knows it, but its Mesita profile hasn&apos;t been built.
-              Add it and our AI will generate the full page — photos, ratings,
-              and details — in about 5 minutes.
-            </p>
-          </div>
-
-          {added ? (
-            <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-              <Spinner
-                size="sm"
-                className="border-emerald-300 border-t-emerald-600"
-              />
-              <p className="text-xs leading-relaxed font-medium text-emerald-700">
-                Being added — our AI is generating this place&apos;s profile;
-                it&apos;ll be live on Mesita in about 5 minutes.
+            <div className="bg-muted/60 mt-4 rounded-2xl px-4 py-3">
+              <p className="text-sm font-semibold">
+                This place isn&apos;t on Mesita yet.
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Google knows it, but its Mesita profile hasn&apos;t been built.
+                Add it and our AI will generate the full page — photos, ratings,
+                and details — in about 5 minutes.
               </p>
             </div>
-          ) : (
-            <Button
-              type="button"
-              size="lg"
-              disabled={adding}
-              onClick={() => onAdd(prediction)}
-              className="shadow-glow mt-4 w-full gap-1.5 text-sm font-semibold disabled:opacity-70"
-            >
-              {adding ? (
-                <Spinner size="sm" className="border-white/40 border-t-white" />
-              ) : (
-                <Wand2 className="h-4 w-4" />
-              )}
-              {adding ? "Adding…" : "Add to Mesita"}
-            </Button>
-          )}
+
+            {added ? (
+              <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+                <Spinner
+                  size="sm"
+                  className="border-emerald-300 border-t-emerald-600"
+                />
+                <p className="text-xs leading-relaxed font-medium text-emerald-700">
+                  Being added — our AI is generating this place&apos;s profile;
+                  it&apos;ll be live on Mesita in about 5 minutes.
+                </p>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                disabled={adding}
+                onClick={() => onAdd(prediction)}
+                className="shadow-glow mt-4 w-full gap-1.5 text-sm font-semibold disabled:opacity-70"
+              >
+                {adding ? (
+                  <Spinner size="sm" className="border-white/40 border-t-white" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                {adding ? "Adding…" : "Add to Mesita"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </LocalSheet>
