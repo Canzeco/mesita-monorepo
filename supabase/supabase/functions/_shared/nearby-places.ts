@@ -131,13 +131,24 @@ export function __resetNearbyGoogleCacheForTests(): void {
   googleFanoutAt = [];
 }
 
+/** Warm 15s cell hit, or null. List-places uses this so a cache hit does not
+ *  consume the shared IP quota — only a miss meters, then fan-out. */
+export function peekCachedNearbyPlaces(
+  center: { lat: number; lng: number },
+): NearbyHit[] | null {
+  const hit = nearbyCache.get(nearbyCellKey(center));
+  if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
+  return null;
+}
+
 /** Closest Google food/drink places around `center`. Deduped by Place ID.
  *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
  *  spend five billed Nearby calls twice. HTTP / parse failures are returned
  *  (Mesita fill still shows) but never cached — a blip must not lock the
  *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out.
- *  Each isolate also caps cache-miss fan-outs (20 / 60s) so a unique-cell
- *  spray cannot burn Places quota without bound on that isolate. */
+ *  Each isolate also caps cache-miss fan-outs (20 / 60s). The durable bound
+ *  is the hashed-IP ledger in nearby-google-quota.ts, consumed on cache miss
+ *  before this runs. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },

@@ -3,6 +3,7 @@ import {
   __resetNearbyGoogleCacheForTests,
   GOOGLE_FANOUT_MAX,
   mergeNearbyCatalog,
+  peekCachedNearbyPlaces,
   searchNearbyPlaces,
 } from "./nearby-places.ts";
 
@@ -189,6 +190,29 @@ Deno.test("searchNearbyPlaces: one type failure skips the cell cache", async () 
     assertEquals(a.length, 1);
     assertEquals(b.length, 1);
     assertEquals(n, 10);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("peekCachedNearbyPlaces: warm cell is visible, cold is not", async () => {
+  __resetNearbyGoogleCacheForTests();
+  const orig = globalThis.fetch;
+  globalThis.fetch = () =>
+    Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  try {
+    assertEquals(peekCachedNearbyPlaces(CENTER), null);
+    await searchNearbyPlaces("k", CENTER);
+    const cached = peekCachedNearbyPlaces(CENTER);
+    assertEquals(cached?.length, 1);
+    assertEquals(cached?.[0].placeId, "ChIJ-ok");
+    assertEquals(peekCachedNearbyPlaces({ lat: 10, lng: -100 }), null);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();

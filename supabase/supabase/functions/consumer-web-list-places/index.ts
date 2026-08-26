@@ -20,6 +20,8 @@
 //     in 50 km ∪ Google Nearby Search (New). Distance order. Google-only
 //     rows are stubs. Missing listed Place IDs are fetched by google_place_id
 //     so a close Mesita row outside the 1000 scan does not become a stub.
+//     Google fill is metered per hashed IP (nearby_google_attempts, 45/60s)
+//     before the five Nearby calls. Over quota skips Google, not the catalog.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -49,9 +51,12 @@ import {
 import {
   CATALOG_NEARBY_MAX,
   mergeNearbyCatalog,
+  peekCachedNearbyPlaces,
   searchNearbyPlaces,
   type NearbyHit,
 } from "../_shared/nearby-places.ts";
+import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
+import { hashRequestIp } from "../_shared/ticket-check.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
 const DEFAULT_LIMIT = 50;
@@ -293,7 +298,22 @@ Deno.serve(async (req) => {
     let googleHits: NearbyHit[] = [];
     const gmp = readGooglePlacesKey();
     if (gmp.ok) {
-      googleHits = await searchNearbyPlaces(gmp.key, center);
+      const cached = peekCachedNearbyPlaces(center);
+      if (cached) {
+        googleHits = cached;
+      } else if (efEnv.ok) {
+        // Shared IP ledger before any GMP spend. Isolates do not share the
+        // in-memory cache/cap; this table does. Over quota / no IP / ledger
+        // error: listed Mesita still returns.
+        const ipHash = await hashRequestIp(req, efEnv.env.serviceKey);
+        const quota = await consumeNearbyGoogleQuota(
+          adminClient(efEnv.env),
+          ipHash,
+        );
+        if (quota.allow) {
+          googleHits = await searchNearbyPlaces(gmp.key, center);
+        }
+      }
     }
     const haveGid = new Set(
       mesitaRows.map((row) => row.google_place_id).filter((id): id is string =>
