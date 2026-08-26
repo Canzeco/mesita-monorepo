@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
     : DISCOVERY_DEFAULTS.filters;
 
   const isNearby = nearbyDecision.mode === "ok";
-  const isBbox = bboxDecision.mode === "ok";
+  const isBbox = !isNearby && bboxDecision.mode === "ok";
   const wantCount = isBbox;
   const selectCols = isNearby
     ? `${PLACE_CARD_COLUMNS}, google_place_id`
@@ -201,12 +201,12 @@ Deno.serve(async (req) => {
     lat: null,
     lng: null,
   });
-  if (isNearby) {
+  if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
       circleBbox(nearbyDecision.center, NEARBY_RADIUS_KM),
     );
-  } else if (isBbox) {
+  } else if (bboxDecision.mode === "ok") {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 500);
   }
 
-  if (isNearby) {
+  if (nearbyDecision.mode === "ok") {
     const center = nearbyDecision.center;
     const mesitaRows = (data ?? []) as Array<{
       id: string;
