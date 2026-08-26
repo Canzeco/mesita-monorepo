@@ -1,14 +1,13 @@
 // Map hyperparameters — Discovery › Map (`discovery_config.map`).
 //
-// The nearby catalog is closest 20 listed ∪ one Nearby Search of 20.
-// These knobs decide WHICH of those may appear and WHICH primary types
-// ride that one Google call. They do not raise the cap.
+// Search allowlist for guest map, name search, admin Google Search, and
+// Create. Nearby catalog is closest 20 listed ∪ one Nearby Search of 20;
+// these knobs decide WHICH of those may appear and WHICH primary types
+// ride that one Google call. They do not raise the cap. googleFill is
+// Nearby-only.
 //
 // Floors are Map-only. Swipe / Pay / Home keep `discovery_config.filters`.
-// A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES. Popularity as a floor is the
-// honest exception to "every filter is a query predicate": the score is a
-// function, not a column, so it runs after the listed fetch and before the
-// merge, the same way `trimToRadius` finishes a bounding box.
+// A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, DiscoveryFilters } from "./discovery-config.ts";
 import { NEARBY_TYPE_KEYS, type NearbyTypeKey } from "./discovery-config.ts";
@@ -18,6 +17,11 @@ import {
   type SignalPlace,
 } from "./discovery-signals.ts";
 import type { NearbyHit } from "./nearby-places.ts";
+import {
+  familiesForGoogleType,
+  type EligibilityResult,
+  type FamilyKey,
+} from "./sourcing.ts";
 
 export type { NearbyTypeKey };
 
@@ -123,4 +127,92 @@ export function admitMapCatalog<T extends ListedMapRow>(
       googleHitClearsMapFloors(hit, map, params),
   );
   return { listed: admittedListed, google: admittedGoogle };
+}
+
+// Search + Add share this allowlist. A Nearby type battery expands to
+// the Google Table A types in that family (`mexican_restaurant` rides
+// `restaurant`). Wellness / experiences / culture have no battery, so
+// they cannot appear and cannot be added. googleFill is Nearby-only
+// and is not a Search/Add gate.
+
+const FAMILY_NEARBY_TYPES: Record<FamilyKey, readonly NearbyTypeKey[]> = {
+  restaurants: ["restaurant"],
+  bars_nightlife: ["bar", "night_club"],
+  cafes_bakeries: ["cafe", "bakery"],
+  wellness_spa: [],
+  experiences: [],
+  culture_arts: [],
+};
+
+export type MapPlaceSignals = {
+  primaryType: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+};
+
+export function primaryTypeClearsMapTypes(
+  primaryType: string | null | undefined,
+  map: MapConfig,
+): boolean {
+  const enabled = new Set(enabledNearbyTypes(map));
+  if (enabled.size === 0) return false;
+  const slug = (primaryType ?? "").trim().toLowerCase();
+  if (
+    slug &&
+    (NEARBY_TYPE_KEYS as readonly string[]).includes(slug) &&
+    enabled.has(slug as NearbyTypeKey)
+  ) {
+    return true;
+  }
+  return familiesForGoogleType(primaryType).some((family) =>
+    FAMILY_NEARBY_TYPES[family].some((key) => enabled.has(key)),
+  );
+}
+
+/** Text Search / Place Details / Create — full rating + review signals. */
+export function evaluatePlaceForMap(
+  map: MapConfig,
+  signals: MapPlaceSignals,
+): EligibilityResult {
+  if (!primaryTypeClearsMapTypes(signals.primaryType, map)) {
+    return {
+      eligible: false,
+      code: "family_not_eligible",
+      reason: "This kind of place isn't in Discovery › Map.",
+    };
+  }
+  if (map.minRating > 0 && (signals.rating === null || signals.rating < map.minRating)) {
+    return {
+      eligible: false,
+      code: "below_min_rating",
+      reason: `This place doesn't meet Mesita's minimum Google rating (${map.minRating}★).`,
+    };
+  }
+  if (
+    map.minReviews > 0 &&
+    (signals.reviewCount === null || signals.reviewCount < map.minReviews)
+  ) {
+    return {
+      eligible: false,
+      code: "below_min_reviews",
+      reason: `This place doesn't have enough Google reviews yet (min ${map.minReviews}).`,
+    };
+  }
+  if (
+    map.minPopularity > 0 &&
+    !listedClearsMapPopularity(
+      {
+        google_stars_overall: signals.rating,
+        google_review_count: signals.reviewCount,
+      },
+      map,
+    )
+  ) {
+    return {
+      eligible: false,
+      code: "below_min_popularity",
+      reason: `This place doesn't meet Mesita's minimum popularity (${map.minPopularity}).`,
+    };
+  }
+  return { eligible: true };
 }

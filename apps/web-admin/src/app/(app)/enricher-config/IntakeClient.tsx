@@ -7,7 +7,6 @@ import {
   Gauge,
   Globe,
   Instagram,
-  Layers,
   ListOrdered,
   Loader2,
   MessageSquareQuote,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
+import Link from "next/link";
 import {
   Collapsible,
   NumberField,
@@ -25,9 +25,6 @@ import {
   SectionCard,
   TextAreaField,
 } from "@/components/admin-ui/config";
-import { SourcingChannels } from "../sourcing-config/SourcingConfigClient";
-import { updateSourcingConfig } from "../sourcing-config/actions";
-import type { SourcingConfig } from "../sourcing-config/catalog";
 import { chipsFor, flowTagFor } from "./intake-functions";
 import {
   computeCreateCost,
@@ -49,13 +46,11 @@ import { clampFunnel, intakeSaveBlocked, type IntakeSettings } from "./intake-gu
 
 export type { IntakeSettings };
 
-// THE INTAKE PAGE. Five modules, Discovery-shaped. Models first, then
-// Sourcing · Create · Enrich · Functions. One page, no tabs.
+// THE INTAKE PAGE. Four modules, Discovery-shaped. Models · Create ·
+// Enrich · Functions. One page, no tabs. Search eligibility lives on
+// Discovery › Map — not here.
 //
-// ONE SAVE over TWO write doors — sourcing_config then atlas_* columns.
-// They are not one transaction; the bar names which half landed.
-//
-// NO TRIGGER GRID. Do not restore it.
+// One Save, one write door (atlas_*). NO TRIGGER GRID.
 
 const MAX_DISCOVERY_CANDIDATES = 10;
 
@@ -68,127 +63,72 @@ const PERPLEXITY_OPTIONS: readonly { value: PerplexityPreset; label: string }[] 
   ];
 
 export function IntakeClient({
-  initialSourcing,
-  sourcingUpdatedAt,
-  sourcingLoadError,
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
 }: {
-  initialSourcing: SourcingConfig;
-  sourcingUpdatedAt: string | null;
-  sourcingLoadError: string | null;
   initialSettings: IntakeSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
 }) {
-  const [sourcing, setSourcing] = useState(initialSourcing);
-  const [savedSourcing, setSavedSourcing] = useState(initialSourcing);
-  const [sourcingStamp, setSourcingStamp] = useState(sourcingUpdatedAt);
-
   const [settings, setSettings] = useState(initialSettings);
   const [savedSettings, setSavedSettings] = useState(initialSettings);
   const [settingsStamp, setSettingsStamp] = useState(settingsUpdatedAt);
 
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [partial, setPartial] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
-  const sourcingDirty = useMemo(
-    () => JSON.stringify(sourcing) !== JSON.stringify(savedSourcing),
-    [sourcing, savedSourcing],
-  );
-  const settingsDirty = useMemo(
+  const dirty = useMemo(
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
     [settings, savedSettings],
   );
-  const dirty = sourcingDirty || settingsDirty;
 
-  // A failed GET must never let a save overwrite the live singleton with
-  // defaults (MESITA-737) — the half that failed to load cannot be saved.
-  const blocked = intakeSaveBlocked(sourcingLoadError, settingsLoadError);
-
-  const dirtyNames = [
-    sourcingDirty ? "Sourcing" : null,
-    settingsDirty ? "the Intaker" : null,
-  ].filter(Boolean);
+  const blocked = intakeSaveBlocked(settingsLoadError);
 
   const patch = (next: Partial<IntakeSettings>) => {
     setSettings((s) => clampFunnel({ ...s, ...next }));
     setOk(false);
-    setPartial(null);
   };
 
   const save = () => {
     if (blocked) return;
     setError(null);
-    setPartial(null);
     startTransition(async () => {
-      let sourcingLanded = false;
-      let failure: string | null = null;
-
-      if (sourcingDirty) {
-        const r = await updateSourcingConfig(sourcing);
-        if (r.ok) {
-          setSourcing(r.config);
-          setSavedSourcing(r.config);
-          setSourcingStamp(r.updatedAt);
-          sourcingLanded = true;
-        } else {
-          setError(`Sourcing: ${r.error}`);
-          return;
-        }
+      const r = await updateAtlasConfig({
+        gatherGoogleImages: settings.gatherGoogleImages,
+        gatherInstagramDepth: settings.gatherInstagramDepth,
+        gatherInstagramPosts: settings.analyzeInstagramImages,
+        gatherReviews: settings.gatherReviews,
+        imageVisionEnabled: settings.imageVisionEnabled,
+        saveImagesToStorage: settings.saveImagesToStorage,
+        saveTotalImages: settings.saveTotalImages,
+        analyzeGoogleImages: settings.analyzeGoogleImages,
+        analyzeInstagramImages: settings.analyzeInstagramImages,
+        imageAnalysisPrompt: settings.imageAnalysisPrompt,
+        imageSortingPrompt: settings.imageSortingPrompt,
+        synthesisQuality: settings.synthesisQuality,
+        visionQuality: settings.visionQuality,
+        perplexityPreset: settings.perplexityPreset,
+        discoverWebsiteN: settings.discoverWebsiteN,
+        discoverInstagramN: settings.discoverInstagramN,
+        discoverFacebookN: settings.discoverFacebookN,
+        discoverOpentableN: settings.discoverOpentableN,
+        discoverUbereatsN: settings.discoverUbereatsN,
+      });
+      if (r.ok) {
+        setSavedSettings(settings);
+        setSettingsStamp(r.data.updatedAt);
+        setOk(true);
+      } else {
+        setError(r.error);
       }
-
-      if (settingsDirty) {
-        const r = await updateAtlasConfig({
-          gatherGoogleImages: settings.gatherGoogleImages,
-          gatherInstagramDepth: settings.gatherInstagramDepth,
-          gatherInstagramPosts: settings.analyzeInstagramImages,
-          gatherReviews: settings.gatherReviews,
-          imageVisionEnabled: settings.imageVisionEnabled,
-          saveImagesToStorage: settings.saveImagesToStorage,
-          saveTotalImages: settings.saveTotalImages,
-          analyzeGoogleImages: settings.analyzeGoogleImages,
-          analyzeInstagramImages: settings.analyzeInstagramImages,
-          imageAnalysisPrompt: settings.imageAnalysisPrompt,
-          imageSortingPrompt: settings.imageSortingPrompt,
-          synthesisQuality: settings.synthesisQuality,
-          visionQuality: settings.visionQuality,
-          perplexityPreset: settings.perplexityPreset,
-          discoverWebsiteN: settings.discoverWebsiteN,
-          discoverInstagramN: settings.discoverInstagramN,
-          discoverFacebookN: settings.discoverFacebookN,
-          discoverOpentableN: settings.discoverOpentableN,
-          discoverUbereatsN: settings.discoverUbereatsN,
-        });
-        if (r.ok) {
-          setSavedSettings(settings);
-          setSettingsStamp(r.data.updatedAt);
-        } else {
-          failure = r.error;
-        }
-      }
-
-      if (failure) {
-        setPartial(
-          sourcingLanded
-            ? "Sourcing saved · the Intaker did not."
-            : "The Intaker did not save.",
-        );
-        setError(failure);
-        return;
-      }
-      setOk(true);
     });
   };
 
   const discard = () => {
-    setSourcing(savedSourcing);
     setSettings(savedSettings);
     setError(null);
-    setPartial(null);
     setOk(false);
   };
 
@@ -259,34 +199,6 @@ export function IntakeClient({
           </SectionCard>
         </div>
 
-        <div id="s-sourcing" className="scroll-mt-16">
-          <SectionCard
-            icon={<Layers className="text-secondary h-4 w-4" />}
-            title="Sourcing"
-            subtitle="Who may find a place, and who may add one."
-          >
-            {sourcingLoadError ? (
-              <div className="mt-4">
-                <ErrorNote
-                  message={`Sourcing failed to load: ${sourcingLoadError}`}
-                />
-              </div>
-            ) : (
-              <SourcingChannels
-                config={sourcing}
-                onChange={(next) => {
-                  setSourcing(next);
-                  setOk(false);
-                  setPartial(null);
-                }}
-                disabled={pending}
-                updatedAt={sourcingStamp}
-                framed={false}
-              />
-            )}
-          </SectionCard>
-        </div>
-
         <div id="s-create" className="scroll-mt-16">
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
@@ -298,8 +210,18 @@ export function IntakeClient({
               facts={[
                 {
                   term: "Starts",
-                  detail:
-                    "A person or Memo adds a place. The gate above decides whether the add is allowed.",
+                  detail: (
+                    <>
+                      A person or Memo adds a place.{" "}
+                      <Link
+                        href="/filters-config#s-map"
+                        className="text-foreground underline underline-offset-2"
+                      >
+                        Discovery › Map
+                      </Link>{" "}
+                      decides whether the add is allowed.
+                    </>
+                  ),
                 },
                 {
                   term: "Stops",
@@ -607,26 +529,11 @@ export function IntakeClient({
               <p className="text-destructive m-0 text-sm font-semibold">
                 Save disabled — a config failed to load
               </p>
-            ) : partial ? (
-              <>
-                <p className="text-destructive m-0 text-sm font-semibold">
-                  {partial}
-                </p>
-                <p className="text-muted-foreground m-0 text-xs">
-                  Only the half that failed is still unsaved — Save again to
-                  retry just that half.
-                </p>
-              </>
             ) : dirty ? (
-              <>
-                <p className="m-0 text-sm font-semibold">
-                  <span className="bg-primary mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle" />
-                  Unsaved changes
-                </p>
-                <p className="text-muted-foreground m-0 text-xs">
-                  {dirtyNames.join(" · ")}
-                </p>
-              </>
+              <p className="m-0 text-sm font-semibold">
+                <span className="bg-primary mr-2 inline-block h-1.5 w-1.5 rounded-full align-middle" />
+                Unsaved changes
+              </p>
             ) : ok ? (
               <p className="text-muted-foreground m-0 inline-flex items-center gap-1.5 text-sm">
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -634,8 +541,8 @@ export function IntakeClient({
               </p>
             ) : (
               <p className="text-muted-foreground m-0 text-xs">
-                {sourcingStamp
-                  ? `Sourcing last changed ${formatShortDate(sourcingStamp)}`
+                {settingsStamp
+                  ? `Last changed ${formatShortDate(settingsStamp)}`
                   : "Nothing to save"}
               </p>
             )}

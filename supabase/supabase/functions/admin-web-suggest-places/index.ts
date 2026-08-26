@@ -45,6 +45,5 @@ Deno.serve(async (req) => {
     regionCode: body.regionCode,
     // Admin surface — no self/other split; claimed rows show as _other.
     callerUserId: null,
-    sourcingChannel: "admin_search",
   });
 });

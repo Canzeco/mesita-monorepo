@@ -1,4 +1,5 @@
-import type { ChannelPolicy } from "./sourcing.ts";
+import type { MapConfig } from "./discovery-config.ts";
+import { enabledNearbyTypes } from "./map-engine.ts";
 
 export type PredictionStatus =
   | "not_in_mesita"
@@ -20,17 +21,13 @@ export type Prediction = {
 };
 
 // How to constrain Google Autocomplete primary types for this call:
-// - "legacy": no sourcing channel => static hospitality allowlist
-// - "skip": channel disabled / no families => don't call Google
-// - "open": sourced search => omit includedPrimaryTypes; post-filter enforces policy
-export type GoogleTypeFilter = "legacy" | "skip" | "open";
+// - "skip": every Map type battery is off => don't call Google
+// - "open": omit includedPrimaryTypes; post-filter evaluatePlaceForMap
+export type GoogleTypeFilter = "skip" | "open";
 
-export function googleTypeFilterForPolicy(
-  policy: ChannelPolicy | null,
-): GoogleTypeFilter {
-  if (!policy) return "legacy";
-  if (!policy.enabled || policy.families.length === 0) return "skip";
-  return "open";
+/** Discovery › Map: skip Google when every type battery is off. */
+export function googleTypeFilterForMap(map: MapConfig): GoogleTypeFilter {
+  return enabledNearbyTypes(map).length === 0 ? "skip" : "open";
 }
 
 export function mergePredictionsByPlaceId(

@@ -102,17 +102,17 @@ export function MapConfigClient({
   const map = cfg.map ?? DEFAULT_CONFIG.map;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div id="s-map" className="scroll-mt-16 flex flex-col gap-4">
       {error ? <ErrorNote message={error} /> : null}
 
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Search still returns up to 50 closest admitted places. These knobs decide which of those 50 may appear — they do not raise the cap. 0 on a floor is off. A rating or popularity floor hides Google stubs with no stars. Nearby does not refetch on a one-pixel pan."
+        subtitle="Which places may appear in Search — guest map, name search, admin Google Search, and Add. Search still returns up to 50 closest admitted places; these knobs do not raise the cap. 0 on a floor is off. Nearby fill is a separate billed call and does not gate name search or Create."
         status={
           <KnobStatus
             kind="enforced"
-            reason="consumer-web-list-places"
+            reason="list-places · Search · Create"
           />
         }
       >

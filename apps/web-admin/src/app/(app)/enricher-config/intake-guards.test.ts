@@ -28,16 +28,12 @@ const seed: IntakeSettings = {
 };
 
 describe("intakeSaveBlocked", () => {
-  it("lets Save through when both GETs succeeded", () => {
-    expect(intakeSaveBlocked(null, null)).toBeNull();
+  it("lets Save through when the GET succeeded", () => {
+    expect(intakeSaveBlocked(null)).toBeNull();
   });
 
   it("blocks Save when the Intaker GET fails — client defaults must not POST", () => {
-    expect(intakeSaveBlocked(null, "timeout")).toBe("timeout");
-  });
-
-  it("blocks Save when sourcing fails even if Intaker loaded", () => {
-    expect(intakeSaveBlocked("sourcing down", null)).toBe("sourcing down");
+    expect(intakeSaveBlocked("timeout")).toBe("timeout");
   });
 });
 

@@ -96,12 +96,12 @@ export function QueryRow({
                   {q.rawCount} {q.rawCount === 1 ? "place" : "places"} found,
                   but {q.rawCount === 1 ? "it is" : "none are"} allowed by{" "}
                   <Link
-                    href="/enricher-config#s-sourcing"
+                    href="/filters-config#s-map"
                     className="text-foreground underline underline-offset-2"
                   >
-                    Intake › Sourcing
+                    Discovery › Map
                   </Link>{" "}
-                  Admin Search (families or Google floors). This row only —
+                  (types or Google floors). This row only —
                   other queries in the batch still stand.
                 </>
               ) : (
@@ -116,10 +116,10 @@ export function QueryRow({
                     Showing {q.places.length} of {q.rawCount} — {filteredOut}{" "}
                     blocked by{" "}
                     <Link
-                      href="/enricher-config#s-sourcing"
+                      href="/filters-config#s-map"
                       className="text-foreground underline underline-offset-2"
                     >
-                      Intake › Sourcing
+                      Discovery › Map
                     </Link>
                   </span>
                 ) : (

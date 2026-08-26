@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const maxResultsPerQuery =
     typeof body.maxResultsPerQuery === "number" ? body.maxResultsPerQuery : 60;
 
-  // Quality floors are Intake › Sourcing (`admin_search`). This route
+  // Quality floors are Discovery › Map. This route
   // never forwards client minRating / minUserRatingCount.
   const result = await efInvoke<SearchResponse>("admin-web-discover-places", {
     queries,

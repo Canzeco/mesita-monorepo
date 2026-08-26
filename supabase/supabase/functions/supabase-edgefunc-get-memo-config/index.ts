@@ -13,8 +13,7 @@
 //   • model        — models_config.memo.model (admin Models page), falling
 //                    back to legacy memo_config.openaiModel when unset.
 //   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
-//   • searchPolicy — the `memo_search` slice of sourcing_config, coerced
-//                    against the launch policy.
+//   • searchPolicy — leftover wire; Search eligibility is Discovery › Map.
 //
 // Read side for Memo. Greeting still has no editor (memo_config.greeting).
 // The Chat persona writes through admin-web-update-discovery-config
@@ -28,10 +27,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import {
-  coerceChannelPolicy,
-  type SourcingConfigRow,
-} from "../_shared/sourcing.ts";
+import { coerceChannelPolicy } from "../_shared/sourcing.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import { normalizeMemoConfig } from "../_shared/memo-config.ts";
 import { normalizeDiscoveryConfig } from "../_shared/discovery-config.ts";
@@ -70,7 +66,7 @@ Deno.serve(async (req) => {
       admin
         .from("app_config")
         .select(
-          "memo_config, sourcing_config, discovery_config",
+          "memo_config, discovery_config",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -96,7 +92,6 @@ Deno.serve(async (req) => {
     const legacyModel = memo.openaiModel.trim();
     const model = models.memoModel || legacyModel;
     const perplexity = models.memoPerplexity;
-    const sourcing = data.sourcing_config as SourcingConfigRow | null;
 
     return json({
       ok: true,
@@ -104,7 +99,7 @@ Deno.serve(async (req) => {
       instructions: instructions.length > 0 ? instructions : null,
       model: model.length > 0 ? model : null,
       perplexity: perplexity.length > 0 && perplexity !== "off" ? perplexity : null,
-      searchPolicy: coerceChannelPolicy(sourcing?.memo_search ?? null, "memo_search"),
+      searchPolicy: coerceChannelPolicy(null, "memo_search"),
       caller: callerRes.callerName,
     });
   } catch (e) {

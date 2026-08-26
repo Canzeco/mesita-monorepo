@@ -1,17 +1,12 @@
-import { getSourcingConfig } from "../sourcing-config/actions";
-import { DEFAULT_CONFIG } from "../sourcing-config/catalog";
 import { getAtlasSettings } from "./actions";
 import { IntakeClient } from "./IntakeClient";
 import { type IntakeSettings } from "./intake-guards";
 
-// INTAKE — how a place gets into Mesita and becomes a profile, on one page.
-// Five modules: shared models first (above Sourcing), then the gate · Create ·
-// Enrich · the twelve functions with their params.
+// INTAKE — how a place becomes a profile. Four modules: Models · Create ·
+// Enrich · Functions. Search eligibility is Discovery › Map, not this page.
 //
-// TWO READS, seeded server-side so the page renders with real values and no
-// spinner. Either can fail on its own: a failed half renders its own note and
-// blocks Save, because a whole-blob write from a failed load would overwrite
-// the live singleton with defaults (MESITA-737).
+// One GET, seeded server-side. A failed load blocks Save so client
+// defaults cannot overwrite the live singleton (MESITA-737).
 export const dynamic = "force-dynamic";
 
 const SETTINGS_FALLBACK: IntakeSettings = {
@@ -36,16 +31,10 @@ const SETTINGS_FALLBACK: IntakeSettings = {
 };
 
 export default async function IntakePage() {
-  const [sourcing, settings] = await Promise.all([
-    getSourcingConfig(),
-    getAtlasSettings(),
-  ]);
+  const settings = await getAtlasSettings();
 
   return (
     <IntakeClient
-      initialSourcing={sourcing.ok ? sourcing.config : DEFAULT_CONFIG}
-      sourcingUpdatedAt={sourcing.ok ? sourcing.updatedAt : null}
-      sourcingLoadError={sourcing.ok ? null : sourcing.error}
       initialSettings={
         settings.ok
           ? {

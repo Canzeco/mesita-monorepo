@@ -32,11 +32,8 @@ import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
-import {
-  type ChannelKey,
-  evaluatePlaceForChannel,
-  readChannelPolicy,
-} from "./sourcing.ts";
+import { loadDiscoveryConfig } from "./discovery-config.ts";
+import { evaluatePlaceForMap } from "./map-engine.ts";
 
 const CHANNEL_KEYS = [
   "website_url", "instagram_url", "facebook_url", "x_url", "threads_url",
@@ -77,12 +74,6 @@ export async function createMinimalPlace(opts: {
   googlePlaceId: string;
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
   dedupeError?: string;
-  // Sourcing gate: when set, the place is evaluated against
-  // app_config.sourcing_config[sourcingChannel] (family + rating + review
-  // floors) after the Google fetch and rejected (422) if ineligible.
-  // Callers: consumer_add · admin_add · business_add. One ID, one 422 —
-  // a batch of creates never aborts as a unit.
-  sourcingChannel?: ChannelKey;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;
 
@@ -157,30 +148,22 @@ export async function createMinimalPlace(opts: {
       },
     };
   }
-  // ── Sourcing gate (quality). Evaluated here — after the Google fetch, before
-  // any persist/enrichment — because family/rating/review signals only exist
-  // once Google answers. One Basics call is spent on a rejected place; that's
-  // unavoidable (we need the data to judge) and bounded by the per-consumer
-  // creation quota upstream. Config-read failure falls back to the launch
-  // policy (coerceChannelPolicy default) rather than failing open. ──
-  if (opts.sourcingChannel) {
-    const policy = await readChannelPolicy(admin, opts.sourcingChannel);
-    const verdict = evaluatePlaceForChannel(policy, {
-      primaryType: basicsRes.primaryType,
-      rating: basicsRes.basics.google_stars_overall,
-      reviewCount: basicsRes.basics.google_review_count,
-    }, {
-      lat: basicsRes.basics.lat,
-      lng: basicsRes.basics.lng,
-      country: basicsRes.basics.country,
-    });
-    if (!verdict.eligible) {
-      return {
-        ok: false,
-        status: 422,
-        body: { ok: false, code: verdict.code, error: verdict.reason },
-      };
-    }
+  // ── Discovery › Map gate. Same allowlist as Search: type batteries +
+  // rating/review/popularity floors. After Google, before persist. One ID, one 422
+  // — a batch of creates never aborts as a unit. Config-read failure falls
+  // back to discovery defaults rather than failing open.
+  const map = (await loadDiscoveryConfig(admin)).map;
+  const verdict = evaluatePlaceForMap(map, {
+    primaryType: basicsRes.primaryType,
+    rating: basicsRes.basics.google_stars_overall,
+    reviewCount: basicsRes.basics.google_review_count,
+  });
+  if (!verdict.eligible) {
+    return {
+      ok: false,
+      status: 422,
+      body: { ok: false, code: verdict.code, error: verdict.reason },
+    };
   }
 
   // category 'undefined' until the Intaker resolves it; the category-label

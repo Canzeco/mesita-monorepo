@@ -179,10 +179,10 @@ export function SearchTab({
               {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
               {" · "}
               <Link
-                href="/enricher-config#s-sourcing"
+                href="/filters-config#s-map"
                 className="text-foreground underline-offset-2 hover:underline"
               >
-                Intake › Sourcing
+                Discovery › Map
               </Link>
             </span>
             <div className="flex flex-wrap items-center gap-2">

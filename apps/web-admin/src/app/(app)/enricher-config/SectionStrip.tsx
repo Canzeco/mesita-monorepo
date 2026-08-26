@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-// Wayfinding for five modules. The strip does not exist until the first
+// Wayfinding for four modules. The strip does not exist until the first
 // module scrolls away — it is a way back, not chrome. Function hashes still
 // work from Create/Enrich step chips; they are not repeated here.
 const LINKS: { id: string; label: string }[] = [
   { id: "s-models", label: "Models" },
-  { id: "s-sourcing", label: "Sourcing" },
   { id: "s-create", label: "Create" },
   { id: "s-enrich", label: "Enrich" },
   { id: "s-functions", label: "Functions" },

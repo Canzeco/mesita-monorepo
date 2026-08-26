@@ -4,10 +4,10 @@ import {
   GOOGLE_PLACES_TEXT_SEARCH_URL,
 } from "../_shared/google-places.ts";
 import {
-  type ChannelPolicy,
   applyPlacesTextSearchRegion,
-  evaluatePlaceForChannel,
 } from "../_shared/sourcing.ts";
+import { evaluatePlaceForMap } from "../_shared/map-engine.ts";
+import type { MapConfig } from "../_shared/discovery-config.ts";
 import { openScore } from "../_shared/local-time.ts";
 
 // The Prediction card contract now lives in _shared/memo-types.ts (shared with
@@ -22,7 +22,7 @@ export async function googleTextSearch(
   query: string,
   lat: number | null,
   lng: number | null,
-  memoPolicy: ChannelPolicy,
+  map: MapConfig,
 ): Promise<Prediction[]> {
   const reqBody: Record<string, unknown> = {
     textQuery: query,
@@ -30,7 +30,6 @@ export async function googleTextSearch(
   };
   applyPlacesTextSearchRegion(
     reqBody,
-    memoPolicy,
     lat !== null && lng !== null ? { lat, lng } : null,
   );
 
@@ -79,13 +78,10 @@ export async function googleTextSearch(
 
   return (d.places ?? [])
     .filter((p) =>
-      evaluatePlaceForChannel(memoPolicy, {
+      evaluatePlaceForMap(map, {
         primaryType: p.primaryType ?? null,
         rating: p.rating ?? null,
         reviewCount: p.userRatingCount ?? null,
-      }, {
-        lat: typeof p.location?.latitude === "number" ? p.location.latitude : null,
-        lng: typeof p.location?.longitude === "number" ? p.location.longitude : null,
       }).eligible
     )
     .map<Prediction>((p) => ({

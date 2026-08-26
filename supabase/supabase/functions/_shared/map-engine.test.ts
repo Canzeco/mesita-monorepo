@@ -3,6 +3,7 @@ import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import {
   admitMapCatalog,
   enabledNearbyTypes,
+  evaluatePlaceForMap,
   googleHitClearsMapFloors,
   listedClearsMapPopularity,
   listedMapFilters,
@@ -111,4 +112,66 @@ Deno.test("admitMapCatalog does not let Google stub a listed place that missed p
   const got = admitMapCatalog(listed, google, map);
   assertEquals(got.listed.map((r) => r.id), ["strong"]);
   assertEquals(got.google.map((h) => h.placeId), ["ChIJ-only"]);
+});
+
+Deno.test("evaluatePlaceForMap admits restaurant subtypes when restaurant is on", () => {
+  const ok = evaluatePlaceForMap(MAP, {
+    primaryType: "mexican_restaurant",
+    rating: 4.2,
+    reviewCount: 80,
+  });
+  assertEquals(ok.eligible, true);
+});
+
+Deno.test("evaluatePlaceForMap rejects wellness and hotels", () => {
+  const spa = evaluatePlaceForMap(MAP, {
+    primaryType: "spa",
+    rating: 4.8,
+    reviewCount: 200,
+  });
+  assertEquals(spa.eligible, false);
+  if (!spa.eligible) assertEquals(spa.code, "family_not_eligible");
+  const hotel = evaluatePlaceForMap(MAP, {
+    primaryType: "hotel",
+    rating: 4.8,
+    reviewCount: 200,
+  });
+  assertEquals(hotel.eligible, false);
+});
+
+Deno.test("evaluatePlaceForMap respects type batteries and floors", () => {
+  const barsOnly = {
+    ...MAP,
+    types: {
+      restaurant: false,
+      bar: true,
+      cafe: false,
+      night_club: false,
+      bakery: false,
+    },
+  };
+  assertEquals(
+    evaluatePlaceForMap(barsOnly, {
+      primaryType: "night_club",
+      rating: 4.5,
+      reviewCount: 10,
+    }).eligible,
+    true,
+  );
+  assertEquals(
+    evaluatePlaceForMap(barsOnly, {
+      primaryType: "mexican_restaurant",
+      rating: 4.5,
+      reviewCount: 10,
+    }).eligible,
+    false,
+  );
+  const floored = { ...MAP, minRating: 4, minReviews: 50 };
+  const low = evaluatePlaceForMap(floored, {
+    primaryType: "restaurant",
+    rating: 3.5,
+    reviewCount: 200,
+  });
+  assertEquals(low.eligible, false);
+  if (!low.eligible) assertEquals(low.code, "below_min_rating");
 });

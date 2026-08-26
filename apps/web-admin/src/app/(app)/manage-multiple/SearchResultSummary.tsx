@@ -49,11 +49,11 @@ export function ResultSummary({
           {filtersActive && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
               <Link
-                href="/enricher-config#s-sourcing"
+                href="/filters-config#s-map"
                 className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 type-eyebrow"
               >
                 <SlidersHorizontal className="h-3 w-3" />
-                Intake floor
+                Discovery › Map
               </Link>
               {result.minRating > 0 && (
                 <span className="bg-background/70 text-foreground/80 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium">
