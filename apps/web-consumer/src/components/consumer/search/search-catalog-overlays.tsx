@@ -45,7 +45,6 @@ export function SearchRailOverlay({
   catalogLoading = false,
   overspan = false,
   truncated = null,
-  filtersActive,
   railCollapsed,
   railIndex,
   selectedId,
@@ -55,7 +54,6 @@ export function SearchRailOverlay({
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
-  onOpenFilters,
   setRailCardRef,
 }: {
   idle: boolean;
@@ -64,7 +62,6 @@ export function SearchRailOverlay({
   catalogLoading?: boolean;
   overspan?: boolean;
   truncated?: string | null;
-  filtersActive: boolean;
   railCollapsed: boolean;
   railIndex: number;
   selectedId: string | null;
@@ -74,7 +71,6 @@ export function SearchRailOverlay({
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
-  onOpenFilters: () => void;
   setRailCardRef: (placeId: string, el: HTMLButtonElement | null) => void;
 }) {
   if (!idle) return null;
@@ -193,21 +189,10 @@ export function SearchRailOverlay({
         )
       ) : (
         (catalogCount > 0 || !catalogLoading) && (
-          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
+          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
-              {filtersActive
-                ? "No places match these filters."
-                : "No places to show here yet."}
+              No places to show here yet.
             </p>
-            {filtersActive && (
-              <button
-                type="button"
-                onClick={onOpenFilters}
-                className="text-primary type-label font-semibold"
-              >
-                Adjust
-              </button>
-            )}
           </div>
         )
       )}

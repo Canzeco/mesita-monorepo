@@ -4,7 +4,8 @@
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
 //   • Top overlay: floating search bar. Far-right chip is country + location
-//     (two knobs, one sheet). Discovery cuisine/when/rewards stay on Swipe.
+//     (two knobs, one sheet). Discovery filters stay on Swipe — they never
+//     cut this map and there is no Adjust control here.
 //   • Bottom overlay (idle): horizontal catalog rail of the closest 50
 //     around the camera (Google Nearby Search + listed Mesita). Panning
 //     the map reloads that set after idle. Tapping a map pin highlights +
@@ -35,15 +36,8 @@ import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import {
-  applyDiscoveryFilters,
-  deriveCategoryOptions,
-  discoveryFiltersAreActive,
-} from "@/lib/discovery-filters-engine";
-import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
-import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
@@ -132,14 +126,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [freshFix, setFreshFix] = useState<{ lat: number; lng: number } | null>(
     null,
   );
-  const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const deviceLocation = freshFix ?? userLocation;
   const location = scope.locationOptOut ? null : deviceLocation;
@@ -156,19 +147,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const catalog = useMemo(
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
-  );
-  const visible = useMemo(() => {
-    const filtered = applyDiscoveryFilters(catalog, filters);
-    if (!selectedId) return filtered;
-    if (filtered.some((p) => p.id === selectedId)) return filtered;
-    // An explicit Search pick wins the cut: the pin and rail card must
-    // still appear, or the tap looks like a no-op with filters on.
-    const picked = catalog.find((p) => p.id === selectedId);
-    return picked ? [picked, ...filtered] : filtered;
-  }, [catalog, filters, selectedId]);
-  const categoryOptions = useMemo(
-    () => deriveCategoryOptions(places),
-    [places],
   );
 
   const searchPins = useMemo(
@@ -444,7 +422,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const RAIL_STRIDE = 296;
   const handleRailScroll = () => {
     const el = railScrollRef.current;
-    if (!el || visible.length === 0) return;
+    if (!el || catalog.length === 0) return;
     // At the far-right end the last card is fully visible but scrollLeft never
     // reaches (n-1)·stride, so Math.round caps one short (shows n-1/n). Snap to
     // the last index once the container is scrolled to its end.
@@ -452,9 +430,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const atEnd =
       overflowing && el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
     const idx = atEnd
-      ? visible.length - 1
+      ? catalog.length - 1
       : Math.round(el.scrollLeft / RAIL_STRIDE);
-    setRailIndex(Math.max(0, Math.min(idx, visible.length - 1)));
+    setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
   };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
@@ -524,10 +502,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins reflect the same filter cut as the rail. */}
+      {/* Base layer — pins are the nearby 50, uncut by discovery filters. */}
       <SearchMap
         apiKey={apiKey}
-        places={visible}
+        places={catalog}
         userLocation={userLocation}
         viewCenter={center}
         selectedId={selectedId}
@@ -584,10 +562,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
       <SearchRailOverlay
         idle={idle}
-        places={visible}
+        places={catalog}
         catalogCount={catalog.length}
         catalogLoading={catalogLoading}
-        filtersActive={filtersActive}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
         selectedId={selectedId}
@@ -597,7 +574,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
-        onOpenFilters={() => setFiltersOpen(true)}
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
@@ -619,19 +595,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             setFreshFix(null);
           }}
           onClose={() => setScopeOpen(false)}
-        />
-      </LocalSheet>
-
-      <LocalSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        ariaLabel="Filters"
-      >
-        <DiscoveryFilters
-          onClose={() => setFiltersOpen(false)}
-          categoryOptions={categoryOptions}
-          count={visible.length}
-          hasLocation={userLocation != null}
         />
       </LocalSheet>
 

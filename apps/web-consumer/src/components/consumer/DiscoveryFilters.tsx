@@ -39,11 +39,11 @@ import {
 //
 // NOT A ROUTE ANY MORE (MESITA-1236). This was the body of a routed @modal at
 // /filters, fed by a host-context bus because three surfaces shared one route.
-// It is mounted directly by its hosts now, so the route, its hard twin and
+// It is mounted directly by its host now, so the route, its hard twin and
 // the bus are all gone and the host passes `count`, `categoryOptions` and
 // `hasLocation` as props. `onClose` is the host's setState, not router.back().
-// Swipe and Search host it; Catalog is live but does not — its filterability
-// is the Suggested / Open-first sort on the shared deck.
+// Swipe hosts it; Search's map has country + location only. Catalog is live
+// but does not — its filterability is the Suggested / Open-first sort.
 //
 // Random is gone too: a 0..4 deck reorder is one of the seven named discovery
 // signals, and the server already shuffles.
