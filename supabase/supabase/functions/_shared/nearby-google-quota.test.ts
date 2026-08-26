@@ -6,6 +6,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   consumeNearbyGoogleQuota,
+  GOOGLE_NEARBY_GLOBAL_MAX,
   GOOGLE_NEARBY_IP_MAX,
 } from "./nearby-google-quota.ts";
 
@@ -37,13 +38,19 @@ function makeFakeAdmin(store: Row[]): any {
         },
         select() {
           let ipHash: string | undefined;
+          let scoped = false;
           const builder = {
             eq(col: string, val: string) {
-              if (col === "ip_hash") ipHash = val;
+              if (col === "ip_hash") {
+                ipHash = val;
+                scoped = true;
+              }
               return builder;
             },
             gte() {
-              const count = store.filter((r) => r.ip_hash === ipHash).length;
+              const count = scoped
+                ? store.filter((r) => r.ip_hash === ipHash).length
+                : store.length;
               return Promise.resolve({ count, error: null });
             },
           };
@@ -105,4 +112,16 @@ Deno.test("missing IP hash skips Google and writes nothing", async () => {
   const r = await consumeNearbyGoogleQuota(admin, null);
   assert(!r.allow);
   assertEquals(store.length, 0);
+});
+
+Deno.test("global window cap binds unique-hash spray", async () => {
+  const store: Row[] = [];
+  const admin = makeFakeAdmin(store);
+  let allowed = 0;
+  for (let i = 0; i < GOOGLE_NEARBY_GLOBAL_MAX + 5; i++) {
+    const r = await consumeNearbyGoogleQuota(admin, `ip-${i}`);
+    if (r.allow) allowed++;
+  }
+  assertEquals(allowed, GOOGLE_NEARBY_GLOBAL_MAX);
+  assertEquals(store.length, GOOGLE_NEARBY_GLOBAL_MAX);
 });

@@ -17,6 +17,10 @@
 // or an exceeded cap skips Google fill and still returns listed Mesita.
 // Never 429 the catalog — blanking Search is worse than a listed-only rail.
 //
+// Identity is hashConnectingIp (CF-Connecting-IP / rightmost XFF), not the
+// leftmost XFF hop. A global window cap is the backstop if a caller still
+// mints unique hashes (spoofed CF-Connecting-IP on a direct origin hit).
+//
 // Caller: consumer-web-list-places, cache-miss path only.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -25,6 +29,7 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 // so a real explorer stays well under this; unique cells across isolates
 // share the same ledger.
 export const GOOGLE_NEARBY_IP_MAX = 45;
+export const GOOGLE_NEARBY_GLOBAL_MAX = 600;
 export const GOOGLE_NEARBY_IP_WINDOW_MS = 60_000;
 
 export async function consumeNearbyGoogleQuota(
@@ -56,6 +61,20 @@ export async function consumeNearbyGoogleQuota(
   }
 
   if (count > GOOGLE_NEARBY_IP_MAX) {
+    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
+    return { allow: false };
+  }
+
+  const { count: globalCount, error: globalErr } = await admin
+    .from("nearby_google_attempts")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since);
+  if (globalErr || globalCount === null) {
+    await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
+    console.error("[nearby] google quota global count failed", globalErr?.message);
+    return { allow: false };
+  }
+  if (globalCount > GOOGLE_NEARBY_GLOBAL_MAX) {
     await admin.from("nearby_google_attempts").delete().eq("id", attempt.id);
     return { allow: false };
   }
