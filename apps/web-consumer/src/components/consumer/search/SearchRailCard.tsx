@@ -9,19 +9,17 @@ import { isPromoting } from "@/lib/promo-rates";
 
 // One floating catalog card on the bottom rail.
 // Two-step tap: the first tap on an unselected card just selects it (highlight +
-// centre the rail/map on it); tapping the already-selected card opens its detail.
+// snap the rail/map onto it); tapping the already-selected card opens its detail.
 export function RailCard({
   place,
   selected,
   onSelect,
   onOpen,
-  cardRef,
 }: {
   place: Place;
   selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
-  cardRef: (el: HTMLButtonElement | null) => void;
 }) {
   const photo = place.photos[0];
   const category = resolvePlaceCategoryName({
@@ -39,11 +37,10 @@ export function RailCard({
 
   return (
     <button
-      ref={cardRef}
       type="button"
       onClick={selected ? onOpen : onSelect}
       className={cn(
-        "border-border bg-card/95 shadow-elev flex w-[288px] shrink-0 items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
+        "border-border bg-card/95 shadow-elev flex w-full items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
         selected && "border-primary ring-primary/30 ring-2",
       )}
     >
