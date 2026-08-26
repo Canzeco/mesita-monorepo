@@ -1,20 +1,16 @@
-"use client";
-
-import { SwipeDeck } from "./SwipeDeck";
-import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+import { Flame } from "lucide-react";
+import { EmptyState } from "@/components/shared";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Swipe — the default Home tab. Fills the body and owns its gestures, so it
-// gets a clipped flex slot (the page itself must never scroll here).
+// Home hub is Soon (Pato, 2026-08-26). Default `/home/swipe` is the empty
+// state, not the deck. Un-park restores the swipe page body and the deck hook.
 export default function HomeSwipePage() {
-  const { places, fetchError } = useHomeDeck();
   return (
-    <div className="min-h-0 flex-1 overflow-hidden">
-      <SwipeDeck
-        places={places}
-        fetchError={fetchError}
-        errorRetryHref={CONSUMER_ROUTES.homeTabs.swipe}
-      />
-    </div>
+    <EmptyState
+      icon={Flame}
+      title="Soon"
+      description="Swipe, Catalog, Chat, Social and Favorites land here. Search is live — find a place there."
+      action={{ label: "Search", href: CONSUMER_ROUTES.search }}
+    />
   );
 }
