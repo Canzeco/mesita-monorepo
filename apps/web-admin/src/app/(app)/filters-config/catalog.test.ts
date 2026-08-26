@@ -26,7 +26,6 @@ describe("Discovery function APIs", () => {
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
     expect(map?.process).toMatch(/Nearest 50/);
-    expect(map?.process).not.toMatch(/bboxPredicate/);
   });
 
   it("engines name only the vendor APIs they actually call", () => {

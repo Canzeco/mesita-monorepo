@@ -5,10 +5,9 @@
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
 //   • Top overlay: floating search bar. Far-right chip is country + location
 //     (two knobs, one sheet). Discovery cuisine/when/rewards stay on Swipe.
-//   • Bottom overlay (idle): horizontal catalog rail of the nearest 50
-//     (guest pin / Monterrey). Tapping a Mesita pin highlights + scrolls
-//     the rail; tapping a card opens the place page. Google-only fill
-//     pins open GooglePlaceSheet.
+//   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
+//     highlights + scrolls to the matching rail card, tapping a card opens
+//     the place page.
 //   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
 //     SearchResultsPanel under the bar. One merged lane, no source labels —
@@ -20,7 +19,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
-import { apiFetchNearbyPlaces } from "@/lib/api/places";
+import {
+  apiFetchNearbyPlaces,
+  SEARCH_NEARBY_LIMIT,
+} from "@/lib/api/places";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiCreateProject,
@@ -62,7 +64,6 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
-const SEARCH_NEARBY_LIMIT = 50; // catalog cap — not a viewport slice
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   const placeId = place.google_place_id;
@@ -82,7 +83,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
-  const nearbyGen = useRef(0);
+  const catalogGen = useRef(0);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
@@ -130,11 +131,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idle = trimmed.length === 0 && !searchOpen;
 
   // Location (not country) centers the map and distances. Discovery zone
-  // stays a Swipe predicate — it does not drive this bar. Catalog fetch
-  // always has an origin (Monterrey) so Search never loads a 4-pin viewport.
+  // stays a Swipe predicate — it does not drive this bar. Country never
+  // filters listed pins. The catalog origin is the guest pin, else Monterrey.
   const center = location;
-  const originLat = (location ?? MONTERREY_CENTER).lat;
-  const originLng = (location ?? MONTERREY_CENTER).lng;
+  const nearbyOrigin = location ?? MONTERREY_CENTER;
   const catalog = useMemo(
     () => withDistances(places, center),
     [places, center],
@@ -158,31 +158,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [predictions, catalog],
   );
 
+  const nearbyLat = nearbyOrigin.lat;
+  const nearbyLng = nearbyOrigin.lng;
   useEffect(() => {
-    let cancelled = false;
-    const gen = ++nearbyGen.current;
-    void (async () => {
-      try {
-        const rows = await apiFetchNearbyPlaces(
-          supabase,
-          { lat: originLat, lng: originLng },
-          SEARCH_NEARBY_LIMIT,
-        );
-        if (cancelled || gen !== nearbyGen.current) return;
+    if (!apiKey) return;
+    const gen = ++catalogGen.current;
+    void apiFetchNearbyPlaces(
+      supabase,
+      { lat: nearbyLat, lng: nearbyLng },
+      SEARCH_NEARBY_LIMIT,
+    )
+      .then((rows) => {
+        if (gen !== catalogGen.current) return;
         setPlaces(rows);
         setFetchError(null);
-        setCatalogLoading(false);
-      } catch (err) {
-        if (cancelled || gen !== nearbyGen.current) return;
+      })
+      .catch((err) => {
+        if (gen !== catalogGen.current) return;
         setPlaces([]);
-        setFetchError(errMsg(err, "Couldn't load places around you."));
-        setCatalogLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, originLat, originLng]);
+        setFetchError(errMsg(err, "Couldn't load nearby places."));
+      })
+      .finally(() => {
+        if (gen === catalogGen.current) setCatalogLoading(false);
+      });
+  }, [apiKey, nearbyLat, nearbyLng, supabase]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {

@@ -87,11 +87,14 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("Search map catalog is the nearest 50", () => {
-  it("loads nearby pins, not a viewport bbox", () => {
+  it("loads listed pins from nearby, not a camera bbox", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyPlaces");
+    expect(read("SearchClient.tsx")).toContain("SEARCH_NEARBY_LIMIT");
+    expect(read("SearchClient.tsx")).toContain("nearbyOrigin");
+    expect(read("SearchClient.tsx")).toContain("MONTERREY_CENTER");
     expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
     expect(read("SearchClient.tsx")).not.toContain("onFirstViewport");
-    expect(read("SearchClient.tsx")).toContain("MONTERREY_CENTER");
+    expect(read("SearchClient.tsx")).not.toContain("VIEWPORT_IDLE_MS");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "Finding places around you",
     );

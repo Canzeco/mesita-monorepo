@@ -135,9 +135,8 @@ export type Place = {
   monthly_promo_cap?: number | null;
   /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
-  /** Google Places identity. Present on nearby fill stubs and some list rows. */
   google_place_id?: string | null;
-  /** Nearby fill: not a Mesita row — open GooglePlaceSheet, not /place/{id}. */
+  /** Nearby fill stub — open GooglePlaceSheet, not /place/{id}. */
   from_google?: boolean;
 };
 
@@ -172,6 +171,7 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
+export const SEARCH_NEARBY_LIMIT = 50;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
@@ -187,21 +187,21 @@ export type ViewportPlaces = {
   totalInBox: number | null;
 };
 
-/** Search map only. Guest pin / Monterrey + large radius, distance order. */
+/** Search map: nearest `limit` listed places to the pin. */
 export async function apiFetchNearbyPlaces(
   client: SupabaseClient,
   origin: { lat: number; lng: number },
-  limit = 50,
+  limit = SEARCH_NEARBY_LIMIT,
 ): Promise<Place[]> {
   const { places } = await invokeEF<{ places: Place[] }>(
     client,
     "consumer-web-list-places",
-    { nearby: true, lat: origin.lat, lng: origin.lng, limit },
+    { lat: origin.lat, lng: origin.lng, limit },
   );
   return (places ?? []).map(stripInsecurePhotos);
 }
 
-/** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
+/** Optional camera rectangle. Search does not use this as the default pool. */
 export async function apiFetchPlacesInBbox(
   client: SupabaseClient,
   bbox: PlacesBbox,

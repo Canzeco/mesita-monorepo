@@ -27,12 +27,17 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from '@/lib/api/place-search';
-import { apiFetchNearbyPlaces, type Place } from '@/lib/api/places';
+import {
+  apiFetchNearbyPlaces,
+  SEARCH_NEARBY_LIMIT,
+  type Place,
+} from '@/lib/api/places';
 import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
+  discoveryFiltersAreActive,
 } from '@/lib/discovery-filters-engine';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
@@ -47,7 +52,6 @@ import {
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
-const SEARCH_NEARBY_LIMIT = 50;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
@@ -109,10 +113,10 @@ export function SearchClient() {
   const [locating, setLocating] = useState(false);
 
   const filters = useDiscoveryFilters();
+  const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
-  const originLat = (location ?? MONTERREY_CENTER).lat;
-  const originLng = (location ?? MONTERREY_CENTER).lng;
+  const nearbyOrigin = location ?? MONTERREY_CENTER;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -123,25 +127,25 @@ export function SearchClient() {
       try {
         const rows = await apiFetchNearbyPlaces(
           supabase,
-          { lat: originLat, lng: originLng },
+          nearbyOrigin,
           SEARCH_NEARBY_LIMIT,
         );
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);
-          setCatalogLoading(false);
         }
       } catch (err) {
         if (!cancelled) {
-          setFetchError(errMsg(err, "Couldn't load places."));
-          setCatalogLoading(false);
+          setFetchError(errMsg(err, "Couldn't load nearby places."));
         }
+      } finally {
+        if (!cancelled) setCatalogLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [originLat, originLng]);
+  }, [nearbyOrigin.lat, nearbyOrigin.lng]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -465,11 +469,7 @@ export function SearchClient() {
         onCollapse={() => setRailCollapsed(true)}
         onExpand={() => setRailCollapsed(false)}
         onClearFilters={clearFilters}
-        onSelectPlace={(id) => {
-          const place = catalog.find((p) => p.id === id);
-          if (place) selectCatalogPlace(place);
-          else setSelectedId(id);
-        }}
+        onSelectPlace={setSelectedId}
         onOpenPlace={(id) => {
           const place = catalog.find((p) => p.id === id);
           if (place) openCatalogPlace(place);

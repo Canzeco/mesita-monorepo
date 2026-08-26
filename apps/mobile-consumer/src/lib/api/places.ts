@@ -102,16 +102,18 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
-/** Search map only. Guest pin / Monterrey + large radius, distance order. */
+export const SEARCH_NEARBY_LIMIT = 50;
+
+/** Search map: nearest `limit` listed places to the pin. */
 export async function apiFetchNearbyPlaces(
   client: SupabaseClient,
   origin: { lat: number; lng: number },
-  limit = 50,
+  limit = SEARCH_NEARBY_LIMIT,
 ): Promise<Place[]> {
   const { places } = await invokeEF<{ places: Place[] }>(
     client,
     'consumer-web-list-places',
-    { nearby: true, lat: origin.lat, lng: origin.lng, limit },
+    { lat: origin.lat, lng: origin.lng, limit },
   );
   return (places ?? []).map(stripInsecurePhotos);
 }
