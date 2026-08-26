@@ -119,7 +119,7 @@ export function FaqsBox({
 
         <Faq q="How do I cancel Partnership?">
           <p>
-            Use Drop Partnership on this page.{" "}
+            Use Drop Partnership on the bar at the top of this page.{" "}
             {member
               ? "You currently hold Partnership."
               : "You do not currently hold Partnership."}
