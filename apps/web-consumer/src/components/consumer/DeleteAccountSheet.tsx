@@ -8,7 +8,8 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiDeleteConsumerAccount } from "@/lib/api/profile";
-import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { MESITA_PRIVACY_EMAIL } from "@/lib/mesita-contact";
+import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS, SHEET_CANCEL_BUTTON_CLASS } from "@/lib/ui-classes";
 
 // Destructive confirm DIALOG for Settings → Privacy & data → Delete account.
 //
@@ -23,7 +24,6 @@ import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 // to /. The privacy@ mailto stays in the copy as the manual fallback path.
 
 const CONFIRM_WORD = "DELETE";
-const PRIVACY_EMAIL = "privacy@mesita.ai";
 
 export function DeleteAccountSheet({
   open,
@@ -58,7 +58,7 @@ export function DeleteAccountSheet({
       <div className={cn(SHEET_BODY_CLASS, "overflow-y-auto")}>
         <div className="flex items-start gap-3">
           <span className="bg-destructive/10 text-destructive flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
-            <Trash2 className="h-5 w-5" />
+            <Trash2 className="h-5 w-5" aria-hidden />
           </span>
           <div>
             <h2 className={SHEET_TITLE_CLASS}>Delete account</h2>
@@ -73,12 +73,12 @@ export function DeleteAccountSheet({
           deleted, and your sign-in will stop working immediately. If you&apos;d
           rather we handle it manually, email{" "}
           <a
-            href={`mailto:${PRIVACY_EMAIL}?subject=${encodeURIComponent(
+            href={`mailto:${MESITA_PRIVACY_EMAIL}?subject=${encodeURIComponent(
               "Delete my Mesita account",
             )}`}
             className="text-secondary underline underline-offset-2"
           >
-            {PRIVACY_EMAIL}
+            {MESITA_PRIVACY_EMAIL}
           </a>
           .
         </p>
@@ -103,7 +103,7 @@ export function DeleteAccountSheet({
           <button
             type="button"
             onClick={onClose}
-            className="border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition"
+            className={SHEET_CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>
@@ -116,7 +116,7 @@ export function DeleteAccountSheet({
             {deleting ? (
               <Spinner size="sm" className="border-white/40 border-t-white" />
             ) : (
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden />
             )}
             {deleting ? "Deleting…" : "Delete forever"}
           </button>

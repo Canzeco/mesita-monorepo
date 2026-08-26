@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
+import { MESITA_SITE_URL, MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 
 // The five referral gift cards — one per audience — shared by the /share page
 // and the Me page's Share modal so both render the identical deck. Each card is
@@ -51,7 +51,7 @@ type GiftCard = {
   contact?: { subject: string };
 };
 
-const CARDS: GiftCard[] = [
+const CARDS = [
   {
     id: "consumers",
     audience: "Invite a friend",
@@ -72,7 +72,7 @@ const CARDS: GiftCard[] = [
     share: {
       title: "Mesita for restaurants",
       text: "I think you'd love Mesita — setup is ~8 min and free to start.",
-      url: "https://www.mesita.ai",
+      url: MESITA_SITE_URL,
     },
     contact: { subject: "Mesita for restaurants & bars" },
   },
@@ -85,7 +85,7 @@ const CARDS: GiftCard[] = [
     share: {
       title: "Mesita for influencers",
       text: "Mesita reserves 20% of its equity for influencers — you should partner with them.",
-      url: "https://www.mesita.ai",
+      url: MESITA_SITE_URL,
     },
     contact: { subject: "Mesita for influencers" },
   },
@@ -98,7 +98,7 @@ const CARDS: GiftCard[] = [
     share: {
       title: "Mesita for marketing agencies",
       text: "If you run marketing for restaurants or bars, Mesita is worth adding to your stack.",
-      url: "https://www.mesita.ai",
+      url: MESITA_SITE_URL,
     },
     contact: { subject: "Mesita for marketing agencies" },
   },
@@ -111,11 +111,11 @@ const CARDS: GiftCard[] = [
     share: {
       title: "Mesita for talent agencies",
       text: "Mesita makes your talent Premium for free — partner places want them in the room.",
-      url: "https://www.mesita.ai",
+      url: MESITA_SITE_URL,
     },
     contact: { subject: "Mesita for model & talent agencies" },
   },
-];
+] as const satisfies readonly GiftCard[];
 
 // Stacked deck of all five cards. Wrap it in whatever scroll container the
 // surface provides (the /share page and the Share modal both do).
@@ -204,7 +204,7 @@ function GiftCardTile({ card }: { card: GiftCard }) {
               )}`}
               className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur transition hover:bg-white/25"
             >
-              <Mail className="h-3.5 w-3.5" />
+              <Mail className="h-3.5 w-3.5" aria-hidden />
               Contact
             </a>
           )}

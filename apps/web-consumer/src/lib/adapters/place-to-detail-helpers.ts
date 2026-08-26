@@ -1,4 +1,6 @@
 import type { PlaceDetail } from "@/lib/mock/place";
+import { currencyPrefix } from "@/lib/place-price";
+import { FALLBACK_IANA_TZ } from "@/lib/place-time";
 
 // Loose row type — the EF returns the full place projection; helpers read it
 // defensively because enrichment leaves many columns empty.
@@ -124,13 +126,6 @@ function parseMinutes(t: unknown): number | null {
   return min >= 0 && min <= 1440 ? min : null;
 }
 
-function currencyPrefix(code: string): string {
-  if (code === "MXN") return "MX$";
-  if (code === "USD") return "$";
-  if (code === "EUR") return "€";
-  return `${code} `;
-}
-
 function fallbackPriceRange(
   priceLevel: 1 | 2 | 3 | 4,
   currency: string,
@@ -184,7 +179,7 @@ export function computeOpenState(
   let nowMin: number;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz ?? "UTC",
+      timeZone: tz ?? FALLBACK_IANA_TZ,
       weekday: "short",
       hour: "2-digit",
       minute: "2-digit",

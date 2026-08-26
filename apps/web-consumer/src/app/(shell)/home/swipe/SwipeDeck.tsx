@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { PlaceSwipeCardFace } from "@/components/consumer/PlaceSwipeCardFace";
 import { SWIPE_CARD_CLIP } from "@/components/consumer/swipe-card-styles";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { useUserLocation } from "@/lib/use-user-location";
 import { apiRecommendDeck, type Place } from "@/lib/api/places";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
@@ -350,7 +350,10 @@ function Deck({ places }: { places: Place[] }) {
       .catch((err) => {
         // Keep the deck we already have — the client-side pass still narrows
         // it, which is exactly the pre-MESITA-1153 behaviour.
-        console.warn("[swipe] filtered deck fetch failed, keeping deck:", err);
+        console.warn(
+          "[swipe] filtered deck fetch failed, keeping deck:",
+          errMsg(err, "filtered deck fetch failed"),
+        );
       })
       .finally(() => {
         cancelAnimationFrame(raf);

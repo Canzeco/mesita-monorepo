@@ -214,12 +214,14 @@ export function EditProfileSheet({
             value={firstName}
             onChange={setFirstName}
             placeholder="First name"
+            autoComplete="given-name"
           />
           <SheetField
             label="Last name"
             value={lastName}
             onChange={setLastName}
             placeholder="Last name"
+            autoComplete="family-name"
           />
           <label className="block">
             <span className="text-muted-foreground type-label mb-1 block font-medium">
@@ -275,12 +277,14 @@ function SheetField({
   onChange,
   placeholder,
   inputMode,
+  autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   inputMode?: "text" | "tel";
+  autoComplete?: string;
 }) {
   return (
     <label className="block">
@@ -292,6 +296,7 @@ function SheetField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         inputMode={inputMode}
+        autoComplete={autoComplete}
         className={cn(INPUT_CLASS, "h-auto rounded-lg py-2")}
       />
     </label>

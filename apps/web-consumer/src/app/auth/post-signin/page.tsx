@@ -3,6 +3,7 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { apiConsumerSigninPhone } from "@/lib/api/auth";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { safeNextPath, withNext } from "@/lib/auth-redirect";
+import { errMsg } from "@/lib/utils";
 
 // Post-sign-in router. The sign-in surface redirects here. We:
 //
@@ -37,7 +38,10 @@ export default async function PostSigninPage({
   try {
     consumerResult = await apiConsumerSigninPhone(supabase);
   } catch (err) {
-    console.error("[post-signin] consumer-signin-phone:", err);
+    console.error(
+      "[post-signin] consumer-signin-phone:",
+      errMsg(err, "signin failed"),
+    );
   }
   // Onboarding wins over the deep link, but doesn't eat it: an unfinished
   // profile goes to /onboard carrying the target, and the form sends them

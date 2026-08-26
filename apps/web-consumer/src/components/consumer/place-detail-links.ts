@@ -80,7 +80,7 @@ export const REVIEW_DEFS = [
 // Soft clay brand tints for Channels chips — just a bit of each brand's
 // color so the row reads as real apps, not a flat grey wall. Unknown keys
 // fall back to the neutral surface.
-export const CHANNEL_CLAY: Record<string, string> = {
+export const CHANNEL_CLAY = {
   phone:
     "border-emerald-200/70 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/70",
   website_url: "border-sky-200/70 bg-sky-50 text-sky-900 hover:bg-sky-100/70",
@@ -103,14 +103,14 @@ export const CHANNEL_CLAY: Record<string, string> = {
     "border-orange-200/70 bg-orange-50 text-orange-900 hover:bg-orange-100/70",
   google_maps_url:
     "border-amber-200/70 bg-amber-50 text-amber-950 hover:bg-amber-100/70",
-};
+} as const satisfies Record<string, string>;
 
 // Per-facet chip tint. Each of the 17 taxonomy facets gets its own light
 // tone (bg / text / border) plus a leading dot so the cluster reads as a
 // differentiated, premium chip set rather than one flat grey wall. Mirrors
 // RatePill's "banded/tinted by value" idea, applied per facet group instead
 // of per percent. Unknown facets fall back to a neutral slate tone.
-export const FACET_TINT: Record<string, { chip: string; dot: string }> = {
+export const FACET_TINT = {
   payment: {
     chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
     dot: "bg-emerald-500",
@@ -176,7 +176,7 @@ export const FACET_TINT: Record<string, { chip: string; dot: string }> = {
     chip: "bg-yellow-50 text-yellow-700 border-yellow-200",
     dot: "bg-yellow-500",
   },
-};
+} as const satisfies Record<string, { chip: string; dot: string }>;
 
 export const FACET_TINT_FALLBACK = {
   chip: "bg-slate-50 text-slate-700 border-slate-200",

@@ -8,6 +8,7 @@ import { OnboardForm, type OnboardInitialValues } from "./OnboardForm";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { isConsumerOnboarded } from "@/lib/consumer-onboarding";
 import { safeNextPath, withNext } from "@/lib/auth-redirect";
+import { errMsg } from "@/lib/utils";
 
 // Consumer onboarding — server-side gated. The middleware already blocks
 // signed-out users from /profile and friends, but onboard sits
@@ -31,7 +32,7 @@ export default async function ConsumerOnboardPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(withNext("/", withNext("/onboard", nextTarget)));
+  if (!user) redirect(withNext("/", withNext(CONSUMER_ROUTES.onboard, nextTarget)));
 
   // Completeness predicate is `isConsumerOnboarded` — the same one the
   // (shell) layout gates on. If we only checked full_name here, a
@@ -59,7 +60,10 @@ export default async function ConsumerOnboardPage({
   } catch (err) {
     // Profile fetch failed — render the form. The submit handler will
     // surface a real error if persistence is broken.
-    console.error("[consumer/onboard] consumer-get-profile:", err);
+    console.error(
+      "[consumer/onboard] consumer-get-profile:",
+      errMsg(err, "profile fetch failed"),
+    );
   }
   if (onboarded) redirect(nextTarget ?? CONSUMER_ROUTES.homeDefault);
 

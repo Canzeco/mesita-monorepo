@@ -20,7 +20,10 @@ export function TagChips({ tags }: { tags: PlaceDetail["tags"] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {tags.map((t) => {
-        const tint = FACET_TINT[t.facet] ?? FACET_TINT_FALLBACK;
+        const tint =
+          t.facet in FACET_TINT
+            ? FACET_TINT[t.facet as keyof typeof FACET_TINT]
+            : FACET_TINT_FALLBACK;
         return (
           <span
             key={t.slug}
@@ -72,8 +75,9 @@ export function ChannelChips({ chips }: { chips: ChannelChip[] }) {
             }
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition",
-              CHANNEL_CLAY[key] ??
-                "border-border bg-background text-foreground hover:bg-muted",
+              key in CHANNEL_CLAY
+                ? CHANNEL_CLAY[key as keyof typeof CHANNEL_CLAY]
+                : "border-border bg-background text-foreground hover:bg-muted",
             )}
           >
             {logo ? (

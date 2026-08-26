@@ -112,7 +112,7 @@ export function GooglePlaceSheet({
               <Skeleton className="h-full w-full rounded-none" />
             ) : (
               <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center">
-                <MapPinPlus className="h-10 w-10" />
+                <MapPinPlus className="h-10 w-10" aria-hidden />
               </div>
             )}
             <button
@@ -121,7 +121,7 @@ export function GooglePlaceSheet({
               aria-label="Close"
               className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 text-white transition hover:bg-black/55"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
 
@@ -142,7 +142,7 @@ export function GooglePlaceSheet({
                 className="text-primary mt-1.5 inline-flex items-center gap-1 text-xs font-semibold"
               >
                 View on Google Maps
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-3 w-3" aria-hidden />
               </a>
             </div>
 

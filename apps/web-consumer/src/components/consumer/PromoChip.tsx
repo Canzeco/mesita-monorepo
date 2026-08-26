@@ -4,6 +4,7 @@ import { Gift } from "lucide-react";
 import { useDiscountQuote } from "@/lib/discount-quotes";
 import { upToPercentFromQuote } from "@/lib/discount-quote";
 import { isPromoting, type PromoChipPlace } from "@/lib/promo-rates";
+import { currencyPrefix } from "@/lib/place-price";
 
 // Tiny shared building block for the place-card promo callout.
 //
@@ -128,7 +129,7 @@ export function PromoChip({
   // NEVER the reason (Pato, 2026-08-03): the ribbon states what you can get,
   // never WHY — no "welcome", no "return-visit", no class. The mechanism
   // lives on the ticket and the place page, not on a card chip.
-  const capPrefix = place.currency === "MXN" ? "MX$" : "$";
+  const capPrefix = currencyPrefix(place.currency);
   // Ticket cap: the reward applies to the first N of the bill, then full
   // price — not a ceiling on the reward itself. 0/null means no cap.
   const capLabel =

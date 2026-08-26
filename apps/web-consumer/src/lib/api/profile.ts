@@ -255,6 +255,6 @@ export function formatCurrency(
       maximumFractionDigits: 0,
     }).format(value);
   } catch {
-    return `${currency === "MXN" ? "MX$" : "$"}${value.toFixed(0)}`;
+    return `${currency === DEFAULT_CURRENCY ? "MX$" : "$"}${value.toFixed(0)}`;
   }
 }

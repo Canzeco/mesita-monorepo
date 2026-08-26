@@ -52,7 +52,7 @@ export type RowTint =
   | "rose"
   | "destructive";
 
-const TINT_CLASSES: Record<RowTint, string> = {
+const TINT_CLASSES = {
   primary: "bg-primary/10 text-primary",
   muted: "bg-muted text-foreground/70",
   instagram: [INSTAGRAM_ICON_GRADIENT_CLASS, "text-white"].join(" "),
@@ -62,7 +62,7 @@ const TINT_CLASSES: Record<RowTint, string> = {
   violet: "bg-violet-500/10 text-violet-600",
   rose: "bg-rose-500/10 text-rose-600",
   destructive: "bg-destructive/10 text-destructive",
-};
+} as const satisfies Record<RowTint, string>;
 
 export function IconCircle({
   tint,
@@ -77,6 +77,7 @@ export function IconCircle({
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
         TINT_CLASSES[tint],
       )}
+      aria-hidden
     >
       {children}
     </span>
@@ -144,7 +145,7 @@ export function SettingsActionRow({
         <Icon className="h-[18px] w-[18px]" />
       </IconCircle>
       <RowText label={label} sub={sub} destructive={destructive} />
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </button>
   );
 }
@@ -198,7 +199,7 @@ export function SettingsLinkRow({
         <Icon className="h-[18px] w-[18px]" />
       </IconCircle>
       <RowText label={label} sub={sub} />
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
     </a>
   );
 }
@@ -312,7 +313,7 @@ export function StoredSelectRow({
   storageKey: string;
   label: string;
   sub?: string;
-  options: { value: string; label: string }[];
+  options: readonly { value: string; label: string }[];
   defaultValue: string;
 }) {
   const [value, set] = useStoredString(storageKey, defaultValue);

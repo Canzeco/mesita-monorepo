@@ -31,6 +31,7 @@ import {
   InstagramGlyph,
 } from "@/components/consumer/rewards/BrandGlyph";
 import { cn, errMsg } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 export type TaskKind = "review" | "story";
 
@@ -49,6 +50,9 @@ export function instagramOpenUrl() {
 }
 
 type Phase = "idle" | "opening" | "confirming" | "success" | "error";
+
+const OPEN_SETTLE_MS = 600;
+const CONFIRM_DONE_MS = 400;
 
 export function TaskProof({
   kind,
@@ -115,7 +119,7 @@ export function TaskProof({
       "noopener,noreferrer",
     );
     if (openTimer.current !== null) window.clearTimeout(openTimer.current);
-    openTimer.current = window.setTimeout(() => setPhase("idle"), 600);
+    openTimer.current = window.setTimeout(() => setPhase("idle"), OPEN_SETTLE_MS);
   }, [isReview, placeName, placeAddress]);
 
   const confirm = useCallback(async () => {
@@ -134,7 +138,7 @@ export function TaskProof({
       setPhase("success");
       if (confirmTimer.current !== null)
         window.clearTimeout(confirmTimer.current);
-      confirmTimer.current = window.setTimeout(() => onDone(), 400);
+      confirmTimer.current = window.setTimeout(() => onDone(), CONFIRM_DONE_MS);
     } catch (err) {
       setError(errMsg(err, "Couldn't confirm that just yet."));
       setPhase("error");
@@ -174,7 +178,7 @@ export function TaskProof({
       </div>
 
       {rejected ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-center text-xs font-semibold">
+        <p className={cn(ERROR_BOX_CLASS, "text-center font-semibold")}>
           That one wasn&apos;t accepted — your base rate still holds. You can
           try again.
         </p>
@@ -259,7 +263,7 @@ export function TaskProof({
       </button>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
+        <p className={ERROR_BOX_CLASS}>
           {error}
         </p>
       ) : null}

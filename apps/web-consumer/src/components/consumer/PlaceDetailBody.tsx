@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/place-activity";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { errMsg } from "@/lib/utils";
 
 import {
   FeaturedOrdersBox,
@@ -77,7 +78,10 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
       // already rendered from the page payload, and each activity box falls
       // back to its own empty state.
       .catch((err) => {
-        console.error("[PlaceDetailBody] place activity failed:", err);
+        console.error(
+          "[PlaceDetailBody] place activity failed:",
+          errMsg(err, "place activity failed"),
+        );
       })
       .finally(() => setActivityState("done"));
   };

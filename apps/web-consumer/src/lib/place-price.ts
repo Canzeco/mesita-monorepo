@@ -1,3 +1,5 @@
+import { DEFAULT_CURRENCY } from "@/lib/money";
+
 /**
  * Place price labels — two surfaces, two formats.
  *
@@ -5,17 +7,17 @@
  * shows the numeric amount range (e.g. MX$500–800 per person).
  */
 
-const LEVEL_RANGES: Record<1 | 2 | 3 | 4, [number, number]> = {
+const LEVEL_RANGES = {
   1: [100, 200],
   2: [200, 300],
   3: [300, 500],
   4: [500, 800],
-};
+} as const satisfies Record<1 | 2 | 3 | 4, readonly [number, number]>;
 
-function currencyPrefix(code: string | null | undefined): string {
+export function currencyPrefix(code: string | null | undefined): string {
   if (code === "USD") return "$";
   if (code === "EUR") return "€";
-  if (code && code !== "MXN") return `${code} `;
+  if (code && code !== DEFAULT_CURRENCY) return `${code} `;
   return "MX$";
 }
 

@@ -19,7 +19,9 @@ export default async function LegacyMeTabPage({
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(sp)) {
     if (typeof v === "string") qs.set(k, v);
-    if (Array.isArray(v)) v.forEach((item) => qs.append(k, item));
+    if (Array.isArray(v)) {
+      for (const item of v) qs.append(k, item);
+    }
   }
   if (tab === "settings") qs.set("settings", "1");
   const query = qs.toString();

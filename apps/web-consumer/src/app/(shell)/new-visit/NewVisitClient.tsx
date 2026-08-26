@@ -14,6 +14,8 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { readStoredSearchCountry } from "@/lib/search-scope";
 import { useUserLocation } from "@/lib/use-user-location";
+import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 // New Visit — ONE job: pick a place and start a visit.
 //
@@ -148,7 +150,7 @@ export function NewVisitClient({ userId }: { userId: string }) {
         ) : null}
 
         {startError ? (
-          <p className="bg-destructive/10 text-destructive type-body rounded-lg px-3 py-2">
+          <p className={cn(ERROR_BOX_CLASS, "type-body")}>
             {startError}
           </p>
         ) : null}

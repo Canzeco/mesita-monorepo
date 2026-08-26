@@ -94,15 +94,15 @@ export function PdfPane({
     const midpoint = container.scrollTop + container.clientHeight / 2;
     let best = 1;
     let bestDist = Infinity;
-    pageElsRef.current.forEach((el, i) => {
-      if (!el) return;
+    for (const [i, el] of pageElsRef.current.entries()) {
+      if (!el) continue;
       const center = el.offsetTop + el.offsetHeight / 2;
       const dist = Math.abs(center - midpoint);
       if (dist < bestDist) {
         bestDist = dist;
         best = i + 1;
       }
-    });
+    }
     setCurrentPage(best);
   };
 

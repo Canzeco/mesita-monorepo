@@ -2,7 +2,7 @@
 
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TEXTAREA_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, TEXTAREA_CLASS } from "@/lib/ui-classes";
 
 const NOTE_MIN = 50;
 
@@ -181,7 +181,7 @@ export function TicketReviewForm({
       </label>
 
       {error ? (
-        <p className="bg-destructive/10 text-destructive rounded-lg px-3 py-2 text-xs">
+        <p className={ERROR_BOX_CLASS}>
           {error}
         </p>
       ) : null}

@@ -355,6 +355,7 @@ export async function apiReportTicket(
 }
 
 // The QR every active ticket renders — must match the EF's CHECK_URL_BASE.
+const CHECK_ORIGIN = "https://check.mesita.ai";
 export function checkUrlForCode(code: string): string {
-  return `https://check.mesita.ai/${code}`;
+  return `${CHECK_ORIGIN}/${code}`;
 }

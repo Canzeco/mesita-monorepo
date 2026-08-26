@@ -11,6 +11,9 @@
 // offset constant anywhere; import this one.
 // Mirror: apps/mobile-consumer/src/lib/place-time.ts (keep the two in sync).
 
+/** IANA fallback when a place row has no timezone stamp. Not a second Mexico offset. */
+export const FALLBACK_IANA_TZ = "UTC";
+
 /** Wall-clock offset stamped onto every `reserved_at` the app sends. */
 export const MX_OFFSET = "-06:00";
 
