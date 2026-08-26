@@ -80,6 +80,5 @@ export const MAP_GOOGLE_PIN_COLOR = "#EAB308";
 /** @deprecated Use MAP_LISTED_PIN_COLOR — kept so older map surfaces compile. */
 export const MAP_WEB_PIN_COLOR = MAP_LISTED_PIN_COLOR;
 
-// Selected pin used to force a red fill. Search now keeps membership color
-// and thickens the stroke instead.
-export const MAP_SELECTED_PIN_COLOR = "#EF4444";
+// Selected pin fill — black circle. Unselected pins keep membership colors.
+export const MAP_SELECTED_PIN_COLOR = "#111111";

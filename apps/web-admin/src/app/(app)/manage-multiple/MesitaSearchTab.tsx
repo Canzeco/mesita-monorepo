@@ -76,35 +76,28 @@ export function MesitaSearchTab({
 
   return (
     <div>
-      <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Google Place IDs in. Mesita catalog out — states only. This box does
-        not create or enrich.
-      </p>
-
-      <div className="border-border bg-card mt-6 rounded-2xl border p-6">
-        <IdListField
-          id="mesita-search-ids"
-          label="Google Place IDs"
-          text={text}
-          onTextChange={onTextChange}
-          placeIds={placeIds}
-          running={running}
-        />
-        <div className="mt-5">
-          <button
-            type="button"
-            onClick={() => void runLookup()}
-            disabled={running || placeIds.length === 0}
-            className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
-          >
-            {running ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Search className="h-3.5 w-3.5" />
-            )}
-            {running ? "Looking up…" : "Look up on Mesita"}
-          </button>
-        </div>
+      <IdListField
+        id="mesita-search-ids"
+        label="Google Place IDs"
+        text={text}
+        onTextChange={onTextChange}
+        placeIds={placeIds}
+        running={running}
+      />
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => void runLookup()}
+          disabled={running || placeIds.length === 0}
+          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+        >
+          {running ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Search className="h-3.5 w-3.5" />
+          )}
+          {running ? "Looking up…" : "Look up on Mesita"}
+        </button>
       </div>
 
       {error ? (

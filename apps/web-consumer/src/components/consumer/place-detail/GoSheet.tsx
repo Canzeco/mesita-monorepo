@@ -1,19 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import {
   CalendarCheck,
   ChevronRight,
   Loader2,
   Lock,
   QrCode,
-  ShoppingBag,
   type LucideIcon,
 } from "lucide-react";
 
-import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { ORDER_COMING_SOON } from "@/components/consumer/place-detail/place-actions-copy";
+import { ORDER_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
@@ -41,10 +38,10 @@ import { isPromoting } from "@/lib/promo-rates";
 // SELF-CONTAINED ON PURPOSE, not a refactor of PlaceActionBar. The part that
 // must never drift is already shared as code: useStartVisit owns the create,
 // the two-arm 409 race recovery and the seed THE TICKET paints from. What is
-// left is presentation wiring — one partner boolean and two overlay toggles —
+// left is presentation wiring — one partner boolean and a Reserve hand-off —
 // and deduping ~30 lines of that would mean reopening a bar that shipped the
 // day before, for no behavioural gain. The one thing that would genuinely rot
-// if copied, the parked-Order promise, is a shared constant instead.
+// if copied, the blocked-Order contract, is a shared constant instead.
 
 export function GoSheet({
   place,
@@ -68,8 +65,6 @@ export function GoSheet({
       void tickets.refresh();
     },
   });
-  const [orderSoon, setOrderSoon] = useState(false);
-
   const promoting = isPromoting(place);
   const starting = startingId === place.id;
   // A live ticket here means the tap RE-OPENS it instead of making a second
@@ -78,81 +73,60 @@ export function GoSheet({
   const live = tickets.active.some((t) => t.project_id === place.id);
 
   return (
-    <>
-      <LocalSheet
-        open={open}
-        onClose={onClose}
-        ariaLabel={`Go to ${place.name}`}
-      >
-        <div className="p-5">
-          <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Three ways in — pick one.
-          </p>
+    <LocalSheet open={open} onClose={onClose} ariaLabel={`Go to ${place.name}`}>
+      <div className="p-5">
+        <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Three ways in — pick one.
+        </p>
 
-          {/* The create can fail (cold EF, dropped connection). Swallowing it
+        {/* The create can fail (cold EF, dropped connection). Swallowing it
               would leave a tap that visibly did nothing. */}
-          {error ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{error}</p> : null}
+        {error ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{error}</p> : null}
 
-          <div className="mt-4 flex flex-col gap-2">
-            {/* VISIT — the money action, so it's the only tinted row.
+        <div className="mt-4 flex flex-col gap-2">
+          {/* VISIT — the money action, so it's the only tinted row.
                 Non-partners render LOCKED rather than hidden, matching
                 PlaceActionBar and PlacePickList: consumer-web-create-ticket
                 409s `not_partner`, so an enabled row would be a dead end —
                 but hiding it would tell the guest the app is missing a
                 feature, when the truth is this place isn't a partner yet. */}
-            <GoOption
-              Icon={starting ? Loader2 : promoting ? QrCode : Lock}
-              spin={starting}
-              title="Visit"
-              hint={
-                !promoting
-                  ? "This place isn't running a Mesita reward right now."
-                  : live
-                    ? "You have a live ticket here — open it."
-                    : "Start your ticket and show the QR at the table."
-              }
-              onClick={() => pickPlace(place)}
-              disabled={!promoting || starting}
-              primary={promoting}
-            />
+          <GoOption
+            Icon={starting ? Loader2 : promoting ? QrCode : Lock}
+            spin={starting}
+            title="Visit"
+            hint={
+              !promoting
+                ? "This place isn't running a Mesita reward right now."
+                : live
+                  ? "You have a live ticket here — open it."
+                  : "Start your ticket and show the QR at the table."
+            }
+            onClick={() => pickPlace(place)}
+            disabled={!promoting || starting}
+            primary={promoting}
+          />
 
-            {/* ORDER — parked exactly as Inbox › Orders is parked: no table,
-                no EF, no type anywhere in the stack. It stays visible because
-                the three-verb shape IS the product statement, but unlike the
-                bar on place detail this row HAS a hint line, so it says so
-                instead of letting the guest tap into a dead end to find out.
-                The tap still opens the modal, which carries the full promise. */}
-            <GoOption
-              Icon={ShoppingBag}
-              title="Order"
-              hint="Coming soon."
-              onClick={() => setOrderSoon(true)}
-            />
+          {/* ORDER — blocked by default, same locked treatment as Visit on
+                a non-partner. The slot stays so the three-verb shape remains
+                the product statement; the hint says why, and the row does
+                not open a coming-soon sheet. */}
+          <GoOption
+            Icon={Lock}
+            title="Order"
+            hint={ORDER_BLOCKED.hint}
+            disabled
+          />
 
-            <GoOption
-              Icon={CalendarCheck}
-              title="Reserve"
-              hint="Book a table for later."
-              onClick={onReserve}
-            />
-          </div>
+          <GoOption
+            Icon={CalendarCheck}
+            title="Reserve"
+            hint="Book a table for later."
+            onClick={onReserve}
+          />
         </div>
-      </LocalSheet>
-
-      {/* Stacked OVER the sheet, not swapped for it: dismissing "Got it"
-          returns the guest to the three choices, so a tap on the parked verb
-          doesn't cost them the sheet. Safe because ComingSoonModal is a
-          centered LocalDialog — it reads as depth, where a second bottom
-          sheet would read as breakage. */}
-      <ComingSoonModal
-        open={orderSoon}
-        onClose={() => setOrderSoon(false)}
-        title={ORDER_COMING_SOON.title}
-        body={ORDER_COMING_SOON.body}
-        icon={ShoppingBag}
-      />
-    </>
+      </div>
+    </LocalSheet>
   );
 }
 
@@ -172,7 +146,7 @@ function GoOption({
   Icon: LucideIcon;
   title: string;
   hint: string;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
   /** The one tinted row — Visit, when this place can actually honour it. */
   primary?: boolean;

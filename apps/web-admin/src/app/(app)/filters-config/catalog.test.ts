@@ -20,18 +20,20 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("map() is a viewport bbox with no vendor APIs", () => {
+  it("map() is nearest 50 with opt-in Nearby Search fill", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
-    expect(map?.apis).toEqual([]);
-    expect(map?.input).toMatch(/viewport/i);
-    expect(map?.process).toMatch(/bboxPredicate/);
+    expect(map?.apis).toEqual(["Google Places Nearby Search"]);
+    expect(map?.input).toMatch(/guest pin/i);
+    expect(map?.process).toMatch(/Nearest 50/);
+    expect(map?.process).toMatch(/opts in/);
+    expect(map?.process).not.toMatch(/under 10/);
   });
 
   it("engines name only the vendor APIs they actually call", () => {
     expect(ENGINES.map((e) => [e.key, e.apis])).toEqual([
       ["swipe", []],
-      ["map", []],
+      ["map", ["Google Places Nearby Search"]],
       ["favorites", []],
       ["catalog", []],
       ["chat", ["Google Places Text Search", "Perplexity", "OpenAI"]],

@@ -12,6 +12,23 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
+// THREE POST SHAPES:
+//   { lat, lng, limit? } — listed nearby (mobile Search). Closest 50 in a
+//     large radius. No Google stubs — mobile opens `/place/:id` and cannot
+//     host GooglePlaceSheet.
+//   { google: true, lat, lng, limit? } — web Search catalog. Listed Mesita
+//     in 50 km ∪ Google Nearby Search (New). Distance order. Google-only
+//     rows are stubs. Missing listed Place IDs are fetched by google_place_id
+//     so a close Mesita row outside the 1000 scan does not become a stub.
+//     Google fill is metered per connecting IP (CF-Connecting-IP / rightmost
+//     XFF, 45/60s) plus a 600/60s global cap, only when this isolate is about
+//     to fire the five Nearby calls. Over quota, an in-flight join, or an
+//     isolate-budget skip does not mint a ledger row. Over quota skips
+//     Google, not the catalog.
+//   { south, west, north, east, limit? } — listed pins inside a camera
+//     rectangle (kept for callers that still send a box).
+//   { limit? } / GET — Pay / Home: global newest-first.
+//
 // Local:  supabase functions serve consumer-web-list-places
 // Deploy: supabase functions deploy consumer-web-list-places
 
@@ -23,17 +40,123 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
-import { applyBboxPredicate, decideBbox } from "../_shared/geo.ts";
+import {
+  applyBboxPredicate,
+  decideBbox,
+  decideNearby,
+  haversineKm,
+  nearbyBbox,
+  NEARBY_RADIUS_KM,
+  NEARBY_SCAN_LIMIT,
+  sortByDistance,
+  wantsGoogleFill,
+} from "../_shared/geo.ts";
+import {
+  CATALOG_NEARBY_MAX,
+  mergeNearbyCatalog,
+  peekCachedNearbyPlaces,
+  searchNearbyPlaces,
+  type NearbyHit,
+} from "../_shared/nearby-places.ts";
+import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
+import { hashConnectingIp } from "../_shared/connecting-ip.ts";
+import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
+function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, unknown> {
+  return {
+    id: `g:${hit.placeId}`,
+    slug: hit.placeId,
+    google_place_id: hit.placeId,
+    name: hit.name,
+    category: hit.primaryType,
+    category_label: null,
+    vibe: null,
+    price_level: null,
+    currency: "MXN",
+    listing_type: "web",
+    status: "lead",
+    fiscal_type: "informal",
+    plan: "free",
+    lat: hit.lat,
+    lng: hit.lng,
+    address: hit.address || null,
+    timezone: null,
+    closes_at: null,
+    hours: null,
+    phone: null,
+    pitch: null,
+    story: null,
+    description: null,
+    photos: [],
+    website_url: null,
+    instagram_url: null,
+    facebook_url: null,
+    whatsapp_url: null,
+    opentable_url: null,
+    resy_url: null,
+    uber_eats_url: null,
+    x_url: null,
+    threads_url: null,
+    reddit_url: null,
+    didi_food_url: null,
+    google_maps_url: null,
+    email: null,
+    created_at: new Date(0).toISOString(),
+    google_stars_overall: hit.rating,
+    google_rating: hit.rating,
+    google_review_count: null,
+    zone: null,
+    city: null,
+    content_status: "ready",
+    googleOnly: true,
+    from_google: true,
+    distance_km: distanceKm,
+  };
+}
+
+function stripGooglePlaceId<T extends { google_place_id?: unknown }>(
+  row: T,
+): Omit<T, "google_place_id"> {
+  const { google_place_id: _gid, ...rest } = row;
+  return rest;
+}
+
+function roundedKm(
+  lat: number,
+  lng: number,
+  rowLat: number | null | undefined,
+  rowLng: number | null | undefined,
+): number | null {
+  const km = haversineKm(lat, lng, rowLat ?? null, rowLng ?? null);
+  if (!Number.isFinite(km)) return null;
+  return Math.round(km * 10) / 10;
+}
+
 type ListBody = {
   limit?: number;
+  nearby?: boolean;
+  google?: boolean;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
   south?: number;
   west?: number;
   north?: number;
   east?: number;
+};
+
+type CardRow = {
+  id: string;
+  google_place_id?: string | null;
+  name?: string | null;
+  google_name?: string | null;
+  category?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  distance_km?: number | null;
 };
 
 Deno.serve(async (req) => {
@@ -51,21 +174,36 @@ Deno.serve(async (req) => {
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
   // a query string (?limit=… for raw GETs). Body wins if both are present.
-  // Viewport bbox is POST-only. GET ignores geo so Pay / Home / mobile
-  // no-bbox callers stay on today's global newest-first path.
+  // Geo is POST-only. GET / omitted lat+lng (Pay, Home) stay newest-first.
+  // Nearby (lat+lng) is Search's pool. Optional bbox stays for other callers
+  // but Search does not send it — a tight camera box is how 4 pins shipped.
   let limit = DEFAULT_LIMIT;
+  let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
+  let googleFill = false;
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
       limit = clampIntRange(body.limit, 1, MAX_LIMIT);
     }
-    bboxDecision = decideBbox(body as Record<string, unknown>);
+    nearbyDecision = decideNearby(body as Record<string, unknown>);
+    googleFill = nearbyDecision.mode === "ok" &&
+      wantsGoogleFill(body as Record<string, unknown>);
+    if (nearbyDecision.mode === "none") {
+      bboxDecision = decideBbox(body as Record<string, unknown>);
+    }
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
     if (Number.isFinite(q)) limit = clampIntRange(q, 1, MAX_LIMIT);
   }
 
+  if (nearbyDecision.mode === "invalid") {
+    return json({
+      ok: false,
+      error: "nearby needs finite lat and lng",
+      code: "invalid_nearby",
+    }, 400);
+  }
   if (bboxDecision.mode === "invalid") {
     return json({
       ok: false,
@@ -85,9 +223,10 @@ Deno.serve(async (req) => {
   // PREDICATE so `limit` fills with eligible rows instead of being spent on
   // ineligible ones.
   //
-  // Operator maxDistanceKm is Swipe's radius. Map never sends guest geo
-  // here, so that filter stays off. Viewport bbox (optional POST) is a
-  // different question: which listed pins sit in the camera rectangle.
+  // Operator maxDistanceKm is Swipe's radius — never pass guest geo into
+  // applyDiscoveryFilters here. Nearby uses its own large radius + distance
+  // order, then Google fill. Viewport bbox remains a camera rectangle for
+  // non-Search callers.
   const efEnv = readEFEnv();
   const filters = efEnv.ok
     ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
@@ -97,37 +236,144 @@ Deno.serve(async (req) => {
   // (every public column except the five enrichment-filled jsonb ones), not
   // the full single-place read. Nothing here reads those five; verified
   // against discovery-filters.ts and this file before wiring.
-  const wantCount = bboxDecision.mode === "ok";
+  const isNearby = nearbyDecision.mode === "ok";
+  const isBbox = !isNearby && bboxDecision.mode === "ok";
+  const wantCount = isBbox;
+  const selectCols = googleFill
+    ? `${PLACE_CARD_COLUMNS}, google_place_id`
+    : PLACE_CARD_COLUMNS;
+  const scanLimit = isNearby ? NEARBY_SCAN_LIMIT : limit;
+  const nearbyRadiusKm = nearbyDecision.mode === "ok"
+    ? (googleFill ? NEARBY_RADIUS_KM : nearbyDecision.radiusKm)
+    : NEARBY_RADIUS_KM;
   const base = supabase
     .from("profiles")
-    .select(PLACE_CARD_COLUMNS, wantCount ? { count: "exact" } : undefined);
+    .select(selectCols, wantCount ? { count: "exact" } : undefined);
 
   let filtered = applyDiscoveryFilters(base, filters, {
     lat: null,
     lng: null,
   });
-  if (bboxDecision.mode === "ok") {
+  if (nearbyDecision.mode === "ok") {
+    filtered = applyBboxPredicate(
+      filtered,
+      nearbyBbox(nearbyDecision.lat, nearbyDecision.lng, nearbyRadiusKm),
+    );
+  } else if (bboxDecision.mode === "ok") {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
-  const { data, error, count } = await filtered
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  // Google-fill must not order by created_at. Newest-N drops an old listed
+  // place and lets Google paint it as a yellow stub. Listed-only keeps
+  // newest-first then distance-sorts in memory (mobile Search).
+  const page = googleFill
+    ? await filtered.limit(scanLimit)
+    : await filtered.order("created_at", { ascending: false }).limit(scanLimit);
+  const { data, error, count } = page;
 
   if (error) {
     return json({ ok: false, error: error.message }, 500);
   }
 
-  // `name` arrives already resolved — it is a generated column
-  // (mesita_name → google_name), so there is nothing to coalesce here.
-  const places = withFamilyKeysList(
-    (data ?? []) as Array<{
-      name?: string | null;
-      google_name?: string | null;
-      category?: string | null;
-    }>,
-  );
-  if (bboxDecision.mode === "ok") {
+  if (nearbyDecision.mode === "ok") {
+    const { lat, lng } = nearbyDecision;
+    const center = { lat, lng };
+    let mesitaRows = (data ?? []) as unknown as CardRow[];
+
+    if (!googleFill) {
+      const cap = Math.min(limit, CATALOG_NEARBY_MAX);
+      const listed = sortByDistance(mesitaRows, lat, lng)
+        .filter((row) =>
+          haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <=
+            nearbyRadiusKm
+        )
+        .slice(0, cap)
+        .map((row) => ({
+          ...row,
+          distance_km: roundedKm(lat, lng, row.lat, row.lng),
+        }));
+      return json({
+        ok: true,
+        places: withFamilyKeysList(listed),
+        mode: "nearby",
+      });
+    }
+
+    let googleHits: NearbyHit[] = [];
+    const gmp = readGooglePlacesKey();
+    if (gmp.ok) {
+      const cached = peekCachedNearbyPlaces(center);
+      if (cached) {
+        googleHits = cached;
+      } else if (efEnv.ok) {
+        // Shared connecting-IP ledger only when THIS isolate is about to
+        // fire the five Nearby calls. In-flight same-cell joins and isolate
+        // budget skips must not mint a row. Identity is CF-Connecting-IP /
+        // rightmost XFF, not the spoofable leftmost hop.
+        const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
+        googleHits = await searchNearbyPlaces(gmp.key, center, {
+          beforeFanout: () =>
+            consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
+              (quota) => quota.allow,
+            ),
+        });
+      }
+    }
+    const haveGid = new Set(
+      mesitaRows.map((row) => row.google_place_id).filter((id): id is string =>
+        Boolean(id)
+      ),
+    );
+    const missing = [
+      ...new Set(
+        googleHits.map((hit) => hit.placeId).filter((id) => !haveGid.has(id)),
+      ),
+    ];
+    if (missing.length > 0) {
+      const extraSelect = supabase.from("profiles").select(selectCols);
+      const extraFiltered = applyDiscoveryFilters(extraSelect, filters, {
+        lat: null,
+        lng: null,
+      });
+      const extra = await (extraFiltered as unknown as {
+        in: (
+          col: string,
+          vals: string[],
+        ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
+      }).in("google_place_id", missing);
+      if (!extra.error && extra.data) {
+        const seen = new Set(mesitaRows.map((row) => row.id));
+        for (const row of extra.data as CardRow[]) {
+          if (!seen.has(row.id)) mesitaRows = [...mesitaRows, row];
+        }
+      }
+    }
+    const cap = Math.min(limit, CATALOG_NEARBY_MAX);
+    const merged = mergeNearbyCatalog(mesitaRows, googleHits, center, cap);
+    const places = withFamilyKeysList(
+      merged.map((item) => {
+        if (item.kind === "listed") {
+          const row = stripGooglePlaceId(item.row);
+          return {
+            ...row,
+            distance_km: roundedKm(lat, lng, row.lat, row.lng),
+          };
+        }
+        return googleStub(
+          item.hit,
+          roundedKm(lat, lng, item.hit.lat, item.hit.lng),
+        );
+      }) as Array<{
+        name?: string | null;
+        google_name?: string | null;
+        category?: string | null;
+      }>,
+    );
+    return json({ ok: true, places, mode: "nearby" });
+  }
+
+  const places = withFamilyKeysList((data ?? []) as unknown as CardRow[]);
+  if (isBbox) {
     return json({
       ok: true,
       places,

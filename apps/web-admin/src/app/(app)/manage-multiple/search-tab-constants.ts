@@ -10,6 +10,12 @@ export const EXAMPLE_QUERIES = [
 
 // Quality-filter presets. 0 = off ("Any"). Rating is a Google 1-5 score;
 // reviews is a userRatingCount floor. A place must clear BOTH to survive.
+export const RESULTS_OPTIONS: { label: string; value: number }[] = [
+  { label: "10", value: 10 },
+  { label: "20", value: 20 },
+  { label: "50", value: 50 },
+];
+
 export const RATING_OPTIONS: { label: string; value: number }[] = [
   { label: "Any", value: 0 },
   { label: "3.5+", value: 3.5 },

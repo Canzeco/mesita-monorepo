@@ -27,7 +27,12 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from '@/lib/api/place-search';
-import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import {
+  apiFetchNearbyPlaces,
+  SEARCH_NEARBY_LIMIT,
+  type Place,
+} from '@/lib/api/places';
+import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -37,7 +42,7 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
-import { buildSearchMapPins } from '@/lib/search-membership';
+import { buildSearchMapPins, pinGesture } from '@/lib/search-membership';
 import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
@@ -50,6 +55,17 @@ const SUGGEST_DEBOUNCE_MS = 300;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
+
+function googlePredictionFromPlace(place: Place): PlacePrediction | null {
+  const placeId = place.google_place_id;
+  if (!place.from_google || !placeId) return null;
+  return {
+    placeId,
+    mainText: place.name,
+    secondaryText: place.address ?? '',
+    status: 'not_in_mesita',
+  };
+}
 
 /**
  * Which failure the results panel should explain. `timeout` and `network` get
@@ -90,6 +106,7 @@ export function SearchClient() {
   const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
@@ -100,6 +117,7 @@ export function SearchClient() {
   const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
+  const nearbyOrigin = location ?? MONTERREY_CENTER;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -108,14 +126,18 @@ export function SearchClient() {
     let cancelled = false;
     void (async () => {
       try {
-        const rows = await apiFetchPublicPlaces(supabase, 200);
+        const rows = await apiFetchNearbyPlaces(
+          supabase,
+          nearbyOrigin,
+          SEARCH_NEARBY_LIMIT,
+        );
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);
         }
       } catch (err) {
         if (!cancelled) {
-          setFetchError(errMsg(err, "Couldn't load places."));
+          setFetchError(errMsg(err, "Couldn't load nearby places."));
         }
       } finally {
         if (!cancelled) setCatalogLoading(false);
@@ -124,7 +146,7 @@ export function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nearbyOrigin.lat, nearbyOrigin.lng]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
@@ -314,17 +336,57 @@ export function SearchClient() {
     resetSearchSession();
   };
 
-  const handleSelectPin = (pin: SearchMapPin) => {
-    const prediction = predictions.find(
-      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
-    );
-    if (prediction && prediction.status === 'not_in_mesita') {
-      handlePickGoogle(prediction);
+  const openCatalogPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
       return;
     }
+    router.push(`/place/${place.slug || place.id}`);
+  };
+
+  const selectCatalogPlace = (place: Place) => {
+    setHeldGoogle(googlePredictionFromPlace(place));
+    selectPlace(place.id);
+  };
+
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction =
+      predictions.find(
+        (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+      ) ??
+      (heldGoogle &&
+      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
+        ? heldGoogle
+        : null);
+    if (pinGesture(selectedId, pin.id) === 'open') {
+      if (prediction && prediction.status === 'not_in_mesita') {
+        handlePickGoogle(prediction);
+        return;
+      }
+      const place = catalog.find((p) => p.id === pin.id);
+      if (place) {
+        openCatalogPlace(place);
+        return;
+      }
+      if (prediction) {
+        handlePickMesita(prediction);
+      }
+      return;
+    }
+    if (prediction && prediction.status === 'not_in_mesita') {
+      setHeldGoogle(prediction);
+      setRailCollapsed(false);
+      setSelectedId(pin.id);
+      return;
+    }
+    setHeldGoogle(null);
     if (prediction) {
       handlePickMesita(prediction);
+      return;
     }
+    const place = catalog.find((p) => p.id === pin.id);
+    if (place) selectCatalogPlace(place);
   };
 
   const handleAdd = (prediction: PlacePrediction) => {
@@ -367,8 +429,8 @@ export function SearchClient() {
           center={center}
           apiKey={GMP_KEY}
           pins={searchPins}
-          onSelectPlace={(place) => selectPlace(place.id)}
-          onOpenPlace={(place) => router.push(`/place/${place.id}`)}
+          onSelectPlace={selectCatalogPlace}
+          onOpenPlace={openCatalogPlace}
           onSelectPin={handleSelectPin}
           onMapPress={() => {
             if (searchOpen) closeSearch();
@@ -428,13 +490,17 @@ export function SearchClient() {
         onExpand={() => setRailCollapsed(false)}
         onClearFilters={clearFilters}
         onSelectPlace={setSelectedId}
-        onOpenPlace={(id) => router.push(`/place/${id}`)}
+        onOpenPlace={(id) => {
+          const place = catalog.find((p) => p.id === id);
+          if (place) openCatalogPlace(place);
+          else router.push(`/place/${id}`);
+        }}
       />
 
       {/* Selected chip when rail collapsed */}
       {selectedPlace && railCollapsed ? (
         <Pressable
-          onPress={() => router.push(`/place/${selectedPlace.id}`)}
+          onPress={() => openCatalogPlace(selectedPlace)}
           className="absolute z-20 mx-4 rounded-2xl border border-border bg-card px-4 py-3"
           style={{
             bottom: Math.max(insets.bottom, 8) + 52,

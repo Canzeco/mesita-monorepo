@@ -9,5 +9,5 @@ export const MAP_LISTED_PIN_COLOR = '#9ca3af';
 export const MAP_GOOGLE_PIN_COLOR = '#EAB308';
 export const MAP_WEB_PIN_COLOR = MAP_LISTED_PIN_COLOR;
 
-// Legacy selected-pin red; Search keeps membership color and thickens the stroke.
-export const MAP_SELECTED_PIN_COLOR = '#EF4444';
+// Selected pin fill — black circle. Unselected pins keep membership colors.
+export const MAP_SELECTED_PIN_COLOR = '#111111';

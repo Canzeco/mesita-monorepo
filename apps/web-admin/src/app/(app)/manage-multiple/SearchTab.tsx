@@ -8,7 +8,10 @@ import { PlacesMap } from "@/components/PlacesMap";
 import type { SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 
 import { estimateSearchCost } from "./search-cost";
-import { MAX_QUERIES, MAX_RESULTS } from "./search-tab-constants";
+import {
+  MAX_QUERIES,
+  MAX_RESULTS,
+} from "./search-tab-constants";
 import { splitSearchBarInput } from "./google-place-ids";
 import { QueryRow } from "./SearchQueryRows";
 import { SearchParametersSection } from "./SearchParametersSection";
@@ -138,14 +141,7 @@ export function SearchTab({
 
   return (
     <div>
-      <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Google-side lookup. Type a query or paste Google Place IDs. Country
-        is optional — Google does not require it. This box does not create
-        or enrich.
-      </p>
-
       <form
-        className="mt-6"
         onSubmit={(e) => {
           e.preventDefault();
           void runSearch();
@@ -194,20 +190,16 @@ export function SearchTab({
         </div>
       </form>
 
-      <section className="mt-8 space-y-8">
+      <div className="mt-4">
         <SearchParametersSection
           maxResults={maxResults}
           minRating={minRating}
           minReviews={minReviews}
-          running={running}
-          queriesCount={unitCount}
-          overLimit={overLimit}
           onMaxResultsChange={setMaxResults}
           onMinRatingChange={setMinRating}
           onMinReviewsChange={setMinReviews}
-          onRunSearch={() => void runSearch()}
         />
-      </section>
+      </div>
 
       {error && (
         <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">
@@ -236,7 +228,7 @@ export function SearchTab({
             >
               <ListPlus className="h-4 w-4" />
               Send {allPlaceIds.length}{" "}
-              {allPlaceIds.length === 1 ? "ID" : "IDs"} to Mesita Search / Intake / Edit
+              {allPlaceIds.length === 1 ? "ID" : "IDs"} to Mesita Search / Intake
             </button>
           )}
 

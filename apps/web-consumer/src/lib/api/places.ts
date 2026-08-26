@@ -114,6 +114,10 @@ export type Place = {
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;
+  /** Catalog-only: Google Nearby hit that is not a Mesita row yet. */
+  googleOnly?: boolean;
+  /** Alias shipped on Google Nearby stubs (`from_google`). */
+  from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
 
@@ -135,6 +139,7 @@ export type Place = {
   monthly_promo_cap?: number | null;
   /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
+  google_place_id?: string | null;
 };
 
 // Discover surfaces (swipe + catalog) go through dedicated EFs. The deck EF
@@ -168,6 +173,8 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
+export const CATALOG_NEARBY_MAX = 50;
+export const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
@@ -183,7 +190,44 @@ export type ViewportPlaces = {
   totalInBox: number | null;
 };
 
-/** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
+/** Search map catalog: closest 50 around a camera / guest pin. */
+export async function apiFetchNearbyCatalog(
+  client: SupabaseClient,
+  center: { lat: number; lng: number },
+  limit = CATALOG_NEARBY_MAX,
+): Promise<ViewportPlaces> {
+  const data = await invokeEF<{
+    places: Place[];
+    overspan?: boolean;
+    totalInBox?: number;
+  }>(client, "consumer-web-list-places", {
+    google: true,
+    lat: center.lat,
+    lng: center.lng,
+    limit,
+  });
+  return {
+    places: (data.places ?? []).map(stripInsecurePhotos),
+    overspan: data.overspan === true,
+    totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
+  };
+}
+
+/** Listed nearby only — no Google stubs. Mobile Search uses this shape. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = SEARCH_NEARBY_LIMIT,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-list-places",
+    { lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
+}
+
+/** Optional camera rectangle. Search does not use this as the default pool. */
 export async function apiFetchPlacesInBbox(
   client: SupabaseClient,
   bbox: PlacesBbox,

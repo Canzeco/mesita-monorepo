@@ -9,6 +9,7 @@ import {
 } from "../manage-single/actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
+import { EditPanel } from "./EditTab";
 import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
 
 const CONCURRENCY = 4;
@@ -42,6 +43,8 @@ export function IntakeTab({
   const placeIds = useMemo(() => parseGooglePlaceIds(text), [text]);
   const [results, setResults] = useState<Record<string, Row>>({});
   const [running, setRunning] = useState<IntakeAction | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const busy = running !== null || editBusy;
 
   const done = placeIds.filter((id) => {
     const s = results[id]?.status;
@@ -53,7 +56,7 @@ export function IntakeTab({
   const failed = placeIds.filter((id) => results[id]?.status === "error").length;
 
   async function run(action: IntakeAction) {
-    if (running || placeIds.length === 0) return;
+    if (busy || placeIds.length === 0) return;
     setRunning(action);
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
@@ -90,41 +93,35 @@ export function IntakeTab({
   }
 
   return (
-    <div>
-      <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        Google Place IDs only. Create, Enrich, or both — one shared Intake
-        config (caps, levels, photo analysis stay on Intake; spend stays
-        there). First time is Enrich. Again is Re-enrich from zero — the
-        full Intaker 1–10, never a resume. Existing places skip create and
-        continue; Create + Enrich still enriches them.
-      </p>
+    <div className="space-y-6">
+      <IdListField
+        id="intake-place-ids"
+        label="Google Place IDs"
+        text={text}
+        onTextChange={onTextChange}
+        placeIds={placeIds}
+        running={busy}
+      />
 
-      <div className="border-border bg-card mt-6 rounded-2xl border p-6">
-        <IdListField
-          id="intake-place-ids"
-          label="Google Place IDs"
-          text={text}
-          onTextChange={onTextChange}
-          placeIds={placeIds}
-          running={running !== null}
-        />
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+      <div>
+        <p className="text-muted-foreground type-eyebrow">Intake</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
             label="Create"
             busy={running === "create"}
-            disabled={running !== null || placeIds.length === 0}
+            disabled={busy || placeIds.length === 0}
             onClick={() => void run("create")}
           />
           <ActionButton
             label="Enrich"
             busy={running === "enrich"}
-            disabled={running !== null || placeIds.length === 0}
+            disabled={busy || placeIds.length === 0}
             onClick={() => void run("enrich")}
           />
           <ActionButton
             label="Create + Enrich"
             busy={running === "create_enrich"}
-            disabled={running !== null || placeIds.length === 0}
+            disabled={busy || placeIds.length === 0}
             onClick={() => void run("create_enrich")}
           />
           {done > 0 ? (
@@ -143,38 +140,63 @@ export function IntakeTab({
             </button>
           ) : null}
         </div>
+        {Object.keys(results).length > 0 ? (
+          <ResultList placeIds={placeIds} results={results} />
+        ) : null}
       </div>
 
-      {Object.keys(results).length > 0 ? (
-        <div className="border-border bg-card mt-6 overflow-hidden rounded-2xl border">
-          <ul className="divide-border/60 divide-y">
-            {placeIds.map((id) => {
-              const r = results[id];
-              if (!r) return null;
-              return (
-                <li key={id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                  <StatusIcon status={r.status} />
-                  <div className="min-w-0 flex-1">
-                    {r.name ? (
-                      <span className="truncate font-medium">{r.name}</span>
-                    ) : (
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {id}
-                      </span>
-                    )}
-                    {r.detail ? (
-                      <p className="text-muted-foreground type-label">{r.detail}</p>
-                    ) : null}
-                    {r.error ? (
-                      <p className="text-destructive type-label">{r.error}</p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+      <div>
+        <p className="text-muted-foreground type-eyebrow">Edit</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Listed · Verified · Partner · Promoted. Same IDs. No other fields.
+        </p>
+        <div className="mt-2">
+          <EditPanel
+            placeIds={placeIds}
+            locked={running !== null}
+            onBusyChange={setEditBusy}
+          />
         </div>
-      ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ResultList({
+  placeIds,
+  results,
+}: {
+  placeIds: string[];
+  results: Record<string, Row>;
+}) {
+  return (
+    <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border">
+      <ul className="divide-border/60 divide-y">
+        {placeIds.map((id) => {
+          const r = results[id];
+          if (!r) return null;
+          return (
+            <li key={id} className="flex items-center gap-3 px-4 py-3 text-sm">
+              <StatusIcon status={r.status} />
+              <div className="min-w-0 flex-1">
+                {r.name ? (
+                  <span className="truncate font-medium">{r.name}</span>
+                ) : (
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {id}
+                  </span>
+                )}
+                {r.detail ? (
+                  <p className="text-muted-foreground type-label">{r.detail}</p>
+                ) : null}
+                {r.error ? (
+                  <p className="text-destructive type-label">{r.error}</p>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_LISTED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
+  MAP_SELECTED_PIN_COLOR,
 } from '@/lib/map-defaults';
 
 export type MembershipTone = 'partner' | 'listed' | 'google';
@@ -28,10 +29,24 @@ export function membershipColor(tone: MembershipTone): string {
   return MEMBERSHIP_COLORS[tone];
 }
 
+export function pinFillColor(tone: MembershipTone, selected: boolean): string {
+  return selected ? MAP_SELECTED_PIN_COLOR : membershipColor(tone);
+}
+
+/** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
+export function pinGesture(
+  selectedId: string | null,
+  pinId: string,
+): 'select' | 'open' {
+  return selectedId === pinId ? 'open' : 'select';
+}
+
 export function placeMembershipTone(place: {
   partner?: boolean | null;
   plan?: string | null;
+  from_google?: boolean;
 }): MembershipTone {
+  if (place.from_google) return 'google';
   if (place.partner === true) return 'partner';
   if (place.partner === false) return 'listed';
   if (place.plan && place.plan.toLowerCase() !== 'free') return 'partner';

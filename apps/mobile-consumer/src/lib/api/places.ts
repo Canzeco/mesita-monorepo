@@ -74,6 +74,8 @@ export type Place = {
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
+  google_place_id?: string | null;
+  from_google?: boolean;
 };
 
 type RecommendDeckInput = {
@@ -98,6 +100,22 @@ export async function apiFetchPublicPlaces(
     { limit },
   );
   return places.map(stripInsecurePhotos);
+}
+
+export const SEARCH_NEARBY_LIMIT = 50;
+
+/** Search map: nearest `limit` listed places to the pin. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = SEARCH_NEARBY_LIMIT,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    'consumer-web-list-places',
+    { lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
 }
 
 export async function apiRecommendDeck(

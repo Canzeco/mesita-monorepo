@@ -270,6 +270,7 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // profiles, consumers, visit_tickets, reservation_tickets, projects
 // (MESITA-1284 — this table was missing from both ratchets below). Deliberately NOT
 // in scope: satellite/audit tables (place_creation_attempts,
+// nearby_google_attempts,
 // project_verifications, project_members, project_invites,
 // consumer_review_claims) whose own insert/delete is normal operation, not
 // a deletion-law question.

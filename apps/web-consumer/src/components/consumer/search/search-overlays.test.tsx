@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { EmptySearchPrompt } from "@/components/consumer/search/search-catalog-overlays";
+import { EmptySearchPrompt, SearchRailOverlay } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
+import { viewportCenter } from "@/components/consumer/search/search-utils";
+import type { Place } from "@/lib/api/places";
 
 const SEARCH_DIR = join(__dirname);
 
@@ -127,18 +129,21 @@ describe("SearchScopeSheet country pills", () => {
   });
 });
 
-describe("Search map catalog is the viewport", () => {
-  it("loads listed pins from bbox, not an SSR 200 dump", () => {
-    expect(read("SearchClient.tsx")).toContain("apiFetchPlacesInBbox");
+describe("Search map catalog reloads nearby as the camera moves", () => {
+  it("loads the closest 50 from Nearby Search, not an SSR 200 dump", () => {
+    expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
+    expect(read("SearchClient.tsx")).toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("VIEWPORT_IDLE_MS");
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "Zoom in to see this area",
     );
-    expect(read("search-catalog-overlays.tsx")).toContain(
-      "Finding places around you",
-    );
+    expect(read("search-catalog-overlays.tsx")).toContain("Finding nearby");
+    expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
+    expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
+    expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
+    expect(read("../../../lib/api/places.ts")).toContain("google: true");
   });
 });
 
@@ -157,6 +162,22 @@ describe("Search pick and map center respect filters", () => {
   });
 });
 
+describe("Search pin two-tap (select then open)", () => {
+  it("paints selected pins black and keeps membership fills for the rest", () => {
+    expect(read("SearchMap.tsx")).toContain("pinFillColor");
+    expect(read("SearchClient.tsx")).toContain("pinGesture");
+  });
+
+  it("first overlay tap selects; a later tap on the same pin opens", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("pinGesture");
+    expect(src).toContain("heldGoogle");
+    expect(src).toMatch(/pinGesture\(selectedId, pin\.id\) === "open"/);
+    expect(src).toContain("setHeldGoogle(prediction)");
+    expect(src).toContain("setSelectedId(pin.id)");
+  });
+});
+
 describe("Search results are one unlabeled lane", () => {
   it("does not print On Mesita / From Google section headers", () => {
     const src = read("SearchResultsPanel.tsx");
@@ -165,5 +186,108 @@ describe("Search results are one unlabeled lane", () => {
     expect(src).not.toMatch(/ON GOOGLE/i);
     expect(src).toContain("membershipColor");
     expect(src).toContain("predictions.map");
+  });
+});
+
+describe("viewportCenter", () => {
+  it("averages a normal box and wraps the dateline", () => {
+    const box = viewportCenter({
+      south: 25,
+      west: -100.4,
+      north: 26,
+      east: -100.2,
+    });
+    expect(box.lat).toBeCloseTo(25.5);
+    expect(box.lng).toBeCloseTo(-100.3);
+    const wrap = viewportCenter({
+      south: 0,
+      west: 179.8,
+      north: 0.2,
+      east: -179.8,
+    });
+    expect(wrap.lat).toBeCloseTo(0.1);
+    expect(wrap.lng).toBeCloseTo(180);
+  });
+});
+
+const RAIL_PLACE = {
+  id: "p1",
+  slug: "cosmo",
+  name: "Cosmo San Pedro",
+  category: "Nightclub",
+  vibe: null,
+  price_level: 4,
+  currency: "MXN",
+  listing_type: "web",
+  status: "active",
+  fiscal_type: "informal",
+  plan: "free",
+  lat: 25.67,
+  lng: -100.3,
+  address: null,
+  closes_at: null,
+  phone: null,
+  pitch: null,
+  story: null,
+  photos: [],
+  website_url: null,
+  instagram_url: null,
+  facebook_url: null,
+  whatsapp_url: null,
+  opentable_url: null,
+  resy_url: null,
+  uber_eats_url: null,
+  x_url: null,
+  threads_url: null,
+  reddit_url: null,
+  didi_food_url: null,
+  google_maps_url: null,
+  email: null,
+  created_at: "2026-08-01T00:00:00Z",
+} as Place;
+
+const railProps = {
+  idle: true,
+  catalogCount: 1,
+  filtersActive: false,
+  railCollapsed: false,
+  railIndex: 0,
+  selectedId: null as string | null,
+  railScrollRef: { current: null },
+  onShowRail: () => {},
+  onHideRail: () => {},
+  onRailScroll: () => {},
+  onSelectPlace: () => {},
+  onOpenPlace: () => {},
+  onOpenFilters: () => {},
+  setRailCardRef: () => {},
+};
+
+describe("Search catalog reload UI", () => {
+  it("shows a skeleton rail on first load, not a tiny pill", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay
+        {...railProps}
+        places={[]}
+        catalogCount={0}
+        catalogLoading
+      />,
+    );
+    expect(html).toContain("Finding nearby");
+    expect(html).toContain("aria-busy");
+    expect(html).not.toContain("Finding places around you");
+  });
+
+  it("keeps the cards and says Updating nearby while a pan reloads", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay
+        {...railProps}
+        places={[RAIL_PLACE]}
+        catalogLoading
+      />,
+    );
+    expect(html).toContain("Updating nearby");
+    expect(html).toContain("Cosmo San Pedro");
+    expect(html).toContain("opacity-55");
   });
 });
