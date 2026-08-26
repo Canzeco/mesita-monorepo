@@ -1,14 +1,13 @@
 "use client";
 
-// Manage Multiple Places — three boxes plus Edit at the bottom.
-// Sticky rail so none scroll away. Spend estimates live on Intake, not here.
+// Manage Multiple Places — three boxes. Edit lives on Mesita Intake.
+// Sticky rail so none scroll away. Spend estimates live on Intake Config.
 
 import { useEffect, useState } from "react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
 import { IntakeTab } from "./IntakeTab";
-import { EditTab } from "./EditTab";
 import { LEGACY_HASHES, PIPELINE_STEPS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
@@ -70,7 +69,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="A search bar. Free text or Google Place IDs. Country is optional."
+        blurb="Free text or Google Place IDs. Country optional."
       >
         <SearchTab
           onSendIds={(ids) => {
@@ -85,7 +84,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Google Place IDs in. Mesita states out. Read-only — no create, no enrich."
+        blurb="Google Place IDs in. Mesita states out. Read-only."
       >
         <MesitaSearchTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>
@@ -95,19 +94,9 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Create · Enrich · Create + Enrich. Same stored Intake config. Re-enrich runs 1–10 from zero."
+        blurb="Create · Enrich · Edit. Same IDs. Re-enrich runs 1–10 from zero."
       >
         <IntakeTab text={sharedIds} onTextChange={setSharedIds} />
-      </Step>
-
-      <Step
-        n={PIPELINE_STEPS[3].n}
-        id={PIPELINE_STEPS[3].id}
-        tint="rose"
-        title={PIPELINE_STEPS[3].label}
-        blurb="The only edit. Listed · Verified · Partner · Promoting."
-      >
-        <EditTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>
     </div>
   );

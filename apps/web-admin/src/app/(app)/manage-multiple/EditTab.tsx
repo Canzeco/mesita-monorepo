@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import {
   searchPlacesByGoogleIds,
@@ -14,8 +14,6 @@ import {
   STRATEGY_BY_ID,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { parseGooglePlaceIds } from "./google-place-ids";
-import { IdListField } from "./IdListField";
 import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
 
 const CONCURRENCY = 4;
@@ -35,20 +33,24 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
   return { ...rates, monthly_promo_cap: DEFAULT_DISCOUNT_CAP_MXN };
 }
 
-export function EditTab({
-  text,
-  onTextChange,
+// Edit lives on Mesita Intake: same Google Place IDs, one state write.
+// Listed · Verified · Partner · Promoting. No other fields.
+export function EditPanel({
+  placeIds,
+  locked,
+  onBusyChange,
 }: {
-  text: string;
-  onTextChange: (next: string) => void;
+  placeIds: string[];
+  locked: boolean;
+  onBusyChange?: (busy: boolean) => void;
 }) {
-  const placeIds = useMemo(() => parseGooglePlaceIds(text), [text]);
   const [fact, setFact] = useState<EditFact>("listed");
   const [listedOn, setListedOn] = useState(true);
   const [partnerOn, setPartnerOn] = useState(true);
   const [promoting, setPromoting] = useState<0 | 1 | 2>(0);
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState<Record<string, Row>>({});
+  const busy = locked || running;
 
   const done = placeIds.filter((id) => {
     const s = results[id]?.status;
@@ -61,8 +63,9 @@ export function EditTab({
   const failed = placeIds.filter((id) => results[id]?.status === "error").length;
 
   async function runAll() {
-    if (running || placeIds.length === 0) return;
+    if (busy || placeIds.length === 0) return;
     setRunning(true);
+    onBusyChange?.(true);
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
@@ -90,109 +93,91 @@ export function EditTab({
       Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
     );
     setRunning(false);
+    onBusyChange?.(false);
   }
 
   return (
     <div>
-      <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
-        The only edit on this page. Google Place IDs plus one state: Listed,
-        Verified, Partner, or Promoting. No other fields.
-      </p>
-
-      <div className="border-border bg-card mt-6 rounded-2xl border p-6">
-        <IdListField
-          id="edit-place-ids"
-          label="Google Place IDs"
-          text={text}
-          onTextChange={onTextChange}
-          placeIds={placeIds}
-          running={running}
-        />
-
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-medium">
-            State
-            <select
-              value={fact}
-              disabled={running}
-              onChange={(e) => setFact(e.target.value as EditFact)}
-              className="border-border bg-background mt-1 block h-10 w-full rounded-xl border px-3 text-sm outline-none"
-            >
-              <option value="listed">Listed</option>
-              <option value="verified">Verified</option>
-              <option value="partner">Partner</option>
-              <option value="promoting">Promoting</option>
-            </select>
-          </label>
-          {fact === "listed" ? (
-            <ValueSelect
-              label="Value"
-              disabled={running}
-              value={listedOn ? "on" : "off"}
-              onChange={(v) => setListedOn(v === "on")}
-              options={[
-                { value: "on", label: "On" },
-                { value: "off", label: "Off" },
-              ]}
-            />
-          ) : null}
-          {fact === "verified" ? (
-            <p className="text-muted-foreground self-end text-sm">
-              Value is <span className="text-foreground font-medium">yes</span> —
-              ownership proof, one-time, never lapses.
-            </p>
-          ) : null}
-          {fact === "partner" ? (
-            <ValueSelect
-              label="Value"
-              disabled={running}
-              value={partnerOn ? "on" : "off"}
-              onChange={(v) => setPartnerOn(v === "on")}
-              options={[
-                { value: "on", label: "On · plan pro" },
-                { value: "off", label: "Off · plan free" },
-              ]}
-            />
-          ) : null}
-          {fact === "promoting" ? (
-            <ValueSelect
-              label="Value"
-              disabled={running}
-              value={String(promoting)}
-              onChange={(v) => setPromoting(Number(v) as 0 | 1 | 2)}
-              options={[
-                { value: "0", label: "0 · Zero" },
-                { value: "1", label: "1 · Conservative" },
-                { value: "2", label: "2 · Aggressive" },
-              ]}
-            />
-          ) : null}
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void runAll()}
-            disabled={running || placeIds.length === 0}
-            className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <label className="text-sm font-medium">
+          State
+          <select
+            value={fact}
+            disabled={busy}
+            onChange={(e) => setFact(e.target.value as EditFact)}
+            className="border-border bg-background mt-1 block h-10 w-full rounded-xl border px-3 text-sm outline-none"
           >
-            {running ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Pencil className="h-3.5 w-3.5" />
-            )}
-            {running ? `Writing… ${done}/${placeIds.length}` : "Apply"}
-          </button>
-          {done > 0 ? (
-            <span className="text-muted-foreground text-xs">
-              {okCount} written · {failed} failed
-            </span>
-          ) : null}
-        </div>
+            <option value="listed">Listed</option>
+            <option value="verified">Verified</option>
+            <option value="partner">Partner</option>
+            <option value="promoting">Promoting</option>
+          </select>
+        </label>
+        {fact === "listed" ? (
+          <ValueSelect
+            label="Value"
+            disabled={busy}
+            value={listedOn ? "on" : "off"}
+            onChange={(v) => setListedOn(v === "on")}
+            options={[
+              { value: "on", label: "On" },
+              { value: "off", label: "Off" },
+            ]}
+          />
+        ) : null}
+        {fact === "verified" ? (
+          <p className="text-muted-foreground self-end text-sm">
+            Value is <span className="text-foreground font-medium">yes</span> —
+            one-time ownership proof.
+          </p>
+        ) : null}
+        {fact === "partner" ? (
+          <ValueSelect
+            label="Value"
+            disabled={busy}
+            value={partnerOn ? "on" : "off"}
+            onChange={(v) => setPartnerOn(v === "on")}
+            options={[
+              { value: "on", label: "On · plan pro" },
+              { value: "off", label: "Off · plan free" },
+            ]}
+          />
+        ) : null}
+        {fact === "promoting" ? (
+          <ValueSelect
+            label="Value"
+            disabled={busy}
+            value={String(promoting)}
+            onChange={(v) => setPromoting(Number(v) as 0 | 1 | 2)}
+            options={[
+              { value: "0", label: "0 · Zero" },
+              { value: "1", label: "1 · Conservative" },
+              { value: "2", label: "2 · Aggressive" },
+            ]}
+          />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void runAll()}
+          disabled={busy || placeIds.length === 0}
+          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
+        >
+          {running ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Pencil className="h-3.5 w-3.5" />
+          )}
+          {running ? `Writing… ${done}/${placeIds.length}` : "Apply"}
+        </button>
       </div>
+      {done > 0 ? (
+        <p className="text-muted-foreground mt-2 text-xs">
+          {okCount} written · {failed} failed
+        </p>
+      ) : null}
 
       {Object.keys(results).length > 0 ? (
-        <div className="border-border bg-card mt-6 overflow-hidden rounded-2xl border">
+        <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border">
           <ul className="divide-border/60 divide-y">
             {placeIds.map((id) => {
               const r = results[id];
