@@ -40,11 +40,13 @@ export async function HomeDeckBoundary({ children }: { children: ReactNode }) {
     }
   }
 
-  const sorted = [...places].sort((a, b) => {
-    const aRank = isPromoting(a) ? 0 : 1;
-    const bRank = isPromoting(b) ? 0 : 1;
-    return aRank - bRank;
-  });
+  const sorted = [...places]
+    .filter((p) => !p.googleOnly && !p.from_google)
+    .sort((a, b) => {
+      const aRank = isPromoting(a) ? 0 : 1;
+      const bRank = isPromoting(b) ? 0 : 1;
+      return aRank - bRank;
+    });
   const enriched = sorted.map((v) => enrichPlaceOverview(v));
 
   return (
