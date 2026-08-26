@@ -35,7 +35,7 @@ export type SearchResponse = {
   uniqueCount: number;
   regionCode: string;
   maxResultsPerQuery: number;
-  // Intake › Sourcing `admin_search` floors the backend applied (0 = off),
+  // Discovery › Map floors the backend applied (0 = off),
   // echoed so the UI can label results. filteredOutCount is the pre-dedupe
   // tally of places those floors removed across all queries.
   minRating: number;

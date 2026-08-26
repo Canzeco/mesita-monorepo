@@ -13,8 +13,10 @@
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
 //   MAP       minRating · minReviews · minPopularity · googleFill · type
-//             batteries. Two queries: Mesita 20 ∪ Nearby 20. Enforced by
-//             consumer-web-list-places.
+//             batteries. Search allowlist (guest map, name search, admin
+//             Google Search, Create). Nearby: Mesita 20 ∪ Nearby 20.
+//             Enforced by list-places, discover-places, suggest-places,
+//             consumer-search-lane, create-place.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas

@@ -1,17 +1,9 @@
-// Sourcing policy enforcement — the BACKEND owner of the sourcing gate.
-//
-// public.app_config.sourcing_config (id=1) decides, per sourcing CHANNEL,
-// which place FAMILIES may enter Mesita and the Google quality bar (min rating +
-// min review count). The admin console authors it; this module is where an
-// add-path actually ENFORCES it — a client can't be trusted to self-gate.
-//
-// The family → Google-primaryType map below is the enforcement contract. It
-// MUST stay in lock-step with the admin catalog
-// (apps/web-admin/src/app/(app)/sourcing-config/catalog.ts, FAMILIES[].googleTypes)
-// and the migration default (20260708120000_sourcing_config.sql) — the family
-// keys are the shared contract. A Google primaryType in NO family is ineligible
-// for every channel: that's how hotels, schools, hospitals, shops, gas stations
-// and transit are kept out without an explicit blocklist.
+// Google type → family map. Search and Add eligibility is Discovery › Map
+// (`evaluatePlaceForMap`); this file expands Table A types onto those five
+// Nearby batteries. `app_config.sourcing_config` is a leftover blob — unread
+// by Search/Add. Keep the family keys in lock-step with
+// apps/web-admin/src/app/(app)/sourcing-config/catalog.ts. A Google
+// primaryType in no family is ineligible (hotels, schools, shops).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -263,19 +255,17 @@ function applyGuestLocationBias(
   );
 }
 
-/** Autocomplete (New): guest pin bias only. Country is not read from policy. */
+/** Autocomplete (New): guest pin bias only. */
 export function applyPlacesAutocompleteRegion(
   body: Record<string, unknown>,
-  _policy: ChannelPolicy,
   origin?: GeoOrigin | null,
 ): void {
   applyGuestLocationBias(body, origin);
 }
 
-/** Text Search (New): guest pin bias only. Country is not read from policy. */
+/** Text Search (New): guest pin bias only. */
 export function applyPlacesTextSearchRegion(
   body: Record<string, unknown>,
-  _policy: ChannelPolicy,
   origin?: GeoOrigin | null,
 ): void {
   applyGuestLocationBias(body, origin);
@@ -306,8 +296,7 @@ export type EligibilityResult =
 // Note: Google Autocomplete is intentionally NOT pre-filtered by a
 // one-type-per-family map. Broad types (`bar`, `cafe`) do not match exact
 // primaryTypes (`night_club`, `cake_shop`), and the API caps the list at 5 —
-// so suggest-places omits includedPrimaryTypes on sourced search and relies
-// on evaluatePlaceForChannel after merge.
+// leftover: channel blob unread by Search/Add. evaluatePlaceForMap is the gate.
 
 export type SourcingConfigRow = Partial<Record<ChannelKey, unknown>>;
 

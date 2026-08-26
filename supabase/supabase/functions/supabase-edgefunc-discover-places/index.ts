@@ -7,8 +7,8 @@
 // the API max (3 pages × 20 = 60 results) and runs queries with bounded
 // concurrency so a 50-query batch completes well inside the EF timeout.
 //
-// Quality floors come from Intake › Sourcing `admin_search` only
-// (`app_config.sourcing_config`). A request body must not carry its own
+// Quality floors and types come from Discovery › Map
+// (`app_config.discovery_config.map`). A request body must not carry its own
 // minRating / minUserRatingCount — those were a second authoring surface
 // on Multiple Places and are ignored if sent. Applied EF-side after the
 // Google fetch (Text Search has no review-count filter); filtering here
@@ -31,12 +31,9 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
-import {
-  evaluatePlaceForChannel,
-  parseCldrRegionCode,
-  readChannelPolicy,
-  type ChannelPolicy,
-} from "../_shared/sourcing.ts";
+import { parseCldrRegionCode } from "../_shared/sourcing.ts";
+import { loadDiscoveryConfig, type MapConfig } from "../_shared/discovery-config.ts";
+import { evaluatePlaceForMap } from "../_shared/map-engine.ts";
 import {
   fetchPlaceLiteById,
   MAX_RESULTS_PER_QUERY,
@@ -86,7 +83,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
-  const adminSearchPolicy = await readChannelPolicy(admin, "admin_search");
+  const map = (await loadDiscoveryConfig(admin)).map;
 
   const bodyRes = await readJson<RequestBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -122,9 +119,9 @@ Deno.serve(async (req) => {
     Math.max(1, body.maxResultsPerQuery ?? MAX_RESULTS_PER_QUERY),
   );
 
-  // SoT: Intake › Sourcing `admin_search`. 0 = off.
-  const minRating = adminSearchPolicy.minRating;
-  const minUserRatingCount = adminSearchPolicy.minReviews;
+  // SoT: Discovery › Map. 0 = off.
+  const minRating = map.minRating;
+  const minUserRatingCount = map.minReviews;
 
   // --- Run text queries + Place ID lookups with bounded concurrency ---
   const results = new Array<QueryResult>(queries.length + placeIds.length);
@@ -142,7 +139,7 @@ Deno.serve(async (req) => {
           regionCode,
         );
         const places = fetched.filter((p) =>
-          passesSourcingFilter(p, adminSearchPolicy),
+          passesMapFilter(p, map),
         );
         results[i] = {
           query: q,
@@ -171,7 +168,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Explicit Place IDs use Place Details, then the same admin_search
+  // Explicit Place IDs use Place Details, then the same Map
   // gate as text hits. One ineligible or missing ID fails that slot
   // only — the operator still gets the rest of the batch.
   let idCursor = 0;
@@ -183,7 +180,7 @@ Deno.serve(async (req) => {
       const slot = queries.length + j;
       try {
         const place = await fetchPlaceLiteById(id, apiKey);
-        const verdict = evaluatePlaceForChannel(adminSearchPolicy, {
+        const verdict = evaluatePlaceForMap(map, {
           primaryType: place.primaryType,
           rating: place.rating,
           reviewCount: place.userRatingCount,
@@ -291,11 +288,9 @@ Deno.serve(async (req) => {
   });
 });
 
-// A place passes when it clears the admin_search channel policy (family +
-// rating/review floors). Floors are the policy itself — never a request-body
-// override.
-function passesSourcingFilter(p: PlaceLite, policy: ChannelPolicy): boolean {
-  return evaluatePlaceForChannel(policy, {
+// A place passes when it clears Discovery › Map (types + floors).
+function passesMapFilter(p: PlaceLite, map: MapConfig): boolean {
+  return evaluatePlaceForMap(map, {
     primaryType: p.primaryType,
     rating: p.rating,
     reviewCount: p.userRatingCount,

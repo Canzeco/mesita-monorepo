@@ -141,7 +141,7 @@ Deno.test("old blob without region still stores MX; engine ignores it", () => {
   );
   assertEquals(policy.region, DEFAULT_REGION);
   const body: Record<string, unknown> = { textQuery: "tacos" };
-  applyPlacesTextSearchRegion(body, policy);
+  applyPlacesTextSearchRegion(body);
   assertEquals(body.regionCode, undefined);
   assertEquals("locationBias" in body, false);
 });
@@ -158,7 +158,7 @@ Deno.test("empty country on the blob does not send Google country params", () =>
     "admin_search",
   );
   const body: Record<string, unknown> = { textQuery: "tacos" };
-  applyPlacesTextSearchRegion(body, policy);
+  applyPlacesTextSearchRegion(body);
   assertEquals(body.regionCode, undefined);
   assertEquals("locationBias" in body, false);
 });
@@ -196,7 +196,7 @@ Deno.test("Autocomplete policy region is not applied; caller code is", () => {
     "consumer_search",
   );
   const body: Record<string, unknown> = { input: "taco" };
-  applyPlacesAutocompleteRegion(body, policy);
+  applyPlacesAutocompleteRegion(body);
   assertEquals(body.regionCode, undefined);
   assertEquals(body.includedRegionCodes, undefined);
   assertEquals("locationBias" in body, false);
@@ -217,7 +217,7 @@ Deno.test("guest pin biases Text Search without a country", () => {
     "memo_search",
   );
   const body: Record<string, unknown> = { textQuery: "mezcal" };
-  applyPlacesTextSearchRegion(body, policy, { lat: 19.43, lng: -99.13 });
+  applyPlacesTextSearchRegion(body, { lat: 19.43, lng: -99.13 });
   assertEquals(body.regionCode, undefined);
   assertEquals("locationRestriction" in body, false);
   const bias = body.locationBias as { circle?: unknown };

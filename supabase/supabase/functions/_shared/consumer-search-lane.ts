@@ -26,7 +26,7 @@ import {
   readGooglePlacesKey,
 } from "./google-places.ts";
 import {
-  googleTypeFilterForPolicy,
+  googleTypeFilterForMap,
   type GoogleTypeFilter,
   type PredictionStatus,
 } from "./suggest-places-helpers.ts";
@@ -34,10 +34,9 @@ import {
   applyPlacesAutocompleteRegion,
   applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
-  evaluatePlaceForChannel,
-  readChannelPolicy,
-  type ChannelPolicy,
 } from "./sourcing.ts";
+import { loadDiscoveryConfig, type MapConfig } from "./discovery-config.ts";
+import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
 import {
@@ -262,8 +261,8 @@ export async function runConsumerSearchLane(
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
-  const policy = await readChannelPolicy(admin, "consumer_search");
-  const typeFilter = googleTypeFilterForPolicy(policy);
+  const map = (await loadDiscoveryConfig(admin)).map;
+  const typeFilter = googleTypeFilterForMap(map);
 
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
 
@@ -275,13 +274,12 @@ export async function runConsumerSearchLane(
         sessionToken,
         apiKey,
         typeFilter,
-        policy,
         origin,
         args.country,
       ),
     typeFilter === "skip"
       ? Promise.resolve([] as LaneItem[])
-      : fetchTextSearch(input, apiKey, policy, origin, args.country),
+      : fetchTextSearch(input, apiKey, map, origin, args.country),
     fetchStampCatalog(admin),
     fetchEmbedPool(admin, origin),
     embedQueryVector(admin, input, openaiKey),
@@ -320,14 +318,14 @@ export async function runConsumerSearchLane(
     byGoogleId,
     admin,
     apiKey,
-    policy,
+    map,
   );
   const text = await stampGoogleAgainstCatalog(
     googleText,
     byGoogleId,
     admin,
     apiKey,
-    policy,
+    map,
     { alreadyHasSignals: true },
   );
 
@@ -438,12 +436,11 @@ async function fetchAutocomplete(
   sessionToken: string,
   apiKey: string,
   typeFilter: GoogleTypeFilter,
-  policy: ChannelPolicy,
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
-  applyPlacesAutocompleteRegion(body, policy, origin);
+  applyPlacesAutocompleteRegion(body, origin);
   applyPlacesCallerRegion(body, country, "autocomplete");
   if (typeFilter === "legacy") {
     body.includedPrimaryTypes = [
@@ -504,7 +501,7 @@ async function fetchAutocomplete(
 async function fetchTextSearch(
   input: string,
   apiKey: string,
-  policy: ChannelPolicy,
+  map: MapConfig,
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<LaneItem[]> {
@@ -512,7 +509,7 @@ async function fetchTextSearch(
     textQuery: input,
     maxResultCount: SEARCH_LANE_CAP,
   };
-  applyPlacesTextSearchRegion(body, policy, origin);
+  applyPlacesTextSearchRegion(body, origin);
   applyPlacesCallerRegion(body, country, "text");
   let r: Response;
   try {
@@ -561,13 +558,13 @@ async function fetchTextSearch(
     const lng = typeof p.location?.longitude === "number"
       ? p.location.longitude
       : null;
-    const eligible = evaluatePlaceForChannel(policy, {
+    const eligible = evaluatePlaceForMap(map, {
       primaryType: p.primaryType ?? null,
       rating: typeof p.rating === "number" ? p.rating : null,
       reviewCount: typeof p.userRatingCount === "number"
         ? p.userRatingCount
         : null,
-    }, { lat, lng }).eligible;
+    }).eligible;
     if (!eligible) continue;
     out.push({
       placeId: p.id,
@@ -587,7 +584,7 @@ async function stampGoogleAgainstCatalog(
   byGoogleId: Map<string, ListedRow>,
   admin: SupabaseClient,
   apiKey: string,
-  policy: ChannelPolicy,
+  map: MapConfig,
   opts: { alreadyHasSignals?: boolean } = {},
 ): Promise<LaneItem[]> {
   const missingIds = items
@@ -638,11 +635,11 @@ async function stampGoogleAgainstCatalog(
     if (p.status !== "not_in_mesita") return true;
     const sig = signalsById.get(p.placeId);
     if (!sig) return false;
-    const ok = evaluatePlaceForChannel(policy, {
+    const ok = evaluatePlaceForMap(map, {
       primaryType: sig.primaryType,
       rating: sig.rating,
       reviewCount: sig.reviewCount,
-    }, { lat: sig.lat, lng: sig.lng, country: sig.country }).eligible;
+    }).eligible;
     if (ok && p.lat == null && sig.lat != null) p.lat = sig.lat;
     if (ok && p.lng == null && sig.lng != null) p.lng = sig.lng;
     return ok;

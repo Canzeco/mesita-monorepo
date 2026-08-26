@@ -66,13 +66,13 @@ describe("Google Search is a bar, not a parameter panel", () => {
     const constants = readFileSync(join(here, "search-tab-constants.ts"), "utf8");
     const rows = readFileSync(join(here, "SearchQueryRows.tsx"), "utf8");
     expect(searchTab).toContain("RESULTS_OPTIONS");
-    expect(searchTab).toContain("/enricher-config#s-sourcing");
+    expect(searchTab).toContain("/filters-config#s-map");
     expect(searchTab).not.toContain("SearchParametersSection");
     expect(searchTab).not.toContain("minRating");
     expect(searchTab).not.toContain("minUserRatingCount");
     expect(constants).not.toContain("RATING_OPTIONS");
     expect(constants).not.toContain("REVIEW_OPTIONS");
-    expect(rows).toContain("/enricher-config#s-sourcing");
+    expect(rows).toContain("/filters-config#s-map");
     expect(rows).not.toContain("Loosen the filters");
     expect(rows).toContain("This row only");
   });

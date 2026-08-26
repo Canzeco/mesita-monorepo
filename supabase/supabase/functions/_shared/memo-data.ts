@@ -43,8 +43,7 @@ export type MemoConfigResult = {
   model: string | null;
   // Perplexity leg from models_config.memo.perplexity; null when "off"/unset.
   perplexity: string | null;
-  // The `memo_search` sourcing slice, already coerced (falls back to the
-  // launch policy when the config row is unreadable).
+  // leftover wire; Search eligibility is Discovery › Map.
   searchPolicy: ChannelPolicy;
 };
 

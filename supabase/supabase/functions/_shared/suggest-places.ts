@@ -37,17 +37,12 @@ import {
   GOOGLE_PLACES_AUTOCOMPLETE_URL,
   readGooglePlacesKey,
 } from "./google-places.ts";
-import {
-  type ChannelKey,
-  type ChannelPolicy,
-  applyPlacesAutocompleteRegion,
-  applyPlacesCallerRegion,
-  evaluatePlaceForChannel,
-  readChannelPolicy,
-} from "./sourcing.ts";
+import { applyPlacesCallerRegion } from "./sourcing.ts";
+import { loadDiscoveryConfig, type MapConfig } from "./discovery-config.ts";
+import { evaluatePlaceForMap } from "./map-engine.ts";
 import {
   type GoogleTypeFilter,
-  googleTypeFilterForPolicy,
+  googleTypeFilterForMap,
   mergePredictionsByPlaceId,
   type Prediction,
   sortMesitaPredictionsFirst,
@@ -65,10 +60,6 @@ export type SuggestPlacesArgs = {
   // null, we can't flag verified_partner_self — only _other for any
   // owned row.
   callerUserId?: string | null;
-  // When set, Google-only ("not_in_mesita") predictions are filtered against
-  // app_config.sourcing_config[sourcingChannel]. On-Mesita rows always
-  // pass — they're already onboarded.
-  sourcingChannel?: ChannelKey;
   // Optional CLDR country from the name searchbar (Manage Single). Empty
   // omits Google's regionCode / includedRegionCodes — neither API requires them.
   regionCode?: string;
@@ -95,18 +86,11 @@ export async function suggestPlaces(
   if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
 
   const admin = adminClient(env);
-
-  const sourcingPolicy = args.sourcingChannel
-    ? await readChannelPolicy(admin, args.sourcingChannel)
-    : null;
-  // Sourced search: do NOT pre-filter Google Autocomplete by broad
-  // primary types. Google matches includedPrimaryTypes exactly
-  // (`bar` ≠ `night_club`, `cafe` ≠ `cake_shop`), and the API caps the
-  // list at 5 — so a one-type-per-family map silently drops eligible
-  // places before the rating/review post-filter can run. Family + floors
-  // are enforced after merge via filterPredictionsBySourcing.
-  // Skip the Google leg only when the channel is off or has no families.
-  const googleTypeFilter = googleTypeFilterForPolicy(sourcingPolicy);
+  const map = (await loadDiscoveryConfig(admin)).map;
+  // Do NOT pre-filter Google Autocomplete by broad primary types. Google
+  // matches includedPrimaryTypes exactly (`bar` ≠ `night_club`) and caps
+  // the list at 5. Types + floors run after merge via filterPredictionsByMap.
+  const googleTypeFilter = googleTypeFilterForMap(map);
 
   // Fire Google + Mesita searches in parallel. Either can fail
   // independently; we merge whatever comes back.
@@ -116,7 +100,6 @@ export async function suggestPlaces(
       sessionToken,
       apiKey,
       googleTypeFilter,
-      sourcingPolicy,
       args.regionCode,
     ),
     fetchMesitaPredictions(admin, input, callerUserId),
@@ -175,9 +158,7 @@ export async function suggestPlaces(
     Array.from(byPlaceId.values()),
   );
 
-  const filtered = sourcingPolicy
-    ? await filterPredictionsBySourcing(predictions, sourcingPolicy, apiKey)
-    : predictions;
+  const filtered = await filterPredictionsByMap(predictions, map, apiKey);
 
   return json({ ok: true, predictions: filtered, caller: callerName });
 }
@@ -189,7 +170,6 @@ async function fetchGooglePredictions(
   sessionToken: string,
   apiKey: string,
   typeFilter: GoogleTypeFilter,
-  policy: ChannelPolicy | null,
   regionCode?: string,
 ): Promise<{
   predictions: Prediction[];
@@ -200,10 +180,8 @@ async function fetchGooglePredictions(
   }
 
   const body: Record<string, unknown> = { input, sessionToken };
-  if (policy) applyPlacesAutocompleteRegion(body, policy);
   applyPlacesCallerRegion(body, regionCode, "autocomplete");
   if (typeFilter === "legacy") {
-    // Legacy path (no sourcing channel): broad static hospitality filter.
     body.includedPrimaryTypes = [
       "restaurant",
       "bar",
@@ -212,8 +190,7 @@ async function fetchGooglePredictions(
       "bakery",
     ];
   }
-  // "open": omit includedPrimaryTypes so night_club / cake_shop / bakery /
-  // museum / etc. can surface; filterPredictionsBySourcing drops the rest.
+  // "open": omit includedPrimaryTypes; filterPredictionsByMap drops the rest.
 
   const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
     method: "POST",
@@ -371,13 +348,13 @@ async function enrichByPlaceIds(
   return out;
 }
 
-// Apply the sourcing channel policy to Google-only predictions. On-Mesita
-// rows always pass — they're already onboarded. For not_in_mesita rows,
+// Apply Discovery › Map to Google-only predictions. On-Mesita rows
+// always pass — they're already onboarded. For not_in_mesita rows,
 // batch-fetch primaryType + rating + reviewCount (Autocomplete omits them)
-// and drop any that fail evaluatePlaceForChannel.
-async function filterPredictionsBySourcing(
+// and drop any that fail evaluatePlaceForMap.
+async function filterPredictionsByMap(
   predictions: Prediction[],
-  policy: ChannelPolicy,
+  map: MapConfig,
   apiKey: string,
 ): Promise<Prediction[]> {
   const googleOnly = predictions.filter((p) => p.status === "not_in_mesita");
@@ -398,10 +375,6 @@ async function filterPredictionsBySourcing(
     if (p.status !== "not_in_mesita") return true;
     const sig = signalsByPlaceId.get(p.placeId);
     if (!sig) return false;
-    return evaluatePlaceForChannel(policy, sig, {
-      lat: sig.lat,
-      lng: sig.lng,
-      country: sig.country,
-    }).eligible;
+    return evaluatePlaceForMap(map, sig).eligible;
   });
 }

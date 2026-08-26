@@ -1,3 +1,5 @@
+import type { MapConfig } from "./discovery-config.ts";
+import { enabledNearbyTypes } from "./map-engine.ts";
 import type { ChannelPolicy } from "./sourcing.ts";
 
 export type PredictionStatus =
@@ -31,6 +33,11 @@ export function googleTypeFilterForPolicy(
   if (!policy) return "legacy";
   if (!policy.enabled || policy.families.length === 0) return "skip";
   return "open";
+}
+
+/** Discovery › Map: skip Google when every type battery is off. */
+export function googleTypeFilterForMap(map: MapConfig): GoogleTypeFilter {
+  return enabledNearbyTypes(map).length === 0 ? "skip" : "open";
 }
 
 export function mergePredictionsByPlaceId(

@@ -30,12 +30,11 @@ export type IntakeSettings = {
 const clampN = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.round(v)));
 
-/** Either GET failing disables the one Save — defaults must not overwrite live. */
+/** A failed GET disables Save — defaults must not overwrite live. */
 export function intakeSaveBlocked(
-  sourcingLoadError: string | null,
   settingsLoadError: string | null,
 ): string | null {
-  return sourcingLoadError ?? settingsLoadError;
+  return settingsLoadError;
 }
 
 export function clampFunnel(s: IntakeSettings): IntakeSettings {

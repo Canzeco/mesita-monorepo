@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
     admin,
     callerName: "admin-web-create-project",
     googlePlaceId: placeId,
-    sourcingChannel: "admin_add",
   });
   if (!created.ok) return json(created.body, created.status);
 

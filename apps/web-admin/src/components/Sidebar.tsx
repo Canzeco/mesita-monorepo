@@ -138,10 +138,9 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   // lives on Visits (who reads the proof); /ojo-config redirects there.
   // Models and Verification routes still redirect into General.
   { href: "/general-config", label: "General", Icon: Settings2 },
-  // INTAKE is one row for one story: which surfaces may find and add a place,
-  // then what Create and the nine enrich functions make of it. Sourcing's row
-  // and route are gone (2026-08-23) — /sourcing-config redirects here, and the
-  // channel matrix is Intake's "Before the place exists" band.
+  // INTAKE is one row for the Intaker: Models · Create · Enrich ·
+  // Functions. Search eligibility is Discovery › Map. /sourcing-config
+  // redirects there.
   INTAKE_PARENT,
   FILTERS_PARENT,
   VISITS_PARENT,
