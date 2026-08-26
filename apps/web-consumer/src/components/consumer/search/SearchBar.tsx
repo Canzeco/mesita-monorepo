@@ -1,7 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
-import { Search, X } from "lucide-react";
+import { Compass, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Shared by Search (discovery) and Visit (the wallet's place list, MESITA-1071).
@@ -21,7 +21,7 @@ type SearchBarProps = {
   onOpenScope?: () => void;
   /** ISO country shown on the chip; null renders "—". */
   countryCode?: string | null;
-  /** Fills the location circle when the map has a live or connected pin. */
+  /** Location is live or connected — the compass fills primary. */
   locationSet?: boolean;
 };
 
@@ -78,13 +78,14 @@ export function SearchBar({
             <span className="type-label min-w-[1.25rem] text-center font-semibold tracking-wide">
               {countryCode ?? "—"}
             </span>
-            <span
+            <Compass
               aria-hidden
+              strokeWidth={1.75}
               className={cn(
-                "h-2.5 w-2.5 rounded-full border",
+                "h-3.5 w-3.5",
                 locationSet
-                  ? "border-primary bg-primary"
-                  : "border-muted-foreground/50 bg-transparent",
+                  ? "text-primary"
+                  : "text-muted-foreground/50",
               )}
             />
           </button>

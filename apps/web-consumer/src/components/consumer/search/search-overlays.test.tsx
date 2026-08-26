@@ -50,7 +50,7 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("Filters");
   });
 
-  it("shows the country code and location circle on Search", () => {
+  it("shows the country code and a compass for location on Search", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -64,6 +64,7 @@ describe("SearchBar scope affordance", () => {
     );
     expect(html).toContain("MX");
     expect(html).toContain("location set");
+    expect(html).toContain("lucide-compass");
     expect(html).not.toContain("Filters");
     expect(html).not.toContain("SlidersHorizontal");
   });
