@@ -27,16 +27,18 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("map() is nearest 50 with opt-in Nearby Search fill gated by Map knobs", () => {
+  it("map() is Mesita 20 ∪ Nearby 20 with opt-in fill gated by Map knobs", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    expect(map?.process).toMatch(/Nearest 50/);
+    expect(map?.process).toMatch(/Closest 20 listed/);
+    expect(map?.process).toMatch(/union 20–40/);
     expect(map?.process).toMatch(/opts in/);
     expect(map?.process).toMatch(/googleFill/);
     expect(map?.process).toMatch(/Type batteries/);
     expect(map?.process).toMatch(/reloadMinKm/);
+    expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });
 

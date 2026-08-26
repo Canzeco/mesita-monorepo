@@ -13,7 +13,8 @@
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
 //   MAP       minRating · minReviews · minPopularity · googleFill · type
-//             batteries. Cap stays 50. Enforced by consumer-web-list-places.
+//             batteries. Two queries: Mesita 20 ∪ Nearby 20. Enforced by
+//             consumer-web-list-places.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
@@ -300,7 +301,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Nearest 50 by distance among places that clear Map floors: listed Mesita ∪ Google Nearby Search when the web client opts in and googleFill is on. Type batteries choose which Nearby calls fire. Unrated Google stubs drop when a rating or popularity floor is on. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm (and 20% of the visible width when zoomed out). Pins and rail are the same set. Country chip does not cut pins.",
+    process: "Closest 20 listed Mesita ∪ one Google Nearby Search of 20 among places that clear Map floors, when the web client opts in and googleFill is on. Merge by Place ID (Mesita wins); union 20–40. Type batteries ride that one Nearby call. Unrated Google stubs drop when a rating or popularity floor is on. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm (and 20% of the visible width when zoomed out). Pins and rail are the same set. Country chip does not cut pins.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,

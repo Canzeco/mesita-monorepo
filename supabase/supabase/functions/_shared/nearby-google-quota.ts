@@ -1,15 +1,15 @@
 // Per-IP Google Nearby fill quota (abuse guard for public list-places).
 //
 // consumer-web-list-places is verify_jwt = false. Web Search opt-in
-// `{ google: true, lat, lng }` spends the server GMP_KEY on five parallel
-// Nearby Search (New) calls. The 15s in-isolate cell cache and the 20/60s
+// `{ google: true, lat, lng }` spends the server GMP_KEY on one
+// Nearby Search (New) call. The 15s in-isolate cell cache and the 20/60s
 // isolate fan-out cap in nearby-places.ts do not bind across isolates, so a
 // unique-~1 km-cell spray is otherwise an independent billed budget per
 // isolate.
 //
 // Model: rolling 60 s window over public.nearby_google_attempts, counted
-// per ATTEMPT (recorded only when this isolate is about to fire the five
-// Nearby calls — not on a cache hit, in-flight join, or isolate-budget skip).
+// per ATTEMPT (recorded only when this isolate is about to fire the one
+// Nearby call — not on a cache hit, in-flight join, or isolate-budget skip).
 // Insert-then-count makes parallel bursts self-limiting — each request in
 // an N-wide burst sees the whole burst. A rejected attempt deletes its own
 // row so a guest who hit the cap recovers as the window rolls instead of

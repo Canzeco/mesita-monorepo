@@ -173,7 +173,7 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
-export const CATALOG_NEARBY_MAX = 50;
+export const CATALOG_NEARBY_MAX = 40;
 export const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
@@ -191,7 +191,7 @@ export type ViewportPlaces = {
   reloadMinKm?: number;
 };
 
-/** Search map catalog: closest 50 around a camera / guest pin. */
+/** Search map catalog: closest 20 listed ∪ Google Nearby 20 around a camera. */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },

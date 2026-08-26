@@ -1,16 +1,24 @@
-// Map catalog = Google Nearby Search (New) plus listed Mesita rows in the
-// same 50 km circle. Rank by distance from the camera (or guest) center.
-// Product cap 50. Google maxes each Nearby call at 20, so we fan out one
-// request per food/drink primary type and merge unique Place IDs.
+// Map catalog = two queries, then merge by Google Place ID (Mesita wins):
+//   1. closest MESITA_NEARBY_MAX listed rows in the 50 km circle
+//   2. one Google Nearby Search (New) of GOOGLE_NEARBY_MAX (DISTANCE)
+// Union is 20 when they agree, 40 when they do not. Google maxes a Nearby
+// call at 20, so one request with the enabled type batteries is enough —
+// a five-type fan-out existed only to fill a 50 mixed cap.
 
 import {
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
 } from "./google-places.ts";
-import { haversineKm, NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
+import {
+  haversineKm,
+  NEARBY_RADIUS_KM,
+  sortByDistance,
+  takeClosest,
+} from "./geo.ts";
 
-export const CATALOG_NEARBY_MAX = 50;
+export const MESITA_NEARBY_MAX = 20;
 export const GOOGLE_NEARBY_MAX = 20;
+export const CATALOG_NEARBY_MAX = MESITA_NEARBY_MAX + GOOGLE_NEARBY_MAX;
 /** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
  *  a close listed place that is older than 200 newer rows in the city must
  *  still win its Google Place ID, or it reappears as a yellow stub. */
@@ -110,8 +118,9 @@ async function searchNearbyOnce(
 
 const nearbyCache = new Map<string, { at: number; hits: NearbyHit[] }>();
 const nearbyInflight = new Map<string, Promise<NearbyHit[]>>();
-/** Per-isolate cap on Google fan-outs (five Nearby calls each). Isolates do
- *  not share this; it still bounds one spray against a warm isolate. */
+/** Per-isolate cap on Google Nearby calls (one Search per cache-miss cell).
+ *  Isolates do not share this; it still bounds one spray against a warm
+ *  isolate. */
 export const GOOGLE_FANOUT_MAX = 20;
 export const GOOGLE_FANOUT_WINDOW_MS = 60_000;
 let googleFanoutAt: number[] = [];
@@ -140,7 +149,7 @@ export function peekCachedNearbyPlaces(
 
 export type SearchNearbyOpts = {
   radiusM?: number;
-  /** Subset of NEARBY_TYPES. Omit = all five. Empty = no Google calls. */
+  /** Subset of NEARBY_TYPES. Omit = all five. Empty = no Google call. */
   types?: readonly string[];
   /** Called only by the request that starts the Nearby calls — not on
    *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
@@ -165,13 +174,13 @@ function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
   return types.filter((t) => allowed.has(t));
 }
 
-/** Closest Google food/drink places around `center`. Deduped by Place ID.
- *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
- *  spend five billed Nearby calls twice. HTTP / parse failures are returned
- *  (Mesita fill still shows) but never cached — a blip must not lock the
- *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out.
- *  Each isolate also caps cache-miss fan-outs (20 / 60s). Shared IP quota
- *  is `beforeFanout` (nearby-google-quota.ts), not a pre-call in list-places. */
+/** Closest Google food/drink places around `center`. One Nearby Search
+ *  (New) with the enabled primary types, max 20, DISTANCE rank. Same ~1 km
+ *  cell reuses a successful 15s result so a pan-idle does not spend a
+ *  billed call twice. HTTP / parse failures are returned (Mesita still
+ *  shows) but never cached. Concurrent same-cell pans share one in-flight
+ *  call. Each isolate also caps cache-miss calls (20 / 60s). Shared IP
+ *  quota is `beforeFanout` (nearby-google-quota.ts). */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
@@ -215,24 +224,9 @@ export async function searchNearbyPlaces(
       return [];
     }
     googleFanoutAt.push(Date.now());
-    const batches = await Promise.all(
-      types.map((type) =>
-        searchNearbyOnce(apiKey, center, radius, [type]),
-      ),
-    );
-    const byId = new Map<string, NearbyHit>();
-    let allOk = true;
-    for (const batch of batches) {
-      if (!batch.ok) {
-        allOk = false;
-        continue;
-      }
-      for (const row of batch.hits) {
-        if (!byId.has(row.placeId)) byId.set(row.placeId, row);
-      }
-    }
-    const hits = [...byId.values()];
-    if (allOk) nearbyCache.set(key, { at: Date.now(), hits });
+    const batch = await searchNearbyOnce(apiKey, center, radius, [...types]);
+    const hits = batch.ok ? batch.hits : [];
+    if (batch.ok) nearbyCache.set(key, { at: Date.now(), hits });
     resolveRun(hits);
     return hits;
   } catch (err) {
@@ -258,18 +252,27 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
-  limit = CATALOG_NEARBY_MAX,
 ): Array<NearbyMerged<T>> {
-  const byGoogleId = new Map<string, T>();
-  for (const row of mesita) {
-    const gid = row.google_place_id;
-    if (gid) byGoogleId.set(gid, row);
-  }
-  const extraGoogle = google.filter((hit) => !byGoogleId.has(hit.placeId));
   const inCircle = (lat: number | null, lng: number | null) =>
     haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
+  const mesitaTop = takeClosest(
+    mesita.filter((row) => inCircle(row.lat ?? null, row.lng ?? null)),
+    center,
+    MESITA_NEARBY_MAX,
+  );
+  const listedIds = new Set(
+    mesitaTop
+      .map((row) => row.google_place_id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const googleTop = takeClosest(
+    google.filter((hit) => inCircle(hit.lat, hit.lng)),
+    center,
+    GOOGLE_NEARBY_MAX,
+  );
+  const extraGoogle = googleTop.filter((hit) => !listedIds.has(hit.placeId));
   const combined = [
-    ...mesita.map((row) => ({
+    ...mesitaTop.map((row) => ({
       kind: "listed" as const,
       row,
       lat: row.lat ?? null,
@@ -281,8 +284,8 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
       lat: hit.lat,
       lng: hit.lng,
     })),
-  ].filter((item) => inCircle(item.lat, item.lng));
-  return takeClosest(combined, center, limit).map((item) =>
+  ];
+  return sortByDistance(combined, center.lat, center.lng).map((item) =>
     item.kind === "listed"
       ? { kind: "listed" as const, row: item.row }
       : { kind: "google" as const, hit: item.hit }

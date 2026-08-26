@@ -6,8 +6,8 @@
 //   • Top overlay: floating search bar. Far-right chip is country + location
 //     (two knobs, one sheet). Discovery filters stay on Swipe — they never
 //     cut this map and there is no Adjust control here.
-//   • Bottom overlay (idle): horizontal catalog rail of the closest 50
-//     around the camera (Google Nearby Search + listed Mesita). Panning
+//   • Bottom overlay (idle): horizontal catalog rail of the closest 20
+//     listed ∪ Google Nearby 20 around the camera. Panning
 //     the map reloads that set after a real camera move, not a one-pixel
 //     nudge. Tapping a map pin highlights + scrolls to the matching rail
 //     card; tapping a card opens the place page (Google-only stubs open
