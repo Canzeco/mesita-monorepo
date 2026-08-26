@@ -19,7 +19,7 @@ export const PARTNER_PERKS: readonly PartnerPerk[] = [
   },
   {
     id: "badge",
-    label: "Mesita Partner badge + magenta pin",
+    label: "Mesita Partner badge + red pin",
     listed: "no",
     partner: "yes",
   },

@@ -73,10 +73,10 @@ export const MAP_MINIMAL_STYLES = [
 export const MAP_CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
 // Search membership pins — same hexes as the results-row dots.
-// Partner = Mesita pink.500 (Pato's "red"); listed = gray; Google-only = yellow.
-export const MAP_PARTNER_PIN_COLOR = "#fb2b7b";
-export const MAP_LISTED_PIN_COLOR = "#9ca3af";
-export const MAP_GOOGLE_PIN_COLOR = "#EAB308";
+// Gray = not on Mesita; blue = listed, not partner; red = partner; black = selected.
+export const MAP_PARTNER_PIN_COLOR = "#ff2357";
+export const MAP_LISTED_PIN_COLOR = "#2563eb";
+export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
 /** @deprecated Use MAP_LISTED_PIN_COLOR — kept so older map surfaces compile. */
 export const MAP_WEB_PIN_COLOR = MAP_LISTED_PIN_COLOR;
 

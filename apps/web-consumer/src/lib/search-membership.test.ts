@@ -28,16 +28,16 @@ describe("search membership tones", () => {
     expect(placeMembershipTone({ from_google: true })).toBe("google");
   });
 
-  it("uses Mesita pink, a true gray, and a map-readable yellow", () => {
-    expect(membershipColor("partner")).toBe("#fb2b7b");
-    expect(membershipColor("listed")).toBe("#9ca3af");
-    expect(membershipColor("google")).toBe("#EAB308");
+  it("uses gray for Google-only, blue for listed, and red for partner", () => {
+    expect(membershipColor("partner")).toBe("#ff2357");
+    expect(membershipColor("listed")).toBe("#2563eb");
+    expect(membershipColor("google")).toBe("#9ca3af");
   });
 
   it("fills the selected pin black and leaves unselected membership colors", () => {
-    expect(pinFillColor("partner", false)).toBe("#fb2b7b");
-    expect(pinFillColor("listed", false)).toBe("#9ca3af");
-    expect(pinFillColor("google", false)).toBe("#EAB308");
+    expect(pinFillColor("partner", false)).toBe("#ff2357");
+    expect(pinFillColor("listed", false)).toBe("#2563eb");
+    expect(pinFillColor("google", false)).toBe("#9ca3af");
     expect(pinFillColor("partner", true)).toBe("#111111");
     expect(pinFillColor("listed", true)).toBe("#111111");
     expect(pinFillColor("google", true)).toBe("#111111");

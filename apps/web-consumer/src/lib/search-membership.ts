@@ -1,6 +1,6 @@
 // Consumer Search name-bar: membership is the colored point only.
-// Red = Mesita partner (plan), gray = on Mesita not partner, yellow = Google only.
-// Hexes match map pins in lib/map-defaults.ts.
+// Gray = not on Mesita; blue = listed, not partner; red = partner.
+// Hexes match map pins in lib/map-defaults.ts. Selected pin fill is black.
 
 import {
   MAP_GOOGLE_PIN_COLOR,
