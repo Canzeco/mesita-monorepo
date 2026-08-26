@@ -7,10 +7,12 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Catalog · Social (staged) · Chat prompt. Signals · Engines Soon.
+// Live HTML: Catalog · Map · Social (staged) · Chat prompt. Signals Soon.
 //
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
+//   MAP       minRating · minReviews · minPopularity · googleFill · type
+//             batteries. Cap stays 50. Enforced by consumer-web-list-places.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
 //   CHAT      system prompt. Blank = in-code Memo persona.
@@ -39,6 +41,7 @@ export type DiscoveryConfig = {
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
+  map: MapConfig;
   social: SocialConfig;
   chat: { prompt: string };
 };
@@ -57,6 +60,31 @@ export type SocialConfig = {
   minSeedEvents: number;
   horizonDays: number;
 };
+
+export const NEARBY_TYPE_KEYS = [
+  "restaurant",
+  "bar",
+  "cafe",
+  "night_club",
+  "bakery",
+] as const;
+export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
+
+export type MapConfig = {
+  minRating: number;
+  minReviews: number;
+  minPopularity: number;
+  googleFill: boolean;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
+export const NEARBY_TYPE_FIELDS: { key: NearbyTypeKey; label: string }[] = [
+  { key: "restaurant", label: "Restaurants" },
+  { key: "bar", label: "Bars" },
+  { key: "cafe", label: "Cafés" },
+  { key: "night_club", label: "Night clubs" },
+  { key: "bakery", label: "Bakeries" },
+];
 
 export type ParamField = {
   key: string;
@@ -94,6 +122,7 @@ export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
 export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
+export const MAP_MIN_POPULARITY_MAX = 1;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
 
@@ -110,6 +139,22 @@ export const DEFAULT_SOCIAL: SocialConfig = {
   eventsPerRail: 8,
   minSeedEvents: 1,
   horizonDays: 14,
+};
+
+export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
+  restaurant: true,
+  bar: true,
+  cafe: true,
+  night_club: true,
+  bakery: true,
+};
+
+export const DEFAULT_MAP: MapConfig = {
+  minRating: 0,
+  minReviews: 0,
+  minPopularity: 0,
+  googleFill: true,
+  types: DEFAULT_MAP_TYPES,
 };
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
@@ -145,6 +190,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
   catalog: DEFAULT_CATALOG,
+  map: DEFAULT_MAP,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
 };
@@ -185,7 +231,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Nearest 50 by distance: listed Mesita ∪ Google Nearby Search when the web client opts in. Google-only rows are yellow stubs. Over quota skips Google, not the catalog. Pins and rail are the same set. Country chip does not cut pins.",
+    process: "Nearest 50 by distance among places that clear Map floors: listed Mesita ∪ Google Nearby Search when the web client opts in and googleFill is on. Type batteries choose which Nearby calls fire. Unrated Google stubs drop when a rating or popularity floor is on. Over quota skips Google, not the catalog. Pins and rail are the same set. Country chip does not cut pins.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -457,6 +503,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     },
     engines,
     catalog: coerceCatalog(r.catalog),
+    map: coerceMap(r.map),
     social: coerceSocial(r.social),
     chat: {
       prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
@@ -513,6 +560,28 @@ export function coerceSocial(raw: unknown): SocialConfig {
         SOCIAL_HORIZON_DAYS_MAX,
       ),
     ),
+  };
+}
+
+export function coerceMap(raw: unknown): MapConfig {
+  const m = (raw ?? {}) as Record<string, unknown>;
+  const rawTypes = (m.types ?? {}) as Record<string, unknown>;
+  const types = {} as Record<NearbyTypeKey, boolean>;
+  for (const key of NEARBY_TYPE_KEYS) {
+    types[key] = typeof rawTypes[key] === "boolean"
+      ? rawTypes[key]
+      : DEFAULT_MAP.types[key];
+  }
+  return {
+    minRating: Math.round(
+      num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
+    ) / 10,
+    minReviews: Math.round(num(m.minReviews, DEFAULT_MAP.minReviews, 0, 100_000)),
+    minPopularity: Math.round(
+      num(m.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
+    ) / 100,
+    googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
+    types,
   };
 }
 

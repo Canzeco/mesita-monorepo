@@ -28,7 +28,7 @@ type UpdateDiscoveryConfigResult =
   | { ok: true; config: DiscoveryConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
-export type DiscoverySlice = "catalog" | "social" | "chat";
+export type DiscoverySlice = "catalog" | "social" | "chat" | "map";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -36,10 +36,11 @@ export async function updateDiscoveryConfig(
 ): Promise<UpdateDiscoveryConfigResult> {
   const live = await getDiscoveryConfig();
   if (!live.ok) return live;
-  const keys = new Set(slices ?? (["catalog", "social", "chat"] as const));
+  const keys = new Set(slices ?? (["catalog", "social", "chat", "map"] as const));
   const next: DiscoveryConfig = {
     ...live.config,
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
+    map: keys.has("map") ? config.map : live.config.map,
     social: keys.has("social") ? config.social : live.config.social,
     chat: keys.has("chat") ? config.chat : live.config.chat,
   };

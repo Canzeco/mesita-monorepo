@@ -1,8 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · params · slotting · filters · engines · catalog · social · chat.
-// Admin: Catalog live, Social staged, Chat prompt live. Signals · Engines Soon.
+// Keys: weights · params · slotting · filters · engines · catalog · map · social · chat.
+// Admin: Catalog live, Map live, Social staged, Chat prompt live. Signals Soon.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -81,6 +81,29 @@ export type SocialConfig = {
   horizonDays: number;
 };
 
+/** Google Nearby primary types the map may bill. Off = skip that call. */
+export const NEARBY_TYPE_KEYS = [
+  "restaurant",
+  "bar",
+  "cafe",
+  "night_club",
+  "bakery",
+] as const;
+export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
+
+/**
+ * Map pool policy. Cap stays 50 (copy, not a knob). Floors decide which of
+ * those 50 may appear; type batteries decide which Nearby calls fire.
+ * 0 on a floor = off. Independent of Swipe's `filters`.
+ */
+export type MapConfig = {
+  minRating: number;
+  minReviews: number;
+  minPopularity: number;
+  googleFill: boolean;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -91,6 +114,7 @@ export type DiscoveryConfig = {
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
+  map: MapConfig;
   social: SocialConfig;
   chat: { prompt: string };
 };
@@ -156,6 +180,25 @@ export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const SOCIAL_RAILS_CAP = 24;
+
+export const MAP_MIN_POPULARITY_MAX = 1;
+
+export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
+  restaurant: true,
+  bar: true,
+  cafe: true,
+  night_club: true,
+  bakery: true,
+};
+
+/** Defaults = yesterday's map: all types on, Google fill on, floors off. */
+export const DEFAULT_MAP: MapConfig = {
+  minRating: 0,
+  minReviews: 0,
+  minPopularity: 0,
+  googleFill: true,
+  types: DEFAULT_MAP_TYPES,
+};
 
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
@@ -284,6 +327,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     swipe: { ranked: true },
   },
   catalog: DEFAULT_CATALOG,
+  map: DEFAULT_MAP,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
 };
@@ -369,6 +413,26 @@ export function normalizeChatPrompt(raw: unknown): string {
   return raw.slice(0, CHAT_PROMPT_MAX);
 }
 
+export function normalizeMapConfig(raw: unknown): MapConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const rawTypes = (r.types ?? {}) as Record<string, unknown>;
+  const types = {} as Record<NearbyTypeKey, boolean>;
+  for (const key of NEARBY_TYPE_KEYS) {
+    types[key] = bool(rawTypes[key], DEFAULT_MAP.types[key]);
+  }
+  return {
+    minRating: Math.round(
+      num(r.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
+    ) / 10,
+    minReviews: Math.round(num(r.minReviews, DEFAULT_MAP.minReviews, 0, 100_000)),
+    minPopularity: Math.round(
+      num(r.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
+    ) / 100,
+    googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
+    types,
+  };
+}
+
 /**
  * Tolerant read: any missing or invalid key falls back to its default, and the
  * weights map is rebuilt from SIGNAL_KEYS so the stored blob can never disagree
@@ -449,6 +513,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     },
     engines,
     catalog: normalizeCatalogConfig(r.catalog),
+    map: normalizeMapConfig(r.map),
     social: normalizeSocialConfig(r.social),
     chat: {
       prompt: normalizeChatPrompt(
