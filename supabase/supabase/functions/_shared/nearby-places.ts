@@ -108,21 +108,36 @@ async function searchNearbyOnce(
 
 const nearbyCache = new Map<string, { at: number; hits: NearbyHit[] }>();
 const nearbyInflight = new Map<string, Promise<NearbyHit[]>>();
+/** Per-isolate cap on Google fan-outs (five Nearby calls each). Isolates do
+ *  not share this; it still bounds one spray against a warm isolate. */
+export const GOOGLE_FANOUT_MAX = 20;
+export const GOOGLE_FANOUT_WINDOW_MS = 60_000;
+let googleFanoutAt: number[] = [];
 
 function nearbyCellKey(center: { lat: number; lng: number }): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}`;
 }
 
+function allowGoogleFanout(now: number): boolean {
+  googleFanoutAt = googleFanoutAt.filter((at) => now - at < GOOGLE_FANOUT_WINDOW_MS);
+  if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) return false;
+  googleFanoutAt.push(now);
+  return true;
+}
+
 export function __resetNearbyGoogleCacheForTests(): void {
   nearbyCache.clear();
   nearbyInflight.clear();
+  googleFanoutAt = [];
 }
 
 /** Closest Google food/drink places around `center`. Deduped by Place ID.
  *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
  *  spend five billed Nearby calls twice. HTTP / parse failures are returned
  *  (Mesita fill still shows) but never cached — a blip must not lock the
- *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out. */
+ *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out.
+ *  Each isolate also caps cache-miss fan-outs (20 / 60s) so a unique-cell
+ *  spray cannot burn Places quota without bound on that isolate. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
@@ -134,6 +149,10 @@ export async function searchNearbyPlaces(
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
   const pending = nearbyInflight.get(key);
   if (pending) return pending;
+  if (!allowGoogleFanout(now)) {
+    console.warn("[nearby] isolate Google fan-out budget exhausted");
+    return [];
+  }
 
   const run = (async () => {
     const batches = await Promise.all(

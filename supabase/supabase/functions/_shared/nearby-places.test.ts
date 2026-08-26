@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   __resetNearbyGoogleCacheForTests,
+  GOOGLE_FANOUT_MAX,
   mergeNearbyCatalog,
   searchNearbyPlaces,
 } from "./nearby-places.ts";
@@ -188,6 +189,30 @@ Deno.test("searchNearbyPlaces: one type failure skips the cell cache", async () 
     assertEquals(a.length, 1);
     assertEquals(b.length, 1);
     assertEquals(n, 10);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: isolate fan-out budget skips extra cells", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    for (let i = 0; i <= GOOGLE_FANOUT_MAX; i++) {
+      await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
+    }
+    assertEquals(n, GOOGLE_FANOUT_MAX * 5);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
