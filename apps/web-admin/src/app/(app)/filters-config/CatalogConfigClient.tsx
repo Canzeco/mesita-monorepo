@@ -1,7 +1,7 @@
 "use client";
 
 // Catalog (live) + Social (staged) boxes. One client holds the blob so a
-// Catalog Save cannot wipe social. Signals · Engines stay Soon.
+// Catalog Save cannot wipe social. Map and Chat save their own slices.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LayoutGrid, Layers, Sparkles, Filter } from "lucide-react";

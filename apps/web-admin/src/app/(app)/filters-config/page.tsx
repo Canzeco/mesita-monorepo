@@ -2,11 +2,12 @@ import { Compass } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { CatalogConfigClient } from "./CatalogConfigClient";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
+import { MapConfigClient } from "./MapConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Catalog live, Social staged, Chat prompt + inventory live.
-// Signals · Engines stay Soon. Each box saves its slice against the live blob.
+// Discovery — Catalog live, Map live, Social staged, Chat prompt + inventory live.
+// Signals stay Soon. Each box saves its slice against the live blob.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -21,6 +22,11 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
+      <MapConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
       <DiscoveryConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
@@ -28,8 +34,8 @@ export default async function DiscoveryPage() {
       />
       <ConfigSoon
         Icon={Compass}
-        title="Signals and engines are coming soon"
-        body="Swipe still ranks from the last-saved blob. Search is a name bar plus an unranked map viewport — those knobs return when that architecture is stable."
+        title="Signals are coming soon"
+        body="Swipe still ranks from the last-saved blob. Map floors and Nearby type batteries are the Map box on this page."
         doc="Notion Docs › Discovery"
       />
     </div>

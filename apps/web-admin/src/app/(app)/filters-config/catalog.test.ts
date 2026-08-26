@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   coerceConfig,
   DEFAULT_CATALOG,
+  DEFAULT_MAP,
   DEFAULT_SOCIAL,
   ENGINES,
   SIGNALS,
@@ -26,13 +27,16 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("map() is nearest 50 with opt-in Nearby Search fill", () => {
+  it("map() is nearest 50 with opt-in Nearby Search fill gated by Map knobs", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
     expect(map?.process).toMatch(/Nearest 50/);
     expect(map?.process).toMatch(/opts in/);
+    expect(map?.process).toMatch(/googleFill/);
+    expect(map?.process).toMatch(/Type batteries/);
+    expect(map?.process).toMatch(/reloadMinKm/);
     expect(map?.process).not.toMatch(/under 10/);
   });
 
@@ -47,6 +51,20 @@ describe("Discovery function APIs", () => {
   it("coerceConfig defaults catalog on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
     expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
+  });
+
+  it("coerceConfig defaults map on an old blob and clamps knobs", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).map).toEqual(DEFAULT_MAP);
+    expect(
+      coerceConfig({
+        map: { minRating: 9, minPopularity: 4, types: { restaurant: false } },
+      }).map,
+    ).toEqual({
+      ...DEFAULT_MAP,
+      minRating: 5,
+      minPopularity: 1,
+      types: { ...DEFAULT_MAP.types, restaurant: false },
+    });
   });
 
   it("coerceConfig defaults social on an old blob and clamps knobs", () => {

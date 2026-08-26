@@ -9,7 +9,12 @@ import {
 } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
-import { viewportCenter } from "@/components/consumer/search/search-utils";
+import {
+  clampReloadMinKm,
+  nearbyReloadThresholdKm,
+  shouldReloadNearbyCatalog,
+  viewportCenter,
+} from "@/components/consumer/search/search-utils";
 import type { Place } from "@/lib/api/places";
 
 const SEARCH_DIR = join(__dirname);
@@ -146,6 +151,8 @@ describe("Search map catalog reloads nearby as the camera moves", () => {
     expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
     expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
+    expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
+    expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
   });
 });
@@ -218,6 +225,71 @@ describe("viewportCenter", () => {
     });
     expect(wrap.lat).toBeCloseTo(0.1);
     expect(wrap.lng).toBeCloseTo(180);
+  });
+});
+
+describe("shouldReloadNearbyCatalog", () => {
+  const last = { lat: 25.5, lng: -100.3 };
+  const cityBox = {
+    south: 25.4,
+    west: -100.4,
+    north: 25.6,
+    east: -100.2,
+  };
+  const wideBox = {
+    south: 20,
+    west: -110,
+    north: 30,
+    east: -90,
+  };
+
+  it("always loads the first paint", () => {
+    expect(shouldReloadNearbyCatalog(null, last, cityBox, 5)).toBe(true);
+  });
+
+  it("ignores a ~110 m nudge at city zoom", () => {
+    expect(
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.501, lng: -100.3 },
+        cityBox,
+        5,
+      ),
+    ).toBe(false);
+  });
+
+  it("reloads after a neighborhood-scale pan", () => {
+    expect(
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.554, lng: -100.3 },
+        cityBox,
+        5,
+      ),
+    ).toBe(true);
+  });
+
+  it("uses 20% of visible width when zoomed out", () => {
+    expect(nearbyReloadThresholdKm(100, 5)).toBe(20);
+    expect(nearbyReloadThresholdKm(10, 5)).toBe(5);
+    expect(clampReloadMinKm(99)).toBe(20);
+    expect(clampReloadMinKm(undefined)).toBe(5);
+    expect(
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.554, lng: -100.3 },
+        wideBox,
+        5,
+      ),
+    ).toBe(false);
+    expect(
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.5, lng: -96 },
+        wideBox,
+        5,
+      ),
+    ).toBe(true);
   });
 });
 

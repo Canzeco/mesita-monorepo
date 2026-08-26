@@ -18,13 +18,15 @@ export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
 
-const NEARBY_TYPES = [
+export const NEARBY_TYPES = [
   "restaurant",
   "bar",
   "cafe",
   "night_club",
   "bakery",
 ] as const;
+
+export type NearbyType = (typeof NEARBY_TYPES)[number];
 
 export type NearbyHit = {
   placeId: string;
@@ -114,10 +116,6 @@ export const GOOGLE_FANOUT_MAX = 20;
 export const GOOGLE_FANOUT_WINDOW_MS = 60_000;
 let googleFanoutAt: number[] = [];
 
-function nearbyCellKey(center: { lat: number; lng: number }): string {
-  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}`;
-}
-
 function pruneGoogleFanout(now: number): void {
   googleFanoutAt = googleFanoutAt.filter((at) => now - at < GOOGLE_FANOUT_WINDOW_MS);
 }
@@ -129,22 +127,43 @@ export function __resetNearbyGoogleCacheForTests(): void {
 }
 
 /** Warm 15s cell hit, or null. List-places uses this so a cache hit does not
- *  consume the shared IP quota — only a miss meters, then fan-out. */
+ *  consume the shared IP quota — only a miss meters, then fan-out. Types must
+ *  match the search that filled the cell. */
 export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
+  types?: readonly string[],
 ): NearbyHit[] | null {
-  const hit = nearbyCache.get(nearbyCellKey(center));
+  const hit = nearbyCache.get(nearbyCellKey(center, resolveNearbyTypes(types)));
   if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
   return null;
 }
 
 export type SearchNearbyOpts = {
   radiusM?: number;
-  /** Called only by the request that starts the five Nearby calls — not on
+  /** Subset of NEARBY_TYPES. Omit = all five. Empty = no Google calls. */
+  types?: readonly string[];
+  /** Called only by the request that starts the Nearby calls — not on
    *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
    *  to skip Google (quota deny). */
   beforeFanout?: () => Promise<boolean>;
 };
+
+function nearbyTypesKey(types: readonly string[]): string {
+  return [...types].sort().join(",") || "none";
+}
+
+function nearbyCellKey(
+  center: { lat: number; lng: number },
+  types: readonly string[] = NEARBY_TYPES,
+): string {
+  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${nearbyTypesKey(types)}`;
+}
+
+function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
+  if (!types) return NEARBY_TYPES;
+  const allowed = new Set<string>(NEARBY_TYPES);
+  return types.filter((t) => allowed.has(t));
+}
 
 /** Closest Google food/drink places around `center`. Deduped by Place ID.
  *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
@@ -158,11 +177,14 @@ export async function searchNearbyPlaces(
   center: { lat: number; lng: number },
   opts: SearchNearbyOpts | number = {},
 ): Promise<NearbyHit[]> {
-  const { radiusM, beforeFanout } = typeof opts === "number"
-    ? { radiusM: opts, beforeFanout: undefined }
+  const parsed = typeof opts === "number"
+    ? { radiusM: opts, beforeFanout: undefined, types: undefined }
     : opts;
-  const radius = radiusM ?? GOOGLE_NEARBY_RADIUS_M;
-  const key = nearbyCellKey(center);
+  const radius = parsed.radiusM ?? GOOGLE_NEARBY_RADIUS_M;
+  const beforeFanout = parsed.beforeFanout;
+  const types = resolveNearbyTypes(parsed.types);
+  if (types.length === 0) return [];
+  const key = nearbyCellKey(center, types);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -194,7 +216,7 @@ export async function searchNearbyPlaces(
     }
     googleFanoutAt.push(Date.now());
     const batches = await Promise.all(
-      NEARBY_TYPES.map((type) =>
+      types.map((type) =>
         searchNearbyOnce(apiKey, center, radius, [type]),
       ),
     );

@@ -188,6 +188,7 @@ export type ViewportPlaces = {
   places: Place[];
   overspan: boolean;
   totalInBox: number | null;
+  reloadMinKm?: number;
 };
 
 /** Search map catalog: closest 50 around a camera / guest pin. */
@@ -200,6 +201,7 @@ export async function apiFetchNearbyCatalog(
     places: Place[];
     overspan?: boolean;
     totalInBox?: number;
+    reloadMinKm?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
     lat: center.lat,
@@ -210,6 +212,10 @@ export async function apiFetchNearbyCatalog(
     places: (data.places ?? []).map(stripInsecurePhotos),
     overspan: data.overspan === true,
     totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
+    reloadMinKm:
+      typeof data.reloadMinKm === "number" && Number.isFinite(data.reloadMinKm)
+        ? data.reloadMinKm
+        : undefined,
   };
 }
 

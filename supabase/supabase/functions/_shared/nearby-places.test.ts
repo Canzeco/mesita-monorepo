@@ -1,13 +1,19 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
   GOOGLE_FANOUT_MAX,
+  NEARBY_TYPES,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
 } from "./nearby-places.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
+
+Deno.test("Nearby type batteries stay in lockstep with discovery_config.map", () => {
+  assertEquals([...NEARBY_TYPES], [...NEARBY_TYPE_KEYS]);
+});
 
 Deno.test("mergeNearbyCatalog: Mesita row wins the same Google Place ID", () => {
   const mesita = [
@@ -293,6 +299,58 @@ Deno.test("searchNearbyPlaces: beforeFanout runs only on the starting fan-out", 
     assertEquals(b.length, 1);
     assertEquals(gates, 1);
     assertEquals(fetches, 5);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: a type subset fans out only those calls and caches separately", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const a = await searchNearbyPlaces("k", CENTER, { types: ["cafe"] });
+    const b = await searchNearbyPlaces("k", CENTER, { types: ["cafe"] });
+    assertEquals(a.length, 1);
+    assertEquals(b.length, 1);
+    assertEquals(n, 1);
+    assertEquals(peekCachedNearbyPlaces(CENTER, ["cafe"])?.length, 1);
+    assertEquals(peekCachedNearbyPlaces(CENTER), null);
+    await searchNearbyPlaces("k", CENTER);
+    assertEquals(n, 6);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: empty types skip Google", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const got = await searchNearbyPlaces("k", CENTER, { types: [] });
+    assertEquals(got, []);
+    assertEquals(n, 0);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();

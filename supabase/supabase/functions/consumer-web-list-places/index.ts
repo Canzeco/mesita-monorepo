@@ -22,9 +22,10 @@
 //     so a close Mesita row outside the 1000 scan does not become a stub.
 //     Google fill is metered per connecting IP (CF-Connecting-IP / rightmost
 //     XFF, 45/60s) plus a 600/60s global cap, only when this isolate is about
-//     to fire the five Nearby calls. Over quota, an in-flight join, or an
-//     isolate-budget skip does not mint a ledger row. Over quota skips
-//     Google, not the catalog.
+//     to fire the enabled Nearby type calls. Over quota, an in-flight join, or
+//     an isolate-budget skip does not mint a ledger row. Over quota skips
+//     Google, not the catalog. Operator Map knobs (`discovery_config.map`)
+//     floor which listed/Google rows may appear and which type batteries fire.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -40,6 +41,12 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
+import {
+  admitMapCatalog,
+  enabledNearbyTypes,
+  listedMapFilters,
+  mapShouldFillGoogle,
+} from "../_shared/map-engine.ts";
 import {
   applyBboxPredicate,
   decideBbox,
@@ -157,6 +164,8 @@ type CardRow = {
   lat?: number | null;
   lng?: number | null;
   distance_km?: number | null;
+  google_stars_overall?: number | null;
+  google_review_count?: number | null;
 };
 
 Deno.serve(async (req) => {
@@ -179,7 +188,7 @@ Deno.serve(async (req) => {
   // but Search does not send it — a tight camera box is how 4 pins shipped.
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
-  let googleFill = false;
+  let clientGoogle = false;
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
@@ -187,7 +196,7 @@ Deno.serve(async (req) => {
       limit = clampIntRange(body.limit, 1, MAX_LIMIT);
     }
     nearbyDecision = decideNearby(body as Record<string, unknown>);
-    googleFill = nearbyDecision.mode === "ok" &&
+    clientGoogle = nearbyDecision.mode === "ok" &&
       wantsGoogleFill(body as Record<string, unknown>);
     if (nearbyDecision.mode === "none") {
       bboxDecision = decideBbox(body as Record<string, unknown>);
@@ -215,28 +224,26 @@ Deno.serve(async (req) => {
     return json({ ok: true, places: [], overspan: true });
   }
 
-  // Pool admission comes from the Filters box, shared with Swipe. The
-  // enrichment gate MESITA-1228 hardcoded here is now `filters.requireReady`,
-  // still defaulted ON: Map must not show a place whose pipeline has not
-  // landed 'ready', because a half-enriched card has no description, no images
-  // and no hours — a broken listing rather than a pending one. Applied as a
-  // PREDICATE so `limit` fills with eligible rows instead of being spent on
-  // ineligible ones.
-  //
-  // Operator maxDistanceKm is Swipe's radius — never pass guest geo into
-  // applyDiscoveryFilters here. Nearby uses its own large radius + distance
-  // order, then Google fill. Viewport bbox remains a camera rectangle for
-  // non-Search callers.
+  // Nearby pool admission: global operator filters plus Map floors
+  // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
+  // Nearby uses its own large radius + distance order. Pay / Home GET and
+  // bbox callers keep global filters only. Google fill is client opt-in AND
+  // operator googleFill AND at least one type battery on.
   const efEnv = readEFEnv();
-  const filters = efEnv.ok
-    ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
-    : DISCOVERY_DEFAULTS.filters;
+  const cfg = efEnv.ok
+    ? await loadDiscoveryConfig(adminClient(efEnv.env))
+    : DISCOVERY_DEFAULTS;
+  const isNearby = nearbyDecision.mode === "ok";
+  const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map);
+  const nearbyTypes = enabledNearbyTypes(cfg.map);
+  const filters = isNearby
+    ? listedMapFilters(cfg.filters, cfg.map)
+    : cfg.filters;
 
   // MESITA-1283: list returns MANY places per request — the card projection
   // (every public column except the five enrichment-filled jsonb ones), not
   // the full single-place read. Nothing here reads those five; verified
   // against discovery-filters.ts and this file before wiring.
-  const isNearby = nearbyDecision.mode === "ok";
   const isBbox = !isNearby && bboxDecision.mode === "ok";
   const wantCount = isBbox;
   const selectCols = googleFill
@@ -244,7 +251,7 @@ Deno.serve(async (req) => {
     : PLACE_CARD_COLUMNS;
   const scanLimit = isNearby ? NEARBY_SCAN_LIMIT : limit;
   const nearbyRadiusKm = nearbyDecision.mode === "ok"
-    ? (googleFill ? NEARBY_RADIUS_KM : nearbyDecision.radiusKm)
+    ? (clientGoogle ? NEARBY_RADIUS_KM : nearbyDecision.radiusKm)
     : NEARBY_RADIUS_KM;
   const base = supabase
     .from("profiles")
@@ -282,7 +289,8 @@ Deno.serve(async (req) => {
 
     if (!googleFill) {
       const cap = Math.min(limit, CATALOG_NEARBY_MAX);
-      const listed = sortByDistance(mesitaRows, lat, lng)
+      const admitted = admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity);
+      const listed = sortByDistance(admitted.listed, lat, lng)
         .filter((row) =>
           haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <=
             nearbyRadiusKm
@@ -296,22 +304,24 @@ Deno.serve(async (req) => {
         ok: true,
         places: withFamilyKeysList(listed),
         mode: "nearby",
+        reloadMinKm: cfg.map.reloadMinKm,
       });
     }
 
     let googleHits: NearbyHit[] = [];
     const gmp = readGooglePlacesKey();
     if (gmp.ok) {
-      const cached = peekCachedNearbyPlaces(center);
+      const cached = peekCachedNearbyPlaces(center, nearbyTypes);
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
         // Shared connecting-IP ledger only when THIS isolate is about to
-        // fire the five Nearby calls. In-flight same-cell joins and isolate
-        // budget skips must not mint a row. Identity is CF-Connecting-IP /
-        // rightmost XFF, not the spoofable leftmost hop.
+        // fire the enabled Nearby type calls. In-flight same-cell joins and
+        // isolate budget skips must not mint a row. Identity is
+        // CF-Connecting-IP / rightmost XFF, not the spoofable leftmost hop.
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
         googleHits = await searchNearbyPlaces(gmp.key, center, {
+          types: nearbyTypes,
           beforeFanout: () =>
             consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
               (quota) => quota.allow,
@@ -349,7 +359,13 @@ Deno.serve(async (req) => {
       }
     }
     const cap = Math.min(limit, CATALOG_NEARBY_MAX);
-    const merged = mergeNearbyCatalog(mesitaRows, googleHits, center, cap);
+    const admitted = admitMapCatalog(
+      mesitaRows,
+      googleHits,
+      cfg.map,
+      cfg.params.popularity,
+    );
+    const merged = mergeNearbyCatalog(admitted.listed, admitted.google, center, cap);
     const places = withFamilyKeysList(
       merged.map((item) => {
         if (item.kind === "listed") {
@@ -369,7 +385,12 @@ Deno.serve(async (req) => {
         category?: string | null;
       }>,
     );
-    return json({ ok: true, places, mode: "nearby" });
+    return json({
+      ok: true,
+      places,
+      mode: "nearby",
+      reloadMinKm: cfg.map.reloadMinKm,
+    });
   }
 
   const places = withFamilyKeysList((data ?? []) as unknown as CardRow[]);

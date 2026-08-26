@@ -178,6 +178,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
+  assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
   assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
 });
@@ -242,4 +243,26 @@ Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () =>
   assertEquals(normalizeDiscoveryConfig({ chat: { prompt: 12 } }).chat.prompt, "");
   const tooLong = "x".repeat(12_001);
   assertEquals(normalizeDiscoveryConfig({ chat: { prompt: tooLong } }).chat.prompt.length, 12_000);
+});
+
+Deno.test("map knobs default on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.map, DISCOVERY_DEFAULTS.map);
+  const clamped = normalizeDiscoveryConfig({
+    map: {
+      minRating: 9,
+      minReviews: -2,
+      minPopularity: 4,
+      reloadMinKm: 99,
+      googleFill: "yes",
+      types: { restaurant: false, ghost: true },
+    },
+  });
+  assertEquals(clamped.map.minRating, 5);
+  assertEquals(clamped.map.minReviews, 0);
+  assertEquals(clamped.map.minPopularity, 1);
+  assertEquals(clamped.map.reloadMinKm, 20);
+  assertEquals(clamped.map.googleFill, true);
+  assertEquals(clamped.map.types.restaurant, false);
+  assertEquals(clamped.map.types.bakery, true);
 });
