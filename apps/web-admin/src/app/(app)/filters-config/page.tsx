@@ -5,7 +5,7 @@ import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Catalog live, Social staged, Chat prompt live.
+// Discovery — Catalog live, Social staged, Chat prompt + inventory live.
 // Signals · Engines stay Soon. Each box saves its slice against the live blob.
 export const dynamic = "force-dynamic";
 
