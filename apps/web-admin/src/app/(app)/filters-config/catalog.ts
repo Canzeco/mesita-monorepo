@@ -7,7 +7,8 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Catalog · Map · Social (staged) · Chat prompt. Signals Soon.
+// Live HTML: Catalog · Map · Social (staged) · Chat prompt + inventory.
+// Signals Soon.
 //
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
@@ -15,7 +16,8 @@
 //             batteries. Cap stays 50. Enforced by consumer-web-list-places.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
-//   CHAT      system prompt. Blank = in-code Memo persona.
+//   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
+//             are listed in the box — display only, not knobs.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
@@ -129,6 +131,68 @@ export const MAP_RELOAD_MIN_KM_MIN = 1;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
+
+/** Candidate Chat connections. Display only — OpenAI is the only live turn. */
+export const CHAT_CONNECTIONS = [
+  {
+    name: "OpenAI chat completions",
+    status: "Live",
+    note: "Guest thread + Discovery prompt, every turn. models_config.memo.",
+  },
+  {
+    name: "Google Places Text Search (New)",
+    status: "Soon",
+    note: "Default place lookup. Not Nearby (that is Map). Not Autocomplete (that is the Search bar).",
+  },
+  {
+    name: "Perplexity (web search)",
+    status: "Soon",
+    note: "Own OpenAI sub-agent with a specialized prompt; that agent calls Perplexity in the background. Not a raw Perplexity chat.",
+  },
+  {
+    name: "Internal search EFs",
+    status: "Soon",
+    note: "Named Mesita lookups (recall / search places) — not a service-role from() from Chat.",
+  },
+] as const;
+
+/** Indexes Chat may query later. This pass: the two place embeddings only. */
+export const CHAT_INDEXES = [
+  {
+    name: "places.name_embedding",
+    status: "Soon",
+    note: "Name match. Same vector Map's searchbar already queries.",
+  },
+  {
+    name: "places.embedding",
+    status: "Soon",
+    note: "Summary / vibe match. Deliberately not the About field.",
+  },
+] as const;
+
+/** Later ideas — not this beta. Listed so Discovery owns the brainstorm. */
+export const CHAT_LATER = [
+  {
+    name: "Place Details after a Text Search hit",
+    note: "Hours and identity once we have a Place ID — not a first-call API.",
+  },
+  {
+    name: "Cheaper thread ingest",
+    note: "Rolling summary, retrieval, or cached prefixes. MESITA-1342.",
+  },
+  {
+    name: "mesita_knowledge",
+    note: "House vocabulary (classes, Passport, plans) as a closed tool, not embeddings over Docs.",
+  },
+  {
+    name: "Guest clock + location",
+    note: "Daypart and where, without inventing that we looked a place up.",
+  },
+  {
+    name: "Catalog / Swipe as tools",
+    note: "Rails and the ranked deck as named APIs, not Chat pretending it is those engines.",
+  },
+] as const;
 
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,

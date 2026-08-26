@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, ListPlus, Loader2, Search } from "lucide-react";
 
 import { CldrRegionInput } from "@/components/CldrRegionInput";
@@ -11,10 +12,10 @@ import { estimateSearchCost } from "./search-cost";
 import {
   MAX_QUERIES,
   MAX_RESULTS,
+  RESULTS_OPTIONS,
 } from "./search-tab-constants";
 import { splitSearchBarInput } from "./google-place-ids";
 import { QueryRow } from "./SearchQueryRows";
-import { SearchParametersSection } from "./SearchParametersSection";
 import { ResultSummary } from "./SearchResultSummary";
 
 const SEARCH_CSV_HEADER =
@@ -57,8 +58,6 @@ export function SearchTab({
   const [bar, setBar] = useState("");
   const [regionCode, setRegionCode] = useState("");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
-  const [minRating, setMinRating] = useState(0);
-  const [minReviews, setMinReviews] = useState(0);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,8 +93,6 @@ export function SearchTab({
           placeIds,
           regionCode: regionCode.trim().toUpperCase(),
           maxResultsPerQuery: maxResults,
-          minRating,
-          minUserRatingCount: minReviews,
         }),
       });
       const data: SearchResponse | SearchErrorResponse = await res.json();
@@ -180,26 +177,51 @@ export function SearchTab({
                 : ""}
               {overLimit ? ` · over the ${MAX_QUERIES} max` : ""}
               {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
+              {" · "}
+              <Link
+                href="/enricher-config#s-sourcing"
+                className="text-foreground underline-offset-2 hover:underline"
+              >
+                Intake › Sourcing
+              </Link>
             </span>
-            <CldrRegionInput
-              value={regionCode}
-              onChange={setRegionCode}
-              disabled={running}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                role="group"
+                aria-label="Results per query"
+                className="inline-flex h-8 items-center gap-0.5 rounded-lg border border-border bg-background p-0.5"
+              >
+                {RESULTS_OPTIONS.map((o) => {
+                  const selected = o.value === maxResults;
+                  return (
+                    <button
+                      key={o.value}
+                      type="button"
+                      disabled={running}
+                      aria-pressed={selected}
+                      onClick={() => setMaxResults(o.value)}
+                      className={
+                        "inline-flex h-7 min-w-8 items-center justify-center rounded-md px-2 text-xs font-medium tabular-nums disabled:opacity-50 " +
+                        (selected
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      {o.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <CldrRegionInput
+                compact
+                value={regionCode}
+                onChange={setRegionCode}
+                disabled={running}
+              />
+            </div>
           </div>
         </div>
       </form>
-
-      <div className="mt-4">
-        <SearchParametersSection
-          maxResults={maxResults}
-          minRating={minRating}
-          minReviews={minReviews}
-          onMaxResultsChange={setMaxResults}
-          onMinRatingChange={setMinRating}
-          onMinReviewsChange={setMinReviews}
-        />
-      </div>
 
       {error && (
         <div className="border-destructive/40 bg-destructive/5 text-destructive mt-8 flex items-start gap-3 rounded-2xl border p-4 text-sm">

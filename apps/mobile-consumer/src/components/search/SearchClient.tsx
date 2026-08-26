@@ -42,7 +42,7 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
-import { buildSearchMapPins, pinGesture } from '@/lib/search-membership';
+import { buildSearchMapPins, overlayPinDecision } from '@/lib/search-membership';
 import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
@@ -106,7 +106,9 @@ export function SearchClient() {
   const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
+  // Overlay pin first-tap stash (Google + overlay-only Mesita) so a later
+  // tap can still open after the suggest list is gone. Keyed on pin.id.
+  const [heldOverlay, setHeldOverlay] = useState<PlacePrediction | null>(null);
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
@@ -187,7 +189,7 @@ export function SearchClient() {
     const filtered = applyDiscoveryFilters(catalog, filters);
     // A search pick / pin lands here regardless of the active filters, so keep
     // the selection pinned even when the filters would exclude it — otherwise
-    // the red pin the user just asked for silently disappears.
+    // the black selected pin the user just asked for silently disappears.
     if (selectedId && !filtered.some((p) => p.id === selectedId)) {
       const held = catalog.find((p) => p.id === selectedId);
       if (held) return [held, ...filtered];
@@ -298,9 +300,10 @@ export function SearchClient() {
     setRetryTick((t) => t + 1);
   }, [trimmed]);
 
-  // Selects a place on the map (red pin + rail card) and returns to the idle
-  // map — shared by search picks and tapping a pin directly. Clearing the
-  // query is what ends the Places session (updateQuery mints the next token).
+  // Selects a place on the map (black `#111111` pin + rail card) and returns
+  // to the idle map — shared by search picks and tapping a pin directly.
+  // Clearing the query is what ends the Places session (updateQuery mints
+  // the next token).
   const selectPlace = (id: string) => {
     updateQuery('');
     setSearchOpen(false);
@@ -346,7 +349,7 @@ export function SearchClient() {
   };
 
   const selectCatalogPlace = (place: Place) => {
-    setHeldGoogle(googlePredictionFromPlace(place));
+    setHeldOverlay(googlePredictionFromPlace(place));
     selectPlace(place.id);
   };
 
@@ -355,38 +358,45 @@ export function SearchClient() {
       predictions.find(
         (p) => p.mesitaId === pin.id || p.placeId === pin.id,
       ) ??
-      (heldGoogle &&
-      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
-        ? heldGoogle
+      (heldOverlay &&
+      (heldOverlay.placeId === pin.id || heldOverlay.mesitaId === pin.id)
+        ? heldOverlay
         : null);
-    if (pinGesture(selectedId, pin.id) === 'open') {
-      if (prediction && prediction.status === 'not_in_mesita') {
-        handlePickGoogle(prediction);
-        return;
-      }
-      const place = catalog.find((p) => p.id === pin.id);
-      if (place) {
-        openCatalogPlace(place);
-        return;
-      }
-      if (prediction) {
-        handlePickMesita(prediction);
-      }
-      return;
-    }
-    if (prediction && prediction.status === 'not_in_mesita') {
-      setHeldGoogle(prediction);
-      setRailCollapsed(false);
-      setSelectedId(pin.id);
-      return;
-    }
-    setHeldGoogle(null);
-    if (prediction) {
-      handlePickMesita(prediction);
-      return;
-    }
     const place = catalog.find((p) => p.id === pin.id);
-    if (place) selectCatalogPlace(place);
+    const action = overlayPinDecision({
+      selectedId,
+      pinId: pin.id,
+      googleOnly: prediction?.status === 'not_in_mesita',
+      inCatalog: Boolean(place),
+      hasOverlay: Boolean(prediction),
+    });
+    switch (action) {
+      case 'open-google':
+        if (prediction) handlePickGoogle(prediction);
+        return;
+      case 'open-catalog':
+        if (place) openCatalogPlace(place);
+        return;
+      case 'open-mesita-slug':
+        if (prediction) handlePickMesita(prediction);
+        return;
+      case 'select-google':
+      case 'select-mesita-overlay':
+        if (prediction) setHeldOverlay(prediction);
+        setRailCollapsed(false);
+        setSelectedId(pin.id);
+        return;
+      case 'select-mesita-catalog':
+        setHeldOverlay(null);
+        if (prediction) {
+          handlePickMesita(prediction);
+          return;
+        }
+        if (place) selectCatalogPlace(place);
+        return;
+      case 'noop':
+        return;
+    }
   };
 
   const handleAdd = (prediction: PlacePrediction) => {

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Check, Copy, Download, SlidersHorizontal, Star } from "lucide-react";
 
 import type { SearchResponse } from "@/lib/places-types";
@@ -47,10 +48,13 @@ export function ResultSummary({
           </p>
           {filtersActive && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-foreground/60 inline-flex items-center gap-1 type-eyebrow">
+              <Link
+                href="/enricher-config#s-sourcing"
+                className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 type-eyebrow"
+              >
                 <SlidersHorizontal className="h-3 w-3" />
-                Filters
-              </span>
+                Intake floor
+              </Link>
               {result.minRating > 0 && (
                 <span className="bg-background/70 text-foreground/80 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium">
                   <Star className="h-3 w-3 fill-current" />

@@ -20,9 +20,9 @@ describe("TicketSkeleton is the one ticket loading silhouette", () => {
     );
   });
 
-  it("the silhouette is chrome + rail + rounded-panel pass, not three bars", () => {
+  it("the silhouette is chrome + rail + TicketHero radius pass, not three bars", () => {
     const skeleton = read("components/consumer/rewards/TicketSkeleton.tsx");
-    expect(skeleton).toContain("rounded-panel");
+    expect(skeleton).toContain("TICKET_HERO_RADIUS_CLASS");
     expect(skeleton).toContain("rounded-full");
     expect(skeleton).toContain("border-b");
   });

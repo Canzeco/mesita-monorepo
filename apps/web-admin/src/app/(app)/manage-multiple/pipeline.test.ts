@@ -48,14 +48,26 @@ describe("the page chrome names the three surfaces", () => {
 
 describe("spend calculator stays off this page", () => {
   it("does not mount CostCalculator — Create/Enrich estimates live on Intake", () => {
-    const params = readFileSync(join(here, "SearchParametersSection.tsx"), "utf8");
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
     const intakeTab = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
     const costUi = readFileSync(join(here, "search-cost.tsx"), "utf8");
-    expect(params).not.toContain("CostCalculator");
     expect(searchTab).not.toContain("CostCalculator");
     expect(intakeTab).not.toContain("computeEnrichmentCost");
     expect(intakeTab).not.toContain("costSeed");
     expect(costUi).not.toContain("export function CostCalculator");
+  });
+});
+
+describe("Google Search is a bar, not a parameter panel", () => {
+  it("keeps Results in the footer and does not author quality floors", () => {
+    const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
+    const constants = readFileSync(join(here, "search-tab-constants.ts"), "utf8");
+    expect(searchTab).toContain("RESULTS_OPTIONS");
+    expect(searchTab).toContain("/enricher-config#s-sourcing");
+    expect(searchTab).not.toContain("SearchParametersSection");
+    expect(searchTab).not.toContain("minRating");
+    expect(searchTab).not.toContain("minUserRatingCount");
+    expect(constants).not.toContain("RATING_OPTIONS");
+    expect(constants).not.toContain("REVIEW_OPTIONS");
   });
 });

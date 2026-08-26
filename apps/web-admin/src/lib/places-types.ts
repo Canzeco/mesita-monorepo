@@ -35,9 +35,9 @@ export type SearchResponse = {
   uniqueCount: number;
   regionCode: string;
   maxResultsPerQuery: number;
-  // Quality filters the backend applied (0 = off), echoed back so the UI
-  // can label results. filteredOutCount is the pre-dedupe tally of places
-  // the filters removed across all queries.
+  // Intake › Sourcing `admin_search` floors the backend applied (0 = off),
+  // echoed so the UI can label results. filteredOutCount is the pre-dedupe
+  // tally of places those floors removed across all queries.
   minRating: number;
   minUserRatingCount: number;
   filteredOutCount: number;

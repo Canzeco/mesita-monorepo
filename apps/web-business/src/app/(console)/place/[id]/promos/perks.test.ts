@@ -16,5 +16,8 @@ describe("PARTNER_PERKS", () => {
     expect(PARTNER_PERKS[0]?.listed).toBe("yes");
     expect(PARTNER_PERKS[0]?.partner).toBe("yes");
     expect(PARTNER_PERKS.filter((r) => r.listed === "no")).toHaveLength(6);
+    expect(PARTNER_PERKS.find((r) => r.id === "badge")?.label).toBe(
+      "Mesita Partner badge + red pin",
+    );
   });
 });

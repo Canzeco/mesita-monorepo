@@ -312,7 +312,9 @@ export type EligibilityResult =
 export type SourcingConfigRow = Partial<Record<ChannelKey, unknown>>;
 
 // Read one channel slice from app_config.sourcing_config, coerced with the
-// launch-policy fallback. Shared by add-paths and search-paths.
+// launch-policy fallback. Shared by add-paths and search-paths. Callers
+// must not accept a request-body override of minRating/minReviews — this
+// blob is the only Google quality-floor SoT (MESITA-1348).
 export async function readChannelPolicy(
   admin: SupabaseClient,
   channel: ChannelKey,

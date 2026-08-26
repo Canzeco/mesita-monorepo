@@ -2,7 +2,7 @@
 
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. Membership is the leading colored point only —
-// red = Mesita partner, gray = on Mesita not partner, yellow = Google only.
+// gray = not on Mesita, blue = listed not partner, red = partner.
 // Tapping an on-Mesita row selects the place on the map; tapping a Google-only
 // row opens the not-on-Mesita preview sheet.
 
