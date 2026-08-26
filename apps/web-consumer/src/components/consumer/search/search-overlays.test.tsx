@@ -100,6 +100,7 @@ describe("Search map catalog reloads nearby as the camera moves", () => {
     );
     expect(read("search-catalog-overlays.tsx")).toContain("Finding nearby");
     expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
+    expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
   });
 });
 

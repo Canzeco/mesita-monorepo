@@ -100,6 +100,22 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
+export const SEARCH_NEARBY_LIMIT = 50;
+
+/** Search map: nearest `limit` listed places to the pin. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = SEARCH_NEARBY_LIMIT,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    'consumer-web-list-places',
+    { lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
+}
+
 export async function apiRecommendDeck(
   client: SupabaseClient,
   input: RecommendDeckInput = {},

@@ -173,6 +173,7 @@ export async function apiFetchPublicPlaces(
 
 export const LIST_PLACES_MAX = 200;
 export const CATALOG_NEARBY_MAX = 50;
+export const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
@@ -199,7 +200,6 @@ export async function apiFetchNearbyCatalog(
     overspan?: boolean;
     totalInBox?: number;
   }>(client, "consumer-web-list-places", {
-    nearby: true,
     lat: center.lat,
     lng: center.lng,
     limit,
@@ -211,7 +211,17 @@ export async function apiFetchNearbyCatalog(
   };
 }
 
-/** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
+/** Same catalog as `apiFetchNearbyCatalog`, places array only. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = SEARCH_NEARBY_LIMIT,
+): Promise<Place[]> {
+  const { places } = await apiFetchNearbyCatalog(client, origin, limit);
+  return places;
+}
+
+/** Optional camera rectangle. Search does not use this as the default pool. */
 export async function apiFetchPlacesInBbox(
   client: SupabaseClient,
   bbox: PlacesBbox,

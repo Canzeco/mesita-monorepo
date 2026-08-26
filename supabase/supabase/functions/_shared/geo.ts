@@ -34,8 +34,16 @@ export function radiusBoundingBox(
   return { latDelta, lngDelta };
 }
 
-/** Viewport span clamp for consumer-web-list-places. Degrees, not km. */
+/** Viewport span clamp for the optional bbox POST. Degrees, not km. */
 export const BBOX_MAX_SPAN_DEG = 0.75;
+
+/** Search map default: big enough that a city camera never yields 4 pins. */
+export const NEARBY_DEFAULT_RADIUS_KM = 500;
+export const NEARBY_MAX_RADIUS_KM = 2000;
+/** Internal scan before distance-sort. Response `limit` still slices to 50. */
+export const NEARBY_SCAN_LIMIT = 1000;
+/** Google Nearby Search (New) caps the circle at 50 km. */
+export const NEARBY_RADIUS_KM = 50;
 
 export type GeoBbox = {
   south: number;
@@ -67,69 +75,8 @@ function lngSpanDeg(west: number, east: number): number {
 }
 
 function wrapLng(lng: number): number {
-  let x = lng;
-  while (x <= -180) x += 360;
-  while (x > 180) x -= 360;
-  return x;
-}
-
-/** Search map catalog radius. Google Nearby Search (New) caps the circle at 50 km. */
-export const NEARBY_RADIUS_KM = 50;
-
-export type NearbyDecision =
-  | { mode: "none" }
-  | { mode: "invalid" }
-  | { mode: "ok"; center: { lat: number; lng: number } };
-
-/** POST `{ nearby: true, lat, lng }`. nearby wins over bbox when both are sent. */
-export function decideNearby(body: Record<string, unknown>): NearbyDecision {
-  if (body.nearby !== true && body.nearby !== "true") return { mode: "none" };
-  const lat = finiteNumber(body.lat);
-  const lng = finiteNumber(body.lng);
-  if (
-    lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 ||
-    lng > 180
-  ) {
-    return { mode: "invalid" };
-  }
-  return { mode: "ok", center: { lat, lng } };
-}
-
-export function circleBbox(
-  center: { lat: number; lng: number },
-  radiusKm: number,
-): GeoBbox {
-  const { latDelta, lngDelta } = radiusBoundingBox(center.lat, radiusKm);
-  return {
-    south: Math.max(-90, center.lat - latDelta),
-    north: Math.min(90, center.lat + latDelta),
-    west: wrapLng(center.lng - lngDelta),
-    east: wrapLng(center.lng + lngDelta),
-  };
-}
-
-export function bboxCenter(bbox: GeoBbox): { lat: number; lng: number } {
-  const lat = (bbox.south + bbox.north) / 2;
-  if (bbox.west <= bbox.east) {
-    return { lat, lng: (bbox.west + bbox.east) / 2 };
-  }
-  let lng = bbox.west + lngSpanDeg(bbox.west, bbox.east) / 2;
-  if (lng > 180) lng -= 360;
-  return { lat, lng };
-}
-
-export function takeClosest<T extends { lat?: number | null; lng?: number | null }>(
-  rows: T[],
-  center: { lat: number; lng: number },
-  limit: number,
-): T[] {
-  return [...rows]
-    .sort((a, b) => {
-      const da = haversineKm(center.lat, center.lng, a.lat ?? null, a.lng ?? null);
-      const db = haversineKm(center.lat, center.lng, b.lat ?? null, b.lng ?? null);
-      return da - db;
-    })
-    .slice(0, limit);
+  const x = ((((lng + 180) % 360) + 360) % 360) - 180;
+  return x === -180 ? 180 : x;
 }
 
 /** POST body: all four numbers or none. GET callers never send these keys. */
@@ -154,6 +101,85 @@ export function decideBbox(body: Record<string, unknown>): BboxDecision {
   const span = Math.max(north - south, lngSpanDeg(west, east));
   if (span > BBOX_MAX_SPAN_DEG) return { mode: "overspan" };
   return { mode: "ok", bbox: { south, west, north, east } };
+}
+
+export type NearbyDecision =
+  | { mode: "none" }
+  | { mode: "invalid" }
+  | { mode: "ok"; lat: number; lng: number; radiusKm: number };
+
+/**
+ * POST nearby: both lat+lng, or neither. Partial / non-finite is invalid.
+ * Nearby wins over bbox when both are present — Search sends only lat/lng.
+ */
+export function decideNearby(body: Record<string, unknown>): NearbyDecision {
+  const latPresent = body.lat != null;
+  const lngPresent = body.lng != null;
+  if (!latPresent && !lngPresent) return { mode: "none" };
+  if (latPresent !== lngPresent) return { mode: "invalid" };
+
+  const lat = finiteNumber(body.lat);
+  const lng = finiteNumber(body.lng);
+  if (lat == null || lng == null) return { mode: "invalid" };
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return { mode: "invalid" };
+
+  let radiusKm = NEARBY_DEFAULT_RADIUS_KM;
+  if (body.radiusKm != null) {
+    const r = finiteNumber(body.radiusKm);
+    if (r == null || r <= 0) return { mode: "invalid" };
+    radiusKm = Math.min(NEARBY_MAX_RADIUS_KM, r);
+  }
+  return { mode: "ok", lat, lng, radiusKm };
+}
+
+export function nearbyBbox(
+  lat: number,
+  lng: number,
+  radiusKm: number,
+): GeoBbox {
+  const { latDelta, lngDelta } = radiusBoundingBox(lat, radiusKm);
+  return {
+    south: Math.max(-90, lat - latDelta),
+    north: Math.min(90, lat + latDelta),
+    west: wrapLng(lng - lngDelta),
+    east: wrapLng(lng + lngDelta),
+  };
+}
+
+export function circleBbox(
+  center: { lat: number; lng: number },
+  radiusKm: number,
+): GeoBbox {
+  return nearbyBbox(center.lat, center.lng, radiusKm);
+}
+
+export function bboxCenter(bbox: GeoBbox): { lat: number; lng: number } {
+  const lat = (bbox.south + bbox.north) / 2;
+  if (bbox.west <= bbox.east) {
+    return { lat, lng: (bbox.west + bbox.east) / 2 };
+  }
+  let lng = bbox.west + lngSpanDeg(bbox.west, bbox.east) / 2;
+  if (lng > 180) lng -= 360;
+  return { lat, lng };
+}
+
+export function sortByDistance<T extends { lat?: number | null; lng?: number | null }>(
+  rows: T[],
+  lat: number,
+  lng: number,
+): T[] {
+  return [...rows].sort((a, b) =>
+    haversineKm(lat, lng, a.lat ?? null, a.lng ?? null) -
+    haversineKm(lat, lng, b.lat ?? null, b.lng ?? null)
+  );
+}
+
+export function takeClosest<T extends { lat?: number | null; lng?: number | null }>(
+  rows: T[],
+  center: { lat: number; lng: number },
+  limit: number,
+): T[] {
+  return sortByDistance(rows, center.lat, center.lng).slice(0, limit);
 }
 
 /** Rectangle only — never haversine-trim the corners. west > east is dateline. */

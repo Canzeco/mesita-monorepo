@@ -13,10 +13,12 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // THREE POST SHAPES:
-//   { nearby: true, lat, lng, limit? } — Search map catalog. Closest 50 in a
-//     50 km circle: listed Mesita ∪ Google Nearby Search (New). Distance
-//     order from the camera / guest pin. Google-only rows are stubs.
-//   { south, west, north, east, limit? } — listed pins inside the camera
+//   { lat, lng, limit? } — Search map catalog. Closest 50: listed Mesita in
+//     a large radius ∪ Google Nearby Search (New) in 50 km. Distance order
+//     from the camera / guest pin. Google-only rows are stubs. Do not order
+//     Mesita by created_at — an old close listed place must still win its
+//     Google Place ID.
+//   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home / mobile: global newest-first.
 //
@@ -33,14 +35,14 @@ import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import {
   applyBboxPredicate,
-  circleBbox,
   decideBbox,
   decideNearby,
-  NEARBY_RADIUS_KM,
+  haversineKm,
+  nearbyBbox,
+  NEARBY_SCAN_LIMIT,
 } from "../_shared/geo.ts";
 import {
   CATALOG_NEARBY_MAX,
-  MESITA_NEARBY_POOL,
   mergeNearbyCatalog,
   searchNearbyPlaces,
   type NearbyHit,
@@ -50,7 +52,7 @@ import { readGooglePlacesKey } from "../_shared/google-places.ts";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
-function googleStub(hit: NearbyHit): Record<string, unknown> {
+function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, unknown> {
   return {
     id: `g:${hit.placeId}`,
     slug: hit.placeId,
@@ -97,6 +99,7 @@ function googleStub(hit: NearbyHit): Record<string, unknown> {
     content_status: "ready",
     googleOnly: true,
     from_google: true,
+    distance_km: distanceKm,
   };
 }
 
@@ -107,15 +110,38 @@ function stripGooglePlaceId<T extends { google_place_id?: unknown }>(
   return rest;
 }
 
+function roundedKm(
+  lat: number,
+  lng: number,
+  rowLat: number | null | undefined,
+  rowLng: number | null | undefined,
+): number | null {
+  const km = haversineKm(lat, lng, rowLat ?? null, rowLng ?? null);
+  if (!Number.isFinite(km)) return null;
+  return Math.round(km * 10) / 10;
+}
+
 type ListBody = {
   limit?: number;
   nearby?: boolean;
   lat?: number;
   lng?: number;
+  radiusKm?: number;
   south?: number;
   west?: number;
   north?: number;
   east?: number;
+};
+
+type CardRow = {
+  id: string;
+  google_place_id?: string | null;
+  name?: string | null;
+  google_name?: string | null;
+  category?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  distance_km?: number | null;
 };
 
 Deno.serve(async (req) => {
@@ -133,8 +159,9 @@ Deno.serve(async (req) => {
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
   // a query string (?limit=… for raw GETs). Body wins if both are present.
-  // Nearby + viewport bbox are POST-only. GET ignores geo so Pay / Home /
-  // mobile no-geo callers stay on today's global newest-first path.
+  // Geo is POST-only. GET / omitted lat+lng (Pay, Home) stay newest-first.
+  // Nearby (lat+lng) is Search's pool. Optional bbox stays for other callers
+  // but Search does not send it — a tight camera box is how 4 pins shipped.
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
@@ -178,21 +205,26 @@ Deno.serve(async (req) => {
   // PREDICATE so `limit` fills with eligible rows instead of being spent on
   // ineligible ones.
   //
-  // Operator maxDistanceKm is Swipe's radius. Map never sends guest geo
-  // here, so that filter stays off. Nearby Search is a different question:
-  // the closest 50 around the camera (50 km circle + Google fill). Viewport
-  // bbox remains listed-in-rectangle for leftover box callers.
+  // Operator maxDistanceKm is Swipe's radius — never pass guest geo into
+  // applyDiscoveryFilters here. Nearby uses its own large radius + distance
+  // order, then Google fill. Viewport bbox remains a camera rectangle for
+  // non-Search callers.
   const efEnv = readEFEnv();
   const filters = efEnv.ok
     ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
     : DISCOVERY_DEFAULTS.filters;
 
+  // MESITA-1283: list returns MANY places per request — the card projection
+  // (every public column except the five enrichment-filled jsonb ones), not
+  // the full single-place read. Nothing here reads those five; verified
+  // against discovery-filters.ts and this file before wiring.
   const isNearby = nearbyDecision.mode === "ok";
   const isBbox = !isNearby && bboxDecision.mode === "ok";
   const wantCount = isBbox;
   const selectCols = isNearby
     ? `${PLACE_CARD_COLUMNS}, google_place_id`
     : PLACE_CARD_COLUMNS;
+  const scanLimit = isNearby ? NEARBY_SCAN_LIMIT : limit;
   const base = supabase
     .from("profiles")
     .select(selectCols, wantCount ? { count: "exact" } : undefined);
@@ -204,47 +236,27 @@ Deno.serve(async (req) => {
   if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
-      circleBbox(nearbyDecision.center, NEARBY_RADIUS_KM),
+      nearbyBbox(nearbyDecision.lat, nearbyDecision.lng, nearbyDecision.radiusKm),
     );
   } else if (bboxDecision.mode === "ok") {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
-  let data: unknown[] | null = null;
-  let error: { message: string } | null = null;
-  let count: number | null = null;
-
-  if (isNearby) {
-    // Distance rank happens in mergeNearbyCatalog. Newest-first would drop
-    // an old listed place inside the 50 km box and let Google paint it as
-    // a yellow stub.
-    const nearby = await filtered.limit(MESITA_NEARBY_POOL);
-    data = nearby.data;
-    error = nearby.error;
-  } else {
-    const page = await filtered
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    data = page.data;
-    error = page.error;
-    count = page.count ?? null;
-  }
+  // Nearby must not order by created_at. Newest-N in a city-scale box drops
+  // an old listed place and lets Google paint it as a yellow stub.
+  const page = isNearby
+    ? await filtered.limit(scanLimit)
+    : await filtered.order("created_at", { ascending: false }).limit(scanLimit);
+  const { data, error, count } = page;
 
   if (error) {
     return json({ ok: false, error: error.message }, 500);
   }
 
   if (nearbyDecision.mode === "ok") {
-    const center = nearbyDecision.center;
-    const mesitaRows = (data ?? []) as Array<{
-      id: string;
-      google_place_id?: string | null;
-      lat?: number | null;
-      lng?: number | null;
-      name?: string | null;
-      google_name?: string | null;
-      category?: string | null;
-    }>;
+    const { lat, lng } = nearbyDecision;
+    const center = { lat, lng };
+    const mesitaRows = (data ?? []) as unknown as CardRow[];
     let googleHits: NearbyHit[] = [];
     const gmp = readGooglePlacesKey();
     if (gmp.ok) {
@@ -253,31 +265,28 @@ Deno.serve(async (req) => {
     const cap = Math.min(limit, CATALOG_NEARBY_MAX);
     const merged = mergeNearbyCatalog(mesitaRows, googleHits, center, cap);
     const places = withFamilyKeysList(
-      merged.map((item) =>
-        item.kind === "listed"
-          ? stripGooglePlaceId(item.row)
-          : googleStub(item.hit)
-      ) as Array<{
+      merged.map((item) => {
+        if (item.kind === "listed") {
+          const row = stripGooglePlaceId(item.row);
+          return {
+            ...row,
+            distance_km: roundedKm(lat, lng, row.lat, row.lng),
+          };
+        }
+        return googleStub(
+          item.hit,
+          roundedKm(lat, lng, item.hit.lat, item.hit.lng),
+        );
+      }) as Array<{
         name?: string | null;
         google_name?: string | null;
         category?: string | null;
       }>,
     );
-    return json({
-      ok: true,
-      places,
-      overspan: false,
-      totalInBox: places.length,
-    });
+    return json({ ok: true, places, mode: "nearby" });
   }
 
-  const places = withFamilyKeysList(
-    (data ?? []) as Array<{
-      name?: string | null;
-      google_name?: string | null;
-      category?: string | null;
-    }>,
-  );
+  const places = withFamilyKeysList((data ?? []) as unknown as CardRow[]);
   if (isBbox) {
     return json({
       ok: true,
