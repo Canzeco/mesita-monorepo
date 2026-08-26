@@ -47,6 +47,7 @@ import {
 import { errMsg } from '@/lib/utils';
 
 const SUGGEST_DEBOUNCE_MS = 300;
+const SEARCH_NEARBY_LIMIT = 50;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
@@ -123,7 +124,7 @@ export function SearchClient() {
         const rows = await apiFetchNearbyPlaces(
           supabase,
           { lat: originLat, lng: originLng },
-          50,
+          SEARCH_NEARBY_LIMIT,
         );
         if (!cancelled) {
           setPlaces(rows);

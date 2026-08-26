@@ -62,7 +62,7 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
-const SEARCH_NEARBY_LIMIT = 50;
+const SEARCH_NEARBY_LIMIT = 50; // catalog cap — not a viewport slice
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   const placeId = place.google_place_id;
