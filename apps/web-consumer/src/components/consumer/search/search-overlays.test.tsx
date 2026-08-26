@@ -305,3 +305,15 @@ describe("Search catalog reload UI", () => {
     expect(html).not.toContain("filters");
   });
 });
+
+describe("GooglePlaceSheet loads the first Places photo on open only", () => {
+  it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
+    const sheet = read("GooglePlaceSheet.tsx");
+    expect(sheet).toContain("fetchGooglePlacePreview");
+    expect(sheet).toMatch(/if \(!open \|\| !prediction \|\| !apiKey\) return/);
+    expect(sheet).toContain("h-44");
+    expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");
+    expect(read("SearchClient.tsx")).not.toContain("fetchGooglePlacePreview");
+    expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
+  });
+});
