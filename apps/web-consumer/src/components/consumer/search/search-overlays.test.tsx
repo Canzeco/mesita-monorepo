@@ -147,11 +147,18 @@ describe("Search map catalog reloads nearby as the camera moves", () => {
   });
 });
 
-describe("Search pick and map center respect filters", () => {
-  it("keeps an explicit On Mesita pick on the map when filters cut it", () => {
+describe("Search map has no discovery filters", () => {
+  it("does not cut the nearby catalog with Swipe predicates", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toMatch(/filtered\.some\(\(p\) => p\.id === selectedId\)/);
-    expect(src).toContain("picked ? [picked, ...filtered]");
+    expect(src).not.toContain("applyDiscoveryFilters");
+    expect(src).not.toContain("useDiscoveryFilters");
+    expect(src).not.toContain("DiscoveryFilters");
+    expect(src).not.toContain("onOpenFilters");
+    expect(src).not.toContain("filtersActive");
+    expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
+    expect(read("search-catalog-overlays.tsx")).not.toContain(
+      "No places match these filters",
+    );
   });
 
   it("recenters the map on the location param, not only the device", () => {
@@ -249,7 +256,6 @@ const RAIL_PLACE = {
 const railProps = {
   idle: true,
   catalogCount: 1,
-  filtersActive: false,
   railCollapsed: false,
   railIndex: 0,
   selectedId: null as string | null,
@@ -259,7 +265,6 @@ const railProps = {
   onRailScroll: () => {},
   onSelectPlace: () => {},
   onOpenPlace: () => {},
-  onOpenFilters: () => {},
   setRailCardRef: () => {},
 };
 
@@ -289,5 +294,14 @@ describe("Search catalog reload UI", () => {
     expect(html).toContain("Updating nearby");
     expect(html).toContain("Cosmo San Pedro");
     expect(html).toContain("opacity-55");
+  });
+
+  it("empty nearby state has no Adjust control", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay {...railProps} places={[]} catalogCount={0} />,
+    );
+    expect(html).toContain("No places to show here yet");
+    expect(html).not.toContain("Adjust");
+    expect(html).not.toContain("filters");
   });
 });
