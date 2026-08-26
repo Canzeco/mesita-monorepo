@@ -27,7 +27,12 @@ import {
   apiSuggestPlaces,
   type PlacePrediction,
 } from '@/lib/api/place-search';
-import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
+import {
+  apiFetchNearbyPlaces,
+  SEARCH_NEARBY_LIMIT,
+  type Place,
+} from '@/lib/api/places';
+import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -100,6 +105,7 @@ export function SearchClient() {
   const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
+  const nearbyOrigin = location ?? MONTERREY_CENTER;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -108,14 +114,18 @@ export function SearchClient() {
     let cancelled = false;
     void (async () => {
       try {
-        const rows = await apiFetchPublicPlaces(supabase, 200);
+        const rows = await apiFetchNearbyPlaces(
+          supabase,
+          nearbyOrigin,
+          SEARCH_NEARBY_LIMIT,
+        );
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);
         }
       } catch (err) {
         if (!cancelled) {
-          setFetchError(errMsg(err, "Couldn't load places."));
+          setFetchError(errMsg(err, "Couldn't load nearby places."));
         }
       } finally {
         if (!cancelled) setCatalogLoading(false);
@@ -124,7 +134,7 @@ export function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [nearbyOrigin.lat, nearbyOrigin.lng]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
