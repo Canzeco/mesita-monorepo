@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { ENGINES, SIGNALS } from "./catalog";
+import {
+  coerceConfig,
+  DEFAULT_CATALOG,
+  DEFAULT_SOCIAL,
+  ENGINES,
+  SIGNALS,
+} from "./catalog";
 
 describe("Discovery function APIs", () => {
   it("every signal is a stored-index function — no vendor API at rank time", () => {
@@ -28,6 +34,36 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Nearest 50/);
     expect(map?.process).toMatch(/opts in/);
     expect(map?.process).not.toMatch(/under 10/);
+  });
+
+  it("catalog() is live rails over Mesita search, no vendor API", () => {
+    const catalog = ENGINES.find((e) => e.key === "catalog");
+    expect(catalog?.state).toBe("LIVE");
+    expect(catalog?.apis).toEqual([]);
+    expect(catalog?.process).toMatch(/vibe-query/i);
+    expect(catalog?.process).not.toMatch(/Parked/i);
+  });
+
+  it("coerceConfig defaults catalog on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
+    expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
+  });
+
+  it("coerceConfig defaults social on an old blob and clamps knobs", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).social).toEqual(DEFAULT_SOCIAL);
+    expect(coerceConfig({ social: { seedCount: 99, horizonDays: 400 } }).social).toEqual({
+      ...DEFAULT_SOCIAL,
+      seedCount: 20,
+      horizonDays: 90,
+    });
+  });
+
+  it("social() stays parked and names events, not places", () => {
+    const social = ENGINES.find((e) => e.key === "social");
+    expect(social?.state).toBe("PARKED");
+    expect(social?.process).toMatch(/events/i);
+    expect(social?.input).toMatch(/events/i);
+    expect(social?.process).not.toMatch(/Check-ins/);
   });
 
   it("chat() is live OpenAI conversation — tools come later", () => {

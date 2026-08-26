@@ -1,0 +1,48 @@
+// Generated Catalog rails: vibe queries that are NOT Atlas category slugs.
+// Catalog mixes two sources: occupied Atlas categories (seed) and this bank
+// (generated-from-zero). The EF samples `generatedCount` on each load.
+
+export type VibeQuery = { key: string; label: string; query: string };
+
+export const CATALOG_VIBE_QUERIES: VibeQuery[] = [
+  { key: "date-night", label: "Date night", query: "romantic date night dinner" },
+  { key: "late-tacos", label: "Late-night tacos", query: "late night tacos street food" },
+  { key: "rooftop", label: "Rooftops", query: "rooftop bar terrace city view" },
+  { key: "natural-wine", label: "Natural wine", query: "natural wine bar small plates" },
+  { key: "breakfast", label: "Breakfast", query: "breakfast brunch cafe" },
+  { key: "live-music", label: "Live music", query: "live music venue jazz concert" },
+  { key: "cheap-eats", label: "Cheap eats", query: "cheap eats casual local food" },
+  { key: "fine-dining", label: "Fine dining", query: "fine dining tasting menu" },
+  { key: "seafood", label: "Seafood", query: "fresh seafood oyster bar" },
+  { key: "vegetarian", label: "Plant-based", query: "vegetarian vegan plant based" },
+  { key: "coffee", label: "Coffee", query: "specialty coffee third wave cafe" },
+  { key: "cocktails", label: "Cocktails", query: "craft cocktails speakeasy bar" },
+  { key: "mezcal", label: "Mezcal", query: "mezcal bar agave spirits" },
+  { key: "pizza", label: "Pizza", query: "wood fired pizza" },
+  { key: "sushi", label: "Sushi", query: "sushi omakase japanese" },
+  { key: "bakery", label: "Bakeries", query: "bakery pastry bread" },
+  { key: "ice-cream", label: "Ice cream", query: "ice cream gelato dessert" },
+  { key: "family", label: "Family table", query: "family friendly restaurant kids" },
+  { key: "groups", label: "Big groups", query: "large group restaurant sharing" },
+  { key: "quiet", label: "Quiet rooms", query: "quiet restaurant conversation" },
+  { key: "outdoor", label: "Al fresco", query: "outdoor seating patio garden" },
+  { key: "after-work", label: "After work", query: "after work drinks happy hour" },
+  { key: "sunday", label: "Sunday lunch", query: "sunday lunch family comida" },
+  { key: "cantina", label: "Cantinas", query: "traditional cantina mexican" },
+  { key: "market", label: "Market food", query: "food market stall local" },
+  { key: "noodles", label: "Noodles", query: "ramen noodles asian" },
+  { key: "burgers", label: "Burgers", query: "burger smash burger" },
+  { key: "steak", label: "Steak", query: "steakhouse grilled meat" },
+  { key: "hidden", label: "Hidden gems", query: "hidden gem neighborhood restaurant" },
+  { key: "new", label: "Just opened", query: "new restaurant recently opened" },
+  { key: "dance", label: "Dance floor", query: "club dancing nightlife" },
+  { key: "wine-dinner", label: "Wine dinner", query: "wine pairing dinner" },
+  { key: "chocolate", label: "Chocolate", query: "chocolate dessert cafe" },
+  { key: "juice", label: "Juice & bowls", query: "juice bar acai healthy bowls" },
+  { key: "tapas", label: "Tapas", query: "tapas small plates spanish" },
+  { key: "korean", label: "Korean", query: "korean barbecue fried chicken" },
+  { key: "italian", label: "Italian", query: "italian pasta trattoria" },
+  { key: "middle-east", label: "Levant", query: "middle eastern mezze hummus" },
+  { key: "breakfast-tacos", label: "Morning tacos", query: "breakfast tacos morning" },
+  { key: "chef", label: "Chef's table", query: "chef driven tasting restaurant" },
+];

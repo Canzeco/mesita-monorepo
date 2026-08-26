@@ -7,7 +7,14 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Chat prompt. Signals · Engines stay Soon (MESITA-1337).
+// Live HTML: Catalog · Social (staged) · Chat prompt. Signals · Engines Soon.
+//
+//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
+//             Enforced by consumer-web-list-catalog.
+//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
+//             horizonDays. Staged — no Social/events engine yet.
+//   CHAT      system prompt. Blank = in-code Memo persona.
+//
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
 
@@ -31,7 +38,24 @@ export type DiscoveryConfig = {
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  catalog: CatalogConfig;
+  social: SocialConfig;
   chat: { prompt: string };
+};
+
+export type CatalogConfig = {
+  seedCount: number;
+  generatedCount: number;
+  placesPerRail: number;
+  minSeedPlaces: number;
+};
+
+export type SocialConfig = {
+  seedCount: number;
+  generatedCount: number;
+  eventsPerRail: number;
+  minSeedEvents: number;
+  horizonDays: number;
 };
 
 export type ParamField = {
@@ -60,8 +84,33 @@ export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
 export const MIN_RATING_MAX = 5;
 export const MAX_DISTANCE_KM_MAX = 200;
+export const CATALOG_COUNT_MAX = 20;
+export const CATALOG_PLACES_PER_RAIL_MIN = 4;
+export const CATALOG_PLACES_PER_RAIL_MAX = 20;
+export const CATALOG_MIN_SEED_PLACES_MAX = 20;
+export const SOCIAL_COUNT_MAX = 20;
+export const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
+export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
+export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
+export const SOCIAL_HORIZON_DAYS_MIN = 1;
+export const SOCIAL_HORIZON_DAYS_MAX = 90;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
+
+export const DEFAULT_CATALOG: CatalogConfig = {
+  seedCount: 8,
+  generatedCount: 8,
+  placesPerRail: 8,
+  minSeedPlaces: 2,
+};
+
+export const DEFAULT_SOCIAL: SocialConfig = {
+  seedCount: 6,
+  generatedCount: 6,
+  eventsPerRail: 8,
+  minSeedEvents: 1,
+  horizonDays: 14,
+};
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
@@ -95,6 +144,8 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
+  catalog: DEFAULT_CATALOG,
+  social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
 };
 
@@ -156,9 +207,9 @@ export const ENGINES: {
     label: "Catalog",
     fn: "catalog()",
     input: "Ready pool.",
-    process: "Parked. The page redirects; the pill is coming-soon.",
-    output: "A grid, when unparked.",
-    state: "PARKED",
+    process: "Random Atlas seed rails plus vibe-query rails. Mesita embedding search per query; ILIKE if embed fails. No Google.",
+    output: "Stacked catalog rails.",
+    state: "LIVE",
     wired: null,
     apis: [],
   },
@@ -177,9 +228,9 @@ export const ENGINES: {
     key: "social",
     label: "Social",
     fn: "social()",
-    input: "Check-ins, likes, rewards, stories.",
-    process: "Parked. An engine only — there is no Social signal.",
-    output: "A live feed, when unparked.",
+    input: "Upcoming events at listed places (happenings, not venues).",
+    process: "Parked. Staged Discovery knobs persist; no events engine yet. Will query events, not places.",
+    output: "Event rails on Home › Social, when unparked.",
     state: "PARKED",
     wired: null,
     apis: [],
@@ -405,11 +456,63 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    catalog: coerceCatalog(r.catalog),
+    social: coerceSocial(r.social),
     chat: {
       prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
         : DEFAULT_CONFIG.chat.prompt,
     },
+  };
+}
+
+export function coerceCatalog(raw: unknown): CatalogConfig {
+  const c = (raw ?? {}) as Record<string, unknown>;
+  return {
+    seedCount: Math.round(num(c.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX)),
+    generatedCount: Math.round(
+      num(c.generatedCount, DEFAULT_CATALOG.generatedCount, 0, CATALOG_COUNT_MAX),
+    ),
+    placesPerRail: Math.round(
+      num(
+        c.placesPerRail,
+        DEFAULT_CATALOG.placesPerRail,
+        CATALOG_PLACES_PER_RAIL_MIN,
+        CATALOG_PLACES_PER_RAIL_MAX,
+      ),
+    ),
+    minSeedPlaces: Math.round(
+      num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
+    ),
+  };
+}
+
+export function coerceSocial(raw: unknown): SocialConfig {
+  const s = (raw ?? {}) as Record<string, unknown>;
+  return {
+    seedCount: Math.round(num(s.seedCount, DEFAULT_SOCIAL.seedCount, 0, SOCIAL_COUNT_MAX)),
+    generatedCount: Math.round(
+      num(s.generatedCount, DEFAULT_SOCIAL.generatedCount, 0, SOCIAL_COUNT_MAX),
+    ),
+    eventsPerRail: Math.round(
+      num(
+        s.eventsPerRail,
+        DEFAULT_SOCIAL.eventsPerRail,
+        SOCIAL_EVENTS_PER_RAIL_MIN,
+        SOCIAL_EVENTS_PER_RAIL_MAX,
+      ),
+    ),
+    minSeedEvents: Math.round(
+      num(s.minSeedEvents, DEFAULT_SOCIAL.minSeedEvents, 1, SOCIAL_MIN_SEED_EVENTS_MAX),
+    ),
+    horizonDays: Math.round(
+      num(
+        s.horizonDays,
+        DEFAULT_SOCIAL.horizonDays,
+        SOCIAL_HORIZON_DAYS_MIN,
+        SOCIAL_HORIZON_DAYS_MAX,
+      ),
+    ),
   };
 }
 

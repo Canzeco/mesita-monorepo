@@ -47,7 +47,7 @@ export function DiscoveryConfigClient({
   }, []);
 
   const dirty = useMemo(
-    () => JSON.stringify(cfg) !== JSON.stringify(saved),
+    () => JSON.stringify(cfg.chat) !== JSON.stringify(saved.chat),
     [cfg, saved],
   );
 
@@ -55,7 +55,7 @@ export function DiscoveryConfigClient({
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg);
+      const r = await updateDiscoveryConfig(cfg, ["chat"]);
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);
