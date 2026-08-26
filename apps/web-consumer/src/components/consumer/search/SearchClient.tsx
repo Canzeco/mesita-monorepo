@@ -58,7 +58,7 @@ import {
   newSessionToken,
   withDistances,
 } from "./search-utils";
-import { buildSearchMapPins } from "@/lib/search-membership";
+import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
 
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
@@ -102,6 +102,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Overlay Google pin first-tap stash so a later tap can still open the sheet
+  // after the suggest list is gone.
+  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
   // From-Google preview sheet. `preview` survives the close (only `open`
   // flips) so the exit transition doesn't blank the panel mid-slide.
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
@@ -281,14 +284,46 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     setPreviewOpen(true);
   };
 
-  const handleSelectPin = (pin: SearchMapPin) => {
-    const prediction = predictions.find(
-      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
-    );
-    if (prediction && prediction.status === "not_in_mesita") {
-      handlePickGoogle(prediction);
+  const handleOpenPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
       return;
     }
+    router.push(placeHref(place.slug || place.id));
+  };
+
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction =
+      predictions.find(
+        (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+      ) ??
+      (heldGoogle &&
+      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
+        ? heldGoogle
+        : null);
+    if (pinGesture(selectedId, pin.id) === "open") {
+      if (prediction && prediction.status === "not_in_mesita") {
+        handlePickGoogle(prediction);
+        return;
+      }
+      const place = catalog.find((p) => p.id === pin.id);
+      if (place) {
+        handleOpenPlace(place);
+        return;
+      }
+      if (prediction) {
+        handlePickMesita(prediction);
+      }
+      return;
+    }
+    if (prediction && prediction.status === "not_in_mesita") {
+      setHeldGoogle(prediction);
+      setRailCollapsed(false);
+      setSelectedId(pin.id);
+      return;
+    }
+    setHeldGoogle(null);
     if (prediction) {
       handlePickMesita(prediction);
       return;
@@ -355,11 +390,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
-    const google = googlePredictionFromPlace(place);
-    if (google) {
-      handlePickGoogle(google);
-      return;
-    }
+    setHeldGoogle(googlePredictionFromPlace(place));
     setRailCollapsed(false);
     setSelectedId(place.id);
   };
@@ -418,15 +449,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       return;
     }
     openSearch();
-  };
-
-  const handleOpenPlace = (place: Place) => {
-    const google = googlePredictionFromPlace(place);
-    if (google) {
-      handlePickGoogle(google);
-      return;
-    }
-    router.push(placeHref(place.slug || place.id));
   };
 
   return (

@@ -8,7 +8,7 @@ import type { SearchMapProps } from '@/components/search/SearchMap';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { MONTERREY_CENTER } from '@/lib/map-defaults';
 import {
-  membershipColor,
+  pinFillColor,
   placeMembershipTone,
   type MembershipTone,
 } from '@/lib/search-membership';
@@ -27,8 +27,8 @@ function MembershipDot({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: membershipColor(tone),
-        borderWidth: selected ? 3 : 2,
+        backgroundColor: pinFillColor(tone, selected),
+        borderWidth: 2,
         borderColor: '#ffffff',
       }}
     />
