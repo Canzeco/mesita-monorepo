@@ -46,8 +46,20 @@ export function pathnamePlaceId(pathname: string): string | null {
 export function dockHrefForSection(
   section: "place" | "promos" | "performance" | "settings",
   activePlaceId: string | null,
+  pathname?: string,
 ): string {
-  if (section === "place") return BUSINESS_ROUTES.central;
+  // Profile = this place's listing. /central is the hub (picker / zero places),
+  // never the first dock slug (autoplan A4 D1=A / MESITA-1345).
+  if (section === "place") {
+    if (!activePlaceId) return BUSINESS_ROUTES.central;
+    if (pathname) {
+      const onThisListing =
+        pathnamePlaceId(pathname) === activePlaceId &&
+        pathname.match(/^\/place\/[^/]+\/([^/]+)/)?.[1] === "place";
+      if (onThisListing) return pathname;
+    }
+    return placePath(activePlaceId);
+  }
   if (!activePlaceId) return BUSINESS_ROUTES.add;
   if (section === "promos") return promosPath(activePlaceId);
   return placeSectionPath(activePlaceId, section);

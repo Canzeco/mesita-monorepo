@@ -13,8 +13,17 @@ const A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
 describe("dockHrefForSection", () => {
-  it("sends Profile to the hub, not the listing", () => {
-    expect(dockHrefForSection("place", A)).toBe(BUSINESS_ROUTES.central);
+  it("sends Profile to the listing when a place is active", () => {
+    expect(dockHrefForSection("place", A)).toBe(placePath(A, "preview"));
+  });
+
+  it("stays on the current Profile subtab when already in the listing", () => {
+    expect(dockHrefForSection("place", A, `/place/${A}/place/basics`)).toBe(
+      `/place/${A}/place/basics`,
+    );
+    expect(dockHrefForSection("place", A, `/place/${A}/promos`)).toBe(
+      placePath(A, "preview"),
+    );
   });
 
   it("keeps Profile on the hub when no place exists yet", () => {
@@ -25,6 +34,12 @@ describe("dockHrefForSection", () => {
     expect(dockHrefForSection("promos", null)).toBe(BUSINESS_ROUTES.add);
     expect(dockHrefForSection("performance", null)).toBe(BUSINESS_ROUTES.add);
     expect(dockHrefForSection("settings", null)).toBe(BUSINESS_ROUTES.add);
+  });
+
+  it("sends Partner / Performance / Settings to the place when one is active", () => {
+    expect(dockHrefForSection("promos", A)).toBe(promosPath(A));
+    expect(dockHrefForSection("performance", A)).toBe(`/place/${A}/performance`);
+    expect(dockHrefForSection("settings", A)).toBe(`/place/${A}/settings`);
   });
 });
 
@@ -90,6 +105,13 @@ describe("pathnamePlaceId + resolveActivePlaceId", () => {
         projectIds: [A, B],
       }),
     ).toBe(B);
+    expect(
+      resolveActivePlaceId({
+        pathnamePlaceId: "missing",
+        cookieId: A,
+        projectIds: [A, B],
+      }),
+    ).toBe(A);
     expect(
       resolveActivePlaceId({
         pathnamePlaceId: "missing",

@@ -61,7 +61,6 @@ export function PlaceDock() {
     places.find((v) => v.id === activePlaceId) ?? places[0] ?? null;
 
   const currentSection = useMemo(() => {
-    if (pathname === BUSINESS_ROUTES.central) return "place";
     const match = pathname.match(/^\/place\/[^/]+\/([^/]+)/)?.[1];
     if (match === "place" || match === "promos") return match;
     if (match === "performance" || match === "settings") return match;
@@ -126,13 +125,12 @@ export function PlaceDock() {
           {NAV_ITEMS.map(({ slug, Icon, label }) => {
             const active =
               slug === "place"
-                ? pathname === BUSINESS_ROUTES.central ||
-                  currentSection === "place"
+                ? currentSection === "place"
                 : currentSection === slug;
             return (
               <Link
                 key={slug}
-                href={dockHrefForSection(slug, activePlaceId)}
+                href={dockHrefForSection(slug, activePlaceId, pathname)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium transition",
