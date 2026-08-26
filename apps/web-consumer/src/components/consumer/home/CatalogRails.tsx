@@ -2,7 +2,8 @@
 
 // Home Catalog — stacked horizontal rails. Seed rails are occupied Atlas
 // categories; generated rails are vibe queries ranked against Mesita
-// embeddings. Tiles reuse FavoriteTile. Not the swipe deck.
+// embeddings. Tiles reuse FavoriteTile. Not the swipe deck. The page
+// must be a flex column so this scroller gets a height.
 
 import { useEffect, useState } from "react";
 import { Compass } from "lucide-react";
