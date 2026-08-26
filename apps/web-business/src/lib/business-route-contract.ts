@@ -54,8 +54,10 @@ export function dockHrefForSection(
 }
 
 export function placeSwitchHref(projectId: string, pathname: string): string {
-  const placeTab = pathname.match(/\/place\/([^/]+)/)?.[1];
-  const section = pathname.match(/^\/place\/[^/]+\/([^/]+)/)?.[1];
+  // /place/{id}/{section}/{subtab?} — never treat {id} as the Place subtab.
+  const segments = pathname.split("/").filter(Boolean);
+  const section = segments[0] === "place" ? segments[2] : undefined;
+  const placeTab = section === "place" ? segments[3] : undefined;
 
   if (section === "place") {
     return placePath(projectId, resolvePlaceSubTab(placeTab ?? null));

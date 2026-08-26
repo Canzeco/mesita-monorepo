@@ -212,7 +212,7 @@ export function PlaceDock() {
               <CircleUser className="h-4 w-4" strokeWidth={2} />
             </span>
             <span className="text-dock-muted text-[9px] leading-none font-medium">
-              Profile
+              Account
             </span>
           </Link>
         </div>
