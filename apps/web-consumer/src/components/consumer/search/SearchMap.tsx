@@ -10,7 +10,7 @@
 // behaviour. Pin taps report up via onSelectPlace so the page can sync
 // the catalog rail instead of opening a preview card.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import {
   APIProvider,
@@ -64,6 +64,30 @@ export type SearchMapPin = {
   tone: MembershipTone;
 };
 
+export type ViewportBox = {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+};
+
+type MapInstance = NonNullable<ReturnType<typeof useMap>>;
+
+function readViewportBox(
+  map: MapInstance,
+): ViewportBox | null {
+  const bounds = map.getBounds();
+  if (!bounds) return null;
+  const sw = bounds.getSouthWest();
+  const ne = bounds.getNorthEast();
+  return {
+    south: sw.lat(),
+    west: sw.lng(),
+    north: ne.lat(),
+    east: ne.lng(),
+  };
+}
+
 export function SearchMap({
   apiKey,
   places,
@@ -75,23 +99,21 @@ export function SearchMap({
   onOpenPlace,
   onSelectPin,
   onMapClick,
+  onFirstViewport,
+  onUserViewport,
 }: {
   apiKey: string;
   places: Place[];
   userLocation: Coords | null;
-  /** Filter zone, or the device fix — where the map looks. The blue dot
-   *  stays on `userLocation` so a remote zone never moves "you're here". */
   viewCenter: Coords | null;
   selectedId: string | null;
-  /** When set, these replace catalog pins (live search results). */
   pins?: SearchMapPin[] | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
-  // Fires on a tap of the bare map canvas (not a pin) — toggles the search
-  // panel: opens when idle, closes when the results/prompt overlay is up.
-  // Marker taps have their own onClick and don't trigger this.
   onMapClick?: () => void;
+  onFirstViewport?: (box: ViewportBox) => void;
+  onUserViewport?: (box: ViewportBox) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -126,6 +148,8 @@ export function SearchMap({
           onSelectPin={onSelectPin}
           onMapClick={onMapClick}
           onReady={handleMapReady}
+          onFirstViewport={onFirstViewport}
+          onUserViewport={onUserViewport}
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
@@ -175,6 +199,8 @@ function SearchMapCanvas({
   onSelectPin,
   onMapClick,
   onReady,
+  onFirstViewport,
+  onUserViewport,
 }: {
   places: Place[];
   userLocation: Coords | null;
@@ -186,6 +212,8 @@ function SearchMapCanvas({
   onSelectPin?: (pin: SearchMapPin) => void;
   onMapClick?: () => void;
   onReady: () => void;
+  onFirstViewport?: (box: ViewportBox) => void;
+  onUserViewport?: (box: ViewportBox) => void;
 }) {
   const located = places.filter(hasCoords);
   const lookAt = viewCenter ?? userLocation;
@@ -253,8 +281,40 @@ function SearchMapCanvas({
       {selectedLat != null && selectedLng != null && (
         <PanTo lat={selectedLat} lng={selectedLng} />
       )}
+      <ViewportReporter
+        onFirst={onFirstViewport}
+        onUser={onUserViewport}
+      />
     </Map>
   );
+}
+
+function ViewportReporter({
+  onFirst,
+  onUser,
+}: {
+  onFirst?: (box: ViewportBox) => void;
+  onUser?: (box: ViewportBox) => void;
+}) {
+  const map = useMap();
+  const first = useRef(true);
+
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("idle", () => {
+      const box = readViewportBox(map);
+      if (!box) return;
+      if (first.current) {
+        first.current = false;
+        onFirst?.(box);
+        return;
+      }
+      onUser?.(box);
+    });
+    return () => listener.remove();
+  }, [map, onFirst, onUser]);
+
+  return null;
 }
 
 // Shared by Recentre/PanTo: pan to the target, and bump zoom in only if

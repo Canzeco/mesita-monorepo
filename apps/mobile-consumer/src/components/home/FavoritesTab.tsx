@@ -27,12 +27,9 @@ import { FavoriteTile } from './FavoriteTile';
 
 // Favorites mode — mirror of web components/consumer/home/FavoritesList.tsx.
 //
-// Layout: a two-column photo grid, not a list of thumbnail rows. One saved
-// place used to fill about a quarter of the screen and leave the rest blank.
-// Tiles alone don't fix that (one card can't fill a phone screen no matter how
-// it's cropped), so the screen has a second job: "More like your saves", built
-// from the deck already in context. No extra fetches, and the way to get more
-// saves is to be shown more places.
+// Layout: a two-column photo grid of saved places only — count header plus
+// filled-heart tiles. This tab is the bookmark list, not a second discovery
+// surface: no similar-places rail.
 //
 // RN has no CSS grid, so rows are chunked into pairs (see lib/grid-pairs) —
 // that yields exact halves with a real gap, which percentage widths can't do
@@ -97,30 +94,6 @@ export function FavoritesTab() {
     );
   }, [places, sort]);
 
-  // Candidates for "More like your saves": everything in the deck the consumer
-  // hasn't saved, ranked by overlap with what they DO save — same category
-  // counts double, same zone counts once.
-  const suggestions = useMemo(() => {
-    if (places.length === 0) return [] as Place[];
-    const categories = new Set(
-      places.map((p) => p.category).filter((v): v is string => v != null),
-    );
-    const zones = new Set(
-      places.map((p) => p.zone).filter((v): v is string => v != null),
-    );
-    return deckPlaces
-      .filter((p) => !savedIds.has(p.id))
-      .map((p) => ({
-        place: p,
-        hit:
-          (p.category && categories.has(p.category) ? 2 : 0) +
-          (p.zone && zones.has(p.zone) ? 1 : 0),
-      }))
-      .sort((a, b) => b.hit - a.hit)
-      .slice(0, 6)
-      .map((s) => enrichPlaceOverview(s.place));
-  }, [places, deckPlaces, savedIds]);
-
   const confirmRemove = (place: Place) => {
     setSaved(place.id, false);
     removeSavedPlacePreview(place.id);
@@ -132,13 +105,6 @@ export function FavoritesTab() {
         setSaved(place.id, true);
       },
     });
-  };
-
-  // Saving from the suggestions strip is one tap with no dialog — it's the
-  // non-destructive direction.
-  const saveSuggestion = (place: Place) => {
-    upsertSavedPlacePreview(place);
-    setSaved(place.id, true);
   };
 
   // savedIds is empty until AsyncStorage is read, so branching on length before
@@ -215,32 +181,6 @@ export function FavoritesTab() {
             </View>
           ))}
         </View>
-
-        {suggestions.length > 0 ? (
-          <>
-            <View className="mt-6 mb-3 flex-row items-center gap-3 px-1">
-              <Text className="font-display text-[15px] font-semibold tracking-tight text-foreground">
-                More like your saves
-              </Text>
-              <View className="h-px flex-1 bg-border" />
-            </View>
-            <View className="gap-2.5">
-              {pairs(suggestions).map((row) => (
-                <View key={row[0].id} className="flex-row gap-2.5">
-                  {row.map((place) => (
-                    <FavoriteTile
-                      key={place.id}
-                      place={place}
-                      saved={false}
-                      onToggle={() => saveSuggestion(place)}
-                    />
-                  ))}
-                  {row.length === 1 ? <View className="flex-1" /> : null}
-                </View>
-              ))}
-            </View>
-          </>
-        ) : null}
       </ScrollView>
 
       <Modal
