@@ -60,6 +60,16 @@ import {
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
+export type CatalogConfig = {
+  /** Atlas category rails that currently have inventory. */
+  seedCount: number;
+  /** Vibe-query rails, sampled from the code-defined bank (not Atlas slugs). */
+  generatedCount: number;
+  placesPerRail: number;
+  /** Seed category must have at least this many listed places. */
+  minSeedPlaces: number;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -69,6 +79,7 @@ export type DiscoveryConfig = {
   };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  catalog: CatalogConfig;
 };
 
 /**
@@ -115,6 +126,19 @@ export const SLOT_MAX_EVERY_NTH = 50;
 export const MIN_RATING_MAX = 5;
 /** A radius past this is not a filter, it is the whole catalog. */
 export const MAX_DISTANCE_KM_MAX = 200;
+
+export const CATALOG_COUNT_MAX = 20;
+export const CATALOG_PLACES_PER_RAIL_MIN = 4;
+export const CATALOG_PLACES_PER_RAIL_MAX = 20;
+export const CATALOG_MIN_SEED_PLACES_MAX = 20;
+export const CATALOG_RAILS_CAP = 24;
+
+export const DEFAULT_CATALOG: CatalogConfig = {
+  seedCount: 8,
+  generatedCount: 8,
+  placesPerRail: 8,
+  minSeedPlaces: 2,
+};
 
 /**
  * Defaults: every earned signal at 1 — its own number, unmodified — except
@@ -227,6 +251,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   engines: {
     swipe: { ranked: true },
   },
+  catalog: DEFAULT_CATALOG,
 };
 
 function num(raw: unknown, fallback: number, min: number, max: number): number {
@@ -237,6 +262,36 @@ function num(raw: unknown, fallback: number, min: number, max: number): number {
 
 function bool(raw: unknown, fallback: boolean): boolean {
   return typeof raw === "boolean" ? raw : fallback;
+}
+
+export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const seedCount = Math.round(
+    num(r.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX),
+  );
+  const generatedCount = Math.round(
+    num(r.generatedCount, DEFAULT_CATALOG.generatedCount, 0, CATALOG_COUNT_MAX),
+  );
+  return {
+    seedCount,
+    generatedCount,
+    placesPerRail: Math.round(
+      num(
+        r.placesPerRail,
+        DEFAULT_CATALOG.placesPerRail,
+        CATALOG_PLACES_PER_RAIL_MIN,
+        CATALOG_PLACES_PER_RAIL_MAX,
+      ),
+    ),
+    minSeedPlaces: Math.round(
+      num(
+        r.minSeedPlaces,
+        DEFAULT_CATALOG.minSeedPlaces,
+        1,
+        CATALOG_MIN_SEED_PLACES_MAX,
+      ),
+    ),
+  };
 }
 
 /**
@@ -318,6 +373,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    catalog: normalizeCatalogConfig(r.catalog),
   };
 }
 

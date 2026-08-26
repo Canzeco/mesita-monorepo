@@ -8,13 +8,22 @@ function read(rel: string): string {
   return readFileSync(join(SRC, rel), "utf8");
 }
 
-// Catalog is live (Pato, 2026-08-26). Re-parking is a redirect + soon: true;
-// this pin goes red if either comes back without an explicit product decision.
-describe("Home Catalog is live", () => {
-  it("renders CatalogGrid and does not redirect to swipe", () => {
+// Catalog is live rails (Pato, 2026-08-26). Re-parking is a redirect + soon;
+// swapping back to the swipe-deck grid is a product decision, not a default.
+describe("Home Catalog is live rails", () => {
+  it("renders CatalogRails and does not redirect to swipe", () => {
     const page = read("app/(shell)/home/catalog/page.tsx");
-    expect(page).toContain("CatalogGrid");
+    expect(page).toContain("CatalogRails");
+    expect(page).not.toContain("CatalogGrid");
+    expect(page).not.toContain("useHomeDeck");
     expect(page).not.toMatch(/\bredirect\(/);
+  });
+
+  it("calls consumer-web-list-catalog, not the swipe recommender", () => {
+    const api = read("lib/api/places.ts");
+    expect(api).toContain("consumer-web-list-catalog");
+    const rails = read("components/consumer/home/CatalogRails.tsx");
+    expect(rails).toContain("apiListCatalog");
   });
 
   it("the Catalog pill is a Link, not a coming-soon control", () => {

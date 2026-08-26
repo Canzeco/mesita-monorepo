@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ENGINES, SIGNALS } from "./catalog";
+import { coerceConfig, DEFAULT_CATALOG, ENGINES, SIGNALS } from "./catalog";
 
 describe("Discovery function APIs", () => {
   it("every signal is a stored-index function — no vendor API at rank time", () => {
@@ -28,6 +28,19 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Nearest 50/);
     expect(map?.process).toMatch(/opts in/);
     expect(map?.process).not.toMatch(/under 10/);
+  });
+
+  it("catalog() is live rails over Mesita search, no vendor API", () => {
+    const catalog = ENGINES.find((e) => e.key === "catalog");
+    expect(catalog?.state).toBe("LIVE");
+    expect(catalog?.apis).toEqual([]);
+    expect(catalog?.process).toMatch(/vibe-query/i);
+    expect(catalog?.process).not.toMatch(/Parked/i);
+  });
+
+  it("coerceConfig defaults catalog on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
+    expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
   });
 
   it("engines name only the vendor APIs they actually call", () => {

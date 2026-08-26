@@ -28,11 +28,13 @@ export function FavoriteTile({
   place,
   saved,
   onToggle,
+  className,
 }: {
   place: Place;
   /** Filled heart (in your saves) vs outline (a suggestion you can save). */
   saved: boolean;
   onToggle: () => void;
+  className?: string;
 }) {
   const photo = place.photos[0];
   // Favorites omit the chip when unknown; formatDistanceKm's "- km" would
@@ -46,7 +48,7 @@ export function FavoriteTile({
   const isOpen = place.open_now === true;
 
   return (
-    <li className="min-w-0">
+    <li className={cn("min-w-0", className)}>
       <div className="border-border bg-card hover:shadow-rest relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl border transition">
         {/* Photo + text navigate to the place; the heart is a separate control
             (interactive elements can't nest inside an <a>). */}

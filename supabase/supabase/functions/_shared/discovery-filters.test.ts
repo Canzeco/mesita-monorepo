@@ -177,6 +177,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
   assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
+  assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
 });
 
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {

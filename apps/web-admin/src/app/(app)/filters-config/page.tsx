@@ -1,21 +1,29 @@
 import { Compass } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
+import { CatalogConfigClient } from "./CatalogConfigClient";
+import { getDiscoveryConfig } from "./actions";
+import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — EMPTY on purpose while Search/Map is recut (MESITA-1326).
-// Signals · Engines knobs dual-architected the page against a live Swipe
-// blob and an unranked map. The BLOB IS UNTOUCHED: discovery_config, its
-// normalizer and admin-web-{get,update}-discovery-config stay, so Swipe
-// still ranks from last-saved weights. Rebuild the UI after Search/Map
-// is stable. catalog.ts still names vendor APIs for each engine.
+// Discovery — Catalog knobs are LIVE (consumer-web-list-catalog). Signals ·
+// Engines stay Soon while Search/Map ranking is recut. The blob is untouched
+// aside from catalog: Swipe still ranks from last-saved weights.
 export const dynamic = "force-dynamic";
 
-export default function DiscoveryPage() {
+export default async function DiscoveryPage() {
+  const seed = await getDiscoveryConfig();
   return (
-    <ConfigSoon
-      Icon={Compass}
-      title="Discovery is coming soon"
-      body="Swipe still ranks from the last-saved blob. Search is a name bar plus an unranked map viewport — those engines are recut in code, not from this page. Knobs return when that architecture is stable."
-      doc="Notion Docs › Discovery"
-    />
+    <div className="flex flex-col gap-10">
+      <CatalogConfigClient
+        initialConfig={seed.ok ? seed.config : DEFAULT_CONFIG}
+        initialUpdatedAt={seed.ok ? seed.updatedAt : null}
+        loadError={seed.ok ? null : seed.error}
+      />
+      <ConfigSoon
+        Icon={Compass}
+        title="Signals and engines are coming soon"
+        body="Swipe still ranks from the last-saved blob. Search is a name bar plus an unranked map viewport — those knobs return when that architecture is stable."
+        doc="Notion Docs › Discovery"
+      />
+    </div>
   );
 }

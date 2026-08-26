@@ -7,14 +7,14 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
+// THREE BOXES, ONE PAGE (Pato, 2026-08-26: Catalog knobs live; Signals ·
+// Engines stay Soon):
 //
-//   SIGNALS   six functions. One table: Input · Process · Output · exponent
-//             (the super-param, ink) plus the two mute knobs (maxKm,
-//             closedFloor). The rest of the curve lives in code. Promoted
-//             is not a row.
-//   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
-//             engine gets a knob, and today that knob is Swipe's `ranked`.
+//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
+//             Enforced by consumer-web-list-catalog.
+//   SIGNALS   six functions. Off the HTML until Search/Map ranking is recut.
+//   ENGINES   swipe() still ranks from last-saved weights. Catalog() is
+//             live rails. Only a WIRED engine (swipe) gets a ranking knob.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
@@ -39,6 +39,14 @@ export type DiscoveryConfig = {
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  catalog: CatalogConfig;
+};
+
+export type CatalogConfig = {
+  seedCount: number;
+  generatedCount: number;
+  placesPerRail: number;
+  minSeedPlaces: number;
 };
 
 export type ParamField = {
@@ -67,6 +75,17 @@ export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
 export const MIN_RATING_MAX = 5;
 export const MAX_DISTANCE_KM_MAX = 200;
+export const CATALOG_COUNT_MAX = 20;
+export const CATALOG_PLACES_PER_RAIL_MIN = 4;
+export const CATALOG_PLACES_PER_RAIL_MAX = 20;
+export const CATALOG_MIN_SEED_PLACES_MAX = 20;
+
+export const DEFAULT_CATALOG: CatalogConfig = {
+  seedCount: 8,
+  generatedCount: 8,
+  placesPerRail: 8,
+  minSeedPlaces: 2,
+};
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
@@ -100,6 +119,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
+  catalog: DEFAULT_CATALOG,
 };
 
 /**
@@ -160,9 +180,9 @@ export const ENGINES: {
     label: "Catalog",
     fn: "catalog()",
     input: "Ready pool.",
-    process: "Parked. The page redirects; the pill is coming-soon.",
-    output: "A grid, when unparked.",
-    state: "PARKED",
+    process: "Random Atlas seed rails plus vibe-query rails. Mesita embedding search per query; ILIKE if embed fails. No Google.",
+    output: "Stacked catalog rails.",
+    state: "LIVE",
     wired: null,
     apis: [],
   },
@@ -409,6 +429,28 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    catalog: coerceCatalog(r.catalog),
+  };
+}
+
+export function coerceCatalog(raw: unknown): CatalogConfig {
+  const c = (raw ?? {}) as Record<string, unknown>;
+  return {
+    seedCount: Math.round(num(c.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX)),
+    generatedCount: Math.round(
+      num(c.generatedCount, DEFAULT_CATALOG.generatedCount, 0, CATALOG_COUNT_MAX),
+    ),
+    placesPerRail: Math.round(
+      num(
+        c.placesPerRail,
+        DEFAULT_CATALOG.placesPerRail,
+        CATALOG_PLACES_PER_RAIL_MIN,
+        CATALOG_PLACES_PER_RAIL_MAX,
+      ),
+    ),
+    minSeedPlaces: Math.round(
+      num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
+    ),
   };
 }
 

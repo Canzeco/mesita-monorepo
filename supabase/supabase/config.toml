@@ -234,7 +234,11 @@ verify_jwt = false
 [functions.consumer-web-recommend-swipe]
 verify_jwt = true
 
-# Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127
+# Home › Catalog rails. JWT like swipe. Reads discovery_config.catalog.
+[functions.consumer-web-list-catalog]
+verify_jwt = true
+
+# Consumer "Add to Mesita": creates the place inline (MESITA-128; MESITA-127)
 # dropped the staggered creation queue — only enrichment is scheduled now).
 [functions.consumer-web-create-place]
 verify_jwt = true
