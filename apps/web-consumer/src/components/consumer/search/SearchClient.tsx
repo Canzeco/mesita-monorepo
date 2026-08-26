@@ -133,7 +133,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // stays a Swipe predicate — it does not drive this bar. Catalog fetch
   // always has an origin (Monterrey) so Search never loads a 4-pin viewport.
   const center = location;
-  const fetchOrigin = location ?? MONTERREY_CENTER;
+  const originLat = (location ?? MONTERREY_CENTER).lat;
+  const originLng = (location ?? MONTERREY_CENTER).lng;
   const catalog = useMemo(
     () => withDistances(places, center),
     [places, center],
@@ -160,29 +161,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     let cancelled = false;
     const gen = ++nearbyGen.current;
-    setCatalogLoading(true);
-    setFetchError(null);
     void (async () => {
       try {
         const rows = await apiFetchNearbyPlaces(
           supabase,
-          fetchOrigin,
+          { lat: originLat, lng: originLng },
           SEARCH_NEARBY_LIMIT,
         );
         if (cancelled || gen !== nearbyGen.current) return;
         setPlaces(rows);
+        setFetchError(null);
+        setCatalogLoading(false);
       } catch (err) {
         if (cancelled || gen !== nearbyGen.current) return;
         setPlaces([]);
         setFetchError(errMsg(err, "Couldn't load places around you."));
-      } finally {
-        if (!cancelled && gen === nearbyGen.current) setCatalogLoading(false);
+        setCatalogLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [supabase, fetchOrigin.lat, fetchOrigin.lng]);
+  }, [supabase, originLat, originLng]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {

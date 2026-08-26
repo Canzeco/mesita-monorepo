@@ -33,7 +33,6 @@ import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
-  discoveryFiltersAreActive,
 } from '@/lib/discovery-filters-engine';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
@@ -109,36 +108,39 @@ export function SearchClient() {
   const [locating, setLocating] = useState(false);
 
   const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
-  const fetchOrigin = location ?? MONTERREY_CENTER;
+  const originLat = (location ?? MONTERREY_CENTER).lat;
+  const originLng = (location ?? MONTERREY_CENTER).lng;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
 
   useEffect(() => {
     let cancelled = false;
-    setCatalogLoading(true);
     void (async () => {
       try {
-        const rows = await apiFetchNearbyPlaces(supabase, fetchOrigin, 50);
+        const rows = await apiFetchNearbyPlaces(
+          supabase,
+          { lat: originLat, lng: originLng },
+          50,
+        );
         if (!cancelled) {
           setPlaces(rows);
           setFetchError(null);
+          setCatalogLoading(false);
         }
       } catch (err) {
         if (!cancelled) {
           setFetchError(errMsg(err, "Couldn't load places."));
+          setCatalogLoading(false);
         }
-      } finally {
-        if (!cancelled) setCatalogLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [fetchOrigin.lat, fetchOrigin.lng]);
+  }, [originLat, originLng]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
