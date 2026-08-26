@@ -168,6 +168,7 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
+export const SEARCH_NEARBY_LIMIT = 50;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
@@ -183,7 +184,21 @@ export type ViewportPlaces = {
   totalInBox: number | null;
 };
 
-/** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
+/** Search map: nearest `limit` listed places to the pin. */
+export async function apiFetchNearbyPlaces(
+  client: SupabaseClient,
+  origin: { lat: number; lng: number },
+  limit = SEARCH_NEARBY_LIMIT,
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-list-places",
+    { lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
+}
+
+/** Optional camera rectangle. Search does not use this as the default pool. */
 export async function apiFetchPlacesInBbox(
   client: SupabaseClient,
   bbox: PlacesBbox,
