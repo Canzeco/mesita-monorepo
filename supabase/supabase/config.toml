@@ -182,8 +182,8 @@ verify_jwt = true
 [functions.supabase-edgefunc-get-consumer-context]
 verify_jwt = true
 
-# Memo's own config: persona instructions + model + the memo_search sourcing
-# policy. Read side only — writes stay on admin-web-update-memo-config.
+# Memo's own config: persona instructions + model. Read side only —
+# Chat persona writes stay on admin-web-update-discovery-config.
 [functions.supabase-edgefunc-get-memo-config]
 verify_jwt = true
 
