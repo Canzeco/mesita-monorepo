@@ -2,10 +2,13 @@
 
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Check, Plus } from "lucide-react";
+import { Check, LayoutGrid, Plus } from "lucide-react";
 import { cn, initialLetter } from "@/lib/utils";
 import { placeSubtitle } from "@/components/business/place/place-utils";
-import { placeSwitchHref } from "@/lib/business-route-contract";
+import {
+  BUSINESS_ROUTES,
+  placeSwitchHref,
+} from "@/lib/business-route-contract";
 import type { MyPlace } from "@/lib/api/places";
 
 type MenuRect = {
@@ -73,9 +76,17 @@ export function PlaceDockPicker({
           </Link>
         ))}
         <Link
+          href={BUSINESS_ROUTES.central}
+          onClick={onClose}
+          className="border-border hover:bg-muted/40 flex items-center gap-2 border-t px-3 py-2.5 text-sm font-semibold transition"
+        >
+          <LayoutGrid className="h-4 w-4" />
+          All places
+        </Link>
+        <Link
           href="/add"
           onClick={onClose}
-          className="border-border text-primary hover:bg-primary/5 flex items-center gap-2 border-t px-3 py-2.5 text-sm font-semibold transition"
+          className="text-primary hover:bg-primary/5 flex items-center gap-2 px-3 py-2.5 text-sm font-semibold transition"
         >
           <Plus className="h-4 w-4" />
           Add a place
