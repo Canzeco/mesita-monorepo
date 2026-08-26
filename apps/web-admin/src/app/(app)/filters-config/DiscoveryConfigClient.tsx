@@ -74,13 +74,18 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<MessageSquare className="text-secondary h-4 w-4" />}
         title="Chat"
-        subtitle="System prompt sent to OpenAI on every turn, together with the full thread the guest already has. Blank uses the in-code Memo persona. No Places, Perplexity, or catalog tools yet."
+        subtitle="Every turn sends this prompt plus the entire guest thread as plain text. That is the first pass — a cheaper ingest (rolling summary, retrieval, cached prefixes) is due. Blank uses the in-code Memo persona. No Places, Perplexity, or catalog tools yet."
         status={
-          updatedAt ? (
-            <span className="text-muted-foreground text-xs">
-              Updated {formatShortDate(updatedAt)}
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
+              Due · cheaper ingest
             </span>
-          ) : null
+            {updatedAt ? (
+              <span className="text-muted-foreground text-xs">
+                Updated {formatShortDate(updatedAt)}
+              </span>
+            ) : null}
+          </div>
         }
       >
         <div className="mt-4">
@@ -95,6 +100,10 @@ export function DiscoveryConfigClient({
               setOk(false);
             }}
           />
+          <p className="text-muted-foreground mt-3 type-label max-w-3xl leading-relaxed">
+            Context is the whole thread, resent every message. Do not treat
+            that as the lasting design.
+          </p>
         </div>
       </SectionCard>
 
