@@ -1,15 +1,16 @@
-import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+"use client";
 
-// Catalog is parked (Pato, 2026-08-16: only Swipe and Favorites are
-// functional). The redirect keeps deep links safe.
-//
-// The grid is BUILT and working — see CatalogGrid, which this page rendered
-// until it was re-parked. Un-parking is two edits: flip `soon: false` on the
-// Catalog tab in HomeModeNav and restore the two-line body here:
-//
-//   const { places, fetchError } = useHomeDeck();
-//   return <CatalogGrid places={places} fetchError={fetchError} />;
+import { CatalogGrid } from "@/components/consumer/home/CatalogGrid";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+
+// Catalog — the shared Home deck as a browsable grid (Pato, 2026-08-26).
+// Same fetch as Swipe / Favorites; no extra EF. Bounded flex slot so the
+// grid's own overflow-y scroller, not the page, owns the list.
 export default function HomeCatalogPage() {
-  redirect(CONSUMER_ROUTES.homeDefault);
+  const { places, fetchError } = useHomeDeck();
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <CatalogGrid places={places} fetchError={fetchError} />
+    </div>
+  );
 }

@@ -232,6 +232,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   const MATRIX: [string, string][] = [
     ["/home/swipe", "Home"],
+    ["/home/catalog", "Home"],
     ["/home/favorites", "Home"],
     ["/place/abc", "Home"],
     ["/search", "Search"],

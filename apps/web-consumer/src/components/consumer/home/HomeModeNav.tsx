@@ -22,10 +22,9 @@
 // px-2 overflows. A sixth mode, or a label longer than "Favorites", puts it
 // back over budget: measure before adding either.
 //
-// Swipe, Chat and Favorites are FUNCTIONAL. Catalog and Social stay parked —
-// working code on disk, one-flag unpark — and all five pills stay visible so
-// the row reads as the finished shape rather than a surface still being
-// assembled.
+// Swipe · Catalog · Chat · Favorites are FUNCTIONAL (Pato, 2026-08-26).
+// Social stays parked — working code on disk, one-flag unpark. All five
+// pills stay visible so the row reads as the finished shape.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -46,7 +45,7 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // `soon` tabs aren't navigable yet — tapping opens a "coming soon" dialog
 // instead of routing (their routes still redirect to swipe, so direct URLs
 // can't reach the parked content). Kept visible + tappable so the surface
-// reads as intentional; un-parking is `soon: false` + restoring the page.
+// reads as intentional; un-parking is dropping `soon` + restoring the page.
 //
 // The AI mode's pill reads "Chat" (Pato, 2026-08-21). The label names the one
 // thing a guest can actually DO in the mode: Call is announced-only — no Memo
@@ -68,17 +67,7 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: CONSUMER_ROUTES.homeTabs.swipe, label: "Swipe", Icon: Flame },
-  {
-    href: CONSUMER_ROUTES.homeTabs.catalog,
-    label: "Catalog",
-    Icon: LayoutGrid,
-    // RE-PARKED 2026-08-16 (Pato: "only functional must be swipe and
-    // favorites"). The grid itself is built and works — CatalogGrid stays on
-    // disk for a one-flag unpark, same convention as AskAiTab/SocialTab.
-    soon: true,
-    blurb:
-      "The full Mesita catalog — every place, browsable and filterable, without swiping. Coming soon.",
-  },
+  { href: CONSUMER_ROUTES.homeTabs.catalog, label: "Catalog", Icon: LayoutGrid },
   {
     href: CONSUMER_ROUTES.homeTabs.chat,
     label: "Chat",
