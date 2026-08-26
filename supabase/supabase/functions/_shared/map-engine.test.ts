@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import {
   admitMapCatalog,
+  admitSwipeCatalog,
   enabledNearbyTypes,
   evaluatePlaceForMap,
   googleHitClearsMapFloors,
@@ -174,4 +175,33 @@ Deno.test("evaluatePlaceForMap respects type batteries and floors", () => {
   });
   assertEquals(low.eligible, false);
   if (!low.eligible) assertEquals(low.code, "below_min_rating");
+});
+
+Deno.test("admitSwipeCatalog keeps listed F&B, drops hotels/spas, never Google", () => {
+  const listed = [
+    { id: "rest", category: "mexican_restaurant", listing_type: "web" as const },
+    { id: "bar", category: "bar", listing_type: "partner" as const },
+    { id: "hotel", category: "hotel", listing_type: "web" as const },
+    { id: "spa", category: "spa", listing_type: "partner" as const },
+  ];
+  const got = admitSwipeCatalog(listed, MAP);
+  assertEquals(got.map((r) => r.id), ["rest", "bar"]);
+});
+
+Deno.test("admitSwipeCatalog honors Map type batteries", () => {
+  const barsOnly = {
+    ...MAP,
+    types: {
+      restaurant: false,
+      bar: true,
+      cafe: false,
+      night_club: false,
+      bakery: false,
+    },
+  };
+  const listed = [
+    { id: "rest", category: "restaurant" },
+    { id: "club", category: "night_club" },
+  ];
+  assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), ["club"]);
 });

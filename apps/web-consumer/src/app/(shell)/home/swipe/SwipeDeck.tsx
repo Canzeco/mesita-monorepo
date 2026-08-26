@@ -383,7 +383,10 @@ function Deck({ places }: { places: Place[] }) {
   // rows the EF kept because it could not evaluate a predicate, and the
   // minute-by-minute drift of "open now".
   const filtered = useMemo(
-    () => applyDiscoveryFilters(located, filters),
+    () =>
+      applyDiscoveryFilters(located, filters).filter(
+        (place) => !place.googleOnly && !place.from_google,
+      ),
     [located, filters],
   );
   const deck = useMemo(

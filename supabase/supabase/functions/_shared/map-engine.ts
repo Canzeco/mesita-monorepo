@@ -6,7 +6,9 @@
 // ride that one Google call. They do not raise the cap. googleFill is
 // Nearby-only.
 //
-// Floors are Map-only. Swipe / Pay / Home keep `discovery_config.filters`.
+// Swipe listed admission uses the same type batteries + floors (Pato:
+// only Mesita restaurants/partners+listed, never Google-only / types
+// Map would not show). Pay / Home catalog keep `discovery_config.filters`.
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, DiscoveryFilters } from "./discovery-config.ts";
@@ -127,6 +129,26 @@ export function admitMapCatalog<T extends ListedMapRow>(
       googleHitClearsMapFloors(hit, map, params),
   );
   return { listed: admittedListed, google: admittedGoogle };
+}
+
+/**
+ * Swipe pool: listed Mesita rows that clear Map types + popularity.
+ * Partners and listed (web) both stay — `listing_type` is not a gate.
+ * Never takes Google hits; Swipe does not fill.
+ */
+export type SwipeListedRow = ListedMapRow & {
+  category?: string | null;
+};
+
+export function admitSwipeCatalog<T extends SwipeListedRow>(
+  listed: T[],
+  map: MapConfig,
+  params?: SignalParamBag,
+): T[] {
+  const typed = listed.filter((row) =>
+    primaryTypeClearsMapTypes(row.category, map),
+  );
+  return admitMapCatalog(typed, [], map, params).listed;
 }
 
 // Search + Add share this allowlist. A Nearby type battery expands to

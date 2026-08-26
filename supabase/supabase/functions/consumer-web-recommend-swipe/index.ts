@@ -73,6 +73,10 @@ import {
   applyDeckPredicates,
   readDeckPredicates,
 } from "../_shared/discovery-predicates.ts";
+import {
+  admitSwipeCatalog,
+  listedMapFilters,
+} from "../_shared/map-engine.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 50;
@@ -140,7 +144,11 @@ Deno.serve(async (req) => {
     .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
     .eq("status", "active");
 
-  const { data, error } = await applyDiscoveryFilters(base, cfg.filters, geo)
+  // Map type batteries + floors are the "shown in Mesita" allowlist
+  // (Search/Add). Swipe is listed Mesita only — partners and web — never
+  // Google fill. Ranking still has no category intent; this cut is admission.
+  const filters = listedMapFilters(cfg.filters, cfg.map);
+  const { data, error } = await applyDiscoveryFilters(base, filters, geo)
     .limit(POOL_CAP);
 
   if (error) {
@@ -156,9 +164,10 @@ Deno.serve(async (req) => {
     admitted,
     (r) => (r as unknown as Record<string, unknown>).lat as number | null,
     (r) => (r as unknown as Record<string, unknown>).lng as number | null,
-    cfg.filters.maxDistanceKm,
+    filters.maxDistanceKm,
     geo,
   );
+  const shown = admitSwipeCatalog(pool, cfg.map, cfg.params.popularity);
 
   // LANE 0 — the GUEST's cut, inside the operator's (MESITA-1153). Same rule
   // as the filters above and the same reason: the pool is capped before
@@ -167,16 +176,15 @@ Deno.serve(async (req) => {
   // from. It runs second because an operator's admission rules bound what a
   // guest may narrow, never the other way round.
   const rows = applyDeckPredicates(
-    pool as unknown as Record<string, unknown>[],
+    shown as unknown as Record<string, unknown>[],
     readDeckPredicates(body.predicates),
     geo.lat !== null && geo.lng !== null
       ? { lat: geo.lat, lng: geo.lng }
       : null,
   ) as unknown as PlaceRow[];
 
-  // Swipe carries no query and no category intent — the deck is the whole
-  // catalog, ordered. Proximity is the only intent a swiping guest expresses,
-  // so Category and Semantic abstain at NEUTRAL and drop out of the blend.
+  // Ranking still carries no query and no category intent — Semantic and
+  // Category abstain. Admission already cut to Map-allowlisted Mesita rows.
   //
   // `engines.swipe.ranked` is the operator's kill switch on the ranking brain.
   // Off serves the pool in its own order — which is what this function did
