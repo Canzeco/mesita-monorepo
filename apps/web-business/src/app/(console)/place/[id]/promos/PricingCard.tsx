@@ -18,16 +18,12 @@ export function PricingCard({
   cfg,
   selected,
   pending,
-  subscribed,
-  joinDisabled,
   onOpen,
 }: {
   strategy: Strategy;
   cfg: PromosConfig;
   selected: boolean;
   pending: boolean;
-  subscribed: boolean;
-  joinDisabled?: boolean;
   onOpen: () => void;
 }) {
   const art = CARD_ART[strategy.id];
@@ -38,13 +34,12 @@ export function PricingCard({
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}${joinDisabled ? " (unavailable — membership forfeited)" : ""}`}
+      aria-label={`${strategy.name} — details${selected ? " (current)" : ""}`}
       className={cn(
         "bg-card group relative flex flex-col overflow-hidden rounded-2xl border text-left transition",
         selected
           ? "border-foreground/70 ring-foreground/70 ring-2"
           : "border-border hover:shadow-[0_18px_32px_-20px_rgba(236,72,153,0.35)] motion-safe:hover:-translate-y-0.5",
-        joinDisabled && "pointer-events-none opacity-50",
       )}
     >
       {/* Art band — gradient behind the image is the loading/404 fallback;
@@ -101,7 +96,7 @@ export function PricingCard({
                   : "border-border text-foreground/75 border",
               )}
             >
-              {!subscribed ? "Join" : paid ? "Switch" : "Switch to Zero"}
+              {paid ? "Switch" : "Switch to Zero"}
             </span>
           )}
           <span className="text-muted-foreground group-hover:text-foreground text-center text-[10.5px] font-medium transition">
