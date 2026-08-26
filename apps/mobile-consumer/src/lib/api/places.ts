@@ -74,6 +74,8 @@ export type Place = {
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
+  google_place_id?: string | null;
+  from_google?: boolean;
 };
 
 type RecommendDeckInput = {

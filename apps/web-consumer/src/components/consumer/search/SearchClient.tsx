@@ -65,6 +65,17 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 const SUGGEST_DEBOUNCE_MS = 300;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
+function googlePredictionFromPlace(place: Place): PlacePrediction | null {
+  const placeId = place.google_place_id;
+  if (!place.from_google || !placeId) return null;
+  return {
+    placeId,
+    mainText: place.name,
+    secondaryText: place.address ?? "",
+    status: "not_in_mesita",
+  };
+}
+
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -344,6 +355,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
     setRailCollapsed(false);
     setSelectedId(place.id);
   };
@@ -404,8 +420,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     openSearch();
   };
 
-  const handleOpenPlace = (place: Place) =>
+  const handleOpenPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
     router.push(placeHref(place.slug || place.id));
+  };
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">

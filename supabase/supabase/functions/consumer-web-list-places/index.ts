@@ -32,9 +32,16 @@ import {
   NEARBY_SCAN_LIMIT,
   sortByDistance,
 } from "../_shared/geo.ts";
+import {
+  readGooglePlacesKey,
+  searchNearbyPlaces,
+  type NearbyGoogleHit,
+} from "../_shared/google-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+const SEARCH_NEARBY_TINY = 10;
+const NEARBY_COLUMNS = `${PLACE_CARD_COLUMNS}, google_place_id`;
 
 type ListBody = {
   limit?: number;
@@ -48,11 +55,14 @@ type ListBody = {
 };
 
 type CardRow = {
+  id?: string;
   name?: string | null;
   google_name?: string | null;
   category?: string | null;
+  google_place_id?: string | null;
   lat?: number | null;
   lng?: number | null;
+  [key: string]: unknown;
   distance_km?: number | null;
 };
 
@@ -158,7 +168,7 @@ Deno.serve(async (req) => {
 
   // `name` arrives already resolved — it is a generated column
   // (mesita_name → google_name), so there is nothing to coalesce here.
-  let rows = (data ?? []) as CardRow[];
+  let rows = (data ?? []) as unknown as CardRow[];
   if (nearbyDecision.mode === "ok") {
     const { lat, lng, radiusKm } = nearbyDecision;
     rows = sortByDistance(rows, lat, lng)
@@ -170,6 +180,15 @@ Deno.serve(async (req) => {
           haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) * 10,
         ) / 10,
       }));
+    if (rows.length < SEARCH_NEARBY_TINY) {
+      rows = await fillFromGoogleNearby(
+        supabase,
+        { lat, lng, radiusKm },
+        rows,
+        filters,
+        limit,
+      );
+    }
   }
   const places = withFamilyKeysList(rows);
   if (nearbyDecision.mode === "ok") {
@@ -185,3 +204,87 @@ Deno.serve(async (req) => {
   }
   return json({ ok: true, places });
 });
+
+async function fillFromGoogleNearby(
+  supabase: ReturnType<typeof anonClient>,
+  origin: { lat: number; lng: number; radiusKm: number },
+  mesita: CardRow[],
+  filters: typeof DISCOVERY_DEFAULTS.filters,
+  limit: number,
+): Promise<CardRow[]> {
+  const key = readGooglePlacesKey();
+  if (!key.ok) return mesita;
+
+  const hits = await searchNearbyPlaces(
+    key.key,
+    origin.lat,
+    origin.lng,
+    Math.min(50_000, origin.radiusKm * 1000),
+    20,
+  );
+  if (hits.length === 0) return mesita;
+
+  const ids = hits.map((h) => h.placeId);
+  const { data } = await applyDiscoveryFilters(
+    supabase.from("profiles").select(NEARBY_COLUMNS).in("google_place_id", ids),
+    filters,
+    { lat: null, lng: null },
+  );
+  const listed = (data ?? []) as unknown as CardRow[];
+  const listedByGid = new Set(
+    listed
+      .map((row) => row.google_place_id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+
+  const seenIds = new Set(mesita.map((row) => row.id).filter(Boolean));
+  const merged: CardRow[] = [...mesita];
+  for (const row of listed) {
+    if (row.id && !seenIds.has(row.id)) {
+      seenIds.add(row.id);
+      merged.push(row);
+    }
+  }
+
+  const nearestMesita = sortByDistance(merged, origin.lat, origin.lng)
+    .filter((row) =>
+      haversineKm(origin.lat, origin.lng, row.lat ?? null, row.lng ?? null) <=
+        origin.radiusKm
+    )
+    .slice(0, limit);
+  if (nearestMesita.length >= limit) return nearestMesita;
+
+  const usedGids = new Set(
+    nearestMesita
+      .map((row) => row.google_place_id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  const stubs = hits
+    .filter((hit) => !usedGids.has(hit.placeId) && !listedByGid.has(hit.placeId))
+    .map(googleNearbyStub);
+
+  return [...nearestMesita, ...stubs].slice(0, limit);
+}
+
+function googleNearbyStub(hit: NearbyGoogleHit): CardRow {
+  const id = `g:${hit.placeId}`;
+  return {
+    id,
+    slug: id,
+    name: hit.name,
+    category: hit.primaryType,
+    currency: "MXN",
+    listing_type: "web",
+    status: "lead",
+    fiscal_type: "informal",
+    plan: "free",
+    lat: hit.lat,
+    lng: hit.lng,
+    address: hit.address,
+    photos: [],
+    partner: false,
+    from_google: true,
+    google_place_id: hit.placeId,
+    created_at: new Date(0).toISOString(),
+  };
+}
