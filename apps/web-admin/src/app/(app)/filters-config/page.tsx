@@ -1,18 +1,21 @@
-import { getDiscoveryConfig } from "./actions";
-import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
-import { DEFAULT_CONFIG } from "./catalog";
+import { Compass } from "lucide-react";
+import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 
-// Discovery — two boxes: Signals (functions + hyperparameters) · Engines
-// (Engine(signal(),…)). Slotting and filters ride the blob with no knobs.
+// Discovery — EMPTY on purpose while Search/Map is recut (MESITA-1326).
+// Signals · Engines knobs dual-architected the page against a live Swipe
+// blob and an unranked map. The BLOB IS UNTOUCHED: discovery_config, its
+// normalizer and admin-web-{get,update}-discovery-config stay, so Swipe
+// still ranks from last-saved weights. Rebuild the UI after Search/Map
+// is stable. catalog.ts still names vendor APIs for each engine.
 export const dynamic = "force-dynamic";
 
-export default async function DiscoveryPage() {
-  const res = await getDiscoveryConfig();
+export default function DiscoveryPage() {
   return (
-    <DiscoveryConfigClient
-      initialConfig={res.ok ? res.config : DEFAULT_CONFIG}
-      initialUpdatedAt={res.ok ? res.updatedAt : null}
-      loadError={res.ok ? null : res.error}
+    <ConfigSoon
+      Icon={Compass}
+      title="Discovery is coming soon"
+      body="Swipe still ranks from the last-saved blob. Search is a name bar plus an unranked map viewport — those engines are recut in code, not from this page. Knobs return when that architecture is stable."
+      doc="Notion Docs › Discovery"
     />
   );
 }

@@ -23,12 +23,12 @@ describe("Discovery function APIs", () => {
   it("engines name only the vendor APIs they actually call", () => {
     expect(ENGINES.map((e) => [e.key, e.apis])).toEqual([
       ["swipe", []],
-      ["map", ["Google Places Autocomplete", "Place Details"]],
+      ["map", []],
       ["favorites", []],
       ["catalog", []],
       ["chat", ["Google Places Text Search", "Perplexity", "OpenAI"]],
       ["social", []],
-      ["name", []],
+      ["name", ["Google Places Autocomplete", "Google Places Text Search", "Place Details"]],
       ["web", ["Perplexity"]],
     ]);
   });

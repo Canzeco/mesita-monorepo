@@ -20,6 +20,10 @@ import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import {
+  apiFetchPlacesInBbox,
+  LIST_PLACES_MAX,
+} from "@/lib/api/places";
+import {
   apiCreateProject,
   apiSuggestPlaces,
   type PlacePrediction,
@@ -38,7 +42,7 @@ import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { SearchMap, type SearchMapPin } from "./SearchMap";
+import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
@@ -58,22 +62,20 @@ import { buildSearchMapPins } from "@/lib/search-membership";
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
-// Below this, the query is too short to suggest against — the results panel
-// stays closed and no autocomplete call goes out.
+const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
-export function SearchClient({
-  apiKey,
-  places,
-  fetchError,
-}: {
-  apiKey: string;
-  places: Place[];
-  fetchError: string | null;
-}) {
+export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [overspan, setOverspan] = useState(false);
+  const [totalInBox, setTotalInBox] = useState<number | null>(null);
+  const viewportGen = useRef(0);
+  const userViewportTimer = useRef<number | null>(null);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
