@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Check, CheckCircle2, ChevronRight, Copy, Star } from "lucide-react";
 
 import { formatShortDate } from "@/lib/format";
@@ -90,13 +91,22 @@ export function QueryRow({
             </p>
           ) : !hasResults ? (
             <p className="text-muted-foreground bg-muted/40 rounded-xl p-3 text-xs">
-              {q.rawCount > 0
-                ? `${q.rawCount} ${q.rawCount === 1 ? "place" : "places"} found, but ${
-                    q.rawCount === 1 ? "it was" : "all were"
-                  } below your quality filters. Loosen the filters to see ${
-                    q.rawCount === 1 ? "it" : "them"
-                  }.`
-                : "No results."}
+              {q.rawCount > 0 ? (
+                <>
+                  {q.rawCount} {q.rawCount === 1 ? "place" : "places"} found,
+                  but {q.rawCount === 1 ? "it is" : "none are"} allowed by{" "}
+                  <Link
+                    href="/enricher-config#s-sourcing"
+                    className="text-foreground underline underline-offset-2"
+                  >
+                    Intake › Sourcing
+                  </Link>{" "}
+                  Admin Search (families or Google floors). This row only —
+                  other queries in the batch still stand.
+                </>
+              ) : (
+                "No results."
+              )}
             </p>
           ) : (
             <div>
@@ -104,7 +114,13 @@ export function QueryRow({
                 {filteredOut > 0 ? (
                   <span className="text-muted-foreground text-xs">
                     Showing {q.places.length} of {q.rawCount} — {filteredOut}{" "}
-                    below your quality filters
+                    blocked by{" "}
+                    <Link
+                      href="/enricher-config#s-sourcing"
+                      className="text-foreground underline underline-offset-2"
+                    >
+                      Intake › Sourcing
+                    </Link>
                   </span>
                 ) : (
                   <span />

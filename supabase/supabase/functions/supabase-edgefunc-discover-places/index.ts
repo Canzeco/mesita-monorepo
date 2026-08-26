@@ -13,7 +13,9 @@
 // on Multiple Places and are ignored if sent. Applied EF-side after the
 // Google fetch (Text Search has no review-count filter); filtering here
 // also lets us report per-query rawCount so the UI can say "12 found ·
-// 4 shown". rating + userRatingCount stay in the Text Search Pro SKU.
+// 4 shown". Named Place IDs use the SAME gate after Place Details — one
+// ineligible ID is that query's error, never a batch abort. rating +
+// userRatingCount stay in the Text Search Pro SKU.
 //
 // Returned places are enriched with Mesita-side existence + timestamps so
 // the product caller can render "already on Mesita" badges without a
@@ -169,8 +171,9 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Explicit Place IDs use Place Details. They skip quality filters —
-  // the operator named the place.
+  // Explicit Place IDs use Place Details, then the same admin_search
+  // gate as text hits. One ineligible or missing ID fails that slot
+  // only — the operator still gets the rest of the batch.
   let idCursor = 0;
   const idWorker = async () => {
     while (true) {
@@ -180,12 +183,17 @@ Deno.serve(async (req) => {
       const slot = queries.length + j;
       try {
         const place = await fetchPlaceLiteById(id, apiKey);
+        const verdict = evaluatePlaceForChannel(adminSearchPolicy, {
+          primaryType: place.primaryType,
+          rating: place.rating,
+          reviewCount: place.userRatingCount,
+        });
         results[slot] = {
           query: id,
-          places: [place],
+          places: verdict.eligible ? [place] : [],
           rawCount: 1,
           truncated: false,
-          error: null,
+          error: verdict.eligible ? null : verdict.reason,
         };
       } catch (err) {
         results[slot] = {
