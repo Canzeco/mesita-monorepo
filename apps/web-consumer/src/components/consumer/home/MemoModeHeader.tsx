@@ -18,8 +18,7 @@ import { cn } from "@/lib/utils";
 // CALL IS ANNOUNCED, NOT WIRED (Pato, live: "announced only, for now"). There
 // is no Memo voice agent and no number behind it — the ElevenLabs workspace
 // holds none — so the segment opens a coming-soon panel instead of dialling.
-// It stays visible because the two-way shape IS the product statement, exactly
-// how Order sits in the place-detail bar with nothing behind it.
+// It stays visible because the two-way shape IS the product statement.
 //
 // So Chat is the only segment that ever wins the selected state, and Call is
 // styled the way HomeModeNav styles a parked pill: muted, tappable, explained

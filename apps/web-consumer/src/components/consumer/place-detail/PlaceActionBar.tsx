@@ -1,16 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CalendarCheck,
-  Loader2,
-  Lock,
-  QrCode,
-  ShoppingBag,
-} from "lucide-react";
+import { CalendarCheck, Loader2, Lock, QrCode } from "lucide-react";
 
-import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
-import { ORDER_COMING_SOON } from "@/components/consumer/place-detail/place-actions-copy";
+import { ORDER_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -49,7 +42,6 @@ export function PlaceActionBar({
       void tickets.refresh();
     },
   });
-  const [orderSoon, setOrderSoon] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
 
   // Gated on the LIVE reward, not the stored badge: a paused place used to
@@ -119,16 +111,23 @@ export function PlaceActionBar({
             Visit
           </button>
 
-          {/* ORDER — parked, exactly as Inbox › Orders is parked: there is no
-              table, no EF and no type behind it anywhere in the stack. It
-              stays visible and tappable because the three-verb shape IS the
-              product statement; a gap here would read as a bug. */}
+          {/* ORDER — blocked by default, same locked treatment as Visit on a
+              non-partner. The vertical is designed, not built: no table, no
+              EF, no type, and orders_config.enabled defaults false. The slot
+              stays because the three-verb shape IS the product statement; a
+              tappable coming-soon sheet would read as a live feature that
+              failed. */}
           <button
             type="button"
-            onClick={() => setOrderSoon(true)}
-            className={cn(btn, outline)}
+            disabled
+            aria-label={ORDER_BLOCKED.aria}
+            title={ORDER_BLOCKED.title}
+            className={cn(
+              btn,
+              "bg-muted text-muted-foreground cursor-not-allowed",
+            )}
           >
-            <ShoppingBag className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
             Order
           </button>
 
@@ -150,16 +149,6 @@ export function PlaceActionBar({
         place={place}
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
-      />
-      {/* Copy is shared with the deck's GoSheet (MESITA-1072) — the promise
-          made about a parked feature must be ONE sentence, not two that
-          drifted apart on two surfaces. */}
-      <ComingSoonModal
-        open={orderSoon}
-        onClose={() => setOrderSoon(false)}
-        title={ORDER_COMING_SOON.title}
-        body={ORDER_COMING_SOON.body}
-        icon={ShoppingBag}
       />
     </>
   );
