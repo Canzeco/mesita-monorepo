@@ -35,6 +35,8 @@ describe("the page chrome names the three surfaces", () => {
     expect(intake).toContain("EditPanel");
     expect(intake).toContain("alreadyExisted");
     expect(intake).toContain("Listed · Verified · Partner · Promoted");
+    expect(intake).toContain("Copy failed IDs");
+    expect(intake).toContain("const worker = async");
     expect(intake).not.toContain("Promoting");
     expect(edit).toContain("Listed");
     expect(edit).toContain("Verified");
@@ -62,6 +64,7 @@ describe("Google Search is a bar, not a parameter panel", () => {
   it("keeps Results in the footer and does not author quality floors", () => {
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
     const constants = readFileSync(join(here, "search-tab-constants.ts"), "utf8");
+    const rows = readFileSync(join(here, "SearchQueryRows.tsx"), "utf8");
     expect(searchTab).toContain("RESULTS_OPTIONS");
     expect(searchTab).toContain("/enricher-config#s-sourcing");
     expect(searchTab).not.toContain("SearchParametersSection");
@@ -69,5 +72,8 @@ describe("Google Search is a bar, not a parameter panel", () => {
     expect(searchTab).not.toContain("minUserRatingCount");
     expect(constants).not.toContain("RATING_OPTIONS");
     expect(constants).not.toContain("REVIEW_OPTIONS");
+    expect(rows).toContain("/enricher-config#s-sourcing");
+    expect(rows).not.toContain("Loosen the filters");
+    expect(rows).toContain("This row only");
   });
 });

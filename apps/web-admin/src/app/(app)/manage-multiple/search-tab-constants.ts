@@ -9,7 +9,8 @@ export const EXAMPLE_QUERIES = [
 ];
 
 // How many Google hits to fetch per query — operational, not a quality
-// policy. Rating / review floors live on Intake › Sourcing (`admin_search`).
+// policy. Rating / review floors and families live on Intake › Sourcing
+// (`admin_search`) for text hits AND named Place IDs.
 export const RESULTS_OPTIONS: { label: string; value: number }[] = [
   { label: "10", value: 10 },
   { label: "20", value: 20 },

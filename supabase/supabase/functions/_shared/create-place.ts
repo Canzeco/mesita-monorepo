@@ -79,9 +79,9 @@ export async function createMinimalPlace(opts: {
   dedupeError?: string;
   // Sourcing gate: when set, the place is evaluated against
   // app_config.sourcing_config[sourcingChannel] (family + rating + review
-  // floors) after the Google fetch and rejected (422) if ineligible. Consumer
-  // adds pass "consumer_add"; admin/business callers pass nothing (unquota'd,
-  // ungated — trusted operators / place owners).
+  // floors) after the Google fetch and rejected (422) if ineligible.
+  // Callers: consumer_add · admin_add · business_add. One ID, one 422 —
+  // a batch of creates never aborts as a unit.
   sourcingChannel?: ChannelKey;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;

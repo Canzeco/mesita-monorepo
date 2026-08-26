@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
 
   // Forward only operational search params. Quality floors live on
   // Intake › Sourcing (`admin_search`) and are read inside the internal
-  // caller — never from this body.
+  // caller — never from this body. Named Place IDs are not exempt.
   const result = await invokeInternalCaller(
     env,
     "admin-web-discover-places",
