@@ -4,25 +4,22 @@
 // up Memo's entire data surface (see _shared/memo-data.ts); Memo itself holds
 // no database client.
 //
-// Four slices of the `app_config` singleton in ONE read:
+// Slices of the `app_config` singleton in ONE read:
 //   • greeting     — memo_config.greeting, the consumer Ask AI opener. Null
 //                    when blank so clients keep their in-code fallback.
-//   • instructions — memo_config.instructions, the operator-tunable persona.
-//                    Null when blank, so the caller falls back to the in-code
-//                    SYSTEM_PROMPT and a config hiccup never costs Memo its
-//                    voice.
+//   • instructions — discovery_config.chat.prompt (Discovery Chat box), else
+//                    leftover memo_config.instructions. Null when blank, so
+//                    the caller falls back to the in-code SYSTEM_PROMPT.
 //   • model        — models_config.memo.model (admin Models page), falling
 //                    back to legacy memo_config.openaiModel when unset.
 //   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
 //   • searchPolicy — the `memo_search` slice of sourcing_config, coerced
 //                    against the launch policy.
 //
-// This is the read side ONLY, and today it is the ONLY side — greeting/
-// instructions have no live write path (MESITA-1248: admin-web-get-memo-config
-// / admin-web-update-memo-config were deleted as dead code, orphaned since
-// whatever session retired the admin console's Memo Config page — no frontend
-// route called them). Setting these two keys is a direct DB write today;
-// building a real editor is its own decision, not implied by this cleanup.
+// Read side for Memo. Greeting still has no editor (memo_config.greeting).
+// The Chat persona writes through admin-web-update-discovery-config
+// (discovery_config.chat.prompt) and is preferred here over leftover
+// memo_config.instructions.
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · get · memo-config.
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
@@ -37,6 +34,7 @@ import {
 } from "../_shared/sourcing.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import { normalizeMemoConfig } from "../_shared/memo-config.ts";
+import { normalizeDiscoveryConfig } from "../_shared/discovery-config.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -72,7 +70,7 @@ Deno.serve(async (req) => {
       admin
         .from("app_config")
         .select(
-          "memo_config, sourcing_config",
+          "memo_config, sourcing_config, discovery_config",
         )
         .eq("id", 1)
         .maybeSingle(),
@@ -86,8 +84,14 @@ Deno.serve(async (req) => {
     const memo = normalizeMemoConfig(
       (data as { memo_config?: unknown }).memo_config,
     );
+    const discovery = normalizeDiscoveryConfig(
+      (data as { discovery_config?: unknown }).discovery_config,
+    );
     const greeting = memo.greeting.trim();
-    const instructions = memo.instructions.trim();
+    const chatPrompt = discovery.chat.prompt.trim();
+    const instructions = chatPrompt.length > 0
+      ? chatPrompt
+      : memo.instructions.trim();
     // Models page is SoT; legacy memo_config.openaiModel remains a one-release fallback.
     const legacyModel = memo.openaiModel.trim();
     const model = models.memoModel || legacyModel;

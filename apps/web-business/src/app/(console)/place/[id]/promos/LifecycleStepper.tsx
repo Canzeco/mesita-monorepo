@@ -17,7 +17,7 @@ import {
 const ZERO_STRATEGY_ID: StrategyId = "zero";
 
 const STEP_TITLES = {
-  join: "Join the membership",
+  join: "Join Partnership",
   strategy: "Pick a strategy",
   honor: "Honor guest checks",
 } as const;
@@ -30,8 +30,8 @@ const STEP_TITLES = {
  * The earlier three-column stepper printed all three details at once, which
  * read as a wall of 11px above the boxes that carry the actual controls; every
  * rail state has exactly one current-or-blocked step, so a single line says the
- * same thing. Non-interactive on purpose — the controls stay in the Membership
- * box and strategy cards.
+ * same thing. Non-interactive on purpose — Drop lives on the Partnership bar;
+ * strategy lives on the cards.
  */
 export function LifecycleStepper({
   place,
@@ -62,11 +62,11 @@ export function LifecycleStepper({
             )}
           />
           <span className="font-display font-semibold tracking-tight">
-            Promos live
+            Partnership live
           </span>
           <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
             {warn
-              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits membership.`
+              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits Partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
           </span>
         </p>
@@ -78,8 +78,8 @@ export function LifecycleStepper({
 
   const joinDetail =
     view.join === "current"
-      ? `${price}/year — join by picking a strategy below.`
-      : `${price}/year — switch strategies free anytime.`;
+      ? `${price}/month — Join Partnership on this page.`
+      : `${price}/month — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -91,7 +91,7 @@ export function LifecycleStepper({
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Membership forfeited after 3 strikes — re-join by picking a strategy below."
+        ? "Partnership forfeited after 3 strikes — re-join on this page."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."

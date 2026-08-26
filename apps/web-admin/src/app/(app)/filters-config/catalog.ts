@@ -7,16 +7,13 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// FOUR BOXES, ONE PAGE (Pato, 2026-08-26: Catalog live; Social staged;
-// Signals · Engines stay Soon):
+// Live HTML: Catalog · Social (staged) · Chat prompt. Signals · Engines Soon.
 //
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
-//   SIGNALS   six functions. Off the HTML until Search/Map ranking is recut.
-//   ENGINES   swipe() still ranks from last-saved weights. Catalog() is
-//             live rails. Only a WIRED engine (swipe) gets a ranking knob.
+//   CHAT      system prompt. Blank = in-code Memo persona.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
@@ -43,6 +40,7 @@ export type DiscoveryConfig = {
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
   social: SocialConfig;
+  chat: { prompt: string };
 };
 
 export type CatalogConfig = {
@@ -96,6 +94,8 @@ export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
 export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
+/** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
+export const CHAT_PROMPT_MAX = 12_000;
 
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
@@ -146,6 +146,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   engines: { swipe: { ranked: true } },
   catalog: DEFAULT_CATALOG,
   social: DEFAULT_SOCIAL,
+  chat: { prompt: "" },
 };
 
 /**
@@ -216,12 +217,12 @@ export const ENGINES: {
     key: "chat",
     label: "Chat",
     fn: "chat()",
-    input: "The guest's utterance + catalog.",
-    process: "Parked. Don Memo is the persona; ships dark.",
-    output: "A recommended set, when unparked.",
-    state: "PARKED",
+    input: "The guest's utterance plus the thread the client resends.",
+    process: "OpenAI chat completions. System prompt from Discovery. No tools this pass.",
+    output: "A conversational reply.",
+    state: "LIVE",
     wired: null,
-    apis: ["Google Places Text Search", "Perplexity", "OpenAI"],
+    apis: ["OpenAI"],
   },
   {
     key: "social",
@@ -457,6 +458,11 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     engines,
     catalog: coerceCatalog(r.catalog),
     social: coerceSocial(r.social),
+    chat: {
+      prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
+        ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
+        : DEFAULT_CONFIG.chat.prompt,
+    },
   };
 }
 

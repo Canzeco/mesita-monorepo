@@ -259,9 +259,9 @@ export function MembershipStatusPill({
   state: MembershipPillState;
 }) {
   const labels: Record<MembershipPillState, string> = {
-    not_member: "Not a member",
-    pending: "Member — pending",
-    live: "Member — live",
+    not_member: "Listed",
+    pending: "Partner — pending",
+    live: "Partner — live",
     paused: "Paused",
     forfeited: "Forfeited",
   };

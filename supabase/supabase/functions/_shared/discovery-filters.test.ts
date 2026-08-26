@@ -179,6 +179,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
+  assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
 });
 
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
@@ -233,4 +234,12 @@ Deno.test("only WIRED engines are storable — an unwired one has no knob to per
   // an engine ever gains a key here without being wired, the console would
   // offer a toggle the engine ignores.
   assertEquals([...WIRED_ENGINE_KEYS], ["swipe"]);
+});
+
+Deno.test("chat.prompt round-trips, truncates, and garbage becomes blank", () => {
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: "  Be Memo.  " } }).chat.prompt, "  Be Memo.  ");
+  assertEquals(normalizeDiscoveryConfig({}).chat.prompt, "");
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: 12 } }).chat.prompt, "");
+  const tooLong = "x".repeat(12_001);
+  assertEquals(normalizeDiscoveryConfig({ chat: { prompt: tooLong } }).chat.prompt.length, 12_000);
 });

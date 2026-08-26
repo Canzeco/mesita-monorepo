@@ -8,7 +8,7 @@ import {
   CircleUser,
   Plus,
   Store,
-  Gift,
+  Percent,
   BarChart3,
   Settings2,
   type LucideIcon,
@@ -34,7 +34,7 @@ type NavItem = {
 // (reverses MESITA-894). Channel routing + Check PIN + team stay under Settings.
 const NAV_ITEMS: NavItem[] = [
   { slug: "place", Icon: Store, label: "Profile" },
-  { slug: "promos", Icon: Gift, label: "Promos" },
+  { slug: "promos", Icon: Percent, label: "Partner" },
   { slug: "performance", Icon: BarChart3, label: "Performance" },
   { slug: "settings", Icon: Settings2, label: "Settings" },
 ];
@@ -212,7 +212,7 @@ export function PlaceDock() {
               <CircleUser className="h-4 w-4" strokeWidth={2} />
             </span>
             <span className="text-dock-muted text-[9px] leading-none font-medium">
-              Profile
+              Account
             </span>
           </Link>
         </div>

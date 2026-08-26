@@ -8,7 +8,7 @@ import {
 } from "@/lib/business/strategies";
 import type { PromosConfig, StrategyKey } from "@/lib/business/promos";
 import { cn, formatMoney } from "@/lib/utils";
-import { CARD_ART, PRODUCT_PRICE_MXN } from "./promoConstants";
+import { CARD_ART } from "./promoConstants";
 import { ModalLabel, RateMatrix, Step, StrategyMeters } from "./promoShared";
 
 export function ProductModal({
@@ -17,8 +17,6 @@ export function ProductModal({
   currency,
   capMxn,
   isCurrent,
-  subscribed,
-  joinDisabled,
   billingBusy,
   onCommit,
   onClose,
@@ -28,8 +26,6 @@ export function ProductModal({
   currency: string;
   capMxn?: number;
   isCurrent: boolean;
-  subscribed: boolean;
-  joinDisabled?: boolean;
   billingBusy: boolean;
   onCommit: () => void;
   onClose: () => void;
@@ -44,8 +40,7 @@ export function ProductModal({
 
   const art = CARD_ART[strategy.id];
   const paid = strategy.id !== "zero";
-  const needsJoin = !subscribed;
-  const isZeroSwitch = subscribed && strategy.id === "zero";
+  const isZeroSwitch = strategy.id === "zero";
   const capLabel = capMxn ?? DEFAULT_DISCOUNT_CAP_MXN;
   const capOptionsLabel = DISCOUNT_CAPS_MXN.map((n) =>
     formatMoney(n, currency),
@@ -53,26 +48,18 @@ export function ProductModal({
 
   const primaryLabel = isCurrent
     ? "Current Strategy"
-    : needsJoin
-      ? joinDisabled
-        ? "Join unavailable"
-        : `Join — ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year`
-      : paid
-        ? `Switch to ${strategy.name}`
-        : "Switch to Zero";
+    : paid
+      ? `Switch to ${strategy.name}`
+      : "Switch to Zero";
 
   const footerNote = isCurrent
     ? ""
-    : needsJoin
-      ? joinDisabled
-        ? "Membership was forfeited — contact Mesita to re-join."
-        : `Starts Verified membership at ${formatMoney(PRODUCT_PRICE_MXN, currency)}/year with ${strategy.name} rates. Goes live when you honor your first guest check.`
-      : isZeroSwitch
-        ? "Membership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
-        : "Applies to new tickets only — open tickets keep the rates they were created with.";
+    : isZeroSwitch
+      ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+      : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   const onPrimary = () => {
-    if (isCurrent || billingBusy || joinDisabled) return;
+    if (isCurrent || billingBusy) return;
     onCommit();
   };
 
@@ -156,15 +143,11 @@ export function ProductModal({
           {paid ? (
             <div className="flex flex-col gap-3">
               <ModalLabel>How it works</ModalLabel>
-              <Step n={1} title="Join the membership">
-                {formatMoney(PRODUCT_PRICE_MXN, currency)}/year — one fee,
-                switch strategies free anytime.
+              <Step n={1} title="Staff scan the guest's QR">
+                Nothing to install: any phone camera opens Mesita Validate.
               </Step>
-              <Step n={2} title="Tell your staff to scan the guest's QR">
-                Nothing to install: any phone camera opens the check page.
-              </Step>
-              <Step n={3} title="Redeem your first guest reward">
-                Honor the first ticket at the bill and you&apos;re live.
+              <Step n={2} title="Honor the first check">
+                The first honored ticket at the bill makes you live.
               </Step>
               <p className="text-muted-foreground text-[10px] leading-snug">
                 Turn a guest away and it&apos;s a strike — 1 warning · 2
@@ -175,9 +158,8 @@ export function ProductModal({
             <div className="flex flex-col gap-2">
               <ModalLabel>How it works</ModalLabel>
               <p className="text-muted-foreground text-[12px] leading-snug">
-                {subscribed
-                  ? "Zero pauses discounts — membership stays active. Drop membership separately if you want to leave."
-                  : "Non-members stay at Zero — no discounts. Join membership to unlock the paid strategies."}
+                Zero pauses discounts — Partnership stays. Drop Partnership
+                separately if you want to leave.
               </p>
             </div>
           )}
@@ -187,13 +169,13 @@ export function ProductModal({
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              disabled={isCurrent || billingBusy || joinDisabled}
+              disabled={isCurrent || billingBusy}
               onClick={onPrimary}
               className={cn(
                 "inline-flex h-11 items-center justify-center rounded-full px-5 text-[13px] font-bold transition",
-                isCurrent || joinDisabled
+                isCurrent
                   ? "border-border text-muted-foreground border"
-                  : needsJoin || paid
+                  : paid
                     ? cn(
                         "bg-gradient-to-r text-white hover:brightness-105 active:scale-[0.99]",
                         art.cta || "from-slate-600 to-slate-500",

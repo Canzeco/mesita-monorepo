@@ -1,21 +1,30 @@
 import { Compass } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { CatalogConfigClient } from "./CatalogConfigClient";
+import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Catalog knobs LIVE; Social knobs STAGED (no events engine).
-// Signals · Engines stay Soon. Whole-blob Save carries both slices.
+// Discovery — Catalog live, Social staged, Chat prompt live.
+// Signals · Engines stay Soon. Each box saves its slice against the live blob.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
   const seed = await getDiscoveryConfig();
+  const initialConfig = seed.ok ? seed.config : DEFAULT_CONFIG;
+  const initialUpdatedAt = seed.ok ? seed.updatedAt : null;
+  const loadError = seed.ok ? null : seed.error;
   return (
     <div className="flex flex-col gap-10">
       <CatalogConfigClient
-        initialConfig={seed.ok ? seed.config : DEFAULT_CONFIG}
-        initialUpdatedAt={seed.ok ? seed.updatedAt : null}
-        loadError={seed.ok ? null : seed.error}
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
+      <DiscoveryConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
       />
       <ConfigSoon
         Icon={Compass}

@@ -23,18 +23,11 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { FaqsBox } from "./FaqsBox";
 import { LifecycleStepper } from "./LifecycleStepper";
 import { MembershipBox } from "./MembershipBox";
+import { PartnershipOffer } from "./PartnershipOffer";
 import { PricingCard } from "./PricingCard";
 import { ProductModal } from "./ProductModal";
 import { membershipPillState } from "./promoShared";
 import { isCardCurrent } from "./promo-state";
-
-// Promos — three boxes (MESITA-912 membership unbundle):
-//   1. Membership — fee, status pill, join/drop, activation, strikes.
-//   2. Strategy — three cards (give/receive, no price). Non-members: locked,
-//      tap routes to join with that strategy preselected. Members: switch =
-//      rates-only (apiUpdatePlace).
-//   3. Discount cap — independent 200 / 500 / 1000 (paid strategies only).
-//   4. FAQs — how the model works, Premium worked example under CURRENT strategy.
 
 function isSubscribed(place: MyPlace): boolean {
   return place.plan !== "free";
@@ -69,22 +62,18 @@ export function PromosClient({
   rewardsConfig,
 }: {
   place: MyPlace;
-  /** Live v10 blob off business-web-get-overview; null when the read failed. */
   rewardsConfig: unknown;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
-  // The rates every card and the modal quote. Coerced once here so a partial
-  // or missing blob degrades to the launch defaults instead of blanking the
-  // page (MESITA-1001).
   const cfg: PromosConfig = coercePromosConfig(rewardsConfig);
   const ratesAreDefaults = rewardsConfig == null;
 
   const subscribed = isSubscribed(place);
   const pillState = membershipPillState(place);
   const forfeited = pillState === "forfeited";
-  const joinDisabled = forfeited;
+  const sell = !subscribed || forfeited;
 
   const storedStrategy = strategyForPlace(place);
   const [selectedId, setSelectedId] = useState<StrategyId | null>(
@@ -92,7 +81,6 @@ export function PromosClient({
   );
   const [pendingId, setPendingId] = useState<StrategyId | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
-  const [activationFor, setActivationFor] = useState<StrategyId | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [pendingCap, setPendingCap] = useState<DiscountCapMxn | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,8 +112,8 @@ export function PromosClient({
       .finally(() => setPendingId(null));
   };
 
-  const commitJoin = async (target: StrategyId) => {
-    if (billingBusy || pendingId || subscribed || joinDisabled) return;
+  const commitJoin = async () => {
+    if (billingBusy || pendingId || (subscribed && !forfeited)) return;
     setBillingBusy(true);
     setError(null);
     const previous = selectedId;
@@ -146,18 +134,15 @@ export function PromosClient({
         window.location.href = result.checkout_url;
         return;
       }
-      setActivationFor(target);
-      setModalId(null);
-      setSelectedId(target);
-      setPendingId(target);
+      setSelectedId("zero");
+      setPendingId("zero");
       await apiUpdatePlace(supabase, {
         id: place.id,
-        ...buildStrategyPayload(place, target, previous),
+        ...buildStrategyPayload(place, "zero", previous),
       });
       router.refresh();
     } catch (err) {
-      setSelectedId(previous);
-      setError(errMsg(err, "Couldn't start membership."));
+      setError(errMsg(err, "Couldn't start Partnership."));
     } finally {
       setPendingId(null);
       setBillingBusy(false);
@@ -189,7 +174,7 @@ export function PromosClient({
       router.refresh();
     } catch (err) {
       setSelectedId(previous);
-      setError(errMsg(err, "Couldn't drop membership."));
+      setError(errMsg(err, "Couldn't drop Partnership."));
     } finally {
       setPendingId(null);
       setBillingBusy(false);
@@ -208,30 +193,30 @@ export function PromosClient({
       .finally(() => setPendingCap(null));
   };
 
-  const onModalConfirm = (target: StrategyId) => {
-    if (!subscribed) {
-      void commitJoin(target);
-      return;
-    }
-    commitSwitch(target);
-  };
-
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
-  const activationStrategy = activationFor
-    ? STRATEGY_BY_ID[activationFor]
-    : null;
+
+  if (sell) {
+    return (
+      <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
+        <PartnershipOffer
+          currency={place.currency}
+          forfeited={forfeited}
+          billingBusy={billingBusy}
+          error={error}
+          onJoin={() => void commitJoin()}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
-      <header className="flex flex-col gap-1">
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Promos
-        </h2>
-        <p className="text-muted-foreground text-[13px] leading-snug">
-          One membership, four strategies — switch your discount posture free
-          anytime.
-        </p>
-      </header>
+      <MembershipBox
+        currency={place.currency}
+        pillState={pillState}
+        billingBusy={billingBusy}
+        onDrop={() => void commitDrop()}
+      />
 
       <LifecycleStepper
         place={place}
@@ -240,17 +225,9 @@ export function PromosClient({
         member={subscribed}
       />
 
-      <MembershipBox
-        currency={place.currency}
-        place={place}
-        pillState={pillState}
-        billingBusy={billingBusy}
-        onDrop={() => void commitDrop()}
-      />
-
       <Section
-        title="Strategy"
-        description="Zero, Conservative, or Aggressive — switch free anytime while membership is active."
+        title="Promos"
+        description="Zero, Conservative, or Aggressive — switch free anytime."
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           {STRATEGIES.filter((s) => s.id !== "dominant").map((s) => (
@@ -258,28 +235,12 @@ export function PromosClient({
               key={s.id}
               strategy={s}
               cfg={cfg}
-              // Member-gated (MESITA-948): strategyForPlace maps all-null
-              // rates to "zero", so an unsubscribed place would otherwise
-              // ring Zero as "Current" and block join-onto-Zero.
               selected={isCardCurrent(subscribed, selectedId, s.id)}
               pending={pendingId === s.id}
-              subscribed={subscribed}
-              joinDisabled={joinDisabled}
-              onOpen={() => !joinDisabled && setModalId(s.id)}
+              onOpen={() => setModalId(s.id)}
             />
           ))}
         </div>
-
-        {activationStrategy && (
-          <p className="rounded-xl bg-emerald-50 p-3 text-[12px] leading-snug text-emerald-800">
-            Membership started with{" "}
-            <span className="font-semibold">
-              {activationStrategy.emoji} {activationStrategy.name}
-            </span>
-            . It activates the first time your staff honor a guest check at the
-            table.
-          </p>
-        )}
 
         {ratesAreDefaults && (
           <p className="text-muted-foreground text-[11px]">
@@ -287,7 +248,7 @@ export function PromosClient({
           </p>
         )}
 
-        {selectedId === null && subscribed && (
+        {selectedId === null && (
           <p className="text-muted-foreground text-[11px]">
             Your current rates don&apos;t match a Strategy — pick one to
             standardize them.
@@ -350,10 +311,8 @@ export function PromosClient({
           currency={place.currency}
           capMxn={modalStrategy.id !== "zero" ? displayCapMxn : undefined}
           isCurrent={isCardCurrent(subscribed, selectedId, modalStrategy.id)}
-          subscribed={subscribed}
-          joinDisabled={joinDisabled}
           billingBusy={billingBusy || pendingId === modalStrategy.id}
-          onCommit={() => onModalConfirm(modalStrategy.id)}
+          onCommit={() => commitSwitch(modalStrategy.id)}
           onClose={() => setModalId(null)}
         />
       )}

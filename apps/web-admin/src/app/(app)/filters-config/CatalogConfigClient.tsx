@@ -87,7 +87,7 @@ export function CatalogConfigClient({
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg);
+      const r = await updateDiscoveryConfig(cfg, ["catalog", "social"]);
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);

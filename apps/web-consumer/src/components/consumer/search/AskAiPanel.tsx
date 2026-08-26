@@ -5,13 +5,9 @@ import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
 // Ask AI — the Memo concierge chat. Lives as a full tab on Home (inline
 // layout); the "overlay" layout is retained for any floating-panel host.
 //
-// Every turn calls Memo (consumer-web-ask-memo), Mesita's AI concierge agent:
-// Perplexity (sonar-pro, web-grounded) writes the natural-language reply while
-// Google Places + the Mesita catalog resolve the places it names. Ask AI shows
-// no place cards — the suggestions are woven into the prose as underlined,
-// tappable links (MemoAnswerText): on-Mesita names open the detail modal,
-// not-yet-listed ones fire the real consumer-web-create-place Add flow. Prior
-// turns are sent as history so Memo can follow up.
+// Every turn calls Memo (consumer-web-ask-memo). The client resends the full
+// thread as history — no server-side memory. Place cards stay in the reply
+// shape for later tools; this pass is conversation only.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";

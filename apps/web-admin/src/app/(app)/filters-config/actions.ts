@@ -28,12 +28,24 @@ type UpdateDiscoveryConfigResult =
   | { ok: true; config: DiscoveryConfig; updatedAt: string | null }
   | { ok: false; error: string };
 
+export type DiscoverySlice = "catalog" | "social" | "chat";
+
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
+  slices?: DiscoverySlice[],
 ): Promise<UpdateDiscoveryConfigResult> {
+  const live = await getDiscoveryConfig();
+  if (!live.ok) return live;
+  const keys = new Set(slices ?? (["catalog", "social", "chat"] as const));
+  const next: DiscoveryConfig = {
+    ...live.config,
+    catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
+    social: keys.has("social") ? config.social : live.config.social,
+    chat: keys.has("chat") ? config.chat : live.config.chat,
+  };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-discovery-config",
-    { config },
+    { config: next },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };

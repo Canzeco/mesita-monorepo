@@ -1,7 +1,7 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Discovery — Catalog box live; Signals · Engines Soon. The route stays
-// /filters-config: a rename stops at the label.
+// Discovery — Catalog live, Social staged, Chat prompt live.
+// The route stays /filters-config: a rename stops at the label.
 export default function DiscoveryLayout({
   children,
 }: {
