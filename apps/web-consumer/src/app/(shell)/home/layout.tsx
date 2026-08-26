@@ -5,8 +5,8 @@ import { HomeDeckBoundary } from "@/components/consumer/home/HomeDeckBoundary";
 
 export const dynamic = "force-dynamic";
 
-// /home shared layout. Owns the two things every sub-route (swipe / ai /
-// social / favorites) shares: the mode pill nav and the ONE server-fetched
+// /home shared layout. Owns the two things every sub-route (swipe / catalog /
+// chat / social / favorites) shares: the mode pill nav and the ONE server-fetched
 // recommendation deck. Because Next keeps a shared layout mounted across
 // sibling navigations, switching tabs never re-runs the deck fetch.
 //

@@ -42,7 +42,8 @@ import {
 // It is mounted directly by its hosts now, so the route, its hard twin and
 // the bus are all gone and the host passes `count`, `categoryOptions` and
 // `hasLocation` as props. `onClose` is the host's setState, not router.back().
-// Swipe and Search both host it; Catalogue stays parked.
+// Swipe and Search host it; Catalog is live but does not — its filterability
+// is the Suggested / Open-first sort on the shared deck.
 //
 // Random is gone too: a 0..4 deck reorder is one of the seven named discovery
 // signals, and the server already shuffles.
