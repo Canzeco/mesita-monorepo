@@ -67,6 +67,7 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
   return {
     id: `g:${hit.placeId}`,
     slug: hit.placeId,
+    google_place_id: hit.placeId,
     name: hit.name,
     category: hit.primaryType,
     category_label: null,

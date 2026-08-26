@@ -69,6 +69,24 @@ const SUGGEST_DEBOUNCE_MS = 300;
 const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
+function googlePredictionFromPlace(place: Place): PlacePrediction | null {
+  if (!place.googleOnly && !place.from_google) return null;
+  const placeId =
+    place.google_place_id ||
+    place.slug ||
+    (place.id.startsWith("g:") ? place.id.slice(2) : "");
+  if (!placeId) return null;
+  return {
+    placeId,
+    mainText: place.name,
+    secondaryText: place.address ?? "",
+    status: "not_in_mesita",
+    partner: false,
+    lat: place.lat,
+    lng: place.lng,
+  };
+}
+
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -427,6 +445,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
+      return;
+    }
     setRailCollapsed(false);
     setSelectedId(place.id);
   };
