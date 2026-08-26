@@ -11,6 +11,9 @@ import { type ConsumerTicketRow } from "@/lib/api/tickets";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
+import { readStoredSearchCountry } from "@/lib/search-scope";
+import { useUserLocation } from "@/lib/use-user-location";
 
 // New Visit — ONE job: pick a place and start a visit.
 //
@@ -22,10 +25,10 @@ import { useStartVisit } from "@/lib/hooks/useStartVisit";
 // detect a just-paid reveal and to know which places already hold a live one.
 //
 // IT IS A PLACE LIST AND NOTHING ELSE (Pato, 2026-08-11: "you don't see the
-// tickets… you only see places, step 1 — list all the places in Mesita,
-// that's it"). The live ticket no longer pins above the list: New is the
-// question "where are you?", and a ticket sitting in the answer slot made the
-// surface look like two products. Tickets live on THE TICKET and in Inbox.
+// tickets… you only see places"). The quick list is the closest 50 listed
+// places around the guest; typing searches by name when the place is not in
+// that 50. The live ticket no longer pins above the list — Pay never paints
+// an Open chip. Tickets live on THE TICKET and in Inbox.
 //
 // A SEARCH FIELD IS THE HEADER (Pato, 2026-08-16: "remove the stupid banner on
 // top displaying the steps" + "replace that with a searchbar"). This overturns
@@ -59,11 +62,12 @@ export function NewVisitClient({ userId }: { userId: string }) {
   // common owner is this component. PlacePickList still owns the rows and
   // does the matching — this holds the string and nothing else.
   const [query, setQuery] = useState("");
-
-  const activePlaceIds = useMemo(
-    () => new Set(tickets.active.map((t) => t.project_id)),
-    [tickets.active],
+  const coords = useUserLocation();
+  const origin = useMemo(
+    () => coords ?? MONTERREY_CENTER,
+    [coords],
   );
+  const country = readStoredSearchCountry();
 
   // ── Ticket creation: tap a place, that's it. ──
   //
@@ -148,10 +152,10 @@ export function NewVisitClient({ userId }: { userId: string }) {
             {startError}
           </p>
         ) : null}
-        {/* Step 1, and only step 1: every place on Mesita, narrowed to what
-            the header's query matches. */}
+        {/* Closest 50 around the guest; the header query is name search. */}
         <PlacePickList
-          activePlaceIds={activePlaceIds}
+          origin={origin}
+          country={country}
           busyPlaceId={startingId}
           onPick={onPick}
           query={query}

@@ -1,35 +1,15 @@
 "use client";
 
-// The New tab (Wallet v3, MESITA-811 · MESITA-817): EVERY Mesita place, listed
-// flat, narrowed by the header's search field (MESITA-1071 — Pato: "replace
-// that with a searchbar", the answer to the deferred "then we see how we can
-// solve the searchbar").
+// Pay's place list: the closest 50 listed Mesita places around the guest
+// (device location, Monterrey fallback). Typing 2+ characters switches to
+// name search (Autocomplete · Text Search · Mesita embeddings) so a place
+// that is not in the nearby 50 can still be found. Google Nearby pins are
+// Search's map fill, not this list.
 //
-// The field is OWNED BY THE HEADER (NewVisitClient) because it renders outside
-// this scroll body; the query arrives as a prop and the matching happens here,
-// where the rows already live. Matching is client-side on purpose: the list is
-// capped at 100 rows and is already fully in memory, so a per-keystroke EF
-// round-trip would be slower and buy nothing.
-//
-// ROWS, one column (Pato, 2026-08-11: "no squares neither — you only see
-// places, step 1"). This reverses MESITA-1025's 2-col square grid: squares put
-// the photo first, but this list does not sell a place — you are already
-// standing in it, and you are scanning for its NAME. A name is what a row
-// reads first, at full width, unabbreviated.
-//
-// ONE TAP IS THE WHOLE INTERACTION: tapping a partner creates the ticket and
-// lands on THE TICKET (/visit/[id]). No wizard, no confirm — hence
-// the ghost QR on every actionable row, which is the row's promise made
-// visible.
-//
-// Non-partners are shown, not hidden (MESITA-817). Hiding them meant a guest
-// whose catalog is all `web` listings saw an empty tab and concluded the page
-// was broken. They get a LOCKED treatment instead (MESITA-819) — padlock pill,
-// desaturated thumbnail, muted name, no tap target — because
-// consumer-web-create-ticket 409s `not_partner`, so a tap is a dead end.
-// Partners sort first.
+// One tap creates the ticket. Non-promoting rows stay visible and locked
+// (Soon). Live tickets never get an "Open" chip here — they live in Inbox.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ChevronRight,
@@ -41,27 +21,41 @@ import {
   Store,
 } from "lucide-react";
 
-import { apiFetchPublicPlaces, type Place } from "@/lib/api/places";
+import {
+  apiFetchNearbyPlaces,
+  apiSuggestPlaces,
+  type Place,
+  type PlacePrediction,
+} from "@/lib/api/places";
 import { PlacePickListSkeleton } from "@/components/consumer/rewards/place-pick-skeleton";
 import { filterPlacesByQuery } from "@/lib/place-list-filter";
+import {
+  PAY_NEARBY_MAX,
+  PAY_SUGGEST_DEBOUNCE_MS,
+  PAY_SUGGEST_MIN_CHARS,
+  payRowFromPlace,
+  payRowFromPrediction,
+  type PayListRow,
+} from "@/lib/pay-place-list";
+import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import type { SeedPlace } from "@/lib/ticket-seed";
 import { cn } from "@/lib/utils";
 
 export function PlacePickList({
-  activePlaceIds,
+  origin,
+  country = null,
   busyPlaceId = null,
   onPick,
   query = "",
   onClearQuery,
 }: {
-  /** Places that already hold a live ticket — rows get an "Open" chip. */
-  activePlaceIds: ReadonlySet<string>;
-  /** Place whose ticket is being created right now — its row shows a spinner. */
+  origin: { lat: number; lng: number };
+  /** Optional Google country restrict, same default Search stores (MX). */
+  country?: string | null;
   busyPlaceId?: string | null;
-  onPick: (place: Place) => void;
-  /** Header search query. Empty string = show everything. */
+  onPick: (place: SeedPlace) => void;
   query?: string;
-  /** Lets the no-match state clear the field it cannot reach itself. */
   onClearQuery?: () => void;
 }) {
   const supabase = useBrowserSupabase();
@@ -70,12 +64,28 @@ export function PlacePickList({
     "loading",
   );
   const [reloadKey, setReloadKey] = useState(0);
+  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+  const [suggestFor, setSuggestFor] = useState("");
+  const sessionTokenRef = useRef(newSessionToken());
+  const trimmed = query.trim();
+  const nameSearch = trimmed.length >= PAY_SUGGEST_MIN_CHARS;
+
+  const originLat = origin.lat;
+  const originLng = origin.lng;
+  const originPoint = useMemo(
+    () => ({ lat: originLat, lng: originLng }),
+    [originLat, originLng],
+  );
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await apiFetchPublicPlaces(supabase, 100);
+        const rows = await apiFetchNearbyPlaces(
+          supabase,
+          originPoint,
+          PAY_NEARBY_MAX,
+        );
         if (!cancelled) {
           setPlaces(rows);
           setStatus("ready");
@@ -87,28 +97,57 @@ export function PlacePickList({
     return () => {
       cancelled = true;
     };
-  }, [supabase, reloadKey]);
+  }, [supabase, reloadKey, originPoint]);
 
-  // Partners first — the rows you can actually act on lead the list.
-  const sorted = useMemo(
+  useEffect(() => {
+    if (!nameSearch) {
+      sessionTokenRef.current = newSessionToken();
+      return;
+    }
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
+      try {
+        const rows = await apiSuggestPlaces(
+          supabase,
+          trimmed,
+          sessionTokenRef.current,
+          originPoint,
+          country,
+        );
+        if (!cancelled) {
+          setPredictions(rows);
+          setSuggestFor(trimmed);
+        }
+      } catch {
+        if (!cancelled) {
+          setPredictions([]);
+          setSuggestFor(trimmed);
+        }
+      }
+    }, PAY_SUGGEST_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [supabase, nameSearch, trimmed, originPoint, country]);
+
+  const nearbyRows = useMemo(
     () =>
-      [...places].sort((a, b) => {
-        const ap = a.listing_type === "partner" ? 0 : 1;
-        const bp = b.listing_type === "partner" ? 0 : 1;
-        return ap !== bp ? ap - bp : a.name.localeCompare(b.name);
-      }),
-    [places],
+      filterPlacesByQuery(places, nameSearch ? "" : query).map(payRowFromPlace),
+    [places, query, nameSearch],
   );
-  // Rules and rationale live with the matcher in `@/lib/place-list-filter`, where
-  // they are unit-tested; this only decides WHEN to apply them.
-  const visible = useMemo(
-    () => filterPlacesByQuery(sorted, query),
-    [sorted, query],
+  const searchRows = useMemo(
+    () => predictions.map((pred) => payRowFromPrediction(pred, places)),
+    [predictions, places],
   );
-
-  // Scoped to what is ON SCREEN: the partner footnote explains locked rows, so
-  // it has no business showing when the query has filtered them all away.
-  const anyLocked = visible.some((p) => p.listing_type !== "partner");
+  const nameResultsReady = nameSearch && suggestFor === trimmed;
+  const visible: PayListRow[] = nameSearch
+    ? nameResultsReady
+      ? searchRows
+      : []
+    : nearbyRows;
+  const anyLocked = visible.some((row) => !row.canStart);
+  const showSuggestPending = nameSearch && !nameResultsReady;
 
   if (status === "loading") {
     return <PlacePickListSkeleton />;
@@ -134,7 +173,7 @@ export function PlacePickList({
     );
   }
 
-  if (sorted.length === 0) {
+  if (!nameSearch && places.length === 0) {
     return (
       <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-8 text-center">
         <span className="bg-muted text-muted-foreground grid size-11 place-items-center rounded-full">
@@ -147,10 +186,10 @@ export function PlacePickList({
     );
   }
 
-  // A query that matches nothing is NOT an empty catalog, and saying "no
-  // places on Mesita yet" to someone who simply mistyped is a lie the guest
-  // has no way to disprove — the field that caused it lives in the header,
-  // out of this component's reach, so the way out ships with the message.
+  if (showSuggestPending) {
+    return <PlacePickListSkeleton />;
+  }
+
   if (visible.length === 0) {
     return (
       <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-8 text-center">
@@ -159,7 +198,7 @@ export function PlacePickList({
         </span>
         <p className="text-muted-foreground type-body">
           No place matches{" "}
-          <span className="text-foreground font-semibold">{query.trim()}</span>.
+          <span className="text-foreground font-semibold">{trimmed}</span>.
         </p>
         {onClearQuery ? (
           <button
@@ -177,12 +216,11 @@ export function PlacePickList({
   return (
     <div className="flex flex-col gap-2">
       <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-        {visible.map((p) => (
-          <li key={p.id}>
+        {visible.map((row) => (
+          <li key={row.key}>
             <PlaceRow
-              place={p}
-              hasOpen={activePlaceIds.has(p.id)}
-              busy={busyPlaceId === p.id}
+              row={row}
+              busy={busyPlaceId === row.seed?.id}
               onPick={onPick}
             />
           </li>
@@ -190,8 +228,8 @@ export function PlacePickList({
       </ul>
       {anyLocked ? (
         <p className="text-muted-foreground/80 type-label px-1 leading-snug">
-          Only Mesita Partners run the Mesita reward program — the rest are on
-          Mesita, but can&apos;t open a ticket yet.
+          Only places running a Mesita reward can open a ticket — the rest
+          stay on the list as Soon.
         </p>
       ) : null}
     </div>
@@ -199,44 +237,32 @@ export function PlacePickList({
 }
 
 function PlaceRow({
-  place,
-  hasOpen,
+  row,
   busy = false,
   onPick,
 }: {
-  place: Place;
-  hasOpen: boolean;
+  row: PayListRow;
   busy?: boolean;
-  onPick: (place: Place) => void;
+  onPick: (place: SeedPlace) => void;
 }) {
-  const isPartner = place.listing_type === "partner";
-  const photo = place.photos?.[0] ?? null;
-  const subtitle =
-    [place.zone, place.category_label ?? place.category]
-      .filter(Boolean)
-      .join(" · ") || (isPartner ? "Mesita partner" : "On Mesita");
-
   const body = (
     <>
-      {photo ? (
+      {row.photo ? (
         <Image
-          src={photo}
+          src={row.photo}
           alt=""
           width={48}
           height={48}
-          // The THUMBNAIL carries the inactive state, not the whole row —
-          // blanket row opacity reads as a rendering glitch and costs
-          // legibility. Desaturated + dimmed says "real place, not live".
           className={cn(
             "size-12 shrink-0 rounded-xl object-cover",
-            !isPartner && "opacity-60 grayscale",
+            !row.canStart && "opacity-60 grayscale",
           )}
         />
       ) : (
         <span
           className={cn(
             "grid size-12 shrink-0 place-items-center rounded-xl",
-            isPartner
+            row.canStart
               ? "bg-secondary/10 text-secondary"
               : "bg-muted text-muted-foreground",
           )}
@@ -248,34 +274,22 @@ function PlaceRow({
         <span
           className={cn(
             "block truncate text-sm leading-tight font-bold",
-            isPartner ? "text-foreground" : "text-muted-foreground",
+            row.canStart ? "text-foreground" : "text-muted-foreground",
           )}
         >
-          {place.name}
+          {row.name}
         </span>
         <span className="text-muted-foreground/80 mt-0.5 block truncate text-xs">
-          {subtitle}
+          {row.subtitle}
         </span>
       </span>
-      {!isPartner ? (
-        // One unambiguous locked signal, in one place.
+      {!row.canStart ? (
         <span className="bg-muted text-muted-foreground type-meta flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-extrabold tracking-wide uppercase">
           <Lock className="size-2.5" />
           Soon
         </span>
-      ) : hasOpen ? (
-        // The one place-row state worth showing: this place already holds a
-        // live ticket, so the tap re-opens it instead of making a second one.
-        <span className="bg-primary/10 text-primary type-meta shrink-0 rounded-full px-2 py-0.5 font-extrabold tracking-wide uppercase">
-          Open
-        </span>
       ) : (
         <>
-          {/* Ghost QR — the row's promise, made visible. A dashed placeholder
-              reads "your QR comes from here, tap it", which a bare chevron
-              never says. Deliberately NOT a scannable code: nothing exists
-              until the ticket is created. While the ticket is being created
-              it becomes the spinner, in place. */}
           <span
             aria-hidden="true"
             className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
@@ -292,8 +306,7 @@ function PlaceRow({
     </>
   );
 
-  // Non-partners are visible but inert: create-ticket would 409 `not_partner`.
-  if (!isPartner) {
+  if (!row.canStart || !row.seed) {
     return (
       <div
         aria-disabled="true"
@@ -304,10 +317,11 @@ function PlaceRow({
     );
   }
 
+  const seed = row.seed;
   return (
     <button
       type="button"
-      onClick={() => onPick(place)}
+      onClick={() => onPick(seed)}
       className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
     >
       {body}
