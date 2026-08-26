@@ -22,10 +22,10 @@
 // px-2 overflows. A sixth mode, or a label longer than "Favorites", puts it
 // back over budget: measure before adding either.
 //
-// Only Swipe and Favorites are FUNCTIONAL (Pato, 2026-08-16). Catalog, Chat
-// and Social are parked — all three keep working code on disk, so each is a
-// one-flag unpark, and all five pills stay visible so the row reads as the
-// finished shape rather than a surface still being assembled.
+// Swipe, Chat and Favorites are FUNCTIONAL. Catalog and Social stay parked —
+// working code on disk, one-flag unpark — and all five pills stay visible so
+// the row reads as the finished shape rather than a surface still being
+// assembled.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -83,9 +83,6 @@ const TABS: Tab[] = [
     href: CONSUMER_ROUTES.homeTabs.chat,
     label: "Chat",
     Icon: Sparkles,
-    soon: true,
-    blurb:
-      "Don Memo, your AI concierge, is almost ready — call him or chat with him, tell him the vibe you want, and he'll find your spot.",
   },
   {
     href: CONSUMER_ROUTES.homeTabs.social,
