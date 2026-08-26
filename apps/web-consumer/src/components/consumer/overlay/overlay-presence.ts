@@ -18,6 +18,11 @@ const OVERLAY_MS = 320;
 // iOS-style decelerating push curve, shared by panel + sheet transitions.
 export const OVERLAY_EASE = "ease-[cubic-bezier(0.32,0.72,0,1)]";
 
+// Dimmed full-bleed dismiss control — every overlay shell uses this exact
+// recipe so a route modal and a state sheet dim the same way.
+export const OVERLAY_BACKDROP_CLASS =
+  "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none";
+
 // Under prefers-reduced-motion the shells disable their CSS transitions, so
 // waiting the full exit duration would just be a dead-input window with a
 // delayed URL restore — exit immediately instead.

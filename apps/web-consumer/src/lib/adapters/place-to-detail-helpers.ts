@@ -77,16 +77,6 @@ export function resolveZoneLabel(input: {
   return cityFromAddress(input.address ?? undefined);
 }
 
-const DAY_LABELS: Record<string, string> = {
-  monday: "Monday",
-  tuesday: "Tuesday",
-  wednesday: "Wednesday",
-  thursday: "Thursday",
-  friday: "Friday",
-  saturday: "Saturday",
-  sunday: "Sunday",
-};
-
 const DAY_ORDER = [
   "monday",
   "tuesday",
@@ -95,7 +85,17 @@ const DAY_ORDER = [
   "friday",
   "saturday",
   "sunday",
-];
+] as const;
+
+const DAY_LABELS = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+} as const satisfies Record<(typeof DAY_ORDER)[number], string>;
 
 // Week keyed Sunday-first to match JS getDay() and let us reach "yesterday"
 // for overnight ranges that started the day before.
@@ -117,7 +117,11 @@ function parseMinutes(t: unknown): number | null {
   if (typeof t !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
   if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || mm >= 60) return null;
+  const min = hh * 60 + mm;
+  return min >= 0 && min <= 1440 ? min : null;
 }
 
 function currencyPrefix(code: string): string {
@@ -180,7 +184,7 @@ export function computeOpenState(
   let nowMin: number;
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz || "UTC",
+      timeZone: tz ?? "UTC",
       weekday: "short",
       hour: "2-digit",
       minute: "2-digit",
@@ -189,7 +193,7 @@ export function computeOpenState(
     const wd = parts.find((p) => p.type === "weekday")?.value ?? "";
     const hr = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
     const mn = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
-    const wdMap: Record<string, number> = {
+    const wdMap = {
       Sun: 0,
       Mon: 1,
       Tue: 2,
@@ -197,8 +201,8 @@ export function computeOpenState(
       Thu: 4,
       Fri: 5,
       Sat: 6,
-    };
-    dayIdx = wdMap[wd] ?? 0;
+    } as const;
+    dayIdx = wdMap[wd as keyof typeof wdMap] ?? 0;
     nowMin = hr * 60 + mn;
   } catch {
     return fallback;

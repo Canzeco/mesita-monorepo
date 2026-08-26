@@ -15,7 +15,7 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Rewards, Inbox, Me.
+// Five top-level surfaces: Home, Search, Pay, Inbox, Me.
 // Home hosts the discovery routes (Swipe / Catalog / Chat / Social /
 // Favorites); Search hosts the map + catalog search.
 //
@@ -156,6 +156,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                   key={href}
                   type="button"
                   onClick={() => setSoonItem(item)}
+                  aria-haspopup="dialog"
                   title={item.soonTitle ?? "Coming soon"}
                   className="text-muted-foreground hover:text-foreground type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition"
                 >

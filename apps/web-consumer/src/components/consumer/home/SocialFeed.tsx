@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
@@ -18,10 +18,10 @@ import { ConsumerActivityList } from "@/components/consumer/ConsumerActivityList
 // the person is (weighted engagement, see socialRelevance). Relevance is
 // the default and leads the toggle.
 type SocialSort = "recent" | "relevance";
-const SORT_MODES: { key: SocialSort; label: string }[] = [
+const SORT_MODES = [
   { key: "relevance", label: "Relevance" },
   { key: "recent", label: "Recent" },
-];
+] as const satisfies { key: SocialSort; label: string }[];
 
 // Social mode — the live activity feed. Each row splits into two tap
 // targets: the person (opens the profile modal) and the place chip on the
@@ -63,9 +63,13 @@ export function SocialFeed({ places }: { places: Place[] }) {
     if (refreshing) return;
     setRefreshing(true);
     setJitter(makeJitter());
-    // Brief spin so the manual refresh reads as a real fetch.
-    setTimeout(() => setRefreshing(false), 500);
   };
+
+  useEffect(() => {
+    if (!refreshing) return;
+    const t = window.setTimeout(() => setRefreshing(false), 500);
+    return () => window.clearTimeout(t);
+  }, [refreshing]);
 
   const people = useMemo(() => {
     const scored = SOCIAL_PEOPLE.map((p) => {

@@ -25,7 +25,7 @@ function subscribe(onChange: () => void): () => void {
 }
 
 function notify(): void {
-  listeners.forEach((l) => l());
+  for (const l of listeners) l();
 }
 
 // ─── Raw string cell ───────────────────────────────────────────────────────

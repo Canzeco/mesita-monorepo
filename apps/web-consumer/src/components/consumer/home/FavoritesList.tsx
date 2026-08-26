@@ -140,6 +140,12 @@ export function FavoritesList({
                 onClick={() =>
                   setSort((s) => (s === "recent" ? "open" : "recent"))
                 }
+                aria-pressed={sort === "open"}
+                aria-label={
+                  sort === "recent"
+                    ? "Sort by recently saved"
+                    : "Sort open places first"
+                }
                 className="border-border bg-card text-muted-foreground hover:text-foreground type-label flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 font-semibold transition"
               >
                 <ArrowUpDown className="h-3 w-3" />

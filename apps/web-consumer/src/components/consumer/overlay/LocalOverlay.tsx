@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
+  OVERLAY_BACKDROP_CLASS,
   OVERLAY_EASE,
   overlayExitMs,
 } from "@/components/consumer/overlay/overlay-presence";
+import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 
 // State-driven overlays (no route change): bottom sheets and centered
@@ -157,7 +159,7 @@ export function LocalSheet({
           tabIndex={-1}
           onClick={onClose}
           className={cn(
-            "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
+            OVERLAY_BACKDROP_CLASS,
             shown ? "opacity-100" : "opacity-0",
           )}
         />
@@ -170,7 +172,7 @@ export function LocalSheet({
             panelClassName,
           )}
         >
-          <div className="bg-foreground/20 mx-auto mt-2 h-1 w-10 shrink-0 rounded-full" />
+          <div className={SHEET_GRABBER_CLASS} />
           {children}
         </div>
       </div>
@@ -213,7 +215,7 @@ export function LocalDialog({
           tabIndex={-1}
           onClick={onClose}
           className={cn(
-            "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
+            OVERLAY_BACKDROP_CLASS,
             shown ? "opacity-100" : "opacity-0",
           )}
         />

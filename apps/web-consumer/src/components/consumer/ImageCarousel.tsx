@@ -120,7 +120,7 @@ export function ImageCarousel({
     tapRef.current = { x: e.clientX, y: e.clientY, t: performance.now() };
   };
   const handleZoneUp =
-    (direction: -1 | 1) => (e: React.PointerEvent<HTMLDivElement>) => {
+    (direction: -1 | 1) => (e: React.PointerEvent<HTMLButtonElement>) => {
       const start = tapRef.current;
       tapRef.current = null;
       if (!start) return;
@@ -128,17 +128,20 @@ export function ImageCarousel({
       const dy = Math.abs(e.clientY - start.y);
       const dt = performance.now() - start.t;
       if (dx > 10 || dy > 10 || dt > 300) return;
-      // Wrap past either end so a tap on the last image loops to the
-      // first (and a tap on the first goes to the last).
+      e.stopPropagation();
       const target =
         (((idx + direction) % items.length) + items.length) % items.length;
-      e.stopPropagation();
       // goTo reads ref.current — only invoked inside this pointerup
       // handler, never during render. The rule can't see that through
       // the curried handleZoneUp.
       // eslint-disable-next-line react-hooks/refs
       goTo(target);
     };
+  const pageBy = (direction: -1 | 1) => {
+    const target =
+      (((idx + direction) % items.length) + items.length) % items.length;
+    goTo(target);
+  };
 
   // In transform mode every slide must already be eager (paging can't wait
   // on a lazy fetch); in native-scroll mode only a window around the active
@@ -283,6 +286,8 @@ export function ImageCarousel({
           onPointerDown={handleZoneDown}
           onPointerUpLeft={handleZoneUp(-1)}
           onPointerUpRight={handleZoneUp(1)}
+          onKeyLeft={() => pageBy(-1)}
+          onKeyRight={() => pageBy(1)}
         />
       )}
 

@@ -13,7 +13,7 @@ import { PLANS, PREMIUM_PLAN_ICON } from "@/lib/consumer-data";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 
 // The plan surface (decision: Pato, MESITA-1129) — a sheet on Me, built to the
 // same shape as the class sheet: header, a ladder of the rungs, the actions
@@ -93,9 +93,7 @@ export function PlanModal({
       });
       window.location.href = checkout_url;
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Couldn't start checkout",
-      );
+      toast.error(errMsg(err, "Couldn't start checkout"));
       setLoading(false);
     }
   }
@@ -129,9 +127,7 @@ export function PlanModal({
       }
       window.location.href = successUrl;
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Couldn't activate Premium",
-      );
+      toast.error(errMsg(err, "Couldn't activate Premium"));
       setEmulating(false);
     }
   }

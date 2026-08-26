@@ -95,7 +95,7 @@ export function LocationBox({ place }: { place: PlaceDetail }) {
 function todayWeekdayLabel(tz: string | undefined): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
-      timeZone: tz || "UTC",
+      timeZone: tz ?? "UTC",
       weekday: "long",
     }).format(new Date());
   } catch {

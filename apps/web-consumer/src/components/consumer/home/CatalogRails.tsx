@@ -16,6 +16,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { FavoriteTile } from "./FavoriteTile";
+import { errMsg } from "@/lib/utils";
 
 export function CatalogRails() {
   const supabase = useBrowserSupabase();
@@ -33,9 +34,7 @@ export function CatalogRails() {
         setRails(next);
       } catch (err) {
         if (cancelled) return;
-        setFetchError(
-          err instanceof Error ? err.message : "Couldn't load the catalog",
-        );
+        setFetchError(errMsg(err, "Couldn't load the catalog"));
         setRails([]);
       }
     })();

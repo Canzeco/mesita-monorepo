@@ -50,7 +50,7 @@ const BASELINE_SLOTS = [
   "22:00",
   "22:30",
   "23:00",
-];
+] as const;
 
 /**
  * The hour a guest most likely means. When their pick is gone (or they haven't
@@ -139,7 +139,10 @@ function parseHhmm(t: string | undefined): number | null {
   if (typeof t !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
   if (!m) return null;
-  const min = Number(m[1]) * 60 + Number(m[2]);
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || mm >= 60) return null;
+  const min = hh * 60 + mm;
   return min >= 0 && min < 1440 ? min : null;
 }
 

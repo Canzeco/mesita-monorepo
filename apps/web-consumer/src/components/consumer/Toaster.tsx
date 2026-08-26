@@ -55,6 +55,8 @@ function ToastCard({ t }: { t: Toast }) {
   return (
     <div
       role="status"
+      aria-live="polite"
+      aria-atomic="true"
       className={cn(
         "animate-in slide-in-from-top-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
         t.tone === "error" ? "border-red-500/40" : "border-border",

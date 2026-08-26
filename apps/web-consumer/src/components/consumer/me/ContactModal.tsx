@@ -4,6 +4,11 @@ import { HelpCircle, Instagram, Mail } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
+  MESITA_INSTAGRAM_HANDLE,
+  MESITA_INSTAGRAM_URL,
+  MESITA_SUPPORT_EMAIL,
+} from "@/lib/mesita-contact";
+import {
   IconCircle,
   RowDivider,
   SettingsGroup,
@@ -11,9 +16,6 @@ import {
 
 // Contact sheet opened from the Me page's Contact box — the direct lines to
 // Mesita: support email, help, and Instagram DMs.
-
-const SUPPORT_EMAIL = "support@mesita.ai";
-const INSTAGRAM_URL = "https://instagram.com/mesita.ai";
 
 export function ContactModal({
   open,
@@ -40,7 +42,7 @@ export function ContactModal({
         <div className="mt-5">
           <SettingsGroup>
             <a
-              href={`mailto:${SUPPORT_EMAIL}`}
+              href={`mailto:${MESITA_SUPPORT_EMAIL}`}
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
             >
               <IconCircle tint="emerald">
@@ -49,13 +51,13 @@ export function ContactModal({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Email us</span>
                 <span className="text-muted-foreground type-label block truncate">
-                  {SUPPORT_EMAIL}
+                  {MESITA_SUPPORT_EMAIL}
                 </span>
               </span>
             </a>
             <RowDivider />
             <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+              href={`mailto:${MESITA_SUPPORT_EMAIL}?subject=${encodeURIComponent(
                 "I need help with Mesita",
               )}`}
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
@@ -72,9 +74,9 @@ export function ContactModal({
             </a>
             <RowDivider />
             <a
-              href={INSTAGRAM_URL}
+              href={MESITA_INSTAGRAM_URL}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
             >
               <IconCircle tint="instagram">
@@ -83,7 +85,7 @@ export function ContactModal({
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">Instagram</span>
                 <span className="text-muted-foreground type-label block truncate">
-                  @mesita.ai
+                  {MESITA_INSTAGRAM_HANDLE}
                 </span>
               </span>
             </a>

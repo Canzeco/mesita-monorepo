@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  OVERLAY_BACKDROP_CLASS,
   OVERLAY_EASE,
   useOverlayPresence,
 } from "@/components/consumer/overlay/overlay-presence";
@@ -62,13 +63,14 @@ export function SlideOverShell({ children }: { children: React.ReactNode }) {
         tabIndex={-1}
         onClick={requestClose}
         className={cn(
-          "absolute inset-0 cursor-default bg-black/40 backdrop-blur-sm transition-opacity duration-300 motion-reduce:transition-none",
+          OVERLAY_BACKDROP_CLASS,
           open ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         role="dialog"
         aria-modal="true"
+        aria-label="Details"
         className={cn(
           "bg-background shadow-sheet-left absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden",
           "transition-transform duration-300 motion-reduce:transition-none",
