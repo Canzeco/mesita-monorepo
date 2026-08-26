@@ -4,9 +4,8 @@ import { CatalogConfigClient } from "./CatalogConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Catalog knobs are LIVE (consumer-web-list-catalog). Signals ·
-// Engines stay Soon while Search/Map ranking is recut. The blob is untouched
-// aside from catalog: Swipe still ranks from last-saved weights.
+// Discovery — Catalog knobs LIVE; Social knobs STAGED (no events engine).
+// Signals · Engines stay Soon. Whole-blob Save carries both slices.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {

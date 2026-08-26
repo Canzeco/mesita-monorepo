@@ -1,8 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// FIVE keys live here. Admin Discovery shows TWO boxes (Signals · Engines);
-// slotting and filters persist on the blob with no knobs (Pato, 2026-08-24).
+// SIX keys live here. Admin Discovery shows Catalog (live) + Social (staged)
+// plus Signals · Engines Soon. Slotting and filters persist with no knobs.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -70,6 +70,16 @@ export type CatalogConfig = {
   minSeedPlaces: number;
 };
 
+/** Tentative Social engine. Queries events at places, not places. No reader yet. */
+export type SocialConfig = {
+  seedCount: number;
+  generatedCount: number;
+  eventsPerRail: number;
+  minSeedEvents: number;
+  /** Look-ahead window. Events expire; places do not. */
+  horizonDays: number;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -80,6 +90,7 @@ export type DiscoveryConfig = {
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
+  social: SocialConfig;
 };
 
 /**
@@ -133,11 +144,27 @@ export const CATALOG_PLACES_PER_RAIL_MAX = 20;
 export const CATALOG_MIN_SEED_PLACES_MAX = 20;
 export const CATALOG_RAILS_CAP = 24;
 
+export const SOCIAL_COUNT_MAX = 20;
+export const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
+export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
+export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
+export const SOCIAL_HORIZON_DAYS_MIN = 1;
+export const SOCIAL_HORIZON_DAYS_MAX = 90;
+export const SOCIAL_RAILS_CAP = 24;
+
 export const DEFAULT_CATALOG: CatalogConfig = {
   seedCount: 8,
   generatedCount: 8,
   placesPerRail: 8,
   minSeedPlaces: 2,
+};
+
+export const DEFAULT_SOCIAL: SocialConfig = {
+  seedCount: 6,
+  generatedCount: 6,
+  eventsPerRail: 8,
+  minSeedEvents: 1,
+  horizonDays: 14,
 };
 
 /**
@@ -252,6 +279,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     swipe: { ranked: true },
   },
   catalog: DEFAULT_CATALOG,
+  social: DEFAULT_SOCIAL,
 };
 
 function num(raw: unknown, fallback: number, min: number, max: number): number {
@@ -289,6 +317,42 @@ export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
         DEFAULT_CATALOG.minSeedPlaces,
         1,
         CATALOG_MIN_SEED_PLACES_MAX,
+      ),
+    ),
+  };
+}
+
+export function normalizeSocialConfig(raw: unknown): SocialConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    seedCount: Math.round(
+      num(r.seedCount, DEFAULT_SOCIAL.seedCount, 0, SOCIAL_COUNT_MAX),
+    ),
+    generatedCount: Math.round(
+      num(r.generatedCount, DEFAULT_SOCIAL.generatedCount, 0, SOCIAL_COUNT_MAX),
+    ),
+    eventsPerRail: Math.round(
+      num(
+        r.eventsPerRail,
+        DEFAULT_SOCIAL.eventsPerRail,
+        SOCIAL_EVENTS_PER_RAIL_MIN,
+        SOCIAL_EVENTS_PER_RAIL_MAX,
+      ),
+    ),
+    minSeedEvents: Math.round(
+      num(
+        r.minSeedEvents,
+        DEFAULT_SOCIAL.minSeedEvents,
+        1,
+        SOCIAL_MIN_SEED_EVENTS_MAX,
+      ),
+    ),
+    horizonDays: Math.round(
+      num(
+        r.horizonDays,
+        DEFAULT_SOCIAL.horizonDays,
+        SOCIAL_HORIZON_DAYS_MIN,
+        SOCIAL_HORIZON_DAYS_MAX,
       ),
     ),
   };
@@ -374,6 +438,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     },
     engines,
     catalog: normalizeCatalogConfig(r.catalog),
+    social: normalizeSocialConfig(r.social),
   };
 }
 

@@ -178,6 +178,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.engines, DISCOVERY_DEFAULTS.engines);
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
+  assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
 });
 
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
@@ -213,6 +214,18 @@ Deno.test("engines are rebuilt from the code list, so a retired key cannot survi
   });
   assertEquals(Object.keys(cfg.engines).sort(), [...WIRED_ENGINE_KEYS].sort());
   assertEquals(cfg.engines.swipe.ranked, false);
+});
+
+Deno.test("social knobs default on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.social, DISCOVERY_DEFAULTS.social);
+  const clamped = normalizeDiscoveryConfig({
+    social: { seedCount: 99, eventsPerRail: 1, minSeedEvents: 0, horizonDays: 400 },
+  });
+  assertEquals(clamped.social.seedCount, 20);
+  assertEquals(clamped.social.eventsPerRail, 4);
+  assertEquals(clamped.social.minSeedEvents, 1);
+  assertEquals(clamped.social.horizonDays, 90);
 });
 
 Deno.test("only WIRED engines are storable — an unwired one has no knob to persist", () => {
