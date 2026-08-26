@@ -22,10 +22,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
-import {
-  apiFetchNearbyCatalog,
-  CATALOG_NEARBY_MAX,
-} from "@/lib/api/places";
+import { apiFetchNearbyCatalog, CATALOG_NEARBY_MAX } from "@/lib/api/places";
 import {
   apiCreateProject,
   apiSuggestPlaces,
@@ -39,7 +36,10 @@ import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
+import {
+  buildSearchMapPins,
+  overlayPinDecision,
+} from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
@@ -112,9 +112,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Overlay Google pin first-tap stash so a later tap can still open the sheet
-  // after the suggest list is gone.
-  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
+  // Overlay pin first-tap stash so a later tap can still open (profile or
+  // Google sheet) after the suggest list is gone. Holds Google and overlay-only
+  // Mesita predictions — keyed on pin.id.
+  const [heldOverlay, setHeldOverlay] = useState<PlacePrediction | null>(null);
   // From-Google preview sheet. `preview` survives the close (only `open`
   // flips) so the exit transition doesn't blank the panel mid-slide.
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
@@ -292,10 +293,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     };
   }, [supabase, trimmed, center, scope.country]);
 
-  // On-Mesita row tap → show the place on the map (red selected pin + rail
-  // card) instead of opening the detail modal; the modal is one more tap
-  // away on the pin or the card. The EF-provided Mesita id is the primary
-  // join; the exact-name match covers older suggest payloads.
+  // On-Mesita row tap → show the place on the map (black selected pin
+  // `#111111` + rail card) instead of opening the detail modal; the modal is
+  // one more tap away on the pin or the card. The EF-provided Mesita id is the
+  // primary join; the exact-name match covers older suggest payloads.
   const handlePickMesita = (prediction: PlacePrediction) => {
     const match =
       (prediction.mesitaId
@@ -343,44 +344,49 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const handleSelectPin = (pin: SearchMapPin) => {
     const prediction =
-      predictions.find(
-        (p) => p.mesitaId === pin.id || p.placeId === pin.id,
-      ) ??
-      (heldGoogle &&
-      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
-        ? heldGoogle
+      predictions.find((p) => p.mesitaId === pin.id || p.placeId === pin.id) ??
+      (heldOverlay &&
+      (heldOverlay.placeId === pin.id || heldOverlay.mesitaId === pin.id)
+        ? heldOverlay
         : null);
-    if (pinGesture(selectedId, pin.id) === "open") {
-      if (prediction && prediction.status === "not_in_mesita") {
-        handlePickGoogle(prediction);
-        return;
-      }
-      const place = catalog.find((p) => p.id === pin.id);
-      if (place) {
-        handleOpenPlace(place);
-        return;
-      }
-      if (prediction) {
-        handlePickMesita(prediction);
-      }
-      return;
-    }
-    if (prediction && prediction.status === "not_in_mesita") {
-      setHeldGoogle(prediction);
-      setRailCollapsed(false);
-      setSelectedId(pin.id);
-      return;
-    }
-    setHeldGoogle(null);
-    if (prediction) {
-      handlePickMesita(prediction);
-      return;
-    }
     const place = catalog.find((p) => p.id === pin.id);
-    if (place) {
-      setHeldGoogle(googlePredictionFromPlace(place));
-      setRailCollapsed(false);
-      setSelectedId(place.id);
+    const action = overlayPinDecision({
+      selectedId,
+      pinId: pin.id,
+      googleOnly: prediction?.status === "not_in_mesita",
+      inCatalog: Boolean(place),
+      hasOverlay: Boolean(prediction),
+    });
+    switch (action) {
+      case "open-google":
+        if (prediction) handlePickGoogle(prediction);
+        return;
+      case "open-catalog":
+        if (place) handleOpenPlace(place);
+        return;
+      case "open-mesita-slug":
+        if (prediction) handlePickMesita(prediction);
+        return;
+      case "select-google":
+      case "select-mesita-overlay":
+        if (prediction) setHeldOverlay(prediction);
+        setRailCollapsed(false);
+        setSelectedId(pin.id);
+        return;
+      case "select-mesita-catalog":
+        setHeldOverlay(null);
+        if (prediction) {
+          handlePickMesita(prediction);
+          return;
+        }
+        if (place) {
+          setHeldOverlay(googlePredictionFromPlace(place));
+          setRailCollapsed(false);
+          setSelectedId(place.id);
+        }
+        return;
+      case "noop":
+        return;
     }
   };
 
@@ -439,7 +445,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
-    setHeldGoogle(googlePredictionFromPlace(place));
+    setHeldOverlay(googlePredictionFromPlace(place));
     setRailCollapsed(false);
     setSelectedId(place.id);
   };

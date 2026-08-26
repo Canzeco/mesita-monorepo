@@ -4,6 +4,7 @@ import {
   buildSearchMapPins,
   membershipColor,
   membershipTone,
+  overlayPinDecision,
   pinFillColor,
   pinGesture,
   placeMembershipTone,
@@ -17,9 +18,9 @@ describe("search membership tones", () => {
     expect(membershipTone({ status: "web_listed", partner: false })).toBe(
       "listed",
     );
-    expect(
-      membershipTone({ status: "not_in_mesita", partner: true }),
-    ).toBe("google");
+    expect(membershipTone({ status: "not_in_mesita", partner: true })).toBe(
+      "google",
+    );
     expect(placeMembershipTone({ partner: true })).toBe("partner");
     expect(placeMembershipTone({ partner: false })).toBe("listed");
     expect(placeMembershipTone({ plan: "pro" })).toBe("partner");
@@ -46,6 +47,98 @@ describe("search membership tones", () => {
     expect(pinGesture(null, "a")).toBe("select");
     expect(pinGesture("b", "a")).toBe("select");
     expect(pinGesture("a", "a")).toBe("open");
+  });
+});
+
+describe("overlayPinDecision", () => {
+  const mesitaOverlay = {
+    googleOnly: false,
+    inCatalog: false,
+    hasOverlay: true,
+  };
+  const googleOverlay = {
+    googleOnly: true,
+    inCatalog: false,
+    hasOverlay: true,
+  };
+
+  it("selects an overlay Mesita pin that is not in the catalog", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: null,
+        pinId: "m-off",
+        ...mesitaOverlay,
+      }),
+    ).toBe("select-mesita-overlay");
+  });
+
+  it("opens the Mesita slug on a later tap of the same overlay-only pin", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: "m-off",
+        pinId: "m-off",
+        ...mesitaOverlay,
+      }),
+    ).toBe("open-mesita-slug");
+  });
+
+  it("selects B when A is held and B is overlay-only Mesita — never opens", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: "a",
+        pinId: "b",
+        ...mesitaOverlay,
+      }),
+    ).toBe("select-mesita-overlay");
+  });
+
+  it("stashes Google on first tap and opens the sheet on a later tap", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: null,
+        pinId: "g1",
+        ...googleOverlay,
+      }),
+    ).toBe("select-google");
+    expect(
+      overlayPinDecision({
+        selectedId: "g1",
+        pinId: "g1",
+        ...googleOverlay,
+      }),
+    ).toBe("open-google");
+  });
+
+  it("switching Google → overlay Mesita selects and does not open", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: "g1",
+        pinId: "m-off",
+        ...mesitaOverlay,
+      }),
+    ).toBe("select-mesita-overlay");
+  });
+
+  it("re-tapping Google after holding Mesita selects Google, does not open", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: "m-off",
+        pinId: "g1",
+        ...googleOverlay,
+      }),
+    ).toBe("select-google");
+  });
+
+  it("does not invent a /place open when the Google stash is empty", () => {
+    expect(
+      overlayPinDecision({
+        selectedId: "g1",
+        pinId: "g1",
+        googleOnly: false,
+        inCatalog: false,
+        hasOverlay: false,
+      }),
+    ).toBe("noop");
   });
 });
 

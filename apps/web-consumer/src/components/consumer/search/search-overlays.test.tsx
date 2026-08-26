@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { EmptySearchPrompt, SearchRailOverlay } from "@/components/consumer/search/search-catalog-overlays";
+import {
+  EmptySearchPrompt,
+  SearchRailOverlay,
+} from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import { viewportCenter } from "@/components/consumer/search/search-utils";
@@ -172,16 +175,17 @@ describe("Search map has no discovery filters", () => {
 describe("Search pin two-tap (select then open)", () => {
   it("paints selected pins black and keeps membership fills for the rest", () => {
     expect(read("SearchMap.tsx")).toContain("pinFillColor");
-    expect(read("SearchClient.tsx")).toContain("pinGesture");
+    expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
   });
 
   it("first overlay tap selects; a later tap on the same pin opens", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("pinGesture");
-    expect(src).toContain("heldGoogle");
-    expect(src).toMatch(/pinGesture\(selectedId, pin\.id\) === "open"/);
-    expect(src).toContain("setHeldGoogle(prediction)");
+    expect(src).toContain("overlayPinDecision");
+    expect(src).toContain("heldOverlay");
+    expect(src).toContain("select-mesita-overlay");
+    expect(src).toContain("setHeldOverlay(prediction)");
     expect(src).toContain("setSelectedId(pin.id)");
+    expect(src).not.toContain("heldGoogle");
   });
 });
 
@@ -285,11 +289,7 @@ describe("Search catalog reload UI", () => {
 
   it("keeps the cards and says Updating nearby while a pan reloads", () => {
     const html = renderToStaticMarkup(
-      <SearchRailOverlay
-        {...railProps}
-        places={[RAIL_PLACE]}
-        catalogLoading
-      />,
+      <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} catalogLoading />,
     );
     expect(html).toContain("Updating nearby");
     expect(html).toContain("Cosmo San Pedro");
