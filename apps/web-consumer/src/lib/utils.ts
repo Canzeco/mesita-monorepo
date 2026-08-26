@@ -1,6 +1,18 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
 import { COUNTRIES, type Country } from "@/lib/consumer-data";
+
+// `rounded-panel` is a named hero radius (`--radius-panel`), not a t-shirt
+// step. Unextended twMerge treats it as a foreign class, so Skeleton's
+// default `rounded-lg` survives next to it (MESITA-1336). Theme-extend puts
+// `panel` in the `rounded` group without pinning the pixel value.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      radius: ["panel"],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -154,9 +166,7 @@ export function formatPhoneDisplay(
  * Country is INFERRED here rather than stored: `consumers` has no country
  * column, and the dial code the guest already gave us answers it.
  */
-export function phoneCountry(
-  phone: string | null | undefined,
-): Country | null {
+export function phoneCountry(phone: string | null | undefined): Country | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, "");
   if (!digits) return null;

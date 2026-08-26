@@ -30,13 +30,19 @@ describe("Discovery function APIs", () => {
     expect(map?.process).not.toMatch(/under 10/);
   });
 
+  it("chat() is live OpenAI conversation — tools come later", () => {
+    const chat = ENGINES.find((e) => e.key === "chat");
+    expect(chat?.state).toBe("LIVE");
+    expect(chat?.apis).toEqual(["OpenAI"]);
+  });
+
   it("engines name only the vendor APIs they actually call", () => {
     expect(ENGINES.map((e) => [e.key, e.apis])).toEqual([
       ["swipe", []],
       ["map", ["Google Places Nearby Search"]],
       ["favorites", []],
       ["catalog", []],
-      ["chat", ["Google Places Text Search", "Perplexity", "OpenAI"]],
+      ["chat", ["OpenAI"]],
       ["social", []],
       ["name", ["Google Places Autocomplete", "Google Places Text Search", "Place Details"]],
       ["web", ["Perplexity"]],

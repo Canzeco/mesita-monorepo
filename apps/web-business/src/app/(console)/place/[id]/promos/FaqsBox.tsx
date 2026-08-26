@@ -61,7 +61,7 @@ export function FaqsBox({
   return (
     <Section
       title="FAQs"
-      description="How membership and strategy work — with real numbers."
+      description="How Partnership and strategy work — with real numbers."
     >
       {/* One divided list, everything closed: the answers are reference, not
           reading. The worked example opens first because it is the only one
@@ -75,28 +75,26 @@ export function FaqsBox({
           />
         </Faq>
 
-        <Faq q={`What exactly does the ${price}/year buy?`}>
+        <Faq q={`What exactly does the ${price}/month buy?`}>
           <p>
-            The right to leave Zero. Membership unlocks Conservative and
-            Aggressive — pick either, switch free anytime while
-            you&apos;re a member. Zero stays free with no discounts. Being listed
-            on Mesita never costs anything. The fee is a commitment filter (keeps
-            half-hearted places out of rewards), not a feature tier and not a rank
-            you can buy.
+            Partnership. Conservative and Aggressive unlock after you join —
+            pick either, switch free anytime. Zero stays selectable with no
+            discounts. Being listed on Mesita never costs anything. The fee is a
+            commitment filter, not a rank you can buy.
           </p>
         </Faq>
 
         <Faq q="Can I switch strategies — or move to Zero?">
           <p>
-            Yes — free, anytime, while your membership is active. Strategy is
+            Yes — free, anytime, while Partnership is active. Strategy is
             the discount posture you promise guests; switching only changes your
             rates. New tickets pick up the new rates; open tickets keep what
             they were created with.
           </p>
           <p>
-            Switching to Zero pauses discounts: your membership stays active,
-            but the promo lane closes and visibility drops to Low. Cancelling
-            membership is a separate action in the Membership box.
+            Switching to Zero pauses discounts: Partnership stays active,
+            but the promo lane closes and visibility drops to Low. Dropping
+            Partnership is a separate action on this page.
           </p>
         </Faq>
 
@@ -119,18 +117,18 @@ export function FaqsBox({
           </p>
         </Faq>
 
-        <Faq q="How do I cancel membership?">
+        <Faq q="How do I cancel Partnership?">
           <p>
-            Use Drop membership in the Membership box.{" "}
+            Use Drop Partnership on this page.{" "}
             {member
-              ? "You are currently a member."
-              : "You are not currently a member."}
+              ? "You currently hold Partnership."
+              : "You do not currently hold Partnership."}
           </p>
         </Faq>
 
         <Faq q="What happens if a guest is turned away?">
           <p>
-            1 — warning · 2 — discounts paused 30 days · 3 — membership
+            1 — warning · 2 — discounts paused 30 days · 3 — Partnership
             forfeited (place stays listed). Strikes decay after 6 months clean.
           </p>
         </Faq>

@@ -27,17 +27,17 @@ type SubscriptionRow = {
 export const SUBSCRIPTIONS: SubscriptionRow[] = [
   {
     id: "free",
-    label: "Free without promos",
+    label: "Listed",
     price: "MX$0",
-    cadence: "/ year",
+    cadence: "/ month",
     tagline: "Listed on Mesita.",
   },
   {
     id: "partner",
-    label: "Membership",
+    label: "Partnership",
     price: "MX$1,000 + IVA",
-    cadence: "/ year",
-    tagline: "Rewards placement, Partner status, Performance analytics, Reservationist.",
+    cadence: "/ month",
+    tagline: "Partnership, guest rewards, Performance, Reservationist.",
     setup: "WhatsApp ping + first ticket",
     featured: true,
   },

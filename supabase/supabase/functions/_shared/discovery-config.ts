@@ -1,8 +1,9 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// FIVE keys live here. Admin Discovery shows TWO boxes (Signals · Engines);
-// slotting and filters persist on the blob with no knobs (Pato, 2026-08-24).
+// SIX keys live here. Admin Discovery shows the Chat prompt; Signals · Engines
+// stay Soon while Search/Map is recut (Pato, 2026-08-24 / MESITA-1337).
+// Slotting and filters persist on the blob with no knobs.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -15,6 +16,7 @@
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
 //              places a filter already admitted.
 //   engines    which surfaces read any of the above.
+//   chat       Concierge system prompt. Blank → in-code persona (memo-prompt.ts).
 //
 // FILTERS ARE NOT THE TORN-DOWN FILTER SURFACE. MESITA-1183 deleted a
 // GUEST-facing one — "what may a guest exclude" — and that tombstone stands.
@@ -69,7 +71,11 @@ export type DiscoveryConfig = {
   };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  chat: { prompt: string };
 };
+
+/** Ceiling for discovery_config.chat.prompt. The console textarea matches it. */
+export const CHAT_PROMPT_MAX = 12_000;
 
 /**
  * Pool admission. EVERY ONE OF THESE MUST BE EXPRESSIBLE AS A QUERY PREDICATE.
@@ -227,6 +233,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   engines: {
     swipe: { ranked: true },
   },
+  chat: { prompt: "" },
 };
 
 function num(raw: unknown, fallback: number, min: number, max: number): number {
@@ -237,6 +244,11 @@ function num(raw: unknown, fallback: number, min: number, max: number): number {
 
 function bool(raw: unknown, fallback: boolean): boolean {
   return typeof raw === "boolean" ? raw : fallback;
+}
+
+export function normalizeChatPrompt(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw.slice(0, CHAT_PROMPT_MAX);
 }
 
 /**
@@ -318,6 +330,11 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    chat: {
+      prompt: normalizeChatPrompt(
+        ((r.chat ?? {}) as Record<string, unknown>).prompt,
+      ),
+    },
   };
 }
 

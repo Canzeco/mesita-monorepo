@@ -146,11 +146,15 @@ export function TextAreaField({
   value,
   onChange,
   disabled,
+  rows = 4,
+  maxLength = 4000,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   disabled: boolean;
+  rows?: number;
+  maxLength?: number;
 }) {
   return (
     <label className="border-border bg-background flex flex-col gap-2 rounded-xl border p-4">
@@ -158,8 +162,8 @@ export function TextAreaField({
       <textarea
         value={value}
         disabled={disabled}
-        rows={4}
-        maxLength={4000}
+        rows={rows}
+        maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
         className="border-border bg-card focus:border-foreground min-h-24 rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none disabled:opacity-50"
       />
