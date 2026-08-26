@@ -40,12 +40,16 @@ function stripPlacesPrefix(id: string): string {
   return id.startsWith("places/") ? id.slice("places/".length) : id;
 }
 
+type NearbyOnce =
+  | { ok: true; hits: NearbyHit[] }
+  | { ok: false };
+
 async function searchNearbyOnce(
   apiKey: string,
   center: { lat: number; lng: number },
   radiusM: number,
   includedPrimaryTypes: string[],
-): Promise<NearbyHit[]> {
+): Promise<NearbyOnce> {
   const r = await fetch(GOOGLE_PLACES_NEARBY_URL, {
     method: "POST",
     headers: {
@@ -70,7 +74,7 @@ async function searchNearbyOnce(
     const text = await r.text();
     const code = classifyGoogleError(r.status, text);
     console.error("[nearby] Google searchNearby failed", code, r.status);
-    return [];
+    return { ok: false };
   }
   const data = (await r.json()) as {
     places?: Array<{
@@ -82,7 +86,7 @@ async function searchNearbyOnce(
       primaryType?: string;
     }>;
   };
-  return (data.places ?? [])
+  const hits = (data.places ?? [])
     .map((p) => {
       const raw = p.id ?? "";
       const placeId = stripPlacesPrefix(raw);
@@ -99,17 +103,26 @@ async function searchNearbyOnce(
       };
     })
     .filter((p) => p.placeId && p.name);
+  return { ok: true, hits };
 }
 
 const nearbyCache = new Map<string, { at: number; hits: NearbyHit[] }>();
+const nearbyInflight = new Map<string, Promise<NearbyHit[]>>();
 
 function nearbyCellKey(center: { lat: number; lng: number }): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}`;
 }
 
+export function __resetNearbyGoogleCacheForTests(): void {
+  nearbyCache.clear();
+  nearbyInflight.clear();
+}
+
 /** Closest Google food/drink places around `center`. Deduped by Place ID.
- *  Same ~1 km cell reuses the last 15s so a pan-idle does not spend five
- *  billed Nearby calls twice. Isolates do not share this map. */
+ *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
+ *  spend five billed Nearby calls twice. HTTP / parse failures are returned
+ *  (Mesita fill still shows) but never cached — a blip must not lock the
+ *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
@@ -119,19 +132,37 @@ export async function searchNearbyPlaces(
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
+  const pending = nearbyInflight.get(key);
+  if (pending) return pending;
 
-  const batches = await Promise.all(
-    NEARBY_TYPES.map((type) =>
-      searchNearbyOnce(apiKey, center, radiusM, [type]),
-    ),
-  );
-  const byId = new Map<string, NearbyHit>();
-  for (const row of batches.flat()) {
-    if (!byId.has(row.placeId)) byId.set(row.placeId, row);
+  const run = (async () => {
+    const batches = await Promise.all(
+      NEARBY_TYPES.map((type) =>
+        searchNearbyOnce(apiKey, center, radiusM, [type]),
+      ),
+    );
+    const byId = new Map<string, NearbyHit>();
+    let allOk = true;
+    for (const batch of batches) {
+      if (!batch.ok) {
+        allOk = false;
+        continue;
+      }
+      for (const row of batch.hits) {
+        if (!byId.has(row.placeId)) byId.set(row.placeId, row);
+      }
+    }
+    const hits = [...byId.values()];
+    if (allOk) nearbyCache.set(key, { at: Date.now(), hits });
+    return hits;
+  })();
+
+  nearbyInflight.set(key, run);
+  try {
+    return await run;
+  } finally {
+    nearbyInflight.delete(key);
   }
-  const hits = [...byId.values()];
-  nearbyCache.set(key, { at: now, hits });
-  return hits;
 }
 
 export type MesitaNearbyRow = {

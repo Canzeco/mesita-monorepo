@@ -1,5 +1,9 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { mergeNearbyCatalog } from "./nearby-places.ts";
+import {
+  __resetNearbyGoogleCacheForTests,
+  mergeNearbyCatalog,
+  searchNearbyPlaces,
+} from "./nearby-places.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
 
@@ -103,4 +107,89 @@ Deno.test("mergeNearbyCatalog: product cap is 50 closest", () => {
   }));
   const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
   assertEquals(got.length, 50);
+});
+
+const OK_BODY = JSON.stringify({
+  places: [{
+    id: "places/ChIJ-ok",
+    displayName: { text: "Ok Cafe" },
+    formattedAddress: "1 Main",
+    location: { latitude: 25.67, longitude: -100.3 },
+    rating: 4.1,
+    primaryType: "cafe",
+  }],
+});
+
+Deno.test("searchNearbyPlaces: HTTP failure is not cached", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(new Response("fail", { status: 500 }));
+  };
+  try {
+    const a = await searchNearbyPlaces("k", CENTER);
+    const b = await searchNearbyPlaces("k", CENTER);
+    assertEquals(a, []);
+    assertEquals(b, []);
+    assertEquals(n, 10);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: success is cached for the cell", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const a = await searchNearbyPlaces("k", CENTER);
+    const b = await searchNearbyPlaces("k", CENTER);
+    assertEquals(a.length, 1);
+    assertEquals(a[0].placeId, "ChIJ-ok");
+    assertEquals(b.length, 1);
+    assertEquals(n, 5);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: one type failure skips the cell cache", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    if (n === 1 || n === 6) {
+      return Promise.resolve(new Response("fail", { status: 429 }));
+    }
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const a = await searchNearbyPlaces("k", CENTER);
+    const b = await searchNearbyPlaces("k", CENTER);
+    assertEquals(a.length, 1);
+    assertEquals(b.length, 1);
+    assertEquals(n, 10);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
 });
