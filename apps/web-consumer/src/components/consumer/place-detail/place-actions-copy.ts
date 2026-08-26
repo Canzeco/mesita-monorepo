@@ -5,11 +5,12 @@
 // already shared as code — useStartVisit owns the create, the two-arm 409
 // recovery and the seed — and the rest of what the two surfaces have in common
 // is layout, which is supposed to differ (a three-up grid vs. a list of rows).
-// What is NOT allowed to differ is the promise made about a parked feature:
-// Order has no table, no EF and no type anywhere in the stack, so the only
-// thing either surface can offer is this sentence, and it has to be one
-// sentence, not two that drifted apart.
-export const ORDER_COMING_SOON = {
-  title: "Ordering coming soon",
-  body: "Soon you'll be able to order from this place without leaving Mesita — it'll land in your Inbox next to your visits.",
+// What is NOT allowed to differ is the parked-Order contract: no table, no EF,
+// no type, and `orders_config.enabled` defaults false. Both surfaces lock the
+// control (visible, not tappable). A coming-soon modal on tap reads as a live
+// feature that failed.
+export const ORDER_BLOCKED = {
+  aria: "Ordering isn't available yet",
+  title: "Ordering isn't live on Mesita yet.",
+  hint: "Ordering isn't live yet.",
 } as const;
