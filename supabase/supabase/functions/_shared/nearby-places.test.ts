@@ -64,6 +64,27 @@ Deno.test("mergeNearbyCatalog: closest N, Google-only fills the rail", () => {
   assertEquals(got[0].kind === "listed" ? got[0].row.id : "", "m0");
 });
 
+Deno.test("mergeNearbyCatalog: an older close Mesita row still beats Google", () => {
+  const mesita = [
+    { id: "old-close", google_place_id: "ChIJ-old", lat: 25.67005, lng: -100.30005 },
+  ];
+  const google = [
+    {
+      placeId: "ChIJ-old",
+      name: "Should not stub",
+      address: "",
+      lat: 25.67005,
+      lng: -100.30005,
+      rating: 4,
+      primaryType: "restaurant",
+    },
+  ];
+  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
+  assertEquals(got.length, 1);
+  assertEquals(got[0].kind, "listed");
+  if (got[0].kind === "listed") assertEquals(got[0].row.id, "old-close");
+});
+
 Deno.test("mergeNearbyCatalog: product cap is 50 closest", () => {
   const mesita = Array.from({ length: 40 }, (_, i) => ({
     id: `m${i}`,

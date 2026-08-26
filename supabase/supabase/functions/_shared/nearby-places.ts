@@ -11,8 +11,12 @@ import { NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
 
 export const CATALOG_NEARBY_MAX = 50;
 export const GOOGLE_NEARBY_MAX = 20;
-export const VIEWPORT_POOL = 200;
+/** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
+ *  a close listed place that is older than 200 newer rows in the city must
+ *  still win its Google Place ID, or it reappears as a yellow stub. */
+export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
+const NEARBY_CACHE_MS = 15_000;
 
 const NEARBY_TYPES = [
   "restaurant",
@@ -97,22 +101,37 @@ async function searchNearbyOnce(
     .filter((p) => p.placeId && p.name);
 }
 
-/** Closest Google food/drink places around `center`. Deduped by Place ID. */
+const nearbyCache = new Map<string, { at: number; hits: NearbyHit[] }>();
+
+function nearbyCellKey(center: { lat: number; lng: number }): string {
+  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}`;
+}
+
+/** Closest Google food/drink places around `center`. Deduped by Place ID.
+ *  Same ~1 km cell reuses the last 15s so a pan-idle does not spend five
+ *  billed Nearby calls twice. Isolates do not share this map. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
   radiusM = GOOGLE_NEARBY_RADIUS_M,
 ): Promise<NearbyHit[]> {
+  const key = nearbyCellKey(center);
+  const hit = nearbyCache.get(key);
+  const now = Date.now();
+  if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
+
   const batches = await Promise.all(
     NEARBY_TYPES.map((type) =>
       searchNearbyOnce(apiKey, center, radiusM, [type]),
     ),
   );
   const byId = new Map<string, NearbyHit>();
-  for (const hit of batches.flat()) {
-    if (!byId.has(hit.placeId)) byId.set(hit.placeId, hit);
+  for (const row of batches.flat()) {
+    if (!byId.has(row.placeId)) byId.set(row.placeId, row);
   }
-  return [...byId.values()];
+  const hits = [...byId.values()];
+  nearbyCache.set(key, { at: now, hits });
+  return hits;
 }
 
 export type MesitaNearbyRow = {

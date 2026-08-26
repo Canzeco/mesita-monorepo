@@ -40,7 +40,7 @@ import {
 } from "../_shared/geo.ts";
 import {
   CATALOG_NEARBY_MAX,
-  VIEWPORT_POOL,
+  MESITA_NEARBY_POOL,
   mergeNearbyCatalog,
   searchNearbyPlaces,
   type NearbyHit,
@@ -210,9 +210,25 @@ Deno.serve(async (req) => {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
-  const { data, error, count } = await filtered
-    .order("created_at", { ascending: false })
-    .limit(isNearby ? VIEWPORT_POOL : limit);
+  let data: unknown[] | null = null;
+  let error: { message: string } | null = null;
+  let count: number | null = null;
+
+  if (isNearby) {
+    // Distance rank happens in mergeNearbyCatalog. Newest-first would drop
+    // an old listed place inside the 50 km box and let Google paint it as
+    // a yellow stub.
+    const nearby = await filtered.limit(MESITA_NEARBY_POOL);
+    data = nearby.data;
+    error = nearby.error;
+  } else {
+    const page = await filtered
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    data = page.data;
+    error = page.error;
+    count = page.count ?? null;
+  }
 
   if (error) {
     return json({ ok: false, error: error.message }, 500);
