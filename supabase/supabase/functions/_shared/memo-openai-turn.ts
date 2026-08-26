@@ -1,12 +1,16 @@
 // Stateless Chat turn — OpenAI chat completions, no tools.
 //
 // Every consumer message resends the system prompt plus the full thread the
-// client already holds. This file does not persist conversation state.
+// client already holds. That is the honest first pass (Admin Discovery › Chat
+// flags a cheaper ingest as Due). This file does not persist conversation
+// state. The only cap is a char fuse so a runaway paste cannot blow the model.
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 
-export const HISTORY_TURN_CAP = 40;
-export const TURN_CONTENT_MAX = 4_000;
+/** Fuse, not a product cap: drop oldest turns only after this many chars. */
+export const CONTEXT_CHAR_BUDGET = 120_000;
+/** Fuse on a single turn so one paste cannot eat the whole budget. */
+export const TURN_CONTENT_MAX = 32_000;
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -21,7 +25,14 @@ export function sanitizeChatHistory(raw: unknown): ChatTurn[] {
     if (!role || content.length === 0) continue;
     out.push({ role, content: content.slice(0, TURN_CONTENT_MAX) });
   }
-  return out.slice(-HISTORY_TURN_CAP);
+  let total = 0;
+  for (const t of out) total += t.content.length;
+  while (out.length > 0 && total > CONTEXT_CHAR_BUDGET) {
+    const gone = out.shift();
+    if (!gone) break;
+    total -= gone.content.length;
+  }
+  return out;
 }
 
 export function buildChatMessages(

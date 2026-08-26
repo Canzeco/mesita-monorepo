@@ -50,9 +50,9 @@ export function greetingText(): string {
 // effect / event handlers), so the server module stays null across requests
 // and the first render always matches SSR (greeting) — no hydration mismatch,
 // and no set-state-in-effect. Intentionally NOT localStorage: a full reload
-// starts fresh, which keeps this clean and avoids a client-only initial read.
+// starts fresh. The whole thread is kept and resent every turn (Admin
+// Discovery flags a cheaper ingest as Due).
 type StoredThread = { messages: AiMessage[]; related: string[] };
-const THREAD_CAP = 40; // bound the retained history
 
 let threadCache: StoredThread | null = null;
 
@@ -61,10 +61,7 @@ export function getThreadCache(): StoredThread | null {
 }
 
 export function saveThreadCache(messages: AiMessage[], related: string[]) {
-  threadCache =
-    messages.length > 1
-      ? { messages: messages.slice(-THREAD_CAP), related }
-      : null;
+  threadCache = messages.length > 1 ? { messages, related } : null;
 }
 
 export function clearThreadCache() {

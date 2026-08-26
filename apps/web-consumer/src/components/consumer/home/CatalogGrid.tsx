@@ -2,11 +2,9 @@
 
 // Catalog mode — the full deck as a browsable grid.
 //
-// The pitch the parked pill made for a month: "every place, browsable and
-// filterable, without swiping." So this is Swipe's data with Swipe's verdict
-// removed — no cards, no gestures, no seen-set. A place you scrolled past is
-// still there when you scroll back, which is the whole difference between
-// browsing and deciding.
+// Same data as Swipe, without the verdict: no cards, no gestures, no seen-set.
+// A place you scrolled past is still there when you scroll back, which is the
+// whole difference between browsing and deciding.
 //
 // Reuse, deliberately: the same shared deck from HomeDeckContext (zero extra
 // fetches — switching modes never re-runs the recommender) and the same
