@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { PartyPopper } from "lucide-react";
 
+import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { formatCurrency } from "@/lib/api/profile";
 
 const REVEAL_MS = 900;
@@ -53,7 +54,10 @@ export function SavingsReveal({
   }, [onDone]);
 
   return (
-    <section className="bg-pink-gradient shadow-glow rounded-panel flex flex-col items-center gap-2 px-5 py-7 text-center text-white">
+    <TicketHero
+      glow="full"
+      className="bg-pink-gradient flex flex-col items-center gap-2 px-5 py-7 text-center"
+    >
       <span className="grid size-11 place-items-center rounded-full bg-white/20">
         <PartyPopper className="size-5" />
       </span>
@@ -66,6 +70,6 @@ export function SavingsReveal({
       <p className="text-xs opacity-90">
         {savedCents > 0 ? "saved on this visit" : "ticket closed"}
       </p>
-    </section>
+    </TicketHero>
   );
 }

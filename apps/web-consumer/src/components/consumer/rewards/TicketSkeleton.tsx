@@ -1,4 +1,6 @@
+import { TICKET_HERO_RADIUS_CLASS } from "@/components/consumer/rewards/TicketHero";
 import { Skeleton } from "@/components/shared";
+import { cn } from "@/lib/utils";
 
 // One silhouette for THE TICKET: chrome row → rail → pass block → CTA bar.
 // Hard-load (`visit/[id]/loading.tsx`) and list-load (`TicketScreen` while the
@@ -20,7 +22,9 @@ export function TicketSkeleton() {
       <div className="border-border shrink-0 border-b pt-1 pb-2.5">
         <Skeleton className="h-12 rounded-xl" />
       </div>
-      <Skeleton className="rounded-panel mt-3 h-72 shrink-0" />
+      <Skeleton
+        className={cn(TICKET_HERO_RADIUS_CLASS, "mt-3 h-72 shrink-0")}
+      />
       <Skeleton className="mt-2.5 h-12 shrink-0 rounded-2xl" />
     </div>
   );
