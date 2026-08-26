@@ -304,6 +304,7 @@ Deno.serve(async (req) => {
         ok: true,
         places: withFamilyKeysList(listed),
         mode: "nearby",
+        reloadMinKm: cfg.map.reloadMinKm,
       });
     }
 
@@ -384,7 +385,12 @@ Deno.serve(async (req) => {
         category?: string | null;
       }>,
     );
-    return json({ ok: true, places, mode: "nearby" });
+    return json({
+      ok: true,
+      places,
+      mode: "nearby",
+      reloadMinKm: cfg.map.reloadMinKm,
+    });
   }
 
   const places = withFamilyKeysList((data ?? []) as unknown as CardRow[]);

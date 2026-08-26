@@ -100,6 +100,8 @@ export type MapConfig = {
   minRating: number;
   minReviews: number;
   minPopularity: number;
+  /** Camera must move at least this far (km) before Search refetches Nearby. */
+  reloadMinKm: number;
   googleFill: boolean;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -182,6 +184,8 @@ export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const SOCIAL_RAILS_CAP = 24;
 
 export const MAP_MIN_POPULARITY_MAX = 1;
+export const MAP_RELOAD_MIN_KM_MIN = 1;
+export const MAP_RELOAD_MIN_KM_MAX = 20;
 
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
@@ -196,6 +200,7 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
+  reloadMinKm: 5,
   googleFill: true,
   types: DEFAULT_MAP_TYPES,
 };
@@ -428,6 +433,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     minPopularity: Math.round(
       num(r.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
     ) / 100,
+    reloadMinKm: Math.round(
+      num(
+        r.reloadMinKm,
+        DEFAULT_MAP.reloadMinKm,
+        MAP_RELOAD_MIN_KM_MIN,
+        MAP_RELOAD_MIN_KM_MAX,
+      ) * 10,
+    ) / 10,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     types,
   };

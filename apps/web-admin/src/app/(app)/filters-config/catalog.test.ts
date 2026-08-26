@@ -36,6 +36,7 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/opts in/);
     expect(map?.process).toMatch(/googleFill/);
     expect(map?.process).toMatch(/Type batteries/);
+    expect(map?.process).toMatch(/reloadMinKm/);
     expect(map?.process).not.toMatch(/under 10/);
   });
 

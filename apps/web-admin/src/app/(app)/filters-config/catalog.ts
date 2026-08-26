@@ -74,6 +74,8 @@ export type MapConfig = {
   minRating: number;
   minReviews: number;
   minPopularity: number;
+  /** Camera must move at least this far (km) before Search refetches Nearby. */
+  reloadMinKm: number;
   googleFill: boolean;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -123,6 +125,8 @@ export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const MAP_MIN_POPULARITY_MAX = 1;
+export const MAP_RELOAD_MIN_KM_MIN = 1;
+export const MAP_RELOAD_MIN_KM_MAX = 20;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
 
@@ -153,6 +157,7 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
+  reloadMinKm: 5,
   googleFill: true,
   types: DEFAULT_MAP_TYPES,
 };
@@ -231,7 +236,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Nearest 50 by distance among places that clear Map floors: listed Mesita ∪ Google Nearby Search when the web client opts in and googleFill is on. Type batteries choose which Nearby calls fire. Unrated Google stubs drop when a rating or popularity floor is on. Over quota skips Google, not the catalog. Pins and rail are the same set. Country chip does not cut pins.",
+    process: "Nearest 50 by distance among places that clear Map floors: listed Mesita ∪ Google Nearby Search when the web client opts in and googleFill is on. Type batteries choose which Nearby calls fire. Unrated Google stubs drop when a rating or popularity floor is on. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm (and 20% of the visible width when zoomed out). Pins and rail are the same set. Country chip does not cut pins.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -580,6 +585,14 @@ export function coerceMap(raw: unknown): MapConfig {
     minPopularity: Math.round(
       num(m.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
     ) / 100,
+    reloadMinKm: Math.round(
+      num(
+        m.reloadMinKm,
+        DEFAULT_MAP.reloadMinKm,
+        MAP_RELOAD_MIN_KM_MIN,
+        MAP_RELOAD_MIN_KM_MAX,
+      ) * 10,
+    ) / 10,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     types,
   };

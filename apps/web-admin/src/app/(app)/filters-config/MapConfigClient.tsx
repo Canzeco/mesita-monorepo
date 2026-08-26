@@ -4,7 +4,7 @@
 // those 50 may appear and which Google Nearby type calls fire.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Gauge, Map as MapIcon, MessageCircle, Plug, Star } from "lucide-react";
+import { Gauge, Map as MapIcon, MessageCircle, Move, Plug, Star } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -18,6 +18,8 @@ import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
   MAP_MIN_POPULARITY_MAX,
+  MAP_RELOAD_MIN_KM_MAX,
+  MAP_RELOAD_MIN_KM_MIN,
   MIN_RATING_MAX,
   NEARBY_TYPE_FIELDS,
   type DiscoveryConfig,
@@ -106,7 +108,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Search still returns up to 50 closest admitted places. These knobs decide which of those 50 may appear — they do not raise the cap. 0 on a floor is off. A rating or popularity floor hides Google stubs with no stars."
+        subtitle="Search still returns up to 50 closest admitted places. These knobs decide which of those 50 may appear — they do not raise the cap. 0 on a floor is off. A rating or popularity floor hides Google stubs with no stars. Nearby does not refetch on a one-pixel pan."
         status={
           <KnobStatus
             kind="enforced"
@@ -143,6 +145,16 @@ export function MapConfigClient({
             decimals
             disabled={pending || loadBlocked}
             onChange={(minPopularity) => patch({ minPopularity })}
+          />
+          <NumberField
+            icon={<Move className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Reload after the camera moves (km)"
+            value={map.reloadMinKm}
+            min={MAP_RELOAD_MIN_KM_MIN}
+            max={MAP_RELOAD_MIN_KM_MAX}
+            decimals
+            disabled={pending || loadBlocked}
+            onChange={(reloadMinKm) => patch({ reloadMinKm })}
           />
         </div>
 

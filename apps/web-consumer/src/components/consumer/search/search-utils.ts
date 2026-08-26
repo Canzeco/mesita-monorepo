@@ -67,6 +67,70 @@ export function viewportCenter(box: {
   return { lat, lng };
 }
 
+/** Visible width of a viewport at its center latitude. */
+export function viewportWidthKm(box: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}): number {
+  const { lat } = viewportCenter(box);
+  if (box.west <= box.east) {
+    return haversineKm(lat, box.west, lat, box.east);
+  }
+  return (
+    haversineKm(lat, box.west, lat, 180) + haversineKm(lat, -180, lat, box.east)
+  );
+}
+
+/**
+ * Default floor matching discovery_config.map.reloadMinKm. A 110 m cell
+ * (`toFixed(3)`) is a few pixels when the city is in frame — that was the
+ * hypersensitive reload. 5 km is a neighborhood; zoomed-out views also
+ * require 20% of the visible width so a one-pixel nudge never refetches.
+ */
+export const CATALOG_RELOAD_MIN_KM = 5;
+export const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
+export const CATALOG_RELOAD_MIN_KM_MIN = 1;
+export const CATALOG_RELOAD_MIN_KM_MAX = 20;
+
+export function clampReloadMinKm(raw: number | undefined): number {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return CATALOG_RELOAD_MIN_KM;
+  }
+  return Math.min(
+    CATALOG_RELOAD_MIN_KM_MAX,
+    Math.max(CATALOG_RELOAD_MIN_KM_MIN, raw),
+  );
+}
+
+export function nearbyReloadThresholdKm(
+  spanKm: number,
+  minKm: number,
+): number {
+  const floor = clampReloadMinKm(minKm);
+  const fromSpan =
+    Number.isFinite(spanKm) && spanKm > 0
+      ? spanKm * CATALOG_RELOAD_SPAN_FRACTION
+      : 0;
+  return Math.max(floor, fromSpan);
+}
+
+/** First paint always loads. Later idles load only after a real camera move. */
+export function shouldReloadNearbyCatalog(
+  lastCenter: { lat: number; lng: number } | null,
+  nextCenter: { lat: number; lng: number },
+  box: { south: number; west: number; north: number; east: number },
+  minKm: number,
+): boolean {
+  if (!lastCenter) return true;
+  const need = nearbyReloadThresholdKm(viewportWidthKm(box), minKm);
+  return (
+    haversineKm(lastCenter.lat, lastCenter.lng, nextCenter.lat, nextCenter.lng) >=
+    need
+  );
+}
+
 /**
  * Fill distance_km from a center (the map camera for Search, or the
  * consumer's live location). Real data only — places without coordinates

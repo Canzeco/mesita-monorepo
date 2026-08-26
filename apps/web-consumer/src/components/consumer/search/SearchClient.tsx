@@ -8,9 +8,10 @@
 //     cut this map and there is no Adjust control here.
 //   • Bottom overlay (idle): horizontal catalog rail of the closest 50
 //     around the camera (Google Nearby Search + listed Mesita). Panning
-//     the map reloads that set after idle. Tapping a map pin highlights +
-//     scrolls to the matching rail card; tapping a card opens the place
-//     page (Google-only stubs open GooglePlaceSheet).
+//     the map reloads that set after a real camera move, not a one-pixel
+//     nudge. Tapping a map pin highlights + scrolls to the matching rail
+//     card; tapping a card opens the place page (Google-only stubs open
+//     GooglePlaceSheet).
 //   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
 //     SearchResultsPanel under the bar. One merged lane, no source labels —
@@ -51,8 +52,11 @@ import {
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import {
+  CATALOG_RELOAD_MIN_KM,
+  clampReloadMinKm,
   matchPredictionToPlace,
   newSessionToken,
+  shouldReloadNearbyCatalog,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -157,7 +161,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleRef = useRef(idle);
   const lastBoxRef = useRef<ViewportBox | null>(null);
   const skippedRef = useRef(false);
-  const lastFetchedKey = useRef<string | null>(null);
+  const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
+  const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
 
   const loadViewport = useCallback(
     async (box: ViewportBox) => {
@@ -167,14 +172,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         return;
       }
       const nextCenter = viewportCenter(box);
-      // ~110 m — ignore the idle jitter after a pan, reload when exploring.
-      const key = `${nextCenter.lat.toFixed(3)}:${nextCenter.lng.toFixed(3)}`;
-      const gen = ++viewportGen.current;
-      if (key === lastFetchedKey.current) {
+      if (
+        !shouldReloadNearbyCatalog(
+          lastFetchedCenter.current,
+          nextCenter,
+          box,
+          reloadMinKmRef.current,
+        )
+      ) {
         setCatalogLoading(false);
         return;
       }
       skippedRef.current = false;
+      const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
       try {
@@ -184,7 +194,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           CATALOG_NEARBY_MAX,
         );
         if (gen !== viewportGen.current) return;
-        lastFetchedKey.current = key;
+        lastFetchedCenter.current = nextCenter;
+        reloadMinKmRef.current = clampReloadMinKm(result.reloadMinKm);
         setCameraCenter(nextCenter);
         setPlaces(result.places);
       } catch (err) {
@@ -230,7 +241,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   useEffect(() => {
     if (!idle || !skippedRef.current || !lastBoxRef.current) return;
-    lastFetchedKey.current = null;
     void loadViewport(lastBoxRef.current);
   }, [idle, loadViewport]);
 
