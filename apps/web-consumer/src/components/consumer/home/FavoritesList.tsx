@@ -22,13 +22,9 @@ import { RemoveConfirmDialog } from "./RemoveConfirmDialog";
 // resolve against the fresh server deck first (deck wins — it's live data)
 // and fall back to the stored previews for saves outside tonight's deck.
 //
-// Layout: a two-column photo grid, not a list of thumbnail rows. Between the
-// mode nav and the BottomNav this tab gets 448×753px, and one saved place used
-// to fill 186px of it — 75% of the screen was blank. Tiles alone don't fix
-// that (one card can't fill 753px no matter how it's cropped), so the screen
-// has a second job: "More like your saves", built from the deck already in
-// context. Zero extra fetches, and the way to get more saves is to be shown
-// more places.
+// Layout: a two-column photo grid of saved places only — count header plus
+// filled-heart tiles. This tab is the bookmark list, not a second discovery
+// surface: no similar-places rail.
 
 /** Saves past this count earn a sort control; below it, it's chrome. */
 const SORT_CONTROL_MIN = 4;
@@ -64,14 +60,6 @@ export function FavoritesList({
         setSaved(place.id, true);
       },
     });
-  };
-
-  // Saving straight from the suggestions strip — no confirm step, saving is
-  // the non-destructive direction. The preview snapshot goes in with it so the
-  // tile survives past tonight's deck.
-  const saveSuggestion = (place: Place) => {
-    upsertSavedPlacePreview(place);
-    setSaved(place.id, true);
   };
 
   // Previews re-read on every mount — the component remounts on each mode
@@ -113,31 +101,6 @@ export function FavoritesList({
       (a, b) => Number(b.open_now === true) - Number(a.open_now === true),
     );
   }, [places, sort]);
-
-  // Candidates for "More like your saves": everything in tonight's deck the
-  // consumer hasn't already saved, ranked by overlap with what they DO save —
-  // same category counts double, same zone counts once. deckPlaces arrive
-  // enriched from HomeDeckBoundary, so no second enrich pass here.
-  const suggestions = useMemo<Place[]>(() => {
-    if (places.length === 0) return [];
-    const categories = new Set(
-      places.map((p) => p.category).filter((v): v is string => v != null),
-    );
-    const zones = new Set(
-      places.map((p) => p.zone).filter((v): v is string => v != null),
-    );
-    return deckPlaces
-      .filter((p) => !savedIds.has(p.id))
-      .map((p) => ({
-        place: p,
-        hit:
-          (p.category && categories.has(p.category) ? 2 : 0) +
-          (p.zone && zones.has(p.zone) ? 1 : 0),
-      }))
-      .sort((a, b) => b.hit - a.hit)
-      .slice(0, 6)
-      .map((s) => s.place);
-  }, [places, deckPlaces, savedIds]);
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -207,31 +170,6 @@ export function FavoritesList({
               />
             ))}
           </ul>
-
-          {suggestions.length > 0 && (
-            <>
-              <div className="mt-6 mb-3 flex items-center gap-3 px-1">
-                <span className="font-display text-sm font-semibold tracking-tight">
-                  More like your saves
-                </span>
-                <span className="bg-border h-px flex-1" />
-              </div>
-              <ul
-                role="list"
-                aria-label="Suggested places"
-                className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2"
-              >
-                {suggestions.map((place) => (
-                  <FavoriteTile
-                    key={place.id}
-                    place={place}
-                    saved={false}
-                    onToggle={() => saveSuggestion(place)}
-                  />
-                ))}
-              </ul>
-            </>
-          )}
         </div>
       )}
 

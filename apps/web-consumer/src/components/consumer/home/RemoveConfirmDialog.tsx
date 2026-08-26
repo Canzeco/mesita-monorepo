@@ -7,10 +7,7 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 
 // Confirm before unsaving — one tap opens this, a second (Yes) actually
 // removes. `place` null-gates the open state so the exit transition still runs.
-//
-// Only the REMOVE direction is confirmed. Saving from the suggestions strip is
-// one tap with no dialog: it's the non-destructive direction, and an undo toast
-// covers the stray tap.
+// An undo toast covers the stray tap after confirm.
 export function RemoveConfirmDialog({
   place,
   onCancel,
