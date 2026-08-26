@@ -7,16 +7,13 @@
 // the API max (3 pages × 20 = 60 results) and runs queries with bounded
 // concurrency so a 50-query batch completes well inside the EF timeout.
 //
-// Quality filters (optional): minRating and minUserRatingCount let the
-// operator drop low-signal places (a place with 800 reviews at 4.6 is
-// almost always a real, good place; one with 3 reviews usually isn't).
-// Both are applied EF-side after the Google fetch — Google's Text Search
-// has no server-side review-count filter, and filtering both here (rather
-// than passing minRating natively) keeps a single code path AND lets us
-// report per-query rawCount (fetched before filtering) so the UI can say
-// "12 found · 4 shown" instead of a bare "4" that reads like the search
-// found nothing. rating + userRatingCount stay in the Text Search Pro
-// SKU, so surfacing them does not change the per-call price.
+// Quality floors come from Intake › Sourcing `admin_search` only
+// (`app_config.sourcing_config`). A request body must not carry its own
+// minRating / minUserRatingCount — those were a second authoring surface
+// on Multiple Places and are ignored if sent. Applied EF-side after the
+// Google fetch (Text Search has no review-count filter); filtering here
+// also lets us report per-query rawCount so the UI can say "12 found ·
+// 4 shown". rating + userRatingCount stay in the Text Search Pro SKU.
 //
 // Returned places are enriched with Mesita-side existence + timestamps so
 // the product caller can render "already on Mesita" badges without a
@@ -57,13 +54,6 @@ type RequestBody = {
   placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
-  // Quality filters. minRating is 0–5 (Google ratings are 1–5); 0 = off.
-  // minUserRatingCount is a review-count floor; 0 = off. A place must
-  // clear BOTH to survive. Places Google returns without a rating or
-  // review count are treated as "unknown" and dropped only when the
-  // corresponding filter is active (see passesQualityFilter).
-  minRating?: number;
-  minUserRatingCount?: number;
 };
 
 type QueryResult = {
@@ -130,17 +120,9 @@ Deno.serve(async (req) => {
     Math.max(1, body.maxResultsPerQuery ?? MAX_RESULTS_PER_QUERY),
   );
 
-  // Quality filters — request body overrides win; otherwise fall back to the
-  // admin_search channel policy from app_config.sourcing_config.
-  const minRating = clamp(
-    Number(body.minRating ?? adminSearchPolicy.minRating ?? 0),
-    0,
-    5,
-  );
-  const minUserRatingCount = Math.max(
-    0,
-    Math.floor(Number(body.minUserRatingCount ?? adminSearchPolicy.minReviews ?? 0)),
-  );
+  // SoT: Intake › Sourcing `admin_search`. 0 = off.
+  const minRating = adminSearchPolicy.minRating;
+  const minUserRatingCount = adminSearchPolicy.minReviews;
 
   // --- Run text queries + Place ID lookups with bounded concurrency ---
   const results = new Array<QueryResult>(queries.length + placeIds.length);
@@ -158,7 +140,7 @@ Deno.serve(async (req) => {
           regionCode,
         );
         const places = fetched.filter((p) =>
-          passesSourcingFilter(p, adminSearchPolicy, minRating, minUserRatingCount),
+          passesSourcingFilter(p, adminSearchPolicy),
         );
         results[i] = {
           query: q,
@@ -302,27 +284,12 @@ Deno.serve(async (req) => {
 });
 
 // A place passes when it clears the admin_search channel policy (family +
-// rating/review floors). Request-body floors are merged with the policy
-// floors — the stricter of each pair wins.
-function passesSourcingFilter(
-  p: PlaceLite,
-  policy: ChannelPolicy,
-  minRating: number,
-  minUserRatingCount: number,
-): boolean {
-  const effectivePolicy: ChannelPolicy = {
-    ...policy,
-    minRating: Math.max(policy.minRating, minRating),
-    minReviews: Math.max(policy.minReviews, minUserRatingCount),
-  };
-  return evaluatePlaceForChannel(effectivePolicy, {
+// rating/review floors). Floors are the policy itself — never a request-body
+// override.
+function passesSourcingFilter(p: PlaceLite, policy: ChannelPolicy): boolean {
+  return evaluatePlaceForChannel(policy, {
     primaryType: p.primaryType,
     rating: p.rating,
     reviewCount: p.userRatingCount,
   }).eligible;
-}
-
-function clamp(n: number, lo: number, hi: number): number {
-  if (Number.isNaN(n)) return lo;
-  return Math.min(hi, Math.max(lo, n));
 }

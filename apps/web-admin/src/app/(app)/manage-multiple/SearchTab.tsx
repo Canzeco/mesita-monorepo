@@ -57,8 +57,6 @@ export function SearchTab({
   const [bar, setBar] = useState("");
   const [regionCode, setRegionCode] = useState("");
   const [maxResults, setMaxResults] = useState(MAX_RESULTS);
-  const [minRating, setMinRating] = useState(0);
-  const [minReviews, setMinReviews] = useState(0);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,8 +92,6 @@ export function SearchTab({
           placeIds,
           regionCode: regionCode.trim().toUpperCase(),
           maxResultsPerQuery: maxResults,
-          minRating,
-          minUserRatingCount: minReviews,
         }),
       });
       const data: SearchResponse | SearchErrorResponse = await res.json();
@@ -193,11 +189,7 @@ export function SearchTab({
       <div className="mt-4">
         <SearchParametersSection
           maxResults={maxResults}
-          minRating={minRating}
-          minReviews={minReviews}
           onMaxResultsChange={setMaxResults}
-          onMinRatingChange={setMinRating}
-          onMinReviewsChange={setMinReviews}
         />
       </div>
 

@@ -268,7 +268,7 @@ export const CHANNELS: Channel[] = [
     verb: "search",
     label: "Admin · Search",
     description:
-      "What surfaces in the admin discovery searchbar (admin-web-discover-places / admin-web-suggest-places), including Google places not yet in Mesita.",
+      "What surfaces in the admin discovery searchbar (admin-web-discover-places / admin-web-suggest-places), including Google places not yet in Mesita. This row's rating/review floors are the only Google quality bar for that search — Multiple Places does not re-author them.",
     live: true,
   },
   {

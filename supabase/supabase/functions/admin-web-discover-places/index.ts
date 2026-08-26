@@ -25,8 +25,6 @@ type RequestBody = {
   placeIds?: string[];
   regionCode?: string;
   maxResultsPerQuery?: number;
-  minRating?: number;
-  minUserRatingCount?: number;
 };
 
 Deno.serve(async (req) => {
@@ -48,11 +46,19 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
+  // Forward only operational search params. Quality floors live on
+  // Intake › Sourcing (`admin_search`) and are read inside the internal
+  // caller — never from this body.
   const result = await invokeInternalCaller(
     env,
     "admin-web-discover-places",
     "supabase-edgefunc-discover-places",
-    body,
+    {
+      queries: body.queries,
+      placeIds: body.placeIds,
+      regionCode: body.regionCode,
+      maxResultsPerQuery: body.maxResultsPerQuery,
+    },
   );
   if (!result.ok) {
     return json({ ok: false, error: result.error }, 502);

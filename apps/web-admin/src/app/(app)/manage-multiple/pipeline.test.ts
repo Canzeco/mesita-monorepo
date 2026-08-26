@@ -59,3 +59,18 @@ describe("spend calculator stays off this page", () => {
     expect(costUi).not.toContain("export function CostCalculator");
   });
 });
+
+describe("Google quality floors are not authored here", () => {
+  it("Google Search has no per-run rating or review knobs", () => {
+    const params = readFileSync(join(here, "SearchParametersSection.tsx"), "utf8");
+    const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");
+    const constants = readFileSync(join(here, "search-tab-constants.ts"), "utf8");
+    expect(params).not.toContain("minRating");
+    expect(params).not.toContain("minReviews");
+    expect(params).toContain("/enricher-config#s-sourcing");
+    expect(searchTab).not.toContain("minRating");
+    expect(searchTab).not.toContain("minUserRatingCount");
+    expect(constants).not.toContain("RATING_OPTIONS");
+    expect(constants).not.toContain("REVIEW_OPTIONS");
+  });
+});
