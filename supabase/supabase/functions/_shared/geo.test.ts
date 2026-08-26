@@ -2,7 +2,11 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   applyBboxPredicate,
   BBOX_MAX_SPAN_DEG,
+  circleBbox,
   decideBbox,
+  decideNearby,
+  NEARBY_RADIUS_KM,
+  takeClosest,
   type BboxQuery,
 } from "./geo.ts";
 
@@ -90,6 +94,42 @@ Deno.test("applyBboxPredicate keeps a NE-corner pin (no radius trim)", () => {
     { op: "gte", col: "lng", val: -100.35 },
     { op: "lte", col: "lng", val: -100.28 },
   ]);
+});
+
+Deno.test("decideNearby: omitted nearby is the bbox/newest-first path", () => {
+  assertEquals(decideNearby({ limit: 50 }), { mode: "none" });
+  assertEquals(decideNearby({ lat: 25.67, lng: -100.3 }), { mode: "none" });
+});
+
+Deno.test("decideNearby: nearby true without coords is invalid", () => {
+  assertEquals(decideNearby({ nearby: true }), { mode: "invalid" });
+  assertEquals(decideNearby({ nearby: true, lat: 25.67 }), { mode: "invalid" });
+});
+
+Deno.test("decideNearby: Monterrey camera is ok", () => {
+  assertEquals(
+    decideNearby({ nearby: true, lat: 25.67, lng: -100.3 }),
+    { mode: "ok", center: { lat: 25.67, lng: -100.3 } },
+  );
+});
+
+Deno.test("takeClosest: product cap 50, nearest first", () => {
+  const rows = Array.from({ length: 80 }, (_, i) => ({
+    id: i,
+    lat: 25.67 + i * 0.01,
+    lng: -100.3,
+  }));
+  const got = takeClosest(rows, { lat: 25.67, lng: -100.3 }, 50);
+  assertEquals(got.length, 50);
+  assertEquals(got[0].id, 0);
+  assertEquals(got[49].id, 49);
+});
+
+Deno.test("circleBbox: 50 km around Monterrey stays inside the clamp", () => {
+  const box = circleBbox({ lat: 25.67, lng: -100.3 }, NEARBY_RADIUS_KM);
+  assertEquals(box.south < 25.67, true);
+  assertEquals(box.north > 25.67, true);
+  assertEquals(NEARBY_RADIUS_KM, 50);
 });
 
 Deno.test("applyBboxPredicate: dateline is two lng ranges, not 400", () => {

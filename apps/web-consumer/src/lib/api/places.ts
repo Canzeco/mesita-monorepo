@@ -114,6 +114,10 @@ export type Place = {
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;
+  /** Catalog-only: Google Nearby hit that is not a Mesita row yet. */
+  googleOnly?: boolean;
+  /** Alias shipped on Google Nearby stubs (`from_google`). */
+  from_google?: boolean;
   // Generic product payload. Menus are carried in products.menu.
   products?: Record<string, unknown> | null;
 
@@ -168,6 +172,7 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
+export const CATALOG_NEARBY_MAX = 50;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
@@ -182,6 +187,29 @@ export type ViewportPlaces = {
   overspan: boolean;
   totalInBox: number | null;
 };
+
+/** Search map catalog: closest 50 around a camera / guest pin. */
+export async function apiFetchNearbyCatalog(
+  client: SupabaseClient,
+  center: { lat: number; lng: number },
+  limit = CATALOG_NEARBY_MAX,
+): Promise<ViewportPlaces> {
+  const data = await invokeEF<{
+    places: Place[];
+    overspan?: boolean;
+    totalInBox?: number;
+  }>(client, "consumer-web-list-places", {
+    nearby: true,
+    lat: center.lat,
+    lng: center.lng,
+    limit,
+  });
+  return {
+    places: (data.places ?? []).map(stripInsecurePhotos),
+    overspan: data.overspan === true,
+    totalInBox: typeof data.totalInBox === "number" ? data.totalInBox : null,
+  };
+}
 
 /** Search map only. Omit bbox → same as apiFetchPublicPlaces. */
 export async function apiFetchPlacesInBbox(

@@ -66,6 +66,72 @@ function lngSpanDeg(west: number, east: number): number {
   return 180 - west + (east + 180);
 }
 
+function wrapLng(lng: number): number {
+  let x = lng;
+  while (x <= -180) x += 360;
+  while (x > 180) x -= 360;
+  return x;
+}
+
+/** Search map catalog radius. Google Nearby Search (New) caps the circle at 50 km. */
+export const NEARBY_RADIUS_KM = 50;
+
+export type NearbyDecision =
+  | { mode: "none" }
+  | { mode: "invalid" }
+  | { mode: "ok"; center: { lat: number; lng: number } };
+
+/** POST `{ nearby: true, lat, lng }`. nearby wins over bbox when both are sent. */
+export function decideNearby(body: Record<string, unknown>): NearbyDecision {
+  if (body.nearby !== true && body.nearby !== "true") return { mode: "none" };
+  const lat = finiteNumber(body.lat);
+  const lng = finiteNumber(body.lng);
+  if (
+    lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 ||
+    lng > 180
+  ) {
+    return { mode: "invalid" };
+  }
+  return { mode: "ok", center: { lat, lng } };
+}
+
+export function circleBbox(
+  center: { lat: number; lng: number },
+  radiusKm: number,
+): GeoBbox {
+  const { latDelta, lngDelta } = radiusBoundingBox(center.lat, radiusKm);
+  return {
+    south: Math.max(-90, center.lat - latDelta),
+    north: Math.min(90, center.lat + latDelta),
+    west: wrapLng(center.lng - lngDelta),
+    east: wrapLng(center.lng + lngDelta),
+  };
+}
+
+export function bboxCenter(bbox: GeoBbox): { lat: number; lng: number } {
+  const lat = (bbox.south + bbox.north) / 2;
+  if (bbox.west <= bbox.east) {
+    return { lat, lng: (bbox.west + bbox.east) / 2 };
+  }
+  let lng = bbox.west + lngSpanDeg(bbox.west, bbox.east) / 2;
+  if (lng > 180) lng -= 360;
+  return { lat, lng };
+}
+
+export function takeClosest<T extends { lat?: number | null; lng?: number | null }>(
+  rows: T[],
+  center: { lat: number; lng: number },
+  limit: number,
+): T[] {
+  return [...rows]
+    .sort((a, b) => {
+      const da = haversineKm(center.lat, center.lng, a.lat ?? null, a.lng ?? null);
+      const db = haversineKm(center.lat, center.lng, b.lat ?? null, b.lng ?? null);
+      return da - db;
+    })
+    .slice(0, limit);
+}
+
 /** POST body: all four numbers or none. GET callers never send these keys. */
 export function decideBbox(body: Record<string, unknown>): BboxDecision {
   const present = BBOX_KEYS.filter((k) => body[k] != null).length;

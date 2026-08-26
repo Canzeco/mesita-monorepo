@@ -12,6 +12,14 @@
 // read here would look like it worked while enforcing nothing. A config that
 // silently falls back is not enforced, which is the house definition of a bug.
 //
+// THREE POST SHAPES:
+//   { nearby: true, lat, lng, limit? } — Search map catalog. Closest 50 in a
+//     50 km circle: listed Mesita ∪ Google Nearby Search (New). Distance
+//     order from the camera / guest pin. Google-only rows are stubs.
+//   { south, west, north, east, limit? } — listed pins inside the camera
+//     rectangle (kept for callers that still send a box).
+//   { limit? } / GET — Pay / Home / mobile: global newest-first.
+//
 // Local:  supabase functions serve consumer-web-list-places
 // Deploy: supabase functions deploy consumer-web-list-places
 
@@ -23,13 +31,87 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
-import { applyBboxPredicate, decideBbox } from "../_shared/geo.ts";
+import {
+  applyBboxPredicate,
+  circleBbox,
+  decideBbox,
+  decideNearby,
+  NEARBY_RADIUS_KM,
+} from "../_shared/geo.ts";
+import {
+  CATALOG_NEARBY_MAX,
+  VIEWPORT_POOL,
+  mergeNearbyCatalog,
+  searchNearbyPlaces,
+  type NearbyHit,
+} from "../_shared/nearby-places.ts";
+import { readGooglePlacesKey } from "../_shared/google-places.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
+function googleStub(hit: NearbyHit): Record<string, unknown> {
+  return {
+    id: `g:${hit.placeId}`,
+    slug: hit.placeId,
+    name: hit.name,
+    category: hit.primaryType,
+    category_label: null,
+    vibe: null,
+    price_level: null,
+    currency: "MXN",
+    listing_type: "web",
+    status: "lead",
+    fiscal_type: "informal",
+    plan: "free",
+    lat: hit.lat,
+    lng: hit.lng,
+    address: hit.address || null,
+    timezone: null,
+    closes_at: null,
+    hours: null,
+    phone: null,
+    pitch: null,
+    story: null,
+    description: null,
+    photos: [],
+    website_url: null,
+    instagram_url: null,
+    facebook_url: null,
+    whatsapp_url: null,
+    opentable_url: null,
+    resy_url: null,
+    uber_eats_url: null,
+    x_url: null,
+    threads_url: null,
+    reddit_url: null,
+    didi_food_url: null,
+    google_maps_url: null,
+    email: null,
+    created_at: new Date(0).toISOString(),
+    google_stars_overall: hit.rating,
+    google_rating: hit.rating,
+    google_review_count: null,
+    zone: null,
+    city: null,
+    content_status: "ready",
+    googleOnly: true,
+    from_google: true,
+  };
+}
+
+function stripGooglePlaceId<T extends { google_place_id?: unknown }>(
+  row: T,
+): Omit<T, "google_place_id"> {
+  const { google_place_id: _gid, ...rest } = row;
+  return rest;
+}
+
 type ListBody = {
   limit?: number;
+  nearby?: boolean;
+  lat?: number;
+  lng?: number;
   south?: number;
   west?: number;
   north?: number;
@@ -51,21 +133,32 @@ Deno.serve(async (req) => {
 
   // Limit can come from a JSON body (POST from supabase.functions.invoke) or
   // a query string (?limit=… for raw GETs). Body wins if both are present.
-  // Viewport bbox is POST-only. GET ignores geo so Pay / Home / mobile
-  // no-bbox callers stay on today's global newest-first path.
+  // Nearby + viewport bbox are POST-only. GET ignores geo so Pay / Home /
+  // mobile no-geo callers stay on today's global newest-first path.
   let limit = DEFAULT_LIMIT;
+  let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
       limit = clampIntRange(body.limit, 1, MAX_LIMIT);
     }
-    bboxDecision = decideBbox(body as Record<string, unknown>);
+    nearbyDecision = decideNearby(body as Record<string, unknown>);
+    if (nearbyDecision.mode === "none") {
+      bboxDecision = decideBbox(body as Record<string, unknown>);
+    }
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
     if (Number.isFinite(q)) limit = clampIntRange(q, 1, MAX_LIMIT);
   }
 
+  if (nearbyDecision.mode === "invalid") {
+    return json({
+      ok: false,
+      error: "nearby needs finite lat and lng",
+      code: "invalid_nearby",
+    }, 400);
+  }
   if (bboxDecision.mode === "invalid") {
     return json({
       ok: false,
@@ -86,40 +179,82 @@ Deno.serve(async (req) => {
   // ineligible ones.
   //
   // Operator maxDistanceKm is Swipe's radius. Map never sends guest geo
-  // here, so that filter stays off. Viewport bbox (optional POST) is a
-  // different question: which listed pins sit in the camera rectangle.
+  // here, so that filter stays off. Nearby Search is a different question:
+  // the closest 50 around the camera (50 km circle + Google fill). Viewport
+  // bbox remains listed-in-rectangle for leftover box callers.
   const efEnv = readEFEnv();
   const filters = efEnv.ok
     ? (await loadDiscoveryConfig(adminClient(efEnv.env))).filters
     : DISCOVERY_DEFAULTS.filters;
 
-  // MESITA-1283: list returns MANY places per request — the card projection
-  // (every public column except the five enrichment-filled jsonb ones), not
-  // the full single-place read. Nothing here reads those five; verified
-  // against discovery-filters.ts and this file before wiring.
-  const wantCount = bboxDecision.mode === "ok";
+  const isNearby = nearbyDecision.mode === "ok";
+  const isBbox = bboxDecision.mode === "ok";
+  const wantCount = isBbox;
+  const selectCols = isNearby
+    ? `${PLACE_CARD_COLUMNS}, google_place_id`
+    : PLACE_CARD_COLUMNS;
   const base = supabase
     .from("profiles")
-    .select(PLACE_CARD_COLUMNS, wantCount ? { count: "exact" } : undefined);
+    .select(selectCols, wantCount ? { count: "exact" } : undefined);
 
   let filtered = applyDiscoveryFilters(base, filters, {
     lat: null,
     lng: null,
   });
-  if (bboxDecision.mode === "ok") {
+  if (isNearby) {
+    filtered = applyBboxPredicate(
+      filtered,
+      circleBbox(nearbyDecision.center, NEARBY_RADIUS_KM),
+    );
+  } else if (isBbox) {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
   const { data, error, count } = await filtered
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(isNearby ? VIEWPORT_POOL : limit);
 
   if (error) {
     return json({ ok: false, error: error.message }, 500);
   }
 
-  // `name` arrives already resolved — it is a generated column
-  // (mesita_name → google_name), so there is nothing to coalesce here.
+  if (isNearby) {
+    const center = nearbyDecision.center;
+    const mesitaRows = (data ?? []) as Array<{
+      id: string;
+      google_place_id?: string | null;
+      lat?: number | null;
+      lng?: number | null;
+      name?: string | null;
+      google_name?: string | null;
+      category?: string | null;
+    }>;
+    let googleHits: NearbyHit[] = [];
+    const gmp = readGooglePlacesKey();
+    if (gmp.ok) {
+      googleHits = await searchNearbyPlaces(gmp.key, center);
+    }
+    const cap = Math.min(limit, CATALOG_NEARBY_MAX);
+    const merged = mergeNearbyCatalog(mesitaRows, googleHits, center, cap);
+    const places = withFamilyKeysList(
+      merged.map((item) =>
+        item.kind === "listed"
+          ? stripGooglePlaceId(item.row)
+          : googleStub(item.hit)
+      ) as Array<{
+        name?: string | null;
+        google_name?: string | null;
+        category?: string | null;
+      }>,
+    );
+    return json({
+      ok: true,
+      places,
+      overspan: false,
+      totalInBox: places.length,
+    });
+  }
+
   const places = withFamilyKeysList(
     (data ?? []) as Array<{
       name?: string | null;
@@ -127,7 +262,7 @@ Deno.serve(async (req) => {
       category?: string | null;
     }>,
   );
-  if (bboxDecision.mode === "ok") {
+  if (isBbox) {
     return json({
       ok: true,
       places,

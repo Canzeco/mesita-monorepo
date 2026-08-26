@@ -32,7 +32,10 @@ export function membershipColor(tone: MembershipTone): string {
 export function placeMembershipTone(place: {
   partner?: boolean | null;
   plan?: string | null;
+  googleOnly?: boolean;
+  from_google?: boolean;
 }): MembershipTone {
+  if (place.googleOnly || place.from_google) return "google";
   if (place.partner === true) return "partner";
   if (place.partner === false) return "listed";
   if (place.plan && place.plan.toLowerCase() !== "free") return "partner";

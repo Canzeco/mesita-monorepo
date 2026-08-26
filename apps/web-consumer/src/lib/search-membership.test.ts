@@ -21,6 +21,8 @@ describe("search membership tones", () => {
     expect(placeMembershipTone({ partner: true })).toBe("partner");
     expect(placeMembershipTone({ partner: false })).toBe("listed");
     expect(placeMembershipTone({ plan: "pro" })).toBe("partner");
+    expect(placeMembershipTone({ googleOnly: true })).toBe("google");
+    expect(placeMembershipTone({ from_google: true })).toBe("google");
   });
 
   it("uses Mesita pink, a true gray, and a map-readable yellow", () => {

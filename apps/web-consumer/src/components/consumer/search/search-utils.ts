@@ -49,7 +49,26 @@ export function matchPredictionToPlace(
 }
 
 /**
- * Fill distance_km from a center (the chosen Filters zone, or the
+ * Camera center of a map viewport. west > east is the dateline wrap.
+ */
+export function viewportCenter(box: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}): { lat: number; lng: number } {
+  const lat = (box.south + box.north) / 2;
+  if (box.west <= box.east) {
+    return { lat, lng: (box.west + box.east) / 2 };
+  }
+  const span = 180 - box.west + (box.east + 180);
+  let lng = box.west + span / 2;
+  if (lng > 180) lng -= 360;
+  return { lat, lng };
+}
+
+/**
+ * Fill distance_km from a center (the map camera for Search, or the
  * consumer's live location). Real data only — places without coordinates
  * (or before the geolocation grant) keep distance_km null and the chip
  * simply hides.

@@ -24,6 +24,8 @@ export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
 export const GOOGLE_PLACES_TEXT_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchText";
+export const GOOGLE_PLACES_NEARBY_URL =
+  "https://places.googleapis.com/v1/places:searchNearby";
 export const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
