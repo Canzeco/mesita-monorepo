@@ -6,7 +6,53 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { SaveRow, SectionCard, TextAreaField } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
-import { CHAT_PROMPT_MAX, type DiscoveryConfig } from "./catalog";
+import {
+  CHAT_CONNECTIONS,
+  CHAT_INDEXES,
+  CHAT_LATER,
+  CHAT_PROMPT_MAX,
+  type DiscoveryConfig,
+} from "./catalog";
+
+function InventoryList({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: readonly { name: string; note: string; status?: string }[];
+}) {
+  return (
+    <div className="mt-5">
+      <p className="text-foreground type-meta font-semibold tracking-wide uppercase">
+        {title}
+      </p>
+      <ul className="border-border mt-2 divide-y rounded-xl border">
+        {rows.map((row) => (
+          <li
+            key={row.name}
+            className="flex flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+          >
+            <div className="min-w-0">
+              <p className="text-foreground text-sm font-medium">{row.name}</p>
+              <p className="text-muted-foreground mt-0.5 type-label leading-relaxed">
+                {row.note}
+              </p>
+            </div>
+            {row.status ? (
+              <span className="border-border text-muted-foreground w-fit shrink-0 rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
+                {row.status}
+              </span>
+            ) : (
+              <span className="border-border text-muted-foreground w-fit shrink-0 rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
+                Later
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function DiscoveryConfigClient({
   initialConfig,
@@ -74,7 +120,7 @@ export function DiscoveryConfigClient({
       <SectionCard
         icon={<MessageSquare className="text-secondary h-4 w-4" />}
         title="Chat"
-        subtitle="Every turn sends this prompt plus the entire guest thread as plain text. That is the first pass — a cheaper ingest (rolling summary, retrieval, cached prefixes) is due. Blank uses the in-code Memo persona. No Places, Perplexity, or catalog tools yet."
+        subtitle="Every turn sends this prompt plus the entire guest thread as plain text. Connections below are the map for later — only OpenAI is live. Blank prompt uses the in-code Memo persona."
         status={
           <div className="flex flex-col items-start gap-1 sm:items-end">
             <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
@@ -105,6 +151,9 @@ export function DiscoveryConfigClient({
             that as the lasting design.
           </p>
         </div>
+        <InventoryList title="APIs" rows={CHAT_CONNECTIONS} />
+        <InventoryList title="Indexes (this pass: two)" rows={CHAT_INDEXES} />
+        <InventoryList title="Later" rows={CHAT_LATER} />
       </SectionCard>
 
       <SaveRow
