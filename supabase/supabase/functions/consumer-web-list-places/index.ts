@@ -13,19 +13,21 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // THREE POST SHAPES:
-//   { lat, lng, limit? } — listed nearby (mobile Search). Closest 50 in a
+//   { lat, lng, limit? } — listed nearby (mobile Search). Closest 20 in a
 //     large radius. No Google stubs — mobile opens `/place/:id` and cannot
 //     host GooglePlaceSheet.
-//   { google: true, lat, lng, limit? } — web Search catalog. Listed Mesita
-//     in 50 km ∪ Google Nearby Search (New). Distance order. Google-only
-//     rows are stubs. Missing listed Place IDs are fetched by google_place_id
-//     so a close Mesita row outside the 1000 scan does not become a stub.
-//     Google fill is metered per connecting IP (CF-Connecting-IP / rightmost
-//     XFF, 45/60s) plus a 600/60s global cap, only when this isolate is about
-//     to fire the enabled Nearby type calls. Over quota, an in-flight join, or
-//     an isolate-budget skip does not mint a ledger row. Over quota skips
-//     Google, not the catalog. Operator Map knobs (`discovery_config.map`)
-//     floor which listed/Google rows may appear and which type batteries fire.
+//   { google: true, lat, lng, limit? } — web Search catalog. Closest 20
+//     listed Mesita in 50 km ∪ one Google Nearby Search (New) of 20.
+//     Merge by google_place_id (Mesita wins). Union 20–40. Distance order.
+//     Google-only rows are stubs. Missing listed Place IDs are fetched by
+//     google_place_id so a close Mesita row outside the 1000 scan does not
+//     become a stub. Google fill is metered per connecting IP
+//     (CF-Connecting-IP / rightmost XFF, 45/60s) plus a 600/60s global cap,
+//     only when this isolate is about to fire the one Nearby call. Over
+//     quota, an in-flight join, or an isolate-budget skip does not mint a
+//     ledger row. Over quota skips Google, not the catalog. Operator Map
+//     knobs (`discovery_config.map`) floor which listed/Google rows may
+//     appear and which types ride that one Nearby call.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -59,7 +61,7 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  CATALOG_NEARBY_MAX,
+  MESITA_NEARBY_MAX,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
@@ -288,7 +290,7 @@ Deno.serve(async (req) => {
     let mesitaRows = (data ?? []) as unknown as CardRow[];
 
     if (!googleFill) {
-      const cap = Math.min(limit, CATALOG_NEARBY_MAX);
+      const cap = Math.min(limit, MESITA_NEARBY_MAX);
       const admitted = admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity);
       const listed = sortByDistance(admitted.listed, lat, lng)
         .filter((row) =>
@@ -316,7 +318,7 @@ Deno.serve(async (req) => {
         googleHits = cached;
       } else if (efEnv.ok) {
         // Shared connecting-IP ledger only when THIS isolate is about to
-        // fire the enabled Nearby type calls. In-flight same-cell joins and
+        // fire the one Nearby Search. In-flight same-cell joins and
         // isolate budget skips must not mint a row. Identity is
         // CF-Connecting-IP / rightmost XFF, not the spoofable leftmost hop.
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
@@ -358,14 +360,13 @@ Deno.serve(async (req) => {
         }
       }
     }
-    const cap = Math.min(limit, CATALOG_NEARBY_MAX);
     const admitted = admitMapCatalog(
       mesitaRows,
       googleHits,
       cfg.map,
       cfg.params.popularity,
     );
-    const merged = mergeNearbyCatalog(admitted.listed, admitted.google, center, cap);
+    const merged = mergeNearbyCatalog(admitted.listed, admitted.google, center);
     const places = withFamilyKeysList(
       merged.map((item) => {
         if (item.kind === "listed") {

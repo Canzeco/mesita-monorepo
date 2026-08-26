@@ -1,7 +1,7 @@
 "use client";
 
-// Map hyperparameters — live. Cap stays 50; these knobs decide which of
-// those 50 may appear and which Google Nearby type calls fire.
+// Map hyperparameters — live. Two queries (Mesita 20 ∪ Nearby 20); these
+// knobs decide which of those may appear and which types ride the one call.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Gauge, Map as MapIcon, MessageCircle, Move, Plug, Star } from "lucide-react";
@@ -163,7 +163,7 @@ export function MapConfigClient({
             <p className="text-sm font-semibold">Google Nearby fill</p>
             <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
               Off skips Nearby even when web Search asks for it. Listed Mesita
-              still paints. Each type battery below is one billed Nearby call.
+              still paints. Enabled types ride one billed Nearby call.
             </p>
           </div>
           <Switch

@@ -40,7 +40,8 @@ export const BBOX_MAX_SPAN_DEG = 0.75;
 /** Search map default: big enough that a city camera never yields 4 pins. */
 export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
-/** Internal scan before distance-sort. Response `limit` still slices to 50. */
+/** Internal scan before distance-sort. Response still slices to 20 Mesita
+ *  (listed-only) or 20+20 union (Google fill). */
 export const NEARBY_SCAN_LIMIT = 1000;
 /** Google Nearby Search (New) caps the circle at 50 km. */
 export const NEARBY_RADIUS_KM = 50;

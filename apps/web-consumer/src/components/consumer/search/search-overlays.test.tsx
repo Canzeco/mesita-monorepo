@@ -138,7 +138,7 @@ describe("SearchScopeSheet country pills", () => {
 });
 
 describe("Search map catalog reloads nearby as the camera moves", () => {
-  it("loads the closest 50 from Nearby Search, not an SSR 200 dump", () => {
+  it("loads Mesita 20 ∪ Google Nearby 20, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");

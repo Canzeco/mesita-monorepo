@@ -2,7 +2,10 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
+  CATALOG_NEARBY_MAX,
   GOOGLE_FANOUT_MAX,
+  GOOGLE_NEARBY_MAX,
+  MESITA_NEARBY_MAX,
   NEARBY_TYPES,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
@@ -40,7 +43,7 @@ Deno.test("mergeNearbyCatalog: Mesita row wins the same Google Place ID", () => 
       primaryType: "bar",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
   assertEquals(
     got.filter((x) => x.kind === "listed").map((x) =>
       x.kind === "listed" ? x.row.id : ""
@@ -55,7 +58,7 @@ Deno.test("mergeNearbyCatalog: Mesita row wins the same Google Place ID", () => 
   );
 });
 
-Deno.test("mergeNearbyCatalog: closest N, Google-only fills the rail", () => {
+Deno.test("mergeNearbyCatalog: Google-only fills beside every Mesita top-20", () => {
   const mesita = Array.from({ length: 3 }, (_, i) => ({
     id: `m${i}`,
     google_place_id: `gid-${i}`,
@@ -71,9 +74,10 @@ Deno.test("mergeNearbyCatalog: closest N, Google-only fills the rail", () => {
     rating: null,
     primaryType: "cafe",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER, 5);
-  assertEquals(got.length, 5);
-  assertEquals(got[0].kind === "listed" ? got[0].row.id : "", "m0");
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(got.length, 8);
+  assertEquals(got.filter((x) => x.kind === "listed").length, 3);
+  assertEquals(got.filter((x) => x.kind === "google").length, 5);
 });
 
 Deno.test("mergeNearbyCatalog: an older close Mesita row still beats Google", () => {
@@ -91,7 +95,7 @@ Deno.test("mergeNearbyCatalog: an older close Mesita row still beats Google", ()
       primaryType: "restaurant",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
   assertEquals(got.length, 1);
   assertEquals(got[0].kind, "listed");
   if (got[0].kind === "listed") assertEquals(got[0].row.id, "old-close");
@@ -113,14 +117,35 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
       primaryType: "cafe",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
   assertEquals(
     got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
     ["inside", "g-close"],
   );
 });
 
-Deno.test("mergeNearbyCatalog: product cap is 50 closest", () => {
+Deno.test("mergeNearbyCatalog: union is 20 when Mesita and Google agree", () => {
+  const mesita = Array.from({ length: 20 }, (_, i) => ({
+    id: `m${i}`,
+    google_place_id: `shared-${i}`,
+    lat: 25.67 + i * 0.001,
+    lng: -100.3,
+  }));
+  const google = Array.from({ length: 20 }, (_, i) => ({
+    placeId: `shared-${i}`,
+    name: `G${i}`,
+    address: "",
+    lat: 25.67 + i * 0.001,
+    lng: -100.3,
+    rating: null,
+    primaryType: "bar",
+  }));
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(got.length, MESITA_NEARBY_MAX);
+  assertEquals(got.every((x) => x.kind === "listed"), true);
+});
+
+Deno.test("mergeNearbyCatalog: union is 40 when the two queries miss", () => {
   const mesita = Array.from({ length: 40 }, (_, i) => ({
     id: `m${i}`,
     google_place_id: `mid-${i}`,
@@ -136,8 +161,31 @@ Deno.test("mergeNearbyCatalog: product cap is 50 closest", () => {
     rating: null,
     primaryType: "bar",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
-  assertEquals(got.length, 50);
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(got.filter((x) => x.kind === "listed").length, MESITA_NEARBY_MAX);
+  assertEquals(got.filter((x) => x.kind === "google").length, GOOGLE_NEARBY_MAX);
+  assertEquals(got.length, CATALOG_NEARBY_MAX);
+});
+
+Deno.test("mergeNearbyCatalog: far Mesita still keeps its 20 vs closer Google", () => {
+  const mesita = Array.from({ length: 20 }, (_, i) => ({
+    id: `m${i}`,
+    google_place_id: `far-${i}`,
+    lat: 25.85 + i * 0.001,
+    lng: -100.3,
+  }));
+  const google = Array.from({ length: 20 }, (_, i) => ({
+    placeId: `near-${i}`,
+    name: `G${i}`,
+    address: "",
+    lat: 25.67005 + i * 0.0001,
+    lng: -100.3,
+    rating: null,
+    primaryType: "cafe",
+  }));
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(got.filter((x) => x.kind === "listed").length, 20);
+  assertEquals(got.filter((x) => x.kind === "google").length, 20);
 });
 
 const OK_BODY = JSON.stringify({
@@ -149,6 +197,37 @@ const OK_BODY = JSON.stringify({
     rating: 4.1,
     primaryType: "cafe",
   }],
+});
+
+Deno.test("searchNearbyPlaces: one Nearby Search carries every enabled primary type", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  let body: {
+    includedPrimaryTypes?: string[];
+    maxResultCount?: number;
+    rankPreference?: string;
+  } = {};
+  const orig = globalThis.fetch;
+  globalThis.fetch = (_url, init) => {
+    n++;
+    body = JSON.parse(String(init?.body ?? "{}"));
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    await searchNearbyPlaces("k", CENTER);
+    assertEquals(n, 1);
+    assertEquals(body.includedPrimaryTypes, [...NEARBY_TYPES]);
+    assertEquals(body.maxResultCount, GOOGLE_NEARBY_MAX);
+    assertEquals(body.rankPreference, "DISTANCE");
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
 });
 
 Deno.test("searchNearbyPlaces: HTTP failure is not cached", async () => {
@@ -164,7 +243,7 @@ Deno.test("searchNearbyPlaces: HTTP failure is not cached", async () => {
     const b = await searchNearbyPlaces("k", CENTER);
     assertEquals(a, []);
     assertEquals(b, []);
-    assertEquals(n, 10);
+    assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -190,20 +269,20 @@ Deno.test("searchNearbyPlaces: success is cached for the cell", async () => {
     assertEquals(a.length, 1);
     assertEquals(a[0].placeId, "ChIJ-ok");
     assertEquals(b.length, 1);
-    assertEquals(n, 5);
+    assertEquals(n, 1);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: one type failure skips the cell cache", async () => {
+Deno.test("searchNearbyPlaces: a failed call is not cached so a retry can succeed", async () => {
   __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
   globalThis.fetch = () => {
     n++;
-    if (n === 1 || n === 6) {
+    if (n === 1) {
       return Promise.resolve(new Response("fail", { status: 429 }));
     }
     return Promise.resolve(
@@ -216,9 +295,9 @@ Deno.test("searchNearbyPlaces: one type failure skips the cell cache", async () 
   try {
     const a = await searchNearbyPlaces("k", CENTER);
     const b = await searchNearbyPlaces("k", CENTER);
-    assertEquals(a.length, 1);
+    assertEquals(a.length, 0);
     assertEquals(b.length, 1);
-    assertEquals(n, 10);
+    assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -265,7 +344,7 @@ Deno.test("searchNearbyPlaces: isolate fan-out budget skips extra cells", async 
     for (let i = 0; i <= GOOGLE_FANOUT_MAX; i++) {
       await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
     }
-    assertEquals(n, GOOGLE_FANOUT_MAX * 5);
+    assertEquals(n, GOOGLE_FANOUT_MAX);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -298,14 +377,14 @@ Deno.test("searchNearbyPlaces: beforeFanout runs only on the starting fan-out", 
     assertEquals(a.length, 1);
     assertEquals(b.length, 1);
     assertEquals(gates, 1);
-    assertEquals(fetches, 5);
+    assertEquals(fetches, 1);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
 });
 
-Deno.test("searchNearbyPlaces: a type subset fans out only those calls and caches separately", async () => {
+Deno.test("searchNearbyPlaces: a type subset is one request and caches separately", async () => {
   __resetNearbyGoogleCacheForTests();
   let n = 0;
   const orig = globalThis.fetch;
@@ -327,7 +406,7 @@ Deno.test("searchNearbyPlaces: a type subset fans out only those calls and cache
     assertEquals(peekCachedNearbyPlaces(CENTER, ["cafe"])?.length, 1);
     assertEquals(peekCachedNearbyPlaces(CENTER), null);
     await searchNearbyPlaces("k", CENTER);
-    assertEquals(n, 6);
+    assertEquals(n, 2);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
@@ -408,7 +487,7 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
     });
     assertEquals(got, []);
     assertEquals(gates, 0);
-    assertEquals(fetches, GOOGLE_FANOUT_MAX * 5);
+    assertEquals(fetches, GOOGLE_FANOUT_MAX);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();

@@ -1,8 +1,8 @@
 // Map hyperparameters — Discovery › Map (`discovery_config.map`).
 //
-// The nearby catalog still returns at most 50 closest admitted places.
-// These knobs decide WHICH of those 50 may appear and WHICH Google Nearby
-// primary-type calls fire. They do not raise the cap.
+// The nearby catalog is closest 20 listed ∪ one Nearby Search of 20.
+// These knobs decide WHICH of those may appear and WHICH primary types
+// ride that one Google call. They do not raise the cap.
 //
 // Floors are Map-only. Swipe / Pay / Home keep `discovery_config.filters`.
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES. Popularity as a floor is the

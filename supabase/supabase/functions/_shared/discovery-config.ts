@@ -92,9 +92,10 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * Map pool policy. Cap stays 50 (copy, not a knob). Floors decide which of
- * those 50 may appear; type batteries decide which Nearby calls fire.
- * 0 on a floor = off. Independent of Swipe's `filters`.
+ * Map pool policy. Two queries: closest 20 listed ∪ one Nearby Search of
+ * 20 (copy, not a knob). Floors decide which of those may appear; type
+ * batteries ride that one Nearby call. 0 on a floor = off. Independent of
+ * Swipe's `filters`.
  */
 export type MapConfig = {
   minRating: number;
