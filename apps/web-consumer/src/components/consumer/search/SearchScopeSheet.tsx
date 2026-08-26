@@ -5,6 +5,7 @@ import { MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   SEARCH_COUNTRIES,
+  countryChip,
   countryLabel,
 } from "@/lib/search-scope";
 
@@ -85,13 +86,13 @@ export function SearchScopeSheet({
             type="button"
             onClick={() => onCountry(null)}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-xs font-semibold",
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold",
               country == null
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:text-foreground",
             )}
           >
-            Any
+            {countryChip(null)}
           </button>
           {SEARCH_COUNTRIES.map((item) => (
             <button
@@ -99,13 +100,13 @@ export function SearchScopeSheet({
               type="button"
               onClick={() => onCountry(item.code)}
               className={cn(
-                "rounded-full border px-2.5 py-1 text-xs font-semibold",
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold",
                 country === item.code
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
-              {item.code}
+              {countryChip(item.code)}
               <span className="sr-only"> {countryLabel(item.code)}</span>
             </button>
           ))}

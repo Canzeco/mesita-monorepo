@@ -4,15 +4,18 @@
 
 export const DEFAULT_SEARCH_COUNTRY = "MX";
 
+/** Globe for the unset restrict — not a country, still first in the sheet. */
+export const ANY_COUNTRY_FLAG = "🌐";
+
 export const SEARCH_COUNTRIES = [
-  { code: "MX", label: "Mexico" },
-  { code: "US", label: "United States" },
-  { code: "CA", label: "Canada" },
-  { code: "ES", label: "Spain" },
-  { code: "AR", label: "Argentina" },
-  { code: "CL", label: "Chile" },
-  { code: "CO", label: "Colombia" },
-  { code: "PE", label: "Peru" },
+  { code: "MX", label: "Mexico", flag: "🇲🇽" },
+  { code: "US", label: "United States", flag: "🇺🇸" },
+  { code: "CA", label: "Canada", flag: "🇨🇦" },
+  { code: "ES", label: "Spain", flag: "🇪🇸" },
+  { code: "AR", label: "Argentina", flag: "🇦🇷" },
+  { code: "CL", label: "Chile", flag: "🇨🇱" },
+  { code: "CO", label: "Colombia", flag: "🇨🇴" },
+  { code: "PE", label: "Peru", flag: "🇵🇪" },
 ] as const;
 
 const COUNTRY_KEY = "mesita.search.country";
@@ -70,4 +73,22 @@ export function writeStoredLocationOptOut(optOut: boolean): void {
 export function countryLabel(code: string | null): string {
   if (!code) return "Any";
   return SEARCH_COUNTRIES.find((c) => c.code === code)?.label ?? code;
+}
+
+export function countryFlag(code: string | null): string {
+  if (!code) return ANY_COUNTRY_FLAG;
+  return SEARCH_COUNTRIES.find((c) => c.code === code)?.flag ?? "";
+}
+
+/** Compact chip / pill: flag + ISO, or globe + Any when unrestricted. */
+export function countryChip(code: string | null): string {
+  if (!code) return `${ANY_COUNTRY_FLAG} Any`;
+  const flag = countryFlag(code);
+  return flag ? `${flag} ${code}` : code;
+}
+
+/** Search-bar chip: flag + ISO, or the globe alone so Any still fits. */
+export function countryBarChip(code: string | null): string {
+  if (!code) return ANY_COUNTRY_FLAG;
+  return countryChip(code);
 }
