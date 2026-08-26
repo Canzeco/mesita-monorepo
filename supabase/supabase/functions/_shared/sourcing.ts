@@ -1,8 +1,7 @@
 // Google type → family map. Search and Add eligibility is Discovery › Map
 // (`evaluatePlaceForMap`); this file expands Table A types onto those five
 // Nearby batteries. A Google primaryType in no family is ineligible
-// (hotels, schools, shops). `app_config.sourcing_config` is an unread leftover
-// column — do not read it.
+// (hotels, schools, shops).
 
 export type FamilyKey =
   | "restaurants"
