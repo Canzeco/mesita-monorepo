@@ -34,7 +34,7 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 }
 
 // Edit lives on Mesita Intake: same Google Place IDs, one state write.
-// Listed · Verified · Partner · Promoting. No other fields.
+// Listed · Verified · Partner · Promoted. No other fields.
 export function EditPanel({
   placeIds,
   locked,
@@ -110,7 +110,7 @@ export function EditPanel({
             <option value="listed">Listed</option>
             <option value="verified">Verified</option>
             <option value="partner">Partner</option>
-            <option value="promoting">Promoting</option>
+            <option value="promoting">Promoted</option>
           </select>
         </label>
         {fact === "listed" ? (
@@ -273,7 +273,7 @@ async function applyOne(
     };
   }
   if (fact === "partner") {
-    // Plan-only write. Rates ride Promoting, not Partner — do not zero
+    // Plan-only write. Rates ride Promoted, not Partner — do not zero
     // a live strategy when flipping membership.
     const r = await setPlacePlan(hit.id, values.partnerOn ? "pro" : "free");
     if (!r.ok) return { status: "error", name, error: r.error };
@@ -294,6 +294,6 @@ async function applyOne(
   return {
     status: "ok",
     name,
-    detail: `Promoting ${values.promoting}`,
+    detail: `Promoted ${values.promoting}`,
   };
 }

@@ -148,7 +148,7 @@ export function IntakeTab({
       <div>
         <p className="text-muted-foreground type-eyebrow">Edit</p>
         <p className="text-muted-foreground mt-1 text-xs">
-          Listed · Verified · Partner · Promoting. Same IDs. No other fields.
+          Listed · Verified · Partner · Promoted. Same IDs. No other fields.
         </p>
         <div className="mt-2">
           <EditPanel
