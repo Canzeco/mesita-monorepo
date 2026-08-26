@@ -8,7 +8,7 @@
 // `isPlaceSeeded` stays.
 //
 //   Created    google_place_id present (identity spine)
-//   Active     Google OPERATIONAL
+//   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
 //   Listed     projects.status ∈ (active, lead)
 //   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
@@ -331,7 +331,7 @@ export function StatusCard({
           detail={seededDetail}
         />
         <StatusRow
-          name="Active"
+          name="Active (Google pulse)"
           on={operating === true}
           chip={statusBoolChip(operating)}
           tint="teal"
