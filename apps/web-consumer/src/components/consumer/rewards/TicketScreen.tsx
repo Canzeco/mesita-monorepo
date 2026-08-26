@@ -67,6 +67,7 @@ import {
   type TicketReviewDraft,
 } from "@/components/consumer/TicketReviewForm";
 import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
+import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { TicketSkeleton } from "@/components/consumer/rewards/TicketSkeleton";
 import { TaskProof } from "@/components/consumer/rewards/TaskProof";
 import {
@@ -899,9 +900,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             {/* THE PASS — persists through every sub-state (F1): unscanned →
                 waiting → fix. Removing it mid-wait reads as something being
                 taken away, and a second waiter may re-scan. */}
-            <section
+            <TicketHero
               className={cn(
-                "rounded-panel shadow-glow-sm shrink-0 overflow-hidden px-4 pt-3.5 pb-3.5 text-white",
+                "px-4 pt-3.5 pb-3.5",
                 passGradient(classKey),
                 pulse && "animate-verified-pulse",
               )}
@@ -996,7 +997,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                   </span>
                 </div>
               </div>
-            </section>
+            </TicketHero>
 
             {/* What staff see at a glance — the F3 receipt, the guest's last
                 chance to catch a wrong bill while they wait. */}

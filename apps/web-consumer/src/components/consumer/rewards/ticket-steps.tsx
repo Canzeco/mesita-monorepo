@@ -7,16 +7,11 @@
 // Lovable mock, tokenised to shipped Mesita tokens.
 
 import { useMemo, useState } from "react";
-import {
-  Check,
-  Gift,
-  Loader2,
-  PartyPopper,
-  Wallet,
-} from "lucide-react";
+import { Check, Gift, Loader2, PartyPopper, Wallet } from "lucide-react";
 
-import { formatCurrency } from "@/lib/api/profile";
 import { Button } from "@/components/ui/button";
+import { TicketHero } from "@/components/consumer/rewards/TicketHero";
+import { formatCurrency } from "@/lib/api/profile";
 import { cn } from "@/lib/utils";
 
 // ── Shared receipt row (mock `Row`): one bordered line, label left, number
@@ -184,66 +179,66 @@ export function StepBill({
 
         {tipEnabled ? (
           <>
-        <p className="text-muted-foreground type-meta mt-3 font-bold tracking-[0.12em] uppercase">
-          Tip
-        </p>
-        <div
-          className="mt-1 grid gap-1.5"
-          style={{
-            gridTemplateColumns: `repeat(${tipPresets.length + 1}, minmax(0, 1fr))`,
-          }}
-        >
-          {tipPresets.map((p) => {
-            const on = pct === p;
-            return (
+            <p className="text-muted-foreground type-meta mt-3 font-bold tracking-[0.12em] uppercase">
+              Tip
+            </p>
+            <div
+              className="mt-1 grid gap-1.5"
+              style={{
+                gridTemplateColumns: `repeat(${tipPresets.length + 1}, minmax(0, 1fr))`,
+              }}
+            >
+              {tipPresets.map((p) => {
+                const on = pct === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPct(p)}
+                    aria-pressed={on}
+                    className={cn(
+                      "flex min-h-12 flex-col items-center justify-center rounded-xl border text-xs font-bold transition-colors",
+                      on
+                        ? "border-primary bg-primary/8 text-primary"
+                        : "border-border bg-card text-foreground",
+                    )}
+                  >
+                    {p}%
+                    <span className="text-muted-foreground type-meta font-semibold tabular-nums">
+                      {formatCurrency(previewTipCents(subtotalCents, p))}
+                    </span>
+                  </button>
+                );
+              })}
               <button
-                key={p}
                 type="button"
-                onClick={() => setPct(p)}
-                aria-pressed={on}
+                onClick={() => setPct(null)}
+                aria-pressed={pct === null}
                 className={cn(
                   "flex min-h-12 flex-col items-center justify-center rounded-xl border text-xs font-bold transition-colors",
-                  on
+                  pct === null
                     ? "border-primary bg-primary/8 text-primary"
                     : "border-border bg-card text-foreground",
                 )}
               >
-                {p}%
-                <span className="text-muted-foreground type-meta font-semibold tabular-nums">
-                  {formatCurrency(previewTipCents(subtotalCents, p))}
-                </span>
+                Custom
               </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => setPct(null)}
-            aria-pressed={pct === null}
-            className={cn(
-              "flex min-h-12 flex-col items-center justify-center rounded-xl border text-xs font-bold transition-colors",
-              pct === null
-                ? "border-primary bg-primary/8 text-primary"
-                : "border-border bg-card text-foreground",
-            )}
-          >
-            Custom
-          </button>
-        </div>
-        {pct === null ? (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-muted-foreground type-body font-bold">
-              MX$
-            </span>
-            <input
-              inputMode="decimal"
-              value={tipDraft}
-              onChange={(e) => setTipDraft(e.target.value)}
-              placeholder="0"
-              aria-label="Custom tip in pesos"
-              className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
-            />
-          </div>
-        ) : null}
+            </div>
+            {pct === null ? (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-muted-foreground type-body font-bold">
+                  MX$
+                </span>
+                <input
+                  inputMode="decimal"
+                  value={tipDraft}
+                  onChange={(e) => setTipDraft(e.target.value)}
+                  placeholder="0"
+                  aria-label="Custom tip in pesos"
+                  className="border-border bg-background focus:border-primary min-h-11 min-w-0 flex-1 rounded-xl border px-3 text-sm font-bold tabular-nums outline-none"
+                />
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -518,12 +513,7 @@ export function StepResults({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <section
-        className={cn(
-          "rounded-panel shadow-glow-sm shrink-0 overflow-hidden px-4 pt-3.5 pb-4 text-white",
-          passClassName,
-        )}
-      >
+      <TicketHero className={cn("px-4 pt-3.5 pb-4", passClassName)}>
         <div className="flex items-center justify-between gap-3">
           <p className="type-meta font-bold tracking-[0.14em] text-white/75 uppercase">
             Mesita Pass
@@ -566,7 +556,7 @@ export function StepResults({
             </>
           )}
         </div>
-      </section>
+      </TicketHero>
 
       {revealed && subtotalCents > 0 ? (
         <div className="flex flex-col gap-1.5">
