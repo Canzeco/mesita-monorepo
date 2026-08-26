@@ -200,6 +200,7 @@ export async function apiFetchNearbyCatalog(
     overspan?: boolean;
     totalInBox?: number;
   }>(client, "consumer-web-list-places", {
+    google: true,
     lat: center.lat,
     lng: center.lng,
     limit,
@@ -211,14 +212,18 @@ export async function apiFetchNearbyCatalog(
   };
 }
 
-/** Same catalog as `apiFetchNearbyCatalog`, places array only. */
+/** Listed nearby only — no Google stubs. Mobile Search uses this shape. */
 export async function apiFetchNearbyPlaces(
   client: SupabaseClient,
   origin: { lat: number; lng: number },
   limit = SEARCH_NEARBY_LIMIT,
 ): Promise<Place[]> {
-  const { places } = await apiFetchNearbyCatalog(client, origin, limit);
-  return places;
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-list-places",
+    { lat: origin.lat, lng: origin.lng, limit },
+  );
+  return (places ?? []).map(stripInsecurePhotos);
 }
 
 /** Optional camera rectangle. Search does not use this as the default pool. */

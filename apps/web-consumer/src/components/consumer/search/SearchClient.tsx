@@ -170,9 +170,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       const nextCenter = viewportCenter(box);
       // ~110 m — ignore the idle jitter after a pan, reload when exploring.
       const key = `${nextCenter.lat.toFixed(3)}:${nextCenter.lng.toFixed(3)}`;
-      if (key === lastFetchedKey.current) return;
-      skippedRef.current = false;
       const gen = ++viewportGen.current;
+      if (key === lastFetchedKey.current) {
+        setCatalogLoading(false);
+        return;
+      }
+      skippedRef.current = false;
       setCatalogLoading(true);
       setFetchError(null);
       try {

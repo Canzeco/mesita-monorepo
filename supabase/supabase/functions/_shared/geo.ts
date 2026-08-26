@@ -132,6 +132,13 @@ export function decideNearby(body: Record<string, unknown>): NearbyDecision {
   return { mode: "ok", lat, lng, radiusKm };
 }
 
+/** Web Search catalog opt-in. Bare `{ lat, lng }` stays listed-only so
+ *  mobile Search does not receive Google stubs it cannot open. */
+export function wantsGoogleFill(body: Record<string, unknown>): boolean {
+  return body.google === true || body.google === "true" ||
+    body.nearby === true || body.nearby === "true";
+}
+
 export function nearbyBbox(
   lat: number,
   lng: number,

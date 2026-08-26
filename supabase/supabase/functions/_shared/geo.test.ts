@@ -5,6 +5,7 @@ import {
   circleBbox,
   decideBbox,
   decideNearby,
+  wantsGoogleFill,
   haversineKm,
   nearbyBbox,
   NEARBY_DEFAULT_RADIUS_KM,
@@ -128,6 +129,12 @@ Deno.test("decideNearby: nearby true is still lat+lng, not a third flag", () => 
     decideNearby({ nearby: true, lat: 25.67, lng: -100.3 }),
     { mode: "ok", lat: 25.67, lng: -100.3, radiusKm: 500 },
   );
+});
+
+Deno.test("wantsGoogleFill: listed-only lat+lng stays off", () => {
+  assertEquals(wantsGoogleFill({ lat: 25.67, lng: -100.3 }), false);
+  assertEquals(wantsGoogleFill({ google: true, lat: 25.67, lng: -100.3 }), true);
+  assertEquals(wantsGoogleFill({ nearby: true, lat: 25.67, lng: -100.3 }), true);
 });
 
 Deno.test("nearbyBbox is city-scale, not a camera rectangle", () => {
