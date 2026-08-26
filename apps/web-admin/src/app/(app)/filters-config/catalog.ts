@@ -7,15 +7,7 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// TWO BOXES, ONE PAGE (Pato, 2026-08-24: Signals · Engines. Forget Filters.):
-//
-//   SIGNALS   six functions. One table: Input · Process · Output · exponent
-//             (the super-param, ink) plus the two mute knobs (maxKm,
-//             closedFloor). The rest of the curve lives in code. Promoted
-//             is not a row.
-//   ENGINES   functions that call signals: Engine(signal(), …). Only a WIRED
-//             engine gets a knob, and today that knob is Swipe's `ranked`.
-//
+// Live HTML: Chat prompt. Signals · Engines stay Soon (MESITA-1337).
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
 
@@ -39,6 +31,7 @@ export type DiscoveryConfig = {
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  chat: { prompt: string };
 };
 
 export type ParamField = {
@@ -67,6 +60,8 @@ export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
 export const MIN_RATING_MAX = 5;
 export const MAX_DISTANCE_KM_MAX = 200;
+/** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
+export const CHAT_PROMPT_MAX = 12_000;
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
@@ -100,6 +95,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
+  chat: { prompt: "" },
 };
 
 /**
@@ -170,12 +166,12 @@ export const ENGINES: {
     key: "chat",
     label: "Chat",
     fn: "chat()",
-    input: "The guest's utterance + catalog.",
-    process: "Parked. Don Memo is the persona; ships dark.",
-    output: "A recommended set, when unparked.",
-    state: "PARKED",
+    input: "The guest's utterance plus the thread the client resends.",
+    process: "OpenAI chat completions. System prompt from Discovery. No tools this pass.",
+    output: "A conversational reply.",
+    state: "LIVE",
     wired: null,
-    apis: ["Google Places Text Search", "Perplexity", "OpenAI"],
+    apis: ["OpenAI"],
   },
   {
     key: "social",
@@ -409,6 +405,11 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    chat: {
+      prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
+        ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
+        : DEFAULT_CONFIG.chat.prompt,
+    },
   };
 }
 
