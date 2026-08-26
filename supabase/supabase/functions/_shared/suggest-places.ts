@@ -181,15 +181,6 @@ async function fetchGooglePredictions(
 
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesCallerRegion(body, regionCode, "autocomplete");
-  if (typeFilter === "legacy") {
-    body.includedPrimaryTypes = [
-      "restaurant",
-      "bar",
-      "cafe",
-      "night_club",
-      "bakery",
-    ];
-  }
   // "open": omit includedPrimaryTypes; filterPredictionsByMap drops the rest.
 
   const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {

@@ -27,7 +27,6 @@ import {
 } from "./google-places.ts";
 import {
   googleTypeFilterForMap,
-  type GoogleTypeFilter,
   type PredictionStatus,
 } from "./suggest-places-helpers.ts";
 import {
@@ -273,7 +272,6 @@ export async function runConsumerSearchLane(
         input,
         sessionToken,
         apiKey,
-        typeFilter,
         origin,
         args.country,
       ),
@@ -435,22 +433,12 @@ async function fetchAutocomplete(
   input: string,
   sessionToken: string,
   apiKey: string,
-  typeFilter: GoogleTypeFilter,
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesAutocompleteRegion(body, origin);
   applyPlacesCallerRegion(body, country, "autocomplete");
-  if (typeFilter === "legacy") {
-    body.includedPrimaryTypes = [
-      "restaurant",
-      "bar",
-      "cafe",
-      "night_club",
-      "bakery",
-    ];
-  }
   const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
     method: "POST",
     headers: {

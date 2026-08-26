@@ -147,16 +147,6 @@ Deno.test("old blob without region still stores MX; engine ignores it", () => {
 });
 
 Deno.test("empty country on the blob does not send Google country params", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "", lat: 19.4, lng: -99.1, radiusKm: 10, restrict: false },
-    },
-    "admin_search",
-  );
   const body: Record<string, unknown> = { textQuery: "tacos" };
   applyPlacesTextSearchRegion(body);
   assertEquals(body.regionCode, undefined);
@@ -185,16 +175,6 @@ Deno.test("sourcing does not reject a place by country or radius", () => {
 });
 
 Deno.test("Autocomplete policy region is not applied; caller code is", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 12, restrict: false },
-    },
-    "consumer_search",
-  );
   const body: Record<string, unknown> = { input: "taco" };
   applyPlacesAutocompleteRegion(body);
   assertEquals(body.regionCode, undefined);
@@ -206,16 +186,6 @@ Deno.test("Autocomplete policy region is not applied; caller code is", () => {
 });
 
 Deno.test("guest pin biases Text Search without a country", () => {
-  const policy = coerceChannelPolicy(
-    {
-      enabled: true,
-      families: ["restaurants"],
-      minRating: 0,
-      minReviews: 0,
-      region: { country: "MX", lat: 19.4326, lng: -99.1332, radiusKm: 8, restrict: true },
-    },
-    "memo_search",
-  );
   const body: Record<string, unknown> = { textQuery: "mezcal" };
   applyPlacesTextSearchRegion(body, { lat: 19.43, lng: -99.13 });
   assertEquals(body.regionCode, undefined);
