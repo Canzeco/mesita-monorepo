@@ -9,6 +9,9 @@ export function SearchRailOverlay({
   idle,
   places,
   catalogCount,
+  catalogLoading = false,
+  overspan = false,
+  truncated = null,
   filtersActive,
   railCollapsed,
   railIndex,
@@ -25,6 +28,9 @@ export function SearchRailOverlay({
   idle: boolean;
   places: Place[];
   catalogCount: number;
+  catalogLoading?: boolean;
+  overspan?: boolean;
+  truncated?: string | null;
   filtersActive: boolean;
   railCollapsed: boolean;
   railIndex: number;
@@ -39,6 +45,30 @@ export function SearchRailOverlay({
   setRailCardRef: (placeId: string, el: HTMLButtonElement | null) => void;
 }) {
   if (!idle) return null;
+
+  if (overspan) {
+    return (
+      <div className="absolute inset-x-0 bottom-3 z-20">
+        <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center rounded-2xl border px-4 py-3 backdrop-blur">
+          <p className="text-muted-foreground text-xs">
+            Zoom in to see this area
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (catalogLoading && places.length === 0) {
+    return (
+      <div className="absolute inset-x-0 bottom-3 z-20">
+        <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center rounded-2xl border px-4 py-3 backdrop-blur">
+          <p className="text-muted-foreground text-xs">
+            Finding places around you…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-x-0 bottom-3 z-20">
@@ -58,6 +88,11 @@ export function SearchRailOverlay({
           </div>
         ) : (
           <>
+            {truncated && (
+              <p className="text-muted-foreground mb-1 text-center text-xs">
+                {truncated}
+              </p>
+            )}
             <div className="mb-2 flex justify-center">
               <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-1 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
                 <MapPin className="text-primary h-3 w-3" />
@@ -104,7 +139,7 @@ export function SearchRailOverlay({
           </>
         )
       ) : (
-        catalogCount > 0 && (
+        (catalogCount > 0 || !catalogLoading) && (
           <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center gap-3 rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
               {filtersActive

@@ -71,8 +71,10 @@ export type ViewportBox = {
   east: number;
 };
 
+type MapInstance = NonNullable<ReturnType<typeof useMap>>;
+
 function readViewportBox(
-  map: google.maps.Map,
+  map: MapInstance,
 ): ViewportBox | null {
   const bounds = map.getBounds();
   if (!bounds) return null;

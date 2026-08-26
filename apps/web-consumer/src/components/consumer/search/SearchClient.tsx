@@ -21,6 +21,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import {
   apiFetchPlacesInBbox,
+  BBOX_MAX_SPAN_DEG,
   LIST_PLACES_MAX,
 } from "@/lib/api/places";
 import {
@@ -147,6 +148,100 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => buildSearchMapPins(predictions, catalog),
     [predictions, catalog],
   );
+
+  const idleRef = useRef(idle);
+  idleRef.current = idle;
+  const lastBoxRef = useRef<ViewportBox | null>(null);
+  const skippedRef = useRef(false);
+  const lastFetchedKey = useRef<string | null>(null);
+
+  const loadViewport = useCallback(
+    async (box: ViewportBox) => {
+      lastBoxRef.current = box;
+      if (!idleRef.current) {
+        skippedRef.current = true;
+        return;
+      }
+      const key = `${box.south.toFixed(4)}:${box.west.toFixed(4)}:${box.north.toFixed(4)}:${box.east.toFixed(4)}`;
+      if (key === lastFetchedKey.current) return;
+      skippedRef.current = false;
+      const gen = ++viewportGen.current;
+      setCatalogLoading(true);
+      setFetchError(null);
+      const latSpan = box.north - box.south;
+      const lngSpan =
+        box.west <= box.east
+          ? box.east - box.west
+          : 180 - box.west + (box.east + 180);
+      if (Math.max(latSpan, lngSpan) > BBOX_MAX_SPAN_DEG) {
+        lastFetchedKey.current = key;
+        setPlaces([]);
+        setOverspan(true);
+        setTotalInBox(null);
+        setCatalogLoading(false);
+        return;
+      }
+      try {
+        const result = await apiFetchPlacesInBbox(
+          supabase,
+          box,
+          LIST_PLACES_MAX,
+        );
+        if (gen !== viewportGen.current) return;
+        lastFetchedKey.current = key;
+        setPlaces(result.places);
+        setOverspan(result.overspan);
+        setTotalInBox(result.totalInBox);
+      } catch (err) {
+        if (gen !== viewportGen.current) return;
+        lastFetchedKey.current = key;
+        setPlaces([]);
+        setOverspan(false);
+        setTotalInBox(null);
+        setFetchError(errMsg(err, "Couldn't load places in this area."));
+      } finally {
+        if (gen === viewportGen.current) setCatalogLoading(false);
+      }
+    },
+    [supabase],
+  );
+
+  const onFirstViewport = useCallback(
+    (box: ViewportBox) => {
+      void loadViewport(box);
+    },
+    [loadViewport],
+  );
+
+  const onUserViewport = useCallback(
+    (box: ViewportBox) => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+      userViewportTimer.current = window.setTimeout(() => {
+        void loadViewport(box);
+      }, VIEWPORT_IDLE_MS);
+    },
+    [loadViewport],
+  );
+
+  useEffect(() => {
+    if (!apiKey) setCatalogLoading(false);
+  }, [apiKey]);
+
+  useEffect(() => {
+    return () => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!idle || !skippedRef.current || !lastBoxRef.current) return;
+    lastFetchedKey.current = null;
+    void loadViewport(lastBoxRef.current);
+  }, [idle, loadViewport]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -397,6 +492,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
+        onFirstViewport={onFirstViewport}
+        onUserViewport={onUserViewport}
       />
 
       {/* Floating top overlay — search bar, then a content-height dropdown
@@ -445,6 +542,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         idle={idle}
         places={visible}
         catalogCount={catalog.length}
+        catalogLoading={catalogLoading}
+        overspan={overspan}
+        truncated={
+          totalInBox != null && totalInBox > places.length
+            ? `Showing ${places.length} of ${totalInBox} in this area`
+            : null
+        }
         filtersActive={filtersActive}
         railCollapsed={railCollapsed}
         railIndex={railIndex}

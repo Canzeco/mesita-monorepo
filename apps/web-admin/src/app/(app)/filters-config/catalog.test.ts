@@ -20,6 +20,14 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
+  it("map() is a viewport bbox with no vendor APIs", () => {
+    const map = ENGINES.find((e) => e.key === "map");
+    expect(map?.state).toBe("LIVE");
+    expect(map?.apis).toEqual([]);
+    expect(map?.input).toMatch(/viewport/i);
+    expect(map?.process).toMatch(/bboxPredicate/);
+  });
+
   it("engines name only the vendor APIs they actually call", () => {
     expect(ENGINES.map((e) => [e.key, e.apis])).toEqual([
       ["swipe", []],
