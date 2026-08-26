@@ -2,8 +2,7 @@
 //
 // The vocabulary lives in code on the Edge Function side
 // (`supabase/functions/_shared/discovery-signals.ts` SIGNAL_KEYS) and this file
-// mirrors it, the same contract sourcing-config/catalog.ts keeps with
-// channels.ts: the console edits NUMBERS, never the list of signals. Adding a
+// mirrors it: the console edits NUMBERS, never the list of signals. Adding a
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //

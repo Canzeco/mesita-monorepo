@@ -638,15 +638,11 @@ verify_jwt = true
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
 
-# --- Admin config surfaces (Atlas / Enricher / Sourcing / Reservations /
+# --- Admin config surfaces (Atlas / Enricher / Reservations /
 # Rewards / Models) — each re-checks super_admins. Listed explicitly so
 # the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
 # Memo left this list with its own two EFs: models_config carries the model and
 # the console reads it there.
-[functions.admin-web-get-sourcing-config]
-verify_jwt = true
-[functions.admin-web-update-sourcing-config]
-verify_jwt = true
 [functions.admin-web-get-reservations-config]
 verify_jwt = true
 [functions.admin-web-update-reservations-config]

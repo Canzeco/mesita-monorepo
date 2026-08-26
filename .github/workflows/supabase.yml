@@ -84,6 +84,23 @@ jobs:
             exit 1
           fi
 
+      # MESITA-1362: Intake Sourcing get/update EFs are gone. A leftover
+      # folder or config.toml block would re-deploy the unread matrix.
+      - name: No leftover sourcing-config functions
+        working-directory: supabase/supabase
+        run: |
+          leftovers=$(
+            {
+              find functions -maxdepth 1 -type d \( -name 'admin-web-get-sourcing-config' -o -name 'admin-web-update-sourcing-config' \) 2>/dev/null
+              grep -E '^\[functions\.admin-web-(get|update)-sourcing-config\]' config.toml || true
+            } | sed '/^$/d'
+          )
+          if [ -n "$leftovers" ]; then
+            echo "leftover sourcing-config EFs still in the repo (MESITA-1362):"
+            echo "$leftovers"
+            exit 1
+          fi
+
   # The instruction-file sync check (scripts/sync-rules.ts --check) lives in
   # the root `rules` workflow (.github/workflows/rules.yml) since ASDM v5
   # (MESITA-456) — one checkout now covers the whole monorepo.

@@ -54,7 +54,9 @@ jobs:
       # of the three deletions (folder · config.toml · cloud). Idempotent:
       # a name already gone is a skip, not a failure. check-web-submit-bill
       # was removed earlier (MESITA-1093).
-      - name: Delete leftover check-web functions
+      # MESITA-1362: Intake Sourcing get/update EFs — unread after Map became
+      # the Search/Add gate.
+      - name: Delete leftover retired functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: |
@@ -67,6 +69,8 @@ jobs:
             check-web-request-fix
             check-web-poll-ticket
             check-web-validate-ticket
+            admin-web-get-sourcing-config
+            admin-web-update-sourcing-config
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"
