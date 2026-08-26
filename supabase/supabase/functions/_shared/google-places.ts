@@ -26,6 +26,7 @@ export const GOOGLE_PLACES_TEXT_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchText";
 export const GOOGLE_PLACES_NEARBY_SEARCH_URL =
   "https://places.googleapis.com/v1/places:searchNearby";
+export const GOOGLE_PLACES_NEARBY_URL = GOOGLE_PLACES_NEARBY_SEARCH_URL;
 export const GOOGLE_PLACES_DETAILS_BASE =
   "https://places.googleapis.com/v1/places";
 
@@ -107,79 +108,5 @@ export async function fetchPlaceSignals(
     };
   } catch {
     return null;
-  }
-}
-
-export type NearbyGoogleHit = {
-  placeId: string;
-  name: string;
-  lat: number;
-  lng: number;
-  primaryType: string | null;
-  address: string | null;
-};
-
-function stripPlacesPrefix(id: string): string {
-  return id.startsWith("places/") ? id.slice("places/".length) : id;
-}
-
-/** Places API (New) Nearby Search. First page only — maxResultCount caps at 20. */
-export async function searchNearbyPlaces(
-  apiKey: string,
-  lat: number,
-  lng: number,
-  radiusM: number,
-  maxCount: number,
-): Promise<NearbyGoogleHit[]> {
-  try {
-    const r = await fetch(GOOGLE_PLACES_NEARBY_SEARCH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.location,places.primaryType,places.formattedAddress",
-      },
-      body: JSON.stringify({
-        maxResultCount: Math.min(20, Math.max(1, maxCount)),
-        rankPreference: "DISTANCE",
-        locationRestriction: {
-          circle: {
-            center: { latitude: lat, longitude: lng },
-            radius: Math.min(50_000, Math.max(1, radiusM)),
-          },
-        },
-      }),
-    });
-    if (!r.ok) return [];
-    const body = (await r.json()) as {
-      places?: Array<{
-        id?: string;
-        displayName?: { text?: string };
-        location?: { latitude?: number; longitude?: number };
-        primaryType?: string;
-        formattedAddress?: string;
-      }>;
-    };
-    const hits: NearbyGoogleHit[] = [];
-    for (const place of body.places ?? []) {
-      const rawId = place.id?.trim();
-      const latN = place.location?.latitude;
-      const lngN = place.location?.longitude;
-      const name = place.displayName?.text?.trim();
-      if (!rawId || !name) continue;
-      if (typeof latN !== "number" || typeof lngN !== "number") continue;
-      hits.push({
-        placeId: stripPlacesPrefix(rawId),
-        name,
-        lat: latN,
-        lng: lngN,
-        primaryType: place.primaryType ?? null,
-        address: place.formattedAddress ?? null,
-      });
-    }
-    return hits;
-  } catch {
-    return [];
   }
 }

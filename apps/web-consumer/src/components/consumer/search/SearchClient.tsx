@@ -5,9 +5,11 @@
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
 //   • Top overlay: floating search bar. Far-right chip is country + location
 //     (two knobs, one sheet). Discovery cuisine/when/rewards stay on Swipe.
-//   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
-//     highlights + scrolls to the matching rail card, tapping a card opens
-//     the place page.
+//   • Bottom overlay (idle): horizontal catalog rail of the closest 50
+//     around the camera (Google Nearby Search + listed Mesita). Panning
+//     the map reloads that set after idle. Tapping a map pin highlights +
+//     scrolls to the matching rail card; tapping a card opens the place
+//     page (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
 //     SearchResultsPanel under the bar. One merged lane, no source labels —
@@ -20,10 +22,9 @@ import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import {
-  apiFetchNearbyPlaces,
-  SEARCH_NEARBY_LIMIT,
+  apiFetchNearbyCatalog,
+  CATALOG_NEARBY_MAX,
 } from "@/lib/api/places";
-import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   apiCreateProject,
   apiSuggestPlaces,
@@ -43,7 +44,9 @@ import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { SearchMap, type SearchMapPin } from "./SearchMap";
+import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
+import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
+import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
@@ -56,23 +59,31 @@ import {
 import {
   matchPredictionToPlace,
   newSessionToken,
+  viewportCenter,
   withDistances,
 } from "./search-utils";
-import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
 
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
 const SUGGEST_DEBOUNCE_MS = 300;
+const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
-  const placeId = place.google_place_id;
-  if (!place.from_google || !placeId) return null;
+  if (!place.googleOnly && !place.from_google) return null;
+  const placeId =
+    place.google_place_id ||
+    place.slug ||
+    (place.id.startsWith("g:") ? place.id.slice(2) : "");
+  if (!placeId) return null;
   return {
     placeId,
     mainText: place.name,
     secondaryText: place.address ?? "",
     status: "not_in_mesita",
+    partner: false,
+    lat: place.lat,
+    lng: place.lng,
   };
 }
 
@@ -83,7 +94,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
-  const catalogGen = useRef(0);
+  const [cameraCenter, setCameraCenter] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const viewportGen = useRef(0);
+  const userViewportTimer = useRef<number | null>(null);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
@@ -127,20 +143,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const scope = useSearchScope();
   const deviceLocation = freshFix ?? userLocation;
   const location = scope.locationOptOut ? null : deviceLocation;
+  const center = location;
 
   const trimmed = query.trim();
   // Idle = the map moment: no text query, search panel closed. The catalog
   // rail only exists here; the results dropdown owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Location (not country) centers the map and distances. Discovery zone
-  // stays a Swipe predicate — it does not drive this bar. Country never
-  // filters listed pins. The catalog origin is the guest pin, else Monterrey.
-  const center = location;
-  const nearbyOrigin = location ?? MONTERREY_CENTER;
+  // Distances follow the camera the catalog was fetched for, so a pan
+  // ranks and labels the same 50. GPS still recenters the map.
+  const distanceCenter = cameraCenter ?? location;
   const catalog = useMemo(
-    () => withDistances(places, center),
-    [places, center],
+    () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
+    [places, distanceCenter],
   );
   const visible = useMemo(() => {
     const filtered = applyDiscoveryFilters(catalog, filters);
@@ -161,30 +176,85 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [predictions, catalog],
   );
 
-  const nearbyLat = nearbyOrigin.lat;
-  const nearbyLng = nearbyOrigin.lng;
+  const idleRef = useRef(idle);
+  const lastBoxRef = useRef<ViewportBox | null>(null);
+  const skippedRef = useRef(false);
+  const lastFetchedKey = useRef<string | null>(null);
+
+  const loadViewport = useCallback(
+    async (box: ViewportBox) => {
+      lastBoxRef.current = box;
+      if (!idleRef.current) {
+        skippedRef.current = true;
+        return;
+      }
+      const nextCenter = viewportCenter(box);
+      // ~110 m — ignore the idle jitter after a pan, reload when exploring.
+      const key = `${nextCenter.lat.toFixed(3)}:${nextCenter.lng.toFixed(3)}`;
+      const gen = ++viewportGen.current;
+      if (key === lastFetchedKey.current) {
+        setCatalogLoading(false);
+        return;
+      }
+      skippedRef.current = false;
+      setCatalogLoading(true);
+      setFetchError(null);
+      try {
+        const result = await apiFetchNearbyCatalog(
+          supabase,
+          nextCenter,
+          CATALOG_NEARBY_MAX,
+        );
+        if (gen !== viewportGen.current) return;
+        lastFetchedKey.current = key;
+        setCameraCenter(nextCenter);
+        setPlaces(result.places);
+      } catch (err) {
+        if (gen !== viewportGen.current) return;
+        setFetchError(errMsg(err, "Couldn't load places in this area."));
+      } finally {
+        if (gen === viewportGen.current) setCatalogLoading(false);
+      }
+    },
+    [supabase],
+  );
+
+  const onFirstViewport = useCallback(
+    (box: ViewportBox) => {
+      void loadViewport(box);
+    },
+    [loadViewport],
+  );
+
+  const onUserViewport = useCallback(
+    (box: ViewportBox) => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+      userViewportTimer.current = window.setTimeout(() => {
+        void loadViewport(box);
+      }, VIEWPORT_IDLE_MS);
+    },
+    [loadViewport],
+  );
+
   useEffect(() => {
-    if (!apiKey) return;
-    const gen = ++catalogGen.current;
-    void apiFetchNearbyPlaces(
-      supabase,
-      { lat: nearbyLat, lng: nearbyLng },
-      SEARCH_NEARBY_LIMIT,
-    )
-      .then((rows) => {
-        if (gen !== catalogGen.current) return;
-        setPlaces(rows);
-        setFetchError(null);
-      })
-      .catch((err) => {
-        if (gen !== catalogGen.current) return;
-        setPlaces([]);
-        setFetchError(errMsg(err, "Couldn't load nearby places."));
-      })
-      .finally(() => {
-        if (gen === catalogGen.current) setCatalogLoading(false);
-      });
-  }, [apiKey, nearbyLat, nearbyLng, supabase]);
+    idleRef.current = idle;
+  }, [idle]);
+
+  useEffect(() => {
+    return () => {
+      if (userViewportTimer.current != null) {
+        window.clearTimeout(userViewportTimer.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!idle || !skippedRef.current || !lastBoxRef.current) return;
+    lastFetchedKey.current = null;
+    void loadViewport(lastBoxRef.current);
+  }, [idle, loadViewport]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -330,6 +400,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
     const place = catalog.find((p) => p.id === pin.id);
     if (place) {
+      setHeldGoogle(googlePredictionFromPlace(place));
       setRailCollapsed(false);
       setSelectedId(place.id);
     }
@@ -465,6 +536,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
+        onFirstViewport={onFirstViewport}
+        onUserViewport={onUserViewport}
       />
 
       {/* Floating top overlay — search bar, then a content-height dropdown

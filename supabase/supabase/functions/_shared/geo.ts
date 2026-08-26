@@ -42,6 +42,8 @@ export const NEARBY_DEFAULT_RADIUS_KM = 500;
 export const NEARBY_MAX_RADIUS_KM = 2000;
 /** Internal scan before distance-sort. Response `limit` still slices to 50. */
 export const NEARBY_SCAN_LIMIT = 1000;
+/** Google Nearby Search (New) caps the circle at 50 km. */
+export const NEARBY_RADIUS_KM = 50;
 
 export type GeoBbox = {
   south: number;
@@ -70,6 +72,11 @@ function finiteNumber(raw: unknown): number | null {
 function lngSpanDeg(west: number, east: number): number {
   if (west <= east) return east - west;
   return 180 - west + (east + 180);
+}
+
+function wrapLng(lng: number): number {
+  const x = ((((lng + 180) % 360) + 360) % 360) - 180;
+  return x === -180 ? 180 : x;
 }
 
 /** POST body: all four numbers or none. GET callers never send these keys. */
@@ -101,11 +108,6 @@ export type NearbyDecision =
   | { mode: "invalid" }
   | { mode: "ok"; lat: number; lng: number; radiusKm: number };
 
-function wrapLng(lng: number): number {
-  const x = ((((lng + 180) % 360) + 360) % 360) - 180;
-  return x === -180 ? 180 : x;
-}
-
 /**
  * POST nearby: both lat+lng, or neither. Partial / non-finite is invalid.
  * Nearby wins over bbox when both are present — Search sends only lat/lng.
@@ -130,6 +132,13 @@ export function decideNearby(body: Record<string, unknown>): NearbyDecision {
   return { mode: "ok", lat, lng, radiusKm };
 }
 
+/** Web Search catalog opt-in. Bare `{ lat, lng }` stays listed-only so
+ *  mobile Search does not receive Google stubs it cannot open. */
+export function wantsGoogleFill(body: Record<string, unknown>): boolean {
+  return body.google === true || body.google === "true" ||
+    body.nearby === true || body.nearby === "true";
+}
+
 export function nearbyBbox(
   lat: number,
   lng: number,
@@ -144,6 +153,23 @@ export function nearbyBbox(
   };
 }
 
+export function circleBbox(
+  center: { lat: number; lng: number },
+  radiusKm: number,
+): GeoBbox {
+  return nearbyBbox(center.lat, center.lng, radiusKm);
+}
+
+export function bboxCenter(bbox: GeoBbox): { lat: number; lng: number } {
+  const lat = (bbox.south + bbox.north) / 2;
+  if (bbox.west <= bbox.east) {
+    return { lat, lng: (bbox.west + bbox.east) / 2 };
+  }
+  let lng = bbox.west + lngSpanDeg(bbox.west, bbox.east) / 2;
+  if (lng > 180) lng -= 360;
+  return { lat, lng };
+}
+
 export function sortByDistance<T extends { lat?: number | null; lng?: number | null }>(
   rows: T[],
   lat: number,
@@ -153,6 +179,14 @@ export function sortByDistance<T extends { lat?: number | null; lng?: number | n
     haversineKm(lat, lng, a.lat ?? null, a.lng ?? null) -
     haversineKm(lat, lng, b.lat ?? null, b.lng ?? null)
   );
+}
+
+export function takeClosest<T extends { lat?: number | null; lng?: number | null }>(
+  rows: T[],
+  center: { lat: number; lng: number },
+  limit: number,
+): T[] {
+  return sortByDistance(rows, center.lat, center.lng).slice(0, limit);
 }
 
 /** Rectangle only — never haversine-trim the corners. west > east is dateline. */

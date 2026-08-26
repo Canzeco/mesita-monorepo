@@ -138,7 +138,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Nearest 50 listed places by distance. Unranked except distance. Google Nearby Search only if the Mesita pool is under 10. Pins and rail are the same set. Country chip does not cut pins.",
+    process: "Nearest 50 by distance: listed Mesita ∪ Google Nearby Search when the web client opts in. Google-only rows are yellow stubs. Over quota skips Google, not the catalog. Pins and rail are the same set. Country chip does not cut pins.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,

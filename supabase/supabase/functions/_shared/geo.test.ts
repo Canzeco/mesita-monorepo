@@ -2,12 +2,16 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   applyBboxPredicate,
   BBOX_MAX_SPAN_DEG,
+  circleBbox,
   decideBbox,
   decideNearby,
+  wantsGoogleFill,
   haversineKm,
   nearbyBbox,
   NEARBY_DEFAULT_RADIUS_KM,
+  NEARBY_RADIUS_KM,
   sortByDistance,
+  takeClosest,
   type BboxQuery,
 } from "./geo.ts";
 
@@ -120,6 +124,19 @@ Deno.test("decideNearby: Monterrey pin defaults to the large radius", () => {
   });
 });
 
+Deno.test("decideNearby: nearby true is still lat+lng, not a third flag", () => {
+  assertEquals(
+    decideNearby({ nearby: true, lat: 25.67, lng: -100.3 }),
+    { mode: "ok", lat: 25.67, lng: -100.3, radiusKm: 500 },
+  );
+});
+
+Deno.test("wantsGoogleFill: listed-only lat+lng stays off", () => {
+  assertEquals(wantsGoogleFill({ lat: 25.67, lng: -100.3 }), false);
+  assertEquals(wantsGoogleFill({ google: true, lat: 25.67, lng: -100.3 }), true);
+  assertEquals(wantsGoogleFill({ nearby: true, lat: 25.67, lng: -100.3 }), true);
+});
+
 Deno.test("nearbyBbox is city-scale, not a camera rectangle", () => {
   const box = nearbyBbox(25.6714, -100.3094, 500);
   assertEquals(box.north - box.south > 4, true);
@@ -139,6 +156,25 @@ Deno.test("sortByDistance puts the nearest pin first", () => {
     haversineKm(origin.lat, origin.lng, 25.66, -100.31) < 5,
     true,
   );
+});
+
+Deno.test("takeClosest: product cap 50, nearest first", () => {
+  const rows = Array.from({ length: 80 }, (_, i) => ({
+    id: i,
+    lat: 25.67 + i * 0.01,
+    lng: -100.3,
+  }));
+  const got = takeClosest(rows, { lat: 25.67, lng: -100.3 }, 50);
+  assertEquals(got.length, 50);
+  assertEquals(got[0].id, 0);
+  assertEquals(got[49].id, 49);
+});
+
+Deno.test("circleBbox: 50 km around Monterrey stays inside the clamp", () => {
+  const box = circleBbox({ lat: 25.67, lng: -100.3 }, NEARBY_RADIUS_KM);
+  assertEquals(box.south < 25.67, true);
+  assertEquals(box.north > 25.67, true);
+  assertEquals(NEARBY_RADIUS_KM, 50);
 });
 
 Deno.test("applyBboxPredicate: dateline is two lng ranges, not 400", () => {

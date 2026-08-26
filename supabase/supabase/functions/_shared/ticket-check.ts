@@ -241,23 +241,11 @@ export type CheckEvent =
   | "fix_requested"
   | "validated";
 
-// sha256(ip | yyyy-mm-dd | server salt) — the raw IP never lands in the DB,
-// and the daily rotation means hashes can't be joined across days.
-export async function hashRequestIp(
-  req: Request,
-  salt: string,
-): Promise<string | null> {
-  const ip = (req.headers.get("x-forwarded-for") ?? "")
-    .split(",")[0]
-    .trim();
-  if (!ip) return null;
-  const day = new Date().toISOString().slice(0, 10);
-  const data = new TextEncoder().encode(`${ip}|${day}|${salt}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+// sha256(connectingIp | yyyy-mm-dd | server salt) — the raw IP never lands
+// in the DB, and the daily rotation means hashes can't be joined across days.
+// connectingIp is CF-Connecting-IP / rightmost XFF, never the spoofable
+// leftmost XFF hop (see connecting-ip.ts).
+export { hashConnectingIp as hashRequestIp } from "./connecting-ip.ts";
 
 export async function logCheckEvent(
   admin: SupabaseClient,
