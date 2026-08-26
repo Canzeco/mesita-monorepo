@@ -91,6 +91,29 @@ Deno.test("mergeNearbyCatalog: an older close Mesita row still beats Google", ()
   if (got[0].kind === "listed") assertEquals(got[0].row.id, "old-close");
 });
 
+Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", () => {
+  const mesita = [
+    { id: "inside", google_place_id: "in", lat: 25.6701, lng: -100.3001 },
+    { id: "corner", google_place_id: "far", lat: 26.22, lng: -100.3 },
+  ];
+  const google = [
+    {
+      placeId: "g-close",
+      name: "Close",
+      address: "",
+      lat: 25.6702,
+      lng: -100.3002,
+      rating: null,
+      primaryType: "cafe",
+    },
+  ];
+  const got = mergeNearbyCatalog(mesita, google, CENTER, 50);
+  assertEquals(
+    got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
+    ["inside", "g-close"],
+  );
+});
+
 Deno.test("mergeNearbyCatalog: product cap is 50 closest", () => {
   const mesita = Array.from({ length: 40 }, (_, i) => ({
     id: `m${i}`,
@@ -237,6 +260,97 @@ Deno.test("searchNearbyPlaces: isolate fan-out budget skips extra cells", async 
       await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
     }
     assertEquals(n, GOOGLE_FANOUT_MAX * 5);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: beforeFanout runs only on the starting fan-out", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let fetches = 0;
+  let gates = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    fetches++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  const beforeFanout = () => {
+    gates++;
+    return Promise.resolve(true);
+  };
+  try {
+    const [a, b] = await Promise.all([
+      searchNearbyPlaces("k", CENTER, { beforeFanout }),
+      searchNearbyPlaces("k", CENTER, { beforeFanout }),
+    ]);
+    assertEquals(a.length, 1);
+    assertEquals(b.length, 1);
+    assertEquals(gates, 1);
+    assertEquals(fetches, 5);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: beforeFanout false skips Google", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let fetches = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    fetches++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const got = await searchNearbyPlaces("k", CENTER, {
+      beforeFanout: () => Promise.resolve(false),
+    });
+    assertEquals(got, []);
+    assertEquals(fetches, 0);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let fetches = 0;
+  let gates = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    fetches++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    for (let i = 0; i < GOOGLE_FANOUT_MAX; i++) {
+      await searchNearbyPlaces("k", { lat: 10 + i, lng: -100.3 });
+    }
+    const got = await searchNearbyPlaces("k", { lat: 40, lng: -100.3 }, {
+      beforeFanout: () => {
+        gates++;
+        return Promise.resolve(true);
+      },
+    });
+    assertEquals(got, []);
+    assertEquals(gates, 0);
+    assertEquals(fetches, GOOGLE_FANOUT_MAX * 5);
   } finally {
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();

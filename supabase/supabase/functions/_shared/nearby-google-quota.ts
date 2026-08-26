@@ -8,10 +8,12 @@
 // isolate.
 //
 // Model: rolling 60 s window over public.nearby_google_attempts, counted
-// per ATTEMPT (recorded before any Google spend). Insert-then-count makes
-// parallel bursts self-limiting — each request in an N-wide burst sees the
-// whole burst. A rejected attempt deletes its own row so a guest who hit
-// the cap recovers as the window rolls instead of extending their lockout.
+// per ATTEMPT (recorded only when this isolate is about to fire the five
+// Nearby calls — not on a cache hit, in-flight join, or isolate-budget skip).
+// Insert-then-count makes parallel bursts self-limiting — each request in
+// an N-wide burst sees the whole burst. A rejected attempt deletes its own
+// row so a guest who hit the cap recovers as the window rolls instead of
+// extending their lockout.
 //
 // Fail-closed on money, fail-open on Search: a ledger error, a missing IP,
 // or an exceeded cap skips Google fill and still returns listed Mesita.
@@ -21,7 +23,7 @@
 // leftmost XFF hop. A global window cap is the backstop if a caller still
 // mints unique hashes (spoofed CF-Connecting-IP on a direct origin hit).
 //
-// Caller: consumer-web-list-places, cache-miss path only.
+// Caller: searchNearbyPlaces `beforeFanout`, cache-miss fan-out only.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 

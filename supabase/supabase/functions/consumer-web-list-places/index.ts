@@ -21,8 +21,10 @@
 //     rows are stubs. Missing listed Place IDs are fetched by google_place_id
 //     so a close Mesita row outside the 1000 scan does not become a stub.
 //     Google fill is metered per connecting IP (CF-Connecting-IP / rightmost
-//     XFF, 45/60s) plus a 600/60s global cap, before the five Nearby calls.
-//     Over quota skips Google, not the catalog.
+//     XFF, 45/60s) plus a 600/60s global cap, only when this isolate is about
+//     to fire the five Nearby calls. Over quota, an in-flight join, or an
+//     isolate-budget skip does not mint a ledger row. Over quota skips
+//     Google, not the catalog.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -304,17 +306,17 @@ Deno.serve(async (req) => {
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
-        // Shared connecting-IP ledger before any GMP spend. Isolates do not
-        // share the in-memory cache/cap; this table does. Identity is
-        // CF-Connecting-IP / rightmost XFF, not the spoofable leftmost hop.
+        // Shared connecting-IP ledger only when THIS isolate is about to
+        // fire the five Nearby calls. In-flight same-cell joins and isolate
+        // budget skips must not mint a row. Identity is CF-Connecting-IP /
+        // rightmost XFF, not the spoofable leftmost hop.
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
-        const quota = await consumeNearbyGoogleQuota(
-          adminClient(efEnv.env),
-          ipHash,
-        );
-        if (quota.allow) {
-          googleHits = await searchNearbyPlaces(gmp.key, center);
-        }
+        googleHits = await searchNearbyPlaces(gmp.key, center, {
+          beforeFanout: () =>
+            consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
+              (quota) => quota.allow,
+            ),
+        });
       }
     }
     const haveGid = new Set(

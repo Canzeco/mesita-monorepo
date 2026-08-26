@@ -7,7 +7,7 @@ import {
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
 } from "./google-places.ts";
-import { NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
+import { haversineKm, NEARBY_RADIUS_KM, takeClosest } from "./geo.ts";
 
 export const CATALOG_NEARBY_MAX = 50;
 export const GOOGLE_NEARBY_MAX = 20;
@@ -118,11 +118,8 @@ function nearbyCellKey(center: { lat: number; lng: number }): string {
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}`;
 }
 
-function allowGoogleFanout(now: number): boolean {
+function pruneGoogleFanout(now: number): void {
   googleFanoutAt = googleFanoutAt.filter((at) => now - at < GOOGLE_FANOUT_WINDOW_MS);
-  if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) return false;
-  googleFanoutAt.push(now);
-  return true;
 }
 
 export function __resetNearbyGoogleCacheForTests(): void {
@@ -141,34 +138,64 @@ export function peekCachedNearbyPlaces(
   return null;
 }
 
+export type SearchNearbyOpts = {
+  radiusM?: number;
+  /** Called only by the request that starts the five Nearby calls — not on
+   *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
+   *  to skip Google (quota deny). */
+  beforeFanout?: () => Promise<boolean>;
+};
+
 /** Closest Google food/drink places around `center`. Deduped by Place ID.
  *  Same ~1 km cell reuses a successful 15s result so a pan-idle does not
  *  spend five billed Nearby calls twice. HTTP / parse failures are returned
  *  (Mesita fill still shows) but never cached — a blip must not lock the
  *  cell on an empty Google rail. Concurrent same-cell pans share one fan-out.
- *  Each isolate also caps cache-miss fan-outs (20 / 60s). The durable bound
- *  is the hashed-IP ledger in nearby-google-quota.ts, consumed on cache miss
- *  before this runs. */
+ *  Each isolate also caps cache-miss fan-outs (20 / 60s). Shared IP quota
+ *  is `beforeFanout` (nearby-google-quota.ts), not a pre-call in list-places. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
-  radiusM = GOOGLE_NEARBY_RADIUS_M,
+  opts: SearchNearbyOpts | number = {},
 ): Promise<NearbyHit[]> {
+  const { radiusM, beforeFanout } = typeof opts === "number"
+    ? { radiusM: opts, beforeFanout: undefined }
+    : opts;
+  const radius = radiusM ?? GOOGLE_NEARBY_RADIUS_M;
   const key = nearbyCellKey(center);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
   const pending = nearbyInflight.get(key);
   if (pending) return pending;
-  if (!allowGoogleFanout(now)) {
-    console.warn("[nearby] isolate Google fan-out budget exhausted");
-    return [];
-  }
 
-  const run = (async () => {
+  let resolveRun: (hits: NearbyHit[]) => void = () => {};
+  const placeholder = new Promise<NearbyHit[]>((resolve) => {
+    resolveRun = resolve;
+  });
+  nearbyInflight.set(key, placeholder);
+
+  try {
+    pruneGoogleFanout(Date.now());
+    if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
+      console.warn("[nearby] isolate Google fan-out budget exhausted");
+      resolveRun([]);
+      return [];
+    }
+    if (beforeFanout && !(await beforeFanout())) {
+      resolveRun([]);
+      return [];
+    }
+    pruneGoogleFanout(Date.now());
+    if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
+      console.warn("[nearby] isolate Google fan-out budget exhausted");
+      resolveRun([]);
+      return [];
+    }
+    googleFanoutAt.push(Date.now());
     const batches = await Promise.all(
       NEARBY_TYPES.map((type) =>
-        searchNearbyOnce(apiKey, center, radiusM, [type]),
+        searchNearbyOnce(apiKey, center, radius, [type]),
       ),
     );
     const byId = new Map<string, NearbyHit>();
@@ -184,12 +211,11 @@ export async function searchNearbyPlaces(
     }
     const hits = [...byId.values()];
     if (allOk) nearbyCache.set(key, { at: Date.now(), hits });
+    resolveRun(hits);
     return hits;
-  })();
-
-  nearbyInflight.set(key, run);
-  try {
-    return await run;
+  } catch (err) {
+    resolveRun([]);
+    throw err;
   } finally {
     nearbyInflight.delete(key);
   }
@@ -218,6 +244,8 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     if (gid) byGoogleId.set(gid, row);
   }
   const extraGoogle = google.filter((hit) => !byGoogleId.has(hit.placeId));
+  const inCircle = (lat: number | null, lng: number | null) =>
+    haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
   const combined = [
     ...mesita.map((row) => ({
       kind: "listed" as const,
@@ -231,7 +259,7 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
       lat: hit.lat,
       lng: hit.lng,
     })),
-  ];
+  ].filter((item) => inCircle(item.lat, item.lng));
   return takeClosest(combined, center, limit).map((item) =>
     item.kind === "listed"
       ? { kind: "listed" as const, row: item.row }
