@@ -65,7 +65,7 @@ export function InboxVisitsClient({ userId }: { userId: string }) {
       <EmptyState
         icon={QrCode}
         title="No visits yet"
-        description="Start a visit from the Visit tab and it shows up here — with its QR and whatever you saved."
+        description="Start a visit from Pay and it shows up here — with its QR and whatever you saved."
         action={{ label: "Start a visit", href: CONSUMER_ROUTES.newVisit.root }}
       />
     );
