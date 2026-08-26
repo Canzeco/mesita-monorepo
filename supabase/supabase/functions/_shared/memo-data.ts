@@ -24,7 +24,6 @@
 
 import type { EFEnv } from "./auth.ts";
 import { invokeInternalCaller } from "./internal.ts";
-import { type ChannelPolicy, coerceChannelPolicy } from "./sourcing.ts";
 import { type MemoPlaceCard, parseMemoPlaceCards } from "./memo-place-card.ts";
 import { createTtlCache } from "./memo-cache.ts";
 
@@ -43,8 +42,6 @@ export type MemoConfigResult = {
   model: string | null;
   // Perplexity leg from models_config.memo.perplexity; null when "off"/unset.
   perplexity: string | null;
-  // leftover wire; Search eligibility is Discovery › Map.
-  searchPolicy: ChannelPolicy;
 };
 
 export type MemoData = {
@@ -69,7 +66,7 @@ export type MemoData = {
   // name and sex never cross this wire at all.
   consumerContext(userId: string): Promise<string | null>;
 
-  // Operator-tunable greeting + persona + model + the memo_search policy.
+  // Operator-tunable greeting + persona + model.
   config(): Promise<MemoConfigResult>;
 };
 
@@ -179,7 +176,6 @@ export function createMemoData(
         instructions?: unknown;
         model?: unknown;
         perplexity?: unknown;
-        searchPolicy?: unknown;
       }>("supabase-edgefunc-get-memo-config", {});
 
       const greeting = typeof data?.greeting === "string"
@@ -197,8 +193,6 @@ export function createMemoData(
         instructions: instructions.length > 0 ? instructions : null,
         model: model.length > 0 ? model : null,
         perplexity: perplexity.length > 0 ? perplexity : null,
-        // coerce (not trust) — and it doubles as the fallback when the read failed.
-        searchPolicy: coerceChannelPolicy(data?.searchPolicy ?? null, "memo_search"),
       };
 
       // Only cache a real read. Caching the degraded result would pin Memo to
