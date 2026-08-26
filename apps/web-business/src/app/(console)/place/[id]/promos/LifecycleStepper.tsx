@@ -30,8 +30,8 @@ const STEP_TITLES = {
  * The earlier three-column stepper printed all three details at once, which
  * read as a wall of 11px above the boxes that carry the actual controls; every
  * rail state has exactly one current-or-blocked step, so a single line says the
- * same thing. Non-interactive on purpose — the controls stay in the Membership
- * box and strategy cards.
+ * same thing. Non-interactive on purpose — Drop lives on the Partnership bar;
+ * strategy lives on the cards.
  */
 export function LifecycleStepper({
   place,
@@ -66,7 +66,7 @@ export function LifecycleStepper({
           </span>
           <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
             {warn
-              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits membership.`
+              ? `${view.strikes} active strike${view.strikes === 1 ? "" : "s"} of 3 — the third forfeits Partnership.`
               : "All three steps done — joined, strategy set, checks honored."}
           </span>
         </p>

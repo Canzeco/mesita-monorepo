@@ -211,28 +211,18 @@ export function PromosClient({
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
-      <header className="flex flex-col gap-1">
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Partner
-        </h2>
-        <p className="text-muted-foreground text-[13px] leading-snug">
-          Partnership is live. Pick a rewards strategy — switch free anytime.
-        </p>
-      </header>
+      <MembershipBox
+        currency={place.currency}
+        pillState={pillState}
+        billingBusy={billingBusy}
+        onDrop={() => void commitDrop()}
+      />
 
       <LifecycleStepper
         place={place}
         pillState={pillState}
         storedStrategy={storedStrategy}
         member={subscribed}
-      />
-
-      <MembershipBox
-        currency={place.currency}
-        place={place}
-        pillState={pillState}
-        billingBusy={billingBusy}
-        onDrop={() => void commitDrop()}
       />
 
       <Section
