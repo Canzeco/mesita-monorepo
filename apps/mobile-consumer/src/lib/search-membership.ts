@@ -41,6 +41,38 @@ export function pinGesture(
   return selectedId === pinId ? 'open' : 'select';
 }
 
+/** Overlay map-pin tap. First tap holds (black); later tap opens.
+ *  Overlay-only Mesita (not in the catalog snapshot) never opens on select —
+ *  stash the prediction and keep the overlay. Google stash is the same hold. */
+export type OverlayPinAction =
+  | 'select-google'
+  | 'select-mesita-catalog'
+  | 'select-mesita-overlay'
+  | 'open-google'
+  | 'open-catalog'
+  | 'open-mesita-slug'
+  | 'noop';
+
+export function overlayPinDecision(input: {
+  selectedId: string | null;
+  pinId: string;
+  googleOnly: boolean;
+  inCatalog: boolean;
+  hasOverlay: boolean;
+}): OverlayPinAction {
+  const gesture = pinGesture(input.selectedId, input.pinId);
+  if (gesture === 'open') {
+    if (input.googleOnly) return 'open-google';
+    if (input.inCatalog) return 'open-catalog';
+    if (input.hasOverlay) return 'open-mesita-slug';
+    return 'noop';
+  }
+  if (input.googleOnly) return 'select-google';
+  if (input.inCatalog) return 'select-mesita-catalog';
+  if (input.hasOverlay) return 'select-mesita-overlay';
+  return 'noop';
+}
+
 export function placeMembershipTone(place: {
   partner?: boolean | null;
   plan?: string | null;
