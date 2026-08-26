@@ -121,6 +121,22 @@ describe("Search pick and map center respect filters", () => {
   });
 });
 
+describe("Search pin two-tap (select then open)", () => {
+  it("paints selected pins black and keeps membership fills for the rest", () => {
+    expect(read("SearchMap.tsx")).toContain("pinFillColor");
+    expect(read("SearchClient.tsx")).toContain("pinGesture");
+  });
+
+  it("first overlay tap selects; a later tap on the same pin opens", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("pinGesture");
+    expect(src).toContain("heldGoogle");
+    expect(src).toMatch(/pinGesture\(selectedId, pin\.id\) === "open"/);
+    expect(src).toContain("setHeldGoogle(prediction)");
+    expect(src).toContain("setSelectedId(pin.id)");
+  });
+});
+
 describe("Search results are one unlabeled lane", () => {
   it("does not print On Mesita / From Google section headers", () => {
     const src = read("SearchResultsPanel.tsx");

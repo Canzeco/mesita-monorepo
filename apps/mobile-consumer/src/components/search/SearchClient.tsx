@@ -42,7 +42,7 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
-import { buildSearchMapPins } from '@/lib/search-membership';
+import { buildSearchMapPins, pinGesture } from '@/lib/search-membership';
 import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
@@ -106,6 +106,7 @@ export function SearchClient() {
   const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
@@ -335,22 +336,6 @@ export function SearchClient() {
     resetSearchSession();
   };
 
-  const handleSelectPin = (pin: SearchMapPin) => {
-    const prediction = predictions.find(
-      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
-    );
-    if (prediction && prediction.status === 'not_in_mesita') {
-      handlePickGoogle(prediction);
-      return;
-    }
-    if (prediction) {
-      handlePickMesita(prediction);
-      return;
-    }
-    const place = catalog.find((p) => p.id === pin.id);
-    if (place) openCatalogPlace(place);
-  };
-
   const openCatalogPlace = (place: Place) => {
     const google = googlePredictionFromPlace(place);
     if (google) {
@@ -361,12 +346,47 @@ export function SearchClient() {
   };
 
   const selectCatalogPlace = (place: Place) => {
-    const google = googlePredictionFromPlace(place);
-    if (google) {
-      handlePickGoogle(google);
+    setHeldGoogle(googlePredictionFromPlace(place));
+    selectPlace(place.id);
+  };
+
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction =
+      predictions.find(
+        (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+      ) ??
+      (heldGoogle &&
+      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
+        ? heldGoogle
+        : null);
+    if (pinGesture(selectedId, pin.id) === 'open') {
+      if (prediction && prediction.status === 'not_in_mesita') {
+        handlePickGoogle(prediction);
+        return;
+      }
+      const place = catalog.find((p) => p.id === pin.id);
+      if (place) {
+        openCatalogPlace(place);
+        return;
+      }
+      if (prediction) {
+        handlePickMesita(prediction);
+      }
       return;
     }
-    selectPlace(place.id);
+    if (prediction && prediction.status === 'not_in_mesita') {
+      setHeldGoogle(prediction);
+      setRailCollapsed(false);
+      setSelectedId(pin.id);
+      return;
+    }
+    setHeldGoogle(null);
+    if (prediction) {
+      handlePickMesita(prediction);
+      return;
+    }
+    const place = catalog.find((p) => p.id === pin.id);
+    if (place) selectCatalogPlace(place);
   };
 
   const handleAdd = (prediction: PlacePrediction) => {

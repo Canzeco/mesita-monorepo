@@ -30,7 +30,7 @@ export function IdListField({
   }
 
   return (
-    <>
+    <div>
       <label className="text-sm font-medium" htmlFor={id}>
         {label}
       </label>
@@ -67,6 +67,6 @@ export function IdListField({
             : ""}
         </span>
       </div>
-    </>
+    </div>
   );
 }

@@ -140,8 +140,6 @@ export type Place = {
   /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
   google_place_id?: string | null;
-  /** Nearby fill stub — open GooglePlaceSheet, not /place/{id}. */
-  from_google?: boolean;
 };
 
 // Discover surfaces (swipe + catalog) go through dedicated EFs. The deck EF

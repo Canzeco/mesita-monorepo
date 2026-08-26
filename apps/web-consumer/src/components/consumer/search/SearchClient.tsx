@@ -45,7 +45,7 @@ import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { useSearchScope } from "@/lib/use-search-scope";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import { buildSearchMapPins } from "@/lib/search-membership";
+import { buildSearchMapPins, pinGesture } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
@@ -118,6 +118,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Overlay Google pin first-tap stash so a later tap can still open the sheet
+  // after the suggest list is gone.
+  const [heldGoogle, setHeldGoogle] = useState<PlacePrediction | null>(null);
   // From-Google preview sheet. `preview` survives the close (only `open`
   // flips) so the exit transition doesn't blank the panel mid-slide.
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
@@ -352,39 +355,52 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   const handleOpenPlace = (place: Place) => {
-    if (place.googleOnly || place.from_google) {
-      handlePickGoogle({
-        placeId: place.slug || place.id.replace(/^g:/, ""),
-        mainText: place.name,
-        secondaryText: place.address ?? "",
-        status: "not_in_mesita",
-        partner: false,
-        lat: place.lat,
-        lng: place.lng,
-      });
+    const google = googlePredictionFromPlace(place);
+    if (google) {
+      handlePickGoogle(google);
       return;
     }
     router.push(placeHref(place.slug || place.id));
   };
 
   const handleSelectPin = (pin: SearchMapPin) => {
-    const prediction = predictions.find(
-      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
-    );
-    if (prediction && prediction.status === "not_in_mesita") {
-      handlePickGoogle(prediction);
+    const prediction =
+      predictions.find(
+        (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+      ) ??
+      (heldGoogle &&
+      (heldGoogle.placeId === pin.id || heldGoogle.mesitaId === pin.id)
+        ? heldGoogle
+        : null);
+    if (pinGesture(selectedId, pin.id) === "open") {
+      if (prediction && prediction.status === "not_in_mesita") {
+        handlePickGoogle(prediction);
+        return;
+      }
+      const place = catalog.find((p) => p.id === pin.id);
+      if (place) {
+        handleOpenPlace(place);
+        return;
+      }
+      if (prediction) {
+        handlePickMesita(prediction);
+      }
       return;
     }
+    if (prediction && prediction.status === "not_in_mesita") {
+      setHeldGoogle(prediction);
+      setRailCollapsed(false);
+      setSelectedId(pin.id);
+      return;
+    }
+    setHeldGoogle(null);
     if (prediction) {
       handlePickMesita(prediction);
       return;
     }
     const place = catalog.find((p) => p.id === pin.id);
-    if (place?.googleOnly || place?.from_google) {
-      handleOpenPlace(place);
-      return;
-    }
     if (place) {
+      setHeldGoogle(googlePredictionFromPlace(place));
       setRailCollapsed(false);
       setSelectedId(place.id);
     }
@@ -445,11 +461,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // pin also reopens the rail if it was dismissed. The map pans itself via
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
-    const google = googlePredictionFromPlace(place);
-    if (google) {
-      handlePickGoogle(google);
-      return;
-    }
+    setHeldGoogle(googlePredictionFromPlace(place));
     setRailCollapsed(false);
     setSelectedId(place.id);
   };

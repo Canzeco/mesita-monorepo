@@ -1,9 +1,7 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
-// One flat page: Google Search · Mesita Search · Mesita Intake, then Edit.
-// Not ConfigPageLayout: this page keeps its own wider `5xl` container and
-// the extra bottom padding, because result tables are wide and the last
-// control wants room under it.
+// One flat page: Google Search · Mesita Search · Mesita Intake.
+// Edit is a band on Intake, not a fourth card.
 
 export default function ManageMultipleLayout({
   children,
@@ -15,7 +13,7 @@ export default function ManageMultipleLayout({
       <PageHeader
         eyebrow="Manage · Places"
         title="Manage Multiple Places"
-        description="Google Search, Mesita Search, Mesita Intake, then Edit. The rail jumps to each. Spend estimates live on Intake."
+        description="Google Search · Mesita Search · Mesita Intake. Edit lives on Intake. The rail jumps to each."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

@@ -4,6 +4,8 @@ import {
   buildSearchMapPins,
   membershipColor,
   membershipTone,
+  pinFillColor,
+  pinGesture,
   placeMembershipTone,
 } from "@/lib/search-membership";
 
@@ -29,6 +31,21 @@ describe("search membership tones", () => {
     expect(membershipColor("partner")).toBe("#fb2b7b");
     expect(membershipColor("listed")).toBe("#9ca3af");
     expect(membershipColor("google")).toBe("#EAB308");
+  });
+
+  it("fills the selected pin black and leaves unselected membership colors", () => {
+    expect(pinFillColor("partner", false)).toBe("#fb2b7b");
+    expect(pinFillColor("listed", false)).toBe("#9ca3af");
+    expect(pinFillColor("google", false)).toBe("#EAB308");
+    expect(pinFillColor("partner", true)).toBe("#111111");
+    expect(pinFillColor("listed", true)).toBe("#111111");
+    expect(pinFillColor("google", true)).toBe("#111111");
+  });
+
+  it("opens then on a later tap of the same pin, not a timed dblclick", () => {
+    expect(pinGesture(null, "a")).toBe("select");
+    expect(pinGesture("b", "a")).toBe("select");
+    expect(pinGesture("a", "a")).toBe("open");
   });
 });
 

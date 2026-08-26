@@ -8,7 +8,7 @@ import { PIPELINE_STEPS } from "./pipeline";
 export function PipelineNav() {
   return (
     <nav
-      aria-label="Google Search, Mesita Search, Mesita Intake, Edit"
+      aria-label="Google Search, Mesita Search, Mesita Intake"
       className="border-border bg-background/90 sticky top-14 z-20 -mx-1 mb-4 border-b px-1 py-2 backdrop-blur lg:top-0"
     >
       <ol className="flex flex-wrap gap-2">
