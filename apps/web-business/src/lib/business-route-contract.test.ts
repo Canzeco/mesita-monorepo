@@ -13,8 +13,8 @@ const A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 
 describe("dockHrefForSection", () => {
-  it("sends Profile to the listing when a place is active", () => {
-    expect(dockHrefForSection("place", A)).toBe(placePath(A, "preview"));
+  it("sends Profile to the hub, not the listing", () => {
+    expect(dockHrefForSection("place", A)).toBe(BUSINESS_ROUTES.central);
   });
 
   it("keeps Profile on the hub when no place exists yet", () => {
