@@ -101,7 +101,7 @@ export function applyBboxPredicate<T extends BboxQuery<T>>(
   query: T,
   bbox: GeoBbox,
 ): T {
-  let q = query.gte("lat", bbox.south).lte("lat", bbox.north);
+  const q = query.gte("lat", bbox.south).lte("lat", bbox.north);
   if (bbox.west <= bbox.east) {
     return q.gte("lng", bbox.west).lte("lng", bbox.east);
   }

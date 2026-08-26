@@ -72,7 +72,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const userLocation = useUserLocation();
   const [places, setPlaces] = useState<Place[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogLoading, setCatalogLoading] = useState(() => Boolean(apiKey));
   const [overspan, setOverspan] = useState(false);
   const [totalInBox, setTotalInBox] = useState<number | null>(null);
   const viewportGen = useRef(0);
@@ -150,7 +150,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   const idleRef = useRef(idle);
-  idleRef.current = idle;
   const lastBoxRef = useRef<ViewportBox | null>(null);
   const skippedRef = useRef(false);
   const lastFetchedKey = useRef<string | null>(null);
@@ -226,8 +225,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   useEffect(() => {
-    if (!apiKey) setCatalogLoading(false);
-  }, [apiKey]);
+    idleRef.current = idle;
+  }, [idle]);
 
   useEffect(() => {
     return () => {
