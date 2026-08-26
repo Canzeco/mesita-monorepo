@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { Compass, Search, X } from "lucide-react";
+import { countryBarChip } from "@/lib/search-scope";
 import { cn } from "@/lib/utils";
 
 // Shared by Search (discovery) and Visit (the wallet's place list, MESITA-1071).
@@ -19,7 +20,7 @@ type SearchBarProps = {
   inputRef?: RefObject<HTMLInputElement | null>;
   /** Opens the two-knob scope sheet (country + location). Omit on Visit. */
   onOpenScope?: () => void;
-  /** ISO country shown on the chip; null renders "—". */
+  /** ISO country shown on the chip; null renders the Any globe. */
   countryCode?: string | null;
   /** Location is live or connected — the compass fills primary. */
   locationSet?: boolean;
@@ -76,7 +77,7 @@ export function SearchBar({
             className="text-foreground hover:bg-muted/60 mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 transition"
           >
             <span className="type-label min-w-[1.25rem] text-center font-semibold tracking-wide">
-              {countryCode ?? "—"}
+              {countryBarChip(countryCode)}
             </span>
             <Compass
               aria-hidden

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { EmptySearchPrompt } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
+import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 
 const SEARCH_DIR = join(__dirname);
 
@@ -50,7 +51,7 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("Filters");
   });
 
-  it("shows the country code and a compass for location on Search", () => {
+  it("shows the country flag and a compass for location on Search", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -62,6 +63,7 @@ describe("SearchBar scope affordance", () => {
         locationSet
       />,
     );
+    expect(html).toContain("🇲🇽");
     expect(html).toContain("MX");
     expect(html).toContain("location set");
     expect(html).toContain("lucide-compass");
@@ -69,7 +71,7 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("SlidersHorizontal");
   });
 
-  it("renders an em dash when country is unset", () => {
+  it("renders the Any globe when country is unset", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -81,8 +83,47 @@ describe("SearchBar scope affordance", () => {
         locationSet={false}
       />,
     );
+    expect(html).toContain("🌐");
     expect(html).toContain("any country");
     expect(html).toContain("location not set");
+  });
+});
+
+describe("SearchScopeSheet country pills", () => {
+  const sheet = (
+    <SearchScopeSheet
+      country="MX"
+      locationSet
+      locating={false}
+      onCountry={() => {}}
+      onUseLocation={() => {}}
+      onClearLocation={() => {}}
+      onClose={() => {}}
+    />
+  );
+
+  it("keeps Any as the first, unrestricted option", () => {
+    const html = renderToStaticMarkup(sheet);
+    const anyAt = html.indexOf("🌐 Any");
+    const mxAt = html.indexOf("🇲🇽 MX");
+    expect(anyAt).toBeGreaterThan(-1);
+    expect(mxAt).toBeGreaterThan(anyAt);
+  });
+
+  it("shows a flag on every listed country", () => {
+    const html = renderToStaticMarkup(sheet);
+    for (const chip of [
+      "🇲🇽 MX",
+      "🇺🇸 US",
+      "🇨🇦 CA",
+      "🇪🇸 ES",
+      "🇦🇷 AR",
+      "🇨🇱 CL",
+      "🇨🇴 CO",
+      "🇵🇪 PE",
+    ]) {
+      expect(html).toContain(chip);
+    }
   });
 });
 
