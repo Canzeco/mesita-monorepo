@@ -17,7 +17,7 @@ import {
 const ZERO_STRATEGY_ID: StrategyId = "zero";
 
 const STEP_TITLES = {
-  join: "Join the membership",
+  join: "Join Partnership",
   strategy: "Pick a strategy",
   honor: "Honor guest checks",
 } as const;
@@ -62,7 +62,7 @@ export function LifecycleStepper({
             )}
           />
           <span className="font-display font-semibold tracking-tight">
-            Promos live
+            Partnership live
           </span>
           <span className={warn ? "text-amber-800" : "text-muted-foreground"}>
             {warn
@@ -78,8 +78,8 @@ export function LifecycleStepper({
 
   const joinDetail =
     view.join === "current"
-      ? `${price}/year — join by picking a strategy below.`
-      : `${price}/year — switch strategies free anytime.`;
+      ? `${price}/month — Join Partnership on this page.`
+      : `${price}/month — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -91,7 +91,7 @@ export function LifecycleStepper({
   const honorDetail =
     view.honor === "blocked"
       ? forfeited
-        ? "Membership forfeited after 3 strikes — re-join by picking a strategy below."
+        ? "Partnership forfeited after 3 strikes — re-join on this page."
         : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
