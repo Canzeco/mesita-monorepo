@@ -1,76 +1,78 @@
-import {
-  Search as SearchIcon,
-  SlidersHorizontal,
-  X,
-} from 'lucide-react-native';
-import { Pressable, TextInput, View } from 'react-native';
+import { Search as SearchIcon, X } from 'lucide-react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { SHADOW_ELEV } from '@/constants/brand';
 
 type SearchBarProps = {
   query: string;
   top: number;
-  /** Any deviation from the filter-sheet defaults lights the red dot. */
-  filtersActive: boolean;
+  countryCode: string | null;
+  locationSet: boolean;
   onChangeQuery: (value: string) => void;
   onFocus: () => void;
   onClear: () => void;
-  onOpenFilters: () => void;
+  onOpenScope: () => void;
 };
 
 export function SearchBar({
   query,
   top,
-  filtersActive,
+  countryCode,
+  locationSet,
   onChangeQuery,
   onFocus,
   onClear,
-  onOpenFilters,
+  onOpenScope,
 }: SearchBarProps) {
+  const scopeLabel = [
+    countryCode ?? 'any country',
+    locationSet ? 'location set' : 'location not set',
+  ].join(', ');
+
   return (
     <View className="absolute inset-x-0 z-30 px-3" style={{ top }}>
       <View
-        className="flex-row items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
+        className="h-12 flex-row items-center rounded-full border border-border bg-card/95 pl-4"
         style={SHADOW_ELEV}
       >
-        <SearchIcon color="#775254" size={18} />
+        <SearchIcon color="#775254" size={16} />
         <TextInput
           value={query}
           onChangeText={onChangeQuery}
           onFocus={onFocus}
-          placeholder="Search places"
+          placeholder="Search places…"
           placeholderTextColor="#77525466"
-          className="min-w-0 flex-1 text-[15px] text-foreground"
+          className="min-w-0 flex-1 px-3 text-sm text-foreground"
           autoCorrect={false}
           returnKeyType="search"
         />
         {query.length > 0 ? (
           <Pressable
             onPress={onClear}
-            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Clear search"
+            className="h-11 w-11 items-center justify-center"
           >
-            <X color="#775254" size={18} />
+            <X color="#775254" size={16} />
           </Pressable>
         ) : null}
-        {/* Hairline divider then the tune icon — the filter lives inside the
-            bar (web reference layout); the dot marks any active filter. */}
-        <View className="h-6 w-px bg-border" />
+        <View className="h-5 w-px bg-border" />
         <Pressable
-          onPress={onOpenFilters}
-          hitSlop={8}
+          onPress={onOpenScope}
           accessibilityRole="button"
-          accessibilityLabel={filtersActive ? 'Filters (active)' : 'Filters'}
-          className="relative h-9 w-9 items-center justify-center rounded-full"
+          accessibilityLabel={scopeLabel}
+          className="mr-1 h-10 flex-row items-center gap-1.5 rounded-full px-2.5"
         >
-          <SlidersHorizontal color="#775254" size={18} />
-          {filtersActive ? (
-            <View
-              className="absolute right-1 top-1 h-2 w-2 rounded-full border-2 border-card bg-red-500"
-              accessibilityElementsHidden
-            />
-          ) : null}
+          <Text className="min-w-[20px] text-center text-[11px] font-semibold tracking-wide text-foreground">
+            {countryCode ?? '—'}
+          </Text>
+          <View
+            className={
+              locationSet
+                ? 'h-2.5 w-2.5 rounded-full border border-primary bg-primary'
+                : 'h-2.5 w-2.5 rounded-full border border-muted-foreground/50 bg-transparent'
+            }
+          />
         </Pressable>
       </View>
     </View>

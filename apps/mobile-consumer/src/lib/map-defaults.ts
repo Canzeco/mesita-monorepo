@@ -3,9 +3,11 @@
 
 export const MONTERREY_CENTER = { lat: 25.6714, lng: -100.3094 } as const;
 
-// Discover-map pin colours — partners vs scraped web listings.
-export const MAP_PARTNER_PIN_COLOR = '#E91E63';
-export const MAP_WEB_PIN_COLOR = '#9ca3af';
+// Search membership pins — same hexes as the results-row dots (web parity).
+export const MAP_PARTNER_PIN_COLOR = '#fb2b7b';
+export const MAP_LISTED_PIN_COLOR = '#9ca3af';
+export const MAP_GOOGLE_PIN_COLOR = '#EAB308';
+export const MAP_WEB_PIN_COLOR = MAP_LISTED_PIN_COLOR;
 
-// Search-map selection pin (held place in the rail).
+// Legacy selected-pin red; Search keeps membership color and thickens the stroke.
 export const MAP_SELECTED_PIN_COLOR = '#EF4444';

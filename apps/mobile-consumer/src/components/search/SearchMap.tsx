@@ -4,8 +4,17 @@ import { Text, View } from 'react-native';
 
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
+import type { MembershipTone } from '@/lib/search-membership';
 
 type Coords = { lat: number; lng: number };
+
+export type SearchMapPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  tone: MembershipTone;
+};
 
 export type SearchMapProps = {
   places: Place[];
@@ -17,9 +26,11 @@ export type SearchMapProps = {
    */
   center?: Coords | null;
   apiKey: string;
+  pins?: SearchMapPin[] | null;
   /** First tap selects; already-selected tap opens (web SearchMap parity). */
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onSelectPin?: (pin: SearchMapPin) => void;
   onMapPress?: () => void;
 };
 

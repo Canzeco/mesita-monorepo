@@ -3,18 +3,17 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (partner/web pins + user dot).
-//   • Top overlay: floating search bar + optional Filters (same LocalSheet
-//     Swipe hosts). Predicates cut the rail and the pins together.
+//   • Top overlay: floating search bar. Far-right chip is country + location
+//     (two knobs, one sheet). Discovery cuisine/when/rewards stay on Swipe.
 //   • Bottom overlay (idle): horizontal catalog rail; tapping a map pin
 //     highlights + scrolls to the matching rail card, tapping a card opens
 //     the place page.
-//   • Typing ≥2 chars runs consumer-suggest-places (debounced, one Google
+//   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
-//     SearchResultsPanel under the bar. "On Mesita" rows select the place
-//     on the map (red pin + rail card; the detail modal is one more tap
-//     away there), "From Google" rows open GooglePlaceSheet — a not-on-Mesita
-//     preview carrying the real Add flow (consumer-web-create-place creates
-//     the place immediately; the async Intaker builds the profile in minutes).
+//     SearchResultsPanel under the bar. One merged lane, no source labels —
+//     the colored point is membership (partner / listed / Google-only).
+//     On-Mesita rows select the place on the map; Google-only rows open
+//     GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,10 +37,12 @@ import {
 import { useDiscoveryFilters } from "@/lib/use-discovery-filters";
 import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SearchMap } from "./SearchMap";
+import { useSearchScope } from "@/lib/use-search-scope";
+import { SearchMap, type SearchMapPin } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
+import { SearchScopeSheet } from "./SearchScopeSheet";
 import type { AddState } from "./add-state";
 import {
   EmptySearchPrompt,
@@ -52,6 +53,7 @@ import {
   newSessionToken,
   withDistances,
 } from "./search-utils";
+import { buildSearchMapPins } from "@/lib/search-membership";
 
 // ≥300ms so a fast typist costs one Google autocomplete call per pause,
 // not one per keystroke.
@@ -102,18 +104,25 @@ export function SearchClient({
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [freshFix, setFreshFix] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);
+  const scope = useSearchScope();
+  const deviceLocation = freshFix ?? userLocation;
+  const location = scope.locationOptOut ? null : deviceLocation;
 
   const trimmed = query.trim();
   // Idle = the map moment: no text query, search panel closed. The catalog
   // rail only exists here; the results dropdown owns the other state.
   const idle = trimmed.length === 0 && !searchOpen;
 
-  // Distances measure from the chosen zone center or, with none, the device
-  // fix — the SAME center the distance filter rings, so "within 5 km" and
-  // the "5 km" on the rail card can never disagree.
-  const center = filters.zone ?? userLocation;
+  // Location (not country) centers the map and distances. Discovery zone
+  // stays a Swipe predicate — it does not drive this bar.
+  const center = location;
   const catalog = useMemo(
     () => withDistances(places, center),
     [places, center],
@@ -130,6 +139,11 @@ export function SearchClient({
   const categoryOptions = useMemo(
     () => deriveCategoryOptions(places),
     [places],
+  );
+
+  const searchPins = useMemo(
+    () => buildSearchMapPins(predictions, catalog),
+    [predictions, catalog],
   );
 
   // End the current Places autocomplete session and mint the next one.
@@ -168,6 +182,8 @@ export function SearchClient({
           supabase,
           trimmed,
           sessionTokenRef.current,
+          center,
+          scope.country,
         );
         if (!cancelled) {
           setPredictions(rows);
@@ -186,7 +202,7 @@ export function SearchClient({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [supabase, trimmed]);
+  }, [supabase, trimmed, center, scope.country]);
 
   // On-Mesita row tap → show the place on the map (red selected pin + rail
   // card) instead of opening the detail modal; the modal is one more tap
@@ -226,6 +242,25 @@ export function SearchClient({
     resetSearchSession();
     setPreview(prediction);
     setPreviewOpen(true);
+  };
+
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction = predictions.find(
+      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+    );
+    if (prediction && prediction.status === "not_in_mesita") {
+      handlePickGoogle(prediction);
+      return;
+    }
+    if (prediction) {
+      handlePickMesita(prediction);
+      return;
+    }
+    const place = catalog.find((p) => p.id === pin.id);
+    if (place) {
+      setRailCollapsed(false);
+      setSelectedId(place.id);
+    }
   };
 
   // The REAL Add flow: the place is created immediately; only enrichment is
@@ -300,6 +335,27 @@ export function SearchClient({
     });
   }, [idle, railCollapsed, selectedId]);
 
+  const handleUseLocation = () => {
+    setLocating(true);
+    scope.setLocationOptOut(false);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocating(false);
+      toast.error("Location isn't available in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setFreshFix({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+        toast.error("Couldn't read your location.");
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
+    );
+  };
+
   const dismissSearch = () => {
     updateQuery("");
     setSearchOpen(false);
@@ -334,8 +390,10 @@ export function SearchClient({
         userLocation={userLocation}
         viewCenter={center}
         selectedId={selectedId}
+        pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
+        onSelectPin={handleSelectPin}
         onMapClick={handleMapClick}
       />
 
@@ -351,8 +409,9 @@ export function SearchClient({
           onFocus={openSearch}
           onClear={dismissSearch}
           inputRef={searchInputRef}
-          onOpenFilters={() => setFiltersOpen(true)}
-          filtersActive={filtersActive}
+          onOpenScope={() => setScopeOpen(true)}
+          countryCode={scope.country}
+          locationSet={location != null}
         />
 
         {fetchError && idle && (
@@ -399,6 +458,25 @@ export function SearchClient({
           railRefs.current.set(placeId, el);
         }}
       />
+
+      <LocalSheet
+        open={scopeOpen}
+        onClose={() => setScopeOpen(false)}
+        ariaLabel="Place search"
+      >
+        <SearchScopeSheet
+          country={scope.country}
+          locationSet={location != null}
+          locating={locating}
+          onCountry={scope.setCountry}
+          onUseLocation={handleUseLocation}
+          onClearLocation={() => {
+            scope.setLocationOptOut(true);
+            setFreshFix(null);
+          }}
+          onClose={() => setScopeOpen(false)}
+        />
+      </LocalSheet>
 
       <LocalSheet
         open={filtersOpen}

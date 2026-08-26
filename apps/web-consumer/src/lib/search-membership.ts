@@ -1,0 +1,90 @@
+// Consumer Search name-bar: membership is the colored point only.
+// Red = Mesita partner (plan), gray = on Mesita not partner, yellow = Google only.
+// Hexes match map pins in lib/map-defaults.ts.
+
+import {
+  MAP_GOOGLE_PIN_COLOR,
+  MAP_LISTED_PIN_COLOR,
+  MAP_PARTNER_PIN_COLOR,
+} from "@/lib/map-defaults";
+
+export type MembershipTone = "partner" | "listed" | "google";
+
+export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
+  partner: MAP_PARTNER_PIN_COLOR,
+  listed: MAP_LISTED_PIN_COLOR,
+  google: MAP_GOOGLE_PIN_COLOR,
+};
+
+export function membershipTone(item: {
+  status?: string | null;
+  partner?: boolean | null;
+}): MembershipTone {
+  if (item.status === "not_in_mesita") return "google";
+  if (item.partner) return "partner";
+  return "listed";
+}
+
+export function membershipColor(tone: MembershipTone): string {
+  return MEMBERSHIP_COLORS[tone];
+}
+
+export function placeMembershipTone(place: {
+  partner?: boolean | null;
+  plan?: string | null;
+}): MembershipTone {
+  if (place.partner === true) return "partner";
+  if (place.partner === false) return "listed";
+  if (place.plan && place.plan.toLowerCase() !== "free") return "partner";
+  return "listed";
+}
+
+/** Live-search overlay pins. Catalog is coords only — tone follows the EF row
+ *  so the list dot and the map pin cannot disagree. Empty coords → null so
+ *  the map keeps catalog markers instead of blanking. */
+export type SearchPinPrediction = {
+  placeId: string;
+  mainText: string;
+  status?: string | null;
+  partner?: boolean | null;
+  mesitaId?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export type SearchPinPlace = {
+  id: string;
+  lat?: number | null;
+  lng?: number | null;
+};
+
+export type BuiltSearchPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  tone: MembershipTone;
+};
+
+export function buildSearchMapPins(
+  predictions: SearchPinPrediction[],
+  catalog: SearchPinPlace[],
+): BuiltSearchPin[] | null {
+  if (predictions.length === 0) return null;
+  const byId = new Map(catalog.map((place) => [place.id, place]));
+  const pins: BuiltSearchPin[] = [];
+  for (const prediction of predictions) {
+    const hit = prediction.mesitaId ? byId.get(prediction.mesitaId) : undefined;
+    const lat = prediction.lat ?? hit?.lat ?? null;
+    const lng = prediction.lng ?? hit?.lng ?? null;
+    if (typeof lat !== "number" || typeof lng !== "number") continue;
+    pins.push({
+      id: prediction.mesitaId ?? prediction.placeId,
+      lat,
+      lng,
+      title: prediction.mainText,
+      tone: membershipTone(prediction),
+    });
+  }
+  return pins.length > 0 ? pins : null;
+}

@@ -1,14 +1,13 @@
 "use client";
 
 import type { RefObject } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Shared by Search (discovery) and Visit (the wallet's place list, MESITA-1071).
-// The filter affordance is OPTIONAL because only discovery has filters to open —
-// the wallet would render a tune icon wired to nothing, and a control that does
-// nothing is worse than no control. Omit `onOpenFilters` and the divider and
-// button drop out with it.
+// Search passes `onOpenScope` for the compact country + location control on
+// the far right. Visit omits it — a control that does nothing is worse than
+// none. Discovery cuisine/when/rewards do not live here.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -18,10 +17,12 @@ type SearchBarProps = {
   placeholder?: string;
   onFocus?: () => void;
   inputRef?: RefObject<HTMLInputElement | null>;
-  /** Opens the shared discovery Filters sheet. Omit on Visit. */
-  onOpenFilters?: () => void;
-  /** Any deviation from filter defaults — drives the trigger dot. */
-  filtersActive?: boolean;
+  /** Opens the two-knob scope sheet (country + location). Omit on Visit. */
+  onOpenScope?: () => void;
+  /** ISO country shown on the chip; null renders "—". */
+  countryCode?: string | null;
+  /** Fills the location circle when the map has a live or connected pin. */
+  locationSet?: boolean;
 };
 
 export function SearchBar({
@@ -32,9 +33,15 @@ export function SearchBar({
   onClear,
   placeholder = "Search places…",
   inputRef,
-  onOpenFilters,
-  filtersActive = false,
+  onOpenScope,
+  countryCode = null,
+  locationSet = false,
 }: SearchBarProps) {
+  const scopeLabel = [
+    countryCode ?? "any country",
+    locationSet ? "location set" : "location not set",
+  ].join(", ");
+
   return (
     <div className="border-border bg-card/95 shadow-elev flex h-12 shrink-0 items-center rounded-full border pl-4 backdrop-blur-xl">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
@@ -57,29 +64,29 @@ export function SearchBar({
           <X className="h-4 w-4" />
         </button>
       )}
-      {onOpenFilters && (
+      {onOpenScope && (
         <>
           <span className="bg-border h-5 w-px shrink-0" aria-hidden />
           <button
             type="button"
-            onClick={onOpenFilters}
-            aria-label={filtersActive ? "Filters (active)" : "Filters"}
+            onClick={onOpenScope}
+            aria-label={scopeLabel}
             aria-haspopup="dialog"
-            title={filtersActive ? "Filters (active)" : "Filters"}
-            className={cn(
-              "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition",
-              filtersActive
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+            title={scopeLabel}
+            className="text-foreground hover:bg-muted/60 mr-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 transition"
           >
-            <SlidersHorizontal className="h-4 w-4" />
-            {filtersActive && (
-              <span
-                aria-hidden
-                className="bg-primary border-card absolute top-1.5 right-1.5 h-2 w-2 rounded-full border"
-              />
-            )}
+            <span className="type-label min-w-[1.25rem] text-center font-semibold tracking-wide">
+              {countryCode ?? "—"}
+            </span>
+            <span
+              aria-hidden
+              className={cn(
+                "h-2.5 w-2.5 rounded-full border",
+                locationSet
+                  ? "border-primary bg-primary"
+                  : "border-muted-foreground/50 bg-transparent",
+              )}
+            />
           </button>
         </>
       )}

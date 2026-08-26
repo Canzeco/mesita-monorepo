@@ -72,8 +72,14 @@ export const MAP_MINIMAL_STYLES = [
 // SVG circle path for place markers + the user location dot.
 export const MAP_CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
-// Discover/search map pin colour for scraped web listings.
-export const MAP_WEB_PIN_COLOR = "#9ca3af";
+// Search membership pins — same hexes as the results-row dots.
+// Partner = Mesita pink.500 (Pato's "red"); listed = gray; Google-only = yellow.
+export const MAP_PARTNER_PIN_COLOR = "#fb2b7b";
+export const MAP_LISTED_PIN_COLOR = "#9ca3af";
+export const MAP_GOOGLE_PIN_COLOR = "#EAB308";
+/** @deprecated Use MAP_LISTED_PIN_COLOR — kept so older map surfaces compile. */
+export const MAP_WEB_PIN_COLOR = MAP_LISTED_PIN_COLOR;
 
-// Search-map selection pin (held place in the rail).
+// Selected pin used to force a red fill. Search now keeps membership color
+// and thickens the stroke instead.
 export const MAP_SELECTED_PIN_COLOR = "#EF4444";

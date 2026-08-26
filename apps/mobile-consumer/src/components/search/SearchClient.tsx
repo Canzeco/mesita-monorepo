@@ -9,11 +9,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GooglePlaceSheet } from '@/components/search/GooglePlaceSheet';
 import { SearchBar } from '@/components/search/SearchBar';
+import { SearchScopeSheet } from '@/components/search/SearchScopeSheet';
 import {
   EmptySearchPrompt,
   IdleCatalogRail,
 } from '@/components/search/SearchCatalogRail';
-import { SearchMap } from '@/components/search/SearchMap';
+import { SearchMap, type SearchMapPin } from '@/components/search/SearchMap';
 import {
   SearchResultsPanel,
   type SearchFailureKind,
@@ -27,7 +28,6 @@ import {
   type PlacePrediction,
 } from '@/lib/api/place-search';
 import { apiFetchPublicPlaces, type Place } from '@/lib/api/places';
-import { filtersPath } from '@/lib/consumer-route-contract';
 import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
@@ -37,6 +37,8 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
+import { buildSearchMapPins } from '@/lib/search-membership';
+import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
   resetDiscoveryFilters,
@@ -91,12 +93,13 @@ export function SearchClient() {
   const [preview, setPreview] = useState<PlacePrediction | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
 
-  // Shared discovery filters (MESITA-646/672): pins + rail narrow LIVE off the
-  // ONE global store — Swipe shows the exact same state — and the red tune dot
-  // lights on any deviation from defaults. Open via routed /filters.
   const filters = useDiscoveryFilters();
   const filtersActive = discoveryFiltersAreActive(filters);
+  const scope = useSearchScope();
+  const location = scope.locationOptOut ? null : coords;
 
   const trimmed = query.trim();
   const idle = trimmed.length === 0 && !searchOpen;
@@ -146,10 +149,8 @@ export function SearchClient() {
     [places],
   );
 
-  // Distances ride on the searched zone center when set, else the device's live
-  // location; the discovery filters then facet the SAME array the pins + rail
-  // render.
-  const center = filters.zone ?? coords;
+  // Location (not country) centers the map. Discovery zone stays a Swipe cut.
+  const center = location;
   const catalog = useMemo(
     () => withDistances(located, center),
     [located, center],
@@ -172,6 +173,11 @@ export function SearchClient() {
     return filtered;
   }, [catalog, filters, selectedId]);
 
+  const searchPins = useMemo(
+    () => buildSearchMapPins(predictions, catalog),
+    [predictions, catalog],
+  );
+
   useEffect(() => {
     publishFiltersHostContext({
       surface: 'search',
@@ -181,9 +187,24 @@ export function SearchClient() {
     });
   }, [visible.length, categoryOptions, coords]);
 
-  const openFilters = useCallback(() => {
-    router.push(filtersPath());
-  }, [router]);
+  const handleUseLocation = () => {
+    setLocating(true);
+    scope.setLocationOptOut(false);
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocating(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
+    );
+  };
 
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
@@ -220,6 +241,8 @@ export function SearchClient() {
             supabase,
             trimmed,
             sessionTokenRef.current,
+            center,
+            scope.country,
           );
           if (!cancelled) {
             setPredictions(rows);
@@ -241,7 +264,7 @@ export function SearchClient() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [trimmed, retryTick]);
+  }, [trimmed, retryTick, center, scope.country]);
 
   // Retry re-runs the suggest effect for the SAME query (the effect is keyed on
   // retryTick), so the consumer never has to retype after a network blip.
@@ -291,6 +314,19 @@ export function SearchClient() {
     resetSearchSession();
   };
 
+  const handleSelectPin = (pin: SearchMapPin) => {
+    const prediction = predictions.find(
+      (p) => p.mesitaId === pin.id || p.placeId === pin.id,
+    );
+    if (prediction && prediction.status === 'not_in_mesita') {
+      handlePickGoogle(prediction);
+      return;
+    }
+    if (prediction) {
+      handlePickMesita(prediction);
+    }
+  };
+
   const handleAdd = (prediction: PlacePrediction) => {
     if (addStates[prediction.placeId]) return;
     setAddStates((s) => ({ ...s, [prediction.placeId]: 'adding' }));
@@ -330,8 +366,10 @@ export function SearchClient() {
           userLocation={coords}
           center={center}
           apiKey={GMP_KEY}
+          pins={searchPins}
           onSelectPlace={(place) => selectPlace(place.id)}
           onOpenPlace={(place) => router.push(`/place/${place.id}`)}
+          onSelectPin={handleSelectPin}
           onMapPress={() => {
             if (searchOpen) closeSearch();
           }}
@@ -341,11 +379,12 @@ export function SearchClient() {
       <SearchBar
         query={query}
         top={insets.top + 8}
-        filtersActive={filtersActive}
+        countryCode={scope.country}
+        locationSet={location != null}
         onChangeQuery={updateQuery}
         onFocus={() => setSearchOpen(true)}
         onClear={closeSearch}
-        onOpenFilters={openFilters}
+        onOpenScope={() => setScopeOpen(true)}
       />
 
       {/* Results: height fits content; max ~70% so the map stays visible */}
@@ -410,6 +449,17 @@ export function SearchClient() {
           <Text className="text-xs text-muted-foreground">Tap to open</Text>
         </Pressable>
       ) : null}
+
+      <SearchScopeSheet
+        open={scopeOpen}
+        country={scope.country}
+        locationSet={location != null}
+        locating={locating}
+        onCountry={scope.setCountry}
+        onUseLocation={handleUseLocation}
+        onClearLocation={() => scope.setLocationOptOut(true)}
+        onClose={() => setScopeOpen(false)}
+      />
 
       <GooglePlaceSheet
         open={previewOpen}
