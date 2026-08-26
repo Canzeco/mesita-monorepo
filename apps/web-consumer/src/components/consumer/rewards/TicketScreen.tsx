@@ -67,6 +67,7 @@ import {
   type TicketReviewDraft,
 } from "@/components/consumer/TicketReviewForm";
 import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
+import { TicketSkeleton } from "@/components/consumer/rewards/TicketSkeleton";
 import { TaskProof } from "@/components/consumer/rewards/TaskProof";
 import {
   GoogleGlyph,
@@ -486,15 +487,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const waiting = ticket?.status === "scanned" && !ticket.fix_requested;
 
   if (tickets.status === "loading" && !ticket) {
-    return (
-      <Shell>
-        <div className="flex flex-col gap-2.5">
-          <div className="bg-muted h-12 animate-pulse rounded-2xl" />
-          <div className="bg-muted rounded-panel h-72 animate-pulse" />
-          <div className="bg-muted h-12 animate-pulse rounded-2xl" />
-        </div>
-      </Shell>
-    );
+    return <TicketSkeleton />;
   }
 
   // A failed list call is NOT a missing ticket: error → retry; only a
