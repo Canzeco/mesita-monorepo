@@ -378,6 +378,41 @@ describe("Search catalog reload UI", () => {
   });
 });
 
+describe("Search catalog rail pages full-width and snaps", () => {
+  it("uses ImageCarousel-style mandatory snap pages, not a 288px peek strip", () => {
+    const overlay = read("search-catalog-overlays.tsx");
+    const card = read("SearchRailCard.tsx");
+    const client = read("SearchClient.tsx");
+    const loading = read("../../../app/(shell)/search/loading.tsx");
+    expect(overlay).toContain("snap-x snap-mandatory");
+    expect(overlay).toContain("w-full shrink-0 snap-start");
+    expect(overlay).not.toContain("w-[288px]");
+    expect(overlay).not.toMatch(/flex gap-2 overflow-x-auto/);
+    expect(card).toContain("flex w-full items-center");
+    expect(card).not.toContain("w-[288px]");
+    expect(client).toContain("el.scrollLeft / page");
+    expect(client).toContain('inline: "start"');
+    expect(client).not.toContain("RAIL_STRIDE");
+    expect(client).not.toContain("w-[288px]");
+    expect(loading).toContain("w-full shrink-0 snap-start");
+    expect(loading).not.toContain("w-[288px]");
+  });
+
+  it("renders one full-width skeleton page, not peeking cards", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay
+        {...railProps}
+        places={[]}
+        catalogCount={0}
+        catalogLoading
+      />,
+    );
+    expect(html).toContain("Finding nearby");
+    expect(html).toContain("snap-start");
+    expect(html).not.toContain("w-[288px]");
+  });
+});
+
 describe("GooglePlaceSheet loads the first Places photo on open only", () => {
   it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
     const sheet = read("GooglePlaceSheet.tsx");

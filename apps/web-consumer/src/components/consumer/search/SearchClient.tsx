@@ -103,7 +103,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
   const sessionTokenRef = useRef(newSessionToken());
-  const railRefs = useRef(new Map<string, HTMLButtonElement | null>());
+  const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -147,7 +147,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idle = trimmed.length === 0 && !searchOpen;
 
   // Distances follow the camera the catalog was fetched for, so a pan
-  // ranks and labels the same 50. GPS still recenters the map.
+  // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
   const catalog = useMemo(
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
@@ -433,21 +433,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [addStates, resetSearchSession, supabase],
   );
 
-  // Card width (288, SearchRailCard's w-[288px]) + flex gap (8, gap-2) → the
-  // horizontal stride between cards.
-  const RAIL_STRIDE = 296;
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    // At the far-right end the last card is fully visible but scrollLeft never
-    // reaches (n-1)·stride, so Math.round caps one short (shows n-1/n). Snap to
-    // the last index once the container is scrolled to its end.
-    const overflowing = el.scrollWidth > el.clientWidth;
-    const atEnd =
-      overflowing && el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
-    const idx = atEnd
-      ? catalog.length - 1
-      : Math.round(el.scrollLeft / RAIL_STRIDE);
+    const page = el.clientWidth;
+    if (page <= 0) return;
+    const idx = Math.round(el.scrollLeft / page);
     setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
   };
 
@@ -468,7 +459,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!idle || railCollapsed || !selectedId) return;
     railRefs.current.get(selectedId)?.scrollIntoView({
       behavior: "smooth",
-      inline: "center",
+      inline: "start",
       block: "nearest",
     });
   }, [idle, railCollapsed, selectedId]);
@@ -518,7 +509,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby 50, uncut by discovery filters. */}
+      {/* Base layer — pins are the nearby catalog, uncut by discovery filters. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}

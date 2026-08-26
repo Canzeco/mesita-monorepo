@@ -17,14 +17,11 @@ function CatalogRailSkeleton() {
         </span>
       </div>
       <div
-        className="scrollbar-hide flex gap-2 overflow-hidden px-3 pb-1"
+        className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
         aria-hidden
       >
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="border-border bg-card/95 flex w-[288px] shrink-0 items-center gap-3 rounded-2xl border p-2"
-          >
+        <div className="w-full shrink-0 snap-start px-3">
+          <div className="border-border bg-card/95 flex w-full items-center gap-3 rounded-2xl border p-2">
             <Skeleton className="h-20 w-20 shrink-0 rounded-xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
               <Skeleton className="h-3.5 w-3/4" />
@@ -32,7 +29,7 @@ function CatalogRailSkeleton() {
               <Skeleton className="h-3 w-2/5" />
             </div>
           </div>
-        ))}
+        </div>
       </div>
     </>
   );
@@ -71,7 +68,7 @@ export function SearchRailOverlay({
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
-  setRailCardRef: (placeId: string, el: HTMLButtonElement | null) => void;
+  setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   if (!idle) return null;
 
@@ -170,19 +167,23 @@ export function SearchRailOverlay({
               ref={railScrollRef}
               onScroll={onRailScroll}
               className={cn(
-                "scrollbar-hide flex gap-2 overflow-x-auto px-3 pb-1 transition-opacity duration-200",
+                "scrollbar-hide flex snap-x snap-mandatory overflow-x-auto pb-1 transition-opacity duration-200",
                 catalogLoading && "pointer-events-none opacity-55",
               )}
             >
               {places.map((place) => (
-                <RailCard
+                <div
                   key={place.id}
-                  place={place}
-                  selected={place.id === selectedId}
-                  onSelect={() => onSelectPlace(place)}
-                  onOpen={() => onOpenPlace(place)}
-                  cardRef={(el) => setRailCardRef(place.id, el)}
-                />
+                  ref={(el) => setRailCardRef(place.id, el)}
+                  className="w-full shrink-0 snap-start px-3"
+                >
+                  <RailCard
+                    place={place}
+                    selected={place.id === selectedId}
+                    onSelect={() => onSelectPlace(place)}
+                    onOpen={() => onOpenPlace(place)}
+                  />
+                </div>
               ))}
             </div>
           </>
