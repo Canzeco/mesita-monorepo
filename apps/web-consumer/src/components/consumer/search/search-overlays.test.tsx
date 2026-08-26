@@ -131,9 +131,14 @@ describe("Search results are one unlabeled lane", () => {
 
 describe("viewportCenter", () => {
   it("averages a normal box and wraps the dateline", () => {
-    expect(
-      viewportCenter({ south: 25, west: -100.4, north: 26, east: -100.2 }),
-    ).toEqual({ lat: 25.5, lng: -100.3 });
+    const box = viewportCenter({
+      south: 25,
+      west: -100.4,
+      north: 26,
+      east: -100.2,
+    });
+    expect(box.lat).toBeCloseTo(25.5);
+    expect(box.lng).toBeCloseTo(-100.3);
     const wrap = viewportCenter({
       south: 0,
       west: 179.8,
