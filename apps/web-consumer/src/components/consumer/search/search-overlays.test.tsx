@@ -497,6 +497,16 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
     expect(sheet).toContain("fetchGooglePlacePreview");
     expect(sheet).toMatch(/if \(!open \|\| !prediction \|\| !apiKey\) return/);
     expect(sheet).toContain("h-44");
+    expect(sheet).toContain("referrerPolicy");
+    expect(read("../../../lib/google-place-preview.ts")).toContain(
+      "importLibrary",
+    );
+    expect(read("../../../lib/google-place-preview.ts")).toContain(
+      "PlacesService",
+    );
+    expect(read("../../../lib/google-place-preview.ts")).toContain(
+      "isDisplayablePlacePhoto",
+    );
     expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");
     expect(read("SearchClient.tsx")).not.toContain("fetchGooglePlacePreview");
     expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
