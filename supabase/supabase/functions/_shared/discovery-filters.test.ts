@@ -179,6 +179,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
   assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
+  assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
   assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
 });
@@ -285,4 +286,28 @@ Deno.test("map lane caps clamp and default on an old blob", () => {
     map: { notPartnerCount: 6 },
   });
   assertEquals(legacy.map.mesitaCount, 6);
+});
+
+Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
+  assertEquals(missing.name.fast.count, 5);
+  assertEquals(missing.name.deep, {
+    partnerCount: 3,
+    mesitaCount: 3,
+    googleCount: 3,
+    types: DISCOVERY_DEFAULTS.map.types,
+  });
+  const clamped = normalizeDiscoveryConfig({
+    name: {
+      fast: { count: 99, types: { restaurant: false } },
+      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40 },
+    },
+  });
+  assertEquals(clamped.name.fast.count, 20);
+  assertEquals(clamped.name.fast.types.restaurant, false);
+  assertEquals(clamped.name.fast.types.bakery, true);
+  assertEquals(clamped.name.deep.partnerCount, 0);
+  assertEquals(clamped.name.deep.mesitaCount, 7);
+  assertEquals(clamped.name.deep.googleCount, 20);
 });

@@ -417,6 +417,17 @@ describe("Search catalog rail pages full-width and snaps", () => {
   });
 });
 
+describe("Name search is Fast while typing and Deep after idle", () => {
+  it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("FAST_DEBOUNCE_MS");
+    expect(src).toContain("DEEP_IDLE_MS");
+    expect(src).toContain('"fast"');
+    expect(src).toContain('"deep"');
+    expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
+  });
+});
+
 describe("GooglePlaceSheet loads the first Places photo on open only", () => {
   it("uses Places (New) Details + one photo, never a map-wide prefetch", () => {
     const sheet = read("GooglePlaceSheet.tsx");

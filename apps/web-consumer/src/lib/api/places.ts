@@ -321,9 +321,11 @@ export type PlacePrediction = {
   lng?: number | null;
 };
 
+export type SuggestPlacesMode = "fast" | "deep";
+
 /**
- * Four-source merged name search for the consumer /search bar.
- * Calls consumer-web-suggest-places (already merged, ranked, capped at 10).
+ * Name search for the consumer /search bar and pickers.
+ * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
@@ -331,6 +333,7 @@ export async function apiSuggestPlaces(
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
   country?: string | null,
+  mode: SuggestPlacesMode = "fast",
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
@@ -340,6 +343,7 @@ export async function apiSuggestPlaces(
     {
       input: trimmed,
       sessionToken,
+      mode,
       ...(origin
         ? { lat: origin.lat, lng: origin.lng }
         : {}),

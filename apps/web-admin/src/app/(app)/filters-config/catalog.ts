@@ -6,16 +6,22 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Catalog · Map · Social (staged) · Chat prompt + inventory.
-// Signals Soon.
+// Live HTML: Fast Search · Deep Search · Catalog · Map · Social (staged) ·
+// Chat prompt + inventory. Signals Soon.
 //
+//   NAME      two boxes on `discovery_config.name`.
+//             Fast  count + Google categories. Autocomplete while typing.
+//             Deep  partnerCount · mesitaCount · googleCount + Google
+//                   categories. ~1s idle. Partners → Mesita → Google after
+//                   dropping overlaps. Name cosine on Mesita lanes; Text
+//                   Search order on Google. Enforced by consumer-search-lane.
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
 //   MAP       partnerCount · mesitaCount · googleCount · type
 //             batteries (Google pipeline only). Floors stay on the blob.
 //             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
 //             Enforced by list-places, discover-places, suggest-places,
-//             consumer-search-lane, create-place.
+//             create-place. Map floors still gate Name Google + Create.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
@@ -38,6 +44,23 @@ export type SignalKey = (typeof SIGNAL_KEYS)[number];
 export type SignalParamBag = Record<string, number>;
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
+export type NameFastConfig = {
+  count: number;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
+export type NameDeepConfig = {
+  partnerCount: number;
+  mesitaCount: number;
+  googleCount: number;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
+export type NameConfig = {
+  fast: NameFastConfig;
+  deep: NameDeepConfig;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -46,6 +69,7 @@ export type DiscoveryConfig = {
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
   map: MapConfig;
+  name: NameConfig;
   social: SocialConfig;
   chat: { prompt: string };
 };
@@ -138,6 +162,11 @@ export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
+export const NAME_LANE_COUNT_MAX = 20;
+export const NAME_FAST_COUNT_DEFAULT = 5;
+export const NAME_PARTNER_COUNT_DEFAULT = 3;
+export const NAME_MESITA_COUNT_DEFAULT = 3;
+export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
 
@@ -170,7 +199,7 @@ export const CHAT_INDEXES = [
   {
     name: "places.name_embedding",
     status: "Soon",
-    note: "Name match. Same vector Map's searchbar already queries.",
+    note: "Name match. Same vector Deep Search already queries.",
   },
   {
     name: "places.embedding",
@@ -238,6 +267,23 @@ export const DEFAULT_MAP: MapConfig = {
   types: DEFAULT_MAP_TYPES,
 };
 
+export const DEFAULT_NAME_FAST: NameFastConfig = {
+  count: NAME_FAST_COUNT_DEFAULT,
+  types: DEFAULT_MAP_TYPES,
+};
+
+export const DEFAULT_NAME_DEEP: NameDeepConfig = {
+  partnerCount: NAME_PARTNER_COUNT_DEFAULT,
+  mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  googleCount: NAME_GOOGLE_COUNT_DEFAULT,
+  types: DEFAULT_MAP_TYPES,
+};
+
+export const DEFAULT_NAME: NameConfig = {
+  fast: DEFAULT_NAME_FAST,
+  deep: DEFAULT_NAME_DEEP,
+};
+
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
@@ -272,6 +318,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   engines: { swipe: { ranked: true } },
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
+  name: DEFAULT_NAME,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
 };
@@ -367,7 +414,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Autocomplete while typing; one Text Search on idle; merge by Place ID. Details after a pick.",
+    process: "Fast: Autocomplete while typing, cap plus Google categories (default 5). Deep: one second after idle — Partners, then Mesita, then Google. Partners and Mesita rank by name embedding; Google keeps Text Search order. Overlaps drop. Details after a pick.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -585,6 +632,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     engines,
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
+    name: coerceName(r.name),
     social: coerceSocial(r.social),
     chat: {
       prompt: typeof (r.chat as { prompt?: unknown } | undefined)?.prompt === "string"
@@ -644,15 +692,44 @@ export function coerceSocial(raw: unknown): SocialConfig {
   };
 }
 
-export function coerceMap(raw: unknown): MapConfig {
-  const m = (raw ?? {}) as Record<string, unknown>;
-  const rawTypes = (m.types ?? {}) as Record<string, unknown>;
+export function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
+  const rawTypes = (raw ?? {}) as Record<string, unknown>;
   const types = {} as Record<NearbyTypeKey, boolean>;
   for (const key of NEARBY_TYPE_KEYS) {
     types[key] = typeof rawTypes[key] === "boolean"
       ? rawTypes[key]
-      : DEFAULT_MAP.types[key];
+      : DEFAULT_MAP_TYPES[key];
   }
+  return types;
+}
+
+export function coerceName(raw: unknown): NameConfig {
+  const n = (raw ?? {}) as Record<string, unknown>;
+  const fast = (n.fast ?? {}) as Record<string, unknown>;
+  const deep = (n.deep ?? {}) as Record<string, unknown>;
+  return {
+    fast: {
+      count: Math.round(num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX)),
+      types: coerceTypeBatteries(fast.types),
+    },
+    deep: {
+      partnerCount: Math.round(
+        num(deep.partnerCount, DEFAULT_NAME_DEEP.partnerCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      mesitaCount: Math.round(
+        num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      googleCount: Math.round(
+        num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      types: coerceTypeBatteries(deep.types),
+    },
+  };
+}
+
+export function coerceMap(raw: unknown): MapConfig {
+  const m = (raw ?? {}) as Record<string, unknown>;
+  const types = coerceTypeBatteries(m.types);
   return {
     minRating: Math.round(
       num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,

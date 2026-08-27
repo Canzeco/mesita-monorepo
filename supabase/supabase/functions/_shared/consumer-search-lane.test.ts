@@ -3,8 +3,8 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   laneDedupeKeys,
   membershipTone,
-  mergeSearchLane,
-  SEARCH_LANE_CAP,
+  mergeNameDeepLanes,
+  takeFastLane,
   type LaneItem,
 } from "./consumer-search-lane.ts";
 
@@ -15,13 +15,6 @@ function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">):
     partner: over.partner ?? false,
     ...over,
   };
-}
-
-function emptyLanes(): Record<
-  "autocomplete" | "text" | "name" | "summary",
-  LaneItem[]
-> {
-  return { autocomplete: [], text: [], name: [], summary: [] };
 }
 
 Deno.test("membershipTone: partner red, listed gray, google-only yellow", () => {
@@ -53,132 +46,136 @@ Deno.test("laneDedupeKeys prefers google_place_id then Mesita id", () => {
   ]);
 });
 
-Deno.test("mergeSearchLane: Autocomplete wins over Text Search for the same google id", () => {
-  const lanes = emptyLanes();
-  lanes.autocomplete = [
-    item({ placeId: "ChIJ1", mainText: "Auto Strana" }),
-  ];
-  lanes.text = [
-    item({
-      placeId: "ChIJ1",
-      mainText: "Text Strana",
-      secondaryText: "Río Caura",
-    }),
-  ];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.length, 1);
-  assertEquals(out[0].mainText, "Auto Strana");
-  assertEquals(out[0].secondaryText, "Río Caura");
-});
-
-Deno.test("mergeSearchLane: rank is Autocomplete, then Text, then Name, then Summary", () => {
-  const lanes = emptyLanes();
-  lanes.summary = [item({ placeId: "g4", mainText: "Summary" })];
-  lanes.name = [item({ placeId: "g3", mainText: "Name", mesitaId: "m3" })];
-  lanes.text = [item({ placeId: "g2", mainText: "Text" })];
-  lanes.autocomplete = [item({ placeId: "g1", mainText: "Auto" })];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.map((p) => p.mainText), ["Auto", "Text", "Name", "Summary"]);
-});
-
-Deno.test("mergeSearchLane: same Mesita id from name + summary keeps the name slot", () => {
-  const lanes = emptyLanes();
-  lanes.name = [
-    item({
-      placeId: "ChIJ-name",
-      mainText: "Strana",
-      mesitaId: "mesita-1",
-      status: "web_listed",
-    }),
-  ];
-  lanes.summary = [
-    item({
-      placeId: "ChIJ-summary-alias",
-      mainText: "Strana vibe",
-      mesitaId: "mesita-1",
-      status: "web_listed",
-    }),
-  ];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.length, 1);
-  assertEquals(out[0].mainText, "Strana");
-  assertEquals(out[0].placeId, "ChIJ-name");
-});
-
-Deno.test("mergeSearchLane: later Mesita hit grafts partner onto an Autocomplete slot", () => {
-  const lanes = emptyLanes();
-  lanes.autocomplete = [
-    item({ placeId: "ChIJ1", mainText: "Strana" }),
-  ];
-  lanes.name = [
-    item({
-      placeId: "ChIJ1",
-      mainText: "Strana",
-      mesitaId: "mesita-1",
-      mesitaSlug: "strana",
-      status: "web_listed",
-      partner: true,
-      lat: 25.65,
-      lng: -100.4,
-    }),
-  ];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.length, 1);
-  assertEquals(out[0].status, "web_listed");
-  assertEquals(out[0].partner, true);
-  assertEquals(out[0].mesitaId, "mesita-1");
-  assertEquals(out[0].lat, 25.65);
-  assertEquals(membershipTone(out[0]), "partner");
-});
-
-Deno.test("mergeSearchLane: Autocomplete filling 10 unique ids leaves no room for later sources", () => {
-  const lanes = emptyLanes();
-  lanes.autocomplete = Array.from({ length: 12 }, (_, i) =>
-    item({ placeId: `auto-${i}`, mainText: `A${i}` })
+Deno.test("takeFastLane keeps Autocomplete order and caps", () => {
+  const out = takeFastLane(
+    [
+      item({ placeId: "a", mainText: "A" }),
+      item({ placeId: "b", mainText: "B" }),
+      item({ placeId: "c", mainText: "C" }),
+      item({ placeId: "d", mainText: "D" }),
+    ],
+    3,
   );
-  lanes.text = [item({ placeId: "text-only", mainText: "Text only" })];
-  lanes.name = [item({ placeId: "name-only", mainText: "Name only", mesitaId: "n1" })];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.length, SEARCH_LANE_CAP);
-  assertEquals(out[0].placeId, "auto-0");
-  assertEquals(out[9].placeId, "auto-9");
-  assertEquals(out.some((p) => p.placeId === "text-only"), false);
-  assertEquals(out.some((p) => p.placeId === "name-only"), false);
+  assertEquals(out.map((p) => p.placeId), ["a", "b", "c"]);
 });
 
-Deno.test("mergeSearchLane: after Autocomplete < 10, later unique places fill remaining slots", () => {
-  const lanes = emptyLanes();
-  lanes.autocomplete = [
-    item({ placeId: "a1", mainText: "A1" }),
-    item({ placeId: "a2", mainText: "A2" }),
-  ];
-  lanes.text = [
-    item({ placeId: "a1", mainText: "A1-dup" }),
-    item({ placeId: "t1", mainText: "T1" }),
-  ];
-  lanes.name = [item({ placeId: "n1", mainText: "N1", mesitaId: "m-n1" })];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.map((p) => p.placeId), ["a1", "a2", "t1", "n1"]);
-});
-
-Deno.test("mergeSearchLane: cap stays 10 when a later source only upgrades an existing slot", () => {
-  const lanes = emptyLanes();
-  lanes.autocomplete = Array.from({ length: 10 }, (_, i) =>
-    item({ placeId: `g${i}`, mainText: `G${i}` })
+Deno.test("takeFastLane drops a duplicate google id", () => {
+  const out = takeFastLane(
+    [
+      item({ placeId: "ChIJ1", mainText: "First" }),
+      item({ placeId: "ChIJ1", mainText: "Dup" }),
+      item({ placeId: "ChIJ2", mainText: "Second" }),
+    ],
+    5,
   );
-  lanes.name = [
-    item({
-      placeId: "g0",
-      mainText: "G0 mesita",
-      mesitaId: "mesita-0",
-      status: "web_listed",
-      partner: true,
-    }),
-    item({ placeId: "extra", mainText: "Should not appear", mesitaId: "x" }),
+  assertEquals(out.map((p) => p.mainText), ["First", "Second"]);
+});
+
+Deno.test("mergeNameDeepLanes: Partners then Mesita then Google", () => {
+  const out = mergeNameDeepLanes({
+    partners: [item({ placeId: "p1", mainText: "Partner", partner: true, mesitaId: "m-p" })],
+    mesita: [item({ placeId: "m1", mainText: "Mesita", mesitaId: "m-1" })],
+    google: [item({ placeId: "g1", mainText: "Google" })],
+  });
+  assertEquals(out.map((p) => p.mainText), ["Partner", "Mesita", "Google"]);
+});
+
+Deno.test("mergeNameDeepLanes: partner in Mesita lane appears once", () => {
+  const out = mergeNameDeepLanes({
+    partners: [
+      item({
+        placeId: "ChIJ1",
+        mainText: "Strana",
+        partner: true,
+        mesitaId: "mesita-1",
+        status: "web_listed",
+      }),
+    ],
+    mesita: [
+      item({
+        placeId: "ChIJ1",
+        mainText: "Strana again",
+        partner: true,
+        mesitaId: "mesita-1",
+        status: "web_listed",
+      }),
+      item({
+        placeId: "ChIJ2",
+        mainText: "Listed cafe",
+        mesitaId: "mesita-2",
+        status: "web_listed",
+      }),
+    ],
+    google: [],
+  });
+  assertEquals(out.map((p) => p.mainText), ["Strana", "Listed cafe"]);
+});
+
+Deno.test("mergeNameDeepLanes: nested 3+3+3 collapses when Google is already Mesita", () => {
+  const partners = [
+    item({ placeId: "p1", mainText: "P1", partner: true, mesitaId: "mp1" }),
+    item({ placeId: "p2", mainText: "P2", partner: true, mesitaId: "mp2" }),
+    item({ placeId: "p3", mainText: "P3", partner: true, mesitaId: "mp3" }),
   ];
-  const out = mergeSearchLane(lanes);
-  assertEquals(out.length, 10);
-  assertEquals(out[0].partner, true);
-  assertEquals(out[0].mesitaId, "mesita-0");
-  assertEquals(out.some((p) => p.placeId === "extra"), false);
+  const mesita = [
+    ...partners,
+    item({ placeId: "m1", mainText: "M1", mesitaId: "mm1" }),
+    item({ placeId: "m2", mainText: "M2", mesitaId: "mm2" }),
+    item({ placeId: "m3", mainText: "M3", mesitaId: "mm3" }),
+  ];
+  const google = [
+    item({ placeId: "p1", mainText: "P1 stub" }),
+    item({ placeId: "m1", mainText: "M1 stub" }),
+    item({ placeId: "g1", mainText: "G1" }),
+    item({ placeId: "g2", mainText: "G2" }),
+    item({ placeId: "g3", mainText: "G3" }),
+  ];
+  const out = mergeNameDeepLanes({ partners, mesita, google });
+  assertEquals(out.map((p) => p.mainText), [
+    "P1",
+    "P2",
+    "P3",
+    "M1",
+    "M2",
+    "M3",
+    "G1",
+    "G2",
+    "G3",
+  ]);
+});
+
+Deno.test("mergeNameDeepLanes: Google lane keeps Text Search order", () => {
+  const out = mergeNameDeepLanes({
+    partners: [],
+    mesita: [],
+    google: [
+      item({ placeId: "g3", mainText: "Third-best text" }),
+      item({ placeId: "g1", mainText: "First-best text" }),
+      item({ placeId: "g2", mainText: "Second-best text" }),
+    ],
+  });
+  assertEquals(out.map((p) => p.mainText), [
+    "Third-best text",
+    "First-best text",
+    "Second-best text",
+  ]);
+});
+
+Deno.test("mergeNameDeepLanes: overflow Mesita never stubs as Google", () => {
+  const out = mergeNameDeepLanes({
+    partners: [],
+    mesita: [
+      item({ placeId: "top", mainText: "Top Mesita", mesitaId: "m-top" }),
+    ],
+    google: [
+      item({
+        placeId: "overflow",
+        mainText: "Should not stub",
+        mesitaId: "m-overflow",
+        status: "web_listed",
+      }),
+      item({ placeId: "fresh", mainText: "Fresh Google" }),
+    ],
+  });
+  assertEquals(out.map((p) => p.placeId), ["top", "fresh"]);
 });

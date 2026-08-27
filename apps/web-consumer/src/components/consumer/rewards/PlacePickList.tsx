@@ -2,7 +2,7 @@
 
 // Pay's place list: the closest 50 listed Mesita places around the guest
 // (device location, Monterrey fallback). Typing 2+ characters switches to
-// name search (Autocomplete · Text Search · Mesita embeddings) so a place
+// Fast Search (Autocomplete) so a place
 // that is not in the nearby 50 can still be found. Google Nearby pins are
 // Search's map fill, not this list.
 //

@@ -12,12 +12,12 @@
 //     nudge. Tapping a map pin highlights + scrolls to the matching rail
 //     card; tapping a card opens the place page (Google-only stubs open
 //     GooglePlaceSheet).
-//   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
-//     session token per autocomplete session) and hangs a content-height
-//     SearchResultsPanel under the bar. One merged lane, no source labels —
-//     the colored point is membership (red Mesita / gray not on Mesita).
-//     On-Mesita rows select the place on the map; Google-only rows open
-//     GooglePlaceSheet.
+//   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
+//     after the guest stops, Deep Search replaces that list (Partners ·
+//     Mesita · Google). One Google session token per autocomplete session.
+//     Results hang at content height. No source labels — the colored point
+//     is membership (red Mesita / gray not on Mesita). On-Mesita rows
+//     select the place on the map; Google-only rows open GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -61,9 +61,9 @@ import {
   withDistances,
 } from "./search-utils";
 
-// ≥300ms so a fast typist costs one Google autocomplete call per pause,
-// not one per keystroke.
-const SUGGEST_DEBOUNCE_MS = 300;
+// Fast Search while typing; Deep Search after the guest stops.
+const FAST_DEBOUNCE_MS = 300;
+const DEEP_IDLE_MS = 1000;
 const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
@@ -271,35 +271,62 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   };
 
-  // Debounced live suggest — Mesita + Google merged by the EF.
+  // Fast Search (Autocomplete) while typing. Deep Search replaces the list
+  // after idle. A later Fast for this query never overwrites a Deep hit.
   useEffect(() => {
     if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
     let cancelled = false;
-    const handle = window.setTimeout(async () => {
+    let deepSettled = false;
+    const token = sessionTokenRef.current;
+
+    const fastHandle = window.setTimeout(async () => {
       try {
         const rows = await apiSuggestPlaces(
           supabase,
           trimmed,
-          sessionTokenRef.current,
+          token,
           center,
           scope.country,
+          "fast",
         );
-        if (!cancelled) {
+        if (!cancelled && !deepSettled) {
           setPredictions(rows);
           setSearchError(null);
         }
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !deepSettled) {
           setPredictions([]);
           setSearchError(errMsg(err, "Search failed — try again."));
         }
       } finally {
         if (!cancelled) setSearching(false);
       }
-    }, SUGGEST_DEBOUNCE_MS);
+    }, FAST_DEBOUNCE_MS);
+
+    const deepHandle = window.setTimeout(async () => {
+      try {
+        const rows = await apiSuggestPlaces(
+          supabase,
+          trimmed,
+          token,
+          center,
+          scope.country,
+          "deep",
+        );
+        if (!cancelled) {
+          deepSettled = true;
+          setPredictions(rows);
+          setSearchError(null);
+        }
+      } catch {
+        // Keep Fast results if Deep fails.
+      }
+    }, DEEP_IDLE_MS);
+
     return () => {
       cancelled = true;
-      window.clearTimeout(handle);
+      window.clearTimeout(fastHandle);
+      window.clearTimeout(deepHandle);
     };
   }, [supabase, trimmed, center, scope.country]);
 

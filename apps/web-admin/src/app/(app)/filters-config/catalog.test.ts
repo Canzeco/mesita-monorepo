@@ -4,6 +4,7 @@ import {
   coerceConfig,
   DEFAULT_CATALOG,
   DEFAULT_MAP,
+  DEFAULT_NAME,
   DEFAULT_SOCIAL,
   ENGINES,
   SIGNALS,
@@ -95,6 +96,30 @@ describe("Discovery function APIs", () => {
     expect(social?.process).toMatch(/events/i);
     expect(social?.input).toMatch(/events/i);
     expect(social?.process).not.toMatch(/Check-ins/);
+  });
+
+  it("name() is Fast Autocomplete plus Deep three-lane merge", () => {
+    const name = ENGINES.find((e) => e.key === "name");
+    expect(name?.state).toBe("LIVE");
+    expect(name?.apis).toEqual([
+      "Google Places Autocomplete",
+      "Google Places Text Search",
+      "Place Details",
+    ]);
+    expect(name?.process).toMatch(/Fast/);
+    expect(name?.process).toMatch(/Deep/);
+    expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).toMatch(/name embedding/i);
+    expect(name?.process).not.toMatch(/summary embedding/i);
+  });
+
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
+    expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
+      .toMatchObject({
+        fast: { count: 20 },
+        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3 },
+      });
   });
 
   it("chat() is live OpenAI conversation — tools come later", () => {

@@ -1,8 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · params · slotting · filters · engines · catalog · map · social · chat.
-// Admin: Catalog live, Map live, Social staged, Chat prompt live. Signals Soon.
+// Keys: weights · params · slotting · filters · engines · catalog · map · name · social · chat.
+// Admin: Name (Fast + Deep) live, Catalog live, Map live, Social staged, Chat prompt live. Signals Soon.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -113,6 +113,30 @@ export type MapConfig = {
   types: Record<NearbyTypeKey, boolean>;
 };
 
+/**
+ * Name = two Search-bar boxes.
+ *   Fast  Autocomplete while typing. count + Google categories.
+ *   Deep  ~1s after the guest stops. Partners · Mesita · Google, then one
+ *         list after dropping overlaps. Partner + Mesita rank by name
+ *         embedding; Google keeps Text Search order. Types ride Google only.
+ */
+export type NameFastConfig = {
+  count: number;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
+export type NameDeepConfig = {
+  partnerCount: number;
+  mesitaCount: number;
+  googleCount: number;
+  types: Record<NearbyTypeKey, boolean>;
+};
+
+export type NameConfig = {
+  fast: NameFastConfig;
+  deep: NameDeepConfig;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -124,6 +148,7 @@ export type DiscoveryConfig = {
   engines: Record<WiredEngineKey, { ranked: boolean }>;
   catalog: CatalogConfig;
   map: MapConfig;
+  name: NameConfig;
   social: SocialConfig;
   chat: { prompt: string };
 };
@@ -198,6 +223,12 @@ export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 
+export const NAME_LANE_COUNT_MAX = 20;
+export const NAME_FAST_COUNT_DEFAULT = 5;
+export const NAME_PARTNER_COUNT_DEFAULT = 3;
+export const NAME_MESITA_COUNT_DEFAULT = 3;
+export const NAME_GOOGLE_COUNT_DEFAULT = 3;
+
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
@@ -232,6 +263,23 @@ export const DEFAULT_SOCIAL: SocialConfig = {
   eventsPerRail: 8,
   minSeedEvents: 1,
   horizonDays: 14,
+};
+
+export const DEFAULT_NAME_FAST: NameFastConfig = {
+  count: NAME_FAST_COUNT_DEFAULT,
+  types: DEFAULT_MAP_TYPES,
+};
+
+export const DEFAULT_NAME_DEEP: NameDeepConfig = {
+  partnerCount: NAME_PARTNER_COUNT_DEFAULT,
+  mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  googleCount: NAME_GOOGLE_COUNT_DEFAULT,
+  types: DEFAULT_MAP_TYPES,
+};
+
+export const DEFAULT_NAME: NameConfig = {
+  fast: DEFAULT_NAME_FAST,
+  deep: DEFAULT_NAME_DEEP,
 };
 
 /**
@@ -347,6 +395,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   },
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
+  name: DEFAULT_NAME,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
 };
@@ -432,13 +481,44 @@ export function normalizeChatPrompt(raw: unknown): string {
   return raw.slice(0, CHAT_PROMPT_MAX);
 }
 
-export function normalizeMapConfig(raw: unknown): MapConfig {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const rawTypes = (r.types ?? {}) as Record<string, unknown>;
+export function normalizeTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
+  const rawTypes = (raw ?? {}) as Record<string, unknown>;
   const types = {} as Record<NearbyTypeKey, boolean>;
   for (const key of NEARBY_TYPE_KEYS) {
-    types[key] = bool(rawTypes[key], DEFAULT_MAP.types[key]);
+    types[key] = bool(rawTypes[key], DEFAULT_MAP_TYPES[key]);
   }
+  return types;
+}
+
+export function normalizeNameConfig(raw: unknown): NameConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const fast = (r.fast ?? {}) as Record<string, unknown>;
+  const deep = (r.deep ?? {}) as Record<string, unknown>;
+  return {
+    fast: {
+      count: Math.round(
+        num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX),
+      ),
+      types: normalizeTypeBatteries(fast.types),
+    },
+    deep: {
+      partnerCount: Math.round(
+        num(deep.partnerCount, DEFAULT_NAME_DEEP.partnerCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      mesitaCount: Math.round(
+        num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      googleCount: Math.round(
+        num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      types: normalizeTypeBatteries(deep.types),
+    },
+  };
+}
+
+export function normalizeMapConfig(raw: unknown): MapConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const types = normalizeTypeBatteries(r.types);
   return {
     minRating: Math.round(
       num(r.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -555,6 +635,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     engines,
     catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),
+    name: normalizeNameConfig(r.name),
     social: normalizeSocialConfig(r.social),
     chat: {
       prompt: normalizeChatPrompt(
