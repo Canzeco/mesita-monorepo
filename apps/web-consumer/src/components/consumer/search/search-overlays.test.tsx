@@ -485,7 +485,7 @@ describe("Search here and the map reticle", () => {
     expect(src).toContain("export function SearchMapReticle");
     expect(src).toContain("pointer-events-none");
     expect(src).toContain("h-24 w-24");
-    expect(src).toContain("rounded-full border-2");
+    expect(src).toContain("rounded-full border-2 border-dotted");
     expect(src).not.toContain("<Circle");
     expect(src).toContain("mapReady && <SearchMapReticle");
   });
