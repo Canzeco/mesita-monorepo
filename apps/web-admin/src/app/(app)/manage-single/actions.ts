@@ -378,6 +378,33 @@ export async function setPlaceListed(
   };
 }
 
+/** Operator Active (Status box). Writes business_status. Active off also
+ *  unlists — guests disappear in the same apply. Active on does not list. */
+export async function setPlaceActive(
+  placeId: string,
+  active: boolean,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{
+    place: AdminPlace;
+    active?: boolean;
+    listed?: boolean;
+    business_status?: string | null;
+    status?: string | null;
+  }>("admin-web-set-place-active", { placeId, active });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      ...r.data.place,
+      listed: r.data.listed ?? r.data.place.listed,
+      business_status: r.data.business_status ?? r.data.place.business_status,
+      // Stamp status so mergePlace's withListedFromStatus sees paused after
+      // Active off, even if an older place payload omitted it.
+      status: r.data.status ?? r.data.place.status,
+    },
+  };
+}
+
 /** Admin attestation of ownership proof. Verified is one-time; yes only. */
 export async function setPlaceVerified(
   placeId: string,

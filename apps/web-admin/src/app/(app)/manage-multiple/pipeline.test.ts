@@ -34,14 +34,17 @@ describe("the page chrome names the three surfaces", () => {
     expect(client).not.toContain("EditTab");
     expect(intake).toContain("EditPanel");
     expect(intake).toContain("alreadyExisted");
-    expect(intake).toContain("Listed · Verified · Partner · Promoted");
+    expect(intake).toContain("Listed · Active · Verified · Partner · Promoted");
     expect(intake).toContain("Copy failed IDs");
     expect(intake).toContain("const worker = async");
     expect(intake).not.toContain("Promoting");
     expect(edit).toContain("Listed");
+    expect(edit).toContain("Active");
     expect(edit).toContain("Verified");
     expect(edit).toContain("Partner");
     expect(edit).toContain("Promoted");
+    expect(edit).toContain('value="active"');
+    expect(edit).toContain("setPlaceActive");
     expect(edit).toContain('value="promoting"');
     expect(edit).toContain("<option value=\"promoting\">Promoted</option>");
     expect(edit).not.toContain(">Promoting<");

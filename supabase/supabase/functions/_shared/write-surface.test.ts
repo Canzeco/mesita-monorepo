@@ -125,6 +125,7 @@ const PLACE_UPDATE_ALLOWLIST = [
   "_shared/ticket-review-notify.ts",
   "admin-web-set-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
+  "admin-web-set-place-active/index.ts",
   "admin-web-set-place-verified/index.ts", // windowing false positive — .from("places") is a select; the insert writes project_verifications
   "admin-web-set-plan/index.ts",
   "business-web-confirm-reservation/index.ts",

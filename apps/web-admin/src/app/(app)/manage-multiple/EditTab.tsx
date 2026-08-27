@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Pencil } from "lucide-react";
 import {
   searchPlacesByGoogleIds,
+  setPlaceActive,
   setPlaceListed,
   setPlacePlan,
   setPlaceStrategy,
@@ -18,7 +19,7 @@ import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
 
 const CONCURRENCY = 4;
 
-type EditFact = "listed" | "verified" | "partner" | "promoting";
+type EditFact = "listed" | "active" | "verified" | "partner" | "promoting";
 
 type Row = {
   status: BatchRowStatus;
@@ -34,7 +35,7 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 }
 
 // Edit lives on Mesita Intake: same Google Place IDs, one state write.
-// Listed · Verified · Partner · Promoted. No other fields.
+// Listed · Active · Verified · Partner · Promoted. Active off unlists.
 export function EditPanel({
   placeIds,
   locked,
@@ -46,6 +47,7 @@ export function EditPanel({
 }) {
   const [fact, setFact] = useState<EditFact>("listed");
   const [listedOn, setListedOn] = useState(true);
+  const [activeOn, setActiveOn] = useState(true);
   const [partnerOn, setPartnerOn] = useState(true);
   const [promoting, setPromoting] = useState<0 | 1 | 2>(0);
   const [running, setRunning] = useState(false);
@@ -76,7 +78,7 @@ export function EditPanel({
         const id = ids[cursor++];
         setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
         try {
-          const row = await applyOne(id, fact, { listedOn, partnerOn, promoting });
+          const row = await applyOne(id, fact, { listedOn, activeOn, partnerOn, promoting });
           setResults((prev) => ({ ...prev, [id]: row }));
         } catch (err) {
           setResults((prev) => ({
@@ -108,6 +110,7 @@ export function EditPanel({
             className="border-border bg-background mt-1 block h-10 w-full rounded-xl border px-3 text-sm outline-none"
           >
             <option value="listed">Listed</option>
+            <option value="active">Active</option>
             <option value="verified">Verified</option>
             <option value="partner">Partner</option>
             <option value="promoting">Promoted</option>
@@ -122,6 +125,18 @@ export function EditPanel({
             options={[
               { value: "on", label: "On" },
               { value: "off", label: "Off" },
+            ]}
+          />
+        ) : null}
+        {fact === "active" ? (
+          <ValueSelect
+            label="Value"
+            disabled={busy}
+            value={activeOn ? "on" : "off"}
+            onChange={(v) => setActiveOn(v === "on")}
+            options={[
+              { value: "on", label: "On" },
+              { value: "off", label: "Off · also unlists" },
             ]}
           />
         ) : null}
@@ -245,7 +260,12 @@ function ValueSelect({
 async function applyOne(
   googleId: string,
   fact: EditFact,
-  values: { listedOn: boolean; partnerOn: boolean; promoting: 0 | 1 | 2 },
+  values: {
+    listedOn: boolean;
+    activeOn: boolean;
+    partnerOn: boolean;
+    promoting: 0 | 1 | 2;
+  },
 ): Promise<Row> {
   const looked = await searchPlacesByGoogleIds([googleId]);
   if (!looked.ok) return { status: "error", error: looked.error };
@@ -261,6 +281,15 @@ async function applyOne(
       status: "ok",
       name,
       detail: values.listedOn ? "Listed on" : "Listed off",
+    };
+  }
+  if (fact === "active") {
+    const r = await setPlaceActive(hit.id, values.activeOn);
+    if (!r.ok) return { status: "error", name, error: r.error };
+    return {
+      status: "ok",
+      name,
+      detail: values.activeOn ? "Active on" : "Active off · unlisted",
     };
   }
   if (fact === "verified") {
