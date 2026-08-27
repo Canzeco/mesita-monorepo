@@ -263,6 +263,22 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.minPopularity, 1);
   assertEquals(clamped.map.reloadMinKm, 20);
   assertEquals(clamped.map.googleFill, true);
+  assertEquals(clamped.map.partnerCount, 10);
+  assertEquals(clamped.map.notPartnerCount, 10);
+  assertEquals(clamped.map.googleCount, 20);
   assertEquals(clamped.map.types.restaurant, false);
   assertEquals(clamped.map.types.bakery, true);
+});
+
+Deno.test("map lane caps clamp and default on an old blob", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.map.partnerCount, 10);
+  assertEquals(missing.map.notPartnerCount, 10);
+  assertEquals(missing.map.googleCount, 20);
+  const clamped = normalizeDiscoveryConfig({
+    map: { partnerCount: 99, notPartnerCount: -3, googleCount: 7.8 },
+  });
+  assertEquals(clamped.map.partnerCount, 20);
+  assertEquals(clamped.map.notPartnerCount, 0);
+  assertEquals(clamped.map.googleCount, 8);
 });

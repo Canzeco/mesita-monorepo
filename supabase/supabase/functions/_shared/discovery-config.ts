@@ -92,10 +92,10 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * Map pool policy. Two queries: closest 20 listed ∪ one Nearby Search of
- * 20 (copy, not a knob). Floors decide which of those may appear; type
- * batteries ride that one Nearby call. 0 on a floor = off. Independent of
- * Swipe's `filters`.
+ * Map pool policy. Three closest-N lanes, then one catalog in this order:
+ * Mesita partners · Mesita not-partners · not on Mesita (Google). Type
+ * batteries ride the Google Nearby call only. Floors still exclude; 0 = off.
+ * Independent of Swipe's `filters`.
  */
 export type MapConfig = {
   minRating: number;
@@ -104,6 +104,12 @@ export type MapConfig = {
   /** Camera must move at least this far (km) before Search refetches Nearby. */
   reloadMinKm: number;
   googleFill: boolean;
+  /** Closest Mesita partners (plan ≠ free). */
+  partnerCount: number;
+  /** Closest Mesita places that do not pay (plan = free). */
+  notPartnerCount: number;
+  /** Closest Google Nearby hits that are not already on Mesita. */
+  googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
@@ -187,6 +193,10 @@ export const SOCIAL_RAILS_CAP = 24;
 export const MAP_MIN_POPULARITY_MAX = 1;
 export const MAP_RELOAD_MIN_KM_MIN = 1;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
+export const MAP_LANE_COUNT_MAX = 20;
+export const MAP_PARTNER_COUNT_DEFAULT = 10;
+export const MAP_NOT_PARTNER_COUNT_DEFAULT = 10;
+export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
@@ -196,13 +206,16 @@ export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   bakery: true,
 };
 
-/** Defaults = yesterday's map: all types on, Google fill on, floors off. */
+/** Defaults = three lanes (10 partners · 10 not-partners · 20 Google). */
 export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
   reloadMinKm: 5,
   googleFill: true,
+  partnerCount: MAP_PARTNER_COUNT_DEFAULT,
+  notPartnerCount: MAP_NOT_PARTNER_COUNT_DEFAULT,
+  googleCount: MAP_GOOGLE_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
@@ -443,6 +456,15 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
       ) * 10,
     ) / 10,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
+    partnerCount: Math.round(
+      num(r.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),
+    ),
+    notPartnerCount: Math.round(
+      num(r.notPartnerCount, DEFAULT_MAP.notPartnerCount, 0, MAP_LANE_COUNT_MAX),
+    ),
+    googleCount: Math.round(
+      num(r.googleCount, DEFAULT_MAP.googleCount, 0, MAP_LANE_COUNT_MAX),
+    ),
     types,
   };
 }

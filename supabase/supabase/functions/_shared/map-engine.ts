@@ -1,10 +1,9 @@
 // Map hyperparameters — Discovery › Map (`discovery_config.map`).
 //
 // Search allowlist for guest map, name search, admin Google Search, and
-// Create. Nearby catalog is closest 20 listed ∪ one Nearby Search of 20;
-// these knobs decide WHICH of those may appear and WHICH primary types
-// ride that one Google call. They do not raise the cap. googleFill is
-// Nearby-only.
+// Create. Nearby catalog is three closest-N lanes (partners, not-partners,
+// Google). Type batteries ride the Google call only. Floors exclude.
+// googleFill AND googleCount > 0 gate the billed Nearby call.
 //
 // Swipe listed admission uses the same type batteries + floors (Pato:
 // only Mesita restaurants/partners+listed, never Google-only / types
@@ -64,12 +63,17 @@ export function enabledNearbyTypes(map: MapConfig): NearbyTypeKey[] {
   return NEARBY_TYPE_KEYS.filter((key) => map.types[key]);
 }
 
-/** Client opt-in AND operator googleFill AND at least one type battery on. */
+/** Client opt-in AND operator fill AND googleCount > 0 AND a type battery on. */
 export function mapShouldFillGoogle(
   clientOptIn: boolean,
   map: MapConfig,
 ): boolean {
-  return clientOptIn && map.googleFill && enabledNearbyTypes(map).length > 0;
+  return (
+    clientOptIn &&
+    map.googleFill &&
+    map.googleCount > 0 &&
+    enabledNearbyTypes(map).length > 0
+  );
 }
 
 export function listedClearsMapPopularity(

@@ -1,27 +1,34 @@
-// Map catalog = two queries, then merge by Google Place ID (Mesita wins):
-//   1. closest MESITA_NEARBY_MAX listed rows in the 50 km circle
-//   2. one Google Nearby Search (New) of GOOGLE_NEARBY_MAX (DISTANCE)
-// Union is 20 when they agree, 40 when they do not. Google maxes a Nearby
-// call at 20, so one request with the enabled type batteries is enough —
-// a five-type fan-out existed only to fill a 50 mixed cap.
+// Map catalog = three closest-N lanes, then one list in this order:
+//   1. closest partnerCount Mesita partners (plan ≠ free)
+//   2. closest notPartnerCount Mesita not-partners
+//   3. closest googleCount Google Nearby hits that are not already on Mesita
+// Dedup Google against every known Mesita Place ID (not just the tops), so a
+// listed place that missed its lane never comes back as a gray stub.
+// Google maxes a Nearby call at 20; type batteries ride that one call.
 
 import {
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
 } from "./google-places.ts";
 import {
+  DEFAULT_MAP,
+  type MapConfig,
+} from "./discovery-config.ts";
+import { isPaidPlan } from "./membership-enforcement-helpers.ts";
+import {
   haversineKm,
   NEARBY_RADIUS_KM,
-  sortByDistance,
   takeClosest,
 } from "./geo.ts";
 
-export const MESITA_NEARBY_MAX = 20;
+export const MESITA_NEARBY_MAX =
+  DEFAULT_MAP.partnerCount + DEFAULT_MAP.notPartnerCount;
 export const GOOGLE_NEARBY_MAX = 20;
-export const CATALOG_NEARBY_MAX = MESITA_NEARBY_MAX + GOOGLE_NEARBY_MAX;
+export const CATALOG_NEARBY_MAX = MESITA_NEARBY_MAX + DEFAULT_MAP.googleCount;
+export const CATALOG_NEARBY_HARD_MAX = 60;
 /** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
  *  a close listed place that is older than 200 newer rows in the city must
- *  still win its Google Place ID, or it reappears as a yellow stub. */
+ *  still win its Google Place ID, or it reappears as a gray stub. */
 export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
@@ -242,52 +249,66 @@ export type MesitaNearbyRow = {
   google_place_id?: string | null;
   lat?: number | null;
   lng?: number | null;
+  plan?: string | null;
+  partner?: boolean | null;
+};
+
+export type NearbyLaneCaps = {
+  partnerCount: number;
+  notPartnerCount: number;
+  googleCount: number;
 };
 
 export type NearbyMerged<T> =
   | { kind: "listed"; row: T }
   | { kind: "google"; hit: NearbyHit };
 
+export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
+  return {
+    partnerCount: map.partnerCount,
+    notPartnerCount: map.notPartnerCount,
+    googleCount: map.googleCount,
+  };
+}
+
+export function isMesitaPartnerRow(row: MesitaNearbyRow): boolean {
+  if (row.partner === true) return true;
+  if (row.partner === false) return false;
+  return isPaidPlan(row.plan);
+}
+
 export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
+  lanes: NearbyLaneCaps = nearbyLanesFromMap(DEFAULT_MAP),
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
     haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
-  const mesitaTop = takeClosest(
-    mesita.filter((row) => inCircle(row.lat ?? null, row.lng ?? null)),
+  const inMesita = mesita.filter((row) => inCircle(row.lat ?? null, row.lng ?? null));
+  const partners = takeClosest(
+    inMesita.filter((row) => isMesitaPartnerRow(row)),
     center,
-    MESITA_NEARBY_MAX,
+    lanes.partnerCount,
   );
-  const listedIds = new Set(
-    mesitaTop
+  const notPartners = takeClosest(
+    inMesita.filter((row) => !isMesitaPartnerRow(row)),
+    center,
+    lanes.notPartnerCount,
+  );
+  const knownMesitaIds = new Set(
+    mesita
       .map((row) => row.google_place_id)
       .filter((id): id is string => Boolean(id)),
   );
-  const googleTop = takeClosest(
+  const extraGoogle = takeClosest(
     google.filter((hit) => inCircle(hit.lat, hit.lng)),
     center,
-    GOOGLE_NEARBY_MAX,
-  );
-  const extraGoogle = googleTop.filter((hit) => !listedIds.has(hit.placeId));
-  const combined = [
-    ...mesitaTop.map((row) => ({
-      kind: "listed" as const,
-      row,
-      lat: row.lat ?? null,
-      lng: row.lng ?? null,
-    })),
-    ...extraGoogle.map((hit) => ({
-      kind: "google" as const,
-      hit,
-      lat: hit.lat,
-      lng: hit.lng,
-    })),
+    lanes.googleCount,
+  ).filter((hit) => !knownMesitaIds.has(hit.placeId));
+  return [
+    ...partners.map((row) => ({ kind: "listed" as const, row })),
+    ...notPartners.map((row) => ({ kind: "listed" as const, row })),
+    ...extraGoogle.map((hit) => ({ kind: "google" as const, hit })),
   ];
-  return sortByDistance(combined, center.lat, center.lng).map((item) =>
-    item.kind === "listed"
-      ? { kind: "listed" as const, row: item.row }
-      : { kind: "google" as const, hit: item.hit }
-  );
 }

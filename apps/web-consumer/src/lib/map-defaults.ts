@@ -72,11 +72,13 @@ export const MAP_MINIMAL_STYLES = [
 // SVG circle path for place markers + the user location dot.
 export const MAP_CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
 
-// Search membership pins — same hexes as the results-row dots.
-// Gray = not on Mesita; blue = listed, not partner; red = partner; black = selected.
+// Search pins — same hexes as the results-row dots.
+// Red = on Mesita (partner or not). Gray = not on Mesita. Blue = current location.
 export const MAP_PARTNER_PIN_COLOR = "#ff2357";
-export const MAP_LISTED_PIN_COLOR = "#2563eb";
+export const MAP_LISTED_PIN_COLOR = "#ff2357";
+export const MAP_MESITA_PIN_COLOR = "#ff2357";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
+export const MAP_USER_LOCATION_PIN_COLOR = "#2563eb";
 
 // Selected pin fill — black circle. Unselected pins keep membership colors.
 export const MAP_SELECTED_PIN_COLOR = "#111111";

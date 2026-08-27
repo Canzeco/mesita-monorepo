@@ -27,19 +27,28 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("map() is Mesita 20 ∪ Nearby 20 with opt-in fill gated by Map knobs", () => {
+  it("map() is three closest-N lanes then one catalog", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    expect(map?.process).toMatch(/Closest 20 listed/);
-    expect(map?.process).toMatch(/union 20–40/);
-    expect(map?.process).toMatch(/opts in/);
-    expect(map?.process).toMatch(/googleFill/);
-    expect(map?.process).toMatch(/Type batteries/);
+    expect(map?.process).toMatch(/partners/);
+    expect(map?.process).toMatch(/not-partners/);
+    expect(map?.process).toMatch(/not on Mesita/);
     expect(map?.process).toMatch(/reloadMinKm/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
+  });
+
+  it("coerceConfig defaults map lane caps on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.partnerCount).toBe(10);
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.notPartnerCount).toBe(10);
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
+    expect(coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map).toMatchObject({
+      partnerCount: 20,
+      notPartnerCount: 10,
+      googleCount: 0,
+    });
   });
 
   it("catalog() is live rails over Mesita search, no vendor API", () => {

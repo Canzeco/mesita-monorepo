@@ -28,6 +28,7 @@ import {
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
   MAP_CIRCLE_PATH,
+  MAP_USER_LOCATION_PIN_COLOR,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import {
@@ -49,7 +50,7 @@ function placeIcon(tone: MembershipTone, isSelected: boolean) {
 
 const USER_ICON = {
   path: "M -6 0 A 6 6 0 1 0 6 0 A 6 6 0 1 0 -6 0",
-  fillColor: "#2563eb",
+  fillColor: MAP_USER_LOCATION_PIN_COLOR,
   fillOpacity: 1,
   strokeColor: "#ffffff",
   strokeWeight: 3,

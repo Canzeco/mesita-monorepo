@@ -2,20 +2,20 @@
 
 // Search — the consumer catalog map. Composition layer for the page:
 //
-//   • Base: SearchMap fills the body (partner/web pins + user dot).
+//   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
 //   • Top overlay: floating search bar. Far-right chip is country + location
 //     (two knobs, one sheet). Discovery filters stay on Swipe — they never
 //     cut this map and there is no Adjust control here.
-//   • Bottom overlay (idle): horizontal catalog rail of the closest 20
-//     listed ∪ Google Nearby 20 around the camera. Panning
-//     the map reloads that set after a real camera move, not a one-pixel
+//   • Bottom overlay (idle): catalog rail of the three Map lanes around
+//     the camera (partners, then not-partners, then not on Mesita).
+//     Panning reloads that set after a real camera move, not a one-pixel
 //     nudge. Tapping a map pin highlights + scrolls to the matching rail
 //     card; tapping a card opens the place page (Google-only stubs open
 //     GooglePlaceSheet).
 //   • Typing ≥2 chars runs consumer-web-suggest-places (debounced, one Google
 //     session token per autocomplete session) and hangs a content-height
 //     SearchResultsPanel under the bar. One merged lane, no source labels —
-//     the colored point is membership (partner / listed / Google-only).
+//     the colored point is membership (red Mesita / gray not on Mesita).
 //     On-Mesita rows select the place on the map; Google-only rows open
 //     GooglePlaceSheet.
 

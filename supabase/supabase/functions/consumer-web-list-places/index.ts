@@ -13,21 +13,17 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // THREE POST SHAPES:
-//   { lat, lng, limit? } — listed nearby (mobile Search). Closest 20 in a
-//     large radius. No Google stubs — mobile opens `/place/:id` and cannot
-//     host GooglePlaceSheet.
-//   { google: true, lat, lng, limit? } — web Search catalog. Closest 20
-//     listed Mesita in 50 km ∪ one Google Nearby Search (New) of 20.
-//     Merge by google_place_id (Mesita wins). Union 20–40. Distance order.
-//     Google-only rows are stubs. Missing listed Place IDs are fetched by
-//     google_place_id so a close Mesita row outside the 1000 scan does not
-//     become a stub. Google fill is metered per connecting IP
-//     (CF-Connecting-IP / rightmost XFF, 45/60s) plus a 600/60s global cap,
-//     only when this isolate is about to fire the one Nearby call. Over
-//     quota, an in-flight join, or an isolate-budget skip does not mint a
-//     ledger row. Over quota skips Google, not the catalog. Operator Map
-//     knobs (`discovery_config.map`) floor which listed/Google rows may
-//     appear and which types ride that one Nearby call.
+//   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
+//     then not-partners. No Google stubs — mobile opens `/place/:id` and
+//     cannot host GooglePlaceSheet.
+//   { google: true, lat, lng, limit? } — web Search catalog. Three lanes:
+//     closest partners, then not-partners, then Google Nearby among enabled
+//     categories. Mesita Place IDs never stub. Google fill is metered per
+//     connecting IP (CF-Connecting-IP / rightmost XFF, 45/60s) plus a
+//     600/60s global cap, only when this isolate is about to fire the one
+//     Nearby call. Over quota skips Google, not the catalog. Operator Map
+//     knobs (`discovery_config.map`) set the three lane caps and which
+//     types ride that one Nearby call.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -57,12 +53,11 @@ import {
   nearbyBbox,
   NEARBY_RADIUS_KM,
   NEARBY_SCAN_LIMIT,
-  sortByDistance,
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  MESITA_NEARBY_MAX,
   mergeNearbyCatalog,
+  nearbyLanesFromMap,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
   type NearbyHit,
@@ -163,6 +158,8 @@ type CardRow = {
   name?: string | null;
   google_name?: string | null;
   category?: string | null;
+  plan?: string | null;
+  partner?: boolean | null;
   lat?: number | null;
   lng?: number | null;
   distance_km?: number | null;
@@ -228,9 +225,9 @@ Deno.serve(async (req) => {
 
   // Nearby pool admission: global operator filters plus Map floors
   // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
-  // Nearby uses its own large radius + distance order. Pay / Home GET and
+  // Nearby uses its own large radius + closest-N lanes. Pay / Home GET and
   // bbox callers keep global filters only. Google fill is client opt-in AND
-  // operator googleFill AND at least one type battery on.
+  // operator googleFill AND googleCount > 0 AND at least one type battery on.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
@@ -272,10 +269,10 @@ Deno.serve(async (req) => {
     filtered = applyBboxPredicate(filtered, bboxDecision.bbox);
   }
 
-  // Google-fill must not order by created_at. Newest-N drops an old listed
-  // place and lets Google paint it as a yellow stub. Listed-only keeps
-  // newest-first then distance-sorts in memory (mobile Search).
-  const page = googleFill
+  // Nearby must not order by created_at. Newest-N drops an old listed
+  // place from its lane (and, on web, lets Google paint it as a gray stub).
+  // Pay / Home / bbox keep newest-first.
+  const page = isNearby
     ? await filtered.limit(scanLimit)
     : await filtered.order("created_at", { ascending: false }).limit(scanLimit);
   const { data, error, count } = page;
@@ -290,14 +287,18 @@ Deno.serve(async (req) => {
     let mesitaRows = (data ?? []) as unknown as CardRow[];
 
     if (!googleFill) {
-      const cap = Math.min(limit, MESITA_NEARBY_MAX);
       const admitted = admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity);
-      const listed = sortByDistance(admitted.listed, lat, lng)
-        .filter((row) =>
-          haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <=
-            nearbyRadiusKm
-        )
-        .slice(0, cap)
+      const inRadius = admitted.listed.filter((row) =>
+        haversineKm(lat, lng, row.lat ?? null, row.lng ?? null) <= nearbyRadiusKm
+      );
+      const listed = mergeNearbyCatalog(
+        inRadius,
+        [],
+        center,
+        nearbyLanesFromMap(cfg.map),
+      )
+        .slice(0, limit)
+        .flatMap((item) => item.kind === "listed" ? [item.row] : [])
         .map((row) => ({
           ...row,
           distance_km: roundedKm(lat, lng, row.lat, row.lng),
@@ -366,7 +367,12 @@ Deno.serve(async (req) => {
       cfg.map,
       cfg.params.popularity,
     );
-    const merged = mergeNearbyCatalog(admitted.listed, admitted.google, center);
+    const merged = mergeNearbyCatalog(
+      admitted.listed,
+      admitted.google,
+      center,
+      nearbyLanesFromMap(cfg.map),
+    ).slice(0, limit);
     const places = withFamilyKeysList(
       merged.map((item) => {
         if (item.kind === "listed") {
