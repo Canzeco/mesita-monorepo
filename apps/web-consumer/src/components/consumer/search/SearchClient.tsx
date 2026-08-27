@@ -236,13 +236,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       seenLocationKey.current = null;
       return;
     }
-    if (seenLocationKey.current == null) {
-      seenLocationKey.current = locationKey;
-      return;
-    }
     if (seenLocationKey.current === locationKey) return;
+
+    const [latRaw, lngRaw] = locationKey.split(",");
+    const next = { lat: Number(latRaw), lng: Number(lngRaw) };
+    const firstFix = seenLocationKey.current == null;
     seenLocationKey.current = locationKey;
-    forceNextLoad.current = true;
+
+    // First GPS at mount: the first tile idle fetches that camera. A
+    // later fix, or a first fix after the default-city tile already
+    // loaded, reloads once when Recentre settles.
+    if (
+      !firstFix ||
+      catalogIsStale(lastFetchedCenter.current, next)
+    ) {
+      forceNextLoad.current = true;
+    }
   }, [locationKey]);
 
   // End the current Places autocomplete session and mint the next one.

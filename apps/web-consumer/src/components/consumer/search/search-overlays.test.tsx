@@ -168,6 +168,13 @@ describe("Search map catalog reloads only when the guest asks", () => {
     expect(src).toContain("markViewport(box)");
     expect(src).toContain("forceNextLoad");
   });
+
+  it("reloads once when a later GPS fix lands off the fetched camera", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("firstFix");
+    expect(src).toMatch(/catalogIsStale\(lastFetchedCenter\.current, next\)/);
+    expect(src).toContain("forceNextLoad.current = true");
+  });
 });
 
 describe("Search map has no discovery filters", () => {
