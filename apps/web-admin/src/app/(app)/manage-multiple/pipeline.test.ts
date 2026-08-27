@@ -35,8 +35,12 @@ describe("the page chrome names the three surfaces", () => {
     expect(intake).toContain("EditPanel");
     expect(intake).toContain("alreadyExisted");
     expect(intake).toContain("Listed · Verified · Partner · Promoted");
+    expect(intake).toContain("Create runs every ID at once");
     expect(intake).toContain("Copy failed IDs");
-    expect(intake).toContain("const worker = async");
+    expect(intake).toContain("Promise.all(ids.map");
+    expect(intake).toContain("intakeShouldEnqueueEnrich");
+    expect(intake).not.toContain("CONCURRENCY");
+    expect(intake).not.toContain("const worker = async");
     expect(intake).not.toContain("Promoting");
     expect(edit).toContain("Listed");
     expect(edit).toContain("Verified");

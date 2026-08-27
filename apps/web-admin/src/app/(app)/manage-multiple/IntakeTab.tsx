@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Loader2, Play } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
@@ -8,13 +8,13 @@ import {
   searchPlacesByGoogleIds,
 } from "../manage-single/actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
+import {
+  intakeShouldEnqueueEnrich,
+  type IntakeAction,
+} from "./intake-batch";
 import { IdListField } from "./IdListField";
 import { EditPanel } from "./EditTab";
 import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
-
-const CONCURRENCY = 4;
-
-type IntakeAction = "create" | "enrich" | "create_enrich";
 
 type Row = {
   status: BatchRowStatus;
@@ -62,28 +62,7 @@ export function IntakeTab({
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
     const ids = [...placeIds];
-    let cursor = 0;
-    const worker = async () => {
-      while (cursor < ids.length) {
-        const id = ids[cursor++];
-        setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
-        try {
-          const row = await runOne(id, action);
-          setResults((prev) => ({ ...prev, [id]: row }));
-        } catch (err) {
-          setResults((prev) => ({
-            ...prev,
-            [id]: {
-              status: "error",
-              error: err instanceof Error ? err.message : "Unexpected error",
-            },
-          }));
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
-    );
+    await Promise.all(ids.map((id) => runRow(id, action, setResults)));
     setRunning(null);
   }
 
@@ -105,6 +84,10 @@ export function IntakeTab({
 
       <div>
         <p className="text-muted-foreground type-eyebrow">Intake</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Create runs every ID at once. Enrich is queued; the Intaker runs one
+          place at a time.
+        </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
             label="Create"
@@ -229,24 +212,27 @@ function ActionButton({
   );
 }
 
-async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
-  if (action === "create") {
-    const r = await createPlaceFromGooglePlaceId(googleId);
-    if (!r.ok) return { status: "error", error: r.error };
-    if (r.alreadyExisted) {
-      return {
-        status: "existed",
-        name: r.name,
-        detail: "Already on Mesita — skipped create",
-      };
-    }
-    return {
-      status: "ok",
-      name: r.name,
-      detail: r.enrichmentTriggered ? "Created" : "Created · enrich not queued",
-    };
+async function runRow(
+  googleId: string,
+  action: IntakeAction,
+  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
+): Promise<void> {
+  setResults((prev) => ({ ...prev, [googleId]: { status: "running" } }));
+  try {
+    const row = await runOne(googleId, action);
+    setResults((prev) => ({ ...prev, [googleId]: row }));
+  } catch (err) {
+    setResults((prev) => ({
+      ...prev,
+      [googleId]: {
+        status: "error",
+        error: err instanceof Error ? err.message : "Unexpected error",
+      },
+    }));
   }
+}
 
+async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
   if (action === "enrich") {
     const found = await resolveMesitaId(googleId);
     if (!found.ok) return { status: "error", error: found.error };
@@ -261,21 +247,45 @@ async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
 
   const created = await createPlaceFromGooglePlaceId(googleId);
   if (!created.ok) return { status: "error", error: created.error };
-  const en = await enrichPlace(created.projectId, "full");
-  if (!en.ok) {
+
+  const enqueue = intakeShouldEnqueueEnrich({
+    action,
+    enrichmentTriggered: created.enrichmentTriggered,
+  });
+  if (enqueue) {
+    const en = await enrichPlace(created.projectId, "full");
+    if (!en.ok) {
+      return {
+        status: "error",
+        name: created.name,
+        error: created.alreadyExisted
+          ? `Already on Mesita · enrich not queued: ${en.error}`
+          : `Created · enrich not queued: ${en.error}`,
+      };
+    }
     return {
-      status: "error",
+      status: created.alreadyExisted ? "existed" : "enriching",
       name: created.name,
-      error: created.alreadyExisted
-        ? `Already on Mesita · enrich failed: ${en.error}`
-        : `Created · enrich failed: ${en.error}`,
+      detail: created.alreadyExisted
+        ? "Already on Mesita — enrich queued"
+        : "Created · enrich queued",
+    };
+  }
+
+  if (created.alreadyExisted) {
+    return {
+      status: "existed",
+      name: created.name,
+      detail: "Already on Mesita — skipped create",
     };
   }
   return {
-    status: created.alreadyExisted ? "existed" : "enriching",
+    status: action === "create_enrich" && created.enrichmentTriggered
+      ? "enriching"
+      : "ok",
     name: created.name,
-    detail: created.alreadyExisted
-      ? "Already on Mesita — enriching from zero"
-      : "Created · enriching from zero",
+    detail: created.enrichmentTriggered
+      ? "Created · enrich queued"
+      : "Created · enrich not queued",
   };
 }
