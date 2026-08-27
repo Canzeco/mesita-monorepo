@@ -1,7 +1,10 @@
-// Map catalog = three closest-N lanes, then one list in this order:
+// Map catalog = three closest-N lanes, then one list after dropping overlaps:
 //   1. closest partnerCount Mesita partners (plan ≠ free)
-//   2. closest notPartnerCount Mesita not-partners
-//   3. closest googleCount Google Nearby hits that are not already on Mesita
+//   2. closest mesitaCount Mesita places (partners included)
+//   3. closest googleCount Google Nearby hits
+// Partners ⊆ Mesita ⊆ Google, so the same venue can land in more than one
+// lane. Merge is concatenate after dropping concurrencies: Partners, then
+// Mesita, then Google. Union 20–40 at defaults (10 + 10 + 20).
 // Dedup Google against every known Mesita Place ID (not just the tops), so a
 // listed place that missed its lane never comes back as a gray stub.
 // Google maxes a Nearby call at 20; type batteries ride that one call.
@@ -22,7 +25,7 @@ import {
 } from "./geo.ts";
 
 export const MESITA_NEARBY_MAX =
-  DEFAULT_MAP.partnerCount + DEFAULT_MAP.notPartnerCount;
+  DEFAULT_MAP.partnerCount + DEFAULT_MAP.mesitaCount;
 export const GOOGLE_NEARBY_MAX = 20;
 export const CATALOG_NEARBY_MAX = MESITA_NEARBY_MAX + DEFAULT_MAP.googleCount;
 export const CATALOG_NEARBY_HARD_MAX = 60;
@@ -255,7 +258,7 @@ export type MesitaNearbyRow = {
 
 export type NearbyLaneCaps = {
   partnerCount: number;
-  notPartnerCount: number;
+  mesitaCount: number;
   googleCount: number;
 };
 
@@ -266,7 +269,7 @@ export type NearbyMerged<T> =
 export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
   return {
     partnerCount: map.partnerCount,
-    notPartnerCount: map.notPartnerCount,
+    mesitaCount: map.mesitaCount,
     googleCount: map.googleCount,
   };
 }
@@ -291,11 +294,9 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     center,
     lanes.partnerCount,
   );
-  const notPartners = takeClosest(
-    inMesita.filter((row) => !isMesitaPartnerRow(row)),
-    center,
-    lanes.notPartnerCount,
-  );
+  const mesitaLane = takeClosest(inMesita, center, lanes.mesitaCount);
+  const partnerIds = new Set(partners.map((row) => row.id));
+  const mesitaExtra = mesitaLane.filter((row) => !partnerIds.has(row.id));
   const knownMesitaIds = new Set(
     mesita
       .map((row) => row.google_place_id)
@@ -308,7 +309,7 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   ).filter((hit) => !knownMesitaIds.has(hit.placeId));
   return [
     ...partners.map((row) => ({ kind: "listed" as const, row })),
-    ...notPartners.map((row) => ({ kind: "listed" as const, row })),
+    ...mesitaExtra.map((row) => ({ kind: "listed" as const, row })),
     ...extraGoogle.map((hit) => ({ kind: "google" as const, hit })),
   ];
 }

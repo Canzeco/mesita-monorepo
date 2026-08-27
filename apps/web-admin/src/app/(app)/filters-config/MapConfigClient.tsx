@@ -1,7 +1,7 @@
 "use client";
 
-// Map hyperparameters — live. Three closest-N lanes become one catalog:
-// Mesita partners, then Mesita not-partners, then not on Mesita. Google
+// Map hyperparameters — live. Three closest-N lanes become one catalog
+// after dropping overlaps: Partners, then Mesita, then Google. Google
 // categories ride the Nearby call only.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -108,7 +108,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="What entities Search looks for. Closest N in each lane by Mesita geodistance, then one catalog: Partners, then not-partners, then not on Mesita. Google categories ride the Nearby call only. 0 on a lane is off."
+        subtitle="What entities Search looks for. Closest N in each lane, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Union 20–40 at defaults. Google categories ride the Nearby call only. 0 on a lane is off."
         status={
           <KnobStatus
             kind="enforced"
@@ -128,16 +128,16 @@ export function MapConfigClient({
           />
           <NumberField
             icon={<Store className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita not partners"
-            value={map.notPartnerCount}
+            label="Mesita places"
+            value={map.mesitaCount}
             min={0}
             max={MAP_LANE_COUNT_MAX}
             disabled={pending || loadBlocked}
-            onChange={(notPartnerCount) => patch({ notPartnerCount })}
+            onChange={(mesitaCount) => patch({ mesitaCount })}
           />
           <NumberField
             icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places (not on Mesita)"
+            label="Google places"
             value={map.googleCount}
             min={0}
             max={MAP_LANE_COUNT_MAX}

@@ -7,7 +7,7 @@
 //     (two knobs, one sheet). Discovery filters stay on Swipe — they never
 //     cut this map and there is no Adjust control here.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
-//     the camera (partners, then not-partners, then not on Mesita).
+//     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning reloads that set after a real camera move, not a one-pixel
 //     nudge. Tapping a map pin highlights + scrolls to the matching rail
 //     card; tapping a card opens the place page (Google-only stubs open

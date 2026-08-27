@@ -14,10 +14,10 @@
 //
 // THREE POST SHAPES:
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
-//     then not-partners. No Google stubs — mobile opens `/place/:id` and
+//     then Mesita. No Google stubs — mobile opens `/place/:id` and
 //     cannot host GooglePlaceSheet.
 //   { google: true, lat, lng, limit? } — web Search catalog. Three lanes:
-//     closest partners, then not-partners, then Google Nearby among enabled
+//     closest partners, then Mesita, then Google Nearby among enabled
 //     categories. Mesita Place IDs never stub. Google fill is metered per
 //     connecting IP (CF-Connecting-IP / rightmost XFF, 45/60s) plus a
 //     600/60s global cap, only when this isolate is about to fire the one

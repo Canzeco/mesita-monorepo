@@ -191,7 +191,7 @@ export type ViewportPlaces = {
   reloadMinKm?: number;
 };
 
-/** Search map catalog: partners, then not-partners, then Google around a camera. */
+/** Search map catalog: partners, then Mesita, then Google around a camera. */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },

@@ -1,8 +1,9 @@
 // Map hyperparameters — Discovery › Map (`discovery_config.map`).
 //
 // Search allowlist for guest map, name search, admin Google Search, and
-// Create. Nearby catalog is three closest-N lanes (partners, not-partners,
-// Google). Type batteries ride the Google call only. Floors exclude.
+// Create. Nearby catalog is three closest-N lanes (partners, Mesita,
+// Google) merged after dropping overlaps. Type batteries ride the Google
+// call only. Floors exclude.
 // googleFill AND googleCount > 0 gate the billed Nearby call.
 //
 // Swipe listed admission uses the same type batteries + floors (Pato:

@@ -11,9 +11,9 @@
 //
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
-//   MAP       partnerCount · notPartnerCount · googleCount · type
+//   MAP       partnerCount · mesitaCount · googleCount · type
 //             batteries (Google pipeline only). Floors stay on the blob.
-//             Nearby: closest partners, then not-partners, then Google.
+//             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
 //             Enforced by list-places, discover-places, suggest-places,
 //             consumer-search-lane, create-place.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
@@ -82,7 +82,7 @@ export type MapConfig = {
   reloadMinKm: number;
   googleFill: boolean;
   partnerCount: number;
-  notPartnerCount: number;
+  mesitaCount: number;
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -136,7 +136,7 @@ export const MAP_RELOAD_MIN_KM_MIN = 1;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
 export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
-export const MAP_NOT_PARTNER_COUNT_DEFAULT = 10;
+export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
@@ -233,7 +233,7 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 5,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
-  notPartnerCount: MAP_NOT_PARTNER_COUNT_DEFAULT,
+  mesitaCount: MAP_MESITA_COUNT_DEFAULT,
   googleCount: MAP_GOOGLE_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
@@ -312,7 +312,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Three closest-N lanes, then one catalog: Mesita partners, then Mesita not-partners, then not on Mesita. Partner and not-partner use internal geodistance. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm.",
+    process: "Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use internal geodistance. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -673,8 +673,13 @@ export function coerceMap(raw: unknown): MapConfig {
     partnerCount: Math.round(
       num(m.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),
     ),
-    notPartnerCount: Math.round(
-      num(m.notPartnerCount, DEFAULT_MAP.notPartnerCount, 0, MAP_LANE_COUNT_MAX),
+    mesitaCount: Math.round(
+      num(
+        m.mesitaCount ?? m.notPartnerCount,
+        DEFAULT_MAP.mesitaCount,
+        0,
+        MAP_LANE_COUNT_MAX,
+      ),
     ),
     googleCount: Math.round(
       num(m.googleCount, DEFAULT_MAP.googleCount, 0, MAP_LANE_COUNT_MAX),

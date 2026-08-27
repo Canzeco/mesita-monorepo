@@ -32,9 +32,10 @@ describe("Discovery function APIs", () => {
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    expect(map?.process).toMatch(/partners/);
-    expect(map?.process).toMatch(/not-partners/);
-    expect(map?.process).toMatch(/not on Mesita/);
+    expect(map?.process).toMatch(/Partners/);
+    expect(map?.process).toMatch(/Mesita/);
+    expect(map?.process).toMatch(/Google/);
+    expect(map?.process).toMatch(/overlaps/);
     expect(map?.process).toMatch(/reloadMinKm/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
@@ -42,13 +43,14 @@ describe("Discovery function APIs", () => {
 
   it("coerceConfig defaults map lane caps on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).map.partnerCount).toBe(10);
-    expect(coerceConfig({ weights: {}, slotting: {} }).map.notPartnerCount).toBe(10);
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.mesitaCount).toBe(10);
     expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
     expect(coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map).toMatchObject({
       partnerCount: 20,
-      notPartnerCount: 10,
+      mesitaCount: 10,
       googleCount: 0,
     });
+    expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
   });
 
   it("catalog() is live rails over Mesita search, no vendor API", () => {
