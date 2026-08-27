@@ -36,7 +36,10 @@ import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } f
 import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
-import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import {
+  applyGeneralCategoryCap,
+  loadDiscoveryConfig,
+} from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import {
@@ -230,7 +233,7 @@ Deno.serve(async (req) => {
   // operator googleFill AND googleCount > 0 AND at least one type battery on.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
-    ? await loadDiscoveryConfig(adminClient(efEnv.env))
+    ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map);

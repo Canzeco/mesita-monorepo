@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   coerceConfig,
   DEFAULT_CATALOG,
+  DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
   DEFAULT_SOCIAL,
@@ -148,6 +149,13 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).not.toMatch(/slot bought/);
   });
 
+  it("coerceConfig defaults general.categoryCount to 5 and clamps 0–5", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
+    expect(coerceConfig({ general: { categoryCount: 99 } }).general.categoryCount).toBe(5);
+    expect(coerceConfig({ general: { categoryCount: -1 } }).general.categoryCount).toBe(0);
+    expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
+  });
+
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
@@ -178,18 +186,22 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("renders Name · Map · Swipe · Catalog · Chat · Social · Favs", () => {
+  it("renders General · Fast Search · Deep Search · Map · Swipe · Catalog · Chat · Social · Favs", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
+    const general = readFileSync(join(__dirname, "GeneralConfigClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
     const social = readFileSync(join(__dirname, "SocialConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
 
+    expect(general).toContain('title="General"');
     expect(name).toContain('title="Fast Search"');
     expect(name).toContain('title="Deep Search"');
+    expect(name).not.toContain('title="Search"');
+    expect(page).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe"');
     expect(catalog).toContain('title="Catalog is coming soon"');
@@ -205,6 +217,7 @@ describe("Discovery page box order", () => {
 
     const jsx = page.slice(page.indexOf("return ("));
     const order = [
+      "GeneralConfigClient",
       "NameConfigClient",
       "MapConfigClient",
       "SwipeConfigClient",

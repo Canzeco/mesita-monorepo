@@ -32,7 +32,11 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import { parseCldrRegionCode } from "../_shared/sourcing.ts";
-import { loadDiscoveryConfig, type MapConfig } from "../_shared/discovery-config.ts";
+import {
+  applyGeneralCategoryCap,
+  loadDiscoveryConfig,
+  type MapConfig,
+} from "../_shared/discovery-config.ts";
 import { evaluatePlaceForMap } from "../_shared/map-engine.ts";
 import {
   fetchPlaceLiteById,
@@ -83,7 +87,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
-  const map = (await loadDiscoveryConfig(admin)).map;
+  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
 
   const bodyRes = await readJson<RequestBody>(req);
   if (!bodyRes.ok) return bodyRes.response;

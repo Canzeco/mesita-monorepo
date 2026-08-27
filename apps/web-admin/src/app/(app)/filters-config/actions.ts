@@ -29,6 +29,7 @@ type UpdateDiscoveryConfigResult =
   | { ok: false; error: string };
 
 export type DiscoverySlice =
+  | "general"
   | "catalog"
   | "social"
   | "chat"
@@ -44,10 +45,12 @@ export async function updateDiscoveryConfig(
   const live = await getDiscoveryConfig();
   if (!live.ok) return live;
   const keys = new Set(
-    slices ?? (["catalog", "social", "chat", "map", "nameFast", "nameDeep", "swipe"] as const),
+    slices ??
+      (["general", "catalog", "social", "chat", "map", "nameFast", "nameDeep", "swipe"] as const),
   );
   const next: DiscoveryConfig = {
     ...live.config,
+    general: keys.has("general") ? config.general : live.config.general,
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
     map: keys.has("map") ? config.map : live.config.map,
     name: {

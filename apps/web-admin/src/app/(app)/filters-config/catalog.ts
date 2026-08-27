@@ -6,9 +6,11 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML order: Name (Fast · Deep) · Map · Swipe · Catalog · Chat ·
-// Social · Favs. Signals Soon.
+// Live HTML order: General · Name (Fast · Deep) · Map · Swipe · Catalog ·
+// Chat · Social · Favs. Signals Soon.
 //
+//   GENERAL   categoryCount — first N of NEARBY_TYPE_KEYS any engine may
+//             use. Engine type toggles stay on Fast / Deep / Map.
 //   NAME      two boxes on `discovery_config.name`.
 //             Fast  count + Google categories. Autocomplete while typing.
 //             Deep  partnerCount · mesitaCount · googleCount + Google
@@ -87,12 +89,17 @@ export type SwipeConfig = {
   savedAt: string | null;
 };
 
+export type GeneralConfig = {
+  categoryCount: number;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
   slotting: { enabled: boolean; everyNth: number };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  general: GeneralConfig;
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
@@ -123,6 +130,10 @@ export const NEARBY_TYPE_KEYS = [
   "night_club",
   "bakery",
 ] as const;
+
+/** Discovery-wide cap on how many of `NEARBY_TYPE_KEYS` any engine may use. */
+export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
+export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 export type MapConfig = {
@@ -330,6 +341,10 @@ export const DEFAULT_NAME: NameConfig = {
   deep: DEFAULT_NAME_DEEP,
 };
 
+export const DEFAULT_GENERAL: GeneralConfig = {
+  categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
+};
+
 export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
   none: 1,
   partner: 1.25,
@@ -383,6 +398,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   slotting: { enabled: true, everyNth: 5 },
   filters: { requireReady: true, minRating: 0, minReviews: 0, maxDistanceKm: 0 },
   engines: { swipe: { ranked: true } },
+  general: DEFAULT_GENERAL,
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
@@ -698,6 +714,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    general: coerceGeneral(r.general),
     catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
     name: coerceName(r.name),
@@ -834,6 +851,20 @@ export function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean
       : DEFAULT_MAP_TYPES[key];
   }
   return types;
+}
+
+export function coerceGeneral(raw: unknown): GeneralConfig {
+  const g = (raw ?? {}) as Record<string, unknown>;
+  return {
+    categoryCount: Math.round(
+      num(
+        g.categoryCount,
+        DEFAULT_GENERAL.categoryCount,
+        0,
+        GENERAL_CATEGORY_COUNT_MAX,
+      ),
+    ),
+  };
 }
 
 export function coerceName(raw: unknown): NameConfig {

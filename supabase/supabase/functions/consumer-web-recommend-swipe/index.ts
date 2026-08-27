@@ -36,7 +36,10 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
-import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import {
+  applyGeneralCategoryCap,
+  loadDiscoveryConfig,
+} from "../_shared/discovery-config.ts";
 import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import { applyDiscoveryFilters, trimToRadius } from "../_shared/discovery-filters.ts";
 import {
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
-  const cfg = await loadDiscoveryConfig(admin);
+  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
   const geo = {
     lat: typeof body.lat === "number" ? body.lat : null,
     lng: typeof body.lng === "number" ? body.lng : null,

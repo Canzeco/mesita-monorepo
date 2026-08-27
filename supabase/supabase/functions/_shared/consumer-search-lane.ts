@@ -35,6 +35,7 @@ import {
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
 import {
+  applyGeneralCategoryCap,
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
@@ -264,7 +265,7 @@ export async function runConsumerSearchLane(
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
-  const cfg = await loadDiscoveryConfig(admin);
+  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
   const mode = resolveMode(args.mode);
 
   const predictions = mode === "deep"
