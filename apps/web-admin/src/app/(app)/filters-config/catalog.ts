@@ -23,13 +23,13 @@
 //   SWIPE     radiusKm · closingBufferMin · weightProximity · starsExponent ·
 //             logDivisor · partnerBias · randomnessMax · categoryFilter · minReviews.
 //             Enforced by consumer-web-recommend-swipe.
-//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
-//             Enforced by consumer-web-list-catalog.
+//   CATALOG   Soon empty box. seedCount · generatedCount · placesPerRail ·
+//             minSeedPlaces persist on the blob; no HTML knobs.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
 //             are listed in the box — display only, not knobs.
-//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
-//             horizonDays. Staged — no Social/events engine yet.
-//   FAVS      no knobs. Home parked.
+//   SOCIAL    Soon empty box. seedCount · generatedCount · eventsPerRail ·
+//             minSeedEvents · horizonDays persist on the blob; no events engine.
+//   FAVS      no knobs. Home › Favorites is live.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
@@ -449,9 +449,9 @@ export const ENGINES: {
     label: "Catalog",
     fn: "catalog()",
     input: "Ready pool.",
-    process: "Random Atlas seed rails plus vibe-query rails. Mesita embedding search per query; ILIKE if embed fails. No Google.",
-    output: "Stacked catalog rails.",
-    state: "LIVE",
+    process: "Parked. Home Catalog waits on a thicker listed set. Rails stay on disk. Admin box is Soon; knobs persist on the blob.",
+    output: "Stacked catalog rails, when unparked.",
+    state: "PARKED",
     wired: null,
     apis: [],
   },
@@ -471,7 +471,7 @@ export const ENGINES: {
     label: "Social",
     fn: "social()",
     input: "Upcoming events at listed places (happenings, not venues).",
-    process: "Parked. Staged Discovery knobs persist; no events engine yet. Will query events, not places.",
+    process: "Parked. Admin box is Soon; knobs persist on the blob; no events engine yet. Will query events, not places.",
     output: "Event rails on Home › Social, when unparked.",
     state: "PARKED",
     wired: null,

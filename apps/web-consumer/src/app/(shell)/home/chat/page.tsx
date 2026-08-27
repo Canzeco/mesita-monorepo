@@ -1,8 +1,13 @@
-import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+"use client";
 
-// Chat is parked with the rest of Home. Unpark via HomeModeNav + remounting
-// AskAiTab (the page body is in git history).
+import { AskAiTab } from "@/components/consumer/home/AskAiTab";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+
 export default function HomeChatPage() {
-  redirect(CONSUMER_ROUTES.homeDefault);
+  const { places } = useHomeDeck();
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <AskAiTab places={places} />
+    </div>
+  );
 }
