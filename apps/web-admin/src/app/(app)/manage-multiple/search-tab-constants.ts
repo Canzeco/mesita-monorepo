@@ -12,6 +12,7 @@ export const EXAMPLE_QUERIES = [
 // policy. Rating / review floors and types live on Discovery › Map
 // for text hits AND named Place IDs.
 export const RESULTS_OPTIONS: { label: string; value: number }[] = [
+  { label: "1", value: 1 },
   { label: "10", value: 10 },
   { label: "20", value: 20 },
   { label: "50", value: 50 },
