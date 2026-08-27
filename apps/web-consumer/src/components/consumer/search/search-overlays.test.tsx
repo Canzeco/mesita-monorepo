@@ -423,7 +423,9 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(client).toContain("railCenterIndex");
     expect(client).toContain("setSelectedId(id)");
     expect(client).toContain("defaultRailSelection");
+    expect(client).toContain("railSelectedId");
     expect(client).toContain("idx === railIndex");
+    expect(client).not.toContain("setSelectedId(next)");
     expect(client).toContain('inline: "center"');
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");

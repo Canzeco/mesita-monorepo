@@ -391,6 +391,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     router.push(placeHref(place.slug || place.id));
   };
 
+  // Center page is selected even before a tap or flick writes state —
+  // first load and a catalog that dropped the old id both light card 0.
+  const railSelectedId = defaultRailSelection(
+    catalog.map((p) => p.id),
+    selectedId,
+  );
+
   const handleSelectPin = (pin: SearchMapPin) => {
     const prediction =
       predictions.find((p) => p.mesitaId === pin.id || p.placeId === pin.id) ??
@@ -400,7 +407,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         : null);
     const place = catalog.find((p) => p.id === pin.id);
     const action = overlayPinDecision({
-      selectedId,
+      selectedId: railSelectedId,
       pinId: pin.id,
       googleOnly: prediction?.status === "not_in_mesita",
       inCatalog: Boolean(place),
@@ -492,33 +499,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     setSelectedId(place.id);
   };
 
-  // A catalog with no selection (first load, or Search here replaced the
-  // set) always lights the first card — that is the rail's center page.
-  useEffect(() => {
-    const ids = catalog.map((p) => p.id);
-    const next = defaultRailSelection(ids, selectedId);
-    if (next === selectedId) return;
-    setSelectedId(next);
-    if (next === ids[0]) {
-      setRailIndex(0);
-      railScrollRef.current?.scrollTo({ left: 0, behavior: "auto" });
-    }
-  }, [catalog, selectedId]);
-
   // Center the rail card for the selected place once the rail is on screen.
   // Skip when the pager already names that card — scroll itself selected
   // it, and scrollIntoView would fight the flick. Pin taps still land here
   // because they change selectedId while railIndex is stale.
   useEffect(() => {
-    if (!idle || railCollapsed || !selectedId) return;
-    const idx = catalog.findIndex((p) => p.id === selectedId);
+    if (!idle || railCollapsed || !railSelectedId) return;
+    const idx = catalog.findIndex((p) => p.id === railSelectedId);
     if (idx < 0 || idx === railIndex) return;
-    railRefs.current.get(selectedId)?.scrollIntoView({
+    railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
       block: "nearest",
     });
-  }, [idle, railCollapsed, selectedId, catalog, railIndex]);
+  }, [idle, railCollapsed, railSelectedId, catalog, railIndex]);
 
   const handleUseLocation = () => {
     setLocating(true);
@@ -572,7 +566,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         places={catalog}
         userLocation={userLocation}
         viewCenter={center}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
@@ -641,7 +635,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         catalogLoading={catalogLoading}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         railScrollRef={railScrollRef}
         onShowRail={() => setRailCollapsed(false)}
         onHideRail={() => setRailCollapsed(true)}
