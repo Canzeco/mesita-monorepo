@@ -106,6 +106,7 @@ export function GooglePlaceSheet({
                 src={photoUrl}
                 alt={`${prediction.mainText} — photo from Google`}
                 className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
                 onError={() => setPhotoFailed(true)}
               />
             ) : waiting ? (

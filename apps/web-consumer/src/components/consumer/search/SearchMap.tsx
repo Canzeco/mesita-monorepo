@@ -138,7 +138,7 @@ export function SearchMap({
 
   return (
     <div className="absolute inset-0">
-      <APIProvider apiKey={apiKey}>
+      <APIProvider apiKey={apiKey} libraries={["places"]}>
         <SearchMapCanvas
           places={places}
           userLocation={userLocation}
