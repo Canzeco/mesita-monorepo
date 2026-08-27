@@ -40,7 +40,25 @@ describe("Manage Single search chrome", () => {
     expect(src).not.toMatch(/py-12/);
     expect(src).not.toMatch(/min-h-\[70%\]/);
     expect(src).not.toMatch(/h-\[70%\]/);
-    expect(src).toContain("Looking up Google Places");
+    expect(src).toContain("searchOnQuery: false");
+    expect(src).toContain("Name Deep Search");
     expect(src).toContain("awaitingHits");
+    expect(src).not.toContain("Looking up Google Places");
+    expect(src).not.toContain("Not on Mesita");
+  });
+});
+
+describe("admin-web-suggest-places uses Name Deep Search", () => {
+  it("calls runConsumerSearchLane in deep mode", () => {
+    const ef = readFileSync(
+      join(
+        here,
+        "../../../../../../supabase/supabase/functions/admin-web-suggest-places/index.ts",
+      ),
+      "utf8",
+    );
+    expect(ef).toContain("runConsumerSearchLane");
+    expect(ef).toContain('mode: typeof body.mode === "string" ? body.mode : "deep"');
+    expect(ef).not.toContain('from "../_shared/suggest-places.ts"');
   });
 });

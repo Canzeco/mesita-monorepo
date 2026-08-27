@@ -1,10 +1,8 @@
 // Supabase Edge Function — admin-web-suggest-places (product caller)
 //
-// Google Places autocomplete for the admin console's Create Single Place
-// flow. Gates the request to super_admins, then runs the shared
-// Google + Mesita merge in-process (_shared/suggest-places.ts; the
-// enricher suggest-places HTTP hop was absorbed in MESITA-55) for the
-// existence + ownership flags on each prediction.
+// Manage Single Place name bar. Same Name Deep Search engine as consumer
+// Search (`runConsumerSearchLane`, mode deep): Partners · Mesita · Google,
+// one list after dropping overlaps. Super-admin gated.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -16,9 +14,15 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { suggestPlaces } from "../_shared/suggest-places.ts";
+import { runConsumerSearchLane } from "../_shared/consumer-search-lane.ts";
 
-type Body = { input?: string; sessionToken?: string; regionCode?: string };
+type Body = {
+  input?: string;
+  sessionToken?: string;
+  regionCode?: string;
+  country?: string;
+  mode?: string;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -38,12 +42,12 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
+  const country = (body.country ?? body.regionCode ?? "").toString().trim();
 
-  return await suggestPlaces(env, "admin-web-suggest-places", {
+  return await runConsumerSearchLane(env, "admin-web-suggest-places", {
     input: body.input,
     sessionToken: body.sessionToken,
-    regionCode: body.regionCode,
-    // Admin surface — no self/other split; claimed rows show as _other.
-    callerUserId: null,
+    country: country.length === 2 ? country : null,
+    mode: typeof body.mode === "string" ? body.mode : "deep",
   });
 });

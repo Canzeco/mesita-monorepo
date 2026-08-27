@@ -3,8 +3,8 @@
 // Consumer Search name-bar. Fast = Autocomplete (default). Deep = Partners
 // · Mesita · Google after idle, one list after dropping overlaps.
 // Membership is a boolean `partner` on each row; the client paints the
-// point and never shows source section labels. Admin/business suggest
-// facades still use suggestPlaces.
+// point and never shows source section labels. Admin Manage Single Place
+// uses the same lane (deep). Business suggest still uses suggestPlaces.
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 // Anonymous (anon key only, no user session) still get predictions.

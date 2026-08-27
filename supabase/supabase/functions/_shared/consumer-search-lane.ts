@@ -1,8 +1,9 @@
 // Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
 // Search (Partners · Mesita · Google) after idle.
 //
-// Used only by consumer-web-suggest-places. Admin/business still call
-// suggestPlaces (Autocomplete + Mesita ILIKE, Mesita-first sort).
+// Consumer Search and admin Manage Single Place (admin-web-suggest-places,
+// mode deep). Business still calls suggestPlaces (Autocomplete + Mesita
+// ILIKE, Mesita-first sort).
 //
 // Fast: Google Autocomplete, cap `name.fast.count`, Fast Google categories.
 // Deep: three lanes, then one list after dropping overlaps:

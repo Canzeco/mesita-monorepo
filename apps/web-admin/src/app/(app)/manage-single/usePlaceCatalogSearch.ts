@@ -8,6 +8,8 @@ const SEARCH_DEBOUNCE_MS = 1000;
 type Options = {
   /** When false, skip loading the full catalog until the user types. */
   browseOnEmpty?: boolean;
+  /** When false, empty-query browse only — name search uses Deep Search. */
+  searchOnQuery?: boolean;
   debounceMs?: number;
 };
 
@@ -30,7 +32,11 @@ function filterPlaces(places: PlaceHit[], query: string): PlaceHit[] {
 // visible state — hits, mode, pending, searchedQuery, error — is derived during
 // render from the query, the loaded catalog, and the last query-keyed result.
 export function usePlaceCatalogSearch(options: Options = {}) {
-  const { browseOnEmpty = true, debounceMs = SEARCH_DEBOUNCE_MS } = options;
+  const {
+    browseOnEmpty = true,
+    searchOnQuery = true,
+    debounceMs = SEARCH_DEBOUNCE_MS,
+  } = options;
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [catalog, setCatalog] = useState<PlaceHit[]>([]);
@@ -70,7 +76,7 @@ export function usePlaceCatalogSearch(options: Options = {}) {
   // errors are keyed by their query so render can tell fresh from stale.
   useEffect(() => {
     const query = debouncedQ.trim();
-    if (query.length < 2) return;
+    if (!searchOnQuery || query.length < 2) return;
     const id = ++requestIdRef.current;
     void (async () => {
       const r = await searchPlacesCatalog(query);
@@ -82,7 +88,7 @@ export function usePlaceCatalogSearch(options: Options = {}) {
       setRemoteError(null);
       setRemote({ query, hits: r.data });
     })();
-  }, [debouncedQ]);
+  }, [debouncedQ, searchOnQuery]);
 
   // ─── Derived view state (no effects, no cascading renders) ───
   const dq = debouncedQ.trim();
@@ -94,11 +100,13 @@ export function usePlaceCatalogSearch(options: Options = {}) {
   const hits: PlaceHit[] =
     dq.length < 2
       ? browseHits
-      : remote !== null && remote.query === dq
-        ? remote.hits
-        : catalog.length > 0
-          ? filterPlaces(catalog, dq) // optimistic local filter until remote lands
-          : [];
+      : !searchOnQuery
+        ? []
+        : remote !== null && remote.query === dq
+          ? remote.hits
+          : catalog.length > 0
+            ? filterPlaces(catalog, dq) // optimistic local filter until remote lands
+            : [];
 
   const searchedQuery = remoteReady ? dq : null;
   const error = remoteFailed && remoteError ? remoteError.message : catalogError;
@@ -109,8 +117,8 @@ export function usePlaceCatalogSearch(options: Options = {}) {
   // Spinner is on while the debounce is still settling (user typed ≥2) or a
   // remote search is in flight for the settled query.
   const waiting = qTrimmed.length >= 2 && qTrimmed !== dq;
-  const fetching = dq.length >= 2 && !remoteReady && !remoteFailed;
-  const searching = waiting || fetching;
+  const fetching = searchOnQuery && dq.length >= 2 && !remoteReady && !remoteFailed;
+  const searching = searchOnQuery && (waiting || fetching);
 
   const metaLabel =
     mode === "idle"

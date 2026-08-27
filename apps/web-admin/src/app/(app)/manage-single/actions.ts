@@ -854,7 +854,7 @@ export async function findPlaceByPlaceId(
   return { ok: true, found: true, place, link };
 }
 
-// ── Google Places autocomplete (create flow) ─────────────────────────────
+// ── Name Deep Search (same engine as consumer Search) ────────────────────
 
 export type PlacePredictionStatus =
   | "not_in_mesita"
@@ -867,6 +867,8 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   status: PlacePredictionStatus;
+  partner?: boolean;
+  mesitaId?: string;
 };
 
 export async function suggestPlaces(
@@ -882,7 +884,8 @@ export async function suggestPlaces(
   const r = await efInvoke<{ predictions: PlacePrediction[] }>("admin-web-suggest-places", {
     input: q,
     sessionToken,
-    ...(code.length === 2 ? { regionCode: code } : {}),
+    mode: "deep",
+    ...(code.length === 2 ? { country: code, regionCode: code } : {}),
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.predictions ?? [] };
