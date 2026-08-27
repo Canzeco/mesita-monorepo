@@ -24,6 +24,8 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   fetchGooglePlacePreview,
   isDisplayablePlacePhoto,
+  isEmptyGooglePlacePreview,
+  mergeGooglePlacePreview,
   type GooglePlacePreview,
 } from "@/lib/google-place-preview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -53,19 +55,22 @@ export function GooglePlaceSheet({
   const adding = addState === "adding";
   const added = addState === "added";
 
-  // The Map is the session memo; `hero` is what we paint. A later photo
-  // for the same place must setHero — setFetchedId(id) is a no-op then.
+  // Cache is the session memo. `hero` is the last settled fetch. Paint
+  // merges both so a later photo in the cache is never stuck behind a
+  // photo-less hero, and an empty refetch cannot wipe an address.
   const [fetchedId, setFetchedId] = useState<string | null>(null);
   const [hero, setHero] = useState<GooglePlacePreview | undefined>(undefined);
   const [photoFailed, setPhotoFailed] = useState(false);
   const cached = prediction ? profileCache.get(prediction.placeId) : undefined;
-  const profile =
-    fetchedId === prediction?.placeId && hero !== undefined ? hero : cached;
+  const profile = mergeGooglePlacePreview(
+    fetchedId === prediction?.placeId ? hero : undefined,
+    cached,
+  );
   const waiting = Boolean(
     open &&
       prediction &&
       apiKey &&
-      !isDisplayablePlacePhoto(profile?.photoUrl) &&
+      !isDisplayablePlacePhoto(profile.photoUrl) &&
       fetchedId !== prediction.placeId,
   );
 
@@ -80,12 +85,11 @@ export function GooglePlaceSheet({
       try {
         fetched = await fetchGooglePlacePreview(id, apiKey);
       } catch {
-        // Key can't reach Places (or network blip) — keep any earlier
-        // Maps preview; only cache empty on a first miss.
+        fetched = null;
       }
-      const next = fetched ?? existing ?? {};
-      if (fetched) profileCache.set(id, fetched);
-      else if (!existing) profileCache.set(id, next);
+      const next = mergeGooglePlacePreview(fetched, existing);
+      if (!isEmptyGooglePlacePreview(next)) profileCache.set(id, next);
+      else if (!existing) profileCache.set(id, {});
       if (!stale) {
         setPhotoFailed(false);
         setHero(next);

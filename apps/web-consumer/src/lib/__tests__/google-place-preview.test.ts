@@ -4,6 +4,8 @@ import {
   fetchGooglePlacePreview,
   GOOGLE_PREVIEW_FIELD_MASK,
   isDisplayablePlacePhoto,
+  isEmptyGooglePlacePreview,
+  mergeGooglePlacePreview,
   type PlacesLibraryLike,
 } from "@/lib/google-place-preview";
 
@@ -13,6 +15,39 @@ function jsonResponse(body: unknown, status = 200): Response {
     headers: { "Content-Type": "application/json" },
   });
 }
+
+describe("mergeGooglePlacePreview", () => {
+  it("keeps an earlier address when the later fetch is empty", () => {
+    expect(
+      mergeGooglePlacePreview(
+        {},
+        {
+          formattedAddress: "Ignacio Zaragoza 226, Monterrey",
+          googleMapsUri: "https://maps.google.com/?cid=1",
+        },
+      ),
+    ).toEqual({
+      formattedAddress: "Ignacio Zaragoza 226, Monterrey",
+      googleMapsUri: "https://maps.google.com/?cid=1",
+    });
+  });
+
+  it("paints a cached photo over a photo-less hero", () => {
+    expect(
+      mergeGooglePlacePreview(
+        { formattedAddress: "Monterrey" },
+        { photoUrl: "https://lh3.googleusercontent.com/p/eden" },
+      ),
+    ).toEqual({
+      photoUrl: "https://lh3.googleusercontent.com/p/eden",
+      formattedAddress: "Monterrey",
+    });
+    expect(isEmptyGooglePlacePreview({})).toBe(true);
+    expect(
+      isEmptyGooglePlacePreview({ formattedAddress: "Monterrey" }),
+    ).toBe(false);
+  });
+});
 
 describe("isDisplayablePlacePhoto", () => {
   it("accepts googleusercontent and rejects the Places media URL", () => {
