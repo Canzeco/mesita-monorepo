@@ -69,7 +69,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[0].id}
         tint="sky"
         title={PIPELINE_STEPS[0].label}
-        blurb="Free text or Google Place IDs. Country optional."
+        blurb="One query per line, or Google Place IDs. Country optional."
       >
         <SearchTab
           onSendIds={(ids) => {

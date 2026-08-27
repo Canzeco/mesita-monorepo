@@ -27,28 +27,40 @@ export function parseGooglePlaceIds(
   return out;
 }
 
-/** Split a Google Search bar: Place-ID tokens vs leftover free text. */
+/**
+ * Split the Google Search bar. One query per non-empty line. Place-ID
+ * tokens peel off each line; leftover words on that line are one query.
+ */
 export function splitSearchBarInput(raw: string): {
   placeIds: string[];
-  query: string | null;
+  queries: string[];
 } {
-  const tokens = raw
-    .split(/[\s,]+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
   const placeIds: string[] = [];
-  const text: string[] = [];
-  const seen = new Set<string>();
-  for (const tok of tokens) {
-    if (isGooglePlaceId(tok)) {
-      if (!seen.has(tok)) {
-        seen.add(tok);
-        placeIds.push(tok);
+  const queries: string[] = [];
+  const seenIds = new Set<string>();
+  const seenQueries = new Set<string>();
+  for (const line of raw.split(/\r?\n/)) {
+    const tokens = line
+      .split(/[\s,]+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (tokens.length === 0) continue;
+    const text: string[] = [];
+    for (const tok of tokens) {
+      if (isGooglePlaceId(tok)) {
+        if (!seenIds.has(tok)) {
+          seenIds.add(tok);
+          placeIds.push(tok);
+        }
+      } else {
+        text.push(tok);
       }
-    } else {
-      text.push(tok);
     }
+    if (text.length === 0) continue;
+    const query = text.join(" ");
+    if (seenQueries.has(query)) continue;
+    seenQueries.add(query);
+    queries.push(query);
   }
-  const query = text.length > 0 ? text.join(" ") : null;
-  return { placeIds, query };
+  return { placeIds, queries };
 }

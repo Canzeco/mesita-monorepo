@@ -64,10 +64,7 @@ export function SearchTab({
   const [copied, setCopied] = useState<string | null>(null);
 
   const parsed = useMemo(() => splitSearchBarInput(bar), [bar]);
-  const queries = useMemo(
-    () => (parsed.query ? [parsed.query] : []),
-    [parsed],
-  );
+  const queries = parsed.queries;
   const placeIds = parsed.placeIds;
   const unitCount = queries.length + placeIds.length;
 
@@ -145,21 +142,27 @@ export function SearchTab({
         }}
       >
         <div className="border-border/60 bg-muted/60 focus-within:border-ring/60 focus-within:ring-ring/10 rounded-xl border transition focus-within:ring-4">
-          <div className="flex items-center gap-2 px-3">
-            <Search className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-            <input
-              type="search"
+          <div className="flex items-start gap-2 px-3 pt-2">
+            <Search className="text-muted-foreground mt-2.5 h-4 w-4 shrink-0" aria-hidden />
+            <textarea
               value={bar}
               onChange={(e) => setBar(e.target.value)}
-              placeholder="Free text or Google Place IDs"
-              aria-label="Google search"
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void runSearch();
+                }
+              }}
+              placeholder="One query per line, or Google Place IDs"
+              aria-label="Google search, one query per line"
               spellCheck={false}
-              className="placeholder:text-muted-foreground/50 h-12 min-w-0 flex-1 bg-transparent text-sm outline-none"
+              rows={4}
+              className="placeholder:text-muted-foreground/50 min-h-16 max-h-64 min-w-0 flex-1 resize-y bg-transparent py-2 text-sm leading-relaxed outline-none"
             />
             <button
               type="submit"
               disabled={running || unitCount === 0 || overLimit}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex h-9 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-50"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 mt-1.5 inline-flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-semibold disabled:opacity-50"
             >
               {running ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -171,7 +174,7 @@ export function SearchTab({
           </div>
           <div className="border-border text-muted-foreground flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2 text-xs">
             <span>
-              {parsed.query ? "1 query" : "0 queries"}
+              {queries.length} {queries.length === 1 ? "query" : "queries"}
               {parsed.placeIds.length > 0
                 ? ` · ${parsed.placeIds.length} Place ID${parsed.placeIds.length === 1 ? "" : "s"}`
                 : ""}
