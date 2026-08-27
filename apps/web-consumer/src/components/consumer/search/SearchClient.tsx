@@ -9,9 +9,10 @@
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning never reloads that set — Search here under the bar does,
-//     from the reticle at the canvas center. Tapping a map pin highlights
-//     + scrolls to the matching rail card; tapping a card opens the place
-//     page (Google-only stubs open GooglePlaceSheet).
+//     from the reticle at the canvas center. The rail's center card is
+//     always the selected pin. Scroll picks the center; a pin tap
+//     scrolls that card to center. Tapping the already-selected card
+//     opens the place (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
 //     after the guest stops, Deep Search replaces that list (Partners ·
 //     Mesita · Google). One Google session token per autocomplete session.
@@ -54,8 +55,10 @@ import {
 } from "./search-catalog-overlays";
 import {
   catalogIsStale,
+  defaultRailSelection,
   matchPredictionToPlace,
   newSessionToken,
+  railCenterIndex,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -474,8 +477,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * 0.8;
     if (page <= 0) return;
-    const idx = Math.round(el.scrollLeft / page);
-    setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
+    const next = railCenterIndex(el.scrollLeft, page, catalog.length);
+    setRailIndex(next);
+    const id = catalog[next]?.id;
+    if (id) setSelectedId(id);
   };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
@@ -487,18 +492,33 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     setSelectedId(place.id);
   };
 
+  // A catalog with no selection (first load, or Search here replaced the
+  // set) always lights the first card — that is the rail's center page.
+  useEffect(() => {
+    const ids = catalog.map((p) => p.id);
+    const next = defaultRailSelection(ids, selectedId);
+    if (next === selectedId) return;
+    setSelectedId(next);
+    if (next === ids[0]) {
+      setRailIndex(0);
+      railScrollRef.current?.scrollTo({ left: 0, behavior: "auto" });
+    }
+  }, [catalog, selectedId]);
+
   // Center the rail card for the selected place once the rail is on screen.
-  // An effect (not the tap handlers) because a search pick mounts the rail
-  // on the SAME commit that sets the selection — the card ref only exists
-  // after that render; it also re-centers when a dismissed rail reopens.
+  // Skip when the pager already names that card — scroll itself selected
+  // it, and scrollIntoView would fight the flick. Pin taps still land here
+  // because they change selectedId while railIndex is stale.
   useEffect(() => {
     if (!idle || railCollapsed || !selectedId) return;
+    const idx = catalog.findIndex((p) => p.id === selectedId);
+    if (idx < 0 || idx === railIndex) return;
     railRefs.current.get(selectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
       block: "nearest",
     });
-  }, [idle, railCollapsed, selectedId]);
+  }, [idle, railCollapsed, selectedId, catalog, railIndex]);
 
   const handleUseLocation = () => {
     setLocating(true);
