@@ -6,8 +6,8 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML order: General · Name (Fast · Deep) · Map · Swipe · Catalog ·
-// Chat · Social · Favs. Signals Soon.
+// Live HTML order: General · Name (Fast Search) · Name (Deep Search) ·
+// Map · Swipe · Catalog · Chat · Social · Favorites · Signals.
 //
 //   GENERAL   categoryCount — first N of NEARBY_TYPE_KEYS any engine may
 //             use. Engine type toggles stay on Fast / Deep / Map.
@@ -31,10 +31,13 @@
 //             are listed in the box — display only, not knobs.
 //   SOCIAL    Soon empty box. seedCount · generatedCount · eventsPerRail ·
 //             minSeedEvents · horizonDays persist on the blob; no events engine.
-//   FAVS      no knobs. Home › Favorites is live.
+//   FAVORITES no knobs. Home › Favorites is live.
+//   SIGNALS   reusable library: Proximity · Timing · Popularity ·
+//             Promoting · Semantic · Category. Weights + params persist.
+//             Promoting is slotting (post-blend), not an earned SIGNAL_KEY.
 //
-// Slotting and operator filters still live on the blob so a whole-blob Save
-// cannot reset them. They have no knobs on this page.
+// Operator filters still live on the blob so a whole-blob Save cannot
+// reset them. They have no knobs on this page.
 
 export const SIGNAL_KEYS = [
   "proximity",
@@ -525,9 +528,10 @@ export const ENGINES: {
  * broken, it is abstaining, and the enrichment queue's semantic `summary`
  * function is what fixes that.
  *
- * `engines` names where the exponent is felt TODAY. Swipe is the only engine
- * wired so far; saying so on the page is the difference between an enforced
- * config and a staged one pretending otherwise.
+ * `engines` names where the exponent is felt TODAY. Map already reads
+ * popularity() when minPopularity > 0. Swipe keeps its own two-signal sum.
+ * Weights persist for later engines — the page must not pretend they rank
+ * Swipe.
  */
 const UNIT: ParamField[] = [];
 const ZERO_ONE = (key: string, label: string): ParamField => ({
@@ -558,6 +562,16 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
   unembedded: { min: 0, max: 1, step: 0.05 },
 };
 
+/** Operator library order. Promoting is slotting, not a SIGNAL_KEY. */
+export const LIBRARY_SIGNALS = [
+  { kind: "signal" as const, key: "proximity" as const },
+  { kind: "signal" as const, key: "timing" as const },
+  { kind: "signal" as const, key: "popularity" as const },
+  { kind: "promoting" as const },
+  { kind: "signal" as const, key: "semantic" as const },
+  { kind: "signal" as const, key: "category" as const },
+] as const;
+
 export const SIGNALS: {
   key: SignalKey;
   label: string;
@@ -577,7 +591,7 @@ export const SIGNALS: {
     process: "Haversine km, then 1 − log1p(km / knee) / log1p(max / knee).",
     output: "1 at the guest, 0 past maxKm. Unlocated place → missingGeo.",
     apis: [],
-    fields: [{ key: "maxKm", label: "maxKm", min: 1, max: 200, step: 0.5 }],
+    fields: [{ key: "maxKm", label: "Max km", min: 1, max: 200, step: 0.5 }],
   },
   {
     key: "timing",
@@ -587,7 +601,7 @@ export const SIGNALS: {
     process: "openShare × openOrFloor + (1 − openShare) × daypart(hour).",
     output: "Closed is demoted to closedFloor, never hidden.",
     apis: [],
-    fields: [ZERO_ONE("closedFloor", "closedFloor")],
+    fields: [ZERO_ONE("closedFloor", "Closed floor")],
   },
   {
     key: "category",
@@ -631,7 +645,7 @@ export const SIGNALS: {
   },
 ];
 
-/** Which engines read these weights today. Swipe is the proof-of-enforcement. */
+/** Engines that expose a ranked-on toggle. Swipe is the only one. */
 export const WIRED_ENGINES = ["Swipe"] as const;
 
 function num(raw: unknown, fallback: number, min: number, max: number): number {
