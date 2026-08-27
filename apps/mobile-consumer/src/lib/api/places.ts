@@ -130,12 +130,15 @@ export async function apiRecommendDeck(
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
 }
 
+export type SuggestPlacesMode = 'fast' | 'deep';
+
 export async function apiSuggestPlaces(
   client: SupabaseClient,
   input: string,
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
   country?: string | null,
+  mode: SuggestPlacesMode = 'fast',
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
@@ -145,6 +148,7 @@ export async function apiSuggestPlaces(
     {
       input: trimmed,
       sessionToken,
+      mode,
       ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
       ...(country ? { country } : {}),
     },

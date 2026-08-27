@@ -44,6 +44,10 @@ Deno.test("defaults admit everything and fire every Nearby type", () => {
   );
 });
 
+Deno.test("googleCount 0 skips Nearby even if googleFill is on", () => {
+  assertEquals(mapShouldFillGoogle(true, { ...MAP, googleCount: 0 }), false);
+});
+
 Deno.test("googleFill off or all types off skips Nearby even if the client opts in", () => {
   assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
   assertEquals(

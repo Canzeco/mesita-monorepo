@@ -1,4 +1,8 @@
-import type { MapConfig } from "./discovery-config.ts";
+import {
+  NEARBY_TYPE_KEYS,
+  type MapConfig,
+  type NearbyTypeKey,
+} from "./discovery-config.ts";
 import { enabledNearbyTypes } from "./map-engine.ts";
 
 export type PredictionStatus =
@@ -24,6 +28,13 @@ export type Prediction = {
 // - "skip": every Map type battery is off => don't call Google
 // - "open": omit includedPrimaryTypes; post-filter evaluatePlaceForMap
 export type GoogleTypeFilter = "skip" | "open";
+
+/** Skip Google when every type battery is off. */
+export function googleTypeFilterForTypes(
+  types: Record<NearbyTypeKey, boolean>,
+): GoogleTypeFilter {
+  return NEARBY_TYPE_KEYS.some((key) => types[key]) ? "open" : "skip";
+}
 
 /** Discovery › Map: skip Google when every type battery is off. */
 export function googleTypeFilterForMap(map: MapConfig): GoogleTypeFilter {

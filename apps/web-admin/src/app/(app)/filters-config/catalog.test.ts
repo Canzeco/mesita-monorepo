@@ -4,6 +4,7 @@ import {
   coerceConfig,
   DEFAULT_CATALOG,
   DEFAULT_MAP,
+  DEFAULT_NAME,
   DEFAULT_SOCIAL,
   ENGINES,
   SIGNALS,
@@ -27,19 +28,30 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("map() is Mesita 20 ∪ Nearby 20 with opt-in fill gated by Map knobs", () => {
+  it("map() is three closest-N lanes then one catalog", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    expect(map?.process).toMatch(/Closest 20 listed/);
-    expect(map?.process).toMatch(/union 20–40/);
-    expect(map?.process).toMatch(/opts in/);
-    expect(map?.process).toMatch(/googleFill/);
-    expect(map?.process).toMatch(/Type batteries/);
+    expect(map?.process).toMatch(/Partners/);
+    expect(map?.process).toMatch(/Mesita/);
+    expect(map?.process).toMatch(/Google/);
+    expect(map?.process).toMatch(/overlaps/);
     expect(map?.process).toMatch(/reloadMinKm/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
+  });
+
+  it("coerceConfig defaults map lane caps on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.partnerCount).toBe(10);
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.mesitaCount).toBe(10);
+    expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
+    expect(coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map).toMatchObject({
+      partnerCount: 20,
+      mesitaCount: 10,
+      googleCount: 0,
+    });
+    expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
   });
 
   it("catalog() is live rails over Mesita search, no vendor API", () => {
@@ -84,6 +96,30 @@ describe("Discovery function APIs", () => {
     expect(social?.process).toMatch(/events/i);
     expect(social?.input).toMatch(/events/i);
     expect(social?.process).not.toMatch(/Check-ins/);
+  });
+
+  it("name() is Fast Autocomplete plus Deep three-lane merge", () => {
+    const name = ENGINES.find((e) => e.key === "name");
+    expect(name?.state).toBe("LIVE");
+    expect(name?.apis).toEqual([
+      "Google Places Autocomplete",
+      "Google Places Text Search",
+      "Place Details",
+    ]);
+    expect(name?.process).toMatch(/Fast/);
+    expect(name?.process).toMatch(/Deep/);
+    expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).toMatch(/name embedding/i);
+    expect(name?.process).not.toMatch(/summary embedding/i);
+  });
+
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
+    expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
+      .toMatchObject({
+        fast: { count: 20 },
+        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3 },
+      });
   });
 
   it("chat() is live OpenAI conversation — tools come later", () => {

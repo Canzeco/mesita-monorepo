@@ -10,9 +10,15 @@ import {
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
+  type NearbyLaneCaps,
 } from "./nearby-places.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
+const LANES_20: NearbyLaneCaps = {
+  partnerCount: 0,
+  mesitaCount: 20,
+  googleCount: 20,
+};
 
 Deno.test("Nearby type batteries stay in lockstep with discovery_config.map", () => {
   assertEquals([...NEARBY_TYPES], [...NEARBY_TYPE_KEYS]);
@@ -43,7 +49,7 @@ Deno.test("mergeNearbyCatalog: Mesita row wins the same Google Place ID", () => 
       primaryType: "bar",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(
     got.filter((x) => x.kind === "listed").map((x) =>
       x.kind === "listed" ? x.row.id : ""
@@ -74,7 +80,7 @@ Deno.test("mergeNearbyCatalog: Google-only fills beside every Mesita top-20", ()
     rating: null,
     primaryType: "cafe",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(got.length, 8);
   assertEquals(got.filter((x) => x.kind === "listed").length, 3);
   assertEquals(got.filter((x) => x.kind === "google").length, 5);
@@ -95,7 +101,7 @@ Deno.test("mergeNearbyCatalog: an older close Mesita row still beats Google", ()
       primaryType: "restaurant",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(got.length, 1);
   assertEquals(got[0].kind, "listed");
   if (got[0].kind === "listed") assertEquals(got[0].row.id, "old-close");
@@ -117,11 +123,162 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
       primaryType: "cafe",
     },
   ];
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(
     got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
     ["inside", "g-close"],
   );
+});
+
+Deno.test("mergeNearbyCatalog: partners then Mesita then Google", () => {
+  const mesita = [
+    { id: "np-close", plan: "free", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
+    { id: "p-far", plan: "pro", google_place_id: "p", lat: 25.8, lng: -100.3 },
+  ];
+  const google = [
+    {
+      placeId: "g-closest",
+      name: "G",
+      address: "",
+      lat: 25.67001,
+      lng: -100.30001,
+      rating: null,
+      primaryType: "cafe",
+    },
+  ];
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(
+    got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
+    ["p-far", "np-close", "g-closest"],
+  );
+});
+
+Deno.test("mergeNearbyCatalog: a partner in the Mesita lane appears once", () => {
+  const mesita = [
+    { id: "p1", plan: "pro", google_place_id: "p1", lat: 25.6701, lng: -100.3001 },
+    { id: "m1", plan: "free", google_place_id: "m1", lat: 25.6702, lng: -100.3002 },
+  ];
+  const google = [
+    {
+      placeId: "p1",
+      name: "Also Google",
+      address: "",
+      lat: 25.6701,
+      lng: -100.3001,
+      rating: null,
+      primaryType: "restaurant",
+    },
+  ];
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(
+    got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
+    ["p1", "m1"],
+  );
+});
+
+Deno.test("mergeNearbyCatalog: nested 10+10+20 collapses to 20", () => {
+  const partners = Array.from({ length: 10 }, (_, i) => ({
+    id: `p${i}`,
+    plan: "pro",
+    google_place_id: `p${i}`,
+    lat: 25.67 + i * 0.0001,
+    lng: -100.3,
+  }));
+  const extraMesita = Array.from({ length: 10 }, (_, i) => ({
+    id: `m${i}`,
+    plan: "free",
+    google_place_id: `m${i}`,
+    lat: 25.68 + i * 0.0001,
+    lng: -100.3,
+  }));
+  const extraGoogle = Array.from({ length: 10 }, (_, i) => ({
+    placeId: `g${i}`,
+    name: `G${i}`,
+    address: "",
+    lat: 25.69 + i * 0.0001,
+    lng: -100.3,
+    rating: null,
+    primaryType: "cafe",
+  }));
+  const google = [
+    ...partners.map((row) => ({
+      placeId: row.google_place_id,
+      name: row.id,
+      address: "",
+      lat: row.lat,
+      lng: row.lng,
+      rating: null,
+      primaryType: "restaurant",
+    })),
+    ...extraGoogle,
+  ];
+  const got = mergeNearbyCatalog([...partners, ...extraMesita], google, CENTER);
+  assertEquals(got.length, 20);
+  assertEquals(
+    got.slice(0, 10).map((x) => x.kind === "listed" ? x.row.id : ""),
+    partners.map((row) => row.id),
+  );
+  assertEquals(
+    got.slice(10).map((x) => x.kind === "google" ? x.hit.placeId : ""),
+    extraGoogle.map((hit) => hit.placeId),
+  );
+});
+
+Deno.test("mergeNearbyCatalog: disjoint lanes stay 40", () => {
+  const partners = Array.from({ length: 10 }, (_, i) => ({
+    id: `p${i}`,
+    plan: "pro",
+    google_place_id: `p${i}`,
+    lat: 25.85 + i * 0.0001,
+    lng: -100.3,
+  }));
+  const mesitaOnly = Array.from({ length: 10 }, (_, i) => ({
+    id: `m${i}`,
+    plan: "free",
+    google_place_id: `m${i}`,
+    lat: 25.75 + i * 0.0001,
+    lng: -100.3,
+  }));
+  const google = Array.from({ length: 20 }, (_, i) => ({
+    placeId: `g${i}`,
+    name: `G${i}`,
+    address: "",
+    lat: 25.67005 + i * 0.0001,
+    lng: -100.3,
+    rating: null,
+    primaryType: "cafe",
+  }));
+  const got = mergeNearbyCatalog([...partners, ...mesitaOnly], google, CENTER);
+  assertEquals(got.length, 40);
+  assertEquals(got.slice(0, 10).every((x) => x.kind === "listed"), true);
+  assertEquals(got.slice(10, 20).every((x) => x.kind === "listed"), true);
+  assertEquals(got.slice(20).every((x) => x.kind === "google"), true);
+  assertEquals(
+    got.slice(0, 10).map((x) => x.kind === "listed" ? x.row.id : ""),
+    partners.map((row) => row.id),
+  );
+});
+
+Deno.test("mergeNearbyCatalog: a Mesita miss does not come back as a Google stub", () => {
+  const mesita = Array.from({ length: 15 }, (_, i) => ({
+    id: `m${i}`,
+    plan: "free",
+    google_place_id: `shared-${i}`,
+    lat: 25.67 + i * 0.001,
+    lng: -100.3,
+  }));
+  const google = mesita.map((row, i) => ({
+    placeId: row.google_place_id,
+    name: `G${i}`,
+    address: "",
+    lat: row.lat,
+    lng: row.lng,
+    rating: null,
+    primaryType: "bar",
+  }));
+  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  assertEquals(got.length, 10);
+  assertEquals(got.every((x) => x.kind === "listed"), true);
 });
 
 Deno.test("mergeNearbyCatalog: union is 20 when Mesita and Google agree", () => {
@@ -140,7 +297,7 @@ Deno.test("mergeNearbyCatalog: union is 20 when Mesita and Google agree", () => 
     rating: null,
     primaryType: "bar",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(got.length, MESITA_NEARBY_MAX);
   assertEquals(got.every((x) => x.kind === "listed"), true);
 });
@@ -161,7 +318,7 @@ Deno.test("mergeNearbyCatalog: union is 40 when the two queries miss", () => {
     rating: null,
     primaryType: "bar",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(got.filter((x) => x.kind === "listed").length, MESITA_NEARBY_MAX);
   assertEquals(got.filter((x) => x.kind === "google").length, GOOGLE_NEARBY_MAX);
   assertEquals(got.length, CATALOG_NEARBY_MAX);
@@ -183,9 +340,11 @@ Deno.test("mergeNearbyCatalog: far Mesita still keeps its 20 vs closer Google", 
     rating: null,
     primaryType: "cafe",
   }));
-  const got = mergeNearbyCatalog(mesita, google, CENTER);
+  const got = mergeNearbyCatalog(mesita, google, CENTER, LANES_20);
   assertEquals(got.filter((x) => x.kind === "listed").length, 20);
   assertEquals(got.filter((x) => x.kind === "google").length, 20);
+  assertEquals(got.slice(0, 20).every((x) => x.kind === "listed"), true);
+  assertEquals(got.slice(20).every((x) => x.kind === "google"), true);
 });
 
 const OK_BODY = JSON.stringify({

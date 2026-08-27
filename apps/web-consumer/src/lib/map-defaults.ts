@@ -69,14 +69,20 @@ export const MAP_MINIMAL_STYLES = [
   },
 ] as const;
 
-// SVG circle path for place markers + the user location dot.
-export const MAP_CIRCLE_PATH = "M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0";
+// SVG circle path for place markers. r=7 (was 12) so a cluster still
+// shows the map. Fill is membership; the user-location dot is its own path.
+export const MAP_PLACE_PIN_RADIUS = 7;
+export const MAP_CIRCLE_PATH =
+  `M -${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 ${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 -${MAP_PLACE_PIN_RADIUS} 0`;
 
-// Search membership pins — same hexes as the results-row dots.
-// Gray = not on Mesita; blue = listed, not partner; red = partner; black = selected.
+// Search pins — same hexes as the results-row dots.
+// Red = on Mesita (partner or not). Gray = not on Mesita. Blue = current location.
 export const MAP_PARTNER_PIN_COLOR = "#ff2357";
-export const MAP_LISTED_PIN_COLOR = "#2563eb";
+export const MAP_LISTED_PIN_COLOR = "#ff2357";
+export const MAP_MESITA_PIN_COLOR = "#ff2357";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
+export const MAP_USER_LOCATION_PIN_COLOR = "#2563eb";
 
-// Selected pin fill — black circle. Unselected pins keep membership colors.
+// Selected pin is a black ring. Fill stays the membership color.
 export const MAP_SELECTED_PIN_COLOR = "#111111";
+export const MAP_PIN_STROKE_COLOR = "#ffffff";

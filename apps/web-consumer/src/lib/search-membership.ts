@@ -1,11 +1,13 @@
 // Consumer Search name-bar: membership is the colored point only.
-// Gray = not on Mesita; blue = listed, not partner; red = partner.
-// Hexes match map pins in lib/map-defaults.ts. Selected pin fill is black.
+// Red = on Mesita (partner or not). Gray = not on Mesita.
+// Hexes match map pins in lib/map-defaults.ts. Selected pin is a black ring;
+// the fill stays the membership color.
 
 import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_LISTED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
+  MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
 
@@ -30,8 +32,12 @@ export function membershipColor(tone: MembershipTone): string {
   return MEMBERSHIP_COLORS[tone];
 }
 
-export function pinFillColor(tone: MembershipTone, selected: boolean): string {
-  return selected ? MAP_SELECTED_PIN_COLOR : membershipColor(tone);
+export function pinFillColor(tone: MembershipTone, _selected = false): string {
+  return membershipColor(tone);
+}
+
+export function pinStrokeColor(selected: boolean): string {
+  return selected ? MAP_SELECTED_PIN_COLOR : MAP_PIN_STROKE_COLOR;
 }
 
 /** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
@@ -42,7 +48,7 @@ export function pinGesture(
   return selectedId === pinId ? "open" : "select";
 }
 
-/** Overlay map-pin tap. First tap holds (black); later tap opens.
+/** Overlay map-pin tap. First tap holds (black ring); later tap opens.
  *  Overlay-only Mesita (not in the catalog snapshot) never opens on select —
  *  stash the prediction and keep the overlay. Google stash is the same hold. */
 export type OverlayPinAction =
