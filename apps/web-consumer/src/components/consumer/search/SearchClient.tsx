@@ -303,8 +303,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     };
   }, [supabase, trimmed, center, scope.country]);
 
-  // On-Mesita row tap → show the place on the map (black selected pin
-  // `#111111` + rail card) instead of opening the detail modal; the modal is
+  // On-Mesita row tap → show the place on the map (membership fill + black
+  // ring + rail card) instead of opening the detail modal; the modal is
   // one more tap away on the pin or the card. The EF-provided Mesita id is the
   // primary join; the exact-name match covers older suggest payloads.
   const handlePickMesita = (prediction: PlacePrediction) => {

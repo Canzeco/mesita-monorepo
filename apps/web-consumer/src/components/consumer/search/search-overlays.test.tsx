@@ -180,9 +180,13 @@ describe("Search map has no discovery filters", () => {
 });
 
 describe("Search pin two-tap (select then open)", () => {
-  it("paints selected pins black and keeps membership fills for the rest", () => {
+  it("fills pins with membership color and rings the selected one", () => {
     expect(read("SearchMap.tsx")).toContain("pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
     expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
+    expect(read("../../../lib/map-defaults.ts")).toMatch(
+      /MAP_PLACE_PIN_RADIUS = 7/,
+    );
   });
 
   it("first overlay tap selects; a later tap on the same pin opens", () => {
