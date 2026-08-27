@@ -472,7 +472,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    const page = el.clientWidth;
+    const page = el.clientWidth * 0.8;
     if (page <= 0) return;
     const idx = Math.round(el.scrollLeft / page);
     setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
@@ -495,7 +495,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!idle || railCollapsed || !selectedId) return;
     railRefs.current.get(selectedId)?.scrollIntoView({
       behavior: "smooth",
-      inline: "start",
+      inline: "center",
       block: "nearest",
     });
   }, [idle, railCollapsed, selectedId]);

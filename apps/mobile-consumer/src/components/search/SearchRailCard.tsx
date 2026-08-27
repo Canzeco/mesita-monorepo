@@ -42,7 +42,7 @@ export function RailCard({
   return (
     <Pressable
       onPress={onPress}
-      className={`w-56 overflow-hidden rounded-2xl border bg-card ${
+      className={`w-full overflow-hidden rounded-2xl border bg-card ${
         selected ? 'border-primary' : 'border-border'
       }`}
       style={SHADOW_ELEV}
