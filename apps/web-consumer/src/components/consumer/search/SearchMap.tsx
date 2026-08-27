@@ -28,10 +28,12 @@ import {
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
   MAP_CIRCLE_PATH,
+  MAP_USER_LOCATION_PIN_COLOR,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import {
   pinFillColor,
+  pinStrokeColor,
   placeMembershipTone,
   type MembershipTone,
 } from "@/lib/search-membership";
@@ -39,17 +41,17 @@ import {
 function placeIcon(tone: MembershipTone, isSelected: boolean) {
   return {
     path: MAP_CIRCLE_PATH,
-    fillColor: pinFillColor(tone, isSelected),
+    fillColor: pinFillColor(tone),
     fillOpacity: 1,
-    strokeColor: "#ffffff",
-    strokeWeight: 2.5,
-    scale: isSelected ? 1.3 : 1,
+    strokeColor: pinStrokeColor(isSelected),
+    strokeWeight: isSelected ? 2.5 : 1.75,
+    scale: isSelected ? 1.15 : 1,
   };
 }
 
 const USER_ICON = {
   path: "M -6 0 A 6 6 0 1 0 6 0 A 6 6 0 1 0 -6 0",
-  fillColor: "#2563eb",
+  fillColor: MAP_USER_LOCATION_PIN_COLOR,
   fillOpacity: 1,
   strokeColor: "#ffffff",
   strokeWeight: 3,
@@ -270,7 +272,7 @@ function SearchMapCanvas({
                 place.id === selectedId,
               )}
               zIndex={place.id === selectedId ? 10 : 0}
-              // First tap selects (black fill + rail); later tap on that pin opens.
+              // First tap selects (membership fill + black ring + rail); later tap opens.
               onClick={() =>
                 place.id === selectedId
                   ? onOpenPlace(place)

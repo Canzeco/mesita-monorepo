@@ -173,7 +173,7 @@ export async function apiFetchPublicPlaces(
 }
 
 export const LIST_PLACES_MAX = 200;
-export const CATALOG_NEARBY_MAX = 40;
+export const CATALOG_NEARBY_MAX = 60;
 export const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
@@ -191,7 +191,7 @@ export type ViewportPlaces = {
   reloadMinKm?: number;
 };
 
-/** Search map catalog: closest 20 listed ∪ Google Nearby 20 around a camera. */
+/** Search map catalog: partners, then Mesita, then Google around a camera. */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
@@ -321,9 +321,11 @@ export type PlacePrediction = {
   lng?: number | null;
 };
 
+export type SuggestPlacesMode = "fast" | "deep";
+
 /**
- * Four-source merged name search for the consumer /search bar.
- * Calls consumer-web-suggest-places (already merged, ranked, capped at 10).
+ * Name search for the consumer /search bar and pickers.
+ * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
@@ -331,6 +333,7 @@ export async function apiSuggestPlaces(
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
   country?: string | null,
+  mode: SuggestPlacesMode = "fast",
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
   if (trimmed.length < 2) return [];
@@ -340,6 +343,7 @@ export async function apiSuggestPlaces(
     {
       input: trimmed,
       sessionToken,
+      mode,
       ...(origin
         ? { lat: origin.lat, lng: origin.lng }
         : {}),

@@ -1,28 +1,11 @@
 "use client";
 
-// Name · Swipe · Favs — presentational Discovery boxes. No knobs: Name and
-// Swipe are live readers of other slices; Favs is parked. Icons stay in this
-// client so the server page never passes Lucide nodes across the RSC boundary.
+// Swipe · Favs — presentational Discovery boxes. Swipe is a live reader of
+// the signal blob; Favs is parked. Icons stay in this client so the server
+// page never passes Lucide nodes across the RSC boundary.
 
-import { Flame, Heart, Type } from "lucide-react";
+import { Flame, Heart } from "lucide-react";
 import { KnobStatus, SectionCard } from "@/components/admin-ui/config";
-
-export function NameConfigCard() {
-  return (
-    <SectionCard
-      icon={<Type className="text-primary h-4 w-4" />}
-      title="Name"
-      subtitle="Entity resolution in Map's searchbar. Autocomplete while typing, one Text Search on idle, plus Mesita name and summary embeddings. Merge by Place ID. Not a standalone engine — floors and types live on Map."
-      status={
-        <KnobStatus kind="enforced" reason="consumer-web-suggest-places" />
-      }
-    >
-      <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-        No knobs. Changing Map floors changes which name hits may appear.
-      </p>
-    </SectionCard>
-  );
-}
 
 export function SwipeConfigCard() {
   return (

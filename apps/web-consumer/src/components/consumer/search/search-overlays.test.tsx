@@ -138,7 +138,7 @@ describe("SearchScopeSheet country pills", () => {
 });
 
 describe("Search map catalog reloads nearby as the camera moves", () => {
-  it("loads Mesita 20 ∪ Google Nearby 20, not an SSR 200 dump", () => {
+  it("loads the Map lane cap, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
@@ -180,9 +180,13 @@ describe("Search map has no discovery filters", () => {
 });
 
 describe("Search pin two-tap (select then open)", () => {
-  it("paints selected pins black and keeps membership fills for the rest", () => {
+  it("fills pins with membership color and rings the selected one", () => {
     expect(read("SearchMap.tsx")).toContain("pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
     expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
+    expect(read("../../../lib/map-defaults.ts")).toMatch(
+      /MAP_PLACE_PIN_RADIUS = 7/,
+    );
   });
 
   it("first overlay tap selects; a later tap on the same pin opens", () => {
@@ -410,6 +414,17 @@ describe("Search catalog rail pages full-width and snaps", () => {
     expect(html).toContain("Finding nearby");
     expect(html).toContain("snap-start");
     expect(html).not.toContain("w-[288px]");
+  });
+});
+
+describe("Name search is Fast while typing and Deep after idle", () => {
+  it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("FAST_DEBOUNCE_MS");
+    expect(src).toContain("DEEP_IDLE_MS");
+    expect(src).toContain('"fast"');
+    expect(src).toContain('"deep"');
+    expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
   });
 });
 

@@ -13,7 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export { apiSuggestPlaces, type PlacePrediction } from "./places";
+export { apiSuggestPlaces, type PlacePrediction, type SuggestPlacesMode } from "./places";
 
 type CreatedProject = {
   ok: boolean;

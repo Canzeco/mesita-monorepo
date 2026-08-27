@@ -1,18 +1,18 @@
-// Consumer Search name-bar: ONE merged lane from four sources.
+// Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
+// Search (Partners · Mesita · Google) after idle.
 //
 // Used only by consumer-web-suggest-places. Admin/business still call
-// suggestPlaces (Autocomplete + Mesita ILIKE, Mesita-first sort). This
-// path is the Map engine's type-to-find: no section headers, membership
-// expressed by the colored point on the client (partner / listed / google).
+// suggestPlaces (Autocomplete + Mesita ILIKE, Mesita-first sort).
 //
-// Rank, then merge, then cap:
-//   1. Google Places Autocomplete
-//   2. Google Places Text Search
-//   3. Mesita name embedding (places.name_embedding)
-//   4. Mesita summary embedding (places.embedding)
-// Same venue from two sources keeps the higher-priority SLOT; Mesita
-// identity/partner still grafts onto that slot so the dot is not yellow
-// for a place we already list. Dedupe key is google_place_id, then Mesita id.
+// Fast: Google Autocomplete, cap `name.fast.count`, Fast Google categories.
+// Deep: three lanes, then one list after dropping overlaps:
+//   1. Partners — name cosine (`places.name_embedding`)
+//   2. Mesita — name cosine, partners included
+//   3. Google — Text Search order among Deep Google categories
+// Partners ⊆ Mesita ⊆ Google. Merge concatenates after dropping concurrencies.
+// A listed Place ID never comes back as a Google stub. Summary embedding is
+// not a Name lane. Membership is a boolean `partner`; the client paints the
+// point. No source labels.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -26,7 +26,7 @@ import {
   readGooglePlacesKey,
 } from "./google-places.ts";
 import {
-  googleTypeFilterForMap,
+  googleTypeFilterForTypes,
   type PredictionStatus,
 } from "./suggest-places-helpers.ts";
 import {
@@ -34,33 +34,27 @@ import {
   applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
-import { loadDiscoveryConfig, type MapConfig } from "./discovery-config.ts";
+import {
+  loadDiscoveryConfig,
+  type MapConfig,
+  type NameConfig,
+  type NearbyTypeKey,
+} from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
 import {
   cosineSim,
   parseVector,
-  rankByCosine,
   rankByNameCosine,
 } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { radiusBoundingBox } from "./geo.ts";
 
-export const SEARCH_LANE_CAP = 10;
-
-/** Cosine floor so a vibe mismatch does not fill the name bar. */
 export const NAME_MIN_COSINE = 0.4;
-export const SUMMARY_MIN_COSINE = 0.3;
+export const GOOGLE_TEXT_MAX = 20;
 
-export const SEARCH_LANE_SOURCES = [
-  "autocomplete",
-  "text",
-  "name",
-  "summary",
-] as const;
-
-export type SearchLaneSource = typeof SEARCH_LANE_SOURCES[number];
+export type SuggestPlacesMode = "fast" | "deep";
 
 export type LaneItem = {
   placeId: string;
@@ -106,68 +100,67 @@ export function laneDedupeKeys(item: {
   return keys;
 }
 
-function graftMesitaOnto(slot: LaneItem, incoming: LaneItem): void {
-  if (slot.status === "not_in_mesita" && incoming.status !== "not_in_mesita") {
-    slot.status = incoming.status;
-    slot.partner = incoming.partner;
-  } else if (!slot.partner && incoming.partner) {
-    slot.partner = true;
-  }
-  if (slot.mainText.trim() === "" && incoming.mainText) {
-    slot.mainText = incoming.mainText;
-  }
-  if (!slot.secondaryText && incoming.secondaryText) {
-    slot.secondaryText = incoming.secondaryText;
-  }
-  if (slot.lat == null && incoming.lat != null) slot.lat = incoming.lat;
-  if (slot.lng == null && incoming.lng != null) slot.lng = incoming.lng;
-  if (!slot.mesitaId && incoming.mesitaId) slot.mesitaId = incoming.mesitaId;
-  if (!slot.mesitaSlug && incoming.mesitaSlug) {
-    slot.mesitaSlug = incoming.mesitaSlug;
-  }
-}
+export type NameDeepLanes = {
+  partners: LaneItem[];
+  mesita: LaneItem[];
+  google: LaneItem[];
+};
 
 /**
- * Walk sources in rank order. New unique venues take a slot until cap 10.
- * A later source that matches an earlier slot grafts Mesita identity onto
- * it and never adds a second row. Once the cap is full, later sources
- * may still graft, never append.
+ * Deep Search merge: Partners, then Mesita, then Google. Overlaps drop.
+ * Earlier lane wins the slot; later lanes never graft or append a duplicate.
  */
-export function mergeSearchLane(
-  lanes: Record<SearchLaneSource, LaneItem[]>,
-  cap = SEARCH_LANE_CAP,
-): LaneItem[] {
+export function mergeNameDeepLanes(lanes: NameDeepLanes): LaneItem[] {
   const byKey = new Map<string, LaneItem>();
   const order: LaneItem[] = [];
 
-  const findExisting = (item: LaneItem): LaneItem | undefined => {
+  const seen = (item: LaneItem): boolean => {
     for (const key of laneDedupeKeys(item)) {
-      const hit = byKey.get(key);
-      if (hit) return hit;
+      if (byKey.has(key)) return true;
     }
-    return undefined;
+    return false;
   };
 
-  const register = (item: LaneItem): void => {
-    for (const key of laneDedupeKeys(item)) byKey.set(key, item);
-  };
-
-  for (const source of SEARCH_LANE_SOURCES) {
-    for (const raw of lanes[source]) {
+  const take = (items: LaneItem[]) => {
+    for (const raw of items) {
       if (!raw.placeId && !raw.mesitaId) continue;
-      const existing = findExisting(raw);
-      if (existing) {
-        graftMesitaOnto(existing, raw);
-        register(existing);
-        continue;
-      }
-      if (order.length >= cap) continue;
+      if (seen(raw)) continue;
       const item: LaneItem = { ...raw };
       order.push(item);
-      register(item);
+      for (const key of laneDedupeKeys(item)) byKey.set(key, item);
     }
+  };
+
+  take(lanes.partners);
+  take(lanes.mesita);
+  take(
+    lanes.google.filter((item) =>
+      item.status === "not_in_mesita" && !item.mesitaId
+    ),
+  );
+  return order;
+}
+
+/** Fast Search: Autocomplete order, unique venues, cap. */
+export function takeFastLane(items: LaneItem[], cap: number): LaneItem[] {
+  const byKey = new Map<string, LaneItem>();
+  const order: LaneItem[] = [];
+  for (const raw of items) {
+    if (!raw.placeId && !raw.mesitaId) continue;
+    if (order.length >= cap) break;
+    let hit = false;
+    for (const key of laneDedupeKeys(raw)) {
+      if (byKey.has(key)) {
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+    const item: LaneItem = { ...raw };
+    order.push(item);
+    for (const key of laneDedupeKeys(item)) byKey.set(key, item);
   }
-  return order.slice(0, cap);
+  return order;
 }
 
 export type ConsumerSearchArgs = {
@@ -177,6 +170,8 @@ export type ConsumerSearchArgs = {
   lng?: number | null;
   /** Guest country (ISO-2). Empty/omit = no Google country restrict. */
   country?: string | null;
+  /** Default fast — pickers and older clients stay Autocomplete. */
+  mode?: SuggestPlacesMode | string | null;
 };
 
 type ListedRow = {
@@ -208,17 +203,15 @@ function listedToLane(row: ListedRow): LaneItem | null {
   };
 }
 
-function takeAboveFloor(
+function takeAboveNameFloor(
   ranked: ListedRow[],
   queryVec: number[],
-  kind: "name" | "summary",
   minCosine: number,
   limit: number,
 ): LaneItem[] {
   const out: LaneItem[] = [];
   for (const row of ranked) {
-    const raw = kind === "name" ? row.name_embedding : row.embedding;
-    const vec = parseVector(raw);
+    const vec = parseVector(row.name_embedding);
     const score = vec && vec.length === queryVec.length
       ? cosineSim(vec, queryVec)
       : -1;
@@ -244,6 +237,17 @@ function originOf(
   return null;
 }
 
+function resolveMode(raw?: string | null): SuggestPlacesMode {
+  return raw === "deep" ? "deep" : "fast";
+}
+
+function mapWithTypes(
+  map: MapConfig,
+  types: Record<NearbyTypeKey, boolean>,
+): MapConfig {
+  return { ...map, types };
+}
+
 export async function runConsumerSearchLane(
   env: EFEnv,
   callerName: string,
@@ -260,85 +264,114 @@ export async function runConsumerSearchLane(
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
-  const map = (await loadDiscoveryConfig(admin)).map;
-  const typeFilter = googleTypeFilterForMap(map);
+  const cfg = await loadDiscoveryConfig(admin);
+  const mode = resolveMode(args.mode);
 
-  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
+  const predictions = mode === "deep"
+    ? await runDeepSearch(admin, apiKey, cfg.map, cfg.name, input, origin, args.country)
+    : await runFastSearch(
+      admin,
+      apiKey,
+      cfg.map,
+      cfg.name,
+      input,
+      sessionToken,
+      origin,
+      args.country,
+    );
 
-  const [googleAuto, googleText, stamp, embedPool, queryVec] = await Promise.all([
-    typeFilter === "skip"
-      ? Promise.resolve({ predictions: [] as LaneItem[], errorEnvelope: undefined })
-      : fetchAutocomplete(
-        input,
-        sessionToken,
-        apiKey,
-        origin,
-        args.country,
-      ),
-    typeFilter === "skip"
-      ? Promise.resolve([] as LaneItem[])
-      : fetchTextSearch(input, apiKey, map, origin, args.country),
-    fetchStampCatalog(admin),
-    fetchEmbedPool(admin, origin),
-    embedQueryVector(admin, input, openaiKey),
-  ]);
-
-  if (googleAuto.errorEnvelope && googleText.length === 0 && stamp.length === 0) {
-    return json(googleAuto.errorEnvelope);
+  if ("errorEnvelope" in predictions) {
+    return json(predictions.errorEnvelope);
   }
-
-  const byGoogleId = new Map<string, ListedRow>();
-  for (const row of stamp) {
-    if (row.google_place_id) byGoogleId.set(row.google_place_id, row);
-  }
-
-  const nameHits = queryVec
-    ? takeAboveFloor(
-      rankByNameCosine(embedPool, queryVec),
-      queryVec,
-      "name",
-      NAME_MIN_COSINE,
-      SEARCH_LANE_CAP,
-    )
-    : [];
-  const summaryHits = queryVec
-    ? takeAboveFloor(
-      rankByCosine(embedPool, queryVec),
-      queryVec,
-      "summary",
-      SUMMARY_MIN_COSINE,
-      SEARCH_LANE_CAP,
-    )
-    : [];
-
-  const autocomplete = await stampGoogleAgainstCatalog(
-    googleAuto.predictions,
-    byGoogleId,
-    admin,
-    apiKey,
-    map,
-  );
-  const text = await stampGoogleAgainstCatalog(
-    googleText,
-    byGoogleId,
-    admin,
-    apiKey,
-    map,
-    { alreadyHasSignals: true },
-  );
-
-  const predictions = mergeSearchLane({
-    autocomplete,
-    text,
-    name: nameHits,
-    summary: summaryHits,
-  });
 
   return json({
     ok: true,
     predictions: predictions.map(toWire),
     caller: callerName,
+    mode,
   });
+}
+
+async function runFastSearch(
+  admin: SupabaseClient,
+  apiKey: string,
+  map: MapConfig,
+  name: NameConfig,
+  input: string,
+  sessionToken: string,
+  origin: { lat: number; lng: number } | null,
+  country?: string | null,
+): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
+  const cap = name.fast.count;
+  if (cap <= 0 || googleTypeFilterForTypes(name.fast.types) === "skip") {
+    return [];
+  }
+  const gate = mapWithTypes(map, name.fast.types);
+  const googleAuto = await fetchAutocomplete(
+    input,
+    sessionToken,
+    apiKey,
+    origin,
+    country,
+  );
+  if (googleAuto.errorEnvelope) return { errorEnvelope: googleAuto.errorEnvelope };
+  const stamped = await stampGoogleAgainstCatalog(
+    googleAuto.predictions,
+    admin,
+    apiKey,
+    gate,
+  );
+  return takeFastLane(stamped, cap);
+}
+
+async function runDeepSearch(
+  admin: SupabaseClient,
+  apiKey: string,
+  map: MapConfig,
+  name: NameConfig,
+  input: string,
+  origin: { lat: number; lng: number } | null,
+  country?: string | null,
+): Promise<LaneItem[]> {
+  const deep = name.deep;
+  const gate = mapWithTypes(map, deep.types);
+  const wantGoogle = deep.googleCount > 0 &&
+    googleTypeFilterForTypes(deep.types) !== "skip";
+  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
+  const wantMesita = (deep.partnerCount > 0 || deep.mesitaCount > 0) &&
+    Boolean(openaiKey);
+
+  const [googleText, embedPool, queryVec] = await Promise.all([
+    wantGoogle
+      ? fetchTextSearch(input, apiKey, gate, origin, country, deep.googleCount)
+      : Promise.resolve([] as LaneItem[]),
+    wantMesita ? fetchEmbedPool(admin, origin) : Promise.resolve([] as ListedRow[]),
+    wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
+  ]);
+
+  const ranked = queryVec ? rankByNameCosine(embedPool, queryVec) : [];
+  const partners = queryVec && deep.partnerCount > 0
+    ? takeAboveNameFloor(
+      ranked.filter((row) => isPaidPlan(row.plan)),
+      queryVec,
+      NAME_MIN_COSINE,
+      deep.partnerCount,
+    )
+    : [];
+  const mesita = queryVec && deep.mesitaCount > 0
+    ? takeAboveNameFloor(ranked, queryVec, NAME_MIN_COSINE, deep.mesitaCount)
+    : [];
+
+  const stampedGoogle = await stampGoogleAgainstCatalog(
+    googleText,
+    admin,
+    apiKey,
+    gate,
+    { alreadyHasSignals: true },
+  );
+  const google = stampedGoogle.filter((item) => item.status === "not_in_mesita");
+
+  return mergeNameDeepLanes({ partners, mesita, google });
 }
 
 function toWire(item: LaneItem) {
@@ -373,34 +406,11 @@ async function embedQueryVector(
   }
 }
 
-const STAMP_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, plan";
-const EMBED_COLUMNS = STAMP_COLUMNS + ", name_embedding, embedding";
-const STAMP_PAGE = 1000;
+const EMBED_COLUMNS =
+  "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding";
 /** In-process cosine budget — same order as recall-places, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
-
-async function fetchStampCatalog(admin: SupabaseClient): Promise<ListedRow[]> {
-  const rows: ListedRow[] = [];
-  let from = 0;
-  for (;;) {
-    const { data, error } = await admin
-      .from("profiles")
-      .select(STAMP_COLUMNS)
-      .in("status", ["active", "lead"])
-      .range(from, from + STAMP_PAGE - 1);
-    if (error) {
-      console.error("[consumer-search-lane] stamp:", error.message);
-      return rows;
-    }
-    const page = (data ?? []) as ListedRow[];
-    rows.push(...page);
-    if (page.length < STAMP_PAGE) break;
-    from += STAMP_PAGE;
-  }
-  return rows;
-}
 
 async function fetchEmbedPool(
   admin: SupabaseClient,
@@ -410,7 +420,7 @@ async function fetchEmbedPool(
     .from("profiles")
     .select(EMBED_COLUMNS)
     .in("status", ["active", "lead"])
-    .or("name_embedding.not.is.null,embedding.not.is.null");
+    .not("name_embedding", "is", null);
   if (origin) {
     const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
     query = query
@@ -489,13 +499,14 @@ async function fetchAutocomplete(
 async function fetchTextSearch(
   input: string,
   apiKey: string,
-  map: MapConfig,
+  gate: MapConfig,
   origin: { lat: number; lng: number } | null,
-  country?: string | null,
+  country: string | null | undefined,
+  limit: number,
 ): Promise<LaneItem[]> {
   const body: Record<string, unknown> = {
     textQuery: input,
-    maxResultCount: SEARCH_LANE_CAP,
+    maxResultCount: Math.min(GOOGLE_TEXT_MAX, Math.max(1, limit)),
   };
   applyPlacesTextSearchRegion(body, origin);
   applyPlacesCallerRegion(body, country, "text");
@@ -546,7 +557,7 @@ async function fetchTextSearch(
     const lng = typeof p.location?.longitude === "number"
       ? p.location.longitude
       : null;
-    const eligible = evaluatePlaceForMap(map, {
+    const eligible = evaluatePlaceForMap(gate, {
       primaryType: p.primaryType ?? null,
       rating: typeof p.rating === "number" ? p.rating : null,
       reviewCount: typeof p.userRatingCount === "number"
@@ -563,20 +574,21 @@ async function fetchTextSearch(
       lat,
       lng,
     });
+    if (out.length >= limit) break;
   }
   return out;
 }
 
 async function stampGoogleAgainstCatalog(
   items: LaneItem[],
-  byGoogleId: Map<string, ListedRow>,
   admin: SupabaseClient,
   apiKey: string,
-  map: MapConfig,
+  gate: MapConfig,
   opts: { alreadyHasSignals?: boolean } = {},
 ): Promise<LaneItem[]> {
+  const byGoogleId = new Map<string, ListedRow>();
   const missingIds = items
-    .filter((p) => p.status === "not_in_mesita" && !byGoogleId.has(p.placeId))
+    .filter((p) => p.status === "not_in_mesita" && p.placeId)
     .map((p) => p.placeId);
   const extra = missingIds.length > 0
     ? await fetchListedByGoogleIds(admin, missingIds)
@@ -623,7 +635,7 @@ async function stampGoogleAgainstCatalog(
     if (p.status !== "not_in_mesita") return true;
     const sig = signalsById.get(p.placeId);
     if (!sig) return false;
-    const ok = evaluatePlaceForMap(map, {
+    const ok = evaluatePlaceForMap(gate, {
       primaryType: sig.primaryType,
       rating: sig.rating,
       reviewCount: sig.reviewCount,

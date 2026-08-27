@@ -51,7 +51,8 @@ import {
 } from '@/lib/use-discovery-filters';
 import { errMsg } from '@/lib/utils';
 
-const SUGGEST_DEBOUNCE_MS = 300;
+const FAST_DEBOUNCE_MS = 300;
+const DEEP_IDLE_MS = 1000;
 const GMP_KEY = process.env.EXPO_PUBLIC_GMP_KEY ?? '';
 
 type Coords = { lat: number; lng: number };
@@ -258,23 +259,27 @@ export function SearchClient() {
   useEffect(() => {
     if (trimmed.length < 2) return;
     let cancelled = false;
-    const handle = setTimeout(() => {
+    let deepSettled = false;
+    const token = sessionTokenRef.current;
+
+    const fastHandle = setTimeout(() => {
       void (async () => {
         try {
           const rows = await apiSuggestPlaces(
             supabase,
             trimmed,
-            sessionTokenRef.current,
+            token,
             center,
             scope.country,
+            'fast',
           );
-          if (!cancelled) {
+          if (!cancelled && !deepSettled) {
             setPredictions(rows);
             setSearchError(null);
             setFailureKind(null);
           }
         } catch (err) {
-          if (!cancelled) {
+          if (!cancelled && !deepSettled) {
             setPredictions([]);
             setSearchError(errMsg(err, 'Search failed — try again.'));
             setFailureKind(classifyFailure(err));
@@ -283,10 +288,35 @@ export function SearchClient() {
           if (!cancelled) setSearching(false);
         }
       })();
-    }, SUGGEST_DEBOUNCE_MS);
+    }, FAST_DEBOUNCE_MS);
+
+    const deepHandle = setTimeout(() => {
+      void (async () => {
+        try {
+          const rows = await apiSuggestPlaces(
+            supabase,
+            trimmed,
+            token,
+            center,
+            scope.country,
+            'deep',
+          );
+          if (!cancelled) {
+            deepSettled = true;
+            setPredictions(rows);
+            setSearchError(null);
+            setFailureKind(null);
+          }
+        } catch {
+          // Keep Fast results if Deep fails.
+        }
+      })();
+    }, DEEP_IDLE_MS);
+
     return () => {
       cancelled = true;
-      clearTimeout(handle);
+      clearTimeout(fastHandle);
+      clearTimeout(deepHandle);
     };
   }, [trimmed, retryTick, center, scope.country]);
 

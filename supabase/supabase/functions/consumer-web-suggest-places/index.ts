@@ -1,10 +1,10 @@
 // Supabase Edge Function — consumer-web-suggest-places (product caller)
 //
-// Consumer Search name-bar. Four sources merge into ONE lane (max 10),
-// ranked Autocomplete → Text Search → Mesita name embedding → Mesita
-// summary embedding. Membership is a boolean `partner` on each row; the
-// client paints the point (red / gray / yellow) and never shows source
-// section labels. Admin/business suggest facades still use suggestPlaces.
+// Consumer Search name-bar. Fast = Autocomplete (default). Deep = Partners
+// · Mesita · Google after idle, one list after dropping overlaps.
+// Membership is a boolean `partner` on each row; the client paints the
+// point and never shows source section labels. Admin/business suggest
+// facades still use suggestPlaces.
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 // Anonymous (anon key only, no user session) still get predictions.
@@ -23,6 +23,7 @@ type Body = {
   lat?: number;
   lng?: number;
   country?: string;
+  mode?: string;
 };
 
 Deno.serve(async (req) => {
@@ -51,5 +52,6 @@ Deno.serve(async (req) => {
     lat,
     lng,
     country: typeof body.country === "string" ? body.country : null,
+    mode: typeof body.mode === "string" ? body.mode : "fast",
   });
 });
