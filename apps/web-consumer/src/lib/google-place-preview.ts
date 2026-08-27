@@ -211,7 +211,7 @@ async function previewFromRest(
   };
 }
 
-function mergePreview(
+export function mergeGooglePlacePreview(
   ...parts: Array<GooglePlacePreview | null | undefined>
 ): GooglePlacePreview {
   const merged: GooglePlacePreview = {};
@@ -224,6 +224,15 @@ function mergePreview(
     merged.googleMapsUri ??= part.googleMapsUri;
   }
   return merged;
+}
+
+export function isEmptyGooglePlacePreview(
+  preview: GooglePlacePreview | null | undefined,
+): boolean {
+  return !preview ||
+    (!isDisplayablePlacePhoto(preview.photoUrl) &&
+      !preview.formattedAddress &&
+      !preview.googleMapsUri);
 }
 
 export async function fetchGooglePlacePreview(
@@ -250,7 +259,7 @@ export async function fetchGooglePlacePreview(
     fromService = null;
   }
   if (fromService && isDisplayablePlacePhoto(fromService.photoUrl)) {
-    return mergePreview(fromService, fromJs);
+    return mergeGooglePlacePreview(fromService, fromJs);
   }
 
   let fromRest: GooglePlacePreview = {};
@@ -260,5 +269,5 @@ export async function fetchGooglePlacePreview(
     // REST Details is a fallback. A throw here must not wipe a Maps
     // address or URI we already have.
   }
-  return mergePreview(fromJs, fromService, fromRest);
+  return mergeGooglePlacePreview(fromJs, fromService, fromRest);
 }
