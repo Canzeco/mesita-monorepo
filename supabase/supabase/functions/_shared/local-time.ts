@@ -71,5 +71,6 @@ export {
   demoteClosed,
   isOpenAt,
   isOpenNow,
+  isOpenThrough,
   openScore,
 } from "./local-time-open.ts";

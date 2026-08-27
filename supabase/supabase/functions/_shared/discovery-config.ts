@@ -1,8 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · params · slotting · filters · engines · catalog · map · name · social · chat.
-// Admin: Name (Fast + Deep) live, Catalog live, Map live, Social staged, Chat prompt live. Signals Soon.
+// Keys: weights · params · slotting · filters · engines · catalog · map · name · social · chat · swipe.
+// Admin: Name (Fast + Deep) live, Map live, Swipe live, Catalog live, Social staged, Chat prompt live. Signals Soon.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -137,6 +137,35 @@ export type NameConfig = {
   deep: NameDeepConfig;
 };
 
+export type SwipePartnerLevel =
+  | "none"
+  | "partner"
+  | "conservative"
+  | "aggressive"
+  | "dominant";
+
+export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
+
+/**
+ * Swipe engine knobs. Hard filters admit; a two-signal SUM scores; partner
+ * bias multiplies after. Independent of the six-signal blend still stored
+ * on `weights` / `params` / `slotting` for later engines.
+ */
+export type SwipeConfig = {
+  radiusKm: number;
+  closingBufferMin: number;
+  /** Popularity weight is 1 minus this. */
+  weightProximity: number;
+  starsExponent: number;
+  logDivisor: number;
+  partnerBias: SwipePartnerBias;
+  /** Guest category-filter default. Off keeps the feed open. */
+  categoryFilter: boolean;
+  minReviews: number;
+  /** ISO time of the last Swipe-slice save. Null until the first Save. */
+  savedAt: string | null;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -151,6 +180,7 @@ export type DiscoveryConfig = {
   name: NameConfig;
   social: SocialConfig;
   chat: { prompt: string };
+  swipe: SwipeConfig;
 };
 
 /** Ceiling for discovery_config.chat.prompt. The console textarea matches it. */
@@ -229,6 +259,24 @@ export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 
+export const SWIPE_RADIUS_KM_MIN = 1;
+export const SWIPE_RADIUS_KM_MAX = 50;
+export const SWIPE_CLOSING_BUFFER_MIN = 0;
+export const SWIPE_CLOSING_BUFFER_MAX = 180;
+export const SWIPE_STARS_EXPONENT_MIN = 1;
+export const SWIPE_STARS_EXPONENT_MAX = 3;
+export const SWIPE_LOG_DIVISOR_MIN = 1;
+export const SWIPE_LOG_DIVISOR_MAX = 20;
+export const SWIPE_PARTNER_BIAS_MIN = 1;
+export const SWIPE_PARTNER_BIAS_MAX = 2;
+export const SWIPE_PARTNER_LEVELS = [
+  "none",
+  "partner",
+  "conservative",
+  "aggressive",
+  "dominant",
+] as const satisfies readonly SwipePartnerLevel[];
+
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
@@ -280,6 +328,27 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
 export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
+};
+
+export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
+  none: 1,
+  partner: 1.25,
+  conservative: 1.5,
+  aggressive: 1.75,
+  dominant: 2,
+};
+
+/** Closing buffer 30 min — discussed, not settled; operator-editable. */
+export const DEFAULT_SWIPE: SwipeConfig = {
+  radiusKm: 5,
+  closingBufferMin: 30,
+  weightProximity: 0.7,
+  starsExponent: 1.5,
+  logDivisor: 10,
+  partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
+  categoryFilter: false,
+  minReviews: 1,
+  savedAt: null,
 };
 
 /**
@@ -398,6 +467,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   name: DEFAULT_NAME,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
+  swipe: DEFAULT_SWIPE,
 };
 
 function num(raw: unknown, fallback: number, min: number, max: number): number {
@@ -513,6 +583,60 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       ),
       types: normalizeTypeBatteries(deep.types),
     },
+  };
+}
+
+function normalizeSavedAt(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? new Date(t).toISOString() : null;
+}
+
+export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const biasRaw = (r.partnerBias ?? {}) as Record<string, unknown>;
+  const partnerBias = {} as SwipePartnerBias;
+  for (const key of SWIPE_PARTNER_LEVELS) {
+    partnerBias[key] = Math.round(
+      num(
+        biasRaw[key],
+        DEFAULT_SWIPE.partnerBias[key],
+        SWIPE_PARTNER_BIAS_MIN,
+        SWIPE_PARTNER_BIAS_MAX,
+      ) * 100,
+    ) / 100;
+  }
+  return {
+    radiusKm: Math.round(
+      num(r.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
+    ) / 10,
+    closingBufferMin: Math.round(
+      num(
+        r.closingBufferMin,
+        DEFAULT_SWIPE.closingBufferMin,
+        SWIPE_CLOSING_BUFFER_MIN,
+        SWIPE_CLOSING_BUFFER_MAX,
+      ),
+    ),
+    weightProximity: Math.round(
+      num(r.weightProximity, DEFAULT_SWIPE.weightProximity, 0, 1) * 100,
+    ) / 100,
+    starsExponent: Math.round(
+      num(
+        r.starsExponent,
+        DEFAULT_SWIPE.starsExponent,
+        SWIPE_STARS_EXPONENT_MIN,
+        SWIPE_STARS_EXPONENT_MAX,
+      ) * 100,
+    ) / 100,
+    logDivisor: Math.round(
+      num(r.logDivisor, DEFAULT_SWIPE.logDivisor, SWIPE_LOG_DIVISOR_MIN, SWIPE_LOG_DIVISOR_MAX) *
+        100,
+    ) / 100,
+    partnerBias,
+    categoryFilter: bool(r.categoryFilter, DEFAULT_SWIPE.categoryFilter),
+    minReviews: Math.round(num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
+    savedAt: normalizeSavedAt(r.savedAt),
   };
 }
 
@@ -642,6 +766,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
         ((r.chat ?? {}) as Record<string, unknown>).prompt,
       ),
     },
+    swipe: normalizeSwipeConfig(r.swipe),
   };
 }
 

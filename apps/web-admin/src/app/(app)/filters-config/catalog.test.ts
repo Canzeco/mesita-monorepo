@@ -6,6 +6,7 @@ import {
   DEFAULT_MAP,
   DEFAULT_NAME,
   DEFAULT_SOCIAL,
+  DEFAULT_SWIPE,
   ENGINES,
   SIGNALS,
 } from "./catalog";
@@ -111,6 +112,35 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/Partners/);
     expect(name?.process).toMatch(/name embedding/i);
     expect(name?.process).not.toMatch(/summary embedding/i);
+  });
+
+  it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).swipe).toEqual(DEFAULT_SWIPE);
+    expect(
+      coerceConfig({
+        swipe: {
+          radiusKm: 99,
+          weightProximity: 4,
+          partnerBias: { dominant: 9 },
+          minReviews: -2,
+        },
+      }).swipe,
+    ).toMatchObject({
+      radiusKm: 50,
+      weightProximity: 1,
+      partnerBias: { ...DEFAULT_SWIPE.partnerBias, dominant: 2 },
+      minReviews: 0,
+      closingBufferMin: 30,
+    });
+  });
+
+  it("swipe() is the two-signal sum plus partner bias", () => {
+    const swipe = ENGINES.find((e) => e.key === "swipe");
+    expect(swipe?.state).toBe("LIVE");
+    expect(swipe?.process).toMatch(/proximity/);
+    expect(swipe?.process).toMatch(/popularity/);
+    expect(swipe?.process).toMatch(/partner bias/i);
+    expect(swipe?.process).not.toMatch(/slot bought/);
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {

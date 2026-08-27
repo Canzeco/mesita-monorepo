@@ -4,11 +4,12 @@ import { CatalogConfigClient } from "./CatalogConfigClient";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { MapConfigClient } from "./MapConfigClient";
 import { NameConfigClient } from "./NameConfigClient";
+import { SwipeConfigClient } from "./SwipeConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Fast Search + Deep Search live, Catalog live, Map live,
-// Social staged, Chat prompt + inventory live. Signals stay Soon.
+// Discovery — Fast Search + Deep Search live, Map live, Swipe live,
+// Catalog live, Social staged, Chat prompt + inventory live. Signals stay Soon.
 // Each box saves its slice against the live blob.
 export const dynamic = "force-dynamic";
 
@@ -24,12 +25,17 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <CatalogConfigClient
+      <MapConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <MapConfigClient
+      <SwipeConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
+      <CatalogConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
@@ -42,7 +48,7 @@ export default async function DiscoveryPage() {
       <ConfigSoon
         Icon={Compass}
         title="Signals are coming soon"
-        body="Swipe still ranks from the last-saved blob. Map floors stay on the Map box. Name Google categories live on Fast Search and Deep Search."
+        body="Swipe ranks from the Swipe box on this page. Map floors stay on the Map box. Name Google categories live on Fast Search and Deep Search."
         doc="Notion Docs › Discovery"
       />
     </div>

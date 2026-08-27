@@ -376,12 +376,11 @@ function Deck({ places }: { places: Place[] }) {
   // show me this again" perfectly well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
   // PREDICATES CUT, THE SERVER ORDERS. Nothing here reorders the deck —
-  // consumer-web-recommend-swipe ranks it (MESITA-1196) and randomness is a
-  // signal whose exponent the operator owns, so random lives in exactly one
-  // place. This is the SECOND pass of the same predicate set the fetch above
-  // already sent: it catches the window before the filtered deck lands, the
-  // rows the EF kept because it could not evaluate a predicate, and the
-  // minute-by-minute drift of "open now".
+  // consumer-web-recommend-swipe ranks it (two-signal sum + partner bias).
+  // This is the SECOND pass of the same predicate set the fetch above already
+  // sent: it catches the window before the filtered deck lands, the rows the
+  // EF kept because it could not evaluate a predicate, and the minute-by-minute
+  // drift of "open now".
   const filtered = useMemo(
     () =>
       applyDiscoveryFilters(located, filters).filter(

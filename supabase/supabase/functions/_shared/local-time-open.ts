@@ -71,11 +71,40 @@ export function isOpenAt(
 // Live open/closed state computed from stored weekly hours against the place's
 // LOCAL time (derived from lng). Returns null on no hours data or an
 // unresolvable zone so the caller stays neutral. See isOpenAt for the rules.
-export function isOpenNow(hours: unknown, lng: number | null): boolean | null {
+// `at` is injectable so a closing buffer can ask "still open in N minutes?"
+// against the same clock, not a second wall-clock read.
+export function isOpenNow(
+  hours: unknown,
+  lng: number | null,
+  at: Date = new Date(),
+): boolean | null {
   if (!hours || typeof hours !== "object") return null;
-  const clock = localClock(lng);
+  const clock = localClock(lng, at);
   if (!clock) return null;
   return isOpenAt(hours, clock.weekday, clock.minutes);
+}
+
+/**
+ * Discrete sit-down window: open at `at`, and still open `bufferMin` later.
+ * null when hours or zone cannot be judged. Swipe treats null as exclude.
+ */
+export function isOpenThrough(
+  hours: unknown,
+  weekday: string,
+  nowMin: number,
+  bufferMin: number,
+): boolean | null {
+  const open = isOpenAt(hours, weekday, nowMin);
+  if (open !== true) return open;
+  const buf = Number.isFinite(bufferMin) ? Math.max(0, Math.floor(bufferMin)) : 0;
+  if (buf === 0) return true;
+  const later = nowMin + buf;
+  const dayShift = Math.floor(later / (24 * 60));
+  const laterMin = later % (24 * 60);
+  const todayIdx = DAY_KEYS.indexOf(weekday as (typeof DAY_KEYS)[number]);
+  if (todayIdx < 0) return null;
+  const laterDay = DAY_KEYS[(todayIdx + dayShift) % 7];
+  return isOpenAt(hours, laterDay, laterMin) === true ? true : false;
 }
 
 // Rank weight for a place's live open state: open first, unknown neutral,
