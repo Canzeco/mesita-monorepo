@@ -1,7 +1,6 @@
 "use client";
 
-// Catalog (live) + Social (staged) boxes. One client holds the blob so a
-// Catalog Save cannot wipe social. Map and Chat save their own slices.
+// Catalog box. Slice Save so a Catalog Save cannot wipe Social (or Map/Chat).
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { LayoutGrid, Layers, Sparkles, Filter } from "lucide-react";
@@ -14,7 +13,6 @@ import {
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
-import { SocialConfigCard } from "./SocialConfigClient";
 import {
   CATALOG_COUNT_MAX,
   CATALOG_MIN_SEED_PLACES_MAX,
@@ -23,7 +21,6 @@ import {
   DEFAULT_CONFIG,
   type CatalogConfig,
   type DiscoveryConfig,
-  type SocialConfig,
 } from "./catalog";
 
 export function CatalogConfigClient({
@@ -64,13 +61,9 @@ export function CatalogConfigClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
   }, []);
 
-  const catalogDirty = useMemo(
+  const dirty = useMemo(
     () => JSON.stringify(cfg.catalog) !== JSON.stringify(saved.catalog),
     [cfg.catalog, saved.catalog],
-  );
-  const socialDirty = useMemo(
-    () => JSON.stringify(cfg.social) !== JSON.stringify(saved.social),
-    [cfg.social, saved.social],
   );
 
   const patchCatalog = (p: Partial<CatalogConfig>) => {
@@ -78,16 +71,11 @@ export function CatalogConfigClient({
     setCfg((c) => ({ ...c, catalog: { ...c.catalog, ...p } }));
   };
 
-  const patchSocial = (p: Partial<SocialConfig>) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, social: { ...c.social, ...p } }));
-  };
-
   const save = () => {
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, ["catalog", "social"]);
+      const r = await updateDiscoveryConfig(cfg, ["catalog"]);
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);
@@ -100,10 +88,9 @@ export function CatalogConfigClient({
   };
 
   const catalog = cfg.catalog ?? DEFAULT_CONFIG.catalog;
-  const social = cfg.social ?? DEFAULT_CONFIG.social;
 
   return (
-    <div className="space-y-10">
+    <div className="flex flex-col gap-4">
       {error ? <ErrorNote message={error} /> : null}
 
       <SectionCard
@@ -162,24 +149,12 @@ export function CatalogConfigClient({
         ) : null}
         <SaveRow
           pending={pending}
-          dirty={catalogDirty}
-          ok={ok && !catalogDirty && !socialDirty}
+          dirty={dirty}
+          ok={ok}
           onClick={save}
           loadError={loadBlocked ? error : null}
         />
       </SectionCard>
-
-      <SocialConfigCard
-        social={social}
-        pending={pending}
-        loadBlocked={loadBlocked}
-        loadError={error}
-        dirty={socialDirty}
-        ok={ok && !socialDirty && !catalogDirty}
-        updatedAt={updatedAt}
-        onPatch={patchSocial}
-        onSave={save}
-      />
     </div>
   );
 }

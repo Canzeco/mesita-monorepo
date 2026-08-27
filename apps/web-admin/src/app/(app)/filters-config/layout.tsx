@@ -1,6 +1,6 @@
 import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 
-// Discovery — Catalog live, Social staged, Chat prompt live.
+// Discovery — boxes Name · Map · Swipe · Catalog · Chat · Social · Favs.
 // The route stays /filters-config: a rename stops at the label.
 export default function DiscoveryLayout({
   children,
