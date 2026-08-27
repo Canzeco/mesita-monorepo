@@ -10,7 +10,8 @@
 //               Map type batteries, open now + closing buffer, then the
 //               guest's predicates (category is the guest toggle).
 //   2. SCORE  —  wP * proximity + (1 − wP) * popularity. Linear proximity.
-//   3. BIAS   —  partner multiplier, five levels, then order.
+//   3. BIAS   —  partner multiplier, five levels.
+//   4. JITTER —  Uniform[1, randomnessMax] per place, then order.
 //
 // Partner bias cannot live inside the spatial index. Fetch the admitted pool
 // first, then score, then bias, then order. Do not pre-order by distance and
@@ -60,7 +61,7 @@ type Body = {
   /** Accepted for wire compatibility. Ignored — operator owns radius. */
   radiusKm?: number;
   limit?: number;
-  /** Accepted for wire compatibility. Ignored — operator owns the tie break. */
+  /** Accepted for wire compatibility. Ignored — operator owns randomnessMax. */
   randomness?: number;
   predicates?: unknown;
 };

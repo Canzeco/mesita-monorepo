@@ -23,7 +23,7 @@
 //             Enforced by list-places, discover-places, suggest-places,
 //             create-place. Map floors still gate Name Google + Create.
 //   SWIPE     radiusKm · closingBufferMin · weightProximity · starsExponent ·
-//             logDivisor · partnerBias · categoryFilter · minReviews.
+//             logDivisor · partnerBias · randomnessMax · categoryFilter · minReviews.
 //             Enforced by consumer-web-recommend-swipe.
 //   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
 //             horizonDays. Staged — no Social/events engine yet.
@@ -80,6 +80,7 @@ export type SwipeConfig = {
   starsExponent: number;
   logDivisor: number;
   partnerBias: SwipePartnerBias;
+  randomnessMax: number;
   categoryFilter: boolean;
   minReviews: number;
   savedAt: string | null;
@@ -202,6 +203,8 @@ export const SWIPE_LOG_DIVISOR_MIN = 1;
 export const SWIPE_LOG_DIVISOR_MAX = 20;
 export const SWIPE_PARTNER_BIAS_MIN = 1;
 export const SWIPE_PARTNER_BIAS_MAX = 2;
+export const SWIPE_RANDOMNESS_MAX_MIN = 1;
+export const SWIPE_RANDOMNESS_MAX_MAX = 2;
 export const SWIPE_PARTNER_LEVELS = [
   "none",
   "partner",
@@ -341,6 +344,7 @@ export const DEFAULT_SWIPE: SwipeConfig = {
   starsExponent: 1.5,
   logDivisor: 10,
   partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
+  randomnessMax: 1.3,
   categoryFilter: false,
   minReviews: 1,
   savedAt: null,
@@ -411,7 +415,7 @@ export const ENGINES: {
     label: "Swipe",
     fn: "swipe()",
     input: "Ready pool + guest geo.",
-    process: "Hard filters, then 70/30 proximity + popularity, then partner bias. Ranked off = pool order.",
+    process: "Hard filters, then proximity + popularity sum, partner bias, then a random multiplier. Ranked off = pool order.",
     output: "Ordered Home deck.",
     state: "LIVE",
     wired: "swipe",
@@ -754,6 +758,14 @@ export function coerceSwipe(raw: unknown): SwipeConfig {
         100,
     ) / 100,
     partnerBias,
+    randomnessMax: Math.round(
+      num(
+        s.randomnessMax,
+        DEFAULT_SWIPE.randomnessMax,
+        SWIPE_RANDOMNESS_MAX_MIN,
+        SWIPE_RANDOMNESS_MAX_MAX,
+      ) * 100,
+    ) / 100,
     categoryFilter: typeof s.categoryFilter === "boolean"
       ? s.categoryFilter
       : DEFAULT_SWIPE.categoryFilter,

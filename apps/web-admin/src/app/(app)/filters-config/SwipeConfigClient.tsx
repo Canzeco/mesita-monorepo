@@ -1,11 +1,13 @@
 "use client";
 
 // Swipe hyperparameters — live. Hard filters admit; a two-signal sum scores;
-// partner bias multiplies after. Slice save so a Catalog Save cannot wipe this.
+// partner bias multiplies after; a Uniform[1, randomnessMax] draw per place
+// keeps the order from freezing. Slice save so a Catalog Save cannot wipe this.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Clock,
+  Dices,
   Filter,
   GalleryHorizontalEnd,
   MapPin,
@@ -33,6 +35,8 @@ import {
   SWIPE_PARTNER_BIAS_MAX,
   SWIPE_PARTNER_BIAS_MIN,
   SWIPE_PARTNER_LEVELS,
+  SWIPE_RANDOMNESS_MAX_MAX,
+  SWIPE_RANDOMNESS_MAX_MIN,
   SWIPE_RADIUS_KM_MAX,
   SWIPE_RADIUS_KM_MIN,
   SWIPE_STARS_EXPONENT_MAX,
@@ -134,7 +138,7 @@ export function SwipeConfigClient({
       <SectionCard
         icon={<GalleryHorizontalEnd className="text-primary h-4 w-4" />}
         title="Swipe"
-        subtitle="For guests who are not looking for anything specific. Hard filters admit. A weighted sum of proximity and popularity scores the pool. Partner bias multiplies after — same feed, never a bought lane. Distance is Haversine from stored coordinates. No Google."
+        subtitle="For guests who are not looking for anything specific. Hard filters admit. A weighted sum of proximity and popularity scores the pool. Partner bias multiplies after — same feed, never a bought lane. Then each place draws a uniform random multiplier so the order does not freeze. Distance is Haversine from stored coordinates. No Google."
         status={
           <KnobStatus
             kind="enforced"
@@ -201,7 +205,21 @@ export function SwipeConfigClient({
             disabled={pending || loadBlocked}
             onChange={(minReviews) => patch({ minReviews })}
           />
+          <NumberField
+            icon={<Dices className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Randomness (max multiplier)"
+            value={swipe.randomnessMax}
+            min={SWIPE_RANDOMNESS_MAX_MIN}
+            max={SWIPE_RANDOMNESS_MAX_MAX}
+            decimals
+            disabled={pending || loadBlocked}
+            onChange={(randomnessMax) => patch({ randomnessMax })}
+          />
         </div>
+        <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+          Each admitted place is multiplied by a fresh Uniform[1, this] draw.
+          1 turns randomness off. The draw is per request, never stored.
+        </p>
 
         <p className="text-muted-foreground mt-5 type-meta font-semibold tracking-wide uppercase">
           Partner bias (min 1, max 2)

@@ -22,6 +22,7 @@ set discovery_config =
         'aggressive', 1.75,
         'dominant', 2
       ),
+      'randomnessMax', 1.3,
       'categoryFilter', false,
       'minReviews', 1,
       'savedAt', null

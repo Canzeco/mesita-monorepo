@@ -123,6 +123,7 @@ describe("Discovery function APIs", () => {
           weightProximity: 4,
           partnerBias: { dominant: 9 },
           minReviews: -2,
+          randomnessMax: 9,
         },
       }).swipe,
     ).toMatchObject({
@@ -131,6 +132,7 @@ describe("Discovery function APIs", () => {
       partnerBias: { ...DEFAULT_SWIPE.partnerBias, dominant: 2 },
       minReviews: 0,
       closingBufferMin: 30,
+      randomnessMax: 2,
     });
   });
 
@@ -140,6 +142,7 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).toMatch(/proximity/);
     expect(swipe?.process).toMatch(/popularity/);
     expect(swipe?.process).toMatch(/partner bias/i);
+    expect(swipe?.process).toMatch(/random multiplier/i);
     expect(swipe?.process).not.toMatch(/slot bought/);
   });
 

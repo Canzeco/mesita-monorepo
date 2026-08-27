@@ -159,6 +159,11 @@ export type SwipeConfig = {
   starsExponent: number;
   logDivisor: number;
   partnerBias: SwipePartnerBias;
+  /**
+   * High end of a per-place Uniform[1, max] multiplier after bias.
+   * 1 = off. Stops the deck freezing the same order every load.
+   */
+  randomnessMax: number;
   /** Guest category-filter default. Off keeps the feed open. */
   categoryFilter: boolean;
   minReviews: number;
@@ -269,6 +274,8 @@ export const SWIPE_LOG_DIVISOR_MIN = 1;
 export const SWIPE_LOG_DIVISOR_MAX = 20;
 export const SWIPE_PARTNER_BIAS_MIN = 1;
 export const SWIPE_PARTNER_BIAS_MAX = 2;
+export const SWIPE_RANDOMNESS_MAX_MIN = 1;
+export const SWIPE_RANDOMNESS_MAX_MAX = 2;
 export const SWIPE_PARTNER_LEVELS = [
   "none",
   "partner",
@@ -346,6 +353,7 @@ export const DEFAULT_SWIPE: SwipeConfig = {
   starsExponent: 1.5,
   logDivisor: 10,
   partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
+  randomnessMax: 1.3,
   categoryFilter: false,
   minReviews: 1,
   savedAt: null,
@@ -634,6 +642,14 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
         100,
     ) / 100,
     partnerBias,
+    randomnessMax: Math.round(
+      num(
+        r.randomnessMax,
+        DEFAULT_SWIPE.randomnessMax,
+        SWIPE_RANDOMNESS_MAX_MIN,
+        SWIPE_RANDOMNESS_MAX_MAX,
+      ) * 100,
+    ) / 100,
     categoryFilter: bool(r.categoryFilter, DEFAULT_SWIPE.categoryFilter),
     minReviews: Math.round(num(r.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
     savedAt: normalizeSavedAt(r.savedAt),

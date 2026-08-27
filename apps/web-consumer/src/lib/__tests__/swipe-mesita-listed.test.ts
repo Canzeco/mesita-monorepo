@@ -23,9 +23,15 @@ describe("Swipe admits listed Mesita Map types only", () => {
   it("the deck EF cuts with the Map allowlist, never Google fill", () => {
     const src = readFileSync(EF, "utf8");
     expect(src).toContain("admitSwipeCatalog");
-    expect(src).toContain("listedMapFilters");
+    expect(src).toContain("cfg.map");
     expect(src).not.toContain("google: true");
     expect(src).not.toContain("googleFill");
+    const mapEngine = readFileSync(
+      join(SRC, "..", "..", "..", "supabase", "supabase", "functions", "_shared", "map-engine.ts"),
+      "utf8",
+    );
+    expect(mapEngine).toContain("listedMapFilters");
+    expect(mapEngine).toContain("admitSwipeCatalog");
   });
 
   it("the Home deck drops Google-only stubs before they reach Swipe", () => {

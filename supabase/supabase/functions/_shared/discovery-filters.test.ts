@@ -198,6 +198,7 @@ Deno.test("swipe knobs default on an old blob and clamp", () => {
       partnerBias: { none: 0.5, dominant: 9 },
       categoryFilter: "yes",
       minReviews: -1,
+      randomnessMax: 9,
       savedAt: "not-a-date",
     },
   });
@@ -211,6 +212,11 @@ Deno.test("swipe knobs default on an old blob and clamp", () => {
   assertEquals(clamped.swipe.partnerBias.partner, 1.25);
   assertEquals(clamped.swipe.categoryFilter, false);
   assertEquals(clamped.swipe.minReviews, 0);
+  assertEquals(clamped.swipe.randomnessMax, 2);
+  assertEquals(
+    normalizeDiscoveryConfig({ swipe: { randomnessMax: 0.4 } }).swipe.randomnessMax,
+    1,
+  );
   assertEquals(clamped.swipe.savedAt, null);
   assertEquals(
     normalizeDiscoveryConfig({ swipe: { savedAt: "2026-08-26T18:00:00.000Z" } }).swipe.savedAt,

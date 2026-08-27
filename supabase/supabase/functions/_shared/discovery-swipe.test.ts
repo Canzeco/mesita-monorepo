@@ -6,6 +6,7 @@ import {
   rankSwipeDeck,
   swipeAdmissionFilters,
   swipeBlend,
+  swipeJitter,
   swipePartnerLevel,
   swipePopularity,
   swipeProximity,
@@ -168,6 +169,23 @@ Deno.test("rank: a partner at the radius edge is scored, not dropped", () => {
   );
   assertEquals(ordered.map((r) => r.id).sort(), ["edge", "mid"]);
   assert(ordered[0].id === "edge" || ordered[0].id === "mid");
+});
+
+Deno.test("jitter is Uniform[1, max]; 1 is off", () => {
+  assertEquals(swipeJitter(0, 1.3), 1);
+  assertAlmostEquals(swipeJitter(1, 1.3), 1.3);
+  assertAlmostEquals(swipeJitter(0.5, 1.3), 1.15);
+  assertEquals(swipeJitter(0.9, 1), 1);
+  assertEquals(swipeJitter(0.9, 0.5), 1);
+});
+
+Deno.test("rank: randomness can flip two close places", () => {
+  const a = row("a", 1, 4.2, 40);
+  const b = row("b", 1, 4.2, 40);
+  let n = 0;
+  const rng = () => (n++ === 0 ? 1 : 0);
+  const ordered = rankSwipeDeck([a, b], GEO, DEFAULT_SWIPE, read, NOW, rng);
+  assertEquals(ordered.map((r) => r.id), ["a", "b"]);
 });
 
 Deno.test("admission filters: ready + swipe reviews + swipe radius", () => {

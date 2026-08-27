@@ -6,6 +6,7 @@
 // slots FOR SWIPE ONLY. Catalog, Chat and Social stay pending.
 //
 //   score = (wP * proximity + (1 − wP) * popularity) * partner_bias
+//           * Uniform[1, randomnessMax]
 //
 // Order of operations is load-bearing: admit the pool first (status, timing,
 // radius, optional category, review floor), then score, then bias, then order.
@@ -23,7 +24,13 @@ import { haversineKm } from "./geo.ts";
 import { isOpenNow } from "./local-time-open.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { placePromotingLevel, type PromotingFields } from "./place-promoting.ts";
-import type { DiscoveryFilters, SwipeConfig, SwipePartnerLevel } from "./discovery-config.ts";
+import {
+  SWIPE_RANDOMNESS_MAX_MAX,
+  SWIPE_RANDOMNESS_MAX_MIN,
+  type DiscoveryFilters,
+  type SwipeConfig,
+  type SwipePartnerLevel,
+} from "./discovery-config.ts";
 
 /** Query predicates Swipe owns. Map type batteries stay a separate cut. */
 export function swipeAdmissionFilters(swipe: SwipeConfig): DiscoveryFilters {
@@ -115,10 +122,19 @@ export type SwipeRankRead<T> = {
   partnerOf: (row: T) => PromotingFields | null | undefined;
 };
 
+/** Uniform[1, max]. max ≤ 1 is off. `unit` is one draw in [0, 1]. */
+export function swipeJitter(unit: number, max: number): number {
+  const hi = Number.isFinite(max)
+    ? Math.min(SWIPE_RANDOMNESS_MAX_MAX, Math.max(SWIPE_RANDOMNESS_MAX_MIN, max))
+    : SWIPE_RANDOMNESS_MAX_MIN;
+  if (hi <= 1) return 1;
+  const u = Number.isFinite(unit) ? Math.min(1, Math.max(0, unit)) : 0;
+  return 1 + (hi - 1) * u;
+}
+
 /**
- * Score the admitted pool, apply partner bias, order. Randomness is a
- * last-sort tie break so two equal scores do not freeze the same order.
- * Inject `rng` in tests.
+ * Score the admitted pool, apply partner bias, then a Uniform[1, randomnessMax]
+ * draw per place so the deck does not freeze. Inject `rng` in tests.
  */
 export function rankSwipeDeck<T>(
   rows: T[],
@@ -148,9 +164,12 @@ export function rankSwipeDeck<T>(
     );
     const level = swipePartnerLevel(read.partnerOf(row), now);
     const bias = swipe.partnerBias[level];
-    const score = swipeBlend(proximity, popularity, swipe.weightProximity) * bias;
-    return { row, i, score, tie: rng() };
+    const unit = rng();
+    const score = swipeBlend(proximity, popularity, swipe.weightProximity) *
+      bias *
+      swipeJitter(unit, swipe.randomnessMax);
+    return { row, i, score };
   });
-  scored.sort((a, b) => b.score - a.score || a.tie - b.tie || a.i - b.i);
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
   return scored.map((x) => x.row);
 }
