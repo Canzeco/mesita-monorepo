@@ -31,6 +31,11 @@ describe("Home hub is Soon", () => {
     expect(page).not.toContain("useHomeDeck");
   });
 
+  it("swipe is a client page so EmptyState can take a Lucide icon", () => {
+    const page = read("app/(shell)/home/swipe/page.tsx");
+    expect(page.startsWith('"use client"')).toBe(true);
+  });
+
   it("does not fetch the shared Home deck while parked", () => {
     const layout = read("app/(shell)/home/layout.tsx");
     expect(layout).not.toContain("HomeDeckBoundary");
