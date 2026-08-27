@@ -7,6 +7,7 @@ import {
   type NativeSyntheticEvent,
   Pressable,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -14,12 +15,9 @@ import { RailCard } from '@/components/search/SearchRailCard';
 import { SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 
-// Rail card geometry (w-56 = 224px) + the flex gap between cards. The pager
-// index and the pin→card scroll sync both stride by this.
-const CARD_WIDTH = 224;
-const CARD_GAP = 10;
-const RAIL_LEADING = 12;
-const RAIL_STRIDE = CARD_WIDTH + CARD_GAP;
+// 80% active card + 10% neighbor peek each side. First/last pages pad so
+// the active card still centres. No gap — the peek *is* the next card.
+const CARD_RATIO = 0.8;
 
 export function IdleCatalogRail({
   idle,
@@ -52,6 +50,9 @@ export function IdleCatalogRail({
   onOpenPlace: (id: string) => void;
 }) {
   const listRef = useRef<FlatList<Place>>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.round(screenWidth * CARD_RATIO);
+  const peek = Math.max(0, Math.round((screenWidth - cardWidth) / 2));
   // 0-based position of the card nearest the rail's scroll start → the
   // "N / M places" pager (web SearchRailOverlay parity).
   const [railIndex, setRailIndex] = useState(0);
@@ -157,7 +158,7 @@ export function IdleCatalogRail({
   }
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (places.length === 0) return;
+    if (places.length === 0 || cardWidth <= 0) return;
     const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
     // At the far-right end the last card is fully visible but the offset never
     // reaches (n-1)·stride, so Math.round caps one short — snap to the last
@@ -168,7 +169,7 @@ export function IdleCatalogRail({
       contentOffset.x + layoutMeasurement.width >= contentSize.width - 4;
     const idx = atEnd
       ? places.length - 1
-      : Math.round(contentOffset.x / RAIL_STRIDE);
+      : Math.round(contentOffset.x / cardWidth);
     setRailIndex(Math.max(0, Math.min(idx, places.length - 1)));
   };
 
@@ -210,32 +211,38 @@ export function IdleCatalogRail({
         data={places}
         keyExtractor={(p) => p.id}
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: RAIL_LEADING, gap: CARD_GAP }}
+        decelerationRate="fast"
+        snapToInterval={cardWidth}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        contentContainerStyle={{ paddingHorizontal: peek }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         getItemLayout={(_, index) => ({
-          length: CARD_WIDTH,
-          offset: RAIL_LEADING + index * RAIL_STRIDE,
+          length: cardWidth,
+          offset: peek + index * cardWidth,
           index,
         })}
         onScrollToIndexFailed={(info) => {
           listRef.current?.scrollToOffset({
-            offset: RAIL_LEADING + info.index * RAIL_STRIDE,
+            offset: info.index * cardWidth,
             animated: true,
           });
         }}
         renderItem={({ item }) => (
-          <RailCard
-            place={item}
-            selected={item.id === selectedId}
-            onPress={() => {
-              if (selectedId === item.id) {
-                onOpenPlace(item.id);
-              } else {
-                onSelectPlace(item.id);
-              }
-            }}
-          />
+          <View style={{ width: cardWidth }}>
+            <RailCard
+              place={item}
+              selected={item.id === selectedId}
+              onPress={() => {
+                if (selectedId === item.id) {
+                  onOpenPlace(item.id);
+                } else {
+                  onSelectPlace(item.id);
+                }
+              }}
+            />
+          </View>
         )}
       />
     </View>

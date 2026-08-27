@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils";
 
 import { RailCard } from "./SearchRailCard";
 
+/** Active card is 80% of the rail; first/last pages pad 10% so the card
+ *  centers and neighbors peek. A flick still snaps — no rest between cards. */
+const RAIL_PAGE = "w-4/5 shrink-0 snap-center first:ml-[10%] last:mr-[10%]";
+
 export function SearchHereButton({
   loading,
   stale,
@@ -51,7 +55,7 @@ function CatalogRailSkeleton() {
         className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
         aria-hidden
       >
-        <div className="w-full shrink-0 snap-start px-3">
+        <div className={RAIL_PAGE}>
           <div className="border-border bg-card/95 flex w-full items-center gap-3 rounded-2xl border p-2">
             <Skeleton className="h-20 w-20 shrink-0 rounded-xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-2 py-0.5">
@@ -206,7 +210,7 @@ export function SearchRailOverlay({
                 <div
                   key={place.id}
                   ref={(el) => setRailCardRef(place.id, el)}
-                  className="w-full shrink-0 snap-start px-3"
+                  className={RAIL_PAGE}
                 >
                   <RailCard
                     place={place}
