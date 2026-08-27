@@ -36,7 +36,8 @@ export type DiscoverySlice =
   | "map"
   | "nameFast"
   | "nameDeep"
-  | "swipe";
+  | "swipe"
+  | "signals";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -46,7 +47,17 @@ export async function updateDiscoveryConfig(
   if (!live.ok) return live;
   const keys = new Set(
     slices ??
-      (["general", "catalog", "social", "chat", "map", "nameFast", "nameDeep", "swipe"] as const),
+      ([
+        "general",
+        "catalog",
+        "social",
+        "chat",
+        "map",
+        "nameFast",
+        "nameDeep",
+        "swipe",
+        "signals",
+      ] as const),
   );
   const next: DiscoveryConfig = {
     ...live.config,
@@ -62,6 +73,9 @@ export async function updateDiscoveryConfig(
     swipe: keys.has("swipe")
       ? { ...config.swipe, savedAt: new Date().toISOString() }
       : live.config.swipe,
+    weights: keys.has("signals") ? config.weights : live.config.weights,
+    params: keys.has("signals") ? config.params : live.config.params,
+    slotting: keys.has("signals") ? config.slotting : live.config.slotting,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-discovery-config",

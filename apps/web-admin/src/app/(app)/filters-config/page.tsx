@@ -1,20 +1,18 @@
-import { Compass } from "lucide-react";
-import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { CatalogConfigClient } from "./CatalogConfigClient";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
 import { FavsConfigCard } from "./DiscoverySurfaceCards";
 import { GeneralConfigClient } from "./GeneralConfigClient";
 import { MapConfigClient } from "./MapConfigClient";
 import { NameConfigClient } from "./NameConfigClient";
+import { SignalsConfigClient } from "./SignalsConfigClient";
 import { SocialConfigClient } from "./SocialConfigClient";
 import { SwipeConfigClient } from "./SwipeConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery boxes, operator order: General · Name · Map · Swipe · Catalog ·
-// Chat · Social · Favs. General, Name, Map, Swipe, and Chat knobs are live.
-// Fast Search and Deep Search stay two boxes. Catalog and Social are empty
-// Soon boxes. Favs has no knobs. Signals stay Soon.
+// Discovery boxes, operator order: General · Name (Fast Search) ·
+// Name (Deep Search) · Map · Swipe · Catalog · Chat · Social ·
+// Favorites · Signals. Catalog and Social stay Soon.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -52,11 +50,10 @@ export default async function DiscoveryPage() {
       />
       <SocialConfigClient />
       <FavsConfigCard />
-      <ConfigSoon
-        Icon={Compass}
-        title="Signals are coming soon"
-        body="Swipe ranks from the Swipe box on this page. Map floors stay on the Map box. General caps how many Google types are available. Fast Search and Deep Search still own their toggles."
-        doc="Notion Docs › Discovery"
+      <SignalsConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
       />
     </div>
   );
