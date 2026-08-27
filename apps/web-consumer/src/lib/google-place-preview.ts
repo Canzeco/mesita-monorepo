@@ -253,6 +253,12 @@ export async function fetchGooglePlacePreview(
     return mergePreview(fromService, fromJs);
   }
 
-  const fromRest = await previewFromRest(placeId, apiKey, get);
+  let fromRest: GooglePlacePreview = {};
+  try {
+    fromRest = await previewFromRest(placeId, apiKey, get);
+  } catch {
+    // REST Details is a fallback. A throw here must not wipe a Maps
+    // address or URI we already have.
+  }
   return mergePreview(fromJs, fromService, fromRest);
 }
