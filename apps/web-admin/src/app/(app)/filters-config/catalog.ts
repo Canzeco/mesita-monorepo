@@ -6,8 +6,8 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Fast Search · Deep Search · Map · Swipe · Catalog · Social
-// (staged) · Chat prompt + inventory. Signals Soon.
+// Live HTML order: Name (Fast · Deep) · Map · Swipe · Catalog · Chat ·
+// Social · Favs. Signals Soon.
 //
 //   NAME      two boxes on `discovery_config.name`.
 //             Fast  count + Google categories. Autocomplete while typing.
@@ -15,8 +15,6 @@
 //                   categories. ~1s idle. Partners → Mesita → Google after
 //                   dropping overlaps. Name cosine on Mesita lanes; Text
 //                   Search order on Google. Enforced by consumer-search-lane.
-//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
-//             Enforced by consumer-web-list-catalog.
 //   MAP       partnerCount · mesitaCount · googleCount · type
 //             batteries (Google pipeline only). Floors stay on the blob.
 //             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
@@ -25,10 +23,13 @@
 //   SWIPE     radiusKm · closingBufferMin · weightProximity · starsExponent ·
 //             logDivisor · partnerBias · randomnessMax · categoryFilter · minReviews.
 //             Enforced by consumer-web-recommend-swipe.
-//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
-//             horizonDays. Staged — no Social/events engine yet.
+//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
+//             Enforced by consumer-web-list-catalog.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
 //             are listed in the box — display only, not knobs.
+//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
+//             horizonDays. Staged — no Social/events engine yet.
+//   FAVS      no knobs. Home parked.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.

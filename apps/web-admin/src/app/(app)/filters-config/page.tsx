@@ -2,15 +2,17 @@ import { Compass } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { CatalogConfigClient } from "./CatalogConfigClient";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
+import { FavsConfigCard } from "./DiscoverySurfaceCards";
 import { MapConfigClient } from "./MapConfigClient";
 import { NameConfigClient } from "./NameConfigClient";
+import { SocialConfigClient } from "./SocialConfigClient";
 import { SwipeConfigClient } from "./SwipeConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Fast Search + Deep Search live, Map live, Swipe live,
-// Catalog live, Social staged, Chat prompt + inventory live. Signals stay Soon.
-// Each box saves its slice against the live blob.
+// Discovery boxes, operator order: Name · Map · Swipe · Catalog · Chat ·
+// Social · Favs. Name is Fast Search + Deep Search. Swipe knobs are live.
+// Signals stay Soon. Each knob box saves its own slice.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -45,6 +47,12 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
+      <SocialConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
+      <FavsConfigCard />
       <ConfigSoon
         Icon={Compass}
         title="Signals are coming soon"
