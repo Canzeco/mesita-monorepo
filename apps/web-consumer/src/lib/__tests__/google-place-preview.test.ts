@@ -6,6 +6,7 @@ import {
   isDisplayablePlacePhoto,
   isEmptyGooglePlacePreview,
   mergeGooglePlacePreview,
+  settleGooglePlaceCache,
   type PlacesLibraryLike,
 } from "@/lib/google-place-preview";
 
@@ -46,6 +47,21 @@ describe("mergeGooglePlacePreview", () => {
     expect(
       isEmptyGooglePlacePreview({ formattedAddress: "Monterrey" }),
     ).toBe(false);
+  });
+
+  it("re-reads the cache so a richer in-flight write is not overwritten", () => {
+    const cache = new Map();
+    cache.set("ChIJ1", {
+      photoUrl: "https://lh3.googleusercontent.com/p/eden",
+    });
+    const next = settleGooglePlaceCache(cache, "ChIJ1", {
+      formattedAddress: "Monterrey",
+    });
+    expect(next).toEqual({
+      photoUrl: "https://lh3.googleusercontent.com/p/eden",
+      formattedAddress: "Monterrey",
+    });
+    expect(cache.get("ChIJ1")).toEqual(next);
   });
 });
 

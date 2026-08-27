@@ -235,6 +235,19 @@ export function isEmptyGooglePlacePreview(
       !preview.googleMapsUri);
 }
 
+/** Re-read the cache after the fetch so a richer in-flight write is kept. */
+export function settleGooglePlaceCache(
+  cache: Map<string, GooglePlacePreview>,
+  id: string,
+  fetched: GooglePlacePreview | null,
+): GooglePlacePreview {
+  const latest = cache.get(id);
+  const next = mergeGooglePlacePreview(fetched, latest);
+  if (!isEmptyGooglePlacePreview(next)) cache.set(id, next);
+  else if (!latest) cache.set(id, {});
+  return next;
+}
+
 export async function fetchGooglePlacePreview(
   placeId: string,
   apiKey: string,
