@@ -502,6 +502,9 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
       "importLibrary",
     );
     expect(read("../../../lib/google-place-preview.ts")).toContain(
+      "PlacesService",
+    );
+    expect(read("../../../lib/google-place-preview.ts")).toContain(
       "isDisplayablePlacePhoto",
     );
     expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");

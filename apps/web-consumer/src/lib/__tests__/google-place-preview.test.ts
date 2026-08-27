@@ -81,6 +81,7 @@ describe("fetchGooglePlacePreview", () => {
       "test-key",
       get,
       async () => null,
+      () => null,
     );
 
     expect(get).toHaveBeenCalledTimes(2);
@@ -112,6 +113,7 @@ describe("fetchGooglePlacePreview", () => {
       "test-key",
       get,
       async () => null,
+      () => null,
     );
     expect(get).toHaveBeenCalledTimes(1);
     expect(preview.photoUrl).toBeUndefined();
@@ -130,7 +132,53 @@ describe("fetchGooglePlacePreview", () => {
       "test-key",
       get,
       async () => null,
+      () => null,
     );
     expect(preview.photoUrl).toBeUndefined();
+  });
+
+  it("uses PlacesService getUrl when the new Place class is missing", async () => {
+    const get = vi.fn();
+    const loadService = vi.fn(() => {
+      return class {
+        getDetails(
+          _req: { placeId: string; fields: string[] },
+          cb: (
+            result: {
+              photos?: Array<{ getUrl: (opts: { maxWidth: number }) => string }>;
+              formatted_address?: string;
+              url?: string;
+            } | null,
+            status: string,
+          ) => void,
+        ) {
+          cb(
+            {
+              photos: [
+                { getUrl: () => "https://lh3.googleusercontent.com/p/service" },
+              ],
+              formatted_address: "Ignacio Zaragoza 226, Monterrey",
+              url: "https://maps.google.com/?cid=2",
+            },
+            "OK",
+          );
+        }
+      };
+    });
+
+    const preview = await fetchGooglePlacePreview(
+      "ChIJ1",
+      "test-key",
+      get,
+      async () => null,
+      loadService,
+    );
+
+    expect(get).not.toHaveBeenCalled();
+    expect(preview).toEqual({
+      photoUrl: "https://lh3.googleusercontent.com/p/service",
+      formattedAddress: "Ignacio Zaragoza 226, Monterrey",
+      googleMapsUri: "https://maps.google.com/?cid=2",
+    });
   });
 });

@@ -6,6 +6,8 @@
 // The hero must be a googleusercontent URL. Browser fetch of
 // places.googleapis.com/.../media is CORS-blocked, and an <img> of that
 // same URL with ?key= 403s — that's the pink MapPinPlus placeholder.
+// Prefer Maps JS (new Place, then legacy PlacesService already on the
+// Search map) so getURI/getUrl can mint a displayable photo in-page.
 
 export type GooglePlacePreview = {
   photoUrl?: string;
@@ -17,6 +19,7 @@ export const GOOGLE_PREVIEW_FIELD_MASK =
   "photos,formattedAddress,googleMapsUri";
 
 const DETAILS_BASE = "https://places.googleapis.com/v1/places";
+const MAPS_WAIT_MS = 1500;
 
 type PlacePhotoLike = {
   getURI?: (opts: { maxWidth: number }) => string;
@@ -36,7 +39,39 @@ export type PlacesLibraryLike = {
 
 export type PlacesLoader = () => Promise<PlacesLibraryLike | null>;
 
-export function isDisplayablePlacePhoto(url: string | undefined): boolean {
+type LegacyPlaceResult = {
+  photos?: PlacePhotoLike[];
+  formatted_address?: string;
+  url?: string;
+};
+
+export type PlacesServiceCtor = new (attrContainer: HTMLElement) => {
+  getDetails: (
+    request: { placeId: string; fields: string[] },
+    callback: (
+      result: LegacyPlaceResult | null,
+      status: string,
+    ) => void,
+  ) => void;
+};
+
+export type PlacesServiceLoader = () => PlacesServiceCtor | null;
+
+type MapsGlobal = {
+  google?: {
+    maps?: {
+      importLibrary?: (name: string) => Promise<unknown>;
+      places?: {
+        Place?: PlacesLibraryLike["Place"];
+        PlacesService?: PlacesServiceCtor;
+      };
+    };
+  };
+};
+
+export function isDisplayablePlacePhoto(
+  url: string | undefined,
+): url is string {
   return typeof url === "string" && url.startsWith("https://") &&
     !url.includes("places.googleapis.com");
 }
@@ -49,15 +84,33 @@ function photoUriFromJs(photo: PlacePhotoLike): string | undefined {
   return isDisplayablePlacePhoto(raw) ? raw : undefined;
 }
 
+function mapsApi(): NonNullable<MapsGlobal["google"]>["maps"] | undefined {
+  return (globalThis as MapsGlobal).google?.maps;
+}
+
+async function waitForGoogleMaps(ms = MAPS_WAIT_MS): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    const maps = mapsApi();
+    if (typeof maps?.importLibrary === "function" || maps?.places) return;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+}
+
+export function loadPlacesService(): PlacesServiceCtor | null {
+  const ctor = mapsApi()?.places?.PlacesService;
+  return typeof ctor === "function" ? ctor : null;
+}
+
 export async function loadPlacesLibrary(): Promise<PlacesLibraryLike | null> {
-  const maps = (
-    globalThis as {
-      google?: { maps?: { importLibrary?: (name: string) => Promise<unknown> } };
-    }
-  ).google?.maps;
-  if (typeof maps?.importLibrary !== "function") return null;
-  const lib = (await maps.importLibrary("places")) as PlacesLibraryLike;
-  return lib?.Place ? lib : null;
+  await waitForGoogleMaps();
+  const maps = mapsApi();
+  if (typeof maps?.importLibrary === "function") {
+    const lib = (await maps.importLibrary("places")) as PlacesLibraryLike;
+    if (lib?.Place) return lib;
+  }
+  const Place = maps?.places?.Place;
+  return Place ? { Place } : null;
 }
 
 async function previewFromPlacesLibrary(
@@ -78,6 +131,37 @@ async function previewFromPlacesLibrary(
     formattedAddress: place.formattedAddress ?? undefined,
     googleMapsUri: place.googleMapsURI ?? undefined,
   };
+}
+
+async function previewFromPlacesService(
+  placeId: string,
+  loadService: PlacesServiceLoader,
+): Promise<GooglePlacePreview | null> {
+  const Service = loadService();
+  if (!Service) return null;
+  const node =
+    typeof document !== "undefined"
+      ? document.createElement("div")
+      : ({} as HTMLElement);
+  const service = new Service(node);
+  return new Promise((resolve) => {
+    service.getDetails(
+      { placeId, fields: ["photos", "formatted_address", "url"] },
+      (result, status) => {
+        if (status !== "OK" || !result) {
+          resolve(null);
+          return;
+        }
+        resolve({
+          photoUrl: result.photos?.[0]
+            ? photoUriFromJs(result.photos[0])
+            : undefined,
+          formattedAddress: result.formatted_address,
+          googleMapsUri: result.url,
+        });
+      },
+    );
+  });
 }
 
 async function firstPhotoUri(
@@ -127,11 +211,27 @@ async function previewFromRest(
   };
 }
 
+function mergePreview(
+  ...parts: Array<GooglePlacePreview | null | undefined>
+): GooglePlacePreview {
+  const merged: GooglePlacePreview = {};
+  for (const part of parts) {
+    if (!part) continue;
+    if (!merged.photoUrl && isDisplayablePlacePhoto(part.photoUrl)) {
+      merged.photoUrl = part.photoUrl;
+    }
+    merged.formattedAddress ??= part.formattedAddress;
+    merged.googleMapsUri ??= part.googleMapsUri;
+  }
+  return merged;
+}
+
 export async function fetchGooglePlacePreview(
   placeId: string,
   apiKey: string,
   get: typeof fetch = fetch,
   loadPlaces: PlacesLoader = loadPlacesLibrary,
+  loadService: PlacesServiceLoader = loadPlacesService,
 ): Promise<GooglePlacePreview> {
   let fromJs: GooglePlacePreview | null = null;
   try {
@@ -142,10 +242,17 @@ export async function fetchGooglePlacePreview(
   if (fromJs && isDisplayablePlacePhoto(fromJs.photoUrl)) {
     return fromJs;
   }
+
+  let fromService: GooglePlacePreview | null = null;
+  try {
+    fromService = await previewFromPlacesService(placeId, loadService);
+  } catch {
+    fromService = null;
+  }
+  if (fromService && isDisplayablePlacePhoto(fromService.photoUrl)) {
+    return mergePreview(fromService, fromJs);
+  }
+
   const fromRest = await previewFromRest(placeId, apiKey, get);
-  return {
-    photoUrl: fromJs?.photoUrl ?? fromRest.photoUrl,
-    formattedAddress: fromJs?.formattedAddress ?? fromRest.formattedAddress,
-    googleMapsUri: fromJs?.googleMapsUri ?? fromRest.googleMapsUri,
-  };
+  return mergePreview(fromJs, fromService, fromRest);
 }

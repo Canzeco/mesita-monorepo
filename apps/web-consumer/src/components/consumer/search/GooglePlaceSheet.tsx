@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   fetchGooglePlacePreview,
+  isDisplayablePlacePhoto,
   type GooglePlacePreview,
 } from "@/lib/google-place-preview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -54,15 +55,22 @@ export function GooglePlaceSheet({
 
   // Cache is read during render; the state value only exists to re-render
   // once a miss resolves (the effect writes the cache before setting it).
-  const [, setFetchedId] = useState<string | null>(null);
+  const [fetchedId, setFetchedId] = useState<string | null>(null);
   const [photoFailed, setPhotoFailed] = useState(false);
   const profile = prediction ? profileCache.get(prediction.placeId) : undefined;
-  const waiting = Boolean(open && prediction && apiKey && !profile);
+  const waiting = Boolean(
+    open &&
+      prediction &&
+      apiKey &&
+      !isDisplayablePlacePhoto(profile?.photoUrl) &&
+      fetchedId !== prediction.placeId,
+  );
 
   useEffect(() => {
     if (!open || !prediction || !apiKey) return;
     const id = prediction.placeId;
-    if (profileCache.has(id)) return;
+    const cached = profileCache.get(id);
+    if (isDisplayablePlacePhoto(cached?.photoUrl)) return;
     let stale = false;
     (async () => {
       let fetched: GooglePlacePreview = {};
@@ -93,7 +101,9 @@ export function GooglePlaceSheet({
         prediction.mainText,
       )}&query_place_id=${encodeURIComponent(prediction.placeId)}`)
     : "#";
-  const photoUrl = profile?.photoUrl && !photoFailed ? profile.photoUrl : null;
+  const cachedPhoto = profile?.photoUrl;
+  const photoUrl =
+    isDisplayablePlacePhoto(cachedPhoto) && !photoFailed ? cachedPhoto : null;
 
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Place preview">
