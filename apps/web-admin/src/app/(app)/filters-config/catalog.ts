@@ -33,8 +33,9 @@
 //             minSeedEvents · horizonDays persist on the blob; no events engine.
 //   FAVORITES no knobs. Home › Favorites is live.
 //   SIGNALS   reusable library: Proximity · Timing · Popularity ·
-//             Promoting · Semantic · Category. Weights + params persist.
-//             Promoting is slotting (post-blend), not an earned SIGNAL_KEY.
+//             Promoting · Semantic · Category · Randomness. Weights +
+//             params persist. Promoting is slotting (post-blend), not
+//             an earned SIGNAL_KEY. Randomness is an earned SIGNAL_KEY.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -562,7 +563,8 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
   unembedded: { min: 0, max: 1, step: 0.05 },
 };
 
-/** Operator library order. Promoting is slotting, not a SIGNAL_KEY. */
+/** Operator library order. Promoting is slotting, not a SIGNAL_KEY.
+ *  Randomness is an earned SIGNAL_KEY — a uniform draw, not swipe jitter. */
 export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "proximity" as const },
   { kind: "signal" as const, key: "timing" as const },
@@ -570,6 +572,7 @@ export const LIBRARY_SIGNALS = [
   { kind: "promoting" as const },
   { kind: "signal" as const, key: "semantic" as const },
   { kind: "signal" as const, key: "category" as const },
+  { kind: "signal" as const, key: "randomness" as const },
 ] as const;
 
 export const SIGNALS: {

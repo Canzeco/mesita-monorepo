@@ -1,8 +1,9 @@
 "use client";
 
-// Signals library — one box, six reusable scores. Engines call these;
-// they do not invent a second scale. Weights and params persist on
-// discovery_config. Promoting is the post-blend slot, not an earned s^w.
+// Signals library — one box, six earned scores plus Promoting. Engines
+// call these; they do not invent a second scale. Weights and params
+// persist on discovery_config. Promoting is the post-blend slot, not
+// an earned s^w. Randomness is an earned draw (weight), not swipe jitter.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -10,6 +11,7 @@ import {
   Compass,
   MapPin,
   Megaphone,
+  Shuffle,
   Sparkles,
   Star,
   Tags,
@@ -41,7 +43,7 @@ const ICONS: Record<SignalKey | "promoting", typeof MapPin> = {
   promoting: Megaphone,
   semantic: Sparkles,
   category: Tags,
-  randomness: Sparkles,
+  randomness: Shuffle,
 };
 
 export function SignalsConfigClient({

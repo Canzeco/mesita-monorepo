@@ -34,7 +34,7 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("library order is Proximity · Timing · Popularity · Promoting · Semantic · Category", () => {
+  it("library order is Proximity · Timing · Popularity · Promoting · Semantic · Category · Randomness", () => {
     expect(LIBRARY_SIGNALS.map((row) => (row.kind === "promoting" ? "promoting" : row.key)))
       .toEqual([
         "proximity",
@@ -43,6 +43,7 @@ describe("Discovery function APIs", () => {
         "promoting",
         "semantic",
         "category",
+        "randomness",
       ]);
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).toContain("randomness");
@@ -234,7 +235,8 @@ describe("Discovery page box order", () => {
     expect(signals).toContain('title="Signals"');
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).toContain("Promoting");
-    expect(signals).not.toContain("Randomness");
+    expect(signals).toContain("Shuffle");
+    expect(signals).toContain("randomness");
 
     const jsx = page.slice(page.indexOf("return ("));
     const order = [
