@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Pencil } from "lucide-react";
 import {
   searchPlacesByGoogleIds,
   setPlaceListed,
@@ -14,11 +12,21 @@ import {
   STRATEGY_BY_ID,
   type StrategyId,
 } from "@/lib/business/strategies";
-import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
+import type { BatchRowStatus } from "./StatusIcon";
 
-const CONCURRENCY = 4;
+export type EditFact = "listed" | "verified" | "partner" | "promoting";
 
-type EditFact = "listed" | "verified" | "partner" | "promoting";
+export type EditValues = {
+  listedOn: boolean;
+  partnerOn: boolean;
+  promoting: 0 | 1 | 2;
+};
+
+export const DEFAULT_EDIT_VALUES: EditValues = {
+  listedOn: true,
+  partnerOn: true,
+  promoting: 0,
+};
 
 type Row = {
   status: BatchRowStatus;
@@ -33,219 +41,118 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
   return { ...rates, monthly_promo_cap: DEFAULT_DISCOUNT_CAP_MXN };
 }
 
-// Edit lives on Mesita Intake: same Google Place IDs, one state write.
-// Listed · Verified · Partner · Promoted. No other fields.
-export function EditPanel({
-  placeIds,
-  locked,
-  onBusyChange,
+const SELECT_CLASS =
+  "border-border bg-background h-10 rounded-xl border px-3 text-sm outline-none";
+
+// State + value next to Update. Listed · Verified · Partner · Promoted.
+export function UpdateFields({
+  fact,
+  onFact,
+  values,
+  onValues,
+  disabled,
 }: {
-  placeIds: string[];
-  locked: boolean;
-  onBusyChange?: (busy: boolean) => void;
+  fact: EditFact;
+  onFact: (next: EditFact) => void;
+  values: EditValues;
+  onValues: (next: EditValues) => void;
+  disabled: boolean;
 }) {
-  const [fact, setFact] = useState<EditFact>("listed");
-  const [listedOn, setListedOn] = useState(true);
-  const [partnerOn, setPartnerOn] = useState(true);
-  const [promoting, setPromoting] = useState<0 | 1 | 2>(0);
-  const [running, setRunning] = useState(false);
-  const [results, setResults] = useState<Record<string, Row>>({});
-  const busy = locked || running;
-
-  const done = placeIds.filter((id) => {
-    const s = results[id]?.status;
-    return s === "ok" || s === "existed" || s === "error";
-  }).length;
-  const okCount = placeIds.filter((id) => {
-    const s = results[id]?.status;
-    return s === "ok" || s === "existed";
-  }).length;
-  const failed = placeIds.filter((id) => results[id]?.status === "error").length;
-
-  async function runAll() {
-    if (busy || placeIds.length === 0) return;
-    setRunning(true);
-    onBusyChange?.(true);
-    setResults(
-      Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
-    );
-    const ids = [...placeIds];
-    let cursor = 0;
-    const worker = async () => {
-      while (cursor < ids.length) {
-        const id = ids[cursor++];
-        setResults((prev) => ({ ...prev, [id]: { status: "running" } }));
-        try {
-          const row = await applyOne(id, fact, { listedOn, partnerOn, promoting });
-          setResults((prev) => ({ ...prev, [id]: row }));
-        } catch (err) {
-          setResults((prev) => ({
-            ...prev,
-            [id]: {
-              status: "error",
-              error: err instanceof Error ? err.message : "Unexpected error",
-            },
-          }));
-        }
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker),
-    );
-    setRunning(false);
-    onBusyChange?.(false);
-  }
-
   return (
-    <div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-        <label className="text-sm font-medium">
-          State
-          <select
-            value={fact}
-            disabled={busy}
-            onChange={(e) => setFact(e.target.value as EditFact)}
-            className="border-border bg-background mt-1 block h-10 w-full rounded-xl border px-3 text-sm outline-none"
-          >
-            <option value="listed">Listed</option>
-            <option value="verified">Verified</option>
-            <option value="partner">Partner</option>
-            <option value="promoting">Promoted</option>
-          </select>
-        </label>
-        {fact === "listed" ? (
-          <ValueSelect
-            label="Value"
-            disabled={busy}
-            value={listedOn ? "on" : "off"}
-            onChange={(v) => setListedOn(v === "on")}
-            options={[
-              { value: "on", label: "On" },
-              { value: "off", label: "Off" },
-            ]}
-          />
-        ) : null}
-        {fact === "verified" ? (
-          <p className="text-muted-foreground self-end text-sm">
-            Value is <span className="text-foreground font-medium">yes</span> —
-            one-time ownership proof.
-          </p>
-        ) : null}
-        {fact === "partner" ? (
-          <ValueSelect
-            label="Value"
-            disabled={busy}
-            value={partnerOn ? "on" : "off"}
-            onChange={(v) => setPartnerOn(v === "on")}
-            options={[
-              { value: "on", label: "On · plan pro" },
-              { value: "off", label: "Off · plan free" },
-            ]}
-          />
-        ) : null}
-        {fact === "promoting" ? (
-          <ValueSelect
-            label="Value"
-            disabled={busy}
-            value={String(promoting)}
-            onChange={(v) => setPromoting(Number(v) as 0 | 1 | 2)}
-            options={[
-              { value: "0", label: "0 · Zero" },
-              { value: "1", label: "1 · Conservative" },
-              { value: "2", label: "2 · Aggressive" },
-            ]}
-          />
-        ) : null}
-        <button
-          type="button"
-          onClick={() => void runAll()}
-          disabled={busy || placeIds.length === 0}
-          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-50"
-        >
-          {running ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Pencil className="h-3.5 w-3.5" />
-          )}
-          {running ? `Writing… ${done}/${placeIds.length}` : "Apply"}
-        </button>
-      </div>
-      {done > 0 ? (
-        <p className="text-muted-foreground mt-2 text-xs">
-          {okCount} written · {failed} failed
-        </p>
+    <>
+      <label className="sr-only" htmlFor="intake-update-state">
+        State
+      </label>
+      <select
+        id="intake-update-state"
+        aria-label="State"
+        value={fact}
+        disabled={disabled}
+        onChange={(e) => onFact(e.target.value as EditFact)}
+        className={SELECT_CLASS}
+      >
+        <option value="listed">Listed</option>
+        <option value="verified">Verified</option>
+        <option value="partner">Partner</option>
+        <option value="promoting">Promoted</option>
+      </select>
+      {fact === "listed" ? (
+        <ValueSelect
+          ariaLabel="Value"
+          disabled={disabled}
+          value={values.listedOn ? "on" : "off"}
+          onChange={(v) => onValues({ ...values, listedOn: v === "on" })}
+          options={[
+            { value: "on", label: "On" },
+            { value: "off", label: "Off" },
+          ]}
+        />
       ) : null}
-
-      {Object.keys(results).length > 0 ? (
-        <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border">
-          <ul className="divide-border/60 divide-y">
-            {placeIds.map((id) => {
-              const r = results[id];
-              if (!r) return null;
-              return (
-                <li key={id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                  <StatusIcon status={r.status} />
-                  <div className="min-w-0 flex-1">
-                    {r.name ? (
-                      <span className="truncate font-medium">{r.name}</span>
-                    ) : (
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {id}
-                      </span>
-                    )}
-                    {r.detail ? (
-                      <p className="text-muted-foreground type-label">{r.detail}</p>
-                    ) : null}
-                    {r.error ? (
-                      <p className="text-destructive type-label">{r.error}</p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {fact === "partner" ? (
+        <ValueSelect
+          ariaLabel="Value"
+          disabled={disabled}
+          value={values.partnerOn ? "on" : "off"}
+          onChange={(v) => onValues({ ...values, partnerOn: v === "on" })}
+          options={[
+            { value: "on", label: "On · plan pro" },
+            { value: "off", label: "Off · plan free" },
+          ]}
+        />
       ) : null}
-    </div>
+      {fact === "promoting" ? (
+        <ValueSelect
+          ariaLabel="Value"
+          disabled={disabled}
+          value={String(values.promoting)}
+          onChange={(v) =>
+            onValues({ ...values, promoting: Number(v) as 0 | 1 | 2 })
+          }
+          options={[
+            { value: "0", label: "0 · Zero" },
+            { value: "1", label: "1 · Conservative" },
+            { value: "2", label: "2 · Aggressive" },
+          ]}
+        />
+      ) : null}
+    </>
   );
 }
 
 function ValueSelect({
-  label,
+  ariaLabel,
   value,
   onChange,
   options,
   disabled,
 }: {
-  label: string;
+  ariaLabel: string;
   value: string;
   onChange: (next: string) => void;
   options: { value: string; label: string }[];
   disabled: boolean;
 }) {
   return (
-    <label className="text-sm font-medium">
-      {label}
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className="border-border bg-background mt-1 block h-10 w-full rounded-xl border px-3 text-sm outline-none"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      aria-label={ariaLabel}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className={SELECT_CLASS}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
-async function applyOne(
+export async function applyOne(
   googleId: string,
   fact: EditFact,
-  values: { listedOn: boolean; partnerOn: boolean; promoting: 0 | 1 | 2 },
+  values: EditValues,
 ): Promise<Row> {
   const looked = await searchPlacesByGoogleIds([googleId]);
   if (!looked.ok) return { status: "error", error: looked.error };

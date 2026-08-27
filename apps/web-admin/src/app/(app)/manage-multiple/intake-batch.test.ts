@@ -1,55 +1,19 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import {
-  intakeFansOutCreates,
-  intakeShouldEnqueueEnrich,
-} from "./intake-batch";
+import type { IntakeAction } from "./intake-batch";
 
-describe("intakeFansOutCreates", () => {
-  it("fans out Create and Create+Enrich; Enrich only enqueues", () => {
-    expect(intakeFansOutCreates("create")).toBe(true);
-    expect(intakeFansOutCreates("create_enrich")).toBe(true);
-    expect(intakeFansOutCreates("enrich")).toBe(false);
-  });
-});
+const here = dirname(fileURLToPath(import.meta.url));
 
-describe("intakeShouldEnqueueEnrich", () => {
-  it("never adds a second enrich kick on Create-only", () => {
-    expect(
-      intakeShouldEnqueueEnrich({
-        action: "create",
-        enrichmentTriggered: false,
-      }),
-    ).toBe(false);
-    expect(
-      intakeShouldEnqueueEnrich({
-        action: "create",
-        enrichmentTriggered: true,
-      }),
-    ).toBe(false);
-  });
-
-  it("always enqueues on Enrich-only", () => {
-    expect(
-      intakeShouldEnqueueEnrich({
-        action: "enrich",
-        enrichmentTriggered: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("enqueues after Create+Enrich only when create did not already queue", () => {
-    expect(
-      intakeShouldEnqueueEnrich({
-        action: "create_enrich",
-        enrichmentTriggered: true,
-      }),
-    ).toBe(false);
-    expect(
-      intakeShouldEnqueueEnrich({
-        action: "create_enrich",
-        enrichmentTriggered: false,
-      }),
-    ).toBe(true);
+describe("IntakeAction", () => {
+  it("is create, enrich, or update — no third create_enrich function", () => {
+    const actions: IntakeAction[] = ["create", "enrich", "update"];
+    expect(actions).toEqual(["create", "enrich", "update"]);
+    const batch = readFileSync(join(here, "intake-batch.ts"), "utf8");
+    expect(batch).toContain('export type IntakeAction = "create" | "enrich" | "update"');
+    expect(batch).toContain("create then enrich");
+    expect(batch).not.toContain("create_enrich");
   });
 });

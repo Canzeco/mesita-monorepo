@@ -8,19 +8,26 @@ import {
   searchPlacesByGoogleIds,
 } from "../manage-single/actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
+import type { IntakeAction } from "./intake-batch";
 import {
-  intakeShouldEnqueueEnrich,
-  type IntakeAction,
-} from "./intake-batch";
+  applyOne,
+  DEFAULT_EDIT_VALUES,
+  UpdateFields,
+  type EditFact,
+  type EditValues,
+} from "./EditTab";
 import { IdListField } from "./IdListField";
-import { EditPanel } from "./EditTab";
 import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
+
+type Running = IntakeAction | "create_then_enrich";
 
 type Row = {
   status: BatchRowStatus;
   name?: string;
   detail?: string;
   error?: string;
+  projectId?: string;
+  alreadyExisted?: boolean;
 };
 
 async function resolveMesitaId(googleId: string): Promise<
@@ -42,9 +49,11 @@ export function IntakeTab({
 }) {
   const placeIds = useMemo(() => parseGooglePlaceIds(text), [text]);
   const [results, setResults] = useState<Record<string, Row>>({});
-  const [running, setRunning] = useState<IntakeAction | null>(null);
-  const [editBusy, setEditBusy] = useState(false);
-  const busy = running !== null || editBusy;
+  const [running, setRunning] = useState<Running | null>(null);
+  const [lastRun, setLastRun] = useState<Running | null>(null);
+  const [fact, setFact] = useState<EditFact>("listed");
+  const [values, setValues] = useState<EditValues>(DEFAULT_EDIT_VALUES);
+  const busy = running !== null;
 
   const done = placeIds.filter((id) => {
     const s = results[id]?.status;
@@ -53,16 +62,21 @@ export function IntakeTab({
   const created = placeIds.filter((id) => results[id]?.status === "ok").length;
   const existed = placeIds.filter((id) => results[id]?.status === "existed").length;
   const enriching = placeIds.filter((id) => results[id]?.status === "enriching").length;
+  const written = placeIds.filter((id) => {
+    const s = results[id]?.status;
+    return s === "ok" || s === "existed";
+  }).length;
   const failed = placeIds.filter((id) => results[id]?.status === "error").length;
 
-  async function run(action: IntakeAction) {
+  async function run(action: Running) {
     if (busy || placeIds.length === 0) return;
     setRunning(action);
+    setLastRun(action);
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
     );
     const ids = [...placeIds];
-    await Promise.all(ids.map((id) => runRow(id, action, setResults)));
+    await Promise.all(ids.map((id) => runRow(id, action, fact, values, setResults)));
     setRunning(null);
   }
 
@@ -83,10 +97,8 @@ export function IntakeTab({
       />
 
       <div>
-        <p className="text-muted-foreground type-eyebrow">Intake</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Create runs every ID at once. Enrich is queued; the Intaker runs one
-          place at a time.
+        <p className="text-muted-foreground text-xs">
+          Create runs every ID at once. Enrich is queued. Update writes Listed · Verified · Partner · Promoted. Create + Enrich is create then enrich.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
@@ -101,16 +113,30 @@ export function IntakeTab({
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("enrich")}
           />
+          <UpdateFields
+            fact={fact}
+            onFact={setFact}
+            values={values}
+            onValues={setValues}
+            disabled={busy}
+          />
+          <ActionButton
+            label="Update"
+            busy={running === "update"}
+            disabled={busy || placeIds.length === 0}
+            onClick={() => void run("update")}
+          />
           <ActionButton
             label="Create + Enrich"
-            busy={running === "create_enrich"}
+            busy={running === "create_then_enrich"}
             disabled={busy || placeIds.length === 0}
-            onClick={() => void run("create_enrich")}
+            onClick={() => void run("create_then_enrich")}
           />
           {done > 0 ? (
             <span className="text-muted-foreground text-xs">
-              {created} created · {existed} already on Mesita · {enriching}{" "}
-              enriching · {failed} failed
+              {lastRun === "update"
+                ? `${written} written · ${failed} failed`
+                : `${created} created · ${existed} already on Mesita · ${enriching} enriching · ${failed} failed`}
             </span>
           ) : null}
           {failed > 0 && !running ? (
@@ -126,20 +152,6 @@ export function IntakeTab({
         {Object.keys(results).length > 0 ? (
           <ResultList placeIds={placeIds} results={results} />
         ) : null}
-      </div>
-
-      <div>
-        <p className="text-muted-foreground type-eyebrow">Edit</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Listed · Verified · Partner · Promoted. Same IDs. No other fields.
-        </p>
-        <div className="mt-2">
-          <EditPanel
-            placeIds={placeIds}
-            locked={running !== null}
-            onBusyChange={setEditBusy}
-          />
-        </div>
       </div>
     </div>
   );
@@ -214,12 +226,14 @@ function ActionButton({
 
 async function runRow(
   googleId: string,
-  action: IntakeAction,
+  action: Running,
+  fact: EditFact,
+  values: EditValues,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
   setResults((prev) => ({ ...prev, [googleId]: { status: "running" } }));
   try {
-    const row = await runOne(googleId, action);
+    const row = await runOne(googleId, action, fact, values);
     setResults((prev) => ({ ...prev, [googleId]: row }));
   } catch (err) {
     setResults((prev) => ({
@@ -232,60 +246,78 @@ async function runRow(
   }
 }
 
-async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
-  if (action === "enrich") {
-    const found = await resolveMesitaId(googleId);
-    if (!found.ok) return { status: "error", error: found.error };
-    const en = await enrichPlace(found.projectId, "full");
-    if (!en.ok) return { status: "error", name: found.name, error: en.error };
-    return {
-      status: "enriching",
-      name: found.name,
-      detail: "Re-enrich from zero — Intaker 1–10 queued",
-    };
-  }
-
-  const created = await createPlaceFromGooglePlaceId(googleId);
-  if (!created.ok) return { status: "error", error: created.error };
-
-  const enqueue = intakeShouldEnqueueEnrich({
-    action,
-    enrichmentTriggered: created.enrichmentTriggered,
-  });
-  if (enqueue) {
-    const en = await enrichPlace(created.projectId, "full");
-    if (!en.ok) {
-      return {
-        status: "error",
-        name: created.name,
-        error: created.alreadyExisted
-          ? `Already on Mesita · enrich not queued: ${en.error}`
-          : `Created · enrich not queued: ${en.error}`,
-      };
-    }
-    return {
-      status: created.alreadyExisted ? "existed" : "enriching",
-      name: created.name,
-      detail: created.alreadyExisted
-        ? "Already on Mesita — enrich queued"
-        : "Created · enrich queued",
-    };
-  }
-
-  if (created.alreadyExisted) {
+async function createOne(googleId: string): Promise<Row> {
+  const r = await createPlaceFromGooglePlaceId(googleId);
+  if (!r.ok) return { status: "error", error: r.error };
+  if (r.alreadyExisted) {
     return {
       status: "existed",
-      name: created.name,
+      name: r.name,
       detail: "Already on Mesita — skipped create",
+      projectId: r.projectId,
+      alreadyExisted: true,
     };
   }
   return {
-    status: action === "create_enrich" && created.enrichmentTriggered
-      ? "enriching"
-      : "ok",
-    name: created.name,
-    detail: created.enrichmentTriggered
+    status: "ok",
+    name: r.name,
+    detail: r.enrichmentTriggered
       ? "Created · enrich queued"
       : "Created · enrich not queued",
+    projectId: r.projectId,
   };
+}
+
+async function enrichOne(
+  googleId: string,
+  known?: { projectId: string; name?: string },
+): Promise<Row> {
+  const found = known
+    ? { ok: true as const, projectId: known.projectId, name: known.name ?? "" }
+    : await resolveMesitaId(googleId);
+  if (!found.ok) return { status: "error", error: found.error };
+  const en = await enrichPlace(found.projectId, "full");
+  if (!en.ok) return { status: "error", name: found.name, error: en.error };
+  return {
+    status: "enriching",
+    name: found.name,
+    detail: "Re-enrich from zero — Intaker 1–10 queued",
+  };
+}
+
+async function runCreateThenEnrich(googleId: string): Promise<Row> {
+  const created = await createOne(googleId);
+  if (created.status === "error" || !created.projectId) return created;
+  const en = await enrichOne(googleId, {
+    projectId: created.projectId,
+    name: created.name,
+  });
+  if (en.status === "error") {
+    return {
+      status: "error",
+      name: created.name,
+      error: created.alreadyExisted
+        ? `Already on Mesita · enrich not queued: ${en.error}`
+        : `Created · enrich not queued: ${en.error}`,
+    };
+  }
+  return {
+    status: created.alreadyExisted ? "existed" : "enriching",
+    name: created.name,
+    detail: created.alreadyExisted
+      ? "Already on Mesita — enrich queued"
+      : "Created · enrich queued",
+  };
+}
+
+async function runOne(
+  googleId: string,
+  action: Running,
+  fact: EditFact,
+  values: EditValues,
+): Promise<Row> {
+  if (action === "update") return applyOne(googleId, fact, values);
+  if (action === "enrich") return enrichOne(googleId);
+  if (action === "create_then_enrich") return runCreateThenEnrich(googleId);
+  return createOne(googleId);
 }
