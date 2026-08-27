@@ -20,8 +20,9 @@
 //             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
 //             Enforced by list-places, discover-places, suggest-places,
 //             create-place. Map floors still gate Name Google + Create.
-//   SWIPE     no knobs. Enforced by consumer-web-recommend-swipe. Ranks from
-//             the last-saved blob; ranking knobs stay on Signals.
+//   SWIPE     radiusKm · closingBufferMin · weightProximity · starsExponent ·
+//             logDivisor · partnerBias · randomnessMax · categoryFilter · minReviews.
+//             Enforced by consumer-web-recommend-swipe.
 //   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
 //             Enforced by consumer-web-list-catalog.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
@@ -64,6 +65,28 @@ export type NameConfig = {
   deep: NameDeepConfig;
 };
 
+export type SwipePartnerLevel =
+  | "none"
+  | "partner"
+  | "conservative"
+  | "aggressive"
+  | "dominant";
+
+export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
+
+export type SwipeConfig = {
+  radiusKm: number;
+  closingBufferMin: number;
+  weightProximity: number;
+  starsExponent: number;
+  logDivisor: number;
+  partnerBias: SwipePartnerBias;
+  randomnessMax: number;
+  categoryFilter: boolean;
+  minReviews: number;
+  savedAt: string | null;
+};
+
 export type DiscoveryConfig = {
   weights: Record<SignalKey, number>;
   params: SignalParams;
@@ -75,6 +98,7 @@ export type DiscoveryConfig = {
   name: NameConfig;
   social: SocialConfig;
   chat: { prompt: string };
+  swipe: SwipeConfig;
 };
 
 export type CatalogConfig = {
@@ -170,6 +194,25 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
+export const SWIPE_RADIUS_KM_MIN = 1;
+export const SWIPE_RADIUS_KM_MAX = 50;
+export const SWIPE_CLOSING_BUFFER_MIN = 0;
+export const SWIPE_CLOSING_BUFFER_MAX = 180;
+export const SWIPE_STARS_EXPONENT_MIN = 1;
+export const SWIPE_STARS_EXPONENT_MAX = 3;
+export const SWIPE_LOG_DIVISOR_MIN = 1;
+export const SWIPE_LOG_DIVISOR_MAX = 20;
+export const SWIPE_PARTNER_BIAS_MIN = 1;
+export const SWIPE_PARTNER_BIAS_MAX = 2;
+export const SWIPE_RANDOMNESS_MAX_MIN = 1;
+export const SWIPE_RANDOMNESS_MAX_MAX = 2;
+export const SWIPE_PARTNER_LEVELS = [
+  "none",
+  "partner",
+  "conservative",
+  "aggressive",
+  "dominant",
+] as const satisfies readonly SwipePartnerLevel[];
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 export const CHAT_PROMPT_MAX = 12_000;
 
@@ -287,6 +330,27 @@ export const DEFAULT_NAME: NameConfig = {
   deep: DEFAULT_NAME_DEEP,
 };
 
+export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
+  none: 1,
+  partner: 1.25,
+  conservative: 1.5,
+  aggressive: 1.75,
+  dominant: 2,
+};
+
+export const DEFAULT_SWIPE: SwipeConfig = {
+  radiusKm: 5,
+  closingBufferMin: 30,
+  weightProximity: 0.7,
+  starsExponent: 1.5,
+  logDivisor: 10,
+  partnerBias: DEFAULT_SWIPE_PARTNER_BIAS,
+  randomnessMax: 1.3,
+  categoryFilter: false,
+  minReviews: 1,
+  savedAt: null,
+};
+
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
@@ -324,6 +388,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   name: DEFAULT_NAME,
   social: DEFAULT_SOCIAL,
   chat: { prompt: "" },
+  swipe: DEFAULT_SWIPE,
 };
 
 /**
@@ -351,7 +416,7 @@ export const ENGINES: {
     label: "Swipe",
     fn: "swipe()",
     input: "Ready pool + guest geo.",
-    process: "swipe(proximity(), timing(), category(), popularity(), semantic(), randomness()) then slot bought cards. Ranked off = pool order.",
+    process: "Hard filters, then proximity + popularity sum, partner bias, then a random multiplier. Ranked off = pool order.",
     output: "Ordered Home deck.",
     state: "LIVE",
     wired: "swipe",
@@ -642,6 +707,71 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
         : DEFAULT_CONFIG.chat.prompt,
     },
+    swipe: coerceSwipe(r.swipe),
+  };
+}
+
+function coerceSavedAt(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? new Date(t).toISOString() : null;
+}
+
+export function coerceSwipe(raw: unknown): SwipeConfig {
+  const s = (raw ?? {}) as Record<string, unknown>;
+  const biasRaw = (s.partnerBias ?? {}) as Record<string, unknown>;
+  const partnerBias = {} as SwipePartnerBias;
+  for (const key of SWIPE_PARTNER_LEVELS) {
+    partnerBias[key] = Math.round(
+      num(
+        biasRaw[key],
+        DEFAULT_SWIPE.partnerBias[key],
+        SWIPE_PARTNER_BIAS_MIN,
+        SWIPE_PARTNER_BIAS_MAX,
+      ) * 100,
+    ) / 100;
+  }
+  return {
+    radiusKm: Math.round(
+      num(s.radiusKm, DEFAULT_SWIPE.radiusKm, SWIPE_RADIUS_KM_MIN, SWIPE_RADIUS_KM_MAX) * 10,
+    ) / 10,
+    closingBufferMin: Math.round(
+      num(
+        s.closingBufferMin,
+        DEFAULT_SWIPE.closingBufferMin,
+        SWIPE_CLOSING_BUFFER_MIN,
+        SWIPE_CLOSING_BUFFER_MAX,
+      ),
+    ),
+    weightProximity: Math.round(
+      num(s.weightProximity, DEFAULT_SWIPE.weightProximity, 0, 1) * 100,
+    ) / 100,
+    starsExponent: Math.round(
+      num(
+        s.starsExponent,
+        DEFAULT_SWIPE.starsExponent,
+        SWIPE_STARS_EXPONENT_MIN,
+        SWIPE_STARS_EXPONENT_MAX,
+      ) * 100,
+    ) / 100,
+    logDivisor: Math.round(
+      num(s.logDivisor, DEFAULT_SWIPE.logDivisor, SWIPE_LOG_DIVISOR_MIN, SWIPE_LOG_DIVISOR_MAX) *
+        100,
+    ) / 100,
+    partnerBias,
+    randomnessMax: Math.round(
+      num(
+        s.randomnessMax,
+        DEFAULT_SWIPE.randomnessMax,
+        SWIPE_RANDOMNESS_MAX_MIN,
+        SWIPE_RANDOMNESS_MAX_MAX,
+      ) * 100,
+    ) / 100,
+    categoryFilter: typeof s.categoryFilter === "boolean"
+      ? s.categoryFilter
+      : DEFAULT_SWIPE.categoryFilter,
+    minReviews: Math.round(num(s.minReviews, DEFAULT_SWIPE.minReviews, 0, 100_000)),
+    savedAt: coerceSavedAt(s.savedAt),
   };
 }
 

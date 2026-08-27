@@ -8,6 +8,7 @@ import {
   DEFAULT_MAP,
   DEFAULT_NAME,
   DEFAULT_SOCIAL,
+  DEFAULT_SWIPE,
   ENGINES,
   SIGNALS,
 } from "./catalog";
@@ -115,6 +116,38 @@ describe("Discovery function APIs", () => {
     expect(name?.process).not.toMatch(/summary embedding/i);
   });
 
+  it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
+    expect(coerceConfig({ weights: {}, slotting: {} }).swipe).toEqual(DEFAULT_SWIPE);
+    expect(
+      coerceConfig({
+        swipe: {
+          radiusKm: 99,
+          weightProximity: 4,
+          partnerBias: { dominant: 9 },
+          minReviews: -2,
+          randomnessMax: 9,
+        },
+      }).swipe,
+    ).toMatchObject({
+      radiusKm: 50,
+      weightProximity: 1,
+      partnerBias: { ...DEFAULT_SWIPE.partnerBias, dominant: 2 },
+      minReviews: 0,
+      closingBufferMin: 30,
+      randomnessMax: 2,
+    });
+  });
+
+  it("swipe() is the two-signal sum plus partner bias", () => {
+    const swipe = ENGINES.find((e) => e.key === "swipe");
+    expect(swipe?.state).toBe("LIVE");
+    expect(swipe?.process).toMatch(/proximity/);
+    expect(swipe?.process).toMatch(/popularity/);
+    expect(swipe?.process).toMatch(/partner bias/i);
+    expect(swipe?.process).toMatch(/random multiplier/i);
+    expect(swipe?.process).not.toMatch(/slot bought/);
+  });
+
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
@@ -148,6 +181,7 @@ describe("Discovery page box order", () => {
   it("renders Name · Map · Swipe · Catalog · Chat · Social · Favs", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
+    const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
     const social = readFileSync(join(__dirname, "SocialConfigClient.tsx"), "utf8");
@@ -157,20 +191,21 @@ describe("Discovery page box order", () => {
     expect(name).toContain('title="Fast Search"');
     expect(name).toContain('title="Deep Search"');
     expect(map).toContain('title="Map"');
-    expect(surfaces).toContain('title="Swipe"');
+    expect(swipe).toContain('title="Swipe"');
     expect(catalog).toContain('title="Catalog"');
     expect(chat).toContain('title="Chat"');
     expect(social).toContain('title="Social"');
     expect(surfaces).toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Favorites"');
     expect(surfaces).not.toContain('title="Name"');
+    expect(surfaces).not.toContain('title="Swipe"');
     expect(catalog).not.toContain("SocialConfig");
 
     const jsx = page.slice(page.indexOf("return ("));
     const order = [
       "NameConfigClient",
       "MapConfigClient",
-      "SwipeConfigCard",
+      "SwipeConfigClient",
       "CatalogConfigClient",
       "DiscoveryConfigClient",
       "SocialConfigClient",

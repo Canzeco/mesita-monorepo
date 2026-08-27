@@ -182,6 +182,46 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
   assertEquals(cfg.social, DISCOVERY_DEFAULTS.social);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
+  assertEquals(cfg.swipe, DISCOVERY_DEFAULTS.swipe);
+});
+
+Deno.test("swipe knobs default on an old blob and clamp", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.swipe, DISCOVERY_DEFAULTS.swipe);
+  const clamped = normalizeDiscoveryConfig({
+    swipe: {
+      radiusKm: 99,
+      closingBufferMin: -4,
+      weightProximity: 2,
+      starsExponent: 0.2,
+      logDivisor: 99,
+      partnerBias: { none: 0.5, dominant: 9 },
+      categoryFilter: "yes",
+      minReviews: -1,
+      randomnessMax: 9,
+      savedAt: "not-a-date",
+    },
+  });
+  assertEquals(clamped.swipe.radiusKm, 50);
+  assertEquals(clamped.swipe.closingBufferMin, 0);
+  assertEquals(clamped.swipe.weightProximity, 1);
+  assertEquals(clamped.swipe.starsExponent, 1);
+  assertEquals(clamped.swipe.logDivisor, 20);
+  assertEquals(clamped.swipe.partnerBias.none, 1);
+  assertEquals(clamped.swipe.partnerBias.dominant, 2);
+  assertEquals(clamped.swipe.partnerBias.partner, 1.25);
+  assertEquals(clamped.swipe.categoryFilter, false);
+  assertEquals(clamped.swipe.minReviews, 0);
+  assertEquals(clamped.swipe.randomnessMax, 2);
+  assertEquals(
+    normalizeDiscoveryConfig({ swipe: { randomnessMax: 0.4 } }).swipe.randomnessMax,
+    1,
+  );
+  assertEquals(clamped.swipe.savedAt, null);
+  assertEquals(
+    normalizeDiscoveryConfig({ swipe: { savedAt: "2026-08-26T18:00:00.000Z" } }).swipe.savedAt,
+    "2026-08-26T18:00:00.000Z",
+  );
 });
 
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
