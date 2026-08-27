@@ -470,6 +470,9 @@ describe("Search here and the map reticle", () => {
     expect(html).toContain("min-h-11");
     expect(html).toContain("Search places around the map center");
     expect(html).toContain("lucide-rotate-cw");
+    expect(html).toContain("--gradient-pink");
+    expect(html).toContain("text-white");
+    expect(html).toContain("ring-white/70");
   });
 
   it("swaps the label to Updating nearby while a reload runs", () => {
@@ -478,6 +481,8 @@ describe("Search here and the map reticle", () => {
     );
     expect(html).toContain("Updating nearby");
     expect(html).toContain("aria-busy");
+    expect(html).toContain("--gradient-pink");
+    expect(html).not.toContain("ring-white/70");
   });
 
   it("paints a screen-fixed plus and approximate ring, not a geo circle", () => {

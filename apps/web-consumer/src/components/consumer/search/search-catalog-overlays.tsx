@@ -24,14 +24,22 @@ export function SearchHereButton({
       aria-busy={loading}
       aria-label="Search places around the map center"
       className={cn(
-        "border-border bg-card/95 shadow-elev flex min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-semibold backdrop-blur transition active:scale-[0.99] disabled:opacity-70",
-        stale ? "text-foreground" : "text-muted-foreground",
+        "flex min-h-11 items-center gap-2 rounded-full px-5 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-80",
+        stale && "ring-2 ring-white/70",
       )}
+      style={{
+        background: "var(--gradient-pink)",
+        boxShadow: "var(--shadow-glow-sm)",
+      }}
     >
       {loading ? (
-        <Spinner size="sm" label="Updating nearby places" />
+        <Spinner
+          size="sm"
+          label="Updating nearby places"
+          className="border-white/40 border-t-white"
+        />
       ) : (
-        <RotateCw className="text-primary h-3.5 w-3.5" />
+        <RotateCw className="h-3.5 w-3.5 text-white" />
       )}
       {loading ? "Updating nearby" : "Search here"}
     </button>
