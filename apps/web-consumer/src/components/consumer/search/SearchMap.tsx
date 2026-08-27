@@ -155,6 +155,24 @@ export function SearchMap({
         />
         {!mapReady && <MapLoadingVeil />}
       </APIProvider>
+      {mapReady && <SearchMapReticle />}
+    </div>
+  );
+}
+
+/** Screen-fixed sight at the canvas center — the point Search here fetches. */
+export function SearchMapReticle() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center"
+    >
+      <div className="relative h-24 w-24">
+        <div className="border-primary/40 bg-primary/5 absolute inset-0 rounded-full border-2" />
+        <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+        <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+        <div className="bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
+      </div>
     </div>
   );
 }

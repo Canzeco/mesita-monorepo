@@ -132,6 +132,29 @@ export function shouldReloadNearbyCatalog(
 }
 
 /**
+ * Search here gains weight after a short pan. 200 m is a couple of
+ * city blocks — enough to ignore idle jitter, small enough that a
+ * neighborhood drag is obviously "somewhere else."
+ */
+export const CATALOG_STALE_MIN_KM = 0.2;
+
+export function catalogIsStale(
+  lastCenter: { lat: number; lng: number } | null,
+  nextCenter: { lat: number; lng: number },
+  minKm = CATALOG_STALE_MIN_KM,
+): boolean {
+  if (!lastCenter) return false;
+  return (
+    haversineKm(
+      lastCenter.lat,
+      lastCenter.lng,
+      nextCenter.lat,
+      nextCenter.lng,
+    ) >= minKm
+  );
+}
+
+/**
  * Fill distance_km from a center (the map camera for Search, or the
  * consumer's live location). Real data only — places without coordinates
  * (or before the geolocation grant) keep distance_km null and the chip
