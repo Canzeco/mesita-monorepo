@@ -38,7 +38,11 @@ import {
   readGooglePlacesKey,
 } from "./google-places.ts";
 import { applyPlacesCallerRegion } from "./sourcing.ts";
-import { loadDiscoveryConfig, type MapConfig } from "./discovery-config.ts";
+import {
+  applyGeneralCategoryCap,
+  loadDiscoveryConfig,
+  type MapConfig,
+} from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import {
   type GoogleTypeFilter,
@@ -86,7 +90,7 @@ export async function suggestPlaces(
   if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
 
   const admin = adminClient(env);
-  const map = (await loadDiscoveryConfig(admin)).map;
+  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
   // Do NOT pre-filter Google Autocomplete by broad primary types. Google
   // matches includedPrimaryTypes exactly (`bar` ≠ `night_club`) and caps
   // the list at 5. Types + floors run after merge via filterPredictionsByMap.

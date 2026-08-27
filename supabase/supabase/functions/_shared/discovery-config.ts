@@ -1,8 +1,8 @@
 // Discovery config — the operator's half of the ranking model (Docs ›
 // Discovery §A, MESITA-1196).
 //
-// Keys: weights · params · slotting · filters · engines · catalog · map · name · social · chat · swipe.
-// Admin: Name (Fast + Deep) live, Map live, Swipe live, Catalog live, Social staged, Chat prompt live. Signals Soon.
+// Keys: weights · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
+// Admin: General live, Name (Fast + Deep) live, Map live, Swipe live, Catalog Soon, Social Soon, Chat prompt live. Signals Soon.
 // `params` rides with `weights` — same Signals table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
@@ -15,6 +15,7 @@
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
 //              places a filter already admitted.
 //   engines    which surfaces read any of the above.
+//   general    categoryCount — first N of NEARBY_TYPE_KEYS any engine may use.
 //   chat       Concierge system prompt. Blank → in-code persona (memo-prompt.ts).
 //
 // FILTERS ARE NOT THE TORN-DOWN FILTER SURFACE. MESITA-1183 deleted a
@@ -137,6 +138,12 @@ export type NameConfig = {
   deep: NameDeepConfig;
 };
 
+/** Discovery-wide knobs. Only values that apply across engines belong here. */
+export type GeneralConfig = {
+  /** How many of the code-defined Google types Discovery may use (0–5). */
+  categoryCount: number;
+};
+
 export type SwipePartnerLevel =
   | "none"
   | "partner"
@@ -180,6 +187,7 @@ export type DiscoveryConfig = {
   };
   filters: DiscoveryFilters;
   engines: Record<WiredEngineKey, { ranked: boolean }>;
+  general: GeneralConfig;
   catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
@@ -263,6 +271,8 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
+export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
+export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
 
 export const SWIPE_RADIUS_KM_MIN = 1;
 export const SWIPE_RADIUS_KM_MAX = 50;
@@ -336,6 +346,44 @@ export const DEFAULT_NAME: NameConfig = {
   fast: DEFAULT_NAME_FAST,
   deep: DEFAULT_NAME_DEEP,
 };
+
+export const DEFAULT_GENERAL: GeneralConfig = {
+  categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
+};
+
+/** First N code-defined Google types. 0 = none available. */
+export function availableNearbyTypeKeys(categoryCount: number): NearbyTypeKey[] {
+  const n = Math.round(
+    num(categoryCount, GENERAL_CATEGORY_COUNT_DEFAULT, 0, GENERAL_CATEGORY_COUNT_MAX),
+  );
+  return NEARBY_TYPE_KEYS.slice(0, n);
+}
+
+/** Engine type toggles with types beyond General.categoryCount forced off. */
+export function typesWithinGeneral(
+  types: Record<NearbyTypeKey, boolean>,
+  categoryCount: number,
+): Record<NearbyTypeKey, boolean> {
+  const allow = new Set(availableNearbyTypeKeys(categoryCount));
+  const next = { ...types };
+  for (const key of NEARBY_TYPE_KEYS) {
+    if (!allow.has(key)) next[key] = false;
+  }
+  return next;
+}
+
+/** Cap Map + Name type batteries for engine reads. Admin normalize does not. */
+export function applyGeneralCategoryCap(cfg: DiscoveryConfig): DiscoveryConfig {
+  const n = cfg.general.categoryCount;
+  return {
+    ...cfg,
+    map: { ...cfg.map, types: typesWithinGeneral(cfg.map.types, n) },
+    name: {
+      fast: { ...cfg.name.fast, types: typesWithinGeneral(cfg.name.fast.types, n) },
+      deep: { ...cfg.name.deep, types: typesWithinGeneral(cfg.name.deep.types, n) },
+    },
+  };
+}
 
 export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
   none: 1,
@@ -470,6 +518,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   engines: {
     swipe: { ranked: true },
   },
+  general: DEFAULT_GENERAL,
   catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
@@ -566,6 +615,20 @@ export function normalizeTypeBatteries(raw: unknown): Record<NearbyTypeKey, bool
     types[key] = bool(rawTypes[key], DEFAULT_MAP_TYPES[key]);
   }
   return types;
+}
+
+export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  return {
+    categoryCount: Math.round(
+      num(
+        r.categoryCount,
+        DEFAULT_GENERAL.categoryCount,
+        0,
+        GENERAL_CATEGORY_COUNT_MAX,
+      ),
+    ),
+  };
 }
 
 export function normalizeNameConfig(raw: unknown): NameConfig {
@@ -773,6 +836,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
       ),
     },
     engines,
+    general: normalizeGeneralConfig(r.general),
     catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),
     name: normalizeNameConfig(r.name),

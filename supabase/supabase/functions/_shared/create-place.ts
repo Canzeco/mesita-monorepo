@@ -32,7 +32,7 @@ import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
-import { loadDiscoveryConfig } from "./discovery-config.ts";
+import { applyGeneralCategoryCap, loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
 const CHANNEL_KEYS = [
@@ -152,7 +152,7 @@ export async function createMinimalPlace(opts: {
   // rating/review/popularity floors. After Google, before persist. One ID, one 422
   // — a batch of creates never aborts as a unit. Config-read failure falls
   // back to discovery defaults rather than failing open.
-  const map = (await loadDiscoveryConfig(admin)).map;
+  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
   const verdict = evaluatePlaceForMap(map, {
     primaryType: basicsRes.primaryType,
     rating: basicsRes.basics.google_stars_overall,

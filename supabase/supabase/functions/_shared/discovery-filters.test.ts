@@ -7,6 +7,7 @@ import {
 } from "./discovery-filters.ts";
 import {
   DISCOVERY_DEFAULTS,
+  applyGeneralCategoryCap,
   normalizeDiscoveryConfig,
   WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
@@ -326,6 +327,43 @@ Deno.test("map lane caps clamp and default on an old blob", () => {
     map: { notPartnerCount: 6 },
   });
   assertEquals(legacy.map.mesitaCount, 6);
+});
+
+Deno.test("general.categoryCount defaults to 5 and clamps 0–5", () => {
+  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
+  assertEquals(missing.general.categoryCount, 5);
+  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 99 } }).general.categoryCount, 5);
+  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: -2 } }).general.categoryCount, 0);
+  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 3.6 } }).general.categoryCount, 4);
+});
+
+Deno.test("applyGeneralCategoryCap turns off types past the General count", () => {
+  const capped = applyGeneralCategoryCap({
+    ...DISCOVERY_DEFAULTS,
+    general: { categoryCount: 3 },
+  });
+  assertEquals(capped.map.types, {
+    restaurant: true,
+    bar: true,
+    cafe: true,
+    night_club: false,
+    bakery: false,
+  });
+  assertEquals(capped.name.fast.types.night_club, false);
+  assertEquals(capped.name.deep.types.bakery, false);
+  assertEquals(capped.name.fast.types.restaurant, true);
+});
+
+Deno.test("normalize does not persist the General cap onto engine types", () => {
+  const cfg = normalizeDiscoveryConfig({
+    general: { categoryCount: 2 },
+    map: { types: { bakery: true, restaurant: true } },
+    name: { fast: { types: { bakery: true } }, deep: { types: { night_club: true } } },
+  });
+  assertEquals(cfg.general.categoryCount, 2);
+  assertEquals(cfg.map.types.bakery, true);
+  assertEquals(cfg.name.fast.types.bakery, true);
+  assertEquals(cfg.name.deep.types.night_club, true);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {

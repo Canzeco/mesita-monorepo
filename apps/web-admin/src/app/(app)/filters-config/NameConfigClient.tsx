@@ -25,21 +25,26 @@ import {
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
+  GENERAL_CATEGORY_COUNT_MAX,
   NAME_LANE_COUNT_MAX,
   NEARBY_TYPE_FIELDS,
   type DiscoveryConfig,
+  type GeneralConfig,
   type NameDeepConfig,
   type NameFastConfig,
   type NearbyTypeKey,
 } from "./catalog";
+import { DISCOVERY_GENERAL_EVENT } from "./GeneralConfigClient";
 
 function TypeBatteries({
   types,
   pending,
+  categoryCount,
   onToggle,
 }: {
   types: Record<NearbyTypeKey, boolean>;
   pending: boolean;
+  categoryCount: number;
   onToggle: (key: NearbyTypeKey, on: boolean) => void;
 }) {
   return (
@@ -47,24 +52,40 @@ function TypeBatteries({
       <p className="text-muted-foreground mt-5 type-meta font-semibold tracking-wide uppercase">
         Google categories
       </p>
+      {categoryCount < GENERAL_CATEGORY_COUNT_MAX ? (
+        <p className="text-muted-foreground mt-1 type-meta">
+          Types past General › Categories stay saved but unused.
+        </p>
+      ) : null}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        {NEARBY_TYPE_FIELDS.map((field) => (
-          <div
-            key={field.key}
-            className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <Plug className="text-muted-foreground h-4 w-4 shrink-0" />
-              <p className="text-sm font-semibold">{field.label}</p>
+        {NEARBY_TYPE_FIELDS.map((field, i) => {
+          const allowed = i < categoryCount;
+          return (
+            <div
+              key={field.key}
+              className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Plug className="text-muted-foreground h-4 w-4 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{field.label}</p>
+                  {!allowed ? (
+                    <p className="text-muted-foreground type-meta">Past General count</p>
+                  ) : null}
+                </div>
+              </div>
+              <Switch
+                on={types[field.key]}
+                pending={pending || !allowed}
+                onClick={() => {
+                  if (!allowed) return;
+                  onToggle(field.key, !types[field.key]);
+                }}
+                label={field.label}
+              />
             </div>
-            <Switch
-              on={types[field.key]}
-              pending={pending}
-              onClick={() => onToggle(field.key, !types[field.key])}
-              label={field.label}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );
@@ -106,6 +127,17 @@ export function NameConfigClient({
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once on mount
+  }, []);
+
+  useEffect(() => {
+    const on = (e: Event) => {
+      const general = (e as CustomEvent<GeneralConfig>).detail;
+      if (!general) return;
+      setCfg((c) => ({ ...c, general }));
+      setSaved((s) => ({ ...s, general }));
+    };
+    window.addEventListener(DISCOVERY_GENERAL_EVENT, on);
+    return () => window.removeEventListener(DISCOVERY_GENERAL_EVENT, on);
   }, []);
 
   const fastDirty = useMemo(
@@ -166,6 +198,7 @@ export function NameConfigClient({
   };
 
   const name = cfg.name ?? DEFAULT_CONFIG.name;
+  const categoryCount = cfg.general?.categoryCount ?? DEFAULT_CONFIG.general.categoryCount;
 
   return (
     <div className="flex flex-col gap-10">
@@ -197,6 +230,7 @@ export function NameConfigClient({
           <TypeBatteries
             types={name.fast.types}
             pending={pending || loadBlocked}
+            categoryCount={categoryCount}
             onToggle={patchFastType}
           />
           {updatedAt ? (
@@ -258,6 +292,7 @@ export function NameConfigClient({
           <TypeBatteries
             types={name.deep.types}
             pending={pending || loadBlocked}
+            categoryCount={categoryCount}
             onToggle={patchDeepType}
           />
           {updatedAt ? (
