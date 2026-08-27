@@ -181,4 +181,34 @@ describe("fetchGooglePlacePreview", () => {
       googleMapsUri: "https://maps.google.com/?cid=2",
     });
   });
+
+  it("keeps the Maps address when REST Details throws", async () => {
+    const get = vi.fn(async () => {
+      throw new Error("places details 500");
+    });
+    const loadPlaces = vi.fn(async (): Promise<PlacesLibraryLike> => ({
+      Place: class {
+        formattedAddress?: string;
+        googleMapsURI?: string;
+        constructor(public opts: { id: string }) {}
+        async fetchFields() {
+          this.formattedAddress = "Ignacio Zaragoza 226, Monterrey";
+          this.googleMapsURI = "https://maps.google.com/?cid=1";
+        }
+      },
+    }));
+
+    const preview = await fetchGooglePlacePreview(
+      "ChIJ1",
+      "test-key",
+      get,
+      loadPlaces,
+      () => null,
+    );
+
+    expect(preview).toEqual({
+      formattedAddress: "Ignacio Zaragoza 226, Monterrey",
+      googleMapsUri: "https://maps.google.com/?cid=1",
+    });
+  });
 });

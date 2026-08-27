@@ -53,11 +53,14 @@ export function GooglePlaceSheet({
   const adding = addState === "adding";
   const added = addState === "added";
 
-  // Cache is read during render; the state value only exists to re-render
-  // once a miss resolves (the effect writes the cache before setting it).
+  // The Map is the session memo; `hero` is what we paint. A later photo
+  // for the same place must setHero — setFetchedId(id) is a no-op then.
   const [fetchedId, setFetchedId] = useState<string | null>(null);
+  const [hero, setHero] = useState<GooglePlacePreview | undefined>(undefined);
   const [photoFailed, setPhotoFailed] = useState(false);
-  const profile = prediction ? profileCache.get(prediction.placeId) : undefined;
+  const cached = prediction ? profileCache.get(prediction.placeId) : undefined;
+  const profile =
+    fetchedId === prediction?.placeId && hero !== undefined ? hero : cached;
   const waiting = Boolean(
     open &&
       prediction &&
@@ -69,20 +72,23 @@ export function GooglePlaceSheet({
   useEffect(() => {
     if (!open || !prediction || !apiKey) return;
     const id = prediction.placeId;
-    const cached = profileCache.get(id);
-    if (isDisplayablePlacePhoto(cached?.photoUrl)) return;
+    const existing = profileCache.get(id);
+    if (isDisplayablePlacePhoto(existing?.photoUrl)) return;
     let stale = false;
     (async () => {
-      let fetched: GooglePlacePreview = {};
+      let fetched: GooglePlacePreview | null = null;
       try {
         fetched = await fetchGooglePlacePreview(id, apiKey);
       } catch {
-        // Key can't reach Places (or network blip) — cache the empty
-        // profile so we don't hammer, and let the fallbacks render.
+        // Key can't reach Places (or network blip) — keep any earlier
+        // Maps preview; only cache empty on a first miss.
       }
-      profileCache.set(id, fetched);
+      const next = fetched ?? existing ?? {};
+      if (fetched) profileCache.set(id, fetched);
+      else if (!existing) profileCache.set(id, next);
       if (!stale) {
         setPhotoFailed(false);
+        setHero(next);
         setFetchedId(id);
       }
     })();

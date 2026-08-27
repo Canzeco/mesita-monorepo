@@ -498,8 +498,12 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
     expect(sheet).toMatch(/if \(!open \|\| !prediction \|\| !apiKey\) return/);
     expect(sheet).toContain("h-44");
     expect(sheet).toContain("referrerPolicy");
+    expect(sheet).toContain("setHero");
     expect(read("../../../lib/google-place-preview.ts")).toContain(
       "importLibrary",
+    );
+    expect(read("../../../lib/google-place-preview.ts")).toMatch(
+      /fromRest = await previewFromRest[\s\S]*catch/,
     );
     expect(read("../../../lib/google-place-preview.ts")).toContain(
       "PlacesService",
