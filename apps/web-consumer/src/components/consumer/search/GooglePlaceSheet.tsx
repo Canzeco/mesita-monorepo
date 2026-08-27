@@ -24,8 +24,8 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   fetchGooglePlacePreview,
   isDisplayablePlacePhoto,
-  isEmptyGooglePlacePreview,
   mergeGooglePlacePreview,
+  settleGooglePlaceCache,
   type GooglePlacePreview,
 } from "@/lib/google-place-preview";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -77,8 +77,7 @@ export function GooglePlaceSheet({
   useEffect(() => {
     if (!open || !prediction || !apiKey) return;
     const id = prediction.placeId;
-    const existing = profileCache.get(id);
-    if (isDisplayablePlacePhoto(existing?.photoUrl)) return;
+    if (isDisplayablePlacePhoto(profileCache.get(id)?.photoUrl)) return;
     let stale = false;
     (async () => {
       let fetched: GooglePlacePreview | null = null;
@@ -87,9 +86,7 @@ export function GooglePlaceSheet({
       } catch {
         fetched = null;
       }
-      const next = mergeGooglePlacePreview(fetched, existing);
-      if (!isEmptyGooglePlacePreview(next)) profileCache.set(id, next);
-      else if (!existing) profileCache.set(id, {});
+      const next = settleGooglePlaceCache(profileCache, id, fetched);
       if (!stale) {
         setPhotoFailed(false);
         setHero(next);
