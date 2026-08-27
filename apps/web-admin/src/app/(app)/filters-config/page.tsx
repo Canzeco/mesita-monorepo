@@ -11,8 +11,8 @@ import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
 // Discovery boxes, operator order: Name · Map · Swipe · Catalog · Chat ·
-// Social · Favs. Name is Fast Search + Deep Search. Swipe knobs are live.
-// Signals stay Soon. Each knob box saves its own slice.
+// Social · Favs. Name, Map, Swipe, and Chat knobs are live. Catalog and
+// Social are empty Soon boxes. Favs has no knobs. Signals stay Soon.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -37,21 +37,13 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <CatalogConfigClient
-        initialConfig={initialConfig}
-        initialUpdatedAt={initialUpdatedAt}
-        loadError={loadError}
-      />
+      <CatalogConfigClient />
       <DiscoveryConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <SocialConfigClient
-        initialConfig={initialConfig}
-        initialUpdatedAt={initialUpdatedAt}
-        loadError={loadError}
-      />
+      <SocialConfigClient />
       <FavsConfigCard />
       <ConfigSoon
         Icon={Compass}

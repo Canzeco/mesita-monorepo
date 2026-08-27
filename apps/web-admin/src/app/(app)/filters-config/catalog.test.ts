@@ -57,12 +57,12 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
   });
 
-  it("catalog() is live rails over Mesita search, no vendor API", () => {
+  it("catalog() is parked — Home Catalog is Soon", () => {
     const catalog = ENGINES.find((e) => e.key === "catalog");
-    expect(catalog?.state).toBe("LIVE");
+    expect(catalog?.state).toBe("PARKED");
     expect(catalog?.apis).toEqual([]);
-    expect(catalog?.process).toMatch(/vibe-query/i);
-    expect(catalog?.process).not.toMatch(/Parked/i);
+    expect(catalog?.process).toMatch(/Parked/i);
+    expect(catalog?.process).toMatch(/Soon/);
   });
 
   it("coerceConfig defaults catalog on an old blob", () => {
@@ -192,9 +192,11 @@ describe("Discovery page box order", () => {
     expect(name).toContain('title="Deep Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe"');
-    expect(catalog).toContain('title="Catalog"');
+    expect(catalog).toContain('title="Catalog is coming soon"');
+    expect(catalog).toContain("ConfigSoon");
     expect(chat).toContain('title="Chat"');
-    expect(social).toContain('title="Social"');
+    expect(social).toContain('title="Social is coming soon"');
+    expect(social).toContain("ConfigSoon");
     expect(surfaces).toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Favorites"');
     expect(surfaces).not.toContain('title="Name"');
