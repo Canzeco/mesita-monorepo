@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   coerceConfig,
@@ -103,5 +105,44 @@ describe("Discovery function APIs", () => {
       ["name", ["Google Places Autocomplete", "Google Places Text Search", "Place Details"]],
       ["web", ["Perplexity"]],
     ]);
+  });
+});
+
+describe("Discovery page box order", () => {
+  it("renders Name · Map · Swipe · Catalog · Chat · Social · Favs", () => {
+    const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
+    const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
+    const social = readFileSync(join(__dirname, "SocialConfigClient.tsx"), "utf8");
+    const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
+    const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
+
+    expect(surfaces).toContain('title="Name"');
+    expect(map).toContain('title="Map"');
+    expect(surfaces).toContain('title="Swipe"');
+    expect(catalog).toContain('title="Catalog"');
+    expect(chat).toContain('title="Chat"');
+    expect(social).toContain('title="Social"');
+    expect(surfaces).toContain('title="Favs"');
+    expect(surfaces).not.toContain('title="Favorites"');
+    expect(catalog).not.toContain("SocialConfig");
+
+    const jsx = page.slice(page.indexOf("return ("));
+    const order = [
+      "NameConfigCard",
+      "MapConfigClient",
+      "SwipeConfigCard",
+      "CatalogConfigClient",
+      "DiscoveryConfigClient",
+      "SocialConfigClient",
+      "FavsConfigCard",
+    ];
+    let last = -1;
+    for (const name of order) {
+      const idx = jsx.indexOf(name);
+      expect(idx, name).toBeGreaterThan(last);
+      last = idx;
+    }
+    expect(jsx.indexOf("FavsConfigCard")).toBeLessThan(jsx.indexOf("ConfigSoon"));
   });
 });

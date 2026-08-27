@@ -2,12 +2,18 @@ import { Compass } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { CatalogConfigClient } from "./CatalogConfigClient";
 import { DiscoveryConfigClient } from "./DiscoveryConfigClient";
+import {
+  FavsConfigCard,
+  NameConfigCard,
+  SwipeConfigCard,
+} from "./DiscoverySurfaceCards";
 import { MapConfigClient } from "./MapConfigClient";
+import { SocialConfigClient } from "./SocialConfigClient";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG } from "./catalog";
 
-// Discovery — Catalog live, Map live, Social staged, Chat prompt + inventory live.
-// Signals stay Soon. Each box saves its slice against the live blob.
+// Discovery boxes, operator order: Name · Map · Swipe · Catalog · Chat ·
+// Social · Favs. Signals stay Soon. Each knob box saves its own slice.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -17,12 +23,14 @@ export default async function DiscoveryPage() {
   const loadError = seed.ok ? null : seed.error;
   return (
     <div className="flex flex-col gap-10">
-      <CatalogConfigClient
+      <NameConfigCard />
+      <MapConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <MapConfigClient
+      <SwipeConfigCard />
+      <CatalogConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
@@ -32,6 +40,12 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
+      <SocialConfigClient
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
+      <FavsConfigCard />
       <ConfigSoon
         Icon={Compass}
         title="Signals are coming soon"

@@ -6,20 +6,24 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: Catalog · Map · Social (staged) · Chat prompt + inventory.
+// Live HTML order: Name · Map · Swipe · Catalog · Chat · Social · Favs.
 // Signals Soon.
 //
-//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
-//             Enforced by consumer-web-list-catalog.
+//   NAME      no knobs. Enforced by consumer-web-suggest-places (Map bar).
 //   MAP       minRating · minReviews · minPopularity · googleFill · type
 //             batteries. Search allowlist (guest map, name search, admin
 //             Google Search, Create). Nearby: Mesita 20 ∪ Nearby 20.
 //             Enforced by list-places, discover-places, suggest-places,
 //             consumer-search-lane, create-place.
-//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
-//             horizonDays. Staged — no Social/events engine yet.
+//   SWIPE     no knobs. Enforced by consumer-web-recommend-swipe. Ranks from
+//             the last-saved blob; ranking knobs stay on Signals.
+//   CATALOG   seedCount · generatedCount · placesPerRail · minSeedPlaces.
+//             Enforced by consumer-web-list-catalog.
 //   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
 //             are listed in the box — display only, not knobs.
+//   SOCIAL    seedCount · generatedCount · eventsPerRail · minSeedEvents ·
+//             horizonDays. Staged — no Social/events engine yet.
+//   FAVS      no knobs. Home parked.
 //
 // Slotting and operator filters still live on the blob so a whole-blob Save
 // cannot reset them. They have no knobs on this page.
