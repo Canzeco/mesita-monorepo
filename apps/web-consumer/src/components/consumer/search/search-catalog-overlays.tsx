@@ -1,11 +1,42 @@
 import type { RefObject } from "react";
-import { ChevronUp, MapPin, Search, X } from "lucide-react";
+import { ChevronUp, MapPin, RotateCw, Search, X } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
 import { RailCard } from "./SearchRailCard";
+
+export function SearchHereButton({
+  loading,
+  stale,
+  onClick,
+}: {
+  loading: boolean;
+  stale: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      aria-busy={loading}
+      aria-label="Search places around the map center"
+      className={cn(
+        "border-border bg-card/95 shadow-elev flex min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-semibold backdrop-blur transition active:scale-[0.99] disabled:opacity-70",
+        stale ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
+      {loading ? (
+        <Spinner size="sm" label="Updating nearby places" />
+      ) : (
+        <RotateCw className="text-primary h-3.5 w-3.5" />
+      )}
+      {loading ? "Updating nearby" : "Search here"}
+    </button>
+  );
+}
 
 function CatalogRailSkeleton() {
   return (

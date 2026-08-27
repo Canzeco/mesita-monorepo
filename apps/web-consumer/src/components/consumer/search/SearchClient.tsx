@@ -8,10 +8,10 @@
 //     cut this map and there is no Adjust control here.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
-//     Panning reloads that set after a real camera move, not a one-pixel
-//     nudge. Tapping a map pin highlights + scrolls to the matching rail
-//     card; tapping a card opens the place page (Google-only stubs open
-//     GooglePlaceSheet).
+//     Panning never reloads that set — Search here under the bar does,
+//     from the reticle at the canvas center. Tapping a map pin highlights
+//     + scrolls to the matching rail card; tapping a card opens the place
+//     page (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
 //     after the guest stops, Deep Search replaces that list (Partners ·
 //     Mesita · Google). One Google session token per autocomplete session.
@@ -49,14 +49,13 @@ import { SearchScopeSheet } from "./SearchScopeSheet";
 import type { AddState } from "./add-state";
 import {
   EmptySearchPrompt,
+  SearchHereButton,
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import {
-  CATALOG_RELOAD_MIN_KM,
-  clampReloadMinKm,
+  catalogIsStale,
   matchPredictionToPlace,
   newSessionToken,
-  shouldReloadNearbyCatalog,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -64,7 +63,6 @@ import {
 // Fast Search while typing; Deep Search after the guest stops.
 const FAST_DEBOUNCE_MS = 300;
 const DEEP_IDLE_MS = 1000;
-const VIEWPORT_IDLE_MS = 1000;
 const MIN_SUGGEST_QUERY_LENGTH = 2;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
@@ -97,7 +95,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     lng: number;
   } | null>(null);
   const viewportGen = useRef(0);
-  const userViewportTimer = useRef<number | null>(null);
   // Google Places session token. Per Google's session-billing semantics a
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
@@ -161,30 +158,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const idleRef = useRef(idle);
   const lastBoxRef = useRef<ViewportBox | null>(null);
-  const skippedRef = useRef(false);
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
-  const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
+  const forceNextLoad = useRef(false);
+  const seenLocationKey = useRef<string | null>(null);
+  const [catalogStale, setCatalogStale] = useState(false);
+
+  const markViewport = useCallback((box: ViewportBox) => {
+    lastBoxRef.current = box;
+    setCatalogStale(
+      catalogIsStale(lastFetchedCenter.current, viewportCenter(box)),
+    );
+  }, []);
 
   const loadViewport = useCallback(
     async (box: ViewportBox) => {
       lastBoxRef.current = box;
       if (!idleRef.current) {
-        skippedRef.current = true;
+        markViewport(box);
         return;
       }
       const nextCenter = viewportCenter(box);
-      if (
-        !shouldReloadNearbyCatalog(
-          lastFetchedCenter.current,
-          nextCenter,
-          box,
-          reloadMinKmRef.current,
-        )
-      ) {
-        setCatalogLoading(false);
-        return;
-      }
-      skippedRef.current = false;
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -196,7 +189,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
-        reloadMinKmRef.current = clampReloadMinKm(result.reloadMinKm);
+        setCatalogStale(false);
         setCameraCenter(nextCenter);
         setPlaces(result.places);
       } catch (err) {
@@ -206,7 +199,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [supabase],
+    [markViewport, supabase],
   );
 
   const onFirstViewport = useCallback(
@@ -218,32 +211,48 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const onUserViewport = useCallback(
     (box: ViewportBox) => {
-      if (userViewportTimer.current != null) {
-        window.clearTimeout(userViewportTimer.current);
-      }
-      userViewportTimer.current = window.setTimeout(() => {
+      markViewport(box);
+      if (forceNextLoad.current) {
+        forceNextLoad.current = false;
         void loadViewport(box);
-      }, VIEWPORT_IDLE_MS);
+      }
     },
-    [loadViewport],
+    [loadViewport, markViewport],
   );
+
+  const handleSearchHere = useCallback(() => {
+    if (!lastBoxRef.current) return;
+    void loadViewport(lastBoxRef.current);
+  }, [loadViewport]);
 
   useEffect(() => {
     idleRef.current = idle;
   }, [idle]);
 
-  useEffect(() => {
-    return () => {
-      if (userViewportTimer.current != null) {
-        window.clearTimeout(userViewportTimer.current);
-      }
-    };
-  }, []);
+  const locationKey = location ? `${location.lat},${location.lng}` : null;
 
   useEffect(() => {
-    if (!idle || !skippedRef.current || !lastBoxRef.current) return;
-    void loadViewport(lastBoxRef.current);
-  }, [idle, loadViewport]);
+    if (!locationKey) {
+      seenLocationKey.current = null;
+      return;
+    }
+    if (seenLocationKey.current === locationKey) return;
+
+    const [latRaw, lngRaw] = locationKey.split(",");
+    const next = { lat: Number(latRaw), lng: Number(lngRaw) };
+    const firstFix = seenLocationKey.current == null;
+    seenLocationKey.current = locationKey;
+
+    // First GPS at mount: the first tile idle fetches that camera. A
+    // later fix, or a first fix after the default-city tile already
+    // loaded, reloads once when Recentre settles.
+    if (
+      !firstFix ||
+      catalogIsStale(lastFetchedCenter.current, next)
+    ) {
+      forceNextLoad.current = true;
+    }
+  }, [locationKey]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -493,6 +502,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const handleUseLocation = () => {
     setLocating(true);
+    forceNextLoad.current = true;
     scope.setLocationOptOut(false);
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setLocating(false);
@@ -573,6 +583,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
             {fetchError}
           </p>
+        )}
+
+        {idle && (places.length > 0 || fetchError || !catalogLoading) && (
+          <div className="flex justify-center">
+            <SearchHereButton
+              loading={catalogLoading}
+              stale={catalogStale}
+              onClick={handleSearchHere}
+            />
+          </div>
         )}
 
         {(searchOpen || trimmed.length > 0) && (
