@@ -6,45 +6,33 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: two subpages. Discovery Modes — Name (Fast Search) · Name
-// (Deep Search) · Map · Swipe · Catalog · Chat · Social · Favorites.
-// Discovery Modules — General · Signals. Index redirects to Modes.
+// Live HTML: two subpages. Mode → modules it may call → Places Lineup
+// signals. Index redirects to Modes.
 //
-//   GENERAL   categoryCount — first N of NEARBY_TYPE_KEYS any engine may
-//             use. Engine type toggles stay on Fast / Deep / Map.
-//   NAME      two boxes on `discovery_config.name`.
-//             Fast  count + Google categories. Autocomplete while typing.
-//             Deep  partnerCount · mesitaCount · googleCount + Google
-//                   categories. ~1s idle. Partners → Mesita → Google after
-//                   dropping overlaps. Name cosine on Mesita lanes; Text
-//                   Search order on Google. Enforced by consumer-search-lane.
-//   MAP       partnerCount · mesitaCount · googleCount · type
-//             batteries (Google pipeline only). Floors stay on the blob.
-//             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
-//             Enforced by list-places, discover-places, suggest-places,
-//             create-place. Map floors still gate Name Google + Create.
-//   SWIPE     Soon empty box. radiusKm · closingBufferMin · weightProximity ·
-//             starsExponent · logDivisor · partnerBias · randomnessMax ·
-//             categoryFilter · minReviews persist on the blob; no HTML knobs.
-//   CATALOG   Soon empty box. seedCount · generatedCount · placesPerRail ·
-//             minSeedPlaces persist on the blob; no HTML knobs.
-//   CHAT      Soon empty box. System prompt persists on the blob; no HTML knobs.
-//   SOCIAL    Soon empty box. seedCount · generatedCount · eventsPerRail ·
-//             minSeedEvents · horizonDays persist on the blob; no events engine.
-//   FAVORITES Soon empty box. No knobs.
-//   SIGNALS   reusable library: Proximity · Timing · Popularity ·
-//             Promoting · Semantic · Category. Weights + params persist.
-//             Promoting is slotting (post-blend), not an earned SIGNAL_KEY.
+//   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
+//             Social · Favorites. Each card shows locked module chips.
+//             Fast / Deep / Map keep lane counts. Google category knobs
+//             live on Modules, not here.
+//   MODULES   Google types strip (categoryCount + type batteries, one
+//             list written onto Fast / Deep / Map) · Autocomplete ·
+//             Nearby · Text Search · Mesita Places Lineup · Social
+//             Lineup Soon · Perplexity Search Soon.
+//   LINEUP    eight earned signals: Name · Summary · Proximity · Timing ·
+//             Category · Popularity · Partnership · Randomness.
+//             Promoting is slotting (post-blend), not a SIGNAL_KEY.
+//             Old `semantic` folds to Summary.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
 
 export const SIGNAL_KEYS = [
+  "name",
+  "summary",
   "proximity",
   "timing",
   "category",
   "popularity",
-  "semantic",
+  "partnership",
   "randomness",
 ] as const;
 
@@ -245,7 +233,7 @@ export const CHAT_CONNECTIONS = [
   {
     name: "Perplexity (web search)",
     status: "Soon",
-    note: "Own OpenAI sub-agent with a specialized prompt; that agent calls Perplexity in the background. Not a raw Perplexity chat.",
+    note: "Perplexity Search API — ranked web results. Not Agent. Agent stays Atlas.",
   },
   {
     name: "Internal search EFs",
@@ -384,7 +372,9 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   },
   category: { exact: 1, family: 0.55, miss: 0.1 },
   popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
-  semantic: { unembedded: 0.4 },
+  name: { unembedded: 0.4 },
+  summary: { unembedded: 0.4 },
+  partnership: {},
   randomness: {},
 };
 
@@ -394,7 +384,9 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     timing: 1,
     category: 1,
     popularity: 1,
-    semantic: 1,
+    name: 1,
+    summary: 1,
+    partnership: 1,
     randomness: 0.35,
   },
   params: DEFAULT_SIGNAL_PARAMS,
@@ -524,7 +516,7 @@ export const ENGINES: {
  * One row of the weights table.
  *
  * `reads` is what the signal actually looks at, so an operator can tell WHY a
- * weight is doing nothing — Semantic against an un-embedded catalog is not
+ * weight is doing nothing — Summary against an un-embedded catalog is not
  * broken, it is abstaining, and the enrichment queue's semantic `summary`
  * function is what fixes that.
  *
@@ -562,14 +554,41 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
   unembedded: { min: 0, max: 1, step: 0.05 },
 };
 
-/** Operator library order. Promoting is slotting, not a SIGNAL_KEY. */
+/**
+ * Mesita Places Lineup order. Promoting is slotting, not a SIGNAL_KEY —
+ * it is not a row on this table.
+ */
 export const LIBRARY_SIGNALS = [
+  { kind: "signal" as const, key: "name" as const },
+  { kind: "signal" as const, key: "summary" as const },
   { kind: "signal" as const, key: "proximity" as const },
   { kind: "signal" as const, key: "timing" as const },
-  { kind: "signal" as const, key: "popularity" as const },
-  { kind: "promoting" as const },
-  { kind: "signal" as const, key: "semantic" as const },
   { kind: "signal" as const, key: "category" as const },
+  { kind: "signal" as const, key: "popularity" as const },
+  { kind: "signal" as const, key: "partnership" as const },
+  { kind: "signal" as const, key: "randomness" as const },
+] as const;
+
+/** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
+export const DISCOVERY_MODE_MODULES = {
+  fast: ["Google Places Autocomplete"],
+  deep: ["Mesita Places Lineup", "Google Places Text Search"],
+  map: ["Mesita Places Lineup", "Google Places Nearby Search"],
+  swipe: ["Mesita Places Lineup"],
+  catalog: ["Mesita Places Lineup"],
+  chat: ["Mesita Places Lineup", "Mesita Social Lineup", "Perplexity Search"],
+  social: ["Mesita Social Lineup"],
+  favorites: ["Mesita Places Lineup"],
+} as const;
+
+/** The six Discovery modules. Not a seventh. Signals are not a module. */
+export const DISCOVERY_MODULES = [
+  "Google Places Autocomplete",
+  "Google Places Nearby Search",
+  "Google Places Text Search",
+  "Mesita Places Lineup",
+  "Mesita Social Lineup",
+  "Perplexity Search",
 ] as const;
 
 export const SIGNALS: {
@@ -583,6 +602,26 @@ export const SIGNALS: {
   /** Vendor APIs this function calls at rank time. Empty = none. */
   apis: string[];
 }[] = [
+  {
+    key: "name",
+    label: "Name",
+    fn: "name()",
+    input: "Query name vector × places.name_embedding.",
+    process: "(cosine + 1) / 2. No name query → abstain.",
+    output: "Unembedded place → unembedded, never deleted.",
+    apis: [],
+    fields: UNIT,
+  },
+  {
+    key: "summary",
+    label: "Summary",
+    fn: "summary()",
+    input: "Query vector × places.embedding (Summary, never Presentation).",
+    process: "(cosine + 1) / 2. No query → abstain. Old semantic weight folds here.",
+    output: "Unembedded place → unembedded, never deleted.",
+    apis: [],
+    fields: UNIT,
+  },
   {
     key: "proximity",
     label: "Proximity",
@@ -624,12 +663,12 @@ export const SIGNALS: {
     fields: UNIT,
   },
   {
-    key: "semantic",
-    label: "Semantic",
-    fn: "semantic()",
-    input: "Query vector × places.embedding (Summary, never Presentation).",
-    process: "(cosine + 1) / 2. No query → abstain.",
-    output: "Unembedded place → unembedded, never deleted.",
+    key: "partnership",
+    label: "Partnership",
+    fn: "partnership()",
+    input: "Place plan. Never strategy, promo flags, or rates.",
+    process: "Free or missing → none floor. Paid → 1.",
+    output: "How partnered the place is. Not Promoting.",
     apis: [],
     fields: UNIT,
   },
@@ -654,6 +693,13 @@ function num(raw: unknown, fallback: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
+/** Old blobs stored Summary as `semantic`. Fold before SIGNAL_KEYS rebuild. */
+function foldLegacySignalBag(raw: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...raw };
+  if (next.summary == null && next.semantic != null) next.summary = next.semantic;
+  return next;
+}
+
 /**
  * Tolerant read of whatever the EF returned, rebuilt against SIGNAL_KEYS.
  *
@@ -663,7 +709,7 @@ function num(raw: unknown, fallback: number, min: number, max: number): number {
  */
 export function coerceConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const w = (r.weights ?? {}) as Record<string, unknown>;
+  const w = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
   const s = (r.slotting ?? {}) as Record<string, unknown>;
 
   const weights = {} as Record<SignalKey, number>;
@@ -683,7 +729,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
     };
   }
 
-  const rawParams = (r.params ?? {}) as Record<string, unknown>;
+  const rawParams = foldLegacySignalBag((r.params ?? {}) as Record<string, unknown>);
   const params = {} as SignalParams;
   for (const key of SIGNAL_KEYS) {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;

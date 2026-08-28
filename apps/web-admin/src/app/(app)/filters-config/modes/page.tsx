@@ -8,9 +8,9 @@ import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Discovery Modes — ways guests look. Name (Fast) · Name (Deep) · Map ·
-// Swipe · Catalog · Chat · Social · Favorites. Home boxes are Soon.
-// This page still seeds the live Name / Map clients; no new EF work.
+// Discovery Modes — ways guests look. Each card shows locked module chips.
+// Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat · Social ·
+// Favorites. Home boxes are Soon. Google types live on Modules.
 export const dynamic = "force-dynamic";
 
 export default async function SearchModesPage() {

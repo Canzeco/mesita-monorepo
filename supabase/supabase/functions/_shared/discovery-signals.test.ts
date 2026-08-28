@@ -8,7 +8,11 @@ import {
   proximity,
   PROXIMITY_MAX_KM,
   randomness,
-  semantic,
+  name,
+  partnership,
+  PARTNERSHIP_NONE,
+  PARTNERSHIP_PARTNER,
+  summary,
   SIGNAL_BLURBS,
   SIGNAL_KEYS,
   SIGNAL_LABELS,
@@ -49,6 +53,7 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
     { lat: Number.NaN, lng: Number.NaN },
     { categories: ["taqueria"], families: ["food"] },
     { queryVector: [1, 0, 0] },
+    { queryNameVector: [1, 0, 0] },
   ];
   for (const key of SIGNAL_KEYS) {
     for (const p of nasty) {
@@ -63,8 +68,18 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same six signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 6);
+Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 8);
+  assertEquals([...SIGNAL_KEYS], [
+    "name",
+    "summary",
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+    "randomness",
+  ]);
   assertEquals(Object.keys(SIGNALS).sort(), [...SIGNAL_KEYS].sort());
   assertEquals(Object.keys(SIGNAL_LABELS).sort(), [...SIGNAL_KEYS].sort());
   assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
@@ -74,7 +89,8 @@ Deno.test("Promoting is NOT a signal — the bought lane never reaches the blend
   // The two-lane decision (MESITA-1196), pinned. If someone adds it back here,
   // this fails before the invariant test in discovery-blend.test.ts does.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
-  // And Social is an engine only — it would stand on a parked engine.
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
+  // And Social is a module only — it does not reuse these eight.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("social"));
 });
 
@@ -259,40 +275,70 @@ Deno.test("popularity prior is an operator knob", () => {
   assert(high > low, `higher prior should lift an unrated place: ${high} vs ${low}`);
 });
 
-// ── Semantic ─────────────────────────────────────────────────────────────────
+// ── Name ─────────────────────────────────────────────────────────────────────
 
-Deno.test("semantic abstains without a query vector", () => {
-  assertEquals(semantic(place({ embedding: [1, 0, 0] }), {}), NEUTRAL);
-  assertEquals(semantic(place({ embedding: [1, 0, 0] }), { queryVector: [] }), NEUTRAL);
+Deno.test("name abstains without a name query vector", () => {
+  assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), {}), NEUTRAL);
+  assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), { queryNameVector: [] }), NEUTRAL);
+  // Sharing Summary's query vector is not a Name query.
+  assertEquals(name(place({ nameEmbedding: [1, 0, 0] }), { queryVector: [1, 0, 0] }), NEUTRAL);
 });
 
-Deno.test("semantic ranks a matching vector above an opposing one", () => {
+Deno.test("name ranks a matching vector above an opposing one", () => {
   const q = [1, 0, 0];
-  const same = semantic(place({ embedding: [1, 0, 0] }), { queryVector: q });
-  const orth = semantic(place({ embedding: [0, 1, 0] }), { queryVector: q });
-  const opp = semantic(place({ embedding: [-1, 0, 0] }), { queryVector: q });
+  const same = name(place({ nameEmbedding: [1, 0, 0] }), { queryNameVector: q });
+  const orth = name(place({ nameEmbedding: [0, 1, 0] }), { queryNameVector: q });
+  const opp = name(place({ nameEmbedding: [-1, 0, 0] }), { queryNameVector: q });
   assertAlmostEquals(same, 1, 1e-9);
   assertAlmostEquals(orth, 0.5, 1e-9);
   assertAlmostEquals(opp, 0, 1e-9);
 });
 
-Deno.test("semantic reads a pgvector string as readily as an array", () => {
-  const fromString = semantic(place({ embedding: "[1,0,0]" }), { queryVector: [1, 0, 0] });
+// ── Summary ──────────────────────────────────────────────────────────────────
+
+Deno.test("summary abstains without a query vector", () => {
+  assertEquals(summary(place({ embedding: [1, 0, 0] }), {}), NEUTRAL);
+  assertEquals(summary(place({ embedding: [1, 0, 0] }), { queryVector: [] }), NEUTRAL);
+  assertEquals(summary(place({ embedding: [1, 0, 0] }), { queryNameVector: [1, 0, 0] }), NEUTRAL);
+});
+
+Deno.test("summary ranks a matching vector above an opposing one", () => {
+  const q = [1, 0, 0];
+  const same = summary(place({ embedding: [1, 0, 0] }), { queryVector: q });
+  const orth = summary(place({ embedding: [0, 1, 0] }), { queryVector: q });
+  const opp = summary(place({ embedding: [-1, 0, 0] }), { queryVector: q });
+  assertAlmostEquals(same, 1, 1e-9);
+  assertAlmostEquals(orth, 0.5, 1e-9);
+  assertAlmostEquals(opp, 0, 1e-9);
+});
+
+Deno.test("summary reads a pgvector string as readily as an array", () => {
+  const fromString = summary(place({ embedding: "[1,0,0]" }), { queryVector: [1, 0, 0] });
   assertAlmostEquals(fromString, 1, 1e-9);
 });
 
 Deno.test("an unembedded place loses to an embedded one without being deleted", () => {
   const q = [1, 0, 0];
-  const gap = semantic(place({ embedding: null }), { queryVector: q });
-  const hit = semantic(place({ embedding: [1, 0, 0] }), { queryVector: q });
+  const gap = summary(place({ embedding: null }), { queryVector: q });
+  const hit = summary(place({ embedding: [1, 0, 0] }), { queryVector: q });
   assert(gap > 0 && gap < hit, `expected 0 < ${gap} < ${hit}`);
   // A dimension mismatch is the same kind of gap, never a crash.
-  assertEquals(semantic(place({ embedding: [1, 0] }), { queryVector: q }), gap);
+  assertEquals(summary(place({ embedding: [1, 0] }), { queryVector: q }), gap);
 });
 
-Deno.test("semantic unembedded floor is an operator knob", () => {
+Deno.test("summary unembedded floor is an operator knob", () => {
   const q = [1, 0, 0];
-  assertEquals(semantic(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
+  assertEquals(summary(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
+});
+
+// ── Partnership ──────────────────────────────────────────────────────────────
+
+Deno.test("partnership scores paid above free and never reads a promo field", () => {
+  assertEquals(partnership(place()), PARTNERSHIP_NONE);
+  assertEquals(partnership(place({ plan: "free" })), PARTNERSHIP_NONE);
+  assertEquals(partnership(place({ plan: "pro" })), PARTNERSHIP_PARTNER);
+  assertEquals(partnership(place({ plan: "PRO" })), PARTNERSHIP_PARTNER);
+  assert(PARTNERSHIP_NONE > 0, "free is demoted, not deleted");
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────
