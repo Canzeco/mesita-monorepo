@@ -80,8 +80,9 @@ describe("Discovery function APIs", () => {
     ]);
     expect(DISCOVERY_MODE_MODULES.fast).toEqual(["Google Places Autocomplete"]);
     expect(DISCOVERY_MODE_MODULES.deep).toEqual([
-      "Mesita Places Lineup",
+      "Google Places Autocomplete",
       "Google Places Text Search",
+      "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.map).toEqual([
       "Mesita Places Lineup",
@@ -174,9 +175,11 @@ describe("Discovery function APIs", () => {
       "Place Details",
     ]);
     expect(name?.process).toMatch(/Fast/);
+    expect(name?.process).toMatch(/Autocomplete only/);
     expect(name?.process).toMatch(/Deep/);
+    expect(name?.process).toMatch(/Places Lineup Name/);
+    expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
-    expect(name?.process).toMatch(/name embedding/i);
     expect(name?.process).not.toMatch(/summary embedding/i);
   });
 
@@ -297,6 +300,8 @@ describe("Discovery page box order", () => {
     expect(general).toContain('["general", "nameFast", "nameDeep", "map"]');
     expect(name).toContain('title="Name (Fast Search)"');
     expect(name).toContain('title="Name (Deep Search)"');
+    expect(name).toContain("Google Places Autocomplete only");
+    expect(name).toContain("Name signal only");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');
@@ -320,6 +325,7 @@ describe("Discovery page box order", () => {
     expect(googleModules).toContain("Google Places Autocomplete");
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
+    expect(googleModules).toContain("Name (Deep Search)");
     expect(chips).toContain("export function ModeModuleChips");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");

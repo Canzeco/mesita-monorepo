@@ -4,6 +4,7 @@ import {
   laneDedupeKeys,
   membershipTone,
   mergeNameDeepLanes,
+  splitResolvedNameHits,
   takeFastLane,
   type LaneItem,
 } from "./consumer-search-lane.ts";
@@ -69,6 +70,17 @@ Deno.test("takeFastLane drops a duplicate google id", () => {
     5,
   );
   assertEquals(out.map((p) => p.mainText), ["First", "Second"]);
+});
+
+Deno.test("splitResolvedNameHits buckets after resolve, before merge", () => {
+  const out = splitResolvedNameHits([
+    item({ placeId: "p1", mainText: "Partner", partner: true, mesitaId: "m-p" }),
+    item({ placeId: "m1", mainText: "Listed", mesitaId: "m-1" }),
+    item({ placeId: "g1", mainText: "Google" }),
+  ]);
+  assertEquals(out.partners.map((p) => p.mainText), ["Partner"]);
+  assertEquals(out.mesita.map((p) => p.mainText), ["Listed"]);
+  assertEquals(out.google.map((p) => p.mainText), ["Google"]);
 });
 
 Deno.test("mergeNameDeepLanes: Partners then Mesita then Google", () => {

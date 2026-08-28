@@ -1,18 +1,18 @@
 // Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
-// Search (Partners · Mesita · Google) after idle.
+// Search after idle.
 //
 // Used only by consumer-web-suggest-places. Admin/business still call
 // suggestPlaces (Autocomplete + Mesita ILIKE, Mesita-first sort).
 //
-// Fast: Google Autocomplete, cap `name.fast.count`, Fast Google categories.
-// Deep: three lanes, then one list after dropping overlaps:
-//   1. Partners — name cosine (`places.name_embedding`)
-//   2. Mesita — name cosine, partners included
-//   3. Google — Text Search order among Deep Google categories
-// Partners ⊆ Mesita ⊆ Google. Merge concatenates after dropping concurrencies.
-// A listed Place ID never comes back as a Google stub. Summary embedding is
-// not a Name lane. Membership is a boolean `partner`; the client paints the
-// point. No source labels.
+// Fast: Google Autocomplete only. Cap `name.fast.count`.
+// Deep: three modules, each candidate resolves, then one list:
+//   1. Google Autocomplete — resolve against the catalog
+//   2. Google Text Search — resolve against the catalog
+//   3. Mesita Places Lineup — Name signal only (`places.name_embedding`)
+// Then Partners → Mesita → Google after dropping overlaps.
+// Merge is not a fourth module. Summary and the other six Lineup signals
+// are not a Deep input. A listed Place ID never comes back as a Google
+// stub. Membership is a boolean `partner`; the client paints the point.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -269,7 +269,16 @@ export async function runConsumerSearchLane(
   const mode = resolveMode(args.mode);
 
   const predictions = mode === "deep"
-    ? await runDeepSearch(admin, apiKey, cfg.map, cfg.name, input, origin, args.country)
+    ? await runDeepSearch(
+      admin,
+      apiKey,
+      cfg.map,
+      cfg.name,
+      input,
+      sessionToken,
+      origin,
+      args.country,
+    )
     : await runFastSearch(
       admin,
       apiKey,
@@ -325,33 +334,71 @@ async function runFastSearch(
   return takeFastLane(stamped, cap);
 }
 
+/** After resolve: Mesita partners, Mesita listed, leftover Google stubs. */
+export function splitResolvedNameHits(items: LaneItem[]): NameDeepLanes {
+  const partners: LaneItem[] = [];
+  const mesita: LaneItem[] = [];
+  const google: LaneItem[] = [];
+  for (const item of items) {
+    if (item.mesitaId && item.partner) partners.push(item);
+    else if (item.mesitaId) mesita.push(item);
+    else if (item.status === "not_in_mesita" && !item.mesitaId) google.push(item);
+  }
+  return { partners, mesita, google };
+}
+
+function takeLane(items: LaneItem[], cap: number): LaneItem[] {
+  if (cap <= 0) return [];
+  return items.slice(0, cap);
+}
+
 async function runDeepSearch(
   admin: SupabaseClient,
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
   input: string,
+  sessionToken: string,
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = mapWithTypes(map, deep.types);
-  const wantGoogle = deep.googleCount > 0 &&
-    googleTypeFilterForTypes(deep.types) !== "skip";
+  const typesOn = googleTypeFilterForTypes(deep.types) !== "skip";
+  const wantText = deep.googleCount > 0 && typesOn;
+  const wantAuto = typesOn;
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const wantMesita = (deep.partnerCount > 0 || deep.mesitaCount > 0) &&
     Boolean(openaiKey);
 
-  const [googleText, embedPool, queryVec] = await Promise.all([
-    wantGoogle
+  const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
+    wantAuto
+      ? fetchAutocomplete(input, sessionToken, apiKey, origin, country)
+      : Promise.resolve({ predictions: [] as LaneItem[] }),
+    wantText
       ? fetchTextSearch(input, apiKey, gate, origin, country, deep.googleCount)
       : Promise.resolve([] as LaneItem[]),
     wantMesita ? fetchEmbedPool(admin, origin) : Promise.resolve([] as ListedRow[]),
     wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
   ]);
 
+  const autoPreds = "errorEnvelope" in googleAuto && googleAuto.errorEnvelope
+    ? []
+    : googleAuto.predictions;
+
+  const [stampedAuto, stampedText] = await Promise.all([
+    stampGoogleAgainstCatalog(autoPreds, admin, apiKey, gate),
+    stampGoogleAgainstCatalog(
+      googleText,
+      admin,
+      apiKey,
+      gate,
+      { alreadyHasSignals: true },
+    ),
+  ]);
+
   const ranked = queryVec ? rankByNameCosine(embedPool, queryVec) : [];
-  const partners = queryVec && deep.partnerCount > 0
+  const lineupPartners = queryVec && deep.partnerCount > 0
     ? takeAboveNameFloor(
       ranked.filter((row) => isPaidPlan(row.plan)),
       queryVec,
@@ -359,20 +406,27 @@ async function runDeepSearch(
       deep.partnerCount,
     )
     : [];
-  const mesita = queryVec && deep.mesitaCount > 0
+  const lineupMesita = queryVec && deep.mesitaCount > 0
     ? takeAboveNameFloor(ranked, queryVec, NAME_MIN_COSINE, deep.mesitaCount)
     : [];
 
-  const stampedGoogle = await stampGoogleAgainstCatalog(
-    googleText,
-    admin,
-    apiKey,
-    gate,
-    { alreadyHasSignals: true },
-  );
-  const google = stampedGoogle.filter((item) => item.status === "not_in_mesita");
+  const fromAuto = splitResolvedNameHits(stampedAuto);
+  const fromText = splitResolvedNameHits(stampedText);
 
-  return mergeNameDeepLanes({ partners, mesita, google });
+  return mergeNameDeepLanes({
+    partners: takeLane(
+      [...lineupPartners, ...fromAuto.partners, ...fromText.partners],
+      deep.partnerCount,
+    ),
+    mesita: takeLane(
+      [...lineupMesita, ...fromAuto.mesita, ...fromText.mesita],
+      deep.mesitaCount,
+    ),
+    google: takeLane(
+      [...fromAuto.google, ...fromText.google],
+      deep.googleCount,
+    ),
+  });
 }
 
 function toWire(item: LaneItem) {
