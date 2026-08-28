@@ -207,7 +207,7 @@ export function NameConfigClient({
       <div id="s-name-fast" className="scroll-mt-16">
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
-          title="Fast Search"
+          title="Name (Fast Search)"
           subtitle="Autocomplete while the guest types. Google categories plus a cap. 0 is off."
           status={
             <KnobStatus
@@ -251,7 +251,7 @@ export function NameConfigClient({
       <div id="s-name-deep" className="scroll-mt-16">
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
-          title="Deep Search"
+          title="Name (Deep Search)"
           subtitle="Runs about one second after the guest stops typing. Top N by name similarity for Partners and Mesita, then Google Text Search order. One list after dropping overlaps: Partners, then Mesita, then Google. Google categories ride Text Search only. 0 on a lane is off."
           status={
             <KnobStatus
