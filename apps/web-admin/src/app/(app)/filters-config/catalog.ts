@@ -6,9 +6,9 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: two sections. Search Modes — Name (Fast Search) · Name
+// Live HTML: two subpages. Search Modes — Name (Fast Search) · Name
 // (Deep Search) · Map · Swipe · Catalog · Chat · Social · Favorites.
-// Search Modules — General · Signals.
+// Search Modules — General · Signals. Index redirects to Modes.
 //
 //   GENERAL   categoryCount — first N of NEARBY_TYPE_KEYS any engine may
 //             use. Engine type toggles stay on Fast / Deep / Map.

@@ -9,7 +9,6 @@
 
 export {
   KnobStatus,
-  ConfigSection,
   SectionCard,
   Collapsible,
   Switch,
