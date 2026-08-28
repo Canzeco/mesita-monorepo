@@ -207,7 +207,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is two subpages — Search Modes and Search Modules", () => {
+  it("is two subpages — Discovery Modes and Discovery Modules", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -227,13 +227,16 @@ describe("Discovery page box order", () => {
       "utf8",
     );
 
-    expect(nav).toContain('label: "Search Modes"');
-    expect(nav).toContain('label: "Search Modules"');
+    expect(nav).toContain('label: "Discovery Modes"');
+    expect(nav).toContain('label: "Discovery Modules"');
     expect(nav).toContain('"/filters-config/modes"');
     expect(nav).toContain('"/filters-config/modules"');
     expect(nav).toContain("/filters-config/modes#s-map");
-    expect(layout).toContain("ConfigTabNav");
-    expect(layout).toContain("DISCOVERY_TABS");
+    expect(layout).toContain("DiscoveryChrome");
+    const chrome = readFileSync(join(__dirname, "DiscoveryChrome.tsx"), "utf8");
+    expect(chrome).toContain("ConfigTabNav");
+    expect(chrome).toContain("DISCOVERY_TABS");
+    expect(chrome).toContain("tab?.label");
     expect(page).toContain("redirect(DISCOVERY_MODES_HREF)");
     expect(page).not.toContain("GeneralConfigClient");
     expect(page).not.toContain("ConfigSection");

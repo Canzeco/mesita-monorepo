@@ -1,9 +1,8 @@
-import { ConfigTabNav } from "@/components/ConfigTabNav";
-import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { DISCOVERY_TABS } from "./nav";
+import { PageContainer } from "@/components/PageContainer";
+import { DiscoveryChrome } from "./DiscoveryChrome";
 
 // Discovery — two subpages under a frozen /filters-config prefix.
-// Search Modes · Search Modules. A label never repeats the heading.
+// Discovery Modes · Discovery Modules.
 export default function DiscoveryLayout({
   children,
 }: {
@@ -11,8 +10,7 @@ export default function DiscoveryLayout({
 }) {
   return (
     <PageContainer>
-      <PageHeader eyebrow="Product · Discovery" title="Discovery" />
-      <ConfigTabNav ariaLabel="Discovery sections" subroutes={DISCOVERY_TABS} />
+      <DiscoveryChrome />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>
   );

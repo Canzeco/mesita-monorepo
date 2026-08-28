@@ -3,7 +3,7 @@ import { SignalsConfigClient } from "../SignalsConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Search Modules — shared parameters and the Signals library.
+// Discovery Modules — shared parameters and the Signals library.
 // General · Signals. No new EF work this pass.
 export const dynamic = "force-dynamic";
 

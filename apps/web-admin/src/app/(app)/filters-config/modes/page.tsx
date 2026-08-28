@@ -8,7 +8,7 @@ import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Search Modes — ways guests look. Name (Fast) · Name (Deep) · Map ·
+// Discovery Modes — ways guests look. Name (Fast) · Name (Deep) · Map ·
 // Swipe · Catalog · Chat · Social · Favorites. Home boxes are Soon.
 // This page still seeds the live Name / Map clients; no new EF work.
 export const dynamic = "force-dynamic";
