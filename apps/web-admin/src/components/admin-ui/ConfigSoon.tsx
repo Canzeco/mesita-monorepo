@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 // The empty state for a config page whose engine does not exist yet.
@@ -15,11 +16,13 @@ export function ConfigSoon({
   title,
   body,
   doc,
+  footer,
 }: {
   Icon: LucideIcon;
   title: string;
   body: string;
   doc: string;
+  footer?: ReactNode;
 }) {
   return (
     <div className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
@@ -32,6 +35,7 @@ export function ConfigSoon({
       <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
         {body}
       </p>
+      {footer}
       <span className="bg-muted text-muted-foreground mt-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
         Soon
       </span>

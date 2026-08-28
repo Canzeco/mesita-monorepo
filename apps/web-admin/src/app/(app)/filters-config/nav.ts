@@ -4,8 +4,8 @@ import { Blocks, Compass, Search } from "lucide-react";
 // Discovery Modules). The prefix is frozen: /filters-config. Tabs live
 // here so layout, redirects, and deep links share one list.
 //
-// Modes  = ways guests look.
-// Modules = shared parameters and the Signals library.
+// Modes  = ways guests look (each names the modules it may call).
+// Modules = search engines + Places Lineup signals. Google types live here.
 export const FILTERS_PARENT = {
   href: "/filters-config",
   label: "Discovery",

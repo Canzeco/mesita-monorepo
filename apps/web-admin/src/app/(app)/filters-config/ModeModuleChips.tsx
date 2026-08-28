@@ -1,0 +1,17 @@
+// Locked module chips on a Discovery mode card. Read-only: dispatch does
+// not read a persistable set yet, so a toggle here would be STAGED.
+
+export function ModeModuleChips({ modules }: { modules: readonly string[] }) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {modules.map((name) => (
+        <span
+          key={name}
+          className="border-border bg-background text-foreground rounded-full border px-2.5 py-1 type-meta font-medium"
+        >
+          {name}
+        </span>
+      ))}
+    </div>
+  );
+}
