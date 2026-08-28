@@ -1,6 +1,7 @@
 // deno test supabase/functions/_shared/consumer-search-lane.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  applyResolvedMesitaName,
   laneDedupeKeys,
   membershipTone,
   mergeNameDeepLanes,
@@ -70,6 +71,29 @@ Deno.test("takeFastLane drops a duplicate google id", () => {
     5,
   );
   assertEquals(out.map((p) => p.mainText), ["First", "Second"]);
+});
+
+Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google label", () => {
+  const out = applyResolvedMesitaName(
+    item({
+      placeId: "ChIJ1",
+      mainText: "Google's Label",
+      secondaryText: "Google address",
+    }),
+    item({
+      placeId: "ChIJ1",
+      mainText: "Mesita override",
+      secondaryText: "Mesita address",
+      status: "web_listed",
+      partner: true,
+      mesitaId: "m-1",
+      mesitaSlug: "mesita-override",
+    }),
+  );
+  assertEquals(out.mainText, "Mesita override");
+  assertEquals(out.secondaryText, "Mesita address");
+  assertEquals(out.mesitaId, "m-1");
+  assertEquals(out.partner, true);
 });
 
 Deno.test("splitResolvedNameHits buckets after resolve, before merge", () => {

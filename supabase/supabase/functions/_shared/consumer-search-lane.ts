@@ -8,7 +8,9 @@
 // Deep: three modules, each candidate resolves, then one list:
 //   1. Google Autocomplete — resolve against the catalog
 //   2. Google Text Search — resolve against the catalog
-//   3. Mesita Places Lineup — Name signal only (`places.name_embedding`)
+//   3. Mesita Places Lineup — Name signal only (`places.name_embedding`
+//      over `places.name` = coalesce(mesita_name, google_name)). Never
+//      `google_name` ILIKE (that is suggest-places / admin search).
 // Then Partners → Mesita → Google after dropping overlaps.
 // Merge is not a fourth module. Summary and the other six Lineup signals
 // are not a Deep input. A listed Place ID never comes back as a Google
@@ -193,6 +195,7 @@ function listedToLane(row: ListedRow): LaneItem | null {
   if (!gid && !row.id) return null;
   return {
     placeId: gid ?? "",
+    // Mesita display name (`places.name`), never the raw google_name column.
     mainText: String(row.name ?? ""),
     secondaryText: row.address ?? "",
     status: "web_listed",
@@ -201,6 +204,27 @@ function listedToLane(row: ListedRow): LaneItem | null {
     mesitaSlug: row.slug,
     lat: row.lat,
     lng: row.lng,
+  };
+}
+
+/**
+ * After a Google candidate resolves to a catalog row, the entity is Mesita's.
+ * Label with `places.name`, not the Autocomplete / Text Search string.
+ */
+export function applyResolvedMesitaName(
+  item: LaneItem,
+  mesita: LaneItem,
+): LaneItem {
+  return {
+    ...item,
+    status: mesita.status,
+    partner: mesita.partner,
+    mesitaId: mesita.mesitaId,
+    mesitaSlug: mesita.mesitaSlug,
+    lat: item.lat ?? mesita.lat,
+    lng: item.lng ?? mesita.lng,
+    mainText: mesita.mainText || item.mainText,
+    secondaryText: mesita.secondaryText || item.secondaryText,
   };
 }
 
@@ -657,17 +681,7 @@ async function stampGoogleAgainstCatalog(
     if (!row) return item;
     const mesita = listedToLane(row);
     if (!mesita) return item;
-    return {
-      ...item,
-      status: mesita.status,
-      partner: mesita.partner,
-      mesitaId: mesita.mesitaId,
-      mesitaSlug: mesita.mesitaSlug,
-      lat: item.lat ?? mesita.lat,
-      lng: item.lng ?? mesita.lng,
-      mainText: item.mainText || mesita.mainText,
-      secondaryText: item.secondaryText || mesita.secondaryText,
-    };
+    return applyResolvedMesitaName(item, mesita);
   });
 
   if (opts.alreadyHasSignals) {

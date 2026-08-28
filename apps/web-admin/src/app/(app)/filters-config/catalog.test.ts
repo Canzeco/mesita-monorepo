@@ -178,6 +178,8 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/Autocomplete only/);
     expect(name?.process).toMatch(/Deep/);
     expect(name?.process).toMatch(/Places Lineup Name/);
+    expect(name?.process).toMatch(/places\.name/);
+    expect(name?.process).toMatch(/not `google_name`/);
     expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
     expect(name?.process).not.toMatch(/summary embedding/i);
@@ -302,6 +304,8 @@ describe("Discovery page box order", () => {
     expect(name).toContain('title="Name (Deep Search)"');
     expect(name).toContain("Google Places Autocomplete only");
     expect(name).toContain("Name signal only");
+    expect(name).toContain("places.name");
+    expect(name).toContain("google_name");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');

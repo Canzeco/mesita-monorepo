@@ -12,9 +12,10 @@
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
 //             Fast is Autocomplete only. Deep calls Autocomplete, Text
-//             Search, and Places Lineup (Name signal only); each hit
-//             resolves, then Partners → Mesita → Google. Map keeps lane
-//             counts. Google category knobs live on Modules, not here.
+//             Search, and Places Lineup (Name on Mesita `places.name`,
+//             never `google_name`); each hit resolves, then Partners →
+//             Mesita → Google. Map keeps lane counts. Google category
+//             knobs live on Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Nearby · Text Search · Mesita Places Lineup · Social
@@ -495,7 +496,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name signal. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -612,7 +613,7 @@ export const SIGNALS: {
     key: "name",
     label: "Name",
     fn: "name()",
-    input: "Query name vector × places.name_embedding.",
+    input: "Query × places.name_embedding (Mesita `places.name`, not `google_name`).",
     process: "(cosine + 1) / 2. No name query → abstain.",
     output: "Unembedded place → unembedded, never deleted.",
     apis: [],
