@@ -11,7 +11,9 @@ import {
   DEFAULT_SOCIAL,
   DEFAULT_SWIPE,
   ENGINES,
+  LIBRARY_SIGNALS,
   SIGNALS,
+  SIGNAL_KEYS,
 } from "./catalog";
 
 describe("Discovery function APIs", () => {
@@ -30,6 +32,20 @@ describe("Discovery function APIs", () => {
     expect(
       SIGNALS.flatMap((s) => s.fields.map((f) => `${s.key}.${f.key}`)),
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
+  });
+
+  it("library order is Proximity · Timing · Popularity · Promoting · Semantic · Category", () => {
+    expect(LIBRARY_SIGNALS.map((row) => (row.kind === "promoting" ? "promoting" : row.key)))
+      .toEqual([
+        "proximity",
+        "timing",
+        "popularity",
+        "promoting",
+        "semantic",
+        "category",
+      ]);
+    expect(SIGNAL_KEYS).not.toContain("promoting");
+    expect(SIGNAL_KEYS).toContain("randomness");
   });
 
   it("map() is three closest-N lanes then one catalog", () => {
@@ -186,7 +202,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("renders General · Fast Search · Deep Search · Map · Swipe · Catalog · Chat · Social · Favs", () => {
+  it("renders General · Name (Fast/Deep) · Map · Swipe · Catalog · Chat · Social · Favorites · Signals", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
@@ -196,10 +212,11 @@ describe("Discovery page box order", () => {
     const social = readFileSync(join(__dirname, "SocialConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
+    const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
 
     expect(general).toContain('title="General"');
-    expect(name).toContain('title="Fast Search"');
-    expect(name).toContain('title="Deep Search"');
+    expect(name).toContain('title="Name (Fast Search)"');
+    expect(name).toContain('title="Name (Deep Search)"');
     expect(name).not.toContain('title="Search"');
     expect(page).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
@@ -209,11 +226,15 @@ describe("Discovery page box order", () => {
     expect(chat).toContain('title="Chat"');
     expect(social).toContain('title="Social is coming soon"');
     expect(social).toContain("ConfigSoon");
-    expect(surfaces).toContain('title="Favs"');
-    expect(surfaces).not.toContain('title="Favorites"');
+    expect(surfaces).toContain('title="Favorites"');
+    expect(surfaces).not.toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Name"');
     expect(surfaces).not.toContain('title="Swipe"');
     expect(catalog).not.toContain("SocialConfig");
+    expect(signals).toContain('title="Signals"');
+    expect(signals).toContain("LIBRARY_SIGNALS");
+    expect(signals).toContain("Promoting");
+    expect(signals).not.toContain("Randomness");
 
     const jsx = page.slice(page.indexOf("return ("));
     const order = [
@@ -225,6 +246,7 @@ describe("Discovery page box order", () => {
       "DiscoveryConfigClient",
       "SocialConfigClient",
       "FavsConfigCard",
+      "SignalsConfigClient",
     ];
     let last = -1;
     for (const name of order) {
@@ -232,6 +254,6 @@ describe("Discovery page box order", () => {
       expect(idx, name).toBeGreaterThan(last);
       last = idx;
     }
-    expect(jsx.indexOf("FavsConfigCard")).toBeLessThan(jsx.indexOf("ConfigSoon"));
+    expect(jsx).not.toContain("ConfigSoon");
   });
 });
