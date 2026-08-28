@@ -155,13 +155,11 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("swipe() is the two-signal sum plus partner bias", () => {
+  it("swipe() is parked with the rest of Home", () => {
     const swipe = ENGINES.find((e) => e.key === "swipe");
-    expect(swipe?.state).toBe("LIVE");
-    expect(swipe?.process).toMatch(/proximity/);
-    expect(swipe?.process).toMatch(/popularity/);
-    expect(swipe?.process).toMatch(/partner bias/i);
-    expect(swipe?.process).toMatch(/random multiplier/i);
+    expect(swipe?.state).toBe("PARKED");
+    expect(swipe?.process).toMatch(/Parked/i);
+    expect(swipe?.process).toMatch(/Soon/);
     expect(swipe?.process).not.toMatch(/slot bought/);
   });
 
@@ -181,10 +179,17 @@ describe("Discovery function APIs", () => {
       });
   });
 
-  it("chat() is live OpenAI conversation — tools come later", () => {
+  it("chat() is parked with the rest of Home", () => {
     const chat = ENGINES.find((e) => e.key === "chat");
-    expect(chat?.state).toBe("LIVE");
+    expect(chat?.state).toBe("PARKED");
+    expect(chat?.process).toMatch(/Soon/);
     expect(chat?.apis).toEqual(["OpenAI"]);
+  });
+
+  it("Home engines are Soon — Swipe · Catalog · Chat · Social · Favorites", () => {
+    for (const key of ["swipe", "catalog", "chat", "social", "favorites"] as const) {
+      expect(ENGINES.find((e) => e.key === key)?.state, key).toBe("PARKED");
+    }
   });
 
   it("engines name only the vendor APIs they actually call", () => {
@@ -220,13 +225,16 @@ describe("Discovery page box order", () => {
     expect(name).not.toContain('title="Search"');
     expect(page).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
-    expect(swipe).toContain('title="Swipe"');
+    expect(swipe).toContain('title="Swipe is coming soon"');
+    expect(swipe).toContain("ConfigSoon");
     expect(catalog).toContain('title="Catalog is coming soon"');
     expect(catalog).toContain("ConfigSoon");
-    expect(chat).toContain('title="Chat"');
+    expect(chat).toContain('title="Chat is coming soon"');
+    expect(chat).toContain("ConfigSoon");
     expect(social).toContain('title="Social is coming soon"');
     expect(social).toContain("ConfigSoon");
-    expect(surfaces).toContain('title="Favorites"');
+    expect(surfaces).toContain('title="Favorites is coming soon"');
+    expect(surfaces).toContain("ConfigSoon");
     expect(surfaces).not.toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Name"');
     expect(surfaces).not.toContain('title="Swipe"');

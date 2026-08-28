@@ -22,16 +22,15 @@
 //             Nearby: closest partners, then Mesita, then Google. Overlaps drop.
 //             Enforced by list-places, discover-places, suggest-places,
 //             create-place. Map floors still gate Name Google + Create.
-//   SWIPE     radiusKm · closingBufferMin · weightProximity · starsExponent ·
-//             logDivisor · partnerBias · randomnessMax · categoryFilter · minReviews.
-//             Enforced by consumer-web-recommend-swipe.
+//   SWIPE     Soon empty box. radiusKm · closingBufferMin · weightProximity ·
+//             starsExponent · logDivisor · partnerBias · randomnessMax ·
+//             categoryFilter · minReviews persist on the blob; no HTML knobs.
 //   CATALOG   Soon empty box. seedCount · generatedCount · placesPerRail ·
 //             minSeedPlaces persist on the blob; no HTML knobs.
-//   CHAT      system prompt (enforced). Candidate APIs, indexes, later ideas
-//             are listed in the box — display only, not knobs.
+//   CHAT      Soon empty box. System prompt persists on the blob; no HTML knobs.
 //   SOCIAL    Soon empty box. seedCount · generatedCount · eventsPerRail ·
 //             minSeedEvents · horizonDays persist on the blob; no events engine.
-//   FAVORITES no knobs. Home › Favorites is live.
+//   FAVORITES Soon empty box. No knobs.
 //   SIGNALS   reusable library: Proximity · Timing · Popularity ·
 //             Promoting · Semantic · Category. Weights + params persist.
 //             Promoting is slotting (post-blend), not an earned SIGNAL_KEY.
@@ -435,9 +434,9 @@ export const ENGINES: {
     label: "Swipe",
     fn: "swipe()",
     input: "Ready pool + guest geo.",
-    process: "Hard filters, then proximity + popularity sum, partner bias, then a random multiplier. Ranked off = pool order.",
-    output: "Ordered Home deck.",
-    state: "LIVE",
+    process: "Parked. Home is Soon. Hard filters, proximity + popularity sum, partner bias, and the random multiplier stay on the blob.",
+    output: "Ordered Home deck, when unparked.",
+    state: "PARKED",
     wired: "swipe",
     apis: [],
   },
@@ -457,9 +456,9 @@ export const ENGINES: {
     label: "Favorites",
     fn: "favorites()",
     input: "What this guest saved.",
-    process: "No ranking question. Recency of the save.",
-    output: "The saved list.",
-    state: "LIVE",
+    process: "Parked. Home is Soon. Recency of the save; no ranking.",
+    output: "The saved list, when unparked.",
+    state: "PARKED",
     wired: null,
     apis: [],
   },
@@ -468,7 +467,7 @@ export const ENGINES: {
     label: "Catalog",
     fn: "catalog()",
     input: "Ready pool.",
-    process: "Parked. Home Catalog waits on a thicker listed set. Rails stay on disk. Admin box is Soon; knobs persist on the blob.",
+    process: "Parked. Home is Soon. Rails stay on disk. Admin box is Soon; knobs persist on the blob.",
     output: "Stacked catalog rails, when unparked.",
     state: "PARKED",
     wired: null,
@@ -479,9 +478,9 @@ export const ENGINES: {
     label: "Chat",
     fn: "chat()",
     input: "The guest's utterance plus the thread the client resends.",
-    process: "OpenAI chat completions. System prompt from Discovery. No tools this pass.",
-    output: "A conversational reply.",
-    state: "LIVE",
+    process: "Parked. Home is Soon. OpenAI chat completions and the Discovery prompt stay on the blob.",
+    output: "A conversational reply, when unparked.",
+    state: "PARKED",
     wired: null,
     apis: ["OpenAI"],
   },
@@ -490,7 +489,7 @@ export const ENGINES: {
     label: "Social",
     fn: "social()",
     input: "Upcoming events at listed places (happenings, not venues).",
-    process: "Parked. Admin box is Soon; knobs persist on the blob; no events engine yet. Will query events, not places.",
+    process: "Parked. Home is Soon. Admin box is Soon; knobs persist on the blob; no events engine yet. Will query events, not places.",
     output: "Event rails on Home › Social, when unparked.",
     state: "PARKED",
     wired: null,

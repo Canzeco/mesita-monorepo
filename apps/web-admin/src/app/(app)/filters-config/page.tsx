@@ -12,7 +12,8 @@ import { DEFAULT_CONFIG } from "./catalog";
 
 // Discovery boxes, operator order: General · Name (Fast Search) ·
 // Name (Deep Search) · Map · Swipe · Catalog · Chat · Social ·
-// Favorites · Signals. Catalog and Social stay Soon.
+// Favorites · Signals. Home boxes (Swipe · Catalog · Chat · Social ·
+// Favorites) are Soon.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryPage() {
@@ -37,17 +38,9 @@ export default async function DiscoveryPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <SwipeConfigClient
-        initialConfig={initialConfig}
-        initialUpdatedAt={initialUpdatedAt}
-        loadError={loadError}
-      />
+      <SwipeConfigClient />
       <CatalogConfigClient />
-      <DiscoveryConfigClient
-        initialConfig={initialConfig}
-        initialUpdatedAt={initialUpdatedAt}
-        loadError={loadError}
-      />
+      <DiscoveryConfigClient />
       <SocialConfigClient />
       <FavsConfigCard />
       <SignalsConfigClient
