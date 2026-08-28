@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, Copy, Download, SlidersHorizontal, Star } from "lucide-react";
 
+import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import type { SearchResponse } from "@/lib/places-types";
 
 export function ResultSummary({
@@ -49,7 +50,7 @@ export function ResultSummary({
           {filtersActive && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
               <Link
-                href="/filters-config#s-map"
+                href={DISCOVERY_MAP_HREF}
                 className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 type-eyebrow"
               >
                 <SlidersHorizontal className="h-3 w-3" />

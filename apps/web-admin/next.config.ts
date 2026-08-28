@@ -7,22 +7,22 @@ const nextConfig: NextConfig = {
       // with MESITA-1182. Bookmarks land on Discovery.
       {
         source: "/memo-config",
-        destination: "/filters-config",
+        destination: "/filters-config/modes",
         permanent: true,
       },
       {
         source: "/memo-config/:path*",
-        destination: "/filters-config",
+        destination: "/filters-config/modes",
         permanent: true,
       },
       {
         source: "/filters-config/chat",
-        destination: "/filters-config",
+        destination: "/filters-config/modes",
         permanent: true,
       },
       {
         source: "/filters-config/chat/:path*",
-        destination: "/filters-config",
+        destination: "/filters-config/modes",
         permanent: true,
       },
     ];

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, CheckCircle2, ChevronRight, Copy, Star } from "lucide-react";
 
+import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import { formatShortDate } from "@/lib/format";
 import type { PlaceLite, QueryResult } from "@/lib/places-types";
 
@@ -96,7 +97,7 @@ export function QueryRow({
                   {q.rawCount} {q.rawCount === 1 ? "place" : "places"} found,
                   but {q.rawCount === 1 ? "it is" : "none are"} allowed by{" "}
                   <Link
-                    href="/filters-config#s-map"
+                    href={DISCOVERY_MAP_HREF}
                     className="text-foreground underline underline-offset-2"
                   >
                     Discovery › Map
@@ -116,7 +117,7 @@ export function QueryRow({
                     Showing {q.places.length} of {q.rawCount} — {filteredOut}{" "}
                     blocked by{" "}
                     <Link
-                      href="/filters-config#s-map"
+                      href={DISCOVERY_MAP_HREF}
                       className="text-foreground underline underline-offset-2"
                     >
                       Discovery › Map

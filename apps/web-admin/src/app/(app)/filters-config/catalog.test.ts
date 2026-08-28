@@ -155,13 +155,11 @@ describe("Discovery function APIs", () => {
     });
   });
 
-  it("swipe() is the two-signal sum plus partner bias", () => {
+  it("swipe() is parked with the rest of Home", () => {
     const swipe = ENGINES.find((e) => e.key === "swipe");
-    expect(swipe?.state).toBe("LIVE");
-    expect(swipe?.process).toMatch(/proximity/);
-    expect(swipe?.process).toMatch(/popularity/);
-    expect(swipe?.process).toMatch(/partner bias/i);
-    expect(swipe?.process).toMatch(/random multiplier/i);
+    expect(swipe?.state).toBe("PARKED");
+    expect(swipe?.process).toMatch(/Parked/i);
+    expect(swipe?.process).toMatch(/Soon/);
     expect(swipe?.process).not.toMatch(/slot bought/);
   });
 
@@ -181,10 +179,17 @@ describe("Discovery function APIs", () => {
       });
   });
 
-  it("chat() is live OpenAI conversation — tools come later", () => {
+  it("chat() is parked with the rest of Home", () => {
     const chat = ENGINES.find((e) => e.key === "chat");
-    expect(chat?.state).toBe("LIVE");
+    expect(chat?.state).toBe("PARKED");
+    expect(chat?.process).toMatch(/Soon/);
     expect(chat?.apis).toEqual(["OpenAI"]);
+  });
+
+  it("Home engines are Soon — Swipe · Catalog · Chat · Social · Favorites", () => {
+    for (const key of ["swipe", "catalog", "chat", "social", "favorites"] as const) {
+      expect(ENGINES.find((e) => e.key === key)?.state, key).toBe("PARKED");
+    }
   });
 
   it("engines name only the vendor APIs they actually call", () => {
@@ -202,8 +207,12 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("renders General · Name (Fast/Deep) · Map · Swipe · Catalog · Chat · Social · Favorites · Signals", () => {
+  it("is two subpages — Discovery Modes and Discovery Modules", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
+    const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
+    const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
+    const modesPage = readFileSync(join(__dirname, "modes/page.tsx"), "utf8");
+    const modulesPage = readFileSync(join(__dirname, "modules/page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
@@ -213,20 +222,42 @@ describe("Discovery page box order", () => {
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
     const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
+    const nextConfig = readFileSync(
+      join(__dirname, "../../../../next.config.ts"),
+      "utf8",
+    );
+
+    expect(nav).toContain('label: "Discovery Modes"');
+    expect(nav).toContain('label: "Discovery Modules"');
+    expect(nav).toContain('"/filters-config/modes"');
+    expect(nav).toContain('"/filters-config/modules"');
+    expect(nav).toContain("/filters-config/modes#s-map");
+    expect(layout).toContain("DiscoveryChrome");
+    const chrome = readFileSync(join(__dirname, "DiscoveryChrome.tsx"), "utf8");
+    expect(chrome).toContain("ConfigTabNav");
+    expect(chrome).toContain("DISCOVERY_TABS");
+    expect(chrome).toContain("tab?.label");
+    expect(page).toContain("redirect(DISCOVERY_MODES_HREF)");
+    expect(page).not.toContain("GeneralConfigClient");
+    expect(page).not.toContain("ConfigSection");
+    expect(nextConfig).toContain('destination: "/filters-config/modes"');
+    expect(nextConfig).not.toContain('destination: "/filters-config",');
 
     expect(general).toContain('title="General"');
     expect(name).toContain('title="Name (Fast Search)"');
     expect(name).toContain('title="Name (Deep Search)"');
     expect(name).not.toContain('title="Search"');
-    expect(page).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
-    expect(swipe).toContain('title="Swipe"');
+    expect(swipe).toContain('title="Swipe is coming soon"');
+    expect(swipe).toContain("ConfigSoon");
     expect(catalog).toContain('title="Catalog is coming soon"');
     expect(catalog).toContain("ConfigSoon");
-    expect(chat).toContain('title="Chat"');
+    expect(chat).toContain('title="Chat is coming soon"');
+    expect(chat).toContain("ConfigSoon");
     expect(social).toContain('title="Social is coming soon"');
     expect(social).toContain("ConfigSoon");
-    expect(surfaces).toContain('title="Favorites"');
+    expect(surfaces).toContain('title="Favorites is coming soon"');
+    expect(surfaces).toContain("ConfigSoon");
     expect(surfaces).not.toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Name"');
     expect(surfaces).not.toContain('title="Swipe"');
@@ -236,9 +267,9 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("Promoting");
     expect(signals).not.toContain("Randomness");
 
-    const jsx = page.slice(page.indexOf("return ("));
-    const order = [
-      "GeneralConfigClient",
+    const modesJsx = modesPage.slice(modesPage.indexOf("return ("));
+    const modulesJsx = modulesPage.slice(modulesPage.indexOf("return ("));
+    const modeOrder = [
       "NameConfigClient",
       "MapConfigClient",
       "SwipeConfigClient",
@@ -246,14 +277,23 @@ describe("Discovery page box order", () => {
       "DiscoveryConfigClient",
       "SocialConfigClient",
       "FavsConfigCard",
-      "SignalsConfigClient",
     ];
     let last = -1;
-    for (const name of order) {
-      const idx = jsx.indexOf(name);
-      expect(idx, name).toBeGreaterThan(last);
+    for (const n of modeOrder) {
+      const idx = modesJsx.indexOf(n);
+      expect(idx, n).toBeGreaterThan(last);
       last = idx;
     }
-    expect(jsx).not.toContain("ConfigSoon");
+    expect(modesJsx).not.toContain("GeneralConfigClient");
+    expect(modesJsx).not.toContain("SignalsConfigClient");
+    expect(modesJsx).not.toContain("ConfigSoon");
+
+    expect(modulesJsx.indexOf("GeneralConfigClient")).toBeGreaterThan(-1);
+    expect(modulesJsx.indexOf("SignalsConfigClient")).toBeGreaterThan(
+      modulesJsx.indexOf("GeneralConfigClient"),
+    );
+    expect(modulesJsx).not.toContain("NameConfigClient");
+    expect(modulesJsx).not.toContain("MapConfigClient");
+    expect(modulesJsx).not.toContain("FavsConfigCard");
   });
 });
