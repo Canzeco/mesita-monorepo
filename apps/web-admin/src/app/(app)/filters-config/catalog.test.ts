@@ -207,7 +207,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("renders General · Name (Fast/Deep) · Map · Swipe · Catalog · Chat · Social · Favorites · Signals", () => {
+  it("renders Search Modes then Search Modules", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
@@ -218,12 +218,21 @@ describe("Discovery page box order", () => {
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
     const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
+    const kit = readFileSync(
+      join(__dirname, "../../../components/admin-ui/config.tsx"),
+      "utf8",
+    );
 
+    expect(kit).toContain("export function ConfigSection");
+    expect(page).toContain('from "@/components/admin-ui"');
+    expect(page).toContain("ConfigSection");
+    expect(page).toContain('title="Search Modes"');
+    expect(page).toContain('title="Search Modules"');
+    expect(page).not.toContain('title="Search">');
     expect(general).toContain('title="General"');
     expect(name).toContain('title="Name (Fast Search)"');
     expect(name).toContain('title="Name (Deep Search)"');
     expect(name).not.toContain('title="Search"');
-    expect(page).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');
     expect(swipe).toContain("ConfigSoon");
@@ -245,8 +254,11 @@ describe("Discovery page box order", () => {
     expect(signals).not.toContain("Randomness");
 
     const jsx = page.slice(page.indexOf("return ("));
+    const modes = jsx.indexOf('title="Search Modes"');
+    const modules = jsx.indexOf('title="Search Modules"');
+    expect(modes).toBeGreaterThan(-1);
+    expect(modules).toBeGreaterThan(modes);
     const order = [
-      "GeneralConfigClient",
       "NameConfigClient",
       "MapConfigClient",
       "SwipeConfigClient",
@@ -254,14 +266,17 @@ describe("Discovery page box order", () => {
       "DiscoveryConfigClient",
       "SocialConfigClient",
       "FavsConfigCard",
+      "GeneralConfigClient",
       "SignalsConfigClient",
     ];
-    let last = -1;
+    let last = modes;
     for (const name of order) {
       const idx = jsx.indexOf(name);
       expect(idx, name).toBeGreaterThan(last);
       last = idx;
     }
+    expect(jsx.indexOf("GeneralConfigClient")).toBeGreaterThan(modules);
+    expect(jsx.indexOf("FavsConfigCard")).toBeLessThan(modules);
     expect(jsx).not.toContain("ConfigSoon");
   });
 });

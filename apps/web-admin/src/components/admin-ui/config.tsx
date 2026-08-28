@@ -49,6 +49,34 @@ export function KnobStatus({
   );
 }
 
+// Page-level grouping above SectionCards. Eyebrow title so box h2s stay
+// the only headings. Discovery uses this for Search Modes / Search Modules.
+export function ConfigSection({
+  id,
+  title,
+  subtitle,
+  children,
+}: {
+  id?: string;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-16 flex flex-col gap-6">
+      <header className="flex flex-col gap-1.5">
+        <p className="text-muted-foreground type-eyebrow">{title}</p>
+        {subtitle ? (
+          <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
+            {subtitle}
+          </p>
+        ) : null}
+      </header>
+      <div className="flex flex-col gap-10">{children}</div>
+    </section>
+  );
+}
+
 // Uniform config card: icon + title + one-line subtitle + optional status,
 // then the controls. The single wrapper keeps every section consistent.
 export function SectionCard({
