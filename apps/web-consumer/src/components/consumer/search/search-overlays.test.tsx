@@ -107,7 +107,7 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  it("renders family chips, Now, Visit, scope, and Filters outside the bar", () => {
+  it("renders family chips, Now, Visit, scope, and Filters beside the bar", () => {
     const html = renderToStaticMarkup(
       <SearchFilterRow
         filters={DISCOVERY_FILTER_DEFAULTS}
@@ -212,14 +212,16 @@ describe("Search map catalog reloads only when the guest asks", () => {
   });
 });
 
-describe("Search map uses a filter row, not bar chrome", () => {
-  it("cuts the nearby catalog with Discovery predicates from a chip row", () => {
+describe("Search map puts the query pill and filter strip on one row", () => {
+  it("cuts the nearby catalog with Discovery predicates from a chip strip beside the bar", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyDiscoveryFilters");
     expect(src).toContain("useDiscoveryFilters");
     expect(src).toContain("DiscoveryFilters");
     expect(src).toContain("SearchFilterRow");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
+    expect(src).toContain("flex min-w-0 items-center gap-2");
+    expect(src).toContain("flex-[1.15] basis-0");
     expect(src).toMatch(
       /<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/,
     );
@@ -229,6 +231,12 @@ describe("Search map uses a filter row, not bar chrome", () => {
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+      "flex items-center gap-2",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+      "mt-2 flex gap-1.5",
     );
   });
 

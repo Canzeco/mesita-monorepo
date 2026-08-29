@@ -14,10 +14,11 @@ import {
 } from "@/lib/use-discovery-filters";
 import { cn } from "@/lib/utils";
 
-// Compact chip row under the Search bar — never inside the pill, never
-// a cuisine-icon strip. Filters (the Discovery sheet) leads; the six
-// What families follow as categories; Now / Visit / scope trail. Rest
-// chips are borderless card pills; active is the pink gradient.
+// Compact chip strip beside the Search bar — same row, never inside
+// the pill, never a cuisine-icon strip. Filters (the Discovery sheet)
+// leads; the six What families follow as categories; Now / Visit /
+// scope trail. Rest chips are borderless card pills; active is the
+// pink gradient.
 
 const FAMILY_STRIP: Record<FamilyKey, string> = {
   restaurants: "Restaurants",
