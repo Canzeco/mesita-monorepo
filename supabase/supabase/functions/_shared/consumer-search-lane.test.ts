@@ -347,6 +347,8 @@ function listed(
     plan,
     content_status,
     enriched_at: null,
+    business_status: "OPERATIONAL",
+    google_review_count: null,
     name_embedding: embedding,
     embedding: null,
   };

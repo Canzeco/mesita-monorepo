@@ -93,8 +93,12 @@ export function listedClearsMapPopularity(
 }
 
 /**
- * Google Nearby has no review count on the field mask. minReviews and a
- * numeric minPopularity therefore cannot be proven and do not apply.
+ * MAP FLOORS ONLY. `minReviews` and a numeric `minPopularity` still do not
+ * apply here: the Nearby mask now carries `userRatingCount` (Discovery ›
+ * General's wipe needs it), but the Map box's review floor stayed a
+ * Text-Search/Details question and widening it silently would change what
+ * the Map returns without an operator asking. Discovery › General is the
+ * knob that cuts Nearby on reviews.
  * A rating or popularity floor still excludes an unrated stub — those are
  * the empty yellow pins. minRating compares the Nearby star field.
  */

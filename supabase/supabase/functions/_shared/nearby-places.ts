@@ -55,6 +55,9 @@ export type NearbyHit = {
   lng: number | null;
   rating: number | null;
   primaryType: string | null;
+  /** Google's own label. Feeds Discovery › General's post-Google wipe. */
+  businessStatus: string | null;
+  reviewCount: number | null;
 };
 
 function stripPlacesPrefix(id: string): string {
@@ -77,7 +80,7 @@ async function searchNearbyOnce(
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
       "X-Goog-FieldMask":
-        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.primaryType",
+        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType",
     },
     body: JSON.stringify({
       maxResultCount: GOOGLE_NEARBY_MAX,
@@ -104,6 +107,8 @@ async function searchNearbyOnce(
       formattedAddress?: string;
       location?: { latitude?: number; longitude?: number };
       rating?: number;
+      userRatingCount?: number;
+      businessStatus?: string;
       primaryType?: string;
     }>;
   };
@@ -121,6 +126,12 @@ async function searchNearbyOnce(
         lng: typeof lng === "number" ? lng : null,
         rating: typeof p.rating === "number" ? p.rating : null,
         primaryType: p.primaryType ?? null,
+        businessStatus: typeof p.businessStatus === "string"
+          ? p.businessStatus
+          : null,
+        reviewCount: typeof p.userRatingCount === "number"
+          ? p.userRatingCount
+          : null,
       };
     })
     .filter((p) => p.placeId && p.name);

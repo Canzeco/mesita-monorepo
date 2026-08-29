@@ -15,6 +15,7 @@ import {
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
+  type NearbyHit,
   type NearbyLaneCaps,
 } from "./nearby-places.ts";
 
@@ -33,15 +34,7 @@ function nearbyHit(
   lat: number,
   lng: number,
   primaryType = "cafe",
-): {
-  placeId: string;
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-  rating: null;
-  primaryType: string;
-} {
+): NearbyHit {
   return {
     placeId,
     name: placeId,
@@ -50,6 +43,8 @@ function nearbyHit(
     lng,
     rating: null,
     primaryType,
+    businessStatus: "OPERATIONAL",
+    reviewCount: null,
   };
 }
 

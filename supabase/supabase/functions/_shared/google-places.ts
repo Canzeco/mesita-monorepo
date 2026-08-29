@@ -63,8 +63,10 @@ export function escapeIlike(s: string): string {
 }
 
 // Minimal Place Details fetch for sourcing search gates — primaryType +
-// rating + review count only. Autocomplete doesn't return these, so search
-// paths batch-fetch them for Google-only ("not_in_mesita") predictions.
+// rating + review count + businessStatus. Autocomplete doesn't return these,
+// so search paths batch-fetch them for Google-only ("not_in_mesita")
+// predictions. businessStatus feeds Discovery › General's post-Google wipe
+// (discovery-general-gate.ts); it rides the mask the call already pays for.
 export async function fetchPlaceSignals(
   placeId: string,
   apiKey: string,
@@ -72,6 +74,7 @@ export async function fetchPlaceSignals(
   primaryType: string | null;
   rating: number | null;
   reviewCount: number | null;
+  businessStatus: string | null;
   lat: number | null;
   lng: number | null;
   country: string | null;
@@ -81,7 +84,7 @@ export async function fetchPlaceSignals(
       headers: {
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask":
-          "primaryType,rating,userRatingCount,location,addressComponents",
+          "primaryType,rating,userRatingCount,businessStatus,location,addressComponents",
       },
     });
     if (!r.ok) return null;
@@ -89,6 +92,7 @@ export async function fetchPlaceSignals(
       primaryType?: string;
       rating?: number;
       userRatingCount?: number;
+      businessStatus?: string;
       location?: { latitude?: number; longitude?: number };
       addressComponents?: Array<{
         shortText?: string;
@@ -102,6 +106,7 @@ export async function fetchPlaceSignals(
       primaryType: d.primaryType ?? null,
       rating: typeof d.rating === "number" ? d.rating : null,
       reviewCount: typeof d.userRatingCount === "number" ? d.userRatingCount : null,
+      businessStatus: typeof d.businessStatus === "string" ? d.businessStatus : null,
       lat: typeof d.location?.latitude === "number" ? d.location.latitude : null,
       lng: typeof d.location?.longitude === "number" ? d.location.longitude : null,
       country,
