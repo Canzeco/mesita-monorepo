@@ -16,6 +16,14 @@ import { cn } from "@/lib/utils";
 // (Mesita red, Google gray); partner pins stay yellow ON THE MAP but
 // Partners is a paint, never a scope. Compact on purpose: the Filters
 // sheet must show every option without scrolling.
+//
+// Selected is a FILL, not a hairline (Pato, 2026-08-29): two white pills
+// telling each other apart by a border tint is not a selection. This is
+// an exclusive choice, so it wears the same language as How many —
+// `bg-foreground text-background` — while multi-select Super Category
+// keeps the pink Pill. Unselected sits on `bg-muted` so the pair differs
+// by fill, not only by ink. The dots survive the dark fill: #ff2357 and
+// #9ca3af both read on near-black.
 
 const STOP_DOT: Record<(typeof MAP_SEARCH_STOPS)[number]["key"], string> = {
   places: MAP_LISTED_PIN_COLOR,
@@ -73,10 +81,10 @@ export function SearchPlacesScope({
             tabIndex={active ? 0 : -1}
             onClick={() => onPower(stop.power)}
             className={cn(
-              "flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-2 type-meta font-semibold whitespace-nowrap transition",
+              "flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-2 type-meta whitespace-nowrap transition",
               active
-                ? "border-foreground/20 bg-card text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground bg-transparent",
+                ? "border-foreground bg-foreground text-background font-bold"
+                : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-semibold",
             )}
           >
             <span

@@ -20,7 +20,8 @@ import { SearchResultLimit } from "./SearchResultLimit";
 // 2026-08-29). There is no Status chip row, Category, or Types axis.
 // Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
 // retired as a scope, kept as the yellow paint. Default is Mesita
-// Places. How many is 20, 40, or 60 — closest N, nothing in between.
+// Places. How many is 20, 40, or 60 — closest N, nothing in between —
+// and it is a CAP, so it opens at 20 (Pato, 2026-08-29).
 // Distance and time are not map knobs.
 
 export function SearchMapFilters({

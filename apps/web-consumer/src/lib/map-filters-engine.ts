@@ -68,8 +68,8 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 /** Closest-N stops on Search Filters. Nothing in between. */
 export const MAP_RESULT_LIMITS = [20, 40, 60] as const;
 export type MapResultLimit = (typeof MAP_RESULT_LIMITS)[number];
-/** Show the fetched catalog (engine hard max is 60). */
-export const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 60;
+/** How many is a CAP, so it opens at the smallest one (Pato, 2026-08-29). */
+export const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 20;
 
 export type MapFilters = {
   /** 1 = Mesita Places, 2 = + Google Places. Default is 1. */
