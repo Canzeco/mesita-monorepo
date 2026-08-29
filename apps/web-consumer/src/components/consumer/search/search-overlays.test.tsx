@@ -13,7 +13,9 @@ import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet"
 import {
   catalogIsStale,
   clampReloadMinKm,
+  defaultRailSelection,
   nearbyReloadThresholdKm,
+  railCenterIndex,
   shouldReloadNearbyCatalog,
   viewportCenter,
 } from "@/components/consumer/search/search-utils";
@@ -410,6 +412,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const loading = read("../../../app/(shell)/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
+    expect(overlay).toContain("px-2");
     expect(overlay).toContain("first:ml-[10%] last:mr-[10%]");
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
@@ -417,11 +420,17 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(card).toContain("flex w-full items-center");
     expect(card).not.toContain("w-[288px]");
     expect(client).toContain("el.clientWidth * 0.8");
-    expect(client).toContain("el.scrollLeft / page");
+    expect(client).toContain("railCenterIndex");
+    expect(client).toContain("setSelectedId(id)");
+    expect(client).toContain("defaultRailSelection");
+    expect(client).toContain("railSelectedId");
+    expect(client).toContain("idx === railIndex");
+    expect(client).not.toContain("setSelectedId(next)");
     expect(client).toContain('inline: "center"');
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");
     expect(loading).toContain("w-4/5 shrink-0 snap-center");
+    expect(loading).toContain("px-2");
     expect(loading).toContain("first:ml-[10%] last:mr-[10%]");
     expect(loading).not.toContain("w-[288px]");
   });
@@ -457,6 +466,24 @@ describe("Name search is Fast while typing and Deep after idle", () => {
     expect(src).toContain("Empty Deep keeps Fast");
     expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
     expect(src).toContain("Keep Fast results if Deep fails.");
+  });
+});
+
+describe("rail center is the selected place", () => {
+  it("railCenterIndex snaps to the nearest page and clamps", () => {
+    expect(railCenterIndex(0, 320, 5)).toBe(0);
+    expect(railCenterIndex(160, 320, 5)).toBe(1);
+    expect(railCenterIndex(480, 320, 5)).toBe(2);
+    expect(railCenterIndex(2000, 320, 5)).toBe(4);
+    expect(railCenterIndex(100, 0, 5)).toBe(0);
+    expect(railCenterIndex(100, 320, 0)).toBe(0);
+  });
+
+  it("defaultRailSelection keeps a live id and falls back to the first card", () => {
+    expect(defaultRailSelection(["a", "b"], null)).toBe("a");
+    expect(defaultRailSelection(["a", "b"], "b")).toBe("b");
+    expect(defaultRailSelection(["a", "b"], "gone")).toBe("a");
+    expect(defaultRailSelection([], "a")).toBe(null);
   });
 });
 

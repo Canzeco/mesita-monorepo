@@ -154,6 +154,27 @@ export function catalogIsStale(
   );
 }
 
+/** Which rail page is centered. Page width is 80% of the rail. */
+export function railCenterIndex(
+  scrollLeft: number,
+  pageWidth: number,
+  count: number,
+): number {
+  if (count <= 0 || pageWidth <= 0) return 0;
+  return Math.max(0, Math.min(Math.round(scrollLeft / pageWidth), count - 1));
+}
+
+/** First catalog card is selected until a pin or a scroll picks another.
+ *  A stale id (Search here replaced the set) falls back to the first card. */
+export function defaultRailSelection(
+  ids: readonly string[],
+  current: string | null,
+): string | null {
+  if (ids.length === 0) return null;
+  if (current && ids.includes(current)) return current;
+  return ids[0] ?? null;
+}
+
 /**
  * Fill distance_km from a center (the map camera for Search, or the
  * consumer's live location). Real data only — places without coordinates
