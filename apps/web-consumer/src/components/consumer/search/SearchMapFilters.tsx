@@ -15,10 +15,7 @@ import { SearchPlacesScope } from "./SearchPlacesScope";
 
 // Search-map Filters sheet. Places scope + Super Category only. There
 // is no Status chip row, Category, or Types axis. Scope is cumulative:
-// Partners ⊂ + Places ⊂ + Google. Default is + Places. Mesita Places
-// is enriched only. A Super Category is a SET of categories; one
-// category may belong to multiple Super Categories. Distance and time
-// are not map knobs.
+// Partners ⊂ + Places ⊂ + Google as nested Venn rings. Default is + Places.
 
 export function SearchMapFilters({
   onClose,

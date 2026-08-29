@@ -161,7 +161,7 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Places scope and Super Category only — no status chips, types, distance, or time", () => {
+  it("shows Places scope as a nested Venn and Super Category only", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
@@ -171,6 +171,7 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Partners");
     expect(html).toContain("+ Places");
     expect(html).toContain("+ Google");
+    expect(html).toContain('viewBox="0 0 108 108"');
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
     );
