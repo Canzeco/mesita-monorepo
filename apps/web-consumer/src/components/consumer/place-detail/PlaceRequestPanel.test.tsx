@@ -2,34 +2,51 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
-  isPlaceRequestSurface,
   PlaceRequestPanelView,
   requestProgressLabel,
+  showEnrichTab,
 } from "./PlaceRequestPanel";
+import { placeTabs } from "./tabs";
 
-describe("request progress copy", () => {
-  it("zero requests", () => {
-    expect(requestProgressLabel(0, 3)).toBe("0 of 3 requests");
+describe("vote progress copy", () => {
+  it("zero votes", () => {
+    expect(requestProgressLabel(0, 3)).toBe("0 of 3 votes");
   });
 
-  it("below-threshold requests", () => {
-    expect(requestProgressLabel(2, 3)).toBe("2 of 3 requests");
+  it("below-threshold votes", () => {
+    expect(requestProgressLabel(2, 3)).toBe("2 of 3 votes");
   });
 
   it("threshold crossing", () => {
-    expect(requestProgressLabel(3, 3)).toBe("3 of 3 requests");
+    expect(requestProgressLabel(3, 3)).toBe("3 of 3 votes");
   });
 });
 
-describe("request surface gate", () => {
-  it("Listed-but-not-Enriched is the request interface", () => {
-    expect(isPlaceRequestSurface({ is_profile_ready: false })).toBe(true);
-    expect(isPlaceRequestSurface({ is_profile_ready: true })).toBe(false);
+describe("Enrich tab gate", () => {
+  it("shows only while not Enriched", () => {
+    expect(showEnrichTab({ is_enriched: false })).toBe(true);
+    expect(showEnrichTab({ is_enriched: true })).toBe(false);
+  });
+
+  it("leads the tab strip until Enriched", () => {
+    expect(placeTabs(false).map((t) => t.label)).toEqual([
+      "Enrich",
+      "Overview",
+      "Reviews",
+      "Menus",
+      "Rewards",
+    ]);
+    expect(placeTabs(true).map((t) => t.label)).toEqual([
+      "Overview",
+      "Reviews",
+      "Menus",
+      "Rewards",
+    ]);
   });
 });
 
 describe("PlaceRequestPanel", () => {
-  it("is the request interface, not a profile", () => {
+  it("is the Enrich vote page on the ugly profile", () => {
     const html = renderToStaticMarkup(
       <PlaceRequestPanelView
         count={2}
@@ -40,17 +57,14 @@ describe("PlaceRequestPanel", () => {
         error={null}
       />,
     );
-    expect(html).toContain("Profile not created yet");
-    expect(html).toContain(
-      "This place is on Mesita, but its profile hasn&#x27;t been created yet.",
-    );
-    expect(html).toContain("Request the profile");
-    expect(html).toContain("2 of 3 requests");
-    expect(html).not.toContain("Visit");
-    expect(html).not.toContain("Reserve");
+    expect(html).toContain("Vote to enrich this place");
+    expect(html).toContain("Vote to enrich");
+    expect(html).toContain("2 of 3 votes");
+    expect(html).not.toContain("Profile not created yet");
+    expect(html).not.toContain("Request the profile");
   });
 
-  it("shows Requested after this consumer already voted", () => {
+  it("shows Voted after this consumer already voted", () => {
     const html = renderToStaticMarkup(
       <PlaceRequestPanelView
         count={1}
@@ -61,6 +75,6 @@ describe("PlaceRequestPanel", () => {
         error={null}
       />,
     );
-    expect(html).toContain("Requested");
+    expect(html).toContain("Voted");
   });
 });

@@ -251,7 +251,7 @@ export function IntakeClient({
               <Fields>
                 <NumberField
                   icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Request threshold"
+                  label="Vote threshold"
                   value={settings.requestThreshold}
                   min={1}
                   max={100}
@@ -260,8 +260,9 @@ export function IntakeClient({
                 />
               </Fields>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                Auto-enrich a Listed place when this many consumers request the
-                profile. Admin create and enrich skip the wait.
+                Consumer and admin Create mint the ugly profile and do not
+                queue Intaker. Auto-enrich when this many guests vote on the
+                Enrich tab. Admin Enrich and Create + Enrich skip the wait.
               </p>
             </div>
           </SectionCard>

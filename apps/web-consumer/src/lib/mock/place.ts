@@ -61,12 +61,14 @@ export type PlaceDetail = {
   // projects.content_status ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
-  /** Usable Mesita profile (content_status ready). False → request interface. */
+  /** Viewable profile (content_status ready). Ugly Create profiles are ready. */
   is_profile_ready: boolean;
-  /** Consumer Requests count. Progress toward the Intake threshold. */
+  /** Intaker finished (`places.enriched_at`). False → Enrich vote tab. */
+  is_enriched: boolean;
+  /** Consumer vote count. Progress toward the Intake threshold. */
   request_count: number;
   request_threshold: number;
-  /** This consumer already requested this place. */
+  /** This consumer already voted on this place. */
   requested: boolean;
   /** Derived: listed | requested | enriched. Never a status-per-count. */
   request_lifecycle: "listed" | "requested" | "enriched";

@@ -128,11 +128,7 @@ function SuggestionLine({
       </span>
       {added && (
         <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
-          <Spinner
-            size="sm"
-            className="border-emerald-300 border-t-emerald-600"
-          />
-          Enriching
+          Added
         </span>
       )}
     </button>

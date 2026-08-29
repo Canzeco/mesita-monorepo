@@ -535,27 +535,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   };
 
-  // The REAL Add flow: the place is created immediately; only enrichment is
-  // scheduled (the cron-driven Intaker pipeline finishes asynchronously),
-  // so hold the row in its "added / Enriching" state — nothing further to
-  // await client-side.
+  // Create only — the ugly profile is live immediately. Intaker waits
+  // for votes on the Enrich tab. Open that profile the moment it exists.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
-      // Add is also a selection — close out the autocomplete session.
       resetSearchSession();
       setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
       void (async () => {
         try {
-          await apiCreateProject(supabase, {
+          const created = await apiCreateProject(supabase, {
             placeId: prediction.placeId,
           });
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
+          setPreviewOpen(false);
           toast.success(
-            `${prediction.mainText} is on Mesita — our AI generates its profile in about 5 minutes.`,
+            `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
           );
+          const dest = created.place.slug || created.place.id;
+          if (dest) router.push(placeHref(dest));
         } catch (err) {
-          // Roll back so the button is tappable again.
           setAddStates((s) => {
             const next = { ...s };
             delete next[prediction.placeId];
@@ -565,7 +564,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         }
       })();
     },
-    [addStates, resetSearchSession, supabase],
+    [addStates, resetSearchSession, router, supabase],
   );
 
   const handleRailScroll = () => {

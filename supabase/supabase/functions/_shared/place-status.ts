@@ -56,20 +56,31 @@ export function isPlaceListed(status: unknown): boolean {
 }
 
 /**
- * Requested is guest demand for a usable profile — never a projects.status
+ * Requested is guest demand for Intaker — never a projects.status
  * label. pending_review / pending_verification stay on the enum and stay
  * unlisted; they are not this fact.
  *
- * Derived: request_count > 0 and content_status is not ready. Enriched
- * wins even if a leftover count remains on the row.
+ * Derived: request_count > 0 and not Enriched. Enriched is
+ * `places.enriched_at` (Intaker finished). Create-without-enrich stamps
+ * content_status ready with enriched_at null — those rows can still be
+ * requested. When enrichedAt is omitted, ready still wins (legacy callers).
  */
 export function isPlaceRequested(input: {
   requestCount?: unknown;
   contentStatus?: unknown;
+  enrichedAt?: unknown;
 }): boolean {
-  if (isPlaceProfileReady(input.contentStatus)) return false;
+  if (isPlaceEnriched(input.enrichedAt)) return false;
+  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)) {
+    return false;
+  }
   const count = Number(input.requestCount);
   return Number.isFinite(count) && count > 0;
+}
+
+/** Intaker finished — contents stamped places.enriched_at. */
+export function isPlaceEnriched(enrichedAt: unknown): boolean {
+  return typeof enrichedAt === "string" && enrichedAt.trim() !== "";
 }
 
 /** Intaker pipeline mid-flight. content_status generating/queued covers the

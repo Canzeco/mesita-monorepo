@@ -32,6 +32,7 @@ import {
   ReviewsSummaryBox,
 } from "./place-detail/reviews";
 import { RewardsBox } from "./place-detail/rewards";
+import { PlaceRequestPanel } from "./place-detail/PlaceRequestPanel";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import {
   DatesBox,
@@ -48,11 +49,14 @@ import {
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook; swipe-style tags; then Save · Contact · Share.
-//   2. Sticky tab strip — Overview · Reviews · Menus · Rewards.
+//   2. Sticky tab strip — Enrich (only if not Enriched) · Overview ·
+//      Reviews · Menus · Rewards.
 //   3. The active tab's boxes.
 
 export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
-  const [tab, setTab] = useState<PlaceTab>("place");
+  const [tab, setTab] = useState<PlaceTab>(
+    place.is_enriched ? "place" : "enrich",
+  );
   const supabase = useBrowserSupabase();
   // Guest activity (stories · visits · reservations) is fetched the first time
   // Reviews is opened, not with the page — see lib/api/place-activity.ts for
@@ -95,7 +99,14 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
     <div className="flex flex-col pb-4">
       <ProfileSummary place={place} />
       <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar tab={tab} onChange={onTabChange} />
+        <PlaceTabBar
+          tab={tab}
+          onChange={onTabChange}
+          enriched={place.is_enriched}
+        />
+        {tab === "enrich" && !place.is_enriched && (
+          <PlaceRequestPanel place={place} />
+        )}
         {tab === "place" && (
           <>
             <MediaBox place={place} />

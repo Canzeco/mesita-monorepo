@@ -1,11 +1,10 @@
 // Supabase Edge Function — admin-web-create-project (admin caller / LIVE admin create path)
 //
 // The admin-app equivalent of business-web-create-project: an admin operator
-// passes a Google Places `placeId` and gets back a MINIMAL 'generating' place;
-// deep enrichment then runs ASYNC in the Intaker pipeline
-// (supabase-cron-enrich-place-*). Core: createMinimalPlace
-// (_shared/create-place.ts): dedupe → Google spine → save 'generating' row →
-// seed place_research.
+// passes a Google Places `placeId` and gets back the ugly profile (Create
+// 1–4, content_status ready, enriched_at null). Intaker is NOT queued —
+// Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
+// Core: createMinimalPlace (_shared/create-place.ts) with queueEnrich:false.
 //
 // Roles are simple now: admins create from the admin app via THIS function;
 // businesses create from the business app via business-web-create-project.
@@ -54,6 +53,7 @@ Deno.serve(async (req) => {
     admin,
     callerName: "admin-web-create-project",
     googlePlaceId: placeId,
+    queueEnrich: false,
   });
   if (!created.ok) return json(created.body, created.status);
 
