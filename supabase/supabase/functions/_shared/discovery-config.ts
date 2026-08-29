@@ -286,7 +286,7 @@ export function snapMapReloadPair(
   const fallback = MAP_RELOAD_PAIRS[1];
   const k = typeof km === "number" && Number.isFinite(km) ? km : fallback.km;
   const s = typeof sec === "number" && Number.isFinite(sec) ? sec : fallback.sec;
-  let best = fallback;
+  let best: (typeof MAP_RELOAD_PAIRS)[number] = fallback;
   let bestD = Number.POSITIVE_INFINITY;
   for (const pair of MAP_RELOAD_PAIRS) {
     const d = Math.abs(pair.km - k) / 0.25 + Math.abs(pair.sec - s);
