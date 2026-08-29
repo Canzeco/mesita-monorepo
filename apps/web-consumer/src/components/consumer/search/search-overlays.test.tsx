@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import {
   EmptySearchPrompt,
   SearchHereButton,
@@ -410,6 +411,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const loading = read("../../../app/(shell)/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
+    expect(overlay).toContain("px-2");
     expect(overlay).toContain("first:ml-[10%] last:mr-[10%]");
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
@@ -422,8 +424,30 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");
     expect(loading).toContain("w-4/5 shrink-0 snap-center");
+    expect(loading).toContain("px-2");
     expect(loading).toContain("first:ml-[10%] last:mr-[10%]");
     expect(loading).not.toContain("w-[288px]");
+  });
+
+  it("gives rail photos a clip, not a stroke", () => {
+    const card = read("SearchRailCard.tsx");
+    expect(card).toContain(
+      "bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-xl",
+    );
+    expect(card).not.toContain(
+      "relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border",
+    );
+    const html = renderToStaticMarkup(
+      <RailCard
+        place={RAIL_PLACE}
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    expect(html).toContain("h-20");
+    expect(html).toContain("w-20");
+    expect(html).not.toMatch(/h-20 w-20[^"]*\bborder\b/);
   });
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
