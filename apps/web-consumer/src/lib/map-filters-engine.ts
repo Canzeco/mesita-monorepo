@@ -129,7 +129,9 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   if (!lane) return false;
   if (LANE_POWER[lane] > f.searchPower) return false;
 
-  if (f.familyKeys.length > 0) {
+  // Super Category does not cut Google stubs — they have no reliable
+  // membership. Closest Google at full power stays closest Google.
+  if (lane !== "google" && f.familyKeys.length > 0) {
     const familyHit = f.familyKeys.some((key) =>
       (place.family_keys ?? []).includes(key),
     );

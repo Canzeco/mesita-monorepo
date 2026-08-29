@@ -2,12 +2,14 @@
 //   1. closest partnerCount Mesita partners (plan ≠ free)
 //   2. closest mesitaCount Mesita places (partners included)
 //   3. closest googleCount Google Nearby hits
-// Partners ⊆ Mesita ⊆ Google, so the same venue can land in more than one
-// lane. Merge is concatenate after dropping concurrencies: Partners, then
-// Mesita, then Google. Union 20–40 at defaults (10 + 10 + 20).
-// Dedup Google against every known Mesita Place ID (not just the tops), so a
-// listed place that missed its lane never comes back as a gray stub.
-// Google maxes a Nearby call at 20; type batteries ride that one call.
+// Search power zeros unused lanes: 1 Partners, 2 + enriched Places, 3 + Google.
+// Mesita Places is enriched only — Created / Requested stubs are not a source.
+// Power 1–2 never fire Google Nearby. Merge is concatenate after dropping
+// concurrencies: Partners, then Mesita, then Google. Union 20–40 at defaults
+// (10 + 10 + 20). Dedup Google against every known Mesita Place ID (not just
+// the tops), so a listed place that missed its lane never comes back as a
+// gray stub. Google maxes a Nearby call at 20; type batteries ride that one
+// call.
 
 import {
   GOOGLE_PLACES_NEARBY_URL,
@@ -272,6 +274,46 @@ export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
     mesitaCount: map.mesitaCount,
     googleCount: map.googleCount,
   };
+}
+
+/** Search power: 1 Partners · 2 + Mesita Places · 3 + Google. */
+export function clampSearchPower(value: unknown): 1 | 2 | 3 {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 3;
+  if (n <= 1) return 1;
+  if (n >= 3) return 3;
+  return 2;
+}
+
+export function lanesForSearchPower(
+  map: MapConfig,
+  power: 1 | 2 | 3,
+): NearbyLaneCaps {
+  const lanes = nearbyLanesFromMap(map);
+  if (power <= 1) return { ...lanes, mesitaCount: 0, googleCount: 0 };
+  if (power === 2) return { ...lanes, googleCount: 0 };
+  return lanes;
+}
+
+/** Mesita Places on Search: enriched profile, not a Created stub. */
+export function isEnrichedListedRow(row: {
+  content_status?: string | null;
+  enriched_at?: string | null;
+}): boolean {
+  return row.content_status === "ready" || Boolean(row.enriched_at);
+}
+
+/** Partners always stay. Power 1 drops everyone else. Power 2–3 keep enriched only. */
+export function keepListedForSearchPower(
+  row: MesitaNearbyRow & {
+    content_status?: string | null;
+    enriched_at?: string | null;
+  },
+  power: 1 | 2 | 3,
+): boolean {
+  if (isMesitaPartnerRow(row)) return true;
+  if (power <= 1) return false;
+  return isEnrichedListedRow(row);
 }
 
 export function isMesitaPartnerRow(row: MesitaNearbyRow): boolean {

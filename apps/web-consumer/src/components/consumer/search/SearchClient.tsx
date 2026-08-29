@@ -7,9 +7,10 @@
 //     (the six Super Category families). Places power + Super Category
 //     live in the map Filters sheet. Distance and time are not map
 //     knobs. Swipe keeps Discovery.
-//   • Bottom overlay (idle): catalog rail of the three Map lanes around
-//     the camera (partners, then Mesita, then Google; overlaps drop).
-//     A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
+//   • Bottom overlay (idle): catalog rail around the camera. Places
+//     power picks the engine (Partners / + enriched Places / + Google
+//     Nearby). Super Category cuts Mesita only. The rail is closest
+//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
 //     or pin selection pans are ignored. The rail's center card is
 //     always the selected pin. Scroll picks the center; a pin tap
 //     scrolls that card to center. Tapping the already-selected card
@@ -164,10 +165,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  const catalog = useMemo(
-    () => applyMapFilters(nearby, filters),
-    [nearby, filters],
-  );
+  const catalog = useMemo(() => {
+    const cut = applyMapFilters(nearby, filters);
+    return [...cut].sort(
+      (a, b) => (a.distance_km ?? Number.POSITIVE_INFINITY) -
+        (b.distance_km ?? Number.POSITIVE_INFINITY),
+    );
+  }, [nearby, filters]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
@@ -182,6 +186,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const lastFetchedAtMs = useRef<number | null>(null);
   const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
   const reloadMinSecRef = useRef(CATALOG_RELOAD_MIN_SEC);
+  const searchPowerRef = useRef(filters.searchPower);
+  searchPowerRef.current = filters.searchPower;
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forceNextLoad = useRef(false);
   const seenLocationKey = useRef<string | null>(null);
@@ -212,6 +218,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           CATALOG_NEARBY_MAX,
+          searchPowerRef.current,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -302,6 +309,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     idleRef.current = idle;
   }, [idle]);
+
+  // Places power changes the engine, not a client-side chip cut. Refetch
+  // the matching lanes. Super Category stays local. The query bar
+  // (Fast / Deep Autocomplete) never reads these filters.
+  useEffect(() => {
+    if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    void loadViewport(lastBoxRef.current);
+  }, [filters.searchPower, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 

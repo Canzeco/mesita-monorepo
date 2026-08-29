@@ -16,14 +16,12 @@
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
 //     then Mesita. No Google stubs — mobile opens `/place/:id` and
 //     cannot host GooglePlaceSheet.
-//   { google: true, lat, lng, limit? } — web Search catalog. Three closest-N
-//     lanes, then listed pins Lineup-reorder (Map mask), Google stays
-//     distance. Mesita Place IDs never stub. Google fill is metered per
-//     connecting IP (CF-Connecting-IP / rightmost XFF, 45/60s) plus a
-//     600/60s global cap, only when this isolate is about to fire the one
-//     Nearby call. Over quota skips Google, not the catalog. Operator Map
-//     knobs (`discovery_config.map`) set the three lane caps and which
-//     types ride that one Nearby call.
+//   { google: true, lat, lng, limit?, searchPower? } — web Search catalog.
+//     searchPower (default 3) is the Places bar: 1 Partners only, 2
+//     Partners + enriched Mesita Places, 3 + Google Nearby. Power 1–2
+//     never call Nearby. Google stays distance (closest, not best).
+//     Listed pins Lineup-reorder (Map mask). Mesita Place IDs never stub.
+//     Google fill is metered per connecting IP when power is 3.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -60,8 +58,10 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
+  clampSearchPower,
+  keepListedForSearchPower,
+  lanesForSearchPower,
   mergeNearbyCatalog,
-  nearbyLanesFromMap,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
   type NearbyHit,
@@ -153,6 +153,7 @@ type ListBody = {
   limit?: number;
   nearby?: boolean;
   google?: boolean;
+  searchPower?: number;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -170,6 +171,8 @@ type CardRow = {
   category?: string | null;
   plan?: string | null;
   partner?: boolean | null;
+  content_status?: string | null;
+  enriched_at?: string | null;
   lat?: number | null;
   lng?: number | null;
   distance_km?: number | null;
@@ -198,6 +201,7 @@ Deno.serve(async (req) => {
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
+  let searchPower: 1 | 2 | 3 = 3;
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
@@ -207,6 +211,7 @@ Deno.serve(async (req) => {
     nearbyDecision = decideNearby(body as Record<string, unknown>);
     clientGoogle = nearbyDecision.mode === "ok" &&
       wantsGoogleFill(body as Record<string, unknown>);
+    searchPower = clampSearchPower(body.searchPower);
     if (nearbyDecision.mode === "none") {
       bboxDecision = decideBbox(body as Record<string, unknown>);
     }
@@ -296,6 +301,10 @@ Deno.serve(async (req) => {
     const center = { lat, lng };
     let mesitaRows = (data ?? []) as unknown as CardRow[];
 
+    mesitaRows = mesitaRows.filter((row) =>
+      keepListedForSearchPower(row, searchPower)
+    );
+
     if (!googleFill) {
       const admitted = admitMapCatalog(mesitaRows, [], cfg.map, cfg.params.popularity);
       const inRadius = admitted.listed.filter((row) =>
@@ -305,7 +314,7 @@ Deno.serve(async (req) => {
         inRadius,
         [],
         center,
-        nearbyLanesFromMap(cfg.map),
+        lanesForSearchPower(cfg.map, searchPower),
       )
         .slice(0, limit)
         .flatMap((item) => item.kind === "listed" ? [item.row] : [])
@@ -323,8 +332,9 @@ Deno.serve(async (req) => {
     }
 
     let googleHits: NearbyHit[] = [];
+    const wantGoogleNearby = searchPower >= 3;
     const gmp = readGooglePlacesKey();
-    if (gmp.ok) {
+    if (wantGoogleNearby && gmp.ok) {
       const cached = peekCachedNearbyPlaces(center, nearbyTypes);
       if (cached) {
         googleHits = cached;
@@ -368,7 +378,10 @@ Deno.serve(async (req) => {
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
-          if (!seen.has(row.id)) mesitaRows = [...mesitaRows, row];
+          if (seen.has(row.id)) continue;
+          if (!keepListedForSearchPower(row, searchPower)) continue;
+          seen.add(row.id);
+          mesitaRows = [...mesitaRows, row];
         }
       }
     }
@@ -381,9 +394,9 @@ Deno.serve(async (req) => {
     const merged = reorderListedLanes(
       mergeNearbyCatalog(
         admitted.listed,
-        admitted.google,
+        wantGoogleNearby ? admitted.google : [],
         center,
-        nearbyLanesFromMap(cfg.map),
+        lanesForSearchPower(cfg.map, searchPower),
       ),
       {
         center,

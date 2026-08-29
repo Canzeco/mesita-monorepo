@@ -252,6 +252,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
+    expect(read("../../../lib/api/places.ts")).toContain("searchPower");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
 
@@ -312,6 +313,14 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("../../../lib/map-filters-engine.ts")).toContain(
       "placeSearchLane",
     );
+    expect(read("SearchClient.tsx")).toContain("filters.searchPower");
+    expect(read("SearchClient.tsx")).toContain("searchPowerRef.current");
+    expect(read("SearchClient.tsx")).toContain("distance_km");
+    expect(read("SearchClient.tsx")).not.toMatch(
+      /applyMapFilters\(\s*predictions/,
+    );
+    expect(read("SearchClient.tsx")).toContain('"fast"');
+    expect(read("SearchClient.tsx")).toContain('"deep"');
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
     expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");

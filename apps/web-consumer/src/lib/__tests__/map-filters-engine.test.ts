@@ -179,4 +179,19 @@ describe("applyMapFilters", () => {
       ),
     ).toEqual(["karaoke"]);
   });
+
+  it("keeps Google Nearby through Super Category — family is Mesita-only", () => {
+    const google: Place = place({
+      id: "g1",
+      googleOnly: true,
+      name: "Random café",
+      family_keys: [],
+    });
+    expect(
+      applyMapFilters(
+        [google],
+        filters({ searchPower: 3, familyKeys: ["restaurants"] }),
+      ).map((p) => p.id),
+    ).toEqual(["g1"]);
+  });
 });
