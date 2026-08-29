@@ -87,8 +87,15 @@ export function DiscoveryMatrix() {
             </tr>
           </thead>
           <tbody>
-            {DISCOVERY_POOLS.map((pool) => (
-              <tr key={pool.key} className="border-border/60 border-b">
+            {DISCOVERY_POOLS.map((pool, index) => (
+              <tr
+                key={pool.key}
+                className={
+                  index === DISCOVERY_POOLS.length - 1
+                    ? "border-foreground border-b-2"
+                    : "border-border/60 border-b"
+                }
+              >
                 <th className="type-label font-medium pr-3 py-2">{pool.label}</th>
                 {DISCOVERY_MODE_KEYS.map((mode) => {
                   const on = modeRequiresPool(mode, pool.key);
@@ -103,8 +110,15 @@ export function DiscoveryMatrix() {
                 })}
               </tr>
             ))}
-            {DISCOVERY_MODULES.map((module) => (
-              <tr key={module} className="border-border/60 border-b">
+            {DISCOVERY_MODULES.map((module, index) => (
+              <tr
+                key={module}
+                className={
+                  index === DISCOVERY_MODULES.length - 1
+                    ? "border-foreground border-b-2"
+                    : "border-border/60 border-b"
+                }
+              >
                 <th className="type-label font-medium pr-3 py-2">{module}</th>
                 {DISCOVERY_MODE_KEYS.map((mode) => {
                   const on = modeCallsModule(mode, module);
