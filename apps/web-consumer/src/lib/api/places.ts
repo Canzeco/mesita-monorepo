@@ -199,7 +199,7 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   limit = CATALOG_NEARBY_MAX,
-  searchPower = 3,
+  searchPower = 2,
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];

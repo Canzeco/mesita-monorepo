@@ -1,14 +1,15 @@
-// Map filters — Search only. A Places power bar + Super Category cut
-// the nearby catalog. There is no Types axis and no category slug list.
+// Map filters — Search only. A Places scope + Super Category cut the
+// nearby catalog. There is no Types axis and no category slug list.
 //
-// Power is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
-// Partners+Places+Google. Mesita Places is the enriched profile only —
-// Created and Requested stubs are not a search source. A Super Category
-// is a SET of categories; a category may sit in two (breakfast is
-// restaurants AND cafés). The cut is OR: a place matches if any of its
-// Super Categories is selected. The Search chrome uses the guest word
-// Category for the same six families. Distance and time stay off this
-// surface: the camera already bounds the set. Swipe keeps Discovery.
+// Scope is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
+// Partners+Places+Google. Default is + Places. Mesita Places is the
+// enriched profile only — Created and Requested stubs are not a search
+// source. A Super Category is a SET of categories; a category may sit
+// in two (breakfast is restaurants AND cafés). The cut is OR: a place
+// matches if any of its Super Categories is selected. The Search chrome
+// uses the guest word Category for the same six families. Distance and
+// time stay off this surface: the camera already bounds the set. Swipe
+// keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -26,35 +27,39 @@ export type MapStatusKey = (typeof MAP_STATUS_KEYS)[number];
 
 export type MapSearchLane = "partners" | "places" | "google";
 
-export const MAP_SEARCH_POWER_MIN = 1;
-export const MAP_SEARCH_POWER_MAX = 3;
 export type MapSearchPower = 1 | 2 | 3;
+/** + Places — Partners and enriched Mesita Places. Not Google. */
+export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
 
-/** Three stops. Ticks are short; the caption is the cumulative union. */
+/** Three exclusive rows. Tick is the guest word; hint is the union. */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
     key: "partners",
     tick: "Partners",
     label: "Mesita Partners",
+    hint: "Mesita Partners only",
   },
   {
     power: 2,
     key: "places",
     tick: "+ Places",
     label: "Mesita Places",
+    hint: "Partners and Mesita Places",
   },
   {
     power: 3,
     key: "google",
     tick: "+ Google",
     label: "Google Places",
+    hint: "Also Google Places",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
   key: MapSearchLane;
   tick: string;
   label: string;
+  hint: string;
 }[];
 
 const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
@@ -64,20 +69,20 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 };
 
 export type MapFilters = {
-  /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 3. */
+  /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
   searchPower: MapSearchPower;
   /** Super Category: the six place families; empty = no constraint. */
   familyKeys: FamilyKey[];
 };
 
 export const MAP_FILTER_DEFAULTS: MapFilters = {
-  searchPower: MAP_SEARCH_POWER_MAX,
+  searchPower: MAP_SEARCH_POWER_DEFAULT,
   familyKeys: [],
 };
 
 export function clampSearchPower(value: unknown): MapSearchPower {
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return MAP_SEARCH_POWER_MAX;
+  if (!Number.isFinite(n)) return MAP_SEARCH_POWER_DEFAULT;
   if (n <= 1) return 1;
   if (n >= 3) return 3;
   return 2;
@@ -103,7 +108,7 @@ export function placeMapStatus(place: Place): MapStatusKey {
 }
 
 /**
- * Search source for the power bar. Created and Requested return null —
+ * Search source for the Places scope. Created and Requested return null —
  * Mesita Places is enriched only, never a thin stub.
  */
 export function placeSearchLane(place: Place): MapSearchLane | null {
@@ -118,9 +123,9 @@ export function mapFiltersAreActive(f: MapFilters): boolean {
   return mapFilterCount(f) > 0;
 }
 
-/** A pulled-back power bar counts as one filter; each Super Category is one. */
+/** Leaving + Places, or each Super Category, counts as one filter. */
 export function mapFilterCount(f: MapFilters): number {
-  const power = f.searchPower < MAP_SEARCH_POWER_MAX ? 1 : 0;
+  const power = f.searchPower === MAP_SEARCH_POWER_DEFAULT ? 0 : 1;
   return power + f.familyKeys.length;
 }
 

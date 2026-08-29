@@ -1,7 +1,7 @@
 "use client";
 
 // Search-map filter store. Isolated from Discovery (Swipe): narrowing
-// Places power or Super Category on the map never touches the deck.
+// Places scope or Super Category on the map never touches the deck.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/lib/map-filters-engine";
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-const STORAGE_KEY = "mesita_map_filters_v2";
+const STORAGE_KEY = "mesita_map_filters_v3";
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
 
 function readPersisted(): MapFilters {

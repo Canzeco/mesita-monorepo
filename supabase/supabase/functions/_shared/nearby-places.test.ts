@@ -660,7 +660,7 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
 });
 
 Deno.test("search power zeros unused lanes and treats Mesita Places as enriched", () => {
-  assertEquals(clampSearchPower(undefined), 3);
+  assertEquals(clampSearchPower(undefined), 2);
   assertEquals(clampSearchPower(1), 1);
   assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).mesitaCount, 0);
   assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).googleCount, 0);
