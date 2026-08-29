@@ -25,7 +25,7 @@ function filters(over: Partial<MapFilters> = {}): MapFilters {
 }
 
 describe("placeMapStatus", () => {
-  it("ladders Google → promoted → partnered → enriched → created", () => {
+  it("ladders Google → promoted → partnered → enriched → requested → created", () => {
     expect(placeMapStatus(place({ googleOnly: true }))).toBe("not_on_mesita");
     expect(placeMapStatus(place({ from_google: true }))).toBe("not_on_mesita");
     expect(placeMapStatus(place({ promoting: true, partner: true }))).toBe(
@@ -36,6 +36,12 @@ describe("placeMapStatus", () => {
     expect(placeMapStatus(place({ enriched_at: "2026-08-01T00:00:00Z" }))).toBe(
       "enriched",
     );
+    expect(
+      placeMapStatus(place({ request_count: 2, content_status: "queued" })),
+    ).toBe("requested");
+    expect(
+      placeMapStatus(place({ request_count: 4, content_status: "ready" })),
+    ).toBe("enriched");
     expect(placeMapStatus(place())).toBe("created");
   });
 });

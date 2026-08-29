@@ -6,7 +6,7 @@
 //   created    google_place_id present (operator label Created; wire `seeded`)
 //   active     Google business_status === OPERATIONAL
 //   listed     projects.status ∈ (active, lead)
-//   requested  projects.status ∈ (pending_review, pending_verification)
+//   requested  request_count > 0 and content_status is not ready
 //   enriched   PULSE high-water complete. Independent of enriching.
 //   enriching  content_status generating/queued (live run)
 //   verified   an approved project_verifications row
@@ -43,7 +43,7 @@ export type PlaceStatusFacts = {
 };
 
 const PROFILE_COLS =
-  "id, google_place_id, status, business_status, content_status, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at";
+  "id, google_place_id, status, business_status, content_status, request_count, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at";
 
 const EMPTY_ENRICHMENT: EnrichmentMap = {
   functions: {},
@@ -68,6 +68,7 @@ export function placeStatusFacts(input: {
   status: unknown;
   businessStatus: unknown;
   contentStatus?: unknown;
+  requestCount?: unknown;
   plan: unknown;
   highWater: number;
   verified: boolean;
@@ -79,7 +80,10 @@ export function placeStatusFacts(input: {
     seeded: isPlaceSeeded(input.googlePlaceId),
     active: input.businessStatus === "OPERATIONAL",
     listed: isPlaceListed(input.status),
-    requested: isPlaceRequested(input.status),
+    requested: isPlaceRequested({
+      requestCount: input.requestCount,
+      contentStatus: input.contentStatus,
+    }),
     enriching: isPlaceEnriching(input.contentStatus),
     enriched: highWater === PULSE_TOTAL,
     enrichPulse: highWater,
@@ -152,6 +156,7 @@ export async function attachPlaceStatusFacts(
         status: row.status,
         businessStatus: row.business_status,
         contentStatus: row.content_status,
+        requestCount: row.request_count,
         plan: row.plan,
         highWater: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
         verified: verified.has(id),
