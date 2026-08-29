@@ -9,6 +9,7 @@ import {
   placeMapStatus,
   placeSearchLane,
   searchPowerCaption,
+  searchPowerIncludes,
   type MapFilters,
 } from "@/lib/map-filters-engine";
 
@@ -76,6 +77,18 @@ describe("search power", () => {
     expect(clampSearchPower(99)).toBe(3);
     expect(clampSearchPower(0)).toBe(1);
     expect(clampSearchPower(undefined)).toBe(2);
+  });
+
+  it("includes every inner stop on the selected power", () => {
+    expect(searchPowerIncludes(1, 1)).toBe(true);
+    expect(searchPowerIncludes(2, 1)).toBe(false);
+    expect(searchPowerIncludes(3, 1)).toBe(false);
+    expect(searchPowerIncludes(1, 2)).toBe(true);
+    expect(searchPowerIncludes(2, 2)).toBe(true);
+    expect(searchPowerIncludes(3, 2)).toBe(false);
+    expect(searchPowerIncludes(1, 3)).toBe(true);
+    expect(searchPowerIncludes(2, 3)).toBe(true);
+    expect(searchPowerIncludes(3, 3)).toBe(true);
   });
 });
 

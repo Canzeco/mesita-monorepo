@@ -4,14 +4,15 @@ import type { KeyboardEvent } from "react";
 import {
   MAP_SEARCH_STOPS,
   searchPowerCaption,
+  searchPowerIncludes,
   type MapSearchPower,
 } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
-// Exclusive Places scope — same format as admin Discovery Map
-// "Reload after": a wrap of exclusive pills, not a slider. Partners ⊂
-// + Places ⊂ + Google. Default is + Places. Mesita Places is enriched
-// only.
+// Nested Places scope — one meter, not three independent pills.
+// Partners ⊂ Places ⊂ Google. Selecting a stop fills every stop
+// inside it, so the control shows what you are seeing, not which
+// chip you tapped. Default is Places. Mesita Places is enriched only.
 
 export function SearchPlacesScope({
   power,
@@ -53,10 +54,12 @@ export function SearchPlacesScope({
       <div
         role="radiogroup"
         aria-label="Places"
+        aria-orientation="horizontal"
         onKeyDown={onKeyDown}
-        className="flex flex-wrap gap-2"
+        className="border-border flex overflow-hidden rounded-xl border"
       >
-        {MAP_SEARCH_STOPS.map((stop) => {
+        {MAP_SEARCH_STOPS.map((stop, index) => {
+          const included = searchPowerIncludes(stop.power, power);
           const active = power === stop.power;
           return (
             <button
@@ -65,12 +68,17 @@ export function SearchPlacesScope({
               role="radio"
               aria-checked={active}
               aria-label={searchPowerCaption(stop.power)}
+              data-included={included ? "true" : "false"}
+              data-edge={active ? "true" : "false"}
               onClick={() => onPower(stop.power)}
               className={cn(
-                "inline-flex min-h-11 items-center rounded-lg px-3.5 type-body tabular-nums transition",
-                active
-                  ? "bg-foreground text-background font-bold"
-                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
+                "inline-flex min-h-12 flex-1 items-center justify-center px-1.5 text-center type-body whitespace-nowrap tabular-nums transition",
+                index > 0 &&
+                  (included ? "border-background/25 border-l" : "border-border border-l"),
+                included
+                  ? "bg-foreground text-background"
+                  : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                active ? "font-bold" : "font-semibold",
               )}
             >
               {stop.tick}

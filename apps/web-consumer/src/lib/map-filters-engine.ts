@@ -31,28 +31,28 @@ export type MapSearchPower = 1 | 2 | 3;
 /** + Places — Partners and enriched Mesita Places. Not Google. */
 export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
 
-/** Three exclusive pills — same format as admin Map Reload after. */
+/** Three nested stops on one meter. Fill is cumulative. */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
     key: "partners",
     tick: "Partners",
     label: "Mesita Partners",
-    hint: "Mesita Partners only",
+    hint: "Partners only",
   },
   {
     power: 2,
     key: "places",
-    tick: "+ Places",
+    tick: "Places",
     label: "Mesita Places",
     hint: "Partners and Mesita Places",
   },
   {
     power: 3,
     key: "google",
-    tick: "+ Google",
+    tick: "Google",
     label: "Google Places",
-    hint: "Also Google Places",
+    hint: "Partners, Mesita Places, and Google",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
@@ -92,6 +92,14 @@ export function searchPowerCaption(power: MapSearchPower): string {
   if (power <= 1) return "Mesita Partners";
   if (power === 2) return "Mesita Partners & Mesita Places";
   return "Mesita Partners & Mesita Places & Google Places";
+}
+
+/** A stop is in view when the selected power reaches it. */
+export function searchPowerIncludes(
+  lanePower: MapSearchPower,
+  selected: MapSearchPower,
+): boolean {
+  return lanePower <= selected;
 }
 
 /** Highest rung wins so a place has one atlas status. */

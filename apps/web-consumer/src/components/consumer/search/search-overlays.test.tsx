@@ -12,6 +12,7 @@ import {
 } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchMapFilters } from "@/components/consumer/search/SearchMapFilters";
+import { SearchPlacesScope } from "@/components/consumer/search/SearchPlacesScope";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   catalogIsStale,
@@ -169,8 +170,10 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("role=\"radiogroup\"");
     expect(html).toContain("Partners and Mesita Places");
     expect(html).toContain("Partners");
-    expect(html).toContain("+ Places");
-    expect(html).toContain("+ Google");
+    expect(html).toContain(">Places<");
+    expect(html).toContain(">Google<");
+    expect(html).not.toContain("+ Places");
+    expect(html).not.toContain("+ Google");
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
     );
@@ -193,6 +196,38 @@ describe("SearchMapFilters", () => {
     expect(html).not.toContain("Anytime");
     expect(html).not.toContain("I want to");
     expect(html).not.toContain("Prioritize");
+  });
+
+  it("fills every inner Places stop so the meter reads as a nested set", () => {
+    const partners = renderToStaticMarkup(
+      <SearchPlacesScope power={1} onPower={() => {}} />,
+    );
+    expect(partners).toContain("Partners only");
+    expect(partners.match(/data-included="true"/g)?.length).toBe(1);
+    expect(partners).toContain('aria-checked="true"');
+    expect(partners).toContain('aria-label="Mesita Partners"');
+    expect(partners).toContain('data-edge="true"');
+
+    const places = renderToStaticMarkup(
+      <SearchPlacesScope power={2} onPower={() => {}} />,
+    );
+    expect(places).toContain("Partners and Mesita Places");
+    expect(places.match(/data-included="true"/g)?.length).toBe(2);
+    expect(places.match(/data-included="false"/g)?.length).toBe(1);
+    expect(places).toContain(
+      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+    );
+
+    const google = renderToStaticMarkup(
+      <SearchPlacesScope power={3} onPower={() => {}} />,
+    );
+    expect(google).toContain("Partners, Mesita Places, and Google");
+    expect(google.match(/data-included="true"/g)?.length).toBe(3);
+    expect(google).toContain(
+      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+    );
+    expect(google).toContain("rounded-xl border");
+    expect(google).not.toContain("flex-wrap");
   });
 });
 
