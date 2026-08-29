@@ -127,6 +127,12 @@ describe("SearchFilterRow", () => {
     expect(html).toContain("location set");
     expect(html).toContain("lucide-compass");
     expect(html).toContain("lucide-sliders-horizontal");
+    expect(html.indexOf("Filters")).toBeLessThan(html.indexOf("Restaurants"));
+    expect(html).not.toContain("🍽️");
+    expect(html).not.toContain("Romantic");
+    expect(html).not.toContain("Italian");
+    expect(read("SearchFilterRow.tsx")).not.toContain("border-border");
+    expect(read("SearchFilterRow.tsx")).not.toContain("family.emoji");
   });
 });
 
