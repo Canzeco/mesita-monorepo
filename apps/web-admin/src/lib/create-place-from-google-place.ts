@@ -5,8 +5,9 @@ import { efInvoke } from "@/lib/supabase-ef";
 // admin-web-create-project fetches Google data and persists a minimal
 // 'generating' place; deep enrichment then runs async in the Intaker cron
 // pipeline (supabase-cron-enrich-place-*). The admin operator's session
-// authorises the call (admin allowlist). Callers invoke this once per Place ID
-// (with small concurrency for bulk) so progress streams in.
+// authorises the call (admin allowlist). Callers invoke this once per Place ID.
+// Multiple Places Intake fans every create out in one batch; only enrich is
+// queued for the cron.
 
 type CreatePlaceOk = {
   ok: true;

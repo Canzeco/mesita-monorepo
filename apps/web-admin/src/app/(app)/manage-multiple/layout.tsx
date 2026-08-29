@@ -1,7 +1,7 @@
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
 // One flat page: Google Search · Mesita Search · Mesita Intake.
-// Edit is a band on Intake, not a fourth card.
+// Create, Enrich, Update, and Create + Enrich share the Intake box.
 
 export default function ManageMultipleLayout({
   children,
@@ -13,7 +13,7 @@ export default function ManageMultipleLayout({
       <PageHeader
         eyebrow="Manage · Places"
         title="Manage Multiple Places"
-        description="Google Search · Mesita Search · Mesita Intake. Edit lives on Intake. The rail jumps to each."
+        description="Google Search · Mesita Search · Mesita Intake. Create, Enrich, and Update share Intake. The rail jumps to each."
       />
       <div className="mt-6 sm:mt-8">{children}</div>
     </PageContainer>

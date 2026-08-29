@@ -1,6 +1,7 @@
-// Manage Multiple Places — three boxes. Edit is a control on Mesita Intake,
-// not a fourth numbered surface. The sticky rail and the cards both read
-// from here so a surface cannot appear on one and vanish from the other.
+// Manage Multiple Places — three boxes. Create, Enrich, Update, and
+// Create + Enrich share one Mesita Intake box — not a fourth card.
+// The sticky rail and the cards both read from here so a surface cannot
+// appear on one and vanish from the other.
 //
 // Google Search looks up Google. Mesita Search looks up Mesita (read-only).
 // Mesita Intake is the make door and the only state write (Listed · Verified ·

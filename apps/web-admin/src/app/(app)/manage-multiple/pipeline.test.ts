@@ -24,7 +24,7 @@ describe("PIPELINE_STEPS", () => {
 });
 
 describe("the page chrome names the three surfaces", () => {
-  it("keeps Google Search, Mesita Search, Mesita Intake, with Edit on Intake", () => {
+  it("keeps Google Search, Mesita Search, Mesita Intake as one Update box", () => {
     const client = readFileSync(join(here, "MultiplePlacesClient.tsx"), "utf8");
     const intake = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
     const edit = readFileSync(join(here, "EditTab.tsx"), "utf8");
@@ -32,11 +32,19 @@ describe("the page chrome names the three surfaces", () => {
     expect(client).toContain("MesitaSearchTab");
     expect(client).toContain("IntakeTab");
     expect(client).not.toContain("EditTab");
-    expect(intake).toContain("EditPanel");
+    expect(intake).toContain("UpdateFields");
+    expect(intake).toContain('label="Update"');
+    expect(intake).toContain("runCreateThenEnrich");
     expect(intake).toContain("alreadyExisted");
     expect(intake).toContain("Listed · Verified · Partner · Promoted");
+    expect(intake).toContain("Create + Enrich is create then enrich");
     expect(intake).toContain("Copy failed IDs");
-    expect(intake).toContain("const worker = async");
+    expect(intake).toContain("Promise.all(ids.map");
+    expect(intake).not.toContain("create_enrich");
+    expect(intake).not.toContain("EditPanel");
+    expect(intake).not.toContain("type-eyebrow");
+    expect(intake).not.toContain("CONCURRENCY");
+    expect(intake).not.toContain("const worker = async");
     expect(intake).not.toContain("Promoting");
     expect(edit).toContain("Listed");
     expect(edit).toContain("Verified");
@@ -45,6 +53,7 @@ describe("the page chrome names the three surfaces", () => {
     expect(edit).toContain('value="promoting"');
     expect(edit).toContain("<option value=\"promoting\">Promoted</option>");
     expect(edit).not.toContain(">Promoting<");
+    expect(edit).not.toContain("EditPanel");
   });
 });
 
