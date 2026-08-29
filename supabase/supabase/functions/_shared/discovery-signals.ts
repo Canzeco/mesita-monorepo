@@ -8,18 +8,19 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE NINE. Promoting is NOT here — a bought placement never touches
-// an earned score. It is a slotting pass that runs AFTER the blend
-// (discovery-blend.ts). Nothing in this file may read a promo field or a
-// rate; that is what makes "rank is never for sale" an invariant a test
-// can hold rather than an exponent someone has to defend.
+// THERE ARE TEN, Notion Docs › Discovery §8.3 order: Name · Summary ·
+// Proximity · Timing · Category · Popularity · Partnership · Promotion ·
+// Randomness · Social. Slotting still runs AFTER the blend
+// (discovery-blend.ts) and still buys a POSITION, not an exponent.
+// Promotion is the earned read of the public `promoting` boolean — live
+// discount right now. Partnership still reads `plan` only. Nothing here
+// may read rates, strategy, or pause columns.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
-// (`places.embedding` — the Summary blurb, never Presentation). Partnership
-// is an earned signal (how partnered the place is). It reads `plan` only.
-// Social is the ninth: it abstains until Social Lineup writes a place-level
-// score. Social Lineup is still a module; this signal is the place-feed
-// reading of social proof, not that module.
+// (`places.embedding` — the Summary blurb, never Presentation). Social
+// abstains until Social Lineup writes a place-level score. Social Lineup
+// is still a module; this signal is the place-feed reading of social
+// proof, not that module.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the
@@ -47,7 +48,7 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 
-/** The nine earned signals, in the order the Lineup table renders them. */
+/** The ten earned signals, in the order the Lineup table renders them. */
 export const SIGNAL_KEYS = [
   "name",
   "summary",
@@ -56,6 +57,7 @@ export const SIGNAL_KEYS = [
   "category",
   "popularity",
   "partnership",
+  "promotion",
   "randomness",
   "social",
 ] as const;
@@ -89,8 +91,8 @@ function pnum(params: SignalParamBag | undefined, key: string, fallback: number)
 /**
  * The facts a signal is allowed to see. This is a projection of `places`, not
  * the row — narrowing it here is what stops a signal from quietly reaching for
- * a promo field. Partnership may read `plan`. Still absent: strategy, promo
- * flags, and rates. Bought placement never enters an earned score.
+ * rates. Partnership may read `plan`. Promotion may read the computed
+ * `promoting` boolean. Still absent: strategy, pause columns, and rates.
  */
 export type SignalPlace = {
   lat: number | null;
@@ -106,6 +108,8 @@ export type SignalPlace = {
   nameEmbedding?: unknown;
   /** Membership plan. Partnership reads this; nothing else may. */
   plan?: string | null;
+  /** Live discount right now. Promotion reads this; nothing else may. */
+  promoting?: boolean;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -411,7 +415,27 @@ export function partnership(
   return PARTNERSHIP_PARTNER;
 }
 
-// ── 8. Randomness ────────────────────────────────────────────────────────────
+// ── 8. Promotion ─────────────────────────────────────────────────────────────
+
+/**
+ * Whether the place is giving a live discount right now. Reads the
+ * computed `promoting` boolean — never rates, strategy, or pause
+ * columns. `toLineupPlace` collapses those into this one public fact.
+ * Not promoting is demoted, not deleted. Slotting still moves promoting
+ * places after the blend.
+ */
+export const PROMOTION_NONE = 0.2;
+export const PROMOTION_LIVE = 1;
+
+export function promotion(
+  place: SignalPlace,
+  _intent?: SignalIntent,
+  _params?: SignalParamBag,
+): number {
+  return place.promoting === true ? PROMOTION_LIVE : PROMOTION_NONE;
+}
+
+// ── 9. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -427,7 +451,7 @@ export function randomness(_place: SignalPlace, intent?: SignalIntent): number {
   return clamp01(rng());
 }
 
-// ── 9. Social ────────────────────────────────────────────────────────────────
+// ── 10. Social ───────────────────────────────────────────────────────────────
 
 /**
  * Place-level social proof. Social Lineup writes the index this reads.
@@ -462,6 +486,7 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   category,
   popularity,
   partnership,
+  promotion,
   randomness,
   social,
 };
@@ -475,6 +500,7 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   category: "Category",
   popularity: "Popularity",
   partnership: "Partnership",
+  promotion: "Promotion",
   randomness: "Randomness",
   social: "Social",
 };
@@ -488,6 +514,7 @@ export const SIGNAL_BLURBS: Record<SignalKey, string> = {
   category: "Does the type answer what the guest asked for.",
   popularity: "Rating shrunk toward the catalog mean by review volume.",
   partnership: "How partnered the place is, from plan. Never a bought score.",
+  promotion: "Is there a live discount right now. Never rates or strategy.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
   social: "Place-level social proof. Abstains until Social Lineup writes the index.",
 };

@@ -10,7 +10,7 @@
 //   params     shape numbers. The console edits maxKm and closedFloor;
 //              the rest stay on the blob as the function's defaults.
 //   slotting   the bought lane: whether promoting places get slots at all, and
-//              how often. Not a weight, because it is not a signal.
+//              how often. A position pass, not the Promotion weight.
 //   filters    what may ENTER the pool at all. The counterpart to a signal, and
 //              the distinction is the whole reason both exist: a SIGNAL
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
@@ -482,6 +482,7 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   name: { unembedded: NAME_UNEMBEDDED },
   summary: { unembedded: SUMMARY_UNEMBEDDED },
   partnership: {},
+  promotion: {},
   randomness: {},
   social: {},
 };
@@ -523,6 +524,7 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     unembedded: { min: 0, max: 1, decimals: 2 },
   },
   partnership: {},
+  promotion: {},
   randomness: {},
   social: {},
 };
@@ -536,6 +538,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     name: 1,
     summary: 1,
     partnership: 1,
+    promotion: 1,
     randomness: 0.35,
     social: 1,
   },

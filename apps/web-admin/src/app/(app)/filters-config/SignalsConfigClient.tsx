@@ -1,9 +1,9 @@
 "use client";
 
-// Mesita Places Lineup — nine earned signals. Engines call these; they
+// Mesita Places Lineup — ten earned signals. Engines call these; they
 // do not invent a second scale. Weights and params persist on
-// discovery_config. Bought placement is a post-blend slot, not an earned
-// s^w, and it is not a row on this table.
+// discovery_config. Slotting is a post-blend position pass, not a
+// weight. Promotion is the earned live-discount row.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -13,6 +13,7 @@ import {
   Dices,
   FileText,
   MapPin,
+  Megaphone,
   Star,
   Tags,
   Type,
@@ -43,6 +44,7 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   category: Tags,
   popularity: Star,
   partnership: BadgeCheck,
+  promotion: Megaphone,
   randomness: Dices,
   social: Users,
 };
@@ -134,7 +136,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Lineup"
-        subtitle="The ranked Mesita place feed. Nine earned signals, each one number in [0, 1]. Blend is Π s^w. Bought placement never enters this table."
+        subtitle="The ranked Mesita place feed. Ten earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         status={
           <KnobStatus
             kind="not-wired"

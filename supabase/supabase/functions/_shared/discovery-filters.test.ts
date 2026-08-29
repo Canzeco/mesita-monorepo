@@ -176,6 +176,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.weights.summary, 1);
   assertEquals(cfg.weights.name, 1);
   assertEquals(cfg.weights.partnership, 1);
+  assertEquals(cfg.weights.promotion, 1);
   assertEquals(cfg.slotting.everyNth, 7);
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);

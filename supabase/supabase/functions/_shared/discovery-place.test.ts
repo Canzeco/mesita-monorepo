@@ -87,14 +87,17 @@ Deno.test("a mapped row moves Popularity off the prior — the dead-signal guard
   assert(mapped > bare, `a 4.6 across 900 reviews (${mapped}) should beat the prior (${bare})`);
 });
 
-Deno.test("toLineupPlace adds nameEmbedding and plan; toSignalPlace still omits them", () => {
+Deno.test("toLineupPlace adds nameEmbedding, plan, and promoting; toSignalPlace still omits them", () => {
   const earned = toSignalPlace(ROW) as unknown as Record<string, unknown>;
   assertEquals(earned.nameEmbedding, undefined);
   assertEquals(earned.plan, undefined);
+  assertEquals(earned.promoting, undefined);
   const lineup = toLineupPlace(ROW);
   assertEquals(lineup.nameEmbedding, "[0.3,0.4]");
   assertEquals(lineup.plan, "pro");
+  assertEquals(lineup.promoting, true);
   assertEquals(lineup.rating, 4.6);
+  assertEquals(toLineupPlace({ ...ROW, plan: "free" }).promoting, false);
 });
 
 Deno.test("toSignalPlace carries no promo field, whatever the row holds", () => {

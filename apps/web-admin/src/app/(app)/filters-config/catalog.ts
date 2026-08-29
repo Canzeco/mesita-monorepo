@@ -23,11 +23,11 @@
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
 //             Agent · Mesita Places Lineup · Social Lineup Soon.
-//   LINEUP    nine earned signals: Name · Summary · Proximity · Timing ·
-//             Category · Popularity · Partnership · Randomness · Social.
-//             Promoting is slotting (post-blend), not a SIGNAL_KEY.
-//             Old `semantic` folds to Summary. Social abstains until
-//             Social Lineup writes an index.
+//   LINEUP    ten earned signals: Name · Summary · Proximity · Timing ·
+//             Category · Popularity · Partnership · Promotion ·
+//             Randomness · Social. Slotting stays a post-blend position
+//             pass. Old `semantic` folds to Summary. Social abstains
+//             until Social Lineup writes an index.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -40,6 +40,7 @@ export const SIGNAL_KEYS = [
   "category",
   "popularity",
   "partnership",
+  "promotion",
   "randomness",
   "social",
 ] as const;
@@ -422,6 +423,7 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   name: { unembedded: 0.4 },
   summary: { unembedded: 0.4 },
   partnership: {},
+  promotion: {},
   randomness: {},
   social: {},
 };
@@ -435,6 +437,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     name: 1,
     summary: 1,
     partnership: 1,
+    promotion: 1,
     randomness: 0.35,
     social: 1,
   },
@@ -542,7 +545,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Deep never calls Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Max results caps the merge. Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Deep never calls Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Max results caps the merge. Map Filters never cut this list. Lineup Summary and the other Lineup signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -604,8 +607,7 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
 };
 
 /**
- * Mesita Places Lineup order. Promoting is slotting, not a SIGNAL_KEY —
- * it is not a row on this table.
+ * Mesita Places Lineup order — Notion Docs › Discovery §8.3.
  */
 export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "name" as const },
@@ -615,6 +617,7 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "category" as const },
   { kind: "signal" as const, key: "popularity" as const },
   { kind: "signal" as const, key: "partnership" as const },
+  { kind: "signal" as const, key: "promotion" as const },
   { kind: "signal" as const, key: "randomness" as const },
   { kind: "signal" as const, key: "social" as const },
 ] as const;
@@ -698,13 +701,21 @@ export const DISCOVERY_MODE_SIGNALS: Record<
 > = {
   fast: [],
   deep: ["name"],
-  map: ["proximity", "timing", "category", "popularity", "partnership"],
+  map: [
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+    "promotion",
+  ],
   swipe: [
     "proximity",
     "timing",
     "category",
     "popularity",
     "partnership",
+    "promotion",
     "randomness",
   ],
   catalog: [
@@ -713,6 +724,7 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "popularity",
     "partnership",
+    "promotion",
     "randomness",
   ],
   chat: [
@@ -723,6 +735,7 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "popularity",
     "partnership",
+    "promotion",
   ],
   social: [],
   favorites: [],
@@ -843,7 +856,17 @@ export const SIGNALS: {
     fn: "partnership()",
     input: "Place plan. Never strategy, promo flags, or rates.",
     process: "Free or missing → none floor. Paid → 1.",
-    output: "How partnered the place is. Not Promoting.",
+    output: "How partnered the place is. Not the Promotion signal.",
+    apis: [],
+    fields: UNIT,
+  },
+  {
+    key: "promotion",
+    label: "Promotion",
+    fn: "promotion()",
+    input: "The computed promoting boolean. Never rates, strategy, or pause columns.",
+    process: "Live discount → 1. Otherwise none floor. Demotes, never hides.",
+    output: "Whether a guest gets a discount here right now.",
     apis: [],
     fields: UNIT,
   },

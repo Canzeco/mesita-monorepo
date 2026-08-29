@@ -20,7 +20,7 @@
 // healthy in every log and every response.
 
 import type { SignalPlace } from "./discovery-signals.ts";
-import type { PromotingFields } from "./place-promoting.ts";
+import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 
 /**
  * The columns a ranking engine must SELECT beyond PLACE_PUBLIC_COLUMNS.
@@ -61,8 +61,8 @@ function nOrNull(v: unknown): number | null {
 }
 
 /**
- * Lane 1's projection. There is no promo field on SignalPlace to read, so the
- * lane split is enforced by the type rather than by everyone remembering it.
+ * Lane 1's projection. Rates and pause columns stay off SignalPlace.
+ * Promotion reads the computed `promoting` boolean, not those columns.
  *
  * `mesita_stars_overall` is deliberately NOT folded into the rating: Mesita's
  * own review counts are thin enough today that blending them would move the
@@ -84,8 +84,8 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
 
 /**
  * Places Lineup projection. `toSignalPlace` stays the earned-lane split
- * (no `plan`, no name vector). New blend call sites use this so Name and
- * Partnership can actually fire.
+ * (no `plan`, no name vector, no `promoting`). New blend call sites use
+ * this so Name, Partnership, and Promotion can actually fire.
  */
 export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
   return {
@@ -96,6 +96,7 @@ export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
       : row.plan == null
       ? null
       : String(row.plan),
+    promoting: isPlacePromoting(row),
   };
 }
 

@@ -32,6 +32,7 @@ describe("Discovery function APIs", () => {
       ["category", []],
       ["popularity", []],
       ["partnership", []],
+      ["promotion", []],
       ["randomness", []],
       ["social", []],
     ]);
@@ -43,7 +44,7 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("library order is the nine Lineup signals — Promoting is not a row", () => {
+  it("library order is the ten Lineup signals — Promotion sits after Partnership", () => {
     expect(LIBRARY_SIGNALS.map((row) => row.key)).toEqual([
       "name",
       "summary",
@@ -52,11 +53,13 @@ describe("Discovery function APIs", () => {
       "category",
       "popularity",
       "partnership",
+      "promotion",
       "randomness",
       "social",
     ]);
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
+    expect(SIGNAL_KEYS).toContain("promotion");
     expect(SIGNAL_KEYS).toContain("randomness");
     expect(SIGNAL_KEYS).toContain("name");
     expect(SIGNAL_KEYS).toContain("summary");
@@ -72,6 +75,7 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights.summary).toBe(2);
     expect(cfg.weights.name).toBe(1);
     expect(cfg.weights.partnership).toBe(1);
+    expect(cfg.weights.promotion).toBe(1);
     expect(cfg.params.summary.unembedded).toBe(0.2);
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
@@ -128,6 +132,11 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("map", "randomness")).toBe("zero");
     expect(modeSignalState("swipe", "randomness")).toBe("on");
     expect(modeSignalState("catalog", "partnership")).toBe("on");
+    expect(modeSignalState("map", "promotion")).toBe("on");
+    expect(modeSignalState("swipe", "promotion")).toBe("on");
+    expect(modeSignalState("catalog", "promotion")).toBe("on");
+    expect(modeSignalState("chat", "promotion")).toBe("on");
+    expect(modeSignalState("deep", "promotion")).toBe("off");
     expect(modeSignalState("social", "name")).toBe("off");
     expect(modeSignalState("favorites", "proximity")).toBe("off");
     expect(SIGNAL_KEYS.every((key) => modeSignalState("fast", key) === "off")).toBe(
@@ -234,6 +243,7 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/Max results caps the merge/);
     expect(name?.apis).not.toContain("Google Places Nearby Search");
     expect(name?.process).toMatch(/Map Filters never cut this list/);
+    expect(name?.process).toMatch(/other Lineup signals/);
     expect(name?.process).not.toMatch(/summary embedding/i);
   });
 
@@ -409,6 +419,8 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
+    expect(signals).toContain("promotion");
+    expect(signals).toContain("Megaphone");
     expect(googleModules).toContain("Google Places Autocomplete");
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
