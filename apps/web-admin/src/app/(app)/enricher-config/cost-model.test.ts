@@ -100,13 +100,18 @@ const settings: IntakeSettings = {
 };
 
 describe("instance estimates", () => {
-  it("Create is Google Pulse+Details only, one place", () => {
+  it("Create bills Pulse+Details plus the door Description, one place", () => {
+    // §8.4 v3: the door Description (one batched prompt) runs at create when
+    // no full Enrich is queued, so the estimate bills its synthesis too.
     const c = computeCreateCost(settings);
     expect(c.places).toBe(1);
     expect(c.active.map((l) => l.label)).toEqual([
       "Google profile",
       "Google photos",
       "Timezone",
+      "Presentation synthesis — economy",
+      "Category → tags",
+      "Persist data + images",
     ]);
   });
 
