@@ -35,21 +35,26 @@ describe("Name Search params", () => {
     expect(html).toContain('value="3"');
     expect(html).toContain('value="9"');
 
+    const box = (src: string, label: string) =>
+      src.search(new RegExp(`${label}\\s*</span>`));
+
     const fastHtml = html.slice(
       html.indexOf("Name (Fast Search)"),
       html.indexOf("Name (Deep Search)"),
     );
-    expect(fastHtml.indexOf("Google places")).toBeLessThan(
-      fastHtml.indexOf("Max results"),
+    expect(box(fastHtml, "Google places")).toBeLessThan(
+      box(fastHtml, "Max results"),
     );
 
     const deepHtml = html.slice(html.indexOf("Name (Deep Search)"));
-    const google = deepHtml.indexOf("Google places");
-    const partners = deepHtml.indexOf("Mesita partners");
-    const places = deepHtml.indexOf("Mesita places");
-    const max = deepHtml.indexOf("Max results");
-    expect(google).toBeLessThan(partners);
-    expect(partners).toBeLessThan(places);
-    expect(places).toBeLessThan(max);
+    expect(box(deepHtml, "Google places")).toBeLessThan(
+      box(deepHtml, "Mesita partners"),
+    );
+    expect(box(deepHtml, "Mesita partners")).toBeLessThan(
+      box(deepHtml, "Mesita places"),
+    );
+    expect(box(deepHtml, "Mesita places")).toBeLessThan(
+      box(deepHtml, "Max results"),
+    );
   });
 });
