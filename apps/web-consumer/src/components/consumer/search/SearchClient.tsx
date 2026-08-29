@@ -186,8 +186,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const lastFetchedAtMs = useRef<number | null>(null);
   const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
   const reloadMinSecRef = useRef(CATALOG_RELOAD_MIN_SEC);
-  const searchPowerRef = useRef(filters.searchPower);
-  searchPowerRef.current = filters.searchPower;
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forceNextLoad = useRef(false);
   const seenLocationKey = useRef<string | null>(null);
@@ -218,7 +216,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           CATALOG_NEARBY_MAX,
-          searchPowerRef.current,
+          filters.searchPower,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -234,7 +232,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [markViewport, supabase],
+    [filters.searchPower, markViewport, supabase],
   );
 
   const scheduleOrLoad = useCallback(

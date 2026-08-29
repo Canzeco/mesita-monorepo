@@ -314,7 +314,6 @@ describe("Search map puts the query pill and Filters button on one row", () => {
       "placeSearchLane",
     );
     expect(read("SearchClient.tsx")).toContain("filters.searchPower");
-    expect(read("SearchClient.tsx")).toContain("searchPowerRef.current");
     expect(read("SearchClient.tsx")).toContain("distance_km");
     expect(read("SearchClient.tsx")).not.toMatch(
       /applyMapFilters\(\s*predictions/,
