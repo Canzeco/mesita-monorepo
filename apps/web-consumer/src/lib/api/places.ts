@@ -199,6 +199,7 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   limit = CATALOG_NEARBY_MAX,
+  searchPower = 3,
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -208,6 +209,7 @@ export async function apiFetchNearbyCatalog(
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
+    searchPower,
     lat: center.lat,
     lng: center.lng,
     limit,
@@ -354,6 +356,7 @@ export type SuggestPlacesMode = "fast" | "deep";
 /**
  * Name search for the consumer /search bar and pickers.
  * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
+ * Map Filters never ride this call — power and Super Category are map-only.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,

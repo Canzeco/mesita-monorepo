@@ -3,24 +3,21 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PLACE_FAMILIES } from "@/lib/place-families";
-import {
-  mapFiltersAreActive,
-  MAP_STATUS_OPTIONS,
-} from "@/lib/map-filters-engine";
+import { mapFiltersAreActive } from "@/lib/map-filters-engine";
 import {
   resetMapFilters,
+  setMapSearchPower,
   toggleMapFamily,
-  toggleMapStatus,
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { FilterModule, Pill } from "@/components/consumer/discovery-filter-controls";
+import { SearchPowerBar } from "./SearchPowerBar";
 
-// Search-map Filters sheet. Status + Super Category only. There is no
-// Category or Types axis. A Super Category is a SET of categories; one
-// category may belong to multiple Super Categories (nightlife = bars +
-// nightclubs; breakfast = restaurants + cafés). Distance and time are
-// not map knobs: the viewport already decides how far, and When belongs
-// on Swipe.
+// Search-map Filters sheet. Places power + Super Category only. There
+// is no Status chip row, Category, or Types axis. Power is cumulative:
+// Partners ⊂ + Places ⊂ + Google. Mesita Places is enriched only.
+// A Super Category is a SET of categories; one category may belong to
+// multiple Super Categories. Distance and time are not map knobs.
 
 export function SearchMapFilters({
   onClose,
@@ -64,18 +61,11 @@ export function SearchMapFilters({
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="flex flex-col gap-3">
-          <FilterModule label="Status">
-            <div className="flex flex-wrap gap-1.5">
-              {MAP_STATUS_OPTIONS.map((option) => (
-                <Pill
-                  key={option.key}
-                  active={filters.statuses.includes(option.key)}
-                  onClick={() => toggleMapStatus(option.key)}
-                >
-                  {option.label}
-                </Pill>
-              ))}
-            </div>
+          <FilterModule label="Places">
+            <SearchPowerBar
+              power={filters.searchPower}
+              onPower={setMapSearchPower}
+            />
           </FilterModule>
 
           <FilterModule label="Super Category">

@@ -19,6 +19,7 @@ import {
   modeCallsModule,
   modeRequiresPool,
   modeSignalState,
+  snapMapReloadPair,
 } from "./catalog";
 
 describe("Discovery function APIs", () => {
@@ -145,8 +146,7 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Mesita/);
     expect(map?.process).toMatch(/Google/);
     expect(map?.process).toMatch(/overlaps/);
-    expect(map?.process).toMatch(/reloadMinKm/);
-    expect(map?.process).toMatch(/reloadMinSec/);
+    expect(map?.process).toMatch(/reload pair/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });
@@ -190,7 +190,12 @@ describe("Discovery function APIs", () => {
     });
     expect(
       coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
-    ).toMatchObject({ reloadMinKm: 20, reloadMinSec: 15 });
+    ).toMatchObject({ reloadMinKm: 4, reloadMinSec: 15 });
+    expect(
+      coerceConfig({ map: { reloadMinKm: 0.4, reloadMinSec: 2 } }).map,
+    ).toMatchObject({ reloadMinKm: 0.5, reloadMinSec: 2 });
+    expect(snapMapReloadPair(0.4, 2)).toEqual({ km: 0.5, sec: 2 });
+    expect(snapMapReloadPair(99, 40)).toEqual({ km: 4, sec: 15 });
   });
 
   it("coerceConfig defaults social on an old blob and clamps knobs", () => {
@@ -226,6 +231,8 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/not `google_name`/);
     expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).toMatch(/Max results caps the merge/);
+    expect(name?.process).toMatch(/Map Filters never cut this list/);
     expect(name?.process).not.toMatch(/summary embedding/i);
   });
 
@@ -266,12 +273,12 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
   });
 
-  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 plus merge max 9", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
       .toMatchObject({
-        fast: { count: 20 },
-        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3 },
+        fast: { googleCount: 20, count: 20 },
+        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3, count: 9 },
       });
   });
 
@@ -353,8 +360,26 @@ describe("Discovery page box order", () => {
     expect(name).toContain("not a Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
+    expect(name).toContain('label="Google places"');
+    expect(name).toContain('label="Max results"');
+    expect(name).toContain("name.fast.googleCount");
+    expect(name).toContain("name.fast.count");
+    expect(name).toContain("patchFast({ googleCount, count: googleCount })");
+    expect(name).toContain("patchFast({ count, googleCount: count })");
+    expect(name).toContain("name.deep.partnerCount");
+    expect(name).toContain("name.deep.mesitaCount");
+    expect(name).toContain("name.deep.googleCount");
+    expect(name).toContain("name.deep.count");
+    expect(name).toContain("Max results caps the merge");
+    expect(name).toContain("Map Filters never cut this list");
+    expect(name).toContain("same cap — Max results stays for Deep symmetry");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
+    expect(map).toContain("Reload after");
+    expect(map).toContain("MAP_RELOAD_PAIRS");
+    expect(map).toContain("Browsing the rail does not count");
+    expect(map).not.toContain("Reload after the camera moves");
+    expect(map).not.toContain("Reload after waiting");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');

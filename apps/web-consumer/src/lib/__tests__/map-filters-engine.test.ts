@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
 import {
   applyMapFilters,
+  clampSearchPower,
   MAP_FILTER_DEFAULTS,
   mapFilterCount,
   mapFiltersAreActive,
   placeMapStatus,
+  placeSearchLane,
+  searchPowerCaption,
   type MapFilters,
 } from "@/lib/map-filters-engine";
 
@@ -46,34 +49,78 @@ describe("placeMapStatus", () => {
   });
 });
 
+describe("placeSearchLane", () => {
+  it("maps Partners / enriched Places / Google; Created and Requested are out", () => {
+    expect(placeSearchLane(place({ partner: true }))).toBe("partners");
+    expect(placeSearchLane(place({ promoting: true }))).toBe("partners");
+    expect(placeSearchLane(place({ content_status: "ready" }))).toBe("places");
+    expect(
+      placeSearchLane(place({ enriched_at: "2026-08-01T00:00:00Z" })),
+    ).toBe("places");
+    expect(placeSearchLane(place({ googleOnly: true }))).toBe("google");
+    expect(placeSearchLane(place({ from_google: true }))).toBe("google");
+    expect(placeSearchLane(place())).toBeNull();
+    expect(
+      placeSearchLane(place({ request_count: 3, content_status: "queued" })),
+    ).toBeNull();
+  });
+});
+
+describe("search power", () => {
+  it("captions the cumulative union and clamps the bar", () => {
+    expect(searchPowerCaption(1)).toBe("Mesita Partners");
+    expect(searchPowerCaption(2)).toBe("Mesita Partners & Mesita Places");
+    expect(searchPowerCaption(3)).toBe(
+      "Mesita Partners & Mesita Places & Google Places",
+    );
+    expect(clampSearchPower(99)).toBe(3);
+    expect(clampSearchPower(0)).toBe(1);
+    expect(clampSearchPower(undefined)).toBe(3);
+  });
+});
+
 describe("applyMapFilters", () => {
-  it("is a pass-through when nothing is selected", () => {
-    const deck = [place({ id: "a" }), place({ id: "b" })];
-    expect(applyMapFilters(deck, filters())).toBe(deck);
+  const partner = place({ id: "partner", partner: true });
+  const enriched = place({ id: "enriched", content_status: "ready" });
+  const created = place({ id: "created" });
+  const requested = place({
+    id: "requested",
+    request_count: 2,
+    content_status: "queued",
+  });
+  const google = place({ id: "google", googleOnly: true });
+  const deck = [partner, enriched, created, requested, google];
+
+  it("defaults to full power and still drops Created and Requested", () => {
+    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(3);
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
+    expect(applyMapFilters(deck, filters()).map((p) => p.id)).toEqual([
+      "partner",
+      "enriched",
+      "google",
+    ]);
   });
 
-  it("counts every selected status and Super Category", () => {
+  it("counts a pulled-back power bar as one filter", () => {
+    expect(mapFilterCount(filters({ searchPower: 1 }))).toBe(1);
     expect(
-      mapFilterCount(
-        filters({
-          statuses: ["created", "enriched"],
-          familyKeys: ["restaurants"],
-        }),
-      ),
-    ).toBe(3);
+      mapFilterCount(filters({ searchPower: 2, familyKeys: ["restaurants"] })),
+    ).toBe(2);
+    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("statuses");
+    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
 
-  it("keeps the selected status buckets", () => {
-    const google = place({ id: "g", googleOnly: true });
-    const created = place({ id: "c" });
-    const promoted = place({ id: "p", promoting: true });
-    const kept = applyMapFilters(
-      [google, created, promoted],
-      filters({ statuses: ["not_on_mesita", "promoted"] }),
-    );
-    expect(kept.map((p) => p.id)).toEqual(["g", "p"]);
+  it("nests Partners ⊂ + Places ⊂ + Google", () => {
+    expect(
+      applyMapFilters(deck, filters({ searchPower: 1 })).map((p) => p.id),
+    ).toEqual(["partner"]);
+    expect(
+      applyMapFilters(deck, filters({ searchPower: 2 })).map((p) => p.id),
+    ).toEqual(["partner", "enriched"]);
+    expect(
+      applyMapFilters(deck, filters({ searchPower: 3 })).map((p) => p.id),
+    ).toEqual(["partner", "enriched", "google"]);
   });
 
   it("cuts on Super Category only — never a concrete type slug", () => {
@@ -81,11 +128,13 @@ describe("applyMapFilters", () => {
       id: "bar",
       category: "night_club",
       family_keys: ["bars_nightlife"],
+      content_status: "ready",
     });
     const taco = place({
       id: "taco",
       category: "mexican_restaurant",
       family_keys: ["restaurants"],
+      content_status: "ready",
     });
     expect(
       applyMapFilters(
@@ -93,7 +142,6 @@ describe("applyMapFilters", () => {
         filters({ familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual(["taco"]);
-    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
 
   it("a category in two Super Categories matches either pill", () => {
@@ -101,32 +149,49 @@ describe("applyMapFilters", () => {
       id: "brunch",
       category: "brunch",
       family_keys: ["restaurants", "cafes_bakeries"],
+      content_status: "ready",
     });
     const karaoke = place({
       id: "karaoke",
       category: "karaoke",
       family_keys: ["bars_nightlife", "experiences"],
+      content_status: "ready",
     });
-    const deck = [brunch, karaoke];
+    const set = [brunch, karaoke];
     expect(
-      applyMapFilters(deck, filters({ familyKeys: ["restaurants"] })).map(
+      applyMapFilters(set, filters({ familyKeys: ["restaurants"] })).map(
         (p) => p.id,
       ),
     ).toEqual(["brunch"]);
     expect(
-      applyMapFilters(deck, filters({ familyKeys: ["cafes_bakeries"] })).map(
+      applyMapFilters(set, filters({ familyKeys: ["cafes_bakeries"] })).map(
         (p) => p.id,
       ),
     ).toEqual(["brunch"]);
     expect(
-      applyMapFilters(deck, filters({ familyKeys: ["bars_nightlife"] })).map(
+      applyMapFilters(set, filters({ familyKeys: ["bars_nightlife"] })).map(
         (p) => p.id,
       ),
     ).toEqual(["karaoke"]);
     expect(
-      applyMapFilters(deck, filters({ familyKeys: ["experiences"] })).map(
+      applyMapFilters(set, filters({ familyKeys: ["experiences"] })).map(
         (p) => p.id,
       ),
     ).toEqual(["karaoke"]);
+  });
+
+  it("keeps Google Nearby through Super Category — family is Mesita-only", () => {
+    const google: Place = place({
+      id: "g1",
+      googleOnly: true,
+      name: "Random café",
+      family_keys: [],
+    });
+    expect(
+      applyMapFilters(
+        [google],
+        filters({ searchPower: 3, familyKeys: ["restaurants"] }),
+      ).map((p) => p.id),
+    ).toEqual(["g1"]);
   });
 });

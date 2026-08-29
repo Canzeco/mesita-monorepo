@@ -5,7 +5,7 @@
 // types live on Discovery Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BadgeCheck, Clock, Globe, Map as MapIcon, Move, Store } from "lucide-react";
+import { BadgeCheck, Globe, Map as MapIcon, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -19,10 +19,7 @@ import {
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
   MAP_LANE_COUNT_MAX,
-  MAP_RELOAD_MIN_KM_MAX,
-  MAP_RELOAD_MIN_KM_MIN,
-  MAP_RELOAD_MIN_SEC_MAX,
-  MAP_RELOAD_MIN_SEC_MIN,
+  MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
   type MapConfig,
 } from "./catalog";
@@ -138,26 +135,38 @@ export function MapConfigClient({
             disabled={pending || loadBlocked}
             onChange={(googleCount) => patch({ googleCount })}
           />
-          <NumberField
-            icon={<Move className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Reload after the camera moves (km)"
-            value={map.reloadMinKm}
-            min={MAP_RELOAD_MIN_KM_MIN}
-            max={MAP_RELOAD_MIN_KM_MAX}
-            decimals
-            disabled={pending || loadBlocked}
-            onChange={(reloadMinKm) => patch({ reloadMinKm })}
-          />
-          <NumberField
-            icon={<Clock className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Reload after waiting (seconds)"
-            value={map.reloadMinSec}
-            min={MAP_RELOAD_MIN_SEC_MIN}
-            max={MAP_RELOAD_MIN_SEC_MAX}
-            decimals
-            disabled={pending || loadBlocked}
-            onChange={(reloadMinSec) => patch({ reloadMinSec })}
-          />
+        </div>
+        <div className="mt-5">
+          <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
+            Reload after
+          </p>
+          <p className="text-muted-foreground mb-2 type-meta">
+            Camera must move this far AND wait this long. Browsing the rail does not count.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {MAP_RELOAD_PAIRS.map((pair) => {
+              const active =
+                map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
+              return (
+                <button
+                  key={`${pair.km}-${pair.sec}`}
+                  type="button"
+                  disabled={pending || loadBlocked}
+                  onClick={() =>
+                    patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
+                  }
+                  aria-pressed={active}
+                  className={
+                    active
+                      ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                      : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
+                  }
+                >
+                  {pair.km} km · {pair.sec}s
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {updatedAt ? (

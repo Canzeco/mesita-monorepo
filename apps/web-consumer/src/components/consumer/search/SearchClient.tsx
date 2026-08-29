@@ -4,12 +4,13 @@
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Status + Super Category also
+//     (the six Super Category families). Places power + Super Category
 //     live in the map Filters sheet. Distance and time are not map
 //     knobs. Swipe keeps Discovery.
-//   • Bottom overlay (idle): catalog rail of the three Map lanes around
-//     the camera (partners, then Mesita, then Google; overlaps drop).
-//     A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
+//   • Bottom overlay (idle): catalog rail around the camera. Places
+//     power picks the engine (Partners / + enriched Places / + Google
+//     Nearby). Super Category cuts Mesita only. The rail is closest
+//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
 //     or pin selection pans are ignored. The rail's center card is
 //     always the selected pin. Scroll picks the center; a pin tap
 //     scrolls that card to center. Tapping the already-selected card
@@ -164,10 +165,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  const catalog = useMemo(
-    () => applyMapFilters(nearby, filters),
-    [nearby, filters],
-  );
+  const catalog = useMemo(() => {
+    const cut = applyMapFilters(nearby, filters);
+    return [...cut].sort(
+      (a, b) => (a.distance_km ?? Number.POSITIVE_INFINITY) -
+        (b.distance_km ?? Number.POSITIVE_INFINITY),
+    );
+  }, [nearby, filters]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
@@ -212,6 +216,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           CATALOG_NEARBY_MAX,
+          filters.searchPower,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -227,7 +232,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [markViewport, supabase],
+    [filters.searchPower, markViewport, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -302,6 +307,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     idleRef.current = idle;
   }, [idle]);
+
+  // Places power changes the engine, not a client-side chip cut. Refetch
+  // the matching lanes. Super Category stays local. The query bar
+  // (Fast / Deep Autocomplete) never reads these filters.
+  useEffect(() => {
+    if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    clearPendingReload();
+    void loadViewport(lastBoxRef.current);
+  }, [clearPendingReload, filters.searchPower, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -613,7 +627,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after map Status + Super Category. */}
+      {/* Base layer — pins are the nearby catalog after Places power + Super Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -630,9 +644,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       />
 
       {/* Floating top overlay — query pill + Filters button, then Category
-          families. Status opens in the sheet. max-h-[70%] caps long lists
-          so they scroll and the map stays visible below. Ask AI lives on
-          Home › Chat. */}
+          families. Places power opens in the sheet. max-h-[70%] caps long
+          lists so they scroll and the map stays visible below. Ask AI lives
+          on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 items-center gap-2">

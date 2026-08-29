@@ -86,10 +86,11 @@ export function viewportWidthKm(box: {
 /**
  * Default floor matching discovery_config.map.reloadMinKm. A 110 m cell
  * (`toFixed(3)`) is a few pixels when the city is in frame — that was the
- * hypersensitive reload. 0.4 km is a few city blocks; zoomed-out views also
- * require 20% of the visible width so a one-pixel nudge never refetches.
+ * hypersensitive reload. 0.5 km is the default reload pair with 2 s;
+ * zoomed-out views also require 20% of the visible width so a one-pixel
+ * nudge never refetches.
  */
-export const CATALOG_RELOAD_MIN_KM = 0.4;
+export const CATALOG_RELOAD_MIN_KM = 0.5;
 export const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
 export const CATALOG_RELOAD_MIN_KM_MIN = 0.2;
 export const CATALOG_RELOAD_MIN_KM_MAX = 20;

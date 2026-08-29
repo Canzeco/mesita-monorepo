@@ -161,21 +161,25 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Status and Super Category only — no types, distance, or time", () => {
+  it("shows Places power and Super Category only — no status chips, types, distance, or time", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
-    expect(html).toContain("Status");
-    expect(html).toContain("Not on Mesita");
-    expect(html).toContain("Created");
-    expect(html).toContain("Requested");
-    expect(html).toContain("Enriched");
-    expect(html).toContain("Partnered");
-    expect(html).toContain("Promoted");
+    expect(html).toContain("Places");
+    expect(html).toContain("Mesita Partners &amp; Mesita Places &amp; Google Places");
+    expect(html).toContain("Partners");
+    expect(html).toContain("+ Places");
+    expect(html).toContain("+ Google");
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
     expect(html).toContain("Bars &amp; Nightlife");
     expect(html).toContain("Show 4 places");
+    expect(html).not.toContain("Not on Mesita");
+    expect(html).not.toContain("Created");
+    expect(html).not.toContain("Requested");
+    expect(html).not.toContain("Enriched");
+    expect(html).not.toContain("Partnered");
+    expect(html).not.toContain("Promoted");
     expect(html).not.toContain(">Category<");
     expect(html).not.toContain("Types");
     expect(html).not.toContain("Nightclub");
@@ -248,6 +252,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
+    expect(read("../../../lib/api/places.ts")).toContain("searchPower");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
 
@@ -259,6 +264,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(src).toContain("markViewport(box)");
     expect(src).toContain("forceNextLoad");
     expect(src).toContain("meta.programmatic");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*scheduleOrLoad/,
+    );
   });
 
   it("reloads once when a later GPS fix lands off the fetched camera", () => {
@@ -270,7 +278,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
 });
 
 describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog with map Status + Category families on the chrome", () => {
+  it("cuts the nearby catalog with Places power + Category families on the chrome", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("useMapFilters");
@@ -289,19 +297,41 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(src).not.toContain("SearchScopeSheet");
     expect(src).toMatch(/<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/);
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    expect(read("SearchMapFilters.tsx")).toContain("Status");
+    expect(read("SearchMapFilters.tsx")).toContain("Places");
+    expect(read("SearchMapFilters.tsx")).toContain("SearchPowerBar");
     expect(read("SearchMapFilters.tsx")).toContain("Super Category");
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Types"');
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');
-    expect(read("SearchMapFilters.tsx")).toContain("MAP_STATUS_OPTIONS");
+    expect(read("SearchMapFilters.tsx")).not.toContain("MAP_STATUS_OPTIONS");
+    expect(read("SearchMapFilters.tsx")).not.toContain("toggleMapStatus");
     expect(read("../../../lib/map-filters-engine.ts")).toContain(
-      '"Not on Mesita"',
+      "Mesita Partners",
     );
-    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Created"');
-    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Requested"');
-    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Enriched"');
-    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Partnered"');
-    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Promoted"');
+    expect(read("../../../lib/map-filters-engine.ts")).toContain(
+      "Mesita Places",
+    );
+    expect(read("../../../lib/map-filters-engine.ts")).toContain(
+      "Google Places",
+    );
+    expect(read("../../../lib/map-filters-engine.ts")).toContain(
+      "placeSearchLane",
+    );
+    expect(read("SearchClient.tsx")).toContain("filters.searchPower");
+    expect(read("SearchClient.tsx")).toMatch(
+      /filters\.searchPower[\s\S]*clearPendingReload\(\)[\s\S]*loadViewport\(lastBoxRef\.current\)/,
+    );
+    expect(read("SearchClient.tsx")).toContain("distance_km");
+    expect(read("SearchClient.tsx")).not.toMatch(
+      /applyMapFilters\(\s*predictions/,
+    );
+    expect(read("../../../lib/api/places.ts")).not.toMatch(
+      /consumer-web-suggest-places[\s\S]*searchPower/,
+    );
+    expect(read("../../../lib/api/places.ts")).not.toMatch(
+      /consumer-web-suggest-places[\s\S]*familyKeys/,
+    );
+    expect(read("SearchClient.tsx")).toContain('"fast"');
+    expect(read("SearchClient.tsx")).toContain('"deep"');
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
     expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
@@ -416,7 +446,7 @@ describe("shouldReloadNearbyCatalog", () => {
     expect(nearbyReloadThresholdKm(10, 5)).toBe(5);
     expect(clampReloadMinKm(99)).toBe(20);
     expect(clampReloadMinKm(0.1)).toBe(0.2);
-    expect(clampReloadMinKm(undefined)).toBe(0.4);
+    expect(clampReloadMinKm(undefined)).toBe(0.5);
     expect(clampReloadMinSec(40)).toBe(15);
     expect(clampReloadMinSec(undefined)).toBe(2);
     expect(
@@ -427,7 +457,7 @@ describe("shouldReloadNearbyCatalog", () => {
     ).toBe(true);
   });
 
-  it("reloads after a few blocks at the 0.4 km default", () => {
+  it("reloads after a few blocks at the 0.5 km default", () => {
     const blockBox = {
       south: 25.495,
       west: -100.305,
@@ -435,10 +465,10 @@ describe("shouldReloadNearbyCatalog", () => {
       east: -100.295,
     };
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.504, lng: -100.3 }, blockBox, 0.4),
+      shouldReloadNearbyCatalog(last, { lat: 25.505, lng: -100.3 }, blockBox, 0.5),
     ).toBe(true);
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.4),
+      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.5),
     ).toBe(false);
   });
 

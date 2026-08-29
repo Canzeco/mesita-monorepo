@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { DEFAULT_MAP, NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
   CATALOG_NEARBY_MAX,
@@ -7,6 +7,12 @@ import {
   GOOGLE_NEARBY_MAX,
   MESITA_NEARBY_MAX,
   NEARBY_TYPES,
+  clampSearchPower,
+  dropKnownMesitaGoogleHits,
+  isEnrichedListedRow,
+  keepListedForSearchPower,
+  listedGooglePlaceIds,
+  lanesForSearchPower,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
@@ -651,4 +657,45 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
     globalThis.fetch = orig;
     __resetNearbyGoogleCacheForTests();
   }
+});
+
+Deno.test("search power zeros unused lanes and treats Mesita Places as enriched", () => {
+  assertEquals(clampSearchPower(undefined), 3);
+  assertEquals(clampSearchPower(1), 1);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).mesitaCount, 0);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).googleCount, 0);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).googleCount, 0);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).mesitaCount, DEFAULT_MAP.mesitaCount);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 3).googleCount, DEFAULT_MAP.googleCount);
+  assertEquals(isEnrichedListedRow({ content_status: "ready" }), true);
+  assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
+  assertEquals(isEnrichedListedRow({ content_status: "queued" }), false);
+  assertEquals(isEnrichedListedRow({}), false);
+  assertEquals(keepListedForSearchPower({ id: "p", partner: true }, 1), true);
+  assertEquals(
+    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }, 1),
+    false,
+  );
+  assertEquals(
+    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }, 2),
+    true,
+  );
+  assertEquals(
+    keepListedForSearchPower({ id: "c", plan: "free", content_status: "queued" }, 3),
+    false,
+  );
+  const createdGids = listedGooglePlaceIds([
+    { google_place_id: "ChIJ-created" },
+    { google_place_id: null },
+  ]);
+  assertEquals(
+    dropKnownMesitaGoogleHits(
+      [
+        { placeId: "ChIJ-created" },
+        { placeId: "ChIJ-google" },
+      ],
+      createdGids,
+    ).map((hit) => hit.placeId),
+    ["ChIJ-google"],
+  );
 });

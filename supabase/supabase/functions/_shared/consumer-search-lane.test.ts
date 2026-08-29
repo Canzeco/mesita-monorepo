@@ -12,6 +12,7 @@ import {
   splitResolvedNameHits,
   stripPlacesPrefix,
   takeFastLane,
+  takeNameDeepResults,
   type LaneItem,
   type ListedRow,
 } from "./consumer-search-lane.ts";
@@ -123,6 +124,29 @@ Deno.test("mergeNameDeepLanes: Partners then Mesita then Google", () => {
     google: [item({ placeId: "g1", mainText: "Google" })],
   });
   assertEquals(out.map((p) => p.mainText), ["Partner", "Mesita", "Google"]);
+});
+
+Deno.test("takeNameDeepResults slices the merged list at Max results", () => {
+  const merged = mergeNameDeepLanes({
+    partners: [
+      item({ placeId: "p1", mainText: "P1", partner: true, mesitaId: "m-p1" }),
+      item({ placeId: "p2", mainText: "P2", partner: true, mesitaId: "m-p2" }),
+    ],
+    mesita: [
+      item({ placeId: "m1", mainText: "M1", mesitaId: "m-1" }),
+      item({ placeId: "m2", mainText: "M2", mesitaId: "m-2" }),
+    ],
+    google: [
+      item({ placeId: "g1", mainText: "G1" }),
+      item({ placeId: "g2", mainText: "G2" }),
+    ],
+  });
+  assertEquals(merged.map((p) => p.mainText), ["P1", "P2", "M1", "M2", "G1", "G2"]);
+  assertEquals(
+    takeNameDeepResults(merged, 4).map((p) => p.mainText),
+    ["P1", "P2", "M1", "M2"],
+  );
+  assertEquals(takeNameDeepResults(merged, 0), []);
 });
 
 Deno.test("mergeNameDeepLanes: partner in Mesita lane appears once", () => {
