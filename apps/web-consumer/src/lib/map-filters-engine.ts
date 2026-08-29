@@ -4,12 +4,12 @@
 // Scope is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
 // Partners+Places+Google. Default is + Places. Mesita Places is the
 // enriched profile only — Created and Requested stubs are not a search
-// source. A Super Category is a SET of categories; a category may sit
-// in two (breakfast is restaurants AND cafés). The cut is OR: a place
-// matches if any of its Super Categories is selected. The Search chrome
-// uses the guest word Category for the same six families. Distance and
-// time stay off this surface: the camera already bounds the set. Swipe
-// keeps Discovery.
+// source. Super Categories partition Mesita Categories (breakfast is
+// restaurants, not cafés). The cut is OR across selected pills. Google
+// stubs match from family_keys (Google primaryType → one Super). The
+// Search chrome uses the guest word Category for the same six families.
+// Distance and time stay off this surface: the camera already bounds
+// the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -134,9 +134,9 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   if (!lane) return false;
   if (LANE_POWER[lane] > f.searchPower) return false;
 
-  // Super Category does not cut Google stubs — they have no reliable
-  // membership. Closest Google at full power stays closest Google.
-  if (lane !== "google" && f.familyKeys.length > 0) {
+  // Super Category cuts Mesita rows and Google stubs. Google membership
+  // is the one Super of the Nearby primaryType (family_keys on the stub).
+  if (f.familyKeys.length > 0) {
     const familyHit = f.familyKeys.some((key) =>
       (place.family_keys ?? []).includes(key),
     );

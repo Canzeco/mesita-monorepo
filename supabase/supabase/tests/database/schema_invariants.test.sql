@@ -496,8 +496,14 @@ select is(
 
 select is(
   (select super_category_slugs from public.place_categories where slug = 'breakfast'),
-  array['restaurants', 'cafes_bakeries']::text[],
-  'breakfast intersects restaurants and cafes'
+  array['restaurants']::text[],
+  'breakfast belongs to restaurants only'
+);
+
+select is(
+  (select max(cardinality(super_category_slugs))::bigint from public.place_categories),
+  1::bigint,
+  'every Atlas category maps to at most one Super Category'
 );
 
 select ok(

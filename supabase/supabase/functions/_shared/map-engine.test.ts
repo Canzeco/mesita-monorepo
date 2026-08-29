@@ -128,14 +128,13 @@ Deno.test("evaluatePlaceForMap admits restaurant subtypes when restaurant is on"
   assertEquals(ok.eligible, true);
 });
 
-Deno.test("evaluatePlaceForMap rejects wellness and hotels", () => {
+Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
   const spa = evaluatePlaceForMap(MAP, {
     primaryType: "spa",
     rating: 4.8,
     reviewCount: 200,
   });
-  assertEquals(spa.eligible, false);
-  if (!spa.eligible) assertEquals(spa.code, "family_not_eligible");
+  assertEquals(spa.eligible, true);
   const hotel = evaluatePlaceForMap(MAP, {
     primaryType: "hotel",
     rating: 4.8,
@@ -181,7 +180,7 @@ Deno.test("evaluatePlaceForMap respects type batteries and floors", () => {
   if (!low.eligible) assertEquals(low.code, "below_min_rating");
 });
 
-Deno.test("admitSwipeCatalog keeps listed F&B, drops hotels/spas, never Google", () => {
+Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Google", () => {
   const listed = [
     { id: "rest", category: "mexican_restaurant", listing_type: "web" as const },
     { id: "bar", category: "bar", listing_type: "partner" as const },
@@ -189,7 +188,7 @@ Deno.test("admitSwipeCatalog keeps listed F&B, drops hotels/spas, never Google",
     { id: "spa", category: "spa", listing_type: "partner" as const },
   ];
   const got = admitSwipeCatalog(listed, MAP);
-  assertEquals(got.map((r) => r.id), ["rest", "bar"]);
+  assertEquals(got.map((r) => r.id), ["rest", "bar", "spa"]);
 });
 
 Deno.test("admitSwipeCatalog honors Map type batteries", () => {

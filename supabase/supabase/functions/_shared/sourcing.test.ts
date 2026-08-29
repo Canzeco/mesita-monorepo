@@ -14,11 +14,8 @@ Deno.test("familyForGoogleType maps known types", () => {
   assertEquals(familyForGoogleType("gas_station"), null);
 });
 
-Deno.test("familiesForGoogleType returns dual-family keys for gastropub", () => {
-  assertEquals(familiesForGoogleType("gastropub"), [
-    "restaurants",
-    "bars_nightlife",
-  ]);
+Deno.test("familiesForGoogleType returns restaurants only for gastropub", () => {
+  assertEquals(familiesForGoogleType("gastropub"), ["restaurants"]);
 });
 
 Deno.test("familiesForGoogleType accepts _restaurant alias", () => {

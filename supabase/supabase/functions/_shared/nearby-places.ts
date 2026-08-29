@@ -25,6 +25,7 @@ import {
   NEARBY_RADIUS_KM,
   takeClosest,
 } from "./geo.ts";
+import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 
 export const MESITA_NEARBY_MAX =
   DEFAULT_MAP.partnerCount + DEFAULT_MAP.mesitaCount;
@@ -161,7 +162,9 @@ export function peekCachedNearbyPlaces(
 
 export type SearchNearbyOpts = {
   radiusM?: number;
-  /** Subset of NEARBY_TYPES. Omit = all five. Empty = no Google call. */
+  /** Nearby primary types. Omit = the five F&B batteries. Empty = no
+   *  Google call. Super-driven search may send GOOGLE_SEARCH_TYPES
+   *  (spa, museum, park, …) beyond the five. */
   types?: readonly string[];
   /** Called only by the request that starts the Nearby calls — not on
    *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
@@ -180,14 +183,17 @@ function nearbyCellKey(
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${nearbyTypesKey(types)}`;
 }
 
+const SUPER_SEARCH_TYPE_SET = new Set<string>(
+  Object.values(GOOGLE_SEARCH_TYPES).flat(),
+);
+
 function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
   if (!types) return NEARBY_TYPES;
-  const allowed = new Set<string>(NEARBY_TYPES);
-  return types.filter((t) => allowed.has(t));
+  return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 
-/** Closest Google food/drink places around `center`. One Nearby Search
- *  (New) with the enabled primary types, max 20, DISTANCE rank. Same ~1 km
+/** Closest Google places around `center`. One Nearby Search (New) with
+ *  the enabled primary types, max 20, DISTANCE rank. Same ~1 km
  *  cell reuses a successful 15s result so a pan-idle does not spend a
  *  billed call twice. HTTP / parse failures are returned (Mesita still
  *  shows) but never cached. Concurrent same-cell pans share one in-flight

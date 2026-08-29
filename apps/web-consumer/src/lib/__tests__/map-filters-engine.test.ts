@@ -144,17 +144,17 @@ describe("applyMapFilters", () => {
     ).toEqual(["taco"]);
   });
 
-  it("a category in two Super Categories matches either pill", () => {
+  it("each Mesita category matches exactly one Super Category", () => {
     const brunch = place({
       id: "brunch",
       category: "brunch",
-      family_keys: ["restaurants", "cafes_bakeries"],
+      family_keys: ["restaurants"],
       content_status: "ready",
     });
     const karaoke = place({
       id: "karaoke",
       category: "karaoke",
-      family_keys: ["bars_nightlife", "experiences"],
+      family_keys: ["bars_nightlife"],
       content_status: "ready",
     });
     const set = [brunch, karaoke];
@@ -167,7 +167,7 @@ describe("applyMapFilters", () => {
       applyMapFilters(set, filters({ familyKeys: ["cafes_bakeries"] })).map(
         (p) => p.id,
       ),
-    ).toEqual(["brunch"]);
+    ).toEqual([]);
     expect(
       applyMapFilters(set, filters({ familyKeys: ["bars_nightlife"] })).map(
         (p) => p.id,
@@ -177,21 +177,32 @@ describe("applyMapFilters", () => {
       applyMapFilters(set, filters({ familyKeys: ["experiences"] })).map(
         (p) => p.id,
       ),
-    ).toEqual(["karaoke"]);
+    ).toEqual([]);
   });
 
-  it("keeps Google Nearby through Super Category — family is Mesita-only", () => {
-    const google: Place = place({
-      id: "g1",
+  it("Google stubs match Super Category from family_keys", () => {
+    const cafe = place({
+      id: "g-cafe",
       googleOnly: true,
       name: "Random café",
+      family_keys: ["cafes_bakeries"],
+    });
+    const hotel = place({
+      id: "g-hotel",
+      googleOnly: true,
       family_keys: [],
     });
     expect(
       applyMapFilters(
-        [google],
+        [cafe, hotel],
+        filters({ searchPower: 3, familyKeys: ["cafes_bakeries"] }),
+      ).map((p) => p.id),
+    ).toEqual(["g-cafe"]);
+    expect(
+      applyMapFilters(
+        [cafe],
         filters({ searchPower: 3, familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
-    ).toEqual(["g1"]);
+    ).toEqual([]);
   });
 });

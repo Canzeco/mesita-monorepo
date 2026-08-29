@@ -1,8 +1,8 @@
 // Super Category inference: OpenAI classifier over the Atlas list (5–10
 // slugs; live catalog is the six in place_super_categories). Used when
 // the place has no Atlas category yet (undefined). Once Category is
-// known, family_keys is that category's FULL membership set — a category
-// in two supers keeps both. Empty here = leave family_keys undefined.
+// known, family_keys is that category's one Super. Empty here = leave
+// family_keys undefined.
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import {
@@ -46,17 +46,15 @@ export async function inferPlaceSuperCategories(
     .join("\n");
 
   const systemContent =
-    "You classify a place into one or two Super Categories from a fixed list. " +
-    'Respond with a single JSON object {"super_categories":["<slug>",...]} ' +
-    "where each slug is copied verbatim from the list. A Super Category is a " +
-    "set of categories (nightlife includes bars and nightclubs). Pick 1 slug " +
-    "when the place clearly belongs to one set; pick 2 only for a real " +
-    "intersection (brunch is restaurants and cafes). Never invent slugs. " +
-    "Never return more than two.";
+    "You classify a place into exactly one Super Category from a fixed list. " +
+    'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
+    "where the slug is copied verbatim from the list. A Super Category is a " +
+    "partition of categories (nightlife includes bars and nightclubs; brunch " +
+    "is restaurants, not cafés). Never invent slugs. Never return more than one.";
   const userPrompt =
     `Super Categories (slug — label):\n${catalog}\n\n` +
     `Place:\n${placeLines}\n\n` +
-    `Return {"super_categories":["<one or two slugs from the list>"]}.`;
+    `Return {"super_categories":["<one slug from the list>"]}.`;
 
   try {
     const r = await fetch(OPENAI_URL, {

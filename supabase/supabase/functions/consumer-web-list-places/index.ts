@@ -16,13 +16,15 @@
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
 //     then Mesita. No Google stubs — mobile opens `/place/:id` and
 //     cannot host GooglePlaceSheet.
-//   { google: true, lat, lng, limit?, searchPower? } — web Search catalog.
-//     searchPower (default 2, + Places) is the Places scope: 1 Partners
-//     only, 2 Partners + enriched Mesita Places, 3 + Google Nearby.
-//     Power 1–2 never call Nearby. Google stays distance (closest, not
-//     best). Listed pins Lineup-reorder (Map mask). Mesita Place IDs
-//     never stub. Google fill is metered per connecting IP when power
-//     is 3.
+//   { google: true, lat, lng, limit?, searchPower?, familyKeys? } — web
+//     Search catalog. searchPower (default 2, + Places) is the Places
+//     scope: 1 Partners only, 2 Partners + enriched Mesita Places, 3 +
+//     Google Nearby. familyKeys (guest Super pills) pick Nearby
+//     `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES so unlisted Google
+//     places match the Super. Empty = operator F&B batteries. Power 1–2
+//     never call Nearby. Google stays distance (closest, not best).
+//     Listed pins Lineup-reorder (Map mask). Mesita Place IDs never stub.
+//     Google fill is metered per connecting IP when power is 3.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -36,6 +38,8 @@ import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { familiesForGoogleType } from "../_shared/sourcing.ts";
+import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
+import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import {
   applyGeneralCategoryCap,
   loadDiscoveryConfig,
@@ -157,6 +161,7 @@ type ListBody = {
   nearby?: boolean;
   google?: boolean;
   searchPower?: number;
+  familyKeys?: unknown;
   lat?: number;
   lng?: number;
   radiusKm?: number;
@@ -205,6 +210,7 @@ Deno.serve(async (req) => {
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
   let searchPower: 1 | 2 | 3 = 2;
+  let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
@@ -215,6 +221,7 @@ Deno.serve(async (req) => {
     clientGoogle = nearbyDecision.mode === "ok" &&
       wantsGoogleFill(body as Record<string, unknown>);
     searchPower = clampSearchPower(body.searchPower);
+    guestSupers = readGuestFamilyKeys(body.familyKeys);
     if (nearbyDecision.mode === "none") {
       bboxDecision = decideBbox(body as Record<string, unknown>);
     }
@@ -252,7 +259,9 @@ Deno.serve(async (req) => {
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
   const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map);
-  const nearbyTypes = enabledNearbyTypes(cfg.map);
+  const nearbyTypes = guestSupers.length > 0
+    ? nearbyTypesForSupers(guestSupers)
+    : enabledNearbyTypes(cfg.map);
   const filters = isNearby
     ? listedMapFilters(cfg.filters, cfg.map)
     : cfg.filters;

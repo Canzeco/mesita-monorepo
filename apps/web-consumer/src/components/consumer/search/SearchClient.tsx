@@ -224,6 +224,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           nextCenter,
           CATALOG_NEARBY_MAX,
           filters.searchPower,
+          filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -239,7 +240,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [filters.searchPower, markViewport, supabase],
+    [filters.searchPower, filters.familyKeys, markViewport, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -336,8 +337,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     idleRef.current = idle;
   }, [idle]);
 
-  // Places scope changes the engine, not a client-side chip cut. Refetch
-  // the matching lanes. Super Category stays local. The query bar
+  // Places scope and Super Category both change the Nearby engine.
+  // Super pills pick Google includedPrimaryTypes. The query bar
   // (Fast / Deep Autocomplete) never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
