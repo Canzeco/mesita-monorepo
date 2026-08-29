@@ -39,7 +39,7 @@ export type Place = {
   slug: string;
   name: string;
   category: string | null;
-  /** Super-categories from the EF (MESITA-679); dual-family types list both. */
+  /** Super Category from the EF. Exactly one when classified. */
   family_keys?: string[];
   category_label?: string | null;
   vibe: string | null;
@@ -200,6 +200,7 @@ export async function apiFetchNearbyCatalog(
   center: { lat: number; lng: number },
   limit = CATALOG_NEARBY_MAX,
   searchPower = 2,
+  familyKeys: readonly string[] = [],
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -210,6 +211,7 @@ export async function apiFetchNearbyCatalog(
   }>(client, "consumer-web-list-places", {
     google: true,
     searchPower,
+    familyKeys: [...familyKeys],
     lat: center.lat,
     lng: center.lng,
     limit,

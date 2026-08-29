@@ -25,6 +25,7 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
+import { PlaceSuperCategoryField } from "../PlaceSuperCategoryField";
 import {
   OpenLink,
   PhoneField,
@@ -486,8 +487,12 @@ export function PlaceSection({
           <ReadField label="Google price" auto boxed>
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
+          <PlaceSuperCategoryField
+            category={form.category ?? ""}
+            familyKeys={place.family_keys ?? null}
+          />
           <PlaceCategorySelect
-            value={form.category === "undefined" ? "" : form.category}
+            value={form.category ?? ""}
             onChange={(slug) => set("category", slug)}
             disabled={anyPending}
             googleLabel={place.category_label}

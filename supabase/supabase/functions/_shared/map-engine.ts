@@ -25,6 +25,7 @@ import {
   type EligibilityResult,
   type FamilyKey,
 } from "./sourcing.ts";
+import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
 export type { NearbyTypeKey };
 
@@ -152,18 +153,23 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
 }
 
 // Search + Add share this allowlist. A Nearby type battery expands to
-// the Google Table A types in that family (`mexican_restaurant` rides
-// `restaurant`). Wellness / experiences / culture have no battery, so
-// they cannot appear and cannot be added. googleFill is Nearby-only
-// and is not a Search/Add gate.
+// the Google Table A types in that Super (`mexican_restaurant` rides
+// `restaurant`). F&B supers use the five operator batteries. Wellness /
+// experiences / culture have no operator battery — Super membership is
+// the gate (spa, museum, park are Mesita kinds; hotel is `other`).
+// Guest Super pills send `GOOGLE_SEARCH_TYPES` on Nearby. googleFill is
+// Nearby-only and is not a Search/Add gate. Super `undefined` has no
+// battery — listed leftover places still admit (same as wellness).
 
 const FAMILY_NEARBY_TYPES: Record<FamilyKey, readonly NearbyTypeKey[]> = {
   restaurants: ["restaurant"],
   bars_nightlife: ["bar", "night_club"],
   cafes_bakeries: ["cafe", "bakery"],
-  wellness_spa: [],
+  sports_fitness: [],
+  wellness_beauty: [],
   experiences: [],
   culture_arts: [],
+  undefined: [],
 };
 
 export type MapPlaceSignals = {
@@ -177,7 +183,6 @@ export function primaryTypeClearsMapTypes(
   map: MapConfig,
 ): boolean {
   const enabled = new Set(enabledNearbyTypes(map));
-  if (enabled.size === 0) return false;
   const slug = (primaryType ?? "").trim().toLowerCase();
   if (
     slug &&
@@ -186,9 +191,18 @@ export function primaryTypeClearsMapTypes(
   ) {
     return true;
   }
-  return familiesForGoogleType(primaryType).some((family) =>
-    FAMILY_NEARBY_TYPES[family].some((key) => enabled.has(key)),
-  );
+  const families = (() => {
+    const atlas = familiesForAtlasCategory(primaryType);
+    if (atlas.length > 0) return atlas;
+    return familiesForGoogleType(primaryType);
+  })();
+  if (families.length === 0) return false;
+  return families.some((family) => {
+    const batteries = FAMILY_NEARBY_TYPES[family];
+    if (batteries.length === 0) return true;
+    if (enabled.size === 0) return false;
+    return batteries.some((key) => enabled.has(key));
+  });
 }
 
 /** Text Search / Place Details / Create — full rating + review signals. */

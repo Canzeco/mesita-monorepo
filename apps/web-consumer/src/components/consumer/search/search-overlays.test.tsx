@@ -421,6 +421,10 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("../../../lib/api/places.ts")).not.toMatch(
       /consumer-web-suggest-places[\s\S]*familyKeys/,
     );
+    expect(read("../../../lib/api/places.ts")).toMatch(
+      /consumer-web-list-places[\s\S]*familyKeys/,
+    );
+    expect(read("SearchClient.tsx")).toContain("filters.familyKeys");
     expect(read("SearchClient.tsx")).toContain('"fast"');
     expect(read("SearchClient.tsx")).toContain('"deep"');
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");

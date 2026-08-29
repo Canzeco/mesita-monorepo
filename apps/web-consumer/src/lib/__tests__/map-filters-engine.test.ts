@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
+import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   applyMapFilters,
   clampSearchPower,
@@ -144,17 +145,17 @@ describe("applyMapFilters", () => {
     ).toEqual(["taco"]);
   });
 
-  it("a category in two Super Categories matches either pill", () => {
+  it("each Mesita category matches exactly one Super Category", () => {
     const brunch = place({
       id: "brunch",
       category: "brunch",
-      family_keys: ["restaurants", "cafes_bakeries"],
+      family_keys: ["restaurants"],
       content_status: "ready",
     });
     const karaoke = place({
       id: "karaoke",
       category: "karaoke",
-      family_keys: ["bars_nightlife", "experiences"],
+      family_keys: ["bars_nightlife"],
       content_status: "ready",
     });
     const set = [brunch, karaoke];
@@ -167,7 +168,7 @@ describe("applyMapFilters", () => {
       applyMapFilters(set, filters({ familyKeys: ["cafes_bakeries"] })).map(
         (p) => p.id,
       ),
-    ).toEqual(["brunch"]);
+    ).toEqual([]);
     expect(
       applyMapFilters(set, filters({ familyKeys: ["bars_nightlife"] })).map(
         (p) => p.id,
@@ -177,21 +178,66 @@ describe("applyMapFilters", () => {
       applyMapFilters(set, filters({ familyKeys: ["experiences"] })).map(
         (p) => p.id,
       ),
-    ).toEqual(["karaoke"]);
+    ).toEqual([]);
+    expect(
+      applyMapFilters(
+        [
+          place({
+            id: "unk",
+            category: "undefined",
+            family_keys: ["undefined"],
+            content_status: "ready",
+          }),
+        ],
+        filters({ familyKeys: ["undefined"] }),
+      ).map((p) => p.id),
+    ).toEqual(["unk"]);
   });
 
-  it("keeps Google Nearby through Super Category — family is Mesita-only", () => {
-    const google: Place = place({
-      id: "g1",
+  it("Google stubs match Super Category from family_keys", () => {
+    const cafe = place({
+      id: "g-cafe",
       googleOnly: true,
       name: "Random café",
+      family_keys: ["cafes_bakeries"],
+    });
+    const hotel = place({
+      id: "g-hotel",
+      googleOnly: true,
       family_keys: [],
     });
     expect(
       applyMapFilters(
-        [google],
+        [cafe, hotel],
+        filters({ searchPower: 3, familyKeys: ["cafes_bakeries"] }),
+      ).map((p) => p.id),
+    ).toEqual(["g-cafe"]);
+    expect(
+      applyMapFilters(
+        [cafe],
         filters({ searchPower: 3, familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
-    ).toEqual(["g1"]);
+    ).toEqual([]);
+  });
+});
+
+describe("PLACE_FAMILIES catalog (final law)", () => {
+  it("is eight pills in table order, Other last, text-only labels", () => {
+    expect(PLACE_FAMILIES).toHaveLength(8);
+    expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
+      "restaurants",
+      "cafes_bakeries",
+      "bars_nightlife",
+      "experiences",
+      "culture_arts",
+      "sports_fitness",
+      "wellness_beauty",
+      "undefined",
+    ]);
+    const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;
+    expect(last.key).toBe("undefined");
+    expect(last.label).toBe("Other");
+    expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Sports & Fitness");
+    expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Wellness & Beauty");
   });
 });

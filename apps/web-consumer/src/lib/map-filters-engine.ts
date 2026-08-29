@@ -6,10 +6,11 @@
 // enriched profile only — Created and Requested stubs are not a search
 // source. A Super Category is a SET of categories; a category may sit
 // in two (breakfast is restaurants AND cafés). The cut is OR: a place
-// matches if any of its Super Categories is selected. Super Category
-// lives in the Filters sheet — not a chip strip on the map. Distance
-// and time stay off this surface: the camera already bounds the set.
-// Swipe keeps Discovery.
+// matches if any of its Super Categories is selected. Google stubs
+// match from family_keys (Google primaryType → exactly one Super).
+// Super Category lives in the Filters sheet — not a chip strip on the
+// map. Distance and time stay off this surface: the camera already
+// bounds the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -71,7 +72,7 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 export type MapFilters = {
   /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
   searchPower: MapSearchPower;
-  /** Super Category: the six place families; empty = no constraint. */
+  /** Super Category: the seven place families; empty = no constraint. */
   familyKeys: FamilyKey[];
 };
 
@@ -134,9 +135,9 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   if (!lane) return false;
   if (LANE_POWER[lane] > f.searchPower) return false;
 
-  // Super Category does not cut Google stubs — they have no reliable
-  // membership. Closest Google at full power stays closest Google.
-  if (lane !== "google" && f.familyKeys.length > 0) {
+  // Super Category cuts Mesita rows and Google stubs. Google membership
+  // is the one Super of the Nearby primaryType (family_keys on the stub).
+  if (f.familyKeys.length > 0) {
     const familyHit = f.familyKeys.some((key) =>
       (place.family_keys ?? []).includes(key),
     );
