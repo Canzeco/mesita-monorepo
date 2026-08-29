@@ -24,7 +24,7 @@ function factOn(hit: PlaceHit, key: (typeof GENERAL_STATUS_FACTS)[number]["key"]
   if (key === "seeded") return hit.seeded;
   if (key === "active") return hit.business_status === "OPERATIONAL";
   if (key === "listed") return hit.listed;
-  if (key === "requested") return hit.requested;
+  if (key === "requested") return hit.request_count > 0;
   if (key === "enriched") {
     return hit.enrich_pulse_total > 0 && hit.enrich_pulse === hit.enrich_pulse_total;
   }
@@ -156,6 +156,17 @@ export function MesitaSearchTab({
                                     ]
                                   }
                                 </span>
+                              </span>
+                            ) : f.key === "requested" ? (
+                              <span
+                                className={
+                                  "type-label font-semibold tabular-nums " +
+                                  (row.hit.request_count > 0
+                                    ? "text-foreground"
+                                    : "text-muted-foreground")
+                                }
+                              >
+                                {row.hit.request_count}
                               </span>
                             ) : (
                               <StatePill on={factOn(row.hit, f.key)} />
