@@ -1,93 +1,24 @@
-// Google type → Super Category map. Search and Add eligibility is Discovery ›
-// Map (`evaluatePlaceForMap`); this file expands Table A types onto the six
-// Atlas Super Categories. Atlas slugs live in place-taxonomy.ts — this map
-// is the Google-pin / leftover-slug fallback. A Google primaryType in no
-// family is ineligible (hotels, schools, shops).
+// Google type → Super Category. Search and Add eligibility is Discovery ›
+// Map (`evaluatePlaceForMap`). The exclusive 478-type partition lives in
+// google-type-super.ts — this file re-exports FamilyKey and maps a type
+// onto zero or one guest Super (`other` → ineligible). Atlas slugs live
+// in place-taxonomy.ts. Hotels, schools, shops are `other`.
 
-export type FamilyKey =
-  | "restaurants"
-  | "bars_nightlife"
-  | "cafes_bakeries"
-  | "wellness_spa"
-  | "experiences"
-  | "culture_arts";
+import { superForGoogleType, type GuestSuper } from "./google-type-super.ts";
 
-// Machine expansion of each family — the Google `primaryType` values a place
-// must match to count as that family.
-const FAMILY_GOOGLE_TYPES: Record<FamilyKey, readonly string[]> = {
-  restaurants: [
-    "restaurant", "fine_dining_restaurant", "steak_house", "seafood_restaurant",
-    "sushi_restaurant", "japanese_restaurant", "mexican_restaurant", "italian_restaurant",
-    "pizza_restaurant", "mediterranean_restaurant", "american_restaurant", "asian_restaurant",
-    "chinese_restaurant", "thai_restaurant", "indian_restaurant", "french_restaurant",
-    "spanish_restaurant", "korean_restaurant", "vietnamese_restaurant", "middle_eastern_restaurant",
-    "vegan_restaurant", "vegetarian_restaurant", "barbecue_restaurant", "hamburger_restaurant",
-    "taco_restaurant", "ramen_restaurant", "tapas_restaurant", "brunch_restaurant",
-    "breakfast_restaurant", "bistro", "diner", "gastropub", "buffet_restaurant", "food_court",
-  ],
-  bars_nightlife: [
-    "bar", "cocktail_bar", "wine_bar", "sports_bar", "lounge_bar", "pub", "irish_pub",
-    "gastropub", "beer_garden", "brewery", "brewpub", "hookah_bar", "night_club",
-    "dance_hall", "live_music_venue", "karaoke", "comedy_club", "casino",
-  ],
-  cafes_bakeries: [
-    "cafe", "coffee_shop", "coffee_roastery", "coffee_stand", "cat_cafe", "dog_cafe",
-    "tea_house", "bakery", "cake_shop", "pastry_shop", "bagel_shop", "donut_shop",
-    "dessert_shop", "dessert_restaurant", "ice_cream_shop", "acai_shop", "juice_shop",
-    "chocolate_shop", "confectionery",
-  ],
-  wellness_spa: [
-    "spa", "massage_spa", "massage", "sauna", "wellness_center", "yoga_studio", "skin_care_clinic",
-  ],
-  experiences: [
-    "tourist_attraction", "amusement_park", "amusement_center", "water_park", "aquarium",
-    "zoo", "bowling_alley", "video_arcade", "go_karting_venue", "paintball_center",
-    "miniature_golf_course", "ice_skating_rink", "escape_room", "winery", "vineyard",
-    "botanical_garden", "planetarium", "observation_deck", "marina", "event_venue",
-    "banquet_hall", "wedding_venue",
-  ],
-  culture_arts: [
-    "museum", "art_museum", "history_museum", "art_gallery", "cultural_center",
-    "cultural_landmark", "historical_place", "monument", "performing_arts_theater",
-    "concert_hall", "opera_house", "philharmonic_hall", "movie_theater",
-  ],
-};
-
-const ALL_FAMILY_KEYS = Object.keys(FAMILY_GOOGLE_TYPES) as FamilyKey[];
-
-// A Google type can belong to more than one family — gastropub is listed
-// under both restaurants and bars_nightlife — so keep every family it maps
-// to. This used to be first-match-wins, which silently bound gastropub to
-// restaurants alone (MESITA-631).
-const GOOGLE_TYPE_TO_FAMILIES: Record<string, FamilyKey[]> = (() => {
-  const m: Record<string, FamilyKey[]> = {};
-  for (const fam of ALL_FAMILY_KEYS) {
-    for (const t of FAMILY_GOOGLE_TYPES[fam]) {
-      (m[t] ??= []).push(fam);
-    }
-  }
-  return m;
-})();
+export type FamilyKey = GuestSuper;
 
 /**
- * Every family a Google type (or places.category slug) belongs to.
- * Empty = not a Mesita type. Dual-family types return every match
- * (MESITA-631). The `_restaurant` alias covers truncated taxonomy
- * slugs (fine_dining → fine_dining_restaurant) so consumer payloads
- * stay classifiable when category drops Google's suffix.
+ * The one guest Super a Google type (or leftover places.category slug)
+ * belongs to. Empty = `other` / unknown — not a Mesita type. Partition:
+ * gastropub is restaurants only.
  */
 export function familiesForGoogleType(
   primaryType: string | null | undefined,
 ): FamilyKey[] {
-  if (!primaryType) return [];
-  const slug = primaryType.trim().toLowerCase();
-  if (!slug) return [];
-  const direct = GOOGLE_TYPE_TO_FAMILIES[slug];
-  if (direct) return direct;
-  if (!slug.endsWith("_restaurant")) {
-    return GOOGLE_TYPE_TO_FAMILIES[`${slug}_restaurant`] ?? [];
-  }
-  return [];
+  const superKey = superForGoogleType(primaryType);
+  if (!superKey || superKey === "other") return [];
+  return [superKey];
 }
 
 /** The primary (catalog-order first) family a Google type belongs to. */

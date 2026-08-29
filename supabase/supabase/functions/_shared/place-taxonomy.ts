@@ -1,16 +1,18 @@
 // Atlas Super Category + Category law. Search map Filters cut on Super
-// Category only; a Super Category is a SET of categories. A category may
-// sit in zero, one, or two supers — membership is NOT exclusive
-// (breakfast is restaurants AND cafés; karaoke is nightlife AND
-// experiences). The six slugs here are the live catalog
-// (`public.place_super_categories`) — keep this file lock-step with
-// `seed_place_super_categories` / `seed_place_categories`.
+// Category only. Super Categories PARTITION Mesita Categories and Google
+// Table A types: each Category maps to exactly one Super; each Google type
+// maps to exactly one Super (or `other`, which is not a guest pill).
+// The seven slugs here are the live catalog (`public.place_super_categories`)
+// — keep this file lock-step with `seed_place_super_categories` /
+// `seed_place_categories`. Google type expansion lives in
+// `google-type-super.ts` (search batteries + the 478-type map).
 //
-// Places start with category='undefined' and family_keys NULL. Contents
-// enrichment infers both. When the category is in Atlas, family_keys is
-// the FULL membership set — never a single super. Stored keys only win
-// when the category has no membership (undefined / leftover slugs).
-// Else the Google primaryType map (pins + leftover slugs).
+// Places start with category='undefined' and family_keys=['undefined'].
+// Contents enrichment infers a classified Category; family_keys follows
+// that one Super. Super `undefined` is the leftover/create-path bucket,
+// not Google `other` (hotels/shops stay ineligible). Stored keys only
+// win when the category has no Atlas membership (leftover slugs). Else
+// the Google primaryType map (pins).
 
 import {
   familiesForGoogleType,
@@ -31,6 +33,7 @@ export const SUPER_CATEGORIES: readonly {
   { slug: "wellness_spa", label: "Wellness & Spa", emoji: "🧖", sort_order: 4 },
   { slug: "experiences", label: "Experiences & Activities", emoji: "🎟️", sort_order: 5 },
   { slug: "culture_arts", label: "Culture & Arts", emoji: "🎭", sort_order: 6 },
+  { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 7 },
 ];
 
 const SUPER_SLUGS = new Set<string>(SUPER_CATEGORIES.map((s) => s.slug));
@@ -44,8 +47,9 @@ const C = "cafes_bakeries" as const;
 const W = "wellness_spa" as const;
 const E = "experiences" as const;
 const A = "culture_arts" as const;
+const U = "undefined" as const;
 
-/** Atlas category slug → 0–2 Super Categories. `undefined` is omitted (= []). */
+/** Atlas category slug → exactly one Super Category. */
 export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]>> =
   {
     mexican: [R],
@@ -75,8 +79,8 @@ export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]
     burger: [R],
     sandwich: [R],
     bbq: [R],
-    breakfast: [R, C],
-    brunch: [R, C],
+    breakfast: [R],
+    brunch: [R],
     vegan: [R],
     vegetarian: [R],
     salad: [R],
@@ -98,21 +102,21 @@ export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]
     brewery: [N],
     night_club: [N],
     bowling_alley: [E],
-    karaoke: [N, E],
+    karaoke: [N],
     escape_room: [E],
     arcade: [E],
     billiards: [E],
-    board_game_cafe: [C, E],
+    board_game_cafe: [C],
     park: [E],
     mini_golf: [E],
     laser_tag: [E],
     axe_throwing: [E],
     trampoline_park: [E],
     go_kart: [E],
-    movie_theater: [A, E],
+    movie_theater: [A],
     amusement_park: [E],
     water_park: [E],
-    casino: [N, E],
+    casino: [E],
     gym: [W],
     yoga_studio: [W],
     pilates_studio: [W],
@@ -142,19 +146,20 @@ export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]
     aquarium: [E],
     zoo: [E],
     observation_deck: [E],
-    winery: [N, E],
+    winery: [N],
     theater: [A],
     concert_venue: [A],
     botanical_garden: [E],
     cultural_center: [A],
     market: [E],
+    undefined: [U],
   };
 
 export function isFamilyKey(value: string): value is FamilyKey {
   return SUPER_SLUGS.has(value);
 }
 
-/** Unique valid supers, catalog order, at most two. */
+/** Unique valid supers, catalog order, at most one (place membership). */
 export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<FamilyKey>();
@@ -165,7 +170,24 @@ export function sanitizeFamilyKeys(raw: unknown): FamilyKey[] {
   }
   return [...seen]
     .sort((a, b) => (SUPER_ORDER.get(a) ?? 99) - (SUPER_ORDER.get(b) ?? 99))
-    .slice(0, 2);
+    .slice(0, 1);
+}
+
+/**
+ * Guest Super pills: unique catalog slugs, any count (OR). Not place
+ * membership — a guest may select Restaurants and Wellness together.
+ */
+export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<FamilyKey>();
+  for (const v of raw) {
+    if (typeof v !== "string") continue;
+    const slug = v.trim().toLowerCase();
+    if (isFamilyKey(slug)) seen.add(slug);
+  }
+  return [...seen].sort(
+    (a, b) => (SUPER_ORDER.get(a) ?? 99) - (SUPER_ORDER.get(b) ?? 99),
+  );
 }
 
 export function familiesForAtlasCategory(
@@ -173,7 +195,7 @@ export function familiesForAtlasCategory(
 ): FamilyKey[] {
   if (!category) return [];
   const slug = category.trim().toLowerCase();
-  if (!slug || slug === "undefined") return [];
+  if (!slug) return [];
   return sanitizeFamilyKeys(ATLAS_CATEGORY_SUPERS[slug] ?? []);
 }
 
@@ -183,11 +205,10 @@ export type FamilyPlace = {
 };
 
 /**
- * Super Categories for a place on the wire or in a predicate.
- * Atlas membership is the set when the category is in the catalog — a
- * category in two supers lands in both, even if stored keys only kept
- * one. Stored keys win only when membership is empty (undefined /
- * leftover). Else the Google primaryType map (Nearby pins).
+ * Super Category for a place on the wire or in a predicate.
+ * Atlas membership wins when the category is in the catalog. Stored keys
+ * win only when membership is empty (leftover slugs). Else the Google
+ * primaryType map (Nearby pins).
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
   const atlas = familiesForAtlasCategory(
@@ -203,9 +224,8 @@ export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
 
 /**
  * After semantics infers both fields: a known Atlas category keeps its
- * FULL Super Category set (never shrink to the one slug the classifier
- * guessed). Inference only fills family_keys when the category has no
- * membership yet (undefined / unknown).
+ * one Super (including `undefined` → Super undefined). Inference only
+ * fills family_keys when the category has no membership yet.
  */
 export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,

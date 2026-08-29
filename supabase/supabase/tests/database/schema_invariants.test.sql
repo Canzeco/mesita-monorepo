@@ -490,14 +490,32 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_super_categories),
-  6::bigint,
-  'Atlas Super Category catalog is six slugs (5–10 band)'
+  7::bigint,
+  'Atlas Super Category catalog is seven slugs (5–10 band)'
 );
 
 select is(
   (select super_category_slugs from public.place_categories where slug = 'breakfast'),
-  array['restaurants', 'cafes_bakeries']::text[],
-  'breakfast intersects restaurants and cafes'
+  array['restaurants']::text[],
+  'breakfast belongs to restaurants only'
+);
+
+select is(
+  (select super_category_slugs from public.place_categories where slug = 'undefined'),
+  array['undefined']::text[],
+  'undefined category belongs to Super undefined'
+);
+
+select is(
+  (select min(cardinality(super_category_slugs))::bigint from public.place_categories),
+  1::bigint,
+  'every Atlas category maps to at least one Super Category'
+);
+
+select is(
+  (select max(cardinality(super_category_slugs))::bigint from public.place_categories),
+  1::bigint,
+  'every Atlas category maps to at most one Super Category'
 );
 
 select ok(

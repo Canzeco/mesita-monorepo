@@ -487,7 +487,7 @@ export function PlaceSection({
             <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
           <PlaceCategorySelect
-            value={form.category === "undefined" ? "" : form.category}
+            value={form.category ?? ""}
             onChange={(slug) => set("category", slug)}
             disabled={anyPending}
             googleLabel={place.category_label}
