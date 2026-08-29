@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  isPlaceEnriched,
   isPlaceEnriching,
   isPlaceListed,
   isPlaceProfileReady,
@@ -78,6 +79,30 @@ Deno.test("enriching: generating or queued is mid-flight", () => {
   assertEquals(isPlaceEnriching("ready"), false);
   assertEquals(isPlaceEnriching("failed"), false);
   assertEquals(isPlaceEnriching(null), false);
+});
+
+Deno.test("enriched: a stamp on places.enriched_at, never content_status", () => {
+  assertEquals(isPlaceEnriched("2026-08-28T00:00:00Z"), true);
+  assertEquals(isPlaceEnriched(null), false);
+  assertEquals(isPlaceEnriched(""), false);
+  assertEquals(isPlaceEnriched("   "), false);
+  assertEquals(
+    isPlaceRequested({
+      requestCount: 2,
+      contentStatus: "ready",
+      enrichedAt: null,
+    }),
+    true,
+    "ugly Create profile can still collect votes",
+  );
+  assertEquals(
+    isPlaceRequested({
+      requestCount: 2,
+      contentStatus: "ready",
+      enrichedAt: "2026-08-28T00:00:00Z",
+    }),
+    false,
+  );
 });
 
 Deno.test("profile ready: only content_status ready is a usable profile", () => {

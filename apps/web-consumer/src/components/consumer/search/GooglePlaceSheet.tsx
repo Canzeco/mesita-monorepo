@@ -3,8 +3,9 @@
 // Not-on-Mesita preview — the place-page moment for a From-Google search
 // row. Mirrors the place modal's header shape (name + address) but is
 // honest that the profile doesn't exist yet: the body says so and carries
-// the one real action, Add to Mesita (consumer-web-create-place → async
-// Intaker). State-driven (LocalSheet), not a route modal, because there is
+// the one real action, Add to Mesita (consumer-web-create-place → ugly
+// profile; guests vote to Enrich). State-driven (LocalSheet), not a route
+// modal, because there is
 // no Mesita place id to route to.
 //
 // So the consumer knows exactly WHICH profile they're adding, the sheet
@@ -169,21 +170,15 @@ export function GooglePlaceSheet({
                 This place isn&apos;t on Mesita yet.
               </p>
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                Google knows it, but its Mesita profile hasn&apos;t been built.
-                Add it and our AI will generate the full page — photos, ratings,
-                and details — in about 5 minutes.
+                Google knows it. Add it to Mesita to open the profile. Enrich
+                waits until enough guests vote.
               </p>
             </div>
 
             {added ? (
-              <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-                <Spinner
-                  size="sm"
-                  className="border-emerald-300 border-t-emerald-600"
-                />
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
                 <p className="text-xs leading-relaxed font-medium text-emerald-700">
-                  Being added — our AI is generating this place&apos;s profile;
-                  it&apos;ll be live on Mesita in about 5 minutes.
+                  On Mesita. Open the profile and vote to enrich it.
                 </p>
               </div>
             ) : (

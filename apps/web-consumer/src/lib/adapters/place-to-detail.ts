@@ -122,6 +122,8 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       row.content_status === "queued" || row.content_status === "generating",
     is_profile_ready: row.is_profile_ready === true ||
       row.content_status === "ready",
+    is_enriched: row.is_enriched === true ||
+      (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     request_count: num(row.request_count) ?? 0,
     request_threshold: num(row.request_threshold) ?? 3,
     requested: row.requested === true,
@@ -130,7 +132,8 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
         row.request_lifecycle === "enriched" ||
         row.request_lifecycle === "listed"
         ? row.request_lifecycle
-        : row.content_status === "ready"
+        : row.is_enriched === true ||
+            (typeof row.enriched_at === "string" && row.enriched_at.trim() !== "")
           ? "enriched"
           : (num(row.request_count) ?? 0) > 0
             ? "requested"

@@ -294,6 +294,7 @@ export type PlaceRequestResult = {
   request_threshold: number;
   requested: boolean;
   is_profile_ready: boolean;
+  is_enriched: boolean;
   request_lifecycle: "listed" | "requested" | "enriched";
   enrichment_triggered: boolean;
 };

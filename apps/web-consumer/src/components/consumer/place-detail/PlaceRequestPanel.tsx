@@ -10,17 +10,17 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
-/** Listed-but-not-Enriched: the place surface is the request interface. */
-export function isPlaceRequestSurface(
-  place: Pick<PlaceDetail, "is_profile_ready">,
+/** Enrich tab: not Enriched yet. The ugly profile stays visible. */
+export function showEnrichTab(
+  place: Pick<PlaceDetail, "is_enriched">,
 ): boolean {
-  return place.is_profile_ready !== true;
+  return place.is_enriched !== true;
 }
 
 export function requestProgressLabel(count: number, threshold: number): string {
   const n = Math.max(0, Math.trunc(count));
   const t = Math.max(1, Math.trunc(threshold));
-  return `${n} of ${t} requests`;
+  return `${n} of ${t} votes`;
 }
 
 export function PlaceRequestPanelView({
@@ -41,15 +41,15 @@ export function PlaceRequestPanelView({
   onRequest?: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-10 text-center">
+    <div className="flex flex-col items-center px-2 py-8 text-center">
       <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
         <Sparkles className="h-7 w-7" strokeWidth={2} />
       </span>
       <h3 className="font-display mt-4 text-lg font-semibold tracking-tight">
-        Profile not created yet
+        Vote to enrich this place
       </h3>
       <p className="text-muted-foreground mt-1.5 max-w-[34ch] text-sm leading-relaxed">
-        This place is on Mesita, but its profile hasn&apos;t been created yet.
+        The profile is on Mesita. Enrich fills the rest once enough guests vote.
       </p>
       <p className="text-foreground mt-4 text-sm font-semibold">
         {requestProgressLabel(count, threshold)}
@@ -57,7 +57,7 @@ export function PlaceRequestPanelView({
       {enriching ? (
         <p className="text-muted-foreground mt-2 inline-flex items-center gap-2 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Creating the profile
+          Enriching
         </p>
       ) : null}
       {error ? (
@@ -66,13 +66,13 @@ export function PlaceRequestPanelView({
       <Button
         type="button"
         onClick={onRequest}
-        disabled={requested || pending}
+        disabled={requested || pending || enriching}
         className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
       >
         {pending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : null}
-        {requested ? "Requested" : "Request the profile"}
+        {requested ? "Voted" : "Vote to enrich"}
       </Button>
     </div>
   );
@@ -108,11 +108,12 @@ export function PlaceRequestPanel({
         request_threshold: r.request_threshold,
         requested: r.requested,
         is_profile_ready: r.is_profile_ready,
+        is_enriched: r.is_enriched,
         request_lifecycle: r.request_lifecycle,
         is_enriching: r.enrichment_triggered || place.is_enriching,
       });
     } catch (err) {
-      setError(errMsg(err, "Could not send the request."));
+      setError(errMsg(err, "Could not send the vote."));
     } finally {
       setPending(false);
     }
