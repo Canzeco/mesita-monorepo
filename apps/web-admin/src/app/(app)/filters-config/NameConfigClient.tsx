@@ -154,7 +154,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Runs about one second after the guest stops typing. Calls Autocomplete, Text Search, and Places Lineup — Lineup uses the Name signal only, on Mesita `places.name`, not `google_name`. Each candidate resolves to an entity, then one list after dropping overlaps: Partners, then Mesita, then Google. Google types live on Discovery Modules. 0 on a lane is off."
+          subtitle="Autocomplete + Text Search + Lineup Name signal only (`places.name`, not `google_name`). After resolve: Partners → Mesita → Google. Types on Modules. 0 off."
           status={
             <KnobStatus
               kind="enforced"
