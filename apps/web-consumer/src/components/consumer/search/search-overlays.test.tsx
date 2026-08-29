@@ -365,6 +365,10 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("../../../lib/map-defaults.ts")).toMatch(
       /MAP_PLACE_PIN_RADIUS = 7/,
     );
+    expect(read("SearchMap.tsx")).toMatch(
+      /const USER_ICON = \{[\s\S]*path: MAP_CIRCLE_PATH/,
+    );
+    expect(read("SearchMap.tsx")).not.toContain("M -6 0 A 6 6");
   });
 
   it("first overlay tap selects; a later tap on the same pin opens", () => {
@@ -767,12 +771,14 @@ describe("catalogIsStale", () => {
 });
 
 describe("Search map reticle", () => {
-  it("paints a screen-fixed plus and approximate ring, not a geo circle", () => {
+  it("paints a screen-fixed plus and primary center dot, not a ring", () => {
     const src = read("SearchMap.tsx");
     expect(src).toContain("export function SearchMapReticle");
     expect(src).toContain("pointer-events-none");
-    expect(src).toContain("h-24 w-24");
-    expect(src).toContain("rounded-full border-2 border-dotted");
+    expect(src).toContain("h-3.5 w-3.5");
+    expect(src).toContain("bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5");
+    expect(src).not.toContain("border-dotted");
+    expect(src).not.toContain("h-24 w-24");
     expect(src).not.toContain("<Circle");
     expect(src).toContain("mapReady && <SearchMapReticle");
   });

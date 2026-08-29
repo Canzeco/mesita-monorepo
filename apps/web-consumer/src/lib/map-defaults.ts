@@ -69,8 +69,9 @@ export const MAP_MINIMAL_STYLES = [
   },
 ] as const;
 
-// SVG circle path for place markers. r=7 (was 12) so a cluster still
-// shows the map. Fill is membership; the user-location dot is its own path.
+// SVG circle path for place markers and the user-location dot. r=7
+// (was 12) so a cluster still shows the map. Same path + stroke so
+// red Mesita pins and the blue “you are here” pin read as one size.
 export const MAP_PLACE_PIN_RADIUS = 7;
 export const MAP_CIRCLE_PATH =
   `M -${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 ${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 -${MAP_PLACE_PIN_RADIUS} 0`;
