@@ -4,15 +4,18 @@
 // (Partners ⊂ Mesita Places ⊂ Google Places). Closest N of that set;
 // inner membership paints, it does not add pins. Google types live on
 // Modules.
+//
+// THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29). How
+// many is the guest's How many; the operator only decides IF Google may
+// be called (Modules › googleFill + types). Never re-add a count knob.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
+import { Map as MapIcon, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   ChoiceField,
   KnobStatus,
-  QueryConcatCaps,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
@@ -20,8 +23,6 @@ import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
-  MAP_GOOGLE_COUNT_MAX,
-  MAP_SET_COUNT_MAX,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
   type MapConfig,
@@ -110,30 +111,10 @@ export function MapConfigClient({
         }
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
-        <QueryConcatCaps
-          rule="Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins."
-          min={0}
-          max={MAP_SET_COUNT_MAX}
-          disabled={pending || loadBlocked}
-          queries={[
-            {
-              key: "mesita",
-              label: "Mesita places",
-              icon: <Store className="h-4 w-4 shrink-0" />,
-              value: map.mesitaCount,
-              max: MAP_SET_COUNT_MAX,
-              onChange: (mesitaCount) => patch({ mesitaCount }),
-            },
-            {
-              key: "google",
-              label: "Google places",
-              icon: <Globe className="h-4 w-4 shrink-0" />,
-              value: map.googleCount,
-              max: MAP_GOOGLE_COUNT_MAX,
-              onChange: (googleCount) => patch({ googleCount }),
-            },
-          ]}
-        />
+        <p className="text-muted-foreground mt-4 type-meta">
+          How many pins is the guest&rsquo;s question — the Filters sheet
+          asks it, and nothing here overrides the answer.
+        </p>
         <div className="mt-5">
           <ChoiceField
             icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}

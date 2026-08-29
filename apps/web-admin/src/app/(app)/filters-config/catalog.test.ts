@@ -165,15 +165,20 @@ describe("Discovery function APIs", () => {
     expect(map?.process).not.toMatch(/under 10/);
   });
 
-  it("coerceConfig defaults map set caps on an old blob", () => {
-    expect(coerceConfig({ weights: {}, slotting: {} }).map.mesitaCount).toBe(10);
-    expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
-    // Legacy partnerCount is dropped on read — Partners are a paint, not a set.
-    const legacy = coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map;
-    expect("partnerCount" in legacy).toBe(false);
-    expect(legacy).toMatchObject({ mesitaCount: 10, googleCount: 0 });
-    expect(coerceConfig({ map: { googleCount: 99 } }).map.googleCount).toBe(20);
-    expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
+  it("coerceConfig drops every map set cap — how many is the guest's question", () => {
+    // Asked ONCE, on the consumer Filters sheet (Pato, 2026-08-29). A
+    // legacy blob carrying the retired knobs must not resurrect them.
+    const legacy = coerceConfig({
+      map: { partnerCount: 99, notPartnerCount: 7, mesitaCount: 10, googleCount: 20 },
+    }).map;
+    for (const dead of [
+      "partnerCount",
+      "notPartnerCount",
+      "mesitaCount",
+      "googleCount",
+    ]) {
+      expect(dead in legacy).toBe(false);
+    }
   });
 
   it("catalog() is parked — Home Catalog is Soon", () => {
@@ -432,13 +437,12 @@ describe("Discovery page box order", () => {
     );
     expect(name).toContain("QueryConcatCaps");
     expect(name).not.toContain("cascadeLaneCounts");
-    expect(map).toContain(
-      "Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins.",
-    );
     expect(map).not.toContain("Then concat. Closest Partners");
-    expect(map).toContain("QueryConcatCaps");
-    expect(map).toContain("MAP_SET_COUNT_MAX");
-    expect(map).toContain("MAP_GOOGLE_COUNT_MAX");
+    // No count knob on Map — the guest's How many is the only cap.
+    expect(map).not.toContain("QueryConcatCaps");
+    expect(map).not.toContain("MAP_SET_COUNT_MAX");
+    expect(map).not.toContain("MAP_GOOGLE_COUNT_MAX");
+    expect(map).toContain("THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");

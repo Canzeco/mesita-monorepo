@@ -45,3 +45,15 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "wellness_beauty", label: "Wellness & Beauty", emoji: "💆" },
   { key: "undefined", label: "Undefined", emoji: "❓" },
 ];
+
+/**
+ * The Super Categories a guest may FILTER on — the seven real ones
+ * (Pato, 2026-08-29). ❓ Undefined is a bookkeeping bucket, not an
+ * appetite: nobody goes out looking for an unclassified place, and an
+ * empty selection already shows them. It stays in PLACE_FAMILIES for
+ * every other surface (consoles, badges, vocabulary) — this list is the
+ * Filters sheet only.
+ */
+export const FILTERABLE_PLACE_FAMILIES: PlaceFamily[] = PLACE_FAMILIES.filter(
+  (family) => family.key !== "undefined",
+);

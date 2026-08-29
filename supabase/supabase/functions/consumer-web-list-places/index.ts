@@ -20,7 +20,9 @@
 //     Search catalog. TWO sets (Pato, 2026-08-29): searchPower (default 1)
 //     is Places scope: 1 closest Mesita Places (partners included, painted
 //     yellow), 2 closest Google Nearby (Mesita/partner hits painted, not
-//     added). Partners are a paint, never a set. familyKeys (guest Super
+//     added). Partners are a paint, never a set. `limit` is the guest's
+//     How many — it caps BOTH lanes and the merged union, so max pins =
+//     limit, never the sum. familyKeys (guest Super
 //     pills) pick Nearby `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES
 //     so unlisted Google places match the Super. Empty = operator F&B
 //     batteries. Power 1 never calls Nearby. Google set stays distance.
@@ -251,8 +253,8 @@ Deno.serve(async (req) => {
   // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET and bbox callers keep global filters only. Google
-  // fill is client opt-in AND operator googleFill AND googleCount > 0 AND
-  // at least one type battery on.
+  // fill is client opt-in AND operator googleFill AND at least one type
+  // battery on — HOW MANY is the guest's `limit`, never a console knob.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
@@ -326,7 +328,7 @@ Deno.serve(async (req) => {
         inRadius,
         [],
         center,
-        lanesForSearchPower(cfg.map, searchPower),
+        lanesForSearchPower(searchPower, limit),
       )
         .slice(0, limit)
         .flatMap((item) => item.kind === "listed" ? [item.row] : [])
@@ -408,7 +410,7 @@ Deno.serve(async (req) => {
       admitted.listed,
       googleForMerge,
       center,
-      lanesForSearchPower(cfg.map, searchPower),
+      lanesForSearchPower(searchPower, limit),
     );
     const lineupOpts = {
       center,

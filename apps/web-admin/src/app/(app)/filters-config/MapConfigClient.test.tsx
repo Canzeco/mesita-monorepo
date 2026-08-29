@@ -23,22 +23,19 @@ describe("Map reload pairs", () => {
         loadError={null}
       />,
     );
-    expect(html).toContain("Queries");
+    // THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29).
+    // No Queries block, no per-set count field, no cap constants.
+    expect(html).not.toContain("Queries");
     expect(html).not.toContain("Bring");
-    expect(html).toContain(
+    expect(html).not.toContain(
       "Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins.",
     );
-    expect(html).not.toContain("Then concat. Closest Partners");
+    expect(html).not.toContain("Google places");
+    expect(html).not.toContain("Mesita places");
+    expect(html).not.toContain("Mesita partners");
+    expect(html).toContain("How many pins is the guest");
     expect(html).toContain("Closest N of the selected set");
     expect(html).toContain("Listed pins then Lineup, not distance");
-    expect(html).toContain("Google places");
-    expect(html).toContain("Mesita places");
-    // TWO sets (Pato, 2026-08-29): Partners retired as a query — a partner
-    // is a Mesita place painted yellow.
-    expect(html).not.toContain("Mesita partners");
-    const mesita = html.indexOf("Mesita places");
-    const google = html.indexOf("Google places");
-    expect(mesita).toBeLessThan(google);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
     expect(html).toContain("Only dragging the map counts");

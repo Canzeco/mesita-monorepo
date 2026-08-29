@@ -66,17 +66,16 @@ export function enabledNearbyTypes(map: MapConfig): NearbyTypeKey[] {
   return NEARBY_TYPE_KEYS.filter((key) => map.types[key]);
 }
 
-/** Client opt-in AND operator fill AND googleCount > 0 AND a type battery on. */
+/**
+ * Client opt-in AND operator fill AND a type battery on. HOW MANY is not
+ * asked here — the guest's How many is the only cap (Pato, 2026-08-29);
+ * the operator only decides IF Google Nearby may be billed at all.
+ */
 export function mapShouldFillGoogle(
   clientOptIn: boolean,
   map: MapConfig,
 ): boolean {
-  return (
-    clientOptIn &&
-    map.googleFill &&
-    map.googleCount > 0 &&
-    enabledNearbyTypes(map).length > 0
-  );
+  return clientOptIn && map.googleFill && enabledNearbyTypes(map).length > 0;
 }
 
 export function listedClearsMapPopularity(

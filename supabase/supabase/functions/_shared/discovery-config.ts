@@ -109,13 +109,6 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /**
-   * Closest N when Places scope is Mesita Places (partners included —
-   * Partners are a paint, not a set; Pato 2026-08-29).
-   */
-  mesitaCount: number;
-  /** Closest N when Places scope is Google Places. Inner membership paints. */
-  googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
@@ -302,11 +295,6 @@ export function snapMapReloadPair(
   }
   return { km: best.km, sec: best.sec };
 }
-export const MAP_SET_COUNT_MAX = 60;
-export const MAP_GOOGLE_COUNT_MAX = 20;
-export const MAP_LANE_COUNT_MAX = MAP_GOOGLE_COUNT_MAX;
-export const MAP_MESITA_COUNT_DEFAULT = 10;
-export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 
 export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
@@ -345,7 +333,8 @@ export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   bakery: true,
 };
 
-/** Defaults = per-scope N (10 partners · 10 Mesita · 20 Google). */
+/** How many pins is the GUEST's question (How many, on the Filters sheet),
+ *  never a knob here — the operator only decides IF Google may be called. */
 export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
@@ -353,8 +342,6 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
-  mesitaCount: MAP_MESITA_COUNT_DEFAULT,
-  googleCount: MAP_GOOGLE_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
@@ -809,19 +796,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
-    // Legacy blobs still carry partnerCount — dropped on read (Partners are
-    // a paint, not a set).
-    mesitaCount: Math.round(
-      num(
-        r.mesitaCount ?? r.notPartnerCount,
-        DEFAULT_MAP.mesitaCount,
-        0,
-        MAP_SET_COUNT_MAX,
-      ),
-    ),
-    googleCount: Math.round(
-      num(r.googleCount, DEFAULT_MAP.googleCount, 0, MAP_GOOGLE_COUNT_MAX),
-    ),
     types,
   };
 }
