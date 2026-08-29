@@ -1,7 +1,8 @@
-// Google type → family map. Search and Add eligibility is Discovery › Map
-// (`evaluatePlaceForMap`); this file expands Table A types onto those five
-// Nearby batteries. A Google primaryType in no family is ineligible
-// (hotels, schools, shops).
+// Google type → Super Category map. Search and Add eligibility is Discovery ›
+// Map (`evaluatePlaceForMap`); this file expands Table A types onto the six
+// Atlas Super Categories. Atlas slugs live in place-taxonomy.ts — this map
+// is the Google-pin / leftover-slug fallback. A Google primaryType in no
+// family is ineligible (hotels, schools, shops).
 
 export type FamilyKey =
   | "restaurants"

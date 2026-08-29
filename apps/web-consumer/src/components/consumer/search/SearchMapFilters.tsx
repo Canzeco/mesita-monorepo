@@ -7,38 +7,30 @@ import {
   mapFiltersAreActive,
   MAP_STATUS_OPTIONS,
 } from "@/lib/map-filters-engine";
-import type { CategoryOption } from "@/lib/discovery-filters-engine";
 import {
   resetMapFilters,
-  toggleMapCategory,
   toggleMapFamily,
   toggleMapStatus,
   useMapFilters,
 } from "@/lib/use-map-filters";
-import {
-  FilterModule,
-  Pill,
-  SectionLabel,
-} from "@/components/consumer/discovery-filter-controls";
+import { FilterModule, Pill } from "@/components/consumer/discovery-filter-controls";
 
-// Search-map Filters sheet. Status + Category only. Distance and time
-// are not map knobs — the viewport already decides how far, and When
-// belongs on Swipe.
+// Search-map Filters sheet. Status + Super Category only. There is no
+// Category or Types axis. A Super Category is a SET of categories; one
+// category may belong to multiple Super Categories (nightlife = bars +
+// nightclubs; breakfast = restaurants + cafés). Distance and time are
+// not map knobs: the viewport already decides how far, and When belongs
+// on Swipe.
 
 export function SearchMapFilters({
   onClose,
-  categoryOptions,
   count,
 }: {
   onClose: () => void;
-  categoryOptions: CategoryOption[];
   count: number | null;
 }) {
   const filters = useMapFilters();
   const hasPredicates = mapFiltersAreActive(filters);
-  const staleCategories = filters.categories.filter(
-    (slug) => !categoryOptions.some((c) => c.slug === slug),
-  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -86,7 +78,7 @@ export function SearchMapFilters({
             </div>
           </FilterModule>
 
-          <FilterModule label="Category">
+          <FilterModule label="Super Category">
             <div className="flex flex-wrap gap-1.5">
               {PLACE_FAMILIES.map((family) => (
                 <Pill
@@ -98,33 +90,6 @@ export function SearchMapFilters({
                 </Pill>
               ))}
             </div>
-            {(categoryOptions.length > 1 || staleCategories.length > 0) && (
-              <>
-                <SectionLabel className="mt-3" sub>
-                  Types
-                </SectionLabel>
-                <div className="flex flex-wrap gap-1.5">
-                  {categoryOptions.map((option) => (
-                    <Pill
-                      key={option.slug}
-                      active={filters.categories.includes(option.slug)}
-                      onClick={() => toggleMapCategory(option.slug)}
-                    >
-                      {option.label}
-                    </Pill>
-                  ))}
-                  {staleCategories.map((slug) => (
-                    <Pill
-                      key={slug}
-                      active
-                      onClick={() => toggleMapCategory(slug)}
-                    >
-                      {slug}
-                    </Pill>
-                  ))}
-                </div>
-              </>
-            )}
           </FilterModule>
         </div>
       </div>

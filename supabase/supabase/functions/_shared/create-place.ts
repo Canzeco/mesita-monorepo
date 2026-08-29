@@ -6,7 +6,8 @@
 //                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
 //                 at the door, before any row exists. Don't seed corpses.
 //   3 details   → the Google spine persisted (fetchGoogleBasics fields,
-//                 category='undefined' until the Intaker infers the real one)
+//                 category='undefined' and family_keys NULL until the Intaker
+//                 infers Super Category + Category)
 //                 PLUS the first Google photo mirrored into place-images so a
 //                 Created place can show a thumb before Enrich Images runs.
 //   4 semantic  → Name vector + Summary vector, awaited in this same function
@@ -112,8 +113,9 @@ export async function createMinimalPlace(opts: {
   }
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
-  // identity spine directly (no EF hop); category stays 'undefined' until the
-  // Intaker pipeline's contents stage infers the real one. No
+  // identity spine directly (no EF hop); category stays 'undefined' and
+  // family_keys NULL until the Intaker pipeline's contents stage infers
+  // Super Category + Category. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
   if (!GOOGLE_KEY) {
@@ -177,6 +179,7 @@ export async function createMinimalPlace(opts: {
     ...basicsRes.basics,
     category: "undefined",
     category_label: null,
+    family_keys: null,
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,

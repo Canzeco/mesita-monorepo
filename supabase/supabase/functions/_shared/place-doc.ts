@@ -101,6 +101,8 @@ export type PlaceRow = {
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
   category: string | null;
+  /** Super Categories (0–2). NULL = undefined until contents enrichment. */
+  family_keys: string[] | null;
   vibe: string | null;
   price_level: number | null;
   lat: number | null;
@@ -186,6 +188,7 @@ export type PlaceRow = {
 export const PLACE_PATCH_KEYS = [
   "google_place_id",
   "category",
+  "family_keys",
   "vibe",
   "price_level",
   "lat",
@@ -482,6 +485,11 @@ function checkPlaceField(key: string, v: unknown): string | null {
   }
   if (PLACE_STRING_ARRAY_KEYS.has(key)) {
     return isStringArray(v) ? null : `${key} must be an array of strings`;
+  }
+  if (key === "family_keys") {
+    return v === null || isStringArray(v)
+      ? null
+      : "family_keys must be an array of strings or null";
   }
   switch (key) {
     // places_price_level_check

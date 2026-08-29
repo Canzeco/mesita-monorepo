@@ -1,13 +1,18 @@
-// Place families — the six "super categories" every Mesita place rolls up to.
+// Place families — the six Atlas Super Categories. A Super Category is
+// a SET of categories; a category may sit in two (intersections) — it
+// is not a partition. Search map Filters cut on these keys only. A
+// place matches every Super Category its category belongs to.
 //
 // NOT mock data: the family KEYS are a live product contract, mirrored in
-//   · supabase/functions/_shared/sourcing.ts  (Table A type expansion)
+//   · public.place_super_categories
+//   · supabase/functions/_shared/place-taxonomy.ts
+//   · supabase/functions/_shared/sourcing.ts  (Google type expansion)
 // Keep those in lock-step. Anything outside these families is ineligible for
 // Mesita altogether — that's how hotels, schools, shops and transit stay out.
 //
-// Family membership for a place is computed server-side and shipped as
-// `family_keys` on consumer place payloads (MESITA-679). This module only
-// owns the UI labels for the discovery "What" pills.
+// Family membership is stored on places.family_keys after enrichment and
+// shipped on consumer payloads (MESITA-679). This module only owns the UI
+// labels for the Super Category pills.
 
 export type FamilyKey =
   | "restaurants"

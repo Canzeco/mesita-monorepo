@@ -135,13 +135,9 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Status and Category only — no distance or time", () => {
+  it("shows Status and Super Category only — no types, distance, or time", () => {
     const html = renderToStaticMarkup(
-      <SearchMapFilters
-        onClose={() => {}}
-        categoryOptions={[{ slug: "night_club", label: "Nightclub" }]}
-        count={4}
-      />,
+      <SearchMapFilters onClose={() => {}} count={4} />,
     );
     expect(html).toContain("Status");
     expect(html).toContain("Not on Mesita");
@@ -150,9 +146,14 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Enriched");
     expect(html).toContain("Partnered");
     expect(html).toContain("Promoted");
-    expect(html).toContain("Category");
+    expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
+    expect(html).toContain("Bars &amp; Nightlife");
     expect(html).toContain("Show 4 places");
+    expect(html).not.toContain(">Category<");
+    expect(html).not.toContain("Types");
+    expect(html).not.toContain("Nightclub");
+    expect(html).not.toContain("Taco Restaurant");
     expect(html).not.toContain("Distance tolerance");
     expect(html).not.toContain("Anytime");
     expect(html).not.toContain("I want to");
@@ -237,7 +238,7 @@ describe("Search map catalog reloads only when the guest asks", () => {
 });
 
 describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog with map Status + Category, never a chip strip", () => {
+  it("cuts the nearby catalog with map Status + Super Category, never a chip strip", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("useMapFilters");
@@ -255,7 +256,9 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(src).toMatch(/<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/);
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
     expect(read("SearchMapFilters.tsx")).toContain("Status");
-    expect(read("SearchMapFilters.tsx")).toContain("Category");
+    expect(read("SearchMapFilters.tsx")).toContain("Super Category");
+    expect(read("SearchMapFilters.tsx")).not.toContain('label="Types"');
+    expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');
     expect(read("SearchMapFilters.tsx")).toContain("MAP_STATUS_OPTIONS");
     expect(read("../../../lib/map-filters-engine.ts")).toContain(
       '"Not on Mesita"',

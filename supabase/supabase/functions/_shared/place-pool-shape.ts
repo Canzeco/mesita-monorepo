@@ -60,7 +60,7 @@ export function clampPositive(v: unknown, def: number, max: number): number {
 // TWO jobs, both load-bearing — do not "simplify" this away:
 //   1. Drops the internal `embedding` column so the row is safe to return to a
 //      client. The leading-underscore rest-omit destructuring discards it.
-//   2. Attaches computed `family_keys` from `category` (MESITA-679). The
+//   2. Attaches `family_keys` via place-taxonomy (stored / Atlas / Google).
 //      consumer "What" discovery filter reads that field straight off the
 //      wire; drop it and the filter silently matches nothing.
 // `name` is already the resolved display label (generated column, MESITA-925),

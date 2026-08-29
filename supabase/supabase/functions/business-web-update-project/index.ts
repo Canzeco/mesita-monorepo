@@ -219,6 +219,7 @@ Deno.serve(async (req) => {
     }
     update.category = resolved.slug;
     update.category_label = resolved.label;
+    update.family_keys = resolved.familyKeys;
   }
   if ("vibe" in body) update.vibe = optString(body.vibe, 80);
   if ("price_level" in body) {

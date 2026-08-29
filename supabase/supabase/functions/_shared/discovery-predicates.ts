@@ -39,7 +39,7 @@
 // contradicts its coordinates, and the browser's answer wins because it runs
 // last.
 
-import { familiesForGoogleType } from "./sourcing.ts";
+import { familiesForPlace } from "./place-taxonomy.ts";
 import { isPlacePromoting, type PromotingFields } from "./place-promoting.ts";
 import { haversineKm } from "./geo.ts";
 import { isOpenAt, isOpenNow } from "./local-time.ts";
@@ -162,7 +162,7 @@ function matches(
   if (p.familyKeys.length > 0 || p.categories.length > 0) {
     const category = typeof row.category === "string" ? row.category : null;
     const categoryHit = category != null && p.categories.includes(category);
-    const families = familiesForGoogleType(category) as string[];
+    const families = familiesForPlace(row) as string[];
     const familyHit = p.familyKeys.some((k) => families.includes(k));
     if (!categoryHit && !familyHit) return false;
   }

@@ -157,6 +157,26 @@ describe("what — families OR categories, never AND", () => {
     expect(kept.map((p) => p.id).sort()).toEqual(["bar", "taco"]);
   });
 
+  it("a category in two Super Categories matches either family pill", () => {
+    const brunch = place({
+      id: "brunch",
+      category: "brunch",
+      family_keys: ["restaurants", "cafes_bakeries"],
+    });
+    expect(
+      applyDiscoveryFilters(
+        [brunch, taco],
+        filters({ familyKeys: ["cafes_bakeries"] }),
+      ).map((p) => p.id),
+    ).toEqual(["brunch"]);
+    expect(
+      applyDiscoveryFilters(
+        [brunch, taco],
+        filters({ familyKeys: ["restaurants"] }),
+      ).map((p) => p.id),
+    ).toEqual(["brunch", "taco"]);
+  });
+
   it("a place with no family_keys on the wire matches nothing by family", () => {
     // The teardown deliberately kept `family_keys` on the wire for exactly
     // this reason — _shared/place-pool-shape.ts: "drop it and the filter

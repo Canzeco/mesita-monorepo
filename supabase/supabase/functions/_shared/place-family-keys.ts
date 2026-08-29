@@ -1,9 +1,12 @@
 // The consumer wire mapper: everything computed onto a place row on its way
 // out to a guest, and everything dropped from it.
 //
-// Adds `family_keys` (MESITA-679) — source of truth is `_shared/sourcing.ts`
-// FAMILY_GOOGLE_TYPES; clients must not re-mirror that expansion, discovery
-// filters read the field off the wire.
+// Adds `family_keys` (MESITA-679) — source of truth is
+// `_shared/place-taxonomy.ts` (Atlas membership = the full Super Category
+// set when the category is in the catalog; stored keys only when
+// membership is empty; else the Google primaryType map). A category in
+// two supers ships both keys. Clients must not re-mirror that expansion;
+// Search map Filters cut on Super Category off this field.
 //
 // Adds `promoting` (MESITA-1150) — whether a guest gets a discount here RIGHT
 // NOW, computed rather than read off the stale `listing_type` enum. See
@@ -22,7 +25,7 @@
 // knowing its strike record. Every consumer place payload runs through here,
 // so this is the one place both rules have to hold.
 
-import { familiesForGoogleType, type FamilyKey } from "./sourcing.ts";
+import { familiesForPlace, type FamilyKey } from "./place-taxonomy.ts";
 import {
   BUSINESS_PRIVATE_PLACE_KEYS,
   isPlacePromoting,
@@ -32,6 +35,7 @@ import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 
 export type PlaceCategoryRow = {
   category?: string | null;
+  family_keys?: unknown;
 } & PromotingFields;
 
 /** What a consumer place row gains on the wire. */
@@ -46,7 +50,7 @@ export type WirePlace<T> = Omit<T, (typeof BUSINESS_PRIVATE_PLACE_KEYS)[number]>
   WireExtras;
 
 /**
- * Wire mapper: set `family_keys` from `category` (Google primaryType-style),
+ * Wire mapper: set `family_keys` from Atlas membership / stored / Google type,
  * and `promoting` + `partner` from the rate/plan/lane columns, then drop those
  * columns.
  * Both are always overwritten so a stale client cache can't leak a previous
@@ -62,7 +66,7 @@ export function withFamilyKeys<T extends PlaceCategoryRow>(
   const partner = isPaidPlan(row.plan);
   const out = {
     ...row,
-    family_keys: familiesForGoogleType(row.category),
+    family_keys: familiesForPlace(row),
     promoting,
     partner,
   } as Record<string, unknown>;
