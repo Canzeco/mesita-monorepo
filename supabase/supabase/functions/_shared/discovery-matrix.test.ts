@@ -45,10 +45,10 @@ Deno.test("seven modules and the locked mode → module matrix", () => {
   assertEquals(modeCallsModule("deep", "Google Places Nearby Search"), false);
 });
 
-Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social; Favorites has no pool gates", () => {
+Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
   assertEquals(modeRequiresPool("swipe", "google"), true);
   assertEquals(modeRequiresPool("swipe", "listed"), true);
-  assertEquals(modeRequiresPool("favorites", "google"), false);
+  assertEquals(modeRequiresPool("favorites", "google"), true);
   assertEquals(modeRequiresPool("favorites", "listed"), false);
   assertEquals(modeRequiresPool("favorites", "enriched"), false);
   assertEquals(modeRequiresPool("deep", "listed"), false);

@@ -110,10 +110,10 @@ describe("Discovery function APIs", () => {
     expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(false);
   });
 
-  it("pool mask is Google Places + Listed on Swipe · Catalog · Social; Favorites has no pool gates", () => {
+  it("pool mask is Google Places + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "listed")).toBe(true);
-    expect(modeRequiresPool("favorites", "google")).toBe(false);
+    expect(modeRequiresPool("favorites", "google")).toBe(true);
     expect(modeRequiresPool("favorites", "listed")).toBe(false);
     expect(modeRequiresPool("favorites", "enriched")).toBe(false);
     expect(modeRequiresPool("deep", "listed")).toBe(false);
