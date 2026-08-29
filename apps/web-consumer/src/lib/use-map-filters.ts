@@ -5,14 +5,16 @@
 
 import { useSyncExternalStore } from "react";
 import {
+  clampResultLimit,
   clampSearchPower,
   MAP_FILTER_DEFAULTS,
   type MapFilters,
+  type MapResultLimit,
   type MapSearchPower,
 } from "@/lib/map-filters-engine";
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-const STORAGE_KEY = "mesita_map_filters_v3";
+const STORAGE_KEY = "mesita_map_filters_v4";
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
 
 function readPersisted(): MapFilters {
@@ -31,6 +33,7 @@ function readPersisted(): MapFilters {
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
           )
         : [],
+      resultLimit: clampResultLimit(parsed.resultLimit),
     };
   } catch {
     return MAP_FILTER_DEFAULTS;
@@ -74,6 +77,10 @@ export function resetMapFilters() {
 
 export function setMapSearchPower(power: MapSearchPower) {
   patchMapFilters({ searchPower: clampSearchPower(power) });
+}
+
+export function setMapResultLimit(limit: MapResultLimit) {
+  patchMapFilters({ resultLimit: clampResultLimit(limit) });
 }
 
 export function toggleMapFamily(key: FamilyKey) {
