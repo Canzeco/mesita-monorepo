@@ -6,7 +6,7 @@ import {
   requestProgressLabel,
   showEnrichTab,
 } from "./PlaceRequestPanel";
-import { placeTabs } from "./tabs";
+import { PlaceTabBar, placeTabs } from "./tabs";
 
 describe("vote progress copy", () => {
   it("zero votes", () => {
@@ -28,20 +28,38 @@ describe("Enrich tab gate", () => {
     expect(showEnrichTab({ is_enriched: true })).toBe(false);
   });
 
-  it("leads the tab strip until Enriched", () => {
-    expect(placeTabs(false).map((t) => t.label)).toEqual([
-      "Enrich",
-      "Overview",
-      "Reviews",
-      "Menus",
-      "Rewards",
-    ]);
+  it("is Enrich-only until Enriched, then the four core tabs", () => {
+    expect(placeTabs(false).map((t) => t.label)).toEqual(["Enrich"]);
     expect(placeTabs(true).map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
       "Menus",
       "Rewards",
     ]);
+  });
+
+  it("renders Enrich and not the core tabs on the unenriched strip", () => {
+    const html = renderToStaticMarkup(
+      <PlaceTabBar tab="enrich" onChange={() => {}} enriched={false} />,
+    );
+    expect(html).toContain("Enrich");
+    expect(html).toContain("grid-cols-1");
+    expect(html).not.toContain("Overview");
+    expect(html).not.toContain("Reviews");
+    expect(html).not.toContain("Menus");
+    expect(html).not.toContain("Rewards");
+  });
+
+  it("renders the four core tabs and not Enrich once Enriched", () => {
+    const html = renderToStaticMarkup(
+      <PlaceTabBar tab="place" onChange={() => {}} enriched={true} />,
+    );
+    expect(html).toContain("Overview");
+    expect(html).toContain("Reviews");
+    expect(html).toContain("Menus");
+    expect(html).toContain("Rewards");
+    expect(html).toContain("grid-cols-4");
+    expect(html).not.toContain("Enrich");
   });
 });
 
