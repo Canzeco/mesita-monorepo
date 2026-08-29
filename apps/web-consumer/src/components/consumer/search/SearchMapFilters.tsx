@@ -20,11 +20,13 @@ import { SearchResultLimit } from "./SearchResultLimit";
 // 2026-08-29). There is no Status chip row, Category, or Types axis.
 // Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
 // retired as a scope, kept as the yellow paint. Default is Mesita
-// Places. Super Category offers the SEVEN real supers — ❓ Undefined is
-// not an appetite and never a pill here (Pato, 2026-08-29). How many is
-// 20, 40, or 60 — closest N, nothing in between — and it is the CAP the
-// Nearby fetch itself obeys, asked ONCE, here and nowhere in the
-// console. It opens at 20.
+// Places. Picking Google Places WARNS inside the box: those rows are
+// uncurated, and a guest reaching for more places deserves to know what
+// the extra ones cost in quality. Super Category offers the SEVEN real
+// supers — ❓ Undefined is not an appetite and never a pill here. How
+// many is 20, 40, or 60 — closest N, nothing in between — and it is the
+// CAP the Nearby fetch itself obeys, asked ONCE, here and nowhere in
+// the console. It opens at 20. (All four: Pato, 2026-08-29.)
 // Distance and time are not map knobs.
 
 export function SearchMapFilters({
