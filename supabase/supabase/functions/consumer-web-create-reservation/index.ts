@@ -23,6 +23,7 @@ import { generateReservationCode, isUniqueViolation } from "../_shared/reservati
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
+import { isPlaceProfileReady } from "../_shared/place-status.ts";
 
 type Body = {
   project_id?: string;
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
   // give the client a code it can act on.
   const { data: projectRow, error: projectErr } = await admin
     .from("projects")
-    .select("id")
+    .select("id, content_status")
     .eq("id", body.project_id)
     .maybeSingle();
   if (projectErr) return json({ ok: false, error: projectErr.message }, 500);
@@ -94,6 +95,13 @@ Deno.serve(async (req) => {
       code: "place_not_found",
       error: "That place isn't available anymore. Refresh to get the latest list.",
     }, 404);
+  }
+  if (!isPlaceProfileReady((projectRow as { content_status?: unknown }).content_status)) {
+    return json({
+      ok: false,
+      code: "profile_not_ready",
+      error: "This place's profile hasn't been created yet.",
+    }, 409);
   }
 
   // ── Monthly reservation cap (Premium perk: "more reservations") ─────────

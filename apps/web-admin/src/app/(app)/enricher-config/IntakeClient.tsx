@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Sparkles,
   Star,
+  Users,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -31,6 +32,7 @@ import {
   computeEnrichTickCost,
 } from "./cost-model";
 import { ImageFunnel } from "./ImageFunnel";
+import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
@@ -115,6 +117,7 @@ export function IntakeClient({
         discoverFacebookN: settings.discoverFacebookN,
         discoverOpentableN: settings.discoverOpentableN,
         discoverUbereatsN: settings.discoverUbereatsN,
+        requestThreshold: settings.requestThreshold,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -214,7 +217,7 @@ export function IntakeClient({
                     <>
                       A person or Memo adds a place.{" "}
                       <Link
-                        href="/filters-config#s-map"
+                        href={DISCOVERY_MAP_HREF}
                         className="text-foreground underline underline-offset-2"
                       >
                         Discovery › Map
@@ -244,6 +247,23 @@ export function IntakeClient({
                 />
               }
             />
+            <div className="mt-4">
+              <Fields>
+                <NumberField
+                  icon={<Users className="text-muted-foreground h-4 w-4" />}
+                  label="Request threshold"
+                  value={settings.requestThreshold}
+                  min={1}
+                  max={100}
+                  onChange={(v) => patch({ requestThreshold: v })}
+                  disabled={pending}
+                />
+              </Fields>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                Auto-enrich a Listed place when this many consumers request the
+                profile. Admin create and enrich skip the wait.
+              </p>
+            </div>
           </SectionCard>
         </div>
 

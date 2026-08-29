@@ -23,7 +23,7 @@ import {
   isPlacePromoting,
   placePromotingLevel,
 } from "../_shared/place-promoting.ts";
-import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
+import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
 import {
@@ -243,6 +243,7 @@ Deno.serve(async (req) => {
       business_status_at: (v.business_status_at as string | null) ?? null,
       // The Listed fact. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
+      requested: isPlaceRequested(v.status),
       // PULSE: how far the TEN-function ENRICH queue got, 0-10
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.

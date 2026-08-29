@@ -1,19 +1,21 @@
 // Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
-// Search (Partners · Mesita · Google) after idle.
+// Search after idle.
 //
 // Consumer Search and admin Manage Single Place (admin-web-suggest-places,
 // mode deep). Business still calls suggestPlaces (Autocomplete + Mesita
 // ILIKE, Mesita-first sort).
 //
-// Fast: Google Autocomplete, cap `name.fast.count`, Fast Google categories.
-// Deep: three lanes, then one list after dropping overlaps:
-//   1. Partners — name cosine (`places.name_embedding`)
-//   2. Mesita — name cosine, partners included
-//   3. Google — Text Search order among Deep Google categories
-// Partners ⊆ Mesita ⊆ Google. Merge concatenates after dropping concurrencies.
-// A listed Place ID never comes back as a Google stub. Summary embedding is
-// not a Name lane. Membership is a boolean `partner`; the client paints the
-// point. No source labels.
+// Fast: Google Autocomplete only. Cap `name.fast.count`.
+// Deep: three modules, each candidate resolves, then one list:
+//   1. Google Autocomplete — resolve against the catalog
+//   2. Google Text Search — resolve against the catalog
+//   3. Mesita Places Lineup — Name signal only (`places.name_embedding`
+//      over `places.name` = coalesce(mesita_name, google_name)). Never
+//      `google_name` ILIKE (that is suggest-places / business search).
+// Then Partners → Mesita → Google after dropping overlaps.
+// Merge is not a fourth module. Summary and the other six Lineup signals
+// are not a Deep input. A listed Place ID never comes back as a Google
+// stub. Membership is a boolean `partner`; the client paints the point.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -194,6 +196,7 @@ function listedToLane(row: ListedRow): LaneItem | null {
   if (!gid && !row.id) return null;
   return {
     placeId: gid ?? "",
+    // Mesita display name (`places.name`), never the raw google_name column.
     mainText: String(row.name ?? ""),
     secondaryText: row.address ?? "",
     status: "web_listed",
@@ -202,6 +205,27 @@ function listedToLane(row: ListedRow): LaneItem | null {
     mesitaSlug: row.slug,
     lat: row.lat,
     lng: row.lng,
+  };
+}
+
+/**
+ * After a Google candidate resolves to a catalog row, the entity is Mesita's.
+ * Label with `places.name`, not the Autocomplete / Text Search string.
+ */
+export function applyResolvedMesitaName(
+  item: LaneItem,
+  mesita: LaneItem,
+): LaneItem {
+  return {
+    ...item,
+    status: mesita.status,
+    partner: mesita.partner,
+    mesitaId: mesita.mesitaId,
+    mesitaSlug: mesita.mesitaSlug,
+    lat: item.lat ?? mesita.lat,
+    lng: item.lng ?? mesita.lng,
+    mainText: mesita.mainText || item.mainText,
+    secondaryText: mesita.secondaryText || item.secondaryText,
   };
 }
 
@@ -270,7 +294,16 @@ export async function runConsumerSearchLane(
   const mode = resolveMode(args.mode);
 
   const predictions = mode === "deep"
-    ? await runDeepSearch(admin, apiKey, cfg.map, cfg.name, input, origin, args.country)
+    ? await runDeepSearch(
+      admin,
+      apiKey,
+      cfg.map,
+      cfg.name,
+      input,
+      sessionToken,
+      origin,
+      args.country,
+    )
     : await runFastSearch(
       admin,
       apiKey,
@@ -326,33 +359,102 @@ async function runFastSearch(
   return takeFastLane(stamped, cap);
 }
 
+/** After resolve: Mesita partners, Mesita listed, leftover Google stubs. */
+export function splitResolvedNameHits(items: LaneItem[]): NameDeepLanes {
+  const partners: LaneItem[] = [];
+  const mesita: LaneItem[] = [];
+  const google: LaneItem[] = [];
+  for (const item of items) {
+    if (item.mesitaId && item.partner) partners.push(item);
+    else if (item.mesitaId) mesita.push(item);
+    else if (item.status === "not_in_mesita" && !item.mesitaId) google.push(item);
+  }
+  return { partners, mesita, google };
+}
+
+function takeLane(items: LaneItem[], cap: number): LaneItem[] {
+  if (cap <= 0) return [];
+  return items.slice(0, cap);
+}
+
+/** Listed-not-partner rows. Partners already fill their own Deep lane. */
+export function listedNotPartner<T extends { plan: string | null }>(
+  rows: T[],
+): T[] {
+  return rows.filter((row) => !isPaidPlan(row.plan));
+}
+
+/** Same strip as nearby-places — Autocomplete/Text ids may be `places/ChIJ…`. */
+export function stripPlacesPrefix(id: string): string {
+  return id.startsWith("places/") ? id.slice("places/".length) : id;
+}
+
+/** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
+export function deepModuleFlags(args: {
+  partnerCount: number;
+  mesitaCount: number;
+  googleCount: number;
+  typesOn: boolean;
+  hasOpenai: boolean;
+}): { wantAuto: boolean; wantText: boolean; wantMesita: boolean } {
+  return {
+    wantAuto: args.typesOn,
+    wantText: args.googleCount > 0 && args.typesOn,
+    wantMesita: (args.partnerCount > 0 || args.mesitaCount > 0) &&
+      args.hasOpenai,
+  };
+}
+
 async function runDeepSearch(
   admin: SupabaseClient,
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
   input: string,
+  sessionToken: string,
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = mapWithTypes(map, deep.types);
-  const wantGoogle = deep.googleCount > 0 &&
-    googleTypeFilterForTypes(deep.types) !== "skip";
+  const typesOn = googleTypeFilterForTypes(deep.types) !== "skip";
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  const wantMesita = (deep.partnerCount > 0 || deep.mesitaCount > 0) &&
-    Boolean(openaiKey);
+  const { wantAuto, wantText, wantMesita } = deepModuleFlags({
+    partnerCount: deep.partnerCount,
+    mesitaCount: deep.mesitaCount,
+    googleCount: deep.googleCount,
+    typesOn,
+    hasOpenai: Boolean(openaiKey),
+  });
 
-  const [googleText, embedPool, queryVec] = await Promise.all([
-    wantGoogle
+  const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
+    wantAuto
+      ? fetchAutocomplete(input, sessionToken, apiKey, origin, country)
+      : Promise.resolve({ predictions: [] as LaneItem[] }),
+    wantText
       ? fetchTextSearch(input, apiKey, gate, origin, country, deep.googleCount)
       : Promise.resolve([] as LaneItem[]),
     wantMesita ? fetchEmbedPool(admin, origin) : Promise.resolve([] as ListedRow[]),
     wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
   ]);
 
+  const autoPreds = "errorEnvelope" in googleAuto && googleAuto.errorEnvelope
+    ? []
+    : googleAuto.predictions;
+
+  const [stampedAuto, stampedText] = await Promise.all([
+    stampGoogleAgainstCatalog(autoPreds, admin, apiKey, gate),
+    stampGoogleAgainstCatalog(
+      googleText,
+      admin,
+      apiKey,
+      gate,
+      { alreadyHasSignals: true },
+    ),
+  ]);
+
   const ranked = queryVec ? rankByNameCosine(embedPool, queryVec) : [];
-  const partners = queryVec && deep.partnerCount > 0
+  const lineupPartners = queryVec && deep.partnerCount > 0
     ? takeAboveNameFloor(
       ranked.filter((row) => isPaidPlan(row.plan)),
       queryVec,
@@ -360,20 +462,34 @@ async function runDeepSearch(
       deep.partnerCount,
     )
     : [];
-  const mesita = queryVec && deep.mesitaCount > 0
-    ? takeAboveNameFloor(ranked, queryVec, NAME_MIN_COSINE, deep.mesitaCount)
+  // Mesita lane is listed-not-partner. Partners already have their own lane;
+  // if they fill this cap, merge drops them and listed places never appear.
+  const lineupMesita = queryVec && deep.mesitaCount > 0
+    ? takeAboveNameFloor(
+      listedNotPartner(ranked),
+      queryVec,
+      NAME_MIN_COSINE,
+      deep.mesitaCount,
+    )
     : [];
 
-  const stampedGoogle = await stampGoogleAgainstCatalog(
-    googleText,
-    admin,
-    apiKey,
-    gate,
-    { alreadyHasSignals: true },
-  );
-  const google = stampedGoogle.filter((item) => item.status === "not_in_mesita");
+  const fromAuto = splitResolvedNameHits(stampedAuto);
+  const fromText = splitResolvedNameHits(stampedText);
 
-  return mergeNameDeepLanes({ partners, mesita, google });
+  return mergeNameDeepLanes({
+    partners: takeLane(
+      [...lineupPartners, ...fromAuto.partners, ...fromText.partners],
+      deep.partnerCount,
+    ),
+    mesita: takeLane(
+      [...lineupMesita, ...fromAuto.mesita, ...fromText.mesita],
+      deep.mesitaCount,
+    ),
+    google: takeLane(
+      [...fromAuto.google, ...fromText.google],
+      deep.googleCount,
+    ),
+  });
 }
 
 function toWire(item: LaneItem) {
@@ -488,7 +604,7 @@ async function fetchAutocomplete(
     .map((s) => s.placePrediction)
     .filter((p): p is NonNullable<typeof p> => !!p)
     .map<LaneItem>((p) => ({
-      placeId: p.placeId,
+      placeId: stripPlacesPrefix(p.placeId),
       mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
       secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
       status: "not_in_mesita",
@@ -568,7 +684,7 @@ async function fetchTextSearch(
     }).eligible;
     if (!eligible) continue;
     out.push({
-      placeId: p.id,
+      placeId: stripPlacesPrefix(p.id),
       mainText: p.displayName.text,
       secondaryText: p.formattedAddress ?? "",
       status: "not_in_mesita",
@@ -604,17 +720,7 @@ async function stampGoogleAgainstCatalog(
     if (!row) return item;
     const mesita = listedToLane(row);
     if (!mesita) return item;
-    return {
-      ...item,
-      status: mesita.status,
-      partner: mesita.partner,
-      mesitaId: mesita.mesitaId,
-      mesitaSlug: mesita.mesitaSlug,
-      lat: item.lat ?? mesita.lat,
-      lng: item.lng ?? mesita.lng,
-      mainText: item.mainText || mesita.mainText,
-      secondaryText: item.secondaryText || mesita.secondaryText,
-    };
+    return applyResolvedMesitaName(item, mesita);
   });
 
   if (opts.alreadyHasSignals) {

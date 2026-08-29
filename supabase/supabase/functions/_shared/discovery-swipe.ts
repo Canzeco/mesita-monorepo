@@ -2,7 +2,7 @@
 //
 // Swipe is for guests who are not looking for anything specific. Specific
 // intent belongs to Chat. Hard filters admit; a weighted SUM scores; partner
-// bias multiplies after. This replaces the six-signal `s^w` blend + bought
+// bias multiplies after. This replaces the nine-signal `s^w` blend + bought
 // slots FOR SWIPE ONLY. Catalog, Chat and Social stay pending.
 //
 //   score = (wP * proximity + (1 − wP) * popularity) * partner_bias

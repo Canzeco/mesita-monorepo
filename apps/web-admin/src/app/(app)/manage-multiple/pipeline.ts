@@ -1,10 +1,12 @@
-// Manage Multiple Places — three boxes. Edit is a control on Mesita Intake,
-// not a fourth numbered surface. The sticky rail and the cards both read
-// from here so a surface cannot appear on one and vanish from the other.
+// Manage Multiple Places — three boxes. Create, Enrich, Update, and
+// Create + Enrich share one Mesita Intake box — not a fourth card.
+// The sticky rail and the cards both read from here so a surface cannot
+// appear on one and vanish from the other.
 //
 // Google Search looks up Google. Mesita Search looks up Mesita (read-only).
-// Mesita Intake is the make door and the only state write (Listed · Verified ·
-// Partner · Promoted) on the same Google Place IDs.
+// Mesita Intake is the make door and the only state write (Listed · Active ·
+// Verified · Partnered · Promoted) on the same Google Place IDs. Active off
+// unlists.
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },

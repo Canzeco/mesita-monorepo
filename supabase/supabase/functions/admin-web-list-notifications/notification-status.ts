@@ -1,4 +1,4 @@
-// Place Status facts for Global Monitor — same eight the Status box and
+// Place Status facts for Global Monitor — same nine the Status box and
 // the Single Place catalog use, derived from the same helpers. Never
 // listing_type. Never "claimed" as a fact (that's an owner row, not
 // Verified).
@@ -6,17 +6,23 @@
 //   created    google_place_id present (operator label Created; wire `seeded`)
 //   active     Google business_status === OPERATIONAL
 //   listed     projects.status ∈ (active, lead)
-//   enriching  content_status generating/queued (live run)
+//   requested  projects.status ∈ (pending_review, pending_verification)
 //   enriched   PULSE high-water complete. Independent of enriching.
+//   enriching  content_status generating/queued (live run)
 //   verified   an approved project_verifications row
-//   partner    plan ≠ free
+//   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)
 //   functions  completed Intake Create/Enrich subfunctions (pulse, details, …)
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
-import { isPlaceEnriching, isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
+import {
+  isPlaceEnriching,
+  isPlaceListed,
+  isPlaceRequested,
+  isPlaceSeeded,
+} from "../_shared/place-status.ts";
 import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
@@ -25,6 +31,7 @@ export type PlaceStatusFacts = {
   seeded: boolean;
   active: boolean;
   listed: boolean;
+  requested: boolean;
   enriching: boolean;
   enriched: boolean;
   enrichPulse: number;
@@ -72,6 +79,7 @@ export function placeStatusFacts(input: {
     seeded: isPlaceSeeded(input.googlePlaceId),
     active: input.businessStatus === "OPERATIONAL",
     listed: isPlaceListed(input.status),
+    requested: isPlaceRequested(input.status),
     enriching: isPlaceEnriching(input.contentStatus),
     enriched: highWater === PULSE_TOTAL,
     enrichPulse: highWater,

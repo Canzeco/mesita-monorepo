@@ -1,8 +1,9 @@
 // Shared suggest-places engine (Google + Mesita merge).
 //
 // Formerly the enricher suggest-places internal EF. It was only
-// ever invoked by the three thin suggest facades (consumer-web-,
-// business-web-, admin-web-suggest-places), so per the caller-nomenclature
+// ever invoked by the suggest facades. Admin Manage Single now calls
+// runConsumerSearchLane (deep); business-web-suggest-places still uses
+// this merge. Per the caller-nomenclature
 // grammar (one endpoint = one caller) the HTTP hop didn't earn its cost on
 // this latency-sensitive autocomplete path — the merge now runs in-process
 // inside each facade (MESITA-55, mirroring the ranker absorb in

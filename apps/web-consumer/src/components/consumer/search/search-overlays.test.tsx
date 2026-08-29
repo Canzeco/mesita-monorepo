@@ -3,17 +3,22 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { RailCard } from "@/components/consumer/search/SearchRailCard";
+import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import {
   EmptySearchPrompt,
   SearchHereButton,
   SearchRailOverlay,
 } from "@/components/consumer/search/search-catalog-overlays";
+import { DISCOVERY_FILTER_DEFAULTS } from "@/lib/discovery-filters-engine";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   catalogIsStale,
   clampReloadMinKm,
+  defaultRailSelection,
   nearbyReloadThresholdKm,
+  railCenterIndex,
   shouldReloadNearbyCatalog,
   viewportCenter,
 } from "@/components/consumer/search/search-utils";
@@ -63,7 +68,7 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("Filters");
   });
 
-  it("shows the country flag and a compass for location on Search", () => {
+  it("shows the country flag and a compass when a host passes onOpenScope", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -98,6 +103,36 @@ describe("SearchBar scope affordance", () => {
     expect(html).toContain("🌐");
     expect(html).toContain("any country");
     expect(html).toContain("location not set");
+  });
+});
+
+describe("SearchFilterRow", () => {
+  it("renders family chips, Now, Visit, scope, and Filters beside the bar", () => {
+    const html = renderToStaticMarkup(
+      <SearchFilterRow
+        filters={DISCOVERY_FILTER_DEFAULTS}
+        countryCode="MX"
+        locationSet
+        onOpenScope={() => {}}
+        onOpenFilters={() => {}}
+      />,
+    );
+    expect(html).toContain("Search filters");
+    expect(html).toContain("Restaurants");
+    expect(html).toContain("Bars");
+    expect(html).toContain("Now");
+    expect(html).toContain("Visit");
+    expect(html).toContain("Filters");
+    expect(html).toContain("🇲🇽");
+    expect(html).toContain("location set");
+    expect(html).toContain("lucide-compass");
+    expect(html).toContain("lucide-sliders-horizontal");
+    expect(html.indexOf("Filters")).toBeLessThan(html.indexOf("Restaurants"));
+    expect(html).not.toContain("🍽️");
+    expect(html).not.toContain("Romantic");
+    expect(html).not.toContain("Italian");
+    expect(read("SearchFilterRow.tsx")).not.toContain("border-border");
+    expect(read("SearchFilterRow.tsx")).not.toContain("family.emoji");
   });
 });
 
@@ -177,17 +212,31 @@ describe("Search map catalog reloads only when the guest asks", () => {
   });
 });
 
-describe("Search map has no discovery filters", () => {
-  it("does not cut the nearby catalog with Swipe predicates", () => {
+describe("Search map puts the query pill and filter strip on one row", () => {
+  it("cuts the nearby catalog with Discovery predicates from a chip strip beside the bar", () => {
     const src = read("SearchClient.tsx");
-    expect(src).not.toContain("applyDiscoveryFilters");
-    expect(src).not.toContain("useDiscoveryFilters");
-    expect(src).not.toContain("DiscoveryFilters");
-    expect(src).not.toContain("onOpenFilters");
-    expect(src).not.toContain("filtersActive");
+    expect(src).toContain("applyDiscoveryFilters");
+    expect(src).toContain("useDiscoveryFilters");
+    expect(src).toContain("DiscoveryFilters");
+    expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
+    expect(src).toContain("flex min-w-0 items-center gap-2");
+    expect(src).toContain("flex-[1.15] basis-0");
+    expect(src).toMatch(
+      /<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/,
+    );
+    expect(read("SearchBar.tsx")).not.toMatch(
+      /Search passes `onOpenScope`/,
+    );
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
-    expect(read("search-catalog-overlays.tsx")).not.toContain(
+    expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+      "flex items-center gap-2",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+      "mt-2 flex gap-1.5",
     );
   });
 
@@ -400,6 +449,20 @@ describe("Search catalog reload UI", () => {
     expect(html).not.toContain("Adjust");
     expect(html).not.toContain("filters");
   });
+
+  it("offers Reset filters when predicates emptied the rail", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay
+        {...railProps}
+        places={[]}
+        catalogCount={4}
+        onResetFilters={() => {}}
+      />,
+    );
+    expect(html).toContain("No places match these filters");
+    expect(html).toContain("Reset filters");
+    expect(html).not.toContain("Adjust");
+  });
 });
 
 describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () => {
@@ -410,20 +473,57 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const loading = read("../../../app/(shell)/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
+    expect(overlay).toContain("px-3");
     expect(overlay).toContain("first:ml-[10%] last:mr-[10%]");
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
     expect(overlay).not.toMatch(/flex gap-2 overflow-x-auto/);
-    expect(card).toContain("flex w-full items-center");
+    expect(card).toContain("flex w-full items-stretch");
+    expect(card).toContain("ring-inset");
     expect(card).not.toContain("w-[288px]");
     expect(client).toContain("el.clientWidth * 0.8");
-    expect(client).toContain("el.scrollLeft / page");
+    expect(client).toContain("railCenterIndex");
+    expect(client).toContain("setSelectedId(id)");
+    expect(client).toContain("defaultRailSelection");
+    expect(client).toContain("railSelectedId");
+    expect(client).toContain("idx === railIndex");
+    expect(client).not.toContain("setSelectedId(next)");
     expect(client).toContain('inline: "center"');
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");
     expect(loading).toContain("w-4/5 shrink-0 snap-center");
+    expect(loading).toContain("px-3");
     expect(loading).toContain("first:ml-[10%] last:mr-[10%]");
     expect(loading).not.toContain("w-[288px]");
+  });
+
+  it("bleeds rail photos to the card edge with no inner frame", () => {
+    const card = read("SearchRailCard.tsx");
+    const overlay = read("search-catalog-overlays.tsx");
+    expect(card).toContain(
+      "bg-muted relative min-h-20 w-20 shrink-0 self-stretch overflow-hidden",
+    );
+    expect(card).toContain("overflow-hidden rounded-2xl border");
+    expect(card).toContain('className="border-0 object-cover outline-none"');
+    expect(card).not.toContain("rounded-xl");
+    expect(card).not.toMatch(
+      /min-h-20 w-20[^"]*\b(?:border|ring|rounded-xl)\b/,
+    );
+    expect(overlay).toContain(
+      "min-h-20 w-20 shrink-0 self-stretch rounded-none",
+    );
+    const html = renderToStaticMarkup(
+      <RailCard
+        place={RAIL_PLACE}
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    expect(html).toContain("min-h-20");
+    expect(html).toContain("w-20");
+    expect(html).not.toMatch(/min-h-20 w-20[^"]*\bborder\b/);
+    expect(html).not.toMatch(/min-h-20 w-20[^"]*\brounded-xl\b/);
   });
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
@@ -450,6 +550,31 @@ describe("Name search is Fast while typing and Deep after idle", () => {
     expect(src).toContain('"fast"');
     expect(src).toContain('"deep"');
     expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
+  });
+
+  it("keeps Fast when Deep returns an empty list", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("Empty Deep keeps Fast");
+    expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
+    expect(src).toContain("Keep Fast results if Deep fails.");
+  });
+});
+
+describe("rail center is the selected place", () => {
+  it("railCenterIndex snaps to the nearest page and clamps", () => {
+    expect(railCenterIndex(0, 320, 5)).toBe(0);
+    expect(railCenterIndex(160, 320, 5)).toBe(1);
+    expect(railCenterIndex(480, 320, 5)).toBe(2);
+    expect(railCenterIndex(2000, 320, 5)).toBe(4);
+    expect(railCenterIndex(100, 0, 5)).toBe(0);
+    expect(railCenterIndex(100, 320, 0)).toBe(0);
+  });
+
+  it("defaultRailSelection keeps a live id and falls back to the first card", () => {
+    expect(defaultRailSelection(["a", "b"], null)).toBe("a");
+    expect(defaultRailSelection(["a", "b"], "b")).toBe("b");
+    expect(defaultRailSelection(["a", "b"], "gone")).toBe("a");
+    expect(defaultRailSelection([], "a")).toBe(null);
   });
 });
 

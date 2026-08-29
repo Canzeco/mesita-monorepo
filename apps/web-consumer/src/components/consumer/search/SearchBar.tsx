@@ -5,10 +5,11 @@ import { Compass, Search, X } from "lucide-react";
 import { countryBarChip } from "@/lib/search-scope";
 import { cn } from "@/lib/utils";
 
-// Shared by Search (discovery) and Visit (the wallet's place list, MESITA-1071).
-// Search passes `onOpenScope` for the compact country + location control on
-// the far right. Visit omits it — a control that does nothing is worse than
-// none. Discovery cuisine/when/rewards do not live here.
+// Shared by Search and Visit (the wallet's place list, MESITA-1071).
+// Query field only. Search's country + location + categories live on
+// SearchFilterRow beside the bar (same row, separated). Visit omits
+// those. `onOpenScope` stays as an optional far-right control for
+// hosts that still want it.
 type SearchBarProps = {
   query: string;
   showClear: boolean;

@@ -1,5 +1,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { isPlaceEnriching, isPlaceListed, isPlaceSeeded } from "./place-status.ts";
+import {
+  isPlaceEnriching,
+  isPlaceListed,
+  isPlaceProfileReady,
+  isPlaceRequested,
+  isPlaceSeeded,
+} from "./place-status.ts";
 
 Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
   assertEquals(isPlaceSeeded(null), false);
@@ -42,10 +48,26 @@ Deno.test("listed: a missing or non-string status is never listed", () => {
   }
 });
 
+Deno.test("requested: pending_review and pending_verification only", () => {
+  assertEquals(isPlaceRequested("pending_review"), true);
+  assertEquals(isPlaceRequested("pending_verification"), true);
+  assertEquals(isPlaceRequested("lead"), false);
+  assertEquals(isPlaceRequested("active"), false);
+  assertEquals(isPlaceRequested(null), false);
+});
+
 Deno.test("enriching: generating or queued is mid-flight", () => {
   assertEquals(isPlaceEnriching("generating"), true);
   assertEquals(isPlaceEnriching("queued"), true);
   assertEquals(isPlaceEnriching("ready"), false);
   assertEquals(isPlaceEnriching("failed"), false);
   assertEquals(isPlaceEnriching(null), false);
+});
+
+Deno.test("profile ready: only content_status ready is a usable profile", () => {
+  assertEquals(isPlaceProfileReady("ready"), true);
+  assertEquals(isPlaceProfileReady("queued"), false);
+  assertEquals(isPlaceProfileReady("generating"), false);
+  assertEquals(isPlaceProfileReady("failed"), false);
+  assertEquals(isPlaceProfileReady(null), false);
 });

@@ -55,10 +55,29 @@ export function isPlaceListed(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
 }
 
+/** Someone asked Mesita to add or own this place. Not Listed, not Verified. */
+export const REQUESTED_STATUSES: readonly string[] = [
+  "pending_review",
+  "pending_verification",
+];
+
+export function isPlaceRequested(status: unknown): boolean {
+  return typeof status === "string" && REQUESTED_STATUSES.includes(status);
+}
+
 /** Intaker pipeline mid-flight. content_status generating/queued covers the
  *  whole run after MESITA-453 (re-enrich flips the column; never clear after
  *  research alone). Stage research|analysis|contents is the other half, read
  *  by admin-web-get-place-enrichment — notifications only have this column. */
 export function isPlaceEnriching(contentStatus: unknown): boolean {
   return contentStatus === "generating" || contentStatus === "queued";
+}
+
+/**
+ * Usable Mesita profile. Contents persist stamps content_status ready
+ * (and enriched_at). Listed and Requested must not unlock Enriched-only
+ * capabilities — Visit / Order / Reserve / the normal place modal.
+ */
+export function isPlaceProfileReady(contentStatus: unknown): boolean {
+  return contentStatus === "ready";
 }

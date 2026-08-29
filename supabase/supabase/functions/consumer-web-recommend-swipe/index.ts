@@ -3,7 +3,7 @@
 // The SWIPE engine — the Home deck (Docs › Discovery §B).
 //
 // Hard filters admit; a two-signal SUM scores; partner bias multiplies after
-// (Pato, 2026-08-26). This replaces the six-signal blend + bought slots for
+// (Pato, 2026-08-26). This replaces the nine-signal blend + bought slots for
 // Swipe only. Catalog, Chat and Social stay pending.
 //
 //   1. ADMIT  — enriched (content_status ready), reviews floor, fixed radius,

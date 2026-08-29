@@ -36,6 +36,7 @@ import {
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
+import { isPlaceProfileReady } from "../_shared/place-status.ts";
 import {
   loadRewardsGrid,
   offersAction,
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
   const placeRow = await admin
     .from("profiles")
     .select(
-      "id, name, slug, status, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      "id, name, slug, status, content_status, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -104,6 +105,16 @@ Deno.serve(async (req) => {
   }
   if (!placeRow.data) return json({ ok: false, error: "Place not found" }, 404);
   const place = placeRow.data;
+  if (!isPlaceProfileReady((place as { content_status?: unknown }).content_status)) {
+    return json(
+      {
+        ok: false,
+        error: "This place's profile hasn't been created yet.",
+        code: "profile_not_ready",
+      },
+      409,
+    );
+  }
   if (place.status === "archived") {
     return json({ ok: false, error: "Place is archived" }, 409);
   }

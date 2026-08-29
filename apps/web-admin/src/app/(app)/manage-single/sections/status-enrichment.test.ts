@@ -52,6 +52,8 @@ describe("Status + Intake boxes", () => {
   it("keeps Enriched a bool on Status; Intake is its own card", () => {
     const status = readFileSync(join(__dirname, "StatusCard.tsx"), "utf8");
     expect(status).toContain('name="Active (Google pulse)"');
+    expect(status).toContain("setPlaceActive");
+    expect(status).toContain("Mark inactive and unlist");
     expect(status).toContain('name="Enriching"');
     expect(status).toContain('name="Enriched"');
     expect(status).not.toContain("intakeFunctionRows");

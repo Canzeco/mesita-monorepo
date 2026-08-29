@@ -17,12 +17,17 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import {
   adminClient,
   anonClient,
+  getOptionalAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
+import {
+  loadRequestThreshold,
+  placeRequestState,
+} from "../_shared/place-requests.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MESITA_REVIEW_LIMIT = 24;
@@ -96,9 +101,28 @@ Deno.serve(async (req) => {
   // `name` is the generated display column (mesita_name → google_name); raw
   // google_name and mesita_name stay on the payload for clients that need them.
   // family_keys (MESITA-679): computed from category for discovery filters.
+  const row = withFamilyKeys(data as unknown as Record<string, unknown>);
+  const { user } = await getOptionalAuthedUser(req, envRes.env);
+  let requested = false;
+  if (user) {
+    const mine = await admin
+      .from("place_requests")
+      .select("consumer_id")
+      .eq("consumer_id", user.id)
+      .eq("place_id", placeId)
+      .maybeSingle();
+    requested = !mine.error && mine.data != null;
+  }
+  const request = placeRequestState({
+    requestCount: Number(row.request_count) || 0,
+    threshold: await loadRequestThreshold(admin),
+    requested,
+    contentStatus: row.content_status,
+  });
   const place = {
-    ...withFamilyKeys(data as unknown as Record<string, unknown>),
+    ...row,
     mesita_visitors,
+    ...request,
   };
 
   return json({ ok: true, place, tags });

@@ -286,7 +286,7 @@ export function PlaceSelectCatalog() {
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
               {/* The row IS the pipeline, left to right: created → active →
-                  listed → enriching → enriched → verified → partner → promoted. Category,
+                  listed → requested → enriched → enriching → verified → partnered → promoted. Category,
                   Zone and Google reviews are gone — they describe the place,
                   and this table answers "how far along is it". Active is
                   Google's OPERATIONAL fact, not Mesita Listed. */}
@@ -298,10 +298,11 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Created</th>
                     <th className="px-4 py-3 text-center font-semibold">Active</th>
                     <th className="px-4 py-3 text-center font-semibold">Listed</th>
-                    <th className="px-4 py-3 text-center font-semibold">Enriching</th>
+                    <th className="px-4 py-3 text-center font-semibold">Requested</th>
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
+                    <th className="px-4 py-3 text-center font-semibold">Enriching</th>
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
-                    <th className="px-4 py-3 text-center font-semibold">Partner</th>
+                    <th className="px-4 py-3 text-center font-semibold">Partnered</th>
                     <th className="px-4 py-3 text-center font-semibold">Promoted</th>
                     <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
@@ -485,7 +486,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.enriching} trueLabel="Yes" falseLabel="No" />
+        <BoolCell value={place.requested} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell
@@ -496,6 +497,9 @@ function PlaceCatalogRow({
           trueLabel="Yes"
           falseLabel="No"
         />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.enriching} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />

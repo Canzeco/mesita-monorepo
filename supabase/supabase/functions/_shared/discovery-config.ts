@@ -2,8 +2,9 @@
 // Discovery §A, MESITA-1196).
 //
 // Keys: weights · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
-// Admin: General live, Name (Fast + Deep) live, Map live, Swipe live, Catalog Soon, Social Soon, Chat prompt live. Signals Soon.
-// `params` rides with `weights` — same Signals table, different numbers.
+// Admin: Modes (Fast + Deep + Map live; Home Soon) · Modules (Google types,
+// three Google boxes, Places Lineup, Social Lineup Soon, Perplexity Soon).
+// `params` rides with `weights` — same Lineup table, different numbers.
 //
 //   weights    one exponent per earned signal (`w` in `s^w`).
 //   params     shape numbers. The console edits maxKm and closedFloor;
@@ -52,7 +53,8 @@ import {
   POPULARITY_PRIOR_RATING,
   PROXIMITY_KNEE_KM,
   PROXIMITY_MAX_KM,
-  SEMANTIC_UNEMBEDDED,
+  NAME_UNEMBEDDED,
+  SUMMARY_UNEMBEDDED,
   SIGNAL_KEYS,
   TIMING_CLOSED_FLOOR,
   TIMING_OPEN_SHARE,
@@ -155,7 +157,7 @@ export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
 
 /**
  * Swipe engine knobs. Hard filters admit; a two-signal SUM scores; partner
- * bias multiplies after. Independent of the six-signal blend still stored
+ * bias multiplies after. Independent of the eight-signal blend still stored
  * on `weights` / `params` / `slotting` for later engines.
  */
 export type SwipeConfig = {
@@ -439,8 +441,11 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
     confidence: POPULARITY_CONFIDENCE,
     floorRating: POPULARITY_FLOOR_RATING,
   },
-  semantic: { unembedded: SEMANTIC_UNEMBEDDED },
+  name: { unembedded: NAME_UNEMBEDDED },
+  summary: { unembedded: SUMMARY_UNEMBEDDED },
+  partnership: {},
   randomness: {},
+  social: {},
 };
 
 /** Legal ranges for every param the console may edit. */
@@ -473,10 +478,15 @@ export const SIGNAL_PARAM_BOUNDS: Record<
     confidence: { min: 1, max: 1000, decimals: 0 },
     floorRating: { min: 0, max: 4.9, decimals: 2 },
   },
-  semantic: {
+  name: {
     unembedded: { min: 0, max: 1, decimals: 2 },
   },
+  summary: {
+    unembedded: { min: 0, max: 1, decimals: 2 },
+  },
+  partnership: {},
   randomness: {},
+  social: {},
 };
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -485,8 +495,11 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     timing: 1,
     category: 1,
     popularity: 1,
-    semantic: 1,
+    name: 1,
+    summary: 1,
+    partnership: 1,
     randomness: 0.35,
+    social: 1,
   },
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: {
@@ -766,9 +779,16 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
  * float landing at 1.7000000000000002 would make the page permanently `dirty`
  * against its own saved value — the Save button would never settle.
  */
+/** Old blobs stored Summary as `semantic`. Fold before SIGNAL_KEYS rebuild. */
+export function foldLegacySignalBag(raw: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...raw };
+  if (next.summary == null && next.semantic != null) next.summary = next.semantic;
+  return next;
+}
+
 export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const rawWeights = (r.weights ?? {}) as Record<string, unknown>;
+  const rawWeights = foldLegacySignalBag((r.weights ?? {}) as Record<string, unknown>);
   const rawSlotting = (r.slotting ?? {}) as Record<string, unknown>;
 
   const weights = {} as Record<SignalKey, number>;
@@ -786,7 +806,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
     engines[key] = { ranked: bool(e.ranked, DISCOVERY_DEFAULTS.engines[key].ranked) };
   }
 
-  const rawParams = (r.params ?? {}) as Record<string, unknown>;
+  const rawParams = foldLegacySignalBag((r.params ?? {}) as Record<string, unknown>);
   const params = {} as SignalParams;
   for (const key of SIGNAL_KEYS) {
     const bag = (rawParams[key] ?? {}) as Record<string, unknown>;

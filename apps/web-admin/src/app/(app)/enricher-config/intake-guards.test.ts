@@ -25,6 +25,7 @@ const seed: IntakeSettings = {
   discoverFacebookN: 3,
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
+  requestThreshold: 3,
 };
 
 describe("intakeSaveBlocked", () => {
@@ -64,6 +65,12 @@ describe("clampFunnel", () => {
       saveTotalImages: 99,
     });
     expect(next.saveTotalImages).toBe(10);
+  });
+
+  it("clamps request threshold to 1–100", () => {
+    expect(clampFunnel({ ...seed, requestThreshold: 0 }).requestThreshold).toBe(1);
+    expect(clampFunnel({ ...seed, requestThreshold: 999 }).requestThreshold)
+      .toBe(100);
   });
 
   it("Instagram vision Y cannot exceed last-X newest", () => {

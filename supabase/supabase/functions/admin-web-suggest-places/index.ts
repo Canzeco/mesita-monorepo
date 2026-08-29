@@ -1,8 +1,9 @@
 // Supabase Edge Function — admin-web-suggest-places (product caller)
 //
 // Manage Single Place name bar. Same Name Deep Search engine as consumer
-// Search (`runConsumerSearchLane`, mode deep): Partners · Mesita · Google,
-// one list after dropping overlaps. Super-admin gated.
+// Search (`runConsumerSearchLane`, mode deep): Autocomplete + Text Search
+// + Lineup Name, then Partners → Mesita → Google after dropping overlaps.
+// Super-admin gated.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
