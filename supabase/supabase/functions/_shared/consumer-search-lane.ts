@@ -5,7 +5,9 @@
 // mode deep). Business still calls suggestPlaces (Autocomplete + Mesita
 // ILIKE, Mesita-first sort).
 //
-// Fast: Google Autocomplete only. Cap `name.fast.count`.
+// Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
+// Fast numbers are the same list; count stays for Deep symmetry.
+// Map Filters never cut this list.
 // Deep: Autocomplete + Text Search + Places Lineup Name. The Nearby chip
 // is the guest pin on those three — not a type+DISTANCE Nearby call with
 // no query. Each candidate resolves, then one list:
@@ -151,6 +153,12 @@ export function mergeNameDeepLanes(lanes: NameDeepLanes): LaneItem[] {
     ),
   );
   return order;
+}
+
+/** Deep Max results — slice after Partners → Mesita → Google merge. */
+export function takeNameDeepResults(items: LaneItem[], count: number): LaneItem[] {
+  if (count <= 0) return [];
+  return items.slice(0, count);
 }
 
 /** Fast Search: Autocomplete order, unique venues, cap. */
@@ -375,7 +383,7 @@ async function runFastSearch(
   origin: { lat: number; lng: number } | null,
   country?: string | null,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
-  const cap = name.fast.count;
+  const cap = Math.min(name.fast.count, name.fast.googleCount);
   if (cap <= 0 || googleTypeFilterForTypes(name.fast.types) === "skip") {
     return [];
   }
@@ -519,7 +527,7 @@ async function runDeepSearch(
   const fromAuto = splitResolvedNameHits(stampedAuto);
   const fromText = splitResolvedNameHits(stampedText);
 
-  return mergeNameDeepLanes({
+  const merged = mergeNameDeepLanes({
     partners: takeLane(
       [...lineupPartners, ...fromAuto.partners, ...fromText.partners],
       deep.partnerCount,
@@ -533,6 +541,7 @@ async function runDeepSearch(
       deep.googleCount,
     ),
   });
+  return takeNameDeepResults(merged, deep.count);
 }
 
 function toWire(item: LaneItem) {

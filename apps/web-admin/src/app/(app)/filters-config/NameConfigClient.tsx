@@ -116,7 +116,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
           title="Name (Fast Search)"
-          subtitle="Google Places Autocomplete only. Cap only — Google types live on Discovery Modules. 0 is off."
+          subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap — Max results stays for Deep symmetry. 0 is off. Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -126,6 +126,15 @@ export function NameConfigClient({
         >
           <ModeModuleChips modules={DISCOVERY_MODE_MODULES.fast} />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <NumberField
+              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
+              label="Google places"
+              value={name.fast.googleCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={pending || loadBlocked}
+              onChange={(googleCount) => patchFast({ googleCount })}
+            />
             <NumberField
               icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}
               label="Max results"
@@ -155,7 +164,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Nearby on Deep is the guest pin on Autocomplete, Text Search, and name match — not a Nearby Search. Name signal only (`places.name`, not `google_name`)."
+          subtitle="Nearby on Deep is the guest pin on Autocomplete, Text Search, and name match — not a Nearby Search. Name signal only (`places.name`, not `google_name`). Max results caps the merge. Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -194,6 +203,15 @@ export function NameConfigClient({
               max={NAME_LANE_COUNT_MAX}
               disabled={pending || loadBlocked}
               onChange={(googleCount) => patchDeep({ googleCount })}
+            />
+            <NumberField
+              icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}
+              label="Max results"
+              value={name.deep.count}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={pending || loadBlocked}
+              onChange={(count) => patchDeep({ count })}
             />
           </div>
           {updatedAt ? (

@@ -356,6 +356,7 @@ export type SuggestPlacesMode = "fast" | "deep";
 /**
  * Name search for the consumer /search bar and pickers.
  * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
+ * Map Filters never ride this call — power and Super Category are map-only.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
