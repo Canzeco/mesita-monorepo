@@ -68,7 +68,7 @@ function CatalogRailSkeleton() {
       >
         <div className={RAIL_PAGE}>
           <div className="border-border bg-card/95 flex w-full items-stretch overflow-hidden rounded-2xl border">
-            <Skeleton className="min-h-20 w-20 shrink-0 self-stretch rounded-none" />
+            <Skeleton className="aspect-square min-h-20 w-auto shrink-0 self-stretch rounded-none" />
             <div className="flex min-w-0 flex-1 flex-col gap-2 py-2 pr-2 pl-2.5">
               <Skeleton className="h-3.5 w-3/4" />
               <Skeleton className="h-3 w-1/2" />

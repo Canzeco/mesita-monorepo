@@ -44,14 +44,16 @@ export function RailCard({
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
-      {/* Photo bleeds to the card edge — clip only, no inner radius or stroke. */}
-      <div className="bg-muted relative min-h-20 w-20 shrink-0 self-stretch overflow-hidden">
+      {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
+          — clip only, no inner radius or stroke. Height follows the text
+          column; width matches that height so the box is always 1:1. */}
+      <div className="bg-muted relative aspect-square min-h-20 w-auto shrink-0 self-stretch overflow-hidden">
         {photo ? (
           <Image
             src={photo}
             alt={place.name}
             fill
-            sizes="80px"
+            sizes="120px"
             className="border-0 object-cover outline-none"
           />
         ) : (
@@ -62,9 +64,9 @@ export function RailCard({
       </div>
       {/* Text column — a strict 4-row grid (name / subtitle / meta / status)
           with one uniform gap and one type size + leading for the secondary
-          rows, centred against the 80px photo. Meta items join with the same
-          "·" separator as the subtitle so the block reads as ordered lines,
-          not floating fragments. */}
+          rows, centred against the square photo. Meta items join with the
+          same "·" separator as the subtitle so the block reads as ordered
+          lines, not floating fragments. */}
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 py-2 pr-2 pl-2.5">
         <span className="flex items-center gap-1">
           <span className="truncate text-sm leading-tight font-semibold">
