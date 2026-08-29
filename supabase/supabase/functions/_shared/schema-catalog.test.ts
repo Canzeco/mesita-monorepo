@@ -251,10 +251,10 @@ Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece co
   assertEquals(pulseHighWaterFromMap(map), 3);
 });
 
-Deno.test("pulseHighWaterFromMap: Semantics at 10 cannot skip a gap", () => {
+Deno.test("pulseHighWaterFromMap: Embedding at 10 cannot skip a gap", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse", "details"),
-    semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    embedding: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
   assertEquals(pulseHighWaterFromMap(map), 2, "function 10 cannot skip 3–9");
 });
