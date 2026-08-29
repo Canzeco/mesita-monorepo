@@ -18,7 +18,7 @@ export default function SearchLoading() {
         </div>
         <div className="flex snap-x snap-mandatory overflow-hidden">
           <div className="w-4/5 shrink-0 snap-center px-3 first:ml-[10%] last:mr-[10%]">
-            <Skeleton className="bg-card/95 h-[88px] w-full rounded-2xl" />
+            <Skeleton className="bg-card/95 h-24 w-full rounded-2xl" />
           </div>
         </div>
       </div>

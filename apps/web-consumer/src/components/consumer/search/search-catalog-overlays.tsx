@@ -5,7 +5,7 @@ import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
 import { cn } from "@/lib/utils";
 
-import { RailCard } from "./SearchRailCard";
+import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
 
 /** Active card is 80% of the rail; first/last pages pad 10% so the card
  *  centers and neighbors peek. px-3 is a bit of air between cards —
@@ -67,12 +67,18 @@ function CatalogRailSkeleton() {
         aria-hidden
       >
         <div className={RAIL_PAGE}>
-          <div className="border-border bg-card/95 flex w-full items-stretch overflow-hidden rounded-2xl border">
-            <Skeleton className="aspect-square min-h-20 w-auto shrink-0 self-stretch rounded-none" />
-            <div className="flex min-w-0 flex-1 flex-col gap-2 py-2 pr-2 pl-2.5">
+          <div
+            className={cn(
+              "border-border bg-card/95 flex w-full items-stretch overflow-hidden rounded-2xl border",
+              RAIL_CARD_HEIGHT_CLASS,
+            )}
+          >
+            <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
+            <div className="grid min-w-0 flex-1 grid-rows-[1.25rem_repeat(3,1rem)] content-center gap-1 py-2 pr-2 pl-2.5">
               <Skeleton className="h-3.5 w-3/4" />
               <Skeleton className="h-3 w-1/2" />
               <Skeleton className="h-3 w-2/5" />
+              <Skeleton className="h-3 w-1/3" />
             </div>
           </div>
         </div>
