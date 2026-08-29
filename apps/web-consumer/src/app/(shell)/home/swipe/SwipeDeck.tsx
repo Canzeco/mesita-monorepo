@@ -376,8 +376,7 @@ function Deck({ places }: { places: Place[] }) {
   // show me this again" perfectly well-defined.
   const seenSet = useMemo(() => new Set(seenIds), [seenIds]);
   // PREDICATES CUT, THE SERVER ORDERS. Nothing here reorders the deck —
-  // consumer-web-recommend-swipe ranks it (two-signal sum + partner bias +
-  // a per-place random multiplier).
+  // consumer-web-recommend-swipe ranks it (Places Lineup · Swipe mask).
   // This is the SECOND pass of the same predicate set the fetch above already
   // sent: it catches the window before the filtered deck lands, the rows the
   // EF kept because it could not evaluate a predicate, and the minute-by-minute

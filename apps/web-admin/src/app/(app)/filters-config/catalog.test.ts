@@ -269,7 +269,10 @@ describe("Discovery function APIs", () => {
     expect(swipe?.state).toBe("PARKED");
     expect(swipe?.process).toMatch(/Parked/i);
     expect(swipe?.process).toMatch(/Soon/);
+    expect(swipe?.process).toMatch(/Places Lineup/);
+    expect(swipe?.process).toMatch(/Swipe mask/);
     expect(swipe?.process).not.toMatch(/slot bought/);
+    expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
   it("coerceConfig defaults general.categoryCount to 5 and clamps 0–5", () => {
@@ -451,6 +454,10 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
+    expect(signals).toContain("modeSignalState");
+    expect(signals).toContain('kind="enforced"');
+    expect(signals).toContain("Swipe read the mode mask");
+    expect(signals).not.toContain("Swipe keeps its own sum");
     expect(googleModules).toContain("Google Places Autocomplete");
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
@@ -461,8 +468,16 @@ describe("Discovery page box order", () => {
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
-    expect(matrix).toContain("Places Lineup");
+    expect(matrix).toContain("Places Types");
+    expect(matrix).toContain("Search Modules");
+    expect(matrix).toContain("Places Lineup Signals");
+    expect(matrix).toContain("Places Lineup {label}");
+    expect(matrix).toContain("BandRule");
     expect(matrix).toContain("modeSignalState");
+    expect(matrix).not.toContain("zero=");
+    expect(matrix).not.toContain("Map Randomness is 0");
+    const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
+    expect(flags).not.toContain("zero");
     expect(matrix).not.toContain(">0</span>");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");

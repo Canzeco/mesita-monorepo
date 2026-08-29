@@ -395,8 +395,8 @@ export function summary(
 /**
  * How partnered the place is. Reads `plan` only — never strategy, promo
  * flags, or rates. A free or missing plan is demoted, not deleted. A paid
- * plan scores 1. Fine rungs (conservative / aggressive / dominant) stay on
- * Swipe's own bias; this signal does not load those fields.
+ * plan scores 1. Fine rungs (conservative / aggressive / dominant) are
+ * Promoting, not this signal.
  */
 export const PARTNERSHIP_NONE = 0.2;
 export const PARTNERSHIP_PARTNER = 1;

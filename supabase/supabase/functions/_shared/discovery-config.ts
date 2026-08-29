@@ -2,7 +2,7 @@
 // Discovery §A, MESITA-1196).
 //
 // Keys: weights · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
-// Admin: Modes (Fast + Deep + Map live; Home Soon) · Modules (Google types,
+// Admin: Modes (Fast + Deep + Map live; Swipe ranks via Lineup; Home Soon) · Modules (Google types,
 // three Google boxes, Places Lineup, Social Lineup Soon, Perplexity Soon).
 // `params` rides with `weights` — same Lineup table, different numbers.
 //
@@ -164,9 +164,10 @@ export type SwipePartnerLevel =
 export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
 
 /**
- * Swipe engine knobs. Hard filters admit; a two-signal SUM scores; partner
- * bias multiplies after. Independent of the eight-signal blend still stored
- * on `weights` / `params` / `slotting` for later engines.
+ * Swipe admission knobs. Radius, reviews, closing buffer, and type-adjacent
+ * flags cut the pool. Ranking is Places Lineup under the Swipe mask
+ * (`weights` / `params`). weightProximity, starsExponent, logDivisor,
+ * partnerBias, and randomnessMax stay on the blob, unread.
  */
 export type SwipeConfig = {
   radiusKm: number;
