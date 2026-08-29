@@ -1,16 +1,17 @@
-import { ConfigPageLayout } from "@/components/ConfigPageLayout";
+import { PageContainer } from "@/components/PageContainer";
+import { DiscoveryChrome } from "./DiscoveryChrome";
 
-// Discovery — boxes General · Name (Fast Search) · Name (Deep Search) ·
-// Map · Swipe · Catalog · Chat · Social · Favorites · Signals.
-// The route stays /filters-config: a rename stops at the label.
+// Discovery — two subpages under a frozen /filters-config prefix.
+// Discovery Modes · Discovery Modules.
 export default function DiscoveryLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <ConfigPageLayout eyebrow="Product · Discovery" title="Discovery">
-      {children}
-    </ConfigPageLayout>
+    <PageContainer>
+      <DiscoveryChrome />
+      <div className="mt-6 sm:mt-8">{children}</div>
+    </PageContainer>
   );
 }

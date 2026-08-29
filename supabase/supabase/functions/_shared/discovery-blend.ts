@@ -1,11 +1,11 @@
-// DISCOVERY BLEND — how the six earned signals compose, and where the bought
+// DISCOVERY BLEND — how the eight earned signals compose, and where the bought
 // lane attaches (Docs › Discovery §A, MESITA-1196).
 //
 // TWO LANES, AND THEY NEVER MIX.
 //
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the six signals
-//                      in discovery-signals.ts. It cannot read a promo field,
-//                      because SignalPlace does not carry one.
+//   Lane 1 · EARNED    blend() — the product of `s^w` across the eight signals
+//                      in discovery-signals.ts. It cannot read a promo field
+//                      or a rate. Partnership may read `plan` only.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
 //                      that moves promoting places forward into fixed slot
 //                      positions. It cannot read a score, because it does not
@@ -41,8 +41,8 @@
 // the library returns a hard 0 except Proximity past its maximum — see the
 // deletion-vs-demotion note in discovery-signals.ts.
 //
-// THE PRODUCT IS NOT NORMALIZED and does not need to be. Six signals near 0.8
-// multiply to ~0.26, which looks alarming and means nothing: only the ORDER is
+// THE PRODUCT IS NOT NORMALIZED and does not need to be. Eight signals near 0.8
+// multiply to ~0.17, which looks alarming and means nothing: only the ORDER is
 // consumed. Taking a geometric mean (the nth root) would rescale every score
 // identically and change no comparison, at the cost of a pow() per place. The
 // raw product is kept so `score` in a debug payload is the literal thing the
@@ -72,7 +72,7 @@ export type SignalParamsByKey = Partial<Record<SignalKey, SignalParamBag>>;
  * `parts` records what each signal CONTRIBUTED, which for a disabled signal is
  * NEUTRAL — not what it would have said if it were on. That distinction is
  * load-bearing in both directions: a disabled signal is never CALLED (so a
- * pool of a thousand places does not pay for six signals when the operator
+ * pool of a thousand places does not pay for eight signals when the operator
  * switched four off, and Randomness cannot spend a `Math.random()` whose value
  * is thrown away), and the debug payload therefore reports the blend that
  * actually ran rather than a hypothetical one. A part that reads 1 means "this
