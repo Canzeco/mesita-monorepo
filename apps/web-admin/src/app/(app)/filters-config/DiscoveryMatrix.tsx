@@ -14,7 +14,8 @@ import {
 
 // Locked mode × pool × module × signal matrix (Pato, 2026-08-28).
 // Squares = pools and modules. Circles = Places Lineup signals.
-// Black / green = on. Grey / red = off. Map Randomness is 0, not missing.
+// Black / green = on. Grey / red = off. Map Randomness is still `zero` in
+// the title (weight 0, not missing) — the cell is a red circle, no digit.
 
 function Square({
   on,
@@ -36,17 +37,15 @@ function Square({
 
 function Flag({
   on,
-  zero,
   label,
   shape,
 }: {
   on: boolean;
-  zero?: boolean;
   label: string;
   shape: "square" | "circle";
 }) {
   return (
-    <span className="inline-flex items-center justify-center gap-0.5" title={label}>
+    <span className="inline-flex items-center justify-center" title={label}>
       <span
         className={
           "inline-block size-3 " +
@@ -55,9 +54,6 @@ function Flag({
           (on ? "bg-emerald-500" : "bg-rose-500")
         }
       />
-      {zero ? (
-        <span className="text-muted-foreground type-meta font-semibold">0</span>
-      ) : null}
     </span>
   );
 }
@@ -148,7 +144,6 @@ export function DiscoveryMatrix() {
                       <td key={mode} className="px-1.5 py-2 text-center">
                         <Flag
                           on={state === "on"}
-                          zero={state === "zero"}
                           shape="circle"
                           label={`Places Lineup ${label} · ${DISCOVERY_MODE_LABELS[mode]} · ${state}`}
                         />

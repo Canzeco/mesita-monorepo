@@ -463,6 +463,7 @@ describe("Discovery page box order", () => {
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
     expect(matrix).toContain("Places Lineup");
     expect(matrix).toContain("modeSignalState");
+    expect(matrix).not.toContain(">0</span>");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");
     expect(name).not.toContain("Google categories");

@@ -23,5 +23,7 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Mesita Enriched · Favorites · not required");
     expect(html).toContain("Google Places · Favorites · required");
     expect(html).toContain("border-foreground border-b-2");
+    expect(html).toContain("Places Lineup Randomness · Map · zero");
+    expect(html).not.toContain(">0</span>");
   });
 });
