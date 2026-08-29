@@ -421,8 +421,10 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("SearchMap.tsx")).toContain("mapPinIcon");
     expect(read("SearchMap.tsx")).toContain("userIcon()");
     expect(read("SearchMap.tsx")).toContain("cursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("draggableCursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("draggingCursor={MAP_PIN_CURSOR}");
     expect(read("SearchMap.tsx")).toContain("optimized={false}");
-    expect(read("SearchMap.tsx")).toContain("[&_img]:!cursor-default");
+    expect(read("SearchMap.tsx")).toContain("[&_*]:!cursor-default");
     expect(read("SearchMap.tsx")).not.toContain("M -6 0 A 6 6");
     expect(read("SearchMap.tsx")).not.toContain("scale: isSelected");
     expect(read("SearchMap.tsx")).not.toContain("strokeWeight: isSelected");

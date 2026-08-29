@@ -282,7 +282,9 @@ function SearchMapCanvas({
       disableDefaultUI
       clickableIcons={false}
       reuseMaps
-      className="absolute inset-0 h-full w-full [&_img]:!cursor-default"
+      draggableCursor={MAP_PIN_CURSOR}
+      draggingCursor={MAP_PIN_CURSOR}
+      className="absolute inset-0 h-full w-full cursor-default [&_*]:!cursor-default"
       colorScheme="LIGHT"
       styles={
         MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
