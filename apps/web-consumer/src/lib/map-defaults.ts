@@ -69,12 +69,25 @@ export const MAP_MINIMAL_STYLES = [
   },
 ] as const;
 
-// SVG circle path for place markers and the user-location dot. r=7
-// (was 12) so a cluster still shows the map. Same path + stroke so
-// red Mesita pins and the blue “you are here” pin read as one size.
+// One circle for every map pin: place (red/gray) and you-are-here (blue).
+// r=7 (was 12) so a cluster still shows the map. Selected is a black
+// ring only — never a bigger scale or thicker stroke.
 export const MAP_PLACE_PIN_RADIUS = 7;
+export const MAP_PIN_STROKE_WEIGHT = 1.75;
+export const MAP_PIN_SCALE = 1;
 export const MAP_CIRCLE_PATH =
   `M -${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 ${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 -${MAP_PLACE_PIN_RADIUS} 0`;
+
+export function mapCircleIcon(fillColor: string, strokeColor: string) {
+  return {
+    path: MAP_CIRCLE_PATH,
+    fillColor,
+    fillOpacity: 1,
+    strokeColor,
+    strokeWeight: MAP_PIN_STROKE_WEIGHT,
+    scale: MAP_PIN_SCALE,
+  };
+}
 
 // Search pins — same hexes as the results-row dots.
 // Red = on Mesita (partner or not). Gray = not on Mesita. Blue = current location.

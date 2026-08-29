@@ -27,8 +27,9 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
-  MAP_CIRCLE_PATH,
+  MAP_PIN_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
+  mapCircleIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import {
@@ -39,24 +40,13 @@ import {
 } from "@/lib/search-membership";
 
 function placeIcon(tone: MembershipTone, isSelected: boolean) {
-  return {
-    path: MAP_CIRCLE_PATH,
-    fillColor: pinFillColor(tone),
-    fillOpacity: 1,
-    strokeColor: pinStrokeColor(isSelected),
-    strokeWeight: isSelected ? 2.5 : 1.75,
-    scale: isSelected ? 1.15 : 1,
-  };
+  return mapCircleIcon(pinFillColor(tone), pinStrokeColor(isSelected));
 }
 
-const USER_ICON = {
-  path: MAP_CIRCLE_PATH,
-  fillColor: MAP_USER_LOCATION_PIN_COLOR,
-  fillOpacity: 1,
-  strokeColor: "#ffffff",
-  strokeWeight: 1.75,
-  scale: 1,
-};
+const USER_ICON = mapCircleIcon(
+  MAP_USER_LOCATION_PIN_COLOR,
+  MAP_PIN_STROKE_COLOR,
+);
 
 export type SearchMapPin = {
   id: string;

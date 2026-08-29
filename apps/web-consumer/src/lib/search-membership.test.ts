@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAP_LISTED_PIN_COLOR,
+  MAP_PIN_SCALE,
+  MAP_PIN_STROKE_COLOR,
+  MAP_PIN_STROKE_WEIGHT,
+  MAP_USER_LOCATION_PIN_COLOR,
+  mapCircleIcon,
+} from "@/lib/map-defaults";
+import {
   buildSearchMapPins,
   membershipColor,
   membershipTone,
@@ -190,5 +198,23 @@ describe("buildSearchMapPins", () => {
 
   it("returns null when the query produced no predictions", () => {
     expect(buildSearchMapPins([], [{ id: "m1", lat: 1, lng: 2 }])).toBeNull();
+  });
+});
+
+describe("mapCircleIcon", () => {
+  it("draws red place pins and the blue user pin the same size", () => {
+    const red = mapCircleIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const blue = mapCircleIcon(
+      MAP_USER_LOCATION_PIN_COLOR,
+      MAP_PIN_STROKE_COLOR,
+    );
+    const selected = mapCircleIcon(MAP_LISTED_PIN_COLOR, "#111111");
+    expect(red.path).toBe(blue.path);
+    expect(red.scale).toBe(blue.scale);
+    expect(red.strokeWeight).toBe(blue.strokeWeight);
+    expect(selected.path).toBe(blue.path);
+    expect(selected.scale).toBe(MAP_PIN_SCALE);
+    expect(selected.strokeWeight).toBe(MAP_PIN_STROKE_WEIGHT);
+    expect(red.fillColor).not.toBe(blue.fillColor);
   });
 });

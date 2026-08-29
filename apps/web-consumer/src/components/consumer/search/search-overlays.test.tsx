@@ -365,10 +365,14 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("../../../lib/map-defaults.ts")).toMatch(
       /MAP_PLACE_PIN_RADIUS = 7/,
     );
-    expect(read("SearchMap.tsx")).toMatch(
-      /const USER_ICON = \{[\s\S]*path: MAP_CIRCLE_PATH/,
+    expect(read("../../../lib/map-defaults.ts")).toContain(
+      "export function mapCircleIcon",
     );
+    expect(read("SearchMap.tsx")).toContain("mapCircleIcon(pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("USER_ICON = mapCircleIcon");
     expect(read("SearchMap.tsx")).not.toContain("M -6 0 A 6 6");
+    expect(read("SearchMap.tsx")).not.toContain("scale: isSelected");
+    expect(read("SearchMap.tsx")).not.toContain("strokeWeight: isSelected");
   });
 
   it("first overlay tap selects; a later tap on the same pin opens", () => {
