@@ -5,11 +5,11 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Places power + Super Category
-//     live in the map Filters sheet. Distance and time are not map
-//     knobs. Swipe keeps Discovery.
+//     (the six Super Category families). Places scope + Super Category
+//     live in the map Filters sheet. Default is + Places. Distance and
+//     time are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail around the camera. Places
-//     power picks the engine (Partners / + enriched Places / + Google
+//     scope picks the engine (Partners / + enriched Places / + Google
 //     Nearby). Super Category cuts Mesita only. The rail is closest
 //     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
 //     or pin selection pans are ignored. The rail's center card is
@@ -310,7 +310,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     idleRef.current = idle;
   }, [idle]);
 
-  // Places power changes the engine, not a client-side chip cut. Refetch
+  // Places scope changes the engine, not a client-side chip cut. Refetch
   // the matching lanes. Super Category stays local. The query bar
   // (Fast / Deep Autocomplete) never reads these filters.
   useEffect(() => {
@@ -627,7 +627,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after Places power + Super Category. */}
+      {/* Base layer — pins are the nearby catalog after Places scope + Super Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -644,7 +644,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       />
 
       {/* Floating top overlay — query pill + Filters button, then Category
-          families. Places power opens in the sheet. max-h-[70%] caps long
+          families. Places scope opens in the sheet. max-h-[70%] caps long
           lists so they scroll and the map stays visible below. Ask AI lives
           on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">

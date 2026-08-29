@@ -11,13 +11,14 @@ import {
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { FilterModule, Pill } from "@/components/consumer/discovery-filter-controls";
-import { SearchPowerBar } from "./SearchPowerBar";
+import { SearchPlacesScope } from "./SearchPlacesScope";
 
-// Search-map Filters sheet. Places power + Super Category only. There
-// is no Status chip row, Category, or Types axis. Power is cumulative:
-// Partners ⊂ + Places ⊂ + Google. Mesita Places is enriched only.
-// A Super Category is a SET of categories; one category may belong to
-// multiple Super Categories. Distance and time are not map knobs.
+// Search-map Filters sheet. Places scope + Super Category only. There
+// is no Status chip row, Category, or Types axis. Scope is cumulative:
+// Partners ⊂ + Places ⊂ + Google. Default is + Places. Mesita Places
+// is enriched only. A Super Category is a SET of categories; one
+// category may belong to multiple Super Categories. Distance and time
+// are not map knobs.
 
 export function SearchMapFilters({
   onClose,
@@ -62,7 +63,7 @@ export function SearchMapFilters({
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="flex flex-col gap-3">
           <FilterModule label="Places">
-            <SearchPowerBar
+            <SearchPlacesScope
               power={filters.searchPower}
               onPower={setMapSearchPower}
             />

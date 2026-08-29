@@ -276,10 +276,10 @@ export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
   };
 }
 
-/** Search power: 1 Partners · 2 + Mesita Places · 3 + Google. */
+/** Search power: 1 Partners · 2 + Mesita Places (default) · 3 + Google. */
 export function clampSearchPower(value: unknown): 1 | 2 | 3 {
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return 3;
+  if (!Number.isFinite(n)) return 2;
   if (n <= 1) return 1;
   if (n >= 3) return 3;
   return 2;

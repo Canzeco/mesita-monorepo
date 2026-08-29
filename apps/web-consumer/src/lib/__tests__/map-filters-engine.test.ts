@@ -67,7 +67,7 @@ describe("placeSearchLane", () => {
 });
 
 describe("search power", () => {
-  it("captions the cumulative union and clamps the bar", () => {
+  it("captions the cumulative union and clamps missing values to + Places", () => {
     expect(searchPowerCaption(1)).toBe("Mesita Partners");
     expect(searchPowerCaption(2)).toBe("Mesita Partners & Mesita Places");
     expect(searchPowerCaption(3)).toBe(
@@ -75,7 +75,7 @@ describe("search power", () => {
     );
     expect(clampSearchPower(99)).toBe(3);
     expect(clampSearchPower(0)).toBe(1);
-    expect(clampSearchPower(undefined)).toBe(3);
+    expect(clampSearchPower(undefined)).toBe(2);
   });
 });
 
@@ -91,22 +91,22 @@ describe("applyMapFilters", () => {
   const google = place({ id: "google", googleOnly: true });
   const deck = [partner, enriched, created, requested, google];
 
-  it("defaults to full power and still drops Created and Requested", () => {
-    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(3);
+  it("defaults to + Places and still drops Created, Requested, and Google", () => {
+    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(2);
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
     expect(applyMapFilters(deck, filters()).map((p) => p.id)).toEqual([
       "partner",
       "enriched",
-      "google",
     ]);
   });
 
-  it("counts a pulled-back power bar as one filter", () => {
+  it("counts leaving + Places, or each Super Category, as one filter", () => {
     expect(mapFilterCount(filters({ searchPower: 1 }))).toBe(1);
+    expect(mapFilterCount(filters({ searchPower: 3 }))).toBe(1);
     expect(
       mapFilterCount(filters({ searchPower: 2, familyKeys: ["restaurants"] })),
-    ).toBe(2);
+    ).toBe(1);
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("statuses");
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });

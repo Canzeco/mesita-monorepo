@@ -17,11 +17,12 @@
 //     then Mesita. No Google stubs — mobile opens `/place/:id` and
 //     cannot host GooglePlaceSheet.
 //   { google: true, lat, lng, limit?, searchPower? } — web Search catalog.
-//     searchPower (default 3) is the Places bar: 1 Partners only, 2
-//     Partners + enriched Mesita Places, 3 + Google Nearby. Power 1–2
-//     never call Nearby. Google stays distance (closest, not best).
-//     Listed pins Lineup-reorder (Map mask). Mesita Place IDs never stub.
-//     Google fill is metered per connecting IP when power is 3.
+//     searchPower (default 2, + Places) is the Places scope: 1 Partners
+//     only, 2 Partners + enriched Mesita Places, 3 + Google Nearby.
+//     Power 1–2 never call Nearby. Google stays distance (closest, not
+//     best). Listed pins Lineup-reorder (Map mask). Mesita Place IDs
+//     never stub. Google fill is metered per connecting IP when power
+//     is 3.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -203,7 +204,7 @@ Deno.serve(async (req) => {
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
-  let searchPower: 1 | 2 | 3 = 3;
+  let searchPower: 1 | 2 | 3 = 2;
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
     const body = await readJsonOr<ListBody>(req, {});
