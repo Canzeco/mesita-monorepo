@@ -8,9 +8,10 @@ import {
 } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
-// Exclusive Places scope — not a slider. Partners ⊂ + Places ⊂ + Google.
-// One tap picks a nested union. Default is + Places. Mesita Places is
-// enriched only.
+// Exclusive Places scope — same format as admin Discovery Map
+// "Reload after": a wrap of exclusive pills, not a slider. Partners ⊂
+// + Places ⊂ + Google. Default is + Places. Mesita Places is enriched
+// only.
 
 export function SearchPlacesScope({
   power,
@@ -19,6 +20,9 @@ export function SearchPlacesScope({
   power: MapSearchPower;
   onPower: (power: MapSearchPower) => void;
 }) {
+  const selected =
+    MAP_SEARCH_STOPS.find((stop) => stop.power === power) ?? MAP_SEARCH_STOPS[1];
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = MAP_SEARCH_STOPS.findIndex((stop) => stop.power === power);
     const last = MAP_SEARCH_STOPS.length - 1;
@@ -44,51 +48,36 @@ export function SearchPlacesScope({
   };
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="Places"
-      onKeyDown={onKeyDown}
-      className="flex flex-col gap-1.5"
-    >
-      {MAP_SEARCH_STOPS.map((stop) => {
-        const selected = power === stop.power;
-        return (
-          <button
-            key={stop.key}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            aria-label={searchPowerCaption(stop.power)}
-            onClick={() => onPower(stop.power)}
-            className={cn(
-              "flex min-h-11 w-full items-start gap-3 rounded-2xl border px-3 py-2.5 text-left transition",
-              selected
-                ? "border-primary bg-primary/8"
-                : "border-border hover:bg-muted/50",
-            )}
-          >
-            <span
-              aria-hidden
+    <div className="flex flex-col">
+      <p className="text-muted-foreground mb-2 type-meta">{selected.hint}</p>
+      <div
+        role="radiogroup"
+        aria-label="Places"
+        onKeyDown={onKeyDown}
+        className="flex flex-wrap gap-2"
+      >
+        {MAP_SEARCH_STOPS.map((stop) => {
+          const active = power === stop.power;
+          return (
+            <button
+              key={stop.key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={searchPowerCaption(stop.power)}
+              onClick={() => onPower(stop.power)}
               className={cn(
-                "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2",
-                selected ? "border-primary" : "border-muted-foreground/35",
+                "inline-flex min-h-11 items-center rounded-lg px-3.5 type-body tabular-nums transition",
+                active
+                  ? "bg-foreground text-background font-bold"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted border font-semibold",
               )}
             >
-              {selected ? (
-                <span className="bg-primary h-2.5 w-2.5 rounded-full" />
-              ) : null}
-            </span>
-            <span className="min-w-0">
-              <span className="font-display text-foreground block text-sm leading-snug font-semibold">
-                {stop.tick}
-              </span>
-              <span className="type-meta text-muted-foreground mt-0.5 block leading-snug">
-                {stop.hint}
-              </span>
-            </span>
-          </button>
-        );
-      })}
+              {stop.tick}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -31,7 +31,7 @@ export type MapSearchPower = 1 | 2 | 3;
 /** + Places — Partners and enriched Mesita Places. Not Google. */
 export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
 
-/** Three exclusive rows. Tick is the guest word; hint is the union. */
+/** Three exclusive pills — same format as admin Map Reload after. */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
