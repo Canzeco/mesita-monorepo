@@ -15,11 +15,11 @@ import { FilterModule, Pill } from "@/components/consumer/discovery-filter-contr
 import { SearchPlacesScope } from "./SearchPlacesScope";
 import { SearchResultLimit } from "./SearchResultLimit";
 
-// Search-map Filters sheet. Super Category + Places scope + How many.
-// There is no Status chip row, Category, or Types axis. Scope is one
-// nested meter: Partners ⊂ Places ⊂ Google. Default is Places. How many
-// is 20, 40, or 60 — closest N, nothing in between. Distance and time
-// are not map knobs.
+// Search-map Filters sheet. Super Category + Places Venn + How many.
+// There is no Status chip row, Category, or Types axis. Places stays
+// the nested Venn: Partners ⊂ Places ⊂ Google. Default is Places.
+// How many is 20, 40, or 60 — closest N, nothing in between. Distance
+// and time are not map knobs.
 
 export function SearchMapFilters({
   onClose,

@@ -4,7 +4,7 @@
 //
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user).
-//   • Top overlay: query pill + Filters button. Places scope + Super
+//   • Top overlay: query pill + Filters button. Places Venn + Super
 //     Category + How many (20 / 40 / 60) live in the map Filters
 //     sheet — there is no Category chip strip on the map. Default is
 //     + Places. Distance and time are not map knobs. Swipe keeps Discovery.

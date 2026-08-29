@@ -137,7 +137,7 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Super Category, Places scope, then How many 20 / 40 / 60", () => {
+  it("shows Super Category, Places Venn, then How many 20 / 40 / 60", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
@@ -147,16 +147,17 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("How many");
     expect(html).toContain("Closest 60 places.");
     expect(html).toContain("role=\"radiogroup\"");
-    expect(html).toContain("Partners and Mesita Places");
-    expect(html).toContain("Partners");
-    expect(html).toContain(">Places<");
-    expect(html).toContain(">Google<");
+    expect(html).toContain("Mesita Partners and All Mesita Places");
+    expect(html).toContain("Mesita Partners");
+    expect(html).toContain("All Mesita Places");
+    expect(html).toContain("All Google Places");
     expect(html).toContain(">20<");
     expect(html).toContain(">40<");
     expect(html).toContain(">60<");
-    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
+    expect(html).toContain('viewBox="0 0 104 104"');
+    expect(html).toContain("pointer-events-none");
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
     );
     expect(html).toContain(
       'aria-checked="true" aria-label="Closest 60 places"',
@@ -185,32 +186,38 @@ describe("SearchMapFilters", () => {
 });
 
 describe("SearchPlacesScope", () => {
-  it("renders the scope as one nested meter of three radio stops", () => {
+  it("keeps the nested Venn display-only and puts radios on the legend", () => {
     const src = read("SearchPlacesScope.tsx");
-    expect(src).toContain("one meter");
-    expect(src).not.toContain("annulusPath");
+    expect(src).toContain("pointer-events-none");
+    expect(src).toContain("The Venn is display-only");
+    expect(src).toContain("annulusPath");
+    expect(src).not.toContain("Tap a ring");
     expect(src).not.toContain("feDropShadow");
     expect(src).not.toContain("radialGradient");
 
     const html = renderToStaticMarkup(
       <SearchPlacesScope power={2} onPower={() => {}} />,
     );
-    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
+    expect(html).toContain('viewBox="0 0 104 104"');
     expect(html.match(/role="radio"/g)?.length).toBe(3);
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
     );
     expect(html).toContain('aria-checked="false" aria-label="Mesita Partners"');
     expect(html).toContain(
-      'aria-checked="false" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+      'aria-checked="false" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
     );
+    expect(html).not.toContain("All Google Places.");
   });
 
-  it("captions the widest stop with the full union", () => {
+  it("warns when All Google Places scope is selected", () => {
     const html = renderToStaticMarkup(
       <SearchPlacesScope power={3} onPower={() => {}} />,
     );
-    expect(html).toContain("Partners, Mesita Places, and Google");
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("All Google Places.");
+    expect(html).toContain("vetted");
+    expect(html).toContain("may not be worth your time");
   });
 });
 
@@ -246,12 +253,20 @@ describe("SearchPlacesScope fill", () => {
     expect(partners).toContain(
       'aria-checked="true" aria-label="Mesita Partners"',
     );
-    expect(partners.match(/data-included="true"/g)?.length).toBe(1);
-    expect(places.match(/data-included="true"/g)?.length).toBe(2);
+    expect(partners).toContain('fill="#ffc400"');
+    expect(partners).not.toContain('fill="#ff2357"');
+    expect(partners).not.toContain('fill="#9ca3af"');
+
+    expect(places).toContain('fill="#ffc400"');
+    expect(places).toContain('fill="#ff2357"');
+    expect(places).not.toContain('fill="#9ca3af"');
+
     expect(google).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
     );
-    expect(google.match(/data-included="true"/g)?.length).toBe(3);
+    expect(google).toContain('fill="#ffc400"');
+    expect(google).toContain('fill="#ff2357"');
+    expect(google).toContain('fill="#9ca3af"');
   });
 });
 

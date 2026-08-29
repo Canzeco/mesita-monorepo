@@ -1,4 +1,4 @@
-// Map filters — Search only. A Places scope + Super Category + How many
+// Map filters — Search only. A Places Venn + Super Category + How many
 // cut the nearby catalog. There is no Types axis and no category slug list.
 //
 // Scope is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
@@ -31,28 +31,28 @@ export type MapSearchPower = 1 | 2 | 3;
 /** + Places — Partners and enriched Mesita Places. Not Google. */
 export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
 
-/** Three nested stops on one meter. Fill is cumulative. */
+/** Three nested Venn stops. Partners ⊂ Places ⊂ Google. */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
     key: "partners",
-    tick: "Partners",
+    tick: "Mesita Partners",
     label: "Mesita Partners",
-    hint: "Partners only",
+    hint: "Mesita Partners only",
   },
   {
     power: 2,
     key: "places",
-    tick: "Places",
+    tick: "All Mesita Places",
     label: "Mesita Places",
-    hint: "Partners and Mesita Places",
+    hint: "Mesita Partners and All Mesita Places",
   },
   {
     power: 3,
     key: "google",
-    tick: "Google",
+    tick: "All Google Places",
     label: "Google Places",
-    hint: "Partners, Mesita Places, and Google",
+    hint: "Mesita Partners, All Mesita Places, and All Google Places",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
@@ -129,8 +129,8 @@ export function clampSearchPower(value: unknown): MapSearchPower {
 
 export function searchPowerCaption(power: MapSearchPower): string {
   if (power <= 1) return "Mesita Partners";
-  if (power === 2) return "Mesita Partners & Mesita Places";
-  return "Mesita Partners & Mesita Places & Google Places";
+  if (power === 2) return "Mesita Partners & All Mesita Places";
+  return "Mesita Partners & All Mesita Places & All Google Places";
 }
 
 /** A stop is in view when the selected power reaches it. */

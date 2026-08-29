@@ -7,8 +7,8 @@ import {
 } from "@/lib/map-filters-engine";
 import { cn } from "@/lib/utils";
 
-// How many — exclusive 20 / 40 / 60. Same meter chrome as Places scope,
-// but only the selected stop fills. Closest N after scope + Super.
+// How many — exclusive 20 / 40 / 60. Separate from the Places Venn.
+// Closest N after scope + Super. Nothing in between.
 
 export function SearchResultLimit({
   limit,
