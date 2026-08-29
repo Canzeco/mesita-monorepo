@@ -3,9 +3,9 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
-//   • Top overlay: floating search bar. Far-right chip is country + location
-//     (two knobs, one sheet). Discovery filters stay on Swipe — they never
-//     cut this map and there is no Adjust control here.
+//   • Top overlay: floating search bar (query only), then a chip row of
+//     categories + filters. Country + location live on that row, not in
+//     the pill. The same Discovery filter store as Swipe cuts this catalog.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning never reloads that set — Search here under the bar does,
@@ -44,7 +44,18 @@ import {
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
+import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  hasDiscoveryPredicates,
+} from "@/lib/discovery-filters-engine";
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from "@/lib/use-discovery-filters";
 import { SearchBar } from "./SearchBar";
+import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchScopeSheet } from "./SearchScopeSheet";
 import type { AddState } from "./add-state";
 import {
@@ -129,6 +140,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filters = useDiscoveryFilters();
   const [locating, setLocating] = useState(false);
   const [freshFix, setFreshFix] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -146,10 +159,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
-  const catalog = useMemo(
+  const nearby = useMemo(
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
+  const catalog = useMemo(
+    () => applyDiscoveryFilters(nearby, filters),
+    [nearby, filters],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(nearby),
+    [nearby],
+  );
+  const filtersCutCatalog =
+    nearby.length > 0 &&
+    catalog.length === 0 &&
+    hasDiscoveryPredicates(filters);
 
   const searchPins = useMemo(
     () => buildSearchMapPins(predictions, catalog),
@@ -546,7 +571,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog, uncut by discovery filters. */}
+      {/* Base layer — pins are the nearby catalog after Discovery predicates. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -574,10 +599,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onFocus={openSearch}
           onClear={dismissSearch}
           inputRef={searchInputRef}
-          onOpenScope={() => setScopeOpen(true)}
-          countryCode={scope.country}
-          locationSet={location != null}
         />
+
+        {idle && (
+          <SearchFilterRow
+            filters={filters}
+            countryCode={scope.country}
+            locationSet={location != null}
+            onOpenScope={() => setScopeOpen(true)}
+            onOpenFilters={() => setFiltersOpen(true)}
+          />
+        )}
 
         {fetchError && idle && (
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
@@ -617,7 +649,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       <SearchRailOverlay
         idle={idle}
         places={catalog}
-        catalogCount={catalog.length}
+        catalogCount={nearby.length}
         catalogLoading={catalogLoading}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
@@ -628,10 +660,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
+        onResetFilters={
+          filtersCutCatalog ? resetDiscoveryFilters : undefined
+        }
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
       />
+
+      <LocalSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+      >
+        <DiscoveryFilters
+          onClose={() => setFiltersOpen(false)}
+          categoryOptions={categoryOptions}
+          count={catalog.length}
+          hasLocation={location != null}
+        />
+      </LocalSheet>
 
       <LocalSheet
         open={scopeOpen}

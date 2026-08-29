@@ -4,11 +4,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
+import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import {
   EmptySearchPrompt,
   SearchHereButton,
   SearchRailOverlay,
 } from "@/components/consumer/search/search-catalog-overlays";
+import { DISCOVERY_FILTER_DEFAULTS } from "@/lib/discovery-filters-engine";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
@@ -64,7 +66,7 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("Filters");
   });
 
-  it("shows the country flag and a compass for location on Search", () => {
+  it("shows the country flag and a compass when a host passes onOpenScope", () => {
     const html = renderToStaticMarkup(
       <SearchBar
         query=""
@@ -99,6 +101,30 @@ describe("SearchBar scope affordance", () => {
     expect(html).toContain("🌐");
     expect(html).toContain("any country");
     expect(html).toContain("location not set");
+  });
+});
+
+describe("SearchFilterRow", () => {
+  it("renders family chips, Now, Visit, scope, and Filters outside the bar", () => {
+    const html = renderToStaticMarkup(
+      <SearchFilterRow
+        filters={DISCOVERY_FILTER_DEFAULTS}
+        countryCode="MX"
+        locationSet
+        onOpenScope={() => {}}
+        onOpenFilters={() => {}}
+      />,
+    );
+    expect(html).toContain("Search filters");
+    expect(html).toContain("Restaurants");
+    expect(html).toContain("Bars");
+    expect(html).toContain("Now");
+    expect(html).toContain("Visit");
+    expect(html).toContain("Filters");
+    expect(html).toContain("🇲🇽");
+    expect(html).toContain("location set");
+    expect(html).toContain("lucide-compass");
+    expect(html).toContain("lucide-sliders-horizontal");
   });
 });
 
@@ -178,16 +204,22 @@ describe("Search map catalog reloads only when the guest asks", () => {
   });
 });
 
-describe("Search map has no discovery filters", () => {
-  it("does not cut the nearby catalog with Swipe predicates", () => {
+describe("Search map uses a filter row, not bar chrome", () => {
+  it("cuts the nearby catalog with Discovery predicates from a chip row", () => {
     const src = read("SearchClient.tsx");
-    expect(src).not.toContain("applyDiscoveryFilters");
-    expect(src).not.toContain("useDiscoveryFilters");
-    expect(src).not.toContain("DiscoveryFilters");
-    expect(src).not.toContain("onOpenFilters");
-    expect(src).not.toContain("filtersActive");
+    expect(src).toContain("applyDiscoveryFilters");
+    expect(src).toContain("useDiscoveryFilters");
+    expect(src).toContain("DiscoveryFilters");
+    expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
+    expect(src).toMatch(
+      /<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/,
+    );
+    expect(read("SearchBar.tsx")).not.toMatch(
+      /Search passes `onOpenScope`/,
+    );
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
-    expect(read("search-catalog-overlays.tsx")).not.toContain(
+    expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
     );
   });
@@ -400,6 +432,20 @@ describe("Search catalog reload UI", () => {
     expect(html).toContain("No places to show here yet");
     expect(html).not.toContain("Adjust");
     expect(html).not.toContain("filters");
+  });
+
+  it("offers Reset filters when predicates emptied the rail", () => {
+    const html = renderToStaticMarkup(
+      <SearchRailOverlay
+        {...railProps}
+        places={[]}
+        catalogCount={4}
+        onResetFilters={() => {}}
+      />,
+    );
+    expect(html).toContain("No places match these filters");
+    expect(html).toContain("Reset filters");
+    expect(html).not.toContain("Adjust");
   });
 });
 
