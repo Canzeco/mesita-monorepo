@@ -14,9 +14,9 @@
 //             Fast is Autocomplete only. Deep concatenates Autocomplete,
 //             Text Search, Mesita Places, and Mesita Partners (Name on
 //             Mesita `places.name`, never `google_name`). Deep never
-//             calls Nearby Search. Map concatenates closest Partners,
-//             closest listed-not-partner Mesita, then Google Nearby.
-//             Caps are per query, then concat; overlaps drop.
+//             calls Nearby Search. Map loads closest N of the selected
+//             Places set (Partners ⊂ Mesita ⊂ Google); inner membership
+//             paints, it does not add pins. Caps are per scope, not a sum.
 //             Chat calls Text Search, Nearby, both Perplexity modules,
 //             and Places Lineup — not Social Lineup. Favorites calls
 //             no module and gates on no pool — bookmarks may include
@@ -155,11 +155,11 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /** Closest Mesita partners (plan ≠ free). Independent query. */
+  /** Closest N when Places scope is Partners. */
   partnerCount: number;
-  /** Closest Mesita Places, listed-not-partner. Independent query. */
+  /** Closest N when Places scope is All Mesita Places (partners included). */
   mesitaCount: number;
-  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
+  /** Closest N when Places scope is All Google Places. Inner membership paints. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -240,7 +240,10 @@ export function snapMapReloadPair(
   }
   return { km: best.km, sec: best.sec };
 }
-export const MAP_LANE_COUNT_MAX = 20;
+/** Map Places-set caps. Partners/Mesita max 60; Google Nearby max 20. */
+export const MAP_SET_COUNT_MAX = 60;
+export const MAP_GOOGLE_COUNT_MAX = 20;
+export const MAP_LANE_COUNT_MAX = MAP_GOOGLE_COUNT_MAX;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
@@ -501,7 +504,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Closest N enter per query. Concat Partners, then listed-not-partner Mesita, then Google Nearby. Overlaps drop; first query keeps the slot. Caps are independent, not nested. Listed pins then Lineup, not distance. Google stays distance. Google is one Nearby Search among enabled categories, nearest N, ignoring Mesita membership. Merge drops Google hits already on a Partner or Mesita winner. Union 20–40 at defaults when disjoint. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
+    process: "Places scope picks one nested set — Partners ⊂ Mesita Places ⊂ Google Places. Closest N of that set; a smaller membership paints, it does not add a pin. Partners and Mesita never call Nearby. Google is one Nearby Search among enabled categories, nearest N. Max pins = that N, never the sum. Listed pins then Lineup, not distance. Google set stays distance. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Empty Nearby falls back to the Mesita set. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -1197,18 +1200,18 @@ export function coerceMap(raw: unknown): MapConfig {
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     partnerCount: Math.round(
-      num(m.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),
+      num(m.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_SET_COUNT_MAX),
     ),
     mesitaCount: Math.round(
       num(
         m.mesitaCount ?? m.notPartnerCount,
         DEFAULT_MAP.mesitaCount,
         0,
-        MAP_LANE_COUNT_MAX,
+        MAP_SET_COUNT_MAX,
       ),
     ),
     googleCount: Math.round(
-      num(m.googleCount, DEFAULT_MAP.googleCount, 0, MAP_LANE_COUNT_MAX),
+      num(m.googleCount, DEFAULT_MAP.googleCount, 0, MAP_GOOGLE_COUNT_MAX),
     ),
     types,
   };

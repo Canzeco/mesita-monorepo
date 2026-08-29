@@ -147,7 +147,7 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("chat", "social")).toBe("off");
   });
 
-  it("map() is three closest-N lanes then one catalog", () => {
+  it("map() is closest N of the selected Places set", () => {
     const map = ENGINES.find((e) => e.key === "map");
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
@@ -155,23 +155,26 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Partners/);
     expect(map?.process).toMatch(/Mesita/);
     expect(map?.process).toMatch(/Google/);
-    expect(map?.process).toMatch(/Overlaps/);
+    expect(map?.process).toMatch(/paints/);
     expect(map?.process).toMatch(/reload pair/);
-    expect(map?.process).toMatch(/ignoring Mesita membership/);
+    expect(map?.process).not.toMatch(/Concat/);
+    expect(map?.process).not.toMatch(/ignoring Mesita membership/);
+    expect(map?.process).not.toMatch(/Union 20/);
     expect(map?.process).not.toMatch(/never stub/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });
 
-  it("coerceConfig defaults map lane caps on an old blob", () => {
+  it("coerceConfig defaults map set caps on an old blob", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).map.partnerCount).toBe(10);
     expect(coerceConfig({ weights: {}, slotting: {} }).map.mesitaCount).toBe(10);
     expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
     expect(coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map).toMatchObject({
-      partnerCount: 20,
+      partnerCount: 60,
       mesitaCount: 10,
       googleCount: 0,
     });
+    expect(coerceConfig({ map: { googleCount: 99 } }).map.googleCount).toBe(20);
     expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
   });
 
@@ -432,11 +435,15 @@ describe("Discovery page box order", () => {
     expect(name).toContain("QueryConcatCaps");
     expect(name).not.toContain("cascadeLaneCounts");
     expect(map).toContain(
-      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+      "Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins.",
     );
+    expect(map).not.toContain("Then concat. Closest Partners");
     expect(map).toContain("QueryConcatCaps");
+    expect(map).toContain("MAP_SET_COUNT_MAX");
+    expect(map).toContain("MAP_GOOGLE_COUNT_MAX");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
+    expect(map).toContain("Closest N of the selected set");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");

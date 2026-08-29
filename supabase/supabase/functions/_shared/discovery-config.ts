@@ -95,10 +95,10 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * Map pool policy. Three independent closest-N queries, then concat:
- * Partners · listed-not-partner Mesita · Google Nearby. Overlaps drop;
- * earlier query keeps the slot. Not a nested filter. Type batteries ride
- * the Google Nearby call only. Floors still exclude; 0 = off.
+ * Map pool policy. Closest N of the selected Places set, then paint.
+ * Partners ⊂ Mesita Places ⊂ Google Places. Caps are per scope, not
+ * concatenated. Type batteries ride the Google Nearby call only.
+ * Floors still exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -109,11 +109,11 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /** Closest Mesita partners (plan ≠ free). Independent query. */
+  /** Closest N when Places scope is Partners. */
   partnerCount: number;
-  /** Closest Mesita Places, listed-not-partner. Independent query. */
+  /** Closest N when Places scope is All Mesita Places (partners included). */
   mesitaCount: number;
-  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
+  /** Closest N when Places scope is All Google Places. Inner membership paints. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -301,7 +301,9 @@ export function snapMapReloadPair(
   }
   return { km: best.km, sec: best.sec };
 }
-export const MAP_LANE_COUNT_MAX = 20;
+export const MAP_SET_COUNT_MAX = 60;
+export const MAP_GOOGLE_COUNT_MAX = 20;
+export const MAP_LANE_COUNT_MAX = MAP_GOOGLE_COUNT_MAX;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
@@ -343,7 +345,7 @@ export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   bakery: true,
 };
 
-/** Defaults = three lanes (10 partners · 10 Mesita · 20 Google). */
+/** Defaults = per-scope N (10 partners · 10 Mesita · 20 Google). */
 export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
@@ -809,18 +811,18 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     reloadMinSec: reload.sec,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     partnerCount: Math.round(
-      num(r.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),
+      num(r.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_SET_COUNT_MAX),
     ),
     mesitaCount: Math.round(
       num(
         r.mesitaCount ?? r.notPartnerCount,
         DEFAULT_MAP.mesitaCount,
         0,
-        MAP_LANE_COUNT_MAX,
+        MAP_SET_COUNT_MAX,
       ),
     ),
     googleCount: Math.round(
-      num(r.googleCount, DEFAULT_MAP.googleCount, 0, MAP_LANE_COUNT_MAX),
+      num(r.googleCount, DEFAULT_MAP.googleCount, 0, MAP_GOOGLE_COUNT_MAX),
     ),
     types,
   };

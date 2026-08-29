@@ -2,10 +2,10 @@
 //
 // Search allowlist for guest map, admin Google Search, Create, and Name
 // Google (Fast Autocomplete + Deep Text Search) via Map floors. Nearby
-// catalog is three closest-N lanes (partners, Mesita, Google) merged
-// after dropping overlaps. Type batteries ride the Google call only.
-// Floors exclude. Name Google categories live on discovery_config.name.
-// googleFill AND googleCount > 0 gate the billed Nearby call.
+// catalog is closest N of the selected Places set (Partners ⊂ Mesita ⊂
+// Google). Inner membership paints; it does not add pins. Type batteries
+// ride the Google call only. Floors exclude. Name Google categories live
+// on discovery_config.name. googleFill AND googleCount > 0 gate Nearby.
 //
 // Swipe listed admission uses the same type batteries + floors (Pato:
 // only Mesita restaurants/partners+listed, never Google-only / types

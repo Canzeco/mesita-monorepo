@@ -26,8 +26,11 @@ describe("Map reload pairs", () => {
     expect(html).toContain("Queries");
     expect(html).not.toContain("Bring");
     expect(html).toContain(
-      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+      "Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins.",
     );
+    expect(html).not.toContain("Then concat. Closest Partners");
+    expect(html).toContain("Closest N of the selected set");
+    expect(html).toContain("Listed pins then Lineup, not distance");
     expect(html).toContain("Google places");
     expect(html).toContain("Mesita places");
     expect(html).toContain("Mesita partners");
