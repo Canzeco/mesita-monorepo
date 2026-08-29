@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
+import { SearchCategoryRow } from "@/components/consumer/search/SearchCategoryRow";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import {
   EmptySearchPrompt,
@@ -103,6 +104,31 @@ describe("SearchBar scope affordance", () => {
     expect(html).toContain("🌐");
     expect(html).toContain("any country");
     expect(html).toContain("location not set");
+  });
+});
+
+describe("SearchCategoryRow", () => {
+  it("renders the six Category families, not Types or Discovery knobs", () => {
+    const rest = renderToStaticMarkup(<SearchCategoryRow familyKeys={[]} />);
+    expect(rest).toContain("Category");
+    expect(rest).toContain("Restaurants");
+    expect(rest).toContain("Bars");
+    expect(rest).toContain("Cafés");
+    expect(rest).toContain("Wellness");
+    expect(rest).toContain("Experiences");
+    expect(rest).toContain("Culture");
+    expect(rest).not.toContain("Nightclub");
+    expect(rest).not.toContain("Types");
+    expect(rest).not.toContain("Now");
+    expect(rest).not.toContain("Visit");
+    expect(rest).not.toContain("🍽️");
+    expect(rest).not.toContain("bg-pink-gradient");
+
+    const on = renderToStaticMarkup(
+      <SearchCategoryRow familyKeys={["restaurants"]} />,
+    );
+    expect(on).toContain("bg-pink-gradient");
+    expect(on).toContain('aria-pressed="true"');
   });
 });
 
@@ -236,12 +262,14 @@ describe("Search map catalog reloads only when the guest asks", () => {
 });
 
 describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog with map Status + Category, never a chip strip", () => {
+  it("cuts the nearby catalog with map Status + Category families on the chrome", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("useMapFilters");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("SearchCategoryRow");
+    expect(src).toContain("familyKeys={filters.familyKeys}");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
     expect(src).toContain("flex min-w-0 items-center gap-2");
@@ -271,6 +299,9 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     );
     expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
       "flex items-center gap-2",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+      "flex gap-1.5 overflow-hidden",
     );
     expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
       "mt-2 flex gap-1.5",
