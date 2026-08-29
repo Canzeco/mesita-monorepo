@@ -44,8 +44,8 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 // The Me surface — Passport + SEVEN boxes (decision: Pato, MESITA-1123):
 //
 //   Instagram · Class · Plan     who you are and what you pay
-//   AI Connector · Profile · Settings   your tools and your account
-//   More                          everything else, one tap deeper
+//   Profile · Settings           your account
+//   AI Connector · More          the tool that isn't live yet, then the tail
 //
 // Twelve boxes made this a wall to scroll, with parked rows (Yums, Gift,
 // Share) sitting between live ones so the page read as mostly-unfinished.
@@ -233,16 +233,7 @@ export function ProfileClient({
             onClick={() => setPlanOpen(true)}
           />
 
-          {/* Tools + account. */}
-          {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
-          <BoxRow
-            Icon={Bot}
-            title="AI Connector"
-            summary="Use Mesita from ChatGPT or Claude (MCP)"
-            onClick={() => setAiOpen(true)}
-            soon
-          />
-
+          {/* Your account. */}
           <BoxRow
             Icon={UserRound}
             title="Profile"
@@ -256,6 +247,16 @@ export function ProfileClient({
             title="Settings"
             summary="Notifications, privacy, language"
             onClick={() => setSettingsOpen(true)}
+          />
+
+          {/* Parked, so it sits under the live account rows (decision: Pato). */}
+          {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
+          <BoxRow
+            Icon={Bot}
+            title="AI Connector"
+            summary="Use Mesita from ChatGPT or Claude (MCP)"
+            onClick={() => setAiOpen(true)}
+            soon
           />
 
           {/* The long tail: Yums · Gift · Share · Metrics · Help · Contact. */}

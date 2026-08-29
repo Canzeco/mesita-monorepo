@@ -17,7 +17,7 @@ import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { cn } from "@/lib/utils";
 
 // Me › More (decision: Pato, MESITA-1123). The Me page keeps SEVEN boxes —
-// Instagram · Class · Plan · AI Connector · Profile · Settings · More — and
+// Instagram · Class · Plan · Profile · Settings · AI Connector · More — and
 // everything else lives one tap deeper.
 //
 // The split is by FREQUENCY, not importance. The seven are what a guest opens
