@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
+import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   applyMapFilters,
   clampSearchPower,
@@ -217,5 +218,26 @@ describe("applyMapFilters", () => {
         filters({ searchPower: 3, familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual([]);
+  });
+});
+
+describe("PLACE_FAMILIES catalog (final law)", () => {
+  it("is eight pills in table order, Other last, text-only labels", () => {
+    expect(PLACE_FAMILIES).toHaveLength(8);
+    expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
+      "restaurants",
+      "cafes_bakeries",
+      "bars_nightlife",
+      "experiences",
+      "culture_arts",
+      "sports_fitness",
+      "wellness_beauty",
+      "undefined",
+    ]);
+    const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;
+    expect(last.key).toBe("undefined");
+    expect(last.label).toBe("Other");
+    expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Sports & Fitness");
+    expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Wellness & Beauty");
   });
 });

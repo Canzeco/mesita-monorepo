@@ -9,45 +9,108 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("Atlas Super Category catalog is seven slugs in the 5–10 band", () => {
-  assertEquals(SUPER_CATEGORIES.length, 7);
+Deno.test("Atlas Super Category catalog is eight slugs: seven real + Other last", () => {
+  assertEquals(SUPER_CATEGORIES.length, 8);
   assertEquals(SUPER_CATEGORIES.map((s) => s.slug), [
     "restaurants",
-    "bars_nightlife",
     "cafes_bakeries",
-    "wellness_spa",
+    "bars_nightlife",
     "experiences",
     "culture_arts",
+    "sports_fitness",
+    "wellness_beauty",
     "undefined",
   ]);
+  const last = SUPER_CATEGORIES[SUPER_CATEGORIES.length - 1]!;
+  assertEquals(last.slug, "undefined");
+  assertEquals(last.label, "Other");
+  assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps to exactly one Super Category", () => {
+Deno.test("every Atlas category maps to 1–2 supers; exactly seven doubles", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_SUPERS);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
   const covered = new Set<string>();
+  const doubles: string[] = [];
   for (const slug of slugs) {
     const supers = ATLAS_CATEGORY_SUPERS[slug] ?? [];
-    if (supers.length !== 1) {
+    if (supers.length < 1 || supers.length > 2) {
       throw new Error(`${slug} has ${supers.length} supers`);
     }
-    covered.add(supers[0]!);
+    if (supers.length === 2) doubles.push(slug);
+    for (const s of supers) covered.add(s);
   }
+  assertEquals(doubles.sort(), [
+    "board_game_cafe",
+    "breakfast",
+    "brunch",
+    "casino",
+    "karaoke",
+    "movie_theater",
+    "winery",
+  ]);
   assertEquals(
     [...covered].sort(),
     SUPER_CATEGORIES.map((s) => s.slug).slice().sort(),
   );
 });
 
-Deno.test("former intersections now exclusive", () => {
-  assertEquals(familiesForAtlasCategory("breakfast"), ["restaurants"]);
-  assertEquals(familiesForAtlasCategory("brunch"), ["restaurants"]);
-  assertEquals(familiesForAtlasCategory("karaoke"), ["bars_nightlife"]);
-  assertEquals(familiesForAtlasCategory("casino"), ["experiences"]);
-  assertEquals(familiesForAtlasCategory("board_game_cafe"), ["cafes_bakeries"]);
-  assertEquals(familiesForAtlasCategory("winery"), ["bars_nightlife"]);
-  assertEquals(familiesForAtlasCategory("movie_theater"), ["culture_arts"]);
+Deno.test("membership totals per super (incl. shared members)", () => {
+  const counts: Record<string, number> = {};
+  for (const supers of Object.values(ATLAS_CATEGORY_SUPERS)) {
+    for (const s of supers) counts[s] = (counts[s] ?? 0) + 1;
+  }
+  assertEquals(counts, {
+    restaurants: 37,
+    cafes_bakeries: 9,
+    bars_nightlife: 9,
+    experiences: 22,
+    culture_arts: 6,
+    sports_fitness: 12,
+    wellness_beauty: 12,
+    undefined: 1,
+  });
+});
+
+Deno.test("the seven doubles carry both parents, catalog order", () => {
+  assertEquals(familiesForAtlasCategory("breakfast"), [
+    "restaurants",
+    "cafes_bakeries",
+  ]);
+  assertEquals(familiesForAtlasCategory("brunch"), [
+    "restaurants",
+    "cafes_bakeries",
+  ]);
+  assertEquals(familiesForAtlasCategory("karaoke"), [
+    "bars_nightlife",
+    "experiences",
+  ]);
+  assertEquals(familiesForAtlasCategory("casino"), [
+    "bars_nightlife",
+    "experiences",
+  ]);
+  assertEquals(familiesForAtlasCategory("winery"), [
+    "bars_nightlife",
+    "experiences",
+  ]);
+  assertEquals(familiesForAtlasCategory("board_game_cafe"), [
+    "cafes_bakeries",
+    "experiences",
+  ]);
+  assertEquals(familiesForAtlasCategory("movie_theater"), [
+    "experiences",
+    "culture_arts",
+  ]);
+});
+
+Deno.test("sports split from beauty: training vs treatment", () => {
+  assertEquals(familiesForAtlasCategory("gym"), ["sports_fitness"]);
+  assertEquals(familiesForAtlasCategory("padel_club"), ["sports_fitness"]);
+  assertEquals(familiesForAtlasCategory("dance_studio"), ["sports_fitness"]);
+  assertEquals(familiesForAtlasCategory("spa"), ["wellness_beauty"]);
+  assertEquals(familiesForAtlasCategory("barbershop"), ["wellness_beauty"]);
+  assertEquals(familiesForAtlasCategory("medical_spa"), ["wellness_beauty"]);
 });
 
 Deno.test("undefined category maps to Super undefined; empty has none", () => {
@@ -56,13 +119,13 @@ Deno.test("undefined category maps to Super undefined; empty has none", () => {
   assertEquals(familiesForAtlasCategory(""), []);
 });
 
-Deno.test("familiesForPlace uses Atlas membership, not a stored subset", () => {
+Deno.test("familiesForPlace uses FULL Atlas membership, never a stored subset", () => {
   assertEquals(
     familiesForPlace({
       category: "breakfast",
       family_keys: ["cafes_bakeries"],
     }),
-    ["restaurants"],
+    ["restaurants", "cafes_bakeries"],
   );
   assertEquals(
     familiesForPlace({
@@ -81,50 +144,77 @@ Deno.test("familiesForPlace uses Atlas membership, not a stored subset", () => {
     ["undefined"],
   );
   assertEquals(familiesForPlace({ category: "undefined" }), ["undefined"]);
-  assertEquals(familiesForPlace({ category: "gas_station" }), []);
 });
 
-Deno.test("resolveEnrichedFamilyKeys keeps the one Atlas Super", () => {
+Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
+  assertEquals(familiesForPlace({ category: "gas_station" }), ["undefined"]);
+  assertEquals(familiesForPlace({}), ["undefined"]);
+  assertEquals(familiesForPlace({ category: null, family_keys: null }), [
+    "undefined",
+  ]);
+  assertEquals(familiesForPlace({ category: "lol", family_keys: ["nope"] }), [
+    "undefined",
+  ]);
+});
+
+Deno.test("resolveEnrichedFamilyKeys keeps full membership; total fallback", () => {
   assertEquals(
     resolveEnrichedFamilyKeys("mexican", ["restaurants", "bars_nightlife"]),
     ["restaurants"],
   );
   assertEquals(
-    resolveEnrichedFamilyKeys("mexican", ["bars_nightlife"]),
-    ["restaurants"],
-  );
-  assertEquals(
     resolveEnrichedFamilyKeys("breakfast", ["cafes_bakeries"]),
-    ["restaurants"],
+    ["restaurants", "cafes_bakeries"],
   );
   assertEquals(
     resolveEnrichedFamilyKeys("karaoke", ["experiences"]),
-    ["bars_nightlife"],
+    ["bars_nightlife", "experiences"],
   );
   assertEquals(
     resolveEnrichedFamilyKeys("undefined", ["bars_nightlife"]),
     ["undefined"],
   );
   assertEquals(resolveEnrichedFamilyKeys("undefined", []), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys("undefined", ["restaurants"]), [
+  assertEquals(resolveEnrichedFamilyKeys(null, []), ["undefined"]);
+  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["experiences"]), [
+    "experiences",
+  ]);
+  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["junk"]), [
     "undefined",
   ]);
 });
 
-Deno.test("sanitizeFamilyKeys drops junk, dedupes, caps at one, catalog order", () => {
+Deno.test("sanitizeFamilyKeys drops junk, dedupes, caps at TWO, catalog order", () => {
   assertEquals(
     sanitizeFamilyKeys(["experiences", "restaurants", "restaurants", "nope"]),
-    ["restaurants"],
+    ["restaurants", "experiences"],
+  );
+  assertEquals(
+    sanitizeFamilyKeys(["wellness_beauty", "sports_fitness", "restaurants"]),
+    ["restaurants", "sports_fitness"],
   );
   assertEquals(sanitizeFamilyKeys(["a", "b", "c"]), []);
   assertEquals(sanitizeFamilyKeys(null), []);
 });
 
+Deno.test("undefined never rides along with a real super", () => {
+  assertEquals(sanitizeFamilyKeys(["undefined", "restaurants"]), [
+    "restaurants",
+  ]);
+  assertEquals(sanitizeFamilyKeys(["undefined"]), ["undefined"]);
+});
+
 Deno.test("readGuestFamilyKeys keeps every selected Super pill", () => {
   assertEquals(
-    readGuestFamilyKeys(["experiences", "restaurants", "restaurants", "nope"]),
-    ["restaurants", "experiences"],
+    readGuestFamilyKeys([
+      "experiences",
+      "restaurants",
+      "restaurants",
+      "nope",
+      "sports_fitness",
+    ]),
+    ["restaurants", "experiences", "sports_fitness"],
   );
-  assertEquals(readGuestFamilyKeys(["wellness_spa"]), ["wellness_spa"]);
+  assertEquals(readGuestFamilyKeys(["wellness_beauty"]), ["wellness_beauty"]);
   assertEquals(readGuestFamilyKeys(["undefined"]), ["undefined"]);
 });

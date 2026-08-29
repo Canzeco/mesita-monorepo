@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(68);
+select plan(75);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -490,14 +490,54 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_super_categories),
-  7::bigint,
-  'Atlas Super Category catalog is seven slugs (5–10 band)'
+  8::bigint,
+  'Atlas Super Category catalog is eight slugs: seven real + Other'
+);
+
+select is(
+  (select label from public.place_super_categories where slug = 'undefined'),
+  'Other',
+  'the leftover Super is guest-labelled Other'
+);
+
+select is(
+  (select array_agg(slug order by sort_order) from public.place_super_categories),
+  array['restaurants','cafes_bakeries','bars_nightlife','experiences',
+        'culture_arts','sports_fitness','wellness_beauty','undefined']::text[],
+  'Super Category catalog order matches the law; Other last'
 );
 
 select is(
   (select super_category_slugs from public.place_categories where slug = 'breakfast'),
-  array['restaurants']::text[],
-  'breakfast belongs to restaurants only'
+  array['restaurants','cafes_bakeries']::text[],
+  'breakfast is a double: restaurants AND cafés'
+);
+
+select is(
+  (select super_category_slugs from public.place_categories where slug = 'karaoke'),
+  array['bars_nightlife','experiences']::text[],
+  'karaoke is a double: bars AND experiences'
+);
+
+select is(
+  (select count(*)::bigint from public.place_categories
+    where cardinality(super_category_slugs) = 2),
+  7::bigint,
+  'exactly seven double-parent categories'
+);
+
+select is(
+  (select count(*)::bigint from public.place_categories
+    where 'sports_fitness' = any(super_category_slugs)),
+  12::bigint,
+  'Sports & Fitness holds twelve categories'
+);
+
+select is(
+  (select count(*)::bigint from public.place_categories
+    where 'wellness_beauty' = any(super_category_slugs)),
+  12::bigint,
+  'Wellness & Beauty holds twelve categories'
 );
 
 select is(
@@ -514,8 +554,18 @@ select is(
 
 select is(
   (select max(cardinality(super_category_slugs))::bigint from public.place_categories),
-  1::bigint,
-  'every Atlas category maps to at most one Super Category'
+  2::bigint,
+  'every Atlas category maps to at most two Super Categories'
+);
+
+select is_empty(
+  $$select p.id from public.places p
+     where p.family_keys is not null
+       and exists (
+         select 1 from unnest(p.family_keys) k
+          where k not in (select slug from public.place_super_categories)
+       )$$,
+  'no place carries an orphan family key'
 );
 
 select ok(

@@ -50,7 +50,7 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
-Deno.test("Super Category cuts Atlas slugs; each category matches one Super", () => {
+Deno.test("Super Category cuts Atlas slugs; a double-parent category matches both pills", () => {
   const rows = [
     place({ id: "taco", category: "taco" }),
     place({ id: "brunch", category: "brunch" }),
@@ -73,13 +73,15 @@ Deno.test("Super Category cuts Atlas slugs; each category matches one Super", ()
     ).map((r) => r.id),
     ["taco", "brunch", "shyBreakfast"],
   );
+  // brunch and breakfast are restaurants AND cafés — the cafés pill
+  // matches them too (full membership, stored subsets ignored).
   assertEquals(
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
       null,
     ).map((r) => r.id),
-    [],
+    ["brunch", "shyBreakfast"],
   );
   assertEquals(
     applyDeckPredicates(
@@ -89,13 +91,14 @@ Deno.test("Super Category cuts Atlas slugs; each category matches one Super", ()
     ).map((r) => r.id),
     ["karaoke"],
   );
+  // karaoke is bars AND experiences.
   assertEquals(
     applyDeckPredicates(
       rows,
       readDeckPredicates({ familyKeys: ["experiences"] }),
       null,
     ).map((r) => r.id),
-    [],
+    ["karaoke"],
   );
 });
 

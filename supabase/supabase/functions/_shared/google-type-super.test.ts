@@ -15,7 +15,8 @@ const GUEST: GuestSuper[] = [
   "restaurants",
   "bars_nightlife",
   "cafes_bakeries",
-  "wellness_spa",
+  "sports_fitness",
+  "wellness_beauty",
   "experiences",
   "culture_arts",
   "undefined",
@@ -34,9 +35,10 @@ Deno.test("478 Google Table A types each map to exactly one Super or other", () 
     restaurants: 131,
     bars_nightlife: 18,
     cafes_bakeries: 22,
-    wellness_spa: 27,
-    experiences: 60,
-    culture_arts: 19,
+    sports_fitness: 14,
+    wellness_beauty: 16,
+    experiences: 58,
+    culture_arts: 18,
     other: 201,
   });
 });
@@ -46,7 +48,8 @@ Deno.test("GOOGLE_TYPES_BY_SUPER is the inverse of GOOGLE_TYPE_SUPER", () => {
     restaurants: [],
     bars_nightlife: [],
     cafes_bakeries: [],
-    wellness_spa: [],
+    sports_fitness: [],
+    wellness_beauty: [],
     experiences: [],
     culture_arts: [],
     other: [],
@@ -62,15 +65,29 @@ Deno.test("GOOGLE_TYPES_BY_SUPER is the inverse of GOOGLE_TYPE_SUPER", () => {
   }
 });
 
-Deno.test("exclusive leftovers: gastropub restaurants, karaoke nightlife, casino experiences", () => {
+Deno.test("Google side stays exclusive even where the category is a double", () => {
   assertEquals(superForGoogleType("gastropub"), "restaurants");
   assertEquals(superForGoogleType("karaoke"), "bars_nightlife");
   assertEquals(superForGoogleType("casino"), "experiences");
   assertEquals(superForGoogleType("winery"), "bars_nightlife");
-  assertEquals(superForGoogleType("movie_theater"), "culture_arts");
+  assertEquals(superForGoogleType("movie_theater"), "experiences");
+  assertEquals(superForGoogleType("breakfast_restaurant"), "restaurants");
   assertEquals(superForGoogleType("hotel"), "other");
   assertEquals(superForGoogleType("gas_station"), "other");
   assertEquals(superForGoogleType("fine_dining"), "restaurants");
+});
+
+Deno.test("sports split from beauty on the Google side too", () => {
+  assertEquals(superForGoogleType("gym"), "sports_fitness");
+  assertEquals(superForGoogleType("swimming_pool"), "sports_fitness");
+  assertEquals(superForGoogleType("tennis_court"), "sports_fitness");
+  assertEquals(superForGoogleType("sports_complex"), "sports_fitness");
+  assertEquals(superForGoogleType("yoga_studio"), "sports_fitness");
+  assertEquals(superForGoogleType("spa"), "wellness_beauty");
+  assertEquals(superForGoogleType("barber_shop"), "wellness_beauty");
+  assertEquals(superForGoogleType("nail_salon"), "wellness_beauty");
+  assertEquals(superForGoogleType("tanning_studio"), "wellness_beauty");
+  assertEquals(superForGoogleType("stadium"), "experiences");
 });
 
 Deno.test("search batteries stay inside Google's API caps", () => {
@@ -94,9 +111,9 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(textSearchTypeForSuper("other"), null);
   assertEquals(nearbyTypesForSupers(["undefined"]), []);
   assertEquals(
-    nearbyTypesForSupers(["wellness_spa", "culture_arts"]),
+    nearbyTypesForSupers(["sports_fitness", "culture_arts"]),
     [
-      ...GOOGLE_SEARCH_TYPES.wellness_spa,
+      ...GOOGLE_SEARCH_TYPES.sports_fitness,
       ...GOOGLE_SEARCH_TYPES.culture_arts,
     ],
   );

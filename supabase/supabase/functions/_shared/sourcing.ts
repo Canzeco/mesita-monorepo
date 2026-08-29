@@ -1,8 +1,9 @@
 // Google type → Super Category. Search and Add eligibility is Discovery ›
-// Map (`evaluatePlaceForMap`). The exclusive 478-type partition lives in
+// Map (`evaluatePlaceForMap`). The exclusive 478-type Google map lives in
 // google-type-super.ts — this file re-exports FamilyKey and maps a type
-// onto zero or one guest Super (`other` → ineligible). Atlas slugs live
-// in place-taxonomy.ts. Hotels, schools, shops are `other`.
+// onto zero or one guest Super (`other` → ineligible). The CATEGORY side
+// is multi-parent (≤2) in place-taxonomy.ts; the Google side stays
+// exclusive. Hotels, schools, shops are `other`.
 
 import { superForGoogleType, type GuestSuper } from "./google-type-super.ts";
 

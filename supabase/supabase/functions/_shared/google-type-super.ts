@@ -1,7 +1,13 @@
 // Exclusive Google Table A type → one Mesita Super Category.
-// Google families are NOT the join: Food and Drink splits across restaurants,
-// bars_nightlife, and cafes_bakeries. Every Table A slug maps to exactly one
-// Super, including `other` (ineligible for Mesita map / not a guest pill).
+// The GOOGLE side is exclusive: every Table A slug maps to exactly one
+// Super, or `other` (ineligible for Mesita map / not a guest pill).
+// Google families are NOT the join: Food and Drink splits across
+// restaurants, bars_nightlife, and cafes_bakeries. The CATEGORY side is
+// multi-parent (≤2) and lives in place-taxonomy.ts — a Google type never
+// carries two supers even when the matching Mesita category does
+// (movie_theater the category is culture+experiences; the Google type
+// picks experiences). Verified against the live Table A reference
+// (478 types) on 2026-08-29.
 // Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes /
 // includedType slugs sent to Nearby, Autocomplete, and Text Search.
 
@@ -9,21 +15,23 @@ export type SuperOrOther =
   | "restaurants"
   | "bars_nightlife"
   | "cafes_bakeries"
-  | "wellness_spa"
+  | "sports_fitness"
+  | "wellness_beauty"
   | "experiences"
   | "culture_arts"
   | "other";
 
-/** Guest pills: the six Google-mapped supers plus leftover Super `undefined`. */
+/** Guest pills: the seven Google-mapped supers plus leftover Super `undefined`. */
 export type GuestSuper = Exclude<SuperOrOther, "other"> | "undefined";
 
 export const GOOGLE_SEARCH_TYPES: Record<GuestSuper, readonly string[]> = {
   restaurants: ["restaurant"] as const,
   bars_nightlife: ["bar", "night_club"] as const,
   cafes_bakeries: ["cafe", "bakery"] as const,
-  wellness_spa: ["spa", "gym", "yoga_studio"] as const,
-  experiences: ["tourist_attraction", "amusement_park", "bowling_alley", "park"] as const,
-  culture_arts: ["museum", "art_gallery", "movie_theater", "performing_arts_theater"] as const,
+  sports_fitness: ["gym", "fitness_center", "yoga_studio", "sports_club"] as const,
+  wellness_beauty: ["spa", "beauty_salon", "hair_salon", "massage"] as const,
+  experiences: ["tourist_attraction", "amusement_park", "bowling_alley", "park", "movie_theater"] as const,
+  culture_arts: ["museum", "art_gallery", "performing_arts_theater", "concert_hall"] as const,
   // Leftover/create-path Super — not a Google kind. Empty = skip Nearby.
   undefined: [] as const,
 };
@@ -57,7 +65,7 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "asian_restaurant": "restaurants",
   "association_or_organization": "other",
   "astrologer": "other",
-  "athletic_field": "wellness_spa",
+  "athletic_field": "sports_fitness",
   "atm": "other",
   "auditorium": "culture_arts",
   "australian_restaurant": "restaurants",
@@ -72,19 +80,19 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "bar_and_grill": "bars_nightlife",
   "barbecue_area": "experiences",
   "barbecue_restaurant": "restaurants",
-  "barber_shop": "wellness_spa",
+  "barber_shop": "wellness_beauty",
   "basque_restaurant": "restaurants",
   "bavarian_restaurant": "restaurants",
   "beach": "other",
-  "beautician": "wellness_spa",
-  "beauty_salon": "wellness_spa",
+  "beautician": "wellness_beauty",
+  "beauty_salon": "wellness_beauty",
   "bed_and_breakfast": "other",
   "beer_garden": "bars_nightlife",
   "belgian_restaurant": "restaurants",
   "bicycle_store": "other",
   "bike_sharing_station": "other",
   "bistro": "restaurants",
-  "body_art_service": "wellness_spa",
+  "body_art_service": "wellness_beauty",
   "book_store": "other",
   "botanical_garden": "experiences",
   "bowling_alley": "experiences",
@@ -214,14 +222,14 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "fishing_charter": "experiences",
   "fishing_pier": "experiences",
   "fishing_pond": "experiences",
-  "fitness_center": "wellness_spa",
+  "fitness_center": "sports_fitness",
   "flea_market": "experiences",
   "florist": "other",
   "fondue_restaurant": "restaurants",
   "food_court": "restaurants",
   "food_delivery": "other",
   "food_store": "other",
-  "foot_care": "wellness_spa",
+  "foot_care": "wellness_beauty",
   "fountain": "culture_arts",
   "french_restaurant": "restaurants",
   "funeral_home": "other",
@@ -236,15 +244,15 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "german_restaurant": "restaurants",
   "gift_shop": "other",
   "go_karting_venue": "experiences",
-  "golf_course": "wellness_spa",
+  "golf_course": "sports_fitness",
   "government_office": "other",
   "greek_restaurant": "restaurants",
   "grocery_store": "other",
   "guest_house": "other",
-  "gym": "wellness_spa",
+  "gym": "sports_fitness",
   "gyro_restaurant": "restaurants",
-  "hair_care": "wellness_spa",
-  "hair_salon": "wellness_spa",
+  "hair_care": "wellness_beauty",
+  "hair_salon": "wellness_beauty",
   "halal_restaurant": "restaurants",
   "hamburger_restaurant": "restaurants",
   "hardware_store": "other",
@@ -269,10 +277,10 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "hungarian_restaurant": "restaurants",
   "hypermarket": "other",
   "ice_cream_shop": "cafes_bakeries",
-  "ice_skating_rink": "wellness_spa",
+  "ice_skating_rink": "sports_fitness",
   "indian_restaurant": "restaurants",
   "indonesian_restaurant": "restaurants",
-  "indoor_golf_course": "wellness_spa",
+  "indoor_golf_course": "sports_fitness",
   "indoor_playground": "experiences",
   "inn": "other",
   "insurance_agency": "other",
@@ -307,14 +315,14 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "locksmith": "other",
   "lodging": "other",
   "lounge_bar": "bars_nightlife",
-  "makeup_artist": "wellness_spa",
+  "makeup_artist": "wellness_beauty",
   "malaysian_restaurant": "restaurants",
   "manufacturer": "other",
   "marina": "experiences",
   "market": "experiences",
   "marketing_consultant": "other",
-  "massage": "wellness_spa",
-  "massage_spa": "wellness_spa",
+  "massage": "wellness_beauty",
+  "massage_spa": "wellness_beauty",
   "meal_delivery": "restaurants",
   "meal_takeaway": "restaurants",
   "medical_center": "other",
@@ -332,10 +340,10 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "motel": "other",
   "mountain_peak": "other",
   "movie_rental": "experiences",
-  "movie_theater": "culture_arts",
+  "movie_theater": "experiences",
   "moving_company": "other",
   "museum": "culture_arts",
-  "nail_salon": "wellness_spa",
+  "nail_salon": "wellness_beauty",
   "national_park": "experiences",
   "nature_preserve": "other",
   "neighborhood_police_station": "other",
@@ -400,7 +408,7 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "rv_park": "other",
   "salad_shop": "restaurants",
   "sandwich_shop": "restaurants",
-  "sauna": "wellness_spa",
+  "sauna": "wellness_beauty",
   "scandinavian_restaurant": "restaurants",
   "scenic_spot": "other",
   "school": "other",
@@ -416,22 +424,22 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "shopping_mall": "other",
   "skateboard_park": "experiences",
   "ski_resort": "experiences",
-  "skin_care_clinic": "wellness_spa",
+  "skin_care_clinic": "wellness_beauty",
   "snack_bar": "restaurants",
   "soul_food_restaurant": "restaurants",
   "soup_restaurant": "restaurants",
   "south_american_restaurant": "restaurants",
   "south_indian_restaurant": "restaurants",
   "southwestern_us_restaurant": "restaurants",
-  "spa": "wellness_spa",
+  "spa": "wellness_beauty",
   "spanish_restaurant": "restaurants",
   "sporting_goods_store": "other",
-  "sports_activity_location": "experiences",
+  "sports_activity_location": "sports_fitness",
   "sports_bar": "bars_nightlife",
-  "sports_club": "wellness_spa",
-  "sports_coaching": "wellness_spa",
-  "sports_complex": "experiences",
-  "sports_school": "experiences",
+  "sports_club": "sports_fitness",
+  "sports_coaching": "sports_fitness",
+  "sports_complex": "sports_fitness",
+  "sports_school": "sports_fitness",
   "sportswear_store": "other",
   "sri_lankan_restaurant": "restaurants",
   "stable": "other",
@@ -445,13 +453,13 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "supermarket": "other",
   "supplier": "other",
   "sushi_restaurant": "restaurants",
-  "swimming_pool": "wellness_spa",
+  "swimming_pool": "sports_fitness",
   "swiss_restaurant": "restaurants",
   "synagogue": "other",
   "taco_restaurant": "restaurants",
   "tailor": "other",
   "taiwanese_restaurant": "restaurants",
-  "tanning_studio": "wellness_spa",
+  "tanning_studio": "wellness_beauty",
   "tapas_restaurant": "restaurants",
   "taxi_service": "other",
   "taxi_stand": "other",
@@ -459,7 +467,7 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "tea_store": "other",
   "telecommunications_service_provider": "other",
   "television_studio": "other",
-  "tennis_court": "wellness_spa",
+  "tennis_court": "sports_fitness",
   "tex_mex_restaurant": "restaurants",
   "thai_restaurant": "restaurants",
   "thrift_store": "other",
@@ -494,7 +502,7 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "warehouse_store": "other",
   "water_park": "experiences",
   "wedding_venue": "experiences",
-  "wellness_center": "wellness_spa",
+  "wellness_center": "wellness_beauty",
   "western_restaurant": "restaurants",
   "wholesaler": "other",
   "wildlife_park": "experiences",
@@ -505,96 +513,35 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
   "woods": "other",
   "yakiniku_restaurant": "restaurants",
   "yakitori_restaurant": "restaurants",
-  "yoga_studio": "wellness_spa",
+  "yoga_studio": "sports_fitness",
   "zoo": "experiences",
 };
 
-export const GOOGLE_TYPES_BY_SUPER: Record<SuperOrOther, readonly string[]> = {
-  restaurants: [
-    "afghani_restaurant", "african_restaurant", "american_restaurant", "argentinian_restaurant", "asian_fusion_restaurant", "asian_restaurant", "australian_restaurant", "austrian_restaurant",
-    "bangladeshi_restaurant", "barbecue_restaurant", "basque_restaurant", "bavarian_restaurant", "belgian_restaurant", "bistro", "brazilian_restaurant", "breakfast_restaurant",
-    "british_restaurant", "brunch_restaurant", "buffet_restaurant", "burmese_restaurant", "burrito_restaurant", "cajun_restaurant", "californian_restaurant", "cambodian_restaurant",
-    "cantonese_restaurant", "caribbean_restaurant", "chicken_restaurant", "chicken_wings_restaurant", "chilean_restaurant", "chinese_noodle_restaurant", "chinese_restaurant", "colombian_restaurant",
-    "croatian_restaurant", "cuban_restaurant", "czech_restaurant", "danish_restaurant", "deli", "dim_sum_restaurant", "diner", "dumpling_restaurant",
-    "dutch_restaurant", "eastern_european_restaurant", "ethiopian_restaurant", "european_restaurant", "falafel_restaurant", "family_restaurant", "fast_food_restaurant", "filipino_restaurant",
-    "fine_dining_restaurant", "fish_and_chips_restaurant", "fondue_restaurant", "food_court", "french_restaurant", "fusion_restaurant", "gastropub", "german_restaurant",
-    "greek_restaurant", "gyro_restaurant", "halal_restaurant", "hamburger_restaurant", "hawaiian_restaurant", "hot_dog_restaurant", "hot_dog_stand", "hot_pot_restaurant",
-    "hungarian_restaurant", "indian_restaurant", "indonesian_restaurant", "irish_restaurant", "israeli_restaurant", "italian_restaurant", "japanese_curry_restaurant", "japanese_izakaya_restaurant",
-    "japanese_restaurant", "kebab_shop", "korean_barbecue_restaurant", "korean_restaurant", "latin_american_restaurant", "lebanese_restaurant", "malaysian_restaurant", "meal_delivery",
-    "meal_takeaway", "mediterranean_restaurant", "mexican_restaurant", "middle_eastern_restaurant", "mongolian_barbecue_restaurant", "moroccan_restaurant", "noodle_shop", "north_indian_restaurant",
-    "oyster_bar_restaurant", "pakistani_restaurant", "persian_restaurant", "peruvian_restaurant", "pizza_delivery", "pizza_restaurant", "polish_restaurant", "portuguese_restaurant",
-    "ramen_restaurant", "restaurant", "romanian_restaurant", "russian_restaurant", "salad_shop", "sandwich_shop", "scandinavian_restaurant", "seafood_restaurant",
-    "shawarma_restaurant", "snack_bar", "soul_food_restaurant", "soup_restaurant", "south_american_restaurant", "south_indian_restaurant", "southwestern_us_restaurant", "spanish_restaurant",
-    "sri_lankan_restaurant", "steak_house", "sushi_restaurant", "swiss_restaurant", "taco_restaurant", "taiwanese_restaurant", "tapas_restaurant", "tex_mex_restaurant",
-    "thai_restaurant", "tibetan_restaurant", "tonkatsu_restaurant", "turkish_restaurant", "ukrainian_restaurant", "vegan_restaurant", "vegetarian_restaurant", "vietnamese_restaurant",
-    "western_restaurant", "yakiniku_restaurant", "yakitori_restaurant",
-  ] as const,
-  bars_nightlife: [
-    "bar", "bar_and_grill", "beer_garden", "brewery", "brewpub", "cocktail_bar", "comedy_club", "dance_hall",
-    "hookah_bar", "irish_pub", "karaoke", "live_music_venue", "lounge_bar", "night_club", "pub", "sports_bar",
-    "wine_bar", "winery",
-  ] as const,
-  cafes_bakeries: [
-    "acai_shop", "bagel_shop", "bakery", "cafe", "cafeteria", "cake_shop", "candy_store", "cat_cafe",
-    "chocolate_factory", "chocolate_shop", "coffee_roastery", "coffee_shop", "coffee_stand", "confectionery", "dessert_restaurant", "dessert_shop",
-    "dog_cafe", "donut_shop", "ice_cream_shop", "juice_shop", "pastry_shop", "tea_house",
-  ] as const,
-  wellness_spa: [
-    "athletic_field", "barber_shop", "beautician", "beauty_salon", "body_art_service", "fitness_center", "foot_care", "golf_course",
-    "gym", "hair_care", "hair_salon", "ice_skating_rink", "indoor_golf_course", "makeup_artist", "massage", "massage_spa",
-    "nail_salon", "sauna", "skin_care_clinic", "spa", "sports_club", "sports_coaching", "swimming_pool", "tanning_studio",
-    "tennis_court", "wellness_center", "yoga_studio",
-  ] as const,
-  experiences: [
-    "adventure_sports_center", "amusement_center", "amusement_park", "aquarium", "arena", "banquet_hall", "barbecue_area", "botanical_garden",
-    "bowling_alley", "casino", "childrens_camp", "city_park", "community_center", "convention_center", "cycling_park", "dog_park",
-    "event_venue", "farmers_market", "ferris_wheel", "fishing_charter", "fishing_pier", "fishing_pond", "flea_market", "garden",
-    "go_karting_venue", "hiking_area", "historical_landmark", "indoor_playground", "internet_cafe", "marina", "market", "miniature_golf_course",
-    "movie_rental", "national_park", "observation_deck", "off_roading_area", "paintball_center", "park", "picnic_ground", "planetarium",
-    "playground", "plaza", "race_course", "roller_coaster", "skateboard_park", "ski_resort", "sports_activity_location", "sports_complex",
-    "sports_school", "stadium", "state_park", "tourist_attraction", "video_arcade", "vineyard", "visitor_center", "water_park",
-    "wedding_venue", "wildlife_park", "wildlife_refuge", "zoo",
-  ] as const,
-  culture_arts: [
-    "amphitheatre", "art_gallery", "art_museum", "art_studio", "auditorium", "castle", "concert_hall", "cultural_center",
-    "cultural_landmark", "fountain", "historical_place", "history_museum", "monument", "movie_theater", "museum", "opera_house",
-    "performing_arts_theater", "philharmonic_hall", "sculpture",
-  ] as const,
-  other: [
-    "academic_department", "accounting", "administrative_area_level_1", "administrative_area_level_2", "aircraft_rental_service", "airport", "airstrip", "apartment_building",
-    "apartment_complex", "asian_grocery_store", "association_or_organization", "astrologer", "atm", "auto_parts_store", "bank", "beach",
-    "bed_and_breakfast", "bicycle_store", "bike_sharing_station", "book_store", "bridge", "buddhist_temple", "budget_japanese_inn", "building_materials_store",
-    "bus_station", "bus_stop", "business_center", "butcher_shop", "campground", "camping_cabin", "car_dealer", "car_rental",
-    "car_repair", "car_wash", "catering_service", "cell_phone_store", "cemetery", "chauffeur_service", "child_care_agency", "chiropractor",
-    "church", "city_hall", "clothing_store", "condominium_complex", "consultant", "convenience_store", "corporate_office", "cosmetics_store",
-    "cottage", "country", "courier_service", "courthouse", "coworking_space", "dental_clinic", "dentist", "department_store",
-    "discount_store", "discount_supermarket", "doctor", "drugstore", "ebike_charging_station", "educational_institution", "electric_vehicle_charging_station", "electrician",
-    "electronics_store", "embassy", "employment_agency", "extended_stay_hotel", "farm", "farmstay", "ferry_service", "ferry_terminal",
-    "fire_station", "florist", "food_delivery", "food_store", "funeral_home", "furniture_store", "garden_center", "gas_station",
-    "general_hospital", "general_store", "gift_shop", "government_office", "grocery_store", "guest_house", "hardware_store", "health_food_store",
-    "heliport", "hindu_temple", "home_goods_store", "home_improvement_store", "hospital", "hostel", "hotel", "housing_complex",
-    "hypermarket", "inn", "insurance_agency", "international_airport", "island", "japanese_inn", "jewelry_store", "lake",
-    "laundry", "lawyer", "library", "light_rail_station", "liquor_store", "local_government_office", "locality", "locksmith",
-    "lodging", "manufacturer", "marketing_consultant", "medical_center", "medical_clinic", "medical_lab", "mobile_home_park", "mosque",
-    "motel", "mountain_peak", "moving_company", "nature_preserve", "neighborhood_police_station", "non_profit_organization", "painter", "park_and_ride",
-    "parking", "parking_garage", "parking_lot", "pet_boarding_service", "pet_care", "pet_store", "pharmacy", "physiotherapist",
-    "plumber", "police", "post_office", "postal_code", "preschool", "primary_school", "private_guest_room", "psychic",
-    "public_bath", "public_bathroom", "ranch", "real_estate_agency", "research_institute", "resort_hotel", "rest_stop", "river",
-    "roofing_contractor", "rv_park", "scenic_spot", "school", "school_district", "secondary_school", "service", "shinto_shrine",
-    "shipping_service", "shoe_store", "shopping_mall", "sporting_goods_store", "sportswear_store", "stable", "storage", "store",
-    "subway_station", "summer_camp_organizer", "supermarket", "supplier", "synagogue", "tailor", "taxi_service", "taxi_stand",
-    "tea_store", "telecommunications_service_provider", "television_studio", "thrift_store", "tire_shop", "toll_station", "tour_agency", "tourist_information_center",
-    "toy_store", "train_station", "train_ticket_office", "tram_stop", "transit_depot", "transit_station", "transit_stop", "transportation_service",
-    "travel_agency", "truck_dealer", "truck_stop", "university", "veterinary_care", "warehouse_store", "wholesaler", "womens_clothing_store",
-    "woods",
-  ] as const,
-};
+/** Derived from GOOGLE_TYPE_SUPER — one source, no second hand-kept list. */
+export const GOOGLE_TYPES_BY_SUPER: Record<SuperOrOther, readonly string[]> = (() => {
+  const grouped: Record<SuperOrOther, string[]> = {
+    restaurants: [],
+    bars_nightlife: [],
+    cafes_bakeries: [],
+    sports_fitness: [],
+    wellness_beauty: [],
+    experiences: [],
+    culture_arts: [],
+    other: [],
+  };
+  for (const [type, superKey] of Object.entries(GOOGLE_TYPE_SUPER)) {
+    grouped[superKey].push(type);
+  }
+  for (const list of Object.values(grouped)) list.sort();
+  return grouped;
+})();
 
 const GUEST_SUPERS = new Set<string>([
   "restaurants",
   "bars_nightlife",
   "cafes_bakeries",
-  "wellness_spa",
+  "sports_fitness",
+  "wellness_beauty",
   "experiences",
   "culture_arts",
   "undefined",

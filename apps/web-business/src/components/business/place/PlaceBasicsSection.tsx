@@ -4,6 +4,7 @@ import type { MyPlace } from "@/lib/api/places";
 import { PlaceAboutField } from "./PlaceAboutField";
 import { PlaceBox } from "./PlaceBox";
 import { PlaceCategorySelect } from "./PlaceCategorySelect";
+import { PlaceSuperCategoryField } from "./PlaceSuperCategoryField";
 import { PlaceHoursSection } from "./PlaceHoursSection";
 import { PlaceLocationFields } from "./PlaceLocationFields";
 import { PLACE_GOOGLE_FIELD_INFO, PlaceKvField } from "./PlaceKvField";
@@ -43,6 +44,10 @@ export function PlaceBasicsSection({
           value={name}
           infoMessage={PLACE_GOOGLE_FIELD_INFO}
           blocked
+        />
+        <PlaceSuperCategoryField
+          category={form.category}
+          familyKeys={place.family_keys ?? null}
         />
         <PlaceKvField label="Category">
           <PlaceCategorySelect

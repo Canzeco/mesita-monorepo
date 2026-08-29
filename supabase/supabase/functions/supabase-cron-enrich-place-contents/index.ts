@@ -49,7 +49,10 @@ import {
   inferPlaceCategory,
   inferPlaceSuperCategories,
 } from "../_shared/categories.ts";
-import { resolveEnrichedFamilyKeys } from "../_shared/place-taxonomy.ts";
+import {
+  familiesForAtlasCategory,
+  resolveEnrichedFamilyKeys,
+} from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
 import { placeHasOrderCatalog } from "../_shared/place-profile-actions.ts";
@@ -168,7 +171,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
     ]);
     // Super `undefined` is a catalog membership, not a classifier target —
     // never offer the leftover slug (thin-signal places would land there).
+    // Same for the Super candidates: the classifier picks among the seven
+    // real supers or stays silent (resolve falls back to ['undefined']).
     const realCategories = categoryList.filter((c) => c.slug !== "undefined");
+    const realSupers = superList.filter((s) => s.slug !== "undefined");
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
@@ -189,7 +195,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       ),
       inferPlaceSuperCategories(
         OPENAI_KEY,
-        superList,
+        realSupers,
         { ...classifySignals, category },
         enricherModel,
       ),
@@ -205,7 +211,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
       (place.category ?? category) as string | null,
       inferredSupers,
     );
-    place.family_keys = resolvedSupers.length > 0 ? resolvedSupers : null;
+    // Total write: resolveEnrichedFamilyKeys never returns empty — a place
+    // always lands under at least one pill (['undefined'] at worst).
+    place.family_keys = resolvedSupers;
     const categoryForTags = (place.category ?? category) as string | null;
     inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
       name,
@@ -225,7 +233,17 @@ serveEnrichStage("contents", async (admin, env, row) => {
       ok: resolvedSupers.length > 0,
       slugs: resolvedSupers,
       inferred: inferredSupers,
-      candidates: superList.length,
+      candidates: realSupers.length,
+      // membership = derived from the classified category's 1–2 parents;
+      // inferred = classifier picked (category still undefined/leftover);
+      // fallback = nothing known, ['undefined'] stands (❓ Other pill).
+      mode: familiesForAtlasCategory(
+          (place.category ?? category) as string | null,
+        ).length > 0
+        ? "membership"
+        : resolvedSupers.length === 1 && resolvedSupers[0] === "undefined"
+        ? "fallback"
+        : "inferred",
     };
     sources.tags = {
       ok: inferredTags.length > 0,

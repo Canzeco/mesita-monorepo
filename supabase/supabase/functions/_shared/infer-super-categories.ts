@@ -1,9 +1,10 @@
-// Super Category inference: OpenAI classifier over the Atlas list (5–10
-// slugs; live catalog is the seven in place_super_categories). Used when
-// the place has no classified Atlas category yet. Once Category is
-// known, family_keys is that category's one Super — including Super
-// `undefined` while category stays `undefined`. Empty here = leave
-// family_keys unset only for leftover non-Atlas slugs.
+// Super Category inference: OpenAI classifier over the Atlas list (the
+// seven real supers in place_super_categories; never `undefined`). Used
+// when the place has no classified Atlas category yet. Once Category is
+// known, family_keys is that category's FULL membership (1–2 supers).
+// The classifier may return one or two supers; a WRONG super is worse
+// than none, so it stays conservative — empty means the caller falls
+// back to ['undefined'] (resolveEnrichedFamilyKeys is total).
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import {
@@ -47,15 +48,18 @@ export async function inferPlaceSuperCategories(
     .join("\n");
 
   const systemContent =
-    "You classify a place into exactly one Super Category from a fixed list. " +
+    "You classify a place into ONE or TWO Super Categories from a fixed list. " +
     'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
-    "where the slug is copied verbatim from the list. A Super Category is a " +
-    "partition of categories (nightlife includes bars and nightclubs; brunch " +
-    "is restaurants, not cafés). Never invent slugs. Never return more than one.";
+    "where every slug is copied verbatim from the list. Most places get " +
+    "exactly one; return two ONLY when the place genuinely lives in both " +
+    "(a breakfast café is restaurants and cafes_bakeries; a karaoke bar is " +
+    "bars_nightlife and experiences). Only classify when confident — a " +
+    "wrong Super is worse than none. Never invent slugs. Never return " +
+    "more than two.";
   const userPrompt =
     `Super Categories (slug — label):\n${catalog}\n\n` +
     `Place:\n${placeLines}\n\n` +
-    `Return {"super_categories":["<one slug from the list>"]}.`;
+    `Return {"super_categories":["<one or two slugs from the list>"]}.`;
 
   try {
     const r = await fetch(OPENAI_URL, {
