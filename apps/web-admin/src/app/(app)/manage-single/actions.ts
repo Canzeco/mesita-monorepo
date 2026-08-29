@@ -46,8 +46,9 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  // ── The eight status facts the catalog table renders, in order:
-  //    Created · Active · Listed · Enriching · Enriched · Verified · Partner · Promoted.
+  // ── The nine status facts the catalog table renders, in order:
+  //    Created · Active · Listed · Requested · Enriched · Enriching ·
+  //    Verified · Partnered · Promoted.
   //    First seven are bools; Promoted is 0|1|2. All derived (or projected)
   //    in admin-web-search-places, except Enriching which is content_status
   //    generating/queued (MESITA-453 whole-pipeline).
@@ -57,6 +58,8 @@ export type PlaceHit = {
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
   listed: boolean;
+  /** pending_review or pending_verification — someone asked to add or own it. */
+  requested: boolean;
   /** Intaker pipeline mid-flight (content_status generating/queued). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
@@ -125,6 +128,11 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
+    requested:
+      typeof raw.requested === "boolean"
+        ? raw.requested
+        : raw.status === "pending_review" ||
+          raw.status === "pending_verification",
     business_status:
       typeof raw.business_status === "string" ? raw.business_status : null,
     business_status_at:

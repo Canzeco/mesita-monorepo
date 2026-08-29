@@ -1,9 +1,9 @@
-// DISCOVERY BLEND — how the eight earned signals compose, and where the bought
+// DISCOVERY BLEND — how the nine earned signals compose, and where the bought
 // lane attaches (Docs › Discovery §A, MESITA-1196).
 //
 // TWO LANES, AND THEY NEVER MIX.
 //
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the eight signals
+//   Lane 1 · EARNED    blend() — the product of `s^w` across the nine signals
 //                      in discovery-signals.ts. It cannot read a promo field
 //                      or a rate. Partnership may read `plan` only.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list

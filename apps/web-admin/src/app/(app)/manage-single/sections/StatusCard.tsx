@@ -1,6 +1,6 @@
 "use client";
 
-// Status — the Statuses box: seven bools (`true`/`false`) plus Promoted
+// Status — the Statuses box: eight bools (`true`/`false`) plus Promoted
 // `0|1|2`, each from its own source. Intake (0. Seed … 10. Semantic)
 // lives in IntakeStatusCard.
 //
@@ -10,10 +10,11 @@
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
 //   Listed     projects.status ∈ (active, lead)
-//   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
+//   Requested  projects.status ∈ (pending_review, pending_verification)
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
+//   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
 //   Verified   approved project_verifications
-//   Partner    plan ≠ free
+//   Partnered  plan ≠ free
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
@@ -40,7 +41,7 @@ import {
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "../actions";
-import { isEnriching, listedFromStatus } from "../place-header-status";
+import { isEnriching, listedFromStatus, requestedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -57,7 +58,7 @@ import {
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): seven bools + Promoted 0|1|2. Intake
+// Statuses box (Pato, 2026-08-25): eight bools + Promoted 0|1|2. Intake
 // is the next box — not chips under Enriched, and not a Create 1–4 /
 // Enrich 1–10 split. Chips never repeat the row name.
 //
@@ -71,12 +72,13 @@ import {
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `status`, never from a merged
 //              overview `listed` flag that can go stale after that write.
-//   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
+//   Requested  pending_review or pending_verification. Not Listed, not Verified.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
+//   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
-//   Partner    the place pays Mesita. A deal: stable, internal.
+//   Partnered  the place pays Mesita. A deal: stable, internal. Wire key `partner`.
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
-//              only one of the six a guest is ever shown. Engine Dominant
+//              only one of the nine a guest is ever shown. Engine Dominant
 //              (3) displays as 2.
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
@@ -172,6 +174,13 @@ export function StatusCard({
       : typeof place.listed === "boolean"
         ? place.listed
         : "unknown";
+  const requestedFromRow = requestedFromStatus(place.status);
+  const requested: boolean | "unknown" =
+    requestedFromRow !== "unknown"
+      ? requestedFromRow
+      : typeof place.requested === "boolean"
+        ? place.requested
+        : "unknown";
   // Enriched is complete-or-not, from the same high-water the catalog uses.
   // A missing number is unknown, not a no.
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
@@ -228,6 +237,15 @@ export function StatusCard({
           : placeStatus
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
+
+  const requestedDetail =
+    requested === "unknown"
+      ? "Couldn't read the place's status."
+      : requested
+        ? placeStatus === "pending_verification"
+          ? "pending_verification — someone asked to own this place."
+          : "pending_review — someone asked Mesita to add this place."
+        : "No add or ownership request is open.";
 
   // ── Operating (MESITA-1239) — Google's word on the business itself.
   //
@@ -348,11 +366,11 @@ export function StatusCard({
           action={<ListedToggle place={place} listed={listed} />}
         />
         <StatusRow
-          name="Enriching"
-          on={enriching}
-          chip={statusBoolChip(enriching)}
-          tint="violet"
-          detail={enrichingDetail}
+          name="Requested"
+          on={requested === true}
+          chip={statusBoolChip(requested)}
+          tint="indigo"
+          detail={requestedDetail}
         />
         <StatusRow
           name="Enriched"
@@ -362,6 +380,13 @@ export function StatusCard({
           detail={enrichedDetail}
         />
         <StatusRow
+          name="Enriching"
+          on={enriching}
+          chip={statusBoolChip(enriching)}
+          tint="violet"
+          detail={enrichingDetail}
+        />
+        <StatusRow
           name="Verified"
           on={verified === true}
           chip={statusBoolChip(verified)}
@@ -369,7 +394,7 @@ export function StatusCard({
           detail={verifiedDetail}
         />
         <StatusRow
-          name="Partner"
+          name="Partnered"
           on={partner}
           chip={statusBoolChip(partner)}
           tint="sky"

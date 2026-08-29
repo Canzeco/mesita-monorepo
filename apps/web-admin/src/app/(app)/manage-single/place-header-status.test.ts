@@ -8,6 +8,7 @@ import {
   isEnrichFailed,
   isEnriching,
   listedFromStatus,
+  requestedFromStatus,
   withListedFromStatus,
 } from "./place-header-status";
 
@@ -133,7 +134,7 @@ describe("generalHeaderFacts", () => {
 
   it("header facts keep Status-box chip encoding; Promoted is 0 | 1 | 2", () => {
     const off = generalHeaderFacts(base);
-    expect(off.find((f) => f.key === "partner")?.label).toBe("Partner");
+    expect(off.find((f) => f.key === "partner")?.label).toBe("Partnered");
     expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
     expect(off.find((f) => f.key === "promoting")?.label).toBe("Promoted");
     expect(off.find((f) => f.key === "promoting")?.chip).toBe("0");
@@ -166,13 +167,24 @@ describe("generalHeaderFacts", () => {
       "Created",
       "Active",
       "Listed",
-      "Enriching",
+      "Requested",
       "Enriched",
+      "Enriching",
       "Verified",
-      "Partner",
+      "Partnered",
       "Promoted",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
+  });
+});
+
+describe("requestedFromStatus", () => {
+  it("pending_review and pending_verification are requested", () => {
+    expect(requestedFromStatus("pending_review")).toBe(true);
+    expect(requestedFromStatus("pending_verification")).toBe(true);
+    expect(requestedFromStatus("active")).toBe(false);
+    expect(requestedFromStatus("lead")).toBe(false);
+    expect(requestedFromStatus(null)).toBe("unknown");
   });
 });
 
