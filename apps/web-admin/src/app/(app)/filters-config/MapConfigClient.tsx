@@ -1,8 +1,8 @@
 "use client";
 
-// Map hyperparameters — live. Three closest-N lanes become one catalog
-// after dropping overlaps: Partners, then Mesita, then Google. Google
-// types live on Discovery Modules.
+// Map hyperparameters — live. Three independent closest-N queries become
+// one catalog after concat: Partners, then Mesita Places, then Google.
+// Overlaps drop; first query keeps the slot. Google types live on Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
@@ -11,19 +11,17 @@ import { formatShortDate } from "@/lib/format";
 import {
   ChoiceField,
   KnobStatus,
-  LaneMergeFunnel,
+  QueryConcatCaps,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  cascadeLaneCounts,
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
   MAP_LANE_COUNT_MAX,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
-  type LaneCountKey,
   type MapConfig,
 } from "./catalog";
 import { ModeModuleChips } from "./ModeModuleChips";
@@ -76,23 +74,6 @@ export function MapConfigClient({
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
 
-  const patchLane = (key: Exclude<LaneCountKey, "count">, value: number) => {
-    setOk(false);
-    setCfg((c) => {
-      const next = cascadeLaneCounts(
-        {
-          partnerCount: c.map.partnerCount,
-          mesitaCount: c.map.mesitaCount,
-          googleCount: c.map.googleCount,
-        },
-        key,
-        value,
-        MAP_LANE_COUNT_MAX,
-      );
-      return { ...c, map: { ...c.map, ...next } };
-    });
-  };
-
   const save = () => {
     if (loadBlocked) return;
     setError(null);
@@ -118,7 +99,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Closest N enter. Listed pins then Lineup, not distance. Google stays distance."
+        subtitle="Closest N enter per query. Listed pins then Lineup, not distance. Google stays distance."
         status={
           <KnobStatus
             kind="enforced"
@@ -127,32 +108,32 @@ export function MapConfigClient({
         }
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
-        <LaneMergeFunnel
-          rule="Then merge. Google ≥ Mesita ≥ Partners."
+        <QueryConcatCaps
+          rule="Then concat. Closest Partners → closest Mesita Places → closest Google Nearby."
           min={0}
           max={MAP_LANE_COUNT_MAX}
           disabled={pending || loadBlocked}
-          bring={[
+          queries={[
             {
-              key: "google",
-              label: "Google places",
-              icon: <Globe className="h-4 w-4 shrink-0" />,
-              value: map.googleCount,
-              onChange: (googleCount) => patchLane("googleCount", googleCount),
+              key: "partners",
+              label: "Mesita partners",
+              icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+              value: map.partnerCount,
+              onChange: (partnerCount) => patch({ partnerCount }),
             },
             {
               key: "mesita",
               label: "Mesita places",
               icon: <Store className="h-4 w-4 shrink-0" />,
               value: map.mesitaCount,
-              onChange: (mesitaCount) => patchLane("mesitaCount", mesitaCount),
+              onChange: (mesitaCount) => patch({ mesitaCount }),
             },
             {
-              key: "partners",
-              label: "Mesita partners",
-              icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
-              value: map.partnerCount,
-              onChange: (partnerCount) => patchLane("partnerCount", partnerCount),
+              key: "google",
+              label: "Google places",
+              icon: <Globe className="h-4 w-4 shrink-0" />,
+              value: map.googleCount,
+              onChange: (googleCount) => patch({ googleCount }),
             },
           ]}
         />

@@ -6,21 +6,19 @@
 // ILIKE, Mesita-first sort).
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
-// Fast numbers are the same list; count stays for Deep symmetry.
+// Fast numbers are the same list; they stay locked.
 // Map Filters never cut this list. Autocomplete and Text Search never
 // take a country code — both stay Any (guest pin may still bias).
-// Deep: Autocomplete + Text Search + Places Lineup Name. Never Nearby
-// Search. Guest pin biases those three. Each candidate resolves, then
-// one list:
-//   1. Google Autocomplete — resolve against the catalog
-//   2. Google Text Search — resolve against the catalog
-//   3. Mesita Places Lineup — admit on raw name cosine, then rankByBlend
-//      under the Deep mask (Name on; everything else 0). Never
-//      `google_name` ILIKE (that is suggest-places / business search).
-// Then Partners → Mesita → Google after dropping overlaps.
-// Merge is not a fourth module. Summary and the other six Lineup signals
-// are not a Deep input. A listed Place ID never comes back as a Google
-// stub. Membership is a boolean `partner`; the client paints the point.
+// Deep: four independent queries, each capped, then concat. Overlaps drop;
+// earlier query keeps the slot. Order:
+//   1. Google Autocomplete (autoCount)
+//   2. Google Text Search (googleCount)
+//   3. Mesita Places — name embedding, listed-not-partner (mesitaCount)
+//   4. Mesita Partners — name embedding, paid plan (partnerCount)
+// Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
+// A Google hit that resolves to Mesita stays in its Google query; later
+// Mesita queries skip it. Summary and the other six Lineup signals are
+// not a Deep input. Membership is a boolean `partner`.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
@@ -120,11 +118,18 @@ export type NameDeepLanes = {
   google: LaneItem[];
 };
 
+export type NameDeepQueries = {
+  autocomplete: LaneItem[];
+  text: LaneItem[];
+  mesita: LaneItem[];
+  partners: LaneItem[];
+};
+
 /**
- * Deep Search merge: Partners, then Mesita, then Google. Overlaps drop.
- * Earlier lane wins the slot; later lanes never graft or append a duplicate.
+ * Concatenate query arrays. Overlaps drop. Earlier query keeps the slot.
+ * Name Deep order: Autocomplete → Text → Mesita Places → Mesita Partners.
  */
-export function mergeNameDeepLanes(lanes: NameDeepLanes): LaneItem[] {
+export function concatQueryLanes(lanes: LaneItem[][]): LaneItem[] {
   const byKey = new Map<string, LaneItem>();
   const order: LaneItem[] = [];
 
@@ -135,7 +140,7 @@ export function mergeNameDeepLanes(lanes: NameDeepLanes): LaneItem[] {
     return false;
   };
 
-  const take = (items: LaneItem[]) => {
+  for (const items of lanes) {
     for (const raw of items) {
       if (!raw.placeId && !raw.mesitaId) continue;
       if (seen(raw)) continue;
@@ -143,22 +148,17 @@ export function mergeNameDeepLanes(lanes: NameDeepLanes): LaneItem[] {
       order.push(item);
       for (const key of laneDedupeKeys(item)) byKey.set(key, item);
     }
-  };
-
-  take(lanes.partners);
-  take(lanes.mesita);
-  take(
-    lanes.google.filter((item) =>
-      item.status === "not_in_mesita" && !item.mesitaId
-    ),
-  );
+  }
   return order;
 }
 
-/** Deep Max results — slice after Partners → Mesita → Google merge. */
-export function takeNameDeepResults(items: LaneItem[], count: number): LaneItem[] {
-  if (count <= 0) return [];
-  return items.slice(0, count);
+export function mergeNameDeepQueries(queries: NameDeepQueries): LaneItem[] {
+  return concatQueryLanes([
+    queries.autocomplete,
+    queries.text,
+    queries.mesita,
+    queries.partners,
+  ]);
 }
 
 /** Fast Search: Autocomplete order, unique venues, cap. */
@@ -433,6 +433,7 @@ export function stripPlacesPrefix(id: string): string {
 
 /** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
 export function deepModuleFlags(args: {
+  autoCount: number;
   partnerCount: number;
   mesitaCount: number;
   googleCount: number;
@@ -440,7 +441,7 @@ export function deepModuleFlags(args: {
   hasOpenai: boolean;
 }): { wantAuto: boolean; wantText: boolean; wantMesita: boolean } {
   return {
-    wantAuto: args.typesOn,
+    wantAuto: args.autoCount > 0 && args.typesOn,
     wantText: args.googleCount > 0 && args.typesOn,
     wantMesita: (args.partnerCount > 0 || args.mesitaCount > 0) &&
       args.hasOpenai,
@@ -463,6 +464,7 @@ async function runDeepSearch(
   const typesOn = googleTypeFilterForTypes(deep.types) !== "skip";
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const { wantAuto, wantText, wantMesita } = deepModuleFlags({
+    autoCount: deep.autoCount,
     partnerCount: deep.partnerCount,
     mesitaCount: deep.mesitaCount,
     googleCount: deep.googleCount,
@@ -513,30 +515,16 @@ async function runDeepSearch(
       deep.partnerCount,
     )
     : [];
-  // Mesita lane is listed-not-partner. Partners already have their own lane;
-  // if they fill this cap, merge drops them and listed places never appear.
   const lineupMesita = deep.mesitaCount > 0
     ? takeListedLane(listedNotPartner(ordered), deep.mesitaCount)
     : [];
 
-  const fromAuto = splitResolvedNameHits(stampedAuto);
-  const fromText = splitResolvedNameHits(stampedText);
-
-  const merged = mergeNameDeepLanes({
-    partners: takeLane(
-      [...lineupPartners, ...fromAuto.partners, ...fromText.partners],
-      deep.partnerCount,
-    ),
-    mesita: takeLane(
-      [...lineupMesita, ...fromAuto.mesita, ...fromText.mesita],
-      deep.mesitaCount,
-    ),
-    google: takeLane(
-      [...fromAuto.google, ...fromText.google],
-      deep.googleCount,
-    ),
+  return mergeNameDeepQueries({
+    autocomplete: takeLane(stampedAuto, deep.autoCount),
+    text: takeLane(stampedText, deep.googleCount),
+    mesita: lineupMesita,
+    partners: lineupPartners,
   });
-  return takeNameDeepResults(merged, deep.count);
 }
 
 function toWire(item: LaneItem) {

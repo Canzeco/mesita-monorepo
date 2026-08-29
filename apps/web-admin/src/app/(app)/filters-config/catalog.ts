@@ -11,15 +11,17 @@
 //
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
-//             Fast is Autocomplete only. Deep calls Autocomplete, Text
-//             Search, and Places Lineup (Name on Mesita `places.name`,
-//             never `google_name`). Deep never calls Nearby Search.
+//             Fast is Autocomplete only. Deep concatenates Autocomplete,
+//             Text Search, Mesita Places, and Mesita Partners (Name on
+//             Mesita `places.name`, never `google_name`). Deep never
+//             calls Nearby Search. Map concatenates closest Partners,
+//             closest listed-not-partner Mesita, then Google Nearby.
+//             Caps are per query, then concat; overlaps drop.
 //             Chat calls Text Search, Nearby, both Perplexity modules,
 //             and Places Lineup — not Social Lineup. Favorites calls
 //             no module and gates on no pool — bookmarks may include
-//             Mesita Listed Create stubs (not enriched).
-//             Map keeps lane counts. Google category knobs live on
-//             Modules, not here.
+//             Mesita Listed Create stubs (not enriched). Google
+//             category knobs live on Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
@@ -51,7 +53,7 @@ export type SignalParamBag = Record<string, number>;
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 export type NameFastConfig = {
-  /** Redundant with count on Fast — one source. Kept for Deep symmetry. */
+  /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;
@@ -60,8 +62,11 @@ export type NameFastConfig = {
 export type NameDeepConfig = {
   partnerCount: number;
   mesitaCount: number;
+  /** Google Autocomplete cap. Independent query. */
+  autoCount: number;
+  /** Google Text Search cap. Independent query. */
   googleCount: number;
-  /** Merge cap after Partners → Mesita → Google. */
+  /** Legacy blob field. Queries concat; the union is not sliced. */
   count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -149,8 +154,11 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
+  /** Closest Mesita partners (plan ≠ free). Independent query. */
   partnerCount: number;
+  /** Closest Mesita Places, listed-not-partner. Independent query. */
   mesitaCount: number;
+  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -242,67 +250,6 @@ export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 export const NAME_DEEP_COUNT_DEFAULT = 9;
 
-export type LaneCountKey =
-  | "partnerCount"
-  | "mesitaCount"
-  | "googleCount"
-  | "count";
-
-export type LaneCounts = {
-  partnerCount: number;
-  mesitaCount: number;
-  googleCount: number;
-  /** Deep merge cap. Omit on Map. */
-  count?: number;
-};
-
-function clampLane(n: number, laneMax: number): number {
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(laneMax, Math.round(n)));
-}
-
-/**
- * Operator edit: keep max ≥ google ≥ mesita ≥ partners.
- * The edited key wins; neighbors move just enough.
- */
-export function cascadeLaneCounts(
-  current: LaneCounts,
-  key: LaneCountKey,
-  value: number,
-  laneMax: number,
-): LaneCounts {
-  let partnerCount = clampLane(current.partnerCount, laneMax);
-  let mesitaCount = clampLane(current.mesitaCount, laneMax);
-  let googleCount = clampLane(current.googleCount, laneMax);
-  let count = current.count == null ? undefined : clampLane(current.count, laneMax);
-  const next = clampLane(value, laneMax);
-
-  if (key === "partnerCount") {
-    partnerCount = next;
-    if (mesitaCount < partnerCount) mesitaCount = partnerCount;
-    if (googleCount < mesitaCount) googleCount = mesitaCount;
-    if (count != null && count < googleCount) count = googleCount;
-  } else if (key === "mesitaCount") {
-    mesitaCount = next;
-    if (partnerCount > mesitaCount) partnerCount = mesitaCount;
-    if (googleCount < mesitaCount) googleCount = mesitaCount;
-    if (count != null && count < googleCount) count = googleCount;
-  } else if (key === "googleCount") {
-    googleCount = next;
-    if (mesitaCount > googleCount) mesitaCount = googleCount;
-    if (partnerCount > mesitaCount) partnerCount = mesitaCount;
-    if (count != null && count < googleCount) count = googleCount;
-  } else {
-    count = next;
-    if (googleCount > count) googleCount = count;
-    if (mesitaCount > googleCount) mesitaCount = googleCount;
-    if (partnerCount > mesitaCount) partnerCount = mesitaCount;
-  }
-
-  return count == null
-    ? { partnerCount, mesitaCount, googleCount }
-    : { partnerCount, mesitaCount, googleCount, count };
-}
 export const SWIPE_RADIUS_KM_MIN = 1;
 export const SWIPE_RADIUS_KM_MAX = 50;
 export const SWIPE_CLOSING_BUFFER_MIN = 0;
@@ -432,6 +379,7 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   count: NAME_DEEP_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
@@ -550,7 +498,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Closest N enter. Listed pins then Lineup, not distance. Google stays distance. Bring Google ≥ Mesita ≥ Partners, then one catalog after overlaps drop. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use Places Lineup inside the closest-N cut. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
+    process: "Closest N enter per query. Concat Partners, then listed-not-partner Mesita, then Google Nearby. Overlaps drop; first query keeps the slot. Caps are independent, not nested. Listed pins then Lineup, not distance. Google stays distance. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults when disjoint. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -605,7 +553,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Deep never calls Nearby Search. Bring Google, Mesita, and Partners, then merge. Max ≥ Google ≥ Mesita ≥ Partners. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Max results caps the merge. Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -1196,6 +1144,9 @@ export function coerceName(raw: unknown): NameConfig {
       ),
       mesitaCount: Math.round(
         num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      autoCount: Math.round(
+        num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
       ),
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),

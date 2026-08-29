@@ -182,7 +182,7 @@ Deno.test("mergeNearbyCatalog: a partner in the Mesita lane appears once", () =>
   );
 });
 
-Deno.test("mergeNearbyCatalog: nested 10+10+20 collapses to 20", () => {
+Deno.test("mergeNearbyCatalog: independent 10+10+20 is 30 when Google overlaps Mesita", () => {
   const partners = Array.from({ length: 10 }, (_, i) => ({
     id: `p${i}`,
     plan: "pro",
@@ -219,13 +219,17 @@ Deno.test("mergeNearbyCatalog: nested 10+10+20 collapses to 20", () => {
     ...extraGoogle,
   ];
   const got = mergeNearbyCatalog([...partners, ...extraMesita], google, CENTER);
-  assertEquals(got.length, 20);
+  assertEquals(got.length, 30);
   assertEquals(
     got.slice(0, 10).map((x) => x.kind === "listed" ? x.row.id : ""),
     partners.map((row) => row.id),
   );
   assertEquals(
-    got.slice(10).map((x) => x.kind === "google" ? x.hit.placeId : ""),
+    got.slice(10, 20).map((x) => x.kind === "listed" ? x.row.id : ""),
+    extraMesita.map((row) => row.id),
+  );
+  assertEquals(
+    got.slice(20).map((x) => x.kind === "google" ? x.hit.placeId : ""),
     extraGoogle.map((hit) => hit.placeId),
   );
 });
