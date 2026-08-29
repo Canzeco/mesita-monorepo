@@ -392,8 +392,16 @@ describe("Discovery page box order", () => {
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
-    expect(matrix).toContain("Places Lineup");
+    expect(matrix).toContain("Places Types");
+    expect(matrix).toContain("Search Modules");
+    expect(matrix).toContain("Places Lineup Signals");
+    expect(matrix).toContain("Places Lineup {label}");
+    expect(matrix).toContain("BandRule");
     expect(matrix).toContain("modeSignalState");
+    expect(matrix).not.toContain("zero=");
+    expect(matrix).not.toContain("Map Randomness is 0");
+    const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
+    expect(flags).not.toContain("zero");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");
     expect(name).not.toContain("Google categories");

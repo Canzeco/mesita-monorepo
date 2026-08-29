@@ -170,9 +170,8 @@ export function SignalsConfigClient({
                           <Flag
                             key={mode}
                             on={state === "on"}
-                            zero={state === "zero"}
                             shape="circle"
-                            label={`${DISCOVERY_MODE_LABELS[mode]} · ${state}`}
+                            label={`${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
                           />
                         );
                       })}
