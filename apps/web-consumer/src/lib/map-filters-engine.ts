@@ -1,6 +1,7 @@
-// Map filters — Search only. Status + Category cut the nearby catalog.
-// Distance and time stay off this surface: the camera and Search here
-// already bound the set. Swipe keeps the Discovery store.
+// Map filters — Search only. Status + Super Category cut the nearby
+// catalog. There is no Category or Types axis: a place rolls up to one
+// of the six families. Distance and time stay off this surface: the
+// camera and Search here already bound the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -26,14 +27,13 @@ export const MAP_STATUS_OPTIONS = [
 export type MapFilters = {
   /** Exclusive buckets; empty = every status. */
   statuses: MapStatusKey[];
+  /** Super Category: the six place families; empty = no constraint. */
   familyKeys: FamilyKey[];
-  categories: string[];
 };
 
 export const MAP_FILTER_DEFAULTS: MapFilters = {
   statuses: [],
   familyKeys: [],
-  categories: [],
 };
 
 /** Highest rung wins so a place has one status on the map. */
@@ -51,9 +51,9 @@ export function mapFiltersAreActive(f: MapFilters): boolean {
   return mapFilterCount(f) > 0;
 }
 
-/** Each selected Status, family, or type is one applied filter. */
+/** Each selected Status or Super Category is one applied filter. */
 export function mapFilterCount(f: MapFilters): number {
-  return f.statuses.length + f.familyKeys.length + f.categories.length;
+  return f.statuses.length + f.familyKeys.length;
 }
 
 function matchesMapFilters(place: Place, f: MapFilters): boolean {
@@ -61,15 +61,11 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
     return false;
   }
 
-  if (f.familyKeys.length > 0 || f.categories.length > 0) {
-    const categoryHit =
-      f.categories.length > 0 &&
-      place.category != null &&
-      f.categories.includes(place.category);
-    const familyHit =
-      f.familyKeys.length > 0 &&
-      f.familyKeys.some((key) => (place.family_keys ?? []).includes(key));
-    if (!categoryHit && !familyHit) return false;
+  if (f.familyKeys.length > 0) {
+    const familyHit = f.familyKeys.some((key) =>
+      (place.family_keys ?? []).includes(key),
+    );
+    if (!familyHit) return false;
   }
 
   return true;

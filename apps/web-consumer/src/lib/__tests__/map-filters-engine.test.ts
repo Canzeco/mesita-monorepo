@@ -48,16 +48,15 @@ describe("applyMapFilters", () => {
     expect(mapFilterCount(filters())).toBe(0);
   });
 
-  it("counts every selected status, family, and type", () => {
+  it("counts every selected status and Super Category", () => {
     expect(
       mapFilterCount(
         filters({
           statuses: ["created", "enriched"],
           familyKeys: ["restaurants"],
-          categories: ["night_club"],
         }),
       ),
-    ).toBe(4);
+    ).toBe(3);
   });
 
   it("keeps the selected status buckets", () => {
@@ -71,7 +70,7 @@ describe("applyMapFilters", () => {
     expect(kept.map((p) => p.id)).toEqual(["g", "p"]);
   });
 
-  it("ORs family and concrete category", () => {
+  it("cuts on Super Category only — never a concrete type slug", () => {
     const bar = place({
       id: "bar",
       category: "night_club",
@@ -88,10 +87,6 @@ describe("applyMapFilters", () => {
         filters({ familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual(["taco"]);
-    expect(
-      applyMapFilters([bar, taco], filters({ categories: ["night_club"] })).map(
-        (p) => p.id,
-      ),
-    ).toEqual(["bar"]);
+    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
 });

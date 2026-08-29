@@ -1,7 +1,7 @@
 "use client";
 
 // Search-map filter store. Isolated from Discovery (Swipe): narrowing
-// Status or Category on the map never touches the deck.
+// Status or Super Category on the map never touches the deck.
 
 import { useSyncExternalStore } from "react";
 import {
@@ -35,11 +35,6 @@ function readPersisted(): MapFilters {
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
-          )
-        : [],
-      categories: Array.isArray(parsed.categories)
-        ? (parsed.categories as unknown[]).filter(
-            (c): c is string => typeof c === "string" && c.trim().length > 0,
           )
         : [],
     };
@@ -96,14 +91,6 @@ export function toggleMapFamily(key: FamilyKey) {
     familyKeys: state.familyKeys.includes(key)
       ? state.familyKeys.filter((k) => k !== key)
       : [...state.familyKeys, key],
-  });
-}
-
-export function toggleMapCategory(slug: string) {
-  patchMapFilters({
-    categories: state.categories.includes(slug)
-      ? state.categories.filter((c) => c !== slug)
-      : [...state.categories, slug],
   });
 }
 
