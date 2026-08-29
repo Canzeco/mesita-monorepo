@@ -3,6 +3,7 @@ import {
   isPlaceEnriching,
   isPlaceListed,
   isPlaceProfileReady,
+  isPlaceRequested,
   isPlaceSeeded,
 } from "./place-status.ts";
 
@@ -45,6 +46,14 @@ Deno.test("listed: a missing or non-string status is never listed", () => {
   for (const bad of [null, undefined, "", 0, {}, []]) {
     assertEquals(isPlaceListed(bad), false, `${JSON.stringify(bad)}`);
   }
+});
+
+Deno.test("requested: pending_review and pending_verification only", () => {
+  assertEquals(isPlaceRequested("pending_review"), true);
+  assertEquals(isPlaceRequested("pending_verification"), true);
+  assertEquals(isPlaceRequested("lead"), false);
+  assertEquals(isPlaceRequested("active"), false);
+  assertEquals(isPlaceRequested(null), false);
 });
 
 Deno.test("enriching: generating or queued is mid-flight", () => {

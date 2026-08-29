@@ -445,6 +445,7 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   summary: { unembedded: SUMMARY_UNEMBEDDED },
   partnership: {},
   randomness: {},
+  social: {},
 };
 
 /** Legal ranges for every param the console may edit. */
@@ -485,6 +486,7 @@ export const SIGNAL_PARAM_BOUNDS: Record<
   },
   partnership: {},
   randomness: {},
+  social: {},
 };
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -497,6 +499,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     summary: 1,
     partnership: 1,
     randomness: 0.35,
+    social: 1,
   },
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: {

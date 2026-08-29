@@ -5,7 +5,7 @@
 //
 // Google Search looks up Google. Mesita Search looks up Mesita (read-only).
 // Mesita Intake is the make door and the only state write (Listed · Active ·
-// Verified · Partner · Promoted) on the same Google Place IDs. Active off
+// Verified · Partnered · Promoted) on the same Google Place IDs. Active off
 // unlists.
 
 export const PIPELINE_STEPS = [

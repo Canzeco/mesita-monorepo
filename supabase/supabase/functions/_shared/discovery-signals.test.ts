@@ -12,6 +12,7 @@ import {
   partnership,
   PARTNERSHIP_NONE,
   PARTNERSHIP_PARTNER,
+  social,
   summary,
   SIGNAL_BLURBS,
   SIGNAL_KEYS,
@@ -68,8 +69,8 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 8);
+Deno.test("the library, the labels and the blurbs name the same nine signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 9);
   assertEquals([...SIGNAL_KEYS], [
     "name",
     "summary",
@@ -79,6 +80,7 @@ Deno.test("the library, the labels and the blurbs name the same eight signals", 
     "popularity",
     "partnership",
     "randomness",
+    "social",
   ]);
   assertEquals(Object.keys(SIGNALS).sort(), [...SIGNAL_KEYS].sort());
   assertEquals(Object.keys(SIGNAL_LABELS).sort(), [...SIGNAL_KEYS].sort());
@@ -90,8 +92,12 @@ Deno.test("Promoting is NOT a signal — the bought lane never reaches the blend
   // this fails before the invariant test in discovery-blend.test.ts does.
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
-  // And Social is a module only — it does not reuse these eight.
-  assert(!(SIGNAL_KEYS as readonly string[]).includes("social"));
+  assert((SIGNAL_KEYS as readonly string[]).includes("social"));
+});
+
+Deno.test("social abstains until Social Lineup writes an index", () => {
+  assertEquals(social(place()), NEUTRAL);
+  assertEquals(social(place(), { lat: CDMX.lat, lng: CDMX.lng }), NEUTRAL);
 });
 
 Deno.test("clamp01 turns non-finite into the neutral element, not zero", () => {

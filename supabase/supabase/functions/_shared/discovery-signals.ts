@@ -8,19 +8,18 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE EIGHT. Docs § A once listed Promoting among them; MESITA-1196
-// settled the two-lane question the other way (Pato, 2026-08-22), so
-// Promoting is NOT here — a bought placement never touches an earned score.
-// It is a slotting pass that runs AFTER the blend, and it lives in
-// discovery-blend.ts. Nothing in this file may read a promo field or a rate;
-// that is what makes "rank is never for sale" an invariant a test can hold
-// rather than an exponent someone has to defend.
+// THERE ARE NINE. Promoting is NOT here — a bought placement never touches
+// an earned score. It is a slotting pass that runs AFTER the blend
+// (discovery-blend.ts). Nothing in this file may read a promo field or a
+// rate; that is what makes "rank is never for sale" an invariant a test
+// can hold rather than an exponent someone has to defend.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
 // (`places.embedding` — the Summary blurb, never Presentation). Partnership
 // is an earned signal (how partnered the place is). It reads `plan` only.
-// There is no Social signal: Social Lineup is a module, and it does not
-// reuse these eight.
+// Social is the ninth: it abstains until Social Lineup writes a place-level
+// score. Social Lineup is still a module; this signal is the place-feed
+// reading of social proof, not that module.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the
@@ -48,7 +47,7 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 
-/** The eight earned signals, in the order the Lineup table renders them. */
+/** The nine earned signals, in the order the Lineup table renders them. */
 export const SIGNAL_KEYS = [
   "name",
   "summary",
@@ -58,6 +57,7 @@ export const SIGNAL_KEYS = [
   "popularity",
   "partnership",
   "randomness",
+  "social",
 ] as const;
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
@@ -427,6 +427,20 @@ export function randomness(_place: SignalPlace, intent?: SignalIntent): number {
   return clamp01(rng());
 }
 
+// ── 9. Social ────────────────────────────────────────────────────────────────
+
+/**
+ * Place-level social proof. Social Lineup writes the index this reads.
+ * Until that module ships there is no index, so the signal abstains.
+ */
+export function social(
+  _place: SignalPlace,
+  _intent?: SignalIntent,
+  _params?: SignalParamBag,
+): number {
+  return NEUTRAL;
+}
+
 // ── The library ──────────────────────────────────────────────────────────────
 
 export type SignalFn = (
@@ -449,6 +463,7 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   popularity,
   partnership,
   randomness,
+  social,
 };
 
 /** Operator-facing names. The admin weights table renders these. */
@@ -461,6 +476,7 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   popularity: "Popularity",
   partnership: "Partnership",
   randomness: "Randomness",
+  social: "Social",
 };
 
 /** One line each, for the same table. What the signal asks, not how it works. */
@@ -473,4 +489,5 @@ export const SIGNAL_BLURBS: Record<SignalKey, string> = {
   popularity: "Rating shrunk toward the catalog mean by review volume.",
   partnership: "How partnered the place is, from plan. Never a bought score.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
+  social: "Place-level social proof. Abstains until Social Lineup writes the index.",
 };

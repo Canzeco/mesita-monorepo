@@ -89,6 +89,7 @@ const WEIGHTS_OFF: SignalWeights = {
   popularity: 0,
   partnership: 0,
   randomness: 0,
+  social: 0,
 };
 
 /** Popularity alone, so the earned order is deterministic and legible. */

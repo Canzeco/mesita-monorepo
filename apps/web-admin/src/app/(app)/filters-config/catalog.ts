@@ -18,12 +18,13 @@
 //             knobs live on Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
-//             Nearby · Text Search · Mesita Places Lineup · Social
-//             Lineup Soon · Perplexity Search Soon.
-//   LINEUP    eight earned signals: Name · Summary · Proximity · Timing ·
-//             Category · Popularity · Partnership · Randomness.
+//             Text Search · Nearby · Perplexity Search · Perplexity
+//             Agent · Mesita Places Lineup · Social Lineup Soon.
+//   LINEUP    nine earned signals: Name · Summary · Proximity · Timing ·
+//             Category · Popularity · Partnership · Randomness · Social.
 //             Promoting is slotting (post-blend), not a SIGNAL_KEY.
-//             Old `semantic` folds to Summary.
+//             Old `semantic` folds to Summary. Social abstains until
+//             Social Lineup writes an index.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -37,6 +38,7 @@ export const SIGNAL_KEYS = [
   "popularity",
   "partnership",
   "randomness",
+  "social",
 ] as const;
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
@@ -236,7 +238,7 @@ export const CHAT_CONNECTIONS = [
   {
     name: "Perplexity (web search)",
     status: "Soon",
-    note: "Perplexity Search API — ranked web results. Not Agent. Agent stays Atlas.",
+    note: "Perplexity Search API — ranked web results. Agent is its own module.",
   },
   {
     name: "Internal search EFs",
@@ -379,6 +381,7 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   summary: { unembedded: 0.4 },
   partnership: {},
   randomness: {},
+  social: {},
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -391,6 +394,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     summary: 1,
     partnership: 1,
     randomness: 0.35,
+    social: 1,
   },
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: { enabled: true, everyNth: 5 },
@@ -570,6 +574,7 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "popularity" as const },
   { kind: "signal" as const, key: "partnership" as const },
   { kind: "signal" as const, key: "randomness" as const },
+  { kind: "signal" as const, key: "social" as const },
 ] as const;
 
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
@@ -583,19 +588,25 @@ export const DISCOVERY_MODE_MODULES = {
   map: ["Mesita Places Lineup", "Google Places Nearby Search"],
   swipe: ["Mesita Places Lineup"],
   catalog: ["Mesita Places Lineup"],
-  chat: ["Mesita Places Lineup", "Mesita Social Lineup", "Perplexity Search"],
+  chat: [
+    "Mesita Places Lineup",
+    "Mesita Social Lineup",
+    "Perplexity Search",
+    "Perplexity Agent",
+  ],
   social: ["Mesita Social Lineup"],
   favorites: ["Mesita Places Lineup"],
 } as const;
 
-/** The six Discovery modules. Not a seventh. Signals are not a module. */
+/** The seven Discovery modules. Signals are not a module. */
 export const DISCOVERY_MODULES = [
   "Google Places Autocomplete",
-  "Google Places Nearby Search",
   "Google Places Text Search",
+  "Google Places Nearby Search",
+  "Perplexity Search",
+  "Perplexity Agent",
   "Mesita Places Lineup",
   "Mesita Social Lineup",
-  "Perplexity Search",
 ] as const;
 
 export const SIGNALS: {
@@ -686,6 +697,16 @@ export const SIGNALS: {
     input: "Nothing about the place. A uniform draw.",
     process: "rng() in [0, 1). The exponent is the only knob.",
     output: "A number that only breaks near-ties when the exponent is soft.",
+    apis: [],
+    fields: UNIT,
+  },
+  {
+    key: "social",
+    label: "Social",
+    fn: "social()",
+    input: "Place-level social proof. Social Lineup writes the index.",
+    process: "Abstains at 1 until that index exists.",
+    output: "Neutral until Social Lineup ships.",
     apis: [],
     fields: UNIT,
   },
