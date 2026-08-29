@@ -635,6 +635,21 @@ verify_jwt = true
 [functions.consumer-web-create-subscription]
 verify_jwt = true
 
+# The Cards wallet — a consumer's saved payment methods. Stripe is the only
+# store: these four never write card data to Postgres, only read it back
+# through the consumers.stripe_customer_id anchor.
+[functions.consumer-web-list-cards]
+verify_jwt = true
+
+[functions.consumer-web-add-card]
+verify_jwt = true
+
+[functions.consumer-web-remove-card]
+verify_jwt = true
+
+[functions.consumer-web-set-default-card]
+verify_jwt = true
+
 # Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
 [functions.business-web-change-subscription]
 verify_jwt = true

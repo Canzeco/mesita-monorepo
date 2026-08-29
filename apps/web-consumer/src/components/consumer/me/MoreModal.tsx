@@ -3,6 +3,7 @@
 import {
   BarChart3,
   ChevronRight,
+  CreditCard,
   Gift,
   HelpCircle,
   Mail,
@@ -21,12 +22,17 @@ import { cn } from "@/lib/utils";
 // everything else lives one tap deeper.
 //
 // The split is by FREQUENCY, not importance. The seven are what a guest opens
-// repeatedly or must reach in a hurry; these six are the long tail: two that
-// don't exist yet (Yums, Gift), one parked (Share), and three you consult once
-// and rarely again (Metrics, Help, Contact). Twelve boxes made the surface a
-// wall to scroll — the parked ones sat between live ones, so the page read as
-// mostly-unfinished. Behind More, the unfinished work stops being the first
-// thing you see.
+// repeatedly or must reach in a hurry; these seven are the long tail: one you
+// set once and forget (Cards), two that don't exist yet (Yums, Gift), one
+// parked (Share), and three you consult once and rarely again (Metrics, Help,
+// Contact). Twelve boxes made the surface a wall to scroll — the parked ones
+// sat between live ones, so the page read as mostly-unfinished. Behind More,
+// the unfinished work stops being the first thing you see.
+//
+// Cards leads because it is the one LIVE row here and because it must sit
+// next to Yums: two wallets, two names (Pato, 2026-08-29). Cards holds cards
+// and pays a bill; Yums holds Mesita Credits and REDUCES one. Sharing the
+// word "wallet" between them was the confusion this ordering prevents.
 //
 // Neutral chips, like the boxes that lead here (MESITA-1132): colour on this
 // surface belongs to the passport alone.
@@ -44,6 +50,7 @@ type MoreRow = {
 export function MoreModal({
   open,
   onClose,
+  onOpenCards,
   onOpenShare,
   onOpenMetrics,
   onOpenHelp,
@@ -52,6 +59,7 @@ export function MoreModal({
 }: {
   open: boolean;
   onClose: () => void;
+  onOpenCards: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
   onOpenHelp: () => void;
@@ -61,6 +69,18 @@ export function MoreModal({
   metricsSummary: string;
 }) {
   const rows: MoreRow[] = [
+    {
+      key: "cards",
+      Icon: CreditCard,
+      title: "Cards",
+      // Static on purpose: Me's law is that a summary reads live wherever the
+      // page ALREADY holds the data, and ProfileClient holds profile and
+      // metrics, not cards. A live count would cost a third EF read on every
+      // Me mount to serve a row most guests never tap; the count lives inside
+      // the sheet, where the fetch already happens.
+      summary: "Saved cards for Premium and Mesita Pay",
+      onClick: onOpenCards,
+    },
     {
       key: "yums",
       Icon: Wallet,

@@ -12,6 +12,7 @@
 
 import type Stripe from "npm:stripe@17";
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { writeConsumer } from "./consumer-doc.ts";
 import {
   type PlanCatalogEntry,
   STRIPE_CATALOG,
@@ -22,8 +23,7 @@ export { STRIPE_CATALOG };
 
 // Same version string prod has always passed. The cast keeps `deno check`
 // happy when the locally-cached stripe@17 minor pins an older literal.
-export const STRIPE_API_VERSION =
-  "2025-03-31.basil" as Stripe.LatestApiVersion;
+export const STRIPE_API_VERSION = "2025-03-31.basil" as Stripe.LatestApiVersion;
 
 // MESITA-37 — stay on TEST until a human is ready to take real money.
 // Checkout, catalog provisioning that would create live charges (or live
@@ -214,4 +214,93 @@ export async function ensureWholeCatalog(
       /* best effort */
     }
   }
+}
+
+// ─── The consumer's Stripe customer anchor ──────────────────────────────────
+//
+// ONE door. Every consumer-side Stripe call resolves its customer through
+// here: the Cards wallet (consumer-web-*-card) and subscription checkout
+// (consumer-web-create-subscription). Two doors would mean two customers for
+// one guest, and a card saved against the one nobody charges.
+//
+// The anchor lives on `consumers.stripe_customer_id` (migration
+// 20260829223914), not on consumer_subscriptions, because a free guest can
+// save a card before any subscription exists. The subscription table keeps
+// its own column for the rows already written; this helper backfills from it
+// so a subscriber who predates the column keeps the same Stripe customer
+// rather than silently getting a second one.
+//
+// `mock_cus_*` is NOT a customer. MOCK_SUBSCRIPTION writes those, and handing
+// one to a live key 400s, so every read path treats the prefix as absent.
+// Same guard the inline code in consumer-web-create-subscription carried
+// before it moved here.
+//
+// Cards themselves are never stored: Stripe is the only store for PAN, brand,
+// last4, expiry and default. This id is the whole local footprint.
+
+/** A `mock_cus_*` id is a placeholder, never a real Stripe customer. */
+export function isMockCustomerId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith("mock_");
+}
+
+export async function ensureConsumerCustomer(
+  admin: SupabaseClient,
+  stripe: Stripe,
+  consumerId: string,
+): Promise<string> {
+  // 1. The anchor, if this guest already has one.
+  const { data: consumer } = await admin
+    .from("consumers")
+    .select("stripe_customer_id")
+    .eq("id", consumerId)
+    .maybeSingle();
+  const anchored = (consumer as { stripe_customer_id?: string | null } | null)
+    ?.stripe_customer_id ?? null;
+  if (anchored && !isMockCustomerId(anchored)) return anchored;
+
+  // 2. Backfill: a subscriber from before the column existed already has a
+  //    real customer on their subscription row. Adopt it rather than minting
+  //    a second one for the same person.
+  const { data: sub } = await admin
+    .from("consumer_subscriptions")
+    .select("stripe_customer_id")
+    .eq("consumer_id", consumerId)
+    .not("stripe_customer_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const inherited = (sub as { stripe_customer_id?: string | null } | null)
+    ?.stripe_customer_id ?? null;
+  if (inherited && !isMockCustomerId(inherited)) {
+    await writeConsumer(admin, {
+      mode: "update",
+      id: consumerId,
+      patch: { stripe_customer_id: inherited },
+    });
+    return inherited;
+  }
+
+  // 3. Nothing usable — mint one and anchor it.
+  const customer = await stripe.customers.create({
+    metadata: { consumer_id: consumerId, mesita_kind: "consumer" },
+  });
+  const written = await writeConsumer(admin, {
+    mode: "update",
+    id: consumerId,
+    patch: { stripe_customer_id: customer.id },
+  });
+  if (!written.ok) {
+    // The unique index rejected us: a concurrent call anchored first. Re-read
+    // and use the winner so the two callers converge on ONE customer instead
+    // of racing a second one into Stripe.
+    const { data: raced } = await admin
+      .from("consumers")
+      .select("stripe_customer_id")
+      .eq("id", consumerId)
+      .maybeSingle();
+    const winner = (raced as { stripe_customer_id?: string | null } | null)
+      ?.stripe_customer_id ?? null;
+    if (winner && !isMockCustomerId(winner)) return winner;
+  }
+  return customer.id;
 }

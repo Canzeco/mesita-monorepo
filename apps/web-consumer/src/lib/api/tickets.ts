@@ -290,20 +290,34 @@ export type GuestVisitsPolicy = {
   reportEnabled: boolean;
 };
 
+/** Per-ticket settlement availability, derived server-side. */
+export type TicketSettlement = {
+  /** Mesita Pay is usable on THIS ticket: places.mesita_pay_enabled ∧
+   *  visits_config.payCard ∧ Connect charge-readiness. One derived boolean —
+   *  the legs stay server-side (mesita_pay_enabled is an admin-only fact). */
+  cardRail: boolean;
+};
+
 export async function apiGetTicket(
   client: SupabaseClient,
   ticketId: string,
-): Promise<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }> {
-  return await invokeEF<{ ticket: ConsumerTicketRow; visits?: GuestVisitsPolicy }>(
-    client,
-    "consumer-web-get-ticket",
-    { ticketId },
-  );
+): Promise<{
+  ticket: ConsumerTicketRow;
+  visits?: GuestVisitsPolicy;
+  settlement?: TicketSettlement;
+}> {
+  return await invokeEF<{
+    ticket: ConsumerTicketRow;
+    visits?: GuestVisitsPolicy;
+    settlement?: TicketSettlement;
+  }>(client, "consumer-web-get-ticket", { ticketId });
 }
 
 // THE TICKET v4, step 5 (MESITA-1092): after approval the guest picks how
-// they settle. `at_place` is the one live path; card-through-Mesita is
-// retired (MESITA-1114). null rolls a `paying` ticket back to `approved`.
+// they settle. `at_place` is the ONE live path. Mesita Pay (the card rail) is
+// staged, not live: the Connect account layer landed in #1415 and the charge
+// path is still to come, so this door still accepts only `at_place`. The
+// gateway PR is the one that reopens it with a new method value.
 export async function apiSelectTicketPayment(
   client: SupabaseClient,
   ticketId: string,

@@ -14,11 +14,20 @@
 // Response: { ok: true, ticket, visits } | 404
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJson,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { fromPlaceIdRow } from "../_shared/place-id.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
-import { guestVisitsPolicy, loadVisitsConfig } from "../_shared/visits-config.ts";
+import {
+  guestVisitsPolicy,
+  loadVisitsConfig,
+} from "../_shared/visits-config.ts";
+import { isConnectChargeReady } from "../_shared/payment-account-doc.ts";
 
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
@@ -65,13 +74,64 @@ Deno.serve(async (req) => {
   // fromPlaceIdRow copies the live `place_id` column onto the frozen HTTP
   // field `project_id` that attachPlaces and clients still speak.
   const row = fromPlaceIdRow(data as Record<string, unknown> | null) as
-    (Record<string, unknown> & { project_id: string | null }) | null;
+    | (Record<string, unknown> & { project_id: string | null })
+    | null;
   if (!row) {
     // Uniform miss — never confirms someone else's ticket exists.
     return json({ ok: false, error: "Ticket not found" }, 404);
   }
 
   const [ticket] = await attachPlaces(admin, [row]);
-  const visits = guestVisitsPolicy(await loadVisitsConfig(admin));
-  return json({ ok: true, ticket, visits });
+  const visitsConfig = await loadVisitsConfig(admin);
+  const visits = guestVisitsPolicy(visitsConfig);
+  const settlement = {
+    cardRail: await cardRailReady(admin, visitsConfig.payCard, row.project_id),
+  };
+  return json({ ok: true, ticket, visits, settlement });
 });
+
+/**
+ * Mesita Pay readiness for THIS ticket's place — the full three-leg chain the
+ * intent-bit column comments promise (_shared/payment-account-doc.ts):
+ *
+ *   places.mesita_pay_enabled  (operator intent bit)
+ *   ∧ visits_config.payCard    (global rail switch)
+ *   ∧ isConnectChargeReady     (Stripe-derived Connect capability)
+ *
+ * Returned as ONE derived boolean. The legs themselves never cross the wire:
+ * `mesita_pay_enabled` is an admin-only Status fact (#10), deliberately kept
+ * off the publicly-readable profiles view, and a guest has no business
+ * learning a place's Connect state either.
+ *
+ * The global switch is checked FIRST and short-circuits, so while payCard is
+ * false — which is every ticket in production today — this adds zero queries
+ * to a poll that runs every consumerPollSeconds.
+ */
+async function cardRailReady(
+  admin: ReturnType<typeof adminClient>,
+  payCard: boolean,
+  placeId: string | null,
+): Promise<boolean> {
+  if (!payCard || !placeId) return false;
+  const [place, account] = await Promise.all([
+    admin
+      .from("places")
+      .select("mesita_pay_enabled")
+      .eq("id", placeId)
+      .maybeSingle(),
+    admin
+      .from("place_payment_accounts")
+      .select("charges_enabled, details_submitted")
+      .eq("place_id", placeId)
+      .maybeSingle(),
+  ]);
+  const intent = (place.data as { mesita_pay_enabled?: boolean } | null)
+    ?.mesita_pay_enabled ===
+    true;
+  if (!intent) return false;
+  return isConnectChargeReady(
+    account.data as
+      | { charges_enabled: boolean; details_submitted: boolean }
+      | null,
+  );
+}

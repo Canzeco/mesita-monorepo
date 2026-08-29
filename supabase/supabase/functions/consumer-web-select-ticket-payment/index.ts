@@ -5,9 +5,13 @@
 //
 // Exactly ONE live path: `at_place`. The guest pays the place directly,
 // at the register, by whatever instrument the place accepts; the axis is WHO
-// takes the money, not the instrument. Card-through-Mesita (old C2) is
-// RETIRED (MESITA-1114): a client that still sends `mesita` gets 410 and
-// writes nothing. No PSP on this ticket.
+// takes the money, not the instrument. No PSP on this ticket.
+//
+// The old C2 value `mesita` gets 410 and writes nothing (MESITA-1114). The
+// rail it named is STAGED, not dead — Connect accounts landed in #1415 and
+// the guest's saved cards in Me › More › Cards — but the charge path does
+// not exist, so this door stays closed until the gateway PR reopens it with
+// a new method value.
 //
 // method:null rolls `paying` back to `approved` (the guest changed their
 // mind before staff confirmed) — §12's one legal backward edge.
@@ -18,7 +22,12 @@
 // Response: { ok: true, status } | 400 | 404 | 409 | 410 retired
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJson,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { TICKET_STATUS } from "../_shared/ticket-status.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
@@ -52,7 +61,10 @@ Deno.serve(async (req) => {
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
-    return json({ ok: false, error: `ticket_lookup: ${ticketRow.error.message}` }, 500);
+    return json({
+      ok: false,
+      error: `ticket_lookup: ${ticketRow.error.message}`,
+    }, 500);
   }
   if (!ticketRow.data || ticketRow.data.consumer_id !== authRes.user.id) {
     return json({ ok: false, error: "Ticket not found" }, 404);
@@ -85,7 +97,11 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
     }
     if (!update.row) {
-      return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);
+      return json({
+        ok: false,
+        code: "stale_state",
+        error: "Ticket changed — refresh.",
+      }, 409);
     }
     return json({ ok: true, status: TICKET_STATUS.paying });
   }
@@ -96,7 +112,12 @@ Deno.serve(async (req) => {
   }
   if (ticket.status !== TICKET_STATUS.paying) {
     return json(
-      { ok: false, code: "stale_state", status: ticket.status, error: `Ticket is ${ticket.status}.` },
+      {
+        ok: false,
+        code: "stale_state",
+        status: ticket.status,
+        error: `Ticket is ${ticket.status}.`,
+      },
       409,
     );
   }
@@ -111,7 +132,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `ticket_update: ${rollback.error}` }, 500);
   }
   if (!rollback.row) {
-    return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);
+    return json({
+      ok: false,
+      code: "stale_state",
+      error: "Ticket changed — refresh.",
+    }, 409);
   }
   return json({ ok: true, status: TICKET_STATUS.approved });
 });

@@ -77,6 +77,11 @@ export type ConsumerDoc = {
   invitation_class_key: string | null;
   invitation_granted_at: string | null;
   plan: "free" | "premium";
+  /** Stripe customer anchor for the Cards wallet + subscription checkout.
+   *  An opaque pointer: card data itself lives in Stripe and is never
+   *  mirrored here. Resolved only through _shared/stripe-billing.ts
+   *  ensureConsumerCustomer(). */
+  stripe_customer_id: string | null;
   created_at: string;
   deleted_at: string | null;
 };
@@ -107,6 +112,7 @@ export const CONSUMER_PATCH_KEYS = [
   "invitation_class_key",
   "invitation_granted_at",
   "plan",
+  "stripe_customer_id",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -119,7 +125,10 @@ type _MissingFromPatchKeys = Exclude<
   typeof CONSUMER_PATCH_KEYS[number]
 >;
 const _assertNoMissingPatchKeys: _MissingFromPatchKeys extends never ? true
-  : ["CONSUMER_PATCH_KEYS is missing a field from ConsumerDoc", _MissingFromPatchKeys] = true;
+  : [
+    "CONSUMER_PATCH_KEYS is missing a field from ConsumerDoc",
+    _MissingFromPatchKeys,
+  ] = true;
 void _assertNoMissingPatchKeys;
 
 export type ConsumerPatch = Partial<
@@ -151,6 +160,7 @@ const CLASS_KEY_VALUES = new Set([
 ]);
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+const STRIPE_CUSTOMER_RE = /^(mock_)?cus_[A-Za-z0-9]+$/;
 
 function isNullableString(v: unknown): v is string | null {
   return v === null || typeof v === "string";
@@ -167,7 +177,9 @@ function isBoolean(v: unknown): v is boolean {
  * narrowed to ConsumerPatch, so a caller that passed validation never
  * re-checks what this function already confirmed.
  */
-export function validateConsumerPatch(input: unknown): ConsumerValidationResult {
+export function validateConsumerPatch(
+  input: unknown,
+): ConsumerValidationResult {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return { ok: false, error: "consumer patch must be an object" };
   }
@@ -188,7 +200,16 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
     }
     patch.code = v as string | null;
   }
-  for (const key of ["first_name", "last_name", "full_name", "country", "phone", "avatar_url"] as const) {
+  for (
+    const key of [
+      "first_name",
+      "last_name",
+      "full_name",
+      "country",
+      "phone",
+      "avatar_url",
+    ] as const
+  ) {
     if (!(key in raw)) continue;
     const v = raw[key];
     if (!isNullableString(v)) {
@@ -205,22 +226,46 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
   }
   if ("birthday" in raw) {
     const v = raw.birthday;
-    if (v !== null && (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v))) {
+    if (
+      v !== null && (typeof v !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(v))
+    ) {
       return { ok: false, error: "birthday must be YYYY-MM-DD or null" };
     }
     patch.birthday = v as string | null;
   }
+  if ("stripe_customer_id" in raw) {
+    const v = raw.stripe_customer_id;
+    // `cus_…` real, `mock_cus_…` the MOCK_SUBSCRIPTION placeholder. Anything
+    // else is a bug upstream, and a malformed id here would 400 at Stripe
+    // much later, far from the write that caused it.
+    if (v !== null && (typeof v !== "string" || !STRIPE_CUSTOMER_RE.test(v))) {
+      return {
+        ok: false,
+        error: "stripe_customer_id must be a Stripe customer id or null",
+      };
+    }
+    patch.stripe_customer_id = v as string | null;
+  }
   if ("instagram_handle" in raw) {
     const v = raw.instagram_handle;
     if (v !== null && (typeof v !== "string" || !INSTAGRAM_HANDLE_RE.test(v))) {
-      return { ok: false, error: "instagram_handle must match ^[a-z0-9._]{1,30}$ or be null" };
+      return {
+        ok: false,
+        error: "instagram_handle must match ^[a-z0-9._]{1,30}$ or be null",
+      };
     }
     patch.instagram_handle = v as string | null;
   }
   if ("instagram_followers_count" in raw) {
     const v = raw.instagram_followers_count;
-    if (v !== null && (typeof v !== "number" || !Number.isInteger(v) || v < 0)) {
-      return { ok: false, error: "instagram_followers_count must be a non-negative integer or null" };
+    if (
+      v !== null && (typeof v !== "number" || !Number.isInteger(v) || v < 0)
+    ) {
+      return {
+        ok: false,
+        error:
+          "instagram_followers_count must be a non-negative integer or null",
+      };
     }
     patch.instagram_followers_count = v as number | null;
   }
@@ -264,11 +309,21 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
     }
     patch.plan = v as ConsumerDoc["plan"];
   }
-  for (const key of ["class_expires_at", "class_granted_at", "invitation_granted_at", "deleted_at"] as const) {
+  for (
+    const key of [
+      "class_expires_at",
+      "class_granted_at",
+      "invitation_granted_at",
+      "deleted_at",
+    ] as const
+  ) {
     if (!(key in raw)) continue;
     const v = raw[key];
     if (!isNullableString(v)) {
-      return { ok: false, error: `${key} must be an ISO timestamp string or null` };
+      return {
+        ok: false,
+        error: `${key} must be an ISO timestamp string or null`,
+      };
     }
     patch[key] = v;
   }
@@ -279,7 +334,9 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
     if (v !== null && (typeof v !== "string" || !CLASS_KEY_VALUES.has(v))) {
       return {
         ok: false,
-        error: `invitation_class_key must be null or one of ${[...CLASS_KEY_VALUES].join(", ")}`,
+        error: `invitation_class_key must be null or one of ${
+          [...CLASS_KEY_VALUES].join(", ")
+        }`,
       };
     }
     patch.invitation_class_key = v;
@@ -289,16 +346,23 @@ export function validateConsumerPatch(input: unknown): ConsumerValidationResult 
   if (patch.class_expires_at !== undefined && patch.class_expires_at !== null) {
     return {
       ok: false,
-      error: "class_expires_at must be null (plan, not class, is what a subscription opens)",
+      error:
+        "class_expires_at must be null (plan, not class, is what a subscription opens)",
     };
   }
-  if (patch.invitation_class_key !== undefined && patch.invitation_granted_at !== undefined) {
-    const bothNull = patch.invitation_class_key === null && patch.invitation_granted_at === null;
-    const bothSet = patch.invitation_class_key !== null && patch.invitation_granted_at !== null;
+  if (
+    patch.invitation_class_key !== undefined &&
+    patch.invitation_granted_at !== undefined
+  ) {
+    const bothNull = patch.invitation_class_key === null &&
+      patch.invitation_granted_at === null;
+    const bothSet = patch.invitation_class_key !== null &&
+      patch.invitation_granted_at !== null;
     if (!bothNull && !bothSet) {
       return {
         ok: false,
-        error: "invitation_class_key and invitation_granted_at must be set or cleared together",
+        error:
+          "invitation_class_key and invitation_granted_at must be set or cleared together",
       };
     }
   }

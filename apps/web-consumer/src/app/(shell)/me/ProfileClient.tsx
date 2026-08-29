@@ -20,6 +20,7 @@ import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
+import { CardsModal } from "@/components/consumer/me/CardsModal";
 import { MoreModal } from "@/components/consumer/me/MoreModal";
 import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
@@ -58,8 +59,13 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 // /me/settings deep link.
 export function ProfileClient({
   openSettings = false,
+  openCards = false,
 }: {
   openSettings?: boolean;
+  /** Seeded from `/me?cards=…` — the return trip from Stripe's hosted setup
+   *  page reopens Cards on arrival. A prop, never an effect: React 19's
+   *  set-state-in-effect lint is live here. */
+  openCards?: boolean;
 }) {
   const supabase = useBrowserSupabase();
   const {
@@ -94,6 +100,7 @@ export function ProfileClient({
   const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(openCards);
   const [planOpen, setPlanOpen] = useState(false);
 
   useEffect(() => {
@@ -259,11 +266,11 @@ export function ProfileClient({
             soon
           />
 
-          {/* The long tail: Yums · Gift · Share · Metrics · Help · Contact. */}
+          {/* The long tail: Cards · Yums · Gift · Share · Metrics · Help · Contact. */}
           <BoxRow
             Icon={MoreHorizontal}
             title="More"
-            summary="Yums, Gift, Share, Metrics, Help, Contact"
+            summary="Cards, Yums, Gift, Share, Metrics, Help, Contact"
             onClick={() => setMoreOpen(true)}
           />
 
@@ -280,6 +287,7 @@ export function ProfileClient({
       {/* All modals kept mounted; LocalSheet plays the exit animation before
           going inert. */}
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
+      <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
       <AiConnectModal open={aiOpen} onClose={() => setAiOpen(false)} />
       <ClassModal
         open={classOpen}
@@ -329,6 +337,7 @@ export function ProfileClient({
       <MoreModal
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
+        onOpenCards={() => setCardsOpen(true)}
         onOpenShare={() => setShareOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
