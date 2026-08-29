@@ -14,6 +14,7 @@ import {
   isPlaceEnriching,
   isPlaceListed,
   isPlaceProfileReady,
+  isPlaceRequested,
 } from "./place-status.ts";
 
 export { isPlaceProfileReady };
@@ -42,7 +43,14 @@ export function placeRequestLifecycle(input: {
   requestCount: number;
 }): PlaceRequestLifecycle {
   if (isPlaceProfileReady(input.contentStatus)) return "enriched";
-  if (input.requestCount > 0) return "requested";
+  if (
+    isPlaceRequested({
+      requestCount: input.requestCount,
+      contentStatus: input.contentStatus,
+    })
+  ) {
+    return "requested";
+  }
   return "listed";
 }
 

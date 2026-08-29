@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
 
   // `name` is the generated display column (mesita_name → google_name); raw
   // google_name and mesita_name stay on the payload for clients that need them.
-  // family_keys (MESITA-679): computed from category for discovery filters.
+  // family_keys (MESITA-679): stored Super Categories, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
   const { user } = await getOptionalAuthedUser(req, envRes.env);
   let requested = false;

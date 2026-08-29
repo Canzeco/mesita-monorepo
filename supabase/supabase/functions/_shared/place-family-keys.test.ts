@@ -7,13 +7,46 @@ Deno.test("withFamilyKeys attaches dual-family keys for gastropub", () => {
   assertEquals(out.id, "1");
 });
 
-Deno.test("withFamilyKeys accepts _restaurant alias for truncated slugs", () => {
-  const out = withFamilyKeys({ category: "fine_dining" });
-  assertEquals(out.family_keys, ["restaurants"]);
+Deno.test("withFamilyKeys maps Atlas slugs, including intersections", () => {
+  assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, [
+    "restaurants",
+  ]);
+  assertEquals(withFamilyKeys({ category: "fine_dining" }).family_keys, [
+    "restaurants",
+  ]);
+  assertEquals(withFamilyKeys({ category: "breakfast" }).family_keys, [
+    "restaurants",
+    "cafes_bakeries",
+  ]);
 });
 
-Deno.test("withFamilyKeys returns [] for unknown / empty category", () => {
+Deno.test("withFamilyKeys keeps every Super Category the category belongs to", () => {
+  assertEquals(
+    withFamilyKeys({
+      category: "breakfast",
+      family_keys: ["restaurants"],
+    }).family_keys,
+    ["restaurants", "cafes_bakeries"],
+  );
+  assertEquals(
+    withFamilyKeys({
+      category: "mexican",
+      family_keys: ["bars_nightlife"],
+    }).family_keys,
+    ["restaurants"],
+  );
+  assertEquals(
+    withFamilyKeys({
+      category: "undefined",
+      family_keys: ["bars_nightlife"],
+    }).family_keys,
+    ["bars_nightlife"],
+  );
+});
+
+Deno.test("withFamilyKeys returns [] for unknown / empty / undefined category", () => {
   assertEquals(withFamilyKeys({ category: "gas_station" }).family_keys, []);
+  assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, []);
   assertEquals(withFamilyKeys({ category: null }).family_keys, []);
   assertEquals(withFamilyKeys({}).family_keys, []);
 });

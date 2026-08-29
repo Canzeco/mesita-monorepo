@@ -4,8 +4,9 @@
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six families). Status stays in the map Filters sheet.
-//     Distance and time are not map knobs. Swipe keeps Discovery.
+//     (the six Super Category families). Status + Super Category also
+//     live in the map Filters sheet. Distance and time are not map
+//     knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
@@ -46,7 +47,6 @@ import {
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
-import { deriveCategoryOptions } from "@/lib/discovery-filters-engine";
 import {
   applyMapFilters,
   mapFilterCount,
@@ -167,10 +167,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const catalog = useMemo(
     () => applyMapFilters(nearby, filters),
     [nearby, filters],
-  );
-  const categoryOptions = useMemo(
-    () => deriveCategoryOptions(nearby),
-    [nearby],
   );
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
@@ -617,7 +613,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after map Status + Category. */}
+      {/* Base layer — pins are the nearby catalog after map Status + Super Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -712,7 +708,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       >
         <SearchMapFilters
           onClose={() => setFiltersOpen(false)}
-          categoryOptions={categoryOptions}
           count={catalog.length}
         />
       </LocalSheet>

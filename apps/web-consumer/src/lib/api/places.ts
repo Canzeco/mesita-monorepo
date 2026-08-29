@@ -139,6 +139,8 @@ export type Place = {
   monthly_promo_cap?: number | null;
   /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
   content_status?: string | null;
+  /** Consumer Requests count. Requested on the map is count > 0 and not ready. */
+  request_count?: number | null;
   google_place_id?: string | null;
 };
 

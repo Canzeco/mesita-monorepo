@@ -2,7 +2,8 @@
 //
 //   STATUSES (9)  Created · Active · Listed · Requested · Enriched ·
 //                 Enriching · Verified · Partnered are bools (`true` /
-//                 `false`). Promoted is 0 | 1 | 2.
+//                 `false`). Promoted is 0 | 1 | 2. Requested is guest
+//                 demand (count > 0, not ready), never a projects.status.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;

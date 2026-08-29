@@ -45,8 +45,11 @@ import {
 import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
 import {
   fetchPlaceCategories,
+  fetchPlaceSuperCategories,
   inferPlaceCategory,
+  inferPlaceSuperCategories,
 } from "../_shared/categories.ts";
+import { resolveEnrichedFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
@@ -122,8 +125,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
   if (analysis.finalPhotos.length > 0) place.photos = analysis.finalPhotos;
 
   // ━━━ S7 — synthesis + category + tags ━━━
-  // Admin cost model: synthesis + 2 × classify calls (category then tags);
-  // classify model = models_config.enricher.model (MESITA-941/942).
+  // Admin cost model: synthesis + 3 × classify calls (category, Super
+  // Category, tags); classify model = models_config.enricher.model.
   const sources: Record<string, unknown> = {
     ...gathered.sources,
     image_funnel: analysis.diag,
@@ -136,7 +139,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     sources.synthesis = { skipped: "subprocess_not_requested" };
   } else {
     const synthCost = synthesisRunCost(cfg.synthesisQuality);
-    const classifyCost = COST.sort * 2;
+    const classifyCost = COST.sort * 3;
     ledger.assertCanAfford(synthCost + classifyCost, "synthesis_and_classify");
 
     const { parsed, diag: synthDiag } = await synthesizeProfile({
@@ -155,8 +158,9 @@ serveEnrichStage("contents", async (admin, env, row) => {
 
     // About first (above), then category, then tags — each step feeds the next.
     // Category + tags both ground primarily on the synthesized About.
-    const [categoryList, tagVocabulary, models] = await Promise.all([
+    const [categoryList, superList, tagVocabulary, models] = await Promise.all([
       fetchPlaceCategories(admin),
+      fetchPlaceSuperCategories(admin),
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
     ]);
@@ -166,19 +170,28 @@ serveEnrichStage("contents", async (admin, env, row) => {
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;
     const enricherModel = models.enricherModel;
-    const inferredCategory = await inferPlaceCategory(
-      OPENAI_KEY,
-      realCategories,
-      {
-        name,
-        address: (place.address ?? null) as string | null,
-        editorialSummary: (place.editorial_summary ?? null) as string | null,
-        // Prefer the About we just synthesized; fall back to IG bio when synthesis
-        // produced nothing (thin harvest).
-        description: aboutText || igBio || null,
-      },
-      enricherModel,
-    );
+    const classifySignals = {
+      name,
+      address: (place.address ?? null) as string | null,
+      editorialSummary: (place.editorial_summary ?? null) as string | null,
+      // Prefer the About we just synthesized; fall back to IG bio when synthesis
+      // produced nothing (thin harvest).
+      description: aboutText || igBio || null,
+    };
+    const [inferredCategory, inferredSupers] = await Promise.all([
+      inferPlaceCategory(
+        OPENAI_KEY,
+        realCategories,
+        classifySignals,
+        enricherModel,
+      ),
+      inferPlaceSuperCategories(
+        OPENAI_KEY,
+        superList,
+        { ...classifySignals, category },
+        enricherModel,
+      ),
+    ]);
     if (inferredCategory) {
       place.category = inferredCategory;
       place.category_label = realCategories.find((c) =>
@@ -186,6 +199,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
       )?.label ??
         humanizeCategorySlug(inferredCategory) ?? inferredCategory;
     }
+    const resolvedSupers = resolveEnrichedFamilyKeys(
+      (place.category ?? category) as string | null,
+      inferredSupers,
+    );
+    place.family_keys = resolvedSupers.length > 0 ? resolvedSupers : null;
     const categoryForTags = (place.category ?? category) as string | null;
     inferredTags = await inferPlaceTags(OPENAI_KEY, tagVocabulary, {
       name,
@@ -200,6 +218,12 @@ serveEnrichStage("contents", async (admin, env, row) => {
       ok: !!inferredCategory,
       slug: inferredCategory,
       candidates: realCategories.length,
+    };
+    sources.super_categories = {
+      ok: resolvedSupers.length > 0,
+      slugs: resolvedSupers,
+      inferred: inferredSupers,
+      candidates: superList.length,
     };
     sources.tags = {
       ok: inferredTags.length > 0,

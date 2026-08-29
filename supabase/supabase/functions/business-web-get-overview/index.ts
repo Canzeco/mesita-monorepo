@@ -138,7 +138,10 @@ Deno.serve(async (req) => {
         my_role: "owner",
         seeded: isPlaceSeeded(placeFields.google_place_id),
         listed: isPlaceListed(placeFields.status),
-        requested: isPlaceRequested(placeFields.status),
+        requested: isPlaceRequested({
+          requestCount: placeFields.request_count,
+          contentStatus: placeFields.content_status,
+        }),
         enrich_pulse: enrichPulse,
         enrich_pulse_total: PULSE_TOTAL,
         enrich_pulse_labels: PULSE_LABELS_IN_ORDER,

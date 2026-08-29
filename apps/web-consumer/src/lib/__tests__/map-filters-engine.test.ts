@@ -25,7 +25,7 @@ function filters(over: Partial<MapFilters> = {}): MapFilters {
 }
 
 describe("placeMapStatus", () => {
-  it("ladders Google → promoted → partnered → enriched → created", () => {
+  it("ladders Google → promoted → partnered → enriched → requested → created", () => {
     expect(placeMapStatus(place({ googleOnly: true }))).toBe("not_on_mesita");
     expect(placeMapStatus(place({ from_google: true }))).toBe("not_on_mesita");
     expect(placeMapStatus(place({ promoting: true, partner: true }))).toBe(
@@ -36,6 +36,12 @@ describe("placeMapStatus", () => {
     expect(placeMapStatus(place({ enriched_at: "2026-08-01T00:00:00Z" }))).toBe(
       "enriched",
     );
+    expect(
+      placeMapStatus(place({ request_count: 2, content_status: "queued" })),
+    ).toBe("requested");
+    expect(
+      placeMapStatus(place({ request_count: 4, content_status: "ready" })),
+    ).toBe("enriched");
     expect(placeMapStatus(place())).toBe("created");
   });
 });
@@ -48,16 +54,15 @@ describe("applyMapFilters", () => {
     expect(mapFilterCount(filters())).toBe(0);
   });
 
-  it("counts every selected status, family, and type", () => {
+  it("counts every selected status and Super Category", () => {
     expect(
       mapFilterCount(
         filters({
           statuses: ["created", "enriched"],
           familyKeys: ["restaurants"],
-          categories: ["night_club"],
         }),
       ),
-    ).toBe(4);
+    ).toBe(3);
   });
 
   it("keeps the selected status buckets", () => {
@@ -71,7 +76,7 @@ describe("applyMapFilters", () => {
     expect(kept.map((p) => p.id)).toEqual(["g", "p"]);
   });
 
-  it("ORs family and concrete category", () => {
+  it("cuts on Super Category only — never a concrete type slug", () => {
     const bar = place({
       id: "bar",
       category: "night_club",
@@ -88,10 +93,40 @@ describe("applyMapFilters", () => {
         filters({ familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual(["taco"]);
+    expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
+  });
+
+  it("a category in two Super Categories matches either pill", () => {
+    const brunch = place({
+      id: "brunch",
+      category: "brunch",
+      family_keys: ["restaurants", "cafes_bakeries"],
+    });
+    const karaoke = place({
+      id: "karaoke",
+      category: "karaoke",
+      family_keys: ["bars_nightlife", "experiences"],
+    });
+    const deck = [brunch, karaoke];
     expect(
-      applyMapFilters([bar, taco], filters({ categories: ["night_club"] })).map(
+      applyMapFilters(deck, filters({ familyKeys: ["restaurants"] })).map(
         (p) => p.id,
       ),
-    ).toEqual(["bar"]);
+    ).toEqual(["brunch"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["cafes_bakeries"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["brunch"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["bars_nightlife"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["karaoke"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["experiences"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["karaoke"]);
   });
 });

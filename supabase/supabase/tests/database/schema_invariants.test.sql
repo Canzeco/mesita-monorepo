@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(64);
+select plan(68);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -483,6 +483,36 @@ select ok(
   'public.profiles exposes request_count'
 );
 
+select has_table(
+  'public', 'place_super_categories',
+  'Atlas Super Category vocabulary exists'
+);
+
+select is(
+  (select count(*)::bigint from public.place_super_categories),
+  6::bigint,
+  'Atlas Super Category catalog is six slugs (5–10 band)'
+);
+
+select is(
+  (select super_category_slugs from public.place_categories where slug = 'breakfast'),
+  array['restaurants', 'cafes_bakeries']::text[],
+  'breakfast intersects restaurants and cafes'
+);
+
+select ok(
+  exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'places'
+       and column_name = 'family_keys'
+  ) and exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name = 'family_keys'
+  ),
+  'places.family_keys is stored and exposed on public.profiles'
+);
+
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select ok(
@@ -502,8 +532,8 @@ select ok(
 select is_empty(
   $$select r from unnest(array[
       'app_config', 'super_admins', 'classes', 'consumer_plans',
-      'project_plans', 'place_categories', 'place_tags',
-      'consumer_code_counter'
+      'project_plans', 'place_categories', 'place_super_categories',
+      'place_tags', 'consumer_code_counter'
     ]) r
     where not exists (
       select 1 from public.admin_reset_preserve p where p.table_name = r

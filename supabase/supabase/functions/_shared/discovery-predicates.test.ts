@@ -50,6 +50,55 @@ Deno.test("garbage filters degrade to no predicate rather than throwing", () => 
   }
 });
 
+Deno.test("Super Category cuts Atlas slugs; intersecting categories match every super", () => {
+  const rows = [
+    place({ id: "taco", category: "taco" }),
+    place({ id: "brunch", category: "brunch" }),
+    place({
+      id: "shyBreakfast",
+      category: "breakfast",
+      family_keys: ["restaurants"],
+    }),
+    place({
+      id: "karaoke",
+      category: "karaoke",
+      family_keys: ["experiences"],
+    }),
+  ];
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["restaurants"] }),
+      null,
+    ).map((r) => r.id),
+    ["taco", "brunch", "shyBreakfast"],
+  );
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["cafes_bakeries"] }),
+      null,
+    ).map((r) => r.id),
+    ["brunch", "shyBreakfast"],
+  );
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["bars_nightlife"] }),
+      null,
+    ).map((r) => r.id),
+    ["karaoke"],
+  );
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["experiences"] }),
+      null,
+    ).map((r) => r.id),
+    ["karaoke"],
+  );
+});
+
 Deno.test("family and category are ORed across the two tiers", () => {
   const rows = [
     place({ id: "taco", category: "taco_restaurant" }),

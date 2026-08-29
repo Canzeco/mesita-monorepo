@@ -10,7 +10,7 @@
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
 //   Listed     projects.status ∈ (active, lead)
-//   Requested  projects.status ∈ (pending_review, pending_verification)
+//   Requested  guest demand (count > 0, not ready)
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
 //   Verified   approved project_verifications
@@ -41,7 +41,7 @@ import {
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "../actions";
-import { isEnriching, listedFromStatus, requestedFromStatus } from "../place-header-status";
+import { isEnriching, listedFromStatus, requestedFromRequests } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -72,7 +72,7 @@ import {
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `status`, never from a merged
 //              overview `listed` flag that can go stale after that write.
-//   Requested  pending_review or pending_verification. Not Listed, not Verified.
+//   Requested  guest demand for a usable profile. Independent of Listed.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
@@ -174,7 +174,10 @@ export function StatusCard({
       : typeof place.listed === "boolean"
         ? place.listed
         : "unknown";
-  const requestedFromRow = requestedFromStatus(place.status);
+  const requestedFromRow = requestedFromRequests(
+    place.request_count,
+    place.content_status,
+  );
   const requested: boolean | "unknown" =
     requestedFromRow !== "unknown"
       ? requestedFromRow
@@ -240,18 +243,14 @@ export function StatusCard({
           : placeStatus
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
-  const listedDetail = requestCount > 0
-    ? `${listedDetailBase} ${requestCount} request${requestCount === 1 ? "" : "s"} toward the Intake threshold.`
-    : listedDetailBase;
+  const listedDetail = listedDetailBase;
 
   const requestedDetail =
     requested === "unknown"
-      ? "Couldn't read the place's status."
+      ? "Couldn't read the request count."
       : requested
-        ? placeStatus === "pending_verification"
-          ? "pending_verification — someone asked to own this place."
-          : "pending_review — someone asked Mesita to add this place."
-        : "No add or ownership request is open.";
+        ? `${requestCount} guest request${requestCount === 1 ? "" : "s"} — profile not ready yet.`
+        : "No guest has requested this profile.";
 
   // ── Operating (MESITA-1239) — Google's word on the business itself.
   //

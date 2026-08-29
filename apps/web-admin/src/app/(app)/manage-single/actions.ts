@@ -58,8 +58,10 @@ export type PlaceHit = {
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
   listed: boolean;
-  /** pending_review or pending_verification — someone asked to add or own it. */
+  /** Guest demand: request_count > 0 and content_status is not ready. */
   requested: boolean;
+  /** Consumer Requests count. Progress toward Intake atlasRequestThreshold. */
+  request_count: number;
   /** Intaker pipeline mid-flight (content_status generating/queued). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
@@ -128,11 +130,16 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     google_place_id: raw.google_place_id ?? null,
     seeded: raw.seeded ?? false,
     listed: raw.listed ?? false,
+    request_count:
+      typeof raw.request_count === "number" && Number.isFinite(raw.request_count)
+        ? raw.request_count
+        : 0,
     requested:
       typeof raw.requested === "boolean"
         ? raw.requested
-        : raw.status === "pending_review" ||
-          raw.status === "pending_verification",
+        : contentStatus !== "ready" &&
+          typeof raw.request_count === "number" &&
+          raw.request_count > 0,
     business_status:
       typeof raw.business_status === "string" ? raw.business_status : null,
     business_status_at:
@@ -289,6 +296,10 @@ export type AdminPlace = {
   seeded?: boolean;
   /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
+  /** Guest demand: request_count > 0 and content_status is not ready. */
+  requested?: boolean;
+  /** Consumer Requests count toward Intake atlasRequestThreshold. */
+  request_count?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_status?: string | null;
   business_status_at?: string | null;

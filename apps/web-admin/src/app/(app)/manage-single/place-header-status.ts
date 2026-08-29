@@ -61,16 +61,22 @@ export type HeaderFact = {
 /** Same predicate as `_shared/place-status.ts::isPlaceListed` and the
  *  consumer RLS policy: only `active` and `lead` are reachable. */
 export const LISTED_STATUSES = ["active", "lead"] as const;
-export const REQUESTED_STATUSES = ["pending_review", "pending_verification"] as const;
 
 export function listedFromStatus(status: unknown): boolean | "unknown" {
   if (typeof status !== "string" || status === "") return "unknown";
   return (LISTED_STATUSES as readonly string[]).includes(status);
 }
 
-export function requestedFromStatus(status: unknown): boolean | "unknown" {
-  if (typeof status !== "string" || status === "") return "unknown";
-  return (REQUESTED_STATUSES as readonly string[]).includes(status);
+/** Guest demand: count > 0 and the profile is not ready. Missing count is "?". */
+export function requestedFromRequests(
+  requestCount: unknown,
+  contentStatus: unknown,
+): boolean | "unknown" {
+  if (contentStatus === "ready") return false;
+  if (requestCount == null || requestCount === "") return "unknown";
+  const count = Number(requestCount);
+  if (!Number.isFinite(count)) return "unknown";
+  return count > 0;
 }
 
 /** Stamp `listed` from `status` so a merged write payload cannot keep a

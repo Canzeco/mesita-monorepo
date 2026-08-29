@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   // strike/pause fields are what isPlacePromoting weighs.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
   let rows: Record<string, unknown>[] = [];
 
   if (googlePlaceIds.length > 0) {
@@ -234,6 +234,7 @@ Deno.serve(async (req) => {
       google_review_count:
         typeof v.google_review_count === "number" ? v.google_review_count : null,
       content_status: contentStatus,
+      request_count: Number(v.request_count) || 0,
       listing_type: listingType,
       // The eight status facts, in table order.
       seeded: isPlaceSeeded(v.google_place_id),
@@ -243,7 +244,10 @@ Deno.serve(async (req) => {
       business_status_at: (v.business_status_at as string | null) ?? null,
       // The Listed fact. No extra read — `status` is already selected.
       listed: isPlaceListed(v.status),
-      requested: isPlaceRequested(v.status),
+      requested: isPlaceRequested({
+        requestCount: v.request_count,
+        contentStatus: contentStatus,
+      }),
       // PULSE: how far the TEN-function ENRICH queue got, 0-10
       // (MESITA-1253). Not a count of functions that worked — the index of
       // the last function such that it and everything before it completed.

@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-get-atlas-fields
 //
-// Read-only Intaker vocabulary for the admin console: place categories, tag
-// catalog, tag facets, and enforced field length limits.
+// Read-only Intaker vocabulary for the admin console: Super Categories,
+// place categories, tag catalog, tag facets, and enforced field length limits.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
@@ -11,7 +11,10 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { fetchPlaceCategories } from "../_shared/categories.ts";
+import {
+  fetchPlaceCategories,
+  fetchPlaceSuperCategories,
+} from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 
@@ -29,19 +32,22 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const [categories, tags] = await Promise.all([
+  const [categories, superCategories, tags] = await Promise.all([
     fetchPlaceCategories(admin),
+    fetchPlaceSuperCategories(admin),
     fetchPlaceTags(admin),
   ]);
 
   return json({
     ok: true,
     categories,
+    superCategories,
     tags,
     facets: TAG_FACETS,
     fieldLimits: ENRICH_FIELD_LIMITS,
     counts: {
       categories: categories.length,
+      superCategories: superCategories.length,
       tags: tags.length,
       facets: TAG_FACETS.length,
     },

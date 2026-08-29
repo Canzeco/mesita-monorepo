@@ -11,11 +11,20 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export { inferPlaceCategory } from "./categories-infer.ts";
+export { inferPlaceSuperCategories } from "./infer-super-categories.ts";
 
 export type PlaceCategory = {
   slug: string;
   label: string;
   section: string;
+  sort_order: number;
+  super_category_slugs?: string[];
+};
+
+export type PlaceSuperCategory = {
+  slug: string;
+  label: string;
+  emoji: string;
   sort_order: number;
 };
 
@@ -27,8 +36,19 @@ export async function fetchPlaceCategories(
 ): Promise<PlaceCategory[]> {
   const { data, error } = await admin
     .from("place_categories")
-    .select("slug, label, section, sort_order")
+    .select("slug, label, section, sort_order, super_category_slugs")
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return data as PlaceCategory[];
+}
+
+export async function fetchPlaceSuperCategories(
+  admin: SupabaseClient,
+): Promise<PlaceSuperCategory[]> {
+  const { data, error } = await admin
+    .from("place_super_categories")
+    .select("slug, label, emoji, sort_order")
+    .order("sort_order", { ascending: true });
+  if (error || !data) return [];
+  return data as PlaceSuperCategory[];
 }
