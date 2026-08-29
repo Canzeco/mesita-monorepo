@@ -256,7 +256,10 @@ describe("Discovery function APIs", () => {
     expect(swipe?.state).toBe("PARKED");
     expect(swipe?.process).toMatch(/Parked/i);
     expect(swipe?.process).toMatch(/Soon/);
+    expect(swipe?.process).toMatch(/Places Lineup/);
+    expect(swipe?.process).toMatch(/Swipe mask/);
     expect(swipe?.process).not.toMatch(/slot bought/);
+    expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
   it("coerceConfig defaults general.categoryCount to 5 and clamps 0–5", () => {
@@ -375,6 +378,10 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
+    expect(signals).toContain("modeSignalState");
+    expect(signals).toContain('kind="enforced"');
+    expect(signals).toContain("Swipe read the mode mask");
+    expect(signals).not.toContain("Swipe keeps its own sum");
     expect(googleModules).toContain("Google Places Autocomplete");
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");

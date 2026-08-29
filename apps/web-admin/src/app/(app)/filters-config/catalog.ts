@@ -441,7 +441,7 @@ export const ENGINES: {
     label: "Swipe",
     fn: "swipe()",
     input: "Ready pool + guest geo.",
-    process: "Parked. Home is Soon. Hard filters, proximity + popularity sum, partner bias, and the random multiplier stay on the blob.",
+    process: "Parked. Home is Soon. When the deck runs, Places Lineup ranks under the Swipe mask. Admission stays radius, reviews, open+buffer, and type batteries.",
     output: "Ordered Home deck, when unparked.",
     state: "PARKED",
     wired: "swipe",
@@ -534,10 +534,9 @@ export const ENGINES: {
  * broken, it is abstaining, and the enrichment queue's semantic `summary`
  * function is what fixes that.
  *
- * `engines` names where the exponent is felt TODAY. Map already reads
- * popularity() when minPopularity > 0. Swipe keeps its own two-signal sum.
- * Weights persist for later engines — the page must not pretend they rank
- * Swipe.
+ * `engines` names where the exponent is felt TODAY. Map, Deep, and Swipe
+ * read weightsForMode. Catalog / Chat / Social stay pending. Weights on
+ * a red matrix cell are 0 for that mode.
  */
 const UNIT: ParamField[] = [];
 const ZERO_ONE = (key: string, label: string): ParamField => ({
