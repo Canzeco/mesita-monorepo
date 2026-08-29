@@ -1,13 +1,13 @@
 // Map catalog = closest N of the selected Places set, then paint.
-// Places scope is nested: Partners ⊂ Mesita Places ⊂ Google Places.
-//   1 Partners — closest partnerCount partners. No Google Nearby.
-//   2 Mesita Places — closest mesitaCount listed Mesita (partners +
+// TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google Places.
+// Partners are not a set — they are Mesita Places painted yellow.
+//   1 Mesita Places — closest mesitaCount listed Mesita (partners +
 //     enriched). No Google Nearby. A partner in that N is painted yellow.
-//   3 Google Places — closest googleCount Nearby hits. A hit that is
+//   2 Google Places — closest googleCount Nearby hits. A hit that is
 //     Mesita / partner is painted, not added as a second pin. Max pins
-//     = N of that set, never the sum of the three knobs.
-// Empty Nearby (quota skip) falls back to the Mesita set. Power 1–2
-// never fire Google Nearby. Mesita Places is enriched only. Google
+//     = N of that set, never the sum of the knobs.
+// Empty Nearby (quota skip) falls back to the Mesita set. Power 1
+// never fires Google Nearby. Mesita Places is enriched only. Google
 // maxes a Nearby call at 20; type batteries ride that one call.
 
 import {
@@ -29,7 +29,6 @@ import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 export const MESITA_NEARBY_MAX = DEFAULT_MAP.mesitaCount;
 export const GOOGLE_NEARBY_MAX = 20;
 export const CATALOG_NEARBY_MAX = Math.max(
-  DEFAULT_MAP.partnerCount,
   DEFAULT_MAP.mesitaCount,
   DEFAULT_MAP.googleCount,
 );
@@ -267,7 +266,6 @@ export type MesitaNearbyRow = {
 };
 
 export type NearbyLaneCaps = {
-  partnerCount: number;
   mesitaCount: number;
   googleCount: number;
 };
@@ -278,37 +276,31 @@ export type NearbyMerged<T> =
 
 export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
   return {
-    partnerCount: map.partnerCount,
     mesitaCount: map.mesitaCount,
     googleCount: map.googleCount,
   };
 }
 
-/** Search power: 1 Partners set · 2 Mesita Places set · 3 Google Places set. */
-export function clampSearchPower(value: unknown): 1 | 2 | 3 {
+/**
+ * Search power: 1 Mesita Places set · 2 Google Places set. A legacy wire
+ * 3 (the old Google set) clamps to 2; the retired Partners power (old 1)
+ * reads as Mesita Places — a superset of what it showed.
+ */
+export function clampSearchPower(value: unknown): 1 | 2 {
   const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return 2;
-  if (n <= 1) return 1;
-  if (n >= 3) return 3;
-  return 2;
+  if (!Number.isFinite(n)) return 1;
+  return n >= 2 ? 2 : 1;
 }
 
 export function lanesForSearchPower(
   map: MapConfig,
-  power: 1 | 2 | 3,
+  power: 1 | 2,
 ): NearbyLaneCaps {
   const lanes = nearbyLanesFromMap(map);
   if (power <= 1) {
-    return { partnerCount: lanes.partnerCount, mesitaCount: 0, googleCount: 0 };
+    return { mesitaCount: lanes.mesitaCount, googleCount: 0 };
   }
-  if (power === 2) {
-    return { partnerCount: 0, mesitaCount: lanes.mesitaCount, googleCount: 0 };
-  }
-  return {
-    partnerCount: 0,
-    mesitaCount: lanes.mesitaCount,
-    googleCount: lanes.googleCount,
-  };
+  return lanes;
 }
 
 /** Mesita Places on Search: enriched profile, not a Created stub. */
@@ -319,16 +311,14 @@ export function isEnrichedListedRow(row: {
   return row.content_status === "ready" || Boolean(row.enriched_at);
 }
 
-/** Partners always stay. Power 1 drops everyone else. Power 2–3 keep enriched only. */
+/** The Mesita set at any power: partners always stay, everyone else enriched only. */
 export function keepListedForSearchPower(
   row: MesitaNearbyRow & {
     content_status?: string | null;
     enriched_at?: string | null;
   },
-  power: 1 | 2 | 3,
 ): boolean {
   if (isMesitaPartnerRow(row)) return true;
-  if (power <= 1) return false;
   return isEnrichedListedRow(row);
 }
 
@@ -383,16 +373,8 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     });
   }
 
-  if (lanes.mesitaCount > 0) {
-    return takeClosest(inMesita, center, lanes.mesitaCount).map((row) => ({
-      kind: "listed" as const,
-      row,
-    }));
-  }
-
-  return takeClosest(
-    inMesita.filter((row) => isMesitaPartnerRow(row)),
-    center,
-    lanes.partnerCount,
-  ).map((row) => ({ kind: "listed" as const, row }));
+  return takeClosest(inMesita, center, lanes.mesitaCount).map((row) => ({
+    kind: "listed" as const,
+    row,
+  }));
 }

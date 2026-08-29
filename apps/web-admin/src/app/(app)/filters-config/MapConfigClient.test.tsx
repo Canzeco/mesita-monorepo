@@ -33,11 +33,11 @@ describe("Map reload pairs", () => {
     expect(html).toContain("Listed pins then Lineup, not distance");
     expect(html).toContain("Google places");
     expect(html).toContain("Mesita places");
-    expect(html).toContain("Mesita partners");
-    const partners = html.indexOf("Mesita partners");
+    // TWO sets (Pato, 2026-08-29): Partners retired as a query — a partner
+    // is a Mesita place painted yellow.
+    expect(html).not.toContain("Mesita partners");
     const mesita = html.indexOf("Mesita places");
     const google = html.indexOf("Google places");
-    expect(partners).toBeLessThan(mesita);
     expect(mesita).toBeLessThan(google);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");

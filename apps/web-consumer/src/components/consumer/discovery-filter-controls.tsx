@@ -53,14 +53,21 @@ export function FilterModule({
   label,
   children,
   className,
+  dense = false,
 }: {
   label: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Compact box — the Search map Filters sheet must fit without scrolling. */
+  dense?: boolean;
 }) {
   return (
     <section
-      className={cn("border-border bg-card rounded-2xl border p-4", className)}
+      className={cn(
+        "border-border bg-card rounded-2xl border",
+        dense ? "p-3" : "p-4",
+        className,
+      )}
     >
       <SectionLabel>{label}</SectionLabel>
       {children}
@@ -77,11 +84,14 @@ export function Pill({
   onClick,
   children,
   disabled = false,
+  size = "md",
 }: {
   active: boolean;
   onClick: () => void;
   children: ReactNode;
   disabled?: boolean;
+  /** "sm" packs dense sheets (Search map Filters) — every option visible, no scroll. */
+  size?: "md" | "sm";
 }) {
   return (
     <button
@@ -90,7 +100,8 @@ export function Pill({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "type-body flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 font-medium whitespace-nowrap transition",
+        "flex shrink-0 items-center gap-1.5 rounded-full font-medium whitespace-nowrap transition",
+        size === "sm" ? "type-meta min-h-8 px-3" : "type-body min-h-11 px-4",
         disabled
           ? "bg-muted/40 text-muted-foreground/60 cursor-not-allowed"
           : active

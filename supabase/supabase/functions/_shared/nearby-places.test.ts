@@ -19,11 +19,6 @@ import {
 } from "./nearby-places.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
-const SCOPE_PARTNERS: NearbyLaneCaps = {
-  partnerCount: 10,
-  mesitaCount: 0,
-  googleCount: 0,
-};
 const SCOPE_MESITA: NearbyLaneCaps = {
   partnerCount: 0,
   mesitaCount: 20,
@@ -127,15 +122,17 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
   );
 });
 
-Deno.test("mergeNearbyCatalog: Partners set is closest partners only", () => {
+Deno.test("mergeNearbyCatalog: TWO sets — Mesita never filters to partners", () => {
+  // Partners are a paint, not a set (Pato, 2026-08-29): the closest Mesita
+  // rows win regardless of plan.
   const mesita = [
     { id: "np-close", plan: "free", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
     { id: "p-far", plan: "pro", google_place_id: "p", lat: 25.8, lng: -100.3 },
   ];
-  const got = mergeNearbyCatalog(mesita, [], CENTER, SCOPE_PARTNERS);
+  const got = mergeNearbyCatalog(mesita, [], CENTER, SCOPE_MESITA);
   assertEquals(
     got.map((x) => x.kind === "listed" ? x.row.id : x.hit.placeId),
-    ["p-far"],
+    ["np-close", "p-far"],
   );
 });
 
@@ -665,32 +662,25 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
 });
 
 Deno.test("search power zeros unused lanes and treats Mesita Places as enriched", () => {
-  assertEquals(clampSearchPower(undefined), 2);
+  assertEquals(clampSearchPower(undefined), 1);
   assertEquals(clampSearchPower(1), 1);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).partnerCount, DEFAULT_MAP.partnerCount);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).mesitaCount, 0);
+  // Legacy wire values fold into the two-set law: old 3 (Google) → 2.
+  assertEquals(clampSearchPower(3), 2);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).mesitaCount, DEFAULT_MAP.mesitaCount);
   assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).googleCount, 0);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).partnerCount, 0);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).googleCount, 0);
   assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).mesitaCount, DEFAULT_MAP.mesitaCount);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 3).partnerCount, 0);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 3).mesitaCount, DEFAULT_MAP.mesitaCount);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 3).googleCount, DEFAULT_MAP.googleCount);
+  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).googleCount, DEFAULT_MAP.googleCount);
   assertEquals(isEnrichedListedRow({ content_status: "ready" }), true);
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
   assertEquals(isEnrichedListedRow({ content_status: "queued" }), false);
   assertEquals(isEnrichedListedRow({}), false);
-  assertEquals(keepListedForSearchPower({ id: "p", partner: true }, 1), true);
+  assertEquals(keepListedForSearchPower({ id: "p", partner: true }), true);
   assertEquals(
-    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }, 1),
-    false,
-  );
-  assertEquals(
-    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }, 2),
+    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }),
     true,
   );
   assertEquals(
-    keepListedForSearchPower({ id: "c", plan: "free", content_status: "queued" }, 3),
+    keepListedForSearchPower({ id: "c", plan: "free", content_status: "queued" }),
     false,
   );
   const createdGids = listedGooglePlaceIds([

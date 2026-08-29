@@ -55,8 +55,8 @@ describe("placeMapStatus", () => {
 
 describe("placeSearchLane", () => {
   it("maps Partners / enriched Places / Google; Created and Requested are out", () => {
-    expect(placeSearchLane(place({ partner: true }))).toBe("partners");
-    expect(placeSearchLane(place({ promoting: true }))).toBe("partners");
+    expect(placeSearchLane(place({ partner: true }))).toBe("places");
+    expect(placeSearchLane(place({ promoting: true }))).toBe("places");
     expect(placeSearchLane(place({ content_status: "ready" }))).toBe("places");
     expect(
       placeSearchLane(place({ enriched_at: "2026-08-01T00:00:00Z" })),
@@ -72,14 +72,13 @@ describe("placeSearchLane", () => {
 
 describe("search power", () => {
   it("captions the cumulative union and clamps missing values to + Places", () => {
-    expect(searchPowerCaption(1)).toBe("Mesita Partners");
-    expect(searchPowerCaption(2)).toBe("Mesita Partners & All Mesita Places");
-    expect(searchPowerCaption(3)).toBe(
-      "Mesita Partners & All Mesita Places & All Google Places",
-    );
-    expect(clampSearchPower(99)).toBe(3);
+    expect(searchPowerCaption(1)).toBe("Mesita Places");
+    expect(searchPowerCaption(2)).toBe("Mesita Places & Google Places");
+    // Legacy persisted 3 (the old Google stop) folds to 2.
+    expect(clampSearchPower(99)).toBe(2);
+    expect(clampSearchPower(3)).toBe(2);
     expect(clampSearchPower(0)).toBe(1);
-    expect(clampSearchPower(undefined)).toBe(2);
+    expect(clampSearchPower(undefined)).toBe(1);
   });
 });
 
@@ -95,8 +94,8 @@ describe("applyMapFilters", () => {
   const google = place({ id: "google", googleOnly: true });
   const deck = [partner, enriched, created, requested, google];
 
-  it("defaults to + Places and still drops Created, Requested, and Google", () => {
-    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(2);
+  it("defaults to Mesita Places and still drops Created, Requested, and Google", () => {
+    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(1);
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
     expect(applyMapFilters(deck, filters()).map((p) => p.id)).toEqual([
@@ -105,11 +104,10 @@ describe("applyMapFilters", () => {
     ]);
   });
 
-  it("counts leaving + Places, each Super Category, or How many as one filter", () => {
-    expect(mapFilterCount(filters({ searchPower: 1 }))).toBe(1);
-    expect(mapFilterCount(filters({ searchPower: 3 }))).toBe(1);
+  it("counts leaving Mesita Places, each Super Category, or How many as one filter", () => {
+    expect(mapFilterCount(filters({ searchPower: 2 }))).toBe(1);
     expect(
-      mapFilterCount(filters({ searchPower: 2, familyKeys: ["restaurants"] })),
+      mapFilterCount(filters({ searchPower: 1, familyKeys: ["restaurants"] })),
     ).toBe(1);
     expect(mapFilterCount(filters({ resultLimit: 20 }))).toBe(1);
     expect(mapFilterCount(filters({ resultLimit: 40 }))).toBe(1);
@@ -119,15 +117,12 @@ describe("applyMapFilters", () => {
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
 
-  it("nests Partners ⊂ + Places ⊂ + Google", () => {
+  it("nests Mesita Places ⊂ Google Places — partners ride the Mesita set", () => {
     expect(
       applyMapFilters(deck, filters({ searchPower: 1 })).map((p) => p.id),
-    ).toEqual(["partner"]);
-    expect(
-      applyMapFilters(deck, filters({ searchPower: 2 })).map((p) => p.id),
     ).toEqual(["partner", "enriched"]);
     expect(
-      applyMapFilters(deck, filters({ searchPower: 3 })).map((p) => p.id),
+      applyMapFilters(deck, filters({ searchPower: 2 })).map((p) => p.id),
     ).toEqual(["partner", "enriched", "google"]);
   });
 
@@ -216,13 +211,13 @@ describe("applyMapFilters", () => {
     expect(
       applyMapFilters(
         [cafe, hotel],
-        filters({ searchPower: 3, familyKeys: ["cafes_bakeries"] }),
+        filters({ searchPower: 2, familyKeys: ["cafes_bakeries"] }),
       ).map((p) => p.id),
     ).toEqual(["g-cafe"]);
     expect(
       applyMapFilters(
         [cafe],
-        filters({ searchPower: 3, familyKeys: ["restaurants"] }),
+        filters({ searchPower: 2, familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual([]);
   });

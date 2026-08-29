@@ -6,7 +6,7 @@
 // Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
+import { Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -116,14 +116,6 @@ export function MapConfigClient({
           max={MAP_SET_COUNT_MAX}
           disabled={pending || loadBlocked}
           queries={[
-            {
-              key: "partners",
-              label: "Mesita partners",
-              icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
-              value: map.partnerCount,
-              max: MAP_SET_COUNT_MAX,
-              onChange: (partnerCount) => patch({ partnerCount }),
-            },
             {
               key: "mesita",
               label: "Mesita places",

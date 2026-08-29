@@ -1,15 +1,15 @@
-// Map filters — Search only. A Places Venn + Super Category + How many
-// cut the nearby catalog. There is no Types axis and no category slug list.
+// Map filters — Search only. The two Places sets + Super Category + How
+// many cut the nearby catalog. There is no Types axis and no category
+// slug list.
 //
-// Scope is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
-// Partners+Places+Google. Default is + Places. Mesita Places is the
-// enriched profile only — Created and Requested stubs are not a search
-// source. A Super Category is a SET of categories; a category may sit
-// in two (breakfast is restaurants AND cafés). The cut is OR: a place
-// matches if any of its Super Categories is selected. The Search chrome
-// uses the guest word Category for the same six families. Distance and
-// time stay off this surface: the camera already bounds the set. Swipe
-// keeps Discovery.
+// Scope is TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google
+// Places. Partners retired as a scope — a partner is a Mesita Place
+// painted yellow. Default is Mesita Places, the enriched profile only —
+// Created and Requested stubs are not a search source. A Super Category
+// is a SET of categories; a category may sit in two (breakfast is
+// restaurants AND cafés). The cut is OR: a place matches if any of its
+// Super Categories is selected. Distance and time stay off this
+// surface: the camera already bounds the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -25,34 +25,32 @@ export const MAP_STATUS_KEYS = [
 
 export type MapStatusKey = (typeof MAP_STATUS_KEYS)[number];
 
-export type MapSearchLane = "partners" | "places" | "google";
+export type MapSearchLane = "places" | "google";
 
-export type MapSearchPower = 1 | 2 | 3;
-/** + Places — Partners and enriched Mesita Places. Not Google. */
-export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
+export type MapSearchPower = 1 | 2;
+/** Mesita Places — the whole listed set. Partners are a paint, not a set. */
+export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 1;
 
-/** Three nested Venn stops. Partners ⊂ Places ⊂ Google. */
+/**
+ * TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google Places.
+ * The pin colours survive the retired Partners scope: partner pins stay
+ * yellow, Mesita red, Google gray — colour is membership paint, never a
+ * filter.
+ */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
-    key: "partners",
-    tick: "Mesita Partners",
-    label: "Mesita Partners",
-    hint: "Mesita Partners only",
+    key: "places",
+    tick: "Mesita Places",
+    label: "Mesita Places",
+    hint: "Mesita Places only",
   },
   {
     power: 2,
-    key: "places",
-    tick: "All Mesita Places",
-    label: "Mesita Places",
-    hint: "Mesita Partners and All Mesita Places",
-  },
-  {
-    power: 3,
     key: "google",
-    tick: "All Google Places",
+    tick: "Google Places",
     label: "Google Places",
-    hint: "Mesita Partners, All Mesita Places, and All Google Places",
+    hint: "Mesita Places and Google Places",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
@@ -63,9 +61,8 @@ export const MAP_SEARCH_STOPS = [
 }[];
 
 const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
-  partners: 1,
-  places: 2,
-  google: 3,
+  places: 1,
+  google: 2,
 };
 
 /** Closest-N stops on Search Filters. Nothing in between. */
@@ -75,7 +72,7 @@ export type MapResultLimit = (typeof MAP_RESULT_LIMITS)[number];
 export const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 60;
 
 export type MapFilters = {
-  /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
+  /** 1 = Mesita Places, 2 = + Google Places. Default is 1. */
   searchPower: MapSearchPower;
   /** Super Category: the six place families; empty = no constraint. */
   familyKeys: FamilyKey[];
@@ -122,15 +119,14 @@ export function takeMapResultLimit<T extends { distance_km?: number | null }>(
 export function clampSearchPower(value: unknown): MapSearchPower {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return MAP_SEARCH_POWER_DEFAULT;
-  if (n <= 1) return 1;
-  if (n >= 3) return 3;
-  return 2;
+  // Legacy persisted 3 (the old Google stop) folds to 2; the retired
+  // Partners stop (old 1) reads as Mesita Places.
+  return n >= 2 ? 2 : 1;
 }
 
 export function searchPowerCaption(power: MapSearchPower): string {
-  if (power <= 1) return "Mesita Partners";
-  if (power === 2) return "Mesita Partners & All Mesita Places";
-  return "Mesita Partners & All Mesita Places & All Google Places";
+  if (power <= 1) return "Mesita Places";
+  return "Mesita Places & Google Places";
 }
 
 /** A stop is in view when the selected power reaches it. */
@@ -161,7 +157,8 @@ export function placeMapStatus(place: Place): MapStatusKey {
 export function placeSearchLane(place: Place): MapSearchLane | null {
   const status = placeMapStatus(place);
   if (status === "not_on_mesita") return "google";
-  if (status === "promoted" || status === "partnered") return "partners";
+  // Partners are Mesita Places — yellow paint, not a lane of their own.
+  if (status === "promoted" || status === "partnered") return "places";
   if (status === "enriched") return "places";
   return null;
 }

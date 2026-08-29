@@ -166,14 +166,12 @@ describe("Discovery function APIs", () => {
   });
 
   it("coerceConfig defaults map set caps on an old blob", () => {
-    expect(coerceConfig({ weights: {}, slotting: {} }).map.partnerCount).toBe(10);
     expect(coerceConfig({ weights: {}, slotting: {} }).map.mesitaCount).toBe(10);
     expect(coerceConfig({ weights: {}, slotting: {} }).map.googleCount).toBe(20);
-    expect(coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map).toMatchObject({
-      partnerCount: 60,
-      mesitaCount: 10,
-      googleCount: 0,
-    });
+    // Legacy partnerCount is dropped on read — Partners are a paint, not a set.
+    const legacy = coerceConfig({ map: { partnerCount: 99, googleCount: -1 } }).map;
+    expect("partnerCount" in legacy).toBe(false);
+    expect(legacy).toMatchObject({ mesitaCount: 10, googleCount: 0 });
     expect(coerceConfig({ map: { googleCount: 99 } }).map.googleCount).toBe(20);
     expect(coerceConfig({ map: { notPartnerCount: 7 } }).map.mesitaCount).toBe(7);
   });
