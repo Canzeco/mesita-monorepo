@@ -21,6 +21,10 @@ import {
 } from "@/lib/promo-rates";
 import { relativeLabel } from "@/lib/utils";
 import { DEFAULT_CURRENCY } from "@/lib/money";
+import {
+  isOrderActionEnabled,
+  isReserveActionEnabled,
+} from "@/lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
 import {
   arr,
@@ -30,12 +34,14 @@ import {
   neighborhoodFromAddress,
   num,
   obj,
+  resolvePlaceDisplayName,
   str,
 } from "./place-to-detail-helpers";
 
 export {
   computeOpenState,
   neighborhoodFromAddress,
+  resolvePlaceDisplayName,
   resolveZoneLabel,
 } from "./place-to-detail-helpers";
 
@@ -89,8 +95,10 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     // the Rewards box) read false no matter what the server said.
     promoting: typeof row.promoting === "boolean" ? row.promoting : null,
     partner: typeof row.partner === "boolean" ? row.partner : null,
+    orders_enabled: isOrderActionEnabled(row),
+    reservations_enabled: isReserveActionEnabled(row),
     id: str(row.id) ?? str(row.slug) ?? "",
-    name: str(row.name) ?? "Place",
+    name: resolvePlaceDisplayName(row),
     category: categoryName,
     vibe: str(row.vibe) ?? "",
     price_level: priceLevel,
@@ -122,15 +130,18 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
       row.content_status === "queued" || row.content_status === "generating",
     is_profile_ready: row.is_profile_ready === true ||
       row.content_status === "ready",
+    is_enriched: row.is_enriched === true ||
+      (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     request_count: num(row.request_count) ?? 0,
-    request_threshold: num(row.request_threshold) ?? 3,
+    request_threshold: num(row.request_threshold) ?? 5,
     requested: row.requested === true,
     request_lifecycle:
       row.request_lifecycle === "requested" ||
         row.request_lifecycle === "enriched" ||
         row.request_lifecycle === "listed"
         ? row.request_lifecycle
-        : row.content_status === "ready"
+        : row.is_enriched === true ||
+            (typeof row.enriched_at === "string" && row.enriched_at.trim() !== "")
           ? "enriched"
           : (num(row.request_count) ?? 0) > 0
             ? "requested"

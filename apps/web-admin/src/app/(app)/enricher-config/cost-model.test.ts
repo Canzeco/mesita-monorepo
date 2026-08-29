@@ -96,7 +96,7 @@ const settings: IntakeSettings = {
   discoverFacebookN: 3,
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
-  requestThreshold: 3,
+  requestThreshold: 5,
 };
 
 describe("instance estimates", () => {

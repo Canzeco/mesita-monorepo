@@ -19,5 +19,11 @@ describe("Discovery matrix", () => {
     expect(html).toContain(
       "Google Places Text Search · Name (Deep) · on",
     );
+    expect(html).toContain("Mesita Listed · Favorites · not required");
+    expect(html).toContain("Mesita Enriched · Favorites · not required");
+    expect(html).toContain("Google Places · Favorites · required");
+    expect(html).toContain("border-t-2");
+    expect(html).toContain("Places Lineup Randomness · Map · off");
+    expect(html).not.toContain(">0</span>");
   });
 });

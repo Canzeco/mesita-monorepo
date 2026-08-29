@@ -1,16 +1,12 @@
 // Supabase Edge Function — consumer-web-create-place (LIVE consumer create path)
 //
 // The signed-in consumer passes a Google Places `googlePlaceId` (from the
-// Search → Add flow). The place is created IMMEDIATELY — same shared core as
-// the admin and business creates — and only deep enrichment stays async:
+// Search → Add flow). Create is awaited in this request — same shared
+// core as admin and business — and returns the ugly profile:
 //   1. authenticate the consumer,
 //   2. createMinimalPlace (_shared/create-place.ts): dedupe → Google spine →
-//      save 'generating' row → seed place_research (the supabase-cron-enrich-place-*
-//      poller takes it from there).
-//
-// Replaces the queued flow (consumer-web-schedule-project-creation →
-// scheduled_project_creations → cron): the place row must exist the moment the
-// consumer adds it; enrichment is the only scheduled part (MESITA-128).
+//      save ready + enriched_at null. Does NOT seed Intaker. Guests vote
+//      on the Enrich tab; the Intake threshold queues Intaker 1–10.
 //
 // Local:  supabase functions serve consumer-web-create-place
 // Deploy: supabase functions deploy consumer-web-create-place
@@ -65,6 +61,7 @@ Deno.serve(async (req) => {
     callerName: "consumer-web-create-place",
     googlePlaceId,
     dedupeError: "This place is already on Mesita.",
+    queueEnrich: false,
   });
   if (!created.ok) return json(created.body, created.status);
 

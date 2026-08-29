@@ -1,16 +1,17 @@
 "use client";
 
-// Map hyperparameters — live. Three closest-N lanes become one catalog
-// after dropping overlaps: Partners, then Mesita, then Google. Google
-// types live on Discovery Modules.
+// Map hyperparameters — live. Three independent closest-N queries become
+// one catalog after concat: Partners, then Mesita Places, then Google.
+// Overlaps drop; first query keeps the slot. Google types live on Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BadgeCheck, Globe, Map as MapIcon, Store } from "lucide-react";
+import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
+  ChoiceField,
   KnobStatus,
-  NumberField,
+  QueryConcatCaps,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
@@ -98,7 +99,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Closest N enter. Listed pins then Lineup, not distance. Google stays distance."
+        subtitle="Closest N enter per query. Listed pins then Lineup, not distance. Google stays distance."
         status={
           <KnobStatus
             kind="enforced"
@@ -107,66 +108,66 @@ export function MapConfigClient({
         }
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <NumberField
-            icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita partners"
-            value={map.partnerCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(partnerCount) => patch({ partnerCount })}
-          />
-          <NumberField
-            icon={<Store className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita places"
-            value={map.mesitaCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(mesitaCount) => patch({ mesitaCount })}
-          />
-          <NumberField
-            icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places"
-            value={map.googleCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(googleCount) => patch({ googleCount })}
-          />
-        </div>
+        <QueryConcatCaps
+          rule="Then concat. Closest Partners → closest Mesita Places → closest Google Nearby."
+          min={0}
+          max={MAP_LANE_COUNT_MAX}
+          disabled={pending || loadBlocked}
+          queries={[
+            {
+              key: "partners",
+              label: "Mesita partners",
+              icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+              value: map.partnerCount,
+              onChange: (partnerCount) => patch({ partnerCount }),
+            },
+            {
+              key: "mesita",
+              label: "Mesita places",
+              icon: <Store className="h-4 w-4 shrink-0" />,
+              value: map.mesitaCount,
+              onChange: (mesitaCount) => patch({ mesitaCount }),
+            },
+            {
+              key: "google",
+              label: "Google places",
+              icon: <Globe className="h-4 w-4 shrink-0" />,
+              value: map.googleCount,
+              onChange: (googleCount) => patch({ googleCount }),
+            },
+          ]}
+        />
         <div className="mt-5">
-          <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
-            Reload after
-          </p>
-          <p className="text-muted-foreground mb-2 type-meta">
-            Camera must move this far AND wait this long. Browsing the rail does not count.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {MAP_RELOAD_PAIRS.map((pair) => {
-              const active =
-                map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
-              return (
-                <button
-                  key={`${pair.km}-${pair.sec}`}
-                  type="button"
-                  disabled={pending || loadBlocked}
-                  onClick={() =>
-                    patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
-                  }
-                  aria-pressed={active}
-                  className={
-                    active
-                      ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                      : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                  }
-                >
-                  {pair.km} km · {pair.sec}s
-                </button>
-              );
-            })}
-          </div>
+          <ChoiceField
+            icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Reload after"
+            hint="Camera must move this far AND wait this long. Only dragging the map counts — rail or pin taps do not."
+          >
+            <div className="flex flex-wrap gap-2">
+              {MAP_RELOAD_PAIRS.map((pair) => {
+                const active =
+                  map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
+                return (
+                  <button
+                    key={`${pair.km}-${pair.sec}`}
+                    type="button"
+                    disabled={pending || loadBlocked}
+                    onClick={() =>
+                      patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
+                    }
+                    aria-pressed={active}
+                    className={
+                      active
+                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
+                    }
+                  >
+                    {pair.km} km · {pair.sec}s
+                  </button>
+                );
+              })}
+            </div>
+          </ChoiceField>
         </div>
 
         {updatedAt ? (

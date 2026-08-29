@@ -7,7 +7,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
 import { anonClient, readAnonEnv } from "../_shared/auth.ts";
-import { fetchPlaceCategories } from "../_shared/categories.ts";
+import {
+  fetchPlaceCategories,
+  fetchPlaceSuperCategories,
+} from "../_shared/categories.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -18,7 +21,10 @@ Deno.serve(async (req) => {
   if (!envRes.ok) return envRes.response;
 
   const supabase = anonClient(envRes.env);
-  const categories = await fetchPlaceCategories(supabase);
+  const [categories, superCategories] = await Promise.all([
+    fetchPlaceCategories(supabase),
+    fetchPlaceSuperCategories(supabase),
+  ]);
 
-  return json({ ok: true, categories });
+  return json({ ok: true, categories, superCategories });
 });

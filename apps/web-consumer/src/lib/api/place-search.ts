@@ -17,19 +17,16 @@ export { apiSuggestPlaces, type PlacePrediction, type SuggestPlacesMode } from "
 
 type CreatedProject = {
   ok: boolean;
-  /** The freshly created place row (content_status='generating'). */
+  /** The freshly created ugly profile (ready, not Enriched). */
   place: { id: string; slug: string; name: string; status: string };
 };
 
 /**
  * Create a Google-only search result on Mesita immediately.
  *
- * Calls consumer-web-create-place, which runs the shared create core
- * inline (dedupe → Google spine → 'generating' rows → seed place_research);
- * the cron-driven Intaker pipeline then enriches asynchronously. The place
- * lands with content_status='generating' and flips to 'ready' once enriched
- * — typically within ~5 minutes — so the UI should show a persistent
- * "being added" state rather than waiting on this promise.
+ * Calls consumer-web-create-place, which runs Create only (dedupe → Google
+ * spine → ready row, enriched_at null). Intaker is not queued. The place
+ * modal opens on the Enrich vote tab until the Intake threshold is hit.
  */
 export async function apiCreateProject(
   client: SupabaseClient,

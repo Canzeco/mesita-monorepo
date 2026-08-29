@@ -1,11 +1,9 @@
 "use client";
 
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
-// Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
-// Search, and Places Lineup (Name signal only — Mesita `places.name`,
-// not `google_name`). Deep never calls Nearby Search.
-// Each candidate resolves, then Partners · Mesita · Google.
-// Deep knobs follow Fast: Google first, Max last; Mesita lanes in between.
+// Fast Search is Autocomplete only. Deep Search concatenates four independent
+// queries: Autocomplete → Text Search → Mesita Places → Mesita Partners.
+// Overlaps drop; first query keeps the slot. Deep never calls Nearby Search.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -20,6 +18,7 @@ import { formatShortDate } from "@/lib/format";
 import {
   KnobStatus,
   NumberField,
+  QueryConcatCaps,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
@@ -117,7 +116,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
           title="Name (Fast Search)"
-          subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap — Max results stays for Deep symmetry. 0 is off. Map Filters never cut this list."
+          subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap. 0 is off. Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -165,7 +164,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Max results caps the merge. Map Filters never cut this list."
+          subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -177,44 +176,42 @@ export function NameConfigClient({
           <p className="text-muted-foreground mt-2 type-meta">
             Needs a location. No pin, no bias.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <NumberField
-              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Google places"
-              value={name.deep.googleCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(googleCount) => patchDeep({ googleCount })}
-            />
-            <NumberField
-              icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Mesita partners"
-              value={name.deep.partnerCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(partnerCount) => patchDeep({ partnerCount })}
-            />
-            <NumberField
-              icon={<Store className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Mesita places"
-              value={name.deep.mesitaCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(mesitaCount) => patchDeep({ mesitaCount })}
-            />
-            <NumberField
-              icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Max results"
-              value={name.deep.count}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(count) => patchDeep({ count })}
-            />
-          </div>
+          <QueryConcatCaps
+            rule="Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners."
+            min={0}
+            max={NAME_LANE_COUNT_MAX}
+            disabled={pending || loadBlocked}
+            queries={[
+              {
+                key: "auto",
+                label: "Google Autocomplete",
+                icon: <Search className="h-4 w-4 shrink-0" />,
+                value: name.deep.autoCount,
+                onChange: (autoCount) => patchDeep({ autoCount }),
+              },
+              {
+                key: "text",
+                label: "Google Text Search",
+                icon: <Globe className="h-4 w-4 shrink-0" />,
+                value: name.deep.googleCount,
+                onChange: (googleCount) => patchDeep({ googleCount }),
+              },
+              {
+                key: "mesita",
+                label: "Mesita places",
+                icon: <Store className="h-4 w-4 shrink-0" />,
+                value: name.deep.mesitaCount,
+                onChange: (mesitaCount) => patchDeep({ mesitaCount }),
+              },
+              {
+                key: "partners",
+                label: "Mesita partners",
+                icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+                value: name.deep.partnerCount,
+                onChange: (partnerCount) => patchDeep({ partnerCount }),
+              },
+            ]}
+          />
           {updatedAt ? (
             <p className="text-muted-foreground mt-4 type-meta">
               Last saved {formatShortDate(updatedAt)}

@@ -27,9 +27,11 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
+  MAP_PIN_CURSOR,
+  MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  mapCircleIcon,
+  mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import {
@@ -39,14 +41,29 @@ import {
   type MembershipTone,
 } from "@/lib/search-membership";
 
-function placeIcon(tone: MembershipTone, isSelected: boolean) {
-  return mapCircleIcon(pinFillColor(tone), pinStrokeColor(isSelected));
+type MapsCtor = {
+  Size: new (w: number, h: number) => { width: number; height: number };
+  Point: new (x: number, y: number) => { x: number; y: number };
+};
+
+function mapsPinIcon(fillColor: string, strokeColor: string) {
+  const raw = mapPinIcon(fillColor, strokeColor);
+  const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
+  if (!maps) return raw;
+  return {
+    url: raw.url,
+    scaledSize: new maps.Size(MAP_PIN_HIT_SIZE, MAP_PIN_HIT_SIZE),
+    anchor: new maps.Point(MAP_PIN_HIT_SIZE / 2, MAP_PIN_HIT_SIZE / 2),
+  };
 }
 
-const USER_ICON = mapCircleIcon(
-  MAP_USER_LOCATION_PIN_COLOR,
-  MAP_PIN_STROKE_COLOR,
-);
+function placeIcon(tone: MembershipTone, isSelected: boolean) {
+  return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected));
+}
+
+function userIcon() {
+  return mapsPinIcon(MAP_USER_LOCATION_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+}
 
 export type SearchMapPin = {
   id: string;
@@ -153,17 +170,22 @@ export function SearchMap({
   );
 }
 
-/** Ignore map `idle` after Recentre / PanTo so picking a rail card or
- *  following GPS does not count as a guest pan (and must not refetch). */
-const PROGRAMMATIC_IDLE_MS = 600;
-let programmaticIdleUntil = 0;
+/** Rail / pin / GPS pans stay programmatic until a real finger-drag.
+ *  A time window leaked: a slow panTo idle fired after 600ms and
+ *  counted catalog browsing as travel. dragstart is the only user
+ *  gesture that may accrue Reload after. */
+let cameraMoveIsProgrammatic = false;
 
 function noteProgrammaticCamera() {
-  programmaticIdleUntil = Date.now() + PROGRAMMATIC_IDLE_MS;
+  cameraMoveIsProgrammatic = true;
+}
+
+function noteUserMapDrag() {
+  cameraMoveIsProgrammatic = false;
 }
 
 function isProgrammaticIdle() {
-  return Date.now() < programmaticIdleUntil;
+  return cameraMoveIsProgrammatic;
 }
 
 /** Screen-fixed sight at the canvas center — the catalog fetch point.
@@ -260,22 +282,25 @@ function SearchMapCanvas({
       disableDefaultUI
       clickableIcons={false}
       reuseMaps
-      className="absolute inset-0 h-full w-full"
+      draggableCursor={MAP_PIN_CURSOR}
+      draggingCursor={MAP_PIN_CURSOR}
+      className="absolute inset-0 h-full w-full cursor-default [&_*]:!cursor-default"
       colorScheme="LIGHT"
       styles={
         MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
       }
       onTilesLoaded={onReady}
-      // Bare canvas tap toggles search — open when idle, close when the
-      // overlay is up. Pan/drag and marker taps don't reach here.
+      // Bare canvas tap toggles the name overlay. Pan/drag does not
+      // fire click — SearchClient closes the overlay from onUserViewport.
       onClick={onMapClick ? () => onMapClick() : undefined}
     >
       {userLocation && (
         <Marker
           position={userLocation}
           title="You're here"
-          icon={USER_ICON}
+          icon={userIcon()}
           clickable={false}
+          cursor={MAP_PIN_CURSOR}
         />
       )}
       {pins != null
@@ -286,6 +311,8 @@ function SearchMapCanvas({
               title={pin.title}
               icon={placeIcon(pin.tone, pin.id === selectedId)}
               zIndex={pin.id === selectedId ? 10 : 0}
+              optimized={false}
+              cursor={MAP_PIN_CURSOR}
               onClick={() => onSelectPin?.(pin)}
             />
           ))
@@ -299,6 +326,8 @@ function SearchMapCanvas({
                 place.id === selectedId,
               )}
               zIndex={place.id === selectedId ? 10 : 0}
+              optimized={false}
+              cursor={MAP_PIN_CURSOR}
               // First tap selects (membership fill + black ring + rail); later tap opens.
               onClick={() =>
                 place.id === selectedId
@@ -331,6 +360,7 @@ function ViewportReporter({
 
   useEffect(() => {
     if (!map) return;
+    const drag = map.addListener("dragstart", noteUserMapDrag);
     const listener = map.addListener("idle", () => {
       const box = readViewportBox(map);
       if (!box) return;
@@ -341,7 +371,10 @@ function ViewportReporter({
       }
       onUser?.(box, { programmatic: isProgrammaticIdle() });
     });
-    return () => listener.remove();
+    return () => {
+      drag.remove();
+      listener.remove();
+    };
   }, [map, onFirst, onUser]);
 
   return null;

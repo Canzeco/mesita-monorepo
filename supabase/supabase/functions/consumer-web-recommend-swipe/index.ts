@@ -2,30 +2,28 @@
 //
 // The SWIPE engine — the Home deck (Docs › Discovery §B).
 //
-// Hard filters admit; a two-signal SUM scores; partner bias multiplies after
-// (Pato, 2026-08-26). This replaces the nine-signal blend + bought slots for
-// Swipe only. Catalog, Chat and Social stay pending.
+// Hard filters admit; Places Lineup ranks under the locked Swipe mask
+// (Pato, 2026-08-28). The 2026-08-26 two-signal SUM is gone.
 //
 //   1. ADMIT  — enriched (content_status ready), reviews floor, fixed radius,
 //               Map type batteries, open now + closing buffer, then the
 //               guest's predicates (category is the guest toggle).
-//   2. SCORE  —  wP * proximity + (1 − wP) * popularity. Linear proximity.
-//   3. BIAS   —  partner multiplier, five levels.
-//   4. JITTER —  Uniform[1, randomnessMax] per place, then order.
+//   2. RANK   — Places Lineup Π s^w: proximity, timing, category,
+//               popularity, partnership, randomness. Name / Summary /
+//               Social stay off.
 //
 // Partner bias cannot live inside the spatial index. Fetch the admitted pool
-// first, then score, then bias, then order. Do not pre-order by distance and
-// cut.
+// first, then rank. Do not pre-order by distance and cut.
 //
 // THE SLUG AND THE RESPONSE SHAPE ARE STILL FROZEN. Deployed Expo binaries call
 // this endpoint and cannot be redeployed atomically. Keep returning
 // { ok, deck, summary: { candidates, embedded } }.
 //
 // `lat` / `lng` feed Proximity and the radius. `radiusKm` and `randomness`
-// stay discarded — both are operator policy on discovery_config.swipe.
-// Optional `predicates` still cut inside the operator's filters
-// (MESITA-1153). A client that omits them — every deployed Expo binary —
-// gets the operator pool.
+// stay discarded — both are operator policy on discovery_config.swipe
+// (radius) and Places Lineup (randomness exponent). Optional `predicates`
+// still cut inside the operator's filters (MESITA-1153). A client that
+// omits them — every deployed Expo binary — gets the operator pool.
 //
 // Local:  supabase functions serve consumer-web-recommend-swipe
 // Deploy: supabase functions deploy consumer-web-recommend-swipe
@@ -51,8 +49,8 @@ import {
   admitSwipeTiming,
   rankSwipeDeck,
   swipeAdmissionFilters,
+  swipeLineupWeights,
 } from "../_shared/discovery-swipe.ts";
-import type { PromotingFields } from "../_shared/place-promoting.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 50;
@@ -64,7 +62,7 @@ type Body = {
   /** Accepted for wire compatibility. Ignored — operator owns radius. */
   radiusKm?: number;
   limit?: number;
-  /** Accepted for wire compatibility. Ignored — operator owns randomnessMax. */
+  /** Accepted for wire compatibility. Ignored — Lineup owns randomness. */
   randomness?: number;
   predicates?: unknown;
 };
@@ -128,9 +126,10 @@ Deno.serve(async (req) => {
     cfg.swipe.closingBufferMin,
   );
 
+  const predicates = readDeckPredicates(body.predicates);
   const rows = applyDeckPredicates(
     open as unknown as Record<string, unknown>[],
-    readDeckPredicates(body.predicates),
+    predicates,
     geo.lat !== null && geo.lng !== null
       ? { lat: geo.lat, lng: geo.lng }
       : null,
@@ -142,19 +141,15 @@ Deno.serve(async (req) => {
 
   const ordered = cfg.engines.swipe.ranked
     ? rankSwipeDeck(
-      rows,
+      rows as unknown as Record<string, unknown>[],
       guestGeo,
-      cfg.swipe,
+      swipeLineupWeights(cfg.weights),
+      cfg.params,
       {
-        latOf: (r) => (r as unknown as Record<string, unknown>).lat as number | null,
-        lngOf: (r) => (r as unknown as Record<string, unknown>).lng as number | null,
-        starsOf: (r) =>
-          (r as unknown as Record<string, unknown>).google_stars_overall as number | null,
-        reviewsOf: (r) =>
-          (r as unknown as Record<string, unknown>).google_review_count as number | null,
-        partnerOf: (r) => r as unknown as PromotingFields,
+        categories: predicates.categories,
+        families: predicates.familyKeys,
       },
-    )
+    ) as PlaceRow[]
     : rows;
 
   const deck = ordered.slice(0, limit).map((r) => stripInternal(r));

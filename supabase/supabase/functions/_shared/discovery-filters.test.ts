@@ -393,7 +393,7 @@ Deno.test("normalize does not persist the General cap onto engine types", () => 
   assertEquals(cfg.name.deep.types.night_club, true);
 });
 
-Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
@@ -401,6 +401,7 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(missing.name.deep, {
     partnerCount: 3,
     mesitaCount: 3,
+    autoCount: 3,
     googleCount: 3,
     count: 9,
     types: DISCOVERY_DEFAULTS.map.types,
@@ -408,7 +409,7 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   const clamped = normalizeDiscoveryConfig({
     name: {
       fast: { count: 99, types: { restaurant: false } },
-      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40 },
+      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
     },
   });
   assertEquals(clamped.name.fast.count, 20);
@@ -417,6 +418,12 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(clamped.name.deep.partnerCount, 0);
   assertEquals(clamped.name.deep.mesitaCount, 7);
   assertEquals(clamped.name.deep.googleCount, 20);
+  assertEquals(clamped.name.deep.autoCount, 0);
   assertEquals(clamped.name.fast.googleCount, 20);
   assertEquals(clamped.name.deep.count, 9);
+  const missingAuto = normalizeDiscoveryConfig({
+    name: { deep: { googleCount: 40 } },
+  });
+  assertEquals(missingAuto.name.deep.autoCount, 3);
+  assertEquals(missingAuto.name.deep.googleCount, 20);
 });

@@ -2,7 +2,7 @@
 // Discovery §A, MESITA-1196).
 //
 // Keys: weights · params · slotting · filters · engines · general · catalog · map · name · social · chat · swipe.
-// Admin: Modes (Fast + Deep + Map live; Home Soon) · Modules (Google types,
+// Admin: Modes (Fast + Deep + Map live; Swipe ranks via Lineup; Home Soon) · Modules (Google types,
 // three Google boxes, Places Lineup, Social Lineup Soon, Perplexity Soon).
 // `params` rides with `weights` — same Lineup table, different numbers.
 //
@@ -95,10 +95,10 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * Map pool policy. Three closest-N lanes, then one catalog after dropping
- * overlaps: Partners · Mesita (any) · Google. Partners ⊆ Mesita ⊆ Google.
- * Type batteries ride the Google Nearby call only. Floors still exclude;
- * 0 = off. Independent of Swipe's `filters`.
+ * Map pool policy. Three independent closest-N queries, then concat:
+ * Partners · listed-not-partner Mesita · Google Nearby. Overlaps drop;
+ * earlier query keeps the slot. Not a nested filter. Type batteries ride
+ * the Google Nearby call only. Floors still exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -109,11 +109,11 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /** Closest Mesita partners (plan ≠ free). */
+  /** Closest Mesita partners (plan ≠ free). Independent query. */
   partnerCount: number;
-  /** Closest Mesita places, partners included. */
+  /** Closest Mesita Places, listed-not-partner. Independent query. */
   mesitaCount: number;
-  /** Closest Google Nearby hits. Overlaps with Mesita drop at merge. */
+  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -121,11 +121,11 @@ export type MapConfig = {
 /**
  * Name = two Search-bar boxes. Map Filters never cut this list.
  *   Fast  Autocomplete. googleCount + count (same cap — count is symmetry).
- *   Deep  Partners · Mesita · Google, then one list after overlaps drop.
- *         count is the merge cap. Types ride Google only.
+ *   Deep  Four query caps, then concat. Autocomplete → Text → Mesita Places
+ *         → Mesita Partners. Overlaps drop. googleCount is Text Search.
  */
 export type NameFastConfig = {
-  /** Redundant with count on Fast — one source. Kept for Deep symmetry. */
+  /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;
@@ -134,8 +134,11 @@ export type NameFastConfig = {
 export type NameDeepConfig = {
   partnerCount: number;
   mesitaCount: number;
+  /** Google Autocomplete cap. Independent query. */
+  autoCount: number;
+  /** Google Text Search cap. Independent query. */
   googleCount: number;
-  /** Merge cap after Partners → Mesita → Google. */
+  /** Legacy blob field. Queries concat; the union is not sliced. */
   count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -161,9 +164,10 @@ export type SwipePartnerLevel =
 export type SwipePartnerBias = Record<SwipePartnerLevel, number>;
 
 /**
- * Swipe engine knobs. Hard filters admit; a two-signal SUM scores; partner
- * bias multiplies after. Independent of the eight-signal blend still stored
- * on `weights` / `params` / `slotting` for later engines.
+ * Swipe admission knobs. Radius, reviews, closing buffer, and type-adjacent
+ * flags cut the pool. Ranking is Places Lineup under the Swipe mask
+ * (`weights` / `params`). weightProximity, starsExponent, logDivisor,
+ * partnerBias, and randomnessMax stay on the blob, unread.
  */
 export type SwipeConfig = {
   radiusKm: number;
@@ -377,6 +381,7 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   count: NAME_DEEP_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
@@ -711,6 +716,9 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       ),
       mesitaCount: Math.round(
         num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      autoCount: Math.round(
+        num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
       ),
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),

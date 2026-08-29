@@ -14,6 +14,7 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   membershipColor,
   membershipTone,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 import type { AddState } from "./add-state";
 
@@ -76,7 +77,7 @@ export function SearchResultsPanel({
                 prediction={p}
                 addState={addStates[p.placeId]}
                 onPick={
-                  p.status === "not_in_mesita" ? onPickGoogle : onPickMesita
+                  predictionOnMesita(p) ? onPickMesita : onPickGoogle
                 }
               />
             ))}
@@ -128,11 +129,7 @@ function SuggestionLine({
       </span>
       {added && (
         <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-700">
-          <Spinner
-            size="sm"
-            className="border-emerald-300 border-t-emerald-600"
-          />
-          Enriching
+          Added
         </span>
       )}
     </button>

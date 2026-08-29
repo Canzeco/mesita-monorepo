@@ -1,13 +1,14 @@
 // Shared create-place core — THE CREATE RUN (Main §8.4): one run,
 // synchronous, the front door. Create numbers 1–4 (not Enrich 1–10):
 //
-//   1 seed      → dedupe on google_place_id, mint the minimal 'generating' rows
+//   1 seed      → dedupe on google_place_id, mint the paired rows
+//                 (generating when queueing Enrich, ready when not)
 //   2 pulse     → the liveness gate: Google's businessStatus, read from the same
 //                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
 //                 at the door, before any row exists. Don't seed corpses.
 //   3 details   → the Google spine persisted (fetchGoogleBasics fields,
-//                 category='undefined' and family_keys NULL until the Intaker
-//                 infers Super Category + Category)
+//                 category='undefined' and family_keys=['undefined'] until
+//                 the Intaker infers Super Category + Category)
 //                 PLUS the first Google photo mirrored into place-images so a
 //                 Created place can show a thumb before Enrich Images runs.
 //   4 semantic  → Name vector + Summary vector, awaited in this same function
@@ -17,8 +18,13 @@
 // await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
 // reads 2/10 immediately (Enrich high-water: pulse=1, details=2; 3–9 still a
 // gap even if semantic stamps as 10) and state accumulates across create and
-// every later run under one rule. Then it queues deep enrichment (Enrich
-// functions 3-9 and re-runs of 1-2) per the on_create trigger row.
+// every later run under one rule.
+//
+// queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
+// profile and do NOT seed Intaker. Enriched is `places.enriched_at`, not
+// content_status. Guests vote on the Enrich tab; the Intake threshold
+// seeds the queue. Business create still queues. Admin Enrich /
+// Create+Enrich is a second call.
 //
 // Callers: admin-web-create-project, business-web-create-project,
 // consumer-web-create-place (+ its consumer-web-schedule-project-creation
@@ -78,8 +84,12 @@ export async function createMinimalPlace(opts: {
   googlePlaceId: string;
   // Caller-specific copy for the 409 (e.g. the business app adds claim advice).
   dedupeError?: string;
+  // true (default): seed Intaker from the on_create row. false: mint the
+  // ugly profile and stop — votes (or admin Enrich) start the queue.
+  queueEnrich?: boolean;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;
+  const queueEnrich = opts.queueEnrich !== false;
 
   // decision: Pato (MESITA-468) — every create path requires a Google Place ID;
   // callers already validate, but guard here so a future caller can't skip it.
@@ -114,7 +124,7 @@ export async function createMinimalPlace(opts: {
 
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop); category stays 'undefined' and
-  // family_keys NULL until the Intaker pipeline's contents stage infers
+  // family_keys ['undefined'] until the Intaker pipeline's contents stage infers
   // Super Category + Category. No
   // Apify/Firecrawl/Perplexity/OpenAI here — deep enrichment is async. ──
   const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
@@ -179,7 +189,7 @@ export async function createMinimalPlace(opts: {
     ...basicsRes.basics,
     category: "undefined",
     category_label: null,
-    family_keys: null,
+    family_keys: ["undefined"],
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
     // means it is not CLOSED_PERMANENTLY (refused above), but OPERATIONAL,
@@ -190,10 +200,15 @@ export async function createMinimalPlace(opts: {
     business_status_at: basicsRes.businessStatus ? new Date().toISOString() : null,
   };
 
-  // ── 2) Persist the minimal rows (in-process) — lands
-  // content_status='generating' until the Intaker pipeline's contents stage
-  // flips it to 'ready'. ──
-  const saveRes = await savePlaceData(admin, place, "generating");
+  // ── 2) Persist the minimal rows (in-process). queueEnrich lands
+  // content_status='generating' until contents flips it to ready. A cheap
+  // mint lands 'ready' with enriched_at null — the ugly profile is
+  // viewable; Enriched stays no until Intaker finishes. ──
+  const saveRes = await savePlaceData(
+    admin,
+    place,
+    queueEnrich ? "generating" : "ready",
+  );
   if (!saveRes.ok) {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
@@ -254,26 +269,11 @@ export async function createMinimalPlace(opts: {
     console.error(`[${callerName}/on-create] semantic:`, err);
   }
 
-  // ── 3) Queue deep enrichment (async): seed the place_research row at
-  // stage='research'; the pg_cron poller picks it up
-  // (supabase-cron-enrich-place-*). A seed failure NEVER fails the create —
-  // the row exists ('generating') and can be re-seeded. ──
-  // The on_create row of the trigger matrix decides what this first run buys.
-  // An operator who turns the whole row off gets a place with only its Google
-  // spine, which is a legitimate (if unusual) way to run a cheap catalog.
-  const triggers = await loadEnrichmentTriggers(admin);
-  const subprocesses = subprocessesFor(triggers, "on_create");
-  const trigger = subprocesses.length > 0
-    ? await seedPlaceResearch(
-      admin,
-      saved.project_id,
-      googlePlaceId,
-      callerName,
-      // No cooldown on create: a place enters Mesita exactly once, and the
-      // on_create row's window would only ever block a re-created place.
-      { trigger: "on_create", subprocesses, cooldownHours: 0 },
-    )
-    : { ok: false as const, error: "on_create disabled in the enrichment trigger matrix" };
+  // ── 3) Queue deep enrichment (async) only when the caller bought it.
+  // Consumer/admin Create skip this — votes or a later Enrich call seed.
+  const trigger = queueEnrich
+    ? await queueOnCreateEnrichment(admin, saved.project_id, googlePlaceId, callerName)
+    : { ok: false as const, error: null as string | null, skipped: true };
 
   const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {
@@ -297,4 +297,25 @@ export async function createMinimalPlace(opts: {
       instagramFollowers: (place.instagram_followers_count as number | null) ?? null,
     },
   };
+}
+
+async function queueOnCreateEnrichment(
+  admin: SupabaseClient,
+  projectId: string,
+  googlePlaceId: string,
+  callerName: string,
+): Promise<{ ok: boolean; error: string | null }> {
+  const triggers = await loadEnrichmentTriggers(admin);
+  const subprocesses = subprocessesFor(triggers, "on_create");
+  if (subprocesses.length === 0) {
+    return { ok: false, error: "on_create disabled in the enrichment trigger matrix" };
+  }
+  const seeded = await seedPlaceResearch(
+    admin,
+    projectId,
+    googlePlaceId,
+    callerName,
+    { trigger: "on_create", subprocesses, cooldownHours: 0 },
+  );
+  return { ok: seeded.ok, error: seeded.ok ? null : seeded.error ?? null };
 }

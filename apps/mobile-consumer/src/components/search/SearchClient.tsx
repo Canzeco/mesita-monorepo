@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +43,7 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
-import { buildSearchMapPins, overlayPinDecision } from '@/lib/search-membership';
+import { buildSearchMapPins, catalogPlaceOnMesita, overlayPinDecision, predictionOnMesita } from '@/lib/search-membership';
 import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
@@ -60,6 +61,7 @@ type Coords = { lat: number; lng: number };
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   const placeId = place.google_place_id;
   if (!place.from_google || !placeId) return null;
+  if (catalogPlaceOnMesita(place)) return null;
   return {
     placeId,
     mainText: place.name,
@@ -106,6 +108,8 @@ export function SearchClient() {
   // Bumped by Retry to re-run the suggest effect for the same query.
   const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
+  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
+  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash (Google + overlay-only Mesita) so a later
   // tap can still open after the suggest list is gone. Keyed on pin.id.
@@ -122,8 +126,11 @@ export function SearchClient() {
   const location = scope.locationOptOut ? null : coords;
   const nearbyOrigin = location ?? MONTERREY_CENTER;
 
+  const searchInputRef = useRef<TextInput | null>(null);
   const trimmed = query.trim();
-  const idle = trimmed.length === 0 && !searchOpen;
+  // Idle = map-browse. Closing the name overlay returns the rail even
+  // if leftover query text sits in the bar.
+  const idle = !searchOpen;
 
   useEffect(() => {
     let cancelled = false;
@@ -235,11 +242,40 @@ export function SearchClient() {
     sessionTokenRef.current = newSessionToken();
   }, []);
 
-  // Closes the search overlay without picking a place — shared by the
-  // clear button and tapping the map while search is open.
+  const openMesitaProfileFromPrediction = useCallback(
+    (prediction: PlacePrediction) => {
+      resetSearchSession();
+      setQuery('');
+      setSearchOpen(false);
+      const fromAdd = addedProfiles[prediction.placeId];
+      if (fromAdd) {
+        router.push(`/place/${fromAdd}`);
+        return;
+      }
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(`/place/${direct}`);
+        return;
+      }
+      const match = matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        router.push(`/place/${match.slug || match.id}`);
+      }
+    },
+    [addedProfiles, catalog, resetSearchSession, router],
+  );
+
+  // Dismisses the name overlay and keeps the typed text so a later
+  // bar tap can reopen the same list. Finger-drag and map tap use this.
+  const closeNameOverlay = () => {
+    setSearchOpen(false);
+    searchInputRef.current?.blur();
+  };
+
+  // Clear button — wipe the query and close the overlay.
   const closeSearch = () => {
     updateQuery('');
-    setSearchOpen(false);
+    closeNameOverlay();
   };
 
   const updateQuery = (next: string) => {
@@ -346,6 +382,10 @@ export function SearchClient() {
   // is the primary join; the exact-name match covers older suggest payloads.
   // Web parity (MESITA-672).
   const handlePickMesita = (prediction: PlacePrediction) => {
+    if (prediction.mesitaSlug ?? prediction.mesitaId) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
@@ -364,6 +404,26 @@ export function SearchClient() {
   };
 
   const handlePickGoogle = (prediction: PlacePrediction) => {
+    const fromAdd = addedProfiles[prediction.placeId];
+    if (fromAdd) {
+      resetSearchSession();
+      router.push(`/place/${fromAdd}`);
+      return;
+    }
+    if (addStates[prediction.placeId] === 'added') {
+      const match =
+        catalog.find((p) => p.google_place_id === prediction.placeId) ??
+        matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        resetSearchSession();
+        router.push(`/place/${match.slug || match.id}`);
+        return;
+      }
+    }
+    if (predictionOnMesita(prediction)) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     setPreview(prediction);
     setPreviewOpen(true);
     resetSearchSession();
@@ -396,7 +456,7 @@ export function SearchClient() {
     const action = overlayPinDecision({
       selectedId,
       pinId: pin.id,
-      googleOnly: prediction?.status === 'not_in_mesita',
+      googleOnly: prediction ? !predictionOnMesita(prediction) : false,
       inCatalog: Boolean(place),
       hasOverlay: Boolean(prediction),
     });
@@ -434,8 +494,18 @@ export function SearchClient() {
     setAddStates((s) => ({ ...s, [prediction.placeId]: 'adding' }));
     void (async () => {
       try {
-        await apiCreateProject(supabase, { placeId: prediction.placeId });
+        const created = await apiCreateProject(supabase, {
+          placeId: prediction.placeId,
+        });
+        const dest = created.place.slug || created.place.id;
         setAddStates((s) => ({ ...s, [prediction.placeId]: 'added' }));
+        if (dest) {
+          setAddedProfiles((s) => ({
+            ...s,
+            [prediction.placeId]: dest,
+          }));
+          router.push(`/place/${dest}`);
+        }
       } catch (err) {
         setAddStates((s) => {
           const next = { ...s };
@@ -457,7 +527,7 @@ export function SearchClient() {
     ? catalog.find((p) => p.id === selectedId)
     : null;
 
-  const showResults = searchOpen || trimmed.length >= 2;
+  const showResults = searchOpen;
 
   return (
     <View className="flex-1 bg-background">
@@ -473,7 +543,10 @@ export function SearchClient() {
           onOpenPlace={openCatalogPlace}
           onSelectPin={handleSelectPin}
           onMapPress={() => {
-            if (searchOpen) closeSearch();
+            if (searchOpen) closeNameOverlay();
+          }}
+          onMapDrag={() => {
+            if (searchOpen) closeNameOverlay();
           }}
         />
       </View>
@@ -487,6 +560,7 @@ export function SearchClient() {
         onFocus={() => setSearchOpen(true)}
         onClear={closeSearch}
         onOpenScope={() => setScopeOpen(true)}
+        inputRef={searchInputRef}
       />
 
       {/* Results: height fits content; max ~70% so the map stays visible */}

@@ -27,11 +27,15 @@ import {
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
+import { Flag } from "./DiscoveryFlags";
 import {
+  DISCOVERY_MODE_KEYS,
+  DISCOVERY_MODE_LABELS,
   LIBRARY_SIGNALS,
   SIGNALS,
   WEIGHT_MAX,
   WEIGHT_MIN,
+  modeSignalState,
   type DiscoveryConfig,
   type SignalKey,
 } from "./catalog";
@@ -139,8 +143,8 @@ export function SignalsConfigClient({
         subtitle="The ranked Mesita place feed. Ten earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         status={
           <KnobStatus
-            kind="not-wired"
-            reason="library · Map reads Popularity params · Swipe keeps its own sum"
+            kind="enforced"
+            reason="Places Lineup · Map · Deep · Swipe read the mode mask"
           />
         }
       >
@@ -161,6 +165,19 @@ export function SignalsConfigClient({
                     <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                       {spec.input} {spec.output}
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {DISCOVERY_MODE_KEYS.map((mode) => {
+                        const state = modeSignalState(mode, spec.key);
+                        return (
+                          <Flag
+                            key={mode}
+                            on={state === "on"}
+                            shape="circle"
+                            label={`${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 grid gap-3">

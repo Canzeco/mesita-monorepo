@@ -157,18 +157,18 @@ describe("what — families OR categories, never AND", () => {
     expect(kept.map((p) => p.id).sort()).toEqual(["bar", "taco"]);
   });
 
-  it("a category in two Super Categories matches either family pill", () => {
+  it("each Mesita category matches exactly one Super Category", () => {
     const brunch = place({
       id: "brunch",
       category: "brunch",
-      family_keys: ["restaurants", "cafes_bakeries"],
+      family_keys: ["restaurants"],
     });
     expect(
       applyDiscoveryFilters(
         [brunch, taco],
         filters({ familyKeys: ["cafes_bakeries"] }),
       ).map((p) => p.id),
-    ).toEqual(["brunch"]);
+    ).toEqual([]);
     expect(
       applyDiscoveryFilters(
         [brunch, taco],

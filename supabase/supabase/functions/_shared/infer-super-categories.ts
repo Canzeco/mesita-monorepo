@@ -1,8 +1,10 @@
-// Super Category inference: OpenAI classifier over the Atlas list (5–10
-// slugs; live catalog is the six in place_super_categories). Used when
-// the place has no Atlas category yet (undefined). Once Category is
-// known, family_keys is that category's FULL membership set — a category
-// in two supers keeps both. Empty here = leave family_keys undefined.
+// Super Category inference: OpenAI classifier over the Atlas list (the
+// seven real supers in place_super_categories; never `undefined`). Used
+// when the place has no classified Atlas category yet. Once Category is
+// known, family_keys is that category's FULL membership (1–2 supers).
+// The classifier may return one or two supers; a WRONG super is worse
+// than none, so it stays conservative — empty means the caller falls
+// back to ['undefined'] (resolveEnrichedFamilyKeys is total).
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import {
@@ -46,13 +48,14 @@ export async function inferPlaceSuperCategories(
     .join("\n");
 
   const systemContent =
-    "You classify a place into one or two Super Categories from a fixed list. " +
-    'Respond with a single JSON object {"super_categories":["<slug>",...]} ' +
-    "where each slug is copied verbatim from the list. A Super Category is a " +
-    "set of categories (nightlife includes bars and nightclubs). Pick 1 slug " +
-    "when the place clearly belongs to one set; pick 2 only for a real " +
-    "intersection (brunch is restaurants and cafes). Never invent slugs. " +
-    "Never return more than two.";
+    "You classify a place into ONE or TWO Super Categories from a fixed list. " +
+    'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
+    "where every slug is copied verbatim from the list. Most places get " +
+    "exactly one; return two ONLY when the place genuinely lives in both " +
+    "(a breakfast café is restaurants and cafes_bakeries; a karaoke bar is " +
+    "bars_nightlife and experiences). Only classify when confident — a " +
+    "wrong Super is worse than none. Never invent slugs. Never return " +
+    "more than two.";
   const userPrompt =
     `Super Categories (slug — label):\n${catalog}\n\n` +
     `Place:\n${placeLines}\n\n` +

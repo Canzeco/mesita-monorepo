@@ -6,10 +6,11 @@
 // enriched profile only — Created and Requested stubs are not a search
 // source. A Super Category is a SET of categories; a category may sit
 // in two (breakfast is restaurants AND cafés). The cut is OR: a place
-// matches if any of its Super Categories is selected. The Search chrome
-// uses the guest word Category for the same six families. Distance and
-// time stay off this surface: the camera already bounds the set. Swipe
-// keeps Discovery.
+// matches if any of its Super Categories is selected. Google stubs
+// match from family_keys (Google primaryType → exactly one Super).
+// Super Category lives in the Filters sheet — not a chip strip on the
+// map. Distance and time stay off this surface: the camera already
+// bounds the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
@@ -31,28 +32,28 @@ export type MapSearchPower = 1 | 2 | 3;
 /** + Places — Partners and enriched Mesita Places. Not Google. */
 export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 2;
 
-/** Three exclusive pills — same format as admin Map Reload after. */
+/** Three exclusive scopes — Venn rings in SearchPlacesScope. */
 export const MAP_SEARCH_STOPS = [
   {
     power: 1,
     key: "partners",
-    tick: "Partners",
+    tick: "Mesita Partners",
     label: "Mesita Partners",
     hint: "Mesita Partners only",
   },
   {
     power: 2,
     key: "places",
-    tick: "+ Places",
+    tick: "All Mesita Places",
     label: "Mesita Places",
-    hint: "Partners and Mesita Places",
+    hint: "Mesita Partners and All Mesita Places",
   },
   {
     power: 3,
     key: "google",
-    tick: "+ Google",
+    tick: "All Google Places",
     label: "Google Places",
-    hint: "Also Google Places",
+    hint: "Mesita Partners, All Mesita Places, and All Google Places",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
@@ -71,7 +72,7 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 export type MapFilters = {
   /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
   searchPower: MapSearchPower;
-  /** Super Category: the six place families; empty = no constraint. */
+  /** Super Category: the seven place families; empty = no constraint. */
   familyKeys: FamilyKey[];
 };
 
@@ -90,8 +91,8 @@ export function clampSearchPower(value: unknown): MapSearchPower {
 
 export function searchPowerCaption(power: MapSearchPower): string {
   if (power <= 1) return "Mesita Partners";
-  if (power === 2) return "Mesita Partners & Mesita Places";
-  return "Mesita Partners & Mesita Places & Google Places";
+  if (power === 2) return "Mesita Partners & All Mesita Places";
+  return "Mesita Partners & All Mesita Places & All Google Places";
 }
 
 /** Highest rung wins so a place has one atlas status. */
@@ -134,9 +135,9 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   if (!lane) return false;
   if (LANE_POWER[lane] > f.searchPower) return false;
 
-  // Super Category does not cut Google stubs — they have no reliable
-  // membership. Closest Google at full power stays closest Google.
-  if (lane !== "google" && f.familyKeys.length > 0) {
+  // Super Category cuts Mesita rows and Google stubs. Google membership
+  // is the one Super of the Nearby primaryType (family_keys on the stub).
+  if (f.familyKeys.length > 0) {
     const familyHit = f.familyKeys.some((key) =>
       (place.family_keys ?? []).includes(key),
     );

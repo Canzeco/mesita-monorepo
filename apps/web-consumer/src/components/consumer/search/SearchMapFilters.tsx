@@ -15,10 +15,8 @@ import { SearchPlacesScope } from "./SearchPlacesScope";
 
 // Search-map Filters sheet. Places scope + Super Category only. There
 // is no Status chip row, Category, or Types axis. Scope is cumulative:
-// Partners ⊂ + Places ⊂ + Google. Default is + Places. Mesita Places
-// is enriched only. A Super Category is a SET of categories; one
-// category may belong to multiple Super Categories. Distance and time
-// are not map knobs.
+// Partners ⊂ + Places ⊂ + Google as a display-only nested set. The
+// legend pills are the control. Default is + Places.
 
 export function SearchMapFilters({
   onClose,
@@ -62,13 +60,6 @@ export function SearchMapFilters({
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="flex flex-col gap-3">
-          <FilterModule label="Places">
-            <SearchPlacesScope
-              power={filters.searchPower}
-              onPower={setMapSearchPower}
-            />
-          </FilterModule>
-
           <FilterModule label="Super Category">
             <div className="flex flex-wrap gap-1.5">
               {PLACE_FAMILIES.map((family) => (
@@ -81,6 +72,13 @@ export function SearchMapFilters({
                 </Pill>
               ))}
             </div>
+          </FilterModule>
+
+          <FilterModule label="Places">
+            <SearchPlacesScope
+              power={filters.searchPower}
+              onPower={setMapSearchPower}
+            />
           </FilterModule>
         </div>
       </div>

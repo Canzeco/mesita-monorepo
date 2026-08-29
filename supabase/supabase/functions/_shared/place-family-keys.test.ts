@@ -1,13 +1,13 @@
 import { assertEquals } from "jsr:@std/assert";
 import { withFamilyKeys, withFamilyKeysList } from "./place-family-keys.ts";
 
-Deno.test("withFamilyKeys attaches dual-family keys for gastropub", () => {
+Deno.test("withFamilyKeys attaches one Super for gastropub", () => {
   const out = withFamilyKeys({ id: "1", category: "gastropub" });
-  assertEquals(out.family_keys, ["restaurants", "bars_nightlife"]);
+  assertEquals(out.family_keys, ["restaurants"]);
   assertEquals(out.id, "1");
 });
 
-Deno.test("withFamilyKeys maps Atlas slugs, including intersections", () => {
+Deno.test("withFamilyKeys ships the FULL Atlas membership (1–2 supers)", () => {
   assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, [
     "restaurants",
   ]);
@@ -18,13 +18,17 @@ Deno.test("withFamilyKeys maps Atlas slugs, including intersections", () => {
     "restaurants",
     "cafes_bakeries",
   ]);
+  assertEquals(withFamilyKeys({ category: "karaoke" }).family_keys, [
+    "bars_nightlife",
+    "experiences",
+  ]);
 });
 
-Deno.test("withFamilyKeys keeps every Super Category the category belongs to", () => {
+Deno.test("withFamilyKeys keeps the Atlas membership when stored keys disagree", () => {
   assertEquals(
     withFamilyKeys({
       category: "breakfast",
-      family_keys: ["restaurants"],
+      family_keys: ["cafes_bakeries"],
     }).family_keys,
     ["restaurants", "cafes_bakeries"],
   );
@@ -40,15 +44,19 @@ Deno.test("withFamilyKeys keeps every Super Category the category belongs to", (
       category: "undefined",
       family_keys: ["bars_nightlife"],
     }).family_keys,
-    ["bars_nightlife"],
+    ["undefined"],
   );
 });
 
-Deno.test("withFamilyKeys returns [] for unknown / empty / undefined category", () => {
-  assertEquals(withFamilyKeys({ category: "gas_station" }).family_keys, []);
-  assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, []);
-  assertEquals(withFamilyKeys({ category: null }).family_keys, []);
-  assertEquals(withFamilyKeys({}).family_keys, []);
+Deno.test("withFamilyKeys is TOTAL: undefined category and leftovers land on Other", () => {
+  assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, [
+    "undefined",
+  ]);
+  assertEquals(withFamilyKeys({ category: "gas_station" }).family_keys, [
+    "undefined",
+  ]);
+  assertEquals(withFamilyKeys({ category: null }).family_keys, ["undefined"]);
+  assertEquals(withFamilyKeys({}).family_keys, ["undefined"]);
 });
 
 Deno.test("withFamilyKeysList maps a list", () => {
