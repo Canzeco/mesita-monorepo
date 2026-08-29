@@ -2,6 +2,7 @@
 
 import {
   searchPlacesByGoogleIds,
+  setPlaceActive,
   setPlaceListed,
   setPlacePlan,
   setPlaceStrategy,
@@ -14,16 +15,18 @@ import {
 } from "@/lib/business/strategies";
 import type { BatchRowStatus } from "./StatusIcon";
 
-export type EditFact = "listed" | "verified" | "partner" | "promoting";
+export type EditFact = "listed" | "active" | "verified" | "partner" | "promoting";
 
 export type EditValues = {
   listedOn: boolean;
+  activeOn: boolean;
   partnerOn: boolean;
   promoting: 0 | 1 | 2;
 };
 
 export const DEFAULT_EDIT_VALUES: EditValues = {
   listedOn: true,
+  activeOn: true,
   partnerOn: true,
   promoting: 0,
 };
@@ -44,7 +47,7 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 const SELECT_CLASS =
   "border-border bg-background h-10 rounded-xl border px-3 text-sm outline-none";
 
-// State + value next to Update. Listed · Verified · Partner · Promoted.
+// State + value next to Update. Listed · Active · Verified · Partner · Promoted.
 export function UpdateFields({
   fact,
   onFact,
@@ -72,6 +75,7 @@ export function UpdateFields({
         className={SELECT_CLASS}
       >
         <option value="listed">Listed</option>
+        <option value="active">Active</option>
         <option value="verified">Verified</option>
         <option value="partner">Partner</option>
         <option value="promoting">Promoted</option>
@@ -85,6 +89,18 @@ export function UpdateFields({
           options={[
             { value: "on", label: "On" },
             { value: "off", label: "Off" },
+          ]}
+        />
+      ) : null}
+      {fact === "active" ? (
+        <ValueSelect
+          ariaLabel="Value"
+          disabled={disabled}
+          value={values.activeOn ? "on" : "off"}
+          onChange={(v) => onValues({ ...values, activeOn: v === "on" })}
+          options={[
+            { value: "on", label: "On" },
+            { value: "off", label: "Off · also unlists" },
           ]}
         />
       ) : null}
@@ -168,6 +184,15 @@ export async function applyOne(
       status: "ok",
       name,
       detail: values.listedOn ? "Listed on" : "Listed off",
+    };
+  }
+  if (fact === "active") {
+    const r = await setPlaceActive(hit.id, values.activeOn);
+    if (!r.ok) return { status: "error", name, error: r.error };
+    return {
+      status: "ok",
+      name,
+      detail: values.activeOn ? "Active on" : "Active off · unlisted",
     };
   }
   if (fact === "verified") {

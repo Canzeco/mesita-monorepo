@@ -35,6 +35,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
 import {
   getPlaceEnrichment,
+  setPlaceActive,
   setPlaceListed,
   type AdminPlace,
   type PlaceEnrichmentStatus,
@@ -248,10 +249,10 @@ export function StatusCard({
   const operatingDetail = bizStatus === null
     ? "Google has not reported a business status for this listing yet."
     : bizStatus === "OPERATIONAL"
-      ? `Google reports this business as open and trading${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Separate from Listed — this is Google's word, not ours.`
+      ? `Open and trading${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Pulse can refresh this from Google. Off also unlists.`
       : bizStatus === "CLOSED_TEMPORARILY"
-        ? `Google reports a temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Still a real business; nothing is unlisted automatically.`
-        : `Google reports this business as PERMANENTLY CLOSED${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Flag only — review and unlist by hand if it is right.`;
+        ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Marking inactive also unlists.`
+        : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive. Re-list is a separate write.`;
 
   const enrichingDetail = enriching
     ? "The Intaker pipeline is mid-flight — research, analysis, or contents is running."
@@ -336,6 +337,7 @@ export function StatusCard({
           chip={statusBoolChip(operating)}
           tint="teal"
           detail={operatingDetail}
+          action={<ActiveToggle place={place} operating={operating} />}
         />
         <StatusRow
           name="Listed"
@@ -419,8 +421,7 @@ function StatusRow({
   chip: string;
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;
-  /** Control rendered under the detail line. Only Listed has one: it is the
-   *  only fact on this card an operator sets directly rather than earns. */
+  /** Control under the detail. Active and Listed are the two operator writes. */
   action?: React.ReactNode;
   children?: React.ReactNode;
 }) {
@@ -457,16 +458,80 @@ function StatusRow({
 
 
 /**
- * The only control on this card, because Listed is the only fact here an
- * operator SETS rather than earns — Created, Enriched, Verified, Partner and
- * Promoted are all consequences of something else happening.
- *
- * It writes projects.status through admin-web-set-place-listed, the column's
- * only write path. Unlisting is confirmed rather than immediate: the consumer
- * RLS policy gates every guest read on this one value, so flipping it off
- * removes the place from browse, search, the swipe deck and any shared link at
- * the same instant. Re-listing needs no confirm — putting a place back is not
- * the dangerous direction.
+ * Active is the operator override of business_status. Off also unlists
+ * (admin-web-set-place-active). On writes OPERATIONAL and does not list.
+ * Confirm the off direction — guests disappear with the unlist.
+ */
+function ActiveToggle({
+  place,
+  operating,
+}: {
+  place: AdminPlace;
+  operating: boolean | "unknown";
+}) {
+  const { setPlace } = usePlaceContext();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const apply = (next: boolean) => {
+    setError(null);
+    setPending(true);
+    void setPlaceActive(place.id, next).then((r) => {
+      setPending(false);
+      setConfirming(false);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setPlace(r.data);
+    });
+  };
+
+  const active = operating === true;
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => (active ? setConfirming(true) : apply(true))}
+        className={
+          "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 " +
+          (active
+            ? "border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground"
+            : "border-transparent bg-pink-gradient text-white shadow-save hover:brightness-105")
+        }
+      >
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+        {active ? "Mark inactive" : "Mark active"}
+      </button>
+      {error ? <ErrorNote message={error} /> : null}
+
+      <ConfirmDialog
+        open={confirming}
+        title="Mark inactive and unlist?"
+        danger
+        busy={pending}
+        confirmLabel="Mark inactive"
+        body={
+          <p>
+            {place.name} is marked closed, and guests stop finding it
+            everywhere at once — browse, search, the swipe deck, and any
+            link already shared. Re-listing is a separate write.
+          </p>
+        }
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => apply(false)}
+      />
+    </>
+  );
+}
+
+/**
+ * Listed writes projects.status through admin-web-set-place-listed.
+ * Unlisting is confirmed rather than immediate: the consumer RLS policy
+ * gates every guest read on this one value.
  */
 function ListedToggle({
   place,
