@@ -316,6 +316,25 @@ export function keepListedForSearchPower(
   return isEnrichedListedRow(row);
 }
 
+/** Any Mesita row's Place ID — including Created/Requested — must not stub as Google. */
+export function listedGooglePlaceIds(
+  rows: Array<{ google_place_id?: string | null }>,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const row of rows) {
+    if (row.google_place_id) ids.add(row.google_place_id);
+  }
+  return ids;
+}
+
+export function dropKnownMesitaGoogleHits<T extends { placeId: string }>(
+  google: T[],
+  known: Set<string>,
+): T[] {
+  if (known.size === 0) return google;
+  return google.filter((hit) => !known.has(hit.placeId));
+}
+
 export function isMesitaPartnerRow(row: MesitaNearbyRow): boolean {
   if (row.partner === true) return true;
   if (row.partner === false) return false;

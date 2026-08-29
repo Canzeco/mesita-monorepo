@@ -8,8 +8,10 @@ import {
   MESITA_NEARBY_MAX,
   NEARBY_TYPES,
   clampSearchPower,
+  dropKnownMesitaGoogleHits,
   isEnrichedListedRow,
   keepListedForSearchPower,
+  listedGooglePlaceIds,
   lanesForSearchPower,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
@@ -681,5 +683,19 @@ Deno.test("search power zeros unused lanes and treats Mesita Places as enriched"
   assertEquals(
     keepListedForSearchPower({ id: "c", plan: "free", content_status: "queued" }, 3),
     false,
+  );
+  const createdGids = listedGooglePlaceIds([
+    { google_place_id: "ChIJ-created" },
+    { google_place_id: null },
+  ]);
+  assertEquals(
+    dropKnownMesitaGoogleHits(
+      [
+        { placeId: "ChIJ-created" },
+        { placeId: "ChIJ-google" },
+      ],
+      createdGids,
+    ).map((hit) => hit.placeId),
+    ["ChIJ-google"],
   );
 });

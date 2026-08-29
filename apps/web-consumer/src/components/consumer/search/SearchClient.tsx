@@ -313,8 +313,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // (Fast / Deep Autocomplete) never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    clearPendingReload();
     void loadViewport(lastBoxRef.current);
-  }, [filters.searchPower, loadViewport]);
+  }, [clearPendingReload, filters.searchPower, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 

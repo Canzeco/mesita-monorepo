@@ -364,6 +364,8 @@ describe("Discovery page box order", () => {
     expect(name).toContain('label="Max results"');
     expect(name).toContain("name.fast.googleCount");
     expect(name).toContain("name.fast.count");
+    expect(name).toContain("patchFast({ googleCount, count: googleCount })");
+    expect(name).toContain("patchFast({ count, googleCount: count })");
     expect(name).toContain("name.deep.partnerCount");
     expect(name).toContain("name.deep.mesitaCount");
     expect(name).toContain("name.deep.googleCount");

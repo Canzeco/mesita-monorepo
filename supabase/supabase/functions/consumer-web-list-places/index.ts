@@ -59,8 +59,10 @@ import {
 } from "../_shared/geo.ts";
 import {
   clampSearchPower,
+  dropKnownMesitaGoogleHits,
   keepListedForSearchPower,
   lanesForSearchPower,
+  listedGooglePlaceIds,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
@@ -299,9 +301,9 @@ Deno.serve(async (req) => {
   if (nearbyDecision.mode === "ok") {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
-    let mesitaRows = (data ?? []) as unknown as CardRow[];
-
-    mesitaRows = mesitaRows.filter((row) =>
+    const scanRows = (data ?? []) as unknown as CardRow[];
+    const knownMesitaGids = listedGooglePlaceIds(scanRows);
+    let mesitaRows = scanRows.filter((row) =>
       keepListedForSearchPower(row, searchPower)
     );
 
@@ -378,6 +380,7 @@ Deno.serve(async (req) => {
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
+          if (row.google_place_id) knownMesitaGids.add(row.google_place_id);
           if (seen.has(row.id)) continue;
           if (!keepListedForSearchPower(row, searchPower)) continue;
           seen.add(row.id);
@@ -387,7 +390,7 @@ Deno.serve(async (req) => {
     }
     const admitted = admitMapCatalog(
       mesitaRows,
-      googleHits,
+      dropKnownMesitaGoogleHits(googleHits, knownMesitaGids),
       cfg.map,
       cfg.params.popularity,
     );

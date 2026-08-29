@@ -133,7 +133,7 @@ export function NameConfigClient({
               min={0}
               max={NAME_LANE_COUNT_MAX}
               disabled={pending || loadBlocked}
-              onChange={(googleCount) => patchFast({ googleCount })}
+              onChange={(googleCount) => patchFast({ googleCount, count: googleCount })}
             />
             <NumberField
               icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}
@@ -142,7 +142,7 @@ export function NameConfigClient({
               min={0}
               max={NAME_LANE_COUNT_MAX}
               disabled={pending || loadBlocked}
-              onChange={(count) => patchFast({ count })}
+              onChange={(count) => patchFast({ count, googleCount: count })}
             />
           </div>
           {updatedAt ? (
