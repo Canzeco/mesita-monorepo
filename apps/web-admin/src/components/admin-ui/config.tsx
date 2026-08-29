@@ -216,6 +216,39 @@ export function NumberField({
   );
 }
 
+/** Same box chrome as NumberField. The control is a categorical picker. */
+export function ChoiceField({
+  icon,
+  label,
+  hint,
+  children,
+  className,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={
+        "border-border bg-background flex flex-col gap-2 rounded-xl border p-4" +
+        (className ? ` ${className}` : "")
+      }
+    >
+      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
+        {icon}
+        {label}
+      </span>
+      {hint ? (
+        <p className="text-muted-foreground type-meta">{hint}</p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
 const COMPACT_FIELD =
   "border-border bg-background focus:border-foreground h-10 w-full rounded-xl border px-3 text-sm outline-none disabled:opacity-50";
 
