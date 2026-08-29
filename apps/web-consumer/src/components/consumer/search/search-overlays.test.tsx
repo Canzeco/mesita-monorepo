@@ -249,6 +249,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("SearchMap.tsx")).toContain("SearchMapReticle");
     expect(read("SearchMap.tsx")).toContain("noteProgrammaticCamera");
+    expect(read("SearchMap.tsx")).toContain("noteUserMapDrag");
+    expect(read("SearchMap.tsx")).toContain('addListener("dragstart"');
+    expect(read("SearchMap.tsx")).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "Zoom in to see this area",
     );
@@ -301,6 +304,15 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     );
     expect(src).toContain("cannot accumulate toward reload");
     expect(src).toContain("Only a finger-drag on the map counts as travel");
+  });
+
+  it("treats every idle after a rail pan as programmatic until dragstart", () => {
+    const src = read("SearchMap.tsx");
+    expect(src).toContain("cameraMoveIsProgrammatic");
+    expect(src).toContain("noteUserMapDrag");
+    expect(src).toMatch(/addListener\("dragstart", noteUserMapDrag\)/);
+    expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
+    expect(src).not.toContain("programmaticIdleUntil");
   });
 
   it("reloads once when a later GPS fix lands off the fetched camera", () => {

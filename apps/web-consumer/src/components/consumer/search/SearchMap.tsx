@@ -153,17 +153,22 @@ export function SearchMap({
   );
 }
 
-/** Ignore map `idle` after Recentre / PanTo so picking a rail card or
- *  following GPS does not count as a guest pan (and must not refetch). */
-const PROGRAMMATIC_IDLE_MS = 600;
-let programmaticIdleUntil = 0;
+/** Rail / pin / GPS pans stay programmatic until a real finger-drag.
+ *  A time window leaked: a slow panTo idle fired after 600ms and
+ *  counted catalog browsing as travel. dragstart is the only user
+ *  gesture that may accrue Reload after. */
+let cameraMoveIsProgrammatic = false;
 
 function noteProgrammaticCamera() {
-  programmaticIdleUntil = Date.now() + PROGRAMMATIC_IDLE_MS;
+  cameraMoveIsProgrammatic = true;
+}
+
+function noteUserMapDrag() {
+  cameraMoveIsProgrammatic = false;
 }
 
 function isProgrammaticIdle() {
-  return Date.now() < programmaticIdleUntil;
+  return cameraMoveIsProgrammatic;
 }
 
 /** Screen-fixed sight at the canvas center — the catalog fetch point.
@@ -331,6 +336,7 @@ function ViewportReporter({
 
   useEffect(() => {
     if (!map) return;
+    const drag = map.addListener("dragstart", noteUserMapDrag);
     const listener = map.addListener("idle", () => {
       const box = readViewportBox(map);
       if (!box) return;
@@ -341,7 +347,10 @@ function ViewportReporter({
       }
       onUser?.(box, { programmatic: isProgrammaticIdle() });
     });
-    return () => listener.remove();
+    return () => {
+      drag.remove();
+      listener.remove();
+    };
   }, [map, onFirst, onUser]);
 
   return null;
