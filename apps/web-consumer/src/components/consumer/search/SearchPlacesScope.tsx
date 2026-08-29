@@ -68,10 +68,10 @@ function annulusPath(
 }
 
 function bandFillOpacity(power: MapSearchPower, layerPower: MapSearchPower) {
-  if (power < layerPower) return 0.07;
-  if (layerPower === 1) return 0.94;
-  if (layerPower === 2) return 0.7;
-  return 0.42;
+  if (power < layerPower) return 0.045;
+  if (layerPower === 1) return 0.96;
+  if (layerPower === 2) return 0.74;
+  return 0.52;
 }
 
 export function SearchPlacesScope({
@@ -172,9 +172,8 @@ export function SearchPlacesScope({
                   fillOpacity={bandFillOpacity(power, layer.power)}
                   fillRule="evenodd"
                   stroke={layer.color}
-                  strokeWidth={selectedRing ? 2.4 : included ? 1.35 : 1.1}
-                  strokeOpacity={included ? 0.95 : 0.28}
-                  strokeDasharray={included ? undefined : "3.5 4.5"}
+                  strokeWidth={selectedRing ? 2.6 : included ? 1.35 : 1.15}
+                  strokeOpacity={included ? 0.95 : 0.22}
                 />
               );
             })}
@@ -250,7 +249,7 @@ export function SearchPlacesScope({
                 }}
                 aria-hidden
               />
-              <span className="type-meta font-semibold tracking-tight">
+              <span className="type-body font-semibold tracking-tight">
                 {stop.tick}
               </span>
             </button>
