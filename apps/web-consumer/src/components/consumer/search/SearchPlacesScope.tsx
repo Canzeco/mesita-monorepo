@@ -197,7 +197,7 @@ export function SearchPlacesScope({
             aria-hidden
           />
           <p className="type-meta leading-snug text-amber-900">
-            <span className="font-semibold">ALL GOOGLE PLACES.</span> Includes
+            <span className="font-semibold">All Google Places.</span> Includes
             spots Mesita hasn&apos;t vetted — some may not be worth your time.
           </p>
         </div>

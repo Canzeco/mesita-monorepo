@@ -36,23 +36,23 @@ export const MAP_SEARCH_STOPS = [
   {
     power: 1,
     key: "partners",
-    tick: "Partners",
+    tick: "Mesita Partners",
     label: "Mesita Partners",
     hint: "Mesita Partners only",
   },
   {
     power: 2,
     key: "places",
-    tick: "+ Places",
+    tick: "All Mesita Places",
     label: "Mesita Places",
-    hint: "Partners and Mesita Places",
+    hint: "Mesita Partners and All Mesita Places",
   },
   {
     power: 3,
     key: "google",
-    tick: "+ Google",
+    tick: "All Google Places",
     label: "Google Places",
-    hint: "Also Google Places",
+    hint: "Mesita Partners, All Mesita Places, and All Google Places",
   },
 ] as const satisfies readonly {
   power: MapSearchPower;
@@ -90,8 +90,8 @@ export function clampSearchPower(value: unknown): MapSearchPower {
 
 export function searchPowerCaption(power: MapSearchPower): string {
   if (power <= 1) return "Mesita Partners";
-  if (power === 2) return "Mesita Partners & Mesita Places";
-  return "Mesita Partners & Mesita Places & Google Places";
+  if (power === 2) return "Mesita Partners & All Mesita Places";
+  return "Mesita Partners & All Mesita Places & All Google Places";
 }
 
 /** Highest rung wins so a place has one atlas status. */
