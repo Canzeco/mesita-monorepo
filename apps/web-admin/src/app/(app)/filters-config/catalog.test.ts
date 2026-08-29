@@ -146,7 +146,7 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Partners/);
     expect(map?.process).toMatch(/Mesita/);
     expect(map?.process).toMatch(/Google/);
-    expect(map?.process).toMatch(/overlaps/);
+    expect(map?.process).toMatch(/Overlaps/);
     expect(map?.process).toMatch(/reload pair/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
