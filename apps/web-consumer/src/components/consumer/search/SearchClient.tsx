@@ -47,7 +47,11 @@ import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { deriveCategoryOptions } from "@/lib/discovery-filters-engine";
-import { applyMapFilters, mapFiltersAreActive } from "@/lib/map-filters-engine";
+import {
+  applyMapFilters,
+  mapFilterCount,
+  mapFiltersAreActive,
+} from "@/lib/map-filters-engine";
 import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { SearchBar } from "./SearchBar";
 import { SearchFilterRow } from "./SearchFilterRow";
@@ -587,7 +591,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           </div>
           {idle && (
             <SearchFilterRow
-              active={mapFiltersAreActive(filters)}
+              count={mapFilterCount(filters)}
               onOpenFilters={() => setFiltersOpen(true)}
             />
           )}

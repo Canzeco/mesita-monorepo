@@ -3,6 +3,7 @@ import type { Place } from "@/lib/api/places";
 import {
   applyMapFilters,
   MAP_FILTER_DEFAULTS,
+  mapFilterCount,
   mapFiltersAreActive,
   placeMapStatus,
   type MapFilters,
@@ -44,6 +45,19 @@ describe("applyMapFilters", () => {
     const deck = [place({ id: "a" }), place({ id: "b" })];
     expect(applyMapFilters(deck, filters())).toBe(deck);
     expect(mapFiltersAreActive(filters())).toBe(false);
+    expect(mapFilterCount(filters())).toBe(0);
+  });
+
+  it("counts every selected status, family, and type", () => {
+    expect(
+      mapFilterCount(
+        filters({
+          statuses: ["created", "enriched"],
+          familyKeys: ["restaurants"],
+          categories: ["night_club"],
+        }),
+      ),
+    ).toBe(4);
   });
 
   it("keeps the selected status buckets", () => {

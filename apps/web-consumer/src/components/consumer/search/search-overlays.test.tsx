@@ -107,25 +107,28 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  it("is only the Filters button, with a red bubble when a filter is on", () => {
+  it("is icon-only, with a red count when filters are on", () => {
     const rest = renderToStaticMarkup(
-      <SearchFilterRow active={false} onOpenFilters={() => {}} />,
+      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
-    expect(rest).toContain("Filters");
     expect(rest).toContain("lucide-sliders-horizontal");
+    expect(rest).toContain("Filter places");
+    expect(rest).not.toContain(">Filters<");
+    expect(rest).not.toMatch(/>\s*Filters\s*</);
     expect(rest).not.toContain("bg-destructive");
     expect(rest).not.toContain("Restaurants");
     expect(rest).not.toContain("Bars");
     expect(rest).not.toContain("Now");
     expect(rest).not.toContain("Visit");
     expect(rest).not.toContain("🇲🇽");
-    expect(rest).not.toContain("Search filters");
 
     const on = renderToStaticMarkup(
-      <SearchFilterRow active onOpenFilters={() => {}} />,
+      <SearchFilterRow count={3} onOpenFilters={() => {}} />,
     );
-    expect(on).toContain("Filters (active)");
+    expect(on).toContain("3 applied");
     expect(on).toContain("bg-destructive");
+    expect(on).toContain(">3<");
+    expect(on).not.toMatch(/>\s*Filters\s*</);
     expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
     expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
   });
@@ -239,6 +242,7 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(src).toContain("useMapFilters");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
     expect(src).toContain("flex min-w-0 items-center gap-2");
     expect(src).toContain("min-w-0 flex-1");

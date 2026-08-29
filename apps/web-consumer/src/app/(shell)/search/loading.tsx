@@ -9,7 +9,7 @@ export default function SearchLoading() {
 
       <div className="absolute inset-x-3 top-3 flex items-center gap-2">
         <Skeleton className="bg-card/95 shadow-elev h-12 min-w-0 flex-1 rounded-full" />
-        <Skeleton className="bg-card/95 h-12 w-24 shrink-0 rounded-full" />
+        <Skeleton className="bg-card/95 h-12 w-12 shrink-0 rounded-full" />
       </div>
 
       <div className="absolute inset-x-3 bottom-3">
