@@ -518,7 +518,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const card = read("SearchRailCard.tsx");
     const overlay = read("search-catalog-overlays.tsx");
     expect(card).toContain(
-      "bg-muted relative aspect-square min-h-20 w-auto shrink-0 self-stretch overflow-hidden",
+      "bg-muted relative aspect-square h-full w-auto shrink-0 overflow-hidden",
     );
     expect(card).toContain("overflow-hidden rounded-2xl border");
     expect(card).toContain('className="border-0 object-cover outline-none"');
@@ -528,7 +528,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
       /aspect-square[^"]*\b(?:border|ring|rounded-xl)\b/,
     );
     expect(overlay).toContain(
-      "aspect-square min-h-20 w-auto shrink-0 self-stretch rounded-none",
+      "aspect-square h-full w-auto shrink-0 rounded-none",
     );
     const html = renderToStaticMarkup(
       <RailCard
@@ -539,9 +539,51 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
       />,
     );
     expect(html).toContain("aspect-square");
-    expect(html).toContain("min-h-20");
+    expect(html).toContain("h-full");
     expect(html).not.toMatch(/aspect-square[^"]*\bborder\b/);
     expect(html).not.toMatch(/aspect-square[^"]*\brounded-xl\b/);
+  });
+
+  it("keeps every rail card the same height when rows are missing", () => {
+    const card = read("SearchRailCard.tsx");
+    const overlay = read("search-catalog-overlays.tsx");
+    const loading = read("../../../app/(shell)/search/loading.tsx");
+    expect(card).toContain('RAIL_CARD_HEIGHT_CLASS = "h-24"');
+    expect(card).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
+    expect(overlay).toContain("RAIL_CARD_HEIGHT_CLASS");
+    expect(loading).toContain("h-24");
+    expect(loading).not.toContain("h-[88px]");
+
+    const sparse = renderToStaticMarkup(
+      <RailCard
+        place={RAIL_PLACE}
+        selected={false}
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    const full = renderToStaticMarkup(
+      <RailCard
+        place={{
+          ...RAIL_PLACE,
+          id: "p2",
+          name: "Cabaret Social Room",
+          category_label: "Nightclub",
+          zone: "Del Valle",
+          google_rating: 4.3,
+          distance_km: 0.9,
+          open_now: false,
+          opens_at: "21:00",
+        }}
+        selected
+        onSelect={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    expect(sparse).toContain("h-24");
+    expect(full).toContain("h-24");
+    expect(sparse).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
+    expect(full).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
   });
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
