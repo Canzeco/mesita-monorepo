@@ -1,7 +1,10 @@
-// Shared place-image persistence — upserts place_media_assets rows immediately,
-// then mirrors source URLs to the place-images bucket in a background task.
-// Used by supabase-edgefunc-store-place-images (kept as a separate EF so mirroring
-// gets its own wall clock) and callable in-process when that hop isn't needed.
+// Shared place-image persistence — upserts place_media_assets rows, then
+// mirrors source URLs into the place-images bucket.
+//
+// CREATE Details awaits storeFirstPlaceImage (one Google photo, now) so a
+// Created place has a thumb before Enrich Images. Enrich Images still uses
+// storePlaceImages + runInBackground for the ranked gallery, via
+// supabase-edgefunc-store-place-images (own wall clock).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
@@ -33,6 +36,76 @@ const PLACE_PHOTOS_CAP = 50;
 export type StorePlaceImagesResult =
   | { ok: true; queued: number; preferred: number }
   | { ok: false; error: string };
+
+/**
+ * CREATE Details: mirror ONE Google photo now so a Created (not-yet-Enriched)
+ * place still has a thumb in the app. Awaits the upload. Enrich Images later
+ * replaces this with the ranked gallery. Mirror failure keeps the source URL.
+ */
+export async function storeFirstPlaceImage(
+  admin: SupabaseClient,
+  supabaseUrl: string,
+  projectId: string,
+  sourceUrl: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string; url: string }> {
+  const assets = sanitiseAssets([{ source: "google", source_url: sourceUrl }]);
+  const url = assets[0]?.source_url ?? "";
+  if (!url) {
+    return { ok: false, error: "invalid_source_url", url: sourceUrl };
+  }
+
+  const { error: upsertErr } = await admin
+    .from("place_media_assets")
+    .upsert(
+      [{
+        place_id: projectId,
+        source: "google",
+        source_url: url,
+        status: "pending",
+        likes_count: null,
+        caption: null,
+        analysis_text: null,
+        source_metadata: { via: "create" },
+        last_error: null,
+      }],
+      { onConflict: "place_id,source_url" },
+    );
+  if (upsertErr) {
+    return { ok: false, error: `media_upsert: ${upsertErr.message}`, url };
+  }
+
+  const mirrored = await mirrorOne(admin, supabaseUrl, url);
+  const { error: updateErr } = await admin
+    .from("place_media_assets")
+    .update({
+      status: mirrored.ok ? "saved" : "failed",
+      storage_path: mirrored.path,
+      public_url: mirrored.publicUrl,
+      mime_type: mirrored.contentType,
+      bytes: mirrored.bytes,
+      last_error: mirrored.error,
+    })
+    .eq("place_id", projectId)
+    .eq("source_url", url);
+  if (updateErr) {
+    console.error("[store-first-place-image] asset_update:", updateErr.message);
+  }
+
+  const finalUrl = mirrored.ok ? mirrored.url : url;
+  const placeRes = await writePlace(admin, {
+    table: "profiles",
+    mode: "update",
+    id: projectId,
+    patch: { photos: [finalUrl] },
+  });
+  if (!placeRes.ok) {
+    return { ok: false, error: `place_update: ${placeRes.error}`, url: finalUrl };
+  }
+  if (!mirrored.ok) {
+    return { ok: false, error: mirrored.error ?? "mirror_failed", url: finalUrl };
+  }
+  return { ok: true, url: finalUrl };
+}
 
 /** Upsert metadata rows and kick off background mirroring. */
 export async function storePlaceImages(

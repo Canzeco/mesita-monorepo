@@ -176,9 +176,16 @@ function validatedGoogleReviews(
 // Fetch + assemble the Google identity spine for a placeId. Mirrors the old
 // atlas-seed-place's pre-insert logic exactly (including the spine-incomplete
 // rejection), minus any DB work.
+export type GoogleBasicsOpts = {
+  /** How many Google media URLs to resolve. Create asks for 1 (the hero
+   *  thumb). Enrich research keeps the full gallery. */
+  maxPhotos?: number;
+};
+
 export async function fetchGoogleBasics(
   placeId: string,
   googleKey: string,
+  opts: GoogleBasicsOpts = {},
 ): Promise<GoogleBasicsResult> {
   const details = await fetchGoogleDetails(placeId, googleKey);
   if ("error" in details) {
@@ -216,13 +223,18 @@ export async function fetchGoogleBasics(
     "sublocality",
   ]);
 
+  const photoFetchCap = Math.max(0, Math.min(opts.maxPhotos ?? MAX_PHOTOS, MAX_PHOTOS));
+  const photoKeepCap = Math.max(
+    0,
+    Math.min(opts.maxPhotos ?? MAX_PHOTOS_TO_KEEP, MAX_PHOTOS_TO_KEEP),
+  );
   const [photosResult, timezoneResult] = await Promise.allSettled([
-    fetchGooglePhotos(details.photos ?? [], MAX_PHOTOS, googleKey),
+    fetchGooglePhotos(details.photos ?? [], photoFetchCap, googleKey),
     fetchTimezone(details.location?.latitude, details.location?.longitude, googleKey),
   ]);
   const placesPhotos = photosResult.status === "fulfilled" ? photosResult.value : [];
   const timezone = timezoneResult.status === "fulfilled" ? timezoneResult.value : null;
-  const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(0, MAX_PHOTOS_TO_KEEP);
+  const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(0, photoKeepCap);
 
   // Google-derived identity links: website via classifyLinks; Maps URL is
   // native-locked (MESITA-468) — prefer Google's googleMapsUri, else a
