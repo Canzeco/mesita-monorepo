@@ -13,7 +13,6 @@ import {
 
 const CENTER = { lat: 25.67, lng: -100.3 };
 const LANES: NearbyLaneCaps = {
-  partnerCount: 2,
   mesitaCount: 2,
   googleCount: 2,
 };
@@ -78,7 +77,7 @@ Deno.test("a far partner outside takeClosest never enters", () => {
     [farPartner, nearPartner],
     [],
     CENTER,
-    { partnerCount: 1, mesitaCount: 1, googleCount: 0 },
+    { mesitaCount: 1, googleCount: 0 },
   );
   const ids = merged.map((x) => x.kind === "listed" ? x.row.id : "");
   assertEquals(ids.includes("far-p"), false);

@@ -20,12 +20,10 @@ import {
 
 const CENTER = { lat: 25.67, lng: -100.3 };
 const SCOPE_MESITA: NearbyLaneCaps = {
-  partnerCount: 0,
   mesitaCount: 20,
   googleCount: 0,
 };
 const SCOPE_GOOGLE: NearbyLaneCaps = {
-  partnerCount: 0,
   mesitaCount: 0,
   googleCount: 20,
 };
@@ -86,7 +84,6 @@ Deno.test("mergeNearbyCatalog: Google set is N pins, not Mesita plus Google", ()
     nearbyHit(`gOnly-${i}`, 25.67005 + i * 0.0001, -100.3)
   );
   const got = mergeNearbyCatalog(mesita, google, CENTER, {
-    partnerCount: 0,
     mesitaCount: 0,
     googleCount: 5,
   });
@@ -222,7 +219,6 @@ Deno.test("mergeNearbyCatalog: Google set does not add a far Mesita miss", () =>
     ...extraGoogle,
   ];
   const got = mergeNearbyCatalog([...partners, ...extraMesita], google, CENTER, {
-    partnerCount: 10,
     mesitaCount: 10,
     googleCount: 20,
   });
@@ -263,7 +259,6 @@ Deno.test("mergeNearbyCatalog: empty Nearby falls back to the Mesita set", () =>
     lng: -100.3,
   }));
   const got = mergeNearbyCatalog(mesita, [], CENTER, {
-    partnerCount: 0,
     mesitaCount: 10,
     googleCount: 20,
   });
