@@ -6,7 +6,12 @@ import {
   slotPromoted,
   type SignalWeights,
 } from "./discovery-blend.ts";
-import { SIGNAL_KEYS, type SignalPlace } from "./discovery-signals.ts";
+import {
+  PROMOTION_LIVE,
+  PROMOTION_NONE,
+  SIGNAL_KEYS,
+  type SignalPlace,
+} from "./discovery-signals.ts";
 import { placePromotingLevel, type PromotingFields } from "./place-promoting.ts";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -88,6 +93,7 @@ const WEIGHTS_OFF: SignalWeights = {
   category: 0,
   popularity: 0,
   partnership: 0,
+  promotion: 0,
   randomness: 0,
   social: 0,
 };
@@ -224,14 +230,22 @@ Deno.test("THE INVARIANT: rank is never for sale", () => {
   );
 });
 
-Deno.test("the earned blend cannot see a promo field at all", () => {
-  // Same place twice, one promoting at the highest tier. Identical scores.
+Deno.test("a popularity-only blend ignores promoting — Promotion is its own weight", () => {
   const plain = row("plain", 4.5);
   const bought = row("bought", 4.5, 500, promoting("dominant"));
   const a = blend(project(plain), {}, WEIGHTS_POPULARITY);
   const b = blend(project(bought), {}, WEIGHTS_POPULARITY);
   assertEquals(a.score, b.score);
   assertEquals(a.parts, b.parts);
+});
+
+Deno.test("Promotion weight lifts a live discount without reading rates", () => {
+  const w: SignalWeights = { ...WEIGHTS_OFF, promotion: 1 };
+  const quiet = blend({ ...project(row("quiet", 4.5)), promoting: false }, {}, w);
+  const live = blend({ ...project(row("live", 4.5)), promoting: true }, {}, w);
+  assert(live.score > quiet.score, `live ${live.score} must beat quiet ${quiet.score}`);
+  assertEquals(quiet.parts.promotion, PROMOTION_NONE);
+  assertEquals(live.parts.promotion, PROMOTION_LIVE);
 });
 
 Deno.test("slotting off is a no-op", () => {
