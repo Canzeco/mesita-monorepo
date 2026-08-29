@@ -113,6 +113,12 @@ Deno.test("validatePlacePatch: accepts string-array fields", () => {
   assert(res.ok);
 });
 
+Deno.test("validatePlacePatch: family_keys is nullable until enrichment", () => {
+  assert(validatePlacePatch({ family_keys: null }).ok);
+  assert(validatePlacePatch({ family_keys: ["restaurants", "cafes_bakeries"] }).ok);
+  assert(!validatePlacePatch({ family_keys: "restaurants" }).ok);
+});
+
 Deno.test("validatePlacePatch: accepts jsonb fields as object, array, or null", () => {
   assert(validatePlacePatch({ hours: { mon: [{ open: "09:00", close: "18:00" }] } }).ok);
   assert(

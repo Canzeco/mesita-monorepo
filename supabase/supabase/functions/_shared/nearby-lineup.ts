@@ -19,6 +19,7 @@ import {
   type NearbyMerged,
 } from "./nearby-places.ts";
 import { familiesForGoogleType, type FamilyKey } from "./sourcing.ts";
+import { familiesForPlace } from "./place-taxonomy.ts";
 
 export type ListedLineupOpts = {
   center: { lat: number; lng: number };
@@ -48,8 +49,7 @@ export function mapLineupWeights(
 
 function toMapLineupPlace(row: Record<string, unknown>) {
   const place = toLineupPlace(row);
-  if (place.family_keys && place.family_keys.length > 0) return place;
-  return { ...place, family_keys: familiesForGoogleType(place.category) };
+  return { ...place, family_keys: familiesForPlace(place) };
 }
 
 /**
