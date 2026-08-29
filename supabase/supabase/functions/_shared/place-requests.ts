@@ -1,0 +1,215 @@
+// Requests — consumer demand for a usable Mesita profile.
+//
+// Listed-but-not-Enriched means a Mesita entity without a usable profile
+// (projects.content_status <> ready). The modal becomes the request
+// interface. Requested is derived from the numeric count, never a
+// status-per-count. When the count reaches Intake atlasRequestThreshold,
+// seed the existing Intaker pipeline. Admin create/enrich never calls this
+// door — that is the bypass.
+
+import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
+import { seedPlaceResearch } from "./enrich-pipeline.ts";
+import {
+  isPlaceEnriching,
+  isPlaceListed,
+  isPlaceProfileReady,
+} from "./place-status.ts";
+
+export { isPlaceProfileReady };
+
+export const DEFAULT_REQUEST_THRESHOLD = 3;
+export const REQUEST_THRESHOLD_MIN = 1;
+export const REQUEST_THRESHOLD_MAX = 100;
+
+export type PlaceRequestLifecycle = "listed" | "requested" | "enriched";
+
+export type PlaceRequestState = {
+  request_count: number;
+  request_threshold: number;
+  requested: boolean;
+  is_profile_ready: boolean;
+  request_lifecycle: PlaceRequestLifecycle;
+  enrichment_triggered: boolean;
+};
+
+/**
+ * Requested is derived: listed, not ready, and at least one request.
+ * Enriched wins over Requested even if a count remains on the row.
+ */
+export function placeRequestLifecycle(input: {
+  contentStatus: unknown;
+  requestCount: number;
+}): PlaceRequestLifecycle {
+  if (isPlaceProfileReady(input.contentStatus)) return "enriched";
+  if (input.requestCount > 0) return "requested";
+  return "listed";
+}
+
+/** Consumer-driven auto-enrich. Admin Run-now never consults this. */
+export function shouldTriggerRequestEnrichment(input: {
+  requestCount: number;
+  threshold: number;
+  contentStatus: unknown;
+}): boolean {
+  if (isPlaceProfileReady(input.contentStatus)) return false;
+  if (isPlaceEnriching(input.contentStatus)) return false;
+  if (input.threshold < REQUEST_THRESHOLD_MIN) return false;
+  return input.requestCount >= input.threshold;
+}
+
+export function requestProgressLabel(count: number, threshold: number): string {
+  const n = Math.max(0, Math.trunc(count));
+  const t = Math.max(REQUEST_THRESHOLD_MIN, Math.trunc(threshold));
+  return `${n} of ${t} requests`;
+}
+
+/** Admin create/enrich does not read request_count or the threshold. */
+export function adminMayEnrichWithoutRequests(): boolean {
+  return true;
+}
+
+export function placeRequestState(input: {
+  requestCount: number;
+  threshold: number;
+  requested: boolean;
+  contentStatus: unknown;
+  enrichmentTriggered?: boolean;
+}): PlaceRequestState {
+  const request_count = Math.max(0, Math.trunc(input.requestCount));
+  const request_threshold = Math.min(
+    REQUEST_THRESHOLD_MAX,
+    Math.max(REQUEST_THRESHOLD_MIN, Math.trunc(input.threshold)),
+  );
+  return {
+    request_count,
+    request_threshold,
+    requested: input.requested,
+    is_profile_ready: isPlaceProfileReady(input.contentStatus),
+    request_lifecycle: placeRequestLifecycle({
+      contentStatus: input.contentStatus,
+      requestCount: request_count,
+    }),
+    enrichment_triggered: input.enrichmentTriggered === true,
+  };
+}
+
+export async function loadRequestThreshold(
+  admin: SupabaseClient,
+): Promise<number> {
+  const { data, error } = await admin
+    .from("app_config")
+    .select("enrichment_config")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) return DEFAULT_REQUEST_THRESHOLD;
+  return normalizeEnrichmentConfig(
+    (data as { enrichment_config?: unknown } | null)?.enrichment_config,
+  ).atlasRequestThreshold;
+}
+
+export async function applyPlaceRequest(
+  admin: SupabaseClient,
+  opts: {
+    consumerId: string;
+    placeId: string;
+    callerName: string;
+  },
+): Promise<
+  | { ok: true; state: PlaceRequestState }
+  | { ok: false; status: number; error: string; code?: string }
+> {
+  const { data: place, error: placeErr } = await admin
+    .from("profiles")
+    .select("id, status, content_status, google_place_id, request_count")
+    .eq("id", opts.placeId)
+    .maybeSingle();
+  if (placeErr) {
+    return { ok: false, status: 500, error: placeErr.message };
+  }
+  if (!place) {
+    return { ok: false, status: 404, error: "Place not found", code: "place_not_found" };
+  }
+  if (!isPlaceListed((place as { status?: unknown }).status)) {
+    return {
+      ok: false,
+      status: 404,
+      error: "Place not found",
+      code: "place_not_found",
+    };
+  }
+
+  const threshold = await loadRequestThreshold(admin);
+  const contentStatus = (place as { content_status?: unknown }).content_status;
+  const existingCount = Number((place as { request_count?: unknown }).request_count) || 0;
+
+  if (isPlaceProfileReady(contentStatus)) {
+    return {
+      ok: true,
+      state: placeRequestState({
+        requestCount: existingCount,
+        threshold,
+        requested: true,
+        contentStatus,
+        enrichmentTriggered: false,
+      }),
+    };
+  }
+
+  const { data: applied, error: rpcErr } = await admin.rpc("apply_place_request", {
+    p_consumer_id: opts.consumerId,
+    p_place_id: opts.placeId,
+  });
+  if (rpcErr) {
+    return { ok: false, status: 500, error: rpcErr.message };
+  }
+  const row = Array.isArray(applied) ? applied[0] : applied;
+  const requestCount = Number((row as { request_count?: unknown } | null)?.request_count);
+  const count = Number.isFinite(requestCount) ? requestCount : existingCount;
+
+  let enrichmentTriggered = false;
+  if (shouldTriggerRequestEnrichment({ requestCount: count, threshold, contentStatus })) {
+    const googlePlaceId = String(
+      (place as { google_place_id?: unknown }).google_place_id ?? "",
+    ).trim();
+    // The vote already counted. A missing spine cannot seed Intake; Admin
+    // adds the id later. Do not fail the request after incrementing.
+    if (googlePlaceId) {
+      const seed = await seedPlaceResearch(
+        admin,
+        opts.placeId,
+        googlePlaceId,
+        opts.callerName,
+        {
+          trigger: "manual",
+          subprocesses: null,
+          cooldownHours: 0,
+          actorUserId: opts.consumerId,
+          meta: { source: "consumer_request" },
+        },
+      );
+      if (seed.ok) {
+        enrichmentTriggered = true;
+      } else if (seed.blocked === "already_open") {
+        enrichmentTriggered = false;
+      } else {
+        return {
+          ok: false,
+          status: 500,
+          error: seed.error ?? "Failed to queue enrichment",
+        };
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    state: placeRequestState({
+      requestCount: count,
+      threshold,
+      requested: true,
+      contentStatus,
+      enrichmentTriggered,
+    }),
+  };
+}

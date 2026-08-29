@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(58);
+select plan(64);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -444,6 +444,43 @@ select has_column(
 select has_column(
   'public', 'app_config', 'memo_config',
   'app_config.memo_config holds Memo greeting/instructions/legacy model keys'
+);
+
+select has_column(
+  'public', 'places', 'request_count',
+  'places.request_count is the numeric Requests progress'
+);
+
+select has_table(
+  'public', 'place_requests',
+  'place_requests stores one request per consumer per place'
+);
+
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.place_requests'::regclass),
+  'place_requests has RLS enabled (EF-only; no client policies)'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.place_requests', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_requests', 'SELECT'),
+  'client roles have no SELECT on place_requests'
+);
+
+select has_function(
+  'public', 'apply_place_request',
+  array['uuid', 'uuid'],
+  'apply_place_request is the idempotent request door'
+);
+
+select ok(
+  exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name = 'request_count'
+  ),
+  'public.profiles exposes request_count'
 );
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━

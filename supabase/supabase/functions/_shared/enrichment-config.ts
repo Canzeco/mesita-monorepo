@@ -47,6 +47,8 @@ export type EnrichmentConfig = {
   atlasDiscoverFacebookN: number;
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
+  /** Consumer Requests: auto-enrich when request_count reaches this. */
+  atlasRequestThreshold: number;
 };
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
@@ -70,6 +72,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasDiscoverFacebookN: 5,
   atlasDiscoverOpentableN: 3,
   atlasDiscoverUbereatsN: 2,
+  atlasRequestThreshold: 3,
 };
 
 function asRecord(raw: unknown): Record<string, unknown> {
@@ -134,5 +137,6 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     atlasDiscoverFacebookN: intIn(r.atlasDiscoverFacebookN, 0, 10, d.atlasDiscoverFacebookN),
     atlasDiscoverOpentableN: intIn(r.atlasDiscoverOpentableN, 0, 10, d.atlasDiscoverOpentableN),
     atlasDiscoverUbereatsN: intIn(r.atlasDiscoverUbereatsN, 0, 10, d.atlasDiscoverUbereatsN),
+    atlasRequestThreshold: intIn(r.atlasRequestThreshold, 1, 100, d.atlasRequestThreshold),
   };
 }

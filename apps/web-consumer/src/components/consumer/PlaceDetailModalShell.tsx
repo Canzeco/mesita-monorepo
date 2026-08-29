@@ -3,6 +3,10 @@
 import { PlaceDetailTitle } from "@/components/consumer/PlaceDetailTitle";
 import { SlideOverHeader } from "@/components/consumer/overlay/SlideOverShell";
 import { PlaceActionBar } from "@/components/consumer/place-detail/PlaceActionBar";
+import {
+  isPlaceRequestSurface,
+  PlaceRequestPanel,
+} from "@/components/consumer/place-detail/PlaceRequestPanel";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { isPartner } from "@/lib/promo-rates";
 
@@ -19,8 +23,10 @@ import { isPartner } from "@/lib/promo-rates";
 // decision: Pato (MESITA-1065) — the body row is Save · Contact · Share and
 // scrolls; Visit · Order · Reserve are pinned in a third band.
 //   1. SlideOverHeader (shrink-0) — dismiss + place name
-//   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody
-//   3. PlaceActionBar (shrink-0) — Visit · Order · Reserve
+//   2. Scroll area (flex-1 overflow-y-auto) — PlaceDetailBody, or the
+//      request interface when the place is Listed but not Enriched
+//      (no usable profile — Visit / Order / Reserve stay hidden)
+//   3. PlaceActionBar (shrink-0) — Visit · Order · Reserve (Enriched only)
 //
 // Takes the whole `place` rather than id/name/listingType: the bar needs the
 // full detail anyway, and the three scalars were only ever projections of it.
@@ -51,8 +57,14 @@ export function PlaceDetailModalShell({
         `position: sticky top-0` on the tab strip ends up anchored to a
         scroll container that isn't actually scrolling.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-      <PlaceActionBar place={place} />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {isPlaceRequestSurface(place) ? (
+          <PlaceRequestPanel place={place} />
+        ) : (
+          children
+        )}
+      </div>
+      {isPlaceRequestSurface(place) ? null : <PlaceActionBar place={place} />}
     </>
   );
 }

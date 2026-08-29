@@ -25,6 +25,7 @@ export type IntakeSettings = {
   discoverFacebookN: number;
   discoverOpentableN: number;
   discoverUbereatsN: number;
+  requestThreshold: number;
 };
 
 const clampN = (v: number, lo: number, hi: number) =>
@@ -65,5 +66,6 @@ export function clampFunnel(s: IntakeSettings): IntakeSettings {
       1,
       Math.min(MAX_SAVE_IMAGES, analyzeGoogleImages + analyzeInstagramImages),
     ),
+    requestThreshold: clampN(s.requestThreshold, 1, 100),
   };
 }

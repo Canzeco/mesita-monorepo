@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   Sparkles,
   Star,
+  Users,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -116,6 +117,7 @@ export function IntakeClient({
         discoverFacebookN: settings.discoverFacebookN,
         discoverOpentableN: settings.discoverOpentableN,
         discoverUbereatsN: settings.discoverUbereatsN,
+        requestThreshold: settings.requestThreshold,
       });
       if (r.ok) {
         setSavedSettings(settings);
@@ -245,6 +247,23 @@ export function IntakeClient({
                 />
               }
             />
+            <div className="mt-4">
+              <Fields>
+                <NumberField
+                  icon={<Users className="text-muted-foreground h-4 w-4" />}
+                  label="Request threshold"
+                  value={settings.requestThreshold}
+                  min={1}
+                  max={100}
+                  onChange={(v) => patch({ requestThreshold: v })}
+                  disabled={pending}
+                />
+              </Fields>
+              <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                Auto-enrich a Listed place when this many consumers request the
+                profile. Admin create and enrich skip the wait.
+              </p>
+            </div>
           </SectionCard>
         </div>
 

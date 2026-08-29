@@ -34,6 +34,7 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     atlasDiscoverFacebookN: 3,
     atlasDiscoverOpentableN: 3,
     atlasDiscoverUbereatsN: 3,
+    atlasRequestThreshold: 3,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
 });
@@ -49,6 +50,7 @@ Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs"
     atlasSaveTotalImages: 20,
     atlasDiscoverWebsiteN: 11,
     atlasPerRunCostCapUsd: -3.333,
+    atlasRequestThreshold: 0,
   });
   assertEquals(out.atlasGatherGoogleImages, 10);
   assertEquals(out.atlasGatherInstagramDepth, 1);
@@ -59,6 +61,8 @@ Deno.test("normalizeEnrichmentConfig: out-of-range ints clamp to the old CHECKs"
   assertEquals(out.atlasSaveTotalImages, 10);
   assertEquals(out.atlasDiscoverWebsiteN, 10);
   assertEquals(out.atlasPerRunCostCapUsd, 0);
+  assertEquals(out.atlasRequestThreshold, 1);
+  assertEquals(normalizeEnrichmentConfig({ atlasRequestThreshold: 999 }).atlasRequestThreshold, 100);
 });
 
 Deno.test("normalizeEnrichmentConfig: quality/preset enums reject unknown strings", () => {

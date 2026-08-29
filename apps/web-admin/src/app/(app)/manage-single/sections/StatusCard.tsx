@@ -218,7 +218,10 @@ export function StatusCard({
         ? "Google's place id is on the row — the pipeline has something to start from."
         : "No google_place_id. Nothing can enrich this place until one lands.";
 
-  const listedDetail =
+  const requestCount = typeof place.request_count === "number"
+    ? place.request_count
+    : 0;
+  const listedDetailBase =
     listed === "unknown"
       ? "Couldn't read the place's status."
       : placeStatus === "active"
@@ -228,6 +231,9 @@ export function StatusCard({
           : placeStatus
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No status on the row.";
+  const listedDetail = requestCount > 0
+    ? `${listedDetailBase} ${requestCount} request${requestCount === 1 ? "" : "s"} toward the Intake threshold.`
+    : listedDetailBase;
 
   // ── Operating (MESITA-1239) — Google's word on the business itself.
   //
