@@ -1,8 +1,9 @@
 "use client";
 
-// Map hyperparameters — live. Three independent closest-N queries become
-// one catalog after concat: Partners, then Mesita Places, then Google.
-// Overlaps drop; first query keeps the slot. Google types live on Modules.
+// Map hyperparameters — live. Places scope picks one nested set
+// (Partners ⊂ Mesita Places ⊂ Google Places). Closest N of that set;
+// inner membership paints, it does not add pins. Google types live on
+// Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
@@ -19,7 +20,8 @@ import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
-  MAP_LANE_COUNT_MAX,
+  MAP_GOOGLE_COUNT_MAX,
+  MAP_SET_COUNT_MAX,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
   type MapConfig,
@@ -99,7 +101,7 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="Closest N enter per query. Listed pins then Lineup, not distance. Google stays distance."
+        subtitle="Closest N of the selected set. Listed pins then Lineup, not distance. Google stays distance."
         status={
           <KnobStatus
             kind="enforced"
@@ -109,9 +111,9 @@ export function MapConfigClient({
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
         <QueryConcatCaps
-          rule="Then concat. Closest Partners → closest Mesita Places → closest Google Nearby."
+          rule="Places scope picks one set. Closest N of that set. Inner membership paints — not extra pins."
           min={0}
-          max={MAP_LANE_COUNT_MAX}
+          max={MAP_SET_COUNT_MAX}
           disabled={pending || loadBlocked}
           queries={[
             {
@@ -119,6 +121,7 @@ export function MapConfigClient({
               label: "Mesita partners",
               icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
               value: map.partnerCount,
+              max: MAP_SET_COUNT_MAX,
               onChange: (partnerCount) => patch({ partnerCount }),
             },
             {
@@ -126,6 +129,7 @@ export function MapConfigClient({
               label: "Mesita places",
               icon: <Store className="h-4 w-4 shrink-0" />,
               value: map.mesitaCount,
+              max: MAP_SET_COUNT_MAX,
               onChange: (mesitaCount) => patch({ mesitaCount }),
             },
             {
@@ -133,6 +137,7 @@ export function MapConfigClient({
               label: "Google places",
               icon: <Globe className="h-4 w-4 shrink-0" />,
               value: map.googleCount,
+              max: MAP_GOOGLE_COUNT_MAX,
               onChange: (googleCount) => patch({ googleCount }),
             },
           ]}

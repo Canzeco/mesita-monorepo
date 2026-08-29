@@ -13,19 +13,18 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // THREE POST SHAPES:
-//   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
-//     then Mesita. No Google stubs — mobile opens `/place/:id` and
-//     cannot host GooglePlaceSheet.
+//   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
+//     the selected Places set (Partners or Mesita). No Google stubs —
+//     mobile opens `/place/:id` and cannot host GooglePlaceSheet.
 //   { google: true, lat, lng, limit?, searchPower?, familyKeys? } — web
-//     Search catalog. searchPower (default 2, + Places) is the Places
-//     scope: 1 Partners only, 2 Partners + enriched Mesita Places, 3 +
-//     Google Nearby. familyKeys (guest Super pills) pick Nearby
-//     `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES so unlisted Google
-//     places match the Super. Empty = operator F&B batteries. Power 1–2
-//     never call Nearby. Google stays distance (closest N, ignoring
-//     Mesita membership). Merge then drops a Google hit whose Place ID
-//     already won a Partner or Mesita slot. Listed pins Lineup-reorder
-//     (Map mask). Google fill is metered per connecting IP when power is 3.
+//     Search catalog. searchPower (default 2) is Places scope: 1 closest
+//     partners, 2 closest Mesita Places (partners included, painted),
+//     3 closest Google Nearby (Mesita/partner hits painted, not added).
+//     familyKeys (guest Super pills) pick Nearby `includedPrimaryTypes`
+//     from GOOGLE_SEARCH_TYPES so unlisted Google places match the Super.
+//     Empty = operator F&B batteries. Power 1–2 never call Nearby.
+//     Google set stays distance. Listed sets Lineup-reorder (Map mask).
+//     Google fill is metered per connecting IP when power is 3.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -249,9 +248,10 @@ Deno.serve(async (req) => {
 
   // Nearby pool admission: global operator filters plus Map floors
   // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
-  // Nearby uses its own large radius + closest-N lanes. Pay / Home GET and
-  // bbox callers keep global filters only. Google fill is client opt-in AND
-  // operator googleFill AND googleCount > 0 AND at least one type battery on.
+  // Nearby uses its own large radius + closest N of the selected Places
+  // set. Pay / Home GET and bbox callers keep global filters only. Google
+  // fill is client opt-in AND operator googleFill AND googleCount > 0 AND
+  // at least one type battery on.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
@@ -402,19 +402,25 @@ Deno.serve(async (req) => {
       cfg.map,
       cfg.params.popularity,
     );
-    const merged = reorderListedLanes(
-      mergeNearbyCatalog(
-        admitted.listed,
-        wantGoogleNearby ? admitted.google : [],
-        center,
-        lanesForSearchPower(cfg.map, searchPower),
-      ),
-      {
-        center,
-        weights: mapLineupWeights(cfg.weights),
-        params: cfg.params,
-        ...mapLineupIntent(nearbyTypes),
-      },
+    const googleForMerge = wantGoogleNearby ? admitted.google : [];
+    const catalog = mergeNearbyCatalog(
+      admitted.listed,
+      googleForMerge,
+      center,
+      lanesForSearchPower(cfg.map, searchPower),
+    );
+    const lineupOpts = {
+      center,
+      weights: mapLineupWeights(cfg.weights),
+      params: cfg.params,
+      ...mapLineupIntent(nearbyTypes),
+    };
+    // Google set stays nearest-N distance. Lineup only reorders listed
+    // sets (Partners / All Mesita Places), including empty-Nearby fallback.
+    const merged = (
+      searchPower >= 3 && googleForMerge.length > 0
+        ? catalog
+        : reorderListedLanes(catalog, lineupOpts)
     ).slice(0, limit);
     const places = withFamilyKeysList(
       merged.map((item) => {

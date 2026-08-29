@@ -339,7 +339,7 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.types.bakery, true);
 });
 
-Deno.test("map lane caps clamp and default on an old blob", () => {
+Deno.test("map set caps clamp and default on an old blob", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.map.partnerCount, 10);
   assertEquals(missing.map.mesitaCount, 10);
@@ -347,7 +347,7 @@ Deno.test("map lane caps clamp and default on an old blob", () => {
   const clamped = normalizeDiscoveryConfig({
     map: { partnerCount: 99, mesitaCount: -3, googleCount: 7.8 },
   });
-  assertEquals(clamped.map.partnerCount, 20);
+  assertEquals(clamped.map.partnerCount, 60);
   assertEquals(clamped.map.mesitaCount, 0);
   assertEquals(clamped.map.googleCount, 8);
   const legacy = normalizeDiscoveryConfig({

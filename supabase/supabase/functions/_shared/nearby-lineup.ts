@@ -3,7 +3,8 @@
 //
 // Default `mergeNearbyCatalog` order is unchanged (Pay PlacePickList and
 // frozen mobile Search). Only consumer-web-list-places `{ google: true }`
-// calls this after the closest-N cut.
+// listed sets call this after the closest-N cut. The Google set stays
+// distance order.
 
 import {
   rankByBlend,

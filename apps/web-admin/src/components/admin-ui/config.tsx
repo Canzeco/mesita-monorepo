@@ -222,6 +222,8 @@ export type QueryCapRung = {
   icon: React.ReactNode;
   value: number;
   onChange: (value: number) => void;
+  /** Per-rung ceiling. Falls back to the control `max`. */
+  max?: number;
 };
 
 function QueryCapRow({
@@ -235,6 +237,7 @@ function QueryCapRow({
   max: number;
   disabled: boolean;
 }) {
+  const cap = rung.max ?? max;
   return (
     <label className="border-border bg-background flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2">
       <span className="flex min-w-0 items-center gap-2 text-sm font-medium leading-snug">
@@ -245,7 +248,7 @@ function QueryCapRow({
         type="number"
         inputMode="numeric"
         min={min}
-        max={max}
+        max={cap}
         step={1}
         value={rung.value}
         disabled={disabled}
@@ -253,7 +256,7 @@ function QueryCapRow({
         onChange={(e) => {
           const raw = Number(e.target.value);
           if (Number.isNaN(raw)) return;
-          rung.onChange(Math.max(min, Math.min(max, Math.round(raw))));
+          rung.onChange(Math.max(min, Math.min(cap, Math.round(raw))));
         }}
         className="border-border bg-card focus:border-foreground h-11 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50 sm:w-20"
       />
