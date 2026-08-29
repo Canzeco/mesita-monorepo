@@ -33,6 +33,8 @@ describe("Name Search params", () => {
     expect(html).toContain("Deep never calls Nearby Search");
     expect(html).not.toContain("Google Places Nearby Search");
     expect(html).toContain("Map Filters never cut this list");
+    expect(html).toContain("Then merge. Max ≥ Google ≥ Mesita ≥ Partners.");
+    expect(html).toContain("Bring");
     expect(html).toContain('value="5"');
     expect(html).toContain('value="3"');
     expect(html).toContain('value="9"');
@@ -50,13 +52,15 @@ describe("Name Search params", () => {
 
     const deepHtml = html.slice(html.indexOf("Name (Deep Search)"));
     expect(box(deepHtml, "Google places")).toBeLessThan(
-      box(deepHtml, "Mesita partners"),
-    );
-    expect(box(deepHtml, "Mesita partners")).toBeLessThan(
       box(deepHtml, "Mesita places"),
     );
     expect(box(deepHtml, "Mesita places")).toBeLessThan(
+      box(deepHtml, "Mesita partners"),
+    );
+    expect(box(deepHtml, "Mesita partners")).toBeLessThan(
       box(deepHtml, "Max results"),
     );
+    expect(deepHtml.indexOf("Bring")).toBeLessThan(deepHtml.indexOf(">merge<"));
+    expect(deepHtml.indexOf(">merge<")).toBeLessThan(box(deepHtml, "Max results"));
   });
 });

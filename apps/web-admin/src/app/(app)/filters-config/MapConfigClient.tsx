@@ -9,19 +9,21 @@ import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-reac
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
   ChoiceField,
-  NumberField,
+  KnobStatus,
+  LaneMergeFunnel,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
+  cascadeLaneCounts,
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
   MAP_LANE_COUNT_MAX,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
+  type LaneCountKey,
   type MapConfig,
 } from "./catalog";
 import { ModeModuleChips } from "./ModeModuleChips";
@@ -74,6 +76,23 @@ export function MapConfigClient({
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
 
+  const patchLane = (key: Exclude<LaneCountKey, "count">, value: number) => {
+    setOk(false);
+    setCfg((c) => {
+      const next = cascadeLaneCounts(
+        {
+          partnerCount: c.map.partnerCount,
+          mesitaCount: c.map.mesitaCount,
+          googleCount: c.map.googleCount,
+        },
+        key,
+        value,
+        MAP_LANE_COUNT_MAX,
+      );
+      return { ...c, map: { ...c.map, ...next } };
+    });
+  };
+
   const save = () => {
     if (loadBlocked) return;
     setError(null);
@@ -108,36 +127,37 @@ export function MapConfigClient({
         }
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <NumberField
-            icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita partners"
-            value={map.partnerCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(partnerCount) => patch({ partnerCount })}
-          />
-          <NumberField
-            icon={<Store className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Mesita places"
-            value={map.mesitaCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(mesitaCount) => patch({ mesitaCount })}
-          />
-          <NumberField
-            icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-            label="Google places"
-            value={map.googleCount}
-            min={0}
-            max={MAP_LANE_COUNT_MAX}
-            disabled={pending || loadBlocked}
-            onChange={(googleCount) => patch({ googleCount })}
-          />
+        <LaneMergeFunnel
+          rule="Then merge. Google ≥ Mesita ≥ Partners."
+          min={0}
+          max={MAP_LANE_COUNT_MAX}
+          disabled={pending || loadBlocked}
+          bring={[
+            {
+              key: "google",
+              label: "Google places",
+              icon: <Globe className="h-4 w-4 shrink-0" />,
+              value: map.googleCount,
+              onChange: (googleCount) => patchLane("googleCount", googleCount),
+            },
+            {
+              key: "mesita",
+              label: "Mesita places",
+              icon: <Store className="h-4 w-4 shrink-0" />,
+              value: map.mesitaCount,
+              onChange: (mesitaCount) => patchLane("mesitaCount", mesitaCount),
+            },
+            {
+              key: "partners",
+              label: "Mesita partners",
+              icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+              value: map.partnerCount,
+              onChange: (partnerCount) => patchLane("partnerCount", partnerCount),
+            },
+          ]}
+        />
+        <div className="mt-5">
           <ChoiceField
-            className="sm:col-span-2"
             icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
             label="Reload after"
             hint="Camera must move this far AND wait this long. Browsing the rail does not count."

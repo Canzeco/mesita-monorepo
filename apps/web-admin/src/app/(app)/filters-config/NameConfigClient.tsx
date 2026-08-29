@@ -5,7 +5,7 @@
 // Search, and Places Lineup (Name signal only — Mesita `places.name`,
 // not `google_name`). Deep never calls Nearby Search.
 // Each candidate resolves, then Partners · Mesita · Google.
-// Deep knobs follow Fast: Google first, Max last; Mesita lanes in between.
+// Deep funnel: bring Google ⊃ Mesita ⊃ Partners, then Max caps the merge.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -19,17 +19,19 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   KnobStatus,
+  LaneMergeFunnel,
   NumberField,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
+  cascadeLaneCounts,
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
   NAME_LANE_COUNT_MAX,
   type DiscoveryConfig,
-  type NameDeepConfig,
+  type LaneCountKey,
   type NameFastConfig,
 } from "./catalog";
 import { ModeModuleChips } from "./ModeModuleChips";
@@ -86,9 +88,22 @@ export function NameConfigClient({
     setCfg((c) => ({ ...c, name: { ...c.name, fast: { ...c.name.fast, ...p } } }));
   };
 
-  const patchDeep = (p: Partial<NameDeepConfig>) => {
+  const patchDeepLane = (key: LaneCountKey, value: number) => {
     setOkSlice(null);
-    setCfg((c) => ({ ...c, name: { ...c.name, deep: { ...c.name.deep, ...p } } }));
+    setCfg((c) => {
+      const next = cascadeLaneCounts(
+        {
+          partnerCount: c.name.deep.partnerCount,
+          mesitaCount: c.name.deep.mesitaCount,
+          googleCount: c.name.deep.googleCount,
+          count: c.name.deep.count,
+        },
+        key,
+        value,
+        NAME_LANE_COUNT_MAX,
+      );
+      return { ...c, name: { ...c.name, deep: { ...c.name.deep, ...next } } };
+    });
   };
 
   const save = (slice: "nameFast" | "nameDeep") => {
@@ -177,44 +192,42 @@ export function NameConfigClient({
           <p className="text-muted-foreground mt-2 type-meta">
             Needs a location. No pin, no bias.
           </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <NumberField
-              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Google places"
-              value={name.deep.googleCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(googleCount) => patchDeep({ googleCount })}
-            />
-            <NumberField
-              icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Mesita partners"
-              value={name.deep.partnerCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(partnerCount) => patchDeep({ partnerCount })}
-            />
-            <NumberField
-              icon={<Store className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Mesita places"
-              value={name.deep.mesitaCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(mesitaCount) => patchDeep({ mesitaCount })}
-            />
-            <NumberField
-              icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Max results"
-              value={name.deep.count}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(count) => patchDeep({ count })}
-            />
-          </div>
+          <LaneMergeFunnel
+            rule="Then merge. Max ≥ Google ≥ Mesita ≥ Partners."
+            min={0}
+            max={NAME_LANE_COUNT_MAX}
+            disabled={pending || loadBlocked}
+            bring={[
+              {
+                key: "google",
+                label: "Google places",
+                icon: <Globe className="h-4 w-4 shrink-0" />,
+                value: name.deep.googleCount,
+                onChange: (googleCount) => patchDeepLane("googleCount", googleCount),
+              },
+              {
+                key: "mesita",
+                label: "Mesita places",
+                icon: <Store className="h-4 w-4 shrink-0" />,
+                value: name.deep.mesitaCount,
+                onChange: (mesitaCount) => patchDeepLane("mesitaCount", mesitaCount),
+              },
+              {
+                key: "partners",
+                label: "Mesita partners",
+                icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
+                value: name.deep.partnerCount,
+                onChange: (partnerCount) => patchDeepLane("partnerCount", partnerCount),
+              },
+            ]}
+            merge={{
+              key: "max",
+              label: "Max results",
+              icon: <Layers className="h-4 w-4 shrink-0" />,
+              value: name.deep.count,
+              onChange: (count) => patchDeepLane("count", count),
+            }}
+          />
           {updatedAt ? (
             <p className="text-muted-foreground mt-4 type-meta">
               Last saved {formatShortDate(updatedAt)}

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
+  cascadeLaneCounts,
   coerceConfig,
   DEFAULT_CATALOG,
   DEFAULT_GENERAL,
@@ -274,6 +275,41 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
   });
 
+  it("cascadeLaneCounts keeps max ≥ google ≥ mesita ≥ partners", () => {
+    expect(
+      cascadeLaneCounts(
+        { partnerCount: 3, mesitaCount: 3, googleCount: 3, count: 9 },
+        "partnerCount",
+        5,
+        20,
+      ),
+    ).toEqual({ partnerCount: 5, mesitaCount: 5, googleCount: 5, count: 9 });
+    expect(
+      cascadeLaneCounts(
+        { partnerCount: 3, mesitaCount: 3, googleCount: 3, count: 9 },
+        "count",
+        2,
+        20,
+      ),
+    ).toEqual({ partnerCount: 2, mesitaCount: 2, googleCount: 2, count: 2 });
+    expect(
+      cascadeLaneCounts(
+        { partnerCount: 10, mesitaCount: 10, googleCount: 20 },
+        "googleCount",
+        6,
+        20,
+      ),
+    ).toEqual({ partnerCount: 6, mesitaCount: 6, googleCount: 6 });
+    expect(
+      cascadeLaneCounts(
+        { partnerCount: 10, mesitaCount: 10, googleCount: 20 },
+        "mesitaCount",
+        15,
+        20,
+      ),
+    ).toEqual({ partnerCount: 10, mesitaCount: 15, googleCount: 20 });
+  });
+
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3 plus merge max 9", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
@@ -375,13 +411,17 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Map Filters never cut this list");
     expect(name).toContain("same cap — Max results stays for Deep symmetry");
     const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
-    const deepGoogle = deepKnobs.indexOf('label="Google places"');
-    const deepPartners = deepKnobs.indexOf('label="Mesita partners"');
-    const deepPlaces = deepKnobs.indexOf('label="Mesita places"');
-    const deepMax = deepKnobs.indexOf('label="Max results"');
-    expect(deepGoogle).toBeLessThan(deepPartners);
-    expect(deepPartners).toBeLessThan(deepPlaces);
-    expect(deepPlaces).toBeLessThan(deepMax);
+    const deepGoogle = deepKnobs.indexOf('label: "Google places"');
+    const deepPlaces = deepKnobs.indexOf('label: "Mesita places"');
+    const deepPartners = deepKnobs.indexOf('label: "Mesita partners"');
+    const deepMax = deepKnobs.indexOf('label: "Max results"');
+    expect(deepGoogle).toBeLessThan(deepPlaces);
+    expect(deepPlaces).toBeLessThan(deepPartners);
+    expect(deepPartners).toBeLessThan(deepMax);
+    expect(name).toContain("Then merge. Max ≥ Google ≥ Mesita ≥ Partners.");
+    expect(name).toContain("cascadeLaneCounts");
+    expect(map).toContain("Then merge. Google ≥ Mesita ≥ Partners.");
+    expect(map).toContain("LaneMergeFunnel");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");

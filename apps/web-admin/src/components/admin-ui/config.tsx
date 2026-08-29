@@ -216,6 +216,118 @@ export function NumberField({
   );
 }
 
+export type LaneMergeFunnelRung = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  value: number;
+  onChange: (value: number) => void;
+};
+
+const FUNNEL_BRING_WIDTH = ["w-full", "w-[90%] sm:w-[86%]", "w-[80%] sm:w-[72%]"] as const;
+
+function LaneFunnelRung({
+  rung,
+  widthClass,
+  min,
+  max,
+  disabled,
+}: {
+  rung: LaneMergeFunnelRung;
+  widthClass: string;
+  min: number;
+  max: number;
+  disabled: boolean;
+}) {
+  return (
+    <label
+      className={`border-border bg-background flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 ${widthClass}`}
+    >
+      <span className="flex min-w-0 items-center gap-2 text-sm font-medium leading-snug">
+        {rung.icon}
+        {rung.label}
+      </span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={1}
+        value={rung.value}
+        disabled={disabled}
+        aria-label={rung.label}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (Number.isNaN(raw)) return;
+          rung.onChange(Math.max(min, Math.min(max, Math.round(raw))));
+        }}
+        className="border-border bg-card focus:border-foreground h-11 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50 sm:w-20"
+      />
+    </label>
+  );
+}
+
+/**
+ * Discovery lane counts as a filter: bring Google ⊃ Mesita ⊃ Partners,
+ * then merge. Width steps down so the nest is visible without a diagram.
+ */
+export function LaneMergeFunnel({
+  rule,
+  bring,
+  merge,
+  min,
+  max,
+  disabled,
+}: {
+  rule: string;
+  bring: LaneMergeFunnelRung[];
+  merge?: LaneMergeFunnelRung;
+  min: number;
+  max: number;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mt-5">
+      <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
+        Bring
+      </p>
+      <p className="text-muted-foreground mb-3 type-meta">{rule}</p>
+      <div className="flex flex-col items-center gap-1.5">
+        {bring.map((rung, i) => (
+          <LaneFunnelRung
+            key={rung.key}
+            rung={rung}
+            widthClass={FUNNEL_BRING_WIDTH[Math.min(i, FUNNEL_BRING_WIDTH.length - 1)] ?? "w-full"}
+            min={min}
+            max={max}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+      {merge ? (
+        <>
+          <div className="text-muted-foreground my-2 flex flex-col items-center gap-1">
+            <span aria-hidden className="bg-border block h-4 w-px" />
+            <span className="type-meta font-semibold tracking-wide uppercase">
+              merge
+            </span>
+            <span aria-hidden className="bg-border block h-4 w-px" />
+          </div>
+          <div className="flex flex-col items-center">
+            <LaneFunnelRung
+              rung={merge}
+              widthClass="w-[80%] sm:w-[72%]"
+              min={min}
+              max={max}
+              disabled={disabled}
+            />
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 /** Same box chrome as NumberField. The control is a categorical picker. */
 export function ChoiceField({
   icon,

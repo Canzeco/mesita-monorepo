@@ -23,6 +23,16 @@ describe("Map reload pairs", () => {
         loadError={null}
       />,
     );
+    expect(html).toContain("Bring");
+    expect(html).toContain("Then merge. Google ≥ Mesita ≥ Partners.");
+    expect(html).toContain("Google places");
+    expect(html).toContain("Mesita places");
+    expect(html).toContain("Mesita partners");
+    const google = html.indexOf("Google places");
+    const mesita = html.indexOf("Mesita places");
+    const partners = html.indexOf("Mesita partners");
+    expect(google).toBeLessThan(mesita);
+    expect(mesita).toBeLessThan(partners);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
     expect(html).toContain("Browsing the rail does not count");
