@@ -38,12 +38,12 @@ export function GoogleModuleCards() {
         <SectionCard
           icon={<MapPin className="text-primary h-4 w-4" />}
           title="Google Places Nearby Search"
-          subtitle="Deep = pin bias on Autocomplete, Text Search, and name match. Map = the Google Nearby call."
+          subtitle="The billed Nearby Search. Map calls it. Name (Deep) does not."
           status={<KnobStatus kind="enforced" reason="list-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Map (the billed Nearby Search) and Deep (pin only, never
-            this API). Types come from the Google types strip on this page.
+            Used by Map. Name (Deep) stays red on the matrix. Types come from
+            the Google types strip on this page.
           </p>
         </SectionCard>
       </div>

@@ -9,7 +9,7 @@ import {
   countryLabel,
 } from "@/lib/search-scope";
 
-/** Two knobs only: location (map) and country (name-bar Google restrict). */
+/** Location (map + pin bias). Country stays Any — name search ignores it. */
 export function SearchScopeSheet({
   country,
   locationSet,
@@ -78,7 +78,7 @@ export function SearchScopeSheet({
         <div>
           <p className="text-foreground text-sm font-semibold">Country</p>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Limits Google Autocomplete and Text Search. Optional.
+            Always Any. Autocomplete and Text Search do not take a country.
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">

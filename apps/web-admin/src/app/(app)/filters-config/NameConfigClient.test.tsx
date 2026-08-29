@@ -30,9 +30,33 @@ describe("Name Search params", () => {
     expect(html).toContain("Mesita places");
     expect((html.match(/Max results/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect(html).toContain("Max results caps the merge");
+    expect(html).toContain("Deep never calls Nearby Search");
+    expect(html).not.toContain("Google Places Nearby Search");
     expect(html).toContain("Map Filters never cut this list");
     expect(html).toContain('value="5"');
     expect(html).toContain('value="3"');
     expect(html).toContain('value="9"');
+
+    const box = (src: string, label: string) =>
+      src.search(new RegExp(`${label}\\s*</span>`));
+
+    const fastHtml = html.slice(
+      html.indexOf("Name (Fast Search)"),
+      html.indexOf("Name (Deep Search)"),
+    );
+    expect(box(fastHtml, "Google places")).toBeLessThan(
+      box(fastHtml, "Max results"),
+    );
+
+    const deepHtml = html.slice(html.indexOf("Name (Deep Search)"));
+    expect(box(deepHtml, "Google places")).toBeLessThan(
+      box(deepHtml, "Mesita partners"),
+    );
+    expect(box(deepHtml, "Mesita partners")).toBeLessThan(
+      box(deepHtml, "Mesita places"),
+    );
+    expect(box(deepHtml, "Mesita places")).toBeLessThan(
+      box(deepHtml, "Max results"),
+    );
   });
 });

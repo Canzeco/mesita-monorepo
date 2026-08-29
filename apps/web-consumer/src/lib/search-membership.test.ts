@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAP_GOOGLE_PIN_COLOR,
+  MAP_LISTED_PIN_COLOR,
+  MAP_PARTNER_PIN_COLOR,
+  MAP_PIN_SCALE,
+  MAP_PIN_STROKE_COLOR,
+  MAP_PIN_STROKE_WEIGHT,
+  MAP_USER_LOCATION_PIN_COLOR,
+  mapCircleIcon,
+} from "@/lib/map-defaults";
+import {
   buildSearchMapPins,
   membershipColor,
   membershipTone,
@@ -29,19 +39,23 @@ describe("search membership tones", () => {
     expect(placeMembershipTone({ from_google: true })).toBe("google");
   });
 
-  it("uses gray for Google-only and red for every Mesita place", () => {
-    expect(membershipColor("partner")).toBe("#ff2357");
-    expect(membershipColor("listed")).toBe("#ff2357");
-    expect(membershipColor("google")).toBe("#9ca3af");
+  it("uses yellow Partners, red Mesita Places, gray Google Places", () => {
+    expect(membershipColor("partner")).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(membershipColor("listed")).toBe(MAP_LISTED_PIN_COLOR);
+    expect(membershipColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(MAP_PARTNER_PIN_COLOR).toBe("#ffc400");
+    expect(MAP_LISTED_PIN_COLOR).toBe("#ff2357");
+    expect(MAP_GOOGLE_PIN_COLOR).toBe("#9ca3af");
+    expect(MAP_PARTNER_PIN_COLOR).not.toBe(MAP_LISTED_PIN_COLOR);
   });
 
   it("keeps membership fill and rings the selected pin black", () => {
-    expect(pinFillColor("partner", false)).toBe("#ff2357");
-    expect(pinFillColor("listed", false)).toBe("#ff2357");
-    expect(pinFillColor("google", false)).toBe("#9ca3af");
-    expect(pinFillColor("partner", true)).toBe("#ff2357");
-    expect(pinFillColor("listed", true)).toBe("#ff2357");
-    expect(pinFillColor("google", true)).toBe("#9ca3af");
+    expect(pinFillColor("partner", false)).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(pinFillColor("listed", false)).toBe(MAP_LISTED_PIN_COLOR);
+    expect(pinFillColor("google", false)).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(pinFillColor("partner", true)).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(pinFillColor("listed", true)).toBe(MAP_LISTED_PIN_COLOR);
+    expect(pinFillColor("google", true)).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#111111");
   });
@@ -190,5 +204,23 @@ describe("buildSearchMapPins", () => {
 
   it("returns null when the query produced no predictions", () => {
     expect(buildSearchMapPins([], [{ id: "m1", lat: 1, lng: 2 }])).toBeNull();
+  });
+});
+
+describe("mapCircleIcon", () => {
+  it("draws red place pins and the blue user pin the same size", () => {
+    const red = mapCircleIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const blue = mapCircleIcon(
+      MAP_USER_LOCATION_PIN_COLOR,
+      MAP_PIN_STROKE_COLOR,
+    );
+    const selected = mapCircleIcon(MAP_LISTED_PIN_COLOR, "#111111");
+    expect(red.path).toBe(blue.path);
+    expect(red.scale).toBe(blue.scale);
+    expect(red.strokeWeight).toBe(blue.strokeWeight);
+    expect(selected.path).toBe(blue.path);
+    expect(selected.scale).toBe(MAP_PIN_SCALE);
+    expect(selected.strokeWeight).toBe(MAP_PIN_STROKE_WEIGHT);
+    expect(red.fillColor).not.toBe(blue.fillColor);
   });
 });

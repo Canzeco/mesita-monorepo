@@ -3,8 +3,9 @@
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
 // Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
 // Search, and Places Lineup (Name signal only — Mesita `places.name`,
-// not `google_name`). Nearby on Deep is the guest pin, not Nearby Search.
+// not `google_name`). Deep never calls Nearby Search.
 // Each candidate resolves, then Partners · Mesita · Google.
+// Deep knobs follow Fast: Google first, Max last; Mesita lanes in between.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -164,7 +165,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Nearby on Deep is the guest pin on Autocomplete, Text Search, and name match — not a Nearby Search. Name signal only (`places.name`, not `google_name`). Max results caps the merge. Map Filters never cut this list."
+          subtitle="Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Max results caps the merge. Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -177,6 +178,15 @@ export function NameConfigClient({
             Needs a location. No pin, no bias.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <NumberField
+              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
+              label="Google places"
+              value={name.deep.googleCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={pending || loadBlocked}
+              onChange={(googleCount) => patchDeep({ googleCount })}
+            />
             <NumberField
               icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
               label="Mesita partners"
@@ -194,15 +204,6 @@ export function NameConfigClient({
               max={NAME_LANE_COUNT_MAX}
               disabled={pending || loadBlocked}
               onChange={(mesitaCount) => patchDeep({ mesitaCount })}
-            />
-            <NumberField
-              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Google places"
-              value={name.deep.googleCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(googleCount) => patchDeep({ googleCount })}
             />
             <NumberField
               icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}

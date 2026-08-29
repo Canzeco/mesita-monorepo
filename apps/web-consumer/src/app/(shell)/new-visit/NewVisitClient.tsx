@@ -12,7 +12,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
-import { readStoredSearchCountry } from "@/lib/search-scope";
 import { useUserLocation } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
@@ -69,8 +68,6 @@ export function NewVisitClient({ userId }: { userId: string }) {
     () => coords ?? MONTERREY_CENTER,
     [coords],
   );
-  const country = readStoredSearchCountry();
-
   // ── Ticket creation: tap a place, that's it. ──
   //
   // The create/recover/seed flow moved into useStartVisit (MESITA-1065) when
@@ -157,7 +154,6 @@ export function NewVisitClient({ userId }: { userId: string }) {
         {/* Closest 50 around the guest; the header query is name search. */}
         <PlacePickList
           origin={origin}
-          country={country}
           busyPlaceId={startingId}
           onPick={onPick}
           query={query}
