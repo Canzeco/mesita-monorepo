@@ -1,7 +1,7 @@
 // Atlas Super Category + Category law. Search map Filters cut on Super
 // Category only. THE LAW (2026-08-29, final):
-//   · Eight Super Categories: seven real guest pills + `undefined` (label
-//     "Other", ❓), the leftover/create-path bucket — always last.
+//   · Eight Super Categories: seven real guest pills + `undefined`
+//     (label "Undefined", ❓), the leftover/create-path bucket — always last.
 //   · CATEGORY side is MULTI-PARENT: each Mesita category belongs to one
 //     or TWO supers (breakfast is restaurants AND cafés; karaoke is bars
 //     AND experiences). Never more than two; `undefined` only ever alone.
@@ -41,7 +41,7 @@ export const SUPER_CATEGORIES: readonly {
   { slug: "culture_arts", label: "Culture & Arts", emoji: "🎭", sort_order: 5 },
   { slug: "sports_fitness", label: "Sports & Fitness", emoji: "⚽", sort_order: 6 },
   { slug: "wellness_beauty", label: "Wellness & Beauty", emoji: "💆", sort_order: 7 },
-  { slug: "undefined", label: "Other", emoji: "❓", sort_order: 999 },
+  { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 999 },
 ];
 
 const SUPER_SLUGS = new Set<string>(SUPER_CATEGORIES.map((s) => s.slug));

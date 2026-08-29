@@ -3,7 +3,7 @@
 // to one or TWO supers (breakfast is restaurants AND cafés), so a place
 // may match two pills. The GOOGLE side is exclusive: each Table A type
 // maps to exactly one super (or `other`, not a guest pill). Search map
-// Filters cut on these keys only. Super `undefined` (label "Other", ❓)
+// Filters cut on these keys only. Super `undefined` (label "Undefined", ❓)
 // is the leftover/create-path bucket — ALWAYS rendered last — not Google
 // `other` (hotels, shops, schools stay ineligible).
 //
@@ -43,5 +43,5 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "culture_arts", label: "Culture & Arts", emoji: "🎭" },
   { key: "sports_fitness", label: "Sports & Fitness", emoji: "⚽" },
   { key: "wellness_beauty", label: "Wellness & Beauty", emoji: "💆" },
-  { key: "undefined", label: "Other", emoji: "❓" },
+  { key: "undefined", label: "Undefined", emoji: "❓" },
 ];

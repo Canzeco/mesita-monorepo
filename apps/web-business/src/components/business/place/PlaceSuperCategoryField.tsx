@@ -13,7 +13,7 @@ import { PlaceKvField } from "./PlaceKvField";
 // with the admin console): category defined → the category's FULL membership
 // (1–2 supers), re-derived live from the current form value; category
 // undefined/unknown → the stored family_keys (Intaker-inferred), suffixed
-// "(inferred)"; nothing known → ❓ Other. While the catalog loads or on a
+// "(inferred)"; nothing known → ❓ Undefined. While the catalog loads or on a
 // catalog error the value is an em-dash — never raw slugs, never a lie.
 
 export function PlaceSuperCategoryField({
@@ -68,7 +68,7 @@ export function PlaceSuperCategoryField({
       const parts = stored.map(chip).filter(Boolean) as string[];
       return { text: `${parts.join(" · ")} (inferred)`, inferred: true };
     }
-    return { text: chip("undefined") ?? "❓ Other", inferred: false };
+    return { text: chip("undefined") ?? "❓ Undefined", inferred: false };
   }, [catalog, category, familyKeys]);
 
   return (

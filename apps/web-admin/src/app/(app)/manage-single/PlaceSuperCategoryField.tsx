@@ -14,7 +14,7 @@ import { ReadField } from "@/components/admin-ui/manage";
 //     re-derived LIVE from the current form value (unsaved edits update it);
 //   · category `undefined`/unknown → the stored family_keys (the supers the
 //     Intaker inferred), suffixed "(inferred)";
-//   · nothing known → ❓ Other.
+//   · nothing known → ❓ Undefined.
 // While the catalog loads (or on catalog error) the field shows an em-dash —
 // same posture as an absent Google price. Never raw slugs, never a lie.
 
@@ -69,7 +69,7 @@ export function PlaceSuperCategoryField({
       const parts = stored.map(chip).filter(Boolean) as string[];
       return { text: parts.join(" · "), inferred: true };
     }
-    return { text: chip("undefined") ?? "❓ Other", inferred: false };
+    return { text: chip("undefined") ?? "❓ Undefined", inferred: false };
   }, [catalog, category, familyKeys]);
 
   return (
