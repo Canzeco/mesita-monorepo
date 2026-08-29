@@ -3,8 +3,8 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
-//   • Top overlay: floating search bar (query only), then a chip row of
-//     categories + filters. Country + location live on that row, not in
+//   • Top overlay: one row — query pill and filter strip, separated.
+//     Categories + Filters + Now/Visit/scope live on the strip, not in
 //     the pill. The same Discovery filter store as Swipe cuts this catalog.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
@@ -609,29 +609,35 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — search bar, then a content-height dropdown
-          (empty prompt or live results) that never uses a fixed 70% panel.
+      {/* Floating top overlay — query pill + filter strip on one row, then
+          a content-height dropdown (empty prompt or live results) that
+          never uses a fixed 70% panel.
           max-h-[70%] caps long lists so they scroll and the map stays visible
           below. Ask AI lives on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
-        <SearchBar
-          query={query}
-          showClear={Boolean(query || searchOpen)}
-          onQueryChange={updateQuery}
-          onFocus={openSearch}
-          onClear={dismissSearch}
-          inputRef={searchInputRef}
-        />
-
-        {idle && (
-          <SearchFilterRow
-            filters={filters}
-            countryCode={scope.country}
-            locationSet={location != null}
-            onOpenScope={() => setScopeOpen(true)}
-            onOpenFilters={() => setFiltersOpen(true)}
-          />
-        )}
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-[8.5rem] flex-[1.15] basis-0">
+            <SearchBar
+              query={query}
+              showClear={Boolean(query || searchOpen)}
+              onQueryChange={updateQuery}
+              onFocus={openSearch}
+              onClear={dismissSearch}
+              inputRef={searchInputRef}
+            />
+          </div>
+          {idle && (
+            <div className="min-w-0 flex-1 basis-0">
+              <SearchFilterRow
+                filters={filters}
+                countryCode={scope.country}
+                locationSet={location != null}
+                onOpenScope={() => setScopeOpen(true)}
+                onOpenFilters={() => setFiltersOpen(true)}
+              />
+            </div>
+          )}
+        </div>
 
         {fetchError && idle && (
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>

@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 // Shared by Search and Visit (the wallet's place list, MESITA-1071).
 // Query field only. Search's country + location + categories live on
-// SearchFilterRow under the bar. Visit omits those. `onOpenScope` stays
-// as an optional far-right control for hosts that still want it.
+// SearchFilterRow beside the bar (same row, separated). Visit omits
+// those. `onOpenScope` stays as an optional far-right control for
+// hosts that still want it.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
