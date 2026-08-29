@@ -1,14 +1,21 @@
 // Supabase Edge Function — stripe-webhook-handle-event (external caller)
 //
 // Public endpoint (verify_jwt disabled at the gateway). Security rests
-// entirely on Stripe signature verification with STRIPE_WEBHOOK_SECRET — an
-// unsigned or mis-signed request is rejected.
+// entirely on Stripe signature verification — an unsigned or mis-signed
+// request is rejected. TWO signing secrets serve the one URL: the platform
+// endpoint's STRIPE_WEBHOOK_SECRET, and STRIPE_CONNECT_WEBHOOK_SECRET once
+// the operator creates the Connect endpoint (same URL, enabled_events pinned
+// to ["account.updated"]) — see webhook-verify.ts.
 //
-// One endpoint, two billing surfaces, discriminated by metadata:
+// One endpoint, three surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
 //   • project_id   → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
 //     projects.plan on the back of the paid door.
+//   • Connect account.updated → place_payment_accounts mirror (PLATFORM
+//     account layer, connect-account.ts). Connect-DELIVERED events (top-level
+//     event.account set) are guarded to account.updated ONLY: a restaurant's
+//     own Stripe subscriptions must never enter the platform reconcilers.
 //
 // Idempotency: Stripe retries deliveries. We record every processed event id
 // in public.stripe_events and no-op on replays.
@@ -36,6 +43,8 @@ import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
+import { verifyStripeEvent } from "./webhook-verify.ts";
+import { handleConnectAccountUpdated } from "./connect-account.ts";
 
 Deno.serve(async (req) => {
   // Vendor webhook — no CORS preflight; POST-only.
@@ -58,7 +67,10 @@ Deno.serve(async (req) => {
   const raw = await req.text();
   let event: Stripe.Event;
   try {
-    event = await stripe.webhooks.constructEventAsync(raw, sig, webhookSecret);
+    event = await verifyStripeEvent(stripe, raw, sig, [
+      webhookSecret,
+      Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
+    ]);
   } catch (err) {
     console.error("[stripe-webhook-handle-event] signature verification failed:", err);
     return jsonError("Invalid signature", 400);
@@ -103,7 +115,23 @@ async function handleStripeEvent(
   stripe: Stripe,
   event: Stripe.Event,
 ): Promise<void> {
+  // Connect-DELIVERED events (top-level event.account) are guarded to the one
+  // type the Connect endpoint exists for. Anything else a mis-configured
+  // endpoint subscribes (e.g. a restaurant's own customer.subscription.*)
+  // is acknowledged and ignored — it must never reach the platform
+  // subscription reconcilers below.
+  if (typeof event.account === "string" && event.account.length > 0) {
+    if (event.type === "account.updated") {
+      await handleConnectAccountUpdated(admin, event);
+    }
+    return;
+  }
   switch (event.type) {
+    case "account.updated":
+      // Also handled when delivered on the platform endpoint (single-endpoint
+      // configurations) — same mirror, same unknown-account no-op.
+      await handleConnectAccountUpdated(admin, event);
+      break;
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const subscriptionId =

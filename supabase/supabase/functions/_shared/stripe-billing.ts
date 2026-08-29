@@ -26,8 +26,10 @@ export const STRIPE_API_VERSION =
   "2025-03-31.basil" as Stripe.LatestApiVersion;
 
 // MESITA-37 — stay on TEST until a human is ready to take real money.
-// Checkout and catalog provisioning that would create live charges (or live
-// Prices that later get charged) refuse an `sk_live_` secret unless
+// Checkout, catalog provisioning that would create live charges (or live
+// Prices that later get charged), and Connect account creation (a live
+// connected account is something that later gets charged —
+// business-web-start-payment-onboarding) refuse an `sk_live_` secret unless
 // STRIPE_ALLOW_LIVE=true. Cancels, webhooks, and the admin health probe are
 // not this gate. Flipping the env is the needs-human step; this helper never
 // does it.

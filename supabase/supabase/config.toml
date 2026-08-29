@@ -642,6 +642,17 @@ verify_jwt = true
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
 
+# Stripe Connect PLATFORM account layer (skeleton — no charges). Owner-only
+# onboarding starter: creates the place's typeless-Standard connected account
+# + returns the Stripe-hosted Account Link.
+[functions.business-web-start-payment-onboarding]
+verify_jwt = true
+
+# Super-admin read of a place's Connect mirror + the pay-readiness AND chain
+# (intent bit ∧ payCard rail ∧ Stripe capability); refresh-on-read.
+[functions.admin-web-get-place-payment-account]
+verify_jwt = true
+
 # --- Admin config surfaces (Atlas / Enricher / Reservations /
 # Rewards / Models) — each re-checks super_admins. Listed explicitly so
 # the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
