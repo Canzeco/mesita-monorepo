@@ -1,10 +1,9 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
-import { SearchCategoryRow } from "@/components/consumer/search/SearchCategoryRow";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import {
   EmptySearchPrompt,
@@ -108,31 +107,6 @@ describe("SearchBar scope affordance", () => {
   });
 });
 
-describe("SearchCategoryRow", () => {
-  it("renders the six Category families, not Types or Discovery knobs", () => {
-    const rest = renderToStaticMarkup(<SearchCategoryRow familyKeys={[]} />);
-    expect(rest).toContain("Category");
-    expect(rest).toContain("Restaurants");
-    expect(rest).toContain("Bars");
-    expect(rest).toContain("Cafés");
-    expect(rest).toContain("Wellness");
-    expect(rest).toContain("Experiences");
-    expect(rest).toContain("Culture");
-    expect(rest).not.toContain("Nightclub");
-    expect(rest).not.toContain("Types");
-    expect(rest).not.toContain("Now");
-    expect(rest).not.toContain("Visit");
-    expect(rest).not.toContain("🍽️");
-    expect(rest).not.toContain("bg-pink-gradient");
-
-    const on = renderToStaticMarkup(
-      <SearchCategoryRow familyKeys={["restaurants"]} />,
-    );
-    expect(on).toContain("bg-pink-gradient");
-    expect(on).toContain('aria-pressed="true"');
-  });
-});
-
 describe("SearchFilterRow", () => {
   it("is icon-only, with a red count when filters are on", () => {
     const rest = renderToStaticMarkup(
@@ -162,21 +136,23 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Places scope and Super Category only — no status chips, types, distance, or time", () => {
+  it("shows Super Category above Places scope as a nested Venn", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
+    expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
     expect(html).toContain("Places");
     expect(html).toContain("role=\"radiogroup\"");
     expect(html).toContain("Partners and Mesita Places");
     expect(html).toContain("Partners");
     expect(html).toContain(">Places<");
     expect(html).toContain(">Google<");
-    expect(html).not.toContain("+ Places");
-    expect(html).not.toContain("+ Google");
+    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
     );
+    expect(html).toContain("pointer-events-none");
+    expect(html.match(/role="radio"/g)?.length).toBe(3);
     expect(html).not.toContain('type="range"');
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
@@ -197,37 +173,56 @@ describe("SearchMapFilters", () => {
     expect(html).not.toContain("I want to");
     expect(html).not.toContain("Prioritize");
   });
+});
 
-  it("fills every inner Places stop so the meter reads as a nested set", () => {
+describe("SearchPlacesScope", () => {
+  it("renders the scope as one nested meter of three radio stops", () => {
+    const src = read("SearchPlacesScope.tsx");
+    expect(src).toContain("one meter");
+    expect(src).not.toContain("annulusPath");
+    expect(src).not.toContain("feDropShadow");
+    expect(src).not.toContain("radialGradient");
+
+    const html = renderToStaticMarkup(
+      <SearchPlacesScope power={2} onPower={() => {}} />,
+    );
+    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
+    expect(html.match(/role="radio"/g)?.length).toBe(3);
+    expect(html).toContain(
+      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+    );
+    expect(html).toContain('aria-checked="false" aria-label="Mesita Partners"');
+    expect(html).toContain(
+      'aria-checked="false" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+    );
+  });
+
+  it("captions the widest stop with the full union", () => {
+    const html = renderToStaticMarkup(
+      <SearchPlacesScope power={3} onPower={() => {}} />,
+    );
+    expect(html).toContain("Partners, Mesita Places, and Google");
+  });
+
+  it("fills from the inside out as power widens", () => {
     const partners = renderToStaticMarkup(
       <SearchPlacesScope power={1} onPower={() => {}} />,
     );
-    expect(partners).toContain("Partners only");
-    expect(partners.match(/data-included="true"/g)?.length).toBe(1);
-    expect(partners).toContain('aria-checked="true"');
-    expect(partners).toContain('aria-label="Mesita Partners"');
-    expect(partners).toContain('data-edge="true"');
-
     const places = renderToStaticMarkup(
       <SearchPlacesScope power={2} onPower={() => {}} />,
     );
-    expect(places).toContain("Partners and Mesita Places");
-    expect(places.match(/data-included="true"/g)?.length).toBe(2);
-    expect(places.match(/data-included="false"/g)?.length).toBe(1);
-    expect(places).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
-    );
-
     const google = renderToStaticMarkup(
       <SearchPlacesScope power={3} onPower={() => {}} />,
     );
-    expect(google).toContain("Partners, Mesita Places, and Google");
-    expect(google.match(/data-included="true"/g)?.length).toBe(3);
+    expect(partners).toContain(
+      'aria-checked="true" aria-label="Mesita Partners"',
+    );
+    expect(partners.match(/data-included="true"/g)?.length).toBe(1);
+    expect(places.match(/data-included="true"/g)?.length).toBe(2);
     expect(google).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
     );
-    expect(google).toContain("rounded-xl border");
-    expect(google).not.toContain("flex-wrap");
+    expect(google.match(/data-included="true"/g)?.length).toBe(3);
   });
 });
 
@@ -284,6 +279,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("SearchMap.tsx")).toContain("SearchMapReticle");
     expect(read("SearchMap.tsx")).toContain("noteProgrammaticCamera");
+    expect(read("SearchMap.tsx")).toContain("noteUserMapDrag");
+    expect(read("SearchMap.tsx")).toContain('addListener("dragstart"');
+    expect(read("SearchMap.tsx")).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "Zoom in to see this area",
     );
@@ -311,6 +309,42 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     );
   });
 
+  it("closes the name overlay on a finger-drag and keeps the query", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("closeNameOverlay");
+    expect(src).toContain("searchInputRef.current?.blur()");
+    expect(src).toMatch(
+      /const idle = !searchOpen/,
+    );
+    expect(src).toMatch(/\{searchOpen && \(/);
+    expect(src).not.toMatch(/searchOpen \|\| trimmed\.length > 0/);
+    expect(src).toMatch(
+      /closeNameOverlay\(\);[\s\S]*if \(forceNextLoad\.current\)/,
+    );
+    expect(src).toMatch(
+      /if \(searchOpen\) \{\s*closeNameOverlay\(\);\s*return;/,
+    );
+    expect(src).toContain("Do not re-run name search");
+  });
+
+  it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportCenter\(box\)/,
+    );
+    expect(src).toContain("cannot accumulate toward reload");
+    expect(src).toContain("Only a finger-drag on the map counts as travel");
+  });
+
+  it("treats every idle after a rail pan as programmatic until dragstart", () => {
+    const src = read("SearchMap.tsx");
+    expect(src).toContain("cameraMoveIsProgrammatic");
+    expect(src).toContain("noteUserMapDrag");
+    expect(src).toMatch(/addListener\("dragstart", noteUserMapDrag\)/);
+    expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
+    expect(src).not.toContain("programmaticIdleUntil");
+  });
+
   it("reloads once when a later GPS fix lands off the fetched camera", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("firstFix");
@@ -320,14 +354,14 @@ describe("Search map catalog auto-reloads after distance and time", () => {
 });
 
 describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog with Places scope + Category families on the chrome", () => {
+  it("cuts the nearby catalog from the Filters sheet, not a chrome Category strip", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("useMapFilters");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("SearchFilterRow");
-    expect(src).toContain("SearchCategoryRow");
-    expect(src).toContain("familyKeys={filters.familyKeys}");
+    expect(src).not.toContain("SearchCategoryRow");
+    expect(src).not.toContain("familyKeys={filters.familyKeys}");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
     expect(src).toContain("flex min-w-0 items-center gap-2");
@@ -372,6 +406,10 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("../../../lib/api/places.ts")).not.toMatch(
       /consumer-web-suggest-places[\s\S]*familyKeys/,
     );
+    expect(read("../../../lib/api/places.ts")).toMatch(
+      /consumer-web-list-places[\s\S]*familyKeys/,
+    );
+    expect(read("SearchClient.tsx")).toContain("filters.familyKeys");
     expect(read("SearchClient.tsx")).toContain('"fast"');
     expect(read("SearchClient.tsx")).toContain('"deep"');
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
@@ -383,12 +421,13 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
       "flex gap-1.5 overflow-hidden",
     );
     expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
       "mt-2 flex gap-1.5",
     );
+    expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
   });
 
   it("recenters the map on the location param, not only the device", () => {
@@ -405,13 +444,22 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
     expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
     expect(read("../../../lib/map-defaults.ts")).toMatch(
-      /MAP_PLACE_PIN_RADIUS = 7/,
+      /MAP_PLACE_PIN_RADIUS = 10/,
+    );
+    expect(read("../../../lib/map-defaults.ts")).toMatch(
+      /MAP_PIN_HIT_SIZE = 44/,
     );
     expect(read("../../../lib/map-defaults.ts")).toContain(
-      "export function mapCircleIcon",
+      "export function mapPinIcon",
     );
-    expect(read("SearchMap.tsx")).toContain("mapCircleIcon(pinFillColor");
-    expect(read("SearchMap.tsx")).toContain("USER_ICON = mapCircleIcon");
+    expect(read("SearchMap.tsx")).toContain("mapsPinIcon(pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("mapPinIcon");
+    expect(read("SearchMap.tsx")).toContain("userIcon()");
+    expect(read("SearchMap.tsx")).toContain("cursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("draggableCursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("draggingCursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("optimized={false}");
+    expect(read("SearchMap.tsx")).toContain("[&_*]:!cursor-default");
     expect(read("SearchMap.tsx")).not.toContain("M -6 0 A 6 6");
     expect(read("SearchMap.tsx")).not.toContain("scale: isSelected");
     expect(read("SearchMap.tsx")).not.toContain("strokeWeight: isSelected");
@@ -859,5 +907,20 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
     expect(read("SearchClient.tsx")).not.toContain("places.googleapis.com");
     expect(read("SearchClient.tsx")).not.toContain("fetchGooglePlacePreview");
     expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
+  });
+});
+
+describe("on-Mesita places open the profile modal, not GooglePlaceSheet", () => {
+  it("routes predictions with Mesita identity to the profile and skips the add sheet", () => {
+    const client = read("SearchClient.tsx");
+    const panel = read("SearchResultsPanel.tsx");
+    expect(client).toContain("predictionOnMesita");
+    expect(client).toContain("openMesitaProfileFromPrediction");
+    expect(client).toContain("catalogPlaceOnMesita");
+    expect(client).toContain("addedProfiles");
+    expect(panel).toContain("predictionOnMesita(p) ? onPickMesita : onPickGoogle");
+    expect(client).toMatch(
+      /if \(predictionOnMesita\(prediction\)\) \{\s*openMesitaProfileFromPrediction/,
+    );
   });
 });

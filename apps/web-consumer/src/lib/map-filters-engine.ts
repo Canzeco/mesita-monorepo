@@ -143,8 +143,9 @@ function matchesMapFilters(place: Place, f: MapFilters): boolean {
   if (LANE_POWER[lane] > f.searchPower) return false;
 
   // Super Category does not cut Google stubs — they have no reliable
-  // membership. Closest Google at full power stays closest Google.
-  if (lane !== "google" && f.familyKeys.length > 0) {
+  // Super Category cuts Mesita rows and Google stubs. Google membership
+  // is the one Super of the Nearby primaryType (family_keys on the stub).
+  if (f.familyKeys.length > 0) {
     const familyHit = f.familyKeys.some((key) =>
       (place.family_keys ?? []).includes(key),
     );
