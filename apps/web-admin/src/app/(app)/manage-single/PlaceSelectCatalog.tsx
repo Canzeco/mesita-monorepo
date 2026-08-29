@@ -285,12 +285,15 @@ export function PlaceSelectCatalog() {
         {trimmed.length === 0 && hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The row IS the pipeline, left to right: created → active →
-                  listed → requested → enriched → enriching → verified → partnered → promoted. Category,
-                  Zone and Google reviews are gone — they describe the place,
-                  and this table answers "how far along is it". Active is
-                  Google's OPERATIONAL fact, not Mesita Listed. */}
-              <table className="w-full min-w-[960px] border-separate border-spacing-0 text-sm">
+              {/* The pipeline facts run left to right — created → active →
+                  listed → requested → enriched → enriching → verified →
+                  partnered → promoted — and answer "how far along is it".
+                  The two TRAILING columns are not pipeline rungs: Mesita Pay
+                  and Accepts Yums are settlement-acceptance intent bits
+                  (false fleet-wide until their engines land). Category, Zone
+                  and Google reviews are gone — they describe the place.
+                  Active is Google's OPERATIONAL fact, not Mesita Listed. */}
+              <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-4 py-3 font-semibold">Photo</th>
@@ -304,6 +307,8 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
                     <th className="px-4 py-3 text-center font-semibold">Partnered</th>
                     <th className="px-4 py-3 text-center font-semibold">Promoted</th>
+                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Pay</th>
+                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Accepts Yums</th>
                     <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
                 </thead>
@@ -509,6 +514,12 @@ function PlaceCatalogRow({
       </td>
       <td className="px-4 py-3.5 text-center">
         <PromoLevelCell level={place.promoting_level} />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.mesita_pay} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.yums} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
       </td>
       <td className="px-4 py-3.5 text-right">
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  ENGINELESS_STATUS_FACT_KEYS,
   GENERAL_STATUS_COUNT,
   GENERAL_STATUS_FACTS,
   INTAKE_FUNCTION_COUNT,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
+  STATUS_FACT_FALSE_TONE,
   operatorPromotingLevel,
   promotingLevelChip,
   promotingLevelFromStrategy,
@@ -14,8 +16,8 @@ import {
 } from "./status-vocabulary";
 
 describe("status vocabulary", () => {
-  it("is nine general facts plus eleven Intake functions 0–10", () => {
-    expect(GENERAL_STATUS_COUNT).toBe(9);
+  it("is eleven general facts plus eleven Intake functions 0–10", () => {
+    expect(GENERAL_STATUS_COUNT).toBe(11);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);
     expect(GENERAL_STATUS_FACTS.map((f) => f.label)).toEqual([
       "Created",
@@ -27,6 +29,8 @@ describe("status vocabulary", () => {
       "Verified",
       "Partnered",
       "Promoted",
+      "Mesita Pay",
+      "Accepts Yums",
     ]);
     expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
@@ -44,6 +48,14 @@ describe("status vocabulary", () => {
     expect(INTAKE_FUNCTIONS.map((f) => intakeFunctionLabel(f.n, f.label))).toEqual(
       INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`),
     );
+  });
+
+  it("acceptance bits: neutral false tone, engineless (no chips/segments) until their engines land", () => {
+    expect(STATUS_FACT_FALSE_TONE.partner).toBe("neutral");
+    expect(STATUS_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
+    expect(STATUS_FACT_FALSE_TONE.yums).toBe("neutral");
+    expect(STATUS_FACT_FALSE_TONE.verified).toBeUndefined();
+    expect([...ENGINELESS_STATUS_FACT_KEYS]).toEqual(["mesita_pay", "yums"]);
   });
 
   it("binary chips are true / false, not the fact name", () => {

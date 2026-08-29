@@ -1,9 +1,12 @@
 // Status — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATUSES (9)  Created · Active · Listed · Enriched · Enriching ·
-//                 Verified · Partnered are bools (`true` / `false`).
-//                 Requested is the guest request count, 0…n — not a
-//                 Yes/No. Promoted is 0 | 1 | 2. Never a projects.status.
+//   STATUSES (11) Created · Active · Listed · Enriched · Enriching ·
+//                 Verified · Partnered · Mesita Pay · Accepts Yums are bools
+//                 (`true` / `false`). Requested is the guest request count,
+//                 0…n — not a Yes/No. Promoted is 0 | 1 | 2. Never a
+//                 projects.status. Mesita Pay / Accepts Yums are per-place
+//                 settlement-acceptance intent bits (places.mesita_pay_enabled
+//                 / places.yums_enabled) — all false until their engines land.
 //   INTAKE (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -85,9 +88,29 @@ export const GENERAL_STATUS_FACTS = [
   { key: "verified", label: "Verified" },
   { key: "partner", label: "Partnered" },
   { key: "promoting", label: "Promoted" },
+  { key: "mesita_pay", label: "Mesita Pay" },
+  { key: "yums", label: "Accepts Yums" },
 ] as const;
 
 export type GeneralStatusKey = (typeof GENERAL_STATUS_FACTS)[number]["key"];
+
+/** Facts whose FALSE is a state, not a pending debt: grey pill, never rose.
+ *  Same taxonomy as the catalog's BoolCell falseTone — a free place and a
+ *  place that doesn't take a not-yet-live rail are not defects. */
+export const STATUS_FACT_FALSE_TONE: Partial<Record<GeneralStatusKey, "neutral">> = {
+  partner: "neutral",
+  mesita_pay: "neutral",
+  yums: "neutral",
+};
+
+/** Acceptance bits with NO engine yet (decision: Pato gate 2026-08-29).
+ *  Header chips, Global Monitor filter segments and notification meta chips
+ *  OMIT these until the Mesita Pay gateway / Yums Credits PRs lift the
+ *  filters; the catalog table and the Status box still show them. */
+export const ENGINELESS_STATUS_FACT_KEYS: readonly GeneralStatusKey[] = [
+  "mesita_pay",
+  "yums",
+];
 
 export const INTAKE_FUNCTIONS = [
   { key: "seed", label: "Seed", n: 0 },

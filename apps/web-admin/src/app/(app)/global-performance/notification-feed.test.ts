@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { NotificationItem, NotificationType } from "./actions";
 import {
   groupConsecutiveSteps,
+  intakeFactChips,
   intakeFunctionChips,
   intakeStatusLine,
   itemMatchesIntakeFilter,
@@ -86,6 +87,8 @@ describe("intakeStatusLine", () => {
     verified: false,
     partner: false,
     promoting: false,
+    mesita_pay: false,
+    yums: false,
   };
 
   it("prints every true general fact and never a high-water n/10", () => {
@@ -136,6 +139,25 @@ describe("intakeStatusLine", () => {
     expect(intakeStatusLine(created)).toBe(
       "Created · Active · Listed · Requested · Enriched · Enriching",
     );
+  });
+
+  it("names the acceptance bits when true, and keeps their chips filtered out", () => {
+    const created = item({
+      id: "c",
+      type: "atlas.place_created",
+      meta: {
+        statusFacts: { ...facts, mesita_pay: true, yums: true },
+      },
+    });
+    expect(intakeStatusLine(created)).toBe(
+      "Created · Active · Listed · Mesita Pay · Accepts Yums",
+    );
+    // Engineless facts never render meta chips until a stamper exists
+    // (the gateway / Credits PRs lift the intakeFactChips filter).
+    const chipKeys = intakeFactChips(created).map((c) => c.key);
+    expect(chipKeys).not.toContain("mesita_pay");
+    expect(chipKeys).not.toContain("yums");
+    expect(chipKeys).toContain("partner");
   });
 
   it("falls back for create events that predate statusFacts", () => {
