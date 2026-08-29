@@ -11,8 +11,11 @@
 //
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
-//             Fast / Deep / Map keep lane counts. Google category knobs
-//             live on Modules, not here.
+//             Fast is Autocomplete only. Deep calls Autocomplete, Text
+//             Search, and Places Lineup (Name on Mesita `places.name`,
+//             never `google_name`); each hit resolves, then Partners →
+//             Mesita → Google. Map keeps lane counts. Google category
+//             knobs live on Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Nearby · Text Search · Mesita Places Lineup · Social
@@ -493,7 +496,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete while typing, cap plus Google categories (default 5). Deep: one second after idle — Partners, then Mesita, then Google. Partners and Mesita rank by name embedding; Google keeps Text Search order. Overlaps drop. Details after a pick.",
+    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -572,7 +575,11 @@ export const LIBRARY_SIGNALS = [
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
 export const DISCOVERY_MODE_MODULES = {
   fast: ["Google Places Autocomplete"],
-  deep: ["Mesita Places Lineup", "Google Places Text Search"],
+  deep: [
+    "Google Places Autocomplete",
+    "Google Places Text Search",
+    "Mesita Places Lineup",
+  ],
   map: ["Mesita Places Lineup", "Google Places Nearby Search"],
   swipe: ["Mesita Places Lineup"],
   catalog: ["Mesita Places Lineup"],
@@ -606,7 +613,7 @@ export const SIGNALS: {
     key: "name",
     label: "Name",
     fn: "name()",
-    input: "Query name vector × places.name_embedding.",
+    input: "Query × places.name_embedding (Mesita `places.name`, not `google_name`).",
     process: "(cosine + 1) / 2. No name query → abstain.",
     output: "Unembedded place → unembedded, never deleted.",
     apis: [],

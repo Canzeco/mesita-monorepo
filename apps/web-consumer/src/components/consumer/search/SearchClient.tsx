@@ -13,8 +13,9 @@
 //     + scrolls to the matching rail card; tapping a card opens the place
 //     page (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
-//     after the guest stops, Deep Search replaces that list (Partners ·
-//     Mesita · Google). One Google session token per autocomplete session.
+//     after the guest stops, Deep Search replaces that list when it has
+//     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
+//     session token per autocomplete session.
 //     Results hang at content height. No source labels — the colored point
 //     is membership (red Mesita / gray not on Mesita). On-Mesita rows
 //     select the place on the map; Google-only rows open GooglePlaceSheet.
@@ -281,7 +282,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Fast Search (Autocomplete) while typing. Deep Search replaces the list
-  // after idle. A later Fast for this query never overwrites a Deep hit.
+  // after idle when it has rows. Empty Deep keeps Fast. A later Fast for
+  // this query never overwrites a Deep hit.
   useEffect(() => {
     if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
     let cancelled = false;
@@ -301,14 +303,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (!cancelled && !deepSettled) {
           setPredictions(rows);
           setSearchError(null);
+          // Empty Fast: keep searching so Deep can fill without flashing
+          // "No matches found".
+          if (rows.length > 0) setSearching(false);
         }
       } catch (err) {
         if (!cancelled && !deepSettled) {
           setPredictions([]);
           setSearchError(errMsg(err, "Search failed — try again."));
+          setSearching(false);
         }
-      } finally {
-        if (!cancelled) setSearching(false);
       }
     }, FAST_DEBOUNCE_MS);
 
@@ -323,12 +327,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           "deep",
         );
         if (!cancelled) {
-          deepSettled = true;
-          setPredictions(rows);
-          setSearchError(null);
+          if (rows.length > 0) {
+            deepSettled = true;
+            setPredictions(rows);
+            setSearchError(null);
+          }
+          setSearching(false);
         }
       } catch {
         // Keep Fast results if Deep fails.
+        if (!cancelled) setSearching(false);
       }
     }, DEEP_IDLE_MS);
 

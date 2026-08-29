@@ -1,9 +1,14 @@
 // deno test supabase/functions/_shared/consumer-search-lane.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  applyResolvedMesitaName,
+  deepModuleFlags,
   laneDedupeKeys,
+  listedNotPartner,
   membershipTone,
   mergeNameDeepLanes,
+  splitResolvedNameHits,
+  stripPlacesPrefix,
   takeFastLane,
   type LaneItem,
 } from "./consumer-search-lane.ts";
@@ -69,6 +74,40 @@ Deno.test("takeFastLane drops a duplicate google id", () => {
     5,
   );
   assertEquals(out.map((p) => p.mainText), ["First", "Second"]);
+});
+
+Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google label", () => {
+  const out = applyResolvedMesitaName(
+    item({
+      placeId: "ChIJ1",
+      mainText: "Google's Label",
+      secondaryText: "Google address",
+    }),
+    item({
+      placeId: "ChIJ1",
+      mainText: "Mesita override",
+      secondaryText: "Mesita address",
+      status: "web_listed",
+      partner: true,
+      mesitaId: "m-1",
+      mesitaSlug: "mesita-override",
+    }),
+  );
+  assertEquals(out.mainText, "Mesita override");
+  assertEquals(out.secondaryText, "Mesita address");
+  assertEquals(out.mesitaId, "m-1");
+  assertEquals(out.partner, true);
+});
+
+Deno.test("splitResolvedNameHits buckets after resolve, before merge", () => {
+  const out = splitResolvedNameHits([
+    item({ placeId: "p1", mainText: "Partner", partner: true, mesitaId: "m-p" }),
+    item({ placeId: "m1", mainText: "Listed", mesitaId: "m-1" }),
+    item({ placeId: "g1", mainText: "Google" }),
+  ]);
+  assertEquals(out.partners.map((p) => p.mainText), ["Partner"]);
+  assertEquals(out.mesita.map((p) => p.mainText), ["Listed"]);
+  assertEquals(out.google.map((p) => p.mainText), ["Google"]);
 });
 
 Deno.test("mergeNameDeepLanes: Partners then Mesita then Google", () => {
@@ -159,6 +198,73 @@ Deno.test("mergeNameDeepLanes: Google lane keeps Text Search order", () => {
     "First-best text",
     "Second-best text",
   ]);
+});
+
+Deno.test("stripPlacesPrefix drops the Places API resource prefix", () => {
+  assertEquals(stripPlacesPrefix("places/ChIJ123"), "ChIJ123");
+  assertEquals(stripPlacesPrefix("ChIJ123"), "ChIJ123");
+});
+
+Deno.test("listedNotPartner drops paid-plan rows from the Mesita Lineup lane", () => {
+  const out = listedNotPartner([
+    { plan: "premium" },
+    { plan: "partner" },
+    { plan: "free" },
+    { plan: null },
+  ]);
+  assertEquals(out.map((r) => r.plan), ["free", null]);
+});
+
+Deno.test("deepModuleFlags: types off skip Autocomplete and Text Search", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: false,
+      hasOpenai: true,
+    }),
+    { wantAuto: false, wantText: false, wantMesita: true },
+  );
+});
+
+Deno.test("deepModuleFlags: googleCount 0 keeps Autocomplete, skips Text Search", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 0,
+      typesOn: true,
+      hasOpenai: true,
+    }),
+    { wantAuto: true, wantText: false, wantMesita: true },
+  );
+});
+
+Deno.test("deepModuleFlags: no OpenAI skips Lineup", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: true,
+      hasOpenai: false,
+    }),
+    { wantAuto: true, wantText: true, wantMesita: false },
+  );
+});
+
+Deno.test("deepModuleFlags: all lanes on fire all three modules", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: true,
+      hasOpenai: true,
+    }),
+    { wantAuto: true, wantText: true, wantMesita: true },
+  );
 });
 
 Deno.test("mergeNameDeepLanes: overflow Mesita never stubs as Google", () => {
