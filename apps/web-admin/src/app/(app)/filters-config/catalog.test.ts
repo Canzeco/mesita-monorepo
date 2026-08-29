@@ -373,6 +373,14 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Max results caps the merge");
     expect(name).toContain("Map Filters never cut this list");
     expect(name).toContain("same cap — Max results stays for Deep symmetry");
+    const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
+    const deepGoogle = deepKnobs.indexOf('label="Google places"');
+    const deepPartners = deepKnobs.indexOf('label="Mesita partners"');
+    const deepPlaces = deepKnobs.indexOf('label="Mesita places"');
+    const deepMax = deepKnobs.indexOf('label="Max results"');
+    expect(deepGoogle).toBeLessThan(deepPartners);
+    expect(deepPartners).toBeLessThan(deepPlaces);
+    expect(deepPlaces).toBeLessThan(deepMax);
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");

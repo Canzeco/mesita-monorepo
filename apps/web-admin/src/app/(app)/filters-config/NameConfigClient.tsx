@@ -5,6 +5,7 @@
 // Search, and Places Lineup (Name signal only — Mesita `places.name`,
 // not `google_name`). Nearby on Deep is the guest pin, not Nearby Search.
 // Each candidate resolves, then Partners · Mesita · Google.
+// Deep knobs follow Fast: Google first, Max last; Mesita lanes in between.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -178,6 +179,15 @@ export function NameConfigClient({
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <NumberField
+              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
+              label="Google places"
+              value={name.deep.googleCount}
+              min={0}
+              max={NAME_LANE_COUNT_MAX}
+              disabled={pending || loadBlocked}
+              onChange={(googleCount) => patchDeep({ googleCount })}
+            />
+            <NumberField
               icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
               label="Mesita partners"
               value={name.deep.partnerCount}
@@ -194,15 +204,6 @@ export function NameConfigClient({
               max={NAME_LANE_COUNT_MAX}
               disabled={pending || loadBlocked}
               onChange={(mesitaCount) => patchDeep({ mesitaCount })}
-            />
-            <NumberField
-              icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
-              label="Google places"
-              value={name.deep.googleCount}
-              min={0}
-              max={NAME_LANE_COUNT_MAX}
-              disabled={pending || loadBlocked}
-              onChange={(googleCount) => patchDeep({ googleCount })}
             />
             <NumberField
               icon={<Layers className="mt-0.5 h-4 w-4 shrink-0" />}

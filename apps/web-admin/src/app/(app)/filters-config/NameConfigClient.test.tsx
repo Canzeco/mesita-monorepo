@@ -34,5 +34,22 @@ describe("Name Search params", () => {
     expect(html).toContain('value="5"');
     expect(html).toContain('value="3"');
     expect(html).toContain('value="9"');
+
+    const fastHtml = html.slice(
+      html.indexOf("Name (Fast Search)"),
+      html.indexOf("Name (Deep Search)"),
+    );
+    expect(fastHtml.indexOf("Google places")).toBeLessThan(
+      fastHtml.indexOf("Max results"),
+    );
+
+    const deepHtml = html.slice(html.indexOf("Name (Deep Search)"));
+    const google = deepHtml.indexOf("Google places");
+    const partners = deepHtml.indexOf("Mesita partners");
+    const places = deepHtml.indexOf("Mesita places");
+    const max = deepHtml.indexOf("Max results");
+    expect(google).toBeLessThan(partners);
+    expect(partners).toBeLessThan(places);
+    expect(places).toBeLessThan(max);
   });
 });
