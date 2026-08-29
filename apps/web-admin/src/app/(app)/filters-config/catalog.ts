@@ -16,7 +16,8 @@
 //             never `google_name`). Deep never calls Nearby Search.
 //             Chat calls Text Search, Nearby, both Perplexity modules,
 //             and Places Lineup — not Social Lineup. Favorites calls
-//             no module.
+//             no module and gates on no pool — bookmarks may include
+//             Mesita Listed Create stubs (not enriched).
 //             Map keeps lane counts. Google category knobs live on
 //             Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
@@ -560,7 +561,7 @@ export const ENGINES: {
     label: "Favorites",
     fn: "favorites()",
     input: "What this guest saved.",
-    process: "Parked. Home is Soon. Recency of the save; no ranking.",
+    process: "Parked. Home is Soon. Recency of the save; no ranking. No pool gate — Mesita Listed Create stubs (not enriched) may be saved alongside Google and enriched rows.",
     output: "The saved list, when unparked.",
     state: "PARKED",
     wired: null,
@@ -728,7 +729,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: ["google", "listed"],
+  favorites: [],
 };
 
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
