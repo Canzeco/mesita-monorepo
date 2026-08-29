@@ -144,7 +144,10 @@ describe("SearchMapFilters", () => {
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
     expect(html.indexOf("Mesita Places")).toBeLessThan(html.indexOf("How many"));
     expect(html).toContain("How many");
-    expect(html).toContain("Closest 20 places.");
+    // 4 places under a cap of 20: the line states BOTH so it cannot
+    // disagree with the button one row below.
+    expect(html).toContain("Showing 4 of up to 20 closest.");
+    expect(html).not.toContain("Closest 20 places.");
     expect(html).toContain("role=\"radiogroup\"");
     // TWO sets only — Partners is a paint, never a scope.
     expect(html).toContain("Mesita Places");
@@ -230,6 +233,36 @@ describe("SearchPlacesScope", () => {
     expect(google).toContain(
       'aria-checked="true" aria-label="Mesita Places and Google Places"',
     );
+  });
+});
+
+describe("SearchResultLimit — the cap and the reality in one line", () => {
+  it("names the cap when the catalog fills it, the shortfall when it does not", () => {
+    // The bug: "Closest 60 places." sitting above a button reading
+    // "Show 20 places" reads as a broken control. Google's Nearby call
+    // caps at 20/call, so the gap is the normal case at Google scope.
+    const short = renderToStaticMarkup(
+      <SearchResultLimit limit={60} onLimit={() => {}} count={20} />,
+    );
+    expect(short).toContain("Showing 20 of up to 60 closest.");
+    expect(short).not.toContain("Closest 60 places.");
+
+    const full = renderToStaticMarkup(
+      <SearchResultLimit limit={20} onLimit={() => {}} count={20} />,
+    );
+    expect(full).toContain("Closest 20 places.");
+
+    // Over-full (a stale catalog mid-refetch) still reads as the cap.
+    const over = renderToStaticMarkup(
+      <SearchResultLimit limit={20} onLimit={() => {}} count={57} />,
+    );
+    expect(over).toContain("Closest 20 places.");
+
+    // Loading: no count yet, so promise nothing but the cap.
+    const loading = renderToStaticMarkup(
+      <SearchResultLimit limit={40} onLimit={() => {}} count={null} />,
+    );
+    expect(loading).toContain("Closest 40 places.");
   });
 });
 

@@ -26,7 +26,9 @@ import { SearchResultLimit } from "./SearchResultLimit";
 // supers — ❓ Undefined is not an appetite and never a pill here. How
 // many is 20, 40, or 60 — closest N, nothing in between — and it is the
 // CAP the Nearby fetch itself obeys, asked ONCE, here and nowhere in
-// the console. It opens at 20. (All four: Pato, 2026-08-29.)
+// the console. It opens at 20, and its line states the cap AND the
+// count the button is about to show, so the two can never disagree.
+// (All five: Pato, 2026-08-29.)
 // Distance and time are not map knobs.
 
 export function SearchMapFilters({
@@ -97,6 +99,7 @@ export function SearchMapFilters({
             <SearchResultLimit
               limit={filters.resultLimit}
               onLimit={setMapResultLimit}
+              count={count}
             />
           </FilterModule>
         </div>
