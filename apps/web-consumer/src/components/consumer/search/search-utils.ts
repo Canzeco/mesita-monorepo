@@ -208,6 +208,26 @@ export function railCenterIndex(
 
 /** First catalog card is selected until a pin or a scroll picks another.
  *  A stale id (an auto-reload replaced the set) falls back to the first card. */
+/**
+ * Centre the rail card for the selected place?
+ *
+ * A flick that already parked on the card must NOT be re-centred —
+ * scrollIntoView would fight the finger, so the pager naming the card
+ * (`idx === railIndex`) normally means "leave it alone". A TAP overrides
+ * that (Pato, 2026-08-29): opening a collapsed rail leaves railIndex
+ * stale at 0, so card 0 looked already-centred and the tap scrolled
+ * nothing. The guest tapped a pin and the carousel did not move.
+ */
+export function shouldCenterRailCard(
+  idx: number,
+  railIndex: number,
+  tapped: boolean,
+): boolean {
+  if (idx < 0) return false;
+  if (tapped) return true;
+  return idx !== railIndex;
+}
+
 export function defaultRailSelection(
   ids: readonly string[],
   current: string | null,

@@ -19,6 +19,7 @@ import {
   clampReloadMinKm,
   clampReloadMinSec,
   defaultRailSelection,
+  shouldCenterRailCard,
   nearbyReloadThresholdKm,
   railCenterIndex,
   shouldReloadNearbyCatalog,
@@ -747,7 +748,9 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(client).toContain("setSelectedId(id)");
     expect(client).toContain("defaultRailSelection");
     expect(client).toContain("railSelectedId");
-    expect(client).toContain("idx === railIndex");
+    // The guard is a pure function now, not a comment.
+    expect(client).toContain("shouldCenterRailCard(idx, railIndex");
+    expect(client).toContain("centerOnSelect");
     expect(client).not.toContain("setSelectedId(next)");
     expect(client).toContain('inline: "center"');
     expect(client).not.toContain("RAIL_STRIDE");
@@ -876,6 +879,38 @@ describe("rail center is the selected place", () => {
     expect(railCenterIndex(2000, 320, 5)).toBe(4);
     expect(railCenterIndex(100, 0, 5)).toBe(0);
     expect(railCenterIndex(100, 320, 0)).toBe(0);
+  });
+
+  it("a tap centres the card, a flick that already parked does not", () => {
+    // The bug: opening a collapsed rail leaves railIndex stale at 0, so
+    // card 0 read as already-centred and a pin tap scrolled nothing.
+    expect(shouldCenterRailCard(0, 0, true)).toBe(true);
+    expect(shouldCenterRailCard(0, 0, false)).toBe(false);
+    expect(shouldCenterRailCard(3, 0, false)).toBe(true);
+    expect(shouldCenterRailCard(3, 3, true)).toBe(true);
+    // A card the catalog no longer holds is never centred.
+    expect(shouldCenterRailCard(-1, 0, true)).toBe(false);
+    expect(shouldCenterRailCard(-1, 0, false)).toBe(false);
+  });
+
+  it("an overlay pin never opens the rail — it has no card there", () => {
+    const client = read("SearchClient.tsx");
+    // select-google / select-mesita-overlay must NOT setRailCollapsed(false):
+    // defaultRailSelection would fall back to card 0 and the guest who
+    // tapped B would watch A light up.
+    const overlay = client.slice(
+      client.indexOf('case "select-google"'),
+      client.indexOf('case "select-mesita-catalog"'),
+    );
+    expect(overlay).toContain("setSelectedId(pin.id)");
+    expect(overlay).not.toContain("setRailCollapsed(false)");
+    // A catalog pin still opens it and asks for the centring.
+    const catalogCase = client.slice(
+      client.indexOf('case "select-mesita-catalog"'),
+      client.indexOf('case "noop"'),
+    );
+    expect(catalogCase).toContain("centerOnSelect.current = true");
+    expect(catalogCase).toContain("setRailCollapsed(false)");
   });
 
   it("defaultRailSelection keeps a live id and falls back to the first card", () => {
