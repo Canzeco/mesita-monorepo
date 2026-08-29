@@ -26,6 +26,7 @@ describe("Map reload pairs", () => {
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
     expect(html).toContain("Browsing the rail does not count");
+    expect(html).toMatch(/Reload after[\s\S]*aria-pressed/);
     expect(html).not.toContain("Reload after the camera moves");
     expect(html).not.toContain("Reload after waiting");
     for (const pair of MAP_RELOAD_PAIRS) {

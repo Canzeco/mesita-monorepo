@@ -5,11 +5,12 @@
 // types live on Discovery Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BadgeCheck, Globe, Map as MapIcon, Store } from "lucide-react";
+import { BadgeCheck, Globe, Map as MapIcon, RefreshCw, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   KnobStatus,
+  ChoiceField,
   NumberField,
   SaveRow,
   SectionCard,
@@ -135,38 +136,37 @@ export function MapConfigClient({
             disabled={pending || loadBlocked}
             onChange={(googleCount) => patch({ googleCount })}
           />
-        </div>
-        <div className="mt-5">
-          <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
-            Reload after
-          </p>
-          <p className="text-muted-foreground mb-2 type-meta">
-            Camera must move this far AND wait this long. Browsing the rail does not count.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {MAP_RELOAD_PAIRS.map((pair) => {
-              const active =
-                map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
-              return (
-                <button
-                  key={`${pair.km}-${pair.sec}`}
-                  type="button"
-                  disabled={pending || loadBlocked}
-                  onClick={() =>
-                    patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
-                  }
-                  aria-pressed={active}
-                  className={
-                    active
-                      ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
-                      : "border-border text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
-                  }
-                >
-                  {pair.km} km · {pair.sec}s
-                </button>
-              );
-            })}
-          </div>
+          <ChoiceField
+            className="sm:col-span-2"
+            icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Reload after"
+            hint="Camera must move this far AND wait this long. Browsing the rail does not count."
+          >
+            <div className="flex flex-wrap gap-2">
+              {MAP_RELOAD_PAIRS.map((pair) => {
+                const active =
+                  map.reloadMinKm === pair.km && map.reloadMinSec === pair.sec;
+                return (
+                  <button
+                    key={`${pair.km}-${pair.sec}`}
+                    type="button"
+                    disabled={pending || loadBlocked}
+                    onClick={() =>
+                      patch({ reloadMinKm: pair.km, reloadMinSec: pair.sec })
+                    }
+                    aria-pressed={active}
+                    className={
+                      active
+                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
+                    }
+                  >
+                    {pair.km} km · {pair.sec}s
+                  </button>
+                );
+              })}
+            </div>
+          </ChoiceField>
         </div>
 
         {updatedAt ? (
