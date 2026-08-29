@@ -4,35 +4,35 @@ import { SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// The ONLY map-chrome control besides the query pill. Status and
-// Category live in the Filters sheet — never as chips on the canvas.
+// Icon-only map-chrome control. Status and Category live in the sheet —
+// never as chips, never as a "Filters" label on the canvas. A red count
+// is the only on-canvas signal that anything is applied.
 
 export function SearchFilterRow({
-  active,
+  count,
   onOpenFilters,
 }: {
-  active: boolean;
+  count: number;
   onOpenFilters: () => void;
 }) {
+  const applied = count > 0;
   return (
     <button
       type="button"
       onClick={onOpenFilters}
-      aria-label={active ? "Filters (active)" : "Filters"}
+      aria-label={applied ? `${count} applied` : "Filter places"}
       aria-haspopup="dialog"
-      aria-pressed={active}
+      aria-pressed={applied}
       className={cn(
-        "relative flex h-12 shrink-0 items-center gap-1.5 rounded-full px-3.5 font-semibold whitespace-nowrap backdrop-blur transition active:scale-[0.97]",
+        "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full backdrop-blur transition active:scale-[0.97]",
         "bg-card/95 text-foreground/80 shadow-rest",
       )}
     >
-      <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
-      Filters
-      {active && (
-        <span
-          aria-hidden
-          className="bg-destructive border-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2"
-        />
+      <SlidersHorizontal className="h-4 w-4" aria-hidden />
+      {applied && (
+        <span className="bg-destructive text-destructive-foreground type-meta absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none font-bold">
+          {count}
+        </span>
       )}
     </button>
   );

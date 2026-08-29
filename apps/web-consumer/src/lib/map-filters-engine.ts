@@ -48,9 +48,12 @@ export function placeMapStatus(place: Place): MapStatusKey {
 }
 
 export function mapFiltersAreActive(f: MapFilters): boolean {
-  return (
-    f.statuses.length > 0 || f.familyKeys.length > 0 || f.categories.length > 0
-  );
+  return mapFilterCount(f) > 0;
+}
+
+/** Each selected Status, family, or type is one applied filter. */
+export function mapFilterCount(f: MapFilters): number {
+  return f.statuses.length + f.familyKeys.length + f.categories.length;
 }
 
 function matchesMapFilters(place: Place, f: MapFilters): boolean {
