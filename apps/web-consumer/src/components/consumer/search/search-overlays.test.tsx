@@ -4,10 +4,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
+import { SearchCategoryRow } from "@/components/consumer/search/SearchCategoryRow";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import {
   EmptySearchPrompt,
-  SearchHereButton,
   SearchRailOverlay,
 } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
@@ -16,6 +16,7 @@ import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet"
 import {
   catalogIsStale,
   clampReloadMinKm,
+  clampReloadMinSec,
   defaultRailSelection,
   nearbyReloadThresholdKm,
   railCenterIndex,
@@ -103,6 +104,31 @@ describe("SearchBar scope affordance", () => {
     expect(html).toContain("🌐");
     expect(html).toContain("any country");
     expect(html).toContain("location not set");
+  });
+});
+
+describe("SearchCategoryRow", () => {
+  it("renders the six Category families, not Types or Discovery knobs", () => {
+    const rest = renderToStaticMarkup(<SearchCategoryRow familyKeys={[]} />);
+    expect(rest).toContain("Category");
+    expect(rest).toContain("Restaurants");
+    expect(rest).toContain("Bars");
+    expect(rest).toContain("Cafés");
+    expect(rest).toContain("Wellness");
+    expect(rest).toContain("Experiences");
+    expect(rest).toContain("Culture");
+    expect(rest).not.toContain("Nightclub");
+    expect(rest).not.toContain("Types");
+    expect(rest).not.toContain("Now");
+    expect(rest).not.toContain("Visit");
+    expect(rest).not.toContain("🍽️");
+    expect(rest).not.toContain("bg-pink-gradient");
+
+    const on = renderToStaticMarkup(
+      <SearchCategoryRow familyKeys={["restaurants"]} />,
+    );
+    expect(on).toContain("bg-pink-gradient");
+    expect(on).toContain('aria-pressed="true"');
   });
 });
 
@@ -199,34 +225,40 @@ describe("SearchScopeSheet country pills", () => {
   });
 });
 
-describe("Search map catalog reloads only when the guest asks", () => {
+describe("Search map catalog auto-reloads after distance and time", () => {
   it("loads the Map lane cap, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
-    expect(read("SearchClient.tsx")).toContain("handleSearchHere");
-    expect(read("SearchClient.tsx")).toContain("SearchHereButton");
+    expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
+    expect(read("SearchClient.tsx")).toContain("scheduleOrLoad");
+    expect(read("SearchClient.tsx")).not.toContain("handleSearchHere");
+    expect(read("SearchClient.tsx")).not.toContain("SearchHereButton");
     expect(read("SearchClient.tsx")).not.toContain("VIEWPORT_IDLE_MS");
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("SearchMap.tsx")).toContain("SearchMapReticle");
+    expect(read("SearchMap.tsx")).toContain("noteProgrammaticCamera");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "Zoom in to see this area",
     );
     expect(read("search-catalog-overlays.tsx")).toContain("Finding nearby");
     expect(read("search-catalog-overlays.tsx")).toContain("Updating nearby");
-    expect(read("search-catalog-overlays.tsx")).toContain("Search here");
+    expect(read("search-catalog-overlays.tsx")).not.toContain("Search here");
     expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
-    expect(read("SearchClient.tsx")).not.toContain("shouldReloadNearbyCatalog");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
+    expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
 
-  it("does not debounce a pan into a catalog fetch", () => {
+  it("waits the remaining reloadMinSec when the camera already moved far enough", () => {
     const src = read("SearchClient.tsx");
-    expect(src).not.toMatch(/setTimeout\([\s\S]*loadViewport/);
+    expect(src).toContain("catalogMovedEnough");
+    expect(src).toContain("setTimeout");
+    expect(src).toContain("reloadMinSec");
     expect(src).toContain("markViewport(box)");
     expect(src).toContain("forceNextLoad");
+    expect(src).toContain("meta.programmatic");
   });
 
   it("reloads once when a later GPS fix lands off the fetched camera", () => {
@@ -238,12 +270,14 @@ describe("Search map catalog reloads only when the guest asks", () => {
 });
 
 describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog with map Status + Super Category, never a chip strip", () => {
+  it("cuts the nearby catalog with map Status + Category families on the chrome", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("useMapFilters");
     expect(src).toContain("SearchMapFilters");
     expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("SearchCategoryRow");
+    expect(src).toContain("familyKeys={filters.familyKeys}");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
     expect(src).toContain("flex min-w-0 items-center gap-2");
@@ -276,6 +310,9 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     );
     expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
       "flex items-center gap-2",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+      "flex gap-1.5 overflow-hidden",
     );
     expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
       "mt-2 flex gap-1.5",
@@ -378,13 +415,56 @@ describe("shouldReloadNearbyCatalog", () => {
     expect(nearbyReloadThresholdKm(100, 5)).toBe(20);
     expect(nearbyReloadThresholdKm(10, 5)).toBe(5);
     expect(clampReloadMinKm(99)).toBe(20);
-    expect(clampReloadMinKm(undefined)).toBe(5);
+    expect(clampReloadMinKm(0.1)).toBe(0.2);
+    expect(clampReloadMinKm(undefined)).toBe(0.4);
+    expect(clampReloadMinSec(40)).toBe(15);
+    expect(clampReloadMinSec(undefined)).toBe(2);
     expect(
       shouldReloadNearbyCatalog(last, { lat: 25.554, lng: -100.3 }, wideBox, 5),
     ).toBe(false);
     expect(
       shouldReloadNearbyCatalog(last, { lat: 25.5, lng: -96 }, wideBox, 5),
     ).toBe(true);
+  });
+
+  it("reloads after a few blocks at the 0.4 km default", () => {
+    const blockBox = {
+      south: 25.495,
+      west: -100.305,
+      north: 25.505,
+      east: -100.295,
+    };
+    expect(
+      shouldReloadNearbyCatalog(last, { lat: 25.504, lng: -100.3 }, blockBox, 0.4),
+    ).toBe(true);
+    expect(
+      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.4),
+    ).toBe(false);
+  });
+
+  it("needs both a far enough pan and the wait", () => {
+    const far = { lat: 25.554, lng: -100.3 };
+    expect(
+      shouldReloadNearbyCatalog(last, far, cityBox, 5, {
+        fetchedAtMs: 1_000,
+        nowMs: 1_500,
+        minSec: 2,
+      }),
+    ).toBe(false);
+    expect(
+      shouldReloadNearbyCatalog(last, far, cityBox, 5, {
+        fetchedAtMs: 1_000,
+        nowMs: 3_000,
+        minSec: 2,
+      }),
+    ).toBe(true);
+    expect(
+      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, cityBox, 5, {
+        fetchedAtMs: 1_000,
+        nowMs: 10_000,
+        minSec: 2,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -454,7 +534,7 @@ describe("Search catalog reload UI", () => {
     expect(html).not.toContain("Finding places around you");
   });
 
-  it("keeps the cards and says Updating nearby while Search here reloads", () => {
+  it("keeps the cards and says Updating nearby while the catalog reloads", () => {
     const html = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[RAIL_PLACE]} catalogLoading />,
     );
@@ -656,30 +736,7 @@ describe("catalogIsStale", () => {
   });
 });
 
-describe("Search here and the map reticle", () => {
-  it("renders a 44px Search here pill", () => {
-    const html = renderToStaticMarkup(
-      <SearchHereButton loading={false} stale onClick={() => {}} />,
-    );
-    expect(html).toContain("Search here");
-    expect(html).toContain("min-h-11");
-    expect(html).toContain("Search places around the map center");
-    expect(html).toContain("lucide-rotate-cw");
-    expect(html).toContain("--gradient-pink");
-    expect(html).toContain("text-white");
-    expect(html).toContain("ring-white/70");
-  });
-
-  it("swaps the label to Updating nearby while a reload runs", () => {
-    const html = renderToStaticMarkup(
-      <SearchHereButton loading stale={false} onClick={() => {}} />,
-    );
-    expect(html).toContain("Updating nearby");
-    expect(html).toContain("aria-busy");
-    expect(html).toContain("--gradient-pink");
-    expect(html).not.toContain("ring-white/70");
-  });
-
+describe("Search map reticle", () => {
   it("paints a screen-fixed plus and approximate ring, not a geo circle", () => {
     const src = read("SearchMap.tsx");
     expect(src).toContain("export function SearchMapReticle");

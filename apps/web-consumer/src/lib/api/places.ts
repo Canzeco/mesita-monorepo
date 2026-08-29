@@ -191,6 +191,7 @@ export type ViewportPlaces = {
   overspan: boolean;
   totalInBox: number | null;
   reloadMinKm?: number;
+  reloadMinSec?: number;
 };
 
 /** Search map catalog: partners, then Mesita, then Google around a camera. */
@@ -204,6 +205,7 @@ export async function apiFetchNearbyCatalog(
     overspan?: boolean;
     totalInBox?: number;
     reloadMinKm?: number;
+    reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
     lat: center.lat,
@@ -217,6 +219,10 @@ export async function apiFetchNearbyCatalog(
     reloadMinKm:
       typeof data.reloadMinKm === "number" && Number.isFinite(data.reloadMinKm)
         ? data.reloadMinKm
+        : undefined,
+    reloadMinSec:
+      typeof data.reloadMinSec === "number" && Number.isFinite(data.reloadMinSec)
+        ? data.reloadMinSec
         : undefined,
   };
 }

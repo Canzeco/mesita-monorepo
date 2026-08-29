@@ -86,13 +86,17 @@ export function viewportWidthKm(box: {
 /**
  * Default floor matching discovery_config.map.reloadMinKm. A 110 m cell
  * (`toFixed(3)`) is a few pixels when the city is in frame — that was the
- * hypersensitive reload. 5 km is a neighborhood; zoomed-out views also
+ * hypersensitive reload. 0.4 km is a few city blocks; zoomed-out views also
  * require 20% of the visible width so a one-pixel nudge never refetches.
  */
-export const CATALOG_RELOAD_MIN_KM = 5;
+export const CATALOG_RELOAD_MIN_KM = 0.4;
 export const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
-export const CATALOG_RELOAD_MIN_KM_MIN = 1;
+export const CATALOG_RELOAD_MIN_KM_MIN = 0.2;
 export const CATALOG_RELOAD_MIN_KM_MAX = 20;
+/** Default wait matching discovery_config.map.reloadMinSec. */
+export const CATALOG_RELOAD_MIN_SEC = 2;
+export const CATALOG_RELOAD_MIN_SEC_MIN = 0.5;
+export const CATALOG_RELOAD_MIN_SEC_MAX = 15;
 
 export function clampReloadMinKm(raw: number | undefined): number {
   if (typeof raw !== "number" || !Number.isFinite(raw)) {
@@ -116,8 +120,17 @@ export function nearbyReloadThresholdKm(
   return Math.max(floor, fromSpan);
 }
 
-/** First paint always loads. Later idles load only after a real camera move. */
-export function shouldReloadNearbyCatalog(
+export function clampReloadMinSec(raw: number | undefined): number {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return CATALOG_RELOAD_MIN_SEC;
+  }
+  return Math.min(
+    CATALOG_RELOAD_MIN_SEC_MAX,
+    Math.max(CATALOG_RELOAD_MIN_SEC_MIN, raw),
+  );
+}
+
+export function catalogMovedEnough(
   lastCenter: { lat: number; lng: number } | null,
   nextCenter: { lat: number; lng: number },
   box: { south: number; west: number; north: number; east: number },
@@ -131,10 +144,38 @@ export function shouldReloadNearbyCatalog(
   );
 }
 
+export function catalogWaitedEnough(
+  fetchedAtMs: number | null,
+  nowMs: number,
+  minSec: number,
+): boolean {
+  if (fetchedAtMs == null) return true;
+  return nowMs - fetchedAtMs >= clampReloadMinSec(minSec) * 1000;
+}
+
+/** First paint always loads. Later idles need BOTH gates: min km AND min wait. */
+export function shouldReloadNearbyCatalog(
+  lastCenter: { lat: number; lng: number } | null,
+  nextCenter: { lat: number; lng: number },
+  box: { south: number; west: number; north: number; east: number },
+  minKm: number,
+  timing: {
+    fetchedAtMs: number | null;
+    nowMs: number;
+    minSec: number;
+  } = { fetchedAtMs: null, nowMs: 0, minSec: 0 },
+): boolean {
+  if (!lastCenter) return true;
+  return (
+    catalogMovedEnough(lastCenter, nextCenter, box, minKm) &&
+    catalogWaitedEnough(timing.fetchedAtMs, timing.nowMs, timing.minSec)
+  );
+}
+
 /**
- * Search here gains weight after a short pan. 200 m is a couple of
+ * GPS recentre gains weight after a short move. 200 m is a couple of
  * city blocks — enough to ignore idle jitter, small enough that a
- * neighborhood drag is obviously "somewhere else."
+ * neighborhood shift is obviously "somewhere else."
  */
 export const CATALOG_STALE_MIN_KM = 0.2;
 
@@ -165,7 +206,7 @@ export function railCenterIndex(
 }
 
 /** First catalog card is selected until a pin or a scroll picks another.
- *  A stale id (Search here replaced the set) falls back to the first card. */
+ *  A stale id (an auto-reload replaced the set) falls back to the first card. */
 export function defaultRailSelection(
   ids: readonly string[],
   current: string | null,

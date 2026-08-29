@@ -1,9 +1,10 @@
 // Map filters — Search only. Status + Super Category cut the nearby
-// catalog. There is no Category or Types axis. A Super Category is a
-// SET of categories; a category may sit in two (breakfast is restaurants
-// AND cafés). The cut is OR: a place matches if any of its Super
-// Categories is selected. Distance and time stay off this surface: the
-// camera and Search here already bound the set. Swipe keeps Discovery.
+// catalog. There is no Types axis and no category slug list. A Super
+// Category is a SET of categories; a category may sit in two (breakfast
+// is restaurants AND cafés). The cut is OR: a place matches if any of
+// its Super Categories is selected. The Search chrome uses the guest
+// word Category for the same six families. Distance and time stay off
+// this surface: the camera already bounds the set. Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";

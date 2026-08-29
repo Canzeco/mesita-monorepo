@@ -315,6 +315,7 @@ Deno.test("map knobs default on an old blob and clamp", () => {
       minReviews: -2,
       minPopularity: 4,
       reloadMinKm: 99,
+      reloadMinSec: 40,
       googleFill: "yes",
       types: { restaurant: false, ghost: true },
     },
@@ -323,6 +324,7 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.minReviews, 0);
   assertEquals(clamped.map.minPopularity, 1);
   assertEquals(clamped.map.reloadMinKm, 20);
+  assertEquals(clamped.map.reloadMinSec, 15);
   assertEquals(clamped.map.googleFill, true);
   assertEquals(clamped.map.partnerCount, 10);
   assertEquals(clamped.map.mesitaCount, 10);

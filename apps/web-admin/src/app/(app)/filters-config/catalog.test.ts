@@ -146,6 +146,7 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Google/);
     expect(map?.process).toMatch(/overlaps/);
     expect(map?.process).toMatch(/reloadMinKm/);
+    expect(map?.process).toMatch(/reloadMinSec/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });
@@ -187,6 +188,9 @@ describe("Discovery function APIs", () => {
       minPopularity: 1,
       types: { ...DEFAULT_MAP.types, restaurant: false },
     });
+    expect(
+      coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
+    ).toMatchObject({ reloadMinKm: 20, reloadMinSec: 15 });
   });
 
   it("coerceConfig defaults social on an old blob and clamps knobs", () => {

@@ -140,6 +140,8 @@ export type MapConfig = {
   minPopularity: number;
   /** Camera must move at least this far (km) before Search refetches Nearby. */
   reloadMinKm: number;
+  /** Wait at least this long (seconds) after a fetch before Search refetches. */
+  reloadMinSec: number;
   googleFill: boolean;
   partnerCount: number;
   mesitaCount: number;
@@ -192,8 +194,10 @@ export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const MAP_MIN_POPULARITY_MAX = 1;
-export const MAP_RELOAD_MIN_KM_MIN = 1;
+export const MAP_RELOAD_MIN_KM_MIN = 0.2;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
+export const MAP_RELOAD_MIN_SEC_MIN = 0.5;
+export const MAP_RELOAD_MIN_SEC_MAX = 15;
 export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
@@ -314,7 +318,8 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
-  reloadMinKm: 5,
+  reloadMinKm: 0.4,
+  reloadMinSec: 2,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
   mesitaCount: MAP_MESITA_COUNT_DEFAULT,
@@ -447,7 +452,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Closest N enter. Listed pins then Lineup, not distance. Google stays distance. Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use Places Lineup inside the closest-N cut. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm.",
+    process: "Closest N enter. Listed pins then Lineup, not distance. Google stays distance. Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use Places Lineup inside the closest-N cut. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after reloadMinKm and reloadMinSec. Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -1114,6 +1119,14 @@ export function coerceMap(raw: unknown): MapConfig {
         DEFAULT_MAP.reloadMinKm,
         MAP_RELOAD_MIN_KM_MIN,
         MAP_RELOAD_MIN_KM_MAX,
+      ) * 10,
+    ) / 10,
+    reloadMinSec: Math.round(
+      num(
+        m.reloadMinSec,
+        DEFAULT_MAP.reloadMinSec,
+        MAP_RELOAD_MIN_SEC_MIN,
+        MAP_RELOAD_MIN_SEC_MAX,
       ) * 10,
     ) / 10,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,

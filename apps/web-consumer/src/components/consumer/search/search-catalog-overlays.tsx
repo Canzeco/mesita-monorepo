@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { ChevronUp, MapPin, RotateCw, Search, X } from "lucide-react";
+import { ChevronUp, MapPin, Search, X } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -13,45 +13,6 @@ import { RAIL_CARD_HEIGHT_CLASS, RailCard } from "./SearchRailCard";
  *  not kiss the neighbor. */
 const RAIL_PAGE =
   "w-4/5 shrink-0 snap-center px-3 first:ml-[10%] last:mr-[10%]";
-
-export function SearchHereButton({
-  loading,
-  stale,
-  onClick,
-}: {
-  loading: boolean;
-  stale: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={loading}
-      aria-busy={loading}
-      aria-label="Search places around the map center"
-      className={cn(
-        "flex min-h-11 items-center gap-2 rounded-full px-5 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-80",
-        stale && "ring-2 ring-white/70",
-      )}
-      style={{
-        background: "var(--gradient-pink)",
-        boxShadow: "var(--shadow-glow-sm)",
-      }}
-    >
-      {loading ? (
-        <Spinner
-          size="sm"
-          label="Updating nearby places"
-          className="border-white/40 border-t-white"
-        />
-      ) : (
-        <RotateCw className="h-3.5 w-3.5 text-white" />
-      )}
-      {loading ? "Updating nearby" : "Search here"}
-    </button>
-  );
-}
 
 function CatalogRailSkeleton() {
   return (

@@ -5,7 +5,7 @@
 // types live on Discovery Modules.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BadgeCheck, Globe, Map as MapIcon, Move, Store } from "lucide-react";
+import { BadgeCheck, Clock, Globe, Map as MapIcon, Move, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -21,6 +21,8 @@ import {
   MAP_LANE_COUNT_MAX,
   MAP_RELOAD_MIN_KM_MAX,
   MAP_RELOAD_MIN_KM_MIN,
+  MAP_RELOAD_MIN_SEC_MAX,
+  MAP_RELOAD_MIN_SEC_MIN,
   type DiscoveryConfig,
   type MapConfig,
 } from "./catalog";
@@ -145,6 +147,16 @@ export function MapConfigClient({
             decimals
             disabled={pending || loadBlocked}
             onChange={(reloadMinKm) => patch({ reloadMinKm })}
+          />
+          <NumberField
+            icon={<Clock className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="Reload after waiting (seconds)"
+            value={map.reloadMinSec}
+            min={MAP_RELOAD_MIN_SEC_MIN}
+            max={MAP_RELOAD_MIN_SEC_MAX}
+            decimals
+            disabled={pending || loadBlocked}
+            onChange={(reloadMinSec) => patch({ reloadMinSec })}
           />
         </div>
 
