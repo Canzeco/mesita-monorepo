@@ -360,6 +360,17 @@ describe("Discovery page box order", () => {
     expect(name).toContain("not a Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
+    expect(name).toContain('label="Google places"');
+    expect(name).toContain('label="Max results"');
+    expect(name).toContain("name.fast.googleCount");
+    expect(name).toContain("name.fast.count");
+    expect(name).toContain("name.deep.partnerCount");
+    expect(name).toContain("name.deep.mesitaCount");
+    expect(name).toContain("name.deep.googleCount");
+    expect(name).toContain("name.deep.count");
+    expect(name).toContain("Max results caps the merge");
+    expect(name).toContain("Map Filters never cut this list");
+    expect(name).toContain("same cap — Max results stays for Deep symmetry");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
     expect(name).not.toContain('title="Search"');
