@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { RailCard } from "./SearchRailCard";
 
 /** Active card is 80% of the rail; first/last pages pad 10% so the card
- *  centers and neighbors peek. px-2 is a bit of air between cards —
- *  inside the page so snap math stays 80%. */
+ *  centers and neighbors peek. px-2 is air between cards — inside the
+ *  page, so snap math stays 80% and the selected ring does not kiss
+ *  the neighbor. */
 const RAIL_PAGE =
   "w-4/5 shrink-0 snap-center px-2 first:ml-[10%] last:mr-[10%]";
 

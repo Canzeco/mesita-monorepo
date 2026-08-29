@@ -1,8 +1,9 @@
 "use client";
 
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
-// Fast Search is Autocomplete while typing. Deep Search is Partners · Mesita ·
-// Google after the guest stops, then one list after dropping overlaps.
+// Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
+// Search, and Places Lineup (Name signal only — Mesita `places.name`, not
+// `google_name`). Each candidate resolves, then Partners · Mesita · Google.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -114,7 +115,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
           title="Name (Fast Search)"
-          subtitle="Autocomplete while the guest types. Cap only — Google types live on Discovery Modules. 0 is off."
+          subtitle="Google Places Autocomplete only. Cap only — Google types live on Discovery Modules. 0 is off."
           status={
             <KnobStatus
               kind="enforced"
@@ -153,7 +154,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Runs about one second after the guest stops typing. Top N by name similarity for Partners and Mesita, then Google Text Search order. One list after dropping overlaps: Partners, then Mesita, then Google. Google types live on Discovery Modules. 0 on a lane is off."
+          subtitle="Autocomplete + Text Search + Lineup Name signal only (`places.name`, not `google_name`). After resolve: Partners → Mesita → Google. Types on Modules. 0 off."
           status={
             <KnobStatus
               kind="enforced"

@@ -9,12 +9,14 @@
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning never reloads that set — Search here under the bar does,
-//     from the reticle at the canvas center. Tapping a map pin highlights
-//     + scrolls to the matching rail card; tapping a card opens the place
-//     page (Google-only stubs open GooglePlaceSheet).
+//     from the reticle at the canvas center. The rail's center card is
+//     always the selected pin. Scroll picks the center; a pin tap
+//     scrolls that card to center. Tapping the already-selected card
+//     opens the place (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
-//     after the guest stops, Deep Search replaces that list (Partners ·
-//     Mesita · Google). One Google session token per autocomplete session.
+//     after the guest stops, Deep Search replaces that list when it has
+//     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
+//     session token per autocomplete session.
 //     Results hang at content height. No source labels — the colored point
 //     is membership (red Mesita / gray not on Mesita). On-Mesita rows
 //     select the place on the map; Google-only rows open GooglePlaceSheet.
@@ -65,8 +67,10 @@ import {
 } from "./search-catalog-overlays";
 import {
   catalogIsStale,
+  defaultRailSelection,
   matchPredictionToPlace,
   newSessionToken,
+  railCenterIndex,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -306,7 +310,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Fast Search (Autocomplete) while typing. Deep Search replaces the list
-  // after idle. A later Fast for this query never overwrites a Deep hit.
+  // after idle when it has rows. Empty Deep keeps Fast. A later Fast for
+  // this query never overwrites a Deep hit.
   useEffect(() => {
     if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
     let cancelled = false;
@@ -326,14 +331,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (!cancelled && !deepSettled) {
           setPredictions(rows);
           setSearchError(null);
+          // Empty Fast: keep searching so Deep can fill without flashing
+          // "No matches found".
+          if (rows.length > 0) setSearching(false);
         }
       } catch (err) {
         if (!cancelled && !deepSettled) {
           setPredictions([]);
           setSearchError(errMsg(err, "Search failed — try again."));
+          setSearching(false);
         }
-      } finally {
-        if (!cancelled) setSearching(false);
       }
     }, FAST_DEBOUNCE_MS);
 
@@ -348,12 +355,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           "deep",
         );
         if (!cancelled) {
-          deepSettled = true;
-          setPredictions(rows);
-          setSearchError(null);
+          if (rows.length > 0) {
+            deepSettled = true;
+            setPredictions(rows);
+            setSearchError(null);
+          }
+          setSearching(false);
         }
       } catch {
         // Keep Fast results if Deep fails.
+        if (!cancelled) setSearching(false);
       }
     }, DEEP_IDLE_MS);
 
@@ -413,6 +424,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     router.push(placeHref(place.slug || place.id));
   };
 
+  // Center page is selected even before a tap or flick writes state —
+  // first load and a catalog that dropped the old id both light card 0.
+  const railSelectedId = defaultRailSelection(
+    catalog.map((p) => p.id),
+    selectedId,
+  );
+
   const handleSelectPin = (pin: SearchMapPin) => {
     const prediction =
       predictions.find((p) => p.mesitaId === pin.id || p.placeId === pin.id) ??
@@ -422,7 +440,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         : null);
     const place = catalog.find((p) => p.id === pin.id);
     const action = overlayPinDecision({
-      selectedId,
+      selectedId: railSelectedId,
       pinId: pin.id,
       googleOnly: prediction?.status === "not_in_mesita",
       inCatalog: Boolean(place),
@@ -499,8 +517,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * 0.8;
     if (page <= 0) return;
-    const idx = Math.round(el.scrollLeft / page);
-    setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
+    const next = railCenterIndex(el.scrollLeft, page, catalog.length);
+    setRailIndex(next);
+    const id = catalog[next]?.id;
+    if (id) setSelectedId(id);
   };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
@@ -513,17 +533,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Center the rail card for the selected place once the rail is on screen.
-  // An effect (not the tap handlers) because a search pick mounts the rail
-  // on the SAME commit that sets the selection — the card ref only exists
-  // after that render; it also re-centers when a dismissed rail reopens.
+  // Skip when the pager already names that card — scroll itself selected
+  // it, and scrollIntoView would fight the flick. Pin taps still land here
+  // because they change selectedId while railIndex is stale.
   useEffect(() => {
-    if (!idle || railCollapsed || !selectedId) return;
-    railRefs.current.get(selectedId)?.scrollIntoView({
+    if (!idle || railCollapsed || !railSelectedId) return;
+    const idx = catalog.findIndex((p) => p.id === railSelectedId);
+    if (idx < 0 || idx === railIndex) return;
+    railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
       block: "nearest",
     });
-  }, [idle, railCollapsed, selectedId]);
+  }, [idle, railCollapsed, railSelectedId, catalog, railIndex]);
 
   const handleUseLocation = () => {
     setLocating(true);
@@ -577,7 +599,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         places={catalog}
         userLocation={userLocation}
         viewCenter={center}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
@@ -653,7 +675,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         catalogLoading={catalogLoading}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         railScrollRef={railScrollRef}
         onShowRail={() => setRailCollapsed(false)}
         onHideRail={() => setRailCollapsed(true)}

@@ -12,12 +12,12 @@ export function GoogleModuleCards() {
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
           title="Google Places Autocomplete"
-          subtitle="Predicts a place name while the guest types. Name (Fast Search) is the only live caller."
+          subtitle="Predicts a place name while the guest types. Fast Search is Autocomplete only. Deep Search also calls it, then resolves and merges."
           status={<KnobStatus kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Name (Fast Search). Types come from the Google types strip
-            on this page.
+            Used by Name (Fast Search) and Name (Deep Search). Types come from
+            the Google types strip on this page.
           </p>
         </SectionCard>
       </div>
@@ -37,12 +37,12 @@ export function GoogleModuleCards() {
         <SectionCard
           icon={<TextSearch className="text-primary h-4 w-4" />}
           title="Google Places Text Search"
-          subtitle="Fills the Google lane on Name (Deep Search). Keeps vendor order after overlaps drop."
+          subtitle="One Deep Search module. Candidates resolve, then merge with Autocomplete and Places Lineup Name."
           status={<KnobStatus kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             Used by Name (Deep Search). Types come from the Google types strip
-            on this page.
+            on this page. Merge is after resolve, not a fourth module.
           </p>
         </SectionCard>
       </div>
