@@ -729,7 +729,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: [],
+  favorites: ["google"],
 };
 
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */

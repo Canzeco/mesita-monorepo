@@ -46,7 +46,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: [],
+  favorites: ["google"],
 };
 
 export const DISCOVERY_MODULES = [
