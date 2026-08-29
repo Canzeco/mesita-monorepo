@@ -27,8 +27,10 @@ Deno.test("catalog default: seeded · active · listed, not verified/partner/pro
   assertEquals(facts.promoting, false);
 });
 
-Deno.test("Requested is pending_review / pending_verification, not listed", () => {
-  assertEquals(placeStatusFacts({ ...BASE, status: "pending_verification" }).requested, true);
+Deno.test("Requested is guest demand, not a projects.status label", () => {
+  assertEquals(placeStatusFacts({ ...BASE, requestCount: 2, contentStatus: "queued" }).requested, true);
+  assertEquals(placeStatusFacts({ ...BASE, requestCount: 2, contentStatus: "ready" }).requested, false);
+  assertEquals(placeStatusFacts({ ...BASE, status: "pending_verification" }).requested, false);
   assertEquals(placeStatusFacts({ ...BASE, status: "pending_verification" }).listed, false);
 });
 

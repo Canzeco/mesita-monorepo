@@ -146,6 +146,7 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Status");
     expect(html).toContain("Not on Mesita");
     expect(html).toContain("Created");
+    expect(html).toContain("Requested");
     expect(html).toContain("Enriched");
     expect(html).toContain("Partnered");
     expect(html).toContain("Promoted");
@@ -260,6 +261,7 @@ describe("Search map puts the query pill and Filters button on one row", () => {
       '"Not on Mesita"',
     );
     expect(read("../../../lib/map-filters-engine.ts")).toContain('"Created"');
+    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Requested"');
     expect(read("../../../lib/map-filters-engine.ts")).toContain('"Enriched"');
     expect(read("../../../lib/map-filters-engine.ts")).toContain('"Partnered"');
     expect(read("../../../lib/map-filters-engine.ts")).toContain('"Promoted"');

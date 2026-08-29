@@ -8,7 +8,7 @@ import {
   isEnrichFailed,
   isEnriching,
   listedFromStatus,
-  requestedFromStatus,
+  requestedFromRequests,
   withListedFromStatus,
 } from "./place-header-status";
 
@@ -178,13 +178,14 @@ describe("generalHeaderFacts", () => {
   });
 });
 
-describe("requestedFromStatus", () => {
-  it("pending_review and pending_verification are requested", () => {
-    expect(requestedFromStatus("pending_review")).toBe(true);
-    expect(requestedFromStatus("pending_verification")).toBe(true);
-    expect(requestedFromStatus("active")).toBe(false);
-    expect(requestedFromStatus("lead")).toBe(false);
-    expect(requestedFromStatus(null)).toBe("unknown");
+describe("requestedFromRequests", () => {
+  it("is guest demand: count > 0 and not ready", () => {
+    expect(requestedFromRequests(1, "queued")).toBe(true);
+    expect(requestedFromRequests(2, "failed")).toBe(true);
+    expect(requestedFromRequests(0, "queued")).toBe(false);
+    expect(requestedFromRequests(7, "ready")).toBe(false);
+    expect(requestedFromRequests(null, "queued")).toBe("unknown");
+    expect(requestedFromRequests(undefined, "failed")).toBe("unknown");
   });
 });
 

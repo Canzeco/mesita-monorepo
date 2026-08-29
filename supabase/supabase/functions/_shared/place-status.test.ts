@@ -48,12 +48,28 @@ Deno.test("listed: a missing or non-string status is never listed", () => {
   }
 });
 
-Deno.test("requested: pending_review and pending_verification only", () => {
-  assertEquals(isPlaceRequested("pending_review"), true);
-  assertEquals(isPlaceRequested("pending_verification"), true);
-  assertEquals(isPlaceRequested("lead"), false);
-  assertEquals(isPlaceRequested("active"), false);
-  assertEquals(isPlaceRequested(null), false);
+Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
+  assertEquals(
+    isPlaceRequested({ requestCount: 1, contentStatus: "queued" }),
+    true,
+  );
+  assertEquals(
+    isPlaceRequested({ requestCount: 2, contentStatus: "failed" }),
+    true,
+  );
+  assertEquals(
+    isPlaceRequested({ requestCount: 0, contentStatus: "queued" }),
+    false,
+  );
+  assertEquals(
+    isPlaceRequested({ requestCount: 7, contentStatus: "ready" }),
+    false,
+  );
+  assertEquals(
+    isPlaceRequested({ requestCount: null, contentStatus: "queued" }),
+    false,
+  );
+  assertEquals(isPlaceRequested({}), false);
 });
 
 Deno.test("enriching: generating or queued is mid-flight", () => {

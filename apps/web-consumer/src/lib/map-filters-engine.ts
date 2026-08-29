@@ -8,6 +8,7 @@ import { type FamilyKey } from "@/lib/place-families";
 export const MAP_STATUS_KEYS = [
   "not_on_mesita",
   "created",
+  "requested",
   "enriched",
   "partnered",
   "promoted",
@@ -18,6 +19,7 @@ export type MapStatusKey = (typeof MAP_STATUS_KEYS)[number];
 export const MAP_STATUS_OPTIONS = [
   { key: "not_on_mesita", label: "Not on Mesita" },
   { key: "created", label: "Created" },
+  { key: "requested", label: "Requested" },
   { key: "enriched", label: "Enriched" },
   { key: "partnered", label: "Partnered" },
   { key: "promoted", label: "Promoted" },
@@ -44,6 +46,8 @@ export function placeMapStatus(place: Place): MapStatusKey {
   if (place.content_status === "ready" || Boolean(place.enriched_at)) {
     return "enriched";
   }
+  const requests = Number(place.request_count);
+  if (Number.isFinite(requests) && requests > 0) return "requested";
   return "created";
 }
 

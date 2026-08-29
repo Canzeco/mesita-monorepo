@@ -55,14 +55,21 @@ export function isPlaceListed(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
 }
 
-/** Someone asked Mesita to add or own this place. Not Listed, not Verified. */
-export const REQUESTED_STATUSES: readonly string[] = [
-  "pending_review",
-  "pending_verification",
-];
-
-export function isPlaceRequested(status: unknown): boolean {
-  return typeof status === "string" && REQUESTED_STATUSES.includes(status);
+/**
+ * Requested is guest demand for a usable profile — never a projects.status
+ * label. pending_review / pending_verification stay on the enum and stay
+ * unlisted; they are not this fact.
+ *
+ * Derived: request_count > 0 and content_status is not ready. Enriched
+ * wins even if a leftover count remains on the row.
+ */
+export function isPlaceRequested(input: {
+  requestCount?: unknown;
+  contentStatus?: unknown;
+}): boolean {
+  if (isPlaceProfileReady(input.contentStatus)) return false;
+  const count = Number(input.requestCount);
+  return Number.isFinite(count) && count > 0;
 }
 
 /** Intaker pipeline mid-flight. content_status generating/queued covers the
