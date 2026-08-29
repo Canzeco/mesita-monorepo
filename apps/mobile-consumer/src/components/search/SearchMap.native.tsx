@@ -7,8 +7,10 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 import type { SearchMapProps } from '@/components/search/SearchMap';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
 import { MONTERREY_CENTER } from '@/lib/map-defaults';
+import { MAP_PIN_HIT_SIZE, MAP_PLACE_PIN_DIAMETER } from '@/lib/map-defaults';
 import {
   pinFillColor,
+  pinStrokeColor,
   placeMembershipTone,
   type MembershipTone,
 } from '@/lib/search-membership';
@@ -20,18 +22,27 @@ function MembershipDot({
   tone: MembershipTone;
   selected: boolean;
 }) {
-  const size = selected ? 22 : 16;
+  const disk = MAP_PLACE_PIN_DIAMETER;
   return (
     <View
       style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: pinFillColor(tone, selected),
-        borderWidth: 2,
-        borderColor: '#ffffff',
+        width: MAP_PIN_HIT_SIZE,
+        height: MAP_PIN_HIT_SIZE,
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
-    />
+    >
+      <View
+        style={{
+          width: disk,
+          height: disk,
+          borderRadius: disk / 2,
+          backgroundColor: pinFillColor(tone),
+          borderWidth: 2,
+          borderColor: pinStrokeColor(selected),
+        }}
+      />
+    </View>
   );
 }
 

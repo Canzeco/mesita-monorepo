@@ -409,13 +409,20 @@ describe("Search pin two-tap (select then open)", () => {
     expect(read("SearchMap.tsx")).toContain("pinStrokeColor");
     expect(read("SearchClient.tsx")).toContain("overlayPinDecision");
     expect(read("../../../lib/map-defaults.ts")).toMatch(
-      /MAP_PLACE_PIN_RADIUS = 7/,
+      /MAP_PLACE_PIN_RADIUS = 10/,
+    );
+    expect(read("../../../lib/map-defaults.ts")).toMatch(
+      /MAP_PIN_HIT_SIZE = 44/,
     );
     expect(read("../../../lib/map-defaults.ts")).toContain(
-      "export function mapCircleIcon",
+      "export function mapPinIcon",
     );
-    expect(read("SearchMap.tsx")).toContain("mapCircleIcon(pinFillColor");
-    expect(read("SearchMap.tsx")).toContain("USER_ICON = mapCircleIcon");
+    expect(read("SearchMap.tsx")).toContain("mapsPinIcon(pinFillColor");
+    expect(read("SearchMap.tsx")).toContain("mapPinIcon");
+    expect(read("SearchMap.tsx")).toContain("userIcon()");
+    expect(read("SearchMap.tsx")).toContain("cursor={MAP_PIN_CURSOR}");
+    expect(read("SearchMap.tsx")).toContain("optimized={false}");
+    expect(read("SearchMap.tsx")).toContain("[&_img]:!cursor-default");
     expect(read("SearchMap.tsx")).not.toContain("M -6 0 A 6 6");
     expect(read("SearchMap.tsx")).not.toContain("scale: isSelected");
     expect(read("SearchMap.tsx")).not.toContain("strokeWeight: isSelected");

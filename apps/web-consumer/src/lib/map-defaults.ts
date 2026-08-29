@@ -69,10 +69,14 @@ export const MAP_MINIMAL_STYLES = [
   },
 ] as const;
 
-// One circle for every map pin: place (red/gray) and you-are-here (blue).
-// r=7 (was 12) so a cluster still shows the map. Selected is a black
-// ring only — never a bigger scale or thicker stroke.
-export const MAP_PLACE_PIN_RADIUS = 7;
+// One circle for every map pin: place (yellow/red/gray) and you-are-here
+// (blue). r=10 — big enough to tap, small enough that a cluster still
+// shows the map. Selected is a black ring only — never a bigger scale.
+// The visible circle sits in a 44px pad so the hit box is a finger, not
+// the painted disk. Cursor stays default — never the pointing hand.
+export const MAP_PLACE_PIN_RADIUS = 10;
+export const MAP_PIN_HIT_SIZE = 44;
+export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.75;
 export const MAP_PIN_SCALE = 1;
 export const MAP_CIRCLE_PATH =
@@ -86,6 +90,28 @@ export function mapCircleIcon(fillColor: string, strokeColor: string) {
     strokeColor,
     strokeWeight: MAP_PIN_STROKE_WEIGHT,
     scale: MAP_PIN_SCALE,
+  };
+}
+
+/** SVG for the Search pin: near-invisible full pad + the membership disk. */
+export function mapPinSvg(fillColor: string, strokeColor: string): string {
+  const size = MAP_PIN_HIT_SIZE;
+  const mid = size / 2;
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">` +
+    `<circle cx="${mid}" cy="${mid}" r="${mid - 0.5}" fill="#000000" fill-opacity="0.01"/>` +
+    `<circle cx="${mid}" cy="${mid}" r="${MAP_PLACE_PIN_RADIUS}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${MAP_PIN_STROKE_WEIGHT}"/>` +
+    `</svg>`
+  );
+}
+
+export function mapPinIcon(fillColor: string, strokeColor: string) {
+  const size = MAP_PIN_HIT_SIZE;
+  const mid = size / 2;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(mapPinSvg(fillColor, strokeColor))}`,
+    scaledSize: { width: size, height: size },
+    anchor: { x: mid, y: mid },
   };
 }
 

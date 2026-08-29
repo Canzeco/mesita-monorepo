@@ -5,6 +5,7 @@ import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_LISTED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
+  MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from '@/lib/map-defaults';
 
@@ -29,8 +30,12 @@ export function membershipColor(tone: MembershipTone): string {
   return MEMBERSHIP_COLORS[tone];
 }
 
-export function pinFillColor(tone: MembershipTone, selected: boolean): string {
-  return selected ? MAP_SELECTED_PIN_COLOR : membershipColor(tone);
+export function pinFillColor(tone: MembershipTone, _selected = false): string {
+  return membershipColor(tone);
+}
+
+export function pinStrokeColor(selected: boolean): string {
+  return selected ? MAP_SELECTED_PIN_COLOR : MAP_PIN_STROKE_COLOR;
 }
 
 /** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
