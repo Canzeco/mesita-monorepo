@@ -111,8 +111,10 @@ export function googleHitClearsMapFloors(
 }
 
 /**
- * Drop listed rows that miss minPopularity, and do not let Google paint the
- * same Place ID as a stub. Google hits still have to clear Map floors.
+ * Drop listed rows that miss minPopularity. Google Nearby stays nearest-N
+ * and does not shrink because a Place ID is Mesita-related — merge drops
+ * only IDs that already won a Partner or Mesita slot. Google hits still
+ * have to clear Map floors.
  */
 export function admitMapCatalog<T extends ListedMapRow>(
   listed: T[],
@@ -120,19 +122,11 @@ export function admitMapCatalog<T extends ListedMapRow>(
   map: MapConfig,
   params?: SignalParamBag,
 ): { listed: T[]; google: NearbyHit[] } {
-  const admittedListed: T[] = [];
-  const rejectedGids = new Set<string>();
-  for (const row of listed) {
-    if (listedClearsMapPopularity(row, map, params)) {
-      admittedListed.push(row);
-    } else if (row.google_place_id) {
-      rejectedGids.add(row.google_place_id);
-    }
-  }
-  const admittedGoogle = google.filter(
-    (hit) =>
-      !rejectedGids.has(hit.placeId) &&
-      googleHitClearsMapFloors(hit, map, params),
+  const admittedListed = listed.filter((row) =>
+    listedClearsMapPopularity(row, map, params)
+  );
+  const admittedGoogle = google.filter((hit) =>
+    googleHitClearsMapFloors(hit, map, params)
   );
   return { listed: admittedListed, google: admittedGoogle };
 }
