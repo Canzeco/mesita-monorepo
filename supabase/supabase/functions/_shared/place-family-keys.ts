@@ -37,6 +37,8 @@ import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 export type PlaceCategoryRow = {
   category?: string | null;
   family_keys?: unknown;
+  content_status?: string | null;
+  enriched_at?: string | null;
 } & PromotingFields;
 
 /** What a consumer place row gains on the wire. */
@@ -44,7 +46,26 @@ export type WireExtras = {
   family_keys: FamilyKey[];
   promoting: boolean;
   partner: boolean;
+  enriched: boolean;
 };
+
+/**
+ * Did we do the work on this place? `content_status = 'ready'` OR a stamped
+ * `enriched_at` — BOTH, never one. 27% of the live catalog is ready with a
+ * null `enriched_at` (measured 2026-08-29), so an `enriched_at`-only test
+ * would grey a quarter of the catalog on deploy.
+ *
+ * This is the SERVER's answer. Membership colour is stated here, next to
+ * `partner` and `promoting`, and never re-derived by a client (Pato,
+ * 2026-08-29): three clients each deriving the same fact is how red drifted
+ * from "we wrote a profile" to "we have a row".
+ */
+export function isEnrichedPlace(
+  row: { content_status?: string | null; enriched_at?: string | null } | null,
+): boolean {
+  if (!row) return false;
+  return row.content_status === "ready" || Boolean(row.enriched_at);
+}
 
 /** What it loses. */
 export type WirePlace<T> = Omit<T, (typeof BUSINESS_PRIVATE_PLACE_KEYS)[number]> &
@@ -70,6 +91,7 @@ export function withFamilyKeys<T extends PlaceCategoryRow>(
     family_keys: familiesForPlace(row),
     promoting,
     partner,
+    enriched: isEnrichedPlace(row),
   } as Record<string, unknown>;
   for (const key of BUSINESS_PRIVATE_PLACE_KEYS) delete out[key];
   return out as WirePlace<T>;

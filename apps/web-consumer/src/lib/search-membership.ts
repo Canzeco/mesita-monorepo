@@ -1,17 +1,48 @@
-// Consumer Search name-bar: membership is the colored point only.
-// Yellow = Mesita Partners. Red = Mesita Places. Gray = Google Places.
-// Hexes match map pins in lib/map-defaults.ts. Selected pin is a black ring;
-// the fill stays the membership color.
+// Membership is the colored point, on the results rows AND the map pins.
+// THE LAW, checked in this order (Pato, 2026-08-29):
+//
+//   partner   yellow   the place PAYS
+//   enriched  red      we wrote a profile
+//   unlisted  gray     everything else — Google rows AND our own stubs
+//
+// Red is EARNED. "listed" used to name the red bucket and that word is
+// exactly how it drifted: listed means "we have a row", which a Created
+// stub also satisfies, so a place with nothing to show wore the colour
+// that promises a profile. The bucket is named `enriched` now, and the
+// gray one is `unlisted` rather than `google`, because it holds our own
+// stubs too.
+//
+// The SERVER states `enriched` (`_shared/place-family-keys.ts`), the same
+// way it already states `partner` and `promoting`. Nothing here re-derives
+// it from raw columns except as a fallback for a payload that predates the
+// field. Hexes live in lib/map-defaults.ts; a selected pin keeps the
+// membership fill and gains a black ring.
 
 import {
+  MAP_ENRICHED_PIN_COLOR,
   MAP_GOOGLE_PIN_COLOR,
-  MAP_LISTED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
   MAP_SELECTED_PIN_COLOR,
 } from "@/lib/map-defaults";
 
-export type MembershipTone = "partner" | "listed" | "google";
+export type MembershipTone = "partner" | "enriched" | "unlisted";
+
+/**
+ * Did we write a profile? The server's `enriched` is the answer. The column
+ * pair is only a fallback for a payload minted before the field existed:
+ * `content_status = 'ready'` OR a stamped `enriched_at`, never one alone —
+ * 27% of the live catalog is ready with a null `enriched_at` (measured
+ * 2026-08-29), so an `enriched_at`-only test would grey a quarter of it.
+ */
+export function isEnrichedPlace(place: {
+  enriched?: boolean | null;
+  content_status?: string | null;
+  enriched_at?: string | null;
+}): boolean {
+  if (typeof place.enriched === "boolean") return place.enriched;
+  return place.content_status === "ready" || Boolean(place.enriched_at);
+}
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita status. */
 export function predictionOnMesita(item: {
@@ -35,19 +66,23 @@ export function catalogPlaceOnMesita(place: {
 
 export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
   partner: MAP_PARTNER_PIN_COLOR,
-  listed: MAP_LISTED_PIN_COLOR,
-  google: MAP_GOOGLE_PIN_COLOR,
+  enriched: MAP_ENRICHED_PIN_COLOR,
+  unlisted: MAP_GOOGLE_PIN_COLOR,
 };
 
+/** Name-lane rows. No column fallback on this wire, so a payload without
+ *  `enriched` reads as gray: understating beats promising a profile that
+ *  is not there. */
 export function membershipTone(item: {
   status?: string | null;
   partner?: boolean | null;
+  enriched?: boolean | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
 }): MembershipTone {
-  if (!predictionOnMesita(item)) return "google";
+  if (!predictionOnMesita(item)) return "unlisted";
   if (item.partner) return "partner";
-  return "listed";
+  return item.enriched === true ? "enriched" : "unlisted";
 }
 
 export function membershipColor(tone: MembershipTone): string {
@@ -102,17 +137,20 @@ export function overlayPinDecision(input: {
   return "noop";
 }
 
+/** Map/catalog rows. The `plan` fallback that used to live here was dead:
+ *  `plan` is in BUSINESS_PRIVATE_PLACE_KEYS and deleted before the wire, so
+ *  a consumer payload never carries it. `partner` is the server's boolean. */
 export function placeMembershipTone(place: {
   partner?: boolean | null;
-  plan?: string | null;
   googleOnly?: boolean;
   from_google?: boolean;
+  enriched?: boolean | null;
+  content_status?: string | null;
+  enriched_at?: string | null;
 }): MembershipTone {
-  if (place.googleOnly || place.from_google) return "google";
+  if (place.googleOnly || place.from_google) return "unlisted";
   if (place.partner === true) return "partner";
-  if (place.partner === false) return "listed";
-  if (place.plan && place.plan.toLowerCase() !== "free") return "partner";
-  return "listed";
+  return isEnrichedPlace(place) ? "enriched" : "unlisted";
 }
 
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row

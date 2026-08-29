@@ -100,7 +100,11 @@ function SuggestionLine({
   const tone = membershipTone(prediction);
   const added = addState === "added";
   const membershipLabel =
-    tone === "partner" ? "Partner" : tone === "listed" ? "Listed" : "Google only";
+    tone === "partner"
+      ? "Partner"
+      : tone === "enriched"
+        ? "Mesita profile"
+        : "No profile yet";
 
   return (
     <button
