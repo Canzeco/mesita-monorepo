@@ -4,7 +4,7 @@
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Status + Super Category also
+//     (the six Super Category families). Places power + Super Category
 //     live in the map Filters sheet. Distance and time are not map
 //     knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
@@ -613,7 +613,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after map Status + Super Category. */}
+      {/* Base layer — pins are the nearby catalog after Places power + Super Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -630,9 +630,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       />
 
       {/* Floating top overlay — query pill + Filters button, then Category
-          families. Status opens in the sheet. max-h-[70%] caps long lists
-          so they scroll and the map stays visible below. Ask AI lives on
-          Home › Chat. */}
+          families. Places power opens in the sheet. max-h-[70%] caps long
+          lists so they scroll and the map stays visible below. Ask AI lives
+          on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 items-center gap-2">

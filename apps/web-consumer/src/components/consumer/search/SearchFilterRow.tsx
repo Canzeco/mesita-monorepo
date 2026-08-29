@@ -4,9 +4,9 @@ import { SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// Icon-only map-chrome control. Status and Super Category live in the
-// sheet — never as chips, never as a "Filters" label on the canvas. A
-// red count is the only on-canvas signal that anything is applied.
+// Icon-only map-chrome control. Places power and Super Category live
+// in the sheet — never as a "Filters" label on the canvas. A red count
+// is the only on-canvas signal that anything is applied.
 
 export function SearchFilterRow({
   count,

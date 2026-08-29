@@ -1,20 +1,19 @@
 "use client";
 
 // Search-map filter store. Isolated from Discovery (Swipe): narrowing
-// Status or Super Category on the map never touches the deck.
+// Places power or Super Category on the map never touches the deck.
 
 import { useSyncExternalStore } from "react";
 import {
+  clampSearchPower,
   MAP_FILTER_DEFAULTS,
-  MAP_STATUS_KEYS,
   type MapFilters,
-  type MapStatusKey,
+  type MapSearchPower,
 } from "@/lib/map-filters-engine";
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-const STORAGE_KEY = "mesita_map_filters_v1";
+const STORAGE_KEY = "mesita_map_filters_v2";
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
-const KNOWN_STATUSES = new Set<string>(MAP_STATUS_KEYS);
 
 function readPersisted(): MapFilters {
   if (typeof window === "undefined") return MAP_FILTER_DEFAULTS;
@@ -25,12 +24,7 @@ function readPersisted(): MapFilters {
       Record<keyof MapFilters, unknown>
     >;
     return {
-      statuses: Array.isArray(parsed.statuses)
-        ? (parsed.statuses as unknown[]).filter(
-            (k): k is MapStatusKey =>
-              typeof k === "string" && KNOWN_STATUSES.has(k),
-          )
-        : [],
+      searchPower: clampSearchPower(parsed.searchPower),
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
@@ -78,12 +72,8 @@ export function resetMapFilters() {
   emit();
 }
 
-export function toggleMapStatus(key: MapStatusKey) {
-  patchMapFilters({
-    statuses: state.statuses.includes(key)
-      ? state.statuses.filter((k) => k !== key)
-      : [...state.statuses, key],
-  });
+export function setMapSearchPower(power: MapSearchPower) {
+  patchMapFilters({ searchPower: clampSearchPower(power) });
 }
 
 export function toggleMapFamily(key: FamilyKey) {
