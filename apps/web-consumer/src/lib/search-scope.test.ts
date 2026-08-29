@@ -10,8 +10,8 @@ import {
 } from "@/lib/search-scope";
 
 describe("search scope country", () => {
-  it("defaults the product country to MX", () => {
-    expect(DEFAULT_SEARCH_COUNTRY).toBe("MX");
+  it("defaults the product country to Any", () => {
+    expect(DEFAULT_SEARCH_COUNTRY).toBeNull();
   });
 
   it("accepts a two-letter code and treats empty as unset", () => {

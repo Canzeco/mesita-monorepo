@@ -2,7 +2,8 @@
 
 // Search — the consumer catalog map. Composition layer for the page:
 //
-//   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
+//   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
+//     gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
 //     (the six Super Category families). Places scope + Super Category
 //     live in the map Filters sheet. Default is + Places. Distance and
@@ -20,8 +21,9 @@
 //     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
 //     session token per autocomplete session.
 //     Results hang at content height. No source labels — the colored point
-//     is membership (red Mesita / gray not on Mesita). On-Mesita rows
-//     select the place on the map; Google-only rows open GooglePlaceSheet.
+//     is membership (yellow Partner / red Mesita Place / gray Google).
+//     On-Mesita rows select the place on the map; Google-only rows open
+//     GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -381,7 +383,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "fast",
         );
         if (!cancelled && !deepSettled) {
@@ -407,7 +408,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "deep",
         );
         if (!cancelled) {
@@ -429,7 +429,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       window.clearTimeout(fastHandle);
       window.clearTimeout(deepHandle);
     };
-  }, [supabase, trimmed, center, scope.country]);
+  }, [supabase, trimmed, center]);
 
   // On-Mesita row tap → show the place on the map (membership fill + black
   // ring + rail card) instead of opening the detail modal; the modal is

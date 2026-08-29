@@ -26,7 +26,6 @@ Deno.test("seven modules and the locked mode → module matrix", () => {
   assertEquals([...DISCOVERY_MODE_MODULES.deep], [
     "Google Places Autocomplete",
     "Google Places Text Search",
-    "Google Places Nearby Search",
     "Mesita Places Lineup",
   ]);
   assertEquals([...DISCOVERY_MODE_MODULES.map], [
@@ -43,7 +42,7 @@ Deno.test("seven modules and the locked mode → module matrix", () => {
   assertEquals([...DISCOVERY_MODE_MODULES.social], ["Mesita Social Lineup"]);
   assertEquals([...DISCOVERY_MODE_MODULES.favorites], []);
   assertEquals(modeCallsModule("chat", "Mesita Social Lineup"), false);
-  assertEquals(modeCallsModule("deep", "Google Places Nearby Search"), true);
+  assertEquals(modeCallsModule("deep", "Google Places Nearby Search"), false);
 });
 
 Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social · Favorites", () => {

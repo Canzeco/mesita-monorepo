@@ -69,15 +69,30 @@ export const MAP_MINIMAL_STYLES = [
   },
 ] as const;
 
-// SVG circle path for place markers. r=7 (was 12) so a cluster still
-// shows the map. Fill is membership; the user-location dot is its own path.
+// One circle for every map pin: place (red/gray) and you-are-here (blue).
+// r=7 (was 12) so a cluster still shows the map. Selected is a black
+// ring only — never a bigger scale or thicker stroke.
 export const MAP_PLACE_PIN_RADIUS = 7;
+export const MAP_PIN_STROKE_WEIGHT = 1.75;
+export const MAP_PIN_SCALE = 1;
 export const MAP_CIRCLE_PATH =
   `M -${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 ${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 -${MAP_PLACE_PIN_RADIUS} 0`;
 
+export function mapCircleIcon(fillColor: string, strokeColor: string) {
+  return {
+    path: MAP_CIRCLE_PATH,
+    fillColor,
+    fillOpacity: 1,
+    strokeColor,
+    strokeWeight: MAP_PIN_STROKE_WEIGHT,
+    scale: MAP_PIN_SCALE,
+  };
+}
+
 // Search pins — same hexes as the results-row dots.
-// Red = on Mesita (partner or not). Gray = not on Mesita. Blue = current location.
-export const MAP_PARTNER_PIN_COLOR = "#ff2357";
+// Yellow = Mesita Partners. Red = Mesita Places. Gray = Google Places.
+// Blue = current location.
+export const MAP_PARTNER_PIN_COLOR = "#ffc400";
 export const MAP_LISTED_PIN_COLOR = "#ff2357";
 export const MAP_MESITA_PIN_COLOR = "#ff2357";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";

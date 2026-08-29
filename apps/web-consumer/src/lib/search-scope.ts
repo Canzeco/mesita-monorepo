@@ -1,8 +1,8 @@
-// Search-bar scope: country limits Google Autocomplete + Text Search;
-// location centers the map and biases those calls. Both optional.
-// Discovery filters (cuisine, when, rewards) are a different sheet.
+// Search-bar scope: location centers the map and may bias name search.
+// Country is always Any — Autocomplete and Text Search do not take a
+// region code. Discovery filters are a different sheet.
 
-export const DEFAULT_SEARCH_COUNTRY = "MX";
+export const DEFAULT_SEARCH_COUNTRY = null;
 
 /** Globe for the unset restrict — not a country, still first in the sheet. */
 export const ANY_COUNTRY_FLAG = "🌐";

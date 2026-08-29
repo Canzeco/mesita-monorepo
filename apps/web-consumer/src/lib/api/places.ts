@@ -357,13 +357,13 @@ export type SuggestPlacesMode = "fast" | "deep";
  * Name search for the consumer /search bar and pickers.
  * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
  * Map Filters never ride this call — power and Super Category are map-only.
+ * Country is always Any: Autocomplete and Text Search do not take a region.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
   input: string,
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
-  country?: string | null,
   mode: SuggestPlacesMode = "fast",
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
@@ -378,7 +378,6 @@ export async function apiSuggestPlaces(
       ...(origin
         ? { lat: origin.lat, lng: origin.lng }
         : {}),
-      ...(country ? { country } : {}),
     },
   );
   return predictions;

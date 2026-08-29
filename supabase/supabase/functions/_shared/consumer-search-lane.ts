@@ -7,10 +7,11 @@
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; count stays for Deep symmetry.
-// Map Filters never cut this list.
-// Deep: Autocomplete + Text Search + Places Lineup Name. The Nearby chip
-// is the guest pin on those three — not a type+DISTANCE Nearby call with
-// no query. Each candidate resolves, then one list:
+// Map Filters never cut this list. Autocomplete and Text Search never
+// take a country code — both stay Any (guest pin may still bias).
+// Deep: Autocomplete + Text Search + Places Lineup Name. Never Nearby
+// Search. Guest pin biases those three. Each candidate resolves, then
+// one list:
 //   1. Google Autocomplete — resolve against the catalog
 //   2. Google Text Search — resolve against the catalog
 //   3. Mesita Places Lineup — admit on raw name cosine, then rankByBlend
@@ -38,7 +39,6 @@ import {
 } from "./suggest-places-helpers.ts";
 import {
   applyPlacesAutocompleteRegion,
-  applyPlacesCallerRegion,
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
 import {
@@ -188,7 +188,7 @@ export type ConsumerSearchArgs = {
   sessionToken?: string;
   lat?: number | null;
   lng?: number | null;
-  /** Guest country (ISO-2). Empty/omit = no Google country restrict. */
+  /** Ignored. Autocomplete and Text Search stay Any. */
   country?: string | null;
   /** Default fast — pickers and older clients stay Autocomplete. */
   mode?: SuggestPlacesMode | string | null;
@@ -348,7 +348,6 @@ export async function runConsumerSearchLane(
       input,
       sessionToken,
       origin,
-      args.country,
     )
     : await runFastSearch(
       admin,
@@ -358,7 +357,6 @@ export async function runConsumerSearchLane(
       input,
       sessionToken,
       origin,
-      args.country,
     );
 
   if ("errorEnvelope" in predictions) {
@@ -381,7 +379,6 @@ async function runFastSearch(
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
-  country?: string | null,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const cap = Math.min(name.fast.count, name.fast.googleCount);
   if (cap <= 0 || googleTypeFilterForTypes(name.fast.types) === "skip") {
@@ -393,7 +390,6 @@ async function runFastSearch(
     sessionToken,
     apiKey,
     origin,
-    country,
   );
   if (googleAuto.errorEnvelope) return { errorEnvelope: googleAuto.errorEnvelope };
   const stamped = await stampGoogleAgainstCatalog(
@@ -461,7 +457,6 @@ async function runDeepSearch(
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
-  country?: string | null,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = mapWithTypes(map, deep.types);
@@ -477,10 +472,10 @@ async function runDeepSearch(
 
   const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
     wantAuto
-      ? fetchAutocomplete(input, sessionToken, apiKey, origin, country)
+      ? fetchAutocomplete(input, sessionToken, apiKey, origin)
       : Promise.resolve({ predictions: [] as LaneItem[] }),
     wantText
-      ? fetchTextSearch(input, apiKey, gate, origin, country, deep.googleCount)
+      ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount)
       : Promise.resolve([] as LaneItem[]),
     wantMesita ? fetchEmbedPool(admin, origin) : Promise.resolve([] as ListedRow[]),
     wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
@@ -614,11 +609,9 @@ async function fetchAutocomplete(
   sessionToken: string,
   apiKey: string,
   origin: { lat: number; lng: number } | null,
-  country?: string | null,
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesAutocompleteRegion(body, origin);
-  applyPlacesCallerRegion(body, country, "autocomplete");
   const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
     method: "POST",
     headers: {
@@ -671,7 +664,6 @@ async function fetchTextSearch(
   apiKey: string,
   gate: MapConfig,
   origin: { lat: number; lng: number } | null,
-  country: string | null | undefined,
   limit: number,
 ): Promise<LaneItem[]> {
   const body: Record<string, unknown> = {
@@ -679,7 +671,6 @@ async function fetchTextSearch(
     maxResultCount: Math.min(GOOGLE_TEXT_MAX, Math.max(1, limit)),
   };
   applyPlacesTextSearchRegion(body, origin);
-  applyPlacesCallerRegion(body, country, "text");
   let r: Response;
   try {
     r = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {

@@ -44,15 +44,12 @@ import { cn } from "@/lib/utils";
 
 export function PlacePickList({
   origin,
-  country = null,
   busyPlaceId = null,
   onPick,
   query = "",
   onClearQuery,
 }: {
   origin: { lat: number; lng: number };
-  /** Optional Google country restrict, same default Search stores (MX). */
-  country?: string | null;
   busyPlaceId?: string | null;
   onPick: (place: SeedPlace) => void;
   query?: string;
@@ -112,7 +109,6 @@ export function PlacePickList({
           trimmed,
           sessionTokenRef.current,
           originPoint,
-          country,
         );
         if (!cancelled) {
           setPredictions(rows);
@@ -129,7 +125,7 @@ export function PlacePickList({
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [supabase, nameSearch, trimmed, originPoint, country]);
+  }, [supabase, nameSearch, trimmed, originPoint]);
 
   const nearbyRows = useMemo(
     () =>
