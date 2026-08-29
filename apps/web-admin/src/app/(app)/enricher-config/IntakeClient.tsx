@@ -260,9 +260,9 @@ export function IntakeClient({
                 />
               </Fields>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                Consumer and admin Create mint the ugly profile and do not
-                queue Intaker. Auto-enrich when this many guests vote on the
-                Enrich tab. Admin Enrich and Create + Enrich skip the wait.
+                Create mints the ugly profile without queuing Intaker. Auto-enrich
+                after this many Enrich-tab votes. Admin Enrich and Create + Enrich
+                skip the wait.
               </p>
             </div>
           </SectionCard>
@@ -517,7 +517,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Category, Tags, Presentation."
+                blurb="Category, tags, presentation."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -529,7 +529,7 @@ export function IntakeClient({
                 index="10 · $"
                 flows={flowTagFor("semantic")}
                 name="Semantic"
-                blurb="Mesita Name & Semantic Summary & Embeddings. One function, two vectors. Closes Enrich at 10."
+                blurb="Mesita name, semantic summary, embeddings. Two vectors, one function. Closes Enrich at 10."
                 knobs="locked"
               >
                 <NoKnobs>
