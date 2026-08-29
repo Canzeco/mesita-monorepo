@@ -1,9 +1,14 @@
 "use client";
 
-// Map hyperparameters — live. Places scope picks one nested set
-// (Partners ⊂ Mesita Places ⊂ Google Places). Closest N of that set;
-// inner membership paints, it does not add pins. Google types live on
-// Modules.
+// Map hyperparameters — live. Places scope picks one of TWO nested sets
+// (Mesita Places ⊂ Google Places). Closest N of that set; inner
+// membership paints, it does not add pins. Google types live on Modules.
+//
+// MESITA PLACES MEANS CREATED **AND** ENRICHED (Pato, 2026-08-29) — the
+// honest name is Mesita Enriched Places, shortened on the guest's sheet.
+// A Created or Requested stub is not a search source. The console must
+// say so: an operator reading "Mesita Places" would otherwise price the
+// set at every row in the table.
 //
 // THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29). How
 // many is the guest's How many; the operator only decides IF Google may
@@ -111,7 +116,24 @@ export function MapConfigClient({
         }
       >
         <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
-        <p className="text-muted-foreground mt-4 type-meta">
+        <div className="mt-5">
+          <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
+            Places sets
+          </p>
+          <p className="text-muted-foreground mb-1.5 type-meta">
+            Two nested sets: Mesita Places &sub; Google Places. Partners are
+            not a set — a partner is a Mesita Place painted yellow.
+          </p>
+          <p className="text-muted-foreground type-meta">
+            <span className="text-foreground font-semibold">
+              Mesita Places means created AND enriched
+            </span>{" "}
+            — the honest name is Mesita Enriched Places, shortened to Mesita
+            Places on the guest&rsquo;s sheet. A Created or Requested stub is
+            never a search source; partners always ride along.
+          </p>
+        </div>
+        <p className="text-muted-foreground mt-5 type-meta">
           How many pins is the guest&rsquo;s question — the Filters sheet
           asks it, and nothing here overrides the answer.
         </p>

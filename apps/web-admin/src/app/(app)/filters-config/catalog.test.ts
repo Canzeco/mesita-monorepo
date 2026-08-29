@@ -443,6 +443,7 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("MAP_SET_COUNT_MAX");
     expect(map).not.toContain("MAP_GOOGLE_COUNT_MAX");
     expect(map).toContain("THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER");
+    expect(map).toContain("Mesita Places means created AND enriched");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");
