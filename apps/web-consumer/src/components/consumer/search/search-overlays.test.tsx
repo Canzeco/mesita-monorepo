@@ -206,6 +206,8 @@ describe("SearchPlacesScope", () => {
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain("ALL GOOGLE PLACES");
+    expect(html).toContain("vetted");
+    expect(html).toContain("may not be worth your time");
   });
 
   it("fills from the inside out as power widens", () => {

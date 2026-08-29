@@ -153,14 +153,15 @@ export function SearchPlacesScope({
       {power === 3 ? (
         <div
           role="alert"
-          className="border-amber-500/40 bg-amber-500/10 mt-3 flex items-center gap-2 rounded-xl border px-3 py-2.5"
+          className="border-amber-500/40 bg-amber-500/10 mt-3 flex items-start gap-2.5 rounded-xl border px-3 py-2.5"
         >
           <AlertTriangle
-            className="size-4 shrink-0 text-amber-600"
+            className="mt-px size-4 shrink-0 text-amber-600"
             aria-hidden
           />
-          <p className="type-meta font-semibold tracking-wide text-amber-900">
-            ALL GOOGLE PLACES
+          <p className="type-meta leading-snug text-amber-900">
+            <span className="font-semibold">ALL GOOGLE PLACES.</span> Includes
+            spots Mesita hasn&apos;t vetted — some may not be worth your time.
           </p>
         </div>
       ) : null}
