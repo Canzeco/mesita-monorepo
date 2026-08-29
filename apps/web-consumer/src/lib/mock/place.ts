@@ -18,6 +18,10 @@ export type PlaceDetail = {
   promoting?: boolean | null;
   /** Server-computed per request: this place PAYS Mesita. See Place.partner. */
   partner?: boolean | null;
+  /** Description/Actions — menu on file unlocks Order. */
+  orders_enabled?: boolean;
+  /** Description/Actions — LLM: venue type likely takes reservations. */
+  reservations_enabled?: boolean;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.

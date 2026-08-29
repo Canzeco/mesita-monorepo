@@ -72,7 +72,7 @@ export async function savePlaceData(
   const googleName = (place.google_name ?? place.name ?? "").toString().trim();
   if (!googlePlaceId) return fail(400, { error: "place.google_place_id is required" });
   if (!googleName) return fail(400, { error: "place.google_name is required" });
-  // Create never sets mesita_name, so the row's generated `name` == google_name.
+  // Slug + response label use the Mesita name (same string as google on create).
   const name = googleName;
   // decision: Pato (MESITA-468) — Maps URL is part of the native spine; create
   // must never persist a place without it (fetchGoogleBasics always supplies one).
@@ -119,10 +119,10 @@ export async function savePlaceData(
 
   // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
-  // Names: `name` is a GENERATED display column — never insert it. Create seeds
-  // the Google observation only; `mesita_name` stays NULL so the place follows
-  // Google until an operator sets an override. A caller that only sent `name`
-  // is supplying the Google label, so it lands in google_name.
+  // Names: `name` is GENERATED (coalesce(mesita_name, google_name)) — never
+  // insert it. Create seeds BOTH: google_name is the cached Google observation
+  // (Intaker refresh target) and mesita_name is the guest-facing Mesita label
+  // (operator-editable; profile chrome never reads google_name directly).
   const {
     id: _dropId,
     created_at: _dropCreated,
@@ -134,6 +134,7 @@ export async function savePlaceData(
   const placeInsert = {
     ...placeRest,
     google_name: googleName,
+    mesita_name: googleName,
   } as PlacePatch;
   const placeRes = await writePlace(admin, {
     table: "places",

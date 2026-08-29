@@ -183,6 +183,10 @@ export type PlaceRow = {
   order_target: string | null;
   business_status: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
   business_status_at: string | null;
+  /** Description/Actions — guest Order CTA when menu/catalog exists. */
+  orders_enabled: boolean;
+  /** Description/Actions — LLM: this kind of place likely takes reservations. */
+  reservations_enabled: boolean;
 };
 
 export const PLACE_PATCH_KEYS = [
@@ -266,6 +270,8 @@ export const PLACE_PATCH_KEYS = [
   "order_target",
   "business_status",
   "business_status_at",
+  "orders_enabled",
+  "reservations_enabled",
 ] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at" | "name">)[];
 
 // Compile-time exhaustiveness the other direction — same discipline

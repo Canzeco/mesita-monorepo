@@ -18,7 +18,7 @@ import {
 
 export { isPlaceProfileReady };
 
-export const DEFAULT_REQUEST_THRESHOLD = 3;
+export const DEFAULT_REQUEST_THRESHOLD = 5;
 export const REQUEST_THRESHOLD_MIN = 1;
 export const REQUEST_THRESHOLD_MAX = 100;
 
