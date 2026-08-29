@@ -40,18 +40,19 @@ export function RailCard({
       type="button"
       onClick={selected ? onOpen : onSelect}
       className={cn(
-        "border-border bg-card/95 shadow-elev flex w-full items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
+        "border-border bg-card/95 shadow-elev flex w-full items-stretch overflow-hidden rounded-2xl border text-left backdrop-blur transition active:scale-[0.98]",
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
-      <div className="bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+      {/* Photo bleeds to the card edge — clip only, no inner radius or stroke. */}
+      <div className="bg-muted relative min-h-20 w-20 shrink-0 self-stretch overflow-hidden">
         {photo ? (
           <Image
             src={photo}
             alt={place.name}
             fill
             sizes="80px"
-            className="object-cover"
+            className="border-0 object-cover outline-none"
           />
         ) : (
           <span className="bg-pink-gradient absolute inset-0 flex items-center justify-center text-lg font-bold text-white">
@@ -64,7 +65,7 @@ export function RailCard({
           rows, centred against the 80px photo. Meta items join with the same
           "·" separator as the subtitle so the block reads as ordered lines,
           not floating fragments. */}
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 py-0.5">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 py-2 pr-2 pl-2.5">
         <span className="flex items-center gap-1">
           <span className="truncate text-sm leading-tight font-semibold">
             {place.name}

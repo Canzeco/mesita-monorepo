@@ -464,7 +464,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
     expect(overlay).not.toMatch(/flex gap-2 overflow-x-auto/);
-    expect(card).toContain("flex w-full items-center");
+    expect(card).toContain("flex w-full items-stretch");
     expect(card).toContain("ring-inset");
     expect(card).not.toContain("w-[288px]");
     expect(client).toContain("el.clientWidth * 0.8");
@@ -483,13 +483,20 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(loading).not.toContain("w-[288px]");
   });
 
-  it("gives rail photos a clip, not a stroke", () => {
+  it("bleeds rail photos to the card edge with no inner frame", () => {
     const card = read("SearchRailCard.tsx");
+    const overlay = read("search-catalog-overlays.tsx");
     expect(card).toContain(
-      "bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-xl",
+      "bg-muted relative min-h-20 w-20 shrink-0 self-stretch overflow-hidden",
     );
-    expect(card).not.toContain(
-      "relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border",
+    expect(card).toContain("overflow-hidden rounded-2xl border");
+    expect(card).toContain('className="border-0 object-cover outline-none"');
+    expect(card).not.toContain("rounded-xl");
+    expect(card).not.toMatch(
+      /min-h-20 w-20[^"]*\b(?:border|ring|rounded-xl)\b/,
+    );
+    expect(overlay).toContain(
+      "min-h-20 w-20 shrink-0 self-stretch rounded-none",
     );
     const html = renderToStaticMarkup(
       <RailCard
@@ -499,9 +506,10 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
         onOpen={() => {}}
       />,
     );
-    expect(html).toContain("h-20");
+    expect(html).toContain("min-h-20");
     expect(html).toContain("w-20");
-    expect(html).not.toMatch(/h-20 w-20[^"]*\bborder\b/);
+    expect(html).not.toMatch(/min-h-20 w-20[^"]*\bborder\b/);
+    expect(html).not.toMatch(/min-h-20 w-20[^"]*\brounded-xl\b/);
   });
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
