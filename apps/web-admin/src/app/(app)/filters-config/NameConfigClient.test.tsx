@@ -15,7 +15,7 @@ vi.mock("./actions", () => ({
 import { NameConfigClient } from "./NameConfigClient";
 
 describe("Name Search params", () => {
-  it("Fast is Google places + Max results; Deep is three lanes + merge max", () => {
+  it("Fast is Google places + Max results; Deep is four independent queries", () => {
     const html = renderToStaticMarkup(
       <NameConfigClient
         initialConfig={DEFAULT_CONFIG}
@@ -26,18 +26,21 @@ describe("Name Search params", () => {
     expect(html).toContain("Name (Fast Search)");
     expect(html).toContain("Name (Deep Search)");
     expect(html).toContain("Google places");
+    expect(html).toContain("Google Autocomplete");
+    expect(html).toContain("Google Text Search");
     expect(html).toContain("Mesita partners");
     expect(html).toContain("Mesita places");
-    expect((html.match(/Max results/g) ?? []).length).toBeGreaterThanOrEqual(2);
-    expect(html).toContain("Max results caps the merge");
     expect(html).toContain("Deep never calls Nearby Search");
     expect(html).not.toContain("Google Places Nearby Search");
     expect(html).toContain("Map Filters never cut this list");
-    expect(html).toContain("Then merge. Max ≥ Google ≥ Mesita ≥ Partners.");
-    expect(html).toContain("Bring");
+    expect(html).toContain(
+      "Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners.",
+    );
+    expect(html).toContain("Queries");
+    expect(html).not.toContain("Bring");
     expect(html).toContain('value="5"');
     expect(html).toContain('value="3"');
-    expect(html).toContain('value="9"');
+    expect(html).not.toContain('value="9"');
 
     const box = (src: string, label: string) =>
       src.search(new RegExp(`${label}\\s*</span>`));
@@ -49,18 +52,21 @@ describe("Name Search params", () => {
     expect(box(fastHtml, "Google places")).toBeLessThan(
       box(fastHtml, "Max results"),
     );
+    expect(fastHtml).toContain("Max results");
 
     const deepHtml = html.slice(html.indexOf("Name (Deep Search)"));
-    expect(box(deepHtml, "Google places")).toBeLessThan(
+    expect(box(deepHtml, "Google Autocomplete")).toBeLessThan(
+      box(deepHtml, "Google Text Search"),
+    );
+    expect(box(deepHtml, "Google Text Search")).toBeLessThan(
       box(deepHtml, "Mesita places"),
     );
     expect(box(deepHtml, "Mesita places")).toBeLessThan(
       box(deepHtml, "Mesita partners"),
     );
-    expect(box(deepHtml, "Mesita partners")).toBeLessThan(
-      box(deepHtml, "Max results"),
+    expect(deepHtml).not.toContain("Max results");
+    expect(deepHtml.indexOf("Queries")).toBeLessThan(
+      box(deepHtml, "Google Autocomplete"),
     );
-    expect(deepHtml.indexOf("Bring")).toBeLessThan(deepHtml.indexOf(">merge<"));
-    expect(deepHtml.indexOf(">merge<")).toBeLessThan(box(deepHtml, "Max results"));
   });
 });

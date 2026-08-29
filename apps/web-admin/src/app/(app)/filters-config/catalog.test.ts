@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  cascadeLaneCounts,
   coerceConfig,
   DEFAULT_CATALOG,
   DEFAULT_GENERAL,
@@ -217,7 +216,7 @@ describe("Discovery function APIs", () => {
     expect(social?.process).not.toMatch(/Check-ins/);
   });
 
-  it("name() is Fast Autocomplete plus Deep three-lane merge", () => {
+  it("name() is Fast Autocomplete plus Deep four-query concat", () => {
     const name = ENGINES.find((e) => e.key === "name");
     expect(name?.state).toBe("LIVE");
     expect(name?.apis).toEqual([
@@ -234,10 +233,11 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
     expect(name?.process).toMatch(/Deep never calls Nearby Search/);
-    expect(name?.process).toMatch(/Max results caps the merge/);
+    expect(name?.process).toMatch(/first query keeps the slot/);
     expect(name?.apis).not.toContain("Google Places Nearby Search");
     expect(name?.process).toMatch(/Map Filters never cut this list/);
     expect(name?.process).not.toMatch(/summary embedding/i);
+    expect(name?.process).not.toMatch(/Max results caps the merge/);
   });
 
   it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
@@ -277,48 +277,36 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
   });
 
-  it("cascadeLaneCounts keeps max ≥ google ≥ mesita ≥ partners", () => {
-    expect(
-      cascadeLaneCounts(
-        { partnerCount: 3, mesitaCount: 3, googleCount: 3, count: 9 },
-        "partnerCount",
-        5,
-        20,
-      ),
-    ).toEqual({ partnerCount: 5, mesitaCount: 5, googleCount: 5, count: 9 });
-    expect(
-      cascadeLaneCounts(
-        { partnerCount: 3, mesitaCount: 3, googleCount: 3, count: 9 },
-        "count",
-        2,
-        20,
-      ),
-    ).toEqual({ partnerCount: 2, mesitaCount: 2, googleCount: 2, count: 2 });
-    expect(
-      cascadeLaneCounts(
-        { partnerCount: 10, mesitaCount: 10, googleCount: 20 },
-        "googleCount",
-        6,
-        20,
-      ),
-    ).toEqual({ partnerCount: 6, mesitaCount: 6, googleCount: 6 });
-    expect(
-      cascadeLaneCounts(
-        { partnerCount: 10, mesitaCount: 10, googleCount: 20 },
-        "mesitaCount",
-        15,
-        20,
-      ),
-    ).toEqual({ partnerCount: 10, mesitaCount: 15, googleCount: 20 });
-  });
-
-  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 plus merge max 9", () => {
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3+3", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
       .toMatchObject({
         fast: { googleCount: 20, count: 20 },
-        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3, count: 9 },
+        deep: {
+          partnerCount: 0,
+          mesitaCount: 3,
+          autoCount: 3,
+          googleCount: 3,
+          count: 9,
+        },
       });
+    expect(
+      coerceConfig({
+        name: {
+          deep: {
+            autoCount: 5,
+            googleCount: 1,
+            mesitaCount: 10,
+            partnerCount: 8,
+          },
+        },
+      }).name.deep,
+    ).toMatchObject({
+      autoCount: 5,
+      googleCount: 1,
+      mesitaCount: 10,
+      partnerCount: 8,
+    });
   });
 
   it("chat() is parked with the rest of Home", () => {
@@ -405,25 +393,34 @@ describe("Discovery page box order", () => {
     expect(name).toContain("name.fast.count");
     expect(name).toContain("patchFast({ googleCount, count: googleCount })");
     expect(name).toContain("patchFast({ count, googleCount: count })");
+    expect(name).toContain("name.deep.autoCount");
     expect(name).toContain("name.deep.partnerCount");
     expect(name).toContain("name.deep.mesitaCount");
     expect(name).toContain("name.deep.googleCount");
-    expect(name).toContain("name.deep.count");
-    expect(name).toContain("Max results caps the merge");
+    expect(name).not.toContain("name.deep.count");
+    expect(name).not.toContain("Max results caps the merge");
     expect(name).toContain("Map Filters never cut this list");
     expect(name).toContain("same cap — Max results stays for Deep symmetry");
     const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
-    const deepGoogle = deepKnobs.indexOf('label: "Google places"');
+    const deepAuto = deepKnobs.indexOf('label: "Google Autocomplete"');
+    const deepText = deepKnobs.indexOf('label: "Google Text Search"');
     const deepPlaces = deepKnobs.indexOf('label: "Mesita places"');
     const deepPartners = deepKnobs.indexOf('label: "Mesita partners"');
-    const deepMax = deepKnobs.indexOf('label: "Max results"');
-    expect(deepGoogle).toBeLessThan(deepPlaces);
+    expect(deepAuto).toBeLessThan(deepText);
+    expect(deepText).toBeLessThan(deepPlaces);
     expect(deepPlaces).toBeLessThan(deepPartners);
-    expect(deepPartners).toBeLessThan(deepMax);
-    expect(name).toContain("Then merge. Max ≥ Google ≥ Mesita ≥ Partners.");
-    expect(name).toContain("cascadeLaneCounts");
-    expect(map).toContain("Then merge. Google ≥ Mesita ≥ Partners.");
-    expect(map).toContain("LaneMergeFunnel");
+    expect(deepKnobs).not.toContain('label: "Max results"');
+    expect(name).toContain(
+      "Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners.",
+    );
+    expect(name).toContain("QueryConcatCaps");
+    expect(name).not.toContain("cascadeLaneCounts");
+    expect(map).toContain(
+      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+    );
+    expect(map).toContain("QueryConcatCaps");
+    expect(map).not.toContain("LaneMergeFunnel");
+    expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");

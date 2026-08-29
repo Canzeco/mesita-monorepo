@@ -1,13 +1,13 @@
-// Map catalog = three closest-N lanes, then one list after dropping overlaps:
+// Map catalog = three independent closest-N queries, then concat:
 //   1. closest partnerCount Mesita partners (plan ≠ free)
-//   2. closest mesitaCount Mesita places (partners included)
+//   2. closest mesitaCount listed-not-partner Mesita places
 //   3. closest googleCount Google Nearby hits
-// Search power zeros unused lanes: 1 Partners, 2 + enriched Places, 3 + Google.
+// Overlaps drop; earlier query keeps the slot. Search power zeros unused
+// queries: 1 Partners, 2 + enriched Places, 3 + Google.
 // Mesita Places is enriched only — Created / Requested stubs are not a source.
-// Power 1–2 never fire Google Nearby. Merge is concatenate after dropping
-// concurrencies: Partners, then Mesita, then Google. Union 20–40 at defaults
+// Power 1–2 never fire Google Nearby. Union 20–40 at defaults when disjoint
 // (10 + 10 + 20). Dedup Google against every known Mesita Place ID (not just
-// the tops), so a listed place that missed its lane never comes back as a
+// the tops), so a listed place that missed its query never comes back as a
 // gray stub. Google maxes a Nearby call at 20; type batteries ride that one
 // call.
 
@@ -355,9 +355,12 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     center,
     lanes.partnerCount,
   );
-  const mesitaLane = takeClosest(inMesita, center, lanes.mesitaCount);
   const partnerIds = new Set(partners.map((row) => row.id));
-  const mesitaExtra = mesitaLane.filter((row) => !partnerIds.has(row.id));
+  const mesitaExtra = takeClosest(
+    inMesita.filter((row) => !isMesitaPartnerRow(row)),
+    center,
+    lanes.mesitaCount,
+  ).filter((row) => !partnerIds.has(row.id));
   const knownMesitaIds = new Set(
     mesita
       .map((row) => row.google_place_id)

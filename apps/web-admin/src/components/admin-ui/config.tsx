@@ -216,7 +216,7 @@ export function NumberField({
   );
 }
 
-export type LaneMergeFunnelRung = {
+export type QueryCapRung = {
   key: string;
   label: string;
   icon: React.ReactNode;
@@ -224,25 +224,19 @@ export type LaneMergeFunnelRung = {
   onChange: (value: number) => void;
 };
 
-const FUNNEL_BRING_WIDTH = ["w-full", "w-[90%] sm:w-[86%]", "w-[80%] sm:w-[72%]"] as const;
-
-function LaneFunnelRung({
+function QueryCapRow({
   rung,
-  widthClass,
   min,
   max,
   disabled,
 }: {
-  rung: LaneMergeFunnelRung;
-  widthClass: string;
+  rung: QueryCapRung;
   min: number;
   max: number;
   disabled: boolean;
 }) {
   return (
-    <label
-      className={`border-border bg-background flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3 py-2 ${widthClass}`}
-    >
+    <label className="border-border bg-background flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2">
       <span className="flex min-w-0 items-center gap-2 text-sm font-medium leading-snug">
         {rung.icon}
         {rung.label}
@@ -268,20 +262,18 @@ function LaneFunnelRung({
 }
 
 /**
- * Discovery lane counts as a filter: bring Google ⊃ Mesita ⊃ Partners,
- * then merge. Width steps down so the nest is visible without a diagram.
+ * Independent query caps, listed in concat order. Overlaps drop; the earlier
+ * query keeps the slot. Not a nested filter — each number is its own fetch.
  */
-export function LaneMergeFunnel({
+export function QueryConcatCaps({
   rule,
-  bring,
-  merge,
+  queries,
   min,
   max,
   disabled,
 }: {
   rule: string;
-  bring: LaneMergeFunnelRung[];
-  merge?: LaneMergeFunnelRung;
+  queries: QueryCapRung[];
   min: number;
   max: number;
   disabled: boolean;
@@ -289,41 +281,20 @@ export function LaneMergeFunnel({
   return (
     <div className="mt-5">
       <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
-        Bring
+        Queries
       </p>
       <p className="text-muted-foreground mb-3 type-meta">{rule}</p>
-      <div className="flex flex-col items-center gap-1.5">
-        {bring.map((rung, i) => (
-          <LaneFunnelRung
+      <div className="flex flex-col gap-1.5">
+        {queries.map((rung) => (
+          <QueryCapRow
             key={rung.key}
             rung={rung}
-            widthClass={FUNNEL_BRING_WIDTH[Math.min(i, FUNNEL_BRING_WIDTH.length - 1)] ?? "w-full"}
             min={min}
             max={max}
             disabled={disabled}
           />
         ))}
       </div>
-      {merge ? (
-        <>
-          <div className="text-muted-foreground my-2 flex flex-col items-center gap-1">
-            <span aria-hidden className="bg-border block h-4 w-px" />
-            <span className="type-meta font-semibold tracking-wide uppercase">
-              merge
-            </span>
-            <span aria-hidden className="bg-border block h-4 w-px" />
-          </div>
-          <div className="flex flex-col items-center">
-            <LaneFunnelRung
-              rung={merge}
-              widthClass="w-[80%] sm:w-[72%]"
-              min={min}
-              max={max}
-              disabled={disabled}
-            />
-          </div>
-        </>
-      ) : null}
     </div>
   );
 }

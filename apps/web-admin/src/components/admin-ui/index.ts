@@ -15,7 +15,7 @@ export {
   TextAreaField,
   NumberField,
   ChoiceField,
-  LaneMergeFunnel,
+  QueryConcatCaps,
   Button,
   SaveRow,
   QualityPicker,

@@ -1,11 +1,9 @@
 "use client";
 
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
-// Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
-// Search, and Places Lineup (Name signal only — Mesita `places.name`,
-// not `google_name`). Deep never calls Nearby Search.
-// Each candidate resolves, then Partners · Mesita · Google.
-// Deep funnel: bring Google ⊃ Mesita ⊃ Partners, then Max caps the merge.
+// Fast Search is Autocomplete only. Deep Search concatenates four independent
+// queries: Autocomplete → Text Search → Mesita Places → Mesita Partners.
+// Overlaps drop; first query keeps the slot. Deep never calls Nearby Search.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -19,19 +17,18 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   KnobStatus,
-  LaneMergeFunnel,
   NumberField,
+  QueryConcatCaps,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
-  cascadeLaneCounts,
   DEFAULT_CONFIG,
   DISCOVERY_MODE_MODULES,
   NAME_LANE_COUNT_MAX,
   type DiscoveryConfig,
-  type LaneCountKey,
+  type NameDeepConfig,
   type NameFastConfig,
 } from "./catalog";
 import { ModeModuleChips } from "./ModeModuleChips";
@@ -88,22 +85,9 @@ export function NameConfigClient({
     setCfg((c) => ({ ...c, name: { ...c.name, fast: { ...c.name.fast, ...p } } }));
   };
 
-  const patchDeepLane = (key: LaneCountKey, value: number) => {
+  const patchDeep = (p: Partial<NameDeepConfig>) => {
     setOkSlice(null);
-    setCfg((c) => {
-      const next = cascadeLaneCounts(
-        {
-          partnerCount: c.name.deep.partnerCount,
-          mesitaCount: c.name.deep.mesitaCount,
-          googleCount: c.name.deep.googleCount,
-          count: c.name.deep.count,
-        },
-        key,
-        value,
-        NAME_LANE_COUNT_MAX,
-      );
-      return { ...c, name: { ...c.name, deep: { ...c.name.deep, ...next } } };
-    });
+    setCfg((c) => ({ ...c, name: { ...c.name, deep: { ...c.name.deep, ...p } } }));
   };
 
   const save = (slice: "nameFast" | "nameDeep") => {
@@ -180,7 +164,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Max results caps the merge. Map Filters never cut this list."
+          subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
@@ -192,41 +176,41 @@ export function NameConfigClient({
           <p className="text-muted-foreground mt-2 type-meta">
             Needs a location. No pin, no bias.
           </p>
-          <LaneMergeFunnel
-            rule="Then merge. Max ≥ Google ≥ Mesita ≥ Partners."
+          <QueryConcatCaps
+            rule="Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners."
             min={0}
             max={NAME_LANE_COUNT_MAX}
             disabled={pending || loadBlocked}
-            bring={[
+            queries={[
               {
-                key: "google",
-                label: "Google places",
+                key: "auto",
+                label: "Google Autocomplete",
+                icon: <Search className="h-4 w-4 shrink-0" />,
+                value: name.deep.autoCount,
+                onChange: (autoCount) => patchDeep({ autoCount }),
+              },
+              {
+                key: "text",
+                label: "Google Text Search",
                 icon: <Globe className="h-4 w-4 shrink-0" />,
                 value: name.deep.googleCount,
-                onChange: (googleCount) => patchDeepLane("googleCount", googleCount),
+                onChange: (googleCount) => patchDeep({ googleCount }),
               },
               {
                 key: "mesita",
                 label: "Mesita places",
                 icon: <Store className="h-4 w-4 shrink-0" />,
                 value: name.deep.mesitaCount,
-                onChange: (mesitaCount) => patchDeepLane("mesitaCount", mesitaCount),
+                onChange: (mesitaCount) => patchDeep({ mesitaCount }),
               },
               {
                 key: "partners",
                 label: "Mesita partners",
                 icon: <BadgeCheck className="h-4 w-4 shrink-0" />,
                 value: name.deep.partnerCount,
-                onChange: (partnerCount) => patchDeepLane("partnerCount", partnerCount),
+                onChange: (partnerCount) => patchDeep({ partnerCount }),
               },
             ]}
-            merge={{
-              key: "max",
-              label: "Max results",
-              icon: <Layers className="h-4 w-4 shrink-0" />,
-              value: name.deep.count,
-              onChange: (count) => patchDeepLane("count", count),
-            }}
           />
           {updatedAt ? (
             <p className="text-muted-foreground mt-4 type-meta">

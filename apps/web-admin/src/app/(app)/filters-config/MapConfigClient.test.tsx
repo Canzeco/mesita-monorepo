@@ -23,16 +23,19 @@ describe("Map reload pairs", () => {
         loadError={null}
       />,
     );
-    expect(html).toContain("Bring");
-    expect(html).toContain("Then merge. Google ≥ Mesita ≥ Partners.");
+    expect(html).toContain("Queries");
+    expect(html).not.toContain("Bring");
+    expect(html).toContain(
+      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+    );
     expect(html).toContain("Google places");
     expect(html).toContain("Mesita places");
     expect(html).toContain("Mesita partners");
-    const google = html.indexOf("Google places");
-    const mesita = html.indexOf("Mesita places");
     const partners = html.indexOf("Mesita partners");
-    expect(google).toBeLessThan(mesita);
-    expect(mesita).toBeLessThan(partners);
+    const mesita = html.indexOf("Mesita places");
+    const google = html.indexOf("Google places");
+    expect(partners).toBeLessThan(mesita);
+    expect(mesita).toBeLessThan(google);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
     expect(html).toContain("Only dragging the map counts");
