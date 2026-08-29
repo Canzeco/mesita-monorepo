@@ -7,15 +7,17 @@
 // nobody wrote has nothing to score.
 //
 // Live HTML: two subpages. Mode → modules it may call → Places Lineup
-// signals. Index redirects to Modes.
+// signals. Index redirects to Modes. The locked matrix is on Modes.
 //
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
 //             Fast is Autocomplete only. Deep calls Autocomplete, Text
-//             Search, and Places Lineup (Name on Mesita `places.name`,
-//             never `google_name`); each hit resolves, then Partners →
-//             Mesita → Google. Map keeps lane counts. Google category
-//             knobs live on Modules, not here.
+//             Search, Nearby, and Places Lineup (Name on Mesita
+//             `places.name`, never `google_name`). Chat calls Text
+//             Search, Nearby, both Perplexity modules, and Places
+//             Lineup — not Social Lineup. Favorites calls no module.
+//             Map keeps lane counts. Google category knobs live on
+//             Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
@@ -577,26 +579,139 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "social" as const },
 ] as const;
 
+export const DISCOVERY_MODE_KEYS = [
+  "fast",
+  "deep",
+  "map",
+  "swipe",
+  "catalog",
+  "chat",
+  "social",
+  "favorites",
+] as const;
+
+export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
+
+export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
+  fast: "Name (Fast)",
+  deep: "Name (Deep)",
+  map: "Map",
+  swipe: "Swipe",
+  catalog: "Catalog",
+  chat: "Chat",
+  social: "Social",
+  favorites: "Favorites",
+};
+
+export const DISCOVERY_POOLS = [
+  { key: "google", label: "Google Places" },
+  { key: "listed", label: "Mesita Listed" },
+  { key: "enriched", label: "Mesita Enriched" },
+] as const;
+
+export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
+
+/** Black square = the mode requires that pool. Grey = not a gate. */
+export const DISCOVERY_MODE_POOLS: Record<
+  DiscoveryModeKey,
+  readonly DiscoveryPoolKey[]
+> = {
+  fast: [],
+  deep: [],
+  map: [],
+  swipe: ["google", "listed"],
+  catalog: ["google", "listed"],
+  chat: [],
+  social: ["google", "listed"],
+  favorites: ["google", "listed"],
+};
+
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
 export const DISCOVERY_MODE_MODULES = {
   fast: ["Google Places Autocomplete"],
   deep: [
     "Google Places Autocomplete",
     "Google Places Text Search",
+    "Google Places Nearby Search",
     "Mesita Places Lineup",
   ],
-  map: ["Mesita Places Lineup", "Google Places Nearby Search"],
+  map: ["Google Places Nearby Search", "Mesita Places Lineup"],
   swipe: ["Mesita Places Lineup"],
   catalog: ["Mesita Places Lineup"],
   chat: [
-    "Mesita Places Lineup",
-    "Mesita Social Lineup",
+    "Google Places Text Search",
+    "Google Places Nearby Search",
     "Perplexity Search",
     "Perplexity Agent",
+    "Mesita Places Lineup",
   ],
   social: ["Mesita Social Lineup"],
-  favorites: ["Mesita Places Lineup"],
+  favorites: [],
 } as const;
+
+/** Green circle = the mode may call that Places Lineup signal. */
+export const DISCOVERY_MODE_SIGNALS: Record<
+  DiscoveryModeKey,
+  readonly SignalKey[]
+> = {
+  fast: [],
+  deep: ["name"],
+  map: ["proximity", "timing", "category", "popularity", "partnership"],
+  swipe: [
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+    "randomness",
+  ],
+  catalog: [
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+    "randomness",
+  ],
+  chat: [
+    "name",
+    "summary",
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+  ],
+  social: [],
+  favorites: [],
+};
+
+/** Present on the mode with weight 0 — off, not missing. Map Randomness. */
+export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
+  Record<DiscoveryModeKey, readonly SignalKey[]>
+> = {
+  map: ["randomness"],
+};
+
+export function modeRequiresPool(
+  mode: DiscoveryModeKey,
+  pool: DiscoveryPoolKey,
+): boolean {
+  return DISCOVERY_MODE_POOLS[mode].includes(pool);
+}
+
+export function modeCallsModule(mode: DiscoveryModeKey, module: string): boolean {
+  return (DISCOVERY_MODE_MODULES[mode] as readonly string[]).includes(module);
+}
+
+export function modeSignalState(
+  mode: DiscoveryModeKey,
+  signal: SignalKey,
+): "on" | "off" | "zero" {
+  if (DISCOVERY_MODE_SIGNAL_ZERO[mode]?.includes(signal)) return "zero";
+  if (DISCOVERY_MODE_SIGNALS[mode].includes(signal)) return "on";
+  return "off";
+}
 
 /** The seven Discovery modules. Signals are not a module. */
 export const DISCOVERY_MODULES = [

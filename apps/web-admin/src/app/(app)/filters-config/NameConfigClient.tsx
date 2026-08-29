@@ -2,8 +2,9 @@
 
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
 // Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
-// Search, and Places Lineup (Name signal only — Mesita `places.name`, not
-// `google_name`). Each candidate resolves, then Partners · Mesita · Google.
+// Search, Nearby, and Places Lineup (Name signal only — Mesita
+// `places.name`, not `google_name`). Each candidate resolves, then
+// Partners · Mesita · Google.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
