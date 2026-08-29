@@ -1,4 +1,5 @@
 import { Search as SearchIcon, X } from 'lucide-react-native';
+import type { RefObject } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { SHADOW_ELEV } from '@/constants/brand';
@@ -12,6 +13,7 @@ type SearchBarProps = {
   onFocus: () => void;
   onClear: () => void;
   onOpenScope: () => void;
+  inputRef?: RefObject<TextInput | null>;
 };
 
 export function SearchBar({
@@ -23,6 +25,7 @@ export function SearchBar({
   onFocus,
   onClear,
   onOpenScope,
+  inputRef,
 }: SearchBarProps) {
   const scopeLabel = [
     countryCode ?? 'any country',
@@ -37,6 +40,7 @@ export function SearchBar({
       >
         <SearchIcon color="#775254" size={16} />
         <TextInput
+          ref={inputRef}
           value={query}
           onChangeText={onChangeQuery}
           onFocus={onFocus}

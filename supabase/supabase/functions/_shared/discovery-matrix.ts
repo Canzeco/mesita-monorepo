@@ -5,9 +5,9 @@
 // change the other. Vercel root is apps/web-admin so that bundle cannot import
 // this file.
 //
-// Deep lights "Google Places Nearby Search". That cell is the guest pin on
-// Autocomplete / Text Search / name match — not a type+DISTANCE Nearby
-// call with no query. Do not dispatch from modeCallsModule.
+// Deep does not call Nearby Search. That cell is red. Guest pin bias on
+// Autocomplete / Text Search / name match is not this API. Do not
+// dispatch from modeCallsModule.
 
 import {
   SIGNAL_KEYS,
@@ -46,7 +46,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: ["google", "listed"],
+  favorites: ["google"],
 };
 
 export const DISCOVERY_MODULES = [
@@ -64,7 +64,6 @@ export const DISCOVERY_MODE_MODULES = {
   deep: [
     "Google Places Autocomplete",
     "Google Places Text Search",
-    "Google Places Nearby Search",
     "Mesita Places Lineup",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Lineup"],

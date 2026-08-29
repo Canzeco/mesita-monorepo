@@ -323,8 +323,13 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(clamped.map.minRating, 5);
   assertEquals(clamped.map.minReviews, 0);
   assertEquals(clamped.map.minPopularity, 1);
-  assertEquals(clamped.map.reloadMinKm, 20);
+  assertEquals(clamped.map.reloadMinKm, 4);
   assertEquals(clamped.map.reloadMinSec, 15);
+  const legacyReload = normalizeDiscoveryConfig({
+    map: { reloadMinKm: 0.4, reloadMinSec: 2 },
+  });
+  assertEquals(legacyReload.map.reloadMinKm, 0.5);
+  assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
   assertEquals(clamped.map.partnerCount, 10);
   assertEquals(clamped.map.mesitaCount, 10);
@@ -387,20 +392,23 @@ Deno.test("normalize does not persist the General cap onto engine types", () => 
   assertEquals(cfg.name.deep.types.night_club, true);
 });
 
-Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
+  assertEquals(missing.name.fast.googleCount, 5);
   assertEquals(missing.name.deep, {
     partnerCount: 3,
     mesitaCount: 3,
+    autoCount: 3,
     googleCount: 3,
+    count: 9,
     types: DISCOVERY_DEFAULTS.map.types,
   });
   const clamped = normalizeDiscoveryConfig({
     name: {
       fast: { count: 99, types: { restaurant: false } },
-      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40 },
+      deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
     },
   });
   assertEquals(clamped.name.fast.count, 20);
@@ -409,4 +417,12 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(clamped.name.deep.partnerCount, 0);
   assertEquals(clamped.name.deep.mesitaCount, 7);
   assertEquals(clamped.name.deep.googleCount, 20);
+  assertEquals(clamped.name.deep.autoCount, 0);
+  assertEquals(clamped.name.fast.googleCount, 20);
+  assertEquals(clamped.name.deep.count, 9);
+  const missingAuto = normalizeDiscoveryConfig({
+    name: { deep: { googleCount: 40 } },
+  });
+  assertEquals(missingAuto.name.deep.autoCount, 3);
+  assertEquals(missingAuto.name.deep.googleCount, 20);
 });

@@ -32,6 +32,8 @@ export type SearchMapProps = {
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onMapPress?: () => void;
+  /** User finger-drag. Rail / pin pans must not fire this. */
+  onMapDrag?: () => void;
 };
 
 /**

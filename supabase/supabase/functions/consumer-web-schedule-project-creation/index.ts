@@ -2,8 +2,8 @@
 //
 // COMPATIBILITY ALIAS of consumer-web-create-place (MESITA-128) — the slug the
 // previously-deployed consumer app still calls. Places are created IMMEDIATELY
-// now (Pato directive: only enrichment is scheduled); the queue this EF used to
-// feed (scheduled_project_creations + its cron) is retired.
+// as the ugly profile (ready, not Enriched). Intaker is not queued. The
+// queue this EF used to feed is retired.
 //
 // Legacy response semantics preserved for the deployed app:
 //   • success → 201 { ok, scheduled_id: <place id>, exec_at: <now>, place }
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
     callerName: "consumer-web-schedule-project-creation",
     googlePlaceId,
     dedupeError: "This place is already on Mesita.",
+    queueEnrich: false,
   });
 
   const nowIso = new Date().toISOString();

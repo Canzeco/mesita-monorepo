@@ -1,5 +1,5 @@
 // Consumer Search name-bar: membership is the colored point only.
-// Red = on Mesita (partner or not). Gray = not on Mesita.
+// Yellow = Mesita Partners. Red = Mesita Places. Gray = Google Places.
 // Hexes match map pins in lib/map-defaults.ts. Selected pin is a black ring;
 // the fill stays the membership color.
 
@@ -13,6 +13,26 @@ import {
 
 export type MembershipTone = "partner" | "listed" | "google";
 
+/** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita status. */
+export function predictionOnMesita(item: {
+  status?: string | null;
+  mesitaId?: string | null;
+  mesitaSlug?: string | null;
+}): boolean {
+  if (item.mesitaId || item.mesitaSlug) return true;
+  return item.status !== "not_in_mesita";
+}
+
+/** Google Nearby stub that was added — real Mesita id, not a g: prefix. */
+export function catalogPlaceOnMesita(place: {
+  id: string;
+  googleOnly?: boolean;
+  from_google?: boolean;
+}): boolean {
+  if (!place.googleOnly && !place.from_google) return true;
+  return !place.id.startsWith("g:");
+}
+
 export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
   partner: MAP_PARTNER_PIN_COLOR,
   listed: MAP_LISTED_PIN_COLOR,
@@ -22,8 +42,10 @@ export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
 export function membershipTone(item: {
   status?: string | null;
   partner?: boolean | null;
+  mesitaId?: string | null;
+  mesitaSlug?: string | null;
 }): MembershipTone {
-  if (item.status === "not_in_mesita") return "google";
+  if (!predictionOnMesita(item)) return "google";
   if (item.partner) return "partner";
   return "listed";
 }

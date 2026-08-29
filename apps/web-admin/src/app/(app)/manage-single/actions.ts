@@ -38,6 +38,8 @@ export type PlaceHit = {
   google_name: string | null;
   category: string | null;
   category_label: string | null;
+  /** Super Categories: Intaker-inferred (stored); membership derives live. */
+  family_keys?: string[] | null;
   status: string | null;
   address: string | null;
   photo: string | null;
@@ -213,6 +215,8 @@ export type AdminPlace = {
   google_name?: string | null;
   category: string | null;
   category_label: string | null;
+  /** Super Categories: Intaker-inferred (stored); membership derives live. */
+  family_keys?: string[] | null;
   status: string | null;
   currency: string | null;
   // Catalog tier: "web" (listed) vs "partner" (Mesita partner). Separate from
@@ -569,12 +573,22 @@ export type PlaceCategoryOption = {
   label: string;
   section: string;
   sort_order: number;
+  /** 1–2 Atlas Super Category parents (multi-parent law). */
+  super_category_slugs?: string[];
+};
+
+export type PlaceSuperCategoryOption = {
+  slug: string;
+  label: string;
+  emoji: string;
+  sort_order: number;
 };
 
 type PlaceTagCatalog = {
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
   categories: PlaceCategoryOption[];
+  superCategories: PlaceSuperCategoryOption[];
   tagsPerPlaceMax: number;
   fieldLimits: PlaceFieldLimits;
 };
@@ -604,6 +618,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
     tags: PlaceTagOption[];
     facets: PlaceTagFacet[];
     categories: PlaceCategoryOption[];
+    superCategories?: PlaceSuperCategoryOption[];
     fieldLimits?: Record<string, { max: number; note: string }>;
   }>("admin-web-get-atlas-fields", {});
   if (!r.ok) return { ok: false, error: r.error };
@@ -614,6 +629,7 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
       tags: r.data.tags ?? [],
       facets: r.data.facets ?? [],
       categories: r.data.categories ?? [],
+      superCategories: r.data.superCategories ?? [],
       tagsPerPlaceMax: fieldLimits.tagsPerPlaceMax,
       fieldLimits,
     },

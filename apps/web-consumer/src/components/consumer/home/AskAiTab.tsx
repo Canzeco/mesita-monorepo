@@ -62,20 +62,23 @@ export function AskAiTab({ places }: { places: Place[] }) {
     [places, router],
   );
 
-  // The REAL Add flow: create the place immediately; only enrichment is
-  // scheduled (the cron Intaker finishes async), so hold the row in its
-  // added / Enriching state.
+  // Create only — the ugly profile is live immediately. Intaker waits
+  // for votes on the Enrich tab.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
       setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
       void (async () => {
         try {
-          await apiCreateProject(supabase, { placeId: prediction.placeId });
+          const created = await apiCreateProject(supabase, {
+            placeId: prediction.placeId,
+          });
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
           toast.success(
-            `${prediction.mainText} is on Mesita — our AI generates its profile in about 5 minutes.`,
+            `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
           );
+          const dest = created.place.slug || created.place.id;
+          if (dest) router.push(placeHref(dest));
         } catch (err) {
           setAddStates((s) => {
             const next = { ...s };
@@ -86,7 +89,7 @@ export function AskAiTab({ places }: { places: Place[] }) {
         }
       })();
     },
-    [addStates, supabase],
+    [addStates, router, supabase],
   );
 
   // Header (shrink-0) + panel (min-h-0 flex-1): the thread scrolls under a

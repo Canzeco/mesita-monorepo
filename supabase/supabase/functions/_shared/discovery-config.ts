@@ -95,10 +95,10 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
- * Map pool policy. Three closest-N lanes, then one catalog after dropping
- * overlaps: Partners · Mesita (any) · Google. Partners ⊆ Mesita ⊆ Google.
- * Type batteries ride the Google Nearby call only. Floors still exclude;
- * 0 = off. Independent of Swipe's `filters`.
+ * Map pool policy. Three independent closest-N queries, then concat:
+ * Partners · listed-not-partner Mesita · Google Nearby. Overlaps drop;
+ * earlier query keeps the slot. Not a nested filter. Type batteries ride
+ * the Google Nearby call only. Floors still exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -109,23 +109,24 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /** Closest Mesita partners (plan ≠ free). */
+  /** Closest Mesita partners (plan ≠ free). Independent query. */
   partnerCount: number;
-  /** Closest Mesita places, partners included. */
+  /** Closest Mesita Places, listed-not-partner. Independent query. */
   mesitaCount: number;
-  /** Closest Google Nearby hits. Overlaps with Mesita drop at merge. */
+  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
 /**
- * Name = two Search-bar boxes.
- *   Fast  Autocomplete while typing. count + Google categories.
- *   Deep  ~1s after the guest stops. Partners · Mesita · Google, then one
- *         list after dropping overlaps. Partner + Mesita rank by name
- *         embedding; Google keeps Text Search order. Types ride Google only.
+ * Name = two Search-bar boxes. Map Filters never cut this list.
+ *   Fast  Autocomplete. googleCount + count (same cap — count is symmetry).
+ *   Deep  Four query caps, then concat. Autocomplete → Text → Mesita Places
+ *         → Mesita Partners. Overlaps drop. googleCount is Text Search.
  */
 export type NameFastConfig = {
+  /** Redundant with count on Fast — one source. Locked together. */
+  googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -133,7 +134,12 @@ export type NameFastConfig = {
 export type NameDeepConfig = {
   partnerCount: number;
   mesitaCount: number;
+  /** Google Autocomplete cap. Independent query. */
+  autoCount: number;
+  /** Google Text Search cap. Independent query. */
   googleCount: number;
+  /** Legacy blob field. Queries concat; the union is not sliced. */
+  count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
@@ -264,10 +270,37 @@ export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const SOCIAL_RAILS_CAP = 24;
 
 export const MAP_MIN_POPULARITY_MAX = 1;
-export const MAP_RELOAD_MIN_KM_MIN = 0.2;
-export const MAP_RELOAD_MIN_KM_MAX = 20;
-export const MAP_RELOAD_MIN_SEC_MIN = 0.5;
+export const MAP_RELOAD_MIN_KM_MIN = 0.25;
+export const MAP_RELOAD_MIN_KM_MAX = 4;
+export const MAP_RELOAD_MIN_SEC_MIN = 1;
 export const MAP_RELOAD_MIN_SEC_MAX = 15;
+/** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
+export const MAP_RELOAD_PAIRS = [
+  { km: 0.25, sec: 1 },
+  { km: 0.5, sec: 2 },
+  { km: 1, sec: 4 },
+  { km: 2, sec: 8 },
+  { km: 4, sec: 15 },
+] as const;
+
+export function snapMapReloadPair(
+  km: unknown,
+  sec: unknown,
+): { km: number; sec: number } {
+  const fallback = MAP_RELOAD_PAIRS[1];
+  const k = typeof km === "number" && Number.isFinite(km) ? km : fallback.km;
+  const s = typeof sec === "number" && Number.isFinite(sec) ? sec : fallback.sec;
+  let best: (typeof MAP_RELOAD_PAIRS)[number] = fallback;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const pair of MAP_RELOAD_PAIRS) {
+    const d = Math.abs(pair.km - k) / 0.25 + Math.abs(pair.sec - s);
+    if (d < bestD) {
+      best = pair;
+      bestD = d;
+    }
+  }
+  return { km: best.km, sec: best.sec };
+}
 export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
@@ -278,6 +311,7 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
+export const NAME_DEEP_COUNT_DEFAULT = 9;
 export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
 export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
 
@@ -314,7 +348,7 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
-  reloadMinKm: 0.4,
+  reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
@@ -339,6 +373,7 @@ export const DEFAULT_SOCIAL: SocialConfig = {
 };
 
 export const DEFAULT_NAME_FAST: NameFastConfig = {
+  googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
@@ -346,7 +381,9 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
+  count: NAME_DEEP_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
@@ -654,11 +691,20 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   const fast = (r.fast ?? {}) as Record<string, unknown>;
   const deep = (r.deep ?? {}) as Record<string, unknown>;
+  const fastCount = Math.round(
+    num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX),
+  );
   return {
     fast: {
-      count: Math.round(
-        num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX),
+      googleCount: Math.round(
+        num(
+          fast.googleCount ?? fast.count,
+          fastCount,
+          0,
+          NAME_LANE_COUNT_MAX,
+        ),
       ),
+      count: fastCount,
       types: normalizeTypeBatteries(fast.types),
     },
     deep: {
@@ -668,8 +714,14 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       mesitaCount: Math.round(
         num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
       ),
+      autoCount: Math.round(
+        num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
+      ),
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      count: Math.round(
+        num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
       ),
       types: normalizeTypeBatteries(deep.types),
     },
@@ -741,6 +793,7 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
 export function normalizeMapConfig(raw: unknown): MapConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   const types = normalizeTypeBatteries(r.types);
+  const reload = snapMapReloadPair(r.reloadMinKm, r.reloadMinSec);
   return {
     minRating: Math.round(
       num(r.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -749,22 +802,8 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     minPopularity: Math.round(
       num(r.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
     ) / 100,
-    reloadMinKm: Math.round(
-      num(
-        r.reloadMinKm,
-        DEFAULT_MAP.reloadMinKm,
-        MAP_RELOAD_MIN_KM_MIN,
-        MAP_RELOAD_MIN_KM_MAX,
-      ) * 10,
-    ) / 10,
-    reloadMinSec: Math.round(
-      num(
-        r.reloadMinSec,
-        DEFAULT_MAP.reloadMinSec,
-        MAP_RELOAD_MIN_SEC_MIN,
-        MAP_RELOAD_MIN_SEC_MAX,
-      ) * 10,
-    ) / 10,
+    reloadMinKm: reload.km,
+    reloadMinSec: reload.sec,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     partnerCount: Math.round(
       num(r.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),

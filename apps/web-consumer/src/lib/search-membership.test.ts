@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAP_GOOGLE_PIN_COLOR,
+  MAP_LISTED_PIN_COLOR,
+  MAP_PARTNER_PIN_COLOR,
+  MAP_PIN_HIT_SIZE,
+  MAP_PIN_SCALE,
+  MAP_PIN_STROKE_COLOR,
+  MAP_PIN_STROKE_WEIGHT,
+  MAP_PLACE_PIN_RADIUS,
+  MAP_USER_LOCATION_PIN_COLOR,
+  mapCircleIcon,
+  mapPinIcon,
+  mapPinSvg,
+} from "@/lib/map-defaults";
+import {
   buildSearchMapPins,
+  catalogPlaceOnMesita,
   membershipColor,
   membershipTone,
   overlayPinDecision,
@@ -9,6 +24,7 @@ import {
   pinStrokeColor,
   pinGesture,
   placeMembershipTone,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 
 describe("search membership tones", () => {
@@ -29,19 +45,23 @@ describe("search membership tones", () => {
     expect(placeMembershipTone({ from_google: true })).toBe("google");
   });
 
-  it("uses gray for Google-only and red for every Mesita place", () => {
-    expect(membershipColor("partner")).toBe("#ff2357");
-    expect(membershipColor("listed")).toBe("#ff2357");
-    expect(membershipColor("google")).toBe("#9ca3af");
+  it("uses yellow Partners, red Mesita Places, gray Google Places", () => {
+    expect(membershipColor("partner")).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(membershipColor("listed")).toBe(MAP_LISTED_PIN_COLOR);
+    expect(membershipColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(MAP_PARTNER_PIN_COLOR).toBe("#ffc400");
+    expect(MAP_LISTED_PIN_COLOR).toBe("#ff2357");
+    expect(MAP_GOOGLE_PIN_COLOR).toBe("#9ca3af");
+    expect(MAP_PARTNER_PIN_COLOR).not.toBe(MAP_LISTED_PIN_COLOR);
   });
 
   it("keeps membership fill and rings the selected pin black", () => {
-    expect(pinFillColor("partner", false)).toBe("#ff2357");
-    expect(pinFillColor("listed", false)).toBe("#ff2357");
-    expect(pinFillColor("google", false)).toBe("#9ca3af");
-    expect(pinFillColor("partner", true)).toBe("#ff2357");
-    expect(pinFillColor("listed", true)).toBe("#ff2357");
-    expect(pinFillColor("google", true)).toBe("#9ca3af");
+    expect(pinFillColor("partner", false)).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(pinFillColor("listed", false)).toBe(MAP_LISTED_PIN_COLOR);
+    expect(pinFillColor("google", false)).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(pinFillColor("partner", true)).toBe(MAP_PARTNER_PIN_COLOR);
+    expect(pinFillColor("listed", true)).toBe(MAP_LISTED_PIN_COLOR);
+    expect(pinFillColor("google", true)).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#111111");
   });
@@ -50,6 +70,41 @@ describe("search membership tones", () => {
     expect(pinGesture(null, "a")).toBe("select");
     expect(pinGesture("b", "a")).toBe("select");
     expect(pinGesture("a", "a")).toBe("open");
+  });
+});
+
+describe("membershipTone", () => {
+  it("treats mesitaId as on-Mesita even when status is not_in_mesita", () => {
+    expect(
+      membershipTone({
+        status: "not_in_mesita",
+        mesitaId: "uuid-1",
+      }),
+    ).toBe("listed");
+  });
+});
+
+describe("predictionOnMesita", () => {
+  it("uses mesitaId/slug over a stale not_in_mesita status", () => {
+    expect(
+      predictionOnMesita({ status: "not_in_mesita", mesitaId: "x" }),
+    ).toBe(true);
+    expect(
+      predictionOnMesita({ status: "not_in_mesita", mesitaSlug: "slug" }),
+    ).toBe(true);
+    expect(predictionOnMesita({ status: "not_in_mesita" })).toBe(false);
+    expect(predictionOnMesita({ status: "web_listed" })).toBe(true);
+  });
+});
+
+describe("catalogPlaceOnMesita", () => {
+  it("treats added Google stubs with real ids as on-Mesita", () => {
+    expect(
+      catalogPlaceOnMesita({ id: "uuid", from_google: true }),
+    ).toBe(true);
+    expect(
+      catalogPlaceOnMesita({ id: "g:ChIJ", googleOnly: true }),
+    ).toBe(false);
   });
 });
 
@@ -190,5 +245,44 @@ describe("buildSearchMapPins", () => {
 
   it("returns null when the query produced no predictions", () => {
     expect(buildSearchMapPins([], [{ id: "m1", lat: 1, lng: 2 }])).toBeNull();
+  });
+});
+
+describe("mapCircleIcon", () => {
+  it("draws red place pins and the blue user pin the same size", () => {
+    const red = mapCircleIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const blue = mapCircleIcon(
+      MAP_USER_LOCATION_PIN_COLOR,
+      MAP_PIN_STROKE_COLOR,
+    );
+    const selected = mapCircleIcon(MAP_LISTED_PIN_COLOR, "#111111");
+    expect(red.path).toBe(blue.path);
+    expect(red.scale).toBe(blue.scale);
+    expect(red.strokeWeight).toBe(blue.strokeWeight);
+    expect(selected.path).toBe(blue.path);
+    expect(selected.scale).toBe(MAP_PIN_SCALE);
+    expect(selected.strokeWeight).toBe(MAP_PIN_STROKE_WEIGHT);
+    expect(red.fillColor).not.toBe(blue.fillColor);
+  });
+});
+
+describe("mapPinIcon", () => {
+  it("paints a bigger disk inside a 44px tap pad", () => {
+    expect(MAP_PLACE_PIN_RADIUS).toBe(10);
+    expect(MAP_PIN_HIT_SIZE).toBe(44);
+    const svg = mapPinSvg(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);
+    expect(svg).toContain(`width="${MAP_PIN_HIT_SIZE}"`);
+    expect(svg).toContain('fill-opacity="0.01"');
+    const icon = mapPinIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    expect(icon.scaledSize).toEqual({
+      width: MAP_PIN_HIT_SIZE,
+      height: MAP_PIN_HIT_SIZE,
+    });
+    expect(icon.anchor).toEqual({
+      x: MAP_PIN_HIT_SIZE / 2,
+      y: MAP_PIN_HIT_SIZE / 2,
+    });
+    expect(icon.url).toContain("data:image/svg+xml");
   });
 });

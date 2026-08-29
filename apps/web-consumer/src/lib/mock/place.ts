@@ -18,6 +18,10 @@ export type PlaceDetail = {
   promoting?: boolean | null;
   /** Server-computed per request: this place PAYS Mesita. See Place.partner. */
   partner?: boolean | null;
+  /** Description/Actions — menu on file unlocks Order. */
+  orders_enabled?: boolean;
+  /** Description/Actions — LLM: venue type likely takes reservations. */
+  reservations_enabled?: boolean;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.
@@ -61,12 +65,14 @@ export type PlaceDetail = {
   // projects.content_status ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
-  /** Usable Mesita profile (content_status ready). False → request interface. */
+  /** Viewable profile (content_status ready). Ugly Create profiles are ready. */
   is_profile_ready: boolean;
-  /** Consumer Requests count. Progress toward the Intake threshold. */
+  /** Intaker finished (`places.enriched_at`). False → Enrich vote tab. */
+  is_enriched: boolean;
+  /** Consumer vote count. Progress toward the Intake threshold. */
   request_count: number;
   request_threshold: number;
-  /** This consumer already requested this place. */
+  /** This consumer already voted on this place. */
   requested: boolean;
   /** Derived: listed | requested | enriched. Never a status-per-count. */
   request_lifecycle: "listed" | "requested" | "enriched";

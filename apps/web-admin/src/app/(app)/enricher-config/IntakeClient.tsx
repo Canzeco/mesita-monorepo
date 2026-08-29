@@ -251,7 +251,7 @@ export function IntakeClient({
               <Fields>
                 <NumberField
                   icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Request threshold"
+                  label="Vote threshold"
                   value={settings.requestThreshold}
                   min={1}
                   max={100}
@@ -260,8 +260,9 @@ export function IntakeClient({
                 />
               </Fields>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                Auto-enrich a Listed place when this many consumers request the
-                profile. Admin create and enrich skip the wait.
+                Create mints the ugly profile without queuing Intaker. Auto-enrich
+                after this many Enrich-tab votes. Admin Enrich and Create + Enrich
+                skip the wait.
               </p>
             </div>
           </SectionCard>
@@ -516,7 +517,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Category, Tags, Presentation."
+                blurb="Category, tags, presentation."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -528,7 +529,7 @@ export function IntakeClient({
                 index="10 · $"
                 flows={flowTagFor("semantic")}
                 name="Semantic"
-                blurb="Mesita Name & Semantic Summary & Embeddings. One function, two vectors. Closes Enrich at 10."
+                blurb="Mesita name, semantic summary, embeddings. Two vectors, one function. Closes Enrich at 10."
                 knobs="locked"
               >
                 <NoKnobs>

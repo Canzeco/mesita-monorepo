@@ -1,16 +1,15 @@
-// Requests — consumer demand for a usable Mesita profile.
+// Votes — consumer demand for Intaker on an already-created ugly profile.
 //
-// Listed-but-not-Enriched means a Mesita entity without a usable profile
-// (projects.content_status <> ready). The modal becomes the request
-// interface. Requested is derived from the numeric count, never a
-// status-per-count. When the count reaches Intake atlasRequestThreshold,
-// seed the existing Intaker pipeline. Admin create/enrich never calls this
-// door — that is the bypass.
+// Create mints a viewable profile (content_status ready, enriched_at null).
+// Enriched is `places.enriched_at`. Guests vote on the Enrich tab. When
+// request_count reaches Intake atlasRequestThreshold, seed Intaker.
+// Admin Enrich / Create+Enrich never calls this door — that is the bypass.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 import { seedPlaceResearch } from "./enrich-pipeline.ts";
 import {
+  isPlaceEnriched,
   isPlaceEnriching,
   isPlaceListed,
   isPlaceProfileReady,
@@ -19,7 +18,7 @@ import {
 
 export { isPlaceProfileReady };
 
-export const DEFAULT_REQUEST_THRESHOLD = 3;
+export const DEFAULT_REQUEST_THRESHOLD = 5;
 export const REQUEST_THRESHOLD_MIN = 1;
 export const REQUEST_THRESHOLD_MAX = 100;
 
@@ -30,23 +29,30 @@ export type PlaceRequestState = {
   request_threshold: number;
   requested: boolean;
   is_profile_ready: boolean;
+  is_enriched: boolean;
   request_lifecycle: PlaceRequestLifecycle;
   enrichment_triggered: boolean;
 };
 
 /**
- * Requested is derived: listed, not ready, and at least one request.
- * Enriched wins over Requested even if a count remains on the row.
+ * Enriched is enriched_at (Intaker finished). Create-without-enrich is
+ * ready + no stamp — still listed/requested. When enrichedAt is omitted,
+ * ready still means enriched (legacy callers / tests).
  */
 export function placeRequestLifecycle(input: {
   contentStatus: unknown;
   requestCount: number;
+  enrichedAt?: unknown;
 }): PlaceRequestLifecycle {
-  if (isPlaceProfileReady(input.contentStatus)) return "enriched";
+  if (isPlaceEnriched(input.enrichedAt)) return "enriched";
+  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)) {
+    return "enriched";
+  }
   if (
     isPlaceRequested({
       requestCount: input.requestCount,
       contentStatus: input.contentStatus,
+      enrichedAt: input.enrichedAt,
     })
   ) {
     return "requested";
@@ -59,8 +65,12 @@ export function shouldTriggerRequestEnrichment(input: {
   requestCount: number;
   threshold: number;
   contentStatus: unknown;
+  enrichedAt?: unknown;
 }): boolean {
-  if (isPlaceProfileReady(input.contentStatus)) return false;
+  if (isPlaceEnriched(input.enrichedAt)) return false;
+  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)) {
+    return false;
+  }
   if (isPlaceEnriching(input.contentStatus)) return false;
   if (input.threshold < REQUEST_THRESHOLD_MIN) return false;
   return input.requestCount >= input.threshold;
@@ -69,7 +79,7 @@ export function shouldTriggerRequestEnrichment(input: {
 export function requestProgressLabel(count: number, threshold: number): string {
   const n = Math.max(0, Math.trunc(count));
   const t = Math.max(REQUEST_THRESHOLD_MIN, Math.trunc(threshold));
-  return `${n} of ${t} requests`;
+  return `${n} of ${t} votes`;
 }
 
 /** Admin create/enrich does not read request_count or the threshold. */
@@ -82,6 +92,7 @@ export function placeRequestState(input: {
   threshold: number;
   requested: boolean;
   contentStatus: unknown;
+  enrichedAt?: unknown;
   enrichmentTriggered?: boolean;
 }): PlaceRequestState {
   const request_count = Math.max(0, Math.trunc(input.requestCount));
@@ -94,9 +105,12 @@ export function placeRequestState(input: {
     request_threshold,
     requested: input.requested,
     is_profile_ready: isPlaceProfileReady(input.contentStatus),
+    is_enriched: isPlaceEnriched(input.enrichedAt) ||
+      (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)),
     request_lifecycle: placeRequestLifecycle({
       contentStatus: input.contentStatus,
       requestCount: request_count,
+      enrichedAt: input.enrichedAt,
     }),
     enrichment_triggered: input.enrichmentTriggered === true,
   };
@@ -129,7 +143,7 @@ export async function applyPlaceRequest(
 > {
   const { data: place, error: placeErr } = await admin
     .from("profiles")
-    .select("id, status, content_status, google_place_id, request_count")
+    .select("id, status, content_status, google_place_id, request_count, enriched_at")
     .eq("id", opts.placeId)
     .maybeSingle();
   if (placeErr) {
@@ -149,9 +163,10 @@ export async function applyPlaceRequest(
 
   const threshold = await loadRequestThreshold(admin);
   const contentStatus = (place as { content_status?: unknown }).content_status;
+  const enrichedAt = (place as { enriched_at?: unknown }).enriched_at;
   const existingCount = Number((place as { request_count?: unknown }).request_count) || 0;
 
-  if (isPlaceProfileReady(contentStatus)) {
+  if (isPlaceEnriched(enrichedAt)) {
     return {
       ok: true,
       state: placeRequestState({
@@ -159,6 +174,7 @@ export async function applyPlaceRequest(
         threshold,
         requested: true,
         contentStatus,
+        enrichedAt,
         enrichmentTriggered: false,
       }),
     };
@@ -176,7 +192,12 @@ export async function applyPlaceRequest(
   const count = Number.isFinite(requestCount) ? requestCount : existingCount;
 
   let enrichmentTriggered = false;
-  if (shouldTriggerRequestEnrichment({ requestCount: count, threshold, contentStatus })) {
+  if (shouldTriggerRequestEnrichment({
+    requestCount: count,
+    threshold,
+    contentStatus,
+    enrichedAt,
+  })) {
     const googlePlaceId = String(
       (place as { google_place_id?: unknown }).google_place_id ?? "",
     ).trim();
@@ -217,6 +238,7 @@ export async function applyPlaceRequest(
       threshold,
       requested: true,
       contentStatus,
+      enrichedAt,
       enrichmentTriggered,
     }),
   };

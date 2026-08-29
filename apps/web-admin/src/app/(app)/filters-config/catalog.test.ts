@@ -19,6 +19,7 @@ import {
   modeCallsModule,
   modeRequiresPool,
   modeSignalState,
+  snapMapReloadPair,
 } from "./catalog";
 
 describe("Discovery function APIs", () => {
@@ -89,7 +90,6 @@ describe("Discovery function APIs", () => {
     expect(DISCOVERY_MODE_MODULES.deep).toEqual([
       "Google Places Autocomplete",
       "Google Places Text Search",
-      "Google Places Nearby Search",
       "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.map).toEqual([
@@ -106,13 +106,15 @@ describe("Discovery function APIs", () => {
     expect(DISCOVERY_MODE_MODULES.social).toEqual(["Mesita Social Lineup"]);
     expect(DISCOVERY_MODE_MODULES.favorites).toEqual([]);
     expect(modeCallsModule("chat", "Mesita Social Lineup")).toBe(false);
-    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(true);
+    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(false);
   });
 
-  it("pool mask is Google Places + Listed on Swipe · Catalog · Social · Favorites", () => {
+  it("pool mask is Google Places + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "listed")).toBe(true);
-    expect(modeRequiresPool("favorites", "listed")).toBe(true);
+    expect(modeRequiresPool("favorites", "google")).toBe(true);
+    expect(modeRequiresPool("favorites", "listed")).toBe(false);
+    expect(modeRequiresPool("favorites", "enriched")).toBe(false);
     expect(modeRequiresPool("deep", "listed")).toBe(false);
     expect(modeRequiresPool("chat", "google")).toBe(false);
     expect(modeRequiresPool("map", "enriched")).toBe(false);
@@ -144,9 +146,10 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Partners/);
     expect(map?.process).toMatch(/Mesita/);
     expect(map?.process).toMatch(/Google/);
-    expect(map?.process).toMatch(/overlaps/);
-    expect(map?.process).toMatch(/reloadMinKm/);
-    expect(map?.process).toMatch(/reloadMinSec/);
+    expect(map?.process).toMatch(/Overlaps/);
+    expect(map?.process).toMatch(/reload pair/);
+    expect(map?.process).toMatch(/ignoring Mesita membership/);
+    expect(map?.process).not.toMatch(/never stub/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });
@@ -190,7 +193,12 @@ describe("Discovery function APIs", () => {
     });
     expect(
       coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
-    ).toMatchObject({ reloadMinKm: 20, reloadMinSec: 15 });
+    ).toMatchObject({ reloadMinKm: 4, reloadMinSec: 15 });
+    expect(
+      coerceConfig({ map: { reloadMinKm: 0.4, reloadMinSec: 2 } }).map,
+    ).toMatchObject({ reloadMinKm: 0.5, reloadMinSec: 2 });
+    expect(snapMapReloadPair(0.4, 2)).toEqual({ km: 0.5, sec: 2 });
+    expect(snapMapReloadPair(99, 40)).toEqual({ km: 4, sec: 15 });
   });
 
   it("coerceConfig defaults social on an old blob and clamps knobs", () => {
@@ -210,7 +218,7 @@ describe("Discovery function APIs", () => {
     expect(social?.process).not.toMatch(/Check-ins/);
   });
 
-  it("name() is Fast Autocomplete plus Deep three-lane merge", () => {
+  it("name() is Fast Autocomplete plus Deep four-query concat", () => {
     const name = ENGINES.find((e) => e.key === "name");
     expect(name?.state).toBe("LIVE");
     expect(name?.apis).toEqual([
@@ -226,7 +234,12 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/not `google_name`/);
     expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).toMatch(/Deep never calls Nearby Search/);
+    expect(name?.process).toMatch(/first query keeps the slot/);
+    expect(name?.apis).not.toContain("Google Places Nearby Search");
+    expect(name?.process).toMatch(/Map Filters never cut this list/);
     expect(name?.process).not.toMatch(/summary embedding/i);
+    expect(name?.process).not.toMatch(/Max results caps the merge/);
   });
 
   it("coerceConfig defaults swipe on an old blob and clamps knobs", () => {
@@ -269,13 +282,36 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
   });
 
-  it("coerceConfig defaults name Fast 5 and Deep 3+3+3 on an old blob", () => {
+  it("coerceConfig defaults name Fast 5 and Deep 3+3+3+3", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { partnerCount: -1 } } }).name)
       .toMatchObject({
-        fast: { count: 20 },
-        deep: { partnerCount: 0, mesitaCount: 3, googleCount: 3 },
+        fast: { googleCount: 20, count: 20 },
+        deep: {
+          partnerCount: 0,
+          mesitaCount: 3,
+          autoCount: 3,
+          googleCount: 3,
+          count: 9,
+        },
       });
+    expect(
+      coerceConfig({
+        name: {
+          deep: {
+            autoCount: 5,
+            googleCount: 1,
+            mesitaCount: 10,
+            partnerCount: 8,
+          },
+        },
+      }).name.deep,
+    ).toMatchObject({
+      autoCount: 5,
+      googleCount: 1,
+      mesitaCount: 10,
+      partnerCount: 8,
+    });
   });
 
   it("chat() is parked with the rest of Home", () => {
@@ -353,11 +389,51 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Name signal only");
     expect(name).toContain("places.name");
     expect(name).toContain("google_name");
-    expect(name).toContain("not a Nearby Search");
+    expect(name).toContain("Deep never calls Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
+    expect(name).toContain('label="Google places"');
+    expect(name).toContain('label="Max results"');
+    expect(name).toContain("name.fast.googleCount");
+    expect(name).toContain("name.fast.count");
+    expect(name).toContain("patchFast({ googleCount, count: googleCount })");
+    expect(name).toContain("patchFast({ count, googleCount: count })");
+    expect(name).toContain("name.deep.autoCount");
+    expect(name).toContain("name.deep.partnerCount");
+    expect(name).toContain("name.deep.mesitaCount");
+    expect(name).toContain("name.deep.googleCount");
+    expect(name).not.toContain("name.deep.count");
+    expect(name).not.toContain("Max results caps the merge");
+    expect(name).toContain("Map Filters never cut this list");
+    expect(name).toContain("same cap");
+    expect(name).not.toContain("Deep symmetry");
+    const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
+    const deepAuto = deepKnobs.indexOf('label: "Google Autocomplete"');
+    const deepText = deepKnobs.indexOf('label: "Google Text Search"');
+    const deepPlaces = deepKnobs.indexOf('label: "Mesita places"');
+    const deepPartners = deepKnobs.indexOf('label: "Mesita partners"');
+    expect(deepAuto).toBeLessThan(deepText);
+    expect(deepText).toBeLessThan(deepPlaces);
+    expect(deepPlaces).toBeLessThan(deepPartners);
+    expect(deepKnobs).not.toContain('label: "Max results"');
+    expect(name).toContain(
+      "Then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners.",
+    );
+    expect(name).toContain("QueryConcatCaps");
+    expect(name).not.toContain("cascadeLaneCounts");
+    expect(map).toContain(
+      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+    );
+    expect(map).toContain("QueryConcatCaps");
+    expect(map).not.toContain("LaneMergeFunnel");
+    expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
+    expect(map).toContain("Reload after");
+    expect(map).toContain("MAP_RELOAD_PAIRS");
+    expect(map).toContain("Only dragging the map counts");
+    expect(map).not.toContain("Reload after the camera moves");
+    expect(map).not.toContain("Reload after waiting");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');
@@ -386,8 +462,8 @@ describe("Discovery page box order", () => {
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
     expect(googleModules).toContain("Name (Deep Search)");
-    expect(googleModules).toContain("pin bias");
-    expect(googleModules).toContain("the Google Nearby call");
+    expect(googleModules).toContain("Name (Deep) does not");
+    expect(googleModules).not.toContain("pin bias");
     expect(chips).toContain("export function ModeModuleChips");
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");
@@ -402,6 +478,7 @@ describe("Discovery page box order", () => {
     expect(matrix).not.toContain("Map Randomness is 0");
     const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
     expect(flags).not.toContain("zero");
+    expect(matrix).not.toContain(">0</span>");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");
     expect(name).not.toContain("Google categories");

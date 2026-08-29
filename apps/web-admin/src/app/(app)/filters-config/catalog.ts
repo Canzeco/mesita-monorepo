@@ -11,13 +11,17 @@
 //
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
-//             Fast is Autocomplete only. Deep calls Autocomplete, Text
-//             Search, Nearby, and Places Lineup (Name on Mesita
-//             `places.name`, never `google_name`). Chat calls Text
-//             Search, Nearby, both Perplexity modules, and Places
-//             Lineup — not Social Lineup. Favorites calls no module.
-//             Map keeps lane counts. Google category knobs live on
-//             Modules, not here.
+//             Fast is Autocomplete only. Deep concatenates Autocomplete,
+//             Text Search, Mesita Places, and Mesita Partners (Name on
+//             Mesita `places.name`, never `google_name`). Deep never
+//             calls Nearby Search. Map concatenates closest Partners,
+//             closest listed-not-partner Mesita, then Google Nearby.
+//             Caps are per query, then concat; overlaps drop.
+//             Chat calls Text Search, Nearby, both Perplexity modules,
+//             and Places Lineup — not Social Lineup. Favorites calls
+//             no module and gates on no pool — bookmarks may include
+//             Mesita Listed Create stubs (not enriched). Google
+//             category knobs live on Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
@@ -49,6 +53,8 @@ export type SignalParamBag = Record<string, number>;
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 export type NameFastConfig = {
+  /** Redundant with count on Fast — one source. Locked together. */
+  googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -56,7 +62,12 @@ export type NameFastConfig = {
 export type NameDeepConfig = {
   partnerCount: number;
   mesitaCount: number;
+  /** Google Autocomplete cap. Independent query. */
+  autoCount: number;
+  /** Google Text Search cap. Independent query. */
   googleCount: number;
+  /** Legacy blob field. Queries concat; the union is not sliced. */
+  count: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
@@ -143,8 +154,11 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
+  /** Closest Mesita partners (plan ≠ free). Independent query. */
   partnerCount: number;
+  /** Closest Mesita Places, listed-not-partner. Independent query. */
   mesitaCount: number;
+  /** Closest Google Nearby hits. Independent query. Overlaps drop at concat. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -194,10 +208,37 @@ export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const MAP_MIN_POPULARITY_MAX = 1;
-export const MAP_RELOAD_MIN_KM_MIN = 0.2;
-export const MAP_RELOAD_MIN_KM_MAX = 20;
-export const MAP_RELOAD_MIN_SEC_MIN = 0.5;
+export const MAP_RELOAD_MIN_KM_MIN = 0.25;
+export const MAP_RELOAD_MIN_KM_MAX = 4;
+export const MAP_RELOAD_MIN_SEC_MIN = 1;
 export const MAP_RELOAD_MIN_SEC_MAX = 15;
+/** Categorical reload pairs. Both must be true. Rail / pin pans do not count. */
+export const MAP_RELOAD_PAIRS = [
+  { km: 0.25, sec: 1 },
+  { km: 0.5, sec: 2 },
+  { km: 1, sec: 4 },
+  { km: 2, sec: 8 },
+  { km: 4, sec: 15 },
+] as const;
+
+export function snapMapReloadPair(
+  km: unknown,
+  sec: unknown,
+): { km: number; sec: number } {
+  const fallback = MAP_RELOAD_PAIRS[1];
+  const k = typeof km === "number" && Number.isFinite(km) ? km : fallback.km;
+  const s = typeof sec === "number" && Number.isFinite(sec) ? sec : fallback.sec;
+  let best: (typeof MAP_RELOAD_PAIRS)[number] = fallback;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const pair of MAP_RELOAD_PAIRS) {
+    const d = Math.abs(pair.km - k) / 0.25 + Math.abs(pair.sec - s);
+    if (d < bestD) {
+      best = pair;
+      bestD = d;
+    }
+  }
+  return { km: best.km, sec: best.sec };
+}
 export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
@@ -207,6 +248,8 @@ export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
+export const NAME_DEEP_COUNT_DEFAULT = 9;
+
 export const SWIPE_RADIUS_KM_MIN = 1;
 export const SWIPE_RADIUS_KM_MAX = 50;
 export const SWIPE_CLOSING_BUFFER_MIN = 0;
@@ -318,7 +361,7 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
-  reloadMinKm: 0.4,
+  reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
@@ -328,6 +371,7 @@ export const DEFAULT_MAP: MapConfig = {
 };
 
 export const DEFAULT_NAME_FAST: NameFastConfig = {
+  googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
@@ -335,7 +379,9 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
+  autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
+  count: NAME_DEEP_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
@@ -452,7 +498,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Closest N enter. Listed pins then Lineup, not distance. Google stays distance. Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use Places Lineup inside the closest-N cut. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after reloadMinKm and reloadMinSec. Rail or pin selection does not refetch.",
+    process: "Closest N enter per query. Concat Partners, then listed-not-partner Mesita, then Google Nearby. Overlaps drop; first query keeps the slot. Caps are independent, not nested. Listed pins then Lineup, not distance. Google stays distance. Google is one Nearby Search among enabled categories, nearest N, ignoring Mesita membership. Merge drops Google hits already on a Partner or Mesita winner. Union 20–40 at defaults when disjoint. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -463,7 +509,7 @@ export const ENGINES: {
     label: "Favorites",
     fn: "favorites()",
     input: "What this guest saved.",
-    process: "Parked. Home is Soon. Recency of the save; no ranking.",
+    process: "Parked. Home is Soon. Recency of the save; no ranking. No pool gate — Mesita Listed Create stubs (not enriched) may be saved alongside Google and enriched rows.",
     output: "The saved list, when unparked.",
     state: "PARKED",
     wired: null,
@@ -507,7 +553,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Nearby on Deep is the guest pin, not Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -630,7 +676,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: ["google", "listed"],
+  favorites: ["google"],
 };
 
 /** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
@@ -639,7 +685,6 @@ export const DISCOVERY_MODE_MODULES = {
   deep: [
     "Google Places Autocomplete",
     "Google Places Text Search",
-    "Google Places Nearby Search",
     "Mesita Places Lineup",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Lineup"],
@@ -1081,9 +1126,15 @@ export function coerceName(raw: unknown): NameConfig {
   const n = (raw ?? {}) as Record<string, unknown>;
   const fast = (n.fast ?? {}) as Record<string, unknown>;
   const deep = (n.deep ?? {}) as Record<string, unknown>;
+  const fastCount = Math.round(
+    num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX),
+  );
   return {
     fast: {
-      count: Math.round(num(fast.count, DEFAULT_NAME_FAST.count, 0, NAME_LANE_COUNT_MAX)),
+      googleCount: Math.round(
+        num(fast.googleCount ?? fast.count, fastCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      count: fastCount,
       types: coerceTypeBatteries(fast.types),
     },
     deep: {
@@ -1093,8 +1144,14 @@ export function coerceName(raw: unknown): NameConfig {
       mesitaCount: Math.round(
         num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
       ),
+      autoCount: Math.round(
+        num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
+      ),
       googleCount: Math.round(
         num(deep.googleCount, DEFAULT_NAME_DEEP.googleCount, 0, NAME_LANE_COUNT_MAX),
+      ),
+      count: Math.round(
+        num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
       ),
       types: coerceTypeBatteries(deep.types),
     },
@@ -1104,6 +1161,7 @@ export function coerceName(raw: unknown): NameConfig {
 export function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
   const types = coerceTypeBatteries(m.types);
+  const reload = snapMapReloadPair(m.reloadMinKm, m.reloadMinSec);
   return {
     minRating: Math.round(
       num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -1112,22 +1170,8 @@ export function coerceMap(raw: unknown): MapConfig {
     minPopularity: Math.round(
       num(m.minPopularity, DEFAULT_MAP.minPopularity, 0, MAP_MIN_POPULARITY_MAX) * 100,
     ) / 100,
-    reloadMinKm: Math.round(
-      num(
-        m.reloadMinKm,
-        DEFAULT_MAP.reloadMinKm,
-        MAP_RELOAD_MIN_KM_MIN,
-        MAP_RELOAD_MIN_KM_MAX,
-      ) * 10,
-    ) / 10,
-    reloadMinSec: Math.round(
-      num(
-        m.reloadMinSec,
-        DEFAULT_MAP.reloadMinSec,
-        MAP_RELOAD_MIN_SEC_MIN,
-        MAP_RELOAD_MIN_SEC_MAX,
-      ) * 10,
-    ) / 10,
+    reloadMinKm: reload.km,
+    reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     partnerCount: Math.round(
       num(m.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_LANE_COUNT_MAX),

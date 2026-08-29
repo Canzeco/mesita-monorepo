@@ -2,25 +2,32 @@
 
 // Search — the consumer catalog map. Composition layer for the page:
 //
-//   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
-//   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Status + Super Category also
-//     live in the map Filters sheet. Distance and time are not map
-//     knobs. Swipe keeps Discovery.
-//   • Bottom overlay (idle): catalog rail of the three Map lanes around
-//     the camera (partners, then Mesita, then Google; overlaps drop).
-//     A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
-//     or pin selection pans are ignored. The rail's center card is
-//     always the selected pin. Scroll picks the center; a pin tap
-//     scrolls that card to center. Tapping the already-selected card
-//     opens the place (Google-only stubs open GooglePlaceSheet).
+//   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
+//     gray Google, blue user).
+//   • Top overlay: query pill + Filters button. Places scope + Super
+//     Category live in the map Filters sheet — there is no Category
+//     chip strip on the map. Default is + Places. Distance and time
+//     are not map knobs. Swipe keeps Discovery.
+//   • Bottom overlay (idle): catalog rail around the camera. Places
+//     scope picks the engine (Partners / + enriched Places / + Google
+//     Nearby). Super Category cuts Mesita only. The rail is closest
+//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec.
+//     Only a finger-drag on the map counts as travel. Rail or pin
+//     selection pans rebase the km origin so click-by-click catalog
+//     browsing cannot add up. A user pan also dismisses the name
+//     overlay (query text stays; tap the bar to open it again). The
+//     rail's center card is always the selected pin. Scroll picks the
+//     center; a pin tap scrolls that card to center. Tapping the
+//     already-selected card opens the place (Google-only stubs open
+//     GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
 //     after the guest stops, Deep Search replaces that list when it has
 //     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
 //     session token per autocomplete session.
 //     Results hang at content height. No source labels — the colored point
-//     is membership (red Mesita / gray not on Mesita). On-Mesita rows
-//     select the place on the map; Google-only rows open GooglePlaceSheet.
+//     is membership (yellow Partner / red Mesita Place / gray Google).
+//     On-Mesita rows select the place on the map; Google-only rows open
+//     GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,7 +49,9 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   buildSearchMapPins,
+  catalogPlaceOnMesita,
   overlayPinDecision,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
@@ -54,7 +63,6 @@ import {
 } from "@/lib/map-filters-engine";
 import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { SearchBar } from "./SearchBar";
-import { SearchCategoryRow } from "./SearchCategoryRow";
 import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
@@ -85,6 +93,7 @@ const MIN_SUGGEST_QUERY_LENGTH = 2;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
+  if (catalogPlaceOnMesita(place)) return null;
   const placeId =
     place.google_place_id ||
     place.slug ||
@@ -130,6 +139,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
+  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
+  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (profile or
   // Google sheet) after the suggest list is gone. Holds Google and overlay-only
@@ -153,9 +164,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const center = location;
 
   const trimmed = query.trim();
-  // Idle = the map moment: no text query, search panel closed. The catalog
-  // rail only exists here; the results dropdown owns the other state.
-  const idle = trimmed.length === 0 && !searchOpen;
+  // Idle = map-browse. The name overlay is a query mode, not a viewport.
+  // Closing it (map drag, map tap, X) returns the rail even if leftover
+  // query text sits in the bar.
+  const idle = !searchOpen;
 
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
@@ -164,10 +176,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  const catalog = useMemo(
-    () => applyMapFilters(nearby, filters),
-    [nearby, filters],
-  );
+  const catalog = useMemo(() => {
+    const cut = applyMapFilters(nearby, filters);
+    return [...cut].sort(
+      (a, b) => (a.distance_km ?? Number.POSITIVE_INFINITY) -
+        (b.distance_km ?? Number.POSITIVE_INFINITY),
+    );
+  }, [nearby, filters]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
@@ -212,6 +227,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           CATALOG_NEARBY_MAX,
+          filters.searchPower,
+          filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
@@ -227,7 +244,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [markViewport, supabase],
+    [filters.searchPower, filters.familyKeys, markViewport, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -275,10 +292,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [loadViewport],
   );
 
+  const closeNameOverlay = useCallback(() => {
+    setSearchOpen(false);
+    idleRef.current = true;
+    searchInputRef.current?.blur();
+  }, []);
+
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: { programmatic: boolean }) => {
       markViewport(box);
       if (meta.programmatic) {
+        // Rail / pin / GPS pans move the camera but do not travel.
+        // Rebase the km origin so click-by-click catalog browsing
+        // cannot accumulate toward reload. Time still starts from
+        // the last real fetch.
+        lastFetchedCenter.current = viewportCenter(box);
         clearPendingReload();
         if (forceNextLoad.current) {
           forceNextLoad.current = false;
@@ -286,6 +314,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         }
         return;
       }
+      // Finger on the map = I want the map. Name results are a query
+      // overlay, not a viewport. Keep the typed text so a bar tap
+      // opens the same list again. Do not re-run name search.
+      closeNameOverlay();
       if (forceNextLoad.current) {
         forceNextLoad.current = false;
         clearPendingReload();
@@ -294,7 +326,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       }
       scheduleOrLoad(box);
     },
-    [clearPendingReload, loadViewport, markViewport, scheduleOrLoad],
+    [
+      clearPendingReload,
+      closeNameOverlay,
+      loadViewport,
+      markViewport,
+      scheduleOrLoad,
+    ],
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
@@ -302,6 +340,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     idleRef.current = idle;
   }, [idle]);
+
+  // Places scope and Super Category both change the Nearby engine.
+  // Super pills pick Google includedPrimaryTypes. The query bar
+  // (Fast / Deep Autocomplete) never reads these filters.
+  useEffect(() => {
+    if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    clearPendingReload();
+    void loadViewport(lastBoxRef.current);
+  }, [clearPendingReload, filters.searchPower, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -329,6 +376,33 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const resetSearchSession = useCallback(() => {
     sessionTokenRef.current = newSessionToken();
   }, []);
+
+  const openMesitaProfileFromPrediction = useCallback(
+    (prediction: PlacePrediction) => {
+      resetSearchSession();
+      setQuery("");
+      setSearchOpen(false);
+      const fromAdd = addedProfiles[prediction.placeId];
+      if (fromAdd) {
+        router.push(placeHref(fromAdd));
+        return;
+      }
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(placeHref(direct));
+        return;
+      }
+      const match = matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        router.push(placeHref(match.slug || match.id));
+        return;
+      }
+      toast(
+        "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
+      );
+    },
+    [addedProfiles, catalog, resetSearchSession, router],
+  );
 
   // Every query write goes through here so the derived search state stays
   // in the event handler (the set-state-in-effect lint rule bars resetting
@@ -367,7 +441,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "fast",
         );
         if (!cancelled && !deepSettled) {
@@ -393,7 +466,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "deep",
         );
         if (!cancelled) {
@@ -415,13 +487,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       window.clearTimeout(fastHandle);
       window.clearTimeout(deepHandle);
     };
-  }, [supabase, trimmed, center, scope.country]);
+  }, [supabase, trimmed, center]);
 
   // On-Mesita row tap → show the place on the map (membership fill + black
   // ring + rail card) instead of opening the detail modal; the modal is
   // one more tap away on the pin or the card. The EF-provided Mesita id is the
   // primary join; the exact-name match covers older suggest payloads.
   const handlePickMesita = (prediction: PlacePrediction) => {
+    if (prediction.mesitaSlug ?? prediction.mesitaId) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
@@ -452,6 +528,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // lives there now). Tapping a row is the selection that ends the current
   // Places autocomplete session.
   const handlePickGoogle = (prediction: PlacePrediction) => {
+    const fromAdd = addedProfiles[prediction.placeId];
+    if (fromAdd) {
+      resetSearchSession();
+      router.push(placeHref(fromAdd));
+      return;
+    }
+    if (addStates[prediction.placeId] === "added") {
+      const match =
+        catalog.find((p) => p.google_place_id === prediction.placeId) ??
+        matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        resetSearchSession();
+        router.push(placeHref(match.slug || match.id));
+        return;
+      }
+    }
+    if (predictionOnMesita(prediction)) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     resetSearchSession();
     setPreview(prediction);
     setPreviewOpen(true);
@@ -484,7 +580,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const action = overlayPinDecision({
       selectedId: railSelectedId,
       pinId: pin.id,
-      googleOnly: prediction?.status === "not_in_mesita",
+      googleOnly: prediction ? !predictionOnMesita(prediction) : false,
       inCatalog: Boolean(place),
       hasOverlay: Boolean(prediction),
     });
@@ -521,27 +617,32 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   };
 
-  // The REAL Add flow: the place is created immediately; only enrichment is
-  // scheduled (the cron-driven Intaker pipeline finishes asynchronously),
-  // so hold the row in its "added / Enriching" state — nothing further to
-  // await client-side.
+  // Create only — the ugly profile is live immediately. Intaker waits
+  // for votes on the Enrich tab. Open that profile the moment it exists.
   const handleAdd = useCallback(
     (prediction: PlacePrediction) => {
       if (addStates[prediction.placeId]) return;
-      // Add is also a selection — close out the autocomplete session.
       resetSearchSession();
       setAddStates((s) => ({ ...s, [prediction.placeId]: "adding" }));
       void (async () => {
         try {
-          await apiCreateProject(supabase, {
+          const created = await apiCreateProject(supabase, {
             placeId: prediction.placeId,
           });
+          const dest = created.place.slug || created.place.id;
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
+          if (dest) {
+            setAddedProfiles((s) => ({
+              ...s,
+              [prediction.placeId]: dest,
+            }));
+          }
+          setPreviewOpen(false);
           toast.success(
-            `${prediction.mainText} is on Mesita — our AI generates its profile in about 5 minutes.`,
+            `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
           );
+          if (dest) router.push(placeHref(dest));
         } catch (err) {
-          // Roll back so the button is tappable again.
           setAddStates((s) => {
             const next = { ...s };
             delete next[prediction.placeId];
@@ -551,7 +652,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         }
       })();
     },
-    [addStates, resetSearchSession, supabase],
+    [addStates, resetSearchSession, router, supabase],
   );
 
   const handleRailScroll = () => {
@@ -591,21 +692,23 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const dismissSearch = () => {
     updateQuery("");
-    setSearchOpen(false);
+    closeNameOverlay();
   };
 
   const openSearch = () => {
     setSearchOpen(true);
+    idleRef.current = false;
     // Focus after the panel mounts so the keyboard comes up on tap-to-open
     // (map tap or bar tap) without covering the map in a 70% sheet.
     requestAnimationFrame(() => searchInputRef.current?.focus());
   };
 
   const handleMapClick = () => {
-    // Bare map tap toggles search: open when idle, close when the dropdown
-    // (empty prompt or live results) is covering the top of the canvas.
-    if (searchOpen || trimmed.length > 0) {
-      dismissSearch();
+    // Bare map tap toggles the name overlay. Query text stays so a later
+    // bar tap can reopen the same list. Pan/drag uses closeNameOverlay
+    // from onUserViewport instead — Maps does not fire click on a drag.
+    if (searchOpen) {
+      closeNameOverlay();
       return;
     }
     openSearch();
@@ -613,7 +716,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after map Status + Super Category. */}
+      {/* Base layer — pins are the nearby catalog after Places scope + Super Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -629,31 +732,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query pill + Filters button, then Category
-          families. Status opens in the sheet. max-h-[70%] caps long lists
-          so they scroll and the map stays visible below. Ask AI lives on
-          Home › Chat. */}
+      {/* Floating top overlay — query pill + Filters button. Super
+          Category is in the sheet, not a chrome shortcut. max-h-[70%]
+          caps long lists so they scroll and the map stays visible
+          below. Ask AI lives on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <SearchBar
-                query={query}
-                showClear={Boolean(query || searchOpen)}
-                onQueryChange={updateQuery}
-                onFocus={openSearch}
-                onClear={dismissSearch}
-                inputRef={searchInputRef}
-              />
-            </div>
-            {idle && (
-              <SearchFilterRow
-                count={mapFilterCount(filters)}
-                onOpenFilters={() => setFiltersOpen(true)}
-              />
-            )}
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              query={query}
+              showClear={Boolean(query || searchOpen)}
+              onQueryChange={updateQuery}
+              onFocus={openSearch}
+              onClear={dismissSearch}
+              inputRef={searchInputRef}
+            />
           </div>
-          {idle && <SearchCategoryRow familyKeys={filters.familyKeys} />}
+          {idle && (
+            <SearchFilterRow
+              count={mapFilterCount(filters)}
+              onOpenFilters={() => setFiltersOpen(true)}
+            />
+          )}
         </div>
 
         {fetchError && idle && (
@@ -662,7 +762,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           </p>
         )}
 
-        {(searchOpen || trimmed.length > 0) && (
+        {searchOpen && (
           <div className="bg-card/95 border-border shadow-elev flex min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
             {trimmed.length > 0 ? (
               <SearchResultsPanel

@@ -118,6 +118,7 @@ Deno.serve(async (req) => {
     threshold: await loadRequestThreshold(admin),
     requested,
     contentStatus: row.content_status,
+    enrichedAt: row.enriched_at,
   });
   const place = {
     ...row,

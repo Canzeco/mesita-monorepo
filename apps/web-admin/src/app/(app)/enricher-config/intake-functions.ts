@@ -2,17 +2,27 @@
 //
 // TWO SEQUENCES — not one global enum. Main §8.4:
 //   CREATE (ONE FUNCTION, awaits four): 1 Seed → 2 Pulse → 3 Details
-//     → 4 Semantic (Mesita Name & Semantic Summary & Embeddings)
+//     → 4 Semantic
 //   ENRICH (TEN FUNCTIONS): 1 Pulse → 2 Details → 3 Serp → 4 Links
 //     → 5 Social → 6 Images → 7 Menu → 8 Reviews
-//     → 9 Description (Category, Tags, Presentation)
-//     → 10 Semantic (Mesita Name & Semantic Summary & Embeddings)
+//     → 9 Description
+//     → 10 Semantic
+// Chips are short jump labels. Category/Tags/Presentation and Mesita
+// Name/Summary/Embeddings live on the Functions accordion blurbs.
 // Pulse is 2 on Create and 1 on Enrich. Semantic is 4 on Create and 10
 // on Enrich. Seed is Create 1 — never a 0. Chip numbers are derived from
 // each flow's order so a shared `chip` string cannot invent a third ladder.
 // Engine high-water stays Enrich 1–10 (Created floor 0 is persistence).
 
 export type IntakeFlow = "create" | "enrich";
+
+export type IntakeChip = {
+  href: string;
+  number: number;
+  name: string;
+  /** `${n} ${name}` — tests and screen readers */
+  label: string;
+};
 
 export type IntakeSubfunction = {
   id: string;
@@ -35,13 +45,13 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
   {
     id: "f-description",
     key: "description",
-    name: "Description (Category, Tags, Presentation)",
+    name: "Description",
     flows: ["enrich"],
   },
   {
     id: "f-semantic",
     key: "semantic",
-    name: "Semantic (Mesita Name & Semantic Summary & Embeddings)",
+    name: "Semantic",
     flows: ["create", "enrich"],
   },
 ];
@@ -54,14 +64,20 @@ function rowByKey(key: string): IntakeSubfunction {
   return row;
 }
 
-function numberChips(keys: readonly string[]): { href: string; label: string }[] {
+function numberChips(keys: readonly string[]): IntakeChip[] {
   return keys.map((key, i) => {
     const s = rowByKey(key);
-    return { href: `#${s.id}`, label: `${i + 1} ${s.name}` };
+    const number = i + 1;
+    return {
+      href: `#${s.id}`,
+      number,
+      name: s.name,
+      label: `${number} ${s.name}`,
+    };
   });
 }
 
-export function chipsFor(flow: IntakeFlow): { href: string; label: string }[] {
+export function chipsFor(flow: IntakeFlow): IntakeChip[] {
   if (flow === "create") return numberChips(CREATE_ORDER);
   return numberChips(
     INTAKE_SUBFUNCTIONS.filter((s) => s.flows.includes("enrich")).map((s) => s.key),

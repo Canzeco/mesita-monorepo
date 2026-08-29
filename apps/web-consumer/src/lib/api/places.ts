@@ -39,7 +39,7 @@ export type Place = {
   slug: string;
   name: string;
   category: string | null;
-  /** Super-categories from the EF (MESITA-679); dual-family types list both. */
+  /** Super Category from the EF. Exactly one when classified. */
   family_keys?: string[];
   category_label?: string | null;
   vibe: string | null;
@@ -199,6 +199,8 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   limit = CATALOG_NEARBY_MAX,
+  searchPower = 2,
+  familyKeys: readonly string[] = [],
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -208,6 +210,8 @@ export async function apiFetchNearbyCatalog(
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
+    searchPower,
+    familyKeys: [...familyKeys],
     lat: center.lat,
     lng: center.lng,
     limit,
@@ -292,6 +296,7 @@ export type PlaceRequestResult = {
   request_threshold: number;
   requested: boolean;
   is_profile_ready: boolean;
+  is_enriched: boolean;
   request_lifecycle: "listed" | "requested" | "enriched";
   enrichment_triggered: boolean;
 };
@@ -354,13 +359,14 @@ export type SuggestPlacesMode = "fast" | "deep";
 /**
  * Name search for the consumer /search bar and pickers.
  * Fast (default) = Autocomplete. Deep = Partners · Mesita · Google.
+ * Map Filters never ride this call — power and Super Category are map-only.
+ * Country is always Any: Autocomplete and Text Search do not take a region.
  */
 export async function apiSuggestPlaces(
   client: SupabaseClient,
   input: string,
   sessionToken: string,
   origin?: { lat: number; lng: number } | null,
-  country?: string | null,
   mode: SuggestPlacesMode = "fast",
 ): Promise<PlacePrediction[]> {
   const trimmed = input.trim();
@@ -375,7 +381,6 @@ export async function apiSuggestPlaces(
       ...(origin
         ? { lat: origin.lat, lng: origin.lng }
         : {}),
-      ...(country ? { country } : {}),
     },
   );
   return predictions;

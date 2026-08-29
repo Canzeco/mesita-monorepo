@@ -72,7 +72,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasDiscoverFacebookN: 5,
   atlasDiscoverOpentableN: 3,
   atlasDiscoverUbereatsN: 2,
-  atlasRequestThreshold: 3,
+  atlasRequestThreshold: 5,
 };
 
 function asRecord(raw: unknown): Record<string, unknown> {
