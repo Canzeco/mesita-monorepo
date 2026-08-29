@@ -451,6 +451,13 @@ describe("Name search is Fast while typing and Deep after idle", () => {
     expect(src).toContain('"deep"');
     expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
   });
+
+  it("keeps Fast when Deep returns an empty list", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("Empty Deep keeps Fast");
+    expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
+    expect(src).toContain("Keep Fast results if Deep fails.");
+  });
 });
 
 describe("catalogIsStale", () => {
