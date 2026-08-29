@@ -346,6 +346,11 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Name signal only");
     expect(name).toContain("places.name");
     expect(name).toContain("google_name");
+    expect(name).toContain("not a Nearby Search");
+    expect(name).toContain("Needs a location. No pin, no bias.");
+    expect(name).toContain("Deep reads Name (off vs on)");
+    expect(map).toContain("Listed pins then Lineup, not distance");
+    expect(map).toContain("Map reads the Map mask");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');
@@ -370,6 +375,8 @@ describe("Discovery page box order", () => {
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
     expect(googleModules).toContain("Name (Deep Search)");
+    expect(googleModules).toContain("pin bias");
+    expect(googleModules).toContain("the Google Nearby call");
     expect(chips).toContain("export function ModeModuleChips");
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");

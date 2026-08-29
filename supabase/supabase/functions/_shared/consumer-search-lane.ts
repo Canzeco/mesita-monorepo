@@ -6,11 +6,13 @@
 // ILIKE, Mesita-first sort).
 //
 // Fast: Google Autocomplete only. Cap `name.fast.count`.
-// Deep: three modules, each candidate resolves, then one list:
+// Deep: Autocomplete + Text Search + Places Lineup Name. The Nearby chip
+// is the guest pin on those three — not a type+DISTANCE Nearby call with
+// no query. Each candidate resolves, then one list:
 //   1. Google Autocomplete — resolve against the catalog
 //   2. Google Text Search — resolve against the catalog
-//   3. Mesita Places Lineup — Name signal only (`places.name_embedding`
-//      over `places.name` = coalesce(mesita_name, google_name)). Never
+//   3. Mesita Places Lineup — admit on raw name cosine, then rankByBlend
+//      under the Deep mask (Name on; everything else 0). Never
 //      `google_name` ILIKE (that is suggest-places / business search).
 // Then Partners → Mesita → Google after dropping overlaps.
 // Merge is not a fourth module. Summary and the other six Lineup signals
@@ -44,13 +46,19 @@ import {
   type NameConfig,
   type NearbyTypeKey,
 } from "./discovery-config.ts";
+import {
+  rankByBlend,
+  type SignalParamsByKey,
+  type SignalWeights,
+} from "./discovery-blend.ts";
+import { weightsForMode } from "./discovery-matrix.ts";
+import { toLineupPlace } from "./discovery-place.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
 import {
   cosineSim,
   parseVector,
-  rankByNameCosine,
 } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import { radiusBoundingBox } from "./geo.ts";
@@ -178,7 +186,7 @@ export type ConsumerSearchArgs = {
   mode?: SuggestPlacesMode | string | null;
 };
 
-type ListedRow = {
+export type ListedRow = {
   id: string;
   slug: string;
   google_place_id: string | null;
@@ -229,23 +237,51 @@ export function applyResolvedMesitaName(
   };
 }
 
-function takeAboveNameFloor(
-  ranked: ListedRow[],
+/** Raw name cosine on `places.name_embedding`. Floor is not remapped `name()`. */
+export function admitNameFloor(
+  rows: ListedRow[],
   queryVec: number[],
   minCosine: number,
-  limit: number,
-): LaneItem[] {
-  const out: LaneItem[] = [];
-  for (const row of ranked) {
+): ListedRow[] {
+  const out: ListedRow[] = [];
+  for (const row of rows) {
     const vec = parseVector(row.name_embedding);
     const score = vec && vec.length === queryVec.length
       ? cosineSim(vec, queryVec)
       : -1;
     if (score < minCosine) continue;
+    if (!String(row.name ?? "").trim()) continue;
+    out.push(row);
+  }
+  return out;
+}
+
+/**
+ * Deep Lineup: Name mask only. Exponent 1 vs 4 does not reorder; 0 vs on
+ * does (off → incoming pool order).
+ */
+export function orderDeepLineup(
+  admitted: ListedRow[],
+  queryNameVector: number[],
+  weights: SignalWeights,
+  params?: SignalParamsByKey,
+): ListedRow[] {
+  return rankByBlend(
+    admitted,
+    (row) => toLineupPlace(row as unknown as Record<string, unknown>),
+    { queryNameVector },
+    weights,
+    params,
+  ).map((r) => r.row);
+}
+
+function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {
+  const out: LaneItem[] = [];
+  for (const row of rows) {
     const item = listedToLane(row);
     if (!item || !item.mainText) continue;
     out.push(item);
-    if (out.length >= limit) break;
+    if (out.length >= cap) break;
   }
   return out;
 }
@@ -299,6 +335,8 @@ export async function runConsumerSearchLane(
       apiKey,
       cfg.map,
       cfg.name,
+      cfg.weights,
+      cfg.params,
       input,
       sessionToken,
       origin,
@@ -410,6 +448,8 @@ async function runDeepSearch(
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
+  weights: SignalWeights,
+  params: SignalParamsByKey,
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
@@ -453,24 +493,27 @@ async function runDeepSearch(
     ),
   ]);
 
-  const ranked = queryVec ? rankByNameCosine(embedPool, queryVec) : [];
-  const lineupPartners = queryVec && deep.partnerCount > 0
-    ? takeAboveNameFloor(
-      ranked.filter((row) => isPaidPlan(row.plan)),
+  const admitted = queryVec
+    ? admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE)
+    : [];
+  const ordered = queryVec
+    ? orderDeepLineup(
+      admitted,
       queryVec,
-      NAME_MIN_COSINE,
+      weightsForMode("deep", weights),
+      params,
+    )
+    : [];
+  const lineupPartners = deep.partnerCount > 0
+    ? takeListedLane(
+      ordered.filter((row) => isPaidPlan(row.plan)),
       deep.partnerCount,
     )
     : [];
   // Mesita lane is listed-not-partner. Partners already have their own lane;
   // if they fill this cap, merge drops them and listed places never appear.
-  const lineupMesita = queryVec && deep.mesitaCount > 0
-    ? takeAboveNameFloor(
-      listedNotPartner(ranked),
-      queryVec,
-      NAME_MIN_COSINE,
-      deep.mesitaCount,
-    )
+  const lineupMesita = deep.mesitaCount > 0
+    ? takeListedLane(listedNotPartner(ordered), deep.mesitaCount)
     : [];
 
   const fromAuto = splitResolvedNameHits(stampedAuto);

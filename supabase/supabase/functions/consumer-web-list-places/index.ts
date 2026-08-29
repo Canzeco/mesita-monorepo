@@ -16,9 +16,9 @@
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest partners
 //     then Mesita. No Google stubs — mobile opens `/place/:id` and
 //     cannot host GooglePlaceSheet.
-//   { google: true, lat, lng, limit? } — web Search catalog. Three lanes:
-//     closest partners, then Mesita, then Google Nearby among enabled
-//     categories. Mesita Place IDs never stub. Google fill is metered per
+//   { google: true, lat, lng, limit? } — web Search catalog. Three closest-N
+//     lanes, then listed pins Lineup-reorder (Map mask), Google stays
+//     distance. Mesita Place IDs never stub. Google fill is metered per
 //     connecting IP (CF-Connecting-IP / rightmost XFF, 45/60s) plus a
 //     600/60s global cap, only when this isolate is about to fire the one
 //     Nearby call. Over quota skips Google, not the catalog. Operator Map
@@ -66,6 +66,11 @@ import {
   searchNearbyPlaces,
   type NearbyHit,
 } from "../_shared/nearby-places.ts";
+import {
+  mapLineupIntent,
+  mapLineupWeights,
+  reorderListedLanes,
+} from "../_shared/nearby-lineup.ts";
 import { consumeNearbyGoogleQuota } from "../_shared/nearby-google-quota.ts";
 import { hashConnectingIp } from "../_shared/connecting-ip.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
@@ -372,11 +377,19 @@ Deno.serve(async (req) => {
       cfg.map,
       cfg.params.popularity,
     );
-    const merged = mergeNearbyCatalog(
-      admitted.listed,
-      admitted.google,
-      center,
-      nearbyLanesFromMap(cfg.map),
+    const merged = reorderListedLanes(
+      mergeNearbyCatalog(
+        admitted.listed,
+        admitted.google,
+        center,
+        nearbyLanesFromMap(cfg.map),
+      ),
+      {
+        center,
+        weights: mapLineupWeights(cfg.weights),
+        params: cfg.params,
+        ...mapLineupIntent(nearbyTypes),
+      },
     ).slice(0, limit);
     const places = withFamilyKeysList(
       merged.map((item) => {

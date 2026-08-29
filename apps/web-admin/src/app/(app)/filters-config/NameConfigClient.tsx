@@ -2,9 +2,9 @@
 
 // Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
 // Fast Search is Autocomplete only. Deep Search calls Autocomplete, Text
-// Search, Nearby, and Places Lineup (Name signal only — Mesita
-// `places.name`, not `google_name`). Each candidate resolves, then
-// Partners · Mesita · Google.
+// Search, and Places Lineup (Name signal only — Mesita `places.name`,
+// not `google_name`). Nearby on Deep is the guest pin, not Nearby Search.
+// Each candidate resolves, then Partners · Mesita · Google.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -155,15 +155,18 @@ export function NameConfigClient({
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Name (Deep Search)"
-          subtitle="Autocomplete + Text Search + Lineup Name signal only (`places.name`, not `google_name`). After resolve: Partners → Mesita → Google. Types on Modules. 0 off."
+          subtitle="Nearby on Deep is the guest pin on Autocomplete, Text Search, and name match — not a Nearby Search. Name signal only (`places.name`, not `google_name`)."
           status={
             <KnobStatus
               kind="enforced"
-              reason="suggest-places · Search"
+              reason="Places Lineup · Deep reads Name (off vs on)"
             />
           }
         >
           <ModeModuleChips modules={DISCOVERY_MODE_MODULES.deep} />
+          <p className="text-muted-foreground mt-2 type-meta">
+            Needs a location. No pin, no bias.
+          </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <NumberField
               icon={<BadgeCheck className="mt-0.5 h-4 w-4 shrink-0" />}
