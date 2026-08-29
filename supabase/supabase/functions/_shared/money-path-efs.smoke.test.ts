@@ -45,6 +45,9 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   { name: "consumer-web-submit-ticket-bill", path: "../consumer-web-submit-ticket-bill/index.ts", accepts: ["POST"] },
   { name: "consumer-web-get-ticket", path: "../consumer-web-get-ticket/index.ts", accepts: ["POST"] },
   { name: "consumer-web-select-ticket-payment", path: "../consumer-web-select-ticket-payment/index.ts", accepts: ["POST"] },
+  // Stripe Connect PLATFORM account layer (skeleton, no charges).
+  { name: "business-web-start-payment-onboarding", path: "../business-web-start-payment-onboarding/index.ts", accepts: ["POST"] },
+  { name: "admin-web-get-place-payment-account", path: "../admin-web-get-place-payment-account/index.ts", accepts: ["POST"] },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,
