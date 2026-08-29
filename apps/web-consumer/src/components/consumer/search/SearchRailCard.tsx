@@ -44,7 +44,7 @@ export function RailCard({
         selected && "border-primary ring-primary/30 ring-2",
       )}
     >
-      <div className="bg-muted border-border relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border">
+      <div className="bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
         {photo ? (
           <Image
             src={photo}
