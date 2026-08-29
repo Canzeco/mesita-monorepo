@@ -146,7 +146,7 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Partners");
     expect(html).toContain("+ Places");
     expect(html).toContain("+ Google");
-    expect(html).toContain('viewBox="0 0 176 176"');
+    expect(html).toContain('viewBox="0 0 104 104"');
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
     );
@@ -181,10 +181,14 @@ describe("SearchPlacesScope", () => {
     expect(src).toContain("The diagram is display-only");
     expect(src).not.toContain("Tap a ring");
     expect(src).not.toMatch(/absolute top-1\/2 left-1\/2/);
+    expect(src).not.toContain("feDropShadow");
+    expect(src).not.toContain("radialGradient");
+    expect(src).not.toContain("boxShadow");
 
     const html = renderToStaticMarkup(
       <SearchPlacesScope power={2} onPower={() => {}} />,
     );
+    expect(html).toContain('viewBox="0 0 104 104"');
     expect(html.match(/role="radio"/g)?.length).toBe(3);
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
@@ -193,6 +197,15 @@ describe("SearchPlacesScope", () => {
     expect(html).toContain(
       'aria-checked="false" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
     );
+    expect(html).not.toContain("ALL GOOGLE PLACES");
+  });
+
+  it("warns when + Google scope is selected", () => {
+    const html = renderToStaticMarkup(
+      <SearchPlacesScope power={3} onPower={() => {}} />,
+    );
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("ALL GOOGLE PLACES");
   });
 
   it("fills from the inside out as power widens", () => {
