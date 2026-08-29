@@ -43,7 +43,7 @@ export function Tag({
 export function StepChips({
   steps,
 }: {
-  steps: { href: string; label: string }[];
+  steps: { href: string; number: number; name: string }[];
 }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -51,9 +51,10 @@ export function StepChips({
         <Link
           key={s.href}
           href={s.href}
-          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring rounded-lg px-2.5 py-1 text-xs font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:outline-none"
+          className="bg-muted hover:bg-foreground hover:text-card focus-visible:ring-ring inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium whitespace-nowrap transition focus-visible:ring-2 focus-visible:outline-none"
         >
-          {s.label}
+          <span className="text-muted-foreground tabular-nums">{s.number}</span>
+          <span>{s.name}</span>
         </Link>
       ))}
     </div>
@@ -70,7 +71,7 @@ export function FlowPanel({
   estimate,
 }: {
   facts: { term: string; detail: React.ReactNode }[];
-  steps: { href: string; label: string }[];
+  steps: { href: string; number: number; name: string }[];
   estimate?: React.ReactNode;
 }) {
   return (
