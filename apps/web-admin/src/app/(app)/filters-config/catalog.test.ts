@@ -373,6 +373,11 @@ describe("Discovery page box order", () => {
     expect(name).toContain("same cap — Max results stays for Deep symmetry");
     expect(map).toContain("Listed pins then Lineup, not distance");
     expect(map).toContain("Map reads the Map mask");
+    expect(map).toContain("Reload after");
+    expect(map).toContain("MAP_RELOAD_PAIRS");
+    expect(map).toContain("Browsing the rail does not count");
+    expect(map).not.toContain("Reload after the camera moves");
+    expect(map).not.toContain("Reload after waiting");
     expect(name).not.toContain('title="Search"');
     expect(map).toContain('title="Map"');
     expect(swipe).toContain('title="Swipe is coming soon"');

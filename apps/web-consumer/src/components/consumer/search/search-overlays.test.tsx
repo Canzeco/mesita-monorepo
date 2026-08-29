@@ -264,6 +264,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(src).toContain("markViewport(box)");
     expect(src).toContain("forceNextLoad");
     expect(src).toContain("meta.programmatic");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*scheduleOrLoad/,
+    );
   });
 
   it("reloads once when a later GPS fix lands off the fetched camera", () => {
