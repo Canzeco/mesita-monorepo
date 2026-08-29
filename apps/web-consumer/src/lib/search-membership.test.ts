@@ -4,11 +4,15 @@ import {
   MAP_GOOGLE_PIN_COLOR,
   MAP_LISTED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
+  MAP_PIN_HIT_SIZE,
   MAP_PIN_SCALE,
   MAP_PIN_STROKE_COLOR,
   MAP_PIN_STROKE_WEIGHT,
+  MAP_PLACE_PIN_RADIUS,
   MAP_USER_LOCATION_PIN_COLOR,
   mapCircleIcon,
+  mapPinIcon,
+  mapPinSvg,
 } from "@/lib/map-defaults";
 import {
   buildSearchMapPins,
@@ -222,5 +226,26 @@ describe("mapCircleIcon", () => {
     expect(selected.scale).toBe(MAP_PIN_SCALE);
     expect(selected.strokeWeight).toBe(MAP_PIN_STROKE_WEIGHT);
     expect(red.fillColor).not.toBe(blue.fillColor);
+  });
+});
+
+describe("mapPinIcon", () => {
+  it("paints a bigger disk inside a 44px tap pad", () => {
+    expect(MAP_PLACE_PIN_RADIUS).toBe(10);
+    expect(MAP_PIN_HIT_SIZE).toBe(44);
+    const svg = mapPinSvg(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);
+    expect(svg).toContain(`width="${MAP_PIN_HIT_SIZE}"`);
+    expect(svg).toContain('fill-opacity="0.01"');
+    const icon = mapPinIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    expect(icon.scaledSize).toEqual({
+      width: MAP_PIN_HIT_SIZE,
+      height: MAP_PIN_HIT_SIZE,
+    });
+    expect(icon.anchor).toEqual({
+      x: MAP_PIN_HIT_SIZE / 2,
+      y: MAP_PIN_HIT_SIZE / 2,
+    });
+    expect(icon.url).toContain("data:image/svg+xml");
   });
 });

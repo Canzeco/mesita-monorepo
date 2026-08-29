@@ -27,9 +27,11 @@ import {
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
   MAP_MINIMAL_STYLES,
+  MAP_PIN_CURSOR,
+  MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  mapCircleIcon,
+  mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
 import {
@@ -39,14 +41,29 @@ import {
   type MembershipTone,
 } from "@/lib/search-membership";
 
-function placeIcon(tone: MembershipTone, isSelected: boolean) {
-  return mapCircleIcon(pinFillColor(tone), pinStrokeColor(isSelected));
+type MapsCtor = {
+  Size: new (w: number, h: number) => { width: number; height: number };
+  Point: new (x: number, y: number) => { x: number; y: number };
+};
+
+function mapsPinIcon(fillColor: string, strokeColor: string) {
+  const raw = mapPinIcon(fillColor, strokeColor);
+  const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
+  if (!maps) return raw;
+  return {
+    url: raw.url,
+    scaledSize: new maps.Size(MAP_PIN_HIT_SIZE, MAP_PIN_HIT_SIZE),
+    anchor: new maps.Point(MAP_PIN_HIT_SIZE / 2, MAP_PIN_HIT_SIZE / 2),
+  };
 }
 
-const USER_ICON = mapCircleIcon(
-  MAP_USER_LOCATION_PIN_COLOR,
-  MAP_PIN_STROKE_COLOR,
-);
+function placeIcon(tone: MembershipTone, isSelected: boolean) {
+  return mapsPinIcon(pinFillColor(tone), pinStrokeColor(isSelected));
+}
+
+function userIcon() {
+  return mapsPinIcon(MAP_USER_LOCATION_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+}
 
 export type SearchMapPin = {
   id: string;
@@ -265,7 +282,9 @@ function SearchMapCanvas({
       disableDefaultUI
       clickableIcons={false}
       reuseMaps
-      className="absolute inset-0 h-full w-full"
+      draggableCursor={MAP_PIN_CURSOR}
+      draggingCursor={MAP_PIN_CURSOR}
+      className="absolute inset-0 h-full w-full cursor-default [&_*]:!cursor-default"
       colorScheme="LIGHT"
       styles={
         MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
@@ -279,8 +298,9 @@ function SearchMapCanvas({
         <Marker
           position={userLocation}
           title="You're here"
-          icon={USER_ICON}
+          icon={userIcon()}
           clickable={false}
+          cursor={MAP_PIN_CURSOR}
         />
       )}
       {pins != null
@@ -291,6 +311,8 @@ function SearchMapCanvas({
               title={pin.title}
               icon={placeIcon(pin.tone, pin.id === selectedId)}
               zIndex={pin.id === selectedId ? 10 : 0}
+              optimized={false}
+              cursor={MAP_PIN_CURSOR}
               onClick={() => onSelectPin?.(pin)}
             />
           ))
@@ -304,6 +326,8 @@ function SearchMapCanvas({
                 place.id === selectedId,
               )}
               zIndex={place.id === selectedId ? 10 : 0}
+              optimized={false}
+              cursor={MAP_PIN_CURSOR}
               // First tap selects (membership fill + black ring + rail); later tap opens.
               onClick={() =>
                 place.id === selectedId
