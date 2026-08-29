@@ -49,7 +49,9 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   buildSearchMapPins,
+  catalogPlaceOnMesita,
   overlayPinDecision,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
@@ -91,6 +93,7 @@ const MIN_SUGGEST_QUERY_LENGTH = 2;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
+  if (catalogPlaceOnMesita(place)) return null;
   const placeId =
     place.google_place_id ||
     place.slug ||
@@ -136,6 +139,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
+  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
+  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (profile or
   // Google sheet) after the suggest list is gone. Holds Google and overlay-only
@@ -371,6 +376,33 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     sessionTokenRef.current = newSessionToken();
   }, []);
 
+  const openMesitaProfileFromPrediction = useCallback(
+    (prediction: PlacePrediction) => {
+      resetSearchSession();
+      setQuery("");
+      setSearchOpen(false);
+      const fromAdd = addedProfiles[prediction.placeId];
+      if (fromAdd) {
+        router.push(placeHref(fromAdd));
+        return;
+      }
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(placeHref(direct));
+        return;
+      }
+      const match = matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        router.push(placeHref(match.slug || match.id));
+        return;
+      }
+      toast(
+        "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
+      );
+    },
+    [addedProfiles, catalog, resetSearchSession, router],
+  );
+
   // Every query write goes through here so the derived search state stays
   // in the event handler (the set-state-in-effect lint rule bars resetting
   // it inside the effect below): short queries clear the panel, longer
@@ -461,6 +493,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // one more tap away on the pin or the card. The EF-provided Mesita id is the
   // primary join; the exact-name match covers older suggest payloads.
   const handlePickMesita = (prediction: PlacePrediction) => {
+    if (prediction.mesitaSlug ?? prediction.mesitaId) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
@@ -491,6 +527,26 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // lives there now). Tapping a row is the selection that ends the current
   // Places autocomplete session.
   const handlePickGoogle = (prediction: PlacePrediction) => {
+    const fromAdd = addedProfiles[prediction.placeId];
+    if (fromAdd) {
+      resetSearchSession();
+      router.push(placeHref(fromAdd));
+      return;
+    }
+    if (addStates[prediction.placeId] === "added") {
+      const match =
+        catalog.find((p) => p.google_place_id === prediction.placeId) ??
+        matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        resetSearchSession();
+        router.push(placeHref(match.slug || match.id));
+        return;
+      }
+    }
+    if (predictionOnMesita(prediction)) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     resetSearchSession();
     setPreview(prediction);
     setPreviewOpen(true);
@@ -523,7 +579,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const action = overlayPinDecision({
       selectedId: railSelectedId,
       pinId: pin.id,
-      googleOnly: prediction?.status === "not_in_mesita",
+      googleOnly: prediction ? !predictionOnMesita(prediction) : false,
       inCatalog: Boolean(place),
       hasOverlay: Boolean(prediction),
     });
@@ -572,12 +628,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           const created = await apiCreateProject(supabase, {
             placeId: prediction.placeId,
           });
+          const dest = created.place.slug || created.place.id;
           setAddStates((s) => ({ ...s, [prediction.placeId]: "added" }));
+          if (dest) {
+            setAddedProfiles((s) => ({
+              ...s,
+              [prediction.placeId]: dest,
+            }));
+          }
           setPreviewOpen(false);
           toast.success(
             `${prediction.mainText} is on Mesita. Vote to enrich its profile.`,
           );
-          const dest = created.place.slug || created.place.id;
           if (dest) router.push(placeHref(dest));
         } catch (err) {
           setAddStates((s) => {

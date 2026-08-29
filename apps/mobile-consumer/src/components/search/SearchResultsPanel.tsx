@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import type { AddState } from '@/components/memo/types';
 import { COLORS } from '@/constants/brand';
 import type { PlacePrediction } from '@/lib/api/place-search';
+import { predictionOnMesita } from '@/lib/search-membership';
 
 import { SuggestionLine } from './SuggestionLine';
 
@@ -161,7 +162,7 @@ export function SearchResultsPanel({
               prediction={p}
               addState={addStates[p.placeId]}
               onPick={
-                p.status === 'not_in_mesita' ? onPickGoogle : onPickMesita
+                predictionOnMesita(p) ? onPickMesita : onPickGoogle
               }
             />
           ))}

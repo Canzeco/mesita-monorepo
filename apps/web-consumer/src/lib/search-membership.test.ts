@@ -16,6 +16,7 @@ import {
 } from "@/lib/map-defaults";
 import {
   buildSearchMapPins,
+  catalogPlaceOnMesita,
   membershipColor,
   membershipTone,
   overlayPinDecision,
@@ -23,6 +24,7 @@ import {
   pinStrokeColor,
   pinGesture,
   placeMembershipTone,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 
 describe("search membership tones", () => {
@@ -68,6 +70,41 @@ describe("search membership tones", () => {
     expect(pinGesture(null, "a")).toBe("select");
     expect(pinGesture("b", "a")).toBe("select");
     expect(pinGesture("a", "a")).toBe("open");
+  });
+});
+
+describe("membershipTone", () => {
+  it("treats mesitaId as on-Mesita even when status is not_in_mesita", () => {
+    expect(
+      membershipTone({
+        status: "not_in_mesita",
+        mesitaId: "uuid-1",
+      }),
+    ).toBe("listed");
+  });
+});
+
+describe("predictionOnMesita", () => {
+  it("uses mesitaId/slug over a stale not_in_mesita status", () => {
+    expect(
+      predictionOnMesita({ status: "not_in_mesita", mesitaId: "x" }),
+    ).toBe(true);
+    expect(
+      predictionOnMesita({ status: "not_in_mesita", mesitaSlug: "slug" }),
+    ).toBe(true);
+    expect(predictionOnMesita({ status: "not_in_mesita" })).toBe(false);
+    expect(predictionOnMesita({ status: "web_listed" })).toBe(true);
+  });
+});
+
+describe("catalogPlaceOnMesita", () => {
+  it("treats added Google stubs with real ids as on-Mesita", () => {
+    expect(
+      catalogPlaceOnMesita({ id: "uuid", from_google: true }),
+    ).toBe(true);
+    expect(
+      catalogPlaceOnMesita({ id: "g:ChIJ", googleOnly: true }),
+    ).toBe(false);
   });
 });
 

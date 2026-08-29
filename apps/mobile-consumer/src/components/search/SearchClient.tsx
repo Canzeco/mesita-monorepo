@@ -43,7 +43,7 @@ import {
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { newSessionToken, withDistances } from '@/lib/search-utils';
-import { buildSearchMapPins, overlayPinDecision } from '@/lib/search-membership';
+import { buildSearchMapPins, catalogPlaceOnMesita, overlayPinDecision, predictionOnMesita } from '@/lib/search-membership';
 import { useSearchScope } from '@/lib/use-search-scope';
 import { supabase } from '@/lib/supabase';
 import {
@@ -61,6 +61,7 @@ type Coords = { lat: number; lng: number };
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   const placeId = place.google_place_id;
   if (!place.from_google || !placeId) return null;
+  if (catalogPlaceOnMesita(place)) return null;
   return {
     placeId,
     mainText: place.name,
@@ -107,6 +108,8 @@ export function SearchClient() {
   // Bumped by Retry to re-run the suggest effect for the same query.
   const [retryTick, setRetryTick] = useState(0);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
+  /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
+  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash (Google + overlay-only Mesita) so a later
   // tap can still open after the suggest list is gone. Keyed on pin.id.
@@ -239,6 +242,29 @@ export function SearchClient() {
     sessionTokenRef.current = newSessionToken();
   }, []);
 
+  const openMesitaProfileFromPrediction = useCallback(
+    (prediction: PlacePrediction) => {
+      resetSearchSession();
+      setQuery('');
+      setSearchOpen(false);
+      const fromAdd = addedProfiles[prediction.placeId];
+      if (fromAdd) {
+        router.push(`/place/${fromAdd}`);
+        return;
+      }
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(`/place/${direct}`);
+        return;
+      }
+      const match = matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        router.push(`/place/${match.slug || match.id}`);
+      }
+    },
+    [addedProfiles, catalog, resetSearchSession, router],
+  );
+
   // Dismisses the name overlay and keeps the typed text so a later
   // bar tap can reopen the same list. Finger-drag and map tap use this.
   const closeNameOverlay = () => {
@@ -356,6 +382,10 @@ export function SearchClient() {
   // is the primary join; the exact-name match covers older suggest payloads.
   // Web parity (MESITA-672).
   const handlePickMesita = (prediction: PlacePrediction) => {
+    if (prediction.mesitaSlug ?? prediction.mesitaId) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     const match =
       (prediction.mesitaId
         ? catalog.find((p) => p.id === prediction.mesitaId)
@@ -374,6 +404,26 @@ export function SearchClient() {
   };
 
   const handlePickGoogle = (prediction: PlacePrediction) => {
+    const fromAdd = addedProfiles[prediction.placeId];
+    if (fromAdd) {
+      resetSearchSession();
+      router.push(`/place/${fromAdd}`);
+      return;
+    }
+    if (addStates[prediction.placeId] === 'added') {
+      const match =
+        catalog.find((p) => p.google_place_id === prediction.placeId) ??
+        matchPredictionToPlace(prediction, catalog);
+      if (match) {
+        resetSearchSession();
+        router.push(`/place/${match.slug || match.id}`);
+        return;
+      }
+    }
+    if (predictionOnMesita(prediction)) {
+      openMesitaProfileFromPrediction(prediction);
+      return;
+    }
     setPreview(prediction);
     setPreviewOpen(true);
     resetSearchSession();
@@ -406,7 +456,7 @@ export function SearchClient() {
     const action = overlayPinDecision({
       selectedId,
       pinId: pin.id,
-      googleOnly: prediction?.status === 'not_in_mesita',
+      googleOnly: prediction ? !predictionOnMesita(prediction) : false,
       inCatalog: Boolean(place),
       hasOverlay: Boolean(prediction),
     });
@@ -444,8 +494,18 @@ export function SearchClient() {
     setAddStates((s) => ({ ...s, [prediction.placeId]: 'adding' }));
     void (async () => {
       try {
-        await apiCreateProject(supabase, { placeId: prediction.placeId });
+        const created = await apiCreateProject(supabase, {
+          placeId: prediction.placeId,
+        });
+        const dest = created.place.slug || created.place.id;
         setAddStates((s) => ({ ...s, [prediction.placeId]: 'added' }));
+        if (dest) {
+          setAddedProfiles((s) => ({
+            ...s,
+            [prediction.placeId]: dest,
+          }));
+          router.push(`/place/${dest}`);
+        }
       } catch (err) {
         setAddStates((s) => {
           const next = { ...s };

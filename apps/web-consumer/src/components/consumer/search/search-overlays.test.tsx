@@ -890,3 +890,18 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
     expect(read("SearchRailCard.tsx")).not.toContain("places.googleapis.com");
   });
 });
+
+describe("on-Mesita places open the profile modal, not GooglePlaceSheet", () => {
+  it("routes predictions with Mesita identity to the profile and skips the add sheet", () => {
+    const client = read("SearchClient.tsx");
+    const panel = read("SearchResultsPanel.tsx");
+    expect(client).toContain("predictionOnMesita");
+    expect(client).toContain("openMesitaProfileFromPrediction");
+    expect(client).toContain("catalogPlaceOnMesita");
+    expect(client).toContain("addedProfiles");
+    expect(panel).toContain("predictionOnMesita(p) ? onPickMesita : onPickGoogle");
+    expect(client).toMatch(
+      /if \(predictionOnMesita\(prediction\)\) \{\s*openMesitaProfileFromPrediction/,
+    );
+  });
+});
