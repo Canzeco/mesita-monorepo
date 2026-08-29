@@ -99,7 +99,9 @@ Deno.serve(async (req) => {
         .maybeSingle(),
       admin
         .from("places")
-        .select("enrichment, mesita_pay_enabled, yums_enabled")
+        .select(
+          "enrichment, mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled",
+        )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
     ]);
@@ -135,13 +137,19 @@ Deno.serve(async (req) => {
     // The three pipeline facts of Status ride along, admin-only and computed
     // (never stored): seeded · listed · enriched. The other three the box
     // derives itself — partner and promoting from columns already on this row,
-    // verified from admin-web-get-place-verification. The two settlement
-    // acceptance INTENT BITS (mesita_pay_enabled · yums_enabled) ride the
-    // same places-direct side-read as enrichment — never through profiles
-    // (the view is anon-readable) — and are forwarded only when the read
-    // returned a boolean, so a failed read renders "?" not a false "no".
+    // verified from admin-web-get-place-verification. The four acceptance
+    // INTENT BITS (mesita_pay · yums · pickup · delivery, the Partner tab's
+    // rail toggles) ride the same places-direct side-read as enrichment —
+    // never through profiles (the view is anon-readable) — and are forwarded
+    // only when the read returned a boolean, so a failed read renders "?"
+    // not a false "no".
     const acceptanceRow = (enrichmentRow.data ?? null) as
-      | { mesita_pay_enabled?: unknown; yums_enabled?: unknown }
+      | {
+        mesita_pay_enabled?: unknown;
+        yums_enabled?: unknown;
+        pickup_orders_enabled?: unknown;
+        delivery_orders_enabled?: unknown;
+      }
       | null;
     places = [
       {
@@ -165,6 +173,12 @@ Deno.serve(async (req) => {
           : {}),
         ...(typeof acceptanceRow?.yums_enabled === "boolean"
           ? { yums_enabled: acceptanceRow.yums_enabled }
+          : {}),
+        ...(typeof acceptanceRow?.pickup_orders_enabled === "boolean"
+          ? { pickup_orders_enabled: acceptanceRow.pickup_orders_enabled }
+          : {}),
+        ...(typeof acceptanceRow?.delivery_orders_enabled === "boolean"
+          ? { delivery_orders_enabled: acceptanceRow.delivery_orders_enabled }
           : {}),
       } as unknown as PlaceRow,
     ];

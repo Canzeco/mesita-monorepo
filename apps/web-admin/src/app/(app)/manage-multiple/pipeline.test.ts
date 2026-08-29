@@ -50,11 +50,11 @@ describe("the page chrome names the three surfaces", () => {
     expect(edit).toContain("Active");
     expect(edit).toContain("Verified");
     expect(edit).toContain("Partnered");
-    expect(edit).toContain("Promoted");
+    expect(edit).toContain("Visit Rewards");
     expect(edit).toContain('value="active"');
     expect(edit).toContain("setPlaceActive");
     expect(edit).toContain('value="promoting"');
-    expect(edit).toContain("<option value=\"promoting\">Promoted</option>");
+    expect(edit).toContain("<option value=\"promoting\">Visit Rewards</option>");
     expect(edit).not.toContain(">Promoting<");
     expect(edit).not.toContain("EditPanel");
   });

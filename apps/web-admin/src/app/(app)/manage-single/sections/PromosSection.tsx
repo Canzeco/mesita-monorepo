@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Image from "next/image";
 import {
   BookOpen,
@@ -19,7 +19,16 @@ import {
   type StrategyId,
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
-import { setPlacePlan, setPlaceStrategy, type AdminPlace } from "../actions";
+import {
+  setPlacePlan,
+  setPlaceRails,
+  setPlaceStrategy,
+  type AdminPlace,
+  type PlaceRails,
+} from "../actions";
+import { PROMOTION_SCORE_MAX, promotionScore } from "@/lib/business/promotion-score";
+import { OPERATOR_PROMOTING_LABEL } from "@/lib/status-vocabulary";
+import { placeOperatorPromotingLevel } from "./StatusCard";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
@@ -37,13 +46,19 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Partner tab — three boxes:
-//   1. Tutorial — join, pick a strategy, honor guest checks. Strikes ladder.
-//   2. Partnership — MX$1,000/month is the subscription. Stripe-look mock
+// Admin Partner tab — four boxes (Pato gate 2026-08-29):
+//   1. Tutorial — join, pick Visit Rewards, honor guest checks. Strikes.
+//   2. Promos — the promotion PROGRESS BAR ("Promos" names the bar): the
+//      0–7 score summing what the place offers, its components as rows.
+//      Partnership is the first step; the four rail rows are LIVE TOGGLES
+//      (admin-web-set-place-rails); Mesita Capital is a locked Soon row.
+//      Display-only — never a discovery input; rank is never for sale.
+//   3. Partnership — MX$1,000/month is the subscription. Stripe-look mock
 //      Join writes plan=pro at Zero (admin-web-set-plan, no charge).
 //      Strategy unlocks after. Lifecycle rail, status pill, drop.
-//   3. Promos — Zero · Conservative · Aggressive. Give and placement are a
-//      Low · Mid · High word ladder. Dominant is not a picker option.
+//   4. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
+//      placement are a Low · Mid · High word ladder. Dominant is not a
+//      picker option. (Never called "Promos" — that names the bar.)
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -153,6 +168,8 @@ export function PromosSection({
   const [dropOpen, setDropOpen] = useState(false);
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [railBusy, setRailBusy] = useState<keyof PlaceRails | null>(null);
+  const [railError, setRailError] = useState<string | null>(null);
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
@@ -225,6 +242,39 @@ export function PromosSection({
     });
   };
 
+  // Rail toggles — optimistic per-toggle with revert, mirroring the strategy
+  // switch. One rail writes at a time; the response's post-write truth is
+  // merged so a concurrent flip elsewhere cannot leave a stale bit.
+  const RAIL_COLUMN = {
+    mesita_pay: "mesita_pay_enabled",
+    yums: "yums_enabled",
+    pickup: "pickup_orders_enabled",
+    delivery: "delivery_orders_enabled",
+  } as const;
+
+  const commitRail = async (key: keyof PlaceRails, next: boolean) => {
+    if (railBusy) return;
+    const prev = v;
+    const optimistic: AdminPlace = { ...v, [RAIL_COLUMN[key]]: next };
+    applyPlace(optimistic);
+    setRailBusy(key);
+    setRailError(null);
+    const r = await setPlaceRails(prev.id, { [key]: next });
+    setRailBusy(null);
+    if (!r.ok) {
+      revertPlace(prev);
+      setRailError(r.error);
+      return;
+    }
+    applyPlace({
+      ...optimistic,
+      mesita_pay_enabled: r.data.mesita_pay,
+      yums_enabled: r.data.yums,
+      pickup_orders_enabled: r.data.pickup,
+      delivery_orders_enabled: r.data.delivery,
+    });
+  };
+
   const onCardOpen = (id: StrategyId) => {
     setModalId(id);
   };
@@ -244,6 +294,14 @@ export function PromosSection({
     <div className="flex flex-col gap-4">
       <TutorialBox currency={v.currency} />
 
+      <PromosBar
+        place={v}
+        member={member}
+        railBusy={railBusy}
+        railError={railError}
+        onToggle={(key, next) => void commitRail(key, next)}
+      />
+
       <MembershipBox
         place={v}
         pillState={pillState}
@@ -259,10 +317,10 @@ export function PromosSection({
       />
 
       <SectionCard
-        icon={<TrendingUp className="h-4 w-4" />}
-        tint="violet"
-        title="Promos"
-        subtitle="Visit ladder only — orders and prepaid stay off."
+        icon={<Percent className="h-4 w-4" />}
+        tint="amber"
+        title="Visit Rewards"
+        subtitle="Zero · Conservative · Aggressive — orders and prepaid stay off."
         action={
           switchPending ? (
             <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
@@ -560,13 +618,14 @@ function TutorialBox({ currency }: { currency: string | null }) {
       icon={<BookOpen className="h-4 w-4" />}
       tint="sky"
       title="Tutorial"
-      subtitle="Join, pick a strategy, honor guest checks."
+      subtitle="Join, pick Visit Rewards, honor guest checks."
     >
       <div className="mt-4 flex flex-col gap-4">
         <Step n={1} title="Join the partnership">
-          {price}/month — one membership, then pick a strategy freely.
+          {price}/month — one membership, then pick Visit Rewards freely. Every
+          offer you add moves the Promos bar.
         </Step>
-        <Step n={2} title="Pick a strategy">
+        <Step n={2} title="Pick Visit Rewards">
           Zero · Conservative · Aggressive. Give and placement are Low · Mid ·
           High. Rank is never for sale.
         </Step>
@@ -607,7 +666,258 @@ function TutorialBox({ currency }: { currency: string | null }) {
   );
 }
 
-// ─── Box 2 · Partnership ───────────────────────────────────────────────────
+// ─── Box 2 · Promos — the promotion progress bar ───────────────────────────
+//
+// "Promos" names the BAR (Pato, 2026-08-29 — never the strategy tiles). The
+// score is the shared 0–7 derivation (promotion-score.ts twins): Partnership
+// +1 · Visit Rewards +0/1/2 · each accepted rail +1. Components render as
+// rows; the four rail rows are live toggles writing the acceptance intent
+// bits through admin-web-set-place-rails. Engines still gate each rail — a
+// toggle records what the place OFFERS, and honest row copy says so.
+// Display-only: the score never feeds discovery. Rank is never for sale.
+
+const RAIL_ROWS: readonly {
+  key: keyof PlaceRails;
+  label: string;
+  detail: string;
+}[] = [
+  {
+    key: "mesita_pay",
+    label: "Accept Mesita Pay",
+    detail: "Guests pay the bill by card inside Mesita. The rail ships later — the toggle records the offer.",
+  },
+  {
+    key: "yums",
+    label: "Accept Mesita Yums",
+    detail: "Yums settle as a bill discount. The Credits engine ships later.",
+  },
+  {
+    key: "pickup",
+    label: "Pickup Orders",
+    detail: "Pickup through Mesita when the order rail ships.",
+  },
+  {
+    key: "delivery",
+    label: "Delivery Orders",
+    detail: "Delivery through Mesita when the order rail ships.",
+  },
+];
+
+function PromosBar({
+  place,
+  member,
+  railBusy,
+  railError,
+  onToggle,
+}: {
+  place: AdminPlace;
+  member: boolean;
+  railBusy: keyof PlaceRails | null;
+  railError: string | null;
+  onToggle: (key: keyof PlaceRails, next: boolean) => void;
+}) {
+  const level = placeOperatorPromotingLevel(place);
+  const rails: Record<keyof PlaceRails, boolean> = {
+    mesita_pay: place.mesita_pay_enabled === true,
+    yums: place.yums_enabled === true,
+    pickup: place.pickup_orders_enabled === true,
+    delivery: place.delivery_orders_enabled === true,
+  };
+  const score = promotionScore({
+    partner: member,
+    visitRewardsLevel: level,
+    mesitaPay: rails.mesita_pay,
+    yums: rails.yums,
+    pickup: rails.pickup,
+    delivery: rails.delivery,
+  });
+
+  return (
+    <SectionCard
+      icon={<TrendingUp className="h-4 w-4" />}
+      tint="violet"
+      title="Promos"
+      subtitle="The more you offer, the better the promotion."
+      action={
+        <span className="type-label text-foreground font-semibold tabular-nums">
+          {score} / {PROMOTION_SCORE_MAX}
+        </span>
+      }
+    >
+      <div
+        className="mt-4 flex gap-1"
+        role="img"
+        aria-label={`Promotion ${score} of ${PROMOTION_SCORE_MAX}`}
+      >
+        {Array.from({ length: PROMOTION_SCORE_MAX }, (_, i) => (
+          <span
+            key={i}
+            className={cx(
+              "h-2 flex-1 rounded-full transition-colors",
+              i < score ? "bg-violet-500" : "bg-muted",
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="divide-border/60 mt-2 flex flex-col divide-y">
+        <BarRow
+          label="Partnership Membership"
+          detail="The first step — join in the Partnership box below."
+          points={member ? "+1" : "0"}
+          earned={member}
+          control={
+            <span
+              className={cx(
+                "inline-flex items-center rounded-full px-2 py-0.5 type-label font-semibold",
+                member
+                  ? "bg-green-500/10 text-green-700"
+                  : "text-muted-foreground bg-muted",
+              )}
+            >
+              {member ? "Partner" : "Not yet"}
+            </span>
+          }
+        />
+        <BarRow
+          label="Visit Rewards"
+          detail="Zero · Conservative · Aggressive — pick a level below."
+          points={`+${level}`}
+          earned={level > 0}
+          control={
+            <span
+              className={cx(
+                "inline-flex items-center rounded-full px-2 py-0.5 type-label font-semibold",
+                level > 0
+                  ? "bg-green-500/10 text-green-700"
+                  : "text-muted-foreground bg-muted",
+              )}
+            >
+              {OPERATOR_PROMOTING_LABEL[level]}
+            </span>
+          }
+        />
+        {RAIL_ROWS.map((row) => (
+          <BarRow
+            key={row.key}
+            label={row.label}
+            detail={row.detail}
+            points={rails[row.key] ? "+1" : "0"}
+            earned={rails[row.key]}
+            control={
+              <RailToggle
+                on={rails[row.key]}
+                busy={railBusy === row.key}
+                disabled={railBusy !== null && railBusy !== row.key}
+                label={row.label}
+                onChange={(next) => onToggle(row.key, next)}
+              />
+            }
+          />
+        ))}
+        <BarRow
+          label="Mesita Capital"
+          detail="Working-capital advances — a future stage raises the bar."
+          points="—"
+          earned={false}
+          control={
+            <span className="text-muted-foreground bg-muted inline-flex items-center rounded-full px-2 py-0.5 type-label font-semibold">
+              Soon
+            </span>
+          }
+        />
+      </div>
+
+      <div aria-live="polite">
+        {railError && (
+          <div className="mt-3">
+            <ErrorNote message={railError} />
+          </div>
+        )}
+      </div>
+
+      <p className="text-muted-foreground mt-3 text-xs leading-snug">
+        A display score for oversight — it never buys rank. Each rail goes
+        live with its engine; the toggles record what the place offers.
+      </p>
+    </SectionCard>
+  );
+}
+
+function BarRow({
+  label,
+  detail,
+  points,
+  earned,
+  control,
+}: {
+  label: string;
+  detail: string;
+  points: string;
+  earned: boolean;
+  control?: ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs leading-snug">{detail}</p>
+      </div>
+      <span
+        className={cx(
+          "type-label w-6 shrink-0 text-right font-semibold tabular-nums",
+          earned ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
+        {points}
+      </span>
+      {control}
+    </div>
+  );
+}
+
+function RailToggle({
+  on,
+  busy,
+  disabled,
+  label,
+  onChange,
+}: {
+  on: boolean;
+  busy: boolean;
+  disabled: boolean;
+  label: string;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={busy || disabled}
+      onClick={() => onChange(!on)}
+      className={cx(
+        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors",
+        on ? "bg-secondary" : "bg-muted-foreground/25",
+        (busy || disabled) && "cursor-default opacity-60",
+      )}
+    >
+      <span
+        className={cx(
+          "bg-background inline-flex h-5 w-5 transform items-center justify-center rounded-full shadow transition-transform",
+          on ? "translate-x-[22px]" : "translate-x-0.5",
+        )}
+      >
+        {busy && (
+          <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+        )}
+      </span>
+    </button>
+  );
+}
+
+// ─── Box 3 · Partnership ───────────────────────────────────────────────────
 
 function MembershipBox({
   place,

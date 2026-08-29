@@ -35,15 +35,27 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("is three boxes — Tutorial, Partnership, Promos", () => {
+  it("is four boxes — Tutorial, Promos (the bar), Partnership, Visit Rewards", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
     );
     expect(src).toMatch(/title="Tutorial"/);
     expect(src).toMatch(/title="Partnership"/);
+    // "Promos" names the PROGRESS BAR (Pato 2026-08-29); the strategy tiles
+    // box is "Visit Rewards" — never the other way round.
     expect(src).toMatch(/title="Promos"/);
-    expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
+    expect(src).toMatch(/title="Visit Rewards"/);
+    expect((src.match(/<SectionCard/g) ?? []).length).toBe(4);
+    // The bar sums Partnership + Visit Rewards + the four rail toggles, with
+    // Mesita Capital as a locked Soon row; the score twin caps it.
+    expect(src).toMatch(/PromosBar/);
+    expect(src).toMatch(/promotionScore\(/);
+    expect(src).toMatch(/PROMOTION_SCORE_MAX/);
+    expect(src).toMatch(/RailToggle/);
+    expect(src).toMatch(/setPlaceRails/);
+    expect(src).toMatch(/Mesita Capital/);
+    expect(src).toMatch(/never buys rank/);
     expect(src).not.toMatch(/title="Mesita Partnership"/);
     expect(src).not.toMatch(/title="Visit Promotions"/);
     expect(src).toMatch(/pickerStrategies/);

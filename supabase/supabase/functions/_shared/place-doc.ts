@@ -187,18 +187,26 @@ export type PlaceRow = {
   orders_enabled: boolean;
   /** Description/Actions — LLM: this kind of place likely takes reservations. */
   reservations_enabled: boolean;
-  /** Settlement acceptance INTENT BIT (Pato gate 2026-08-29): cleared to
-   *  accept Mesita Pay (the in-Mesita card rail) when it goes live. The
-   *  future gateway engine ANDs this with the global visits_config.payCard
-   *  switch and Stripe capability — never a cache of engine state. NOT
-   *  patchable (see the Omit below): no writer exists yet, and when one does
-   *  it must target `table: "places"` — the profiles_update trigger
-   *  enumerates its SET list and silently drops unknown columns. */
+  /** Settlement acceptance INTENT BIT (Pato gates 2026-08-29): the operator's
+   *  "this place accepts Mesita Pay" toggle (admin-web-set-place-rails, the
+   *  Partner tab). The future gateway engine ANDs this with the global
+   *  visits_config.payCard switch and Stripe capability — never a cache of
+   *  engine state. PLACES-ONLY (see PLACE_INTENT_BIT_KEYS): the
+   *  profiles_update trigger enumerates its SET list and silently drops
+   *  columns it predates, so the profiles door refuses these instead of
+   *  no-opping them. */
   mesita_pay_enabled: boolean;
   /** Same contract for Yums (Mesita Credits): cleared to accept Yums when
    *  Credits land. Engine ANDs with visits_config.payYums; Yums settles as a
    *  bill REDUCTION, never a payment method (🧾 Checkout §B / 🪙 Yums). */
   yums_enabled: boolean;
+  /** Order-rail acceptance INTENT BITS (Pato gate 2026-08-29, Promotion
+   *  score): the operator's pickup / delivery offering toggles. Distinct from
+   *  content-derived `orders_enabled` (the guest Order CTA, menu-driven) —
+   *  these say what the place WANTS to offer once the order rail ships. Same
+   *  places-only write rule as the settlement bits above. */
+  pickup_orders_enabled: boolean;
+  delivery_orders_enabled: boolean;
 };
 
 export const PLACE_PATCH_KEYS = [
@@ -284,22 +292,23 @@ export const PLACE_PATCH_KEYS = [
   "business_status_at",
   "orders_enabled",
   "reservations_enabled",
-  // mesita_pay_enabled / yums_enabled are DELIBERATELY absent: acceptance
-  // intent bits with no engine, rejected at this door ("unknown place field")
-  // until the gateway / Credits PRs legalize them for their own writers.
+  // The four acceptance intent bits, legalized for admin-web-set-place-rails
+  // (Pato gate 2026-08-29, the Partner tab toggles + Promotion score). They
+  // are PLACES-ONLY patch keys — see PLACE_INTENT_BIT_KEYS below.
+  "mesita_pay_enabled",
+  "yums_enabled",
+  "pickup_orders_enabled",
+  "delivery_orders_enabled",
 ] as const satisfies readonly (keyof Omit<
   PlaceRow,
-  "id" | "created_at" | "updated_at" | "name" | "mesita_pay_enabled" | "yums_enabled"
+  "id" | "created_at" | "updated_at" | "name"
 >)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
 // CONSUMER_PATCH_KEYS uses (borrowed from PULSE_PIECE_META, MESITA-1222): a
 // field added to PlaceRow and forgotten here fails the build, not a review.
 type _MissingFromPlacePatchKeys = Exclude<
-  keyof Omit<
-    PlaceRow,
-    "id" | "created_at" | "updated_at" | "name" | "mesita_pay_enabled" | "yums_enabled"
-  >,
+  keyof Omit<PlaceRow, "id" | "created_at" | "updated_at" | "name">,
   typeof PLACE_PATCH_KEYS[number]
 >;
 const _assertNoMissingPlaceKeys: _MissingFromPlacePatchKeys extends never ? true
@@ -487,10 +496,34 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",
 ]);
+// NOT NULL boolean columns, default false. orders_enabled /
+// reservations_enabled joined PLACE_PATCH_KEYS in #1395 but never got a
+// checkPlaceField branch — every patch carrying them fell through to
+// "unknown place field" and the WHOLE patch was rejected (latent until the
+// 2026-08-29 EF redeploy sweep put the door in front of the live contents
+// publish; caught and fixed the same day). The four intent bits ride the
+// same branch.
+const PLACE_BOOLEAN_KEYS = new Set<string>([
+  "orders_enabled", "reservations_enabled",
+  "mesita_pay_enabled", "yums_enabled",
+  "pickup_orders_enabled", "delivery_orders_enabled",
+]);
+// Acceptance intent bits are PLACES-ONLY: the profiles view's INSTEAD OF
+// trigger (profiles_update) enumerates its SET list and predates these
+// columns, so a profiles-routed patch would silently drop them — the door
+// refuses loudly instead. Their one writer (admin-web-set-place-rails)
+// targets `table: "places"`.
+const PLACE_INTENT_BIT_KEYS = new Set<string>([
+  "mesita_pay_enabled", "yums_enabled",
+  "pickup_orders_enabled", "delivery_orders_enabled",
+]);
 const BUSINESS_STATUS_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 const ENRICH_MODE_VALUES = new Set(["full", "analysis", "contents"]);
 
 function checkPlaceField(key: string, v: unknown): string | null {
+  if (PLACE_BOOLEAN_KEYS.has(key)) {
+    return isBoolean(v) ? null : `${key} must be a boolean`;
+  }
   if (PLACE_PLAIN_STRING_KEYS.has(key)) {
     return isNullableString(v) ? null : `${key} must be a string or null`;
   }
@@ -716,6 +749,15 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
   const raw = input as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
+    // Places-only keys: the profiles_update trigger predates these columns
+    // and would silently drop them — refuse loudly (see PLACE_INTENT_BIT_KEYS).
+    if (PLACE_INTENT_BIT_KEYS.has(key)) {
+      return {
+        ok: false,
+        error: `${key} writes through table "places" only — ` +
+          `the profiles trigger would silently drop it`,
+      };
+    }
     const isPlaceKey = (PLACE_PATCH_KEYS as readonly string[]).includes(key);
     const isProjectKey = (PROJECT_PATCH_KEYS as readonly string[]).includes(key);
     if (!isPlaceKey && !isProjectKey) {

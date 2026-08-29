@@ -28,9 +28,9 @@ describe("status vocabulary", () => {
       "Enriching",
       "Verified",
       "Partnered",
-      "Promoted",
+      "Visit Rewards",
       "Mesita Pay",
-      "Accepts Yums",
+      "Mesita Yums",
     ]);
     expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
@@ -66,7 +66,7 @@ describe("status vocabulary", () => {
     expect(statusBoolChip(null)).toBe("?");
   });
 
-  it("Promoted is 0 | 1 | 2 — engine Dominant displays as 2", () => {
+  it("Visit Rewards is 0 | 1 | 2 — engine Dominant displays as 2", () => {
     expect(operatorPromotingLevel(0)).toBe(0);
     expect(operatorPromotingLevel(1)).toBe(1);
     expect(operatorPromotingLevel(2)).toBe(2);

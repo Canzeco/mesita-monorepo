@@ -78,7 +78,7 @@ export function UpdateFields({
         <option value="active">Active</option>
         <option value="verified">Verified</option>
         <option value="partner">Partnered</option>
-        <option value="promoting">Promoted</option>
+        <option value="promoting">Visit Rewards</option>
       </select>
       {fact === "listed" ? (
         <ValueSelect
