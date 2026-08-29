@@ -109,10 +109,11 @@ describe("applyMapFilters", () => {
     expect(
       mapFilterCount(filters({ searchPower: 1, familyKeys: ["restaurants"] })),
     ).toBe(1);
-    expect(mapFilterCount(filters({ resultLimit: 20 }))).toBe(1);
+    expect(mapFilterCount(filters({ resultLimit: 20 }))).toBe(0);
     expect(mapFilterCount(filters({ resultLimit: 40 }))).toBe(1);
-    expect(mapFilterCount(filters({ resultLimit: 60 }))).toBe(0);
-    expect(MAP_FILTER_DEFAULTS.resultLimit).toBe(60);
+    expect(mapFilterCount(filters({ resultLimit: 60 }))).toBe(1);
+    // How many is a cap: the sheet opens at the smallest stop.
+    expect(MAP_FILTER_DEFAULTS.resultLimit).toBe(20);
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("statuses");
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
@@ -235,7 +236,8 @@ describe("How many — 20 / 40 / 60", () => {
     expect(clampResultLimit(49)).toBe(40);
     expect(clampResultLimit(51)).toBe(60);
     expect(clampResultLimit(99)).toBe(60);
-    expect(clampResultLimit(undefined)).toBe(60);
+    // Garbage falls back to the default stop, which is the smallest.
+    expect(clampResultLimit(undefined)).toBe(20);
   });
 
   it("keeps the closest N after a distance sort", () => {

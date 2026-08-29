@@ -8,7 +8,8 @@ import {
 import { cn } from "@/lib/utils";
 
 // How many — exclusive 20 / 40 / 60. Separate from the Places Venn.
-// Closest N after scope + Super. Nothing in between.
+// Closest N after scope + Super. Nothing in between. It is the MAX, so
+// the sheet opens at 20 and the guest asks for more.
 
 export function SearchResultLimit({
   limit,

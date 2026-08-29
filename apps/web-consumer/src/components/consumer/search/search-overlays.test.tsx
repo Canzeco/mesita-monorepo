@@ -144,7 +144,7 @@ describe("SearchMapFilters", () => {
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
     expect(html.indexOf("Mesita Places")).toBeLessThan(html.indexOf("How many"));
     expect(html).toContain("How many");
-    expect(html).toContain("Closest 60 places.");
+    expect(html).toContain("Closest 20 places.");
     expect(html).toContain("role=\"radiogroup\"");
     // TWO sets only — Partners is a paint, never a scope.
     expect(html).toContain("Mesita Places");
@@ -165,7 +165,7 @@ describe("SearchMapFilters", () => {
       'aria-checked="true" aria-label="Mesita Places only"',
     );
     expect(html).toContain(
-      'aria-checked="true" aria-label="Closest 60 places"',
+      'aria-checked="true" aria-label="Closest 20 places"',
     );
     expect(html.match(/role="radio"/g)?.length).toBe(5);
     expect(html).not.toContain('type="range"');
@@ -196,6 +196,9 @@ describe("SearchPlacesScope", () => {
     expect(src).not.toContain("annulusPath");
     expect(src).not.toContain("VENN_LAYERS");
     expect(src).toContain("Partners is a paint, never a scope");
+    // Selected is a FILL — two white pills are not a selection.
+    expect(src).toContain("bg-foreground text-background");
+    expect(src).not.toContain("bg-transparent");
 
     const html = renderToStaticMarkup(
       <SearchPlacesScope power={1} onPower={() => {}} />,
