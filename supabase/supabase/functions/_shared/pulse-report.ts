@@ -51,6 +51,7 @@ import {
   type PulseStep,
 } from "./pulse-pieces.ts";
 import {
+  foldFunctionStateMap,
   pulseBlockedAtFromMap,
   pulseHighWaterFromMap,
   type EnrichmentMap,
@@ -160,7 +161,10 @@ async function mergeEnrichmentMap(
   }
   const current = (data?.enrichment as EnrichmentMap | null | undefined) ??
     { functions: {}, highWater: 0, blockedAt: null };
-  const functions: FunctionStateMap = { ...current.functions };
+  // Fold legacy keys first (renamed `semantic` → `embedding`, pre-merge
+  // extras) — recomputing over a raw legacy map would rewrite a stored 10
+  // as blocked-at-Embedding the moment any other piece stamps.
+  const functions: FunctionStateMap = foldFunctionStateMap(current.functions);
   const now = new Date().toISOString();
   for (const [key, outcome] of Object.entries(stamped)) {
     if (!outcome) continue;

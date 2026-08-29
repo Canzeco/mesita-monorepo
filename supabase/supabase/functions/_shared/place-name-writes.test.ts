@@ -163,7 +163,11 @@ Deno.test("the Intaker never writes mesita_name", async () => {
     if (!/enrich|cron-enrich/.test(path)) continue;
     const src = stripLineComments(text);
     // Deleting the key off `gathered` is the correct defensive move, not a write.
-    const writes = src.replace(/delete\s+\w+\.mesita_name\s*;?/g, "");
+    let writes = src.replace(/delete\s+\w+\.mesita_name\s*;?/g, "");
+    // §8.4 v3: the Description function INFERS a Mesita Name, but only the
+    // gated door (_shared/mesita-name-door.ts, gate D2) may WRITE it. A JSON
+    // schema/type declaration of the inferred field is not a write.
+    writes = writes.replace(/mesita_name:\s*\{\s*type:/g, "");
     if (/mesita_name\s*:/.test(writes)) {
       offenders.push(`${path} — enrichment path sets mesita_name`);
     }
@@ -171,8 +175,10 @@ Deno.test("the Intaker never writes mesita_name", async () => {
   assertEquals(
     offenders,
     [],
-    `mesita_name is the operator's label. The Intaker refreshing it would ` +
-      `reintroduce the clobber that sticky-sync caused.\n` + offenders.join("\n"),
+    `mesita_name may only be written through _shared/mesita-name-door.ts ` +
+      `(gate D2: NULL / google-copy / the door's own last value). A raw write ` +
+      `in an enrich path would reintroduce the sticky-sync clobber.\n` +
+      offenders.join("\n"),
   );
 });
 

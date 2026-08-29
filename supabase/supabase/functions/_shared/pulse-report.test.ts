@@ -121,7 +121,7 @@ Deno.test("reportPulsePieces: a failed piece lowers highWater and sets blockedAt
   assertEquals(enrichment.blockedAt, { key: "links", index: 4, status: "failed" });
 });
 
-Deno.test("reportPulsePieces: Semantics at 10 cannot skip a gap", async () => {
+Deno.test("reportPulsePieces: Embedding at 10 cannot skip a gap", async () => {
   const seeded: EnrichmentMap = {
     functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
@@ -129,11 +129,35 @@ Deno.test("reportPulsePieces: Semantics at 10 cannot skip a gap", async () => {
   };
   const { admin, placeUpdates } = fakeAdmin(seeded);
   await reportPulsePieces(admin, "place-1", {
-    semantic: pieceDone("Semantic Name and Summary written and embedded."),
+    embedding: pieceDone("Mesita Name and Semantic Summary vectors written."),
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
-  assertEquals(enrichment.functions.semantic?.status, "completed");
+  assertEquals(enrichment.functions.embedding?.status, "completed");
   assertEquals(enrichment.highWater, 1, "function 10 cannot skip 3–9");
+});
+
+Deno.test("mergeEnrichmentMap folds a legacy `semantic` 10 — no degrade on the next stamp", async () => {
+  // §8.4 v3 regression guard: all pre-rename places hold functions.semantic
+  // with highWater 10. Any later stamp (here: a pulse refresh) must keep
+  // them at 10 under the new `embedding` key, never rewrite blocked-at-10.
+  const nine = ["pulse","details","serp","links","social","images","menu","reviews","description"] as const;
+  const functions: Record<string, { status: "completed"; at: string; detail: null }> = {};
+  for (const k of nine) functions[k] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: null };
+  functions.semantic = { status: "completed", at: "2026-08-23T00:00:00Z", detail: null };
+  const seeded = {
+    functions,
+    highWater: 10,
+    blockedAt: null,
+  } as unknown as EnrichmentMap;
+  const { admin, placeUpdates } = fakeAdmin(seeded);
+  await reportPulsePieces(admin, "place-1", {
+    pulse: pieceDone("refreshed"),
+  });
+  const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
+  assertEquals(enrichment.highWater, 10);
+  assertEquals(enrichment.blockedAt, null);
+  assertEquals(enrichment.functions.embedding?.status, "completed");
+  assertEquals("semantic" in enrichment.functions, false);
 });
 
 Deno.test("reportPulsePieces: an unknown key is silently dropped, same as the event log — no place update at all if nothing else was stamped", async () => {

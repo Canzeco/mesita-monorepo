@@ -127,7 +127,7 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 //   STATUSES (9)  seven bools + Requested 0…n + Promoted 0|1|2. Compact
 //                 line still names the true facts; Promoted here is the
 //                 live-discount yes. Requested in this feed is count > 0.
-//   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
+//   INTAKE (11)   0. Seed … 10. Embedding — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
 export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
@@ -195,14 +195,18 @@ export function readStatusFacts(
   };
 }
 
-function semanticOn(facts: PlaceStatusFacts): boolean {
+// Function 10 is `embedding` (renamed from `semantic`, §8.4). Events are
+// append-only history: old payloads stamp `semantic`, and pre-merge ones
+// stamp `name` + `summary` — all fold into the one Embedding chip.
+function embeddingOn(facts: PlaceStatusFacts): boolean {
+  if (facts.functions.embedding === true) return true;
   if (facts.functions.semantic === true) return true;
   return facts.functions.name === true && facts.functions.summary === true;
 }
 
 function fnOn(facts: PlaceStatusFacts, key: string): boolean {
   if (key === "seed") return facts.seeded;
-  if (key === "semantic") return semanticOn(facts);
+  if (key === "embedding") return embeddingOn(facts);
   return facts.functions[key] === true;
 }
 

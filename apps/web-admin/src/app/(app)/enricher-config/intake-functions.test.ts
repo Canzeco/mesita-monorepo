@@ -10,7 +10,7 @@ import {
 } from "./intake-functions";
 
 describe("intake subfunctions", () => {
-  it("is eleven, Seed through Semantic", () => {
+  it("is eleven, Seed through Embedding", () => {
     expect(INTAKE_SUBFUNCTIONS.map((s) => s.key)).toEqual([
       "seed",
       "pulse",
@@ -22,16 +22,17 @@ describe("intake subfunctions", () => {
       "menu",
       "reviews",
       "description",
-      "semantic",
+      "embedding",
     ]);
   });
 
-  it("Create is 1–4; Enrich is 1–10 — two sequences, not one enum", () => {
+  it("Create is 1–5; Enrich is 1–10 — two sequences, not one enum", () => {
     expect(chipsFor("create").map((c) => c.label)).toEqual([
       "1 Seed",
       "2 Pulse",
       "3 Details",
-      "4 Semantic",
+      "4 Description",
+      "5 Embedding",
     ]);
     expect(chipsFor("enrich").map((c) => c.label)).toEqual([
       "1 Pulse",
@@ -43,17 +44,17 @@ describe("intake subfunctions", () => {
       "7 Menu",
       "8 Reviews",
       "9 Description",
-      "10 Semantic",
+      "10 Embedding",
     ]);
   });
 
-  it("Pulse is 2 on Create and 1 on Enrich; Semantic is 4 and 10", () => {
+  it("Pulse is 2 on Create and 1 on Enrich; Embedding is 5 and 10", () => {
     const create = chipsFor("create").map((c) => c.label);
     const enrich = chipsFor("enrich").map((c) => c.label);
     expect(create[1]).toBe("2 Pulse");
     expect(enrich[0]).toBe("1 Pulse");
-    expect(create[3]).toMatch(/^4 Semantic/);
-    expect(enrich[9]).toMatch(/^10 Semantic/);
+    expect(create[4]).toMatch(/^5 Embedding/);
+    expect(enrich[9]).toMatch(/^10 Embedding/);
     expect(create[0]).toBe("1 Seed");
     expect(create.some((l) => l.startsWith("0 "))).toBe(false);
     expect(create.some((l) => l.startsWith("10 "))).toBe(false);
@@ -72,7 +73,8 @@ describe("intake subfunctions", () => {
     expect(flowTagFor("seed")).toBe("Create");
     expect(flowTagFor("pulse")).toBe("Create + Enrich");
     expect(flowTagFor("menu")).toBe("Enrich");
-    expect(flowTagFor("semantic")).toBe("Create + Enrich");
+    expect(flowTagFor("description")).toBe("Create + Enrich");
+    expect(flowTagFor("embedding")).toBe("Create + Enrich");
   });
 });
 
@@ -96,7 +98,7 @@ describe("Create and Enrich boxes pin live estimates", () => {
     expect(src).not.toContain("FunctionFamily");
     expect(src).not.toContain("12 modules");
     expect(src).not.toContain("Create explained");
-    expect(src).toContain("f-semantic");
+    expect(src).toContain("f-embedding");
     expect(src).not.toContain("id=\"f-name\"");
     expect(src).not.toContain("id=\"f-summary\"");
     expect(src).toMatch(/id="f-seed"\s+index="·"/);
@@ -106,10 +108,11 @@ describe("Create and Enrich boxes pin live estimates", () => {
   });
 });
 
-describe("Name and Summary share Semantic", () => {
+describe("Name and Summary share Embedding", () => {
   it("is one chip, never two Name/Summary pills", () => {
     const names = INTAKE_SUBFUNCTIONS.map((s) => s.name);
-    expect(names).toContain("Semantic");
+    expect(names).toContain("Embedding");
+    expect(names).not.toContain("Semantic");
     expect(names).not.toContain("Name");
     expect(names).not.toContain("Summary");
     expect(names.filter((n) => n === "Name" || n === "Summary")).toEqual([]);

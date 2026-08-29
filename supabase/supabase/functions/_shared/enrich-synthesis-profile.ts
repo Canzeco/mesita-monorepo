@@ -9,6 +9,12 @@ export type ProfileResult = {
   editorial_summary?: string | null;
   /** Canonical Presentation — always English (Mesita core language). */
   description?: string | null;
+  /**
+   * Clean Mesita display name (§8.4 v3): the Google label stripped of chain
+   * suffixes, slogans, and city tags; proper case. NOT applied by
+   * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
+   */
+  mesita_name?: string | null;
   details?: Record<string, unknown> | null;
   popular_times?: unknown[] | null;
 };
