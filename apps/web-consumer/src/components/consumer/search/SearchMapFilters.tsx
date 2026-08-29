@@ -2,7 +2,7 @@
 
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PLACE_FAMILIES } from "@/lib/place-families";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { mapFiltersAreActive } from "@/lib/map-filters-engine";
 import {
   resetMapFilters,
@@ -20,8 +20,11 @@ import { SearchResultLimit } from "./SearchResultLimit";
 // 2026-08-29). There is no Status chip row, Category, or Types axis.
 // Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
 // retired as a scope, kept as the yellow paint. Default is Mesita
-// Places. How many is 20, 40, or 60 — closest N, nothing in between —
-// and it is a CAP, so it opens at 20 (Pato, 2026-08-29).
+// Places. Super Category offers the SEVEN real supers — ❓ Undefined is
+// not an appetite and never a pill here (Pato, 2026-08-29). How many is
+// 20, 40, or 60 — closest N, nothing in between — and it is the CAP the
+// Nearby fetch itself obeys, asked ONCE, here and nowhere in the
+// console. It opens at 20.
 // Distance and time are not map knobs.
 
 export function SearchMapFilters({
@@ -68,7 +71,7 @@ export function SearchMapFilters({
         <div className="flex flex-col gap-2">
           <FilterModule label="Super Category" dense>
             <div className="flex flex-wrap gap-1">
-              {PLACE_FAMILIES.map((family) => (
+              {FILTERABLE_PLACE_FAMILIES.map((family) => (
                 <Pill
                   key={family.key}
                   size="sm"

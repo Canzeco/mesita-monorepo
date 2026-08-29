@@ -2,7 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { DEFAULT_MAP, NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
-  CATALOG_NEARBY_MAX,
+  CATALOG_NEARBY_HARD_MAX,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
   NEARBY_TYPES,
@@ -322,7 +322,7 @@ Deno.test("mergeNearbyCatalog: Google set ignores a far Mesita pool", () => {
     nearbyHit(`near-${i}`, 25.67005 + i * 0.0001, -100.3)
   );
   const got = mergeNearbyCatalog(mesita, google, CENTER, SCOPE_GOOGLE);
-  assertEquals(got.length, CATALOG_NEARBY_MAX);
+  assertEquals(got.length, SCOPE_GOOGLE.googleCount);
   assertEquals(got.every((x) => x.kind === "google"), true);
 });
 
@@ -661,10 +661,15 @@ Deno.test("search power zeros unused lanes and treats Mesita Places as enriched"
   assertEquals(clampSearchPower(1), 1);
   // Legacy wire values fold into the two-set law: old 3 (Google) → 2.
   assertEquals(clampSearchPower(3), 2);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).mesitaCount, DEFAULT_MAP.mesitaCount);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 1).googleCount, 0);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).mesitaCount, DEFAULT_MAP.mesitaCount);
-  assertEquals(lanesForSearchPower(DEFAULT_MAP, 2).googleCount, DEFAULT_MAP.googleCount);
+  // Lane caps are the GUEST's How many, never a console knob.
+  assertEquals(lanesForSearchPower(1, 20), { mesitaCount: 20, googleCount: 0 });
+  assertEquals(lanesForSearchPower(2, 20), { mesitaCount: 20, googleCount: 20 });
+  // Google's own Nearby call tops out at 20 however large How many is.
+  assertEquals(lanesForSearchPower(2, 60), { mesitaCount: 60, googleCount: 20 });
+  assertEquals(lanesForSearchPower(1, 60).googleCount, 0);
+  // Garbage and overshoot clamp to the largest How many stop.
+  assertEquals(lanesForSearchPower(2, 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
+  assertEquals(lanesForSearchPower(1, Number.NaN).mesitaCount, 0);
   assertEquals(isEnrichedListedRow({ content_status: "ready" }), true);
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
   assertEquals(isEnrichedListedRow({ content_status: "queued" }), false);

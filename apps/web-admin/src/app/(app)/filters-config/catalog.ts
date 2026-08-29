@@ -155,13 +155,6 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /**
-   * Closest N when Places scope is Mesita Places (partners included —
-   * Partners are a paint, not a set; Pato 2026-08-29).
-   */
-  mesitaCount: number;
-  /** Closest N when Places scope is Google Places. Inner membership paints. */
-  googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
 
@@ -242,11 +235,6 @@ export function snapMapReloadPair(
   return { km: best.km, sec: best.sec };
 }
 /** Map Places-set caps. Partners/Mesita max 60; Google Nearby max 20. */
-export const MAP_SET_COUNT_MAX = 60;
-export const MAP_GOOGLE_COUNT_MAX = 20;
-export const MAP_LANE_COUNT_MAX = MAP_GOOGLE_COUNT_MAX;
-export const MAP_MESITA_COUNT_DEFAULT = 10;
-export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_PARTNER_COUNT_DEFAULT = 3;
@@ -368,8 +356,6 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
-  mesitaCount: MAP_MESITA_COUNT_DEFAULT,
-  googleCount: MAP_GOOGLE_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
@@ -503,7 +489,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Places scope picks one nested set — Partners ⊂ Mesita Places ⊂ Google Places. Closest N of that set; a smaller membership paints, it does not add a pin. Partners and Mesita never call Nearby. Google is one Nearby Search among enabled categories, nearest N. Max pins = that N, never the sum. Listed pins then Lineup, not distance. Google set stays distance. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Empty Nearby falls back to the Mesita set. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
+    process: "Places scope picks one nested set — Partners ⊂ Mesita Places ⊂ Google Places. Closest N of that set; a smaller membership paints, it does not add a pin. Partners and Mesita never call Nearby. Google is one Nearby Search among enabled categories, nearest N. Max pins = that N, never the sum. N is the guest's How many on the Filters sheet — the console never asks for a count. Listed pins then Lineup, not distance. Google set stays distance. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Empty Nearby falls back to the Mesita set. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -1198,19 +1184,6 @@ export function coerceMap(raw: unknown): MapConfig {
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
-    // Legacy blobs still carry partnerCount — dropped on read (Partners are
-    // a paint, not a set).
-    mesitaCount: Math.round(
-      num(
-        m.mesitaCount ?? m.notPartnerCount,
-        DEFAULT_MAP.mesitaCount,
-        0,
-        MAP_SET_COUNT_MAX,
-      ),
-    ),
-    googleCount: Math.round(
-      num(m.googleCount, DEFAULT_MAP.googleCount, 0, MAP_GOOGLE_COUNT_MAX),
-    ),
     types,
   };
 }

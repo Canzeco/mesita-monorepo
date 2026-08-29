@@ -45,8 +45,12 @@ Deno.test("defaults admit everything and fire every Nearby type", () => {
   );
 });
 
-Deno.test("googleCount 0 skips Nearby even if googleFill is on", () => {
-  assertEquals(mapShouldFillGoogle(true, { ...MAP, googleCount: 0 }), false);
+Deno.test("how many is not an operator gate — only googleFill and types are", () => {
+  // The retired googleCount knob used to be able to silence Nearby.
+  // The operator decides IF Google may be billed; the guest's How many
+  // decides how many come back (Pato, 2026-08-29).
+  assertEquals(mapShouldFillGoogle(true, { ...MAP }), true);
+  assertEquals("googleCount" in MAP, false);
 });
 
 Deno.test("googleFill off or all types off skips Nearby even if the client opts in", () => {

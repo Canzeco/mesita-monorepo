@@ -172,6 +172,9 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
     expect(html).toContain("Bars &amp; Nightlife");
+    expect(html).toContain("Wellness &amp; Beauty");
+    // SEVEN pills — ❓ Undefined is a bookkeeping bucket, not an appetite.
+    expect(html).not.toContain("Undefined");
     expect(html).toContain("Show 4 places");
     expect(html).not.toContain("Not on Mesita");
     expect(html).not.toContain("Created");
@@ -282,9 +285,12 @@ describe("SearchScopeSheet country pills", () => {
 });
 
 describe("Search map catalog auto-reloads after distance and time", () => {
-  it("loads the Map lane cap, not an SSR 200 dump", () => {
+  it("loads the guest's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
-    expect(read("SearchClient.tsx")).toContain("CATALOG_NEARBY_MAX");
+    // How many is asked ONCE, on the Filters sheet — the fetch obeys the
+    // guest's stop, never a console count knob.
+    expect(read("SearchClient.tsx")).toContain("filters.resultLimit");
+    expect(read("SearchClient.tsx")).not.toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
     expect(read("SearchClient.tsx")).toContain("scheduleOrLoad");

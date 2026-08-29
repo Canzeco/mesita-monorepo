@@ -33,7 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
-import { apiFetchNearbyCatalog, CATALOG_NEARBY_MAX } from "@/lib/api/places";
+import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiCreateProject,
   apiSuggestPlaces,
@@ -222,10 +222,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       setCatalogLoading(true);
       setFetchError(null);
       try {
+        // How many is asked ONCE, on the Filters sheet (Pato,
+        // 2026-08-29): it is the cap the fetch itself obeys, so both
+        // lanes and the merged union come back at N. The console has no
+        // count knob left to disagree with.
         const result = await apiFetchNearbyCatalog(
           supabase,
           nextCenter,
-          CATALOG_NEARBY_MAX,
+          filters.resultLimit,
           filters.searchPower,
           filters.familyKeys,
         );
@@ -243,7 +247,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [filters.searchPower, filters.familyKeys, markViewport, supabase],
+    [
+      filters.searchPower,
+      filters.familyKeys,
+      filters.resultLimit,
+      markViewport,
+      supabase,
+    ],
   );
 
   const scheduleOrLoad = useCallback(
@@ -340,9 +350,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     idleRef.current = idle;
   }, [idle]);
 
-  // Places scope and Super Category both change the Nearby engine.
-  // Super pills pick Google includedPrimaryTypes. The query bar
-  // (Fast / Deep Autocomplete) never reads these filters.
+  // Places scope, Super Category and How many all change the Nearby
+  // engine — How many is the fetch cap now, not a client slice. Super
+  // pills pick Google includedPrimaryTypes. The query bar (Fast / Deep
+  // Autocomplete) never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();

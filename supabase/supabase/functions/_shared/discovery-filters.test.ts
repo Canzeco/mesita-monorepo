@@ -332,27 +332,20 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(legacyReload.map.reloadMinKm, 0.5);
   assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
-  assertEquals(clamped.map.mesitaCount, 10);
-  assertEquals(clamped.map.googleCount, 20);
   assertEquals(clamped.map.types.restaurant, false);
   assertEquals(clamped.map.types.bakery, true);
 });
 
-Deno.test("map set caps clamp and default on an old blob", () => {
-  const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.map.mesitaCount, 10);
-  assertEquals(missing.map.googleCount, 20);
-  const clamped = normalizeDiscoveryConfig({
-    map: { partnerCount: 99, mesitaCount: -3, googleCount: 7.8 },
-  });
-  // Legacy partnerCount is dropped on read — Partners are a paint, not a set.
-  assertEquals("partnerCount" in clamped.map, false);
-  assertEquals(clamped.map.mesitaCount, 0);
-  assertEquals(clamped.map.googleCount, 8);
+Deno.test("the console never asks how many — every set cap is dropped on read", () => {
+  // How many is the GUEST's question (Filters sheet), asked once
+  // (Pato, 2026-08-29). A legacy blob carrying the retired knobs must
+  // not resurrect them on the config the EFs read.
   const legacy = normalizeDiscoveryConfig({
-    map: { notPartnerCount: 6 },
+    map: { partnerCount: 99, notPartnerCount: 6, mesitaCount: 12, googleCount: 8 },
   });
-  assertEquals(legacy.map.mesitaCount, 6);
+  for (const dead of ["partnerCount", "notPartnerCount", "mesitaCount", "googleCount"]) {
+    assertEquals(dead in legacy.map, false);
+  }
 });
 
 Deno.test("general.categoryCount defaults to 5 and clamps 0–5", () => {

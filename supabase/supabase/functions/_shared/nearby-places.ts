@@ -1,11 +1,13 @@
 // Map catalog = closest N of the selected Places set, then paint.
 // TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google Places.
 // Partners are not a set — they are Mesita Places painted yellow.
-//   1 Mesita Places — closest mesitaCount listed Mesita (partners +
-//     enriched). No Google Nearby. A partner in that N is painted yellow.
-//   2 Google Places — closest googleCount Nearby hits. A hit that is
+//   1 Mesita Places — the closest N listed Mesita (partners + enriched).
+//     No Google Nearby. A partner in that N is painted yellow.
+//   2 Google Places — the closest N Nearby hits too. A hit that is
 //     Mesita / partner is painted, not added as a second pin. Max pins
-//     = N of that set, never the sum of the knobs.
+//     = N, never the sum of the lanes.
+// N is the GUEST's How many (Pato, 2026-08-29) — the max number is asked
+// once, on the consumer Filters sheet, never again in the console.
 // Empty Nearby (quota skip) falls back to the Mesita set. Power 1
 // never fires Google Nearby. Mesita Places is enriched only. Google
 // maxes a Nearby call at 20; type batteries ride that one call.
@@ -14,10 +16,6 @@ import {
   GOOGLE_PLACES_NEARBY_URL,
   classifyGoogleError,
 } from "./google-places.ts";
-import {
-  DEFAULT_MAP,
-  type MapConfig,
-} from "./discovery-config.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
 import {
   haversineKm,
@@ -26,13 +24,12 @@ import {
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 
-export const MESITA_NEARBY_MAX = DEFAULT_MAP.mesitaCount;
+/** Google maxes one Nearby call at 20 — the API's cap, not a policy. */
 export const GOOGLE_NEARBY_MAX = 20;
-export const CATALOG_NEARBY_MAX = Math.max(
-  DEFAULT_MAP.mesitaCount,
-  DEFAULT_MAP.googleCount,
-);
+/** The guest's largest How many stop. Every lane cap clamps to it. */
 export const CATALOG_NEARBY_HARD_MAX = 60;
+export const MESITA_NEARBY_MAX = CATALOG_NEARBY_HARD_MAX;
+export const CATALOG_NEARBY_MAX = CATALOG_NEARBY_HARD_MAX;
 /** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
  *  a close listed place that is older than 200 newer rows in the city must
  *  still compete for its Partner / Mesita slot so merge can keep the listed pin. */
@@ -274,13 +271,6 @@ export type NearbyMerged<T> =
   | { kind: "listed"; row: T }
   | { kind: "google"; hit: NearbyHit };
 
-export function nearbyLanesFromMap(map: MapConfig): NearbyLaneCaps {
-  return {
-    mesitaCount: map.mesitaCount,
-    googleCount: map.googleCount,
-  };
-}
-
 /**
  * Search power: 1 Mesita Places set · 2 Google Places set. A legacy wire
  * 3 (the old Google set) clamps to 2; the retired Partners power (old 1)
@@ -292,15 +282,25 @@ export function clampSearchPower(value: unknown): 1 | 2 {
   return n >= 2 ? 2 : 1;
 }
 
+/**
+ * Lane caps come from the GUEST's How many, not from a console knob
+ * (Pato, 2026-08-29): the max number is asked once, on the consumer
+ * Filters sheet. Power 1 never fires Google. Google's own Nearby call
+ * tops out at GOOGLE_NEARBY_MAX however large N is, and the caller
+ * slices the merged union back to N, so max pins = N, never the sum.
+ */
 export function lanesForSearchPower(
-  map: MapConfig,
   power: 1 | 2,
+  limit: number,
 ): NearbyLaneCaps {
-  const lanes = nearbyLanesFromMap(map);
-  if (power <= 1) {
-    return { mesitaCount: lanes.mesitaCount, googleCount: 0 };
-  }
-  return lanes;
+  const n = Math.max(
+    0,
+    Math.min(CATALOG_NEARBY_HARD_MAX, Math.round(Number(limit) || 0)),
+  );
+  return {
+    mesitaCount: n,
+    googleCount: power >= 2 ? Math.min(n, GOOGLE_NEARBY_MAX) : 0,
+  };
 }
 
 /** Mesita Places on Search: enriched profile, not a Created stub. */
@@ -351,7 +351,7 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
-  lanes: NearbyLaneCaps = nearbyLanesFromMap(DEFAULT_MAP),
+  lanes: NearbyLaneCaps = lanesForSearchPower(2, CATALOG_NEARBY_HARD_MAX),
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
     haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;
