@@ -376,6 +376,34 @@ function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   return items.slice(0, cap);
 }
 
+/** Listed-not-partner rows. Partners already fill their own Deep lane. */
+export function listedNotPartner<T extends { plan: string | null }>(
+  rows: T[],
+): T[] {
+  return rows.filter((row) => !isPaidPlan(row.plan));
+}
+
+/** Same strip as nearby-places — Autocomplete/Text ids may be `places/ChIJ…`. */
+export function stripPlacesPrefix(id: string): string {
+  return id.startsWith("places/") ? id.slice("places/".length) : id;
+}
+
+/** Which Deep modules fire. Types off skip Google modules. No OpenAI skips Lineup. */
+export function deepModuleFlags(args: {
+  partnerCount: number;
+  mesitaCount: number;
+  googleCount: number;
+  typesOn: boolean;
+  hasOpenai: boolean;
+}): { wantAuto: boolean; wantText: boolean; wantMesita: boolean } {
+  return {
+    wantAuto: args.typesOn,
+    wantText: args.googleCount > 0 && args.typesOn,
+    wantMesita: (args.partnerCount > 0 || args.mesitaCount > 0) &&
+      args.hasOpenai,
+  };
+}
+
 async function runDeepSearch(
   admin: SupabaseClient,
   apiKey: string,
@@ -389,11 +417,14 @@ async function runDeepSearch(
   const deep = name.deep;
   const gate = mapWithTypes(map, deep.types);
   const typesOn = googleTypeFilterForTypes(deep.types) !== "skip";
-  const wantText = deep.googleCount > 0 && typesOn;
-  const wantAuto = typesOn;
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  const wantMesita = (deep.partnerCount > 0 || deep.mesitaCount > 0) &&
-    Boolean(openaiKey);
+  const { wantAuto, wantText, wantMesita } = deepModuleFlags({
+    partnerCount: deep.partnerCount,
+    mesitaCount: deep.mesitaCount,
+    googleCount: deep.googleCount,
+    typesOn,
+    hasOpenai: Boolean(openaiKey),
+  });
 
   const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
     wantAuto
@@ -430,8 +461,15 @@ async function runDeepSearch(
       deep.partnerCount,
     )
     : [];
+  // Mesita lane is listed-not-partner. Partners already have their own lane;
+  // if they fill this cap, merge drops them and listed places never appear.
   const lineupMesita = queryVec && deep.mesitaCount > 0
-    ? takeAboveNameFloor(ranked, queryVec, NAME_MIN_COSINE, deep.mesitaCount)
+    ? takeAboveNameFloor(
+      listedNotPartner(ranked),
+      queryVec,
+      NAME_MIN_COSINE,
+      deep.mesitaCount,
+    )
     : [];
 
   const fromAuto = splitResolvedNameHits(stampedAuto);
@@ -565,7 +603,7 @@ async function fetchAutocomplete(
     .map((s) => s.placePrediction)
     .filter((p): p is NonNullable<typeof p> => !!p)
     .map<LaneItem>((p) => ({
-      placeId: p.placeId,
+      placeId: stripPlacesPrefix(p.placeId),
       mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
       secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
       status: "not_in_mesita",
@@ -645,7 +683,7 @@ async function fetchTextSearch(
     }).eligible;
     if (!eligible) continue;
     out.push({
-      placeId: p.id,
+      placeId: stripPlacesPrefix(p.id),
       mainText: p.displayName.text,
       secondaryText: p.formattedAddress ?? "",
       status: "not_in_mesita",

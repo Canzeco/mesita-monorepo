@@ -2,10 +2,13 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   applyResolvedMesitaName,
+  deepModuleFlags,
   laneDedupeKeys,
+  listedNotPartner,
   membershipTone,
   mergeNameDeepLanes,
   splitResolvedNameHits,
+  stripPlacesPrefix,
   takeFastLane,
   type LaneItem,
 } from "./consumer-search-lane.ts";
@@ -195,6 +198,73 @@ Deno.test("mergeNameDeepLanes: Google lane keeps Text Search order", () => {
     "First-best text",
     "Second-best text",
   ]);
+});
+
+Deno.test("stripPlacesPrefix drops the Places API resource prefix", () => {
+  assertEquals(stripPlacesPrefix("places/ChIJ123"), "ChIJ123");
+  assertEquals(stripPlacesPrefix("ChIJ123"), "ChIJ123");
+});
+
+Deno.test("listedNotPartner drops paid-plan rows from the Mesita Lineup lane", () => {
+  const out = listedNotPartner([
+    { plan: "premium" },
+    { plan: "partner" },
+    { plan: "free" },
+    { plan: null },
+  ]);
+  assertEquals(out.map((r) => r.plan), ["free", null]);
+});
+
+Deno.test("deepModuleFlags: types off skip Autocomplete and Text Search", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: false,
+      hasOpenai: true,
+    }),
+    { wantAuto: false, wantText: false, wantMesita: true },
+  );
+});
+
+Deno.test("deepModuleFlags: googleCount 0 keeps Autocomplete, skips Text Search", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 0,
+      typesOn: true,
+      hasOpenai: true,
+    }),
+    { wantAuto: true, wantText: false, wantMesita: true },
+  );
+});
+
+Deno.test("deepModuleFlags: no OpenAI skips Lineup", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: true,
+      hasOpenai: false,
+    }),
+    { wantAuto: true, wantText: true, wantMesita: false },
+  );
+});
+
+Deno.test("deepModuleFlags: all lanes on fire all three modules", () => {
+  assertEquals(
+    deepModuleFlags({
+      partnerCount: 3,
+      mesitaCount: 3,
+      googleCount: 3,
+      typesOn: true,
+      hasOpenai: true,
+    }),
+    { wantAuto: true, wantText: true, wantMesita: true },
+  );
 });
 
 Deno.test("mergeNameDeepLanes: overflow Mesita never stubs as Google", () => {
