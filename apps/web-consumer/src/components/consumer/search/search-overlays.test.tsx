@@ -136,10 +136,11 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Places scope as a nested Venn and Super Category only", () => {
+  it("shows Super Category above Places scope as a nested Venn", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
+    expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
     expect(html).toContain("Places");
     expect(html).toContain("role=\"radiogroup\"");
     expect(html).toContain("Partners and Mesita Places");

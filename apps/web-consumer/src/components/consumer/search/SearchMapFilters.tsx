@@ -60,13 +60,6 @@ export function SearchMapFilters({
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="flex flex-col gap-3">
-          <FilterModule label="Places">
-            <SearchPlacesScope
-              power={filters.searchPower}
-              onPower={setMapSearchPower}
-            />
-          </FilterModule>
-
           <FilterModule label="Super Category">
             <div className="flex flex-wrap gap-1.5">
               {PLACE_FAMILIES.map((family) => (
@@ -79,6 +72,13 @@ export function SearchMapFilters({
                 </Pill>
               ))}
             </div>
+          </FilterModule>
+
+          <FilterModule label="Places">
+            <SearchPlacesScope
+              power={filters.searchPower}
+              onPower={setMapSearchPower}
+            />
           </FilterModule>
         </div>
       </div>
