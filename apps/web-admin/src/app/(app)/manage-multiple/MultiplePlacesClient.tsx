@@ -1,7 +1,8 @@
 "use client";
 
-// Manage Multiple Places — three boxes. Edit lives on Mesita Intake.
-// Sticky rail so none scroll away. Spend estimates live on Intake Config.
+// Manage Multiple Places — three boxes. Create, Enrich, Update, and
+// Create + Enrich live in one Mesita Intake box. Sticky rail so none
+// scroll away. Spend estimates live on Intake Config.
 
 import { useEffect, useState } from "react";
 import { SectionCard, type Tint } from "@/components/admin-ui/manage";
@@ -94,7 +95,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[2].id}
         tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Create · Enrich · Edit. Same IDs. Re-enrich runs 1–10 from zero."
+        blurb="Create · Enrich · Update · Create + Enrich. Same IDs."
       >
         <IntakeTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>

@@ -61,10 +61,16 @@ export type HeaderFact = {
 /** Same predicate as `_shared/place-status.ts::isPlaceListed` and the
  *  consumer RLS policy: only `active` and `lead` are reachable. */
 export const LISTED_STATUSES = ["active", "lead"] as const;
+export const REQUESTED_STATUSES = ["pending_review", "pending_verification"] as const;
 
 export function listedFromStatus(status: unknown): boolean | "unknown" {
   if (typeof status !== "string" || status === "") return "unknown";
   return (LISTED_STATUSES as readonly string[]).includes(status);
+}
+
+export function requestedFromStatus(status: unknown): boolean | "unknown" {
+  if (typeof status !== "string" || status === "") return "unknown";
+  return (REQUESTED_STATUSES as readonly string[]).includes(status);
 }
 
 /** Stamp `listed` from `status` so a merged write payload cannot keep a
@@ -83,6 +89,7 @@ export function generalHeaderFacts(input: {
   business_status?: string | null;
   /** Live Intaker run. Independent of Enriched (last-completed). */
   enriching?: boolean;
+  requested?: boolean;
   enrich_pulse?: number;
   enrich_pulse_total?: number;
   partner: boolean;
@@ -111,12 +118,15 @@ export function generalHeaderFacts(input: {
   );
   const enriching: boolean | "unknown" =
     typeof input.enriching === "boolean" ? input.enriching : "unknown";
+  const requested: boolean | "unknown" =
+    typeof input.requested === "boolean" ? input.requested : "unknown";
   return [
     { key: "seeded", label: "Created", on: created, chip: statusBoolChip(created) },
     { key: "active", label: "Active", on: active, chip: statusBoolChip(active) },
     { key: "listed", label: "Listed", on: listed, chip: statusBoolChip(listed) },
-    { key: "enriching", label: "Enriching", on: enriching, chip: statusBoolChip(enriching) },
+    { key: "requested", label: "Requested", on: requested, chip: statusBoolChip(requested) },
     { key: "enriched", label: "Enriched", on: enriched, chip: statusBoolChip(enriched) },
+    { key: "enriching", label: "Enriching", on: enriching, chip: statusBoolChip(enriching) },
     {
       key: "verified",
       label: "Verified",
@@ -125,7 +135,7 @@ export function generalHeaderFacts(input: {
     },
     {
       key: "partner",
-      label: "Partner",
+      label: "Partnered",
       on: input.partner,
       chip: statusBoolChip(input.partner),
     },

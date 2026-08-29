@@ -267,7 +267,7 @@ export async function apiFetchPlaceDetail(
       place: Record<string, unknown>;
       tags?: ResolvedTag[];
     }>(client, "consumer-web-get-place", { id: idOrSlug }, "Place not found");
-    return place ? placeRowToDetail(place, tags) : null;
+      return place ? placeRowToDetail(place, tags) : null;
   } catch (err) {
     if (!(err instanceof EFError && err.status === 404)) {
       console.error(
@@ -277,6 +277,26 @@ export async function apiFetchPlaceDetail(
     }
     return null;
   }
+}
+
+export type PlaceRequestResult = {
+  request_count: number;
+  request_threshold: number;
+  requested: boolean;
+  is_profile_ready: boolean;
+  request_lifecycle: "listed" | "requested" | "enriched";
+  enrichment_triggered: boolean;
+};
+
+export async function apiRequestPlace(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<PlaceRequestResult> {
+  return invokeEF<PlaceRequestResult>(
+    client,
+    "consumer-web-request-place",
+    { placeId },
+  );
 }
 export async function apiRecommendDeck(
   client: SupabaseClient,

@@ -2,7 +2,7 @@
 //
 // The ONLY door onto projects.status.
 //
-// Listed is one of the six facts the admin Status box reports — "can a guest
+// Listed is one of the nine facts the admin Status box reports — "can a guest
 // reach this place on Mesita at all" — and until now it was the only one
 // nothing in the product could change. The column was enforced (the consumer
 // RLS policy projects_select_public_visible gates SELECT on it) and

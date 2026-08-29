@@ -3,18 +3,20 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
-//   • Top overlay: floating search bar. Far-right chip is country + location
-//     (two knobs, one sheet). Discovery filters stay on Swipe — they never
-//     cut this map and there is no Adjust control here.
+//   • Top overlay: one row — query pill and filter strip, separated.
+//     Categories + Filters + Now/Visit/scope live on the strip, not in
+//     the pill. The same Discovery filter store as Swipe cuts this catalog.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning never reloads that set — Search here under the bar does,
-//     from the reticle at the canvas center. Tapping a map pin highlights
-//     + scrolls to the matching rail card; tapping a card opens the place
-//     page (Google-only stubs open GooglePlaceSheet).
+//     from the reticle at the canvas center. The rail's center card is
+//     always the selected pin. Scroll picks the center; a pin tap
+//     scrolls that card to center. Tapping the already-selected card
+//     opens the place (Google-only stubs open GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
-//     after the guest stops, Deep Search replaces that list (Partners ·
-//     Mesita · Google). One Google session token per autocomplete session.
+//     after the guest stops, Deep Search replaces that list when it has
+//     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
+//     session token per autocomplete session.
 //     Results hang at content height. No source labels — the colored point
 //     is membership (red Mesita / gray not on Mesita). On-Mesita rows
 //     select the place on the map; Google-only rows open GooglePlaceSheet.
@@ -44,7 +46,18 @@ import {
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
+import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
+import {
+  applyDiscoveryFilters,
+  deriveCategoryOptions,
+  hasDiscoveryPredicates,
+} from "@/lib/discovery-filters-engine";
+import {
+  resetDiscoveryFilters,
+  useDiscoveryFilters,
+} from "@/lib/use-discovery-filters";
 import { SearchBar } from "./SearchBar";
+import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchScopeSheet } from "./SearchScopeSheet";
 import type { AddState } from "./add-state";
 import {
@@ -54,8 +67,10 @@ import {
 } from "./search-catalog-overlays";
 import {
   catalogIsStale,
+  defaultRailSelection,
   matchPredictionToPlace,
   newSessionToken,
+  railCenterIndex,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -129,6 +144,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filters = useDiscoveryFilters();
   const [locating, setLocating] = useState(false);
   const [freshFix, setFreshFix] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -146,10 +163,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
-  const catalog = useMemo(
+  const nearby = useMemo(
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
+  const catalog = useMemo(
+    () => applyDiscoveryFilters(nearby, filters),
+    [nearby, filters],
+  );
+  const categoryOptions = useMemo(
+    () => deriveCategoryOptions(nearby),
+    [nearby],
+  );
+  const filtersCutCatalog =
+    nearby.length > 0 &&
+    catalog.length === 0 &&
+    hasDiscoveryPredicates(filters);
 
   const searchPins = useMemo(
     () => buildSearchMapPins(predictions, catalog),
@@ -281,7 +310,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Fast Search (Autocomplete) while typing. Deep Search replaces the list
-  // after idle. A later Fast for this query never overwrites a Deep hit.
+  // after idle when it has rows. Empty Deep keeps Fast. A later Fast for
+  // this query never overwrites a Deep hit.
   useEffect(() => {
     if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
     let cancelled = false;
@@ -301,14 +331,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (!cancelled && !deepSettled) {
           setPredictions(rows);
           setSearchError(null);
+          // Empty Fast: keep searching so Deep can fill without flashing
+          // "No matches found".
+          if (rows.length > 0) setSearching(false);
         }
       } catch (err) {
         if (!cancelled && !deepSettled) {
           setPredictions([]);
           setSearchError(errMsg(err, "Search failed — try again."));
+          setSearching(false);
         }
-      } finally {
-        if (!cancelled) setSearching(false);
       }
     }, FAST_DEBOUNCE_MS);
 
@@ -323,12 +355,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           "deep",
         );
         if (!cancelled) {
-          deepSettled = true;
-          setPredictions(rows);
-          setSearchError(null);
+          if (rows.length > 0) {
+            deepSettled = true;
+            setPredictions(rows);
+            setSearchError(null);
+          }
+          setSearching(false);
         }
       } catch {
         // Keep Fast results if Deep fails.
+        if (!cancelled) setSearching(false);
       }
     }, DEEP_IDLE_MS);
 
@@ -388,6 +424,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     router.push(placeHref(place.slug || place.id));
   };
 
+  // Center page is selected even before a tap or flick writes state —
+  // first load and a catalog that dropped the old id both light card 0.
+  const railSelectedId = defaultRailSelection(
+    catalog.map((p) => p.id),
+    selectedId,
+  );
+
   const handleSelectPin = (pin: SearchMapPin) => {
     const prediction =
       predictions.find((p) => p.mesitaId === pin.id || p.placeId === pin.id) ??
@@ -397,7 +440,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         : null);
     const place = catalog.find((p) => p.id === pin.id);
     const action = overlayPinDecision({
-      selectedId,
+      selectedId: railSelectedId,
       pinId: pin.id,
       googleOnly: prediction?.status === "not_in_mesita",
       inCatalog: Boolean(place),
@@ -474,8 +517,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * 0.8;
     if (page <= 0) return;
-    const idx = Math.round(el.scrollLeft / page);
-    setRailIndex(Math.max(0, Math.min(idx, catalog.length - 1)));
+    const next = railCenterIndex(el.scrollLeft, page, catalog.length);
+    setRailIndex(next);
+    const id = catalog[next]?.id;
+    if (id) setSelectedId(id);
   };
 
   // Pin tap → highlight + scroll the rail to the matching card. Tapping a
@@ -488,17 +533,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // Center the rail card for the selected place once the rail is on screen.
-  // An effect (not the tap handlers) because a search pick mounts the rail
-  // on the SAME commit that sets the selection — the card ref only exists
-  // after that render; it also re-centers when a dismissed rail reopens.
+  // Skip when the pager already names that card — scroll itself selected
+  // it, and scrollIntoView would fight the flick. Pin taps still land here
+  // because they change selectedId while railIndex is stale.
   useEffect(() => {
-    if (!idle || railCollapsed || !selectedId) return;
-    railRefs.current.get(selectedId)?.scrollIntoView({
+    if (!idle || railCollapsed || !railSelectedId) return;
+    const idx = catalog.findIndex((p) => p.id === railSelectedId);
+    if (idx < 0 || idx === railIndex) return;
+    railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
       block: "nearest",
     });
-  }, [idle, railCollapsed, selectedId]);
+  }, [idle, railCollapsed, railSelectedId, catalog, railIndex]);
 
   const handleUseLocation = () => {
     setLocating(true);
@@ -546,13 +593,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog, uncut by discovery filters. */}
+      {/* Base layer — pins are the nearby catalog after Discovery predicates. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
         userLocation={userLocation}
         viewCenter={center}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
@@ -562,22 +609,35 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — search bar, then a content-height dropdown
-          (empty prompt or live results) that never uses a fixed 70% panel.
+      {/* Floating top overlay — query pill + filter strip on one row, then
+          a content-height dropdown (empty prompt or live results) that
+          never uses a fixed 70% panel.
           max-h-[70%] caps long lists so they scroll and the map stays visible
           below. Ask AI lives on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
-        <SearchBar
-          query={query}
-          showClear={Boolean(query || searchOpen)}
-          onQueryChange={updateQuery}
-          onFocus={openSearch}
-          onClear={dismissSearch}
-          inputRef={searchInputRef}
-          onOpenScope={() => setScopeOpen(true)}
-          countryCode={scope.country}
-          locationSet={location != null}
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-[8.5rem] flex-[1.15] basis-0">
+            <SearchBar
+              query={query}
+              showClear={Boolean(query || searchOpen)}
+              onQueryChange={updateQuery}
+              onFocus={openSearch}
+              onClear={dismissSearch}
+              inputRef={searchInputRef}
+            />
+          </div>
+          {idle && (
+            <div className="min-w-0 flex-1 basis-0">
+              <SearchFilterRow
+                filters={filters}
+                countryCode={scope.country}
+                locationSet={location != null}
+                onOpenScope={() => setScopeOpen(true)}
+                onOpenFilters={() => setFiltersOpen(true)}
+              />
+            </div>
+          )}
+        </div>
 
         {fetchError && idle && (
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
@@ -617,21 +677,37 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       <SearchRailOverlay
         idle={idle}
         places={catalog}
-        catalogCount={catalog.length}
+        catalogCount={nearby.length}
         catalogLoading={catalogLoading}
         railCollapsed={railCollapsed}
         railIndex={railIndex}
-        selectedId={selectedId}
+        selectedId={railSelectedId}
         railScrollRef={railScrollRef}
         onShowRail={() => setRailCollapsed(false)}
         onHideRail={() => setRailCollapsed(true)}
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
+        onResetFilters={
+          filtersCutCatalog ? resetDiscoveryFilters : undefined
+        }
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
       />
+
+      <LocalSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+      >
+        <DiscoveryFilters
+          onClose={() => setFiltersOpen(false)}
+          categoryOptions={categoryOptions}
+          count={catalog.length}
+          hasLocation={location != null}
+        />
+      </LocalSheet>
 
       <LocalSheet
         open={scopeOpen}

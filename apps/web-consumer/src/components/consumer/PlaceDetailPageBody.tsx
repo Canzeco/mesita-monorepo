@@ -3,6 +3,10 @@
 import { PlaceDetailBody } from "./PlaceDetailBody";
 import { PlaceDetailPageHeader } from "./PlaceDetailPageHeader";
 import { PlaceActionBar } from "./place-detail/PlaceActionBar";
+import {
+  isPlaceRequestSurface,
+  PlaceRequestPanel,
+} from "./place-detail/PlaceRequestPanel";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { isPartner } from "@/lib/promo-rates";
@@ -56,9 +60,13 @@ export function PlaceDetailPageBody({
         non-scrolling parent. See PlaceDetailModalShell for the long form.
       */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <PlaceDetailBody place={place} />
+        {isPlaceRequestSurface(place) ? (
+          <PlaceRequestPanel place={place} />
+        ) : (
+          <PlaceDetailBody place={place} />
+        )}
       </div>
-      <PlaceActionBar place={place} />
+      {isPlaceRequestSurface(place) ? null : <PlaceActionBar place={place} />}
     </div>
   );
 }

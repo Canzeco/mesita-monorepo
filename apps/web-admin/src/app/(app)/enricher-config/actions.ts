@@ -90,6 +90,7 @@ type SettingsResponse = {
   atlasDiscoverFacebookN: number;
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
+  atlasRequestThreshold: number;
   enrichmentTriggers: EnrichmentTriggersConfig;
   enrichmentTriggersMeta: EnrichmentTriggersMeta;
   updatedAt: string | null;
@@ -128,6 +129,7 @@ type AtlasConfigResponse = {
   atlasDiscoverFacebookN: number;
   atlasDiscoverOpentableN: number;
   atlasDiscoverUbereatsN: number;
+  atlasRequestThreshold: number;
   updatedAt: string | null;
 };
 
@@ -156,6 +158,7 @@ export async function updateAtlasConfig(patch: {
   discoverFacebookN?: number;
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
+  requestThreshold?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
     "admin-web-update-enricher-config",

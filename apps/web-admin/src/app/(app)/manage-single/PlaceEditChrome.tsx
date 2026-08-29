@@ -20,6 +20,7 @@ import {
   isEnrichFailed,
   isEnriching,
   listedFromStatus,
+  requestedFromStatus,
 } from "./place-header-status";
 import { isMemberPlan } from "./sections/promo-state";
 import { placeOperatorPromotingLevel } from "./sections/StatusCard";
@@ -123,9 +124,11 @@ export function PlaceEditChrome({
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const listedFromRow = listedFromStatus(place.status);
+  const requestedFromRow = requestedFromStatus(place.status);
   const facts = generalHeaderFacts({
     seeded: place.seeded,
     listed: listedFromRow === "unknown" ? place.listed : listedFromRow,
+    requested: requestedFromRow === "unknown" ? undefined : requestedFromRow,
     business_status: place.business_status,
     enriching,
     enrich_pulse: place.enrich_pulse,

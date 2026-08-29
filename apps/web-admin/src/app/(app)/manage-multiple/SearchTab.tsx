@@ -16,6 +16,7 @@ import {
 } from "./search-tab-constants";
 import { splitSearchBarInput } from "./google-place-ids";
 import { QueryRow } from "./SearchQueryRows";
+import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import { ResultSummary } from "./SearchResultSummary";
 
 const SEARCH_CSV_HEADER =
@@ -182,7 +183,7 @@ export function SearchTab({
               {unitCount > 0 ? ` · ~${estimatedApiCalls} Google API calls` : ""}
               {" · "}
               <Link
-                href="/filters-config#s-map"
+                href={DISCOVERY_MAP_HREF}
                 className="text-foreground underline-offset-2 hover:underline"
               >
                 Discovery › Map

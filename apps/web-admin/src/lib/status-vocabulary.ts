@@ -1,8 +1,8 @@
 // Status — two boxes (Pato, 2026-08-25).
 //
-//   STATUSES (8)  Created · Active · Listed · Enriching · Enriched ·
-//                 Verified · Partner are bools (`true` / `false`).
-//                 Promoted is 0 | 1 | 2.
+//   STATUSES (9)  Created · Active · Listed · Requested · Enriched ·
+//                 Enriching · Verified · Partnered are bools (`true` /
+//                 `false`). Promoted is 0 | 1 | 2.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -60,10 +60,11 @@ export const GENERAL_STATUS_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "active", label: "Active" },
   { key: "listed", label: "Listed" },
-  { key: "enriching", label: "Enriching" },
+  { key: "requested", label: "Requested" },
   { key: "enriched", label: "Enriched" },
+  { key: "enriching", label: "Enriching" },
   { key: "verified", label: "Verified" },
-  { key: "partner", label: "Partner" },
+  { key: "partner", label: "Partnered" },
   { key: "promoting", label: "Promoted" },
 ] as const;
 

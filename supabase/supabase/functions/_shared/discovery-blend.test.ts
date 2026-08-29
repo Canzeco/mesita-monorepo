@@ -81,12 +81,15 @@ const promoting = (strategy: "conservative" | "aggressive" | "dominant"): Promot
 };
 
 const WEIGHTS_OFF: SignalWeights = {
+  name: 0,
+  summary: 0,
   proximity: 0,
   timing: 0,
   category: 0,
   popularity: 0,
-  semantic: 0,
+  partnership: 0,
   randomness: 0,
+  social: 0,
 };
 
 /** Popularity alone, so the earned order is deterministic and legible. */

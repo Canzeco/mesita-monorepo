@@ -78,6 +78,7 @@ describe("intakeStatusLine", () => {
     seeded: true,
     active: true,
     listed: true,
+    requested: false,
     enriching: false,
     enriched: false,
     enrichPulse: 2,
@@ -99,7 +100,7 @@ describe("intakeStatusLine", () => {
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
 
-  it("names Enriched · Verified · Partner · Promoted when those facts are on", () => {
+  it("names Enriched · Verified · Partnered · Promoted when those facts are on", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -115,24 +116,25 @@ describe("intakeStatusLine", () => {
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Enriched · Verified · Partner · Promoted",
+      "Created · Active · Listed · Enriched · Verified · Partnered · Promoted",
     );
   });
 
-  it("names Enriching between Listed and Enriched when a run is in flight", () => {
+  it("names Requested after Listed, then Enriched before Enriching", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
       meta: {
         statusFacts: {
           ...facts,
+          requested: true,
           enriching: true,
           enriched: true,
         },
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Enriching · Enriched",
+      "Created · Active · Listed · Requested · Enriched · Enriching",
     );
   });
 

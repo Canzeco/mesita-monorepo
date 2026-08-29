@@ -26,7 +26,7 @@ export default async function PlaceModalPage({
   }
   return (
     <PlaceDetailModalShell place={place}>
-      <PlaceDetailBody place={place} />
+      {place.is_profile_ready ? <PlaceDetailBody place={place} /> : null}
     </PlaceDetailModalShell>
   );
 }
