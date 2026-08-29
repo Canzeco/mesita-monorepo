@@ -4,10 +4,10 @@
 //
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user).
-//   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Places scope + Super Category
-//     live in the map Filters sheet. Default is + Places. Distance and
-//     time are not map knobs. Swipe keeps Discovery.
+//   • Top overlay: query pill + Filters button. Places scope + Super
+//     Category live in the map Filters sheet — there is no Category
+//     chip strip on the map. Default is + Places. Distance and time
+//     are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail around the camera. Places
 //     scope picks the engine (Partners / + enriched Places / + Google
 //     Nearby). Super Category cuts Mesita only. The rail is closest
@@ -61,7 +61,6 @@ import {
 } from "@/lib/map-filters-engine";
 import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { SearchBar } from "./SearchBar";
-import { SearchCategoryRow } from "./SearchCategoryRow";
 import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
@@ -670,31 +669,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query pill + Filters button, then Category
-          families. Places scope opens in the sheet. max-h-[70%] caps long
-          lists so they scroll and the map stays visible below. Ask AI lives
-          on Home › Chat. */}
+      {/* Floating top overlay — query pill + Filters button. Super
+          Category is in the sheet, not a chrome shortcut. max-h-[70%]
+          caps long lists so they scroll and the map stays visible
+          below. Ask AI lives on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <SearchBar
-                query={query}
-                showClear={Boolean(query || searchOpen)}
-                onQueryChange={updateQuery}
-                onFocus={openSearch}
-                onClear={dismissSearch}
-                inputRef={searchInputRef}
-              />
-            </div>
-            {idle && (
-              <SearchFilterRow
-                count={mapFilterCount(filters)}
-                onOpenFilters={() => setFiltersOpen(true)}
-              />
-            )}
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              query={query}
+              showClear={Boolean(query || searchOpen)}
+              onQueryChange={updateQuery}
+              onFocus={openSearch}
+              onClear={dismissSearch}
+              inputRef={searchInputRef}
+            />
           </div>
-          {idle && <SearchCategoryRow familyKeys={filters.familyKeys} />}
+          {idle && (
+            <SearchFilterRow
+              count={mapFilterCount(filters)}
+              onOpenFilters={() => setFiltersOpen(true)}
+            />
+          )}
         </div>
 
         {fetchError && idle && (

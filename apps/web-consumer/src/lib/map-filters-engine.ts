@@ -6,10 +6,10 @@
 // enriched profile only — Created and Requested stubs are not a search
 // source. A Super Category is a SET of categories; a category may sit
 // in two (breakfast is restaurants AND cafés). The cut is OR: a place
-// matches if any of its Super Categories is selected. The Search chrome
-// uses the guest word Category for the same six families. Distance and
-// time stay off this surface: the camera already bounds the set. Swipe
-// keeps Discovery.
+// matches if any of its Super Categories is selected. Super Category
+// lives in the Filters sheet — not a chip strip on the map. Distance
+// and time stay off this surface: the camera already bounds the set.
+// Swipe keeps Discovery.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
