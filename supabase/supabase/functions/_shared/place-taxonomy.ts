@@ -1,13 +1,16 @@
 // Atlas Super Category + Category law. Search map Filters cut on Super
-// Category only; a Super Category is a SET of categories, and a category
-// may sit in zero, one, or two supers (intersections). The six slugs here
-// are the live catalog (`public.place_super_categories`) — keep this file
-// lock-step with `seed_place_super_categories` /
-// `seed_place_categories`.
+// Category only; a Super Category is a SET of categories. A category may
+// sit in zero, one, or two supers — membership is NOT exclusive
+// (breakfast is restaurants AND cafés; karaoke is nightlife AND
+// experiences). The six slugs here are the live catalog
+// (`public.place_super_categories`) — keep this file lock-step with
+// `seed_place_super_categories` / `seed_place_categories`.
 //
 // Places start with category='undefined' and family_keys NULL. Contents
-// enrichment infers both. The wire prefers stored family_keys, then Atlas
-// membership, then the Google primaryType map (pins + leftover slugs).
+// enrichment infers both. When the category is in Atlas, family_keys is
+// the FULL membership set — never a single super. Stored keys only win
+// when the category has no membership (undefined / leftover slugs).
+// Else the Google primaryType map (pins + leftover slugs).
 
 import {
   familiesForGoogleType,
@@ -181,35 +184,34 @@ export type FamilyPlace = {
 
 /**
  * Super Categories for a place on the wire or in a predicate.
- * Stored keys win (enrichment / operator). Else Atlas membership.
- * Else the Google primaryType map (Nearby pins, leftover slugs).
+ * Atlas membership is the set when the category is in the catalog — a
+ * category in two supers lands in both, even if stored keys only kept
+ * one. Stored keys win only when membership is empty (undefined /
+ * leftover). Else the Google primaryType map (Nearby pins).
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
-  const stored = sanitizeFamilyKeys(place.family_keys);
-  if (stored.length > 0) return stored;
   const atlas = familiesForAtlasCategory(
     typeof place.category === "string" ? place.category : null,
   );
   if (atlas.length > 0) return atlas;
+  const stored = sanitizeFamilyKeys(place.family_keys);
+  if (stored.length > 0) return stored;
   return familiesForGoogleType(
     typeof place.category === "string" ? place.category : null,
   );
 }
 
 /**
- * After semantics infers both fields: keep inferred ∩ membership when the
- * category already belongs to supers; otherwise keep membership; if the
- * category has no membership (undefined / unknown), keep inferred.
+ * After semantics infers both fields: a known Atlas category keeps its
+ * FULL Super Category set (never shrink to the one slug the classifier
+ * guessed). Inference only fills family_keys when the category has no
+ * membership yet (undefined / unknown).
  */
 export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,
   inferred: unknown,
 ): FamilyKey[] {
   const membership = familiesForAtlasCategory(category);
-  const guessed = sanitizeFamilyKeys(inferred);
-  if (membership.length > 0) {
-    const overlap = guessed.filter((k) => membership.includes(k));
-    return overlap.length > 0 ? overlap : membership;
-  }
-  return guessed;
+  if (membership.length > 0) return membership;
+  return sanitizeFamilyKeys(inferred);
 }

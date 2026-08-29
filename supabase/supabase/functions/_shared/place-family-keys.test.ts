@@ -20,12 +20,28 @@ Deno.test("withFamilyKeys maps Atlas slugs, including intersections", () => {
   ]);
 });
 
-Deno.test("withFamilyKeys prefers stored Super Categories", () => {
-  const out = withFamilyKeys({
-    category: "mexican",
-    family_keys: ["bars_nightlife"],
-  });
-  assertEquals(out.family_keys, ["bars_nightlife"]);
+Deno.test("withFamilyKeys keeps every Super Category the category belongs to", () => {
+  assertEquals(
+    withFamilyKeys({
+      category: "breakfast",
+      family_keys: ["restaurants"],
+    }).family_keys,
+    ["restaurants", "cafes_bakeries"],
+  );
+  assertEquals(
+    withFamilyKeys({
+      category: "mexican",
+      family_keys: ["bars_nightlife"],
+    }).family_keys,
+    ["restaurants"],
+  );
+  assertEquals(
+    withFamilyKeys({
+      category: "undefined",
+      family_keys: ["bars_nightlife"],
+    }).family_keys,
+    ["bars_nightlife"],
+  );
 });
 
 Deno.test("withFamilyKeys returns [] for unknown / empty / undefined category", () => {

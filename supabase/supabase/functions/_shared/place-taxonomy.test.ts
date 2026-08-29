@@ -69,24 +69,38 @@ Deno.test("undefined / empty category has no Super Category yet", () => {
   assertEquals(familiesForAtlasCategory(""), []);
 });
 
-Deno.test("familiesForPlace prefers stored keys, then Atlas, then Google", () => {
+Deno.test("familiesForPlace uses full Atlas membership, not a stored subset", () => {
+  assertEquals(
+    familiesForPlace({
+      category: "breakfast",
+      family_keys: ["restaurants"],
+    }),
+    ["restaurants", "cafes_bakeries"],
+  );
   assertEquals(
     familiesForPlace({
       category: "mexican",
       family_keys: ["bars_nightlife"],
     }),
-    ["bars_nightlife"],
+    ["restaurants"],
   );
   assertEquals(familiesForPlace({ category: "mexican" }), ["restaurants"]);
   assertEquals(familiesForPlace({ category: "gastropub" }), [
     "restaurants",
     "bars_nightlife",
   ]);
+  assertEquals(
+    familiesForPlace({
+      category: "undefined",
+      family_keys: ["bars_nightlife"],
+    }),
+    ["bars_nightlife"],
+  );
   assertEquals(familiesForPlace({ category: "undefined" }), []);
   assertEquals(familiesForPlace({ category: "gas_station" }), []);
 });
 
-Deno.test("resolveEnrichedFamilyKeys keeps inferred ∩ membership, else membership", () => {
+Deno.test("resolveEnrichedFamilyKeys never shrinks a multi-super category", () => {
   assertEquals(
     resolveEnrichedFamilyKeys("mexican", ["restaurants", "bars_nightlife"]),
     ["restaurants"],
@@ -97,11 +111,15 @@ Deno.test("resolveEnrichedFamilyKeys keeps inferred ∩ membership, else members
   );
   assertEquals(
     resolveEnrichedFamilyKeys("breakfast", ["restaurants"]),
-    ["restaurants"],
+    ["restaurants", "cafes_bakeries"],
   );
   assertEquals(
     resolveEnrichedFamilyKeys("breakfast", ["restaurants", "cafes_bakeries"]),
     ["restaurants", "cafes_bakeries"],
+  );
+  assertEquals(
+    resolveEnrichedFamilyKeys("karaoke", ["experiences"]),
+    ["bars_nightlife", "experiences"],
   );
   assertEquals(
     resolveEnrichedFamilyKeys("undefined", ["bars_nightlife"]),

@@ -1,6 +1,7 @@
-// Place families — the six Atlas Super Categories every Mesita place
-// rolls up to. A Super Category is a SET of categories; a category may
-// sit in two (intersections). Search map Filters cut on these keys only.
+// Place families — the six Atlas Super Categories. A Super Category is
+// a SET of categories; a category may sit in two (intersections) — it
+// is not a partition. Search map Filters cut on these keys only. A
+// place matches every Super Category its category belongs to.
 //
 // NOT mock data: the family KEYS are a live product contract, mirrored in
 //   · public.place_super_categories

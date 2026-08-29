@@ -89,4 +89,38 @@ describe("applyMapFilters", () => {
     ).toEqual(["taco"]);
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
+
+  it("a category in two Super Categories matches either pill", () => {
+    const brunch = place({
+      id: "brunch",
+      category: "brunch",
+      family_keys: ["restaurants", "cafes_bakeries"],
+    });
+    const karaoke = place({
+      id: "karaoke",
+      category: "karaoke",
+      family_keys: ["bars_nightlife", "experiences"],
+    });
+    const deck = [brunch, karaoke];
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["restaurants"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["brunch"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["cafes_bakeries"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["brunch"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["bars_nightlife"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["karaoke"]);
+    expect(
+      applyMapFilters(deck, filters({ familyKeys: ["experiences"] })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["karaoke"]);
+  });
 });

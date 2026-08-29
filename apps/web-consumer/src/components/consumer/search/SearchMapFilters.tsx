@@ -16,9 +16,11 @@ import {
 import { FilterModule, Pill } from "@/components/consumer/discovery-filter-controls";
 
 // Search-map Filters sheet. Status + Super Category only. There is no
-// Category or Types axis — every place rolls up to one of the six
-// families. Distance and time are not map knobs: the viewport already
-// decides how far, and When belongs on Swipe.
+// Category or Types axis. A Super Category is a SET of categories; one
+// category may belong to multiple Super Categories (nightlife = bars +
+// nightclubs; breakfast = restaurants + cafés). Distance and time are
+// not map knobs: the viewport already decides how far, and When belongs
+// on Swipe.
 
 export function SearchMapFilters({
   onClose,

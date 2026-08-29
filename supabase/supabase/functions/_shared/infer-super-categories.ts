@@ -1,6 +1,8 @@
 // Super Category inference: OpenAI classifier over the Atlas list (5–10
-// slugs; live catalog is the six in place_super_categories). A place may
-// land in one or two supers. Empty = leave family_keys undefined.
+// slugs; live catalog is the six in place_super_categories). Used when
+// the place has no Atlas category yet (undefined). Once Category is
+// known, family_keys is that category's FULL membership set — a category
+// in two supers keeps both. Empty here = leave family_keys undefined.
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import {

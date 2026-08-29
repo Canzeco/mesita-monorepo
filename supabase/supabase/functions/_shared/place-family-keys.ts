@@ -2,8 +2,10 @@
 // out to a guest, and everything dropped from it.
 //
 // Adds `family_keys` (MESITA-679) — source of truth is
-// `_shared/place-taxonomy.ts` (stored keys, then Atlas membership, then
-// the Google primaryType map). Clients must not re-mirror that expansion;
+// `_shared/place-taxonomy.ts` (Atlas membership = the full Super Category
+// set when the category is in the catalog; stored keys only when
+// membership is empty; else the Google primaryType map). A category in
+// two supers ships both keys. Clients must not re-mirror that expansion;
 // Search map Filters cut on Super Category off this field.
 //
 // Adds `promoting` (MESITA-1150) — whether a guest gets a discount here RIGHT
@@ -48,7 +50,7 @@ export type WirePlace<T> = Omit<T, (typeof BUSINESS_PRIVATE_PLACE_KEYS)[number]>
   WireExtras;
 
 /**
- * Wire mapper: set `family_keys` from stored keys / Atlas / Google type,
+ * Wire mapper: set `family_keys` from Atlas membership / stored / Google type,
  * and `promoting` + `partner` from the rate/plan/lane columns, then drop those
  * columns.
  * Both are always overwritten so a stale client cache can't leak a previous
