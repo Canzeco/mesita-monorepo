@@ -251,10 +251,10 @@ Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece co
   assertEquals(pulseHighWaterFromMap(map), 3);
 });
 
-Deno.test("pulseHighWaterFromMap: Semantics at 10 cannot skip a gap", () => {
+Deno.test("pulseHighWaterFromMap: Embedding at 10 cannot skip a gap", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse", "details"),
-    semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    embedding: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
   assertEquals(pulseHighWaterFromMap(map), 2, "function 10 cannot skip 3–9");
 });
@@ -285,7 +285,7 @@ Deno.test("toFunctionStatus: completed stays completed, started becomes pending,
   assertEquals(toFunctionStatus("some-future-unknown-status"), "failed");
 });
 
-Deno.test("FunctionStateMapSchema: folds legacy name+summary into semantic", () => {
+Deno.test("FunctionStateMapSchema: folds legacy name+summary into embedding", () => {
   const r = FunctionStateMapSchema.parse({
     pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
     name: { status: "completed", at: "2026-08-23T00:01:00Z", detail: "name ok" },
@@ -293,25 +293,42 @@ Deno.test("FunctionStateMapSchema: folds legacy name+summary into semantic", () 
   });
   assert(r.ok);
   if (!r.ok) return;
-  assertEquals(r.value.semantic?.status, "completed");
+  assertEquals(r.value.embedding?.status, "completed");
   assertEquals("name" in r.value, false);
   assertEquals("summary" in r.value, false);
 });
 
-Deno.test("operatorFunctionStates: ten keys, Semantics pending when never run", () => {
+Deno.test("foldFunctionStateMap: the RENAMED semantic folds into embedding", () => {
+  // §8.4 v3: function 10 renamed Semantic → Embedding. A stored map stamped
+  // under the old key keeps reading as function 10 — including the merge
+  // path (mergeEnrichmentMap folds before recomputing the high-water).
+  const folded = foldFunctionStateMap({
+    semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+  });
+  assertEquals(folded.embedding?.status, "completed");
+  assertEquals("semantic" in folded, false);
+  // A real embedding stamp wins over the legacy key.
+  const both = foldFunctionStateMap({
+    semantic: { status: "failed", at: "a", detail: "old" },
+    embedding: { status: "completed", at: "b", detail: "new" },
+  });
+  assertEquals(both.embedding?.status, "completed");
+});
+
+Deno.test("operatorFunctionStates: ten keys, Embedding pending when never run", () => {
   const out = operatorFunctionStates({
     pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
   assertEquals(Object.keys(out).length, 10);
   assertEquals(out.pulse.status, "completed");
-  assertEquals(out.semantic.status, "pending");
+  assertEquals(out.embedding.status, "pending");
   assertEquals(out.description.status, "pending");
 });
 
-Deno.test("foldFunctionStateMap: either failed alias fails Semantics", () => {
+Deno.test("foldFunctionStateMap: either failed alias fails Embedding", () => {
   const folded = foldFunctionStateMap({
     name: { status: "completed", at: "a", detail: "n" },
     summary: { status: "failed", at: "b", detail: "s" },
   });
-  assertEquals(folded.semantic?.status, "failed");
+  assertEquals(folded.embedding?.status, "failed");
 });

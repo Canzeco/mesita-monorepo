@@ -407,7 +407,12 @@ export function costParamsFromSettings(
   };
 }
 
-/** One Create run: Pulse + Details + Semantics (first photo). Not functions 3–9. */
+/**
+ * One Create run: Pulse + Details + door Description (one batched prompt,
+ * §8.4 v3 gate D1) + Embedding. Not functions 3–8. The door is skipped when
+ * the create queues a full Enrich (business creates) — this card estimates
+ * the door-running case (admin/consumer creates).
+ */
 export function computeCreateCost(s: IntakeSettings): CostEstimate {
   return computeEnrichmentCost({
     ...costParamsFromSettings(s, 1),
@@ -419,7 +424,7 @@ export function computeCreateCost(s: IntakeSettings): CostEstimate {
     reviews: 0,
     social: false,
     serp: false,
-    synth: false,
+    synth: true,
   });
 }
 

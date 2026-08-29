@@ -39,7 +39,7 @@ describe("status vocabulary", () => {
       "7. Menu",
       "8. Reviews",
       "9. Description",
-      "10. Semantic",
+      "10. Embedding",
     ]);
     expect(INTAKE_FUNCTIONS.map((f) => intakeFunctionLabel(f.n, f.label))).toEqual(
       INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`),

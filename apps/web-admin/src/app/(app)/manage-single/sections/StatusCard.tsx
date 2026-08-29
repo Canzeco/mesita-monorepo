@@ -2,7 +2,7 @@
 
 // Status — the Statuses box: seven bools (`true`/`false`) plus Requested
 // `0…n` and Promoted `0|1|2`, each from its own source. Intake
-// (0. Seed … 10. Semantic) lives in IntakeStatusCard.
+// (0. Seed … 10. Embedding) lives in IntakeStatusCard.
 //
 // The state is Created; Seed is Intake function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
@@ -62,7 +62,7 @@ import {
 
 // Statuses box (Pato, 2026-08-25): seven bools + Requested 0…n + Promoted
 // 0|1|2. Intake is the next box — not chips under Enriched, and not a
-// Create 1–4 / Enrich 1–10 split. Chips never repeat the row name.
+// Create 1–5 / Enrich 1–10 split. Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈

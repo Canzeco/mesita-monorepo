@@ -10,7 +10,7 @@ describe("intakeFunctionRows", () => {
       {
         pulse: { status: "completed", at: null, detail: null },
         details: { status: "failed", at: null, detail: "no" },
-        semantic: { status: "completed", at: null, detail: null },
+        embedding: { status: "completed", at: null, detail: null },
       },
       true,
     );
@@ -25,7 +25,7 @@ describe("intakeFunctionRows", () => {
       "menu",
       "reviews",
       "description",
-      "semantic",
+      "embedding",
     ]);
     expect(rows.map((r) => r.label)).toEqual([
       "0. Seed",
@@ -38,13 +38,26 @@ describe("intakeFunctionRows", () => {
       "7. Menu",
       "8. Reviews",
       "9. Description",
-      "10. Semantic",
+      "10. Embedding",
     ]);
     expect(rows[0]?.on).toBe(true);
     expect(rows[1]?.on).toBe(true);
     expect(rows[2]?.on).toBe(true);
     expect(rows[3]?.on).toBe(false);
     expect(rows[10]?.on).toBe(true);
+  });
+
+  it("folds a legacy `semantic` stamp into 10. Embedding", () => {
+    const rows = intakeFunctionRows(
+      { semantic: { status: "completed", at: null, detail: null } },
+      false,
+    );
+    expect(rows[10]).toMatchObject({
+      key: "embedding",
+      label: "10. Embedding",
+      on: true,
+    });
+    expect(rows.filter((r) => r.on)).toHaveLength(1);
   });
 });
 

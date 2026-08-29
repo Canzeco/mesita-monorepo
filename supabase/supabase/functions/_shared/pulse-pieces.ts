@@ -80,17 +80,30 @@ export const PULSE_PIECES = [
   "menu",
   "reviews",
   "description",
-  "semantic",
+  "embedding",
 ] as const;
 
 /**
- * Retired extra keys. Empty: Semantics is function 10, not an unnumbered
+ * Retired extra keys. Empty: Embedding is function 10, not an unnumbered
  * extra. Kept as an array so FUNCTION_STATE_KEYS can still spread it.
  */
 export const PULSE_EXTRAS = [] as const;
 
-/** Pre-merge event / map keys. Folded into `semantic` on read. */
+/** Pre-merge event / map keys. Folded into `embedding` on read (display). */
 export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
+
+/**
+ * RENAMED function keys: the same function under its old name. Unlike the
+ * display-only extras above, a rename COUNTS everywhere — the ladder walk,
+ * the stored map merge, the Status fold — because function 10 did not
+ * change, only its name did (§8.4 v3: Semantic → Embedding, 2026-08-29).
+ * NOTE the vocabulary firewall: `embedding` is also a trigger-matrix
+ * subprocess key — a coincidence of subject, not a shared enum; neither
+ * list may import the other.
+ */
+export const PULSE_RENAMES: Readonly<Record<string, PulsePiece>> = {
+  semantic: "embedding",
+};
 
 export type PulsePiece = (typeof PULSE_PIECES)[number];
 export type PulseExtra = (typeof PULSE_EXTRAS)[number];
@@ -115,7 +128,7 @@ const PULSE_LABELS: Record<PulsePiece, string> = {
   menu: "Menu",
   reviews: "Reviews",
   description: "Description",
-  semantic: "Semantic",
+  embedding: "Embedding",
 };
 
 /**
@@ -179,10 +192,13 @@ function latestByPiece(
 ): Map<string, { status: string; at: string }> {
   const latest = new Map<string, { status: string; at: string }>();
   for (const e of events) {
-    const key = (e.step_name ?? "").trim();
+    const raw = (e.step_name ?? "").trim();
+    // Renamed keys COUNT (the function is the same; only the name moved):
+    // a stored `semantic` event is function 10 under its old name.
+    const key = PULSE_RENAMES[raw] ?? raw;
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
     // `publish`), retired rungs (`semantics`), and pre-merge `name`/`summary`
-    // extras (those fold into `semantic` on the Status map, not this walk —
+    // extras (those fold into `embedding` on the Status map, not this walk —
     // an old `name` rung must not count as function 10).
     if (!INDEX.has(key)) continue;
     const at = e.created_at ?? "";
@@ -206,7 +222,7 @@ function latestByPiece(
  * 0 is the base case, and it is the FLOOR rather than a failure: the place is
  * seeded and nothing after it has landed. `seed` is never stamped, so the walk
  * starts at function 1 — see THE FLOOR in the header for why stamping it would
- * pin the whole catalog at 0. Semantics is 10: a place that finished
+ * pin the whole catalog at 0. Embedding is 10: a place that finished
  * description without vectors reads 9.
  *
  * Events are an APPEND-ONLY log, so only the LATEST event per function counts.

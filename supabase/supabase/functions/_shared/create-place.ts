@@ -1,24 +1,29 @@
-// Shared create-place core — THE CREATE RUN (Main §8.4): one run,
-// synchronous, the front door. Create numbers 1–4 (not Enrich 1–10):
+// Shared create-place core — THE CREATE RUN (Main §8.4 v3): one run,
+// synchronous, the front door. Create numbers 1–5 (not Enrich 1–10):
 //
-//   1 seed      → dedupe on google_place_id, mint the paired rows
-//                 (generating when queueing Enrich, ready when not)
-//   2 pulse     → the liveness gate: Google's businessStatus, read from the same
-//                 Basics call — a place reported CLOSED_PERMANENTLY is REFUSED
-//                 at the door, before any row exists. Don't seed corpses.
-//   3 details   → the Google spine persisted (fetchGoogleBasics fields,
-//                 category='undefined' and family_keys=['undefined'] until
-//                 the Intaker infers Super Category + Category)
-//                 PLUS the first Google photo mirrored into place-images so a
-//                 Created place can show a thumb before Enrich Images runs.
-//   4 semantic  → Name vector + Summary vector, awaited in this same function
+//   1 seed        → dedupe on google_place_id, mint the paired rows
+//                   (generating when queueing Enrich, ready when not)
+//   2 pulse       → the liveness gate: Google's businessStatus, read from the
+//                   same Basics call — a place reported CLOSED_PERMANENTLY is
+//                   REFUSED at the door, before any row exists.
+//   3 details     → the Google spine persisted (fetchGoogleBasics fields,
+//                   category='undefined' and family_keys=['undefined'] as the
+//                   floor) PLUS the first Google photo mirrored into
+//                   place-images so a Created place can show a thumb.
+//   4 description → the DOOR Description (gate D1): ONE batched prompt over
+//                   the thin Google signals infers Super Category, Category,
+//                   Tags, Presentation, Reservations, Mesita Name (through
+//                   the mesita-name-door, gate D2) and the Semantic Summary.
+//                   SKIPPED when the create queues a full Enrich — the
+//                   Intaker's function 9 redoes it properly minutes later.
+//   5 embedding   → embed-only: Name vector + Summary vector of what the
+//                   door wrote, awaited in this same function. Also skipped
+//                   when Enrich is queued (function 10 will close it).
 //
-// Pulse, Details and Semantic are SHARED with the ENRICH queue — create
-// AWAITS the four subfunctions; enrich runs each as its own tick with no nested
-// await. Create STAMPS what it ran (pulse, details, semantic) so a fresh place
-// reads 2/10 immediately (Enrich high-water: pulse=1, details=2; 3–9 still a
-// gap even if semantic stamps as 10) and state accumulates across create and
-// every later run under one rule.
+// Pulse, Details, Description and Embedding are SHARED with the ENRICH queue —
+// create AWAITS its subfunctions; enrich runs each as its own tick. Create
+// STAMPS what it ran so a fresh place reads its true rungs immediately and
+// state accumulates across create and every later run under one rule.
 //
 // queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
 // profile and do NOT seed Intaker. Enriched is `places.enriched_at`, not
@@ -41,7 +46,10 @@ import { fetchGoogleBasics } from "./enrich-google-basics.ts";
 import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
-import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
+import { synthesizeDoorProfile } from "./create-door-profile.ts";
+import { applyInferredMesitaName } from "./mesita-name-door.ts";
+import { writePlace } from "./place-doc.ts";
+import { pieceDone, pieceFailed, reportPulsePieces } from "./pulse-report.ts";
 import { applyGeneralCategoryCap, loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
@@ -238,9 +246,9 @@ export async function createMinimalPlace(opts: {
   // ── CREATE stamps what it ran (MESITA-1253) ─────────────────────────────
   // pulse: the gate above passed — the listing resolves and is not permanently
   // closed. details: the spine the save just persisted IS the observed effect.
-  // Both best-effort (a stamp failure never fails a create); the semantic stamp
-  // lands where the vector write is observed (place-embeddings).
-  // Result: a fresh, healthy place reads enriched 2/10 the moment it exists.
+  // Both best-effort (a stamp failure never fails a create).
+  // Result: a fresh, healthy place reads enriched 2/10 the moment it exists;
+  // an un-queued create climbs on to 9–10 via the door below.
   await reportPulsePieces(admin, saved.project_id, {
     pulse: pieceDone(
       basicsRes.businessStatus
@@ -251,22 +259,74 @@ export async function createMinimalPlace(opts: {
     details: pieceDone("Google spine persisted at create.", { via: "create" }),
   });
 
-  // ── On-Create embeddings — the SEMANTIC subfunction, AWAITED by CREATE
-  // (Docs › Intake §A): write Name + Summary together so the place is
-  // searchable before the Intaker fills the deep profile. Best-effort — a
-  // missing key or a write miss never fails the create; On-Update re-embeds
-  // when the Intaker later changes profile fields. Tags never feed the source
-  // text. ──
-  try {
-    await runPlaceEmbeddingsOnUpdate(
-      admin,
-      saved.project_id,
-      Deno.env.get("OPENAI_KEY")?.trim(),
-      `${callerName}/on-create`,
-      "create",
-    );
-  } catch (err) {
-    console.error(`[${callerName}/on-create] semantic:`, err);
+  // ── 4 DESCRIPTION + 5 EMBEDDING at the door (§8.4 v3, gate D1) ─────────
+  // Only when this create does NOT queue a full Enrich: the queue's own
+  // functions 9+10 would redo this minutes later with rich grounding, so a
+  // queued create skips the door and leaves both rungs pending. Best-effort —
+  // nothing here ever fails the create.
+  if (!queueEnrich) {
+    try {
+      const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
+      if (openaiKey) {
+        const door = await synthesizeDoorProfile(admin, openaiKey, {
+          name: saved.name,
+          address: (place.address ?? null) as string | null,
+          googleTypes: Array.isArray(place.google_types)
+            ? place.google_types as string[]
+            : null,
+          editorialSummary: (place.editorial_summary ?? null) as string | null,
+          priceLevel: typeof place.price_level === "number"
+            ? place.price_level
+            : null,
+        });
+        if (door) {
+          const patch: Record<string, unknown> = {};
+          if (door.category) patch.category = door.category;
+          if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
+          if (door.tags.length > 0) patch.tags = door.tags;
+          if (door.description) patch.description = door.description;
+          patch.reservations_enabled = door.reservationsLikely;
+          if (door.semanticSummary) {
+            patch.embedding_source_text = door.semanticSummary;
+          }
+          const doorWrite = await writePlace(admin, {
+            table: "places",
+            mode: "update",
+            id: saved.project_id,
+            patch,
+          });
+          if (door.mesitaNameCandidate) {
+            await applyInferredMesitaName(
+              admin,
+              saved.project_id,
+              door.mesitaNameCandidate,
+            );
+          }
+          await reportPulsePieces(admin, saved.project_id, {
+            description: doorWrite.ok
+              ? pieceDone(
+                `Door Description — category “${door.category ?? "n/a"}”, ` +
+                  `${door.tags.length} tag(s), Mesita Name + Semantic Summary inferred.`,
+                { via: "create" },
+              )
+              : pieceFailed(`Door Description persist failed — ${doorWrite.ok ? "" : doorWrite.error}`),
+          });
+        }
+      }
+      // 5 EMBEDDING — embed-only vectors of what the door just wrote; the
+      // embedding stamp lands where the vector write is observed
+      // (place-embeddings).
+      await runPlaceEmbeddingsOnUpdate(
+        admin,
+        saved.project_id,
+        Deno.env.get("OPENAI_KEY")?.trim(),
+        `${callerName}/on-create`,
+        "create",
+        "stored",
+      );
+    } catch (err) {
+      console.error(`[${callerName}/on-create] door:`, err);
+    }
   }
 
   // ── 3) Queue deep enrichment (async) only when the caller bought it.

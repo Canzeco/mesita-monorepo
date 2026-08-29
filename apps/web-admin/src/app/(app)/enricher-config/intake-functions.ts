@@ -1,15 +1,15 @@
 // The eleven Intake subfunctions, and which of the two flows uses each.
 //
 // TWO SEQUENCES — not one global enum. Main §8.4:
-//   CREATE (ONE FUNCTION, awaits four): 1 Seed → 2 Pulse → 3 Details
-//     → 4 Semantic
+//   CREATE (ONE FUNCTION, awaits five): 1 Seed → 2 Pulse → 3 Details
+//     → 4 Description → 5 Embedding
 //   ENRICH (TEN FUNCTIONS): 1 Pulse → 2 Details → 3 Serp → 4 Links
 //     → 5 Social → 6 Images → 7 Menu → 8 Reviews
 //     → 9 Description
-//     → 10 Semantic
+//     → 10 Embedding
 // Chips are short jump labels. Category/Tags/Presentation and Mesita
 // Name/Summary/Embeddings live on the Functions accordion blurbs.
-// Pulse is 2 on Create and 1 on Enrich. Semantic is 4 on Create and 10
+// Pulse is 2 on Create and 1 on Enrich. Embedding is 5 on Create and 10
 // on Enrich. Seed is Create 1 — never a 0. Chip numbers are derived from
 // each flow's order so a shared `chip` string cannot invent a third ladder.
 // Engine high-water stays Enrich 1–10 (Created floor 0 is persistence).
@@ -46,17 +46,23 @@ export const INTAKE_SUBFUNCTIONS: readonly IntakeSubfunction[] = [
     id: "f-description",
     key: "description",
     name: "Description",
-    flows: ["enrich"],
+    flows: ["create", "enrich"],
   },
   {
-    id: "f-semantic",
-    key: "semantic",
-    name: "Semantic",
+    id: "f-embedding",
+    key: "embedding",
+    name: "Embedding",
     flows: ["create", "enrich"],
   },
 ];
 
-const CREATE_ORDER = ["seed", "pulse", "details", "semantic"] as const;
+const CREATE_ORDER = [
+  "seed",
+  "pulse",
+  "details",
+  "description",
+  "embedding",
+] as const;
 
 function rowByKey(key: string): IntakeSubfunction {
   const row = INTAKE_SUBFUNCTIONS.find((s) => s.key === key);

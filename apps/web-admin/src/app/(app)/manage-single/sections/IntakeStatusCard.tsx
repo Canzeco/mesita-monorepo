@@ -10,7 +10,7 @@ import {
 
 /**
  * Intake box — eleven functions in one order, each a bool (called / not).
- * Numbered 0. Seed … 10. Semantic. Create 1–4 / Enrich 1–10 stay Config.
+ * Numbered 0. Seed … 10. Embedding. Create 1–5 / Enrich 1–10 stay Config.
  */
 export function IntakeStatusCard({ place }: { place: AdminPlace }) {
   const seeded: boolean | "unknown" =

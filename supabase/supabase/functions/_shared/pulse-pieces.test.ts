@@ -42,14 +42,14 @@ Deno.test("pulse: every stamped step matches the DB's step CHECK", () => {
       `step S${PULSE_PIECE_META[piece].index} (${piece}) violates the DB CHECK`,
     );
   }
-  // Semantics is function 10, so reportPulsePieces stamps it S10.
+  // Embedding is function 10, so reportPulsePieces stamps it S10.
   assertEquals(DB_CHECK.test("S10"), true);
   assertEquals(DB_CHECK.test("SX"), true);
 });
 
 Deno.test("pulse: the TEN enrich queue functions, in the decided order", () => {
   // The law: ENRICH is ten functions, 1–10. Seed is NOT among them — it is
-  // step 1 of CREATE. Semantics CLOSES the queue at 10.
+  // step 1 of CREATE. Embedding CLOSES the queue at 10.
   assertEquals([...PULSE_PIECES], [
     "pulse",
     "details",
@@ -60,7 +60,7 @@ Deno.test("pulse: the TEN enrich queue functions, in the decided order", () => {
     "menu",
     "reviews",
     "description",
-    "semantic",
+    "embedding",
   ]);
   assertEquals(PULSE_TOTAL, 10);
 });
@@ -96,13 +96,38 @@ Deno.test("pulse: CREATE's stamps read as 2/10 — one ladder, two callers", () 
   assertEquals(b?.status, "missing");
 });
 
-Deno.test("pulse: `semantic` is ONE function now, not two extras", () => {
+Deno.test("pulse: `embedding` is ONE function now, not two extras", () => {
   assertEquals((PULSE_PIECES as readonly string[]).includes("name"), false);
   assertEquals((PULSE_PIECES as readonly string[]).includes("summary"), false);
-  assertEquals((PULSE_PIECES as readonly string[]).includes("semantic"), true);
-  assertEquals(PULSE_PIECE_META.semantic.index, 10);
-  assertEquals(PULSE_PIECE_META.semantic.label, "Semantic");
+  assertEquals((PULSE_PIECES as readonly string[]).includes("semantic"), false);
+  assertEquals((PULSE_PIECES as readonly string[]).includes("embedding"), true);
+  assertEquals(PULSE_PIECE_META.embedding.index, 10);
+  assertEquals(PULSE_PIECE_META.embedding.label, "Embedding");
   assertEquals([...PULSE_EXTRAS], []);
+});
+
+Deno.test("pulse: the RENAMED `semantic` still counts as function 10", () => {
+  // §8.4 v3 renamed function 10 (Semantic → Embedding). Stored events keep
+  // the old key forever (append-only log); the walk folds the rename so a
+  // legacy full queue still reads 10, not blocked-at-Embedding.
+  const nine = PULSE_PIECES
+    .filter((p) => p !== "embedding")
+    .map((p, i) => done(p, i));
+  assertEquals(
+    pulseHighWater([
+      ...nine,
+      { step_name: "semantic", status: "completed", created_at: at(30) },
+    ]),
+    10,
+  );
+  // Pre-merge extras still do NOT count on the walk.
+  assertEquals(
+    pulseHighWater([
+      ...nine,
+      { step_name: "name", status: "completed", created_at: at(30) },
+    ]),
+    9,
+  );
 });
 
 Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
@@ -153,27 +178,27 @@ Deno.test("pulse: serp runs BEFORE links — that is what serp is FOR", () => {
   assertEquals(i("details") < i("serp"), true);
 });
 
-Deno.test("pulse: Semantics CLOSES the queue at 10", () => {
-  assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "semantic");
-  assertEquals(PULSE_PIECE_META.semantic.index, PULSE_TOTAL);
+Deno.test("pulse: Embedding CLOSES the queue at 10", () => {
+  assertEquals(PULSE_PIECES[PULSE_PIECES.length - 1], "embedding");
+  assertEquals(PULSE_PIECE_META.embedding.index, PULSE_TOTAL);
   assertEquals(PULSE_PIECE_META.description.index, 9);
 });
 
-Deno.test("high water: Semantics is 10 — a gap before it still reads 9", () => {
+Deno.test("high water: Embedding is 10 — a gap before it still reads 9", () => {
   const throughDescription = PULSE_PIECES
-    .filter((p) => p !== "semantic")
+    .filter((p) => p !== "embedding")
     .map((p, i) => done(p, i));
   assertEquals(pulseHighWater(throughDescription), 9);
   assertEquals(pulseHighWater(fullQueue()), PULSE_TOTAL);
   assertEquals(
     pulseHighWater([
       ...throughDescription,
-      { step_name: "semantic", status: "failed", created_at: at(30) },
+      { step_name: "embedding", status: "failed", created_at: at(30) },
     ]),
     9,
   );
-  // And Semantics on its own is not progress — 3–9 are still a gap.
-  assertEquals(pulseHighWater([done("semantic", 1)]), 0);
+  // And Embedding on its own is not progress — 3–9 are still a gap.
+  assertEquals(pulseHighWater([done("embedding", 1)]), 0);
 });
 
 Deno.test("pulse: the index is the position, and the labels ride in order", () => {
@@ -188,12 +213,12 @@ Deno.test("pulse: the index is the position, and the labels ride in order", () =
   );
   // The labels are indexed BY FUNCTION NUMBER, so the array is one longer than
   // the piece list — labels[0] is the CREATED floor (not a function),
-  // labels[10] is Semantics. A client renders labels[level] with no
+  // labels[10] is Embedding. A client renders labels[level] with no
   // off-by-one.
   assertEquals(PULSE_LABELS_IN_ORDER.length, PULSE_TOTAL + 1);
   assertEquals(PULSE_LABELS_IN_ORDER[0], PULSE_FLOOR_LABEL);
   assertEquals(PULSE_FLOOR_LABEL, "Created");
-  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Semantic");
+  assertEquals(PULSE_LABELS_IN_ORDER[PULSE_TOTAL], "Embedding");
   assertEquals(
     [...PULSE_LABELS_IN_ORDER],
     [PULSE_FLOOR_LABEL, ...PULSE_PIECES.map((p) => PULSE_PIECE_META[p].label)],

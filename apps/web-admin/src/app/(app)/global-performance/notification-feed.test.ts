@@ -176,41 +176,57 @@ describe("itemMatchesIntakeFilter", () => {
     expect(itemMatchesIntakeFilter(created, "fn:seed")).toBe(true);
     expect(itemMatchesIntakeFilter(created, "fn:pulse")).toBe(true);
     expect(itemMatchesIntakeFilter(created, "fn:serp")).toBe(false);
-    expect(itemMatchesIntakeFilter(created, "fn:semantic")).toBe(false);
+    expect(itemMatchesIntakeFilter(created, "fn:embedding")).toBe(false);
   });
 });
 
 describe("intakeFunctionChips", () => {
-  it("lists eleven functions 0–10 and turns Semantic on from the semantic stamp", () => {
-    const created = item({
-      id: "c",
-      type: "atlas.place_created",
-      meta: {
-        statusFacts: {
-          seeded: true,
-          active: false,
-          listed: false,
-          enriched: false,
-          enrichPulse: 0,
-          enrichPulseTotal: 10,
-          verified: false,
-          partner: false,
-          promoting: false,
-          functions: { semantic: true },
+  const chipsWith = (functions: Record<string, boolean>) =>
+    intakeFunctionChips(
+      item({
+        id: "c",
+        type: "atlas.place_created",
+        meta: {
+          statusFacts: {
+            seeded: true,
+            active: false,
+            listed: false,
+            enriched: false,
+            enrichPulse: 0,
+            enrichPulseTotal: 10,
+            verified: false,
+            partner: false,
+            promoting: false,
+            functions,
+          },
         },
-      },
-    });
-    const chips = intakeFunctionChips(created);
+      }),
+    );
+
+  it("lists eleven functions 0–10 and turns Embedding on from its stamp", () => {
+    const chips = chipsWith({ embedding: true });
     expect(chips).toHaveLength(11);
     expect(chips[0]).toMatchObject({ key: "seed", label: "0. Seed", on: true });
-    expect(chips.find((c) => c.key === "semantic")).toMatchObject({
-      label: "10. Semantic",
+    expect(chips.find((c) => c.key === "embedding")).toMatchObject({
+      label: "10. Embedding",
       on: true,
     });
     expect(chips.find((c) => c.key === "serp")).toMatchObject({
       label: "3. Serp",
       on: false,
     });
+  });
+
+  it("folds legacy `semantic` and `name`+`summary` stamps into Embedding", () => {
+    const legacy = chipsWith({ semantic: true });
+    expect(legacy.find((c) => c.key === "embedding")).toMatchObject({
+      label: "10. Embedding",
+      on: true,
+    });
+    const preMerge = chipsWith({ name: true, summary: true });
+    expect(preMerge.find((c) => c.key === "embedding")?.on).toBe(true);
+    const nameOnly = chipsWith({ name: true });
+    expect(nameOnly.find((c) => c.key === "embedding")?.on).toBe(false);
   });
 });
 

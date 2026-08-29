@@ -4,12 +4,14 @@
 //                 Verified · Partnered are bools (`true` / `false`).
 //                 Requested is the guest request count, 0…n — not a
 //                 Yes/No. Promoted is 0 | 1 | 2. Never a projects.status.
-//   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
+//   INTAKE (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
 // Enriched is last-completed — they are independent. Intake just names the
-// eleven functions. Create 1–4 / Enrich 1–10 stay Config sequences; they are
+// eleven functions. Create 1–5 / Enrich 1–10 stay Config sequences; they are
 // not a third Status ladder. Wire key `seeded` stays; the label is Created.
+// Function 10 was renamed `semantic` → `embedding` (§8.4); stored blobs and
+// event payloads may still say `semantic` — readers fold, never rewrite.
 
 export type StatusBoolChip = "true" | "false" | "?" | "…";
 
@@ -98,7 +100,7 @@ export const INTAKE_FUNCTIONS = [
   { key: "menu", label: "Menu", n: 7 },
   { key: "reviews", label: "Reviews", n: 8 },
   { key: "description", label: "Description", n: 9 },
-  { key: "semantic", label: "Semantic", n: 10 },
+  { key: "embedding", label: "Embedding", n: 10 },
 ] as const;
 
 export type IntakeFunctionKey = (typeof INTAKE_FUNCTIONS)[number]["key"];
@@ -106,7 +108,7 @@ export type IntakeFunctionKey = (typeof INTAKE_FUNCTIONS)[number]["key"];
 export const GENERAL_STATUS_COUNT = GENERAL_STATUS_FACTS.length;
 export const INTAKE_FUNCTION_COUNT = INTAKE_FUNCTIONS.length;
 
-/** Operator label: `0. Seed` … `10. Semantic`. */
+/** Operator label: `0. Seed` … `10. Embedding`. */
 export function intakeFunctionLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }

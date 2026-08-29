@@ -21,9 +21,20 @@ function called(status: EnrichFunctionState["status"] | undefined): boolean {
   return status === "completed" || status === "failed";
 }
 
+function functionCalled(
+  functions: Record<string, EnrichFunctionState> | null | undefined,
+  key: string,
+): boolean {
+  if (called(functions?.[key]?.status)) return true;
+  // Function 10 was renamed `semantic` → `embedding` (§8.4). Stored blobs
+  // stamped before the rename still say `semantic` — fold, never rewrite.
+  if (key === "embedding") return called(functions?.semantic?.status);
+  return false;
+}
+
 /**
- * The eleven Intake functions the Intake box mentions — 0. Seed … 10. Semantic —
- * each a bool: called or not. Same keys as Intake, never a second ladder.
+ * The eleven Intake functions the Intake box mentions — 0. Seed … 10. Embedding
+ * — each a bool: called or not. Same keys as Intake, never a second ladder.
  */
 export function intakeFunctionRows(
   functions: Record<string, EnrichFunctionState> | null | undefined,
@@ -36,6 +47,6 @@ export function intakeFunctionRows(
     on:
       def.key === "seed"
         ? seeded === true
-        : called(functions?.[def.key]?.status),
+        : functionCalled(functions, def.key),
   }));
 }

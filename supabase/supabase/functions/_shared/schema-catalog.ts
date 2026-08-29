@@ -116,7 +116,7 @@ export type ChannelSet = Channels;
 // ── FunctionState ────────────────────────────────────────────────────────
 //
 // "{status, at, detail} x 10 enrichment functions" — the 10 is not a round
-// number, it is PULSE_PIECES.length (Pulse through Semantics), the exact
+// number, it is PULSE_PIECES.length (Pulse through Embedding), the exact
 // closed set pulse-pieces.ts already defines and pulse-report.ts already
 // writes through StampablePulseStep. FunctionState formalizes the PER-STEP
 // record that MESITA-1249 (materializing the enrichment state map onto the
@@ -217,18 +217,23 @@ function foldSemanticPair(
   return { status: "pending", at, detail: null };
 }
 
-/** Fold legacy `name`/`summary` stamps into one `semantic` key. */
+/**
+ * Fold legacy keys into `embedding`: the rename (`semantic`, the same
+ * function 10 under its pre-§8.4-v3 name) and the pre-merge `name`/`summary`
+ * extras. Precedence: a real `embedding` stamp wins, then `semantic`, then
+ * the folded extras pair.
+ */
 export function foldFunctionStateMap(
   map: Partial<Record<string, FunctionState>>,
 ): FunctionStateMap {
-  const semantic = map.semantic ??
+  const embedding = map.embedding ?? map.semantic ??
     foldSemanticPair(map.name, map.summary);
   const out: FunctionStateMap = {};
   for (const key of PULSE_PIECES) {
     const rec = map[key];
     if (rec) out[key] = rec;
   }
-  if (semantic) out.semantic = semantic;
+  if (embedding) out.embedding = embedding;
   return out;
 }
 

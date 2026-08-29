@@ -190,7 +190,7 @@ export function IntakeClient({
                   ))}
                 </select>
               </ModelRow>
-              <ModelRow label="Embeddings" hint="locked · Semantic">
+              <ModelRow label="Embeddings" hint="locked · Embedding">
                 <span className="text-sm">text-embedding-3-small</span>
               </ModelRow>
               {settingsStamp && (
@@ -206,7 +206,7 @@ export function IntakeClient({
           <SectionCard
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
-            subtitle="One function. It awaits four subfunctions."
+            subtitle="One function. It awaits five subfunctions."
             status={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
@@ -242,7 +242,7 @@ export function IntakeClient({
               steps={chipsFor("create")}
               estimate={
                 <FlowEstimate
-                  caption="Pulse + Details + Semantic. One place."
+                  caption="Pulse + Details + Embedding. One place."
                   estimate={createCost}
                 />
               }
@@ -517,7 +517,7 @@ export function IntakeClient({
                 index="9 · $"
                 flows={flowTagFor("description")}
                 name="Description"
-                blurb="Category, tags, presentation."
+                blurb="Super Category · Category · Tags · Presentation · Orders Enabled · Reservations Enabled · Mesita Name · Semantic Summary."
                 knobs="in Models"
               >
                 <KnobElsewhere>
@@ -525,17 +525,18 @@ export function IntakeClient({
                 </KnobElsewhere>
               </FunctionModule>
               <FunctionModule
-                id="f-semantic"
+                id="f-embedding"
                 index="10 · $"
-                flows={flowTagFor("semantic")}
-                name="Semantic"
-                blurb="Mesita name, semantic summary, embeddings. Two vectors, one function. Closes Enrich at 10."
+                flows={flowTagFor("embedding")}
+                name="Embedding"
+                blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 10."
                 knobs="locked"
               >
                 <NoKnobs>
-                  Locked to <b>text-embedding-3-small</b>. Name and Summary stay
-                  two columns. One function writes both. Swapping the model
-                  re-embeds the catalog.
+                  Locked to <b>text-embedding-3-small</b>. It only embeds what
+                  Description wrote — never synthesizes text. One function
+                  writes both vectors. Swapping the model re-embeds the
+                  catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

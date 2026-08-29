@@ -42,7 +42,12 @@ import {
   createEnrichCostLedger,
   synthesisRunCost,
 } from "../_shared/enrich-cost.ts";
-import { runPlaceEmbeddingsOnUpdate } from "../_shared/place-embeddings.ts";
+import {
+  loadEmbeddablePlace,
+  runPlaceEmbeddingsOnUpdate,
+  synthesizePlaceSummaryText,
+} from "../_shared/place-embeddings.ts";
+import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
 import {
   fetchPlaceCategories,
   fetchPlaceSuperCategories,
@@ -271,6 +276,45 @@ serveEnrichStage("contents", async (admin, env, row) => {
       orders_enabled: placeHasOrderCatalog(place),
       reservations_enabled: reservationsLikely,
     };
+
+    // §8.4 v3 — Description owns the WORDS (function 9). Mesita Name goes
+    // through the one door (gate D2: NULL / google-copy / the door's own last
+    // value; an operator's name is never overwritten)…
+    if (parsed?.mesita_name) {
+      const door = await applyInferredMesitaName(
+        admin,
+        projectId,
+        parsed.mesita_name,
+      );
+      sources.mesita_name = {
+        ok: door.wrote,
+        reason: door.reason,
+        candidate: parsed.mesita_name,
+      };
+    }
+    // …and the Semantic Summary is SYNTHESIZED here, persisted with this
+    // stage's patch. Function 10 (Embedding) only embeds the stored text —
+    // it never writes words. The door ran first so the effective name is
+    // current; `place` overlays the row so facts see this run's fields.
+    {
+      const embRow = await loadEmbeddablePlace(admin, projectId);
+      if (embRow) {
+        const effective = { ...embRow, ...place } as typeof embRow;
+        const summary = await synthesizePlaceSummaryText(
+          admin,
+          effective,
+          OPENAI_KEY,
+        );
+        if (!summary.fresh && summary.text) {
+          place.embedding_source_text = summary.text;
+        }
+        sources.semantic_summary = {
+          ok: !!summary.text,
+          fresh: summary.fresh,
+          chars: summary.text.length,
+        };
+      }
+    }
   }
   // Order gate follows menu/catalog — refresh even when synthesis is skipped.
   place.orders_enabled = placeHasOrderCatalog(place);
@@ -465,13 +509,12 @@ serveEnrichStage("contents", async (admin, env, row) => {
     return;
   }
 
-  // On-Update S2/S3 — synthesize short embedding blurb (no tags) + vector.
+  // EMBEDDING (function 10, §8.4 v3) — embed-only: vectors of the STORED
+  // Mesita Name and Semantic Summary that Description just persisted. It
+  // never synthesizes; a missing summary text stamps an honest failure.
   // Best-effort: the profile is already ready, so a failed embed leaves the
-  // place at rung 8 rather than failing the run. There is no backfill behind
-  // it — `embedAndPersistPlaces` has no callers anywhere in the repo — so a
-  // stuck vector needs a re-enrich, not patience (MESITA-1222).
-  // Captured so the subprocess report can say whether the embedding actually
-  // landed — the function returns null on a missing key or a failed write.
+  // place at rung 9 rather than failing the run — a stuck vector needs a
+  // re-enrich, not patience (MESITA-1222).
   let embeddingWrote = false;
   if (wants(buys, "embedding")) {
     const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
@@ -481,6 +524,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       openaiKey,
       "enrich-contents/on-update",
       "contents",
+      "stored",
     ));
   }
 
@@ -548,22 +592,24 @@ serveEnrichStage("contents", async (admin, env, row) => {
         `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
           `order ${place.orders_enabled ? "on" : "off"}, reserve ${
             place.reservations_enabled ? "on" : "off"
-          }.`,
+          }; Mesita Name + Semantic Summary inferred.`,
       )
       : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (wants(buys, "embedding")) {
-    // SEMANTICS — function 10. It writes Mesita Name + Semantic
-    // Summary + embeddings after function 9. It CLOSES the queue.
-    contentPieces.semantic = embeddingWrote
-      ? pieceDone("Semantics — Mesita Name, Semantic Summary, and embeddings written.")
-      : pieceFailed("Semantics did not write. Re-enrich to retry — there is no backfill.");
+    // EMBEDDING — function 10. Embed-only: vectors of the words function 9
+    // wrote. It CLOSES the queue.
+    contentPieces.embedding = embeddingWrote
+      ? pieceDone("Embedding — Mesita Name and Semantic Summary vectors written.")
+      : pieceFailed(
+        "Embedding did not write (no summary text, or the embed failed). Re-enrich to retry.",
+      );
   }
   await reportPulsePieces(admin, projectId, contentPieces);
 
   // One beacon for the whole contents stage — one notification per Edge
   // Function. Its own `step` is decorative and does not track the ladder: the
-  // stage runs 7 menu, 9 description and 10 Semantics, all stamped
+  // stage runs 7 menu, 9 description and 10 Embedding, all stamped
   // above. Reports synthesis + persist + image outcome in a single line.
   await reportEnrichmentStep(
     admin,

@@ -5,9 +5,19 @@
 //   2. Synthesize a short human blurb (LLM; deterministic facts fallback)
 //   3. Embed with text-embedding-3-small and persist text + hash + vector
 //
+// §8.4 v3 (2026-08-29): the WORDS belong to the Description function; the
+// Embedding function only embeds what Description wrote.
+//   · synthesizePlaceSummaryText — Description-owned: synthesizes the
+//     Semantic Summary when the facts digest moved; never embeds.
+//   · computeAndPersistPlaceEmbedding mode "stored" — embed-only: embeds the
+//     STORED summary text + the name; never synthesizes. The facts hash is
+//     stamped HERE, at embed time, so a Description-then-Embedding split can
+//     never hash-skip a stale vector (the hash only matches once the vector
+//     of the current text landed).
+//   · mode "synth" — the on-update path (profile edits): Description's
+//     synthesis helper then the embed, composed in one call.
 // Called after enrich-contents publish and after business-web-update-project
-// when embedding-relevant fields change. The lazy embed path also uses
-// synthesizePlaceEmbeddingText via embedAndPersistPlaces.
+// when embedding-relevant fields change.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
@@ -78,6 +88,31 @@ export function composeEmbeddingBlurb(v: EmbeddablePlace): string {
     .filter(Boolean) ?? [about];
   const body = sentences.slice(0, 2).join(" ");
   return clampToWordLimit(`${head}. ${body}`);
+}
+
+/**
+ * Description-owned Semantic Summary. Returns the stored text untouched when
+ * the facts digest matches (`fresh: true`); otherwise synthesizes a new one.
+ * NEVER persists and NEVER stamps `embedding_source_hash` — the hash belongs
+ * to the Embedding step (stamped only once the vector of this text landed).
+ */
+export async function synthesizePlaceSummaryText(
+  admin: SupabaseClient,
+  place: EmbeddablePlace,
+  apiKey: string,
+): Promise<{ text: string; fresh: boolean }> {
+  const factsHash = await digest(placeEmbeddingFacts(place));
+  const stored = place.embedding_source_text?.trim() ?? "";
+  if (stored && place.embedding_source_hash === factsHash) {
+    return { text: stored, fresh: true };
+  }
+  const models = await loadModelsConfig(admin);
+  const text = await synthesizePlaceEmbeddingText(
+    place,
+    apiKey,
+    models.enricherModel || DEFAULT_SYNTH_MODEL,
+  );
+  return { text, fresh: false };
 }
 
 export async function synthesizePlaceEmbeddingText(
@@ -156,6 +191,7 @@ async function computeAndPersistPlaceEmbedding(
   apiKey: string,
   logPrefix = "place-embeddings",
   via: EmbeddingVia = "update",
+  mode: "synth" | "stored" = "synth",
 ): Promise<PlaceEmbeddingWrite | null> {
   const facts = placeEmbeddingFacts(place);
   const factsHash = await digest(facts);
@@ -192,11 +228,23 @@ async function computeAndPersistPlaceEmbedding(
   let wroteName = false;
 
   if (!summaryFresh) {
-    text = await synthesizePlaceEmbeddingText(
-      place,
-      apiKey,
-      models.enricherModel || DEFAULT_SYNTH_MODEL,
-    );
+    if (mode === "stored") {
+      // Embed-only (§8.4 v3): the Embedding function never writes words.
+      // No stored summary means Description has not run — report and let
+      // the stage stamp the honest failure.
+      if (!text) {
+        console.error(
+          `[${logPrefix}] no embedding_source_text — Description pending`,
+        );
+        return null;
+      }
+    } else {
+      text = await synthesizePlaceEmbeddingText(
+        place,
+        apiKey,
+        models.enricherModel || DEFAULT_SYNTH_MODEL,
+      );
+    }
     try {
       vector = await embedSingle(text, apiKey, model);
     } catch (err) {
@@ -208,8 +256,10 @@ async function computeAndPersistPlaceEmbedding(
       return null;
     }
     patch.embedding = vectorLiteral(vector);
+    // The hash is stamped at EMBED time — it certifies "the stored vector is
+    // the embedding of the current facts' text", which is only true now.
     patch.embedding_source_hash = factsHash;
-    patch.embedding_source_text = text;
+    if (mode !== "stored") patch.embedding_source_text = text;
     wroteSummary = true;
   }
 
@@ -252,20 +302,20 @@ async function computeAndPersistPlaceEmbedding(
     return null;
   }
 
-  // ── SEMANTIC stamp ──────────────────────────────────────────────────────
+  // ── EMBEDDING stamp ─────────────────────────────────────────────────────
   // One function writes both vectors. A hash-match skip does not re-stamp.
   // `via` names the caller so the Monitor attributes the beacon.
   if (wroteSummary || wroteName) {
     const bits = [
       wroteSummary
-        ? `Semantic Summary written and embedded — ${countWords(text)} word(s).`
+        ? `Semantic Summary embedded — ${countWords(text)} word(s).`
         : null,
       wroteName
-        ? `Semantic Name written and embedded — ${nameText}.`
+        ? `Mesita Name embedded — ${nameText}.`
         : null,
     ].filter((s): s is string => s != null);
     await reportPulsePieces(admin, place.id, {
-      semantic: pieceDone(bits.join(" "), { via }),
+      embedding: pieceDone(bits.join(" "), { via }),
     });
   }
 
@@ -302,6 +352,7 @@ export async function runPlaceEmbeddingsOnUpdate(
   apiKey: string | undefined,
   logPrefix = "place-embeddings",
   via: EmbeddingVia = "update",
+  mode: "synth" | "stored" = "synth",
 ): Promise<PlaceEmbeddingWrite | null> {
   if (!apiKey) {
     console.error(`[${logPrefix}] OPENAI_KEY missing — skip`);
@@ -312,8 +363,10 @@ export async function runPlaceEmbeddingsOnUpdate(
     console.error(`[${logPrefix}] place not found:`, placeId);
     return null;
   }
-  return computeAndPersistPlaceEmbedding(admin, place, apiKey, logPrefix, via);
+  return computeAndPersistPlaceEmbedding(admin, place, apiKey, logPrefix, via, mode);
 }
+
+export { loadEmbeddablePlace };
 
 export function queuePlaceEmbeddingsOnUpdate(opts: {
   admin: SupabaseClient;

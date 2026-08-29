@@ -31,6 +31,7 @@ const PROFILE_SCHEMA = {
     executive_chef: { type: ["string", "null"] },
     editorial_summary: { type: ["string", "null"] },
     description: { type: ["string", "null"] },
+    mesita_name: { type: ["string", "null"] },
     details: {
       type: "object",
       properties: {
@@ -116,7 +117,11 @@ export async function synthesizeProfile(input: {
     `return one unbroken wall of text. Aim for 3–6 paragraphs; each ` +
     `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
     `dishes or experiences, history or neighborhood, why visit) — only when ` +
-    `the sources support it. No filler or invented detail. "description" and ` +
+    `the sources support it. No filler or invented detail. ` +
+    `"mesita_name" is the clean public display name: the place's label ` +
+    `stripped of chain suffixes, slogans, legal forms and city tags, in ` +
+    `proper case (e.g. "Tim Hortons TEC Campus" → "Tim Hortons"); return ` +
+    `null when the given name is already clean. "description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
