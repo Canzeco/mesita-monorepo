@@ -168,6 +168,8 @@ describe("SearchMapFilters", () => {
       'aria-checked="true" aria-label="Closest 20 places"',
     );
     expect(html.match(/role="radio"/g)?.length).toBe(5);
+    // Mesita Places is the default scope — nothing to warn about yet.
+    expect(html).not.toContain("not curated by Mesita");
     expect(html).not.toContain('type="range"');
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
@@ -216,9 +218,15 @@ describe("SearchPlacesScope", () => {
     // The retired partner scope colour never renders here — yellow lives on
     // the map pins.
     expect(html).not.toContain("#ffc400");
+    // Mesita Places is curated, so the scope that IS curated says nothing.
+    expect(html).not.toContain("not curated by Mesita");
     const google = renderToStaticMarkup(
       <SearchPlacesScope power={2} onPower={() => {}} />,
     );
+    // Leaving the curated set warns, in the box, every time.
+    expect(google).toContain("Google Places are not curated by Mesita");
+    expect(google).toContain("quality varies");
+    expect(google).toContain('role="note"');
     expect(google).toContain(
       'aria-checked="true" aria-label="Mesita Places and Google Places"',
     );
