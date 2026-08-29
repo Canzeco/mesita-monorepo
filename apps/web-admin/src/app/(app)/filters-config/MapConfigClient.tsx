@@ -160,7 +160,7 @@ export function MapConfigClient({
           <ChoiceField
             icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}
             label="Reload after"
-            hint="Camera must move this far AND wait this long. Browsing the rail does not count."
+            hint="Camera must move this far AND wait this long. Only dragging the map counts — rail or pin taps do not."
           >
             <div className="flex flex-wrap gap-2">
               {MAP_RELOAD_PAIRS.map((pair) => {

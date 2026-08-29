@@ -426,7 +426,7 @@ describe("Discovery page box order", () => {
     expect(map).toContain("Map reads the Map mask");
     expect(map).toContain("Reload after");
     expect(map).toContain("MAP_RELOAD_PAIRS");
-    expect(map).toContain("Browsing the rail does not count");
+    expect(map).toContain("Only dragging the map counts");
     expect(map).not.toContain("Reload after the camera moves");
     expect(map).not.toContain("Reload after waiting");
     expect(name).not.toContain('title="Search"');

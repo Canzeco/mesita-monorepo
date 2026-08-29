@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -122,8 +123,11 @@ export function SearchClient() {
   const location = scope.locationOptOut ? null : coords;
   const nearbyOrigin = location ?? MONTERREY_CENTER;
 
+  const searchInputRef = useRef<TextInput | null>(null);
   const trimmed = query.trim();
-  const idle = trimmed.length === 0 && !searchOpen;
+  // Idle = map-browse. Closing the name overlay returns the rail even
+  // if leftover query text sits in the bar.
+  const idle = !searchOpen;
 
   useEffect(() => {
     let cancelled = false;
@@ -235,11 +239,17 @@ export function SearchClient() {
     sessionTokenRef.current = newSessionToken();
   }, []);
 
-  // Closes the search overlay without picking a place — shared by the
-  // clear button and tapping the map while search is open.
+  // Dismisses the name overlay and keeps the typed text so a later
+  // bar tap can reopen the same list. Finger-drag and map tap use this.
+  const closeNameOverlay = () => {
+    setSearchOpen(false);
+    searchInputRef.current?.blur();
+  };
+
+  // Clear button — wipe the query and close the overlay.
   const closeSearch = () => {
     updateQuery('');
-    setSearchOpen(false);
+    closeNameOverlay();
   };
 
   const updateQuery = (next: string) => {
@@ -457,7 +467,7 @@ export function SearchClient() {
     ? catalog.find((p) => p.id === selectedId)
     : null;
 
-  const showResults = searchOpen || trimmed.length >= 2;
+  const showResults = searchOpen;
 
   return (
     <View className="flex-1 bg-background">
@@ -473,7 +483,10 @@ export function SearchClient() {
           onOpenPlace={openCatalogPlace}
           onSelectPin={handleSelectPin}
           onMapPress={() => {
-            if (searchOpen) closeSearch();
+            if (searchOpen) closeNameOverlay();
+          }}
+          onMapDrag={() => {
+            if (searchOpen) closeNameOverlay();
           }}
         />
       </View>
@@ -487,6 +500,7 @@ export function SearchClient() {
         onFocus={() => setSearchOpen(true)}
         onClear={closeSearch}
         onOpenScope={() => setScopeOpen(true)}
+        inputRef={searchInputRef}
       />
 
       {/* Results: height fits content; max ~70% so the map stays visible */}

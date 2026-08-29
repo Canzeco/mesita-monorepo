@@ -276,6 +276,33 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     );
   });
 
+  it("closes the name overlay on a finger-drag and keeps the query", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("closeNameOverlay");
+    expect(src).toContain("searchInputRef.current?.blur()");
+    expect(src).toMatch(
+      /const idle = !searchOpen/,
+    );
+    expect(src).toMatch(/\{searchOpen && \(/);
+    expect(src).not.toMatch(/searchOpen \|\| trimmed\.length > 0/);
+    expect(src).toMatch(
+      /closeNameOverlay\(\);[\s\S]*if \(forceNextLoad\.current\)/,
+    );
+    expect(src).toMatch(
+      /if \(searchOpen\) \{\s*closeNameOverlay\(\);\s*return;/,
+    );
+    expect(src).toContain("Do not re-run name search");
+  });
+
+  it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*lastFetchedCenter\.current = viewportCenter\(box\)/,
+    );
+    expect(src).toContain("cannot accumulate toward reload");
+    expect(src).toContain("Only a finger-drag on the map counts as travel");
+  });
+
   it("reloads once when a later GPS fix lands off the fetched camera", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("firstFix");

@@ -46,6 +46,7 @@ export function SearchMap({
   onOpenPlace,
   onSelectPin,
   onMapPress,
+  onMapDrag,
 }: SearchMapProps) {
   const mapRef = useRef<MapView>(null);
 
@@ -113,6 +114,7 @@ export function SearchMap({
       showsUserLocation={userLocation != null}
       showsMyLocationButton={false}
       onPress={onMapPress}
+      onPanDrag={onMapDrag}
     >
       {pins != null
         ? pins.map((pin) => {
