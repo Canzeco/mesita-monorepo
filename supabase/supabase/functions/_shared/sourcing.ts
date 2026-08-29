@@ -4,15 +4,9 @@
 // onto zero or one guest Super (`other` → ineligible). Atlas slugs live
 // in place-taxonomy.ts. Hotels, schools, shops are `other`.
 
-import { superForGoogleType } from "./google-type-super.ts";
+import { superForGoogleType, type GuestSuper } from "./google-type-super.ts";
 
-export type FamilyKey =
-  | "restaurants"
-  | "bars_nightlife"
-  | "cafes_bakeries"
-  | "wellness_spa"
-  | "experiences"
-  | "culture_arts";
+export type FamilyKey = GuestSuper;
 
 /**
  * The one guest Super a Google type (or leftover places.category slug)

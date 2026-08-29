@@ -164,8 +164,8 @@ serveEnrichStage("contents", async (admin, env, row) => {
       fetchPlaceTags(admin),
       loadModelsConfig(admin),
     ]);
-    // 'undefined' is the create-path placeholder, not a real category — never
-    // offer it to the classifier (thin-signal places would land there).
+    // Super `undefined` is a catalog membership, not a classifier target —
+    // never offer the leftover slug (thin-signal places would land there).
     const realCategories = categoryList.filter((c) => c.slug !== "undefined");
     const aboutText =
       ((place.description ?? null) as string | null)?.slice(0, 1500) || null;

@@ -99,6 +99,29 @@ Deno.test("Super Category cuts Atlas slugs; each category matches one Super", ()
   );
 });
 
+Deno.test("Super undefined matches Atlas leftover category", () => {
+  const rows = [
+    place({ id: "unk", category: "undefined" }),
+    place({ id: "taco", category: "taco" }),
+  ];
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["undefined"] }),
+      null,
+    ).map((r) => r.id),
+    ["unk"],
+  );
+  assertEquals(
+    applyDeckPredicates(
+      rows,
+      readDeckPredicates({ familyKeys: ["restaurants"] }),
+      null,
+    ).map((r) => r.id),
+    ["taco"],
+  );
+});
+
 Deno.test("family and category are ORed across the two tiers", () => {
   const rows = [
     place({ id: "taco", category: "taco_restaurant" }),

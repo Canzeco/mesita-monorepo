@@ -2,16 +2,17 @@
 // Category only. Super Categories PARTITION Mesita Categories and Google
 // Table A types: each Category maps to exactly one Super; each Google type
 // maps to exactly one Super (or `other`, which is not a guest pill).
-// The six slugs here are the live catalog (`public.place_super_categories`)
+// The seven slugs here are the live catalog (`public.place_super_categories`)
 // — keep this file lock-step with `seed_place_super_categories` /
 // `seed_place_categories`. Google type expansion lives in
 // `google-type-super.ts` (search batteries + the 478-type map).
 //
-// Places start with category='undefined' and family_keys NULL. Contents
-// enrichment infers both. When the category is in Atlas, family_keys is
-// that one Super. Stored keys only win when the category has no
-// membership (undefined / leftover slugs). Else the Google primaryType
-// map (pins + leftover slugs).
+// Places start with category='undefined' and family_keys=['undefined'].
+// Contents enrichment infers a classified Category; family_keys follows
+// that one Super. Super `undefined` is the leftover/create-path bucket,
+// not Google `other` (hotels/shops stay ineligible). Stored keys only
+// win when the category has no Atlas membership (leftover slugs). Else
+// the Google primaryType map (pins).
 
 import {
   familiesForGoogleType,
@@ -32,6 +33,7 @@ export const SUPER_CATEGORIES: readonly {
   { slug: "wellness_spa", label: "Wellness & Spa", emoji: "🧖", sort_order: 4 },
   { slug: "experiences", label: "Experiences & Activities", emoji: "🎟️", sort_order: 5 },
   { slug: "culture_arts", label: "Culture & Arts", emoji: "🎭", sort_order: 6 },
+  { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 7 },
 ];
 
 const SUPER_SLUGS = new Set<string>(SUPER_CATEGORIES.map((s) => s.slug));
@@ -45,8 +47,9 @@ const C = "cafes_bakeries" as const;
 const W = "wellness_spa" as const;
 const E = "experiences" as const;
 const A = "culture_arts" as const;
+const U = "undefined" as const;
 
-/** Atlas category slug → exactly one Super Category. `undefined` is omitted (= []). */
+/** Atlas category slug → exactly one Super Category. */
 export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]>> =
   {
     mexican: [R],
@@ -149,6 +152,7 @@ export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]
     botanical_garden: [E],
     cultural_center: [A],
     market: [E],
+    undefined: [U],
   };
 
 export function isFamilyKey(value: string): value is FamilyKey {
@@ -191,7 +195,7 @@ export function familiesForAtlasCategory(
 ): FamilyKey[] {
   if (!category) return [];
   const slug = category.trim().toLowerCase();
-  if (!slug || slug === "undefined") return [];
+  if (!slug) return [];
   return sanitizeFamilyKeys(ATLAS_CATEGORY_SUPERS[slug] ?? []);
 }
 
@@ -203,8 +207,8 @@ export type FamilyPlace = {
 /**
  * Super Category for a place on the wire or in a predicate.
  * Atlas membership wins when the category is in the catalog. Stored keys
- * win only when membership is empty (undefined / leftover). Else the
- * Google primaryType map (Nearby pins).
+ * win only when membership is empty (leftover slugs). Else the Google
+ * primaryType map (Nearby pins).
  */
 export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
   const atlas = familiesForAtlasCategory(
@@ -220,8 +224,8 @@ export function familiesForPlace(place: FamilyPlace): FamilyKey[] {
 
 /**
  * After semantics infers both fields: a known Atlas category keeps its
- * one Super. Inference only fills family_keys when the category has no
- * membership yet (undefined / unknown).
+ * one Super (including `undefined` → Super undefined). Inference only
+ * fills family_keys when the category has no membership yet.
  */
 export function resolveEnrichedFamilyKeys(
   category: string | null | undefined,

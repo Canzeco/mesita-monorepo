@@ -7,7 +7,7 @@
 // source. Super Categories partition Mesita Categories (breakfast is
 // restaurants, not cafés). The cut is OR across selected pills. Google
 // stubs match from family_keys (Google primaryType → one Super). The
-// Search chrome uses the guest word Category for the same six families.
+// Search chrome uses the guest word Category for the same seven families.
 // Distance and time stay off this surface: the camera already bounds
 // the set. Swipe keeps Discovery.
 
@@ -71,7 +71,7 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 export type MapFilters = {
   /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
   searchPower: MapSearchPower;
-  /** Super Category: the six place families; empty = no constraint. */
+  /** Super Category: the seven place families; empty = no constraint. */
   familyKeys: FamilyKey[];
 };
 

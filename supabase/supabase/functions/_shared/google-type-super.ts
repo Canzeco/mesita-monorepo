@@ -14,16 +14,18 @@ export type SuperOrOther =
   | "culture_arts"
   | "other";
 
-export const GOOGLE_SEARCH_TYPES: Record<
-  Exclude<SuperOrOther, "other">,
-  readonly string[]
-> = {
+/** Guest pills: the six Google-mapped supers plus leftover Super `undefined`. */
+export type GuestSuper = Exclude<SuperOrOther, "other"> | "undefined";
+
+export const GOOGLE_SEARCH_TYPES: Record<GuestSuper, readonly string[]> = {
   restaurants: ["restaurant"] as const,
   bars_nightlife: ["bar", "night_club"] as const,
   cafes_bakeries: ["cafe", "bakery"] as const,
   wellness_spa: ["spa", "gym", "yoga_studio"] as const,
   experiences: ["tourist_attraction", "amusement_park", "bowling_alley", "park"] as const,
   culture_arts: ["museum", "art_gallery", "movie_theater", "performing_arts_theater"] as const,
+  // Leftover/create-path Super — not a Google kind. Empty = skip Nearby.
+  undefined: [] as const,
 };
 
 export const GOOGLE_TYPE_SUPER: Readonly<Record<string, SuperOrOther>> = {
@@ -588,8 +590,6 @@ export const GOOGLE_TYPES_BY_SUPER: Record<SuperOrOther, readonly string[]> = {
   ] as const,
 };
 
-export type GuestSuper = Exclude<SuperOrOther, "other">;
-
 const GUEST_SUPERS = new Set<string>([
   "restaurants",
   "bars_nightlife",
@@ -597,6 +597,7 @@ const GUEST_SUPERS = new Set<string>([
   "wellness_spa",
   "experiences",
   "culture_arts",
+  "undefined",
 ]);
 
 export function isGuestSuper(value: string): value is GuestSuper {

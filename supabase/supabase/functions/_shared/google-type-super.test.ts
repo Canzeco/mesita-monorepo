@@ -18,6 +18,7 @@ const GUEST: GuestSuper[] = [
   "wellness_spa",
   "experiences",
   "culture_arts",
+  "undefined",
 ];
 
 Deno.test("478 Google Table A types each map to exactly one Super or other", () => {
@@ -75,6 +76,10 @@ Deno.test("exclusive leftovers: gastropub restaurants, karaoke nightlife, casino
 Deno.test("search batteries stay inside Google's API caps", () => {
   for (const slug of GUEST) {
     const types = GOOGLE_SEARCH_TYPES[slug];
+    if (slug === "undefined") {
+      assertEquals(types.length, 0);
+      continue;
+    }
     if (types.length < 1 || types.length > 50) {
       throw new Error(`${slug} search battery is ${types.length}`);
     }
@@ -83,8 +88,11 @@ Deno.test("search batteries stay inside Google's API caps", () => {
     }
   }
   assertEquals(GOOGLE_SEARCH_TYPES.restaurants, ["restaurant"]);
+  assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
   assertEquals(textSearchTypeForSuper("restaurants"), "restaurant");
+  assertEquals(textSearchTypeForSuper("undefined"), null);
   assertEquals(textSearchTypeForSuper("other"), null);
+  assertEquals(nearbyTypesForSupers(["undefined"]), []);
   assertEquals(
     nearbyTypesForSupers(["wellness_spa", "culture_arts"]),
     [

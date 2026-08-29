@@ -481,7 +481,7 @@ export function PlaceSection({
             />
           </ReadField>
           <PlaceCategorySelect
-            value={form.category === "undefined" ? "" : form.category}
+            value={form.category ?? ""}
             onChange={(slug) => set("category", slug)}
             disabled={anyPending}
             googleLabel={place.category_label}

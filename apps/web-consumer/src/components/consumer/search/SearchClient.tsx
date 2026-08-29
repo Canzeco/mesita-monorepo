@@ -5,7 +5,7 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user).
 //   • Top overlay: query pill + Filters button, then a Category strip
-//     (the six Super Category families). Places scope + Super Category
+//     (the seven Super Category families). Places scope + Super Category
 //     live in the map Filters sheet. Default is + Places. Distance and
 //     time are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail around the camera. Places

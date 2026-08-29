@@ -9,8 +9,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("Atlas Super Category catalog is six slugs in the 5–10 band", () => {
-  assertEquals(SUPER_CATEGORIES.length, 6);
+Deno.test("Atlas Super Category catalog is seven slugs in the 5–10 band", () => {
+  assertEquals(SUPER_CATEGORIES.length, 7);
   assertEquals(SUPER_CATEGORIES.map((s) => s.slug), [
     "restaurants",
     "bars_nightlife",
@@ -18,13 +18,14 @@ Deno.test("Atlas Super Category catalog is six slugs in the 5–10 band", () => 
     "wellness_spa",
     "experiences",
     "culture_arts",
+    "undefined",
   ]);
 });
 
 Deno.test("every Atlas category maps to exactly one Super Category", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_SUPERS);
-  assertEquals(slugs.length, 100);
-  assertEquals(slugs.includes("undefined"), false);
+  assertEquals(slugs.length, 101);
+  assertEquals(slugs.includes("undefined"), true);
   const covered = new Set<string>();
   for (const slug of slugs) {
     const supers = ATLAS_CATEGORY_SUPERS[slug] ?? [];
@@ -49,8 +50,8 @@ Deno.test("former intersections now exclusive", () => {
   assertEquals(familiesForAtlasCategory("movie_theater"), ["culture_arts"]);
 });
 
-Deno.test("undefined / empty category has no Super Category yet", () => {
-  assertEquals(familiesForAtlasCategory("undefined"), []);
+Deno.test("undefined category maps to Super undefined; empty has none", () => {
+  assertEquals(familiesForAtlasCategory("undefined"), ["undefined"]);
   assertEquals(familiesForAtlasCategory(null), []);
   assertEquals(familiesForAtlasCategory(""), []);
 });
@@ -77,9 +78,9 @@ Deno.test("familiesForPlace uses Atlas membership, not a stored subset", () => {
       category: "undefined",
       family_keys: ["bars_nightlife"],
     }),
-    ["bars_nightlife"],
+    ["undefined"],
   );
-  assertEquals(familiesForPlace({ category: "undefined" }), []);
+  assertEquals(familiesForPlace({ category: "undefined" }), ["undefined"]);
   assertEquals(familiesForPlace({ category: "gas_station" }), []);
 });
 
@@ -102,9 +103,12 @@ Deno.test("resolveEnrichedFamilyKeys keeps the one Atlas Super", () => {
   );
   assertEquals(
     resolveEnrichedFamilyKeys("undefined", ["bars_nightlife"]),
-    ["bars_nightlife"],
+    ["undefined"],
   );
-  assertEquals(resolveEnrichedFamilyKeys("undefined", []), []);
+  assertEquals(resolveEnrichedFamilyKeys("undefined", []), ["undefined"]);
+  assertEquals(resolveEnrichedFamilyKeys("undefined", ["restaurants"]), [
+    "undefined",
+  ]);
 });
 
 Deno.test("sanitizeFamilyKeys drops junk, dedupes, caps at one, catalog order", () => {
@@ -122,4 +126,5 @@ Deno.test("readGuestFamilyKeys keeps every selected Super pill", () => {
     ["restaurants", "experiences"],
   );
   assertEquals(readGuestFamilyKeys(["wellness_spa"]), ["wellness_spa"]);
+  assertEquals(readGuestFamilyKeys(["undefined"]), ["undefined"]);
 });

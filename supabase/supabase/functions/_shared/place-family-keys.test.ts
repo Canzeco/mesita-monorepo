@@ -39,13 +39,15 @@ Deno.test("withFamilyKeys keeps the Atlas Super when stored keys disagree", () =
       category: "undefined",
       family_keys: ["bars_nightlife"],
     }).family_keys,
-    ["bars_nightlife"],
+    ["undefined"],
   );
 });
 
-Deno.test("withFamilyKeys returns [] for unknown / empty / undefined category", () => {
+Deno.test("withFamilyKeys maps undefined category to Super undefined", () => {
+  assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, [
+    "undefined",
+  ]);
   assertEquals(withFamilyKeys({ category: "gas_station" }).family_keys, []);
-  assertEquals(withFamilyKeys({ category: "undefined" }).family_keys, []);
   assertEquals(withFamilyKeys({ category: null }).family_keys, []);
   assertEquals(withFamilyKeys({}).family_keys, []);
 });

@@ -108,7 +108,7 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchCategoryRow", () => {
-  it("renders the six Category families, not Types or Discovery knobs", () => {
+  it("renders the seven Category families, not Types or Discovery knobs", () => {
     const rest = renderToStaticMarkup(<SearchCategoryRow familyKeys={[]} />);
     expect(rest).toContain("Category");
     expect(rest).toContain("Restaurants");
@@ -117,6 +117,7 @@ describe("SearchCategoryRow", () => {
     expect(rest).toContain("Wellness");
     expect(rest).toContain("Experiences");
     expect(rest).toContain("Culture");
+    expect(rest).toContain("Undefined");
     expect(rest).not.toContain("Nightclub");
     expect(rest).not.toContain("Types");
     expect(rest).not.toContain("Now");

@@ -9,6 +9,7 @@ import {
   listedClearsMapPopularity,
   listedMapFilters,
   mapShouldFillGoogle,
+  primaryTypeClearsMapTypes,
 } from "./map-engine.ts";
 import type { NearbyHit } from "./nearby-places.ts";
 
@@ -186,9 +187,10 @@ Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Goog
     { id: "bar", category: "bar", listing_type: "partner" as const },
     { id: "hotel", category: "hotel", listing_type: "web" as const },
     { id: "spa", category: "spa", listing_type: "partner" as const },
+    { id: "unk", category: "undefined", listing_type: "web" as const },
   ];
   const got = admitSwipeCatalog(listed, MAP);
-  assertEquals(got.map((r) => r.id), ["rest", "bar", "spa"]);
+  assertEquals(got.map((r) => r.id), ["rest", "bar", "spa", "unk"]);
 });
 
 Deno.test("admitSwipeCatalog honors Map type batteries", () => {
@@ -207,4 +209,11 @@ Deno.test("admitSwipeCatalog honors Map type batteries", () => {
     { id: "club", category: "night_club" },
   ];
   assertEquals(admitSwipeCatalog(listed, barsOnly).map((r) => r.id), ["club"]);
+});
+
+Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {
+  assertEquals(primaryTypeClearsMapTypes("undefined", MAP), true);
+  assertEquals(primaryTypeClearsMapTypes("board_game_cafe", MAP), true);
+  assertEquals(primaryTypeClearsMapTypes("hotel", MAP), false);
+  assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);
 });

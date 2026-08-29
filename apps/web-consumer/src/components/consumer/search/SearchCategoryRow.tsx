@@ -4,7 +4,7 @@ import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 import { toggleMapFamily } from "@/lib/use-map-filters";
 import { cn } from "@/lib/utils";
 
-// Category on the Search map — the six Mesita families as a chip strip
+// Category on the Search map — the seven Mesita families as a chip strip
 // under the query row. Super Category is this same axis; the guest word
 // is Category. Concrete catalog / Google types stay off the canvas.
 // Short labels so the strip scrolls instead of wrapping. No emoji.
@@ -16,6 +16,7 @@ const CATEGORY_STRIP: Record<FamilyKey, string> = {
   wellness_spa: "Wellness",
   experiences: "Experiences",
   culture_arts: "Culture",
+  undefined: "Undefined",
 };
 
 export function SearchCategoryRow({

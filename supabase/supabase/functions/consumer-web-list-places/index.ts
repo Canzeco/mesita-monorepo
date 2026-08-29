@@ -258,10 +258,11 @@ Deno.serve(async (req) => {
     ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
-  const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map);
   const nearbyTypes = guestSupers.length > 0
     ? nearbyTypesForSupers(guestSupers)
     : enabledNearbyTypes(cfg.map);
+  const googleFill = mapShouldFillGoogle(clientGoogle, cfg.map) &&
+    nearbyTypes.length > 0;
   const filters = isNearby
     ? listedMapFilters(cfg.filters, cfg.map)
     : cfg.filters;

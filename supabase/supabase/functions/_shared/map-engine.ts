@@ -25,6 +25,7 @@ import {
   type EligibilityResult,
   type FamilyKey,
 } from "./sourcing.ts";
+import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
 export type { NearbyTypeKey };
 
@@ -163,7 +164,8 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
 // experiences / culture have no operator battery — Super membership is
 // the gate (spa, museum, park are Mesita kinds; hotel is `other`).
 // Guest Super pills send `GOOGLE_SEARCH_TYPES` on Nearby. googleFill is
-// Nearby-only and is not a Search/Add gate.
+// Nearby-only and is not a Search/Add gate. Super `undefined` has no
+// battery — listed leftover places still admit (same as wellness).
 
 const FAMILY_NEARBY_TYPES: Record<FamilyKey, readonly NearbyTypeKey[]> = {
   restaurants: ["restaurant"],
@@ -172,6 +174,7 @@ const FAMILY_NEARBY_TYPES: Record<FamilyKey, readonly NearbyTypeKey[]> = {
   wellness_spa: [],
   experiences: [],
   culture_arts: [],
+  undefined: [],
 };
 
 export type MapPlaceSignals = {
@@ -193,7 +196,11 @@ export function primaryTypeClearsMapTypes(
   ) {
     return true;
   }
-  const families = familiesForGoogleType(primaryType);
+  const families = (() => {
+    const atlas = familiesForAtlasCategory(primaryType);
+    if (atlas.length > 0) return atlas;
+    return familiesForGoogleType(primaryType);
+  })();
   if (families.length === 0) return false;
   return families.some((family) => {
     const batteries = FAMILY_NEARBY_TYPES[family];

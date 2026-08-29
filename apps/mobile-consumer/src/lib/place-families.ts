@@ -1,8 +1,9 @@
-// Place families — the six Atlas Super Categories. Super Categories
+// Place families — the seven Atlas Super Categories. Super Categories
 // PARTITION Mesita Categories and Google Table A types: each Category
 // maps to exactly one Super; each Google type maps to exactly one Super
 // (or `other`, not a guest pill). Search map Filters cut on these keys
-// only.
+// only. Super `undefined` is the leftover/create-path bucket, not Google
+// `other`.
 //
 // NOT mock data: the family KEYS are a live product contract, mirrored in
 //   · public.place_super_categories
@@ -21,7 +22,8 @@ export type FamilyKey =
   | "cafes_bakeries"
   | "wellness_spa"
   | "experiences"
-  | "culture_arts";
+  | "culture_arts"
+  | "undefined";
 
 type PlaceFamily = {
   key: FamilyKey;
@@ -36,4 +38,5 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "wellness_spa", label: "Wellness & Spa", emoji: "🧖" },
   { key: "experiences", label: "Experiences & Activities", emoji: "🎟️" },
   { key: "culture_arts", label: "Culture & Arts", emoji: "🎭" },
+  { key: "undefined", label: "Undefined", emoji: "❓" },
 ];

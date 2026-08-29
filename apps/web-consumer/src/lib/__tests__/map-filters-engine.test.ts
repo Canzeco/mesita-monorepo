@@ -178,6 +178,19 @@ describe("applyMapFilters", () => {
         (p) => p.id,
       ),
     ).toEqual([]);
+    expect(
+      applyMapFilters(
+        [
+          place({
+            id: "unk",
+            category: "undefined",
+            family_keys: ["undefined"],
+            content_status: "ready",
+          }),
+        ],
+        filters({ familyKeys: ["undefined"] }),
+      ).map((p) => p.id),
+    ).toEqual(["unk"]);
   });
 
   it("Google stubs match Super Category from family_keys", () => {
