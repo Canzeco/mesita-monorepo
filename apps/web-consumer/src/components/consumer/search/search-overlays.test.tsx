@@ -510,20 +510,21 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(loading).not.toContain("w-[288px]");
   });
 
-  it("bleeds rail photos to the card edge with no inner frame", () => {
+  it("bleeds a square rail photo to the card edge with no inner frame", () => {
     const card = read("SearchRailCard.tsx");
     const overlay = read("search-catalog-overlays.tsx");
     expect(card).toContain(
-      "bg-muted relative min-h-20 w-20 shrink-0 self-stretch overflow-hidden",
+      "bg-muted relative aspect-square min-h-20 w-auto shrink-0 self-stretch overflow-hidden",
     );
     expect(card).toContain("overflow-hidden rounded-2xl border");
     expect(card).toContain('className="border-0 object-cover outline-none"');
     expect(card).not.toContain("rounded-xl");
+    expect(card).not.toContain(" w-20 ");
     expect(card).not.toMatch(
-      /min-h-20 w-20[^"]*\b(?:border|ring|rounded-xl)\b/,
+      /aspect-square[^"]*\b(?:border|ring|rounded-xl)\b/,
     );
     expect(overlay).toContain(
-      "min-h-20 w-20 shrink-0 self-stretch rounded-none",
+      "aspect-square min-h-20 w-auto shrink-0 self-stretch rounded-none",
     );
     const html = renderToStaticMarkup(
       <RailCard
@@ -533,10 +534,10 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
         onOpen={() => {}}
       />,
     );
+    expect(html).toContain("aspect-square");
     expect(html).toContain("min-h-20");
-    expect(html).toContain("w-20");
-    expect(html).not.toMatch(/min-h-20 w-20[^"]*\bborder\b/);
-    expect(html).not.toMatch(/min-h-20 w-20[^"]*\brounded-xl\b/);
+    expect(html).not.toMatch(/aspect-square[^"]*\bborder\b/);
+    expect(html).not.toMatch(/aspect-square[^"]*\brounded-xl\b/);
   });
 
   it("renders one 80% skeleton page with 10% side pads, not a 288px strip", () => {
