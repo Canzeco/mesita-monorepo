@@ -6,7 +6,6 @@ import {
   deepModuleFlags,
   laneDedupeKeys,
   listedNotPartner,
-  membershipTone,
   mergeNameDeepQueries,
   orderDeepLineup,
   splitResolvedNameHits,
@@ -27,25 +26,6 @@ function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">):
     ...over,
   };
 }
-
-Deno.test("membershipTone: partner red, listed gray, google-only yellow", () => {
-  assertEquals(
-    membershipTone({ status: "web_listed", partner: true }),
-    "partner",
-  );
-  assertEquals(
-    membershipTone({ status: "web_listed", partner: false }),
-    "listed",
-  );
-  assertEquals(
-    membershipTone({ status: "not_in_mesita", partner: true }),
-    "google",
-  );
-  assertEquals(
-    membershipTone({ status: "verified_partner_other", partner: true }),
-    "partner",
-  );
-});
 
 Deno.test("laneDedupeKeys prefers google_place_id then Mesita id", () => {
   assertEquals(laneDedupeKeys({ placeId: "ChIJ1", mesitaId: "uuid-1" }), [
@@ -354,6 +334,7 @@ function listed(
   name: string,
   embedding: number[],
   plan: string | null = "free",
+  content_status: string | null = "ready",
 ): ListedRow {
   return {
     id,
@@ -364,6 +345,8 @@ function listed(
     lat: 19.4,
     lng: -99.1,
     plan,
+    content_status,
+    enriched_at: null,
     name_embedding: embedding,
     embedding: null,
   };

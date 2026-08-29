@@ -61,6 +61,7 @@ import {
   parseVector,
 } from "./embeddings-vector.ts";
 import { isPaidPlan } from "./membership-enforcement-helpers.ts";
+import { isEnrichedPlace } from "./place-family-keys.ts";
 import { radiusBoundingBox } from "./geo.ts";
 
 export const NAME_MIN_COSINE = 0.4;
@@ -74,22 +75,13 @@ export type LaneItem = {
   secondaryText: string;
   status: PredictionStatus;
   partner: boolean;
+  /** Server's answer: did we write a profile for this place? */
+  enriched?: boolean;
   mesitaId?: string;
   mesitaSlug?: string;
   lat?: number | null;
   lng?: number | null;
 };
-
-export type MembershipTone = "partner" | "listed" | "google";
-
-export function membershipTone(item: {
-  status: string;
-  partner?: boolean | null;
-}): MembershipTone {
-  if (item.status === "not_in_mesita") return "google";
-  if (item.partner) return "partner";
-  return "listed";
-}
 
 export function laneDedupeKeys(item: {
   placeId?: string | null;
@@ -203,6 +195,8 @@ export type ListedRow = {
   lat: number | null;
   lng: number | null;
   plan: string | null;
+  content_status: string | null;
+  enriched_at: string | null;
   name_embedding: unknown | null;
   embedding: unknown | null;
 };
@@ -217,6 +211,9 @@ function listedToLane(row: ListedRow): LaneItem | null {
     secondaryText: row.address ?? "",
     status: "web_listed",
     partner: isPaidPlan(row.plan),
+    // Membership colour is the SERVER's answer on this lane too, so the
+    // list dot and the map pin cannot disagree (Pato, 2026-08-29).
+    enriched: isEnrichedPlace(row),
     mesitaId: row.id,
     mesitaSlug: row.slug,
     lat: row.lat,
@@ -236,6 +233,8 @@ export function applyResolvedMesitaName(
     ...item,
     status: mesita.status,
     partner: mesita.partner,
+    // The entity is Mesita's now, so its enrichment fact travels with it.
+    enriched: mesita.enriched,
     mesitaId: mesita.mesitaId,
     mesitaSlug: mesita.mesitaSlug,
     lat: item.lat ?? mesita.lat,
@@ -534,6 +533,7 @@ function toWire(item: LaneItem) {
     secondaryText: item.secondaryText,
     status: item.status,
     partner: item.partner,
+    enriched: item.enriched === true,
     ...(item.mesitaId ? { mesitaId: item.mesitaId } : {}),
     ...(item.mesitaSlug ? { mesitaSlug: item.mesitaSlug } : {}),
     ...(item.lat != null ? { lat: item.lat } : {}),
@@ -560,7 +560,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, plan, content_status, enriched_at, name_embedding, embedding";
 /** In-process cosine budget — same order as recall-places, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
@@ -791,9 +791,10 @@ async function fetchListedByGoogleIds(
 ): Promise<ListedRow[]> {
   const { data, error } = await admin
     .from("profiles")
-    .select(
-      "id, slug, google_place_id, name, address, lat, lng, plan, name_embedding, embedding",
-    )
+    // One column list, not a second hand-typed copy: this is the path that
+    // resolves a Google hit onto a Mesita row, so it must carry the same
+    // enrichment fact as the embedding pool.
+    .select(EMBED_COLUMNS)
     .in("google_place_id", placeIds)
     .in("status", ["active", "lead"]);
   if (error) {

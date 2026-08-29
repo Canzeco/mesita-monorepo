@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_LISTED_PIN_COLOR,
+  MAP_ENRICHED_PIN_COLOR,
   MAP_PARTNER_PIN_COLOR,
   MAP_PIN_HIT_SIZE,
   MAP_PIN_SCALE,
@@ -17,6 +17,7 @@ import {
 import {
   buildSearchMapPins,
   catalogPlaceOnMesita,
+  isEnrichedPlace,
   membershipColor,
   membershipTone,
   overlayPinDecision,
@@ -27,41 +28,78 @@ import {
   predictionOnMesita,
 } from "@/lib/search-membership";
 
-describe("search membership tones", () => {
-  it("maps partner / listed / google-only", () => {
-    expect(membershipTone({ status: "web_listed", partner: true })).toBe(
-      "partner",
-    );
-    expect(membershipTone({ status: "web_listed", partner: false })).toBe(
-      "listed",
-    );
-    expect(membershipTone({ status: "not_in_mesita", partner: true })).toBe(
-      "google",
-    );
+describe("search membership tones — partner > enriched > everything else", () => {
+  // THE LAW (Pato, 2026-08-29): yellow beats red beats gray, and red is
+  // EARNED by enrichment. A row existing is not enough.
+  it("paints map rows in that order", () => {
+    const ready = { content_status: "ready" };
+    expect(placeMembershipTone({ partner: true, ...ready })).toBe("partner");
+    // Partner beats enriched: an unenriched partner is still yellow.
     expect(placeMembershipTone({ partner: true })).toBe("partner");
-    expect(placeMembershipTone({ partner: false })).toBe("listed");
-    expect(placeMembershipTone({ plan: "pro" })).toBe("partner");
-    expect(placeMembershipTone({ googleOnly: true })).toBe("google");
-    expect(placeMembershipTone({ from_google: true })).toBe("google");
+    expect(placeMembershipTone({ partner: false, ...ready })).toBe("enriched");
+    // THE FIX: a Created / Requested stub used to paint red.
+    expect(placeMembershipTone({ partner: false })).toBe("unlisted");
+    expect(placeMembershipTone({ partner: false, request_count: 3 } as never)).toBe(
+      "unlisted",
+    );
+    expect(placeMembershipTone({ googleOnly: true })).toBe("unlisted");
+    expect(placeMembershipTone({ from_google: true })).toBe("unlisted");
+    // A Google stub stays gray even if it somehow carries enrichment.
+    expect(placeMembershipTone({ googleOnly: true, ...ready })).toBe("unlisted");
   });
 
-  it("uses yellow Partners, red Mesita Places, gray Google Places", () => {
+  it("paints name-lane rows the same way, gray when the server is silent", () => {
+    expect(
+      membershipTone({ status: "web_listed", partner: true, enriched: false }),
+    ).toBe("partner");
+    expect(
+      membershipTone({ status: "web_listed", partner: false, enriched: true }),
+    ).toBe("enriched");
+    // THE FIX: a Google hit resolving onto a Created stub used to be red.
+    expect(
+      membershipTone({ status: "web_listed", partner: false, enriched: false }),
+    ).toBe("unlisted");
+    // Older payload with no `enriched` at all: understate, never overclaim.
+    expect(membershipTone({ status: "web_listed", partner: false })).toBe(
+      "unlisted",
+    );
+    expect(membershipTone({ status: "not_in_mesita", partner: true })).toBe(
+      "unlisted",
+    );
+  });
+
+  it("counts ready OR a stamped enriched_at, never one alone", () => {
+    // 27% of the live catalog is ready with a null enriched_at
+    // (measured 2026-08-29). An enriched_at-only test would grey a
+    // quarter of the catalog on deploy.
+    expect(isEnrichedPlace({ content_status: "ready" })).toBe(true);
+    expect(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(true);
+    expect(isEnrichedPlace({ content_status: "queued" })).toBe(false);
+    expect(isEnrichedPlace({})).toBe(false);
+    // The server's boolean wins over the columns, both ways.
+    expect(isEnrichedPlace({ enriched: true })).toBe(true);
+    expect(isEnrichedPlace({ enriched: false, content_status: "ready" })).toBe(
+      false,
+    );
+  });
+
+  it("uses yellow Partners, red enriched Mesita, gray everything else", () => {
     expect(membershipColor("partner")).toBe(MAP_PARTNER_PIN_COLOR);
-    expect(membershipColor("listed")).toBe(MAP_LISTED_PIN_COLOR);
-    expect(membershipColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(membershipColor("enriched")).toBe(MAP_ENRICHED_PIN_COLOR);
+    expect(membershipColor("unlisted")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(MAP_PARTNER_PIN_COLOR).toBe("#ffc400");
-    expect(MAP_LISTED_PIN_COLOR).toBe("#ff2357");
+    expect(MAP_ENRICHED_PIN_COLOR).toBe("#ff2357");
     expect(MAP_GOOGLE_PIN_COLOR).toBe("#9ca3af");
-    expect(MAP_PARTNER_PIN_COLOR).not.toBe(MAP_LISTED_PIN_COLOR);
+    expect(MAP_PARTNER_PIN_COLOR).not.toBe(MAP_ENRICHED_PIN_COLOR);
   });
 
   it("keeps membership fill and rings the selected pin black", () => {
     expect(pinFillColor("partner", false)).toBe(MAP_PARTNER_PIN_COLOR);
-    expect(pinFillColor("listed", false)).toBe(MAP_LISTED_PIN_COLOR);
-    expect(pinFillColor("google", false)).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(pinFillColor("enriched", false)).toBe(MAP_ENRICHED_PIN_COLOR);
+    expect(pinFillColor("unlisted", false)).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("partner", true)).toBe(MAP_PARTNER_PIN_COLOR);
-    expect(pinFillColor("listed", true)).toBe(MAP_LISTED_PIN_COLOR);
-    expect(pinFillColor("google", true)).toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(pinFillColor("enriched", true)).toBe(MAP_ENRICHED_PIN_COLOR);
+    expect(pinFillColor("unlisted", true)).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#ffffff");
     expect(pinStrokeColor(true)).toBe("#111111");
   });
@@ -75,12 +113,22 @@ describe("search membership tones", () => {
 
 describe("membershipTone", () => {
   it("treats mesitaId as on-Mesita even when status is not_in_mesita", () => {
+    // mesitaId still wins over a stale status — but being on Mesita is no
+    // longer enough for red. Enrichment is what earns it.
     expect(
       membershipTone({
         status: "not_in_mesita",
         mesitaId: "uuid-1",
+        enriched: true,
       }),
-    ).toBe("listed");
+    ).toBe("enriched");
+    expect(
+      membershipTone({
+        status: "not_in_mesita",
+        mesitaId: "uuid-1",
+        enriched: false,
+      }),
+    ).toBe("unlisted");
   });
 });
 
@@ -250,12 +298,12 @@ describe("buildSearchMapPins", () => {
 
 describe("mapCircleIcon", () => {
   it("draws red place pins and the blue user pin the same size", () => {
-    const red = mapCircleIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const red = mapCircleIcon(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     const blue = mapCircleIcon(
       MAP_USER_LOCATION_PIN_COLOR,
       MAP_PIN_STROKE_COLOR,
     );
-    const selected = mapCircleIcon(MAP_LISTED_PIN_COLOR, "#111111");
+    const selected = mapCircleIcon(MAP_ENRICHED_PIN_COLOR, "#111111");
     expect(red.path).toBe(blue.path);
     expect(red.scale).toBe(blue.scale);
     expect(red.strokeWeight).toBe(blue.strokeWeight);
@@ -270,11 +318,11 @@ describe("mapPinIcon", () => {
   it("paints a bigger disk inside a 44px tap pad", () => {
     expect(MAP_PLACE_PIN_RADIUS).toBe(10);
     expect(MAP_PIN_HIT_SIZE).toBe(44);
-    const svg = mapPinSvg(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const svg = mapPinSvg(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);
     expect(svg).toContain(`width="${MAP_PIN_HIT_SIZE}"`);
     expect(svg).toContain('fill-opacity="0.01"');
-    const icon = mapPinIcon(MAP_LISTED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const icon = mapPinIcon(MAP_ENRICHED_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(icon.scaledSize).toEqual({
       width: MAP_PIN_HIT_SIZE,
       height: MAP_PIN_HIT_SIZE,

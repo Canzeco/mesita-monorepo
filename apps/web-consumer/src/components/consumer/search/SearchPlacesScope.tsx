@@ -8,7 +8,7 @@ import {
 } from "@/lib/map-filters-engine";
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_LISTED_PIN_COLOR,
+  MAP_ENRICHED_PIN_COLOR,
 } from "@/lib/map-defaults";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 // whoever renders the scope renders its caveat.
 
 const STOP_DOT: Record<(typeof MAP_SEARCH_STOPS)[number]["key"], string> = {
-  places: MAP_LISTED_PIN_COLOR,
+  places: MAP_ENRICHED_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
 

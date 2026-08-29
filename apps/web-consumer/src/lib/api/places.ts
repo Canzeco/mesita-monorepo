@@ -35,6 +35,10 @@ export type Place = {
    *  off `listing_type`, which fuses the two and only updates when something
    *  writes the place. Absent ⇒ NOT a partner. */
   partner?: boolean | null;
+  /** Server's answer: did we write a profile? Drives the membership colour.
+   *  Absent on an older payload — the client falls back to the enrichment
+   *  columns, which ship on the same projection. */
+  enriched?: boolean | null;
   id: string;
   slug: string;
   name: string;
@@ -345,6 +349,9 @@ export type PlacePrediction = {
   status: PlacePredictionStatus;
   /** True when the place PAYS Mesita (plan, not strategy). Google-only is false. */
   partner?: boolean;
+  /** Server's answer: did we write a profile? No column fallback on this
+   *  lane, so an older payload reads as not-enriched (gray understates). */
+  enriched?: boolean;
   // Forward-compatible Mesita identity: consumer-suggest-places is adding
   // these to its payload for on-Mesita rows. When present, clients navigate
   // via placeHref(slug ?? id) directly instead of the fuzzy name join.

@@ -115,12 +115,21 @@ export function mapPinIcon(fillColor: string, strokeColor: string) {
   };
 }
 
-// Search pins — same hexes as the results-row dots.
-// Yellow = Mesita Partners. Red = Mesita Places. Gray = Google Places.
-// Blue = current location.
+// Search pins — same hexes as the results-row dots. THE LAW, checked in
+// this order (Pato, 2026-08-29):
+//
+//   yellow  Mesita Partner Places   — the place PAYS
+//   red     Mesita ENRICHED Places  — we wrote a profile
+//   gray    everything else         — Google rows AND our own stubs
+//
+// Red is EARNED by enrichment. A row existing is not enough: a Created or
+// Requested stub has nothing to show, so it promises exactly as much as a
+// raw Google row and wears the same gray. Yellow beats red beats gray, so
+// an unenriched partner is still yellow.
+//
+// Blue is the guest's current location and is never a place pin.
 export const MAP_PARTNER_PIN_COLOR = "#ffc400";
-export const MAP_LISTED_PIN_COLOR = "#ff2357";
-export const MAP_MESITA_PIN_COLOR = "#ff2357";
+export const MAP_ENRICHED_PIN_COLOR = "#ff2357";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
 export const MAP_USER_LOCATION_PIN_COLOR = "#2563eb";
 
