@@ -63,6 +63,7 @@ type Body = {
   discoverFacebookN?: number;
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
+  requestThreshold?: number;
 };
 
 const QUALITY_VALUES = new Set(["economy", "standard", "high"]);
@@ -271,6 +272,13 @@ Deno.serve(async (req) => {
     const n = intInRange(body.discoverUbereatsN, 0, 10);
     if (n === null) return jsonError("discoverUbereatsN must be an integer 0-10", 400);
     next.atlasDiscoverUbereatsN = n;
+    blobTouched = true;
+  }
+
+  if (body.requestThreshold !== undefined) {
+    const n = intInRange(body.requestThreshold, 1, 100);
+    if (n === null) return jsonError("requestThreshold must be an integer 1-100", 400);
+    next.atlasRequestThreshold = n;
     blobTouched = true;
   }
 

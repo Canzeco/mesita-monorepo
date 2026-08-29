@@ -72,3 +72,12 @@ export function isPlaceRequested(status: unknown): boolean {
 export function isPlaceEnriching(contentStatus: unknown): boolean {
   return contentStatus === "generating" || contentStatus === "queued";
 }
+
+/**
+ * Usable Mesita profile. Contents persist stamps content_status ready
+ * (and enriched_at). Listed and Requested must not unlock Enriched-only
+ * capabilities — Visit / Order / Reserve / the normal place modal.
+ */
+export function isPlaceProfileReady(contentStatus: unknown): boolean {
+  return contentStatus === "ready";
+}

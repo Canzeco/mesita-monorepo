@@ -120,6 +120,21 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     // (MESITA-453). 'ready'/'failed' both read as done.
     is_enriching:
       row.content_status === "queued" || row.content_status === "generating",
+    is_profile_ready: row.is_profile_ready === true ||
+      row.content_status === "ready",
+    request_count: num(row.request_count) ?? 0,
+    request_threshold: num(row.request_threshold) ?? 3,
+    requested: row.requested === true,
+    request_lifecycle:
+      row.request_lifecycle === "requested" ||
+        row.request_lifecycle === "enriched" ||
+        row.request_lifecycle === "listed"
+        ? row.request_lifecycle
+        : row.content_status === "ready"
+          ? "enriched"
+          : (num(row.request_count) ?? 0) > 0
+            ? "requested"
+            : "listed",
 
     photos: arr<string>(row.photos),
 

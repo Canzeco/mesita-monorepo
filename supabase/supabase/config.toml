@@ -216,6 +216,10 @@ verify_jwt = false
 [functions.consumer-web-get-place]
 verify_jwt = false
 
+# Consumer Requests: one vote per consumer per Listed-not-Enriched place.
+[functions.consumer-web-request-place]
+verify_jwt = true
+
 [functions.consumer-web-get-place-activity]
 verify_jwt = false
 

@@ -121,6 +121,9 @@ const COLUMNS: readonly string[] = [
   // (research → analysis → contents); only contents lands 'ready'.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
   "content_status",
+  // Consumer Requests count. Progress toward Intake atlasRequestThreshold.
+  // Requested is derived (count > 0 and content_status <> ready).
+  "request_count",
   // Promos page section toggles. Boolean, business-controlled, persisted
   // so the on/off state survives page reloads.
   "segmentation_basic_enabled",

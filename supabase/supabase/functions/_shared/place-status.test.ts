@@ -2,6 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   isPlaceEnriching,
   isPlaceListed,
+  isPlaceProfileReady,
   isPlaceRequested,
   isPlaceSeeded,
 } from "./place-status.ts";
@@ -61,4 +62,12 @@ Deno.test("enriching: generating or queued is mid-flight", () => {
   assertEquals(isPlaceEnriching("ready"), false);
   assertEquals(isPlaceEnriching("failed"), false);
   assertEquals(isPlaceEnriching(null), false);
+});
+
+Deno.test("profile ready: only content_status ready is a usable profile", () => {
+  assertEquals(isPlaceProfileReady("ready"), true);
+  assertEquals(isPlaceProfileReady("queued"), false);
+  assertEquals(isPlaceProfileReady("generating"), false);
+  assertEquals(isPlaceProfileReady("failed"), false);
+  assertEquals(isPlaceProfileReady(null), false);
 });
