@@ -14,9 +14,11 @@ import { FilterModule, Pill } from "@/components/consumer/discovery-filter-contr
 import { SearchPlacesScope } from "./SearchPlacesScope";
 
 // Search-map Filters sheet. Places scope + Super Category only. There
-// is no Status chip row, Category, or Types axis. Scope is cumulative:
-// Partners ⊂ + Places ⊂ + Google as a display-only nested set. The
-// legend pills are the control. Default is + Places.
+// is no Status chip row, Category, or Types axis. Scope is one nested
+// meter: Partners ⊂ Places ⊂ Google. Default is Places. Mesita Places
+// is enriched only. A Super Category is a SET of categories; one
+// category may belong to multiple Super Categories. Distance and time
+// are not map knobs.
 
 export function SearchMapFilters({
   onClose,

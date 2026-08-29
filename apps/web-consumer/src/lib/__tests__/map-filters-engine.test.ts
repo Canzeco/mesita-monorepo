@@ -70,9 +70,9 @@ describe("placeSearchLane", () => {
 describe("search power", () => {
   it("captions the cumulative union and clamps missing values to + Places", () => {
     expect(searchPowerCaption(1)).toBe("Mesita Partners");
-    expect(searchPowerCaption(2)).toBe("Mesita Partners & All Mesita Places");
+    expect(searchPowerCaption(2)).toBe("Mesita Partners & Mesita Places");
     expect(searchPowerCaption(3)).toBe(
-      "Mesita Partners & All Mesita Places & All Google Places",
+      "Mesita Partners & Mesita Places & Google Places",
     );
     expect(clampSearchPower(99)).toBe(3);
     expect(clampSearchPower(0)).toBe(1);
