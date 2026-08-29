@@ -194,7 +194,7 @@ export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
 export const SOCIAL_HORIZON_DAYS_MIN = 1;
 export const SOCIAL_HORIZON_DAYS_MAX = 90;
 export const MAP_MIN_POPULARITY_MAX = 1;
-export const MAP_RELOAD_MIN_KM_MIN = 1;
+export const MAP_RELOAD_MIN_KM_MIN = 0.2;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
 export const MAP_RELOAD_MIN_SEC_MIN = 0.5;
 export const MAP_RELOAD_MIN_SEC_MAX = 15;
@@ -318,7 +318,7 @@ export const DEFAULT_MAP: MapConfig = {
   minRating: 0,
   minReviews: 0,
   minPopularity: 0,
-  reloadMinKm: 5,
+  reloadMinKm: 0.4,
   reloadMinSec: 2,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
