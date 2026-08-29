@@ -143,13 +143,13 @@ describe("SearchMapFilters", () => {
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
     expect(html).toContain("Places");
     expect(html).toContain("role=\"radiogroup\"");
-    expect(html).toContain("Partners and Mesita Places");
-    expect(html).toContain("Partners");
-    expect(html).toContain("+ Places");
-    expect(html).toContain("+ Google");
+    expect(html).toContain("Mesita Partners and All Mesita Places");
+    expect(html).toContain("Mesita Partners");
+    expect(html).toContain("All Mesita Places");
+    expect(html).toContain("All Google Places");
     expect(html).toContain('viewBox="0 0 104 104"');
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
     );
     expect(html).toContain("pointer-events-none");
     expect(html.match(/role="radio"/g)?.length).toBe(3);
@@ -192,21 +192,21 @@ describe("SearchPlacesScope", () => {
     expect(html).toContain('viewBox="0 0 104 104"');
     expect(html.match(/role="radio"/g)?.length).toBe(3);
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
     );
     expect(html).toContain('aria-checked="false" aria-label="Mesita Partners"');
     expect(html).toContain(
-      'aria-checked="false" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+      'aria-checked="false" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
     );
-    expect(html).not.toContain("ALL GOOGLE PLACES");
+    expect(html).not.toContain("All Google Places.");
   });
 
-  it("warns when + Google scope is selected", () => {
+  it("warns when All Google Places scope is selected", () => {
     const html = renderToStaticMarkup(
       <SearchPlacesScope power={3} onPower={() => {}} />,
     );
     expect(html).toContain('role="alert"');
-    expect(html).toContain("ALL GOOGLE PLACES");
+    expect(html).toContain("All Google Places.");
     expect(html).toContain("vetted");
     expect(html).toContain("may not be worth your time");
   });
@@ -233,7 +233,7 @@ describe("SearchPlacesScope", () => {
     expect(places).not.toContain('fill="#9ca3af"');
 
     expect(google).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
+      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
     );
     expect(google).toContain('fill="#ffc400"');
     expect(google).toContain('fill="#ff2357"');
