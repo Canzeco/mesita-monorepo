@@ -16,6 +16,9 @@ import {
   LIBRARY_SIGNALS,
   SIGNALS,
   SIGNAL_KEYS,
+  modeCallsModule,
+  modeRequiresPool,
+  modeSignalState,
 } from "./catalog";
 
 describe("Discovery function APIs", () => {
@@ -86,19 +89,51 @@ describe("Discovery function APIs", () => {
     expect(DISCOVERY_MODE_MODULES.deep).toEqual([
       "Google Places Autocomplete",
       "Google Places Text Search",
+      "Google Places Nearby Search",
       "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.map).toEqual([
-      "Mesita Places Lineup",
       "Google Places Nearby Search",
+      "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.chat).toEqual([
-      "Mesita Places Lineup",
-      "Mesita Social Lineup",
+      "Google Places Text Search",
+      "Google Places Nearby Search",
       "Perplexity Search",
       "Perplexity Agent",
+      "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.social).toEqual(["Mesita Social Lineup"]);
+    expect(DISCOVERY_MODE_MODULES.favorites).toEqual([]);
+    expect(modeCallsModule("chat", "Mesita Social Lineup")).toBe(false);
+    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(true);
+  });
+
+  it("pool mask is Google Places + Listed on Swipe · Catalog · Social · Favorites", () => {
+    expect(modeRequiresPool("swipe", "google")).toBe(true);
+    expect(modeRequiresPool("swipe", "listed")).toBe(true);
+    expect(modeRequiresPool("favorites", "listed")).toBe(true);
+    expect(modeRequiresPool("deep", "listed")).toBe(false);
+    expect(modeRequiresPool("chat", "google")).toBe(false);
+    expect(modeRequiresPool("map", "enriched")).toBe(false);
+    expect(modeRequiresPool("swipe", "enriched")).toBe(false);
+  });
+
+  it("Places Lineup signals light Deep Name, Chat Summary, Map without Randomness", () => {
+    expect(modeSignalState("deep", "name")).toBe("on");
+    expect(modeSignalState("deep", "summary")).toBe("off");
+    expect(modeSignalState("chat", "summary")).toBe("on");
+    expect(modeSignalState("chat", "randomness")).toBe("off");
+    expect(modeSignalState("map", "proximity")).toBe("on");
+    expect(modeSignalState("map", "randomness")).toBe("zero");
+    expect(modeSignalState("swipe", "randomness")).toBe("on");
+    expect(modeSignalState("catalog", "partnership")).toBe("on");
+    expect(modeSignalState("social", "name")).toBe("off");
+    expect(modeSignalState("favorites", "proximity")).toBe("off");
+    expect(SIGNAL_KEYS.every((key) => modeSignalState("fast", key) === "off")).toBe(
+      true,
+    );
+    expect(modeSignalState("chat", "social")).toBe("off");
   });
 
   it("map() is three closest-N lanes then one catalog", () => {
@@ -336,6 +371,11 @@ describe("Discovery page box order", () => {
     expect(googleModules).toContain("Google Places Text Search");
     expect(googleModules).toContain("Name (Deep Search)");
     expect(chips).toContain("export function ModeModuleChips");
+    expect(chips).toContain("None");
+    expect(modesPage).toContain("DiscoveryMatrix");
+    const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
+    expect(matrix).toContain("Places Lineup");
+    expect(matrix).toContain("modeSignalState");
     expect(name).toContain("ModeModuleChips");
     expect(name).not.toContain("TypeBatteries");
     expect(name).not.toContain("Google categories");

@@ -2,6 +2,11 @@
 // not read a persistable set yet, so a toggle here would be STAGED.
 
 export function ModeModuleChips({ modules }: { modules: readonly string[] }) {
+  if (modules.length === 0) {
+    return (
+      <div className="text-muted-foreground mt-4 type-meta font-medium">None</div>
+    );
+  }
   return (
     <div className="mt-4 flex flex-wrap gap-2">
       {modules.map((name) => (

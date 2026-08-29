@@ -1,5 +1,6 @@
 import { CatalogConfigClient } from "../CatalogConfigClient";
 import { DiscoveryConfigClient } from "../DiscoveryConfigClient";
+import { DiscoveryMatrix } from "../DiscoveryMatrix";
 import { FavsConfigCard } from "../DiscoverySurfaceCards";
 import { MapConfigClient } from "../MapConfigClient";
 import { NameConfigClient } from "../NameConfigClient";
@@ -8,9 +9,9 @@ import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Discovery Modes — ways guests look. Each card shows locked module chips.
-// Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat · Social ·
-// Favorites. Home boxes are Soon. Google types live on Modules.
+// Discovery Modes — ways guests look. Matrix first, then one card per
+// mode with locked module chips. Home boxes are Soon. Google types live
+// on Modules.
 export const dynamic = "force-dynamic";
 
 export default async function SearchModesPage() {
@@ -20,6 +21,7 @@ export default async function SearchModesPage() {
   const loadError = seed.ok ? null : seed.error;
   return (
     <div className="flex flex-col gap-10">
+      <DiscoveryMatrix />
       <NameConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
