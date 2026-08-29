@@ -9,7 +9,7 @@
 // Live HTML: two subpages. Mode → modules it may call → Places Lineup
 // signals. Index redirects to Modes. The locked matrix is on Modes.
 //
-//   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
+//   MODES     General · Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
 //             Fast is Autocomplete only. Deep concatenates Autocomplete,
 //             Text Search, Mesita Places, and Mesita Partners (Name on
@@ -21,7 +21,9 @@
 //             and Places Lineup — not Social Lineup. Favorites calls
 //             no module and gates on no pool — bookmarks may include
 //             Mesita Listed Create stubs (not enriched). Google
-//             category knobs live on Modules, not here.
+//             category knobs live on Modules, not here. General sits first,
+//             under the matrix: the post-Google wipe (Active + a review
+//             floor) every mode runs on what a Google Places query returned.
 //   MODULES   Google types strip (categoryCount + type batteries, one
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
@@ -101,6 +103,14 @@ export type SwipeConfig = {
 
 export type GeneralConfig = {
   categoryCount: number;
+  /**
+   * The post-Google wipe. Active is `business_status === "OPERATIONAL"` on
+   * Mesita, Google's `businessStatus` on a Google-only row. Unknown does not
+   * clear it. Mirrors `_shared/discovery-general-gate.ts`.
+   */
+  requireActive: boolean;
+  /** Google reviews a place must prove to survive the wipe. 0 = off. */
+  minReviews: number;
 };
 
 export type DiscoveryConfig = {
@@ -144,6 +154,8 @@ export const NEARBY_TYPE_KEYS = [
 /** Discovery-wide cap on how many of `NEARBY_TYPE_KEYS` any engine may use. */
 export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
 export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
+/** Same ceiling as filters.minReviews — one review floor reads like another. */
+export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 export type MapConfig = {
@@ -381,6 +393,8 @@ export const DEFAULT_NAME: NameConfig = {
 
 export const DEFAULT_GENERAL: GeneralConfig = {
   categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
+  requireActive: true,
+  minReviews: 0,
 };
 
 export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
@@ -1129,6 +1143,13 @@ export function coerceGeneral(raw: unknown): GeneralConfig {
         0,
         GENERAL_CATEGORY_COUNT_MAX,
       ),
+    ),
+    requireActive:
+      typeof g.requireActive === "boolean"
+        ? g.requireActive
+        : DEFAULT_GENERAL.requireActive,
+    minReviews: Math.round(
+      num(g.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
     ),
   };
 }

@@ -16,7 +16,10 @@
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
 //              places a filter already admitted.
 //   engines    which surfaces read any of the above.
-//   general    categoryCount — first N of NEARBY_TYPE_KEYS any engine may use.
+//   general    Discovery-wide. categoryCount — first N of NEARBY_TYPE_KEYS any
+//              engine may use. requireActive + minReviews — the post-Google
+//              wipe every mode runs on what a Google Places query returned
+//              (discovery-general-gate.ts).
 //   chat       Concierge system prompt. Blank → in-code persona (memo-prompt.ts).
 //
 // FILTERS ARE NOT THE TORN-DOWN FILTER SURFACE. MESITA-1183 deleted a
@@ -146,6 +149,16 @@ export type NameConfig = {
 export type GeneralConfig = {
   /** How many of the code-defined Google types Discovery may use (0–5). */
   categoryCount: number;
+  /**
+   * Wipe out anything that is not Active. Active is the Status-box fact:
+   * `business_status === "OPERATIONAL"` on Mesita, Google's
+   * `businessStatus` on a Google-only row. Unknown does not clear it — the
+   * operator asked for only-active, and a place that cannot prove it is
+   * open has not.
+   */
+  requireActive: boolean;
+  /** Wipe out anything under this many Google reviews. 0 = off. */
+  minReviews: number;
 };
 
 export type SwipePartnerLevel =
@@ -304,6 +317,8 @@ export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 export const NAME_DEEP_COUNT_DEFAULT = 9;
 export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
 export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
+/** Same ceiling as filters.minReviews — one review floor reads like another. */
+export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
 export const SWIPE_RADIUS_KM_MIN = 1;
 export const SWIPE_RADIUS_KM_MAX = 50;
@@ -382,6 +397,11 @@ export const DEFAULT_NAME: NameConfig = {
 
 export const DEFAULT_GENERAL: GeneralConfig = {
   categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
+  // ON by default (Pato, 2026-08-29). A closed place is not a search
+  // result, and the live blob predates the key — so the default is what
+  // every surface reads until the operator says otherwise.
+  requireActive: true,
+  minReviews: 0,
 };
 
 /** First N code-defined Google types. 0 = none available. */
@@ -674,6 +694,10 @@ export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
         0,
         GENERAL_CATEGORY_COUNT_MAX,
       ),
+    ),
+    requireActive: bool(r.requireActive, DEFAULT_GENERAL.requireActive),
+    minReviews: Math.round(
+      num(r.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
     ),
   };
 }

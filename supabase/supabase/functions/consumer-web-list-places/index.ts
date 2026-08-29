@@ -50,6 +50,10 @@ import {
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
 import {
+  applyGeneralGateQuery,
+  clearsGeneralGate,
+} from "../_shared/discovery-general-gate.ts";
+import {
   admitMapCatalog,
   enabledNearbyTypes,
   listedMapFilters,
@@ -290,6 +294,11 @@ Deno.serve(async (req) => {
     lat: null,
     lng: null,
   });
+  // Discovery › General — the post-Google wipe. SEARCH ONLY, deliberately:
+  // this is the Map lane's answer to "only active places", and Pay / Home /
+  // bbox callers keep `discovery_config.filters` exactly as before
+  // (the same line `listedMapFilters` draws two statements up).
+  if (isNearby) filtered = applyGeneralGateQuery(filtered, cfg.general);
   if (nearbyDecision.mode === "ok") {
     filtered = applyBboxPredicate(
       filtered,
@@ -379,10 +388,10 @@ Deno.serve(async (req) => {
     ];
     if (missing.length > 0) {
       const extraSelect = supabase.from("profiles").select(selectCols);
-      const extraFiltered = applyDiscoveryFilters(extraSelect, filters, {
-        lat: null,
-        lng: null,
-      });
+      const extraFiltered = applyGeneralGateQuery(
+        applyDiscoveryFilters(extraSelect, filters, { lat: null, lng: null }),
+        cfg.general,
+      );
       const extra = await (extraFiltered as unknown as {
         in: (
           col: string,
@@ -399,9 +408,12 @@ Deno.serve(async (req) => {
         }
       }
     }
+    // The Google side of the same gate. Nearby now carries businessStatus +
+    // userRatingCount on its field mask, so the wipe is provable here rather
+    // than deferred to a Details call the map lane never makes.
     const admitted = admitMapCatalog(
       mesitaRows,
-      googleHits,
+      googleHits.filter((hit) => clearsGeneralGate(cfg.general, hit)),
       cfg.map,
       cfg.params.popularity,
     );

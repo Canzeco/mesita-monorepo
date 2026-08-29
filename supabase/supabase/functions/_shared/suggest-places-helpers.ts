@@ -22,6 +22,11 @@ export type Prediction = {
   // omit both.
   mesitaId?: string;
   mesitaSlug?: string;
+  // Discovery > General inputs (discovery-general-gate.ts). Filled from the
+  // Mesita row on an on-Mesita hit, from Place Details on a Google-only one.
+  // Never on the wire — `business_status` stays an operator fact.
+  businessStatus?: string | null;
+  reviewCount?: number | null;
 };
 
 // How to constrain Google Autocomplete primary types for this call:
@@ -57,6 +62,9 @@ export function mergePredictionsByPlaceId(
           status: existing.status,
           mesitaId: existing.mesitaId,
           mesitaSlug: existing.mesitaSlug,
+          // On Mesita now: the operator's Active is the fact that counts.
+          businessStatus: existing.businessStatus ?? p.businessStatus ?? null,
+          reviewCount: existing.reviewCount ?? p.reviewCount ?? null,
         }
         : p,
     );
@@ -72,4 +80,15 @@ export function sortMesitaPredictionsFirst(
     const bIn = b.status !== "not_in_mesita";
     return aIn === bIn ? 0 : aIn ? -1 : 1;
   });
+}
+
+/**
+ * Strip the Discovery › General inputs before the response goes out.
+ * `business_status` is an OPERATOR fact — place-columns.ts keeps it out of
+ * the public payload precisely so no consumer surface gates on it, and a
+ * gate input is not a licence to publish it.
+ */
+export function toWirePrediction(p: Prediction): Prediction {
+  const { businessStatus: _bs, reviewCount: _rc, ...wire } = p;
+  return wire;
 }

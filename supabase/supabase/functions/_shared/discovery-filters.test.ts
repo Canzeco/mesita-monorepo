@@ -359,7 +359,7 @@ Deno.test("general.categoryCount defaults to 5 and clamps 0–5", () => {
 Deno.test("applyGeneralCategoryCap turns off types past the General count", () => {
   const capped = applyGeneralCategoryCap({
     ...DISCOVERY_DEFAULTS,
-    general: { categoryCount: 3 },
+    general: { ...DISCOVERY_DEFAULTS.general, categoryCount: 3 },
   });
   assertEquals(capped.map.types, {
     restaurant: true,

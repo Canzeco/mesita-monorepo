@@ -398,6 +398,15 @@ describe("Discovery page box order", () => {
 
     expect(general).toContain('title="Google types"');
     expect(general).toContain("NEARBY_TYPE_FIELDS");
+
+    const gate = readFileSync(join(__dirname, "GeneralGateConfigClient.tsx"), "utf8");
+    expect(gate).toContain('title="General"');
+    expect(gate).toContain("Only active places");
+    expect(gate).toContain("Minimum Google reviews");
+    // The wipe is Discovery-wide, so it must not grow type batteries or a
+    // per-mode cap — those belong to Modules and to each mode's own box.
+    expect(gate).not.toContain("NEARBY_TYPE_FIELDS");
+    expect(gate).not.toContain("categoryCount");
     expect(general).toContain('["general", "nameFast", "nameDeep", "map"]');
     expect(name).toContain('title="Name (Fast Search)"');
     expect(name).toContain('title="Name (Deep Search)"');
@@ -510,7 +519,11 @@ describe("Discovery page box order", () => {
 
     const modesJsx = modesPage.slice(modesPage.indexOf("return ("));
     const modulesJsx = modulesPage.slice(modulesPage.indexOf("return ("));
+    // General is the post-Google wipe: below the matrix, above Fast Search
+    // (Pato, 2026-08-29). It runs last but reads first.
     const modeOrder = [
+      "DiscoveryMatrix",
+      "GeneralGateConfigClient",
       "NameConfigClient",
       "MapConfigClient",
       "SwipeConfigClient",
@@ -525,7 +538,10 @@ describe("Discovery page box order", () => {
       expect(idx, n).toBeGreaterThan(last);
       last = idx;
     }
+    // Google types stay on Modules; the wipe stays on Modes. Two boxes,
+    // two questions — never fold one into the other.
     expect(modesJsx).not.toContain("GeneralConfigClient");
+    expect(modulesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 

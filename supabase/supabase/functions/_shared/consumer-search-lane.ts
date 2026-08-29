@@ -16,6 +16,10 @@
 //   3. Mesita Places — name embedding, listed-not-partner (mesitaCount)
 //   4. Mesita Partners — name embedding, paid plan (partnerCount)
 // Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
+// Discovery > General runs LAST on both modes: whatever a Google query
+// returned, and whatever Mesita row it resolved to, has to clear Active +
+// the review floor (discovery-general-gate.ts). It cuts on-Mesita rows too --
+// an operator who switched Active off meant it.
 // A Google hit that resolves to Mesita stays in its Google query; later
 // Mesita queries skip it. Summary and the other six Lineup signals are
 // not a Deep input. Membership is a boolean `partner`.
@@ -41,11 +45,17 @@ import {
 } from "./sourcing.ts";
 import {
   applyGeneralCategoryCap,
+  type GeneralConfig,
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
   type NearbyTypeKey,
 } from "./discovery-config.ts";
+import {
+  applyGeneralGateQuery,
+  clearsGeneralGate,
+  type GeneralGateQuery,
+} from "./discovery-general-gate.ts";
 import {
   rankByBlend,
   type SignalParamsByKey,
@@ -81,6 +91,9 @@ export type LaneItem = {
   mesitaSlug?: string;
   lat?: number | null;
   lng?: number | null;
+  /** Discovery > General inputs. Never sent to the client. */
+  businessStatus?: string | null;
+  reviewCount?: number | null;
 };
 
 export function laneDedupeKeys(item: {
@@ -197,6 +210,8 @@ export type ListedRow = {
   plan: string | null;
   content_status: string | null;
   enriched_at: string | null;
+  business_status: string | null;
+  google_review_count: number | null;
   name_embedding: unknown | null;
   embedding: unknown | null;
 };
@@ -218,6 +233,8 @@ function listedToLane(row: ListedRow): LaneItem | null {
     mesitaSlug: row.slug,
     lat: row.lat,
     lng: row.lng,
+    businessStatus: row.business_status,
+    reviewCount: row.google_review_count,
   };
 }
 
@@ -241,6 +258,10 @@ export function applyResolvedMesitaName(
     lng: item.lng ?? mesita.lng,
     mainText: mesita.mainText || item.mainText,
     secondaryText: mesita.secondaryText || item.secondaryText,
+    // The entity is Mesita's now, so its Status-box facts are the ones
+    // Discovery > General judges — the operator's Active beats Google's.
+    businessStatus: mesita.businessStatus ?? item.businessStatus ?? null,
+    reviewCount: mesita.reviewCount ?? item.reviewCount ?? null,
   };
 }
 
@@ -342,6 +363,7 @@ export async function runConsumerSearchLane(
       apiKey,
       cfg.map,
       cfg.name,
+      cfg.general,
       cfg.weights,
       cfg.params,
       input,
@@ -353,6 +375,7 @@ export async function runConsumerSearchLane(
       apiKey,
       cfg.map,
       cfg.name,
+      cfg.general,
       input,
       sessionToken,
       origin,
@@ -375,6 +398,7 @@ async function runFastSearch(
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
+  general: GeneralConfig,
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
@@ -396,6 +420,7 @@ async function runFastSearch(
     admin,
     apiKey,
     gate,
+    general,
   );
   return takeFastLane(stamped, cap);
 }
@@ -452,6 +477,7 @@ async function runDeepSearch(
   apiKey: string,
   map: MapConfig,
   name: NameConfig,
+  general: GeneralConfig,
   weights: SignalWeights,
   params: SignalParamsByKey,
   input: string,
@@ -478,7 +504,9 @@ async function runDeepSearch(
     wantText
       ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount)
       : Promise.resolve([] as LaneItem[]),
-    wantMesita ? fetchEmbedPool(admin, origin) : Promise.resolve([] as ListedRow[]),
+    wantMesita
+      ? fetchEmbedPool(admin, origin, general)
+      : Promise.resolve([] as ListedRow[]),
     wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
   ]);
 
@@ -487,12 +515,13 @@ async function runDeepSearch(
     : googleAuto.predictions;
 
   const [stampedAuto, stampedText] = await Promise.all([
-    stampGoogleAgainstCatalog(autoPreds, admin, apiKey, gate),
+    stampGoogleAgainstCatalog(autoPreds, admin, apiKey, gate, general),
     stampGoogleAgainstCatalog(
       googleText,
       admin,
       apiKey,
       gate,
+      general,
       { alreadyHasSignals: true },
     ),
   ]);
@@ -540,6 +569,9 @@ function toWire(item: LaneItem) {
     ...(item.lng != null ? { lng: item.lng } : {}),
   };
 }
+// businessStatus / reviewCount are deliberately NOT on the wire. They are
+// gate inputs, and `business_status` stays an operator fact (place-columns.ts
+// keeps it out of the public payload for the same reason).
 
 async function embedQueryVector(
   admin: SupabaseClient,
@@ -560,7 +592,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, plan, content_status, enriched_at, name_embedding, embedding";
+  "id, slug, google_place_id, name, address, lat, lng, plan, content_status, enriched_at, business_status, google_review_count, name_embedding, embedding";
 /** In-process cosine budget — same order as recall-places, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;
@@ -568,12 +600,20 @@ const EMBED_RADIUS_KM = 40;
 async function fetchEmbedPool(
   admin: SupabaseClient,
   origin: { lat: number; lng: number } | null,
+  general: GeneralConfig,
 ): Promise<ListedRow[]> {
-  let query = admin
+  // Discovery > General rides the WHERE clause here: the pool is capped at
+  // EMBED_POOL, so gating after the fetch would thin the deck instead of
+  // narrowing the catalog.
+  const base = admin
     .from("profiles")
     .select(EMBED_COLUMNS)
     .in("status", ["active", "lead"])
     .not("name_embedding", "is", null);
+  let query = applyGeneralGateQuery(
+    base as unknown as GeneralGateQuery,
+    general,
+  ) as unknown as typeof base;
   if (origin) {
     const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
     query = query
@@ -667,7 +707,7 @@ async function fetchTextSearch(
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.primaryType",
+          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.businessStatus,places.primaryType",
       },
       body: JSON.stringify(body),
     });
@@ -694,6 +734,7 @@ async function fetchTextSearch(
       location?: { latitude?: number; longitude?: number };
       rating?: number;
       userRatingCount?: number;
+      businessStatus?: string;
       primaryType?: string;
     }>;
   };
@@ -722,6 +763,12 @@ async function fetchTextSearch(
       partner: false,
       lat,
       lng,
+      businessStatus: typeof p.businessStatus === "string"
+        ? p.businessStatus
+        : null,
+      reviewCount: typeof p.userRatingCount === "number"
+        ? p.userRatingCount
+        : null,
     });
     if (out.length >= limit) break;
   }
@@ -733,6 +780,7 @@ async function stampGoogleAgainstCatalog(
   admin: SupabaseClient,
   apiKey: string,
   gate: MapConfig,
+  general: GeneralConfig,
   opts: { alreadyHasSignals?: boolean } = {},
 ): Promise<LaneItem[]> {
   const byGoogleId = new Map<string, ListedRow>();
@@ -755,13 +803,17 @@ async function stampGoogleAgainstCatalog(
   });
 
   if (opts.alreadyHasSignals) {
-    return stamped.filter((p) =>
-      p.status !== "not_in_mesita" || Boolean(p.placeId)
-    );
+    return stamped
+      .filter((p) => p.status !== "not_in_mesita" || Boolean(p.placeId))
+      .filter((p) => clearsGeneralGate(general, p));
   }
 
   const googleOnly = stamped.filter((p) => p.status === "not_in_mesita");
-  if (googleOnly.length === 0) return stamped;
+  // On-Mesita rows never needed a Details call — their own columns answer
+  // the gate. Google-only rows still do.
+  if (googleOnly.length === 0) {
+    return stamped.filter((p) => clearsGeneralGate(general, p));
+  }
   const signalsById = new Map<
     string,
     NonNullable<Awaited<ReturnType<typeof fetchPlaceSignals>>>
@@ -771,14 +823,18 @@ async function stampGoogleAgainstCatalog(
     if (sig) signalsById.set(p.placeId, sig);
   }));
   return stamped.filter((p) => {
-    if (p.status !== "not_in_mesita") return true;
+    if (p.status !== "not_in_mesita") return clearsGeneralGate(general, p);
     const sig = signalsById.get(p.placeId);
     if (!sig) return false;
     const ok = evaluatePlaceForMap(gate, {
       primaryType: sig.primaryType,
       rating: sig.rating,
       reviewCount: sig.reviewCount,
-    }).eligible;
+    }).eligible &&
+      clearsGeneralGate(general, {
+        businessStatus: sig.businessStatus,
+        reviewCount: sig.reviewCount,
+      });
     if (ok && p.lat == null && sig.lat != null) p.lat = sig.lat;
     if (ok && p.lng == null && sig.lng != null) p.lng = sig.lng;
     return ok;
@@ -793,7 +849,8 @@ async function fetchListedByGoogleIds(
     .from("profiles")
     // One column list, not a second hand-typed copy: this is the path that
     // resolves a Google hit onto a Mesita row, so it must carry the same
-    // enrichment fact as the embedding pool.
+    // enrichment fact as the embedding pool — and the same Discovery ›
+    // General inputs.
     .select(EMBED_COLUMNS)
     .in("google_place_id", placeIds)
     .in("status", ["active", "lead"]);

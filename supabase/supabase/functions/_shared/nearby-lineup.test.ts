@@ -24,6 +24,8 @@ function hit(over: Partial<NearbyHit> & Pick<NearbyHit, "placeId" | "name">): Ne
     lng: -100.3001,
     rating: 4,
     primaryType: "restaurant",
+    businessStatus: "OPERATIONAL",
+    reviewCount: null,
     ...over,
   };
 }

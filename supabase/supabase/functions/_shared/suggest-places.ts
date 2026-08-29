@@ -41,9 +41,11 @@ import {
 import { applyPlacesCallerRegion } from "./sourcing.ts";
 import {
   applyGeneralCategoryCap,
+  type GeneralConfig,
   loadDiscoveryConfig,
   type MapConfig,
 } from "./discovery-config.ts";
+import { clearsGeneralGate } from "./discovery-general-gate.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import {
   type GoogleTypeFilter,
@@ -51,6 +53,7 @@ import {
   mergePredictionsByPlaceId,
   type Prediction,
   sortMesitaPredictionsFirst,
+  toWirePrediction,
 } from "./suggest-places-helpers.ts";
 import { statusesForPlaces } from "./suggest-place-status.ts";
 import {
@@ -91,7 +94,8 @@ export async function suggestPlaces(
   if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
 
   const admin = adminClient(env);
-  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
+  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
+  const map = cfg.map;
   // Do NOT pre-filter Google Autocomplete by broad primary types. Google
   // matches includedPrimaryTypes exactly (`bar` ≠ `night_club`) and caps
   // the list at 5. Types + floors run after merge via filterPredictionsByMap.
@@ -163,9 +167,21 @@ export async function suggestPlaces(
     Array.from(byPlaceId.values()),
   );
 
-  const filtered = await filterPredictionsByMap(predictions, map, apiKey);
+  // Google-only rows the ILIKE + placeId backfill both missed carry no
+  // Mesita facts; the gate judges them on Place Details below.
 
-  return json({ ok: true, predictions: filtered, caller: callerName });
+  const filtered = await filterPredictionsByMap(
+    predictions,
+    map,
+    cfg.general,
+    apiKey,
+  );
+
+  return json({
+    ok: true,
+    predictions: filtered.map(toWirePrediction),
+    caller: callerName,
+  });
 }
 
 // ── Google ────────────────────────────────────────────────────────────
@@ -252,7 +268,8 @@ async function fetchMesitaPredictions(
   // Quote the pattern like admin-web-search-places — unquoted `%…%` breaks
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
-  const cols = "id, slug, google_place_id, name, google_name, address";
+  const cols =
+    "id, slug, google_place_id, name, google_name, address, business_status, google_review_count";
   const [{ data, error }, historyIds] = await Promise.all([
     admin
       .from("profiles")
@@ -273,6 +290,8 @@ async function fetchMesitaPredictions(
     name: string | null;
     google_name: string | null;
     address: string | null;
+    business_status: string | null;
+    google_review_count: number | null;
   };
   let rows = (data ?? []) as Row[];
   const missingHistoryIds = historyIds.filter((id) =>
@@ -309,6 +328,8 @@ async function fetchMesitaPredictions(
     status: statuses.get(v.google_place_id) ?? "web_listed",
     mesitaId: v.id,
     mesitaSlug: v.slug,
+    businessStatus: v.business_status,
+    reviewCount: v.google_review_count,
   }));
 }
 
@@ -317,44 +338,71 @@ async function enrichByPlaceIds(
   placeIds: string[],
   callerId: string | null,
 ): Promise<
-  Map<string, Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">>
+  Map<
+    string,
+    Pick<
+      Prediction,
+      "status" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
+    >
+  >
 > {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, slug, google_place_id")
+    .select(
+      "id, slug, google_place_id, business_status, google_review_count",
+    )
     .in("google_place_id", placeIds);
   if (error) {
     console.error("[suggest-places] placeId enrichment:", error.message);
     return new Map();
   }
-  type Row = { id: string; slug: string; google_place_id: string };
+  type Row = {
+    id: string;
+    slug: string;
+    google_place_id: string;
+    business_status: string | null;
+    google_review_count: number | null;
+  };
   const rows = (data ?? []) as Row[];
   const statuses = await statusesForPlaces(admin, rows, callerId);
   const out = new Map<
     string,
-    Pick<Prediction, "status" | "mesitaId" | "mesitaSlug">
+    Pick<
+      Prediction,
+      "status" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
+    >
   >();
   for (const r of rows) {
     out.set(r.google_place_id, {
       status: statuses.get(r.google_place_id) ?? "web_listed",
       mesitaId: r.id,
       mesitaSlug: r.slug,
+      businessStatus: r.business_status,
+      reviewCount: r.google_review_count,
     });
   }
   return out;
 }
 
-// Apply Discovery › Map to Google-only predictions. On-Mesita rows
-// always pass — they're already onboarded. For not_in_mesita rows,
-// batch-fetch primaryType + rating + reviewCount (Autocomplete omits them)
-// and drop any that fail evaluatePlaceForMap.
+// Apply Discovery › Map to Google-only predictions, then Discovery ›
+// General to EVERY row. Map floors stay Google-only — an on-Mesita place is
+// already onboarded and its type/rating is not re-litigated here. The
+// General gate is not: Active + the review floor cut on-Mesita rows too,
+// because a place the operator switched Active OFF is the exact row Pato saw
+// come back from search (2026-08-29).
+//
+// For not_in_mesita rows, batch-fetch primaryType + rating + reviewCount +
+// businessStatus (Autocomplete omits them) and drop any that fail either gate.
 async function filterPredictionsByMap(
   predictions: Prediction[],
   map: MapConfig,
+  general: GeneralConfig,
   apiKey: string,
 ): Promise<Prediction[]> {
   const googleOnly = predictions.filter((p) => p.status === "not_in_mesita");
-  if (googleOnly.length === 0) return predictions;
+  if (googleOnly.length === 0) {
+    return predictions.filter((p) => clearsGeneralGate(general, p));
+  }
 
   const signalsByPlaceId = new Map<
     string,
@@ -368,9 +416,13 @@ async function filterPredictionsByMap(
   );
 
   return predictions.filter((p) => {
-    if (p.status !== "not_in_mesita") return true;
+    if (p.status !== "not_in_mesita") return clearsGeneralGate(general, p);
     const sig = signalsByPlaceId.get(p.placeId);
     if (!sig) return false;
-    return evaluatePlaceForMap(map, sig).eligible;
+    return evaluatePlaceForMap(map, sig).eligible &&
+      clearsGeneralGate(general, {
+        businessStatus: sig.businessStatus,
+        reviewCount: sig.reviewCount,
+      });
   });
 }

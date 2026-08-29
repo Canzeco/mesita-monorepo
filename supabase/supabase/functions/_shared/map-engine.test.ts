@@ -24,6 +24,8 @@ function hit(over: Partial<NearbyHit> = {}): NearbyHit {
     lng: -100.3,
     rating: 4.2,
     primaryType: "cafe",
+    businessStatus: "OPERATIONAL",
+    reviewCount: null,
     ...over,
   };
 }
