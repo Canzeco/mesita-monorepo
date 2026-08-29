@@ -27,7 +27,7 @@ Deno.test("create fetches one Google photo and awaits a storage mirror", async (
   // the later enrich-gallery path (storePlaceImages), not this helper.
   const firstPhotoFn = store.match(
     /export async function storeFirstPlaceImage[\s\S]*?^}/m,
-  );
-  assertEquals(firstPhotoFn !== null, true);
-  assertEquals(/runInBackground/.test(firstPhotoFn ?? ""), false);
+  )?.[0] ?? "";
+  assertEquals(firstPhotoFn.length > 0, true);
+  assertEquals(/runInBackground/.test(firstPhotoFn), false);
 });
