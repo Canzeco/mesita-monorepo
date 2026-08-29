@@ -104,7 +104,7 @@ Deno.test("minPopularity uses popularity() — unrated listed miss a high floor"
   );
 });
 
-Deno.test("admitMapCatalog does not let Google stub a listed place that missed popularity", () => {
+Deno.test("admitMapCatalog still admits Google for a listed place that missed popularity", () => {
   const map = { ...MAP, minPopularity: 0.7 };
   const listed = [
     { id: "weak", google_place_id: "ChIJ-weak", google_stars_overall: null, google_review_count: 0 },
@@ -116,7 +116,7 @@ Deno.test("admitMapCatalog does not let Google stub a listed place that missed p
   ];
   const got = admitMapCatalog(listed, google, map);
   assertEquals(got.listed.map((r) => r.id), ["strong"]);
-  assertEquals(got.google.map((h) => h.placeId), ["ChIJ-only"]);
+  assertEquals(got.google.map((h) => h.placeId), ["ChIJ-weak", "ChIJ-only"]);
 });
 
 Deno.test("evaluatePlaceForMap admits restaurant subtypes when restaurant is on", () => {

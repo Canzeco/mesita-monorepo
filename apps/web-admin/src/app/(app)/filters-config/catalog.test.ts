@@ -148,6 +148,8 @@ describe("Discovery function APIs", () => {
     expect(map?.process).toMatch(/Google/);
     expect(map?.process).toMatch(/Overlaps/);
     expect(map?.process).toMatch(/reload pair/);
+    expect(map?.process).toMatch(/ignoring Mesita membership/);
+    expect(map?.process).not.toMatch(/never stub/);
     expect(map?.process).not.toMatch(/Nearest 50/);
     expect(map?.process).not.toMatch(/under 10/);
   });

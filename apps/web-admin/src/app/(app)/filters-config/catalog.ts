@@ -498,7 +498,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Closest N enter per query. Concat Partners, then listed-not-partner Mesita, then Google Nearby. Overlaps drop; first query keeps the slot. Caps are independent, not nested. Listed pins then Lineup, not distance. Google stays distance. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults when disjoint. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
+    process: "Closest N enter per query. Concat Partners, then listed-not-partner Mesita, then Google Nearby. Overlaps drop; first query keeps the slot. Caps are independent, not nested. Listed pins then Lineup, not distance. Google stays distance. Google is one Nearby Search among enabled categories, nearest N, ignoring Mesita membership. Merge drops Google hits already on a Partner or Mesita winner. Union 20–40 at defaults when disjoint. Pins: yellow Partners, red Mesita Places, gray Google, blue current location. Over quota skips Google, not the catalog. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,

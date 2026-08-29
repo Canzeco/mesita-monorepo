@@ -19,10 +19,11 @@
 //   { google: true, lat, lng, limit?, searchPower? } — web Search catalog.
 //     searchPower (default 2, + Places) is the Places scope: 1 Partners
 //     only, 2 Partners + enriched Mesita Places, 3 + Google Nearby.
-//     Power 1–2 never call Nearby. Google stays distance (closest, not
-//     best). Listed pins Lineup-reorder (Map mask). Mesita Place IDs
-//     never stub. Google fill is metered per connecting IP when power
-//     is 3.
+//     Power 1–2 never call Nearby. Google stays distance (closest N,
+//     ignoring Mesita membership). Merge then drops a Google hit whose
+//     Place ID already won a Partner or Mesita slot. Listed pins
+//     Lineup-reorder (Map mask). Google fill is metered per connecting
+//     IP when power is 3.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -60,10 +61,8 @@ import {
 } from "../_shared/geo.ts";
 import {
   clampSearchPower,
-  dropKnownMesitaGoogleHits,
   keepListedForSearchPower,
   lanesForSearchPower,
-  listedGooglePlaceIds,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
@@ -303,7 +302,6 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
-    const knownMesitaGids = listedGooglePlaceIds(scanRows);
     let mesitaRows = scanRows.filter((row) =>
       keepListedForSearchPower(row, searchPower)
     );
@@ -381,7 +379,6 @@ Deno.serve(async (req) => {
       if (!extra.error && extra.data) {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
-          if (row.google_place_id) knownMesitaGids.add(row.google_place_id);
           if (seen.has(row.id)) continue;
           if (!keepListedForSearchPower(row, searchPower)) continue;
           seen.add(row.id);
@@ -391,7 +388,7 @@ Deno.serve(async (req) => {
     }
     const admitted = admitMapCatalog(
       mesitaRows,
-      dropKnownMesitaGoogleHits(googleHits, knownMesitaGids),
+      googleHits,
       cfg.map,
       cfg.params.popularity,
     );
