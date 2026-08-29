@@ -29,6 +29,9 @@ describe("Home hub is Soon", () => {
     expect(page).toContain('title="Soon"');
     expect(page).not.toContain("SwipeDeck");
     expect(page).not.toContain("useHomeDeck");
+    // Lucide icons are functions. A Server Component passing icon={Flame}
+    // to client EmptyState crashes the route (RSC serialization).
+    expect(page.startsWith('"use client"')).toBe(true);
   });
 
   it("does not fetch the shared Home deck while parked", () => {
