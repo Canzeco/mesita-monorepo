@@ -99,11 +99,11 @@ export function MapConfigClient({
       <SectionCard
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
-        subtitle="What entities Search looks for. Closest N in each lane, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Union 20–40 at defaults. Google types live on Discovery Modules. 0 on a lane is off."
+        subtitle="Closest N enter. Listed pins then Lineup, not distance. Google stays distance."
         status={
           <KnobStatus
             kind="enforced"
-            reason="list-places · Search"
+            reason="Places Lineup · Map reads the Map mask"
           />
         }
       >

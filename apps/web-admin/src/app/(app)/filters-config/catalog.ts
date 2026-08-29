@@ -447,7 +447,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use internal geodistance. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm.",
+    process: "Closest N enter. Listed pins then Lineup, not distance. Google stays distance. Three closest-N lanes, then one catalog after dropping overlaps: Partners, then Mesita, then Google. Partners ⊆ Mesita ⊆ Google. Partner and Mesita use Places Lineup inside the closest-N cut. Google is one Nearby Search among enabled categories; Mesita Place IDs never stub. Union 20–40 at defaults. Pins: red Mesita, gray not-on-Mesita, blue current location. Over quota skips Google, not the catalog. Search refetches only after the camera moves reloadMinKm.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,
@@ -502,7 +502,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Nearby on Deep is the guest pin, not Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -579,6 +579,9 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "social" as const },
 ] as const;
 
+// Twin of `supabase/functions/_shared/discovery-matrix.ts`. Spec mirror,
+// not a dispatcher. Change one, change the other. Vercel root is
+// apps/web-admin, so this bundle cannot import the EF file.
 export const DISCOVERY_MODE_KEYS = [
   "fast",
   "deep",

@@ -3,6 +3,7 @@ import {
   BOUGHT_LANE_COLUMNS,
   DISCOVERY_EXTRA_COLUMNS,
   EARNED_LANE_COLUMNS,
+  toLineupPlace,
   toPromotingFields,
   toSignalPlace,
 } from "./discovery-place.ts";
@@ -22,6 +23,7 @@ const ROW: Record<string, unknown> = {
   google_stars_overall: 4.6,
   google_review_count: 900,
   embedding: "[0.1,0.2]",
+  name_embedding: "[0.3,0.4]",
   // Bought lane.
   plan: "pro",
   welcome_free_rate: 40,
@@ -83,6 +85,16 @@ Deno.test("a mapped row moves Popularity off the prior — the dead-signal guard
     "Popularity scored a rated place identically to an unrated one — the rating columns are not reaching the signal",
   );
   assert(mapped > bare, `a 4.6 across 900 reviews (${mapped}) should beat the prior (${bare})`);
+});
+
+Deno.test("toLineupPlace adds nameEmbedding and plan; toSignalPlace still omits them", () => {
+  const earned = toSignalPlace(ROW) as unknown as Record<string, unknown>;
+  assertEquals(earned.nameEmbedding, undefined);
+  assertEquals(earned.plan, undefined);
+  const lineup = toLineupPlace(ROW);
+  assertEquals(lineup.nameEmbedding, "[0.3,0.4]");
+  assertEquals(lineup.plan, "pro");
+  assertEquals(lineup.rating, 4.6);
 });
 
 Deno.test("toSignalPlace carries no promo field, whatever the row holds", () => {

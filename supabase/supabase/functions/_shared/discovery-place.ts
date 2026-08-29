@@ -83,6 +83,23 @@ export function toSignalPlace(row: Record<string, unknown>): SignalPlace {
 }
 
 /**
+ * Places Lineup projection. `toSignalPlace` stays the earned-lane split
+ * (no `plan`, no name vector). New blend call sites use this so Name and
+ * Partnership can actually fire.
+ */
+export function toLineupPlace(row: Record<string, unknown>): SignalPlace {
+  return {
+    ...toSignalPlace(row),
+    nameEmbedding: row.name_embedding,
+    plan: typeof row.plan === "string"
+      ? row.plan
+      : row.plan == null
+      ? null
+      : String(row.plan),
+  };
+}
+
+/**
  * Lane 2's projection. `placePromotingLevel` reads these and nothing else, and
  * it is the only thing in Discovery permitted to.
  */

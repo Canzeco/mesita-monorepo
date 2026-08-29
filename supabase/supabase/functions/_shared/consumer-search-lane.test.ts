@@ -1,17 +1,23 @@
 // deno test supabase/functions/_shared/consumer-search-lane.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  admitNameFloor,
   applyResolvedMesitaName,
   deepModuleFlags,
   laneDedupeKeys,
   listedNotPartner,
   membershipTone,
   mergeNameDeepLanes,
+  orderDeepLineup,
   splitResolvedNameHits,
   stripPlacesPrefix,
   takeFastLane,
   type LaneItem,
+  type ListedRow,
 } from "./consumer-search-lane.ts";
+import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
+import { weightsForMode } from "./discovery-matrix.ts";
+import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
 
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
@@ -265,6 +271,86 @@ Deno.test("deepModuleFlags: all lanes on fire all three modules", () => {
     }),
     { wantAuto: true, wantText: true, wantMesita: true },
   );
+});
+
+function listed(
+  id: string,
+  name: string,
+  embedding: number[],
+  plan: string | null = "free",
+): ListedRow {
+  return {
+    id,
+    slug: id,
+    google_place_id: `g-${id}`,
+    name,
+    address: "",
+    lat: 19.4,
+    lng: -99.1,
+    plan,
+    name_embedding: embedding,
+    embedding: null,
+  };
+}
+
+const QUERY = [1, 0];
+const BEST = listed("best", "Best", [1, 0]);
+const WORSE = listed("worse", "Worse", [0.8, 0.6]);
+
+function weights(name: number): Record<SignalKey, number> {
+  const out = {} as Record<SignalKey, number>;
+  for (const key of SIGNAL_KEYS) out[key] = 0;
+  out.name = name;
+  return out;
+}
+
+Deno.test("orderDeepLineup: Name 1 vs 4 keeps the same order", () => {
+  const pool = [WORSE, BEST];
+  const at1 = orderDeepLineup(pool, QUERY, weights(1)).map((r) => r.id);
+  const at4 = orderDeepLineup(pool, QUERY, weights(4)).map((r) => r.id);
+  assertEquals(at1, ["best", "worse"]);
+  assertEquals(at4, ["best", "worse"]);
+});
+
+Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
+  const pool = [WORSE, BEST];
+  assertEquals(orderDeepLineup(pool, QUERY, weights(0)).map((r) => r.id), [
+    "worse",
+    "best",
+  ]);
+  assertEquals(orderDeepLineup(pool, QUERY, weights(1)).map((r) => r.id), [
+    "best",
+    "worse",
+  ]);
+});
+
+Deno.test("Deep mask never calls randomness · proximity · timing", () => {
+  const deep = weightsForMode("deep", DISCOVERY_DEFAULTS.weights);
+  assertEquals(deep.name > 0, true);
+  for (const key of ["randomness", "proximity", "timing", "summary"] as const) {
+    assertEquals(deep[key], 0);
+  }
+  const threw: string[] = [];
+  orderDeepLineup([WORSE, BEST], QUERY, deep, undefined);
+  assertEquals(threw, []);
+});
+
+Deno.test("admitNameFloor uses raw cosine, not remapped name()", () => {
+  const below = listed("low", "Low", [0.2, 0.98]);
+  const out = admitNameFloor([BEST, below], QUERY, 0.4);
+  assertEquals(out.map((r) => r.id), ["best"]);
+});
+
+Deno.test("Deep source never calls searchNearbyPlaces", async () => {
+  const src = await Deno.readTextFile(
+    new URL("./consumer-search-lane.ts", import.meta.url),
+  );
+  assertEquals(src.includes("searchNearbyPlaces"), false);
+  assertEquals(src.includes("rankByBlend"), true);
+  assertEquals(src.includes("discoveryRank"), false);
+  assertEquals(src.includes("queryNameVector"), true);
+  assertEquals(src.includes("queryVector:"), false);
+  assertEquals(src.includes("queryVector,"), false);
 });
 
 Deno.test("mergeNameDeepLanes: overflow Mesita never stubs as Google", () => {
