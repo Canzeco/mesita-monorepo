@@ -12,10 +12,11 @@
 //   MODES     Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
 //             Social · Favorites. Each card shows locked module chips.
 //             Fast is Autocomplete only. Deep calls Autocomplete, Text
-//             Search, Nearby, and Places Lineup (Name on Mesita
-//             `places.name`, never `google_name`). Chat calls Text
-//             Search, Nearby, both Perplexity modules, and Places
-//             Lineup — not Social Lineup. Favorites calls no module.
+//             Search, and Places Lineup (Name on Mesita `places.name`,
+//             never `google_name`). Deep never calls Nearby Search.
+//             Chat calls Text Search, Nearby, both Perplexity modules,
+//             and Places Lineup — not Social Lineup. Favorites calls
+//             no module.
 //             Map keeps lane counts. Google category knobs live on
 //             Modules, not here.
 //   MODULES   Google types strip (categoryCount + type batteries, one
@@ -541,7 +542,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Nearby on Deep is the guest pin, not Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Max results caps the merge. Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: Autocomplete + Text Search + Places Lineup Name (`places.name`, not `google_name`). Deep never calls Nearby Search. Each candidate resolves to an entity, then Partners → Mesita → Google after overlaps drop. Max results caps the merge. Map Filters never cut this list. Lineup Summary and the other six signals are not a Deep input. Google types live on Modules.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -674,7 +675,6 @@ export const DISCOVERY_MODE_MODULES = {
   deep: [
     "Google Places Autocomplete",
     "Google Places Text Search",
-    "Google Places Nearby Search",
     "Mesita Places Lineup",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Lineup"],

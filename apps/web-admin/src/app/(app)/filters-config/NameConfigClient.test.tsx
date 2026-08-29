@@ -30,6 +30,8 @@ describe("Name Search params", () => {
     expect(html).toContain("Mesita places");
     expect((html.match(/Max results/g) ?? []).length).toBeGreaterThanOrEqual(2);
     expect(html).toContain("Max results caps the merge");
+    expect(html).toContain("Deep never calls Nearby Search");
+    expect(html).not.toContain("Google Places Nearby Search");
     expect(html).toContain("Map Filters never cut this list");
     expect(html).toContain('value="5"');
     expect(html).toContain('value="3"');

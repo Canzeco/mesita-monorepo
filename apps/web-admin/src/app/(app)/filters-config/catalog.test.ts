@@ -90,7 +90,6 @@ describe("Discovery function APIs", () => {
     expect(DISCOVERY_MODE_MODULES.deep).toEqual([
       "Google Places Autocomplete",
       "Google Places Text Search",
-      "Google Places Nearby Search",
       "Mesita Places Lineup",
     ]);
     expect(DISCOVERY_MODE_MODULES.map).toEqual([
@@ -107,7 +106,7 @@ describe("Discovery function APIs", () => {
     expect(DISCOVERY_MODE_MODULES.social).toEqual(["Mesita Social Lineup"]);
     expect(DISCOVERY_MODE_MODULES.favorites).toEqual([]);
     expect(modeCallsModule("chat", "Mesita Social Lineup")).toBe(false);
-    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(true);
+    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(false);
   });
 
   it("pool mask is Google Places + Listed on Swipe · Catalog · Social · Favorites", () => {
@@ -231,7 +230,9 @@ describe("Discovery function APIs", () => {
     expect(name?.process).toMatch(/not `google_name`/);
     expect(name?.process).toMatch(/resolves/);
     expect(name?.process).toMatch(/Partners/);
+    expect(name?.process).toMatch(/Deep never calls Nearby Search/);
     expect(name?.process).toMatch(/Max results caps the merge/);
+    expect(name?.apis).not.toContain("Google Places Nearby Search");
     expect(name?.process).toMatch(/Map Filters never cut this list/);
     expect(name?.process).not.toMatch(/summary embedding/i);
   });
@@ -357,7 +358,7 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Name signal only");
     expect(name).toContain("places.name");
     expect(name).toContain("google_name");
-    expect(name).toContain("not a Nearby Search");
+    expect(name).toContain("Deep never calls Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
     expect(name).toContain('label="Google places"');
@@ -412,8 +413,8 @@ describe("Discovery page box order", () => {
     expect(googleModules).toContain("Google Places Nearby Search");
     expect(googleModules).toContain("Google Places Text Search");
     expect(googleModules).toContain("Name (Deep Search)");
-    expect(googleModules).toContain("pin bias");
-    expect(googleModules).toContain("the Google Nearby call");
+    expect(googleModules).toContain("Name (Deep) does not");
+    expect(googleModules).not.toContain("pin bias");
     expect(chips).toContain("export function ModeModuleChips");
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");

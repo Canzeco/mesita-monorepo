@@ -8,9 +8,9 @@
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; count stays for Deep symmetry.
 // Map Filters never cut this list.
-// Deep: Autocomplete + Text Search + Places Lineup Name. The Nearby chip
-// is the guest pin on those three — not a type+DISTANCE Nearby call with
-// no query. Each candidate resolves, then one list:
+// Deep: Autocomplete + Text Search + Places Lineup Name. Never Nearby
+// Search. Guest pin biases those three. Each candidate resolves, then
+// one list:
 //   1. Google Autocomplete — resolve against the catalog
 //   2. Google Text Search — resolve against the catalog
 //   3. Mesita Places Lineup — admit on raw name cosine, then rankByBlend
