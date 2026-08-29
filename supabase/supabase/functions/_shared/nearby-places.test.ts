@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { DEFAULT_MAP, NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import { NEARBY_TYPE_KEYS } from "./discovery-config.ts";
 import {
   __resetNearbyGoogleCacheForTests,
   CATALOG_NEARBY_HARD_MAX,
