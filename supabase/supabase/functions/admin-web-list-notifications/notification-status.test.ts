@@ -17,6 +17,7 @@ Deno.test("catalog default: seeded · active · listed, not verified/partner/pro
   assertEquals(facts.seeded, true);
   assertEquals(facts.active, true);
   assertEquals(facts.listed, true);
+  assertEquals(facts.requested, false);
   assertEquals(facts.enriching, false);
   assertEquals(facts.enriched, false);
   assertEquals(facts.enrichPulse, 2);
@@ -24,6 +25,11 @@ Deno.test("catalog default: seeded · active · listed, not verified/partner/pro
   assertEquals(facts.verified, false);
   assertEquals(facts.partner, false);
   assertEquals(facts.promoting, false);
+});
+
+Deno.test("Requested is pending_review / pending_verification, not listed", () => {
+  assertEquals(placeStatusFacts({ ...BASE, status: "pending_verification" }).requested, true);
+  assertEquals(placeStatusFacts({ ...BASE, status: "pending_verification" }).listed, false);
 });
 
 Deno.test("listing_type is not a fact — paused is Unlisted even if unclaimed", () => {

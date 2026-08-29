@@ -47,7 +47,7 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 const SELECT_CLASS =
   "border-border bg-background h-10 rounded-xl border px-3 text-sm outline-none";
 
-// State + value next to Update. Listed · Active · Verified · Partner · Promoted.
+// State + value next to Update. Listed · Active · Verified · Partnered · Promoted.
 export function UpdateFields({
   fact,
   onFact,
@@ -77,7 +77,7 @@ export function UpdateFields({
         <option value="listed">Listed</option>
         <option value="active">Active</option>
         <option value="verified">Verified</option>
-        <option value="partner">Partner</option>
+        <option value="partner">Partnered</option>
         <option value="promoting">Promoted</option>
       </select>
       {fact === "listed" ? (

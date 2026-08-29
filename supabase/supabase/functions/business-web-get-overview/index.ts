@@ -18,7 +18,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
-import { isPlaceListed, isPlaceSeeded } from "../_shared/place-status.ts";
+import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-status.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
         my_role: "owner",
         seeded: isPlaceSeeded(placeFields.google_place_id),
         listed: isPlaceListed(placeFields.status),
+        requested: isPlaceRequested(placeFields.status),
         enrich_pulse: enrichPulse,
         enrich_pulse_total: PULSE_TOTAL,
         enrich_pulse_labels: PULSE_LABELS_IN_ORDER,

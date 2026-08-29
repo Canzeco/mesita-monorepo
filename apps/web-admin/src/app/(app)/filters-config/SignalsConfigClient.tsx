@@ -1,6 +1,6 @@
 "use client";
 
-// Mesita Places Lineup — eight earned signals. Engines call these; they
+// Mesita Places Lineup — nine earned signals. Engines call these; they
 // do not invent a second scale. Weights and params persist on
 // discovery_config. Bought placement is a post-blend slot, not an earned
 // s^w, and it is not a row on this table.
@@ -16,6 +16,7 @@ import {
   Star,
   Tags,
   Type,
+  Users,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -43,6 +44,7 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   popularity: Star,
   partnership: BadgeCheck,
   randomness: Dices,
+  social: Users,
 };
 
 export function SignalsConfigClient({
@@ -132,7 +134,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Lineup"
-        subtitle="The ranked Mesita place feed. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Bought placement never enters this table."
+        subtitle="The ranked Mesita place feed. Nine earned signals, each one number in [0, 1]. Blend is Π s^w. Bought placement never enters this table."
         status={
           <KnobStatus
             kind="not-wired"

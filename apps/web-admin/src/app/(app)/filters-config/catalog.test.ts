@@ -29,6 +29,7 @@ describe("Discovery function APIs", () => {
       ["popularity", []],
       ["partnership", []],
       ["randomness", []],
+      ["social", []],
     ]);
   });
 
@@ -38,7 +39,7 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("library order is the eight Lineup signals — Promoting is not a row", () => {
+  it("library order is the nine Lineup signals — Promoting is not a row", () => {
     expect(LIBRARY_SIGNALS.map((row) => row.key)).toEqual([
       "name",
       "summary",
@@ -48,6 +49,7 @@ describe("Discovery function APIs", () => {
       "popularity",
       "partnership",
       "randomness",
+      "social",
     ]);
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
@@ -55,6 +57,7 @@ describe("Discovery function APIs", () => {
     expect(SIGNAL_KEYS).toContain("name");
     expect(SIGNAL_KEYS).toContain("summary");
     expect(SIGNAL_KEYS).toContain("partnership");
+    expect(SIGNAL_KEYS).toContain("social");
   });
 
   it("coerceConfig folds old semantic weight and params onto summary", () => {
@@ -69,14 +72,15 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
 
-  it("six modules and a locked mode → module matrix", () => {
+  it("seven modules and a locked mode → module matrix", () => {
     expect([...DISCOVERY_MODULES]).toEqual([
       "Google Places Autocomplete",
-      "Google Places Nearby Search",
       "Google Places Text Search",
+      "Google Places Nearby Search",
+      "Perplexity Search",
+      "Perplexity Agent",
       "Mesita Places Lineup",
       "Mesita Social Lineup",
-      "Perplexity Search",
     ]);
     expect(DISCOVERY_MODE_MODULES.fast).toEqual(["Google Places Autocomplete"]);
     expect(DISCOVERY_MODE_MODULES.deep).toEqual([
@@ -92,6 +96,7 @@ describe("Discovery function APIs", () => {
       "Mesita Places Lineup",
       "Mesita Social Lineup",
       "Perplexity Search",
+      "Perplexity Agent",
     ]);
     expect(DISCOVERY_MODE_MODULES.social).toEqual(["Mesita Social Lineup"]);
   });
@@ -363,11 +368,21 @@ describe("Discovery page box order", () => {
     expect(modulesJsx.indexOf("GoogleModuleCards")).toBeGreaterThan(
       modulesJsx.indexOf("GeneralConfigClient"),
     );
-    expect(modulesJsx.indexOf("SignalsConfigClient")).toBeGreaterThan(
+    expect(modulesJsx.indexOf("s-perplexity")).toBeGreaterThan(
       modulesJsx.indexOf("GoogleModuleCards"),
+    );
+    expect(modulesJsx.indexOf("s-perplexity-agent")).toBeGreaterThan(
+      modulesJsx.indexOf("s-perplexity"),
+    );
+    expect(modulesJsx.indexOf("SignalsConfigClient")).toBeGreaterThan(
+      modulesJsx.indexOf("s-perplexity-agent"),
+    );
+    expect(modulesJsx.indexOf("s-social-lineup")).toBeGreaterThan(
+      modulesJsx.indexOf("SignalsConfigClient"),
     );
     expect(modulesJsx).toContain("Mesita Social Lineup is coming soon");
     expect(modulesJsx).toContain("Perplexity Search is coming soon");
+    expect(modulesJsx).toContain("Perplexity Agent is coming soon");
     expect(modulesJsx).not.toContain("NameConfigClient");
     expect(modulesJsx).not.toContain("MapConfigClient");
     expect(modulesJsx).not.toContain("FavsConfigCard");

@@ -12,17 +12,18 @@ import {
 } from "./status-vocabulary";
 
 describe("status vocabulary", () => {
-  it("is eight general facts plus eleven Intake functions 0–10", () => {
-    expect(GENERAL_STATUS_COUNT).toBe(8);
+  it("is nine general facts plus eleven Intake functions 0–10", () => {
+    expect(GENERAL_STATUS_COUNT).toBe(9);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);
     expect(GENERAL_STATUS_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Active",
       "Listed",
-      "Enriching",
+      "Requested",
       "Enriched",
+      "Enriching",
       "Verified",
-      "Partner",
+      "Partnered",
       "Promoted",
     ]);
     expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([

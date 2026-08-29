@@ -24,12 +24,15 @@ function factOn(hit: PlaceHit, key: (typeof GENERAL_STATUS_FACTS)[number]["key"]
   if (key === "seeded") return hit.seeded;
   if (key === "active") return hit.business_status === "OPERATIONAL";
   if (key === "listed") return hit.listed;
+  if (key === "requested") return hit.requested;
   if (key === "enriched") {
     return hit.enrich_pulse_total > 0 && hit.enrich_pulse === hit.enrich_pulse_total;
   }
+  if (key === "enriching") return hit.enriching;
   if (key === "verified") return hit.verified;
   if (key === "partner") return hit.partner;
-  return hit.promoting;
+  if (key === "promoting") return hit.promoting;
+  return false;
 }
 
 export function MesitaSearchTab({
