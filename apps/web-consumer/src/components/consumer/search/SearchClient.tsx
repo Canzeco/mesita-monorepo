@@ -5,9 +5,9 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user).
 //   • Top overlay: query pill + Filters button. Places scope + Super
-//     Category live in the map Filters sheet — there is no Category
-//     chip strip on the map. Default is + Places. Distance and time
-//     are not map knobs. Swipe keeps Discovery.
+//     Category + How many (20 / 40 / 60) live in the map Filters
+//     sheet — there is no Category chip strip on the map. Default is
+//     + Places. Distance and time are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail around the camera. Places
 //     scope picks the engine (Partners / + enriched Places / + Google
 //     Nearby). Super Category cuts Mesita only. The rail is closest
@@ -60,6 +60,7 @@ import {
   applyMapFilters,
   mapFilterCount,
   mapFiltersAreActive,
+  takeMapResultLimit,
 } from "@/lib/map-filters-engine";
 import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { SearchBar } from "./SearchBar";
@@ -176,12 +177,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
+  // Closest first by distance_km, then How many keeps 20 / 40 / 60.
   const catalog = useMemo(() => {
     const cut = applyMapFilters(nearby, filters);
-    return [...cut].sort(
-      (a, b) => (a.distance_km ?? Number.POSITIVE_INFINITY) -
-        (b.distance_km ?? Number.POSITIVE_INFINITY),
-    );
+    return takeMapResultLimit(cut, filters.resultLimit);
   }, [nearby, filters]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);

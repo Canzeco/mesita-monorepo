@@ -12,6 +12,7 @@ import {
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchMapFilters } from "@/components/consumer/search/SearchMapFilters";
 import { SearchPlacesScope } from "@/components/consumer/search/SearchPlacesScope";
+import { SearchResultLimit } from "@/components/consumer/search/SearchResultLimit";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   catalogIsStale,
@@ -136,23 +137,31 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Super Category above Places scope as a nested Venn", () => {
+  it("shows Super Category, Places scope, then How many 20 / 40 / 60", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
+    expect(html.indexOf(">Places<")).toBeLessThan(html.indexOf("How many"));
     expect(html).toContain("Places");
+    expect(html).toContain("How many");
+    expect(html).toContain("Closest 60 places.");
     expect(html).toContain("role=\"radiogroup\"");
     expect(html).toContain("Partners and Mesita Places");
     expect(html).toContain("Partners");
     expect(html).toContain(">Places<");
     expect(html).toContain(">Google<");
+    expect(html).toContain(">20<");
+    expect(html).toContain(">40<");
+    expect(html).toContain(">60<");
     expect(html).not.toContain("viewBox=\"0 0 104 104\"");
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places"',
     );
-    expect(html).toContain("pointer-events-none");
-    expect(html.match(/role="radio"/g)?.length).toBe(3);
+    expect(html).toContain(
+      'aria-checked="true" aria-label="Closest 60 places"',
+    );
+    expect(html.match(/role="radio"/g)?.length).toBe(6);
     expect(html).not.toContain('type="range"');
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
@@ -203,7 +212,27 @@ describe("SearchPlacesScope", () => {
     );
     expect(html).toContain("Partners, Mesita Places, and Google");
   });
+});
 
+describe("SearchResultLimit", () => {
+  it("offers only 20, 40, and 60 as exclusive radios", () => {
+    const html = renderToStaticMarkup(
+      <SearchResultLimit limit={40} onLimit={() => {}} />,
+    );
+    expect(html.match(/role="radio"/g)?.length).toBe(3);
+    expect(html).toContain("Closest 40 places.");
+    expect(html).toContain('aria-checked="true" aria-label="Closest 40 places"');
+    expect(html).toContain('aria-checked="false" aria-label="Closest 20 places"');
+    expect(html).toContain('aria-checked="false" aria-label="Closest 60 places"');
+    expect(html).toContain(">20<");
+    expect(html).toContain(">40<");
+    expect(html).toContain(">60<");
+    expect(html).not.toContain('type="range"');
+    expect(html).not.toContain('type="number"');
+  });
+});
+
+describe("SearchPlacesScope fill", () => {
   it("fills from the inside out as power widens", () => {
     const partners = renderToStaticMarkup(
       <SearchPlacesScope power={1} onPower={() => {}} />,
@@ -375,6 +404,8 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
     expect(read("SearchMapFilters.tsx")).toContain("Places");
     expect(read("SearchMapFilters.tsx")).toContain("SearchPlacesScope");
+    expect(read("SearchMapFilters.tsx")).toContain("SearchResultLimit");
+    expect(read("SearchMapFilters.tsx")).toContain("How many");
     expect(read("SearchMapFilters.tsx")).toContain("Super Category");
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Types"');
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');

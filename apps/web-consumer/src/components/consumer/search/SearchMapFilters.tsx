@@ -6,18 +6,19 @@ import { PLACE_FAMILIES } from "@/lib/place-families";
 import { mapFiltersAreActive } from "@/lib/map-filters-engine";
 import {
   resetMapFilters,
+  setMapResultLimit,
   setMapSearchPower,
   toggleMapFamily,
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { FilterModule, Pill } from "@/components/consumer/discovery-filter-controls";
 import { SearchPlacesScope } from "./SearchPlacesScope";
+import { SearchResultLimit } from "./SearchResultLimit";
 
-// Search-map Filters sheet. Places scope + Super Category only. There
-// is no Status chip row, Category, or Types axis. Scope is one nested
-// meter: Partners ⊂ Places ⊂ Google. Default is Places. Mesita Places
-// is enriched only. A Super Category is a SET of categories; one
-// category may belong to multiple Super Categories. Distance and time
+// Search-map Filters sheet. Super Category + Places scope + How many.
+// There is no Status chip row, Category, or Types axis. Scope is one
+// nested meter: Partners ⊂ Places ⊂ Google. Default is Places. How many
+// is 20, 40, or 60 — closest N, nothing in between. Distance and time
 // are not map knobs.
 
 export function SearchMapFilters({
@@ -80,6 +81,13 @@ export function SearchMapFilters({
             <SearchPlacesScope
               power={filters.searchPower}
               onPower={setMapSearchPower}
+            />
+          </FilterModule>
+
+          <FilterModule label="How many">
+            <SearchResultLimit
+              limit={filters.resultLimit}
+              onLimit={setMapResultLimit}
             />
           </FilterModule>
         </div>

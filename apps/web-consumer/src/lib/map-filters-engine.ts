@@ -1,5 +1,5 @@
-// Map filters — Search only. A Places scope + Super Category cut the
-// nearby catalog. There is no Types axis and no category slug list.
+// Map filters — Search only. A Places scope + Super Category + How many
+// cut the nearby catalog. There is no Types axis and no category slug list.
 //
 // Scope is cumulative, not a multi-select: Partners ⊂ Partners+Places ⊂
 // Partners+Places+Google. Default is + Places. Mesita Places is the
@@ -68,17 +68,56 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
   google: 3,
 };
 
+/** Closest-N stops on Search Filters. Nothing in between. */
+export const MAP_RESULT_LIMITS = [20, 40, 60] as const;
+export type MapResultLimit = (typeof MAP_RESULT_LIMITS)[number];
+/** Show the fetched catalog (engine hard max is 60). */
+export const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 60;
+
 export type MapFilters = {
   /** 1 = Partners, 2 = + Mesita Places, 3 = + Google. Default is 2. */
   searchPower: MapSearchPower;
   /** Super Category: the six place families; empty = no constraint. */
   familyKeys: FamilyKey[];
+  /** Closest N after scope + Super. 20, 40, or 60. */
+  resultLimit: MapResultLimit;
 };
 
 export const MAP_FILTER_DEFAULTS: MapFilters = {
   searchPower: MAP_SEARCH_POWER_DEFAULT,
   familyKeys: [],
+  resultLimit: MAP_RESULT_LIMIT_DEFAULT,
 };
+
+export function clampResultLimit(value: unknown): MapResultLimit {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return MAP_RESULT_LIMIT_DEFAULT;
+  let best: MapResultLimit = MAP_RESULT_LIMIT_DEFAULT;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const stop of MAP_RESULT_LIMITS) {
+    const d = Math.abs(stop - n);
+    // Ties go up so 30 → 40 and 50 → 60, never a value between stops.
+    if (d < bestD || (d === bestD && stop > best)) {
+      best = stop;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** Closest N after membership. Always distance-sorts, then slices. */
+export function takeMapResultLimit<T extends { distance_km?: number | null }>(
+  places: T[],
+  limit: MapResultLimit,
+): T[] {
+  const cap = clampResultLimit(limit);
+  const sorted = [...places].sort(
+    (a, b) =>
+      (a.distance_km ?? Number.POSITIVE_INFINITY) -
+      (b.distance_km ?? Number.POSITIVE_INFINITY),
+  );
+  return sorted.length <= cap ? sorted : sorted.slice(0, cap);
+}
 
 export function clampSearchPower(value: unknown): MapSearchPower {
   const n = typeof value === "number" ? value : Number(value);
@@ -131,10 +170,11 @@ export function mapFiltersAreActive(f: MapFilters): boolean {
   return mapFilterCount(f) > 0;
 }
 
-/** Leaving + Places, or each Super Category, counts as one filter. */
+/** Leaving + Places, each Super Category, or a How many stop, counts as one. */
 export function mapFilterCount(f: MapFilters): number {
   const power = f.searchPower === MAP_SEARCH_POWER_DEFAULT ? 0 : 1;
-  return power + f.familyKeys.length;
+  const howMany = f.resultLimit === MAP_RESULT_LIMIT_DEFAULT ? 0 : 1;
+  return power + f.familyKeys.length + howMany;
 }
 
 function matchesMapFilters(place: Place, f: MapFilters): boolean {

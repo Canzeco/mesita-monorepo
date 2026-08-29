@@ -3,13 +3,16 @@ import type { Place } from "@/lib/api/places";
 import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   applyMapFilters,
+  clampResultLimit,
   clampSearchPower,
   MAP_FILTER_DEFAULTS,
+  MAP_RESULT_LIMITS,
   mapFilterCount,
   mapFiltersAreActive,
   placeMapStatus,
   placeSearchLane,
   searchPowerCaption,
+  takeMapResultLimit,
   type MapFilters,
 } from "@/lib/map-filters-engine";
 
@@ -102,12 +105,16 @@ describe("applyMapFilters", () => {
     ]);
   });
 
-  it("counts leaving + Places, or each Super Category, as one filter", () => {
+  it("counts leaving + Places, each Super Category, or How many as one filter", () => {
     expect(mapFilterCount(filters({ searchPower: 1 }))).toBe(1);
     expect(mapFilterCount(filters({ searchPower: 3 }))).toBe(1);
     expect(
       mapFilterCount(filters({ searchPower: 2, familyKeys: ["restaurants"] })),
     ).toBe(1);
+    expect(mapFilterCount(filters({ resultLimit: 20 }))).toBe(1);
+    expect(mapFilterCount(filters({ resultLimit: 40 }))).toBe(1);
+    expect(mapFilterCount(filters({ resultLimit: 60 }))).toBe(0);
+    expect(MAP_FILTER_DEFAULTS.resultLimit).toBe(60);
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("statuses");
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
@@ -218,6 +225,40 @@ describe("applyMapFilters", () => {
         filters({ searchPower: 3, familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual([]);
+  });
+});
+
+describe("How many — 20 / 40 / 60", () => {
+  it("only those three stops, nothing in between", () => {
+    expect(MAP_RESULT_LIMITS).toEqual([20, 40, 60]);
+    expect(clampResultLimit(20)).toBe(20);
+    expect(clampResultLimit(40)).toBe(40);
+    expect(clampResultLimit(60)).toBe(60);
+    expect(clampResultLimit(25)).toBe(20);
+    expect(clampResultLimit(30)).toBe(40);
+    expect(clampResultLimit(50)).toBe(60);
+    expect(clampResultLimit(49)).toBe(40);
+    expect(clampResultLimit(51)).toBe(60);
+    expect(clampResultLimit(99)).toBe(60);
+    expect(clampResultLimit(undefined)).toBe(60);
+  });
+
+  it("keeps the closest N after a distance sort", () => {
+    const far = place({ id: "far", distance_km: 12 });
+    const mid = place({ id: "mid", distance_km: 4 });
+    const near = place({ id: "near", distance_km: 1 });
+    expect(
+      takeMapResultLimit([far, mid, near], 20).map((p) => p.id),
+    ).toEqual(["near", "mid", "far"]);
+    const many = Array.from({ length: 45 }, (_, i) =>
+      place({ id: `p${i}`, distance_km: 45 - i }),
+    );
+    const kept = takeMapResultLimit(many, 20);
+    expect(kept).toHaveLength(20);
+    expect(kept[0]?.id).toBe("p44");
+    expect(kept[19]?.id).toBe("p25");
+    expect(takeMapResultLimit(many, 40)).toHaveLength(40);
+    expect(takeMapResultLimit(many, 60)).toHaveLength(45);
   });
 });
 
