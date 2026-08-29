@@ -79,6 +79,7 @@ import {
   clampReloadMinKm,
   clampReloadMinSec,
   defaultRailSelection,
+  shouldCenterRailCard,
   matchPredictionToPlace,
   newSessionToken,
   railCenterIndex,
@@ -198,6 +199,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const reloadMinSecRef = useRef(CATALOG_RELOAD_MIN_SEC);
   const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forceNextLoad = useRef(false);
+  // A tap picked the card, so centre it even when the pager still names
+  // it. A flick never sets this — scrollIntoView would fight the finger.
+  const centerOnSelect = useRef(false);
   const seenLocationKey = useRef<string | null>(null);
 
   const clearPendingReload = useCallback(() => {
@@ -606,12 +610,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         return;
       case "select-google":
       case "select-mesita-overlay":
+        // No rail card exists for an overlay pin, so do NOT open the
+        // rail: defaultRailSelection would fall back to card 0 and the
+        // guest who tapped B would watch A light up. Ring only.
         if (prediction) setHeldOverlay(prediction);
-        setRailCollapsed(false);
         setSelectedId(pin.id);
         return;
       case "select-mesita-catalog":
         setHeldOverlay(null);
+        centerOnSelect.current = true;
         if (prediction) {
           handlePickMesita(prediction);
           return;
@@ -681,18 +688,25 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // SearchMap's selectedId.
   const handleSelectPlace = (place: Place) => {
     setHeldOverlay(googlePredictionFromPlace(place));
+    centerOnSelect.current = true;
     setRailCollapsed(false);
     setSelectedId(place.id);
   };
 
   // Center the rail card for the selected place once the rail is on screen.
   // Skip when the pager already names that card — scroll itself selected
-  // it, and scrollIntoView would fight the flick. Pin taps still land here
-  // because they change selectedId while railIndex is stale.
+  // it, and scrollIntoView would fight the flick.
+  //
+  // A TAP overrides that guard (Pato, 2026-08-29). Opening a collapsed
+  // rail leaves railIndex stale at 0, so `idx === railIndex` was true for
+  // card 0 and the tap scrolled nothing: the guest tapped a pin and the
+  // carousel did not move. `centerOnSelect` marks the tap, survives the
+  // render, and is cleared once honoured.
   useEffect(() => {
     if (!idle || railCollapsed || !railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    if (idx < 0 || idx === railIndex) return;
+    if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
+    centerOnSelect.current = false;
     railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
       inline: "center",
