@@ -47,6 +47,29 @@ Deno.test("validateProfilePatch: rejects `name` too", () => {
   assertEquals(res.error, "unknown profile field: name");
 });
 
+// The settlement acceptance intent bits are real columns but DELIBERATELY not
+// patch keys: no engine exists, so a writable flag would be unenforced config
+// (Pato gate 2026-08-29). The gateway / Credits PRs legalize each key for
+// their own writer — which must target `places`, never `profiles` (the
+// profiles_update trigger silently drops unknown columns).
+Deno.test("validatePlacePatch: rejects the acceptance intent bits until their engines exist", () => {
+  const pay = validatePlacePatch({ mesita_pay_enabled: true });
+  assert(!pay.ok);
+  assertEquals(pay.error, "unknown place field: mesita_pay_enabled");
+  const yums = validatePlacePatch({ yums_enabled: true });
+  assert(!yums.ok);
+  assertEquals(yums.error, "unknown place field: yums_enabled");
+});
+
+Deno.test("validateProfilePatch: rejects the acceptance intent bits too", () => {
+  const pay = validateProfilePatch({ mesita_pay_enabled: true });
+  assert(!pay.ok);
+  assertEquals(pay.error, "unknown profile field: mesita_pay_enabled");
+  const yums = validateProfilePatch({ yums_enabled: false });
+  assert(!yums.ok);
+  assertEquals(yums.error, "unknown profile field: yums_enabled");
+});
+
 // ── validatePlacePatch: accept ──────────────────────────────────────────────
 
 Deno.test("validatePlacePatch: accepts a narrow enrichment-schedule patch", () => {

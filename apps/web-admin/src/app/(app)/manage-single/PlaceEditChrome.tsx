@@ -27,6 +27,7 @@ import {
   intakeFunctionRows,
   type EnrichFunctionState,
 } from "./sections/status-enrichment";
+import { ENGINELESS_STATUS_FACT_KEYS } from "@/lib/status-vocabulary";
 
 function headerChipClass(on: boolean | "unknown"): string {
   return (
@@ -134,6 +135,8 @@ export function PlaceEditChrome({
     partner: isMemberPlan(place.plan),
     promotingLevel: placeOperatorPromotingLevel(place),
     verified,
+    mesitaPay: typeof place.mesita_pay_enabled === "boolean" ? place.mesita_pay_enabled : undefined,
+    yums: typeof place.yums_enabled === "boolean" ? place.yums_enabled : undefined,
   });
   const intakeRows = intakeFunctionRows(
     (place.enrich_functions ?? null) as
@@ -271,16 +274,24 @@ export function PlaceEditChrome({
               ) : null}
             </div>
             <ul className="flex flex-wrap gap-1">
-              {facts.map((fact) => (
-                <li key={fact.key}>
-                  <span
-                    className={headerChipClass(fact.on)}
-                    aria-label={`${fact.label}: ${fact.on === "unknown" ? "unknown" : fact.on ? "yes" : "no"}`}
-                  >
-                    {fact.label}
-                  </span>
-                </li>
-              ))}
+              {/* Engineless acceptance bits stay OFF the chip row: red here
+                  means "owed and fixable", and nothing can fix them until
+                  their engines exist (Pato gate 2026-08-29). The gateway /
+                  Credits PRs lift this filter. Status box still shows them. */}
+              {facts
+                .filter((fact) =>
+                  !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
+                )
+                .map((fact) => (
+                  <li key={fact.key}>
+                    <span
+                      className={headerChipClass(fact.on)}
+                      aria-label={`${fact.label}: ${fact.on === "unknown" ? "unknown" : fact.on ? "yes" : "no"}`}
+                    >
+                      {fact.label}
+                    </span>
+                  </li>
+                ))}
             </ul>
             <ul className="flex flex-wrap gap-1">
               {intakeRows.map((row) => (

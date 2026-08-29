@@ -6,11 +6,13 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("Manage Single catalog status columns", () => {
-  it("is Created · Active · Listed · Requested · Enriched · Enriching · Verified · Partnered · Promoted", () => {
+  it("is Created … Promoted then the trailing acceptance bits Mesita Pay · Accepts Yums", () => {
     const src = readFileSync(join(here, "PlaceSelectCatalog.tsx"), "utf8");
-    const headers = [...src.matchAll(/<th className="px-4 py-3 text-center font-semibold">(\w+)<\/th>/g)].map(
-      (m) => m[1],
-    );
+    const headers = [
+      ...src.matchAll(
+        /<th className="px-4 py-3 text-center font-semibold(?: whitespace-nowrap)?">([\w ]+)<\/th>/g,
+      ),
+    ].map((m) => m[1]);
     expect(headers).toEqual([
       "Created",
       "Active",
@@ -21,6 +23,8 @@ describe("Manage Single catalog status columns", () => {
       "Verified",
       "Partnered",
       "Promoted",
+      "Mesita Pay",
+      "Accepts Yums",
     ]);
     expect(src).toContain("ActiveCell");
     expect(src).toContain("RequestCountCell");
@@ -49,6 +53,26 @@ describe("Manage Single search chrome", () => {
     expect(src).toContain("awaitingHits");
     expect(src).not.toContain("Looking up Google Places");
     expect(src).not.toContain("Not on Mesita");
+  });
+});
+
+describe("admin-web-search-places ships the acceptance intent bits", () => {
+  it("reads them off places (never profiles) and shapes both fact keys", () => {
+    const ef = readFileSync(
+      join(
+        here,
+        "../../../../../../supabase/supabase/functions/admin-web-search-places/index.ts",
+      ),
+      "utf8",
+    );
+    // The side-read is the admin-only path; the profiles view is anon-readable
+    // and must never carry these columns.
+    expect(ef).toContain('"id, enrichment, mesita_pay_enabled, yums_enabled"');
+    expect(ef).toContain("mesita_pay:");
+    expect(ef).toContain("yums:");
+    const cols = ef.match(/const cols =\s*"([^"]+)"/)?.[1] ?? "";
+    expect(cols).not.toContain("mesita_pay_enabled");
+    expect(cols).not.toContain("yums_enabled");
   });
 });
 

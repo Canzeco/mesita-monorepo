@@ -12,6 +12,7 @@ import {
   INTAKE_FUNCTIONS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
+  STATUS_FACT_FALSE_TONE,
 } from "@/lib/status-vocabulary";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
@@ -32,6 +33,8 @@ function factOn(hit: PlaceHit, key: (typeof GENERAL_STATUS_FACTS)[number]["key"]
   if (key === "verified") return hit.verified;
   if (key === "partner") return hit.partner;
   if (key === "promoting") return hit.promoting;
+  if (key === "mesita_pay") return hit.mesita_pay;
+  if (key === "yums") return hit.yums;
   return false;
 }
 
@@ -113,7 +116,7 @@ export function MesitaSearchTab({
       {rows ? (
         <div className="border-border bg-card mt-6 overflow-hidden rounded-2xl border">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] border-separate border-spacing-0 text-sm">
+            <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                   <th className="px-4 py-3 font-semibold">Place</th>
@@ -169,7 +172,10 @@ export function MesitaSearchTab({
                                 {row.hit.request_count}
                               </span>
                             ) : (
-                              <StatePill on={factOn(row.hit, f.key)} />
+                              <StatePill
+                                on={factOn(row.hit, f.key)}
+                                falseTone={STATUS_FACT_FALSE_TONE[f.key]}
+                              />
                             )}
                           </td>
                         ))
@@ -224,12 +230,25 @@ export function MesitaSearchTab({
   );
 }
 
-function StatePill({ on }: { on: boolean }) {
+// falseTone comes from the fact vocabulary (STATUS_FACT_FALSE_TONE): rose for
+// a pending debt, plain grey for a fact that is merely not true — the same
+// taxonomy the catalog's BoolCell uses, so the two tables can't disagree.
+function StatePill({
+  on,
+  falseTone = "pending",
+}: {
+  on: boolean;
+  falseTone?: "pending" | "neutral";
+}) {
   return (
     <span
       className={
         "inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold " +
-        (on ? "bg-green-500/10 text-green-700" : "bg-rose-500/10 text-rose-700")
+        (on
+          ? "bg-green-500/10 text-green-700"
+          : falseTone === "neutral"
+            ? "text-muted-foreground bg-muted"
+            : "bg-rose-500/10 text-rose-700")
       }
     >
       {on ? "yes" : "no"}

@@ -159,7 +159,7 @@ describe("generalHeaderFacts", () => {
     expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
   });
 
-  it("header display names stay Created … Promoted, never true/false/0", () => {
+  it("header display names stay Created … Accepts Yums, never true/false/0", () => {
     const facts = generalHeaderFacts({
       ...base,
       seeded: true,
@@ -180,8 +180,22 @@ describe("generalHeaderFacts", () => {
       "Verified",
       "Partnered",
       "Promoted",
+      "Mesita Pay",
+      "Accepts Yums",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
+  });
+
+  it("acceptance bits: absent input is unknown ('?'), booleans pass through", () => {
+    const absent = generalHeaderFacts(base);
+    expect(absent.find((f) => f.key === "mesita_pay")?.on).toBe("unknown");
+    expect(absent.find((f) => f.key === "mesita_pay")?.chip).toBe("?");
+    expect(absent.find((f) => f.key === "yums")?.chip).toBe("?");
+    const set = generalHeaderFacts({ ...base, mesitaPay: false, yums: true });
+    expect(set.find((f) => f.key === "mesita_pay")?.on).toBe(false);
+    expect(set.find((f) => f.key === "mesita_pay")?.chip).toBe("false");
+    expect(set.find((f) => f.key === "yums")?.on).toBe(true);
+    expect(set.find((f) => f.key === "yums")?.chip).toBe("true");
   });
 });
 

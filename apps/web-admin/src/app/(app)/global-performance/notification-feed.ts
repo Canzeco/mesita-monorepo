@@ -1,4 +1,5 @@
 import {
+  ENGINELESS_STATUS_FACT_KEYS,
   GENERAL_STATUS_FACTS,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
@@ -123,10 +124,13 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
 
-// Status — two boxes (Pato, 2026-08-25):
-//   STATUSES (9)  seven bools + Requested 0…n + Promoted 0|1|2. Compact
+// Status — two boxes (Pato, 2026-08-25 · acceptance bits 2026-08-29):
+//   STATUSES (11) nine bools + Requested 0…n + Promoted 0|1|2. Compact
 //                 line still names the true facts; Promoted here is the
 //                 live-discount yes. Requested in this feed is count > 0.
+//                 Mesita Pay / Accepts Yums are acceptance intent bits — no
+//                 event stamper writes them yet, so their filter segments and
+//                 meta chips stay filtered out (the engine PRs lift that).
 //   INTAKE (11)   0. Seed … 10. Embedding — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
@@ -158,6 +162,8 @@ export type PlaceStatusFacts = {
   verified: boolean;
   partner: boolean;
   promoting: boolean;
+  mesita_pay: boolean;
+  yums: boolean;
   functions: Record<string, boolean>;
 };
 
@@ -191,6 +197,10 @@ export function readStatusFacts(
     verified: bool(f.verified),
     partner: bool(f.partner),
     promoting: bool(f.promoting),
+    // Acceptance bits: no stamper writes them yet — false until the engine
+    // PRs add `mesita_pay` / `yums` to the event statusFacts payloads.
+    mesita_pay: bool(f.mesita_pay),
+    yums: bool(f.yums),
     functions,
   };
 }
@@ -216,11 +226,15 @@ export type IntakeFactChip = {
   on: boolean;
 };
 
-/** All nine facts for expand chips. */
+/** The engine-backed facts for expand chips. The two acceptance bits are
+ *  filtered out until an event stamper writes them (their chips would be
+ *  permanently muted noise); the gateway / Credits PRs lift this. */
 export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
   const facts = readStatusFacts(item.meta);
   if (!facts) return [];
-  return STATUS_FACTS.map((def) => ({
+  return STATUS_FACTS.filter(
+    (def) => !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(def.key),
+  ).map((def) => ({
     key: def.key,
     on: facts[def.key],
     label: def.label,
@@ -244,6 +258,8 @@ export function intakeStatusLine(item: NotificationItem): string | null {
     if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partnered");
     if (facts.promoting) parts.push("Promoted");
+    if (facts.mesita_pay) parts.push("Mesita Pay");
+    if (facts.yums) parts.push("Accepts Yums");
     return parts.join(" · ");
   }
   // Pre-payload fallback (create events only carried status/enriched).

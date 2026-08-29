@@ -97,7 +97,11 @@ Deno.serve(async (req) => {
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
-      admin.from("places").select("enrichment").eq("id", requestedPlaceId).maybeSingle(),
+      admin
+        .from("places")
+        .select("enrichment, mesita_pay_enabled, yums_enabled")
+        .eq("id", requestedPlaceId)
+        .maybeSingle(),
     ]);
     if (placeRow.error) {
       return json({ ok: false, error: placeRow.error.message }, 500);
@@ -131,7 +135,14 @@ Deno.serve(async (req) => {
     // The three pipeline facts of Status ride along, admin-only and computed
     // (never stored): seeded · listed · enriched. The other three the box
     // derives itself — partner and promoting from columns already on this row,
-    // verified from admin-web-get-place-verification.
+    // verified from admin-web-get-place-verification. The two settlement
+    // acceptance INTENT BITS (mesita_pay_enabled · yums_enabled) ride the
+    // same places-direct side-read as enrichment — never through profiles
+    // (the view is anon-readable) — and are forwarded only when the read
+    // returned a boolean, so a failed read renders "?" not a false "no".
+    const acceptanceRow = (enrichmentRow.data ?? null) as
+      | { mesita_pay_enabled?: unknown; yums_enabled?: unknown }
+      | null;
     places = [
       {
         ...placeFields,
@@ -149,6 +160,12 @@ Deno.serve(async (req) => {
         enrich_functions: operatorFunctionStates(
           enrichmentMap.functions as Partial<Record<string, FunctionState>>,
         ),
+        ...(typeof acceptanceRow?.mesita_pay_enabled === "boolean"
+          ? { mesita_pay_enabled: acceptanceRow.mesita_pay_enabled }
+          : {}),
+        ...(typeof acceptanceRow?.yums_enabled === "boolean"
+          ? { yums_enabled: acceptanceRow.yums_enabled }
+          : {}),
       } as unknown as PlaceRow,
     ];
   } else {

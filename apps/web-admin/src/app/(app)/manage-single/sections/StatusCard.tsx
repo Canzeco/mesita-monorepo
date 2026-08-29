@@ -1,6 +1,6 @@
 "use client";
 
-// Status — the Statuses box: seven bools (`true`/`false`) plus Requested
+// Status — the Statuses box: nine bools (`true`/`false`) plus Requested
 // `0…n` and Promoted `0|1|2`, each from its own source. Intake
 // (0. Seed … 10. Embedding) lives in IntakeStatusCard.
 //
@@ -16,6 +16,10 @@
 //   Verified   approved project_verifications
 //   Partnered  plan ≠ free
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
+//   Mesita Pay places.mesita_pay_enabled — cleared to accept the in-Mesita
+//              card rail when it goes live (intent bit; write-door rejected)
+//   Accepts Yums places.yums_enabled — cleared to accept Yums (Credits)
+//              when they land (same contract)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -60,9 +64,10 @@ import {
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): seven bools + Requested 0…n + Promoted
-// 0|1|2. Intake is the next box — not chips under Enriched, and not a
-// Create 1–5 / Enrich 1–10 split. Chips never repeat the row name.
+// Statuses box (Pato, 2026-08-25 · acceptance bits 2026-08-29): nine bools +
+// Requested 0…n + Promoted 0|1|2. Intake is the next box — not chips under
+// Enriched, and not a Create 1–5 / Enrich 1–10 split. Chips never repeat the
+// row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
@@ -80,7 +85,7 @@ import {
 //   Verified   somebody proved they own it. One-time, never lapses.
 //   Partnered  the place pays Mesita. A deal: stable, internal. Wire key `partner`.
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive. Volatile, and the
-//              only one of the nine a guest is ever shown. Engine Dominant
+//              only one of the eleven a guest is ever shown. Engine Dominant
 //              (3) displays as 2.
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
@@ -316,6 +321,22 @@ export function StatusCard({
               ? " · live"
               : " · costs them nothing");
 
+  // Acceptance intent bits ride the same super-admin overview payload, read
+  // off `places` by the side-read (never through profiles). Absent means an
+  // older payload — "?" rather than a false "no", the Verified rule.
+  const mesitaPay: boolean | "unknown" =
+    typeof place.mesita_pay_enabled === "boolean" ? place.mesita_pay_enabled : "unknown";
+  const yums: boolean | "unknown" =
+    typeof place.yums_enabled === "boolean" ? place.yums_enabled : "unknown";
+  const mesitaPayDetail =
+    mesitaPay === true
+      ? "Cleared to accept Mesita Pay when the rail goes live."
+      : "Not accepting Mesita Pay yet — structure only; the Stripe gateway comes later.";
+  const yumsDetail =
+    yums === true
+      ? "Cleared to accept Yums when Credits go live."
+      : "Not accepting Yums yet — structure only; the Credits engine comes later.";
+
   const promotingName = OPERATOR_PROMOTING_LABEL[promotingLevel];
   const promotingDetail =
     strategy === null
@@ -402,6 +423,20 @@ export function StatusCard({
           tint="pink"
           detail={promotingDetail}
         />
+        <StatusRow
+          name="Mesita Pay"
+          on={mesitaPay === true}
+          chip={statusBoolChip(mesitaPay)}
+          tint="amber"
+          detail={mesitaPayDetail}
+        />
+        <StatusRow
+          name="Accepts Yums"
+          on={yums === true}
+          chip={statusBoolChip(yums)}
+          tint="orange"
+          detail={yumsDetail}
+        />
       </div>
 
       {badged !== promoting ? (
@@ -439,7 +474,7 @@ function StatusRow({
   on: boolean;
   /** `true`/`false`/`?`/`…` for bools, `0…n` for Requested, `0`/`1`/`2` for Promoted. */
   chip: string;
-  tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
+  tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink" | "amber" | "orange";
   detail: string;
   /** Control under the detail. Active and Listed are the two operator writes. */
   action?: React.ReactNode;
@@ -453,6 +488,8 @@ function StatusRow({
     emerald: "bg-emerald-500/10 text-emerald-700",
     sky: "bg-sky-500/10 text-sky-700",
     pink: "bg-pink-500/10 text-pink-600",
+    amber: "bg-amber-500/10 text-amber-700",
+    orange: "bg-orange-500/10 text-orange-700",
   }[tint];
 
   return (

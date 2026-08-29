@@ -15,6 +15,7 @@ import {
   type IntakeFunctionKey,
   type StatusFactKey,
 } from "./notification-feed";
+import { ENGINELESS_STATUS_FACT_KEYS } from "@/lib/status-vocabulary";
 
 export type TypeFilter = "all" | NotificationType;
 export type StatusFilter = IntakeFilter;
@@ -29,6 +30,10 @@ const STATUS_DOT: Record<StatusFactKey, string> = {
   verified: TONES.amber.dot,
   partner: TONES.indigo.dot,
   promoting: TONES.rose.dot,
+  // Acceptance bits: entries keep the Record total; their segments are
+  // filtered out below until an event stamper exists (gateway/Credits PRs).
+  mesita_pay: TONES.amber.dot,
+  yums: TONES.amber.dot,
 };
 
 export function NotificationFilters({
@@ -124,7 +129,13 @@ export function NotificationFilters({
             }
           />
           {intake
-            ? STATUS_FACTS.map((fact) => (
+            ? STATUS_FACTS.filter(
+                // No event stamper writes the acceptance bits yet, so their
+                // segments would count 0 forever and read as a broken feed.
+                // The gateway / Credits PRs lift this with their stampers.
+                (fact) =>
+                  !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
+              ).map((fact) => (
                 <FilterSegment
                   key={fact.key}
                   active={statusFilter === fact.key}

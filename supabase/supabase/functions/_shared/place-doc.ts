@@ -187,6 +187,18 @@ export type PlaceRow = {
   orders_enabled: boolean;
   /** Description/Actions — LLM: this kind of place likely takes reservations. */
   reservations_enabled: boolean;
+  /** Settlement acceptance INTENT BIT (Pato gate 2026-08-29): cleared to
+   *  accept Mesita Pay (the in-Mesita card rail) when it goes live. The
+   *  future gateway engine ANDs this with the global visits_config.payCard
+   *  switch and Stripe capability — never a cache of engine state. NOT
+   *  patchable (see the Omit below): no writer exists yet, and when one does
+   *  it must target `table: "places"` — the profiles_update trigger
+   *  enumerates its SET list and silently drops unknown columns. */
+  mesita_pay_enabled: boolean;
+  /** Same contract for Yums (Mesita Credits): cleared to accept Yums when
+   *  Credits land. Engine ANDs with visits_config.payYums; Yums settles as a
+   *  bill REDUCTION, never a payment method (🧾 Checkout §B / 🪙 Yums). */
+  yums_enabled: boolean;
 };
 
 export const PLACE_PATCH_KEYS = [
@@ -272,13 +284,22 @@ export const PLACE_PATCH_KEYS = [
   "business_status_at",
   "orders_enabled",
   "reservations_enabled",
-] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at" | "name">)[];
+  // mesita_pay_enabled / yums_enabled are DELIBERATELY absent: acceptance
+  // intent bits with no engine, rejected at this door ("unknown place field")
+  // until the gateway / Credits PRs legalize them for their own writers.
+] as const satisfies readonly (keyof Omit<
+  PlaceRow,
+  "id" | "created_at" | "updated_at" | "name" | "mesita_pay_enabled" | "yums_enabled"
+>)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
 // CONSUMER_PATCH_KEYS uses (borrowed from PULSE_PIECE_META, MESITA-1222): a
 // field added to PlaceRow and forgotten here fails the build, not a review.
 type _MissingFromPlacePatchKeys = Exclude<
-  keyof Omit<PlaceRow, "id" | "created_at" | "updated_at" | "name">,
+  keyof Omit<
+    PlaceRow,
+    "id" | "created_at" | "updated_at" | "name" | "mesita_pay_enabled" | "yums_enabled"
+  >,
   typeof PLACE_PATCH_KEYS[number]
 >;
 const _assertNoMissingPlaceKeys: _MissingFromPlacePatchKeys extends never ? true

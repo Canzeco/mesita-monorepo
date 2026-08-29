@@ -92,6 +92,10 @@ export function generalHeaderFacts(input: {
   promoting?: boolean;
   promotingLevel?: number;
   verified: boolean | "unknown";
+  /** places.mesita_pay_enabled — acceptance intent bit. Absent = unknown. */
+  mesitaPay?: boolean;
+  /** places.yums_enabled — acceptance intent bit. Absent = unknown. */
+  yums?: boolean;
 }): HeaderFact[] {
   const created: boolean | "unknown" =
     typeof input.seeded === "boolean" ? input.seeded : "unknown";
@@ -117,6 +121,10 @@ export function generalHeaderFacts(input: {
   const requestCount = requestCountFromRow(input.requestCount);
   const requestedOn: boolean | "unknown" =
     requestCount === "unknown" ? "unknown" : requestCount > 0;
+  const mesitaPay: boolean | "unknown" =
+    typeof input.mesitaPay === "boolean" ? input.mesitaPay : "unknown";
+  const yums: boolean | "unknown" =
+    typeof input.yums === "boolean" ? input.yums : "unknown";
   return [
     { key: "seeded", label: "Created", on: created, chip: statusBoolChip(created) },
     { key: "active", label: "Active", on: active, chip: statusBoolChip(active) },
@@ -146,6 +154,18 @@ export function generalHeaderFacts(input: {
       label: "Promoted",
       on: level > 0,
       chip: promotingLevelChip(level),
+    },
+    {
+      key: "mesita_pay",
+      label: "Mesita Pay",
+      on: mesitaPay,
+      chip: statusBoolChip(mesitaPay),
+    },
+    {
+      key: "yums",
+      label: "Accepts Yums",
+      on: yums,
+      chip: statusBoolChip(yums),
     },
   ];
 }

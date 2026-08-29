@@ -70,9 +70,11 @@ Deno.serve(async (req) => {
       ? Math.min(googlePlaceIds.length, 250)
       : 25;
 
-  // The catalog table is the PIPELINE in one row: seeded → active → listed → enriching →
-  // enriched → verified → partner → promoting. Everything except the two
-  // id-scoped reads below lives on profiles, so no join is required here.
+  // The catalog table is the PIPELINE in one row — seeded → active → listed →
+  // enriching → enriched → verified → partner → promoting — plus two TRAILING
+  // acceptance intent bits (mesita_pay · yums) that are not pipeline rungs.
+  // Everything except the two id-scoped reads below lives on profiles, so no
+  // join is required here.
   // google_place_id is the seeded spine; business_status is Google's
   // OPERATIONAL fact (Active); plan + the four rate columns + the
   // strike/pause fields are what isPlacePromoting weighs.
@@ -181,6 +183,7 @@ Deno.serve(async (req) => {
   // it there means rebuilding the view + its two INSTEAD OF triggers, a
   // documented recurring pain point, for a field only two admin EFs need.
   const enrichment = new Map<string, EnrichmentMap>();
+  const acceptance = new Map<string, { mesitaPay: boolean; yums: boolean }>();
   if (ids.length > 0) {
     const [verificationRes, enrichmentRes] = await Promise.all([
       admin
@@ -188,7 +191,15 @@ Deno.serve(async (req) => {
         .select("place_id")
         .eq("status", "approved")
         .in("place_id", ids),
-      admin.from("places").select("id, enrichment").in("id", ids),
+      // The two acceptance intent bits ride the same places-direct read:
+      // admin-only columns, deliberately NEVER added to the profiles view
+      // (the view is SELECT-granted to the anon key, so a view column is
+      // publicly enumerable — and rebuilding it + its INSTEAD OF triggers
+      // is the documented pain this side-read exists to avoid).
+      admin.from("places").select("id, enrichment, mesita_pay_enabled, yums_enabled").in(
+        "id",
+        ids,
+      ),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
     // degrades to 0 / not-verified, which reads as "less done than it is" —
@@ -206,6 +217,12 @@ Deno.serve(async (req) => {
     }
     for (const r of (enrichmentRes.data ?? []) as Record<string, unknown>[]) {
       if (r.enrichment) enrichment.set(String(r.id), r.enrichment as EnrichmentMap);
+      // Missing row / failed read → the map stays empty and the shaped row
+      // falls back to false below — the safe direction for an acceptance bit.
+      acceptance.set(String(r.id), {
+        mesitaPay: r.mesita_pay_enabled === true,
+        yums: r.yums_enabled === true,
+      });
     }
   }
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
@@ -236,7 +253,7 @@ Deno.serve(async (req) => {
       content_status: contentStatus,
       request_count: Number(v.request_count) || 0,
       listing_type: listingType,
-      // The eight status facts, in table order.
+      // The ten status facts, in table order (plus promoting_level below).
       seeded: isPlaceSeeded(v.google_place_id),
       // Google's OPERATIONAL fact — a FLAG, never a visibility gate.
       // NULL is silence, not "not operational".
@@ -276,6 +293,11 @@ Deno.serve(async (req) => {
       promoting_level: placePromotingLevel(
         v as Parameters<typeof placePromotingLevel>[0],
       ),
+      // Settlement acceptance INTENT BITS (places.mesita_pay_enabled /
+      // places.yums_enabled) — stored, unwritable at the place-doc door,
+      // false fleet-wide until their engines land (Pato gate 2026-08-29).
+      mesita_pay: (acceptance.get(id) ?? { mesitaPay: false }).mesitaPay,
+      yums: (acceptance.get(id) ?? { yums: false }).yums,
       photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
     };
   });

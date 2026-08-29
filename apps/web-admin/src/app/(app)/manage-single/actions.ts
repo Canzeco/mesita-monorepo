@@ -48,12 +48,13 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  // ── The nine status facts the catalog table renders, in order:
+  // ── The eleven status facts the catalog table renders, in order:
   //    Created · Active · Listed · Requested · Enriched · Enriching ·
-  //    Verified · Partnered · Promoted.
+  //    Verified · Partnered · Promoted · Mesita Pay · Accepts Yums.
   //    Bools except Requested (0…n) and Promoted (0|1|2). All derived
   //    (or projected) in admin-web-search-places, except Enriching which
   //    is content_status generating/queued (MESITA-453 whole-pipeline).
+  //    The last two are stored acceptance intent bits on places.
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
@@ -90,6 +91,11 @@ export type PlaceHit = {
   promoting: boolean;
   /** How hard. Engine 0-3; operator display is 0|1|2 (Dominant → 2). */
   promoting_level: 0 | 1 | 2 | 3;
+  /** places.mesita_pay_enabled — cleared to accept Mesita Pay when the rail
+   *  goes live. Intent bit; no engine flips it yet, so the fleet reads false. */
+  mesita_pay: boolean;
+  /** places.yums_enabled — cleared to accept Yums (Credits) when they land. */
+  yums: boolean;
 };
 
 // The search EF only guarantees id/name — every other field may be absent,
@@ -161,6 +167,8 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
     promoting_level: raw.promoting_level ?? 0,
+    mesita_pay: raw.mesita_pay ?? false,
+    yums: raw.yums ?? false,
   };
 }
 
@@ -327,6 +335,11 @@ export type AdminPlace = {
   content_status?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
+  /** places.mesita_pay_enabled — acceptance intent bit, read via the places
+   *  side-read (never through profiles). Absent = older payload → "?". */
+  mesita_pay_enabled?: boolean;
+  /** places.yums_enabled — same contract as mesita_pay_enabled. */
+  yums_enabled?: boolean;
   [k: string]: unknown;
 };
 
