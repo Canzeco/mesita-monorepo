@@ -89,7 +89,7 @@ export function PlaceRequestPanelView({
         >
           <div className="flex items-end justify-between gap-3">
             <div className="text-left">
-              <p className="text-muted-foreground type-label text-[11px] font-semibold uppercase tracking-wide">
+              <p className="text-muted-foreground type-label font-semibold uppercase tracking-wide">
                 Community votes
               </p>
               <p className="font-display mt-1 text-3xl font-semibold tabular-nums tracking-tight">
