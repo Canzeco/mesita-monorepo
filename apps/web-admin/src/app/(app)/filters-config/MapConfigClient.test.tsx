@@ -34,6 +34,12 @@ describe("Map reload pairs", () => {
     expect(html).not.toContain("Mesita places");
     expect(html).not.toContain("Mesita partners");
     expect(html).toContain("How many pins is the guest");
+    // The console must say what the set IS, not just name it: an
+    // operator reading "Mesita Places" would price it at every row.
+    expect(html).toContain("Mesita Places means created AND enriched");
+    expect(html).toContain("Mesita Enriched Places");
+    expect(html).toContain("never a search source");
+    expect(html).toContain("Places sets");
     expect(html).toContain("Closest N of the selected set");
     expect(html).toContain("Listed pins then Lineup, not distance");
     expect(html).toContain("Reload after");
