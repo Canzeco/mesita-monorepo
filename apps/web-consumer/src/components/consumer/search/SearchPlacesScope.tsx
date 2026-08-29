@@ -27,20 +27,46 @@ const R_GOOGLE = 40;
 const VENN_LAYERS = [
   {
     power: 3 as const,
-    radius: R_GOOGLE,
+    outer: R_GOOGLE,
+    inner: R_PLACES,
     color: MAP_GOOGLE_PIN_COLOR,
   },
   {
     power: 2 as const,
-    radius: R_PLACES,
+    outer: R_PLACES,
+    inner: R_PARTNER,
     color: MAP_LISTED_PIN_COLOR,
   },
   {
     power: 1 as const,
-    radius: R_PARTNER,
+    outer: R_PARTNER,
+    inner: 0,
     color: MAP_PARTNER_PIN_COLOR,
   },
 ] as const;
+
+function annulusPath(
+  cx: number,
+  cy: number,
+  outer: number,
+  inner: number,
+): string {
+  if (inner <= 0) {
+    return [
+      `M ${cx - outer} ${cy}`,
+      `a ${outer} ${outer} 0 1 0 ${outer * 2} 0`,
+      `a ${outer} ${outer} 0 1 0 ${-outer * 2} 0`,
+    ].join(" ");
+  }
+  return [
+    `M ${cx - outer} ${cy}`,
+    `a ${outer} ${outer} 0 1 0 ${outer * 2} 0`,
+    `a ${outer} ${outer} 0 1 0 ${-outer * 2} 0`,
+    `M ${cx - inner} ${cy}`,
+    `a ${inner} ${inner} 0 1 1 ${inner * 2} 0`,
+    `a ${inner} ${inner} 0 1 1 ${-inner * 2} 0`,
+  ].join(" ");
+}
 
 export function SearchPlacesScope({
   power,
@@ -86,19 +112,30 @@ export function SearchPlacesScope({
         aria-hidden
       >
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE}>
-          {[...VENN_LAYERS].reverse().map((layer) => {
+          {VENN_LAYERS.map((layer) => {
             const included = power >= layer.power;
             const selectedRing = power === layer.power;
+            if (included) {
+              return (
+                <path
+                  key={layer.power}
+                  d={annulusPath(CX, CX, layer.outer, layer.inner)}
+                  fill={layer.color}
+                  stroke={layer.color}
+                  strokeWidth={selectedRing ? 2 : 0}
+                />
+              );
+            }
             return (
               <circle
                 key={layer.power}
                 cx={CX}
                 cy={CX}
-                r={layer.radius}
-                fill={included ? layer.color : "none"}
+                r={layer.outer}
+                fill="none"
                 stroke={layer.color}
                 strokeWidth={selectedRing ? 2 : 1.5}
-                strokeOpacity={included ? 1 : 0.28}
+                strokeOpacity={0.28}
               />
             );
           })}

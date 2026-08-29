@@ -214,15 +214,29 @@ describe("SearchPlacesScope", () => {
     const partners = renderToStaticMarkup(
       <SearchPlacesScope power={1} onPower={() => {}} />,
     );
+    const places = renderToStaticMarkup(
+      <SearchPlacesScope power={2} onPower={() => {}} />,
+    );
     const google = renderToStaticMarkup(
       <SearchPlacesScope power={3} onPower={() => {}} />,
     );
     expect(partners).toContain(
       'aria-checked="true" aria-label="Mesita Partners"',
     );
+    expect(partners).toContain('fill="#ffc400"');
+    expect(partners).not.toContain('fill="#ff2357"');
+    expect(partners).not.toContain('fill="#9ca3af"');
+
+    expect(places).toContain('fill="#ffc400"');
+    expect(places).toContain('fill="#ff2357"');
+    expect(places).not.toContain('fill="#9ca3af"');
+
     expect(google).toContain(
       'aria-checked="true" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
     );
+    expect(google).toContain('fill="#ffc400"');
+    expect(google).toContain('fill="#ff2357"');
+    expect(google).toContain('fill="#9ca3af"');
   });
 });
 
