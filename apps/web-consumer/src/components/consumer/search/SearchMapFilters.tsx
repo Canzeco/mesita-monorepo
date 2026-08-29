@@ -15,7 +15,8 @@ import { SearchPlacesScope } from "./SearchPlacesScope";
 
 // Search-map Filters sheet. Places scope + Super Category only. There
 // is no Status chip row, Category, or Types axis. Scope is cumulative:
-// Partners ⊂ + Places ⊂ + Google as nested Venn rings. Default is + Places.
+// Partners ⊂ + Places ⊂ + Google as a display-only nested set. The
+// legend pills are the control. Default is + Places.
 
 export function SearchMapFilters({
   onClose,

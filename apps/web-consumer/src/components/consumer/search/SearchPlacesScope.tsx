@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { useId, type KeyboardEvent } from "react";
 import {
   MAP_SEARCH_STOPS,
   searchPowerCaption,
@@ -13,38 +13,66 @@ import {
 } from "@/lib/map-defaults";
 import { cn } from "@/lib/utils";
 
-// Exclusive Places scope as a nested Venn: Partners ⊂ Mesita Places ⊂
-// Google. Tap a ring to widen; included inner rings stay filled. Default
-// is + Places (middle). Colors match map pins.
+// Exclusive Places scope as nested sets: Partners ⊂ Mesita Places ⊂
+// Google. The diagram is display-only — never a hit target. The legend
+// pills are the radios. Default is + Places (middle). Colors match map pins.
 
-const R_PARTNER = 22;
-const R_PLACES = 38;
-const R_GOOGLE = 54;
-const SIZE = R_GOOGLE * 2;
+const CX = 88;
+const SIZE = CX * 2;
+const R_PARTNER = 28;
+const R_PLACES = 52;
+const R_GOOGLE = 76;
 
 const VENN_LAYERS = [
   {
     power: 3 as const,
-    radius: R_GOOGLE,
-    stroke: MAP_GOOGLE_PIN_COLOR,
-    fill: MAP_GOOGLE_PIN_COLOR,
-    z: 10,
+    outer: R_GOOGLE,
+    inner: R_PLACES,
+    color: MAP_GOOGLE_PIN_COLOR,
   },
   {
     power: 2 as const,
-    radius: R_PLACES,
-    stroke: MAP_LISTED_PIN_COLOR,
-    fill: MAP_LISTED_PIN_COLOR,
-    z: 20,
+    outer: R_PLACES,
+    inner: R_PARTNER,
+    color: MAP_LISTED_PIN_COLOR,
   },
   {
     power: 1 as const,
-    radius: R_PARTNER,
-    stroke: MAP_PARTNER_PIN_COLOR,
-    fill: MAP_PARTNER_PIN_COLOR,
-    z: 30,
+    outer: R_PARTNER,
+    inner: 0,
+    color: MAP_PARTNER_PIN_COLOR,
   },
 ] as const;
+
+function annulusPath(
+  cx: number,
+  cy: number,
+  outer: number,
+  inner: number,
+): string {
+  if (inner <= 0) {
+    return [
+      `M ${cx - outer} ${cy}`,
+      `a ${outer} ${outer} 0 1 0 ${outer * 2} 0`,
+      `a ${outer} ${outer} 0 1 0 ${-outer * 2} 0`,
+    ].join(" ");
+  }
+  return [
+    `M ${cx - outer} ${cy}`,
+    `a ${outer} ${outer} 0 1 0 ${outer * 2} 0`,
+    `a ${outer} ${outer} 0 1 0 ${-outer * 2} 0`,
+    `M ${cx - inner} ${cy}`,
+    `a ${inner} ${inner} 0 1 1 ${inner * 2} 0`,
+    `a ${inner} ${inner} 0 1 1 ${-inner * 2} 0`,
+  ].join(" ");
+}
+
+function bandFillOpacity(power: MapSearchPower, layerPower: MapSearchPower) {
+  if (power < layerPower) return 0.07;
+  if (layerPower === 1) return 0.94;
+  if (layerPower === 2) return 0.7;
+  return 0.42;
+}
 
 export function SearchPlacesScope({
   power,
@@ -53,8 +81,11 @@ export function SearchPlacesScope({
   power: MapSearchPower;
   onPower: (power: MapSearchPower) => void;
 }) {
+  const uid = useId().replace(/:/g, "");
   const selected =
     MAP_SEARCH_STOPS.find((stop) => stop.power === power) ?? MAP_SEARCH_STOPS[1];
+  const includedOuter =
+    power >= 3 ? R_GOOGLE : power >= 2 ? R_PLACES : R_PARTNER;
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const index = MAP_SEARCH_STOPS.findIndex((stop) => stop.power === power);
@@ -82,103 +113,149 @@ export function SearchPlacesScope({
 
   return (
     <div className="flex flex-col">
-      <p className="text-muted-foreground mb-3 type-meta">{selected.hint}</p>
-      <div
-        role="radiogroup"
-        aria-label="Places"
-        onKeyDown={onKeyDown}
-        className="flex flex-col items-center"
+      <p className="text-muted-foreground mb-4 type-meta">{selected.hint}</p>
+
+      <figure
+        className="pointer-events-none mx-auto select-none"
+        style={{ width: SIZE, height: SIZE }}
+        aria-hidden
       >
-        <div
-          className="relative mx-auto"
-          style={{ width: SIZE, height: SIZE }}
+        <svg
+          viewBox={`0 0 ${SIZE} ${SIZE}`}
+          width={SIZE}
+          height={SIZE}
+          className="block overflow-visible"
         >
-          <svg
-            viewBox={`0 0 ${SIZE} ${SIZE}`}
-            width={SIZE}
-            height={SIZE}
-            className="pointer-events-none absolute inset-0"
-            aria-hidden
-          >
+          <defs>
+            <filter
+              id={`places-venn-soft-${uid}`}
+              x="-18%"
+              y="-18%"
+              width="136%"
+              height="136%"
+            >
+              <feDropShadow
+                dx="0"
+                dy="3"
+                stdDeviation="5"
+                floodColor="#1a1214"
+                floodOpacity="0.14"
+              />
+            </filter>
+            <radialGradient
+              id={`places-venn-sheen-${uid}`}
+              cx="36%"
+              cy="30%"
+              r="72%"
+            >
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+              <stop offset="42%" stopColor="#ffffff" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          <circle
+            cx={CX}
+            cy={CX}
+            r={R_GOOGLE + 6}
+            fill="#f6f3ef"
+          />
+          <g filter={`url(#places-venn-soft-${uid})`}>
             {VENN_LAYERS.map((layer) => {
               const included = power >= layer.power;
               const selectedRing = power === layer.power;
               return (
-                <circle
-                  key={`paint-${layer.power}`}
-                  cx={SIZE / 2}
-                  cy={SIZE / 2}
-                  r={layer.radius}
-                  fill={included ? layer.fill : "transparent"}
-                  fillOpacity={included ? (selectedRing ? 0.42 : 0.22) : 0}
-                  stroke={layer.stroke}
-                  strokeWidth={selectedRing ? 2.5 : 1.75}
-                  strokeOpacity={included ? 1 : 0.45}
+                <path
+                  key={`band-${layer.power}`}
+                  d={annulusPath(CX, CX, layer.outer, layer.inner)}
+                  fill={layer.color}
+                  fillOpacity={bandFillOpacity(power, layer.power)}
+                  fillRule="evenodd"
+                  stroke={layer.color}
+                  strokeWidth={selectedRing ? 2.4 : included ? 1.35 : 1.1}
+                  strokeOpacity={included ? 0.95 : 0.28}
+                  strokeDasharray={included ? undefined : "3.5 4.5"}
                 />
               );
             })}
-          </svg>
+          </g>
+          <circle
+            cx={CX}
+            cy={CX}
+            r={R_PLACES}
+            fill="none"
+            stroke="#ffffff"
+            strokeOpacity={0.7}
+            strokeWidth={1.5}
+          />
+          <circle
+            cx={CX}
+            cy={CX}
+            r={R_PARTNER}
+            fill="none"
+            stroke="#ffffff"
+            strokeOpacity={0.8}
+            strokeWidth={1.5}
+          />
+          <circle
+            cx={CX}
+            cy={CX}
+            r={includedOuter}
+            fill={`url(#places-venn-sheen-${uid})`}
+          />
+        </svg>
+      </figure>
 
-          {VENN_LAYERS.map((layer) => {
-            const active = power === layer.power;
-            const diameter = layer.radius * 2;
-            return (
-              <button
-                key={layer.power}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={searchPowerCaption(layer.power)}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onPower(layer.power);
-                }}
-                className={cn(
-                  "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-0 bg-transparent p-0",
-                  "focus-visible:ring-primary focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-                )}
+      <div
+        role="radiogroup"
+        aria-label="Places"
+        onKeyDown={onKeyDown}
+        className="mt-5 grid w-full grid-cols-3 gap-2"
+      >
+        {MAP_SEARCH_STOPS.map((stop) => {
+          const active = power === stop.power;
+          const layer = VENN_LAYERS.find((item) => item.power === stop.power)!;
+          return (
+            <button
+              key={stop.key}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={searchPowerCaption(stop.power)}
+              tabIndex={active ? 0 : -1}
+              onClick={() => onPower(stop.power)}
+              className={cn(
+                "flex min-h-11 flex-col items-center justify-center gap-1.5 rounded-2xl px-1.5 py-2.5 text-center transition",
+                "focus-visible:ring-primary focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                active
+                  ? "bg-white text-foreground"
+                  : "bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+              style={
+                active
+                  ? {
+                      boxShadow: `0 0 0 2px ${layer.color}, 0 8px 18px rgba(26,18,20,0.08)`,
+                    }
+                  : undefined
+              }
+            >
+              <span
+                className="inline-block size-2.5 rounded-full"
                 style={{
-                  width: diameter,
-                  height: diameter,
-                  zIndex: layer.z,
+                  backgroundColor: layer.color,
+                  boxShadow: active
+                    ? "0 0 0 2px #fff, 0 0 0 3px rgba(26,18,20,0.08)"
+                    : undefined,
+                  opacity: active ? 1 : 0.55,
                 }}
+                aria-hidden
               />
-            );
-          })}
-        </div>
-
-        <div
-          className="mt-3 flex w-full justify-between px-1"
-          style={{ maxWidth: SIZE }}
-        >
-          {MAP_SEARCH_STOPS.map((stop) => {
-            const active = power === stop.power;
-            const layer = VENN_LAYERS.find((l) => l.power === stop.power)!;
-            return (
-              <button
-                key={stop.key}
-                type="button"
-                onClick={() => onPower(stop.power)}
-                className={cn(
-                  "type-meta min-h-11 rounded-lg px-1 font-semibold transition",
-                  active
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <span
-                  className="mr-1 inline-block size-2 rounded-full align-middle"
-                  style={{
-                    backgroundColor: layer.fill,
-                    opacity: active ? 1 : 0.45,
-                  }}
-                  aria-hidden
-                />
+              <span className="type-meta font-semibold tracking-tight">
                 {stop.tick}
-              </button>
-            );
-          })}
-        </div>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
