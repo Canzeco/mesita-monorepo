@@ -31,6 +31,7 @@ import {
   computeEnrichTickCost,
 } from "./cost-model";
 import { ImageFunnel } from "./ImageFunnel";
+import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
 import { updateAtlasConfig, type PerplexityPreset } from "./actions";
 import {
   Fields,
@@ -214,7 +215,7 @@ export function IntakeClient({
                     <>
                       A person or Memo adds a place.{" "}
                       <Link
-                        href="/filters-config#s-map"
+                        href={DISCOVERY_MAP_HREF}
                         className="text-foreground underline underline-offset-2"
                       >
                         Discovery › Map

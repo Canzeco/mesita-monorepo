@@ -8,8 +8,11 @@ import { cn } from "@/lib/utils";
 import { RailCard } from "./SearchRailCard";
 
 /** Active card is 80% of the rail; first/last pages pad 10% so the card
- *  centers and neighbors peek. A flick still snaps — no rest between cards. */
-const RAIL_PAGE = "w-4/5 shrink-0 snap-center first:ml-[10%] last:mr-[10%]";
+ *  centers and neighbors peek. px-3 is a bit of air between cards —
+ *  inside the page, so snap math stays 80% and the selected ring does
+ *  not kiss the neighbor. */
+const RAIL_PAGE =
+  "w-4/5 shrink-0 snap-center px-3 first:ml-[10%] last:mr-[10%]";
 
 export function SearchHereButton({
   loading,
@@ -94,6 +97,7 @@ export function SearchRailOverlay({
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
+  onResetFilters,
   setRailCardRef,
 }: {
   idle: boolean;
@@ -111,6 +115,7 @@ export function SearchRailOverlay({
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
+  onResetFilters?: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   if (!idle) return null;
@@ -233,10 +238,21 @@ export function SearchRailOverlay({
         )
       ) : (
         (catalogCount > 0 || !catalogLoading) && (
-          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] items-center rounded-2xl border px-4 py-3 backdrop-blur">
+          <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] flex-col items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
-              No places to show here yet.
+              {onResetFilters
+                ? "No places match these filters"
+                : "No places to show here yet."}
             </p>
+            {onResetFilters && (
+              <button
+                type="button"
+                onClick={onResetFilters}
+                className="text-primary text-xs font-semibold"
+              >
+                Reset filters
+              </button>
+            )}
           </div>
         )
       )}

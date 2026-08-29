@@ -1,17 +1,18 @@
 import { LayoutGrid } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
+import { DISCOVERY_MODE_MODULES } from "./catalog";
+import { ModeModuleChips } from "./ModeModuleChips";
 
-// Catalog box — empty Soon (Pato, 2026-08-27). Home Catalog stays parked
-// until the listed set is thick enough for rails. Knobs stay on the blob
-// (`discovery_config.catalog`); this file must not render them. Same
-// pattern as Orders: delete the HTML, do not hide it.
+// Catalog box — empty Soon. Home is parked (Pato, 2026-08-28). Knobs stay
+// on the blob (`discovery_config.catalog`); this file must not render them.
 export function CatalogConfigClient() {
   return (
     <ConfigSoon
       Icon={LayoutGrid}
       title="Catalog is coming soon"
-      body="Home Catalog is stacked rails over listed Mesita places. Swipe is the live deck until that catalog is thick enough to fill rails. Nothing to configure until the tab is live."
+      body="Home Catalog is stacked rails over listed Mesita places. Home is parked, so there is nothing to configure."
       doc="Notion Docs › Discovery"
+      footer={<ModeModuleChips modules={DISCOVERY_MODE_MODULES.catalog} />}
     />
   );
 }

@@ -220,7 +220,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
 
   // Redirects that carry logic stay as server pages (not in next.config):
   //   /home              → /home/swipe        (default mode)
-  //   /home/catalog|social → /home/swipe      (those two stay Soon)
+  //   /home/catalog|chat|social|favorites → /home/swipe (Home is Soon)
   //   /me/[tab]          → /me (+?settings=1) (tab → modal mapping)
   //   /inbox             → /inbox/visits      (default section)
   //   /inbox/[tab]       → /inbox/notifications (mine, global + old aliases)

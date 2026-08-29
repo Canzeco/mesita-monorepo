@@ -173,6 +173,9 @@ Deno.test("a blob from before this change reads back with the new sections defau
   const cfg = normalizeDiscoveryConfig(old);
   // The operator's own values survive...
   assertEquals(cfg.weights.proximity, 2);
+  assertEquals(cfg.weights.summary, 1);
+  assertEquals(cfg.weights.name, 1);
+  assertEquals(cfg.weights.partnership, 1);
   assertEquals(cfg.slotting.everyNth, 7);
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
@@ -225,6 +228,21 @@ Deno.test("swipe knobs default on an old blob and clamp", () => {
   );
 });
 
+Deno.test("normalize folds semantic weight and params onto summary", () => {
+  const cfg = normalizeDiscoveryConfig({
+    weights: { semantic: 2.4, proximity: 1 },
+    params: { semantic: { unembedded: 0.15 } },
+  });
+  assertEquals(cfg.weights.summary, 2.4);
+  assertEquals(cfg.params.summary.unembedded, 0.15);
+  assertEquals(cfg.weights.name, 1);
+  assertEquals(cfg.weights.partnership, 1);
+  const kept = normalizeDiscoveryConfig({
+    weights: { semantic: 2, summary: 0.5 },
+  });
+  assertEquals(kept.weights.summary, 0.5);
+});
+
 Deno.test("signal params clamp and an old blob without params stays default-shaped", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
@@ -236,7 +254,8 @@ Deno.test("signal params clamp and an old blob without params stays default-shap
   assertEquals(cfg.params.proximity.kneeKm, 0.1);
   assertEquals(cfg.params.proximity.missingGeo, 1);
   assertEquals(cfg.params.popularity.confidence, 1);
-  assertEquals(cfg.params.semantic.unembedded, DISCOVERY_DEFAULTS.params.semantic.unembedded);
+  assertEquals(cfg.params.summary.unembedded, DISCOVERY_DEFAULTS.params.summary.unembedded);
+  assertEquals(cfg.params.name.unembedded, DISCOVERY_DEFAULTS.params.name.unembedded);
 });
 
 Deno.test("filters clamp, and minRating keeps one decimal", () => {

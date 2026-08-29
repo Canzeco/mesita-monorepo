@@ -1,18 +1,21 @@
 "use client";
 
-// Signals library — one box, six reusable scores. Engines call these;
-// they do not invent a second scale. Weights and params persist on
-// discovery_config. Promoting is the post-blend slot, not an earned s^w.
+// Mesita Places Lineup — eight earned signals. Engines call these; they
+// do not invent a second scale. Weights and params persist on
+// discovery_config. Bought placement is a post-blend slot, not an earned
+// s^w, and it is not a row on this table.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  BadgeCheck,
   Clock,
   Compass,
+  Dices,
+  FileText,
   MapPin,
-  Megaphone,
-  Sparkles,
   Star,
   Tags,
+  Type,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -20,28 +23,26 @@ import {
   KnobStatus,
   SaveRow,
   SectionCard,
-  Switch,
 } from "@/components/admin-ui/config";
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   LIBRARY_SIGNALS,
   SIGNALS,
-  SLOT_MAX_EVERY_NTH,
-  SLOT_MIN_EVERY_NTH,
   WEIGHT_MAX,
   WEIGHT_MIN,
   type DiscoveryConfig,
   type SignalKey,
 } from "./catalog";
 
-const ICONS: Record<SignalKey | "promoting", typeof MapPin> = {
+const ICONS: Record<SignalKey, typeof MapPin> = {
+  name: Type,
+  summary: FileText,
   proximity: MapPin,
   timing: Clock,
-  popularity: Star,
-  promoting: Megaphone,
-  semantic: Sparkles,
   category: Tags,
-  randomness: Sparkles,
+  popularity: Star,
+  partnership: BadgeCheck,
+  randomness: Dices,
 };
 
 export function SignalsConfigClient({
@@ -87,15 +88,13 @@ export function SignalsConfigClient({
       JSON.stringify({
         weights: cfg.weights,
         params: cfg.params,
-        slotting: cfg.slotting,
       }) !==
       JSON.stringify({
         weights: saved.weights,
         params: saved.params,
-        slotting: saved.slotting,
       })
     );
-  }, [cfg.params, cfg.slotting, cfg.weights, saved.params, saved.slotting, saved.weights]);
+  }, [cfg.params, cfg.weights, saved.params, saved.weights]);
 
   const patchWeight = (key: SignalKey, value: number) => {
     setOk(false);
@@ -108,11 +107,6 @@ export function SignalsConfigClient({
       ...c,
       params: { ...c.params, [key]: { ...c.params[key], [field]: value } },
     }));
-  };
-
-  const patchSlotting = (p: Partial<DiscoveryConfig["slotting"]>) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, slotting: { ...c.slotting, ...p } }));
   };
 
   const save = () => {
@@ -132,13 +126,13 @@ export function SignalsConfigClient({
   };
 
   return (
-    <div id="s-signals" className="scroll-mt-16 flex flex-col gap-4">
+    <div id="s-lineup" className="scroll-mt-16 flex flex-col gap-4">
       {error ? <ErrorNote message={error} /> : null}
 
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
-        title="Signals"
-        subtitle="Reusable scores. Engines call this library; they do not invent a second scale. Each earned signal returns one number in [0, 1]. Promoting is a post-blend slot — bought placement never enters an earned score."
+        title="Mesita Places Lineup"
+        subtitle="The ranked Mesita place feed. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Bought placement never enters this table."
         status={
           <KnobStatus
             kind="not-wired"
@@ -148,63 +142,6 @@ export function SignalsConfigClient({
       >
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {LIBRARY_SIGNALS.map((row) => {
-            if (row.kind === "promoting") {
-              return (
-                <article
-                  key="promoting"
-                  className="border-border bg-background rounded-xl border p-4"
-                >
-                  <div className="flex items-start gap-2">
-                    <Megaphone className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">Promoting</p>
-                      <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-                        After the earned blend, insert a promoting place every N
-                        cards. Off leaves the earned order alone. Not a score.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-4">
-                    <p className="text-sm font-medium">Slot promoting places</p>
-                    <Switch
-                      on={cfg.slotting.enabled}
-                      pending={pending || loadBlocked}
-                      onClick={() => patchSlotting({ enabled: !cfg.slotting.enabled })}
-                      label="Slot promoting places"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <label className="flex flex-col gap-2">
-                      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
-                        <Megaphone className="mt-0.5 h-4 w-4 shrink-0" />
-                        Every Nth card
-                      </span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={SLOT_MIN_EVERY_NTH}
-                        max={SLOT_MAX_EVERY_NTH}
-                        step={1}
-                        value={cfg.slotting.everyNth}
-                        disabled={pending || loadBlocked || !cfg.slotting.enabled}
-                        onChange={(e) => {
-                          const raw = Number(e.target.value);
-                          if (Number.isNaN(raw)) return;
-                          patchSlotting({
-                            everyNth: Math.max(
-                              SLOT_MIN_EVERY_NTH,
-                              Math.min(SLOT_MAX_EVERY_NTH, Math.round(raw)),
-                            ),
-                          });
-                        }}
-                        className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
-                      />
-                    </label>
-                  </div>
-                </article>
-              );
-            }
-
             const spec = SIGNALS.find((s) => s.key === row.key);
             if (!spec) return null;
             const Icon = ICONS[spec.key];

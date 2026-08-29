@@ -8,16 +8,19 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE SIX, and there used to be seven. Docs § A listed Promoting among
-// them; MESITA-1196 settled the two-lane question the other way (Pato,
-// 2026-08-22), so Promoting is NOT here — a bought placement never touches an
-// earned score. It is a slotting pass that runs AFTER the blend, and it lives
-// in discovery-blend.ts. Nothing in this file may read a promo field; that is
-// what makes "rank is never for sale" an invariant a test can hold rather than
-// an exponent someone has to defend.
+// THERE ARE EIGHT. Docs § A once listed Promoting among them; MESITA-1196
+// settled the two-lane question the other way (Pato, 2026-08-22), so
+// Promoting is NOT here — a bought placement never touches an earned score.
+// It is a slotting pass that runs AFTER the blend, and it lives in
+// discovery-blend.ts. Nothing in this file may read a promo field or a rate;
+// that is what makes "rank is never for sale" an invariant a test can hold
+// rather than an exponent someone has to defend.
 //
-// There is no Social signal either, and that is also deliberate: it would
-// stand on the Social ENGINE, which is parked. Social is an engine only.
+// Semantic died. It split into Name (`places.name_embedding`) and Summary
+// (`places.embedding` — the Summary blurb, never Presentation). Partnership
+// is an earned signal (how partnered the place is). It reads `plan` only.
+// There is no Social signal: Social Lineup is a module, and it does not
+// reuse these eight.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the
@@ -45,13 +48,15 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 
-/** The six earned signals, in the order the admin table renders them. */
+/** The eight earned signals, in the order the Lineup table renders them. */
 export const SIGNAL_KEYS = [
+  "name",
+  "summary",
   "proximity",
   "timing",
   "category",
   "popularity",
-  "semantic",
+  "partnership",
   "randomness",
 ] as const;
 
@@ -84,7 +89,8 @@ function pnum(params: SignalParamBag | undefined, key: string, fallback: number)
 /**
  * The facts a signal is allowed to see. This is a projection of `places`, not
  * the row — narrowing it here is what stops a signal from quietly reaching for
- * a promo field. Note what is absent: nothing about strategy, plan, or rates.
+ * a promo field. Partnership may read `plan`. Still absent: strategy, promo
+ * flags, and rates. Bought placement never enters an earned score.
  */
 export type SignalPlace = {
   lat: number | null;
@@ -94,7 +100,12 @@ export type SignalPlace = {
   family_keys?: string[] | null;
   rating: number | null;
   user_ratings_total: number | null;
+  /** Summary vector (`places.embedding`). Never Presentation. */
   embedding: unknown;
+  /** Name vector (`places.name_embedding`). */
+  nameEmbedding?: unknown;
+  /** Membership plan. Partnership reads this; nothing else may. */
+  plan?: string | null;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -106,8 +117,10 @@ export type SignalIntent = {
   categories?: string[] | null;
   /** Family keys the guest asked for, e.g. ["food"]. */
   families?: string[] | null;
-  /** The query embedding, already computed by the engine. */
+  /** Summary / intent query vector. Summary reads this; Name does not. */
   queryVector?: number[] | null;
+  /** Name query vector. Name reads this; Summary does not. */
+  queryNameVector?: number[] | null;
   /** Injectable clock, so every signal is testable without the wall clock. */
   now?: Date;
   /** Injectable RNG, same reason. Must return [0, 1). */
@@ -312,43 +325,93 @@ export function popularity(
   return clamp01((shrunk - floor) / span);
 }
 
-// ── 5. Semantic ──────────────────────────────────────────────────────────────
+// ── 5. Name ──────────────────────────────────────────────────────────────────
+
+/**
+ * Guest name query vs `places.name_embedding`. Deep Search already ranks
+ * Mesita lanes by this cosine; the Lineup exposes the same index as a
+ * weightable signal. It does not share Summary's query vector.
+ *
+ * Cosine lands in [-1, 1] and is remapped to [0, 1].
+ *
+ * No name query vector → NEUTRAL.
+ * No place name vector → 0.4 (enrichment gap, not deletion).
+ */
+export const NAME_UNEMBEDDED = 0.4;
+
+function vectorScore(
+  placeVec: unknown,
+  query: number[] | null | undefined,
+  unembedded: number,
+): number {
+  if (!Array.isArray(query) || query.length === 0) return NEUTRAL;
+  const v = parseVector(placeVec);
+  if (!v || v.length !== query.length) return unembedded;
+  const cos = cosineSim(query, v);
+  if (!Number.isFinite(cos)) return unembedded;
+  return clamp01((cos + 1) / 2);
+}
+
+export function name(
+  place: SignalPlace,
+  intent: SignalIntent,
+  params?: SignalParamBag,
+): number {
+  const unembedded = clamp01(pnum(params, "unembedded", NAME_UNEMBEDDED));
+  return vectorScore(place.nameEmbedding, intent.queryNameVector, unembedded);
+}
+
+// ── 6. Summary ───────────────────────────────────────────────────────────────
 
 /**
  * Intent vs the place's SUMMARY embedding (`places.embedding`) — never the
  * Presentation. Docs › Discovery §C: About is the narrative a guest reads,
  * Summary is the machine blurb; we embed the second one, and the enrichment
- * queue's semantic `summary` function is what writes it.
- *
- * Cosine lands in [-1, 1] and is remapped to [0, 1]. In practice text-embedding
- * cosines cluster in [0, 0.6], so the useful band is narrow and the exponent is
- * how an operator widens it.
+ * queue's semantic `summary` function is what writes it. That Intake stamp
+ * is a different word from this signal.
  *
  * No query vector → NEUTRAL (the caller asked nothing).
  * No place vector → 0.4. The place has not been embedded yet, which is an
- * enrichment gap; it should lose to an embedded place on a semantic query
+ * enrichment gap; it should lose to an embedded place on a Summary query
  * without being deleted from the deck.
+ *
+ * Old blobs stored this as `semantic`. normalize() folds that key here.
  */
-export const SEMANTIC_UNEMBEDDED = 0.4;
+export const SUMMARY_UNEMBEDDED = 0.4;
+/** @deprecated Folded into Summary. Kept so old imports compile during the cut. */
+export const SEMANTIC_UNEMBEDDED = SUMMARY_UNEMBEDDED;
 
-export function semantic(
+export function summary(
   place: SignalPlace,
   intent: SignalIntent,
   params?: SignalParamBag,
 ): number {
-  const unembedded = clamp01(pnum(params, "unembedded", SEMANTIC_UNEMBEDDED));
-  const q = intent.queryVector;
-  if (!Array.isArray(q) || q.length === 0) return NEUTRAL;
-
-  const v = parseVector(place.embedding);
-  if (!v || v.length !== q.length) return unembedded;
-
-  const cos = cosineSim(q, v);
-  if (!Number.isFinite(cos)) return unembedded;
-  return clamp01((cos + 1) / 2);
+  const unembedded = clamp01(pnum(params, "unembedded", SUMMARY_UNEMBEDDED));
+  return vectorScore(place.embedding, intent.queryVector, unembedded);
 }
 
-// ── 6. Randomness ────────────────────────────────────────────────────────────
+// ── 7. Partnership ───────────────────────────────────────────────────────────
+
+/**
+ * How partnered the place is. Reads `plan` only — never strategy, promo
+ * flags, or rates. A free or missing plan is demoted, not deleted. A paid
+ * plan scores 1. Fine rungs (conservative / aggressive / dominant) stay on
+ * Swipe's own bias; this signal does not load those fields.
+ */
+export const PARTNERSHIP_NONE = 0.2;
+export const PARTNERSHIP_PARTNER = 1;
+
+export function partnership(
+  place: SignalPlace,
+  _intent?: SignalIntent,
+  _params?: SignalParamBag,
+): number {
+  const plan = (place.plan ?? "free").toLowerCase();
+  if (plan === "" || plan === "free") return PARTNERSHIP_NONE;
+  return PARTNERSHIP_PARTNER;
+}
+
+// ── 8. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -378,30 +441,36 @@ export type SignalFn = (
  * Discovery is one table instead of one per surface.
  */
 export const SIGNALS: Record<SignalKey, SignalFn> = {
+  name,
+  summary,
   proximity,
   timing,
   category,
   popularity,
-  semantic,
+  partnership,
   randomness,
 };
 
 /** Operator-facing names. The admin weights table renders these. */
 export const SIGNAL_LABELS: Record<SignalKey, string> = {
+  name: "Name",
+  summary: "Summary",
   proximity: "Proximity",
   timing: "Timing",
   category: "Category",
   popularity: "Popularity",
-  semantic: "Semantic",
+  partnership: "Partnership",
   randomness: "Randomness",
 };
 
 /** One line each, for the same table. What the signal asks, not how it works. */
 export const SIGNAL_BLURBS: Record<SignalKey, string> = {
+  name: "The query name against the place's name vector.",
+  summary: "The query against the place's Summary vector — never Presentation.",
   proximity: "How far is it, bent through a log curve — close counts hard, far counts gently.",
   timing: "Is it open, and is this its hour — read in the place's own local time.",
   category: "Does the type answer what the guest asked for.",
   popularity: "Rating shrunk toward the catalog mean by review volume.",
-  semantic: "The query against the place's Semantic Summary vector.",
+  partnership: "How partnered the place is, from plan. Never a bought score.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
 };
