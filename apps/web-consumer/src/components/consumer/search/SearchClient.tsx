@@ -383,7 +383,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "fast",
         );
         if (!cancelled && !deepSettled) {
@@ -409,7 +408,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmed,
           token,
           center,
-          scope.country,
           "deep",
         );
         if (!cancelled) {
@@ -431,7 +429,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       window.clearTimeout(fastHandle);
       window.clearTimeout(deepHandle);
     };
-  }, [supabase, trimmed, center, scope.country]);
+  }, [supabase, trimmed, center]);
 
   // On-Mesita row tap → show the place on the map (membership fill + black
   // ring + rail card) instead of opening the detail modal; the modal is

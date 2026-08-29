@@ -2,6 +2,7 @@
 //
 // Consumer Search name-bar. Fast = Autocomplete (default). Deep = Partners
 // · Mesita · Google after idle, one list after dropping overlaps.
+// Autocomplete and Text Search never take a country — both stay Any.
 // Membership is a boolean `partner` on each row; the client paints the
 // point and never shows source section labels. Admin Manage Single Place
 // uses the same lane (deep). Business suggest still uses suggestPlaces.
@@ -51,7 +52,6 @@ Deno.serve(async (req) => {
     sessionToken: body.sessionToken,
     lat,
     lng,
-    country: typeof body.country === "string" ? body.country : null,
     mode: typeof body.mode === "string" ? body.mode : "fast",
   });
 });

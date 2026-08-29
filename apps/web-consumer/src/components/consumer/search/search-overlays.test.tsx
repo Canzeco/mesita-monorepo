@@ -210,6 +210,8 @@ describe("SearchScopeSheet country pills", () => {
     const mxAt = html.indexOf("🇲🇽 MX");
     expect(anyAt).toBeGreaterThan(-1);
     expect(mxAt).toBeGreaterThan(anyAt);
+    expect(html).toContain("Always Any");
+    expect(html).not.toContain("Limits Google Autocomplete");
   });
 
   it("shows a flag on every listed country", () => {
@@ -733,6 +735,10 @@ describe("Name search is Fast while typing and Deep after idle", () => {
     expect(src).toContain('"fast"');
     expect(src).toContain('"deep"');
     expect(src).not.toContain("SUGGEST_DEBOUNCE_MS");
+    expect(src).not.toContain("scope.country");
+    expect(read("../../../lib/api/places.ts")).not.toMatch(
+      /\.\.\.\(country \? \{ country \} : \{\}\)/,
+    );
   });
 
   it("keeps Fast when Deep returns an empty list", () => {

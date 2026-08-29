@@ -370,6 +370,8 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
     new URL("./consumer-search-lane.ts", import.meta.url),
   );
   assertEquals(src.includes("searchNearbyPlaces"), false);
+  assertEquals(src.includes("applyPlacesCallerRegion"), false);
+  assertEquals(src.includes("includedRegionCodes"), false);
   assertEquals(src.includes("rankByBlend"), true);
   assertEquals(src.includes("discoveryRank"), false);
   assertEquals(src.includes("queryNameVector"), true);
