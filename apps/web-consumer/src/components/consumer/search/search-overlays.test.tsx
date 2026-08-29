@@ -318,6 +318,12 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("SearchClient.tsx")).not.toMatch(
       /applyMapFilters\(\s*predictions/,
     );
+    expect(read("../../../lib/api/places.ts")).not.toMatch(
+      /consumer-web-suggest-places[\s\S]*searchPower/,
+    );
+    expect(read("../../../lib/api/places.ts")).not.toMatch(
+      /consumer-web-suggest-places[\s\S]*familyKeys/,
+    );
     expect(read("SearchClient.tsx")).toContain('"fast"');
     expect(read("SearchClient.tsx")).toContain('"deep"');
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
@@ -434,7 +440,7 @@ describe("shouldReloadNearbyCatalog", () => {
     expect(nearbyReloadThresholdKm(10, 5)).toBe(5);
     expect(clampReloadMinKm(99)).toBe(20);
     expect(clampReloadMinKm(0.1)).toBe(0.2);
-    expect(clampReloadMinKm(undefined)).toBe(0.4);
+    expect(clampReloadMinKm(undefined)).toBe(0.5);
     expect(clampReloadMinSec(40)).toBe(15);
     expect(clampReloadMinSec(undefined)).toBe(2);
     expect(
@@ -445,7 +451,7 @@ describe("shouldReloadNearbyCatalog", () => {
     ).toBe(true);
   });
 
-  it("reloads after a few blocks at the 0.4 km default", () => {
+  it("reloads after a few blocks at the 0.5 km default", () => {
     const blockBox = {
       south: 25.495,
       west: -100.305,
@@ -453,10 +459,10 @@ describe("shouldReloadNearbyCatalog", () => {
       east: -100.295,
     };
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.504, lng: -100.3 }, blockBox, 0.4),
+      shouldReloadNearbyCatalog(last, { lat: 25.505, lng: -100.3 }, blockBox, 0.5),
     ).toBe(true);
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.4),
+      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.5),
     ).toBe(false);
   });
 
