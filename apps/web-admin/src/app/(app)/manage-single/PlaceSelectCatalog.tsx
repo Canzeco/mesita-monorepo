@@ -61,19 +61,18 @@ export function PlaceSelectCatalog() {
     pending,
     error,
     metaLabel,
-    searchedQuery,
     catalogLoaded,
     clear,
-  } = usePlaceCatalogSearch();
+  } = usePlaceCatalogSearch({ searchOnQuery: false });
 
   const sessionTokenRef = useRef(newSessionToken());
-  const googleRequestIdRef = useRef(0);
-  // Query-keyed Google results — setState only after await (same pattern as usePlaceCatalogSearch).
-  const [googleRemote, setGoogleRemote] = useState<{
+  const deepRequestIdRef = useRef(0);
+  // Query-keyed Name Deep Search — same engine as consumer Search.
+  const [deepRemote, setDeepRemote] = useState<{
     query: string;
     predictions: PlacePrediction[];
   } | null>(null);
-  const [googleRemoteError, setGoogleRemoteError] = useState<{
+  const [deepRemoteError, setDeepRemoteError] = useState<{
     query: string;
     message: string;
   } | null>(null);
@@ -87,71 +86,48 @@ export function PlaceSelectCatalog() {
 
   const trimmed = q.trim();
   const placeIdMode = looksLikePlaceId(trimmed);
-  const catalogSettledEmpty =
-    !pending &&
-    !error &&
-    searchedQuery !== null &&
-    searchedQuery === trimmed &&
-    hits.length === 0 &&
-    trimmed.length >= MIN_QUERY_LENGTH;
-
-  const googleReady = googleRemote !== null && googleRemote.query === trimmed;
-  const googleFailed =
-    googleRemoteError !== null && googleRemoteError.query === trimmed;
-  // In-flight for the settled query (prefetch or display) — independent of Mesita.
-  const googleFetching =
+  const deepReady = deepRemote !== null && deepRemote.query === trimmed;
+  const deepFailed =
+    deepRemoteError !== null && deepRemoteError.query === trimmed;
+  const deepFetching =
     debouncedQuery.length >= MIN_QUERY_LENGTH &&
     debouncedQuery === trimmed &&
     !placeIdMode &&
-    !googleReady &&
-    !googleFailed;
-  // Fetch Google in parallel with Mesita (MESITA-467). Chrome waits until
-  // Google has rows/an error, or Mesita has settled empty — never open an
-  // empty "Searching…" sheet just to hold a second spinner.
-  const showGoogleSection =
-    !placeIdMode &&
-    trimmed.length >= MIN_QUERY_LENGTH &&
-    hits.length === 0 &&
-    (catalogSettledEmpty ||
-      googleFailed ||
-      (googleRemote !== null &&
-        googleRemote.query === trimmed &&
-        googleRemote.predictions.length > 0));
-  const googleSearching = showGoogleSection && googleFetching;
-  const googlePredictions = googleReady ? googleRemote.predictions : [];
-  const googleError =
-    googleFailed && googleRemoteError ? googleRemoteError.message : null;
-  // Search-bar spinner covers either pipeline so it never blanks mid-flight.
-  const anySearching = pending || googleFetching || createPending;
+    !deepReady &&
+    !deepFailed;
+  const showDeepSection =
+    !placeIdMode && trimmed.length >= MIN_QUERY_LENGTH;
+  const deepSearching = showDeepSection && deepFetching;
+  const deepPredictions = deepReady ? deepRemote.predictions : [];
+  const deepError =
+    deepFailed && deepRemoteError ? deepRemoteError.message : null;
+  const debounceWaiting =
+    showDeepSection && trimmed !== debouncedQuery;
+  const anySearching = pending || deepFetching || debounceWaiting || createPending;
   const awaitingHits =
-    trimmed.length >= MIN_QUERY_LENGTH &&
-    !placeIdMode &&
-    hits.length === 0 &&
-    (pending || googleFetching) &&
-    !showGoogleSection;
+    showDeepSection &&
+    (deepFetching || debounceWaiting) &&
+    deepPredictions.length === 0;
   const catalogIdleEmpty =
     trimmed.length === 0 &&
     !error &&
     catalogLoaded &&
     hits.length === 0;
 
-  // decision: Pato (MESITA-467) — fire Google suggest on the same debounced
-  // query as Mesita, not after Mesita settles empty. Sequential fetch left a
-  // ~2s dead gap (Mesita spinner clears → silence → Google appears).
   useEffect(() => {
     const query = debouncedQuery;
     if (query.length < MIN_QUERY_LENGTH || looksLikePlaceId(query)) return;
 
-    const id = ++googleRequestIdRef.current;
+    const id = ++deepRequestIdRef.current;
     void (async () => {
       const r = await suggestPlaces(query, sessionTokenRef.current, regionCode);
-      if (id !== googleRequestIdRef.current) return;
+      if (id !== deepRequestIdRef.current) return;
       if (!r.ok) {
-        setGoogleRemoteError({ query, message: r.error });
+        setDeepRemoteError({ query, message: r.error });
         return;
       }
-      setGoogleRemoteError(null);
-      setGoogleRemote({ query, predictions: r.data });
+      setDeepRemoteError(null);
+      setDeepRemote({ query, predictions: r.data });
     })();
   }, [debouncedQuery, regionCode]);
 
@@ -188,7 +164,11 @@ export function PlaceSelectCatalog() {
 
   // Creatable results open a confirm modal (explicit "Add to Mesita"); results
   // already on Mesita open directly — no confirmation needed.
-  const onPickGoogle = (prediction: PlacePrediction) => {
+  const onPickPrediction = (prediction: PlacePrediction) => {
+    if (prediction.mesitaId) {
+      pickPlace(prediction.mesitaId);
+      return;
+    }
     if (prediction.status === "not_in_mesita") {
       setCreateError(null);
       setConfirm(prediction);
@@ -206,22 +186,21 @@ export function PlaceSelectCatalog() {
       return;
     }
 
-    if (hits.length === 1) {
+    if (!showDeepSection && hits.length === 1) {
       pickPlace(hits[0].id);
       return;
     }
 
-    const creatable = googlePredictions.filter((p) => p.status === "not_in_mesita");
-    if (showGoogleSection && creatable.length === 1) {
-      onPickGoogle(creatable[0]);
+    if (deepPredictions.length === 1) {
+      onPickPrediction(deepPredictions[0]);
     }
   };
 
   const onClear = () => {
     clear();
-    googleRequestIdRef.current += 1;
-    setGoogleRemote(null);
-    setGoogleRemoteError(null);
+    deepRequestIdRef.current += 1;
+    setDeepRemote(null);
+    setDeepRemoteError(null);
     setCreateError(null);
     setCreatingLabel(null);
     setConfirm(null);
@@ -278,17 +257,8 @@ export function PlaceSelectCatalog() {
       </div>
 
       <div className="px-4 pt-5 sm:px-6 lg:px-8">
-        {hits.length > 0 && (
+        {trimmed.length === 0 && hits.length > 0 && (
           <p className="text-muted-foreground type-eyebrow">{metaLabel}</p>
-        )}
-        {awaitingHits && (
-          <p
-            className="text-muted-foreground flex items-center gap-2 text-sm"
-            aria-live="polite"
-          >
-            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-            Searching…
-          </p>
         )}
         {!catalogLoaded && trimmed.length === 0 && (
           <p
@@ -312,7 +282,7 @@ export function PlaceSelectCatalog() {
           </div>
         )}
 
-        {hits.length > 0 ? (
+        {trimmed.length === 0 && hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
               {/* The row IS the pipeline, left to right: created → active →
@@ -358,37 +328,37 @@ export function PlaceSelectCatalog() {
           )
         )}
 
-        {showGoogleSection && (
-          <div className={hits.length > 0 ? "mt-8" : awaitingHits ? "mt-4" : "mt-2"}>
-            {!googleSearching && (
+        {showDeepSection && (
+          <div className={awaitingHits ? "mt-4" : "mt-2"}>
+            {!deepSearching && (
               <p className="text-muted-foreground type-eyebrow">
-                Not on Mesita
-                {googleReady ? ` · ${googlePredictions.length}` : ""}
+                Results
+                {deepReady ? ` · ${deepPredictions.length}` : ""}
               </p>
             )}
 
-            {googleError && <ErrorNote message={googleError} />}
+            {deepError && <ErrorNote message={deepError} />}
 
             <div className="mt-3 flex flex-col gap-2">
-              {googleSearching && googlePredictions.length === 0 && (
+              {deepSearching && deepPredictions.length === 0 && (
                 <p
                   className="text-muted-foreground flex items-center gap-2 px-0.5 py-1 text-sm"
                   aria-live="polite"
                 >
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Looking up Google Places…
+                  Searching…
                 </p>
               )}
 
-              {googlePredictions.map((p) => {
+              {deepPredictions.map((p) => {
                 const badge = STATUS_BADGE[p.status];
                 const canCreate = p.status === "not_in_mesita";
                 return (
                   <button
-                    key={p.placeId}
+                    key={p.mesitaId ?? p.placeId}
                     type="button"
                     disabled={createPending}
-                    onClick={() => onPickGoogle(p)}
+                    onClick={() => onPickPrediction(p)}
                     className="border-border bg-card hover:border-foreground/40 flex items-start gap-3 rounded-xl border p-3 text-left transition disabled:opacity-50"
                   >
                     <span
@@ -434,13 +404,12 @@ export function PlaceSelectCatalog() {
                 );
               })}
 
-              {!googleSearching &&
-                !googleError &&
-                googleReady &&
-                googlePredictions.length === 0 &&
-                catalogSettledEmpty && (
+              {!deepSearching &&
+                !deepError &&
+                deepReady &&
+                deepPredictions.length === 0 && (
                 <p className="text-muted-foreground text-sm">
-                  {`No Mesita places or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
+                  {`No Mesita or Google matches for “${trimmed}”. Try another spelling or paste a Place ID.`}
                 </p>
               )}
             </div>

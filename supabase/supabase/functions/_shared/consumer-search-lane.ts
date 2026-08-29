@@ -1,8 +1,9 @@
 // Consumer Search name-bar: Fast Search (Autocomplete) while typing, Deep
 // Search after idle.
 //
-// Used only by consumer-web-suggest-places. Admin/business still call
-// suggestPlaces (Autocomplete + Mesita ILIKE, Mesita-first sort).
+// Consumer Search and admin Manage Single Place (admin-web-suggest-places,
+// mode deep). Business still calls suggestPlaces (Autocomplete + Mesita
+// ILIKE, Mesita-first sort).
 //
 // Fast: Google Autocomplete only. Cap `name.fast.count`.
 // Deep: three modules, each candidate resolves, then one list:
@@ -10,7 +11,7 @@
 //   2. Google Text Search — resolve against the catalog
 //   3. Mesita Places Lineup — Name signal only (`places.name_embedding`
 //      over `places.name` = coalesce(mesita_name, google_name)). Never
-//      `google_name` ILIKE (that is suggest-places / admin search).
+//      `google_name` ILIKE (that is suggest-places / business search).
 // Then Partners → Mesita → Google after dropping overlaps.
 // Merge is not a fourth module. Summary and the other six Lineup signals
 // are not a Deep input. A listed Place ID never comes back as a Google
