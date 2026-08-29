@@ -53,7 +53,7 @@ export type SignalParamBag = Record<string, number>;
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
 export type NameFastConfig = {
-  /** Redundant with count on Fast — one source. Kept for Deep symmetry. */
+  /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;

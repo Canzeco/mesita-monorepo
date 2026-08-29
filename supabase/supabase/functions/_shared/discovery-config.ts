@@ -125,7 +125,7 @@ export type MapConfig = {
  *         → Mesita Partners. Overlaps drop. googleCount is Text Search.
  */
 export type NameFastConfig = {
-  /** Redundant with count on Fast — one source. Kept for Deep symmetry. */
+  /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
   types: Record<NearbyTypeKey, boolean>;

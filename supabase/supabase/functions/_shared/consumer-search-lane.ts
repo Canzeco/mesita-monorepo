@@ -6,7 +6,7 @@
 // ILIKE, Mesita-first sort).
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
-// Fast numbers are the same list; count stays for Deep symmetry.
+// Fast numbers are the same list; they stay locked.
 // Map Filters never cut this list. Autocomplete and Text Search never
 // take a country code — both stay Any (guest pin may still bias).
 // Deep: four independent queries, each capped, then concat. Overlaps drop;

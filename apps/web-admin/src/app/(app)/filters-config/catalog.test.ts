@@ -400,7 +400,8 @@ describe("Discovery page box order", () => {
     expect(name).not.toContain("name.deep.count");
     expect(name).not.toContain("Max results caps the merge");
     expect(name).toContain("Map Filters never cut this list");
-    expect(name).toContain("same cap — Max results stays for Deep symmetry");
+    expect(name).toContain("same cap");
+    expect(name).not.toContain("Deep symmetry");
     const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
     const deepAuto = deepKnobs.indexOf('label: "Google Autocomplete"');
     const deepText = deepKnobs.indexOf('label: "Google Text Search"');

@@ -116,7 +116,7 @@ export function NameConfigClient({
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
           title="Name (Fast Search)"
-          subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap — Max results stays for Deep symmetry. 0 is off. Map Filters never cut this list."
+          subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap. 0 is off. Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
