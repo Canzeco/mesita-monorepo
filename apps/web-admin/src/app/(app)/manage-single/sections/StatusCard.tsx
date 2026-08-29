@@ -1,8 +1,8 @@
 "use client";
 
-// Status — the Statuses box: eight bools (`true`/`false`) plus Promoted
-// `0|1|2`, each from its own source. Intake (0. Seed … 10. Semantic)
-// lives in IntakeStatusCard.
+// Status — the Statuses box: seven bools (`true`/`false`) plus Requested
+// `0…n` and Promoted `0|1|2`, each from its own source. Intake
+// (0. Seed … 10. Semantic) lives in IntakeStatusCard.
 //
 // The state is Created; Seed is Intake function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
@@ -10,7 +10,7 @@
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
 //   Listed     projects.status ∈ (active, lead)
-//   Requested  guest demand (count > 0, not ready)
+//   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
 //   Verified   approved project_verifications
@@ -41,7 +41,7 @@ import {
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "../actions";
-import { isEnriching, listedFromStatus, requestedFromRequests } from "../place-header-status";
+import { isEnriching, listedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -55,12 +55,14 @@ import {
   OPERATOR_PROMOTING_LABEL,
   promotingLevelChip,
   promotingLevelFromStrategy,
+  requestCountChip,
+  requestCountFromRow,
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
-// Statuses box (Pato, 2026-08-25): eight bools + Promoted 0|1|2. Intake
-// is the next box — not chips under Enriched, and not a Create 1–4 /
-// Enrich 1–10 split. Chips never repeat the row name.
+// Statuses box (Pato, 2026-08-25): seven bools + Requested 0…n + Promoted
+// 0|1|2. Intake is the next box — not chips under Enriched, and not a
+// Create 1–4 / Enrich 1–10 split. Chips never repeat the row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
 //   Listed     a guest can reach the place AT ALL. projects.status ∈
@@ -72,7 +74,7 @@ import {
 //              constant either: Unlist writes `paused` and every guest surface
 //              stops resolving it. Read it from `status`, never from a merged
 //              overview `listed` flag that can go stale after that write.
-//   Requested  guest demand for a usable profile. Independent of Listed.
+//   Requested  guest request count (0…n). Independent of Listed / Enriched.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
 //   Enriching  the Intaker pipeline is mid-flight. Live-run, not last-completed.
 //   Verified   somebody proved they own it. One-time, never lapses.
@@ -174,16 +176,7 @@ export function StatusCard({
       : typeof place.listed === "boolean"
         ? place.listed
         : "unknown";
-  const requestedFromRow = requestedFromRequests(
-    place.request_count,
-    place.content_status,
-  );
-  const requested: boolean | "unknown" =
-    requestedFromRow !== "unknown"
-      ? requestedFromRow
-      : typeof place.requested === "boolean"
-        ? place.requested
-        : "unknown";
+  const requestCount = requestCountFromRow(place.request_count);
   // Enriched is complete-or-not, from the same high-water the catalog uses.
   // A missing number is unknown, not a no.
   const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
@@ -230,9 +223,6 @@ export function StatusCard({
         ? "Google's place id is on the row — the pipeline has something to start from."
         : "No google_place_id. Nothing can enrich this place until one lands.";
 
-  const requestCount = typeof place.request_count === "number"
-    ? place.request_count
-    : 0;
   const listedDetailBase =
     listed === "unknown"
       ? "Couldn't read the place's status."
@@ -246,11 +236,11 @@ export function StatusCard({
   const listedDetail = listedDetailBase;
 
   const requestedDetail =
-    requested === "unknown"
+    requestCount === "unknown"
       ? "Couldn't read the request count."
-      : requested
-        ? `${requestCount} guest request${requestCount === 1 ? "" : "s"} — profile not ready yet.`
-        : "No guest has requested this profile.";
+      : requestCount === 0
+        ? "No guest has requested this profile."
+        : `${requestCount} guest request${requestCount === 1 ? "" : "s"}.`;
 
   // ── Operating (MESITA-1239) — Google's word on the business itself.
   //
@@ -372,8 +362,8 @@ export function StatusCard({
         />
         <StatusRow
           name="Requested"
-          on={requested === true}
-          chip={statusBoolChip(requested)}
+          on={requestCount !== "unknown" && requestCount > 0}
+          chip={requestCountChip(place.request_count)}
           tint="indigo"
           detail={requestedDetail}
         />
@@ -447,7 +437,7 @@ function StatusRow({
 }: {
   name: string;
   on: boolean;
-  /** `true`/`false`/`?`/`…` for bools, `0`/`1`/`2` for Promoted. */
+  /** `true`/`false`/`?`/`…` for bools, `0…n` for Requested, `0`/`1`/`2` for Promoted. */
   chip: string;
   tint: "slate" | "teal" | "indigo" | "violet" | "emerald" | "sky" | "pink";
   detail: string;

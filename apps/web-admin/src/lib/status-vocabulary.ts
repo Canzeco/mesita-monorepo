@@ -1,9 +1,9 @@
-// Status — two boxes (Pato, 2026-08-25).
+// Status — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATUSES (9)  Created · Active · Listed · Requested · Enriched ·
-//                 Enriching · Verified · Partnered are bools (`true` /
-//                 `false`). Promoted is 0 | 1 | 2. Requested is guest
-//                 demand (count > 0, not ready), never a projects.status.
+//   STATUSES (9)  Created · Active · Listed · Enriched · Enriching ·
+//                 Verified · Partnered are bools (`true` / `false`).
+//                 Requested is the guest request count, 0…n — not a
+//                 Yes/No. Promoted is 0 | 1 | 2. Never a projects.status.
 //   INTAKE (11)   own box: 0. Seed … 10. Semantic, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -39,6 +39,22 @@ export function promotingLevelChip(
   raw: number | null | undefined,
 ): "0" | "1" | "2" {
   return String(operatorPromotingLevel(raw)) as "0" | "1" | "2";
+}
+
+/** Guest request count. Missing is "?"; the Status fact is the number. */
+export function requestCountFromRow(
+  requestCount: unknown,
+): number | "unknown" {
+  if (requestCount == null || requestCount === "") return "unknown";
+  const n = Number(requestCount);
+  if (!Number.isFinite(n) || n < 0) return "unknown";
+  return Math.trunc(n);
+}
+
+/** Chip for Requested: `0` · `1` · `12` · … or `?`. Never true/false. */
+export function requestCountChip(requestCount: unknown): string {
+  const n = requestCountFromRow(requestCount);
+  return n === "unknown" ? "?" : String(n);
 }
 
 export const OPERATOR_PROMOTING_LABEL: Record<0 | 1 | 2, string> = {

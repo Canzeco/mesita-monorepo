@@ -8,6 +8,8 @@ import {
   operatorPromotingLevel,
   promotingLevelChip,
   promotingLevelFromStrategy,
+  requestCountChip,
+  requestCountFromRow,
   statusBoolChip,
 } from "./status-vocabulary";
 
@@ -65,5 +67,18 @@ describe("status vocabulary", () => {
     expect(promotingLevelFromStrategy(true, "aggressive")).toBe(2);
     expect(promotingLevelFromStrategy(true, "dominant")).toBe(2);
     expect(promotingLevelFromStrategy(true, null)).toBe(2);
+  });
+
+  it("Requested is 0…n, never a Yes/No", () => {
+    expect(requestCountFromRow(0)).toBe(0);
+    expect(requestCountFromRow(1)).toBe(1);
+    expect(requestCountFromRow(12.9)).toBe(12);
+    expect(requestCountFromRow("7")).toBe(7);
+    expect(requestCountFromRow(null)).toBe("unknown");
+    expect(requestCountFromRow(undefined)).toBe("unknown");
+    expect(requestCountFromRow(-1)).toBe("unknown");
+    expect(requestCountChip(0)).toBe("0");
+    expect(requestCountChip(4)).toBe("4");
+    expect(requestCountChip(undefined)).toBe("?");
   });
 });

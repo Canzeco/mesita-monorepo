@@ -124,8 +124,9 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 }
 
 // Status — two boxes (Pato, 2026-08-25):
-//   STATUSES (9)  eight bools + Promoted 0|1|2. Compact line still names
-//                 the true facts; Promoted here is the live-discount yes.
+//   STATUSES (9)  seven bools + Requested 0…n + Promoted 0|1|2. Compact
+//                 line still names the true facts; Promoted here is the
+//                 live-discount yes. Requested in this feed is count > 0.
 //   INTAKE (11)   0. Seed … 10. Semantic — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 

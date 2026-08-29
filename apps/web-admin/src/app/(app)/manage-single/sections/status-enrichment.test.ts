@@ -56,6 +56,8 @@ describe("Status + Intake boxes", () => {
     expect(status).toContain("Mark inactive and unlist");
     expect(status).toContain('name="Enriching"');
     expect(status).toContain('name="Enriched"');
+    expect(status).toContain("requestCountChip");
+    expect(status).not.toContain("statusBoolChip(requested)");
     expect(status).not.toContain("intakeFunctionRows");
     expect(status).not.toContain("CreateStatusCard");
     expect(status).not.toContain("chipLabel={pulse === null");

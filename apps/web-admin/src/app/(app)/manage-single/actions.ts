@@ -49,18 +49,18 @@ export type PlaceHit = {
   // ── The nine status facts the catalog table renders, in order:
   //    Created · Active · Listed · Requested · Enriched · Enriching ·
   //    Verified · Partnered · Promoted.
-  //    First seven are bools; Promoted is 0|1|2. All derived (or projected)
-  //    in admin-web-search-places, except Enriching which is content_status
-  //    generating/queued (MESITA-453 whole-pipeline).
+  //    Bools except Requested (0…n) and Promoted (0|1|2). All derived
+  //    (or projected) in admin-web-search-places, except Enriching which
+  //    is content_status generating/queued (MESITA-453 whole-pipeline).
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
   /** A guest can reach it: projects.status, per the consumer RLS policy. */
   listed: boolean;
-  /** Guest demand: request_count > 0 and content_status is not ready. */
+  /** Derived has-demand for filters. Catalog Status shows request_count. */
   requested: boolean;
-  /** Consumer Requests count. Progress toward Intake atlasRequestThreshold. */
+  /** Guest request count — the Requested Status fact, 0…n. */
   request_count: number;
   /** Intaker pipeline mid-flight (content_status generating/queued). */
   enriching: boolean;
@@ -296,9 +296,9 @@ export type AdminPlace = {
   seeded?: boolean;
   /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
-  /** Guest demand: request_count > 0 and content_status is not ready. */
+  /** Derived has-demand for filters. Status chip is request_count. */
   requested?: boolean;
-  /** Consumer Requests count toward Intake atlasRequestThreshold. */
+  /** Guest request count — the Requested Status fact, 0…n. */
   request_count?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
   business_status?: string | null;

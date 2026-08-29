@@ -2,6 +2,8 @@ import type { PlaceEnrichmentStatus } from "./actions";
 import {
   operatorPromotingLevel,
   promotingLevelChip,
+  requestCountChip,
+  requestCountFromRow,
   statusBoolChip,
 } from "@/lib/status-vocabulary";
 
@@ -54,7 +56,7 @@ export type HeaderFact = {
   key: string;
   label: string;
   on: boolean | "unknown";
-  /** Status-box chip (`true`/`false`/`0|1|2`). Header prints `label` only. */
+  /** Status-box chip (`true`/`false`/`0|1|2`/`0…n`). Header prints `label` only. */
   chip: string;
 };
 
@@ -65,18 +67,6 @@ export const LISTED_STATUSES = ["active", "lead"] as const;
 export function listedFromStatus(status: unknown): boolean | "unknown" {
   if (typeof status !== "string" || status === "") return "unknown";
   return (LISTED_STATUSES as readonly string[]).includes(status);
-}
-
-/** Guest demand: count > 0 and the profile is not ready. Missing count is "?". */
-export function requestedFromRequests(
-  requestCount: unknown,
-  contentStatus: unknown,
-): boolean | "unknown" {
-  if (contentStatus === "ready") return false;
-  if (requestCount == null || requestCount === "") return "unknown";
-  const count = Number(requestCount);
-  if (!Number.isFinite(count)) return "unknown";
-  return count > 0;
 }
 
 /** Stamp `listed` from `status` so a merged write payload cannot keep a
@@ -95,7 +85,7 @@ export function generalHeaderFacts(input: {
   business_status?: string | null;
   /** Live Intaker run. Independent of Enriched (last-completed). */
   enriching?: boolean;
-  requested?: boolean;
+  requestCount?: number;
   enrich_pulse?: number;
   enrich_pulse_total?: number;
   partner: boolean;
@@ -124,13 +114,19 @@ export function generalHeaderFacts(input: {
   );
   const enriching: boolean | "unknown" =
     typeof input.enriching === "boolean" ? input.enriching : "unknown";
-  const requested: boolean | "unknown" =
-    typeof input.requested === "boolean" ? input.requested : "unknown";
+  const requestCount = requestCountFromRow(input.requestCount);
+  const requestedOn: boolean | "unknown" =
+    requestCount === "unknown" ? "unknown" : requestCount > 0;
   return [
     { key: "seeded", label: "Created", on: created, chip: statusBoolChip(created) },
     { key: "active", label: "Active", on: active, chip: statusBoolChip(active) },
     { key: "listed", label: "Listed", on: listed, chip: statusBoolChip(listed) },
-    { key: "requested", label: "Requested", on: requested, chip: statusBoolChip(requested) },
+    {
+      key: "requested",
+      label: "Requested",
+      on: requestedOn,
+      chip: requestCountChip(input.requestCount),
+    },
     { key: "enriched", label: "Enriched", on: enriched, chip: statusBoolChip(enriched) },
     { key: "enriching", label: "Enriching", on: enriching, chip: statusBoolChip(enriching) },
     {

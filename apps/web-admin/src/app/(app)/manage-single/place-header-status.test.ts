@@ -8,9 +8,9 @@ import {
   isEnrichFailed,
   isEnriching,
   listedFromStatus,
-  requestedFromRequests,
   withListedFromStatus,
 } from "./place-header-status";
+import { requestCountFromRow } from "@/lib/status-vocabulary";
 
 function status(
   partial: Partial<PlaceEnrichmentStatus>,
@@ -132,22 +132,29 @@ describe("generalHeaderFacts", () => {
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
   });
 
-  it("header facts keep Status-box chip encoding; Promoted is 0 | 1 | 2", () => {
+  it("header facts keep Status-box chip encoding; Requested is n; Promoted is 0 | 1 | 2", () => {
     const off = generalHeaderFacts(base);
     expect(off.find((f) => f.key === "partner")?.label).toBe("Partnered");
     expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
+    expect(off.find((f) => f.key === "requested")?.chip).toBe("?");
     expect(off.find((f) => f.key === "promoting")?.label).toBe("Promoted");
     expect(off.find((f) => f.key === "promoting")?.chip).toBe("0");
     const on = generalHeaderFacts({
       ...base,
+      requestCount: 3,
       partner: true,
       promotingLevel: 1,
       verified: true,
     });
+    expect(on.find((f) => f.key === "requested")?.chip).toBe("3");
+    expect(on.find((f) => f.key === "requested")?.on).toBe(true);
     expect(on.find((f) => f.key === "partner")?.chip).toBe("true");
     expect(on.find((f) => f.key === "verified")?.chip).toBe("true");
     expect(on.find((f) => f.key === "promoting")?.chip).toBe("1");
     expect(on.find((f) => f.key === "promoting")?.on).toBe(true);
+    const zero = generalHeaderFacts({ ...base, requestCount: 0 });
+    expect(zero.find((f) => f.key === "requested")?.chip).toBe("0");
+    expect(zero.find((f) => f.key === "requested")?.on).toBe(false);
     const dominant = generalHeaderFacts({ ...base, promotingLevel: 3 });
     expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
   });
@@ -178,14 +185,14 @@ describe("generalHeaderFacts", () => {
   });
 });
 
-describe("requestedFromRequests", () => {
-  it("is guest demand: count > 0 and not ready", () => {
-    expect(requestedFromRequests(1, "queued")).toBe(true);
-    expect(requestedFromRequests(2, "failed")).toBe(true);
-    expect(requestedFromRequests(0, "queued")).toBe(false);
-    expect(requestedFromRequests(7, "ready")).toBe(false);
-    expect(requestedFromRequests(null, "queued")).toBe("unknown");
-    expect(requestedFromRequests(undefined, "failed")).toBe("unknown");
+describe("requestCountFromRow", () => {
+  it("is the guest request count, including after Enriched", () => {
+    expect(requestCountFromRow(1)).toBe(1);
+    expect(requestCountFromRow(2)).toBe(2);
+    expect(requestCountFromRow(0)).toBe(0);
+    expect(requestCountFromRow(7)).toBe(7);
+    expect(requestCountFromRow(null)).toBe("unknown");
+    expect(requestCountFromRow(undefined)).toBe("unknown");
   });
 });
 

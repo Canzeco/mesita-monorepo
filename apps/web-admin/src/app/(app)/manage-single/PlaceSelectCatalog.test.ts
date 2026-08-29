@@ -23,6 +23,9 @@ describe("Manage Single catalog status columns", () => {
       "Promoted",
     ]);
     expect(src).toContain("ActiveCell");
+    expect(src).toContain("RequestCountCell");
+    expect(src).toContain("place.request_count");
+    expect(src).not.toMatch(/BoolCell value=\{place\.requested\}/);
     expect(src).toContain("operatorPromotingLevel");
     expect(src).toContain("[1, 2].map");
     expect(src).not.toContain("[1, 2, 3].map");

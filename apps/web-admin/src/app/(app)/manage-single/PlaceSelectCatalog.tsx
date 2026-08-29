@@ -486,7 +486,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
       </td>
       <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.requested} trueLabel="Yes" falseLabel="No" />
+        <RequestCountCell count={place.request_count} />
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell
@@ -514,6 +514,23 @@ function PlaceCatalogRow({
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />
       </td>
     </tr>
+  );
+}
+
+// REQUESTED is 0…n, not a yes/no: how many guests asked for this profile.
+function RequestCountCell({ count }: { count: number }) {
+  const n = Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0;
+  const title = `${n} guest request${n === 1 ? "" : "s"}`;
+  return (
+    <span
+      className={
+        "type-label font-semibold tabular-nums " +
+        (n === 0 ? "text-muted-foreground" : "text-foreground")
+      }
+      title={title}
+    >
+      {n}
+    </span>
   );
 }
 
