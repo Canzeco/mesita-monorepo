@@ -14,10 +14,10 @@ import {
 } from "@/lib/use-discovery-filters";
 import { cn } from "@/lib/utils";
 
-// Compact chip row under the Search bar: families (the six What
-// categories), Now, Visit, country+location, and the full Filters sheet.
-// Lives outside the pill — cramming scope into the bar was the "looks
-// like shit" chrome this row replaces.
+// Compact chip row under the Search bar — never inside the pill, never
+// a cuisine-icon strip. Filters (the Discovery sheet) leads; the six
+// What families follow as categories; Now / Visit / scope trail. Rest
+// chips are borderless card pills; active is the pink gradient.
 
 const FAMILY_STRIP: Record<FamilyKey, string> = {
   restaurants: "Restaurants",
@@ -49,10 +49,10 @@ function StripChip({
       aria-label={ariaLabel}
       aria-haspopup={ariaHaspopup}
       className={cn(
-        "type-label flex h-8 shrink-0 items-center gap-1 rounded-full border px-2.5 font-semibold whitespace-nowrap backdrop-blur transition active:scale-[0.97]",
+        "type-label flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 font-semibold whitespace-nowrap backdrop-blur transition active:scale-[0.97]",
         active
-          ? "border-transparent bg-pink-gradient text-white shadow-glow-sm"
-          : "border-border bg-card/95 text-foreground",
+          ? "bg-pink-gradient text-white shadow-glow-sm"
+          : "bg-card/95 text-foreground/80 shadow-rest",
       )}
     >
       {children}
@@ -87,6 +87,15 @@ export function SearchFilterRow({
       role="toolbar"
       aria-label="Search filters"
     >
+      <StripChip
+        active={filtersOn}
+        onClick={onOpenFilters}
+        ariaLabel="Filters"
+        ariaHaspopup="dialog"
+      >
+        <SlidersHorizontal className="h-3 w-3" aria-hidden />
+        Filters
+      </StripChip>
       {PLACE_FAMILIES.map((family) => (
         <StripChip
           key={family.key}
@@ -94,7 +103,6 @@ export function SearchFilterRow({
           onClick={() => toggleDiscoveryFamily(family.key)}
           ariaLabel={family.label}
         >
-          <span aria-hidden>{family.emoji}</span>
           {FAMILY_STRIP[family.key]}
         </StripChip>
       ))}
@@ -130,15 +138,6 @@ export function SearchFilterRow({
             locationSet ? "text-primary" : "text-muted-foreground/50",
           )}
         />
-      </StripChip>
-      <StripChip
-        active={filtersOn}
-        onClick={onOpenFilters}
-        ariaLabel="Filters"
-        ariaHaspopup="dialog"
-      >
-        <SlidersHorizontal className="h-3 w-3" aria-hidden />
-        Filters
       </StripChip>
     </div>
   );
