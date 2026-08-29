@@ -496,8 +496,8 @@ select is(
 
 select is(
   (select label from public.place_super_categories where slug = 'undefined'),
-  'Other',
-  'the leftover Super is guest-labelled Other'
+  'Undefined',
+  'the leftover Super is labelled Undefined'
 );
 
 select is(

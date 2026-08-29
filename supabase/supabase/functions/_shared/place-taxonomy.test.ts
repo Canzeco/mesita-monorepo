@@ -23,7 +23,7 @@ Deno.test("Atlas Super Category catalog is eight slugs: seven real + Other last"
   ]);
   const last = SUPER_CATEGORIES[SUPER_CATEGORIES.length - 1]!;
   assertEquals(last.slug, "undefined");
-  assertEquals(last.label, "Other");
+  assertEquals(last.label, "Undefined");
   assertEquals(last.sort_order, 999);
 });
 

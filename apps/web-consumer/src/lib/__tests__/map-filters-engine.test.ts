@@ -236,7 +236,7 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
     ]);
     const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;
     expect(last.key).toBe("undefined");
-    expect(last.label).toBe("Other");
+    expect(last.label).toBe("Undefined");
     expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Sports & Fitness");
     expect(PLACE_FAMILIES.map((f) => f.label)).toContain("Wellness & Beauty");
   });
