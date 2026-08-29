@@ -15,11 +15,13 @@ import { FilterModule, Pill } from "@/components/consumer/discovery-filter-contr
 import { SearchPlacesScope } from "./SearchPlacesScope";
 import { SearchResultLimit } from "./SearchResultLimit";
 
-// Search-map Filters sheet. Super Category + Places Venn + How many.
-// There is no Status chip row, Category, or Types axis. Places stays
-// the nested Venn: Partners ⊂ Places ⊂ Google. Default is Places.
-// How many is 20, 40, or 60 — closest N, nothing in between. Distance
-// and time are not map knobs.
+// Search-map Filters sheet. Super Category + Places + How many, DENSE:
+// every option is directly visible, the sheet never scrolls (Pato,
+// 2026-08-29). There is no Status chip row, Category, or Types axis.
+// Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
+// retired as a scope, kept as the yellow paint. Default is Mesita
+// Places. How many is 20, 40, or 60 — closest N, nothing in between.
+// Distance and time are not map knobs.
 
 export function SearchMapFilters({
   onClose,
@@ -33,7 +35,7 @@ export function SearchMapFilters({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-3">
+      <div className="flex shrink-0 items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2.5">
           <span className="bg-primary/10 text-primary flex h-9 w-9 items-center justify-center rounded-xl">
             <SlidersHorizontal className="h-4 w-4" />
@@ -61,13 +63,14 @@ export function SearchMapFilters({
         </div>
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <div className="flex flex-col gap-3">
-          <FilterModule label="Super Category">
-            <div className="flex flex-wrap gap-1.5">
+      <div className="min-h-0 flex-1 px-4 pb-3">
+        <div className="flex flex-col gap-2">
+          <FilterModule label="Super Category" dense>
+            <div className="flex flex-wrap gap-1">
               {PLACE_FAMILIES.map((family) => (
                 <Pill
                   key={family.key}
+                  size="sm"
                   active={filters.familyKeys.includes(family.key)}
                   onClick={() => toggleMapFamily(family.key)}
                 >
@@ -77,14 +80,14 @@ export function SearchMapFilters({
             </div>
           </FilterModule>
 
-          <FilterModule label="Places">
+          <FilterModule label="Places" dense>
             <SearchPlacesScope
               power={filters.searchPower}
               onPower={setMapSearchPower}
             />
           </FilterModule>
 
-          <FilterModule label="How many">
+          <FilterModule label="How many" dense>
             <SearchResultLimit
               limit={filters.resultLimit}
               onLimit={setMapResultLimit}
@@ -93,7 +96,7 @@ export function SearchMapFilters({
         </div>
       </div>
 
-      <div className="border-border/60 shrink-0 border-t p-4">
+      <div className="border-border/60 shrink-0 border-t px-4 py-3">
         {count != null && count > 0 ? (
           <Button
             type="button"

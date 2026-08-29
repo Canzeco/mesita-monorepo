@@ -155,11 +155,12 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  /** Closest N when Places scope is Partners. */
-  partnerCount: number;
-  /** Closest N when Places scope is All Mesita Places (partners included). */
+  /**
+   * Closest N when Places scope is Mesita Places (partners included —
+   * Partners are a paint, not a set; Pato 2026-08-29).
+   */
   mesitaCount: number;
-  /** Closest N when Places scope is All Google Places. Inner membership paints. */
+  /** Closest N when Places scope is Google Places. Inner membership paints. */
   googleCount: number;
   types: Record<NearbyTypeKey, boolean>;
 };
@@ -244,7 +245,6 @@ export function snapMapReloadPair(
 export const MAP_SET_COUNT_MAX = 60;
 export const MAP_GOOGLE_COUNT_MAX = 20;
 export const MAP_LANE_COUNT_MAX = MAP_GOOGLE_COUNT_MAX;
-export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
 export const MAP_GOOGLE_COUNT_DEFAULT = 20;
 export const NAME_LANE_COUNT_MAX = 20;
@@ -368,7 +368,6 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
-  partnerCount: MAP_PARTNER_COUNT_DEFAULT,
   mesitaCount: MAP_MESITA_COUNT_DEFAULT,
   googleCount: MAP_GOOGLE_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
@@ -1199,9 +1198,8 @@ export function coerceMap(raw: unknown): MapConfig {
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
-    partnerCount: Math.round(
-      num(m.partnerCount, DEFAULT_MAP.partnerCount, 0, MAP_SET_COUNT_MAX),
-    ),
+    // Legacy blobs still carry partnerCount — dropped on read (Partners are
+    // a paint, not a set).
     mesitaCount: Math.round(
       num(
         m.mesitaCount ?? m.notPartnerCount,

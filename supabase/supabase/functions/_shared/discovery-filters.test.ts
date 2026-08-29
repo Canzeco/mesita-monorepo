@@ -332,7 +332,6 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(legacyReload.map.reloadMinKm, 0.5);
   assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
-  assertEquals(clamped.map.partnerCount, 10);
   assertEquals(clamped.map.mesitaCount, 10);
   assertEquals(clamped.map.googleCount, 20);
   assertEquals(clamped.map.types.restaurant, false);
@@ -341,13 +340,13 @@ Deno.test("map knobs default on an old blob and clamp", () => {
 
 Deno.test("map set caps clamp and default on an old blob", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.map.partnerCount, 10);
   assertEquals(missing.map.mesitaCount, 10);
   assertEquals(missing.map.googleCount, 20);
   const clamped = normalizeDiscoveryConfig({
     map: { partnerCount: 99, mesitaCount: -3, googleCount: 7.8 },
   });
-  assertEquals(clamped.map.partnerCount, 60);
+  // Legacy partnerCount is dropped on read — Partners are a paint, not a set.
+  assertEquals("partnerCount" in clamped.map, false);
   assertEquals(clamped.map.mesitaCount, 0);
   assertEquals(clamped.map.googleCount, 8);
   const legacy = normalizeDiscoveryConfig({

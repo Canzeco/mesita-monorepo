@@ -43,7 +43,7 @@ export function SearchResultLimit({
 
   return (
     <div className="flex flex-col">
-      <p className="text-muted-foreground mb-2 type-meta">
+      <p className="text-muted-foreground mb-1.5 type-meta">
         Closest {limit} places.
       </p>
       <div
@@ -64,7 +64,7 @@ export function SearchResultLimit({
               aria-label={`Closest ${stop} places`}
               onClick={() => onLimit(stop)}
               className={cn(
-                "inline-flex min-h-12 flex-1 items-center justify-center px-1.5 text-center type-body whitespace-nowrap tabular-nums transition",
+                "inline-flex min-h-9 flex-1 items-center justify-center px-1.5 text-center type-meta whitespace-nowrap tabular-nums transition",
                 index > 0 && "border-border border-l",
                 active
                   ? "bg-foreground text-background font-bold"

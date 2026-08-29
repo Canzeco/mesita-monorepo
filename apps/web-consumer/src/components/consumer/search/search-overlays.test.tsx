@@ -137,32 +137,37 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Super Category, Places Venn, then How many 20 / 40 / 60", () => {
+  it("shows Super Category, the two Places sets, then How many — dense, no scroll", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
-    expect(html.indexOf(">Places<")).toBeLessThan(html.indexOf("How many"));
-    expect(html).toContain("Places");
+    expect(html.indexOf("Mesita Places")).toBeLessThan(html.indexOf("How many"));
     expect(html).toContain("How many");
     expect(html).toContain("Closest 60 places.");
     expect(html).toContain("role=\"radiogroup\"");
-    expect(html).toContain("Mesita Partners and All Mesita Places");
-    expect(html).toContain("Mesita Partners");
-    expect(html).toContain("All Mesita Places");
-    expect(html).toContain("All Google Places");
+    // TWO sets only — Partners is a paint, never a scope.
+    expect(html).toContain("Mesita Places");
+    expect(html).toContain("Google Places");
+    expect(html).not.toContain("Mesita Partners");
+    expect(html).not.toContain("All Mesita Places");
+    expect(html).not.toContain("All Google Places");
+    // The dots wear the pin colours: Mesita red, Google gray.
+    expect(html).toContain("background-color:#ff2357");
+    expect(html).toContain("background-color:#9ca3af");
     expect(html).toContain(">20<");
     expect(html).toContain(">40<");
     expect(html).toContain(">60<");
-    expect(html).toContain('viewBox="0 0 104 104"');
-    expect(html).toContain("pointer-events-none");
+    // The Venn is gone — dense sheet, every option directly visible.
+    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
+    expect(html).not.toContain("overflow-y-auto");
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
+      'aria-checked="true" aria-label="Mesita Places only"',
     );
     expect(html).toContain(
       'aria-checked="true" aria-label="Closest 60 places"',
     );
-    expect(html.match(/role="radio"/g)?.length).toBe(6);
+    expect(html.match(/role="radio"/g)?.length).toBe(5);
     expect(html).not.toContain('type="range"');
     expect(html).toContain("Super Category");
     expect(html).toContain("Restaurants");
@@ -186,38 +191,31 @@ describe("SearchMapFilters", () => {
 });
 
 describe("SearchPlacesScope", () => {
-  it("keeps the nested Venn display-only and puts radios on the legend", () => {
+  it("is two radio pills wearing the pin colours — no Venn, no Partners scope", () => {
     const src = read("SearchPlacesScope.tsx");
-    expect(src).toContain("pointer-events-none");
-    expect(src).toContain("The Venn is display-only");
-    expect(src).toContain("annulusPath");
-    expect(src).not.toContain("Tap a ring");
-    expect(src).not.toContain("feDropShadow");
-    expect(src).not.toContain("radialGradient");
+    expect(src).not.toContain("annulusPath");
+    expect(src).not.toContain("VENN_LAYERS");
+    expect(src).toContain("Partners is a paint, never a scope");
 
     const html = renderToStaticMarkup(
+      <SearchPlacesScope power={1} onPower={() => {}} />,
+    );
+    expect(html.match(/role="radio"/g)?.length).toBe(2);
+    expect(html).toContain('aria-checked="true" aria-label="Mesita Places only"');
+    expect(html).toContain(
+      'aria-checked="false" aria-label="Mesita Places and Google Places"',
+    );
+    expect(html).toContain("background-color:#ff2357");
+    expect(html).toContain("background-color:#9ca3af");
+    // The retired partner scope colour never renders here — yellow lives on
+    // the map pins.
+    expect(html).not.toContain("#ffc400");
+    const google = renderToStaticMarkup(
       <SearchPlacesScope power={2} onPower={() => {}} />,
     );
-    expect(html).toContain('viewBox="0 0 104 104"');
-    expect(html.match(/role="radio"/g)?.length).toBe(3);
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places"',
+    expect(google).toContain(
+      'aria-checked="true" aria-label="Mesita Places and Google Places"',
     );
-    expect(html).toContain('aria-checked="false" aria-label="Mesita Partners"');
-    expect(html).toContain(
-      'aria-checked="false" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
-    );
-    expect(html).not.toContain("All Google Places.");
-  });
-
-  it("warns when All Google Places scope is selected", () => {
-    const html = renderToStaticMarkup(
-      <SearchPlacesScope power={3} onPower={() => {}} />,
-    );
-    expect(html).toContain('role="alert"');
-    expect(html).toContain("All Google Places.");
-    expect(html).toContain("vetted");
-    expect(html).toContain("may not be worth your time");
   });
 });
 
@@ -239,36 +237,6 @@ describe("SearchResultLimit", () => {
   });
 });
 
-describe("SearchPlacesScope fill", () => {
-  it("fills from the inside out as power widens", () => {
-    const partners = renderToStaticMarkup(
-      <SearchPlacesScope power={1} onPower={() => {}} />,
-    );
-    const places = renderToStaticMarkup(
-      <SearchPlacesScope power={2} onPower={() => {}} />,
-    );
-    const google = renderToStaticMarkup(
-      <SearchPlacesScope power={3} onPower={() => {}} />,
-    );
-    expect(partners).toContain(
-      'aria-checked="true" aria-label="Mesita Partners"',
-    );
-    expect(partners).toContain('fill="#ffc400"');
-    expect(partners).not.toContain('fill="#ff2357"');
-    expect(partners).not.toContain('fill="#9ca3af"');
-
-    expect(places).toContain('fill="#ffc400"');
-    expect(places).toContain('fill="#ff2357"');
-    expect(places).not.toContain('fill="#9ca3af"');
-
-    expect(google).toContain(
-      'aria-checked="true" aria-label="Mesita Partners &amp; All Mesita Places &amp; All Google Places"',
-    );
-    expect(google).toContain('fill="#ffc400"');
-    expect(google).toContain('fill="#ff2357"');
-    expect(google).toContain('fill="#9ca3af"');
-  });
-});
 
 describe("SearchScopeSheet country pills", () => {
   const sheet = (
@@ -426,7 +394,7 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');
     expect(read("SearchMapFilters.tsx")).not.toContain("MAP_STATUS_OPTIONS");
     expect(read("SearchMapFilters.tsx")).not.toContain("toggleMapStatus");
-    expect(read("../../../lib/map-filters-engine.ts")).toContain(
+    expect(read("../../../lib/map-filters-engine.ts")).not.toContain(
       "Mesita Partners",
     );
     expect(read("../../../lib/map-filters-engine.ts")).toContain(

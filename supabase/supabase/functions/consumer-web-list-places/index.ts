@@ -14,17 +14,18 @@
 //
 // THREE POST SHAPES:
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
-//     the selected Places set (Partners or Mesita). No Google stubs —
-//     mobile opens `/place/:id` and cannot host GooglePlaceSheet.
+//     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
+//     and cannot host GooglePlaceSheet.
 //   { google: true, lat, lng, limit?, searchPower?, familyKeys? } — web
-//     Search catalog. searchPower (default 2) is Places scope: 1 closest
-//     partners, 2 closest Mesita Places (partners included, painted),
-//     3 closest Google Nearby (Mesita/partner hits painted, not added).
-//     familyKeys (guest Super pills) pick Nearby `includedPrimaryTypes`
-//     from GOOGLE_SEARCH_TYPES so unlisted Google places match the Super.
-//     Empty = operator F&B batteries. Power 1–2 never call Nearby.
-//     Google set stays distance. Listed sets Lineup-reorder (Map mask).
-//     Google fill is metered per connecting IP when power is 3.
+//     Search catalog. TWO sets (Pato, 2026-08-29): searchPower (default 1)
+//     is Places scope: 1 closest Mesita Places (partners included, painted
+//     yellow), 2 closest Google Nearby (Mesita/partner hits painted, not
+//     added). Partners are a paint, never a set. familyKeys (guest Super
+//     pills) pick Nearby `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES
+//     so unlisted Google places match the Super. Empty = operator F&B
+//     batteries. Power 1 never calls Nearby. Google set stays distance.
+//     Listed set Lineup-reorders (Map mask). Google fill is metered per
+//     connecting IP when power is 2.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -207,7 +208,7 @@ Deno.serve(async (req) => {
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
-  let searchPower: 1 | 2 | 3 = 2;
+  let searchPower: 1 | 2 = 1;
   let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
@@ -313,7 +314,7 @@ Deno.serve(async (req) => {
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
     let mesitaRows = scanRows.filter((row) =>
-      keepListedForSearchPower(row, searchPower)
+      keepListedForSearchPower(row)
     );
 
     if (!googleFill) {
@@ -343,7 +344,7 @@ Deno.serve(async (req) => {
     }
 
     let googleHits: NearbyHit[] = [];
-    const wantGoogleNearby = searchPower >= 3;
+    const wantGoogleNearby = searchPower >= 2;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
       const cached = peekCachedNearbyPlaces(center, nearbyTypes);
@@ -390,7 +391,7 @@ Deno.serve(async (req) => {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!keepListedForSearchPower(row, searchPower)) continue;
+          if (!keepListedForSearchPower(row)) continue;
           seen.add(row.id);
           mesitaRows = [...mesitaRows, row];
         }
@@ -418,7 +419,7 @@ Deno.serve(async (req) => {
     // Google set stays nearest-N distance. Lineup only reorders listed
     // sets (Partners / All Mesita Places), including empty-Nearby fallback.
     const merged = (
-      searchPower >= 3 && googleForMerge.length > 0
+      searchPower >= 2 && googleForMerge.length > 0
         ? catalog
         : reorderListedLanes(catalog, lineupOpts)
     ).slice(0, limit);
