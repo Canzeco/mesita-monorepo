@@ -17,10 +17,16 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@17";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJsonOr,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
 import {
+  ensureConsumerCustomer,
   ensureWholeCatalog,
   liveChargesBlocked,
   resolvePlanPrice,
@@ -63,8 +69,10 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   const origin = req.headers.get("origin") ?? "";
-  const successUrl = body.successUrl ?? `${origin}/profile?subscription=success`;
-  const cancelUrl = body.cancelUrl ?? `${origin}/profile?subscription=cancelled`;
+  const successUrl = body.successUrl ??
+    `${origin}/profile?subscription=success`;
+  const cancelUrl = body.cancelUrl ??
+    `${origin}/profile?subscription=cancelled`;
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
 
@@ -95,7 +103,10 @@ Deno.serve(async (req) => {
         { onConflict: "stripe_subscription_id" },
       );
     if (sub.error) {
-      return json({ ok: false, error: `mock_subscription: ${sub.error.message}` }, 500);
+      return json({
+        ok: false,
+        error: `mock_subscription: ${sub.error.message}`,
+      }, 500);
     }
 
     // The paid-door fact is the mock subscription row above; the slot is
@@ -113,7 +124,12 @@ Deno.serve(async (req) => {
 
   // ── REAL Stripe mode ──────────────────────────────────────────────────────
   const liveBlock = liveChargesBlocked(stripeKey);
-  if (liveBlock) return json({ ok: false, error: liveBlock, code: "stripe_live_blocked" }, 409);
+  if (liveBlock) {
+    return json(
+      { ok: false, error: liveBlock, code: "stripe_live_blocked" },
+      409,
+    );
+  }
   const stripe = new Stripe(stripeKey, { apiVersion: STRIPE_API_VERSION });
 
   // Self-provisioning: resolves (and if needed creates) the $-current monthly
@@ -126,22 +142,13 @@ Deno.serve(async (req) => {
   // Materialize the rest of the catalog in the background (best effort).
   void ensureWholeCatalog(admin, stripe);
 
-  // Reuse an existing Stripe customer id if we've seen this consumer before.
-  const { data: existing } = await admin
-    .from("consumer_subscriptions")
-    .select("stripe_customer_id")
-    .eq("consumer_id", consumerId)
-    .not("stripe_customer_id", "is", null)
-    .limit(1)
-    .maybeSingle();
-
-  let customerId = existing?.stripe_customer_id ?? null;
-  if (!customerId || customerId.startsWith("mock_")) {
-    const customer = await stripe.customers.create({
-      metadata: { consumer_id: consumerId },
-    });
-    customerId = customer.id;
-  }
+  // ONE customer per consumer, resolved through the shared anchor
+  // (consumers.stripe_customer_id) that the Cards wallet also uses. This EF
+  // used to look the id up on consumer_subscriptions inline; that only ever
+  // existed for subscribers, so a guest who saved a card first would have
+  // been given a second customer here. ensureConsumerCustomer backfills from
+  // the subscription row, so nothing regresses for existing subscribers.
+  const customerId = await ensureConsumerCustomer(admin, stripe, consumerId);
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",

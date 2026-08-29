@@ -101,6 +101,7 @@ import {
   checkUrlForCode,
   type ConsumerTicketRow,
   type GuestVisitsPolicy,
+  type TicketSettlement,
   type ReportReason,
   type RewardQuote,
 } from "@/lib/api/tickets";
@@ -230,6 +231,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   // baseline: arriving mid-wait is not a change worth announcing.
   const [announce, setAnnounce] = useState("");
   const [visits, setVisits] = useState<GuestVisitsPolicy | null>(null);
+  const [settlement, setSettlement] = useState<TicketSettlement | null>(null);
   const pollMs = (visits?.consumerPollSeconds ?? 10) * 1000;
   const approveFocusTimer = useRef<number | null>(null);
   const stepBodyRef = useRef<HTMLDivElement | null>(null);
@@ -243,12 +245,14 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     const tick = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const { ticket: fresh, visits: policy } = await apiGetTicket(
-          supabase,
-          ticketId,
-        );
+        const {
+          ticket: fresh,
+          visits: policy,
+          settlement: rails,
+        } = await apiGetTicket(supabase, ticketId);
         if (cancelled) return;
         if (policy) setVisits(policy);
+        if (rails) setSettlement(rails);
         setPolled(fresh);
         setPollMisses(0);
         const prev = lastSyncRef.current;
@@ -445,11 +449,13 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     setPayError(null);
     try {
       await apiSelectTicketPayment(supabase, ticketId, "at_place");
-      const { ticket: fresh, visits: policy } = await apiGetTicket(
-        supabase,
-        ticketId,
-      );
+      const {
+        ticket: fresh,
+        visits: policy,
+        settlement: rails,
+      } = await apiGetTicket(supabase, ticketId);
       if (policy) setVisits(policy);
+      if (rails) setSettlement(rails);
       setPolled(fresh);
       setStepChoice(null);
     } catch (err) {
@@ -1087,6 +1093,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             amountDueCents={amountDueCents}
             busy={payBusy}
             error={payError}
+            cardRailAvailable={settlement?.cardRail ?? false}
             onConfirmAtPlace={() => void confirmAtPlace()}
           />
         ) : null}
@@ -1271,9 +1278,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           />
 
           {reportError ? (
-            <p className={ERROR_BOX_CLASS}>
-              {reportError}
-            </p>
+            <p className={ERROR_BOX_CLASS}>{reportError}</p>
           ) : null}
 
           <Button

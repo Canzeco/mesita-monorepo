@@ -7,7 +7,14 @@
 // Lovable mock, tokenised to shipped Mesita tokens.
 
 import { useMemo, useState } from "react";
-import { Check, Gift, Loader2, PartyPopper, Wallet } from "lucide-react";
+import {
+  Check,
+  CreditCard,
+  Gift,
+  Loader2,
+  PartyPopper,
+  Wallet,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TicketHero } from "@/components/consumer/rewards/TicketHero";
@@ -263,11 +270,7 @@ export function StepBill({
         </div>
       ) : null}
 
-      {error ? (
-        <p className={ERROR_BOX_CLASS}>
-          {error}
-        </p>
-      ) : null}
+      {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
 
       <Button
         type="button"
@@ -292,9 +295,20 @@ export function StepBill({
 }
 
 // ── Step 5 — Pay. Only reachable once the place approved: the last moment
-//    anything can change the amount. ONE live path: the guest pays the
-//    place directly. Card-through-Mesita is retired (MESITA-1114). Yums
-//    stays parked as coming-soon. ──────────────────────────────────────────
+//    anything can change the amount. ONE live path: the guest pays the place
+//    directly.
+//
+//    Mesita Pay (the card rail) is STAGED, not retired: the Connect account
+//    layer landed in #1415 and the guest's saved cards live in Me › More ›
+//    Cards. What is missing is the charge path, so its row renders `soon`.
+//    It appears ONLY when the server says this ticket's place is pay-ready —
+//    places.mesita_pay_enabled ∧ visits_config.payCard ∧ Connect
+//    charge-readiness, resolved in consumer-web-get-ticket and arriving as
+//    one derived boolean. All three are false in production today, so the
+//    floor sees exactly what it saw yesterday.
+//
+//    Yums stays parked: it covers the bill, never the tip, and settles as a
+//    REDUCTION rather than a payment method. ────────────────────────────────
 export function StepPay({
   placeName,
   pct,
@@ -305,6 +319,7 @@ export function StepPay({
   amountDueCents,
   busy,
   error,
+  cardRailAvailable = false,
   onConfirmAtPlace,
 }: {
   placeName: string;
@@ -316,6 +331,8 @@ export function StepPay({
   amountDueCents: number;
   busy: boolean;
   error: string | null;
+  /** Server-derived three-leg pay-readiness for this ticket's place. */
+  cardRailAvailable?: boolean;
   onConfirmAtPlace: () => void;
 }) {
   return (
@@ -344,6 +361,21 @@ export function StepPay({
             selected
           />
         </div>
+        {cardRailAvailable ? (
+          <>
+            <div className="border-border bg-muted/40 border-y px-3.5 py-2">
+              <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
+                Mesita Pay
+              </span>
+            </div>
+            <PayMethodRow
+              icon={<CreditCard className="text-muted-foreground size-4" />}
+              label="Pay with my card"
+              sub="Coming soon · settle the bill from your saved card"
+              soon
+            />
+          </>
+        ) : null}
         <div className="border-border bg-muted/40 border-y px-3.5 py-2">
           <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
             Your Yums
@@ -373,11 +405,7 @@ export function StepPay({
         />
       </div>
 
-      {error ? (
-        <p className={ERROR_BOX_CLASS}>
-          {error}
-        </p>
-      ) : null}
+      {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
 
       <Button
         type="button"
