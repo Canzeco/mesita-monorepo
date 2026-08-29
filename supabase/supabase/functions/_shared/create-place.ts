@@ -7,6 +7,8 @@
 //                 at the door, before any row exists. Don't seed corpses.
 //   3 details   → the Google spine persisted (fetchGoogleBasics fields,
 //                 category='undefined' until the Intaker infers the real one)
+//                 PLUS the first Google photo mirrored into place-images so a
+//                 Created place can show a thumb before Enrich Images runs.
 //   4 semantic  → Name vector + Summary vector, awaited in this same function
 //
 // Pulse, Details and Semantic are SHARED with the ENRICH queue — create
@@ -29,6 +31,7 @@ import {
   subprocessesFor,
 } from "./enrich-pipeline.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
+import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
@@ -120,7 +123,9 @@ export async function createMinimalPlace(opts: {
       body: { ok: false, error: "Server misconfigured (missing core secrets)" },
     };
   }
-  const basicsRes = await fetchGoogleBasics(googlePlaceId, GOOGLE_KEY);
+  const basicsRes = await fetchGoogleBasics(googlePlaceId, GOOGLE_KEY, {
+    maxPhotos: 1,
+  });
   if (!basicsRes.ok) {
     return {
       ok: false,
@@ -190,6 +195,27 @@ export async function createMinimalPlace(opts: {
     return { ok: false, status: saveRes.status, body: saveRes.body };
   }
   const saved = saveRes.saved;
+
+  // ── CREATE Details — first Google photo into storage ────────────────────
+  // Enrich Images (function 6) later ranks and replaces the gallery. Created
+  // but not-yet-Enriched places still need ONE thumb in the app. Awaited so
+  // the row the caller just got already has a public URL. Mirror failure
+  // keeps the Google URI on the row and never fails the create.
+  const firstPhoto = Array.isArray(place.photos) ? place.photos[0] : null;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  if (typeof firstPhoto === "string" && firstPhoto && supabaseUrl) {
+    try {
+      const stored = await storeFirstPlaceImage(
+        admin,
+        supabaseUrl,
+        saved.project_id,
+        firstPhoto,
+      );
+      place.photos = [stored.url];
+    } catch (err) {
+      console.error(`[${callerName}/on-create] first-photo:`, err);
+    }
+  }
 
   // ── CREATE stamps what it ran (MESITA-1253) ─────────────────────────────
   // pulse: the gate above passed — the listing resolves and is not permanently
