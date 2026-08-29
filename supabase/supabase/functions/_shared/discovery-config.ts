@@ -106,6 +106,8 @@ export type MapConfig = {
   minPopularity: number;
   /** Camera must move at least this far (km) before Search refetches Nearby. */
   reloadMinKm: number;
+  /** Wait at least this long (seconds) after a fetch before Search refetches. */
+  reloadMinSec: number;
   googleFill: boolean;
   /** Closest Mesita partners (plan ≠ free). */
   partnerCount: number;
@@ -263,6 +265,8 @@ export const SOCIAL_RAILS_CAP = 24;
 export const MAP_MIN_POPULARITY_MAX = 1;
 export const MAP_RELOAD_MIN_KM_MIN = 1;
 export const MAP_RELOAD_MIN_KM_MAX = 20;
+export const MAP_RELOAD_MIN_SEC_MIN = 0.5;
+export const MAP_RELOAD_MIN_SEC_MAX = 15;
 export const MAP_LANE_COUNT_MAX = 20;
 export const MAP_PARTNER_COUNT_DEFAULT = 10;
 export const MAP_MESITA_COUNT_DEFAULT = 10;
@@ -310,6 +314,7 @@ export const DEFAULT_MAP: MapConfig = {
   minReviews: 0,
   minPopularity: 0,
   reloadMinKm: 5,
+  reloadMinSec: 2,
   googleFill: true,
   partnerCount: MAP_PARTNER_COUNT_DEFAULT,
   mesitaCount: MAP_MESITA_COUNT_DEFAULT,
@@ -749,6 +754,14 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         DEFAULT_MAP.reloadMinKm,
         MAP_RELOAD_MIN_KM_MIN,
         MAP_RELOAD_MIN_KM_MAX,
+      ) * 10,
+    ) / 10,
+    reloadMinSec: Math.round(
+      num(
+        r.reloadMinSec,
+        DEFAULT_MAP.reloadMinSec,
+        MAP_RELOAD_MIN_SEC_MIN,
+        MAP_RELOAD_MIN_SEC_MAX,
       ) * 10,
     ) / 10,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),

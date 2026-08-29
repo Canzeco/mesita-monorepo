@@ -115,7 +115,10 @@ export function SearchMap({
   onSelectPin?: (pin: SearchMapPin) => void;
   onMapClick?: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (box: ViewportBox) => void;
+  onUserViewport?: (
+    box: ViewportBox,
+    meta: { programmatic: boolean },
+  ) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -160,7 +163,20 @@ export function SearchMap({
   );
 }
 
-/** Screen-fixed sight at the canvas center — the point Search here fetches.
+/** Ignore map `idle` after Recentre / PanTo so picking a rail card or
+ *  following GPS does not count as a guest pan (and must not refetch). */
+const PROGRAMMATIC_IDLE_MS = 600;
+let programmaticIdleUntil = 0;
+
+function noteProgrammaticCamera() {
+  programmaticIdleUntil = Date.now() + PROGRAMMATIC_IDLE_MS;
+}
+
+function isProgrammaticIdle() {
+  return Date.now() < programmaticIdleUntil;
+}
+
+/** Screen-fixed sight at the canvas center — the catalog fetch point.
  *  The ring is dotted: approximate “around here,” not a measured radius. */
 export function SearchMapReticle() {
   return (
@@ -234,7 +250,10 @@ function SearchMapCanvas({
   onMapClick?: () => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (box: ViewportBox) => void;
+  onUserViewport?: (
+    box: ViewportBox,
+    meta: { programmatic: boolean },
+  ) => void;
 }) {
   const located = places.filter(hasCoords);
   const lookAt = viewCenter ?? userLocation;
@@ -316,7 +335,7 @@ function ViewportReporter({
   onUser,
 }: {
   onFirst?: (box: ViewportBox) => void;
-  onUser?: (box: ViewportBox) => void;
+  onUser?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
 }) {
   const map = useMap();
   const first = useRef(true);
@@ -331,7 +350,7 @@ function ViewportReporter({
         onFirst?.(box);
         return;
       }
-      onUser?.(box);
+      onUser?.(box, { programmatic: isProgrammaticIdle() });
     });
     return () => listener.remove();
   }, [map, onFirst, onUser]);
@@ -346,6 +365,7 @@ function panAndEnsureZoom(
   map: NonNullable<ReturnType<typeof useMap>>,
   target: Coords,
 ) {
+  noteProgrammaticCamera();
   map.panTo(target);
   if ((map.getZoom() ?? MAP_DEFAULT_ZOOM) < MAP_USER_ZOOM) {
     map.setZoom(MAP_USER_ZOOM);

@@ -1,6 +1,6 @@
 // Map filters — Search only. Status + Category cut the nearby catalog.
-// Distance and time stay off this surface: the camera and Search here
-// already bound the set. Swipe keeps the Discovery store.
+// Distance and time stay off this surface: the camera already bounds
+// the set. Swipe keeps the Discovery store.
 
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";

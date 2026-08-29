@@ -8,8 +8,8 @@
 //     Distance and time are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
-//     Panning never reloads that set — Search here under the bar does,
-//     from the reticle at the canvas center. The rail's center card is
+//     A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
+//     or pin selection pans are ignored. The rail's center card is
 //     always the selected pin. Scroll picks the center; a pin tap
 //     scrolls that card to center. Tapping the already-selected card
 //     opens the place (Google-only stubs open GooglePlaceSheet).
@@ -60,15 +60,20 @@ import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import {
   EmptySearchPrompt,
-  SearchHereButton,
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import {
+  CATALOG_RELOAD_MIN_KM,
+  CATALOG_RELOAD_MIN_SEC,
   catalogIsStale,
+  catalogMovedEnough,
+  clampReloadMinKm,
+  clampReloadMinSec,
   defaultRailSelection,
   matchPredictionToPlace,
   newSessionToken,
   railCenterIndex,
+  shouldReloadNearbyCatalog,
   viewportCenter,
   withDistances,
 } from "./search-utils";
@@ -178,15 +183,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleRef = useRef(idle);
   const lastBoxRef = useRef<ViewportBox | null>(null);
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
+  const lastFetchedAtMs = useRef<number | null>(null);
+  const reloadMinKmRef = useRef(CATALOG_RELOAD_MIN_KM);
+  const reloadMinSecRef = useRef(CATALOG_RELOAD_MIN_SEC);
+  const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forceNextLoad = useRef(false);
   const seenLocationKey = useRef<string | null>(null);
-  const [catalogStale, setCatalogStale] = useState(false);
+
+  const clearPendingReload = useCallback(() => {
+    if (pendingReload.current == null) return;
+    clearTimeout(pendingReload.current);
+    pendingReload.current = null;
+  }, []);
 
   const markViewport = useCallback((box: ViewportBox) => {
     lastBoxRef.current = box;
-    setCatalogStale(
-      catalogIsStale(lastFetchedCenter.current, viewportCenter(box)),
-    );
   }, []);
 
   const loadViewport = useCallback(
@@ -208,7 +219,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
-        setCatalogStale(false);
+        lastFetchedAtMs.current = Date.now();
+        reloadMinKmRef.current = clampReloadMinKm(result.reloadMinKm);
+        reloadMinSecRef.current = clampReloadMinSec(result.reloadMinSec);
         setCameraCenter(nextCenter);
         setPlaces(result.places);
       } catch (err) {
@@ -221,6 +234,44 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [markViewport, supabase],
   );
 
+  const scheduleOrLoad = useCallback(
+    (box: ViewportBox) => {
+      const next = viewportCenter(box);
+      const now = Date.now();
+      const minKm = reloadMinKmRef.current;
+      const minSec = reloadMinSecRef.current;
+      if (
+        shouldReloadNearbyCatalog(lastFetchedCenter.current, next, box, minKm, {
+          fetchedAtMs: lastFetchedAtMs.current,
+          nowMs: now,
+          minSec,
+        })
+      ) {
+        clearPendingReload();
+        void loadViewport(box);
+        return;
+      }
+      if (
+        catalogMovedEnough(lastFetchedCenter.current, next, box, minKm) &&
+        lastFetchedAtMs.current != null
+      ) {
+        const wait =
+          clampReloadMinSec(minSec) * 1000 - (now - lastFetchedAtMs.current);
+        clearPendingReload();
+        if (wait > 0) {
+          pendingReload.current = setTimeout(() => {
+            pendingReload.current = null;
+            if (!idleRef.current || !lastBoxRef.current) return;
+            void loadViewport(lastBoxRef.current);
+          }, wait);
+        }
+      } else {
+        clearPendingReload();
+      }
+    },
+    [clearPendingReload, loadViewport],
+  );
+
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       void loadViewport(box);
@@ -229,20 +280,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   const onUserViewport = useCallback(
-    (box: ViewportBox) => {
+    (box: ViewportBox, meta: { programmatic: boolean }) => {
       markViewport(box);
+      if (meta.programmatic) {
+        clearPendingReload();
+        if (forceNextLoad.current) {
+          forceNextLoad.current = false;
+          void loadViewport(box);
+        }
+        return;
+      }
       if (forceNextLoad.current) {
         forceNextLoad.current = false;
+        clearPendingReload();
         void loadViewport(box);
+        return;
       }
+      scheduleOrLoad(box);
     },
-    [loadViewport, markViewport],
+    [clearPendingReload, loadViewport, markViewport, scheduleOrLoad],
   );
 
-  const handleSearchHere = useCallback(() => {
-    if (!lastBoxRef.current) return;
-    void loadViewport(lastBoxRef.current);
-  }, [loadViewport]);
+  useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
   useEffect(() => {
     idleRef.current = idle;
@@ -605,16 +664,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
             {fetchError}
           </p>
-        )}
-
-        {idle && (places.length > 0 || fetchError || !catalogLoading) && (
-          <div className="flex justify-center">
-            <SearchHereButton
-              loading={catalogLoading}
-              stale={catalogStale}
-              onClick={handleSearchHere}
-            />
-          </div>
         )}
 
         {(searchOpen || trimmed.length > 0) && (

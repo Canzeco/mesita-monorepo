@@ -318,6 +318,7 @@ Deno.serve(async (req) => {
         places: withFamilyKeysList(listed),
         mode: "nearby",
         reloadMinKm: cfg.map.reloadMinKm,
+        reloadMinSec: cfg.map.reloadMinSec,
       });
     }
 
@@ -415,6 +416,7 @@ Deno.serve(async (req) => {
       places,
       mode: "nearby",
       reloadMinKm: cfg.map.reloadMinKm,
+      reloadMinSec: cfg.map.reloadMinSec,
     });
   }
 
