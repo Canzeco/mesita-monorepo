@@ -90,8 +90,9 @@ export function mapCircleIcon(fillColor: string, strokeColor: string) {
 }
 
 // Search pins — same hexes as the results-row dots.
-// Red = on Mesita (partner or not). Gray = not on Mesita. Blue = current location.
-export const MAP_PARTNER_PIN_COLOR = "#ff2357";
+// Yellow = Mesita Partners. Red = Mesita Places. Gray = Google Places.
+// Blue = current location.
+export const MAP_PARTNER_PIN_COLOR = "#ffc400";
 export const MAP_LISTED_PIN_COLOR = "#ff2357";
 export const MAP_MESITA_PIN_COLOR = "#ff2357";
 export const MAP_GOOGLE_PIN_COLOR = "#9ca3af";
