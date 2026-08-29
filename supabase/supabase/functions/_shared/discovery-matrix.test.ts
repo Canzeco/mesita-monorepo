@@ -45,10 +45,12 @@ Deno.test("seven modules and the locked mode → module matrix", () => {
   assertEquals(modeCallsModule("deep", "Google Places Nearby Search"), false);
 });
 
-Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social · Favorites", () => {
+Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
   assertEquals(modeRequiresPool("swipe", "google"), true);
   assertEquals(modeRequiresPool("swipe", "listed"), true);
-  assertEquals(modeRequiresPool("favorites", "listed"), true);
+  assertEquals(modeRequiresPool("favorites", "google"), true);
+  assertEquals(modeRequiresPool("favorites", "listed"), false);
+  assertEquals(modeRequiresPool("favorites", "enriched"), false);
   assertEquals(modeRequiresPool("deep", "listed"), false);
   assertEquals(modeRequiresPool("chat", "google"), false);
   assertEquals(modeRequiresPool("map", "enriched"), false);
@@ -64,6 +66,11 @@ Deno.test("Places Lineup signals match the admin matrix", () => {
   assertEquals(modeSignalState("map", "randomness"), "zero");
   assertEquals(modeSignalState("swipe", "randomness"), "on");
   assertEquals(modeSignalState("catalog", "partnership"), "on");
+  assertEquals(modeSignalState("map", "promotion"), "on");
+  assertEquals(modeSignalState("swipe", "promotion"), "on");
+  assertEquals(modeSignalState("catalog", "promotion"), "on");
+  assertEquals(modeSignalState("chat", "promotion"), "on");
+  assertEquals(modeSignalState("deep", "promotion"), "off");
   assertEquals(modeSignalState("social", "name"), "off");
   assertEquals(modeSignalState("favorites", "proximity"), "off");
   assertEquals(
@@ -80,6 +87,7 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
   assertEquals(map.partnership, DISCOVERY_DEFAULTS.weights.partnership);
+  assertEquals(map.promotion, DISCOVERY_DEFAULTS.weights.promotion);
   const deep = weightsForMode("deep", DISCOVERY_DEFAULTS.weights);
   assertEquals(deep.name, DISCOVERY_DEFAULTS.weights.name);
   for (const key of SIGNAL_KEYS) {

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarCheck, Loader2, Lock, QrCode } from "lucide-react";
+import { CalendarCheck, Loader2, Lock, QrCode, UtensilsCrossed } from "lucide-react";
 
-import { ORDER_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
+import { ORDER_BLOCKED, RESERVE_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -12,6 +12,10 @@ import type { PlaceDetail } from "@/lib/mock/place";
 import { cn } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { isPromoting } from "@/lib/promo-rates";
+import {
+  isOrderActionEnabled,
+  isReserveActionEnabled,
+} from "@/lib/place-profile-actions";
 
 // The place-detail action bar (MESITA-1065): Visit · Order · Reserve, pinned.
 //
@@ -48,6 +52,8 @@ export function PlaceActionBar({
   // Gated on the LIVE reward, not the stored badge: a paused place used to
   // let a guest open a ticket that nothing at the table would honor.
   const promoting = isPromoting(place);
+  const orderEnabled = isOrderActionEnabled(place);
+  const reserveEnabled = isReserveActionEnabled(place);
   const starting = startingId === place.id;
 
   const btn =
@@ -112,35 +118,51 @@ export function PlaceActionBar({
             Visit
           </button>
 
-          {/* ORDER — blocked by default, same locked treatment as Visit on a
-              non-partner. The vertical is designed, not built: no table, no
-              EF, no type, and orders_config.enabled defaults false. The slot
-              stays because the three-verb shape IS the product statement; a
-              tappable coming-soon sheet would read as a live feature that
-              failed. */}
+          {/* ORDER — unlocked when Intaker stamped a menu/catalog (Actions).
+              Mesita table ordering is still staged; the slot stays visible. */}
           <button
             type="button"
-            disabled
-            aria-label={ORDER_BLOCKED.aria}
-            title={ORDER_BLOCKED.title}
+            disabled={!orderEnabled}
+            aria-label={orderEnabled ? "Order at this place" : ORDER_BLOCKED.aria}
+            title={orderEnabled ? undefined : ORDER_BLOCKED.title}
             className={cn(
               btn,
-              "bg-muted text-muted-foreground cursor-not-allowed",
+              orderEnabled
+                ? outline
+                : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
           >
-            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            {orderEnabled ? (
+              <UtensilsCrossed className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            ) : (
+              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            )}
             Order
           </button>
 
-          {/* RESERVE — moved down from the body row, sheet unchanged. */}
+          {/* RESERVE — unlocked when Description infers reservations are typical. */}
           <button
             type="button"
-            onClick={() => setReserveOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={reserveOpen}
-            className={cn(btn, outline)}
+            onClick={reserveEnabled ? () => setReserveOpen(true) : undefined}
+            disabled={!reserveEnabled}
+            aria-haspopup={reserveEnabled ? "dialog" : undefined}
+            aria-expanded={reserveEnabled ? reserveOpen : undefined}
+            aria-label={
+              reserveEnabled ? "Reserve a table" : RESERVE_BLOCKED.aria
+            }
+            title={reserveEnabled ? undefined : RESERVE_BLOCKED.title}
+            className={cn(
+              btn,
+              reserveEnabled
+                ? outline
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            )}
           >
-            <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            {reserveEnabled ? (
+              <CalendarCheck className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            ) : (
+              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            )}
             Reserve
           </button>
         </div>

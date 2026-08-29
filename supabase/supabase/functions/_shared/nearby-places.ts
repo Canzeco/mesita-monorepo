@@ -1,15 +1,16 @@
-// Map catalog = three closest-N lanes, then one list after dropping overlaps:
+// Map catalog = three independent closest-N queries, then concat:
 //   1. closest partnerCount Mesita partners (plan ≠ free)
-//   2. closest mesitaCount Mesita places (partners included)
-//   3. closest googleCount Google Nearby hits
-// Search power zeros unused lanes: 1 Partners, 2 + enriched Places, 3 + Google.
-// Mesita Places is enriched only — Created / Requested stubs are not a source.
-// Power 1–2 never fire Google Nearby. Merge is concatenate after dropping
-// concurrencies: Partners, then Mesita, then Google. Union 20–40 at defaults
-// (10 + 10 + 20). Dedup Google against every known Mesita Place ID (not just
-// the tops), so a listed place that missed its lane never comes back as a
-// gray stub. Google maxes a Nearby call at 20; type batteries ride that one
-// call.
+//   2. closest mesitaCount listed-not-partner Mesita places
+//   3. closest googleCount Google Nearby hits — nearest N, ignoring whether
+//      those IDs are already Mesita-related
+// Overlaps drop; earlier query keeps the slot. A Google hit whose Place ID
+// already won a Partner or Mesita slot is dropped, not refilled. A listed
+// place that missed closest-N can still appear as a Google stub. Search
+// power zeros unused queries: 1 Partners, 2 + enriched Places, 3 + Google.
+// Mesita Places is enriched only — Created / Requested stubs are not a
+// Mesita source. Power 1–2 never fire Google Nearby. Union 20–40 at
+// defaults when disjoint (10 + 10 + 20). Google maxes a Nearby call at 20;
+// type batteries ride that one call.
 
 import {
   GOOGLE_PLACES_NEARBY_URL,
@@ -25,6 +26,7 @@ import {
   NEARBY_RADIUS_KM,
   takeClosest,
 } from "./geo.ts";
+import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 
 export const MESITA_NEARBY_MAX =
   DEFAULT_MAP.partnerCount + DEFAULT_MAP.mesitaCount;
@@ -33,7 +35,7 @@ export const CATALOG_NEARBY_MAX = MESITA_NEARBY_MAX + DEFAULT_MAP.googleCount;
 export const CATALOG_NEARBY_HARD_MAX = 60;
 /** Mesita rows admitted from the 50 km box before distance rank. Not newest-N:
  *  a close listed place that is older than 200 newer rows in the city must
- *  still win its Google Place ID, or it reappears as a gray stub. */
+ *  still compete for its Partner / Mesita slot so merge can keep the listed pin. */
 export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
@@ -161,7 +163,9 @@ export function peekCachedNearbyPlaces(
 
 export type SearchNearbyOpts = {
   radiusM?: number;
-  /** Subset of NEARBY_TYPES. Omit = all five. Empty = no Google call. */
+  /** Nearby primary types. Omit = the five F&B batteries. Empty = no
+   *  Google call. Super-driven search may send GOOGLE_SEARCH_TYPES
+   *  (spa, museum, park, …) beyond the five. */
   types?: readonly string[];
   /** Called only by the request that starts the Nearby calls — not on
    *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
@@ -180,14 +184,17 @@ function nearbyCellKey(
   return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${nearbyTypesKey(types)}`;
 }
 
+const SUPER_SEARCH_TYPE_SET = new Set<string>(
+  Object.values(GOOGLE_SEARCH_TYPES).flat(),
+);
+
 function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
   if (!types) return NEARBY_TYPES;
-  const allowed = new Set<string>(NEARBY_TYPES);
-  return types.filter((t) => allowed.has(t));
+  return types.filter((t) => SUPER_SEARCH_TYPE_SET.has(t));
 }
 
-/** Closest Google food/drink places around `center`. One Nearby Search
- *  (New) with the enabled primary types, max 20, DISTANCE rank. Same ~1 km
+/** Closest Google places around `center`. One Nearby Search (New) with
+ *  the enabled primary types, max 20, DISTANCE rank. Same ~1 km
  *  cell reuses a successful 15s result so a pan-idle does not spend a
  *  billed call twice. HTTP / parse failures are returned (Mesita still
  *  shows) but never cached. Concurrent same-cell pans share one in-flight
@@ -316,7 +323,7 @@ export function keepListedForSearchPower(
   return isEnrichedListedRow(row);
 }
 
-/** Any Mesita row's Place ID — including Created/Requested — must not stub as Google. */
+/** Place IDs already on a row — used to drop Google hits that won an earlier query. */
 export function listedGooglePlaceIds(
   rows: Array<{ google_place_id?: string | null }>,
 ): Set<string> {
@@ -355,19 +362,21 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
     center,
     lanes.partnerCount,
   );
-  const mesitaLane = takeClosest(inMesita, center, lanes.mesitaCount);
   const partnerIds = new Set(partners.map((row) => row.id));
-  const mesitaExtra = mesitaLane.filter((row) => !partnerIds.has(row.id));
-  const knownMesitaIds = new Set(
-    mesita
-      .map((row) => row.google_place_id)
-      .filter((id): id is string => Boolean(id)),
-  );
-  const extraGoogle = takeClosest(
-    google.filter((hit) => inCircle(hit.lat, hit.lng)),
+  const mesitaExtra = takeClosest(
+    inMesita.filter((row) => !isMesitaPartnerRow(row)),
     center,
-    lanes.googleCount,
-  ).filter((hit) => !knownMesitaIds.has(hit.placeId));
+    lanes.mesitaCount,
+  ).filter((row) => !partnerIds.has(row.id));
+  const winnerGids = listedGooglePlaceIds([...partners, ...mesitaExtra]);
+  const extraGoogle = dropKnownMesitaGoogleHits(
+    takeClosest(
+      google.filter((hit) => inCircle(hit.lat, hit.lng)),
+      center,
+      lanes.googleCount,
+    ),
+    winnerGids,
+  );
   return [
     ...partners.map((row) => ({ kind: "listed" as const, row })),
     ...mesitaExtra.map((row) => ({ kind: "listed" as const, row })),

@@ -46,7 +46,7 @@ export const DISCOVERY_MODE_POOLS: Record<
   catalog: ["google", "listed"],
   chat: [],
   social: ["google", "listed"],
-  favorites: ["google", "listed"],
+  favorites: ["google"],
 };
 
 export const DISCOVERY_MODULES = [
@@ -86,13 +86,21 @@ export const DISCOVERY_MODE_SIGNALS: Record<
 > = {
   fast: [],
   deep: ["name"],
-  map: ["proximity", "timing", "category", "popularity", "partnership"],
+  map: [
+    "proximity",
+    "timing",
+    "category",
+    "popularity",
+    "partnership",
+    "promotion",
+  ],
   swipe: [
     "proximity",
     "timing",
     "category",
     "popularity",
     "partnership",
+    "promotion",
     "randomness",
   ],
   catalog: [
@@ -101,6 +109,7 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "popularity",
     "partnership",
+    "promotion",
     "randomness",
   ],
   chat: [
@@ -111,6 +120,7 @@ export const DISCOVERY_MODE_SIGNALS: Record<
     "category",
     "popularity",
     "partnership",
+    "promotion",
   ],
   social: [],
   favorites: [],

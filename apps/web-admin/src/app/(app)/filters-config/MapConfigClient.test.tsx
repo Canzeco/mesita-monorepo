@@ -23,9 +23,23 @@ describe("Map reload pairs", () => {
         loadError={null}
       />,
     );
+    expect(html).toContain("Queries");
+    expect(html).not.toContain("Bring");
+    expect(html).toContain(
+      "Then concat. Closest Partners → closest Mesita Places → closest Google Nearby.",
+    );
+    expect(html).toContain("Google places");
+    expect(html).toContain("Mesita places");
+    expect(html).toContain("Mesita partners");
+    const partners = html.indexOf("Mesita partners");
+    const mesita = html.indexOf("Mesita places");
+    const google = html.indexOf("Google places");
+    expect(partners).toBeLessThan(mesita);
+    expect(mesita).toBeLessThan(google);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
-    expect(html).toContain("Browsing the rail does not count");
+    expect(html).toContain("Only dragging the map counts");
+    expect(html).toMatch(/Reload after[\s\S]*aria-pressed/);
     expect(html).not.toContain("Reload after the camera moves");
     expect(html).not.toContain("Reload after waiting");
     for (const pair of MAP_RELOAD_PAIRS) {

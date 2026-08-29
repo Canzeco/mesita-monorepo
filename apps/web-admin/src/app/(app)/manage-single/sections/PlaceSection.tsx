@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Clock,
   ExternalLink,
   Globe,
   ImagePlus,
   Images,
   Info,
   Loader2,
+  MapPin,
   Store,
   X,
   type LucideIcon,
@@ -23,8 +25,8 @@ import {
 } from "../actions";
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
+import { PlaceSuperCategoryField } from "../PlaceSuperCategoryField";
 import {
-  GroupLabel,
   OpenLink,
   PhoneField,
   ReadField,
@@ -101,8 +103,10 @@ function ChannelLabelIcon({
 }) {
   if (logo) {
     // Static 14px brand SVG — next/image adds nothing here.
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={logo} alt="" aria-hidden className="h-3.5 w-3.5 shrink-0" />
+    );
   }
   if (Icon) {
     return <Icon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />;
@@ -164,7 +168,10 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   photosMax: 10,
 };
 
-function placeToForm(v: AdminPlace, limits: PlaceFieldLimits = FALLBACK_LIMITS): Form {
+function placeToForm(
+  v: AdminPlace,
+  limits: PlaceFieldLimits = FALLBACK_LIMITS,
+): Form {
   const hours = {} as Record<Day, DayHours>;
   for (const d of DAYS) {
     const ranges = v.hours?.[d];
@@ -215,7 +222,8 @@ function boxToPatch(
     const hours: Record<string, { open: string; close: string }[]> = {};
     for (const d of DAYS) {
       const h = f.hours[d];
-      if (!h.closed && h.open && h.close) hours[d] = [{ open: h.open, close: h.close }];
+      if (!h.closed && h.open && h.close)
+        hours[d] = [{ open: h.open, close: h.close }];
     }
     return { id, hours };
   }
@@ -224,7 +232,8 @@ function boxToPatch(
       id,
       phone: nz(f.phone),
     };
-    for (const c of EDITABLE_CHANNELS) patch[c.key as string] = nz(f.channels[c.key as string]);
+    for (const c of EDITABLE_CHANNELS)
+      patch[c.key as string] = nz(f.channels[c.key as string]);
     return patch;
   }
   return { id, photos: f.photos };
@@ -291,8 +300,7 @@ export function PlaceSection({
     [form.photos, saved.photos],
   );
 
-  const placeDirty =
-    dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
+  const placeDirty = dirtyBasics || dirtyTime || dirtyChannels || dirtyPhotos;
 
   const { savePending } = usePlaceContext();
 
@@ -307,7 +315,8 @@ export function PlaceSection({
       const parts: Record<string, unknown>[] = [];
       if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits));
       if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
-      if (dirtyChannels) parts.push(boxToPatch("channels", form, place.id, limits));
+      if (dirtyChannels)
+        parts.push(boxToPatch("channels", form, place.id, limits));
       if (dirtyPhotos) parts.push(boxToPatch("photos", form, place.id, limits));
       if (form.photos.length > limits.photosMax) {
         const over = form.photos.length - limits.photosMax;
@@ -343,7 +352,10 @@ export function PlaceSection({
   const setChannel = (key: string, val: string) =>
     setForm((f) => ({ ...f, channels: { ...f.channels, [key]: val } }));
   const setDay = (d: Day, patch: Partial<DayHours>) =>
-    setForm((f) => ({ ...f, hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } } }));
+    setForm((f) => ({
+      ...f,
+      hours: { ...f.hours, [d]: { ...f.hours[d], ...patch } },
+    }));
 
   const [uploading, setUploading] = useState(false);
 
@@ -355,7 +367,10 @@ export function PlaceSection({
   const uploadPhoto = async (file: File) => {
     if (uploading || anyPending) return;
     if (form.photos.length >= limits.photosMax) {
-      setErrors((e) => ({ ...e, photos: `At most ${limits.photosMax} photos.` }));
+      setErrors((e) => ({
+        ...e,
+        photos: `At most ${limits.photosMax} photos.`,
+      }));
       return;
     }
     const fileError = validateUploadFile(file);
@@ -378,7 +393,9 @@ export function PlaceSection({
       if (uploadError) {
         throw new Error(uploadError.message);
       }
-      const { data } = supabase.storage.from(PLACE_IMAGES_BUCKET).getPublicUrl(path);
+      const { data } = supabase.storage
+        .from(PLACE_IMAGES_BUCKET)
+        .getPublicUrl(path);
       if (!data?.publicUrl) {
         throw new Error("Upload succeeded but no public URL was returned.");
       }
@@ -386,7 +403,8 @@ export function PlaceSection({
     } catch (err) {
       setErrors((e) => ({
         ...e,
-        photos: err instanceof Error ? err.message : "Couldn't upload that photo.",
+        photos:
+          err instanceof Error ? err.message : "Couldn't upload that photo.",
       }));
     } finally {
       setUploading(false);
@@ -401,7 +419,8 @@ export function PlaceSection({
     setPhotos(next);
   };
 
-  const removePhoto = (idx: number) => setPhotos(form.photos.filter((_, i) => i !== idx));
+  const removePhoto = (idx: number) =>
+    setPhotos(form.photos.filter((_, i) => i !== idx));
 
   // Per-place Intaker inspector data — per-photo metadata (source + vision
   // analysis) for the ⓘ dialog, keyed by image URL. Loads once; the live
@@ -439,30 +458,18 @@ export function PlaceSection({
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900):
-          Basics → Hours → Channels → Photos → Menus (children) →
-          Location. Mesita-internal cards live on Admin; Team on Settings;
-          reputation on Performance. */}
-      {/* ONE card for the place's facts (design pass 2026-08-22).
-          Basics, Hours and Location were three framed boxes answering one
-          question — what is this place and where/when is it — and once the
-          per-card Save footers left, a frame no longer marked how far a save
-          reached. It only marked a topic, which is what a GroupLabel is for.
-          Three frames became three labelled groups inside one card.
-
-          Channels, Photos and Menus stay their own cards: each is a
-          different KIND of work (links, images, documents) rather than
-          another set of facts about the same thing. */}
+      {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
+          Basics, Location and Hours are separate cards — Pato, 2026-08-29):
+          Basics → Location → Hours → Channels → Photos → Menus (children).
+          Mesita-internal cards live on Admin; Team on Settings; reputation
+          on Performance. */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         tint="rose"
-        title="Identity"
-        subtitle="What this place is, when it opens, and where it sits."
+        title="Basics"
+        subtitle="What this place is."
       >
         <div className="mt-5 grid gap-4">
-          <ReadField label="Google name" auto boxed>
-            {(place.google_name ?? "").trim() || "—"}
-          </ReadField>
           <TextField
             label="Mesita name"
             value={form.mesitaName}
@@ -471,17 +478,21 @@ export function PlaceSection({
             disabled={anyPending}
             placeholder={(place.google_name ?? "").trim() || undefined}
           />
+          <ReadField label="Google name" auto boxed>
+            {(place.google_name ?? "").trim() || "—"}
+          </ReadField>
         </div>
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">
           <ReadField label="Google price" auto boxed>
-            <PriceDisplay
-              level={place.price_level}
-              currency={place.currency}
-            />
+            <PriceDisplay level={place.price_level} currency={place.currency} />
           </ReadField>
+          <PlaceSuperCategoryField
+            category={form.category ?? ""}
+            familyKeys={place.family_keys ?? null}
+          />
           <PlaceCategorySelect
-            value={form.category === "undefined" ? "" : form.category}
+            value={form.category ?? ""}
             onChange={(slug) => set("category", slug)}
             disabled={anyPending}
             googleLabel={place.category_label}
@@ -496,7 +507,9 @@ export function PlaceSection({
               </span>
             }
             value={form.description}
-            onChange={(x) => set("description", x.slice(0, limits.descriptionMax))}
+            onChange={(x) =>
+              set("description", x.slice(0, limits.descriptionMax))
+            }
             rows={7}
             maxLength={limits.descriptionMax}
             disabled={anyPending}
@@ -505,135 +518,145 @@ export function PlaceSection({
         <div className="mt-4">
           <PlaceTagsPicker
             value={form.tags}
-            onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
+            onChange={(tags) =>
+              set("tags", tags.slice(0, limits.tagsPerPlaceMax))
+            }
             disabled={anyPending}
           />
         </div>
         {errors.basics ? <ErrorNote message={errors.basics} /> : null}
+      </SectionCard>
 
-        <div className="border-border/60 mt-6 border-t pt-5">
-          <GroupLabel>Hours</GroupLabel>
-          <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
-            {DAYS.map((d) => {
-              const h = form.hours[d];
-              return (
-                <div
-                  key={d}
+      {/* Location is native — Google Places seed + Intaker synthesis.
+          The EF rejects manual address writes, so this card is read-only. */}
+      <SectionCard
+        icon={<MapPin className="h-4 w-4" />}
+        tint="sky"
+        title="Location"
+        subtitle="Where it sits."
+      >
+        {/* One boxed field per row — same filled-input language as every
+            other card. Lat/Lng share one box (a coordinate pair is one
+            fact); everything else stacks. */}
+        <div className="mt-5 grid gap-4">
+          <ReadField label="Address" auto boxed>
+            {place.address?.trim() ? place.address : "—"}
+          </ReadField>
+          <ReadField label="Zone" auto boxed>
+            {place.zone ?? "—"}
+          </ReadField>
+          <ReadField label="City" auto boxed>
+            {place.city ?? "—"}
+          </ReadField>
+          <ReadField label="Lat / Lng" auto boxed>
+            <span className="font-mono type-body tabular-nums">
+              {place.lat == null || place.lng == null
+                ? "—"
+                : `${place.lat}, ${place.lng}`}
+            </span>
+          </ReadField>
+          <ReadField label="Timezone" auto boxed>
+            {place.timezone?.trim() ? place.timezone : "—"}
+          </ReadField>
+        </div>
+        {place.lat != null && place.lng != null ? (
+          <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
+            <iframe
+              src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
+              title={`Map of ${place.name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block h-[160px] w-full border-0"
+            />
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <SectionCard
+        icon={<Clock className="h-4 w-4" />}
+        tint="amber"
+        title="Hours"
+        subtitle="When it opens."
+      >
+        <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
+          {DAYS.map((d) => {
+            const h = form.hours[d];
+            return (
+              <div
+                key={d}
+                className={
+                  "flex items-center gap-3 px-3.5 py-2.5 transition " +
+                  (h.closed ? "bg-muted/30" : "")
+                }
+              >
+                <span
                   className={
-                    "flex items-center gap-3 px-3.5 py-2.5 transition " +
-                    (h.closed ? "bg-muted/30" : "")
+                    "w-20 shrink-0 text-sm font-medium capitalize " +
+                    (h.closed ? "text-muted-foreground/70" : "")
+                  }
+                >
+                  {d}
+                </span>
+                {h.closed ? (
+                  <span className="text-muted-foreground/70 flex-1 text-xs italic">
+                    Closed
+                  </span>
+                ) : (
+                  <div className="flex flex-1 flex-wrap items-center gap-2">
+                    <input
+                      type="time"
+                      value={h.open}
+                      disabled={anyPending}
+                      onChange={(e) => setDay(d, { open: e.target.value })}
+                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                    />
+                    <span className="text-muted-foreground text-xs">–</span>
+                    <input
+                      type="time"
+                      value={h.close}
+                      disabled={anyPending}
+                      onChange={(e) => setDay(d, { close: e.target.value })}
+                      className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!h.closed}
+                  aria-label={`${d} ${h.closed ? "closed" : "open"}`}
+                  disabled={anyPending}
+                  // Re-enabling a day must never surface empty --:-- inputs:
+                  // seed the 9-to-9 default when no range was kept around.
+                  onClick={() =>
+                    setDay(
+                      d,
+                      h.closed
+                        ? {
+                            closed: false,
+                            open: h.open || "09:00",
+                            close: h.close || "21:00",
+                          }
+                        : { closed: true },
+                    )
+                  }
+                  className={
+                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
+                    (h.closed ? "bg-border" : "bg-pink-gradient")
                   }
                 >
                   <span
                     className={
-                      "w-20 shrink-0 text-sm font-medium capitalize " +
-                      (h.closed ? "text-muted-foreground/70" : "")
+                      "absolute h-4 w-4 rounded-full bg-white shadow transition " +
+                      (h.closed ? "translate-x-0.5" : "translate-x-4")
                     }
-                  >
-                    {d}
-                  </span>
-                  {h.closed ? (
-                    <span className="text-muted-foreground/70 flex-1 text-xs italic">
-                      Closed
-                    </span>
-                  ) : (
-                    <div className="flex flex-1 flex-wrap items-center gap-2">
-                      <input
-                        type="time"
-                        value={h.open}
-                        disabled={anyPending}
-                        onChange={(e) => setDay(d, { open: e.target.value })}
-                        className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
-                      />
-                      <span className="text-muted-foreground text-xs">–</span>
-                      <input
-                        type="time"
-                        value={h.close}
-                        disabled={anyPending}
-                        onChange={(e) => setDay(d, { close: e.target.value })}
-                        className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
-                      />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={!h.closed}
-                    aria-label={`${d} ${h.closed ? "closed" : "open"}`}
-                    disabled={anyPending}
-                    // Re-enabling a day must never surface empty --:-- inputs:
-                    // seed the 9-to-9 default when no range was kept around.
-                    onClick={() =>
-                      setDay(
-                        d,
-                        h.closed
-                          ? {
-                              closed: false,
-                              open: h.open || "09:00",
-                              close: h.close || "21:00",
-                            }
-                          : { closed: true },
-                      )
-                    }
-                    className={
-                      "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition disabled:opacity-50 " +
-                      (h.closed ? "bg-border" : "bg-pink-gradient")
-                    }
-                  >
-                    <span
-                      className={
-                        "absolute h-4 w-4 rounded-full bg-white shadow transition " +
-                        (h.closed ? "translate-x-0.5" : "translate-x-4")
-                      }
-                    />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          {errors.time ? <ErrorNote message={errors.time} /> : null}
+                  />
+                </button>
+              </div>
+            );
+          })}
         </div>
-
-        {/* Location is native — Google Places seed + Intaker synthesis.
-            The EF rejects manual address writes, so this group is read-only. */}
-        <div className="border-border/60 mt-6 border-t pt-5">
-          <GroupLabel>Location</GroupLabel>
-          {/* One boxed field per row — same filled-input language as every
-              other card. Lat/Lng share one box (a coordinate pair is one
-              fact); everything else stacks. */}
-          <div className="mt-5 grid gap-4">
-            <ReadField label="Address" auto boxed>
-              {place.address?.trim() ? place.address : "—"}
-            </ReadField>
-            <ReadField label="Zone" auto boxed>
-              {place.zone ?? "—"}
-            </ReadField>
-            <ReadField label="City" auto boxed>
-              {place.city ?? "—"}
-            </ReadField>
-            <ReadField label="Lat / Lng" auto boxed>
-              <span className="font-mono type-body tabular-nums">
-                {place.lat == null || place.lng == null
-                  ? "—"
-                  : `${place.lat}, ${place.lng}`}
-              </span>
-            </ReadField>
-            <ReadField label="Timezone" auto boxed>
-              {place.timezone?.trim() ? place.timezone : "—"}
-            </ReadField>
-          </div>
-          {place.lat != null && place.lng != null ? (
-            <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">
-              <iframe
-                src={`https://maps.google.com/maps?q=${place.lat},${place.lng}&z=15&output=embed`}
-                title={`Map of ${place.name}`}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block h-[160px] w-full border-0"
-              />
-            </div>
-          ) : null}
-        </div>
+        {errors.time ? <ErrorNote message={errors.time} /> : null}
       </SectionCard>
 
       <SectionCard
@@ -757,7 +780,6 @@ export function PlaceSection({
       </SectionCard>
 
       {children}
-
 
       {metaFor !== null && (
         <MediaMetaDialog
@@ -899,7 +921,7 @@ function PhotosEditor({
 
       {photos.length === 0 ? (
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-No photos yet.
+          No photos yet.
         </p>
       ) : (
         <p className="text-muted-foreground mt-3 type-label tabular-nums">
@@ -927,9 +949,15 @@ const SOURCE_CHIP: Record<string, string> = {
 function AnalysisText({ text }: { text: string }) {
   return (
     <div className="text-foreground/90 text-sm leading-relaxed whitespace-pre-wrap">
-      {text.split(/\*\*/).map((seg, i) =>
-        i % 2 === 1 ? <strong key={i}>{seg}</strong> : <span key={i}>{seg}</span>,
-      )}
+      {text
+        .split(/\*\*/)
+        .map((seg, i) =>
+          i % 2 === 1 ? (
+            <strong key={i}>{seg}</strong>
+          ) : (
+            <span key={i}>{seg}</span>
+          ),
+        )}
     </div>
   );
 }
@@ -950,21 +978,28 @@ function sourceMetaRows(
 ): { label: string; value: string }[] {
   if (!meta) return [];
   const rows: { label: string; value: string }[] = [];
-  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const strVal = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const num = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+  const strVal = (v: unknown) =>
+    typeof v === "string" && v.trim() ? v.trim() : null;
 
   if (source === "instagram") {
     const comments = num(meta.comments_count);
-    if (comments != null) rows.push({ label: "Comments", value: comments.toLocaleString() });
-    if (meta.is_video === true) rows.push({ label: "Media type", value: "Video" });
-    else if (meta.is_video === false) rows.push({ label: "Media type", value: "Photo" });
+    if (comments != null)
+      rows.push({ label: "Comments", value: comments.toLocaleString() });
+    if (meta.is_video === true)
+      rows.push({ label: "Media type", value: "Video" });
+    else if (meta.is_video === false)
+      rows.push({ label: "Media type", value: "Photo" });
     const ts = meta.timestamp;
     let posted: string | null = null;
     if (typeof ts === "number" && Number.isFinite(ts)) {
       posted = formatAbsoluteUtc(new Date(ts * 1000).toISOString());
     } else if (typeof ts === "string" && ts.trim()) {
       const d = new Date(ts);
-      posted = Number.isNaN(d.getTime()) ? ts : formatAbsoluteUtc(d.toISOString());
+      posted = Number.isNaN(d.getTime())
+        ? ts
+        : formatAbsoluteUtc(d.toISOString());
     }
     if (posted) rows.push({ label: "Posted", value: posted });
     const shortcode = strVal(meta.shortcode);
@@ -972,7 +1007,8 @@ function sourceMetaRows(
   } else if (source === "website") {
     const w = num(meta.width);
     const h = num(meta.height);
-    if (w != null && h != null) rows.push({ label: "Dimensions", value: `${w}×${h}` });
+    if (w != null && h != null)
+      rows.push({ label: "Dimensions", value: `${w}×${h}` });
     const page = strVal(meta.page);
     if (page) rows.push({ label: "Found on page", value: page });
     const alt = strVal(meta.alt);
@@ -1011,11 +1047,15 @@ function MediaMetaDialog({
   }, [onClose]);
 
   const source = meta?.source ?? null;
-  const sourceLabel = source ? (SOURCE_LABEL[source] ?? source) : "Unknown source";
-  const chip = (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
+  const sourceLabel = source
+    ? (SOURCE_LABEL[source] ?? source)
+    : "Unknown source";
+  const chip =
+    (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
   const analysis = meta?.analysis_text?.trim() || null;
   const status = meta?.status ?? null;
-  const statusChip = (status && STATUS_CHIP[status]) || "bg-muted text-muted-foreground";
+  const statusChip =
+    (status && STATUS_CHIP[status]) || "bg-muted text-muted-foreground";
   const metaRows = sourceMetaRows(source, meta?.source_metadata ?? null);
 
   return (
@@ -1051,14 +1091,18 @@ function MediaMetaDialog({
           />
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs font-medium">Order</span>
+            <span className="text-muted-foreground text-xs font-medium">
+              Order
+            </span>
             {position > 0 ? (
               <span className="bg-muted text-foreground inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums">
                 #{position} of {total}
                 {position === 1 ? " · Hero" : ""}
               </span>
             ) : (
-              <span className="text-muted-foreground text-xs italic">not in gallery</span>
+              <span className="text-muted-foreground text-xs italic">
+                not in gallery
+              </span>
             )}
             {status && (
               <span
@@ -1080,7 +1124,9 @@ function MediaMetaDialog({
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-muted-foreground text-xs font-medium">Source</span>
+                <span className="text-muted-foreground text-xs font-medium">
+                  Source
+                </span>
                 <span
                   className={
                     "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
@@ -1098,29 +1144,43 @@ function MediaMetaDialog({
 
               {meta?.caption && (
                 <div>
-                  <p className="text-muted-foreground mb-1 text-xs font-medium">Caption</p>
-                  <p className="text-foreground/90 text-sm italic">“{meta.caption}”</p>
+                  <p className="text-muted-foreground mb-1 text-xs font-medium">
+                    Caption
+                  </p>
+                  <p className="text-foreground/90 text-sm italic">
+                    “{meta.caption}”
+                  </p>
                 </div>
               )}
 
               {metaRows.length > 0 && (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                   {metaRows.map((row) => (
-                    <div key={row.label} className="col-span-2 grid grid-cols-subgrid">
-                      <dt className="text-muted-foreground text-xs font-medium">{row.label}</dt>
-                      <dd className="text-foreground/90 min-w-0 break-words">{row.value}</dd>
+                    <div
+                      key={row.label}
+                      className="col-span-2 grid grid-cols-subgrid"
+                    >
+                      <dt className="text-muted-foreground text-xs font-medium">
+                        {row.label}
+                      </dt>
+                      <dd className="text-foreground/90 min-w-0 break-words">
+                        {row.value}
+                      </dd>
                     </div>
                   ))}
                 </dl>
               )}
 
               <div>
-                <p className="text-muted-foreground mb-1 text-xs font-medium">Analysis</p>
+                <p className="text-muted-foreground mb-1 text-xs font-medium">
+                  Analysis
+                </p>
                 {analysis ? (
                   <AnalysisText text={analysis} />
                 ) : (
                   <p className="text-muted-foreground text-sm italic">
-                    Not analyzed — this image was saved but not vision-described.
+                    Not analyzed — this image was saved but not
+                    vision-described.
                   </p>
                 )}
               </div>

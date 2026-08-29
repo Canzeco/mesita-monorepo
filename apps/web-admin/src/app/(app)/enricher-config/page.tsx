@@ -28,7 +28,7 @@ const SETTINGS_FALLBACK: IntakeSettings = {
   discoverFacebookN: 3,
   discoverOpentableN: 3,
   discoverUbereatsN: 0,
-  requestThreshold: 3,
+  requestThreshold: 5,
 };
 
 export default async function IntakePage() {
@@ -59,7 +59,7 @@ export default async function IntakePage() {
               discoverFacebookN: settings.data.atlasDiscoverFacebookN,
               discoverOpentableN: settings.data.atlasDiscoverOpentableN,
               discoverUbereatsN: settings.data.atlasDiscoverUbereatsN,
-              requestThreshold: settings.data.atlasRequestThreshold ?? 3,
+              requestThreshold: settings.data.atlasRequestThreshold ?? 5,
             }
           : SETTINGS_FALLBACK
       }

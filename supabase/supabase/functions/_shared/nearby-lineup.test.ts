@@ -207,6 +207,7 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("embedding,"), false);
   const googleBranch = src.slice(src.indexOf("const admitted = admitMapCatalog("));
   assertEquals(googleBranch.includes("reorderListedLanes"), true);
+  assertEquals(googleBranch.includes("dropKnownMesitaGoogleHits"), false);
   const listedOnly = src.slice(
     src.indexOf("if (!googleFill)"),
     src.indexOf("let googleHits"),

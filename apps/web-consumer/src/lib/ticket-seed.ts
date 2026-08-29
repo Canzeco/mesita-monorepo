@@ -47,6 +47,11 @@ export type SeedPlace = {
   welcome_premium_rate?: number | null;
   free_rate?: number | null;
   premium_rate?: number | null;
+  orders_enabled?: boolean | null;
+  reservations_enabled?: boolean | null;
+  products?: unknown;
+  menus?: unknown;
+  menu_pdf_url?: unknown;
 };
 
 type TicketSeed = {

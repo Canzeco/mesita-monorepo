@@ -14,6 +14,7 @@ import type { PlacePrediction } from "@/lib/api/place-search";
 import {
   membershipColor,
   membershipTone,
+  predictionOnMesita,
 } from "@/lib/search-membership";
 import type { AddState } from "./add-state";
 
@@ -76,7 +77,7 @@ export function SearchResultsPanel({
                 prediction={p}
                 addState={addStates[p.placeId]}
                 onPick={
-                  p.status === "not_in_mesita" ? onPickGoogle : onPickMesita
+                  predictionOnMesita(p) ? onPickMesita : onPickGoogle
                 }
               />
             ))}

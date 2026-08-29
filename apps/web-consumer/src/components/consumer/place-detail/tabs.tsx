@@ -17,7 +17,9 @@ const CORE_TABS = [
 const ENRICH_TAB = { key: "enrich", label: "Enrich" } as const;
 
 export function placeTabs(enriched: boolean): readonly { key: PlaceTab; label: string }[] {
-  return enriched ? CORE_TABS : [ENRICH_TAB, ...CORE_TABS];
+  // Unenriched: Enrich only. Overview · Reviews · Menus · Rewards wait
+  // until the place is Enriched (Pato, live 2026-08-29).
+  return enriched ? CORE_TABS : [ENRICH_TAB];
 }
 
 export function PlaceTabBar({
@@ -37,7 +39,7 @@ export function PlaceTabBar({
     <nav
       className={cn(
         "bg-background border-border sticky top-0 z-20 -mx-4 grid border-b px-2",
-        enriched ? "grid-cols-4" : "grid-cols-5",
+        enriched ? "grid-cols-4" : "grid-cols-1",
       )}
       aria-label="Place sections"
     >

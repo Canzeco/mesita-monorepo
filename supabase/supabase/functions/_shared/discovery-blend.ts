@@ -1,11 +1,12 @@
-// DISCOVERY BLEND — how the nine earned signals compose, and where the bought
+// DISCOVERY BLEND — how the ten earned signals compose, and where the bought
 // lane attaches (Docs › Discovery §A, MESITA-1196).
 //
 // TWO LANES, AND THEY NEVER MIX.
 //
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the nine signals
-//                      in discovery-signals.ts. It cannot read a promo field
-//                      or a rate. Partnership may read `plan` only.
+//   Lane 1 · EARNED    blend() — the product of `s^w` across the ten signals
+//                      in discovery-signals.ts. It cannot read a rate or
+//                      strategy. Partnership may read `plan`. Promotion may
+//                      read the computed `promoting` boolean.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
 //                      that moves promoting places forward into fixed slot
 //                      positions. It cannot read a score, because it does not
@@ -13,11 +14,10 @@
 //
 // That separation is the answer to the open question Docs §A left standing
 // ("how they stay separable is not settled, and picking an exponent is not an
-// answer"). Pato settled it on 2026-08-22: money buys a POSITION, never a
-// SCORE. The consequence is testable and the test ships beside this file —
-// with slotting on or off, the relative order of every place that did not buy
-// a slot is identical. An exponent on a Promoting signal could never promise
-// that, which is exactly why Promoting is not a signal.
+// answer"). Money still buys a POSITION via slotting, never an extra
+// exponent. Promotion is a separate earned fact (live discount now), not
+// the slotting pass. With slotting on or off, the relative order of every
+// place that did not buy a slot stays identical.
 //
 // WEIGHTS ARE EXPONENTS, NOT MULTIPLIERS. Each signal enters as `s^w`. Since
 // s ∈ [0,1]:

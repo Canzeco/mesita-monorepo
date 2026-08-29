@@ -49,7 +49,7 @@ import {
 //
 //   1. Profile summary — name in page chrome; photo + Google/Instagram/
 //      Facebook; swipe-style tags; then Save · Contact · Share.
-//   2. Sticky tab strip — Enrich (only if not Enriched) · Overview ·
+//   2. Sticky tab strip — Enrich only until Enriched, then Overview ·
 //      Reviews · Menus · Rewards.
 //   3. The active tab's boxes.
 
@@ -91,6 +91,9 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
   };
 
   const activityLoading = activityState === "loading";
+  // Core tabs are not on the strip until Enriched; pin the active key so
+  // a stale tab cannot light empty content under Enrich-only.
+  const activeTab: PlaceTab = place.is_enriched ? tab : "enrich";
   return (
     // decision: Pato — white profile-summary header vs pink tab body for
     // contrast. Summary sits on bg-card; tabs + content keep bg-background.
@@ -100,14 +103,14 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
       <ProfileSummary place={place} />
       <div className="flex flex-col gap-3 px-4">
         <PlaceTabBar
-          tab={tab}
+          tab={activeTab}
           onChange={onTabChange}
           enriched={place.is_enriched}
         />
-        {tab === "enrich" && !place.is_enriched && (
+        {activeTab === "enrich" && !place.is_enriched && (
           <PlaceRequestPanel place={place} />
         )}
-        {tab === "place" && (
+        {activeTab === "place" && place.is_enriched && (
           <>
             <MediaBox place={place} />
             {/* decision: Pato — Location first, then Time stacked (not side by side) */}
@@ -128,7 +131,7 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             context), then the three Featured feeds. Each box owns its own
             sort set. Orders keeps its slot between Visits and Reservations
             even though ordering isn't built — the box states that itself. */}
-        {tab === "reviews" && (
+        {activeTab === "reviews" && place.is_enriched && (
           <>
             <ReviewsSummaryBox place={place} />
             <MesitaReviewsBox place={place} />
@@ -148,12 +151,16 @@ export function PlaceDetailBody({ place }: { place: PlaceDetail }) {
             />
           </>
         )}
-        {tab === "products" && <MenusBox place={place} />}
+        {activeTab === "products" && place.is_enriched && (
+          <MenusBox place={place} />
+        )}
         {/* Reward always renders on its tab. Web listings and rate-less
             partners get a "doesn't offer rewards" state inside RewardsBox
             rather than an empty tab, so all three cases (web / partner-no-
             rate / partner-with-reward) are explicit to the guest. */}
-        {tab === "rewards" && <RewardsBox place={place} />}
+        {activeTab === "rewards" && place.is_enriched && (
+          <RewardsBox place={place} />
+        )}
       </div>
     </div>
   );

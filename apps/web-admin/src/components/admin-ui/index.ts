@@ -14,6 +14,8 @@ export {
   Switch,
   TextAreaField,
   NumberField,
+  ChoiceField,
+  QueryConcatCaps,
   Button,
   SaveRow,
   QualityPicker,

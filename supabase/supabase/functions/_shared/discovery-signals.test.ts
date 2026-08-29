@@ -12,6 +12,9 @@ import {
   partnership,
   PARTNERSHIP_NONE,
   PARTNERSHIP_PARTNER,
+  promotion,
+  PROMOTION_NONE,
+  PROMOTION_LIVE,
   social,
   summary,
   SIGNAL_BLURBS,
@@ -69,8 +72,8 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same nine signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 9);
+Deno.test("the library, the labels and the blurbs name the same ten signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 10);
   assertEquals([...SIGNAL_KEYS], [
     "name",
     "summary",
@@ -79,6 +82,7 @@ Deno.test("the library, the labels and the blurbs name the same nine signals", (
     "category",
     "popularity",
     "partnership",
+    "promotion",
     "randomness",
     "social",
   ]);
@@ -87,9 +91,8 @@ Deno.test("the library, the labels and the blurbs name the same nine signals", (
   assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
 });
 
-Deno.test("Promoting is NOT a signal — the bought lane never reaches the blend", () => {
-  // The two-lane decision (MESITA-1196), pinned. If someone adds it back here,
-  // this fails before the invariant test in discovery-blend.test.ts does.
+Deno.test("Promotion is a signal; the bought-lane key promoting is not", () => {
+  assert((SIGNAL_KEYS as readonly string[]).includes("promotion"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
   assert((SIGNAL_KEYS as readonly string[]).includes("social"));
@@ -344,7 +347,22 @@ Deno.test("partnership scores paid above free and never reads a promo field", ()
   assertEquals(partnership(place({ plan: "free" })), PARTNERSHIP_NONE);
   assertEquals(partnership(place({ plan: "pro" })), PARTNERSHIP_PARTNER);
   assertEquals(partnership(place({ plan: "PRO" })), PARTNERSHIP_PARTNER);
+  assertEquals(
+    partnership(place({ plan: "free", promoting: true })),
+    PARTNERSHIP_NONE,
+  );
   assert(PARTNERSHIP_NONE > 0, "free is demoted, not deleted");
+});
+
+Deno.test("promotion scores a live discount above the none floor", () => {
+  assertEquals(promotion(place()), PROMOTION_NONE);
+  assertEquals(promotion(place({ promoting: false })), PROMOTION_NONE);
+  assertEquals(promotion(place({ promoting: true })), PROMOTION_LIVE);
+  assertEquals(
+    promotion(place({ plan: "pro", promoting: false })),
+    PROMOTION_NONE,
+  );
+  assert(PROMOTION_NONE > 0, "not promoting is demoted, not deleted");
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────

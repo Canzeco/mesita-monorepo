@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { apiRequestPlace } from "@/lib/api/places";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 /** Enrich tab: not Enriched yet. The ugly profile stays visible. */
@@ -21,6 +21,31 @@ export function requestProgressLabel(count: number, threshold: number): string {
   const n = Math.max(0, Math.trunc(count));
   const t = Math.max(1, Math.trunc(threshold));
   return `${n} of ${t} votes`;
+}
+
+export function requestVotesRemaining(count: number, threshold: number): number {
+  const n = Math.max(0, Math.trunc(count));
+  const t = Math.max(1, Math.trunc(threshold));
+  return Math.max(0, t - n);
+}
+
+export function requestProgressMeta(count: number, threshold: number) {
+  const n = Math.max(0, Math.trunc(count));
+  const t = Math.max(1, Math.trunc(threshold));
+  const filled = Math.min(t, n);
+  return {
+    count: n,
+    threshold: t,
+    filled,
+    remaining: Math.max(0, t - n),
+    complete: n >= t,
+  };
+}
+
+function remainingCopy(remaining: number, complete: boolean): string {
+  if (complete) return "Enough votes — Enrich is starting";
+  if (remaining === 1) return "1 more vote starts Enrich";
+  return `${remaining} more votes start Enrich`;
 }
 
 export function PlaceRequestPanelView({
@@ -40,41 +65,109 @@ export function PlaceRequestPanelView({
   error: string | null;
   onRequest?: () => void;
 }) {
+  const progress = requestProgressMeta(count, threshold);
+  const voteDisabled = requested || pending || enriching || progress.complete;
+
   return (
-    <div className="flex flex-col items-center px-2 py-8 text-center">
-      <span className="bg-primary/10 text-primary flex h-14 w-14 items-center justify-center rounded-2xl">
-        <Sparkles className="h-7 w-7" strokeWidth={2} />
-      </span>
-      <h3 className="font-display mt-4 text-lg font-semibold tracking-tight">
-        Vote to enrich this place
-      </h3>
-      <p className="text-muted-foreground mt-1.5 max-w-[34ch] text-sm leading-relaxed">
-        The profile is on Mesita. Enrich fills the rest once enough guests vote.
-      </p>
-      <p className="text-foreground mt-4 text-sm font-semibold">
-        {requestProgressLabel(count, threshold)}
-      </p>
-      {enriching ? (
-        <p className="text-muted-foreground mt-2 inline-flex items-center gap-2 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Enriching
+    <section className="border-border bg-card shadow-elev overflow-hidden rounded-2xl border">
+      <div className="from-primary/12 via-primary/6 to-card bg-gradient-to-b px-5 pb-4 pt-6 text-center">
+        <span className="bg-primary/15 text-primary shadow-glow-sm mx-auto flex h-14 w-14 items-center justify-center rounded-2xl">
+          <Sparkles className="h-7 w-7" strokeWidth={2} />
+        </span>
+        <h3 className="font-display mt-4 text-xl font-semibold tracking-tight">
+          Vote to enrich this place
+        </h3>
+        <p className="text-muted-foreground mx-auto mt-2 max-w-[32ch] text-sm leading-relaxed">
+          The profile is on Mesita. Guest votes unlock the full Enrich pass.
         </p>
-      ) : null}
-      {error ? (
-        <p className={ERROR_BOX_CLASS + " mt-3 max-w-sm py-1.5"}>{error}</p>
-      ) : null}
-      <Button
-        type="button"
-        onClick={onRequest}
-        disabled={requested || pending || enriching}
-        className="shadow-glow mt-5 text-sm font-semibold active:scale-[0.98]"
-      >
-        {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+      </div>
+
+      <div className="px-5 pb-5 pt-1">
+        <div
+          className="border-border bg-background/80 rounded-2xl border px-4 py-4"
+          aria-label={requestProgressLabel(count, threshold)}
+        >
+          <div className="flex items-end justify-between gap-3">
+            <div className="text-left">
+              <p className="text-muted-foreground type-label font-semibold uppercase tracking-wide">
+                Community votes
+              </p>
+              <p className="font-display mt-1 text-3xl font-semibold tabular-nums tracking-tight">
+                {progress.filled}
+                <span className="text-muted-foreground text-lg font-medium">
+                  {" "}
+                  / {progress.threshold}
+                </span>
+              </p>
+            </div>
+            <p className="text-muted-foreground max-w-[14ch] text-right text-xs leading-snug">
+              {remainingCopy(progress.remaining, progress.complete)}
+            </p>
+          </div>
+
+          <div
+            className="mt-4 flex gap-1.5"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={progress.threshold}
+            aria-valuenow={progress.filled}
+          >
+            {Array.from({ length: progress.threshold }, (_, i) => {
+              const filled = i < progress.filled;
+              return (
+                <span
+                  key={i}
+                  className={cn(
+                    "h-2.5 min-w-0 flex-1 rounded-full transition-colors",
+                    filled ? "bg-primary shadow-glow-sm" : "bg-muted",
+                  )}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {enriching ? (
+          <p className="text-muted-foreground mt-4 inline-flex w-full items-center justify-center gap-2 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Enriching this profile
+          </p>
         ) : null}
-        {requested ? "Voted" : "Vote to enrich"}
-      </Button>
-    </div>
+
+        {error ? (
+          <p className={ERROR_BOX_CLASS + " mt-3 py-1.5"}>{error}</p>
+        ) : null}
+
+        <Button
+          type="button"
+          onClick={onRequest}
+          disabled={voteDisabled}
+          className={cn(
+            "shadow-glow mt-4 h-12 w-full text-sm font-semibold active:scale-[0.98]",
+            requested && "bg-muted text-foreground hover:bg-muted",
+          )}
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : requested ? (
+            <>
+              <Check className="h-4 w-4" strokeWidth={2.5} />
+              You voted
+            </>
+          ) : progress.complete ? (
+            "Votes complete"
+          ) : (
+            "Vote to enrich"
+          )}
+        </Button>
+
+        {requested && !enriching && !progress.complete ? (
+          <p className="text-muted-foreground mt-3 text-center text-xs leading-relaxed">
+            Thanks — share this place so others can vote too.
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

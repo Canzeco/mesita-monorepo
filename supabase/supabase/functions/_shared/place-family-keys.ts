@@ -2,11 +2,12 @@
 // out to a guest, and everything dropped from it.
 //
 // Adds `family_keys` (MESITA-679) — source of truth is
-// `_shared/place-taxonomy.ts` (Atlas membership = the full Super Category
-// set when the category is in the catalog; stored keys only when
-// membership is empty; else the Google primaryType map). A category in
-// two supers ships both keys. Clients must not re-mirror that expansion;
-// Search map Filters cut on Super Category off this field.
+// `_shared/place-taxonomy.ts` (Atlas membership = the FULL 1–2 super set
+// when the category is in the catalog; stored keys only when membership
+// is empty; else the Google primaryType map; else ['undefined'] — the
+// resolution is total). A category in two supers ships both keys.
+// Clients must not re-mirror that expansion; Search map Filters cut on
+// Super Category off this field.
 //
 // Adds `promoting` (MESITA-1150) — whether a guest gets a discount here RIGHT
 // NOW, computed rather than read off the stale `listing_type` enum. See

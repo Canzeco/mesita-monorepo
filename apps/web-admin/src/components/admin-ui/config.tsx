@@ -216,6 +216,122 @@ export function NumberField({
   );
 }
 
+export type QueryCapRung = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  value: number;
+  onChange: (value: number) => void;
+};
+
+function QueryCapRow({
+  rung,
+  min,
+  max,
+  disabled,
+}: {
+  rung: QueryCapRung;
+  min: number;
+  max: number;
+  disabled: boolean;
+}) {
+  return (
+    <label className="border-border bg-background flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 py-2">
+      <span className="flex min-w-0 items-center gap-2 text-sm font-medium leading-snug">
+        {rung.icon}
+        {rung.label}
+      </span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={1}
+        value={rung.value}
+        disabled={disabled}
+        aria-label={rung.label}
+        onChange={(e) => {
+          const raw = Number(e.target.value);
+          if (Number.isNaN(raw)) return;
+          rung.onChange(Math.max(min, Math.min(max, Math.round(raw))));
+        }}
+        className="border-border bg-card focus:border-foreground h-11 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50 sm:w-20"
+      />
+    </label>
+  );
+}
+
+/**
+ * Independent query caps, listed in concat order. Overlaps drop; the earlier
+ * query keeps the slot. Not a nested filter — each number is its own fetch.
+ */
+export function QueryConcatCaps({
+  rule,
+  queries,
+  min,
+  max,
+  disabled,
+}: {
+  rule: string;
+  queries: QueryCapRung[];
+  min: number;
+  max: number;
+  disabled: boolean;
+}) {
+  return (
+    <div className="mt-5">
+      <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
+        Queries
+      </p>
+      <p className="text-muted-foreground mb-3 type-meta">{rule}</p>
+      <div className="flex flex-col gap-1.5">
+        {queries.map((rung) => (
+          <QueryCapRow
+            key={rung.key}
+            rung={rung}
+            min={min}
+            max={max}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Same box chrome as NumberField. The control is a categorical picker. */
+export function ChoiceField({
+  icon,
+  label,
+  hint,
+  children,
+  className,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={
+        "border-border bg-background flex flex-col gap-2 rounded-xl border p-4" +
+        (className ? ` ${className}` : "")
+      }
+    >
+      <span className="flex items-start gap-2 text-sm font-medium leading-snug">
+        {icon}
+        {label}
+      </span>
+      {hint ? (
+        <p className="text-muted-foreground type-meta">{hint}</p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
 const COMPACT_FIELD =
   "border-border bg-background focus:border-foreground h-10 w-full rounded-xl border px-3 text-sm outline-none disabled:opacity-50";
 
