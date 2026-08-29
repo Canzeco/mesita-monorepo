@@ -460,9 +460,6 @@ export function PlaceSection({
         subtitle="What this place is, when it opens, and where it sits."
       >
         <div className="mt-5 grid gap-4">
-          <ReadField label="Google name" auto boxed>
-            {(place.google_name ?? "").trim() || "—"}
-          </ReadField>
           <TextField
             label="Mesita name"
             value={form.mesitaName}
@@ -471,6 +468,9 @@ export function PlaceSection({
             disabled={anyPending}
             placeholder={(place.google_name ?? "").trim() || undefined}
           />
+          <ReadField label="Google name" auto boxed>
+            {(place.google_name ?? "").trim() || "—"}
+          </ReadField>
         </div>
         {/* One field per row — the whole card is a single column. */}
         <div className="mt-4 grid gap-4">

@@ -51,6 +51,8 @@ import {
 } from "../_shared/categories.ts";
 import { resolveEnrichedFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { fetchPlaceTags, inferPlaceTags } from "../_shared/tags.ts";
+import { inferPlaceReservationsLikely } from "../_shared/infer-place-reservations.ts";
+import { placeHasOrderCatalog } from "../_shared/place-profile-actions.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import {
   coerceReservationsPolicy,
@@ -230,6 +232,35 @@ serveEnrichStage("contents", async (admin, env, row) => {
       count: inferredTags.length,
       vocabulary: tagVocabulary.length,
     };
+
+    // ACTIONS (Description function 9) — Reserve: LLM inference on venue type.
+    const reservationsLikely = await inferPlaceReservationsLikely(
+      OPENAI_KEY,
+      {
+        name,
+        category: categoryForTags,
+        categoryLabel: (place.category_label ?? null) as string | null,
+        description: aboutText,
+        priceLevel: typeof place.price_level === "number"
+          ? place.price_level
+          : null,
+        editorialSummary: (place.editorial_summary ?? null) as string | null,
+      },
+      enricherModel,
+    );
+    place.reservations_enabled = reservationsLikely;
+    sources.actions = {
+      orders_enabled: placeHasOrderCatalog(place),
+      reservations_enabled: reservationsLikely,
+    };
+  }
+  // Order gate follows menu/catalog — refresh even when synthesis is skipped.
+  place.orders_enabled = placeHasOrderCatalog(place);
+  if (!sources.actions) {
+    sources.actions = { orders_enabled: place.orders_enabled };
+  } else {
+    (sources.actions as Record<string, unknown>).orders_enabled =
+      place.orders_enabled;
   }
   sources.cost = ledger.snapshot();
 
@@ -496,7 +527,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // replied.
     contentPieces.description = aboutWritten
       ? pieceDone(
-        `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s).`,
+        `Presentation written; category “${place.category ?? "n/a"}”, ${inferredTags.length} tag(s); ` +
+          `order ${place.orders_enabled ? "on" : "off"}, reserve ${
+            place.reservations_enabled ? "on" : "off"
+          }.`,
       )
       : pieceFailed("Synthesis ran but no Presentation was persisted.");
   }

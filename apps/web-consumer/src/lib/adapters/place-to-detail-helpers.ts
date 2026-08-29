@@ -10,6 +10,14 @@ export function str(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v : undefined;
 }
 
+/** Guest-facing place label — Mesita name only, never the cached Google label. */
+export function resolvePlaceDisplayName(row: Row): string {
+  const mesita = str(row.mesita_name);
+  if (mesita) return mesita;
+  // Legacy rows may still rely on generated `name` (= coalesce) until backfill.
+  return str(row.name) ?? "Place";
+}
+
 export function num(v: unknown): number | undefined {
   return typeof v === "number" && Number.isFinite(v) ? v : undefined;
 }

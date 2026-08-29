@@ -18,9 +18,10 @@ const COLUMNS: readonly string[] = [
   "name",
   // Cached Google Places displayName. NOT an identity spine (google_place_id
   // is) — it changes whenever the Google listing does. Intaker-only write.
+  // Guest profile chrome reads mesita_name, not this column.
   "google_name",
-  // Operator's display override. NULL ⇒ the place follows google_name.
-  // Admin/business writable; the Intaker never touches it.
+  // Mesita display label. Seeded at create from the first Google label;
+  // operator-editable. NULL/empty ⇒ generated name follows google_name.
   "mesita_name",
   // `description_es` exists in DB (dormant) for a future Spanish TMS —
   // not selected until that ships (MESITA-939).
@@ -126,6 +127,9 @@ const COLUMNS: readonly string[] = [
   // Consumer Requests count. Progress toward Intake atlasRequestThreshold.
   // Requested is derived (count > 0 and content_status <> ready).
   "request_count",
+  // Description/Actions (Intaker function 9) — guest Order / Reserve CTAs.
+  "orders_enabled",
+  "reservations_enabled",
   // Promos page section toggles. Boolean, business-controlled, persisted
   // so the on/off state survives page reloads.
   "segmentation_basic_enabled",

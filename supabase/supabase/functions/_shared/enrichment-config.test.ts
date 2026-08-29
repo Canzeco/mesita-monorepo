@@ -34,7 +34,7 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     atlasDiscoverFacebookN: 3,
     atlasDiscoverOpentableN: 3,
     atlasDiscoverUbereatsN: 3,
-    atlasRequestThreshold: 3,
+    atlasRequestThreshold: 5,
   };
   assertEquals(normalizeEnrichmentConfig(live), live);
 });

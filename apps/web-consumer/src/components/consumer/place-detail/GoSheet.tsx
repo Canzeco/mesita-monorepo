@@ -6,11 +6,12 @@ import {
   Loader2,
   Lock,
   QrCode,
+  UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { ORDER_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
+import { ORDER_BLOCKED, RESERVE_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
@@ -18,6 +19,10 @@ import type { SeedPlace } from "@/lib/ticket-seed";
 import { ERROR_BOX_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { isPromoting } from "@/lib/promo-rates";
+import {
+  isOrderActionEnabled,
+  isReserveActionEnabled,
+} from "@/lib/place-profile-actions";
 
 // The Go sheet (MESITA-1072) — what the deck's fifth action button opens.
 //
@@ -66,6 +71,8 @@ export function GoSheet({
     },
   });
   const promoting = isPromoting(place);
+  const orderEnabled = isOrderActionEnabled(place);
+  const reserveEnabled = isReserveActionEnabled(place);
   const starting = startingId === place.id;
   // A live ticket here means the tap RE-OPENS it instead of making a second
   // one (useStartVisit D5). The row says so up front — otherwise "Visit" reads
@@ -107,22 +114,24 @@ export function GoSheet({
             primary={promoting}
           />
 
-          {/* ORDER — blocked by default, same locked treatment as Visit on
-                a non-partner. The slot stays so the three-verb shape remains
-                the product statement; the hint says why, and the row does
-                not open a coming-soon sheet. */}
+          {/* ORDER — unlocked when a menu/catalog is on file. */}
           <GoOption
-            Icon={Lock}
+            Icon={orderEnabled ? UtensilsCrossed : Lock}
             title="Order"
-            hint={ORDER_BLOCKED.hint}
-            disabled
+            hint={orderEnabled ? "Menu on file at this place." : ORDER_BLOCKED.hint}
+            disabled={!orderEnabled}
           />
 
           <GoOption
-            Icon={CalendarCheck}
+            Icon={reserveEnabled ? CalendarCheck : Lock}
             title="Reserve"
-            hint="Book a table for later."
-            onClick={onReserve}
+            hint={
+              reserveEnabled
+                ? "Book a table for later."
+                : RESERVE_BLOCKED.hint
+            }
+            onClick={reserveEnabled ? onReserve : undefined}
+            disabled={!reserveEnabled}
           />
         </div>
       </div>
