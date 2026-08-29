@@ -11,11 +11,15 @@
 //   • Bottom overlay (idle): catalog rail around the camera. Places
 //     scope picks the engine (Partners / + enriched Places / + Google
 //     Nearby). Super Category cuts Mesita only. The rail is closest
-//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec. Rail
-//     or pin selection pans are ignored. The rail's center card is
-//     always the selected pin. Scroll picks the center; a pin tap
-//     scrolls that card to center. Tapping the already-selected card
-//     opens the place (Google-only stubs open GooglePlaceSheet).
+//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec.
+//     Only a finger-drag on the map counts as travel. Rail or pin
+//     selection pans rebase the km origin so click-by-click catalog
+//     browsing cannot add up. A user pan also dismisses the name
+//     overlay (query text stays; tap the bar to open it again). The
+//     rail's center card is always the selected pin. Scroll picks the
+//     center; a pin tap scrolls that card to center. Tapping the
+//     already-selected card opens the place (Google-only stubs open
+//     GooglePlaceSheet).
 //   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
 //     after the guest stops, Deep Search replaces that list when it has
 //     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
@@ -156,9 +160,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const center = location;
 
   const trimmed = query.trim();
-  // Idle = the map moment: no text query, search panel closed. The catalog
-  // rail only exists here; the results dropdown owns the other state.
-  const idle = trimmed.length === 0 && !searchOpen;
+  // Idle = map-browse. The name overlay is a query mode, not a viewport.
+  // Closing it (map drag, map tap, X) returns the rail even if leftover
+  // query text sits in the bar.
+  const idle = !searchOpen;
 
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
@@ -282,10 +287,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [loadViewport],
   );
 
+  const closeNameOverlay = useCallback(() => {
+    setSearchOpen(false);
+    idleRef.current = true;
+    searchInputRef.current?.blur();
+  }, []);
+
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: { programmatic: boolean }) => {
       markViewport(box);
       if (meta.programmatic) {
+        // Rail / pin / GPS pans move the camera but do not travel.
+        // Rebase the km origin so click-by-click catalog browsing
+        // cannot accumulate toward reload. Time still starts from
+        // the last real fetch.
+        lastFetchedCenter.current = viewportCenter(box);
         clearPendingReload();
         if (forceNextLoad.current) {
           forceNextLoad.current = false;
@@ -293,6 +309,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         }
         return;
       }
+      // Finger on the map = I want the map. Name results are a query
+      // overlay, not a viewport. Keep the typed text so a bar tap
+      // opens the same list again. Do not re-run name search.
+      closeNameOverlay();
       if (forceNextLoad.current) {
         forceNextLoad.current = false;
         clearPendingReload();
@@ -301,7 +321,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       }
       scheduleOrLoad(box);
     },
-    [clearPendingReload, loadViewport, markViewport, scheduleOrLoad],
+    [
+      clearPendingReload,
+      closeNameOverlay,
+      loadViewport,
+      markViewport,
+      scheduleOrLoad,
+    ],
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
@@ -604,21 +630,23 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const dismissSearch = () => {
     updateQuery("");
-    setSearchOpen(false);
+    closeNameOverlay();
   };
 
   const openSearch = () => {
     setSearchOpen(true);
+    idleRef.current = false;
     // Focus after the panel mounts so the keyboard comes up on tap-to-open
     // (map tap or bar tap) without covering the map in a 70% sheet.
     requestAnimationFrame(() => searchInputRef.current?.focus());
   };
 
   const handleMapClick = () => {
-    // Bare map tap toggles search: open when idle, close when the dropdown
-    // (empty prompt or live results) is covering the top of the canvas.
-    if (searchOpen || trimmed.length > 0) {
-      dismissSearch();
+    // Bare map tap toggles the name overlay. Query text stays so a later
+    // bar tap can reopen the same list. Pan/drag uses closeNameOverlay
+    // from onUserViewport instead — Maps does not fire click on a drag.
+    if (searchOpen) {
+      closeNameOverlay();
       return;
     }
     openSearch();
@@ -675,7 +703,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           </p>
         )}
 
-        {(searchOpen || trimmed.length > 0) && (
+        {searchOpen && (
           <div className="bg-card/95 border-border shadow-elev flex min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
             {trimmed.length > 0 ? (
               <SearchResultsPanel

@@ -35,7 +35,7 @@ describe("Map reload pairs", () => {
     expect(mesita).toBeLessThan(partners);
     expect(html).toContain("Reload after");
     expect(html).toContain("AND wait this long");
-    expect(html).toContain("Browsing the rail does not count");
+    expect(html).toContain("Only dragging the map counts");
     expect(html).toMatch(/Reload after[\s\S]*aria-pressed/);
     expect(html).not.toContain("Reload after the camera moves");
     expect(html).not.toContain("Reload after waiting");

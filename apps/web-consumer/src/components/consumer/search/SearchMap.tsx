@@ -266,8 +266,8 @@ function SearchMapCanvas({
         MAP_MINIMAL_STYLES as unknown as Parameters<typeof Map>[0]["styles"]
       }
       onTilesLoaded={onReady}
-      // Bare canvas tap toggles search — open when idle, close when the
-      // overlay is up. Pan/drag and marker taps don't reach here.
+      // Bare canvas tap toggles the name overlay. Pan/drag does not
+      // fire click — SearchClient closes the overlay from onUserViewport.
       onClick={onMapClick ? () => onMapClick() : undefined}
     >
       {userLocation && (
