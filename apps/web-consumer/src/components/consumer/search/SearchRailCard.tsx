@@ -41,7 +41,7 @@ export function RailCard({
       onClick={selected ? onOpen : onSelect}
       className={cn(
         "border-border bg-card/95 shadow-elev flex w-full items-center gap-3 rounded-2xl border p-2 text-left backdrop-blur transition active:scale-[0.98]",
-        selected && "border-primary ring-primary/30 ring-2",
+        selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
       <div className="bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">

@@ -459,12 +459,13 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const loading = read("../../../app/(shell)/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
-    expect(overlay).toContain("px-2");
+    expect(overlay).toContain("px-3");
     expect(overlay).toContain("first:ml-[10%] last:mr-[10%]");
     expect(overlay).not.toContain("w-[288px]");
     expect(overlay).not.toContain("w-full shrink-0 snap-start");
     expect(overlay).not.toMatch(/flex gap-2 overflow-x-auto/);
     expect(card).toContain("flex w-full items-center");
+    expect(card).toContain("ring-inset");
     expect(card).not.toContain("w-[288px]");
     expect(client).toContain("el.clientWidth * 0.8");
     expect(client).toContain("railCenterIndex");
@@ -477,7 +478,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     expect(client).not.toContain("RAIL_STRIDE");
     expect(client).not.toContain("w-[288px]");
     expect(loading).toContain("w-4/5 shrink-0 snap-center");
-    expect(loading).toContain("px-2");
+    expect(loading).toContain("px-3");
     expect(loading).toContain("first:ml-[10%] last:mr-[10%]");
     expect(loading).not.toContain("w-[288px]");
   });
