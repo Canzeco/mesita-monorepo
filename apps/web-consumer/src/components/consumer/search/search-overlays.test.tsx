@@ -197,6 +197,15 @@ describe("SearchPlacesScope", () => {
     expect(html).toContain(
       'aria-checked="false" aria-label="Mesita Partners &amp; Mesita Places &amp; Google Places"',
     );
+    expect(html).not.toContain("ALL GOOGLE PLACES");
+  });
+
+  it("warns when + Google scope is selected", () => {
+    const html = renderToStaticMarkup(
+      <SearchPlacesScope power={3} onPower={() => {}} />,
+    );
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("ALL GOOGLE PLACES");
   });
 
   it("fills from the inside out as power widens", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
+import { AlertTriangle } from "lucide-react";
 import {
   MAP_SEARCH_STOPS,
   searchPowerCaption,
@@ -148,6 +149,21 @@ export function SearchPlacesScope({
           );
         })}
       </div>
+
+      {power === 3 ? (
+        <div
+          role="alert"
+          className="border-amber-500/40 bg-amber-500/10 mt-3 flex items-center gap-2 rounded-xl border px-3 py-2.5"
+        >
+          <AlertTriangle
+            className="size-4 shrink-0 text-amber-600"
+            aria-hidden
+          />
+          <p className="type-meta font-semibold tracking-wide text-amber-900">
+            ALL GOOGLE PLACES
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }
