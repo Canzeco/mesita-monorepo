@@ -36,6 +36,7 @@ import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } f
 import { adminClient, anonClient, readAnonEnv, readEFEnv } from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
+import { familiesForGoogleType } from "../_shared/sourcing.ts";
 import {
   applyGeneralCategoryCap,
   loadDiscoveryConfig,
@@ -79,6 +80,7 @@ function googleStub(hit: NearbyHit, distanceKm: number | null): Record<string, u
     google_place_id: hit.placeId,
     name: hit.name,
     category: hit.primaryType,
+    family_keys: familiesForGoogleType(hit.primaryType),
     category_label: null,
     vibe: null,
     price_level: null,

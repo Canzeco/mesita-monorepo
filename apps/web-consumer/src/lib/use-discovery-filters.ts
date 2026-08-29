@@ -2,8 +2,8 @@
 
 // ONE shared discovery-filter store for every consumer surface (MESITA-646,
 // v3 schema MESITA-672). Module-level state + useSyncExternalStore (the
-// saved-places pattern): the Swipe deck, the Search map and both trigger dots
-// read the SAME filters, so narrowing on one surface is narrowed everywhere.
+// saved-places pattern): the Swipe deck and its trigger dot read these
+// filters. Search map Status + Category live in use-map-filters.
 // Persisted to sessionStorage like the swipe snapshot. The server snapshot is
 // always the defaults, so SSR HTML stays deterministic; React swaps in the
 // persisted client snapshot right after hydration.

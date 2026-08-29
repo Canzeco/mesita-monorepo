@@ -6,10 +6,10 @@ import { countryBarChip } from "@/lib/search-scope";
 import { cn } from "@/lib/utils";
 
 // Shared by Search and Visit (the wallet's place list, MESITA-1071).
-// Query field only. Search's country + location + categories live on
-// SearchFilterRow beside the bar (same row, separated). Visit omits
-// those. `onOpenScope` stays as an optional far-right control for
-// hosts that still want it.
+// Query field only. Search's Status + Category live in the Filters
+// sheet, opened by SearchFilterRow beside the bar. Visit omits that.
+// `onOpenScope` stays as an optional far-right control for hosts that
+// still want country + location on the pill.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -85,9 +85,7 @@ export function SearchBar({
               strokeWidth={1.75}
               className={cn(
                 "h-3.5 w-3.5",
-                locationSet
-                  ? "text-primary"
-                  : "text-muted-foreground/50",
+                locationSet ? "text-primary" : "text-muted-foreground/50",
               )}
             />
           </button>

@@ -10,8 +10,8 @@ import {
   SearchHereButton,
   SearchRailOverlay,
 } from "@/components/consumer/search/search-catalog-overlays";
-import { DISCOVERY_FILTER_DEFAULTS } from "@/lib/discovery-filters-engine";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
+import { SearchMapFilters } from "@/components/consumer/search/SearchMapFilters";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   catalogIsStale,
@@ -107,32 +107,52 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  it("renders family chips, Now, Visit, scope, and Filters beside the bar", () => {
+  it("is only the Filters button, with a red bubble when a filter is on", () => {
+    const rest = renderToStaticMarkup(
+      <SearchFilterRow active={false} onOpenFilters={() => {}} />,
+    );
+    expect(rest).toContain("Filters");
+    expect(rest).toContain("lucide-sliders-horizontal");
+    expect(rest).not.toContain("bg-destructive");
+    expect(rest).not.toContain("Restaurants");
+    expect(rest).not.toContain("Bars");
+    expect(rest).not.toContain("Now");
+    expect(rest).not.toContain("Visit");
+    expect(rest).not.toContain("🇲🇽");
+    expect(rest).not.toContain("Search filters");
+
+    const on = renderToStaticMarkup(
+      <SearchFilterRow active onOpenFilters={() => {}} />,
+    );
+    expect(on).toContain("Filters (active)");
+    expect(on).toContain("bg-destructive");
+    expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
+    expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
+  });
+});
+
+describe("SearchMapFilters", () => {
+  it("shows Status and Category only — no distance or time", () => {
     const html = renderToStaticMarkup(
-      <SearchFilterRow
-        filters={DISCOVERY_FILTER_DEFAULTS}
-        countryCode="MX"
-        locationSet
-        onOpenScope={() => {}}
-        onOpenFilters={() => {}}
+      <SearchMapFilters
+        onClose={() => {}}
+        categoryOptions={[{ slug: "night_club", label: "Nightclub" }]}
+        count={4}
       />,
     );
-    expect(html).toContain("Search filters");
+    expect(html).toContain("Status");
+    expect(html).toContain("Not on Mesita");
+    expect(html).toContain("Created");
+    expect(html).toContain("Enriched");
+    expect(html).toContain("Partnered");
+    expect(html).toContain("Promoted");
+    expect(html).toContain("Category");
     expect(html).toContain("Restaurants");
-    expect(html).toContain("Bars");
-    expect(html).toContain("Now");
-    expect(html).toContain("Visit");
-    expect(html).toContain("Filters");
-    expect(html).toContain("🇲🇽");
-    expect(html).toContain("location set");
-    expect(html).toContain("lucide-compass");
-    expect(html).toContain("lucide-sliders-horizontal");
-    expect(html.indexOf("Filters")).toBeLessThan(html.indexOf("Restaurants"));
-    expect(html).not.toContain("🍽️");
-    expect(html).not.toContain("Romantic");
-    expect(html).not.toContain("Italian");
-    expect(read("SearchFilterRow.tsx")).not.toContain("border-border");
-    expect(read("SearchFilterRow.tsx")).not.toContain("family.emoji");
+    expect(html).toContain("Show 4 places");
+    expect(html).not.toContain("Distance tolerance");
+    expect(html).not.toContain("Anytime");
+    expect(html).not.toContain("I want to");
+    expect(html).not.toContain("Prioritize");
   });
 });
 
@@ -212,22 +232,35 @@ describe("Search map catalog reloads only when the guest asks", () => {
   });
 });
 
-describe("Search map puts the query pill and filter strip on one row", () => {
-  it("cuts the nearby catalog with Discovery predicates from a chip strip beside the bar", () => {
+describe("Search map puts the query pill and Filters button on one row", () => {
+  it("cuts the nearby catalog with map Status + Category, never a chip strip", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toContain("applyDiscoveryFilters");
-    expect(src).toContain("useDiscoveryFilters");
-    expect(src).toContain("DiscoveryFilters");
+    expect(src).toContain("applyMapFilters");
+    expect(src).toContain("useMapFilters");
+    expect(src).toContain("SearchMapFilters");
     expect(src).toContain("SearchFilterRow");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
     expect(src).toContain("flex min-w-0 items-center gap-2");
-    expect(src).toContain("flex-[1.15] basis-0");
-    expect(src).toMatch(
-      /<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/,
+    expect(src).toContain("min-w-0 flex-1");
+    expect(src).not.toContain("applyDiscoveryFilters");
+    expect(src).not.toContain("useDiscoveryFilters");
+    expect(src).not.toContain("DiscoveryFilters");
+    expect(src).not.toContain("flex-[1.15]");
+    expect(src).not.toContain("SearchScopeSheet");
+    expect(src).toMatch(/<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/);
+    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
+    expect(read("SearchMapFilters.tsx")).toContain("Status");
+    expect(read("SearchMapFilters.tsx")).toContain("Category");
+    expect(read("SearchMapFilters.tsx")).toContain("MAP_STATUS_OPTIONS");
+    expect(read("../../../lib/map-filters-engine.ts")).toContain(
+      '"Not on Mesita"',
     );
-    expect(read("SearchBar.tsx")).not.toMatch(
-      /Search passes `onOpenScope`/,
-    );
+    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Created"');
+    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Enriched"');
+    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Partnered"');
+    expect(read("../../../lib/map-filters-engine.ts")).toContain('"Promoted"');
+    expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
+    expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
@@ -322,23 +355,13 @@ describe("shouldReloadNearbyCatalog", () => {
 
   it("ignores a ~110 m nudge at city zoom", () => {
     expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.501, lng: -100.3 },
-        cityBox,
-        5,
-      ),
+      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, cityBox, 5),
     ).toBe(false);
   });
 
   it("reloads after a neighborhood-scale pan", () => {
     expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.554, lng: -100.3 },
-        cityBox,
-        5,
-      ),
+      shouldReloadNearbyCatalog(last, { lat: 25.554, lng: -100.3 }, cityBox, 5),
     ).toBe(true);
   });
 
@@ -348,20 +371,10 @@ describe("shouldReloadNearbyCatalog", () => {
     expect(clampReloadMinKm(99)).toBe(20);
     expect(clampReloadMinKm(undefined)).toBe(5);
     expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.554, lng: -100.3 },
-        wideBox,
-        5,
-      ),
+      shouldReloadNearbyCatalog(last, { lat: 25.554, lng: -100.3 }, wideBox, 5),
     ).toBe(false);
     expect(
-      shouldReloadNearbyCatalog(
-        last,
-        { lat: 25.5, lng: -96 },
-        wideBox,
-        5,
-      ),
+      shouldReloadNearbyCatalog(last, { lat: 25.5, lng: -96 }, wideBox, 5),
     ).toBe(true);
   });
 });

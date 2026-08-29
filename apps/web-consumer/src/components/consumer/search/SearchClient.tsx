@@ -3,9 +3,9 @@
 // Search — the consumer catalog map. Composition layer for the page:
 //
 //   • Base: SearchMap fills the body (red Mesita pins, gray Google, blue user).
-//   • Top overlay: one row — query pill and filter strip, separated.
-//     Categories + Filters + Now/Visit/scope live on the strip, not in
-//     the pill. The same Discovery filter store as Swipe cuts this catalog.
+//   • Top overlay: one row — query pill and a Filters button. Status
+//     and Category live in the map Filters sheet, not as chips on the
+//     canvas. Distance and time are not map knobs. Swipe keeps Discovery.
 //   • Bottom overlay (idle): catalog rail of the three Map lanes around
 //     the camera (partners, then Mesita, then Google; overlaps drop).
 //     Panning never reloads that set — Search here under the bar does,
@@ -46,19 +46,12 @@ import {
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
-import { DiscoveryFilters } from "@/components/consumer/DiscoveryFilters";
-import {
-  applyDiscoveryFilters,
-  deriveCategoryOptions,
-  hasDiscoveryPredicates,
-} from "@/lib/discovery-filters-engine";
-import {
-  resetDiscoveryFilters,
-  useDiscoveryFilters,
-} from "@/lib/use-discovery-filters";
+import { deriveCategoryOptions } from "@/lib/discovery-filters-engine";
+import { applyMapFilters, mapFiltersAreActive } from "@/lib/map-filters-engine";
+import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { SearchBar } from "./SearchBar";
 import { SearchFilterRow } from "./SearchFilterRow";
-import { SearchScopeSheet } from "./SearchScopeSheet";
+import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import {
   EmptySearchPrompt,
@@ -143,16 +136,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [scopeOpen, setScopeOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filters = useDiscoveryFilters();
-  const [locating, setLocating] = useState(false);
-  const [freshFix, setFreshFix] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
+  const filters = useMapFilters();
   const scope = useSearchScope();
-  const deviceLocation = freshFix ?? userLocation;
-  const location = scope.locationOptOut ? null : deviceLocation;
+  const location = scope.locationOptOut ? null : userLocation;
   const center = location;
 
   const trimmed = query.trim();
@@ -168,7 +155,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [places, distanceCenter],
   );
   const catalog = useMemo(
-    () => applyDiscoveryFilters(nearby, filters),
+    () => applyMapFilters(nearby, filters),
     [nearby, filters],
   );
   const categoryOptions = useMemo(
@@ -176,9 +163,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [nearby],
   );
   const filtersCutCatalog =
-    nearby.length > 0 &&
-    catalog.length === 0 &&
-    hasDiscoveryPredicates(filters);
+    nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
   const searchPins = useMemo(
     () => buildSearchMapPins(predictions, catalog),
@@ -275,10 +260,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     // First GPS at mount: the first tile idle fetches that camera. A
     // later fix, or a first fix after the default-city tile already
     // loaded, reloads once when Recentre settles.
-    if (
-      !firstFix ||
-      catalogIsStale(lastFetchedCenter.current, next)
-    ) {
+    if (!firstFix || catalogIsStale(lastFetchedCenter.current, next)) {
       forceNextLoad.current = true;
     }
   }, [locationKey]);
@@ -547,28 +529,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     });
   }, [idle, railCollapsed, railSelectedId, catalog, railIndex]);
 
-  const handleUseLocation = () => {
-    setLocating(true);
-    forceNextLoad.current = true;
-    scope.setLocationOptOut(false);
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocating(false);
-      toast.error("Location isn't available in this browser.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setFreshFix({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-      },
-      () => {
-        setLocating(false);
-        toast.error("Couldn't read your location.");
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
-    );
-  };
-
   const dismissSearch = () => {
     updateQuery("");
     setSearchOpen(false);
@@ -593,7 +553,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
-      {/* Base layer — pins are the nearby catalog after Discovery predicates. */}
+      {/* Base layer — pins are the nearby catalog after map Status + Category. */}
       <SearchMap
         apiKey={apiKey}
         places={catalog}
@@ -609,14 +569,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query pill + filter strip on one row, then
-          a content-height dropdown (empty prompt or live results) that
-          never uses a fixed 70% panel.
+      {/* Floating top overlay — query pill + Filters button. Status and
+          Category open in the sheet. No chip strip on the canvas.
           max-h-[70%] caps long lists so they scroll and the map stays visible
           below. Ask AI lives on Home › Chat. */}
       <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-[8.5rem] flex-[1.15] basis-0">
+          <div className="min-w-0 flex-1">
             <SearchBar
               query={query}
               showClear={Boolean(query || searchOpen)}
@@ -627,15 +586,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             />
           </div>
           {idle && (
-            <div className="min-w-0 flex-1 basis-0">
-              <SearchFilterRow
-                filters={filters}
-                countryCode={scope.country}
-                locationSet={location != null}
-                onOpenScope={() => setScopeOpen(true)}
-                onOpenFilters={() => setFiltersOpen(true)}
-              />
-            </div>
+            <SearchFilterRow
+              active={mapFiltersAreActive(filters)}
+              onOpenFilters={() => setFiltersOpen(true)}
+            />
           )}
         </div>
 
@@ -688,9 +642,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onRailScroll={handleRailScroll}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
-        onResetFilters={
-          filtersCutCatalog ? resetDiscoveryFilters : undefined
-        }
+        onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
         setRailCardRef={(placeId, el) => {
           railRefs.current.set(placeId, el);
         }}
@@ -701,30 +653,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onClose={() => setFiltersOpen(false)}
         ariaLabel="Filters"
       >
-        <DiscoveryFilters
+        <SearchMapFilters
           onClose={() => setFiltersOpen(false)}
           categoryOptions={categoryOptions}
           count={catalog.length}
-          hasLocation={location != null}
-        />
-      </LocalSheet>
-
-      <LocalSheet
-        open={scopeOpen}
-        onClose={() => setScopeOpen(false)}
-        ariaLabel="Place search"
-      >
-        <SearchScopeSheet
-          country={scope.country}
-          locationSet={location != null}
-          locating={locating}
-          onCountry={scope.setCountry}
-          onUseLocation={handleUseLocation}
-          onClearLocation={() => {
-            scope.setLocationOptOut(true);
-            setFreshFix(null);
-          }}
-          onClose={() => setScopeOpen(false)}
         />
       </LocalSheet>
 
