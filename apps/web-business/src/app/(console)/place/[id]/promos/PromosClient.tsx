@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, PhoneCall } from "lucide-react";
 import { Section } from "@/components/shared";
 import { apiUpdatePlace, type MyPlace } from "@/lib/api/places";
 import { apiChangeSubscription } from "@/lib/api/subscription";
@@ -20,6 +20,7 @@ import {
 import { coercePromosConfig, type PromosConfig } from "@/lib/business/promos";
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { CheckPinCard } from "./CheckPinCard";
 import { FaqsBox } from "./FaqsBox";
 import { LifecycleStepper } from "./LifecycleStepper";
 import { MembershipBox } from "./MembershipBox";
@@ -57,12 +58,24 @@ function buildStrategyPayload(
   return payload;
 }
 
+// "+16282960710" → "+1 (628) 296-0710"; anything non-NANP passes through.
+function formatLine(e164: string): string {
+  const m = e164.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  return m ? `+1 (${m[1]}) ${m[2]}-${m[3]}` : e164;
+}
+
 export function PromosClient({
   place,
   rewardsConfig,
+  isOwner,
+  checkPin,
+  placeLine,
 }: {
   place: MyPlace;
   rewardsConfig: unknown;
+  isOwner: boolean;
+  checkPin: string | null;
+  placeLine: string | null;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -195,6 +208,40 @@ export function PromosClient({
 
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
 
+  // The capability band — what this place offers through Mesita, moved off
+  // Settings (Pato live 2026-08-30) so offerings sit with the offerings.
+  // It renders in BOTH modes on purpose: Reservations and the Check PIN
+  // belong to any Listed place, so a place that has not joined Partnership
+  // still reaches them under the pitch.
+  const capabilityBand = (
+    <>
+      {isOwner ? (
+        <CheckPinCard projectId={place.id} initialPin={checkPin} />
+      ) : null}
+
+      {placeLine ? (
+        <section className="bg-card border-border flex items-start gap-3 rounded-2xl border p-4">
+          <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full">
+            <PhoneCall className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-foreground text-sm font-semibold">
+              Mesita reservations line
+            </h2>
+            <p className="text-muted-foreground mt-0.5 text-[13px] leading-snug">
+              Mesita&apos;s reservation AI calls your place from{" "}
+              <span className="text-foreground font-medium whitespace-nowrap">
+                {formatLine(placeLine)}
+              </span>
+              . It&apos;s also the number to call about any Mesita booking —
+              save it so your team recognizes it.
+            </p>
+          </div>
+        </section>
+      ) : null}
+    </>
+  );
+
   if (sell) {
     return (
       <div className="flex flex-col gap-4 px-4 pt-5 pb-10">
@@ -205,6 +252,8 @@ export function PromosClient({
           error={error}
           onJoin={() => void commitJoin()}
         />
+
+        {capabilityBand}
       </div>
     );
   }
@@ -303,6 +352,8 @@ export function PromosClient({
         member={subscribed}
         cfg={cfg}
       />
+
+      {capabilityBand}
 
       {modalStrategy && (
         <ProductModal
