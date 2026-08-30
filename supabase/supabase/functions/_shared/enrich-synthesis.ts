@@ -76,6 +76,11 @@ export async function synthesizeProfile(input: {
   name: string;
   locationLine: string;
   category: string | null;
+  // The branch anchor for the FRANCHISE RULE below: zone is the colonia /
+  // neighborhood, city the fallback. Both come from the Google spine the
+  // research stage persisted — synthesis never has to guess where it is.
+  zone?: string | null;
+  city?: string | null;
   igBio: string;
   googleReviewsText: string;
   // P2 (SERP) web-grounded editorial color — SOFT context only, never
@@ -84,9 +89,15 @@ export async function synthesizeProfile(input: {
   serpSummary?: string | null;
 }): Promise<{ parsed: ProfileResult | null; diag: Record<string, unknown> }> {
   const {
-    openaiKey, model, name, locationLine, category, igBio, googleReviewsText,
-    serpSummary,
+    openaiKey, model, name, locationLine, category, zone, city, igBio,
+    googleReviewsText, serpSummary,
   } = input;
+
+  // Where this branch actually is — the qualifier the franchise rule spends.
+  const branchAnchor = [
+    zone ? `Neighborhood / zone: ${zone}` : "",
+    city ? `City: ${city}` : "",
+  ].filter(Boolean).join(" · ");
 
   const grounding = [
     igBio ? `Instagram bio: ${igBio}` : "",
@@ -118,13 +129,27 @@ export async function synthesizeProfile(input: {
     `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
     `dishes or experiences, history or neighborhood, why visit) — only when ` +
     `the sources support it. No filler or invented detail. ` +
-    `"mesita_name" is the clean public display name: the place's label ` +
-    `stripped of chain suffixes, slogans, legal forms and city tags, in ` +
-    `proper case (e.g. "Tim Hortons TEC Campus" → "Tim Hortons"); return ` +
-    `null when the given name is already clean. "description" and ` +
+    `"mesita_name" is the clean public display name, in proper case: strip ` +
+    `slogans, legal forms (S.A. de C.V., LLC, Inc.), store numbers and ` +
+    `internal branch codes. ` +
+    `FRANCHISE RULE — a chain branch is named BRAND + WHERE IT IS. When the ` +
+    `place is one location of a franchise or chain (a brand with many ` +
+    `branches: Starbucks, Tim Hortons, Domino's, Carl's Jr.), the bare brand ` +
+    `is NOT a usable name — every branch in the city would read identically. ` +
+    `Keep the locating qualifier the given name already carries, or append ` +
+    `the neighborhood/zone from the LOCATION ANCHOR below when it carries ` +
+    `none: "Starbucks" in Polanco → "Starbucks Polanco"; "Tim Hortons TEC ` +
+    `Campus" stays "Tim Hortons TEC Campus". Use the city only when no zone ` +
+    `is given, and never invent a branch or a location the anchor does not ` +
+    `show. An INDEPENDENT place — one location, not a chain — is NOT a ` +
+    `franchise: never bolt a zone onto it. Return null when the given name ` +
+    `already follows this rule. "description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
+    (branchAnchor
+      ? `\n\nLOCATION ANCHOR (the franchise rule spends this): ${branchAnchor}`
+      : "") +
     (grounding
       ? `\n\n--- SOURCE MATERIAL ---\n${grounding}`
       : "\n\n(No extra source material was gathered.)");

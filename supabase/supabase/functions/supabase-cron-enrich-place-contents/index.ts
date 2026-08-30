@@ -158,6 +158,10 @@ serveEnrichStage("contents", async (admin, env, row) => {
       name,
       locationLine: gathered.locationLine,
       category,
+      // The franchise rule's qualifier — the spine's own zone/city, so a
+      // chain branch is named "Starbucks Polanco", never bare "Starbucks".
+      zone: (place.zone ?? null) as string | null,
+      city: (place.city ?? null) as string | null,
       igBio,
       googleReviewsText,
       serpSummary,

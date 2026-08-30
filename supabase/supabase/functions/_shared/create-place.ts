@@ -271,6 +271,8 @@ export async function createMinimalPlace(opts: {
         const door = await synthesizeDoorProfile(admin, openaiKey, {
           name: saved.name,
           address: (place.address ?? null) as string | null,
+          zone: (place.zone ?? null) as string | null,
+          city: (place.city ?? null) as string | null,
           googleTypes: Array.isArray(place.google_types)
             ? place.google_types as string[]
             : null,
