@@ -5,6 +5,7 @@ import { PageErrorState } from "@/components/business/PageErrorState";
 import { EmptyState } from "@/components/shared";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getPlaceOverview } from "@/lib/api/place";
+import { listPlaceReservations } from "@/lib/api/reservations";
 import { promosPath } from "@/lib/business-route-contract";
 import { errMsg } from "@/lib/utils";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -63,10 +64,33 @@ export default async function BusinessPromosPage({
 
   const active = overview.active?.place ?? overview.places[0];
 
+  // The capability band. check_pin rides only on overview.active for owners
+  // — never on the places[] rows — so a non-owner simply gets no card. The
+  // reservation line is informational: if the call fails that block hides,
+  // it never fails the page.
+  const isOwner = (overview.active?.place ?? null)?.my_role === "owner";
+  const checkPin =
+    typeof overview.active?.place?.check_pin === "string"
+      ? overview.active.place.check_pin
+      : null;
+  let placeLine: string | null = null;
+  try {
+    placeLine = (await listPlaceReservations(supabase, id, { limit: 1 })).lines
+      .place;
+  } catch (err) {
+    console.error("[promos] business-web-list-reservations:", err);
+  }
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-lg pb-6">
-        <PromosClient place={active} rewardsConfig={overview.rewardsConfig} />
+        <PromosClient
+          place={active}
+          rewardsConfig={overview.rewardsConfig}
+          isOwner={isOwner}
+          checkPin={checkPin}
+          placeLine={placeLine}
+        />
       </div>
     </div>
   );
