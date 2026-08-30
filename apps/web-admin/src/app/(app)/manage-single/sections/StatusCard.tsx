@@ -18,7 +18,7 @@
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //   Mesita Pay places.mesita_pay_enabled — cleared to accept the in-Mesita
 //              card rail when it goes live (intent bit; write-door rejected)
-//   Accepts Yums places.yums_enabled — cleared to accept Yums (Credits)
+//   Mesita Yums  places.yums_enabled — cleared to accept Yums (Credits)
 //              when they land (same contract)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
@@ -417,7 +417,7 @@ export function StatusCard({
           detail={partnerDetail}
         />
         <StatusRow
-          name="Promoted"
+          name="Visit Rewards"
           on={promotingLevel > 0}
           chip={promotingLevelChip(promotingLevel)}
           tint="pink"
@@ -431,7 +431,7 @@ export function StatusCard({
           detail={mesitaPayDetail}
         />
         <StatusRow
-          name="Accepts Yums"
+          name="Mesita Yums"
           on={yums === true}
           chip={statusBoolChip(yums)}
           tint="orange"

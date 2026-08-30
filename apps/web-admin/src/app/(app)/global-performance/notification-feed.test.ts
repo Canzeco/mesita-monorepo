@@ -103,7 +103,7 @@ describe("intakeStatusLine", () => {
     expect(intakeStatusLine(created)).not.toMatch(/new place/i);
   });
 
-  it("names Enriched · Verified · Partnered · Promoted when those facts are on", () => {
+  it("names Enriched · Verified · Partnered · Visit Rewards when those facts are on", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -119,7 +119,7 @@ describe("intakeStatusLine", () => {
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Enriched · Verified · Partnered · Promoted",
+      "Created · Active · Listed · Enriched · Verified · Partnered · Visit Rewards",
     );
   });
 
@@ -150,7 +150,7 @@ describe("intakeStatusLine", () => {
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Mesita Pay · Accepts Yums",
+      "Created · Active · Listed · Mesita Pay · Mesita Yums",
     );
     // Engineless facts never render meta chips until a stamper exists
     // (the gateway / Credits PRs lift the intakeFactChips filter).

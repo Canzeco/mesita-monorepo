@@ -701,6 +701,9 @@ verify_jwt = true
 [functions.admin-web-set-place-verified]
 verify_jwt = true
 
+[functions.admin-web-set-place-rails]
+verify_jwt = true
+
 # Reservationist product + cron companions not previously listed.
 [functions.consumer-web-cancel-reservation]
 verify_jwt = true

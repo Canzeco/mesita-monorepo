@@ -48,13 +48,14 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_status: string | null;
   listing_type: string | null;
-  // ── The eleven status facts the catalog table renders, in order:
-  //    Created · Active · Listed · Requested · Enriched · Enriching ·
-  //    Verified · Partnered · Promoted · Mesita Pay · Accepts Yums.
-  //    Bools except Requested (0…n) and Promoted (0|1|2). All derived
-  //    (or projected) in admin-web-search-places, except Enriching which
-  //    is content_status generating/queued (MESITA-453 whole-pipeline).
-  //    The last two are stored acceptance intent bits on places.
+  // ── The status facts (labels: Created · Active · Listed · Requested ·
+  //    Enriched · Enriching · Verified · Partnered · Visit Rewards ·
+  //    Mesita Pay · Mesita Yums) plus the quick-view commercial block
+  //    (promotion · pickup · delivery). Bools except Requested (0…n),
+  //    Visit Rewards (0|1|2) and promotion (0–7). All derived (or
+  //    projected) in admin-web-search-places, except Enriching which is
+  //    content_status generating/queued (MESITA-453 whole-pipeline). The
+  //    acceptance bits are stored operator toggles on places.
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
@@ -91,11 +92,18 @@ export type PlaceHit = {
   promoting: boolean;
   /** How hard. Engine 0-3; operator display is 0|1|2 (Dominant → 2). */
   promoting_level: 0 | 1 | 2 | 3;
-  /** places.mesita_pay_enabled — cleared to accept Mesita Pay when the rail
-   *  goes live. Intent bit; no engine flips it yet, so the fleet reads false. */
+  /** places.mesita_pay_enabled — the operator's "accepts Mesita Pay" toggle
+   *  (Partner tab). The gateway engine still gates the rail itself. */
   mesita_pay: boolean;
-  /** places.yums_enabled — cleared to accept Yums (Credits) when they land. */
+  /** places.yums_enabled — the operator's "accepts Yums" toggle. */
   yums: boolean;
+  /** places.pickup_orders_enabled — offers pickup orders (intent bit). */
+  pickup: boolean;
+  /** places.delivery_orders_enabled — offers delivery orders (intent bit). */
+  delivery: boolean;
+  /** The Promotion score, 0–7 — offering completeness, shaped server-side
+   *  (promotion-score.ts twins) so the catalog and the Promos bar agree. */
+  promotion: number;
 };
 
 // The search EF only guarantees id/name — every other field may be absent,
@@ -169,6 +177,12 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     promoting_level: raw.promoting_level ?? 0,
     mesita_pay: raw.mesita_pay ?? false,
     yums: raw.yums ?? false,
+    pickup: raw.pickup ?? false,
+    delivery: raw.delivery ?? false,
+    promotion:
+      typeof raw.promotion === "number" && Number.isFinite(raw.promotion)
+        ? raw.promotion
+        : 0,
   };
 }
 
@@ -340,6 +354,10 @@ export type AdminPlace = {
   mesita_pay_enabled?: boolean;
   /** places.yums_enabled — same contract as mesita_pay_enabled. */
   yums_enabled?: boolean;
+  /** places.pickup_orders_enabled — order-rail intent bit, same contract. */
+  pickup_orders_enabled?: boolean;
+  /** places.delivery_orders_enabled — order-rail intent bit, same contract. */
+  delivery_orders_enabled?: boolean;
   [k: string]: unknown;
 };
 
@@ -385,6 +403,30 @@ export async function setPlacePlan(
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
+}
+
+/** The four rail toggles' post-write truth, from admin-web-set-place-rails. */
+export type PlaceRails = {
+  mesita_pay: boolean;
+  yums: boolean;
+  pickup: boolean;
+  delivery: boolean;
+};
+
+// The Partner tab's rail toggles — the ONE writer for the acceptance intent
+// bits (places.mesita_pay_enabled · yums_enabled · pickup_orders_enabled ·
+// delivery_orders_enabled). One-caller ACL; never business-web. Engines still
+// gate each rail — a toggle records what the place OFFERS.
+export async function setPlaceRails(
+  placeId: string,
+  rails: Partial<PlaceRails>,
+): Promise<Result<PlaceRails>> {
+  const r = await efInvoke<{ rails: PlaceRails }>("admin-web-set-place-rails", {
+    placeId,
+    ...rails,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data.rails };
 }
 
 /** List or unlist the place on Mesita — the ONLY write path to

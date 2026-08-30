@@ -151,7 +151,7 @@ export function generalHeaderFacts(input: {
     },
     {
       key: "promoting",
-      label: "Promoted",
+      label: "Visit Rewards",
       on: level > 0,
       chip: promotingLevelChip(level),
     },
@@ -163,7 +163,7 @@ export function generalHeaderFacts(input: {
     },
     {
       key: "yums",
-      label: "Accepts Yums",
+      label: "Mesita Yums",
       on: yums,
       chip: statusBoolChip(yums),
     },

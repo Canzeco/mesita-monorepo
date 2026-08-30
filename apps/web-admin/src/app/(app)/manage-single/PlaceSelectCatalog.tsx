@@ -26,6 +26,7 @@ import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
 import { ErrorNote } from "@/components/ErrorNote";
 import { CldrRegionInput } from "@/components/CldrRegionInput";
 import { OPERATOR_PROMOTING_LABEL, operatorPromotingLevel } from "@/lib/status-vocabulary";
+import { PROMOTION_SCORE_MAX } from "@/lib/business/promotion-score";
 
 // Minimum characters before a query triggers Mesita/Google search logic.
 const MIN_QUERY_LENGTH = 2;
@@ -285,30 +286,23 @@ export function PlaceSelectCatalog() {
         {trimmed.length === 0 && hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The pipeline facts run left to right — created → active →
-                  listed → requested → enriched → enriching → verified →
-                  partnered → promoted — and answer "how far along is it".
-                  The two TRAILING columns are not pipeline rungs: Mesita Pay
-                  and Accepts Yums are settlement-acceptance intent bits
-                  (false fleet-wide until their engines land). Category, Zone
-                  and Google reviews are gone — they describe the place.
-                  Active is Google's OPERATIONAL fact, not Mesita Listed. */}
-              <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-sm">
+              {/* The quick view is the COMMERCIAL glance (Pato gate
+                  2026-08-29): only the five columns that answer "how much
+                  does this place offer through Mesita" — Promotion (the 0–7
+                  score) · Partner · Visit Rewards (0|1|2) · Mesita Pay ·
+                  Mesita Yums. The pipeline facts (Created … Verified) left
+                  this table on purpose; ops truth lives on the place header
+                  chips, the Admin-tab Status box and Multiple Places. */}
+              <table className="w-full min-w-[900px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-4 py-3 font-semibold">Photo</th>
                     <th className="px-4 py-3 font-semibold">Name</th>
-                    <th className="px-4 py-3 text-center font-semibold">Created</th>
-                    <th className="px-4 py-3 text-center font-semibold">Active</th>
-                    <th className="px-4 py-3 text-center font-semibold">Listed</th>
-                    <th className="px-4 py-3 text-center font-semibold">Requested</th>
-                    <th className="px-4 py-3 text-center font-semibold">Enriched</th>
-                    <th className="px-4 py-3 text-center font-semibold">Enriching</th>
-                    <th className="px-4 py-3 text-center font-semibold">Verified</th>
-                    <th className="px-4 py-3 text-center font-semibold">Partnered</th>
-                    <th className="px-4 py-3 text-center font-semibold">Promoted</th>
+                    <th className="px-4 py-3 text-center font-semibold">Promotion</th>
+                    <th className="px-4 py-3 text-center font-semibold">Partner</th>
+                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Visit Rewards</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Pay</th>
-                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Accepts Yums</th>
+                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Yums</th>
                     <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
                 </thead>
@@ -479,35 +473,7 @@ function PlaceCatalogRow({
         <p className="truncate font-semibold">{googleName}</p>
       </td>
       <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.seeded} trueLabel="Yes" falseLabel="No" />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <ActiveCell
-          status={place.business_status}
-          seenAt={place.business_status_at}
-        />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <RequestCountCell count={place.request_count} />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <BoolCell
-          value={
-            place.enrich_pulse_total > 0 &&
-            place.enrich_pulse === place.enrich_pulse_total
-          }
-          trueLabel="Yes"
-          falseLabel="No"
-        />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.enriching} trueLabel="Yes" falseLabel="No" />
-      </td>
-      <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
+        <PromotionCell score={place.promotion} />
       </td>
       <td className="px-4 py-3.5 text-center">
         <BoolCell value={place.partner} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
@@ -528,24 +494,41 @@ function PlaceCatalogRow({
   );
 }
 
-// REQUESTED is 0…n, not a yes/no: how many guests asked for this profile.
-function RequestCountCell({ count }: { count: number }) {
-  const n = Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0;
-  const title = `${n} guest request${n === 1 ? "" : "s"}`;
+// PROMOTION is the 0–7 offering score (promotion-score.ts twins): Partner +1
+// · Visit Rewards +0/1/2 · each accepted rail +1. Shaped server-side so this
+// cell and the Partner tab's Promos bar can never disagree. Display-only —
+// never a discovery input ("Rank is never for sale").
+function PromotionCell({ score }: { score: number }) {
+  const max = PROMOTION_SCORE_MAX;
+  const n = Number.isFinite(score) ? Math.max(0, Math.min(max, Math.trunc(score))) : 0;
+  const title = `Promotion ${n} of ${max} — offerings summed`;
   return (
-    <span
-      className={
-        "type-label font-semibold tabular-nums " +
-        (n === 0 ? "text-muted-foreground" : "text-foreground")
-      }
-      title={title}
-    >
-      {n}
+    <span className="inline-flex items-center gap-1.5" title={title}>
+      <span
+        className={
+          "type-label font-semibold tabular-nums " +
+          (n === 0 ? "text-muted-foreground" : "text-foreground")
+        }
+      >
+        {n}
+      </span>
+      <span className="flex gap-[2px]" aria-hidden>
+        {Array.from({ length: max }, (_, i) => i + 1).map((rung) => (
+          <span
+            key={rung}
+            className={
+              "h-2 w-1 rounded-[1px] " +
+              (n >= rung ? "bg-muted-foreground/40" : "bg-muted-foreground/15")
+            }
+          />
+        ))}
+      </span>
+      <span className="sr-only">{title}</span>
     </span>
   );
 }
 
-// PROMOTING is 0 | 1 | 2, not a yes/no: how hard a place is discounting
+// VISIT REWARDS is 0 | 1 | 2, not a yes/no: how hard a place is discounting
 // right now. 0 is not "no data" — it means a guest gets nothing here at this
 // moment, which is also true of a paid Aggressive place whose promo lane is
 // paused. Engine Dominant (3) displays as 2.
@@ -579,54 +562,10 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
   );
 }
 
-function ActiveCell({
-  status,
-  seenAt,
-}: {
-  status: string | null;
-  seenAt: string | null;
-}) {
-  const seen =
-    seenAt && !Number.isNaN(new Date(seenAt).getTime())
-      ? ` (seen ${new Date(seenAt).toLocaleDateString()})`
-      : "";
-  if (status === "OPERATIONAL") {
-    return (
-      <span title={`Google reports this business as open and trading${seen}`}>
-        <BoolCell value={true} trueLabel="Yes" falseLabel="No" />
-      </span>
-    );
-  }
-  if (status === "CLOSED_TEMPORARILY") {
-    return (
-      <span title={`Temporarily closed${seen}`}>
-        <BoolCell value={false} trueLabel="Yes" falseLabel="No" />
-      </span>
-    );
-  }
-  if (status === "CLOSED_PERMANENTLY") {
-    return (
-      <span title={`Permanently closed${seen}`}>
-        <BoolCell value={false} trueLabel="Yes" falseLabel="No" />
-      </span>
-    );
-  }
-  return (
-    <span
-      title="Google has not reported a business status for this listing yet."
-      className="text-muted-foreground type-label font-semibold"
-    >
-      ?
-    </span>
-  );
-}
-
-// A false cell used to render as plain grey text, which read as "no data" for
-// every column alike. It isn't the same fact twice: Created/Listed/Verified are
-// PENDING — something the pipeline or an operator still owes — while Partner is
-// simply a state (a free place is not a defect). So a false state gets a real
-// pill, and `falseTone` says which kind of false it is: rose for pending, plain
-// grey for a fact that is merely not true.
+// Every quick-view fact is a STATE, not a debt — a free place or an
+// un-accepted rail is not a defect — so false renders as the plain grey pill
+// (`falseTone="neutral"`). The rose "pending" tone survives for any future
+// column where false means something is still owed.
 function BoolCell({
   value,
   trueLabel,

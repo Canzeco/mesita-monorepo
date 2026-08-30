@@ -24,6 +24,7 @@ import {
   placePromotingLevel,
 } from "../_shared/place-promoting.ts";
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-status.ts";
+import { promotionScore } from "../_shared/promotion-score.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
 import {
@@ -183,7 +184,10 @@ Deno.serve(async (req) => {
   // it there means rebuilding the view + its two INSTEAD OF triggers, a
   // documented recurring pain point, for a field only two admin EFs need.
   const enrichment = new Map<string, EnrichmentMap>();
-  const acceptance = new Map<string, { mesitaPay: boolean; yums: boolean }>();
+  const acceptance = new Map<
+    string,
+    { mesitaPay: boolean; yums: boolean; pickup: boolean; delivery: boolean }
+  >();
   if (ids.length > 0) {
     const [verificationRes, enrichmentRes] = await Promise.all([
       admin
@@ -191,12 +195,14 @@ Deno.serve(async (req) => {
         .select("place_id")
         .eq("status", "approved")
         .in("place_id", ids),
-      // The two acceptance intent bits ride the same places-direct read:
+      // The four acceptance intent bits ride the same places-direct read:
       // admin-only columns, deliberately NEVER added to the profiles view
       // (the view is SELECT-granted to the anon key, so a view column is
       // publicly enumerable — and rebuilding it + its INSTEAD OF triggers
       // is the documented pain this side-read exists to avoid).
-      admin.from("places").select("id, enrichment, mesita_pay_enabled, yums_enabled").in(
+      admin.from("places").select(
+        "id, enrichment, mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled",
+      ).in(
         "id",
         ids,
       ),
@@ -222,10 +228,13 @@ Deno.serve(async (req) => {
       acceptance.set(String(r.id), {
         mesitaPay: r.mesita_pay_enabled === true,
         yums: r.yums_enabled === true,
+        pickup: r.pickup_orders_enabled === true,
+        delivery: r.delivery_orders_enabled === true,
       });
     }
   }
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
+  const NO_ACCEPTANCE = { mesitaPay: false, yums: false, pickup: false, delivery: false };
 
   // Trim photos to the first thumbnail to keep the payload small.
   // `name` is the generated display column (mesita_name → google_name); the
@@ -293,11 +302,26 @@ Deno.serve(async (req) => {
       promoting_level: placePromotingLevel(
         v as Parameters<typeof placePromotingLevel>[0],
       ),
-      // Settlement acceptance INTENT BITS (places.mesita_pay_enabled /
-      // places.yums_enabled) — stored, unwritable at the place-doc door,
-      // false fleet-wide until their engines land (Pato gate 2026-08-29).
-      mesita_pay: (acceptance.get(id) ?? { mesitaPay: false }).mesitaPay,
-      yums: (acceptance.get(id) ?? { yums: false }).yums,
+      // Acceptance INTENT BITS (places.*_enabled) — operator toggles on the
+      // Partner tab (admin-web-set-place-rails). Engines still gate each
+      // rail; the bits say what the place OFFERS (Pato gates 2026-08-29).
+      mesita_pay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
+      yums: (acceptance.get(id) ?? NO_ACCEPTANCE).yums,
+      pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
+      delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
+      // The Promotion score — offering completeness as ONE number, 0–7.
+      // Derived here so the catalog column and the Partner tab's Promos bar
+      // agree by construction. Display-only: NEVER a discovery input.
+      promotion: promotionScore({
+        partner: isPaidPlan((v.plan as string | null) ?? null),
+        visitRewardsLevel: placePromotingLevel(
+          v as Parameters<typeof placePromotingLevel>[0],
+        ),
+        mesitaPay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
+        yums: (acceptance.get(id) ?? NO_ACCEPTANCE).yums,
+        pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
+        delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
+      }),
       photo: Array.isArray(v.photos) && v.photos.length > 0 ? v.photos[0] : null,
     };
   });

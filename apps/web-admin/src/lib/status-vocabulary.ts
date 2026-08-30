@@ -1,12 +1,14 @@
 // Status — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
 //   STATUSES (11) Created · Active · Listed · Enriched · Enriching ·
-//                 Verified · Partnered · Mesita Pay · Accepts Yums are bools
+//                 Verified · Partnered · Mesita Pay · Mesita Yums are bools
 //                 (`true` / `false`). Requested is the guest request count,
-//                 0…n — not a Yes/No. Promoted is 0 | 1 | 2. Never a
-//                 projects.status. Mesita Pay / Accepts Yums are per-place
-//                 settlement-acceptance intent bits (places.mesita_pay_enabled
-//                 / places.yums_enabled) — all false until their engines land.
+//                 0…n — not a Yes/No. Visit Rewards (wire key `promoting`,
+//                 formerly labeled Promoted) is 0 | 1 | 2. Never a
+//                 projects.status. Mesita Pay / Mesita Yums are per-place
+//                 acceptance intent bits (places.mesita_pay_enabled /
+//                 places.yums_enabled) — operator toggles on the Partner tab
+//                 (admin-web-set-place-rails); engines still gate each rail.
 //   INTAKE (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -28,8 +30,8 @@ export function statusBoolChip(
 }
 
 /**
- * Operator Promoted: 0 Zero · 1 Conservative · 2 Aggressive.
- * Engine Dominant (3) displays as 2 — Promos already has three strategies.
+ * Operator Visit Rewards: 0 Zero · 1 Conservative · 2 Aggressive.
+ * Engine Dominant (3) displays as 2 — the picker has three strategies.
  */
 export function operatorPromotingLevel(
   raw: number | null | undefined,
@@ -87,9 +89,9 @@ export const GENERAL_STATUS_FACTS = [
   { key: "enriching", label: "Enriching" },
   { key: "verified", label: "Verified" },
   { key: "partner", label: "Partnered" },
-  { key: "promoting", label: "Promoted" },
+  { key: "promoting", label: "Visit Rewards" },
   { key: "mesita_pay", label: "Mesita Pay" },
-  { key: "yums", label: "Accepts Yums" },
+  { key: "yums", label: "Mesita Yums" },
 ] as const;
 
 export type GeneralStatusKey = (typeof GENERAL_STATUS_FACTS)[number]["key"];
@@ -104,7 +106,9 @@ export const STATUS_FACT_FALSE_TONE: Partial<Record<GeneralStatusKey, "neutral">
 };
 
 /** Acceptance bits with NO engine yet (decision: Pato gate 2026-08-29).
- *  Header chips, Global Monitor filter segments and notification meta chips
+ *  They now have a writer (the Partner tab toggles, admin-web-set-place-rails)
+ *  and a reader (the Promotion score), but the rails themselves stay staged —
+ *  header chips, Global Monitor filter segments and notification meta chips
  *  OMIT these until the Mesita Pay gateway / Yums Credits PRs lift the
  *  filters; the catalog table and the Status box still show them. */
 export const ENGINELESS_STATUS_FACT_KEYS: readonly GeneralStatusKey[] = [

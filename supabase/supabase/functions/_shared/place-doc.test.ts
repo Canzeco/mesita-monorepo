@@ -47,27 +47,48 @@ Deno.test("validateProfilePatch: rejects `name` too", () => {
   assertEquals(res.error, "unknown profile field: name");
 });
 
-// The settlement acceptance intent bits are real columns but DELIBERATELY not
-// patch keys: no engine exists, so a writable flag would be unenforced config
-// (Pato gate 2026-08-29). The gateway / Credits PRs legalize each key for
-// their own writer — which must target `places`, never `profiles` (the
-// profiles_update trigger silently drops unknown columns).
-Deno.test("validatePlacePatch: rejects the acceptance intent bits until their engines exist", () => {
-  const pay = validatePlacePatch({ mesita_pay_enabled: true });
-  assert(!pay.ok);
-  assertEquals(pay.error, "unknown place field: mesita_pay_enabled");
-  const yums = validatePlacePatch({ yums_enabled: true });
-  assert(!yums.ok);
-  assertEquals(yums.error, "unknown place field: yums_enabled");
+// The four acceptance intent bits were legalized 2026-08-29 (Pato gate: the
+// Partner tab toggles are their writer, the Promotion score their reader).
+// They stay PLACES-ONLY: the profiles_update trigger predates the columns
+// and would silently drop them, so the profiles door refuses loudly.
+Deno.test("validatePlacePatch: accepts the four acceptance intent bits as booleans", () => {
+  const res = validatePlacePatch({
+    mesita_pay_enabled: true,
+    yums_enabled: false,
+    pickup_orders_enabled: true,
+    delivery_orders_enabled: false,
+  });
+  assert(res.ok);
 });
 
-Deno.test("validateProfilePatch: rejects the acceptance intent bits too", () => {
+Deno.test("validatePlacePatch: rejects a non-boolean intent bit", () => {
+  const res = validatePlacePatch({ mesita_pay_enabled: "yes" });
+  assert(!res.ok);
+  assertEquals(res.error, "mesita_pay_enabled must be a boolean");
+});
+
+Deno.test("validateProfilePatch: refuses intent bits — places-only keys", () => {
   const pay = validateProfilePatch({ mesita_pay_enabled: true });
   assert(!pay.ok);
-  assertEquals(pay.error, "unknown profile field: mesita_pay_enabled");
-  const yums = validateProfilePatch({ yums_enabled: false });
-  assert(!yums.ok);
-  assertEquals(yums.error, "unknown profile field: yums_enabled");
+  assertEquals(
+    pay.error,
+    'mesita_pay_enabled writes through table "places" only — ' +
+      "the profiles trigger would silently drop it",
+  );
+  const pickup = validateProfilePatch({ pickup_orders_enabled: true });
+  assert(!pickup.ok);
+});
+
+// #1395 added these two to PLACE_PATCH_KEYS without a checkPlaceField branch
+// — the door rejected every patch carrying them ("unknown place field"),
+// which would have aborted the contents publish and the create door-write
+// after the 2026-08-29 redeploy sweep. This pins the repair.
+Deno.test("validatePlacePatch: accepts orders_enabled / reservations_enabled (the #1395 regression)", () => {
+  const res = validatePlacePatch({ orders_enabled: true, reservations_enabled: false });
+  assert(res.ok);
+  const bad = validatePlacePatch({ orders_enabled: 1 });
+  assert(!bad.ok);
+  assertEquals(bad.error, "orders_enabled must be a boolean");
 });
 
 // ── validatePlacePatch: accept ──────────────────────────────────────────────

@@ -21,7 +21,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Status      nine bools (`true`/`false`) + Requested `0…n` + Promoted `0|1|2`.
 //               Enriching is live-run; Enriched is last-completed. The last
 //               two bools are the settlement acceptance intent bits
-//               (Mesita Pay · Accepts Yums), false until their engines land.
+//               (Mesita Pay · Mesita Yums) — Partner-tab toggles; engines still gate.
 //   Intake      0. Seed · 1. Pulse · 2. Details · 3. Serp · 4. Links ·
 //               5. Social · 6. Images · 7. Menu · 8. Reviews ·
 //               9. Description · 10. Embedding — green called / yellow not.

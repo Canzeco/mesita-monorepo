@@ -132,12 +132,12 @@ describe("generalHeaderFacts", () => {
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
   });
 
-  it("header facts keep Status-box chip encoding; Requested is n; Promoted is 0 | 1 | 2", () => {
+  it("header facts keep Status-box chip encoding; Requested is n; Visit Rewards is 0 | 1 | 2", () => {
     const off = generalHeaderFacts(base);
     expect(off.find((f) => f.key === "partner")?.label).toBe("Partnered");
     expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
     expect(off.find((f) => f.key === "requested")?.chip).toBe("?");
-    expect(off.find((f) => f.key === "promoting")?.label).toBe("Promoted");
+    expect(off.find((f) => f.key === "promoting")?.label).toBe("Visit Rewards");
     expect(off.find((f) => f.key === "promoting")?.chip).toBe("0");
     const on = generalHeaderFacts({
       ...base,
@@ -159,7 +159,7 @@ describe("generalHeaderFacts", () => {
     expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
   });
 
-  it("header display names stay Created … Accepts Yums, never true/false/0", () => {
+  it("header display names stay Created … Mesita Yums, never true/false/0", () => {
     const facts = generalHeaderFacts({
       ...base,
       seeded: true,
@@ -179,9 +179,9 @@ describe("generalHeaderFacts", () => {
       "Enriching",
       "Verified",
       "Partnered",
-      "Promoted",
+      "Visit Rewards",
       "Mesita Pay",
-      "Accepts Yums",
+      "Mesita Yums",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
   });
