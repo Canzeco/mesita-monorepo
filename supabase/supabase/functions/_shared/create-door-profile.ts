@@ -1,7 +1,7 @@
 // The CREATE-door Description (§8.4 v3, gate D1) — function 4 of the Create
 // run. ONE batched prompt infers all Description fields from the thin
-// Google-basics signals (name, address, types, editorial summary), so the
-// door costs one LLM call, not five. Runs ONLY when the create does not
+// Google-basics signals (name, address, zone/city, types, editorial summary),
+// so the door costs one LLM call, not five. Runs ONLY when the create does not
 // queue a full Enrich (business creates queue; the Intaker's function 9
 // redoes this properly minutes later with rich grounding).
 //
@@ -38,6 +38,11 @@ export type DoorProfile = {
 export type DoorSignals = {
   name: string;
   address?: string | null;
+  // The branch anchor for the FRANCHISE RULE: zone is the colonia /
+  // neighborhood, city the fallback. Both ride in from the Google spine
+  // `fetchGoogleBasics` just resolved, so the door never has to guess.
+  zone?: string | null;
+  city?: string | null;
   googleTypes?: string[] | null;
   editorialSummary?: string | null;
   priceLevel?: number | null;
@@ -71,6 +76,8 @@ export async function synthesizeDoorProfile(
   const placeLines = [
     `Name: ${signals.name}`,
     signals.address ? `Address: ${signals.address}` : "",
+    signals.zone ? `Neighborhood / zone: ${signals.zone}` : "",
+    signals.city ? `City: ${signals.city}` : "",
     signals.googleTypes?.length
       ? `Google types: ${signals.googleTypes.join(", ")}`
       : "",
@@ -88,10 +95,22 @@ export async function synthesizeDoorProfile(
     '"tags":["<0-' + String(MAX_INFERRED_TAGS) + ' slugs from the tag list>"],' +
     '"presentation":"<2-3 short English paragraphs separated by \\n\\n>",' +
     '"reservations_likely":<boolean>,' +
-    '"mesita_name":"<the label stripped of chain suffixes, slogans, legal ' +
-    'forms and city tags, proper case; null when already clean>",' +
+    '"mesita_name":"<clean display name, proper case; null when the given ' +
+    'name already follows the MESITA NAME rule below>",' +
     '"semantic_summary":"<one dense English paragraph (~60-90 words) of what ' +
     'this place IS, for semantic search — no marketing voice>"}. ' +
+    "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
+    "store numbers and internal branch codes. FRANCHISE RULE — a chain " +
+    "branch is named BRAND + WHERE IT IS. When the place is one location of " +
+    "a franchise or chain (a brand with many branches: Starbucks, Tim " +
+    "Hortons, Domino's, Carl's Jr.), the bare brand is NOT a usable name, " +
+    "because every branch in the city would read identically. Keep the " +
+    'locating qualifier the given name already carries, or append the ' +
+    'neighborhood/zone from the Place block when it carries none ' +
+    '("Starbucks" in Polanco -> "Starbucks Polanco"); use the city only ' +
+    "when no zone is given, and never invent a branch or a location the " +
+    "Place block does not show. An INDEPENDENT place — one location, not a " +
+    "chain — is NOT a franchise: never bolt a zone onto it. " +
     "Slugs are copied VERBATIM from the lists. English only. No invented " +
     "facts, ratings, or prices — thin sources mean shorter honest text.";
   const userPrompt =
