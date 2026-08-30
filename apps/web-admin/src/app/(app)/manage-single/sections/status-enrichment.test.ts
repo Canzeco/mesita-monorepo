@@ -61,23 +61,43 @@ describe("intakeFunctionRows", () => {
   });
 });
 
-describe("Status + Intake boxes", () => {
-  it("keeps Enriched a bool on Status; Intake is its own card", () => {
+describe("Three status boxes", () => {
+  // Pato, 2026-08-30: one eleven-row wall became three boxes, each with a
+  // single job. General and Partnership render from StatusCard.tsx; the two
+  // Intake facts moved to the Intake box with the read that feeds them.
+  it("splits General · Partnership · Intake, each owning its own facts", () => {
     const status = readFileSync(join(__dirname, "StatusCard.tsx"), "utf8");
+    expect(status).toContain('title="General Statuses"');
+    expect(status).toContain('title="Partnership Statuses"');
+    expect(status).not.toContain('title="Status"');
+    // General owns the reachability facts and both operator writes.
     expect(status).toContain('name="Active (Google pulse)"');
     expect(status).toContain("setPlaceActive");
     expect(status).toContain("Mark inactive and unlist");
-    expect(status).toContain('name="Enriching"');
-    expect(status).toContain('name="Enriched"');
+    expect(status).toContain('name="Verified"');
     expect(status).toContain("requestCountChip");
     expect(status).not.toContain("statusBoolChip(requested)");
+    // Partnership owns the commercial facts and the drift warning.
+    expect(status).toContain('name="Partnered"');
+    expect(status).toContain('name="Visit Rewards"');
+    expect(status).toContain('name="Mesita Pay"');
+    expect(status).toContain('name="Mesita Yums"');
+    expect(status).toContain("Guest surfaces disagree with Visit Rewards");
+    // The Intake facts and their read LEFT this file — moved, not copied, so
+    // the Admin tab still issues exactly one getPlaceEnrichment call.
+    expect(status).not.toContain('name="Enriching"');
+    expect(status).not.toContain('name="Enriched"');
+    expect(status).not.toContain("getPlaceEnrichment");
     expect(status).not.toContain("intakeFunctionRows");
     expect(status).not.toContain("CreateStatusCard");
     expect(status).not.toContain("chipLabel={pulse === null");
 
     const intake = readFileSync(join(__dirname, "IntakeStatusCard.tsx"), "utf8");
     expect(intake).toContain("intakeFunctionRows");
-    expect(intake).toContain('title="Intake"');
+    expect(intake).toContain('title="Intake Statuses"');
+    expect(intake).toContain('name="Enriched"');
+    expect(intake).toContain('name="Enriching"');
+    expect(intake).toContain("getPlaceEnrichment");
     expect(intake).not.toContain("CreateStatusCard");
 
     const admin = readFileSync(join(__dirname, "AdminSection.tsx"), "utf8");
