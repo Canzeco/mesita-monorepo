@@ -1,9 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { PlaceEnrichmentStatus } from "./actions";
 import { GENERAL_STATUS_FACTS } from "@/lib/status-vocabulary";
 import {
-  formatHeaderCategory,
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
@@ -51,27 +52,6 @@ describe("isEnrichFailed", () => {
     expect(isEnrichFailed(status({ stage: "failed" }))).toBe(true);
     expect(isEnrichFailed(status({ stage: "research" }))).toBe(false);
     expect(isEnrichFailed(null)).toBe(false);
-  });
-});
-
-describe("formatHeaderCategory", () => {
-  it("keeps the catalog emoji and titleizes the name", () => {
-    expect(formatHeaderCategory("🪩 Nightclub", null)).toEqual({
-      emoji: "🪩",
-      text: "Nightclub",
-    });
-  });
-
-  it("titleizes a slug when the label is missing", () => {
-    expect(formatHeaderCategory(null, "fine_dining")).toEqual({
-      emoji: "",
-      text: "Fine Dining",
-    });
-  });
-
-  it("is null when both are empty", () => {
-    expect(formatHeaderCategory(null, "")).toBeNull();
-    expect(formatHeaderCategory(undefined, undefined)).toBeNull();
   });
 });
 
@@ -231,3 +211,19 @@ describe("listedFromStatus", () => {
   });
 });
 
+describe("the header is name + statuses, nothing else", () => {
+  const chrome = readFileSync(
+    join(process.cwd(), "src/app/(app)/manage-single/PlaceEditChrome.tsx"),
+    "utf8",
+  );
+
+  it("prints no category in the identity line", () => {
+    // An unset category rendered "❓ Undefined" beside the real facts:
+    // a placeholder wearing their weight. Category is an editable field
+    // and belongs on Profile (Pato, 2026-08-29).
+    expect(chrome).not.toContain("formatHeaderCategory");
+    expect(chrome).not.toContain("category.emoji");
+    expect(chrome).not.toContain("place.category");
+    expect(chrome).toContain("placeDisplayName(place)");
+  });
+});
