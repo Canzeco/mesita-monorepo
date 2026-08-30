@@ -15,7 +15,6 @@ import { PLACE_VERIFICATION_CHANGED } from "./verification-events";
 import { PLACE_TAB_SECTIONS, placeSectionHref } from "./nav";
 import { usePlaceContext } from "./PlaceContext";
 import {
-  formatHeaderCategory,
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
@@ -61,7 +60,6 @@ export function PlaceEditChrome({
   // used to bypass the chrome-local guard entirely.
   const { isDirty, guardNav } = usePlaceContext();
   const heroPhoto = place.photos?.[0] ?? null;
-  const category = formatHeaderCategory(place.category_label, place.category);
   const [verification, setVerification] = useState<
     PlaceVerificationGlance | null | undefined
   >(undefined);
@@ -229,7 +227,13 @@ export function PlaceEditChrome({
               never a parenthetical on the title, never a raw pipeline
               stage (research / analysis / contents). Those live in
               Admin → Enrichment. Inter, not Fraunces — this chrome is
-              identity, not a page title (Pato, Strana screenshot). */}
+              identity, not a page title (Pato, Strana screenshot).
+
+              THE HEADER IS NAME + STATUSES, NOTHING ELSE (Pato,
+              2026-08-29). No category: it is an editable field, it lives
+              on Profile, and an unset one printed "❓ Undefined" in the
+              identity line — a placeholder wearing the same weight as
+              the facts beside it. Never re-add it here. */}
           <p
             className="min-w-0 truncate text-lg font-semibold tracking-tight sm:text-xl"
             title={placeDisplayName(place)}
@@ -238,16 +242,6 @@ export function PlaceEditChrome({
           </p>
           <div className="mt-1 flex flex-col gap-1.5">
             <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-              {category ? (
-                <span className="text-foreground/80 inline-flex min-w-0 items-center gap-1 truncate font-medium">
-                  {category.emoji ? (
-                    <span aria-hidden className="shrink-0">
-                      {category.emoji}
-                    </span>
-                  ) : null}
-                  <span className="truncate">{category.text}</span>
-                </span>
-              ) : null}
               {enriching ? (
                 <span
                   className="border-border bg-muted/70 text-foreground inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 type-label font-medium"
