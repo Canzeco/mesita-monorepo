@@ -40,7 +40,7 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
     try {
       setResult(await suggestNextPromo(supabase, projectId, query));
     } catch (err) {
-      setError(errMsg(err, "Could not get promo suggestions."));
+      setError(errMsg(err, "Could not get reward suggestions."));
     } finally {
       setBusy(false);
     }
@@ -48,7 +48,7 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
 
   return (
     <Section
-      title="Next promo"
+      title="Next reward"
       description="Memo reads your Performance record and suggests a move. You still set rates on Partner."
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

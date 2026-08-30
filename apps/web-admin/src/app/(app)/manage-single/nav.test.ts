@@ -35,7 +35,7 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("is three boxes — Promos (the bar), Partnership, Visit Rewards", () => {
+  it("is three boxes — Offerings (the bar), Partnership, Visit Rewards", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
@@ -45,14 +45,16 @@ describe("PromosSection visit-only", () => {
     // not teach its own operator. Never reintroduce it on this tab.
     expect(src).not.toMatch(/title="Tutorial"/);
     expect(src).not.toMatch(/TutorialBox/);
-    // "Promos" names the PROGRESS BAR (Pato 2026-08-29); the strategy tiles
-    // box is "Visit Rewards" — never the other way round.
-    expect(src).toMatch(/title="Promos"/);
+    // The bar is "Offerings" and the tiles are "Visit Rewards" (Pato,
+    // 2026-08-30): "promo" and "membership" are BANNED in rendered copy.
+    expect(src).toMatch(/title="Offerings"/);
+    expect(src).not.toMatch(/title="Promos"/);
+    expect(src).not.toMatch(/Partnership Membership/);
     expect(src).toMatch(/title="Visit Rewards"/);
     expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
     // The bar sums Partnership + Visit Rewards + the four rail toggles, with
     // Mesita Capital as a locked Soon row; the score twin caps it.
-    expect(src).toMatch(/PromosBar/);
+    expect(src).toMatch(/OfferingsBar|PromosBar/);
     expect(src).toMatch(/promotionScore\(/);
     expect(src).toMatch(/PROMOTION_SCORE_MAX/);
     expect(src).toMatch(/RailToggle/);

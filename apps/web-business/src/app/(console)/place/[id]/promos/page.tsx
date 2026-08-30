@@ -48,7 +48,7 @@ export default async function BusinessPromosPage({
           <EmptyState
             icon={<Store className="text-muted-foreground h-5 w-5" />}
             title="No place yet"
-            description="Add a place to start configuring promos."
+            description="Add a place to start configuring rewards."
             action={
               <Link href="/add" className={CTA_BUTTON_CLASS}>
                 <Plus className="h-4 w-4" />

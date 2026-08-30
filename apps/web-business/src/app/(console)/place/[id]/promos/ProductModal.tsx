@@ -55,7 +55,7 @@ export function ProductModal({
   const footerNote = isCurrent
     ? ""
     : isZeroSwitch
-      ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
+      ? "Partnership stays active; discounts pause. The reward lane closes until you pick a paid strategy again."
       : "Applies to new tickets only — open tickets keep the rates they were created with.";
 
   const onPrimary = () => {
