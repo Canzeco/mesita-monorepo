@@ -28,6 +28,9 @@ import {
 import { PROMOTION_SCORE_MAX, promotionScore } from "@/lib/business/promotion-score";
 import { OPERATOR_PROMOTING_LABEL } from "@/lib/status-vocabulary";
 import { placeOperatorPromotingLevel } from "./StatusCard";
+import { OrdersCard } from "./OrdersCard";
+import { ReservationsCard } from "./ReservationsCard";
+import { VisitsCard } from "./VisitsCard";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
@@ -45,7 +48,7 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Partner tab — THREE boxes (Pato, 2026-08-29). The Tutorial box was
+// Admin Partnership tab — SIX boxes (Pato live 2026-08-30). The Tutorial box was
 // DELETED: this is the operator's own console, and it explained Mesita to the
 // person who built it, in copy the other boxes already carried. Never restore
 // it here — the business console is where a partner gets taught.
@@ -64,6 +67,12 @@ import {
 //   3. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
 //      placement are a Low · Mid · High word ladder. Dominant is not a
 //      picker option.
+//   4-6. Visits · Orders · Reservations — the three rail boxes, MOVED here
+//      from Settings (Pato live 2026-08-30): each configures a capability
+//      the place offers through Mesita, so they sit with the offerings.
+//      Settings keeps Team, which is people rather than a rail. One box per
+//      rail still holds (MESITA-1148); Visits still carries the Check PIN
+//      (MESITA-823) and the bill is still always required (MESITA-1095).
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -384,6 +393,15 @@ export function PromosSection({
           onClose={onModalClose}
         />
       )}
+
+      {/* The three rail boxes, moved here from Settings (Pato live
+          2026-08-30). Each configures a capability the place offers
+          through Mesita, so they belong with the offerings, not with
+          Team. One box per rail still holds (MESITA-1148); Visits still
+          carries the Check PIN. */}
+      <VisitsCard place={v} />
+      <OrdersCard place={v} />
+      <ReservationsCard place={v} />
 
       <ConfirmDialog
         open={dropOpen}

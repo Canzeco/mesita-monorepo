@@ -49,7 +49,7 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
   return (
     <Section
       title="Next reward"
-      description="Memo reads your Performance record and suggests a move. You still set rates on Partner."
+      description="Memo reads your Performance record and suggests a move. You still set rates on Partnership."
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
@@ -100,7 +100,7 @@ export function PromoCopilot({ projectId }: { projectId: string }) {
               href={promosPath(projectId)}
               className="text-foreground inline-flex items-center gap-1 text-xs font-semibold hover:underline"
             >
-              Open Partner
+              Open Partnership
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
