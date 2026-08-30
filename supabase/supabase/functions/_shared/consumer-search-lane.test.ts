@@ -1,6 +1,9 @@
 // deno test supabase/functions/_shared/consumer-search-lane.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  MESITA_NAME_MIN_CAP,
+  mesitaNameCap,
+  resolveMode,
   admitNameFloor,
   applyResolvedMesitaName,
   deepModuleFlags,
@@ -440,4 +443,34 @@ Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita ski
     partners: [],
   });
   assertEquals(out.map((p) => p.placeId), ["overflow", "fresh", "top"]);
+});
+
+// PAY's engine is the Mesita NAME EMBEDDINGS alone (Pato, 2026-08-29).
+Deno.test("resolveMode: mesita is its own mode, unknown still falls back to fast", () => {
+  assertEquals(resolveMode("mesita"), "mesita");
+  assertEquals(resolveMode("deep"), "deep");
+  assertEquals(resolveMode("fast"), "fast");
+  assertEquals(resolveMode(undefined), "fast");
+  assertEquals(resolveMode(null), "fast");
+  // An older client sending nonsense must never silently reach Google
+  // with Pay's intent, and must never crash: fast is the safe default.
+  assertEquals(resolveMode("MESITA"), "fast");
+  assertEquals(resolveMode("embeddings"), "fast");
+});
+
+Deno.test("Pay has no Google fallback, so its lane cap never collapses", () => {
+  // An operator zeroing both Deep counts would otherwise leave Pay's
+  // search permanently empty — Search would still have Autocomplete.
+  assertEquals(mesitaNameCap({ partnerCount: 0, mesitaCount: 0 }), MESITA_NAME_MIN_CAP);
+  assertEquals(mesitaNameCap({ partnerCount: 3, mesitaCount: 3 }), MESITA_NAME_MIN_CAP);
+  // Above the floor the operator's number wins, so Pay and Search agree.
+  assertEquals(mesitaNameCap({ partnerCount: 40, mesitaCount: 20 }), 60);
+  assertEquals(
+    mesitaNameCap(DISCOVERY_DEFAULTS.name.deep),
+    Math.max(
+      DISCOVERY_DEFAULTS.name.deep.partnerCount +
+        DISCOVERY_DEFAULTS.name.deep.mesitaCount,
+      MESITA_NAME_MIN_CAP,
+    ),
+  );
 });

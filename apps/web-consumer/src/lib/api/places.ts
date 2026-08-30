@@ -361,7 +361,10 @@ export type PlacePrediction = {
   lng?: number | null;
 };
 
-export type SuggestPlacesMode = "fast" | "deep";
+/** `fast` Search while typing · `deep` Search after idle · `mesita` PAY —
+ *  the Mesita name embeddings alone, because a ticket can only open at a
+ *  place that is on Mesita (Pato, 2026-08-29). */
+export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
 /**
  * Name search for the consumer /search bar and pickers.

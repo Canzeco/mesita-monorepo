@@ -75,9 +75,31 @@ import { isEnrichedPlace } from "./place-family-keys.ts";
 import { radiusBoundingBox } from "./geo.ts";
 
 export const NAME_MIN_COSINE = 0.4;
+/** Pay has no Google fallback, so its lane never collapses to nothing. */
+export const MESITA_NAME_MIN_CAP = 10;
+
+/**
+ * How many Mesita rows Pay's search returns. Follows the operator's Deep
+ * counts so Pay and Search rank alike, with a floor: zeroing both would
+ * leave Pay permanently empty, while Search would still have Autocomplete.
+ */
+export function mesitaNameCap(
+  deep: { partnerCount: number; mesitaCount: number },
+): number {
+  const configured = (deep.partnerCount ?? 0) + (deep.mesitaCount ?? 0);
+  return Math.max(configured, MESITA_NAME_MIN_CAP);
+}
 export const GOOGLE_TEXT_MAX = 20;
 
-export type SuggestPlacesMode = "fast" | "deep";
+/**
+ * `fast`   Search bar while typing — Google Autocomplete.
+ * `deep`   Search bar after idle — Autocomplete + Text Search + Mesita.
+ * `mesita` PAY — the Mesita NAME EMBEDDINGS and nothing else (Pato,
+ *          2026-08-29). Pay opens a ticket, and you cannot open one at a
+ *          place that is not on Mesita, so a Google lane here would bill
+ *          an API call to return a row the surface must immediately lock.
+ */
+export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
 export type LaneItem = {
   placeId: string;
@@ -327,8 +349,10 @@ function originOf(
   return null;
 }
 
-function resolveMode(raw?: string | null): SuggestPlacesMode {
-  return raw === "deep" ? "deep" : "fast";
+export function resolveMode(raw?: string | null): SuggestPlacesMode {
+  if (raw === "deep") return "deep";
+  if (raw === "mesita") return "mesita";
+  return "fast";
 }
 
 function mapWithTypes(
@@ -357,7 +381,18 @@ export async function runConsumerSearchLane(
   const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
   const mode = resolveMode(args.mode);
 
-  const predictions = mode === "deep"
+  const predictions = mode === "mesita"
+    // Pay: the Mesita name embeddings alone. No Google lane, no Google bill.
+    ? await runMesitaNameSearch(
+      admin,
+      cfg.name,
+      cfg.general,
+      cfg.weights,
+      cfg.params,
+      input,
+      origin,
+    )
+    : mode === "deep"
     ? await runDeepSearch(
       admin,
       apiKey,
@@ -553,6 +588,42 @@ async function runDeepSearch(
     mesita: lineupMesita,
     partners: lineupPartners,
   });
+}
+
+/**
+ * Pay's engine. Same pool, same cosine floor, same Deep Lineup order as
+ * the Mesita lane inside `runDeepSearch` — no second retrieval scheme,
+ * just that one lane on its own. `fetchEmbedPool` already requires
+ * `name_embedding IS NOT NULL`, so this IS the name-embedding index.
+ *
+ * The cap follows the operator's Deep counts so Pay and Search rank the
+ * same way, with a floor: an operator zeroing both would otherwise leave
+ * Pay's search permanently empty, and Pay has no Google lane to fall
+ * back to.
+ */
+async function runMesitaNameSearch(
+  admin: SupabaseClient,
+  name: NameConfig,
+  general: GeneralConfig,
+  weights: SignalWeights,
+  params: SignalParamsByKey,
+  input: string,
+  origin: { lat: number; lng: number } | null,
+): Promise<LaneItem[]> {
+  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
+  if (!openaiKey) return [];
+  const [embedPool, queryVec] = await Promise.all([
+    fetchEmbedPool(admin, origin, general),
+    embedQueryVector(admin, input, openaiKey),
+  ]);
+  if (!queryVec) return [];
+  const ordered = orderDeepLineup(
+    admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE),
+    queryVec,
+    weightsForMode("deep", weights),
+    params,
+  );
+  return takeListedLane(ordered, mesitaNameCap(name.deep));
 }
 
 function toWire(item: LaneItem) {
