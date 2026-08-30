@@ -1,8 +1,19 @@
 "use client";
 
-// Status — the Statuses box: nine bools (`true`/`false`) plus Requested
-// `0…n` and Promoted `0|1|2`, each from its own source. Intake
-// (0. Seed … 10. Embedding) lives in IntakeStatusCard.
+// The status boxes — THREE, split by the question each answers (Pato,
+// 2026-08-30). One eleven-row wall made the operator read the whole list to
+// find one fact; each box now has a single job:
+//
+//   General Statuses      is this place real, reachable, and proven?
+//                         Created · Active · Listed · Requested · Verified
+//   Partnership Statuses  what does it offer commercially?
+//                         Partnered · Visit Rewards · Mesita Pay · Mesita Yums
+//   Intake Statuses       how far has the pipeline gotten? Enriched ·
+//                         Enriching + the eleven functions — all of it in
+//                         IntakeStatusCard, which OWNS the enrichment read.
+//
+// This file renders the first two; `StatusRow` is exported so the Intake box
+// prints its two summary facts in the same shape.
 //
 // The state is Created; Seed is Intake function 0. Wire key `seeded` /
 // `isPlaceSeeded` stays.
@@ -36,16 +47,14 @@
 // when the entity was split, and never came back. The collision is handled by
 // each row's own detail line naming the column value, not by renaming the box.
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, CircleCheck, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CircleCheck, Loader2, Percent } from "lucide-react";
 import {
-  getPlaceEnrichment,
   setPlaceActive,
   setPlaceListed,
   type AdminPlace,
-  type PlaceEnrichmentStatus,
 } from "../actions";
-import { isEnriching, listedFromStatus } from "../place-header-status";
+import { listedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -182,43 +191,6 @@ export function StatusCard({
         ? place.listed
         : "unknown";
   const requestCount = requestCountFromRow(place.request_count);
-  // Enriched is complete-or-not, from the same high-water the catalog uses.
-  // A missing number is unknown, not a no.
-  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
-    null,
-  );
-  useEffect(() => {
-    let alive = true;
-    getPlaceEnrichment(place.id).then((r) => {
-      if (!alive) return;
-      if (r.ok) setEnrichStatus(r.data.status);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id]);
-  const contentStatus =
-    typeof place.content_status === "string" ? place.content_status : null;
-  const enriching = isEnriching(
-    enrichStatus ?? {
-      content_status: contentStatus,
-      stage: null,
-      stage_status: null,
-      error: null,
-      last_enriched_at: null,
-      updated_at: null,
-      serp_summary: null,
-    },
-  );
-
-  const pulse = typeof place.enrich_pulse === "number" ? place.enrich_pulse : null;
-  const pulseTotal = typeof place.enrich_pulse_total === "number"
-    ? place.enrich_pulse_total
-    : null;
-  const enriched: boolean | "unknown" =
-    pulse === null || pulseTotal === null || pulseTotal === 0
-      ? "unknown"
-      : pulse >= pulseTotal;
   const placeStatus = typeof place.status === "string" ? place.status : null;
 
   const seededDetail =
@@ -271,20 +243,6 @@ export function StatusCard({
       : bizStatus === "CLOSED_TEMPORARILY"
         ? `Temporary close${operatingSeen ? ` (seen ${operatingSeen})` : ""} — a refurb or a seasonal break. Marking inactive also unlists.`
         : `Permanently closed${operatingSeen ? ` (seen ${operatingSeen})` : ""}. Inactive. Re-list is a separate write.`;
-
-  const enrichingDetail = enriching
-    ? "The Intaker pipeline is mid-flight — research, analysis, or contents is running."
-    : "No Intaker run is in flight.";
-
-  const enrichedDetail =
-    enriched === "unknown"
-      ? "Couldn't read the pipeline events."
-      : enriched
-        ? "The Intake queue finished." +
-          (place.enriched_at
-            ? ` Last run ${String(place.enriched_at).slice(0, 10)}.`
-            : "")
-        : "The Intake queue has not finished.";
 
   // An unknown must never render as a false negative: misreporting a real
   // place's standing is worse than admitting the lookup failed.
@@ -352,116 +310,116 @@ export function StatusCard({
         : `${promotingName} (${promotingLevel}) strategy, lane open.`;
 
   return (
-    <SectionCard
-      icon={<CircleCheck className="h-4 w-4" />}
-      tint="emerald"
-      title="Status"
-    >
-      <div className="mt-5 flex flex-col">
-        <StatusRow
-          name="Created"
-          on={seeded === true}
-          chip={statusBoolChip(seeded)}
-          tint="slate"
-          detail={seededDetail}
-        />
-        <StatusRow
-          name="Active (Google pulse)"
-          on={operating === true}
-          chip={statusBoolChip(operating)}
-          tint="teal"
-          detail={operatingDetail}
-          action={<ActiveToggle place={place} operating={operating} />}
-        />
-        <StatusRow
-          name="Listed"
-          on={listed === true}
-          chip={statusBoolChip(listed)}
-          tint="indigo"
-          detail={listedDetail}
-          action={<ListedToggle place={place} listed={listed} />}
-        />
-        <StatusRow
-          name="Requested"
-          on={requestCount !== "unknown" && requestCount > 0}
-          chip={requestCountChip(place.request_count)}
-          tint="indigo"
-          detail={requestedDetail}
-        />
-        <StatusRow
-          name="Enriched"
-          on={enriched === true}
-          chip={statusBoolChip(enriched)}
-          tint="violet"
-          detail={enrichedDetail}
-        />
-        <StatusRow
-          name="Enriching"
-          on={enriching}
-          chip={statusBoolChip(enriching)}
-          tint="violet"
-          detail={enrichingDetail}
-        />
-        <StatusRow
-          name="Verified"
-          on={verified === true}
-          chip={statusBoolChip(verified)}
-          tint="emerald"
-          detail={verifiedDetail}
-        />
-        <StatusRow
-          name="Partnered"
-          on={partner}
-          chip={statusBoolChip(partner)}
-          tint="sky"
-          detail={partnerDetail}
-        />
-        <StatusRow
-          name="Visit Rewards"
-          on={promotingLevel > 0}
-          chip={promotingLevelChip(promotingLevel)}
-          tint="pink"
-          detail={promotingDetail}
-        />
-        <StatusRow
-          name="Mesita Pay"
-          on={mesitaPay === true}
-          chip={statusBoolChip(mesitaPay)}
-          tint="amber"
-          detail={mesitaPayDetail}
-        />
-        <StatusRow
-          name="Mesita Yums"
-          on={yums === true}
-          chip={statusBoolChip(yums)}
-          tint="orange"
-          detail={yumsDetail}
-        />
-      </div>
-
-      {badged !== promoting ? (
-        <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-          <p className="type-label leading-relaxed text-amber-900">
-            <span className="font-semibold">
-              Guest surfaces disagree with Promoted.
-            </span>{" "}
-            {badged
-              ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed promo lane."
-              : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}
-          </p>
+    <>
+      <SectionCard
+        icon={<CircleCheck className="h-4 w-4" />}
+        tint="emerald"
+        title="General Statuses"
+      >
+        <div className="mt-5 flex flex-col">
+          <StatusRow
+            name="Created"
+            on={seeded === true}
+            chip={statusBoolChip(seeded)}
+            tint="slate"
+            detail={seededDetail}
+          />
+          <StatusRow
+            name="Active (Google pulse)"
+            on={operating === true}
+            chip={statusBoolChip(operating)}
+            tint="teal"
+            detail={operatingDetail}
+            action={<ActiveToggle place={place} operating={operating} />}
+          />
+          <StatusRow
+            name="Listed"
+            on={listed === true}
+            chip={statusBoolChip(listed)}
+            tint="indigo"
+            detail={listedDetail}
+            action={<ListedToggle place={place} listed={listed} />}
+          />
+          <StatusRow
+            name="Requested"
+            on={requestCount !== "unknown" && requestCount > 0}
+            chip={requestCountChip(place.request_count)}
+            tint="indigo"
+            detail={requestedDetail}
+          />
+          <StatusRow
+            name="Verified"
+            on={verified === true}
+            chip={statusBoolChip(verified)}
+            tint="emerald"
+            detail={verifiedDetail}
+          />
         </div>
-      ) : null}
-    </SectionCard>
+      </SectionCard>
+
+      <SectionCard
+        icon={<Percent className="h-4 w-4" />}
+        tint="pink"
+        title="Partnership Statuses"
+      >
+        <div className="mt-5 flex flex-col">
+          <StatusRow
+            name="Partnered"
+            on={partner}
+            chip={statusBoolChip(partner)}
+            tint="sky"
+            detail={partnerDetail}
+          />
+          <StatusRow
+            name="Visit Rewards"
+            on={promotingLevel > 0}
+            chip={promotingLevelChip(promotingLevel)}
+            tint="pink"
+            detail={promotingDetail}
+          />
+          <StatusRow
+            name="Mesita Pay"
+            on={mesitaPay === true}
+            chip={statusBoolChip(mesitaPay)}
+            tint="amber"
+            detail={mesitaPayDetail}
+          />
+          <StatusRow
+            name="Mesita Yums"
+            on={yums === true}
+            chip={statusBoolChip(yums)}
+            tint="orange"
+            detail={yumsDetail}
+          />
+        </div>
+
+        {/* The drift warning lives HERE: it is a disagreement between
+            Partnered and Visit Rewards, the two rows right above it. */}
+        {badged !== promoting ? (
+          <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-200/70 bg-amber-50/60 p-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <p className="type-label leading-relaxed text-amber-900">
+              <span className="font-semibold">
+                Guest surfaces disagree with Visit Rewards.
+              </span>{" "}
+              {badged
+                ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed promo lane."
+                : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}
+            </p>
+          </div>
+        ) : null}
+      </SectionCard>
+    </>
   );
 }
+
 
 function methodLabel(method: string): string {
   const clean = method.replace(/_/g, " ").trim();
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function StatusRow({
+export function StatusRow({
   name,
   on,
   chip,

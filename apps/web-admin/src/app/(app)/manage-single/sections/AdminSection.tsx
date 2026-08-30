@@ -17,14 +17,20 @@ import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — Status is TWO boxes:
-//   Status      nine bools (`true`/`false`) + Requested `0…n` + Promoted `0|1|2`.
-//               Enriching is live-run; Enriched is last-completed. The last
-//               two bools are the settlement acceptance intent bits
-//               (Mesita Pay · Mesita Yums) — Partner-tab toggles; engines still gate.
-//   Intake      0. Seed · 1. Pulse · 2. Details · 3. Serp · 4. Links ·
-//               5. Social · 6. Images · 7. Menu · 8. Reviews ·
-//               9. Description · 10. Embedding — green called / yellow not.
+// Admin — statuses are THREE boxes (Pato, 2026-08-30), each answering one
+// question instead of one eleven-row wall answering all three:
+//   General Statuses      is this place real, reachable, proven? Created ·
+//                         Active · Listed · Requested `0…n` · Verified.
+//                         Owns both operator writes (Active, Listed).
+//   Partnership Statuses  what does it offer? Partnered · Visit Rewards
+//                         `0|1|2` · Mesita Pay · Mesita Yums — the last two
+//                         are acceptance intent bits set on the Partner tab;
+//                         engines still gate each rail. Carries the
+//                         listing_type drift warning, which is about these rows.
+//   Intake Statuses       how far did the pipeline get? Enriched (last
+//                         completed) · Enriching (live run) over the eleven
+//                         functions 0. Seed … 10. Embedding. OWNS the
+//                         enrichment read — StatusCard no longer fetches it.
 // Then the rest:
 //   Enrichment  queues the full Intaker process
 //   Verification ownership proof (who / when / method + queue decide)
