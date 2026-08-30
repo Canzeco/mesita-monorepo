@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Image from "next/image";
 import {
-  BookOpen,
   Check,
   Loader2,
   Percent,
@@ -46,17 +45,19 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Partner tab — four boxes (Pato gate 2026-08-29):
-//   1. Tutorial — join, pick Visit Rewards, honor guest checks. Strikes.
-//   2. Promos — the promotion PROGRESS BAR ("Promos" names the bar): the
+// Admin Partner tab — THREE boxes (Pato, 2026-08-29). The Tutorial box was
+// DELETED: this is the operator's own console, and it explained Mesita to the
+// person who built it, in copy the other boxes already carried. Never restore
+// it here — the business console is where a partner gets taught.
+//   1. Promos — the promotion PROGRESS BAR ("Promos" names the bar): the
 //      0–7 score summing what the place offers, its components as rows.
 //      Partnership is the first step; the four rail rows are LIVE TOGGLES
 //      (admin-web-set-place-rails); Mesita Capital is a locked Soon row.
 //      Display-only — never a discovery input; rank is never for sale.
-//   3. Partnership — MX$1,000/month is the subscription. Stripe-look mock
+//   2. Partnership — MX$1,000/month is the subscription. Stripe-look mock
 //      Join writes plan=pro at Zero (admin-web-set-plan, no charge).
 //      Strategy unlocks after. Lifecycle rail, status pill, drop.
-//   4. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
+//   3. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
 //      placement are a Low · Mid · High word ladder. Dominant is not a
 //      picker option. (Never called "Promos" — that names the bar.)
 
@@ -292,8 +293,6 @@ export function PromosSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <TutorialBox currency={v.currency} />
-
       <PromosBar
         place={v}
         member={member}
@@ -467,7 +466,7 @@ function LifecycleBanner({
   // step's line renders.
   const joinDetail =
     view.join === "current"
-      ? `${price}/month — Join Partnership with the Stripe mock below.`
+      ? "Join with the Stripe mock below."
       : `${price}/month — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
@@ -599,74 +598,7 @@ function StepMarker({
   );
 }
 
-// ─── Box 1 · Tutorial — the three-step story, always on the page ───────────
-
-const STRIKES: { n: string; consequence: string }[] = [
-  { n: "1", consequence: "A warning — your discounts keep running." },
-  { n: "2", consequence: "Your discounts are paused for 30 days." },
-  {
-    n: "3",
-    consequence:
-      "Partnership forfeited — promos off, place stays listed on Mesita.",
-  },
-];
-
-function TutorialBox({ currency }: { currency: string | null }) {
-  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
-  return (
-    <SectionCard
-      icon={<BookOpen className="h-4 w-4" />}
-      tint="sky"
-      title="Tutorial"
-      subtitle="Join, pick Visit Rewards, honor guest checks."
-    >
-      <div className="mt-4 flex flex-col gap-4">
-        <Step n={1} title="Join the partnership">
-          {price}/month — one membership, then pick Visit Rewards freely. Every
-          offer you add moves the Promos bar.
-        </Step>
-        <Step n={2} title="Pick Visit Rewards">
-          Zero · Conservative · Aggressive. Give and placement are Low · Mid ·
-          High. Rank is never for sale.
-        </Step>
-        <Step n={3} title="Honor guest checks">
-          Staff scan the guest&apos;s QR on Mesita Validate — honoring the first
-          check at the bill makes you live.
-        </Step>
-        <div className="border-border flex flex-col gap-2.5 border-t pt-3">
-          <p className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-            If a guest is turned away
-          </p>
-          <ol className="flex flex-col gap-1">
-            {STRIKES.map((s) => (
-              <li key={s.n} className="flex items-start gap-2">
-                <span
-                  className={cx(
-                    "mt-px inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full type-meta font-bold",
-                    s.n === "3"
-                      ? "bg-destructive/10 text-destructive"
-                      : "bg-amber-500/15 text-amber-700",
-                  )}
-                >
-                  {s.n}
-                </span>
-                <span className="text-foreground/80 type-label leading-snug">
-                  {s.consequence}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <p className="text-muted-foreground text-xs leading-snug">
-            Join is a mock Stripe checkout — it writes plan, no charge. Strikes
-            decay after 6 months clean.
-          </p>
-        </div>
-      </div>
-    </SectionCard>
-  );
-}
-
-// ─── Box 2 · Promos — the promotion progress bar ───────────────────────────
+// ─── Box 1 · Promos — the promotion progress bar ───────────────────────────
 //
 // "Promos" names the BAR (Pato, 2026-08-29 — never the strategy tiles). The
 // score is the shared 0–7 derivation (promotion-score.ts twins): Partnership
@@ -684,22 +616,22 @@ const RAIL_ROWS: readonly {
   {
     key: "mesita_pay",
     label: "Accept Mesita Pay",
-    detail: "Guests pay the bill by card inside Mesita. The rail ships later — the toggle records the offer.",
+    detail: "Guests pay the bill by card, inside Mesita.",
   },
   {
     key: "yums",
     label: "Accept Mesita Yums",
-    detail: "Yums settle as a bill discount. The Credits engine ships later.",
+    detail: "Yums settle as a bill discount, never a payment.",
   },
   {
     key: "pickup",
     label: "Pickup Orders",
-    detail: "Pickup through Mesita when the order rail ships.",
+    detail: "Guests order ahead and pick up.",
   },
   {
     key: "delivery",
     label: "Delivery Orders",
-    detail: "Delivery through Mesita when the order rail ships.",
+    detail: "Guests order for delivery.",
   },
 ];
 
@@ -745,26 +677,21 @@ function PromosBar({
       }
     >
       <div
-        className="mt-4 flex gap-1"
+        className="bg-muted mt-4 h-1.5 w-full overflow-hidden rounded-full"
         role="img"
         aria-label={`Promotion ${score} of ${PROMOTION_SCORE_MAX}`}
       >
-        {Array.from({ length: PROMOTION_SCORE_MAX }, (_, i) => (
-          <span
-            key={i}
-            className={cx(
-              "h-2 flex-1 rounded-full transition-colors",
-              i < score ? "bg-violet-500" : "bg-muted",
-            )}
-          />
-        ))}
+        <div
+          className="h-full rounded-full bg-violet-500 transition-[width] duration-300"
+          style={{ width: `${(score / PROMOTION_SCORE_MAX) * 100}%` }}
+        />
       </div>
 
       <div className="divide-border/60 mt-2 flex flex-col divide-y">
         <BarRow
           label="Partnership Membership"
-          detail="The first step — join in the Partnership box below."
-          points={member ? "+1" : "0"}
+          detail="The first step — join in the box below."
+          points={member ? "+1" : ""}
           earned={member}
           control={
             <span
@@ -781,8 +708,8 @@ function PromosBar({
         />
         <BarRow
           label="Visit Rewards"
-          detail="Zero · Conservative · Aggressive — pick a level below."
-          points={`+${level}`}
+          detail="Zero · Conservative · Aggressive."
+          points={level > 0 ? `+${level}` : ""}
           earned={level > 0}
           control={
             <span
@@ -802,7 +729,7 @@ function PromosBar({
             key={row.key}
             label={row.label}
             detail={row.detail}
-            points={rails[row.key] ? "+1" : "0"}
+            points={rails[row.key] ? "+1" : ""}
             earned={rails[row.key]}
             control={
               <RailToggle
@@ -817,8 +744,8 @@ function PromosBar({
         ))}
         <BarRow
           label="Mesita Capital"
-          detail="Working-capital advances — a future stage raises the bar."
-          points="—"
+          detail="Working-capital advances."
+          points=""
           earned={false}
           control={
             <span className="text-muted-foreground bg-muted inline-flex items-center rounded-full px-2 py-0.5 type-label font-semibold">
@@ -917,7 +844,7 @@ function RailToggle({
   );
 }
 
-// ─── Box 3 · Partnership ───────────────────────────────────────────────────
+// ─── Box 2 · Partnership ───────────────────────────────────────────────────
 
 function MembershipBox({
   place,
@@ -947,7 +874,7 @@ function MembershipBox({
   const showJoin = notMember || forfeited;
 
   const nextLine = notMember
-    ? "The subscription is Partnership. After you join, pick a strategy below — switch free anytime."
+    ? null
     : forfeited
       ? "Re-join Partnership to clear the forfeit and strikes; then pick a strategy again."
       : "Switching to Zero pauses discounts without ending the partnership. Dropping is separate.";
@@ -998,9 +925,11 @@ function MembershipBox({
           </p>
         </div>
 
-        <p className="text-muted-foreground text-xs leading-snug">
-          {nextLine}
-        </p>
+        {nextLine && (
+          <p className="text-muted-foreground text-xs leading-snug">
+            {nextLine}
+          </p>
+        )}
 
         {showJoin && (
           <div className="flex flex-col gap-2">
@@ -1011,7 +940,7 @@ function MembershipBox({
               onClick={onJoinClick}
             />
             <p className="text-muted-foreground type-meta leading-snug">
-              Mock checkout — writes partner status, no Stripe charge.
+              Mock checkout — no charge.
             </p>
             <div aria-live="polite">
               {joinError && <ErrorNote message={joinError} />}
@@ -1059,7 +988,7 @@ function StripeJoinButton({
       )}
       {forfeited
         ? `Re-join Partnership · ${price}/month`
-        : `Join Partnership · ${price}/month`}
+        : "Join Partnership"}
     </button>
   );
 }

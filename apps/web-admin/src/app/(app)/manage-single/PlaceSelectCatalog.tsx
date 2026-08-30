@@ -286,18 +286,26 @@ export function PlaceSelectCatalog() {
         {trimmed.length === 0 && hits.length > 0 ? (
           <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
             <div className="-mx-0 overflow-x-auto">
-              {/* The quick view is the COMMERCIAL glance (Pato gate
-                  2026-08-29): only the five columns that answer "how much
-                  does this place offer through Mesita" — Promotion (the 0–7
-                  score) · Partner · Visit Rewards (0|1|2) · Mesita Pay ·
-                  Mesita Yums. The pipeline facts (Created … Verified) left
-                  this table on purpose; ops truth lives on the place header
-                  chips, the Admin-tab Status box and Multiple Places. */}
-              <table className="w-full min-w-[900px] border-separate border-spacing-0 text-sm">
+              {/* TWO BLOCKS, left to right (Pato, 2026-08-29). PIPELINE —
+                  Active · Listed · Requested · Enriched · Enriching ·
+                  Verified — answers "how far along is it". COMMERCIAL —
+                  Promotion (the 0–7 score) · Partner · Visit Rewards (0|1|2)
+                  · Mesita Pay · Mesita Yums — answers "how much does it
+                  offer". Created is deliberately absent: google_place_id is
+                  required at create, so the column was Yes on every row and
+                  carried no signal. Active is Google's OPERATIONAL fact, not
+                  Mesita Listed. */}
+              <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
                     <th className="w-14 px-4 py-3 font-semibold">Photo</th>
                     <th className="px-4 py-3 font-semibold">Name</th>
+                    <th className="px-4 py-3 text-center font-semibold">Active</th>
+                    <th className="px-4 py-3 text-center font-semibold">Listed</th>
+                    <th className="px-4 py-3 text-center font-semibold">Requested</th>
+                    <th className="px-4 py-3 text-center font-semibold">Enriched</th>
+                    <th className="px-4 py-3 text-center font-semibold">Enriching</th>
+                    <th className="px-4 py-3 text-center font-semibold">Verified</th>
                     <th className="px-4 py-3 text-center font-semibold">Promotion</th>
                     <th className="px-4 py-3 text-center font-semibold">Partner</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Visit Rewards</th>
@@ -473,6 +481,34 @@ function PlaceCatalogRow({
         <p className="truncate font-semibold">{googleName}</p>
       </td>
       <td className="px-4 py-3.5 text-center">
+        <ActiveCell
+          status={place.business_status}
+          seenAt={place.business_status_at}
+        />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.listed} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <RequestCountCell count={place.request_count} />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell
+          value={
+            place.enrich_pulse_total > 0 &&
+            place.enrich_pulse === place.enrich_pulse_total
+          }
+          trueLabel="Yes"
+          falseLabel="No"
+        />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.enriching} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-4 py-3.5 text-center">
+        <BoolCell value={place.verified} trueLabel="Yes" falseLabel="No" />
+      </td>
+      <td className="px-4 py-3.5 text-center">
         <PromotionCell score={place.promotion} />
       </td>
       <td className="px-4 py-3.5 text-center">
@@ -562,10 +598,67 @@ function PromoLevelCell({ level }: { level: 0 | 1 | 2 | 3 }) {
   );
 }
 
-// Every quick-view fact is a STATE, not a debt — a free place or an
-// un-accepted rail is not a defect — so false renders as the plain grey pill
-// (`falseTone="neutral"`). The rose "pending" tone survives for any future
-// column where false means something is still owed.
+// REQUESTED is 0…n, not a yes/no: how many guests asked for this profile.
+function RequestCountCell({ count }: { count: number }) {
+  const n = Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0;
+  const title = `${n} guest request${n === 1 ? "" : "s"}`;
+  return (
+    <span
+      className={
+        "type-label font-semibold tabular-nums " +
+        (n === 0 ? "text-muted-foreground" : "text-foreground")
+      }
+      title={title}
+    >
+      {n}
+    </span>
+  );
+}
+
+// Google's OPERATIONAL fact, with the observation date in the tooltip — a
+// stale claim must not read as current. Silence from Google is "?", a third
+// state that is NOT "closed".
+function ActiveCell({
+  status,
+  seenAt,
+}: {
+  status: string | null;
+  seenAt: string | null;
+}) {
+  const seen =
+    seenAt && !Number.isNaN(new Date(seenAt).getTime())
+      ? ` (seen ${new Date(seenAt).toLocaleDateString()})`
+      : "";
+  if (status === "OPERATIONAL") {
+    return (
+      <span title={`Google reports this business as open and trading${seen}`}>
+        <BoolCell value={true} trueLabel="Yes" falseLabel="No" />
+      </span>
+    );
+  }
+  if (status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY") {
+    const label =
+      status === "CLOSED_TEMPORARILY" ? "Temporarily closed" : "Permanently closed";
+    return (
+      <span title={`${label}${seen}`}>
+        <BoolCell value={false} trueLabel="Yes" falseLabel="No" />
+      </span>
+    );
+  }
+  return (
+    <span
+      title="Google has not reported a business status for this listing yet."
+      className="text-muted-foreground type-label font-semibold"
+    >
+      ?
+    </span>
+  );
+}
+
+// A false cell is not one fact. PIPELINE falses are PENDING — something the
+// Intaker or an operator still owes — and read rose. COMMERCIAL falses are a
+// STATE: a free place, or a rail this place simply does not accept, is not a
+// defect, so they pass `falseTone="neutral"` and read plain grey.
 function BoolCell({
   value,
   trueLabel,

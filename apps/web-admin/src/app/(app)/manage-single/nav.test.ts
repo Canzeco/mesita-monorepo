@@ -35,18 +35,21 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("is four boxes — Tutorial, Promos (the bar), Partnership, Visit Rewards", () => {
+  it("is three boxes — Promos (the bar), Partnership, Visit Rewards", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/title="Tutorial"/);
     expect(src).toMatch(/title="Partnership"/);
+    // The Tutorial box is DELETED (Pato, 2026-08-29): the admin console does
+    // not teach its own operator. Never reintroduce it on this tab.
+    expect(src).not.toMatch(/title="Tutorial"/);
+    expect(src).not.toMatch(/TutorialBox/);
     // "Promos" names the PROGRESS BAR (Pato 2026-08-29); the strategy tiles
     // box is "Visit Rewards" — never the other way round.
     expect(src).toMatch(/title="Promos"/);
     expect(src).toMatch(/title="Visit Rewards"/);
-    expect((src.match(/<SectionCard/g) ?? []).length).toBe(4);
+    expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
     // The bar sums Partnership + Visit Rewards + the four rail toggles, with
     // Mesita Capital as a locked Soon row; the score twin caps it.
     expect(src).toMatch(/PromosBar/);
