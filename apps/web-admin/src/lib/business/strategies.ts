@@ -27,7 +27,7 @@
 //
 // Switching strategy writes the four rate columns only (and clears cap on
 // Zero / seeds the default cap when leaving Zero). Cap changes write
-// monthly_promo_cap alone. Drop membership is a separate Membership-box action.
+// monthly_promo_cap alone. Dropping the partnership is a separate Partnership-box action.
 
 /** Legal per-place discount caps (MXN). Zero strategy clears the cap. */
 export const DISCOUNT_CAPS_MXN = [200, 500, 1000] as const;

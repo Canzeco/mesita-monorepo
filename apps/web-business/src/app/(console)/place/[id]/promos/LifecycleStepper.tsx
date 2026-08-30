@@ -117,9 +117,9 @@ export function LifecycleStepper({
 
   return (
     <section className="border-border bg-card shadow-card rounded-2xl border px-4 py-4 sm:px-5">
-      {/* The rail replaced a visible "How promos go live" heading — the steps
+      {/* The rail replaced a visible "How rewards go live" heading — the steps
           say it. Keep the label for screen readers. */}
-      <h2 className="sr-only">How promos go live</h2>
+      <h2 className="sr-only">How rewards go live</h2>
       <ol className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
         {steps.map((s, i) => (
           <li

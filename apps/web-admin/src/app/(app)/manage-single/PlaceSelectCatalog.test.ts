@@ -24,13 +24,15 @@ describe("Manage Single quick-view columns", () => {
       "Enriched",
       "Enriching",
       "Verified",
-      "Promotion",
+      "Offerings",
       "Partner",
       "Visit Rewards",
       "Mesita Pay",
       "Mesita Yums",
     ]);
     expect(headers).not.toContain("Created");
+    // "promo" is banned in copy (Pato, 2026-08-30) — the wire key stays.
+    expect(headers).not.toContain("Promotion");
     // The score cell derives nothing itself — the number is shaped
     // server-side (promotion-score.ts twins) and rendered against the max.
     expect(src).toContain("PromotionCell");

@@ -15,7 +15,7 @@ const STREAMS: {
   },
   {
     title: "Partnership Subscription",
-    body: "A flat yearly membership turns Listed into Verified: profile control, exclusive rewards, priority placement, the dashboard.",
+    body: "A flat yearly Partnership subscription turns Listed into Verified: profile control, exclusive rewards, priority placement, the dashboard.",
     never:
       "No commission on anything, and rank is never for sale — visibility is earned, not bought.",
     Icon: Store,

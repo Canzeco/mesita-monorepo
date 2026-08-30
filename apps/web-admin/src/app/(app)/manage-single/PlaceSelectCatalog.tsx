@@ -306,7 +306,7 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Enriched</th>
                     <th className="px-4 py-3 text-center font-semibold">Enriching</th>
                     <th className="px-4 py-3 text-center font-semibold">Verified</th>
-                    <th className="px-4 py-3 text-center font-semibold">Promotion</th>
+                    <th className="px-4 py-3 text-center font-semibold">Offerings</th>
                     <th className="px-4 py-3 text-center font-semibold">Partner</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Visit Rewards</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Pay</th>
@@ -537,7 +537,7 @@ function PlaceCatalogRow({
 function PromotionCell({ score }: { score: number }) {
   const max = PROMOTION_SCORE_MAX;
   const n = Number.isFinite(score) ? Math.max(0, Math.min(max, Math.trunc(score))) : 0;
-  const title = `Promotion ${n} of ${max} — offerings summed`;
+  const title = `Offerings ${n} of ${max}`;
   return (
     <span className="inline-flex items-center gap-1.5" title={title}>
       <span

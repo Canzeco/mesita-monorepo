@@ -49,17 +49,21 @@ import {
 // DELETED: this is the operator's own console, and it explained Mesita to the
 // person who built it, in copy the other boxes already carried. Never restore
 // it here — the business console is where a partner gets taught.
-//   1. Promos — the promotion PROGRESS BAR ("Promos" names the bar): the
+//   1. Offerings — the PROGRESS BAR over what the place offers: the
 //      0–7 score summing what the place offers, its components as rows.
 //      Partnership is the first step; the four rail rows are LIVE TOGGLES
 //      (admin-web-set-place-rails); Mesita Capital is a locked Soon row.
 //      Display-only — never a discovery input; rank is never for sale.
+//      NAMING (Pato, 2026-08-30): "promo" and "membership" are OUT of
+//      copy. The box and the catalog column are both "Offerings"; the
+//      wire key stays `promotion` and the module stays promotion-score.ts
+//      — labels move, wire keys never follow.
 //   2. Partnership — MX$1,000/month is the subscription. Stripe-look mock
 //      Join writes plan=pro at Zero (admin-web-set-plan, no charge).
 //      Strategy unlocks after. Lifecycle rail, status pill, drop.
 //   3. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
 //      placement are a Low · Mid · High word ladder. Dominant is not a
-//      picker option. (Never called "Promos" — that names the bar.)
+//      picker option.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -409,8 +413,8 @@ export function PromosSection({
 // rail state has exactly one current-or-blocked step, so a single line says
 // the same thing. Live on a paid strategy collapses to a slim strip (the
 // teaching job is done; strikes keep it honest). Non-interactive on purpose:
-// the actionable controls stay in the Membership box and strategy cards.
-// decision: the banner does NOT repeat the MembershipStatusPill — the
+// the actionable controls stay in the Partnership box and strategy cards.
+// decision: the banner does NOT repeat the partnership status pill — the
 // Membership box header keeps the only pill in the viewport.
 
 const STEP_TITLES = {
@@ -598,9 +602,9 @@ function StepMarker({
   );
 }
 
-// ─── Box 1 · Promos — the promotion progress bar ───────────────────────────
+// ─── Box 1 · Offerings — the bar over what the place offers ───────────────────────────
 //
-// "Promos" names the BAR (Pato, 2026-08-29 — never the strategy tiles). The
+// "Offerings" names the BAR (Pato, 2026-08-30) — "promo" is out of copy. The
 // score is the shared 0–7 derivation (promotion-score.ts twins): Partnership
 // +1 · Visit Rewards +0/1/2 · each accepted rail +1. Components render as
 // rows; the four rail rows are live toggles writing the acceptance intent
@@ -668,8 +672,8 @@ function PromosBar({
     <SectionCard
       icon={<TrendingUp className="h-4 w-4" />}
       tint="violet"
-      title="Promos"
-      subtitle="The more you offer, the better the promotion."
+      title="Offerings"
+      subtitle="Everything this place offers through Mesita."
       action={
         <span className="type-label text-foreground font-semibold tabular-nums">
           {score} / {PROMOTION_SCORE_MAX}
@@ -679,7 +683,7 @@ function PromosBar({
       <div
         className="bg-muted mt-4 h-1.5 w-full overflow-hidden rounded-full"
         role="img"
-        aria-label={`Promotion ${score} of ${PROMOTION_SCORE_MAX}`}
+        aria-label={`Offerings ${score} of ${PROMOTION_SCORE_MAX}`}
       >
         <div
           className="h-full rounded-full bg-violet-500 transition-[width] duration-300"
@@ -689,7 +693,7 @@ function PromosBar({
 
       <div className="divide-border/60 mt-2 flex flex-col divide-y">
         <BarRow
-          label="Partnership Membership"
+          label="Partnership Subscription"
           detail="The first step — join in the box below."
           points={member ? "+1" : ""}
           earned={member}
@@ -1311,7 +1315,7 @@ function ProductModal({
                   lifecycle rail. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the partnership">
-                {price}/month — one membership, then switch strategies free.
+                {price}/month — one subscription, then switch strategies free.
               </Step>
               <Step n={2} title="Pick a strategy">
                 Confirming makes {strategy.name} your posture — switch free

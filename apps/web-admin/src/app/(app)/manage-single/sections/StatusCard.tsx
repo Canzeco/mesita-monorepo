@@ -270,7 +270,7 @@ export function StatusCard({
     (state === "pending"
       ? " · not live until the first honored check"
       : state === "paused"
-        ? " · promo lane paused (strike 2)"
+        ? " · reward lane paused (strike 2)"
         : state === "forfeited"
           ? " · forfeited after 3 strikes"
           : strikes > 0
@@ -403,7 +403,7 @@ export function StatusCard({
                 Guest surfaces disagree with Visit Rewards.
               </span>{" "}
               {badged
-                ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed promo lane."
+                ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed reward lane."
                 : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}
             </p>
           </div>

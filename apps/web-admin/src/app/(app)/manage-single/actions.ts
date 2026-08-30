@@ -386,7 +386,7 @@ export async function updatePlace(
 // carrying a `plan` key. The admin grants it through its own door instead —
 // no Stripe, no money (admin-web-set-plan).
 //
-// `rates` rides along on purpose (MESITA-818/912). A membership and the
+// `rates` rides along on purpose (MESITA-818/912). The partnership and the
 // strategy that justifies it are one decision, and sending them together
 // makes it ONE atomic write. Join may land on Zero (paid plan + null rates) —
 // the old 409 `no_strategy` guard is retired; a 0% Mesita Partner is

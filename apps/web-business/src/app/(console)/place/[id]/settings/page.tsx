@@ -131,7 +131,7 @@ export default async function PlaceSettingsPage({
               Account &amp; billing
             </span>
             <span className="text-muted-foreground block text-[13px]">
-              Membership, payment method and sign-out — shared by every place on
+              Partnership, payment method and sign-out — shared by every place on
               the account.
             </span>
           </span>

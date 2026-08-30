@@ -3,11 +3,12 @@ import type { PlacePlan } from "@/lib/api/places";
 // Subscription catalog used by place summaries (label lookup).
 //
 // Promos v4 (MESITA-541), ratified 2026-08-21 (MESITA-1154): a place is
-// either Free or holds the Membership (MX$1,000 + IVA/year). Verified is a
+// either Free or holds the Partnership subscription (MX$1,000 + IVA/year).
+// Verified is a
 // SEPARATE, free ownership fact (resolvePlaceVerification in place-utils.ts)
 // — never this catalog's label. Discount Strategies (Zero / Conservative /
 // Aggressive) live on the Promos page and are NOT separate Stripe products —
-// paid Strategies all grant the same Membership (`plan=pro`). Legacy `ultra`
+// paid Strategies all grant the same Partnership (`plan=pro`). Legacy `ultra`
 // folds onto it for display. Never sell organic ranking: the bundle is
 // named explicitly, not "algorithm placement".
 
@@ -43,7 +44,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
   },
 ];
 
-/** True when the place holds the Membership (any paid plan key). */
+/** True when the place holds the Partnership subscription (any paid plan key). */
 function isPartner(p: PlacePlan): boolean {
   return p !== "free";
 }
