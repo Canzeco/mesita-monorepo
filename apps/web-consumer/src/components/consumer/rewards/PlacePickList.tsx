@@ -2,9 +2,13 @@
 
 // Pay's place list: the closest 50 listed Mesita places around the guest
 // (device location, Monterrey fallback). Typing 2+ characters switches to
-// Fast Search (Autocomplete) so a place
-// that is not in the nearby 50 can still be found. Google Nearby pins are
-// Search's map fill, not this list.
+// the MESITA NAME EMBEDDINGS (`mode: "mesita"`) so a place that is not in
+// the nearby 50 can still be found by name.
+//
+// Deliberately NOT Autocomplete (Pato, 2026-08-29): Pay opens a ticket,
+// and a ticket can only open at a place that is on Mesita, so a Google
+// lane would bill an API call to return a row this list must immediately
+// lock. Google Nearby pins are Search's map fill, not this list.
 //
 // One tap creates the ticket. Non-promoting rows stay visible and locked
 // (Soon). Live tickets never get an "Open" chip here — they live in Inbox.
@@ -104,11 +108,16 @@ export function PlacePickList({
     let cancelled = false;
     const handle = window.setTimeout(async () => {
       try {
+        // Pay's engine is the Mesita NAME EMBEDDINGS (Pato, 2026-08-29).
+        // Not Autocomplete: a ticket can only open at a place that is on
+        // Mesita, so a Google lane would bill a call to return a row this
+        // list must immediately lock.
         const rows = await apiSuggestPlaces(
           supabase,
           trimmed,
           sessionTokenRef.current,
           originPoint,
+          "mesita",
         );
         if (!cancelled) {
           setPredictions(rows);
