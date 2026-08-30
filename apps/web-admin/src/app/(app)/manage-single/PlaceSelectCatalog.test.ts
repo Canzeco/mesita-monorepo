@@ -6,23 +6,31 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("Manage Single quick-view columns", () => {
-  it("is ONLY the five commercial columns — Promotion · Partner · Visit Rewards · Mesita Pay · Mesita Yums", () => {
+  it("is the pipeline block then the commercial block, with Created dropped", () => {
     const src = readFileSync(join(here, "PlaceSelectCatalog.tsx"), "utf8");
     const headers = [
       ...src.matchAll(
         /<th className="px-4 py-3 text-center font-semibold(?: whitespace-nowrap)?">([\w ]+)<\/th>/g,
       ),
     ].map((m) => m[1]);
-    // Pato gate 2026-08-29: the quick view is the COMMERCIAL glance. The
-    // pipeline facts (Created … Verified) left this table deliberately —
-    // ops truth lives on header chips, the Status box and Multiple Places.
+    // Pato, 2026-08-29: show almost all the statuses here. PIPELINE first
+    // ("how far along is it"), then COMMERCIAL ("how much does it offer").
+    // Created is the ONE deliberate omission — google_place_id is required
+    // at create, so that column read Yes on every row and carried no signal.
     expect(headers).toEqual([
+      "Active",
+      "Listed",
+      "Requested",
+      "Enriched",
+      "Enriching",
+      "Verified",
       "Promotion",
       "Partner",
       "Visit Rewards",
       "Mesita Pay",
       "Mesita Yums",
     ]);
+    expect(headers).not.toContain("Created");
     // The score cell derives nothing itself — the number is shaped
     // server-side (promotion-score.ts twins) and rendered against the max.
     expect(src).toContain("PromotionCell");
@@ -32,10 +40,13 @@ describe("Manage Single quick-view columns", () => {
     expect(src).toContain("operatorPromotingLevel");
     expect(src).toContain("[1, 2].map");
     expect(src).not.toContain("[1, 2, 3].map");
-    // The pipeline cells are gone, not hidden.
-    expect(src).not.toContain("ActiveCell");
-    expect(src).not.toContain("RequestCountCell");
-    expect(src).not.toContain("place.enrich_pulse");
+    // The pipeline cells render real derivations, not placeholders.
+    expect(src).toContain("ActiveCell");
+    expect(src).toContain("RequestCountCell");
+    expect(src).toContain("place.request_count");
+    expect(src).toContain("place.enrich_pulse");
+    // Requested is a COUNT, never a Yes/No pill.
+    expect(src).not.toMatch(/BoolCell value=\{place\.requested\}/);
   });
 });
 
