@@ -10,7 +10,8 @@ import {
 // Tab order — Pato live 2026-08-05 (MESITA-900): place · promos ·
 // performance · settings · admin. Reservations list + AI dial lines live
 // inside Performance again (reverses MESITA-894's own-tab split). Channel
-// config stays on Settings. Admin stays last, admin-console-only.
+// config moved to Partnership (Pato live 2026-08-30) — Settings is people
+// now, not rails. Admin stays last, admin-console-only.
 /** Tabs shown in PlaceEditChrome. `soon: true` = parked: the tab renders
  *  disabled and its route serves a placeholder instead of the live section. */
 export const PLACE_TAB_SECTIONS = [
@@ -18,9 +19,11 @@ export const PLACE_TAB_SECTIONS = [
   // is membership/promos (Percent). ShoppingBag is Orders; Handshake and
   // User stay off these two so Admin keeps the person glyph.
   { id: "place", label: "Profile", Icon: Store, soon: false },
-  // decision: Pato live 2026-08-25 — tab label Partner (route `/promos`
-  // frozen). Partnership is the subscription; strategy unlocks after join.
-  { id: "promos", label: "Partner", Icon: Percent, soon: false },
+  // decision: Pato live 2026-08-30 — tab label Partnership (route
+  // `/promos` frozen; a rename never reaches the URL). The tab now holds
+  // every capability the place offers: the subscription, Visit Rewards,
+  // and the three rail boxes moved off Settings.
+  { id: "promos", label: "Partnership", Icon: Percent, soon: false },
   // decision: Pato live 2026-08-09 — Performance is parked behind Soon. The
   // per-place feed reads as empty scaffolding on real places, so it's blocked
   // rather than shown half-true. The feed itself is untouched underneath —

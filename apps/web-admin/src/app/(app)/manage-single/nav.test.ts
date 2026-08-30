@@ -11,10 +11,10 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PLACE_TAB_SECTIONS", () => {
-  it("labels Partner on the frozen /promos id; Performance stays Soon", () => {
+  it("labels Partnership on the frozen /promos id; Performance stays Soon", () => {
     expect(PLACE_TAB_SECTIONS.map((s) => s.label)).toEqual([
       "Profile",
-      "Partner",
+      "Partnership",
       "Performance",
       "Settings",
       "Admin",
@@ -22,12 +22,12 @@ describe("PLACE_TAB_SECTIONS", () => {
     const byId = Object.fromEntries(
       PLACE_TAB_SECTIONS.map((s) => [s.id, s]),
     );
-    expect(byId.promos?.label).toBe("Partner");
+    expect(byId.promos?.label).toBe("Partnership");
     expect(byId.promos?.soon).toBe(false);
     expect(byId.performance?.soon).toBe(true);
     expect(isSectionSoon("promos")).toBe(false);
     expect(isSectionSoon("performance")).toBe(true);
-    // Profile = the place; Partner = membership/promos. Distinct glyphs.
+    // Profile = the place; Partnership = what the place offers. Distinct glyphs.
     expect(byId.place?.Icon.displayName).toBe("Store");
     expect(byId.promos?.Icon.displayName).toBe("Percent");
     expect(byId.admin?.Icon.displayName).toBe("User");
@@ -35,7 +35,7 @@ describe("PLACE_TAB_SECTIONS", () => {
 });
 
 describe("PromosSection visit-only", () => {
-  it("is three boxes — Offerings (the bar), Partnership, Visit Rewards", () => {
+  it("is six boxes — Offerings, Partnership, Visit Rewards, Visits, Orders, Reservations", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
@@ -51,7 +51,13 @@ describe("PromosSection visit-only", () => {
     expect(src).not.toMatch(/title="Promos"/);
     expect(src).not.toMatch(/Partnership Membership/);
     expect(src).toMatch(/title="Visit Rewards"/);
+    // Three SectionCards are declared HERE; the three rail boxes moved from
+    // Settings (Pato live 2026-08-30) bring their own chrome from their own
+    // files, so this count stays 3 while the tab renders six boxes.
     expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
+    expect(src).toMatch(/<VisitsCard place=\{v\} \/>/);
+    expect(src).toMatch(/<OrdersCard place=\{v\} \/>/);
+    expect(src).toMatch(/<ReservationsCard place=\{v\} \/>/);
     // The bar sums Partnership + Visit Rewards + the four rail toggles, with
     // Mesita Capital as a locked Soon row; the score twin caps it.
     expect(src).toMatch(/OfferingsBar|PromosBar/);

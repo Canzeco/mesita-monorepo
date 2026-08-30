@@ -34,7 +34,7 @@ type NavItem = {
 // (reverses MESITA-894). Channel routing + Check PIN + team stay under Settings.
 const NAV_ITEMS: NavItem[] = [
   { slug: "place", Icon: Store, label: "Profile" },
-  { slug: "promos", Icon: Percent, label: "Partner" },
+  { slug: "promos", Icon: Percent, label: "Partnership" },
   { slug: "performance", Icon: BarChart3, label: "Performance" },
   { slug: "settings", Icon: Settings2, label: "Settings" },
 ];
