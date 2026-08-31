@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
   // The catalog table is the PIPELINE in one row — seeded → active → listed →
   // enriching → enriched → verified → partner → promoting — plus two TRAILING
-  // acceptance intent bits (mesita_pay · yums) that are not pipeline rungs.
+  // acceptance intent bits (mesita_pay · credits) that are not pipeline rungs.
   // Everything except the two id-scoped reads below lives on profiles, so no
   // join is required here.
   // google_place_id is the seeded spine; business_status is Google's
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
   const enrichment = new Map<string, EnrichmentMap>();
   const acceptance = new Map<
     string,
-    { mesitaPay: boolean; yums: boolean; pickup: boolean; delivery: boolean }
+    { mesitaPay: boolean; credits: boolean; pickup: boolean; delivery: boolean }
   >();
   if (ids.length > 0) {
     const [verificationRes, enrichmentRes] = await Promise.all([
@@ -201,7 +201,7 @@ Deno.serve(async (req) => {
       // publicly enumerable — and rebuilding it + its INSTEAD OF triggers
       // is the documented pain this side-read exists to avoid).
       admin.from("places").select(
-        "id, enrichment, mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled",
+        "id, enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
       ).in(
         "id",
         ids,
@@ -227,14 +227,14 @@ Deno.serve(async (req) => {
       // falls back to false below — the safe direction for an acceptance bit.
       acceptance.set(String(r.id), {
         mesitaPay: r.mesita_pay_enabled === true,
-        yums: r.yums_enabled === true,
+        credits: r.credits_enabled === true,
         pickup: r.pickup_orders_enabled === true,
         delivery: r.delivery_orders_enabled === true,
       });
     }
   }
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
-  const NO_ACCEPTANCE = { mesitaPay: false, yums: false, pickup: false, delivery: false };
+  const NO_ACCEPTANCE = { mesitaPay: false, credits: false, pickup: false, delivery: false };
 
   // Trim photos to the first thumbnail to keep the payload small.
   // `name` is the generated display column (mesita_name → google_name); the
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
       // Partner tab (admin-web-set-place-rails). Engines still gate each
       // rail; the bits say what the place OFFERS (Pato gates 2026-08-29).
       mesita_pay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
-      yums: (acceptance.get(id) ?? NO_ACCEPTANCE).yums,
+      credits: (acceptance.get(id) ?? NO_ACCEPTANCE).credits,
       pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
       delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
       // The Promotion score — offering completeness as ONE number, 0–7.
@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
           v as Parameters<typeof placePromotingLevel>[0],
         ),
         mesitaPay: (acceptance.get(id) ?? NO_ACCEPTANCE).mesitaPay,
-        yums: (acceptance.get(id) ?? NO_ACCEPTANCE).yums,
+        credits: (acceptance.get(id) ?? NO_ACCEPTANCE).credits,
         pickup: (acceptance.get(id) ?? NO_ACCEPTANCE).pickup,
         delivery: (acceptance.get(id) ?? NO_ACCEPTANCE).delivery,
       }),

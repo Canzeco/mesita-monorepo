@@ -23,7 +23,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         Active · Listed · Requested `0…n` · Verified.
 //                         Owns both operator writes (Active, Listed).
 //   Partnership Statuses  what does it offer? Partnered · Visit Rewards
-//                         `0|1|2` · Mesita Pay · Mesita Yums — the last two
+//                         `0|1|2` · Mesita Pay · Mesita Credits — the last two
 //                         are acceptance intent bits set on the Partner tab;
 //                         engines still gate each rail. Carries the
 //                         listing_type drift warning, which is about these rows.

@@ -5,7 +5,7 @@ const NOTHING = {
   partner: false,
   visitRewardsLevel: 0,
   mesitaPay: false,
-  yums: false,
+  credits: false,
   pickup: false,
   delivery: false,
 };
@@ -18,7 +18,7 @@ describe("promotionScore (twin of _shared/promotion-score.ts)", () => {
         partner: true,
         visitRewardsLevel: 2,
         mesitaPay: true,
-        yums: true,
+        credits: true,
         pickup: true,
         delivery: true,
       }),

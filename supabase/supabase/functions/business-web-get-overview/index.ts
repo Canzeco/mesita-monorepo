@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       admin
         .from("places")
         .select(
-          "enrichment, mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled",
+          "enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
     // (never stored): seeded · listed · enriched. The other three the box
     // derives itself — partner and promoting from columns already on this row,
     // verified from admin-web-get-place-verification. The four acceptance
-    // INTENT BITS (mesita_pay · yums · pickup · delivery, the Partner tab's
+    // INTENT BITS (mesita_pay · credits · pickup · delivery, the Partner tab's
     // rail toggles) ride the same places-direct side-read as enrichment —
     // never through profiles (the view is anon-readable) — and are forwarded
     // only when the read returned a boolean, so a failed read renders "?"
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
     const acceptanceRow = (enrichmentRow.data ?? null) as
       | {
         mesita_pay_enabled?: unknown;
-        yums_enabled?: unknown;
+        credits_enabled?: unknown;
         pickup_orders_enabled?: unknown;
         delivery_orders_enabled?: unknown;
       }
@@ -171,8 +171,8 @@ Deno.serve(async (req) => {
         ...(typeof acceptanceRow?.mesita_pay_enabled === "boolean"
           ? { mesita_pay_enabled: acceptanceRow.mesita_pay_enabled }
           : {}),
-        ...(typeof acceptanceRow?.yums_enabled === "boolean"
-          ? { yums_enabled: acceptanceRow.yums_enabled }
+        ...(typeof acceptanceRow?.credits_enabled === "boolean"
+          ? { credits_enabled: acceptanceRow.credits_enabled }
           : {}),
         ...(typeof acceptanceRow?.pickup_orders_enabled === "boolean"
           ? { pickup_orders_enabled: acceptanceRow.pickup_orders_enabled }

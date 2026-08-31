@@ -81,7 +81,7 @@ describe("Three status boxes", () => {
     expect(status).toContain('name="Partnered"');
     expect(status).toContain('name="Visit Rewards"');
     expect(status).toContain('name="Mesita Pay"');
-    expect(status).toContain('name="Mesita Yums"');
+    expect(status).toContain('name="Mesita Credits"');
     expect(status).toContain("Guest surfaces disagree with Visit Rewards");
     // The Intake facts and their read LEFT this file — moved, not copied, so
     // the Admin tab still issues exactly one getPlaceEnrichment call.

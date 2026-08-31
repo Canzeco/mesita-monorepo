@@ -196,10 +196,10 @@ export type PlaceRow = {
    *  columns it predates, so the profiles door refuses these instead of
    *  no-opping them. */
   mesita_pay_enabled: boolean;
-  /** Same contract for Yums (Mesita Credits): cleared to accept Yums when
-   *  Credits land. Engine ANDs with visits_config.payYums; Yums settles as a
-   *  bill REDUCTION, never a payment method (🧾 Checkout §B / 🪙 Yums). */
-  yums_enabled: boolean;
+  /** Same contract for Mesita Credits: cleared to accept Credits when they
+   *  land. Engine ANDs with visits_config.payCredits; Credits settle as a
+   *  bill REDUCTION, never a payment method (🧾 Checkout §B / 🪙 Credits). */
+  credits_enabled: boolean;
   /** Order-rail acceptance INTENT BITS (Pato gate 2026-08-29, Promotion
    *  score): the operator's pickup / delivery offering toggles. Distinct from
    *  content-derived `orders_enabled` (the guest Order CTA, menu-driven) —
@@ -296,7 +296,7 @@ export const PLACE_PATCH_KEYS = [
   // (Pato gate 2026-08-29, the Partner tab toggles + Promotion score). They
   // are PLACES-ONLY patch keys — see PLACE_INTENT_BIT_KEYS below.
   "mesita_pay_enabled",
-  "yums_enabled",
+  "credits_enabled",
   "pickup_orders_enabled",
   "delivery_orders_enabled",
 ] as const satisfies readonly (keyof Omit<
@@ -505,7 +505,7 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>([
 // same branch.
 const PLACE_BOOLEAN_KEYS = new Set<string>([
   "orders_enabled", "reservations_enabled",
-  "mesita_pay_enabled", "yums_enabled",
+  "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
 ]);
 // Acceptance intent bits are PLACES-ONLY: the profiles view's INSTEAD OF
@@ -514,7 +514,7 @@ const PLACE_BOOLEAN_KEYS = new Set<string>([
 // refuses loudly instead. Their one writer (admin-web-set-place-rails)
 // targets `table: "places"`.
 const PLACE_INTENT_BIT_KEYS = new Set<string>([
-  "mesita_pay_enabled", "yums_enabled",
+  "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
 ]);
 const BUSINESS_STATUS_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);

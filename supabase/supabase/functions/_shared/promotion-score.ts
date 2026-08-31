@@ -21,8 +21,8 @@ export type PromotionParts = {
   visitRewardsLevel: number;
   /** places.mesita_pay_enabled — accepts the Mesita Pay card rail. */
   mesitaPay: boolean;
-  /** places.yums_enabled — accepts Yums (Mesita Credits). */
-  yums: boolean;
+  /** places.credits_enabled — accepts Mesita Credits. */
+  credits: boolean;
   /** places.pickup_orders_enabled — offers pickup orders. */
   pickup: boolean;
   /** places.delivery_orders_enabled — offers delivery orders. */
@@ -37,6 +37,6 @@ export function promotionScore(parts: PromotionParts): number {
     : 0;
   const level = Math.min(2, Math.max(0, raw));
   return (parts.partner ? 1 : 0) + level +
-    (parts.mesitaPay ? 1 : 0) + (parts.yums ? 1 : 0) +
+    (parts.mesitaPay ? 1 : 0) + (parts.credits ? 1 : 0) +
     (parts.pickup ? 1 : 0) + (parts.delivery ? 1 : 0);
 }

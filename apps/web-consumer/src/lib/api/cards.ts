@@ -1,6 +1,6 @@
 // Frontend API surface for the Cards wallet.
 //
-// Cards, never "wallet" — the Yums wallet is a different thing holding a
+// Cards, never "wallet" — the Credits wallet is a different thing holding a
 // different currency (Pato, 2026-08-29). Nothing here caches: every call goes
 // to Stripe through its EF, so a card removed anywhere is gone everywhere on
 // the next list.

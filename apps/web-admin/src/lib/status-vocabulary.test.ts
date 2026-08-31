@@ -30,7 +30,7 @@ describe("status vocabulary", () => {
       "Partnered",
       "Visit Rewards",
       "Mesita Pay",
-      "Mesita Yums",
+      "Mesita Credits",
     ]);
     expect(INTAKE_FUNCTIONS.map((f) => `${f.n}. ${f.label}`)).toEqual([
       "0. Seed",
@@ -53,9 +53,9 @@ describe("status vocabulary", () => {
   it("acceptance bits: neutral false tone, engineless (no chips/segments) until their engines land", () => {
     expect(STATUS_FACT_FALSE_TONE.partner).toBe("neutral");
     expect(STATUS_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
-    expect(STATUS_FACT_FALSE_TONE.yums).toBe("neutral");
+    expect(STATUS_FACT_FALSE_TONE.credits).toBe("neutral");
     expect(STATUS_FACT_FALSE_TONE.verified).toBeUndefined();
-    expect([...ENGINELESS_STATUS_FACT_KEYS]).toEqual(["mesita_pay", "yums"]);
+    expect([...ENGINELESS_STATUS_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
   });
 
   it("binary chips are true / false, not the fact name", () => {

@@ -1,8 +1,8 @@
 // The Cards wallet — a consumer's saved payment methods.
 //
-// NAMING: Cards, never "wallet" (Pato, 2026-08-29). The Yums wallet holds
-// Mesita Credits and settles a bill as a REDUCTION; this holds cards and pays
-// one. Two things, two words — sharing the noun was the confusion to avoid.
+// NAMING: Cards, never "wallet" (Pato, 2026-08-29). The Credits wallet holds
+// Mesita Credits, which REDUCE a bill; this holds cards, which pay one. Two
+// things, two words — sharing the noun was the confusion to avoid.
 //
 // STRIPE IS THE ONLY STORE. No PAN, no brand, no last4, no expiry and no
 // default flag is ever written to Postgres: the whole local footprint is

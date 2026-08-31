@@ -28,7 +28,7 @@ Deno.test("mesita is retired 410, not a 400 unknown method", () => {
 });
 
 Deno.test("any other string is 400", () => {
-  const got = parseSelectTicketPaymentMethod("yums");
+  const got = parseSelectTicketPaymentMethod("credits");
   assertEquals(got.ok, false);
   if (got.ok) return;
   assertEquals(got.status, 400);

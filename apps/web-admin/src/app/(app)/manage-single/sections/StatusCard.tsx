@@ -7,7 +7,7 @@
 //   General Statuses      is this place real, reachable, and proven?
 //                         Created · Active · Listed · Requested · Verified
 //   Partnership Statuses  what does it offer commercially?
-//                         Partnered · Visit Rewards · Mesita Pay · Mesita Yums
+//                         Partnered · Visit Rewards · Mesita Pay · Mesita Credits
 //   Intake Statuses       how far has the pipeline gotten? Enriched ·
 //                         Enriching + the eleven functions — all of it in
 //                         IntakeStatusCard, which OWNS the enrichment read.
@@ -29,8 +29,8 @@
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //   Mesita Pay places.mesita_pay_enabled — cleared to accept the in-Mesita
 //              card rail when it goes live (intent bit; write-door rejected)
-//   Mesita Yums  places.yums_enabled — cleared to accept Yums (Credits)
-//              when they land (same contract)
+//   Mesita Credits  places.credits_enabled — cleared to accept Credits when
+//              they land (same contract)
 //
 // OPERATING is Google's, not ours (MESITA-1239). It answers "does this business
 // still exist and trade", which is a different question from Listed ("can a
@@ -284,16 +284,16 @@ export function StatusCard({
   // older payload — "?" rather than a false "no", the Verified rule.
   const mesitaPay: boolean | "unknown" =
     typeof place.mesita_pay_enabled === "boolean" ? place.mesita_pay_enabled : "unknown";
-  const yums: boolean | "unknown" =
-    typeof place.yums_enabled === "boolean" ? place.yums_enabled : "unknown";
+  const credits: boolean | "unknown" =
+    typeof place.credits_enabled === "boolean" ? place.credits_enabled : "unknown";
   const mesitaPayDetail =
     mesitaPay === true
       ? "Cleared to accept Mesita Pay when the rail goes live."
       : "Not accepting Mesita Pay yet — structure only; the Stripe gateway comes later.";
-  const yumsDetail =
-    yums === true
-      ? "Cleared to accept Yums when Credits go live."
-      : "Not accepting Yums yet — structure only; the Credits engine comes later.";
+  const creditsDetail =
+    credits === true
+      ? "Cleared to accept Credits when Credits go live."
+      : "Not accepting Credits yet — structure only; the Credits engine comes later.";
 
   const promotingName = OPERATOR_PROMOTING_LABEL[promotingLevel];
   const promotingDetail =
@@ -385,11 +385,11 @@ export function StatusCard({
             detail={mesitaPayDetail}
           />
           <StatusRow
-            name="Mesita Yums"
-            on={yums === true}
-            chip={statusBoolChip(yums)}
+            name="Mesita Credits"
+            on={credits === true}
+            chip={statusBoolChip(credits)}
             tint="orange"
-            detail={yumsDetail}
+            detail={creditsDetail}
           />
         </div>
 

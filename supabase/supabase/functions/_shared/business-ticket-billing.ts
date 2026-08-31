@@ -46,7 +46,7 @@ export function tipCentsFor(subtotalCents: number, tipPct: number): number {
  * C4-6 — THE amount-due formula. Three independent copies of this arithmetic
  * used to exist (here, ticket-check.ts, TicketScreen) and were equal only
  * because tip was always zero; every reader now consumes this one.
- * C4-8 rides along: the result is always >= tipCents — any future Yums
+ * C4-8 rides along: the result is always >= tipCents — any future Credits
  * redemption may reduce only the (subtotal − discount) part, never the tip.
  */
 export function amountDueCents(s: {
