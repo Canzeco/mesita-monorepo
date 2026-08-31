@@ -23,8 +23,9 @@ import { cn } from "@/lib/utils";
 //
 // The split is by FREQUENCY, not importance. The seven are what a guest opens
 // repeatedly or must reach in a hurry; these seven are the long tail: one you
-// set once and forget (Cards), two that don't exist yet (Credits, Gift), one
-// parked (Share), and three you consult once and rarely again (Metrics, Help,
+// set once and forget (Cards), one that opens a parked preview surface
+// (Credits), one that doesn't exist yet (Gift), one parked (Share), and three
+// you consult once and rarely again (Metrics, Help,
 // Contact). Twelve boxes made the surface a wall to scroll — the parked ones
 // sat between live ones, so the page read as mostly-unfinished. Behind More,
 // the unfinished work stops being the first thing you see.
@@ -51,6 +52,7 @@ export function MoreModal({
   open,
   onClose,
   onOpenCards,
+  onOpenCredits,
   onOpenShare,
   onOpenMetrics,
   onOpenHelp,
@@ -60,6 +62,8 @@ export function MoreModal({
   open: boolean;
   onClose: () => void;
   onOpenCards: () => void;
+  /** Navigates to /credits — a route, not a sheet. */
+  onOpenCredits: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
   onOpenHelp: () => void;
@@ -86,7 +90,13 @@ export function MoreModal({
       Icon: Wallet,
       title: "Credits",
       summary: "Earn and spend at the bill · 1 Credit = MX$1",
-      soon: true,
+      // Un-parked as `soon: false` PLUS a page body, which is what un-parking
+      // means here. It could not stay `soon` and still be the demo's door: a
+      // parked row is `disabled` below, so its handler never fires — which is
+      // why the parked Share row cannot reach /share either, live route and
+      // all. The page it opens says Soon on itself instead, in the header pill
+      // and the marker under the stack.
+      onClick: onOpenCredits,
     },
     {
       key: "gift",
