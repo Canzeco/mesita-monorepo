@@ -290,7 +290,7 @@ export function PlaceSelectCatalog() {
                   Active · Listed · Requested · Enriched · Enriching ·
                   Verified — answers "how far along is it". COMMERCIAL —
                   Promotion (the 0–7 score) · Partner · Visit Rewards (0|1|2)
-                  · Mesita Pay · Mesita Yums — answers "how much does it
+                  · Mesita Pay · Mesita Credits — answers "how much does it
                   offer". Created is deliberately absent: google_place_id is
                   required at create, so the column was Yes on every row and
                   carried no signal. Active is Google's OPERATIONAL fact, not
@@ -310,7 +310,7 @@ export function PlaceSelectCatalog() {
                     <th className="px-4 py-3 text-center font-semibold">Partner</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Visit Rewards</th>
                     <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Pay</th>
-                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Yums</th>
+                    <th className="px-4 py-3 text-center font-semibold whitespace-nowrap">Mesita Credits</th>
                     <th className="w-10 px-4 py-3" aria-hidden />
                   </tr>
                 </thead>
@@ -521,7 +521,7 @@ function PlaceCatalogRow({
         <BoolCell value={place.mesita_pay} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
       </td>
       <td className="px-4 py-3.5 text-center">
-        <BoolCell value={place.yums} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
+        <BoolCell value={place.credits} trueLabel="Yes" falseLabel="No" falseTone="neutral" />
       </td>
       <td className="px-4 py-3.5 text-right">
         <ChevronRight className="text-muted-foreground ml-auto h-4 w-4" aria-hidden />

@@ -23,15 +23,15 @@ import { cn } from "@/lib/utils";
 //
 // The split is by FREQUENCY, not importance. The seven are what a guest opens
 // repeatedly or must reach in a hurry; these seven are the long tail: one you
-// set once and forget (Cards), two that don't exist yet (Yums, Gift), one
+// set once and forget (Cards), two that don't exist yet (Credits, Gift), one
 // parked (Share), and three you consult once and rarely again (Metrics, Help,
 // Contact). Twelve boxes made the surface a wall to scroll — the parked ones
 // sat between live ones, so the page read as mostly-unfinished. Behind More,
 // the unfinished work stops being the first thing you see.
 //
 // Cards leads because it is the one LIVE row here and because it must sit
-// next to Yums: two wallets, two names (Pato, 2026-08-29). Cards holds cards
-// and pays a bill; Yums holds Mesita Credits and REDUCES one. Sharing the
+// next to Credits: two wallets, two names (Pato, 2026-08-29). Cards holds cards
+// and pays a bill; Credits holds Mesita Credits, which REDUCE one. Sharing the
 // word "wallet" between them was the confusion this ordering prevents.
 //
 // Neutral chips, like the boxes that lead here (MESITA-1132): colour on this
@@ -82,24 +82,24 @@ export function MoreModal({
       onClick: onOpenCards,
     },
     {
-      key: "yums",
+      key: "credits",
       Icon: Wallet,
-      title: "Yums",
-      summary: "Mesita credit you earn and spend at the bill",
+      title: "Credits",
+      summary: "Earn and spend at the bill · 1 Credit = MX$1",
       soon: true,
     },
     {
       key: "gift",
       Icon: Gift,
       title: "Gift",
-      summary: "Buy Yums or send them to a friend",
+      summary: "Buy Credits or send them to a friend",
       soon: true,
     },
     {
       key: "share",
       Icon: Share2,
       title: "Share",
-      summary: "Invite a friend, both get Yums",
+      summary: "Invite a friend, both get Credits",
       soon: true,
       // Handler stays wired while parked so un-parking is `soon` removal
       // alone — the sheet it opens already works.

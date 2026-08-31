@@ -307,7 +307,7 @@ export function StepBill({
 //    one derived boolean. All three are false in production today, so the
 //    floor sees exactly what it saw yesterday.
 //
-//    Yums stays parked: it covers the bill, never the tip, and settles as a
+//    Credits stay parked: they cover the bill, never the tip, and settle as a
 //    REDUCTION rather than a payment method. ────────────────────────────────
 export function StepPay({
   placeName,
@@ -378,12 +378,12 @@ export function StepPay({
         ) : null}
         <div className="border-border bg-muted/40 border-y px-3.5 py-2">
           <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
-            Your Yums
+            Your Credits
           </span>
         </div>
         <PayMethodRow
           icon={<Gift className="text-muted-foreground size-4" />}
-          label="Spend my Yums on this"
+          label="Spend my Credits on this"
           sub="Coming soon · covers the bill, never the tip"
           soon
         />

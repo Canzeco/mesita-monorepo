@@ -5,7 +5,7 @@ const NOTHING = {
   partner: false,
   visitRewardsLevel: 0,
   mesitaPay: false,
-  yums: false,
+  credits: false,
   pickup: false,
   delivery: false,
 };
@@ -20,7 +20,7 @@ Deno.test("promotionScore: everything offered scores the max", () => {
       partner: true,
       visitRewardsLevel: 2,
       mesitaPay: true,
-      yums: true,
+      credits: true,
       pickup: true,
       delivery: true,
     }),

@@ -261,7 +261,7 @@ export function PromosSection({
   // merged so a concurrent flip elsewhere cannot leave a stale bit.
   const RAIL_COLUMN = {
     mesita_pay: "mesita_pay_enabled",
-    yums: "yums_enabled",
+    credits: "credits_enabled",
     pickup: "pickup_orders_enabled",
     delivery: "delivery_orders_enabled",
   } as const;
@@ -283,7 +283,7 @@ export function PromosSection({
     applyPlace({
       ...optimistic,
       mesita_pay_enabled: r.data.mesita_pay,
-      yums_enabled: r.data.yums,
+      credits_enabled: r.data.credits,
       pickup_orders_enabled: r.data.pickup,
       delivery_orders_enabled: r.data.delivery,
     });
@@ -641,9 +641,9 @@ const RAIL_ROWS: readonly {
     detail: "Guests pay the bill by card, inside Mesita.",
   },
   {
-    key: "yums",
-    label: "Accept Mesita Yums",
-    detail: "Yums settle as a bill discount, never a payment.",
+    key: "credits",
+    label: "Accept Mesita Credits",
+    detail: "Credits settle as a bill discount, never a payment.",
   },
   {
     key: "pickup",
@@ -673,7 +673,7 @@ function PromosBar({
   const level = placeOperatorPromotingLevel(place);
   const rails: Record<keyof PlaceRails, boolean> = {
     mesita_pay: place.mesita_pay_enabled === true,
-    yums: place.yums_enabled === true,
+    credits: place.credits_enabled === true,
     pickup: place.pickup_orders_enabled === true,
     delivery: place.delivery_orders_enabled === true,
   };
@@ -681,7 +681,7 @@ function PromosBar({
     partner: member,
     visitRewardsLevel: level,
     mesitaPay: rails.mesita_pay,
-    yums: rails.yums,
+    credits: rails.credits,
     pickup: rails.pickup,
     delivery: rails.delivery,
   });

@@ -73,7 +73,7 @@ function normalize(raw: unknown): VisitsConfig {
     ),
     payCash: bool(r.payCash, VISITS_FALLBACK.payCash),
     payCard: bool(r.payCard, VISITS_FALLBACK.payCard),
-    payYums: bool(r.payYums, VISITS_FALLBACK.payYums),
+    payCredits: bool(r.payCredits, VISITS_FALLBACK.payCredits),
     autoCloseHours: Math.round(
       num(r.autoCloseHours, VISITS_FALLBACK.autoCloseHours, 1, 720),
     ),

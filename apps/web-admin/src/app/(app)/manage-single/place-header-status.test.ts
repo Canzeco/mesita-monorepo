@@ -139,7 +139,7 @@ describe("generalHeaderFacts", () => {
     expect(dominant.find((f) => f.key === "promoting")?.chip).toBe("2");
   });
 
-  it("header display names stay Created … Mesita Yums, never true/false/0", () => {
+  it("header display names stay Created … Mesita Credits, never true/false/0", () => {
     const facts = generalHeaderFacts({
       ...base,
       seeded: true,
@@ -161,7 +161,7 @@ describe("generalHeaderFacts", () => {
       "Partnered",
       "Visit Rewards",
       "Mesita Pay",
-      "Mesita Yums",
+      "Mesita Credits",
     ]);
     expect(facts.every((f) => !/^(true|false|[012])$/.test(f.label))).toBe(true);
   });
@@ -170,12 +170,12 @@ describe("generalHeaderFacts", () => {
     const absent = generalHeaderFacts(base);
     expect(absent.find((f) => f.key === "mesita_pay")?.on).toBe("unknown");
     expect(absent.find((f) => f.key === "mesita_pay")?.chip).toBe("?");
-    expect(absent.find((f) => f.key === "yums")?.chip).toBe("?");
-    const set = generalHeaderFacts({ ...base, mesitaPay: false, yums: true });
+    expect(absent.find((f) => f.key === "credits")?.chip).toBe("?");
+    const set = generalHeaderFacts({ ...base, mesitaPay: false, credits: true });
     expect(set.find((f) => f.key === "mesita_pay")?.on).toBe(false);
     expect(set.find((f) => f.key === "mesita_pay")?.chip).toBe("false");
-    expect(set.find((f) => f.key === "yums")?.on).toBe(true);
-    expect(set.find((f) => f.key === "yums")?.chip).toBe("true");
+    expect(set.find((f) => f.key === "credits")?.on).toBe(true);
+    expect(set.find((f) => f.key === "credits")?.chip).toBe("true");
   });
 });
 

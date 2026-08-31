@@ -1,21 +1,21 @@
 // Supabase Edge Function — admin-web-set-place-rails
 //
 // The one writer for the four acceptance INTENT BITS (Pato gates
-// 2026-08-29): places.mesita_pay_enabled · yums_enabled ·
+// 2026-08-29): places.mesita_pay_enabled · credits_enabled ·
 // pickup_orders_enabled · delivery_orders_enabled. These are the Partner
 // tab's rail toggles — the operator's "this place offers X", summed by the
 // Promotion score (their reader). Each rail's ENGINE still gates the rail
 // itself: Mesita Pay ANDs with visits_config.payCard + Stripe capability,
-// Yums with visits_config.payYums, orders with the (unbuilt) order rail — a
+// Credits with visits_config.payCredits, orders with the (unbuilt) order rail — a
 // toggle here never turns an engine on.
 //
 // Writes `table: "places"` through the place-doc door, NEVER profiles: the
 // profiles_update trigger predates these columns and silently drops them
 // (validateProfilePatch refuses them for the same reason).
 //
-// Body: { placeId | projectId, mesita_pay?, yums?, pickup?, delivery? } —
+// Body: { placeId | projectId, mesita_pay?, credits?, pickup?, delivery? } —
 //       booleans, at least one present.
-// Response: { ok: true, rails: { mesita_pay, yums, pickup, delivery } } —
+// Response: { ok: true, rails: { mesita_pay, credits, pickup, delivery } } —
 //       the post-write row, so the client reconciles from truth.
 //
 // Auth: caller's JWT email must be in public.super_admins.
@@ -34,7 +34,7 @@ import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 // the body is ignored, and an empty intersection is a 400.
 const RAIL_COLUMNS = {
   mesita_pay: "mesita_pay_enabled",
-  yums: "yums_enabled",
+  credits: "credits_enabled",
   pickup: "pickup_orders_enabled",
   delivery: "delivery_orders_enabled",
 } as const;
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     return json(
       {
         ok: false,
-        error: "Nothing to set — pass at least one of mesita_pay, yums, pickup, delivery.",
+        error: "Nothing to set — pass at least one of mesita_pay, credits, pickup, delivery.",
       },
       400,
     );
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
     id: placeId,
     patch: patch as PlacePatch,
     select:
-      "mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled",
+      "mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
     selectMode: "maybeSingle",
   });
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     ok: true,
     rails: {
       mesita_pay: write.row.mesita_pay_enabled === true,
-      yums: write.row.yums_enabled === true,
+      credits: write.row.credits_enabled === true,
       pickup: write.row.pickup_orders_enabled === true,
       delivery: write.row.delivery_orders_enabled === true,
     },

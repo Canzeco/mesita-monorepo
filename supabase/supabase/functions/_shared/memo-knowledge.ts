@@ -9,7 +9,7 @@
 // outward was the bug; this is the inward answer.
 //
 // WHY A CURATED TABLE, NOT EMBEDDINGS OVER THE NOTION DOCS. The Docs carry
-// PARKED and unshipped state — orders "PARKED", Yums "STAGED", Ojo "engine not
+// PARKED and unshipped state — orders "PARKED", Credits "STAGED", Ojo "engine not
 // built". Embedding them wholesale means a guest asking "¿puedo pedir a
 // domicilio?" is told about a feature that does not exist. A curated set is
 // auditable row by row and matches the airlock's philosophy: a closed set you
@@ -180,10 +180,10 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
   {
     id: "no-cashback",
     audience: "guest",
-    topic: "There is no cashback",
-    terms: ["cashback", "yums", "puntos", "points", "acumular", "saldo"],
+    topic: "Nothing accumulates yet",
+    terms: ["cashback", "credits", "creditos", "puntos", "points", "acumular", "saldo"],
     fact:
-      "Nothing accumulates on Mesita. There is no cashback and no points balance: a reward pays as a discount on tonight's bill, right then. Yums appears on the ticket so the shape is visible, but it cannot be selected and never pays.",
+      "Nothing accumulates on Mesita today. A reward pays as a discount on tonight's bill, right then — there is no balance to build up first. Credits are the name of the balance the money program will carry; they appear on the ticket so the shape is visible, but they cannot be selected and never pay yet.",
   },
   {
     id: "no-orders",

@@ -5,7 +5,7 @@
 // drift-tested from web), the same money rules (tip pre-discount, ONE
 // amount-due formula mirrored off approved_amount_due_cents), the same F1
 // waiting states, the same amber D3 send-back, and the same staged Pay rows
-// (card-through-Mesita + Yums render, never charge).
+// (card-through-Mesita + Credits render, never charge).
 //
 // Live sync = consumer-web-get-ticket polled at 10s while the app is active
 // (AppState is native's visibilitychange). Realtime stays off tickets.
@@ -1838,8 +1838,8 @@ function RewardLanes({
       <Lane title="Payout" note="how it lands">
         <LaneChip label="Discount" sub="off tonight's bill" value={null} on />
         <LaneChip
-          label="Cashback"
-          sub="Yums · coming soon"
+          label="Credits"
+          sub="coming soon"
           value={null}
           faded
         />
@@ -2159,7 +2159,7 @@ function TaskStep({
   );
 }
 
-// ── Step 5 — Pay (C2: one live path; card + Yums staged). ─────────────────
+// ── Step 5 — Pay (C2: one live path; card + Credits staged). ─────────────────
 function StepPay({
   placeName,
   pct,
@@ -2221,12 +2221,12 @@ function StepPay({
             className="font-extrabold uppercase text-muted-foreground"
             style={{ fontSize: 9.5, letterSpacing: 1.2 }}
           >
-            Your Yums
+            Your Credits
           </Text>
         </View>
         <PayRow
           icon={<Gift size={16} color={COLORS.mutedForeground} />}
-          label="Spend my Yums on this"
+          label="Spend my Credits on this"
           sub="Coming soon · covers the bill, never the tip"
           soon
         />

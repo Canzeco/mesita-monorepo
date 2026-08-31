@@ -14,7 +14,7 @@ export type VisitsConfig = {
   maxFixRequests: number;
   payCash: boolean;
   payCard: boolean;
-  payYums: boolean;
+  payCredits: boolean;
   autoCloseHours: number;
   legacyV3Enabled: boolean;
   reportEnabled: boolean;
@@ -31,7 +31,7 @@ export const VISITS_FALLBACK: VisitsConfig = {
   maxFixRequests: 2,
   payCash: true,
   payCard: false,
-  payYums: false,
+  payCredits: false,
   autoCloseHours: 12,
   legacyV3Enabled: true,
   reportEnabled: true,

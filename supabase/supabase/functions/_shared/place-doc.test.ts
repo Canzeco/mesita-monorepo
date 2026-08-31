@@ -54,7 +54,7 @@ Deno.test("validateProfilePatch: rejects `name` too", () => {
 Deno.test("validatePlacePatch: accepts the four acceptance intent bits as booleans", () => {
   const res = validatePlacePatch({
     mesita_pay_enabled: true,
-    yums_enabled: false,
+    credits_enabled: false,
     pickup_orders_enabled: true,
     delivery_orders_enabled: false,
   });

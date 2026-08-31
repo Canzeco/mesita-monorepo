@@ -2,9 +2,9 @@
 
 // Me › More › Cards (decision: Pato, 2026-08-29). The saved-card wallet for
 // Mesita Pay — the card rail Stripe Connect prepares on the place side
-// (#1415). Two wallets, two words: Yums holds Mesita Credits and settles a
-// bill as a REDUCTION; Cards holds cards and pays one. Never call this one a
-// wallet in copy.
+// (#1415). Two wallets, two words: Credits holds Mesita Credits, which REDUCE
+// a bill; Cards holds cards, which pay one. Never call this one a wallet in
+// copy.
 //
 // Nothing here is cached. Stripe is the only store for card data, so the list
 // is fetched on first open (ref latch, same shape as MetricsModal — a render

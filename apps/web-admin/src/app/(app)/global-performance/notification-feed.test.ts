@@ -88,7 +88,7 @@ describe("intakeStatusLine", () => {
     partner: false,
     promoting: false,
     mesita_pay: false,
-    yums: false,
+    credits: false,
   };
 
   it("prints every true general fact and never a high-water n/10", () => {
@@ -146,17 +146,17 @@ describe("intakeStatusLine", () => {
       id: "c",
       type: "atlas.place_created",
       meta: {
-        statusFacts: { ...facts, mesita_pay: true, yums: true },
+        statusFacts: { ...facts, mesita_pay: true, credits: true },
       },
     });
     expect(intakeStatusLine(created)).toBe(
-      "Created · Active · Listed · Mesita Pay · Mesita Yums",
+      "Created · Active · Listed · Mesita Pay · Mesita Credits",
     );
     // Engineless facts never render meta chips until a stamper exists
     // (the gateway / Credits PRs lift the intakeFactChips filter).
     const chipKeys = intakeFactChips(created).map((c) => c.key);
     expect(chipKeys).not.toContain("mesita_pay");
-    expect(chipKeys).not.toContain("yums");
+    expect(chipKeys).not.toContain("credits");
     expect(chipKeys).toContain("partner");
   });
 

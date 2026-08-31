@@ -48,7 +48,7 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //   Profile · Settings           your account
 //   AI Connector · More          the tool that isn't live yet, then the tail
 //
-// Twelve boxes made this a wall to scroll, with parked rows (Yums, Gift,
+// Twelve boxes made this a wall to scroll, with parked rows (Credits, Gift,
 // Share) sitting between live ones so the page read as mostly-unfinished.
 // The long tail moved into MoreModal; the split is by FREQUENCY, not
 // importance. Every summary reads live wherever the page already holds the
@@ -266,11 +266,11 @@ export function ProfileClient({
             soon
           />
 
-          {/* The long tail: Cards · Yums · Gift · Share · Metrics · Help · Contact. */}
+          {/* The long tail: Cards · Credits · Gift · Share · Metrics · Help · Contact. */}
           <BoxRow
             Icon={MoreHorizontal}
             title="More"
-            summary="Cards, Yums, Gift, Share, Metrics, Help, Contact"
+            summary="Cards, Credits, Gift, Share, Metrics, Help, Contact"
             onClick={() => setMoreOpen(true)}
           />
 

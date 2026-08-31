@@ -33,7 +33,7 @@ const STATUS_DOT: Record<StatusFactKey, string> = {
   // Acceptance bits: entries keep the Record total; their segments are
   // filtered out below until an event stamper exists (gateway/Credits PRs).
   mesita_pay: TONES.amber.dot,
-  yums: TONES.amber.dot,
+  credits: TONES.amber.dot,
 };
 
 export function NotificationFilters({

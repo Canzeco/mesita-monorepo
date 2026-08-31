@@ -50,7 +50,7 @@ export type PlaceHit = {
   listing_type: string | null;
   // ── The status facts (labels: Created · Active · Listed · Requested ·
   //    Enriched · Enriching · Verified · Partnered · Visit Rewards ·
-  //    Mesita Pay · Mesita Yums) plus the quick-view commercial block
+  //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
   //    Visit Rewards (0|1|2) and promotion (0–7). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
@@ -95,8 +95,8 @@ export type PlaceHit = {
   /** places.mesita_pay_enabled — the operator's "accepts Mesita Pay" toggle
    *  (Partner tab). The gateway engine still gates the rail itself. */
   mesita_pay: boolean;
-  /** places.yums_enabled — the operator's "accepts Yums" toggle. */
-  yums: boolean;
+  /** places.credits_enabled — the operator's "accepts Credits" toggle. */
+  credits: boolean;
   /** places.pickup_orders_enabled — offers pickup orders (intent bit). */
   pickup: boolean;
   /** places.delivery_orders_enabled — offers delivery orders (intent bit). */
@@ -176,7 +176,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     promoting: raw.promoting ?? false,
     promoting_level: raw.promoting_level ?? 0,
     mesita_pay: raw.mesita_pay ?? false,
-    yums: raw.yums ?? false,
+    credits: raw.credits ?? false,
     pickup: raw.pickup ?? false,
     delivery: raw.delivery ?? false,
     promotion:
@@ -352,8 +352,8 @@ export type AdminPlace = {
   /** places.mesita_pay_enabled — acceptance intent bit, read via the places
    *  side-read (never through profiles). Absent = older payload → "?". */
   mesita_pay_enabled?: boolean;
-  /** places.yums_enabled — same contract as mesita_pay_enabled. */
-  yums_enabled?: boolean;
+  /** places.credits_enabled — same contract as mesita_pay_enabled. */
+  credits_enabled?: boolean;
   /** places.pickup_orders_enabled — order-rail intent bit, same contract. */
   pickup_orders_enabled?: boolean;
   /** places.delivery_orders_enabled — order-rail intent bit, same contract. */
@@ -408,13 +408,13 @@ export async function setPlacePlan(
 /** The four rail toggles' post-write truth, from admin-web-set-place-rails. */
 export type PlaceRails = {
   mesita_pay: boolean;
-  yums: boolean;
+  credits: boolean;
   pickup: boolean;
   delivery: boolean;
 };
 
 // The Partner tab's rail toggles — the ONE writer for the acceptance intent
-// bits (places.mesita_pay_enabled · yums_enabled · pickup_orders_enabled ·
+// bits (places.mesita_pay_enabled · credits_enabled · pickup_orders_enabled ·
 // delivery_orders_enabled). One-caller ACL; never business-web. Engines still
 // gate each rail — a toggle records what the place OFFERS.
 export async function setPlaceRails(

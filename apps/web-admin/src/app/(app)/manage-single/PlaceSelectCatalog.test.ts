@@ -28,7 +28,7 @@ describe("Manage Single quick-view columns", () => {
       "Partner",
       "Visit Rewards",
       "Mesita Pay",
-      "Mesita Yums",
+      "Mesita Credits",
     ]);
     expect(headers).not.toContain("Created");
     // "promo" is banned in copy (Pato, 2026-08-30) — the wire key stays.
@@ -84,10 +84,10 @@ describe("admin-web-search-places ships the acceptance bits and the score", () =
     // The side-read is the admin-only path; the profiles view is anon-readable
     // and must never carry these columns.
     expect(ef).toContain(
-      '"id, enrichment, mesita_pay_enabled, yums_enabled, pickup_orders_enabled, delivery_orders_enabled"',
+      '"id, enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled"',
     );
     expect(ef).toContain("mesita_pay:");
-    expect(ef).toContain("yums:");
+    expect(ef).toContain("credits:");
     expect(ef).toContain("pickup:");
     expect(ef).toContain("delivery:");
     // The Promotion score is shaped server-side from the shared twin, so the
@@ -95,7 +95,7 @@ describe("admin-web-search-places ships the acceptance bits and the score", () =
     expect(ef).toContain("promotion: promotionScore(");
     const cols = ef.match(/const cols =\s*"([^"]+)"/)?.[1] ?? "";
     expect(cols).not.toContain("mesita_pay_enabled");
-    expect(cols).not.toContain("yums_enabled");
+    expect(cols).not.toContain("credits_enabled");
     expect(cols).not.toContain("pickup_orders_enabled");
     expect(cols).not.toContain("delivery_orders_enabled");
   });

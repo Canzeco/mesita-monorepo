@@ -34,7 +34,7 @@ function factOn(hit: PlaceHit, key: (typeof GENERAL_STATUS_FACTS)[number]["key"]
   if (key === "partner") return hit.partner;
   if (key === "promoting") return hit.promoting;
   if (key === "mesita_pay") return hit.mesita_pay;
-  if (key === "yums") return hit.yums;
+  if (key === "credits") return hit.credits;
   return false;
 }
 

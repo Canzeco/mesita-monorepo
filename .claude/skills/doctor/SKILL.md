@@ -331,7 +331,7 @@ and reporting it as drift would be a false P1 on the doc that called it first.
     Promos `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
     Visits `*visit*`, `_shared/business-ticket-billing.ts`, `apps/web-validate` ·
     Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
-    Checkout `*stripe*` · Yums — no code; a page claiming shipped machinery IS the finding ·
+    Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·
     Vocabulary — repo-wide banned-word sweep · Design `assets/brand/`, `**/globals.css`,
     `src/components/brand/*` · Functions — deliberately empty, skip it, do not "fix" it.
 

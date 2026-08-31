@@ -128,7 +128,7 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 //   STATUSES (11) nine bools + Requested 0…n + Promoted 0|1|2. Compact
 //                 line still names the true facts; Promoted here is the
 //                 live-discount yes. Requested in this feed is count > 0.
-//                 Mesita Pay / Mesita Yums are acceptance intent bits — no
+//                 Mesita Pay / Mesita Credits are acceptance intent bits — no
 //                 event stamper writes them yet, so their filter segments and
 //                 meta chips stay filtered out (the engine PRs lift that).
 //   INTAKE (11)   0. Seed … 10. Embedding — each a bool, called or not
@@ -163,7 +163,7 @@ export type PlaceStatusFacts = {
   partner: boolean;
   promoting: boolean;
   mesita_pay: boolean;
-  yums: boolean;
+  credits: boolean;
   functions: Record<string, boolean>;
 };
 
@@ -198,9 +198,9 @@ export function readStatusFacts(
     partner: bool(f.partner),
     promoting: bool(f.promoting),
     // Acceptance bits: no stamper writes them yet — false until the engine
-    // PRs add `mesita_pay` / `yums` to the event statusFacts payloads.
+    // PRs add `mesita_pay` / `credits` to the event statusFacts payloads.
     mesita_pay: bool(f.mesita_pay),
-    yums: bool(f.yums),
+    credits: bool(f.credits),
     functions,
   };
 }
@@ -259,7 +259,7 @@ export function intakeStatusLine(item: NotificationItem): string | null {
     if (facts.partner) parts.push("Partnered");
     if (facts.promoting) parts.push("Visit Rewards");
     if (facts.mesita_pay) parts.push("Mesita Pay");
-    if (facts.yums) parts.push("Mesita Yums");
+    if (facts.credits) parts.push("Mesita Credits");
     return parts.join(" · ");
   }
   // Pre-payload fallback (create events only carried status/enriched).

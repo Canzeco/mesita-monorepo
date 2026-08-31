@@ -14,7 +14,7 @@
 //   tips            web-consumer `TIP_PRESETS` / `DEFAULT_TIP_PCT` fallbacks
 //   consumer poll   web-consumer TicketScreen, via consumer-web-get-ticket (10s)
 //   staff poll      web-validate, via validate-web-get-ticket (not the poll EF); BASE 3s, backoff to 30s
-//   pay rails       cash live; card and Yums are STAGED panels
+//   pay rails       cash live; card and Credits are STAGED panels
 //   report          consumer-web-report-ticket
 //
 // Only WIRED knobs render on the admin page (Discovery law). Pay rails, proof,
@@ -38,7 +38,7 @@ export type VisitsConfig = {
   maxFixRequests: number;
   payCash: boolean;
   payCard: boolean;
-  payYums: boolean;
+  payCredits: boolean;
   autoCloseHours: number;
   legacyV3Enabled: boolean;
   reportEnabled: boolean;
@@ -61,7 +61,7 @@ export const VISITS_DEFAULTS: VisitsConfig = {
   maxFixRequests: 2,
   payCash: true,
   payCard: false,
-  payYums: false,
+  payCredits: false,
   // A ticket nobody validated is abandoned, not disputed. Long enough to
   // survive a slow table, short enough that the wallet isn't a graveyard.
   autoCloseHours: 12,
@@ -134,7 +134,7 @@ export function normalizeVisitsConfig(raw: unknown): VisitsConfig {
     ),
     payCash: bool(r.payCash, VISITS_DEFAULTS.payCash),
     payCard: bool(r.payCard, VISITS_DEFAULTS.payCard),
-    payYums: bool(r.payYums, VISITS_DEFAULTS.payYums),
+    payCredits: bool(r.payCredits, VISITS_DEFAULTS.payCredits),
     autoCloseHours: Math.round(
       num(r.autoCloseHours, VISITS_DEFAULTS.autoCloseHours, 1, 720),
     ),

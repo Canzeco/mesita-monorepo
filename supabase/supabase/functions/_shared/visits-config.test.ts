@@ -14,7 +14,7 @@ const UNRENDERED = [
   "maxFixRequests",
   "payCash",
   "payCard",
-  "payYums",
+  "payCredits",
   "autoCloseHours",
   "legacyV3Enabled",
 ] as const;
@@ -32,7 +32,7 @@ Deno.test("normalizeVisitsConfig: a stored unrendered value survives", () => {
     maxFixRequests: 0,
     payCash: false,
     payCard: true,
-    payYums: true,
+    payCredits: true,
     autoCloseHours: 48,
     legacyV3Enabled: false,
   };

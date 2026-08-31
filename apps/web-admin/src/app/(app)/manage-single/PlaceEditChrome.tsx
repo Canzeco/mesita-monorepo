@@ -134,7 +134,7 @@ export function PlaceEditChrome({
     promotingLevel: placeOperatorPromotingLevel(place),
     verified,
     mesitaPay: typeof place.mesita_pay_enabled === "boolean" ? place.mesita_pay_enabled : undefined,
-    yums: typeof place.yums_enabled === "boolean" ? place.yums_enabled : undefined,
+    credits: typeof place.credits_enabled === "boolean" ? place.credits_enabled : undefined,
   });
   const intakeRows = intakeFunctionRows(
     (place.enrich_functions ?? null) as

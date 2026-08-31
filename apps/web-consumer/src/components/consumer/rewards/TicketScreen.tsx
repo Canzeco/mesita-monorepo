@@ -14,7 +14,7 @@
 //                staff-side; they approve or send back ONE named fix, which
 //                returns the guest to that step — same code, no new QR (F1)
 //   5 Pay      · after approval only — the amount is frozen; pay the place
-//                directly (C2: card-through-Mesita and Yums are staged)
+//                directly (C2: card-through-Mesita and Credits are staged)
 //   6 Validate · payment confirms → the ticket closes on its own
 //   7 Results  · what the visit paid
 //
@@ -1405,11 +1405,11 @@ function RewardLanes({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {/* PAYOUT — how it lands. The Yums payout is STAGED: rendered so the
+      {/* PAYOUT — how it lands. The Credits payout is STAGED: rendered so the
           shape is real, never selectable, never paid. */}
       <Lane title="Payout" note="how it lands">
         <LaneChip label="Discount" sub="off tonight's bill" value={null} on />
-        <LaneChip label="Yums" sub="coming soon" value={null} faded />
+        <LaneChip label="Credits" sub="coming soon" value={null} faded />
       </Lane>
 
       {b ? (
