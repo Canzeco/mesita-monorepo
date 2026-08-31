@@ -22,7 +22,11 @@ import { cn } from "@/lib/utils";
 
 /** The strip that stays visible when this card is buried in the stack. */
 export const PEEK_PX = 44;
-export const CARD_PX = 168;
+// Tall enough for the strip plus one line of terms and no more. The stack
+// spreads by 76px, so the 32px past the peek has to be the terms line — a
+// taller card would spend the reveal on empty space and make spreading
+// pointless.
+export const CARD_PX = 116;
 
 function Monogram({ name }: { name: string }) {
   // First letter of the first two words — "Café Nueve" reads CN, "Lardo" L.
@@ -103,10 +107,11 @@ export function BalanceCard({
         )}
       </span>
 
-      {/* The body. Only legible on the front card or when the stack is spread;
-          it is never the only home of anything load-bearing. */}
-      <span className="flex min-h-0 flex-1 flex-col justify-end gap-1 px-4 pb-4">
-        <span className="text-muted-foreground text-xs">
+      {/* The terms, directly under the strip so spreading the stack actually
+          reveals them. Never the only home of anything load-bearing — the
+          strip already carries identity and amount. */}
+      <span className="min-h-0 flex-1 px-4">
+        <span className="text-muted-foreground block text-xs">
           {locked
             ? `Unlocks in ${formatUnlock(balance.maturesInHours!)} · +${balance.bonusPct}% bonus`
             : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
