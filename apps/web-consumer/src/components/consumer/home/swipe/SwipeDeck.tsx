@@ -98,7 +98,7 @@ function prepareDeck(rows: Place[]): Place[] {
 export function SwipeDeck({
   places,
   fetchError,
-  errorRetryHref = CONSUMER_ROUTES.search,
+  errorRetryHref = CONSUMER_ROUTES.discoverDefault,
 }: {
   places: Place[];
   fetchError: string | null;

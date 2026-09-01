@@ -88,7 +88,7 @@ export function OnboardForm({
           sex,
           birthday,
         });
-        router.push(safeNextPath(next) ?? CONSUMER_ROUTES.search);
+        router.push(safeNextPath(next) ?? CONSUMER_ROUTES.discoverDefault);
         router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));

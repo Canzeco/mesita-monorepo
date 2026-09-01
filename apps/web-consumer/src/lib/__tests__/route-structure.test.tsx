@@ -3,7 +3,10 @@ import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { isModalContractPath } from "@/lib/consumer-route-contract";
+import {
+  CONSUMER_ROUTES,
+  isModalContractPath,
+} from "@/lib/consumer-route-contract";
 import nextConfig from "../../../next.config";
 
 // STRUCTURAL route guards (MESITA-1062 S0).
@@ -231,7 +234,11 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/search", "Discover"],
+    // All seven Discover modes light one tab, live and parked alike.
+    ["/discover/map", "Discover"],
+    ["/discover/name", "Discover"],
+    ["/discover/swipe", "Discover"],
+    ["/discover/favorites", "Discover"],
     // /place rode the Home entry until the hub was retired (2026-09-01) and
     // has no other consumer. If it is ever dropped from Discover's
     // matchPrefixes, place detail lights NOTHING and this row is what says so.
@@ -278,7 +285,7 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
-      usePathname: () => "/search",
+      usePathname: () => "/discover/map",
       useRouter: () => ({ push: () => {}, back: () => {} }),
     }));
     const { BottomNav } = await import("@/components/consumer/BottomNav");
@@ -303,6 +310,70 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     expect(labels.some((l) => l.includes("·"))).toBe(false);
     expect(labels).not.toContain("Agents");
     expect(labels).not.toContain("Agent");
+  });
+});
+
+// ── T5b — the Discover mode rail ────────────────────────────────────────────
+// Same job T6 does for the Inbox row, one level down. A rail whose href stops
+// matching its own pathname lights NOTHING, and neither tsc nor the build nor
+// any other test notices — the row just quietly loses its selected state.
+//
+// This also pins ORDER, which became load-bearing when the rail went from five
+// equal columns to seven content-width pills: the measured track is ~472px
+// against 359px of screen, so the last two never render at rest. Re-ordering
+// silently pushes a mode off-screen.
+describe("T5b — Discover's mode rail", () => {
+  it("is exactly Map · Name · Swipe · Catalog · Chat · Social · Favorites", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    expect(MODES.map((m) => m.label)).toEqual([
+      "Map",
+      "Name",
+      "Swipe",
+      "Catalog",
+      "Chat",
+      "Social",
+      "Favorites",
+    ]);
+  });
+
+  it("has exactly two live modes, and they lead", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    const live = MODES.filter((m) => !m.soon);
+    // Live modes lead so the two that WORK are the two a guest sees without
+    // scrolling a rail they have no reason to think scrolls.
+    expect(live.map((m) => m.label)).toEqual(["Map", "Name"]);
+    expect(MODES.slice(0, 2).every((m) => !m.soon)).toBe(true);
+    expect(MODES.slice(2).every((m) => m.soon)).toBe(true);
+  });
+
+  it("every mode href is a real /discover route in the contract", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    const contract = Object.values(CONSUMER_ROUTES.discoverTabs);
+    for (const m of MODES) {
+      expect(contract, m.label).toContain(m.href);
+    }
+    expect(MODES).toHaveLength(contract.length);
+  });
+
+  it("lands Discover on the map, and the default is never a parked mode", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    expect(CONSUMER_ROUTES.discoverDefault).toBe(
+      CONSUMER_ROUTES.discoverTabs.map,
+    );
+    // The guard that makes "the first tab lands on nothing" impossible to
+    // reintroduce: whatever the default points at must be a LIVE mode.
+    const landed = MODES.find(
+      (m) => m.href === CONSUMER_ROUTES.discoverDefault,
+    );
+    expect(landed?.soon ?? false).toBe(false);
   });
 });
 

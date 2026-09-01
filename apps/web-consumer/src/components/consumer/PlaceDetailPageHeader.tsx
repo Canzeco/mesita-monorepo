@@ -30,7 +30,7 @@ export function PlaceDetailPageHeader({
   placeId: _placeId,
   placeName,
   partner,
-  fallbackHref = CONSUMER_ROUTES.search,
+  fallbackHref = CONSUMER_ROUTES.discoverDefault,
 }: {
   placeId: string;
   placeName: string;

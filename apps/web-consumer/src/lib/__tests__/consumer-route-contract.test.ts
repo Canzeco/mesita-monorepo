@@ -33,9 +33,24 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_ROUTES).toEqual({
       onboard: "/onboard",
       share: "/share",
-      // NO home / homeTabs / homeDefault / favorites keys. The hub was retired
-      // 2026-09-01 and Discover IS /search — see the contract's own note.
-      search: "/search",
+      // NO home / homeTabs / homeDefault / favorites keys — the hub was retired
+      // 2026-09-01. Discover then grew seven modes and moved off /search, which
+      // is now a legacy redirect source (see the legacy block below).
+      //
+      // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
+      // moved to /discover precisely so the typed mode could be a real segment
+      // instead of /search/search.
+      discover: "/discover",
+      discoverTabs: {
+        map: "/discover/map",
+        name: "/discover/name",
+        swipe: "/discover/swipe",
+        catalog: "/discover/catalog",
+        chat: "/discover/chat",
+        social: "/discover/social",
+        favorites: "/discover/favorites",
+      },
+      discoverDefault: "/discover/map",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       newVisit: { root: "/new-visit" },
@@ -59,6 +74,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         subscribe: "/subscribe/premium",
         invite: "/invite",
         homeAi: "/home/ai",
+        search: "/search",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
@@ -85,7 +101,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
 
   it("pins the middleware prefix map", () => {
     expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      search: "/search",
+      // One prefix covers all seven Discover modes. /search is a redirect
+      // source now, not a surface, so it has no prefix.
+      discover: "/discover",
       place: "/place",
       reservations: "/reservations",
       newVisit: "/new-visit",
@@ -186,10 +204,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
     expect(redirects).toEqual([
       // Explore era (pre-Home). Repointed at /search when /home was retired —
       // chaining through /home would make these two-hop, and T4 caps at 2.
-      { source: "/explore", destination: "/search", permanent: true },
-      { source: "/explore/swipe", destination: "/search", permanent: true },
-      { source: "/explore/map", destination: "/search", permanent: true },
-      { source: "/explore/add", destination: "/search", permanent: true },
+      { source: "/explore", destination: "/discover/map", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/map", permanent: true },
+      { source: "/explore/map", destination: "/discover/map", permanent: true },
+      { source: "/explore/add", destination: "/discover/map", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -222,14 +240,15 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // IS /search. /home/ai points straight here rather than chaining through
       // /home/chat — that page is deleted, so the old chain would dangle AND
       // cost a second hop against T4's cap of 2.
-      { source: "/home", destination: "/search", permanent: true },
-      { source: "/home/swipe", destination: "/search", permanent: true },
-      { source: "/home/catalog", destination: "/search", permanent: true },
-      { source: "/home/chat", destination: "/search", permanent: true },
-      { source: "/home/ai", destination: "/search", permanent: true },
-      { source: "/home/social", destination: "/search", permanent: true },
-      { source: "/home/favorites", destination: "/search", permanent: true },
+      { source: "/home", destination: "/discover/map", permanent: true },
+      { source: "/home/swipe", destination: "/discover/map", permanent: true },
+      { source: "/home/catalog", destination: "/discover/map", permanent: true },
+      { source: "/home/chat", destination: "/discover/map", permanent: true },
+      { source: "/home/ai", destination: "/discover/map", permanent: true },
+      { source: "/home/social", destination: "/discover/map", permanent: true },
+      { source: "/home/favorites", destination: "/discover/map", permanent: true },
       // Renamed surfaces.
+      { source: "/search", destination: "/discover/map", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Credits shipped standalone and moved under Inbox when it became a
       // section (MESITA-1381). route-structure T7 asserts this one separately,
@@ -268,12 +287,12 @@ describe("the AI mode is reachable by both names", () => {
     // so the old chain would dangle; and even repaired it would have cost two
     // hops (/home/ai -> /home/chat -> /search) against T4's cap of exactly 2,
     // leaving zero margin for the next legacy alias anyone adds.
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.search);
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.discoverDefault);
     // Every retired leaf resolves in ONE hop, for the same reason.
     const homeHops = redirects.filter((r) => r.source.startsWith("/home"));
     expect(homeHops).not.toHaveLength(0);
     for (const r of homeHops) {
-      expect(r.destination).toBe(CONSUMER_ROUTES.search);
+      expect(r.destination).toBe(CONSUMER_ROUTES.discoverDefault);
     }
   });
 });

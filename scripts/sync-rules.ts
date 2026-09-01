@@ -166,8 +166,16 @@ export const TARGETS: Target[] = [
   { label: "root", dir: repoRoot, quickstart: true },
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false },
-  // Widest consumer surface: four tabs, five Inbox sections, the wallet, the ticket journey.
-  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 600 },
+  // Widest consumer surface, and the budget is an override of the 450 default
+  // for that reason: four tabs, SEVEN Discover modes, five Inbox sections, the
+  // wallet, the seven-step ticket journey, and two section-nav looks.
+  //
+  // 600 -> 650 (2026-09-01) when Discover's five-mode hub became seven modes
+  // with their own route tree and a scrolling-rail rule. Raised deliberately,
+  // after two compression passes took the file from 696 to 624: the next 24
+  // words would have deleted law, not prose. Raise it again only for the same
+  // reason — more product to describe, not more words to say it in.
+  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 650 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
   { label: "apps/web-check", dir: join(repoRoot, "apps", "web-check"), quickstart: false },
   { label: "apps/web-validate", dir: join(repoRoot, "apps", "web-validate"), quickstart: false },

@@ -34,7 +34,7 @@ import { isPartner } from "@/lib/promo-rates";
 
 export function PlaceDetailPageBody({
   place,
-  fallbackHref = CONSUMER_ROUTES.search,
+  fallbackHref = CONSUMER_ROUTES.discoverDefault,
 }: {
   place: PlaceDetail;
   /** Where the back arrow lands when there is no history to pop. */

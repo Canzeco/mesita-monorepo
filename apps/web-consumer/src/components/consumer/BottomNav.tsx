@@ -63,7 +63,7 @@ const ITEMS: Item[] = [
   {
     // Discover IS the map. No sub-route, no mode row, no redirect hop — the
     // href is the live surface itself (2026-09-01, retiring /home).
-    href: CONSUMER_ROUTES.search,
+    href: CONSUMER_ROUTES.discoverDefault,
     // The magnifier, not the brand mark. `MesitaMark` rode the Home tab
     // because "Home doubles as the Mesita anchor" — that reason died with
     // Home, and a four-tab bar buys nothing from a logo while the one live
@@ -74,7 +74,7 @@ const ITEMS: Item[] = [
     // consumer, so it moves here. Drop it and place detail lights NOTHING —
     // route-structure T5's cardinality assertion is what catches that.
     matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.search,
+      CONSUMER_ROUTE_PREFIX.discover,
       CONSUMER_ROUTE_PREFIX.place,
     ],
   },
