@@ -6,7 +6,7 @@ import { usePlaceContext, type PatchResult } from "./PlaceContext";
 
 /**
  * Registers a section's draft dirty flag + discard reset with PlaceContext.
- * Shared by Place/Menus and Settings cards.
+ * Shared by Profile/Menus and Controls cards.
  */
 export function useSectionDirty(
   section: string,

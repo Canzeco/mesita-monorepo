@@ -23,7 +23,7 @@ describe("dirtySectionLabels", () => {
     ]);
   });
 
-  it("includes Settings keys", () => {
+  it("includes Controls rail keys", () => {
     expect(
       dirtySectionLabels({
         reservations: true,

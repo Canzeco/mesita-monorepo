@@ -2,7 +2,7 @@
 const DIRTY_SECTION_ORDER = [
   "place",
   "products",
-  // One key per Settings box, in box order (MESITA-1148).
+  // One key per rail box on Controls, in box order (MESITA-1148).
   "visits",
   "orders",
   "reservations",

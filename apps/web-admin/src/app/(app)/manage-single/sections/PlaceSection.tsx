@@ -26,6 +26,7 @@ import {
 import { PlaceTagsPicker } from "../PlaceTagsPicker";
 import { PlaceCategorySelect } from "../PlaceCategorySelect";
 import { PlaceSuperCategoryField } from "../PlaceSuperCategoryField";
+import { ReviewsSummary } from "./ReviewsSummary";
 import {
   OpenLink,
   PhoneField,
@@ -460,9 +461,9 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
-          Basics → Location → Hours → Channels → Photos → Menus (children).
-          Mesita-internal cards live on Admin; Team on Settings; reputation
-          on Performance. */}
+          Basics → Location → Hours → Channels → Photos → Menus (children) →
+          Reviews. Mesita-internal cards live on Admin; Team on Controls; the
+          reputation rail on Activity. */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
         tint="rose"
@@ -780,6 +781,11 @@ export function PlaceSection({
       </SectionCard>
 
       {children}
+
+      {/* Reviews closes the masonry (Pato live 2026-09-01): every card above
+          is something an operator sets, this one is the only thing the world
+          says back. Read-only, so it sits after the editable set. */}
+      <ReviewsSummary place={place} />
 
       {metaFor !== null && (
         <MediaMetaDialog

@@ -29,7 +29,7 @@ type CompletenessCheck = {
   /** Same-page scroll target id (Place tab). */
   scrollId?: string;
   /** Cross-tab section id under manage-single. */
-  tab?: "settings";
+  tab?: "promos";
 };
 
 // Weights sum to exactly 100. Photos weigh most — they carry the consumer
@@ -94,7 +94,10 @@ const CHECKS: readonly CompletenessCheck[] = [
     hint: "Pick a reservation channel",
     weight: 10,
     done: (p) => isServingChannel(p.reservation_channel),
-    tab: "settings",
+    // Controls — the Reservations rail box has lived there since the rails
+    // left Settings (2026-08-30); the chip pointed at the old tab until
+    // Partnership and Settings merged into Controls (2026-09-01).
+    tab: "promos",
   },
   {
     label: "Tags",
@@ -196,11 +199,11 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                     </button>
                   );
                 }
-                if (c.tab === "settings") {
+                if (c.tab === "promos") {
                   return (
                     <CrossTabLink
                       key={c.label}
-                      href={placeSectionHref(projectId, "settings")}
+                      href={placeSectionHref(projectId, "promos")}
                       className={CHIP_CLASS + " inline-flex items-center gap-1"}
                     >
                       {c.hint}

@@ -315,7 +315,8 @@ export function PlaceEditChrome({
       </div>
 
       {/* Row 2 — section nav (plain nav + aria-current; scrollbar visible so
-          the fifth tab stays discoverable at ~375px — E-R6). */}
+          the last tab stays discoverable at ~375px — E-R6. Four tabs since
+          Partnership and Settings merged into Controls, 2026-09-01). */}
       <div className="border-border border-t px-2 sm:px-4 lg:px-6">
         <nav
           aria-label="Place sections"

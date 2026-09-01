@@ -5,37 +5,43 @@ import { describe, expect, it } from "vitest";
 
 import {
   PLACE_TAB_SECTIONS,
+  isPlaceSectionId,
   isSectionSoon,
 } from "./nav";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("PLACE_TAB_SECTIONS", () => {
-  it("labels Partnership on the frozen /promos id; Performance stays Soon", () => {
+  it("is FOUR tabs — Profile · Controls · Activity · Admin", () => {
     expect(PLACE_TAB_SECTIONS.map((s) => s.label)).toEqual([
       "Profile",
-      "Partnership",
-      "Performance",
-      "Settings",
+      "Controls",
+      "Activity",
       "Admin",
     ]);
     const byId = Object.fromEntries(
       PLACE_TAB_SECTIONS.map((s) => [s.id, s]),
     );
-    expect(byId.promos?.label).toBe("Partnership");
+    // Labels move, URLs never follow: Controls keeps the frozen /promos id
+    // (it absorbed Settings) and Activity keeps /performance.
+    expect(byId.promos?.label).toBe("Controls");
+    expect(byId.performance?.label).toBe("Activity");
+    // Settings is not a tab any more — its one surviving box (Team) is on
+    // Controls, and /settings redirects there via [...slug].
+    expect(isPlaceSectionId("settings")).toBe(false);
     expect(byId.promos?.soon).toBe(false);
     expect(byId.performance?.soon).toBe(true);
     expect(isSectionSoon("promos")).toBe(false);
     expect(isSectionSoon("performance")).toBe(true);
-    // Profile = the place; Partnership = what the place offers. Distinct glyphs.
+    // Profile = the place; Controls = everything the place is set to.
     expect(byId.place?.Icon.displayName).toBe("Store");
-    expect(byId.promos?.Icon.displayName).toBe("Percent");
+    expect(byId.promos?.Icon.displayName).toBe("SlidersHorizontal");
     expect(byId.admin?.Icon.displayName).toBe("User");
   });
 });
 
 describe("PromosSection visit-only", () => {
-  it("is six boxes — Offerings, Partnership, Visit Rewards, Visits, Orders, Reservations", () => {
+  it("is seven boxes — Offerings, Partnership, Visit Rewards, Visits, Orders, Reservations, Team", () => {
     const src = readFileSync(
       join(here, "sections/PromosSection.tsx"),
       "utf8",
@@ -51,13 +57,15 @@ describe("PromosSection visit-only", () => {
     expect(src).not.toMatch(/title="Promos"/);
     expect(src).not.toMatch(/Partnership Membership/);
     expect(src).toMatch(/title="Visit Rewards"/);
-    // Three SectionCards are declared HERE; the three rail boxes moved from
-    // Settings (Pato live 2026-08-30) bring their own chrome from their own
-    // files, so this count stays 3 while the tab renders six boxes.
+    // Three SectionCards are declared HERE; the three rail boxes and Team
+    // bring their own chrome from their own files, so this count stays 3
+    // while the tab renders seven boxes.
     expect((src.match(/<SectionCard/g) ?? []).length).toBe(3);
     expect(src).toMatch(/<VisitsCard place=\{v\} \/>/);
     expect(src).toMatch(/<OrdersCard place=\{v\} \/>/);
     expect(src).toMatch(/<ReservationsCard place=\{v\} \/>/);
+    // Team folded in when Partnership + Settings became Controls (2026-09-01).
+    expect(src).toMatch(/<TeamSection place=\{v\} \/>/);
     // The bar sums Partnership + Visit Rewards + the four rail toggles, with
     // Mesita Capital as a locked Soon row; the score twin caps it.
     expect(src).toMatch(/OfferingsBar|PromosBar/);
