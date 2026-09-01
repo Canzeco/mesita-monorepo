@@ -14,22 +14,19 @@
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
 
-export const MAP_STATUS_KEYS = [
-  "not_on_mesita",
-  "created",
-  "requested",
-  "enriched",
-  "partnered",
-  "promoted",
-] as const;
-
-export type MapStatusKey = (typeof MAP_STATUS_KEYS)[number];
+export type MapStatusKey =
+  | "not_on_mesita"
+  | "created"
+  | "requested"
+  | "enriched"
+  | "partnered"
+  | "promoted";
 
 export type MapSearchLane = "places" | "google";
 
 export type MapSearchPower = 1 | 2;
 /** Mesita Places — the whole listed set. Partners are a paint, not a set. */
-export const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 1;
+const MAP_SEARCH_POWER_DEFAULT: MapSearchPower = 1;
 
 /**
  * TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google Places.
@@ -69,7 +66,7 @@ const LANE_POWER: Record<MapSearchLane, MapSearchPower> = {
 export const MAP_RESULT_LIMITS = [20, 40, 60] as const;
 export type MapResultLimit = (typeof MAP_RESULT_LIMITS)[number];
 /** How many is a CAP, so it opens at the smallest one (Pato, 2026-08-29). */
-export const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 20;
+const MAP_RESULT_LIMIT_DEFAULT: MapResultLimit = 20;
 
 export type MapFilters = {
   /** 1 = Mesita Places, 2 = + Google Places. Default is 1. */
@@ -127,14 +124,6 @@ export function clampSearchPower(value: unknown): MapSearchPower {
 export function searchPowerCaption(power: MapSearchPower): string {
   if (power <= 1) return "Mesita Places";
   return "Mesita Places & Google Places";
-}
-
-/** A stop is in view when the selected power reaches it. */
-export function searchPowerIncludes(
-  lanePower: MapSearchPower,
-  selected: MapSearchPower,
-): boolean {
-  return lanePower <= selected;
 }
 
 /** Highest rung wins so a place has one atlas status. */
