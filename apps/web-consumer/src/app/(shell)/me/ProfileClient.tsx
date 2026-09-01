@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bot,
   Instagram,
@@ -67,6 +68,7 @@ export function ProfileClient({
    *  set-state-in-effect lint is live here. */
   openCards?: boolean;
 }) {
+  const router = useRouter();
   const supabase = useBrowserSupabase();
   const {
     key: classKey,
@@ -338,6 +340,8 @@ export function ProfileClient({
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         onOpenCards={() => setCardsOpen(true)}
+        // Credits is a ROUTE, not a sheet — the stack needs the whole card.
+        onOpenCredits={() => router.push("/credits")}
         onOpenShare={() => setShareOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}
