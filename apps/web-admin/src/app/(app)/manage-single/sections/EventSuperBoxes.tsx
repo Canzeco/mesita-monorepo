@@ -24,6 +24,7 @@ import {
   UNKNOWN_TYPE_CONFIG,
 } from "../../global-performance/notification-config";
 import type { AdminPlace, PlaceStats } from "../actions";
+import { formatPesosCompact } from "@/lib/format";
 
 // Performance → Event Super Boxes (collapse-empty horizontal rails).
 //
@@ -112,13 +113,6 @@ function compact(n: number): string {
   return n.toLocaleString();
 }
 
-function mxn(cents: number): string {
-  const pesos = cents / 100;
-  if (pesos >= 1_000_000) return `MX$${(pesos / 1_000_000).toFixed(1)}M`;
-  if (pesos >= 1_000) return `MX$${Math.round(pesos / 1_000)}K`;
-  return `MX$${Math.round(pesos).toLocaleString()}`;
-}
-
 function countFor(
   key: BoxKey,
   stats: PlaceStats,
@@ -181,7 +175,7 @@ function analyticsSecondary(
     return `${stats.closeRate}% close`;
   }
   if (key === "closed" && stats.influencedCents > 0) {
-    return `${mxn(stats.influencedCents)} influenced`;
+    return `${formatPesosCompact(stats.influencedCents)} influenced`;
   }
   if (key === "reviews") return "from Mesita guests";
   if (key === "reports" && total > 0) return "needs follow-up";
