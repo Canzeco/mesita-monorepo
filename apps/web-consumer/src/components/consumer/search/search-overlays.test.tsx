@@ -106,28 +106,33 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  it("is icon-only, with a red count when filters are on", () => {
+  // IT CARRIES ITS LABEL NOW (Pato, 2026-09-01: "filters button must be more
+  // visible"), reversing the icon-only rule this suite used to pin. A 48px
+  // translucent disc on a mostly-white basemap was camouflage, and the count
+  // badge — the only thing that made it pop — appears only once a filter is
+  // already on, i.e. least visible exactly when it has not been found yet.
+  it("shows a labelled pill, and goes primary-filled when filters are on", () => {
     const rest = renderToStaticMarkup(
       <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
     expect(rest).toContain("lucide-sliders-horizontal");
     expect(rest).toContain("Filter places");
-    expect(rest).not.toContain(">Filters<");
-    expect(rest).not.toMatch(/>\s*Filters\s*</);
-    expect(rest).not.toContain("bg-destructive");
+    expect(rest).toMatch(/>\s*Filters\s*</);
+    expect(rest).toContain("bg-card");
+    expect(rest).not.toContain("bg-primary");
+    // The sheet still owns every actual filter — none of them leak onto canvas.
     expect(rest).not.toContain("Restaurants");
     expect(rest).not.toContain("Bars");
     expect(rest).not.toContain("Now");
     expect(rest).not.toContain("Visit");
-    expect(rest).not.toContain("🇲🇽");
+    expect(rest).not.toContain("\u{1f1f2}\u{1f1fd}");
 
     const on = renderToStaticMarkup(
       <SearchFilterRow count={3} onOpenFilters={() => {}} />,
     );
     expect(on).toContain("3 applied");
-    expect(on).toContain("bg-destructive");
+    expect(on).toContain("bg-primary");
     expect(on).toContain(">3<");
-    expect(on).not.toMatch(/>\s*Filters\s*</);
     expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
     expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
   });

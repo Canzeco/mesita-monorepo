@@ -54,19 +54,26 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       discoverDefault: "/discover/map",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      newVisit: { root: "/new-visit" },
+      // Pay is a container now: New (bare) + Wallet.
+      newVisit: {
+        root: "/new-visit",
+        new: "/new-visit",
+        wallet: "/new-visit/wallet",
+      },
+      newVisitDefault: "/new-visit",
       visit: { prefix: "/visit/" },
       // Four sections, and the ORDER is load-bearing: Visits · Orders ·
       // Reservations · Notifications runs from what you're doing right now
       // out to the passive feed. Object key order is asserted separately
       // below, since toEqual ignores it.
+      // FOUR sections. Wallet left for Pay (a wallet holds instruments,
+      // Activity holds events) and Alerts leads the row now.
       inbox: {
         root: "/inbox",
-        credits: "/inbox/credits",
+        notifications: "/inbox/notifications",
         visits: "/inbox/visits",
         orders: "/inbox/orders",
         reservations: "/inbox/reservations",
-        notifications: "/inbox/notifications",
       },
       inboxDefault: "/inbox/visits",
       me: "/me",
@@ -75,6 +82,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         subscribe: "/subscribe/premium",
         invite: "/invite",
         homeAi: "/home/ai",
+        inboxCredits: "/inbox/credits",
         search: "/search",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
@@ -123,16 +131,15 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
   // This pins the CONTRACT's order. It does NOT pin what renders: nothing
   // iterates this object, so the order the guest sees comes from
   // InboxSectionNav.SECTIONS. route-structure.test.tsx T6 pins that one.
-  it("pins the Inbox section order: credits → visits → orders → reservations → notifications", () => {
+  it("pins the Activity section order: alerts → visits → orders → reservations", () => {
     const sections = Object.keys(CONSUMER_ROUTES.inbox).filter(
       (k) => k !== "root",
     );
     expect(sections).toEqual([
-      "credits",
+      "notifications",
       "visits",
       "orders",
       "reservations",
-      "notifications",
     ]);
   });
 
@@ -146,11 +153,18 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
   //
   // If you are "fixing" this to match the row order, read the paragraph above
   // first. The mismatch is the decision, not a bug.
-  it("lands the Inbox tab on Visits, NOT on the first section", () => {
+  it("lands the Activity tab on Visits, NOT on the first section", () => {
     expect(CONSUMER_ROUTES.inboxDefault).toBe(CONSUMER_ROUTES.inbox.visits);
     expect(CONSUMER_ROUTES.inboxDefault).not.toBe(
-      CONSUMER_ROUTES.inbox.credits,
+      CONSUMER_ROUTES.inbox.notifications,
     );
+  });
+
+  // Pay's first section and its default AGREE, unlike Activity's. You open
+  // this tab standing in a place, and that is also the leftmost pill.
+  it("lands the Pay tab on New, which is also its first section", () => {
+    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.new);
+    expect(CONSUMER_ROUTES.newVisit.new).toBe(CONSUMER_ROUTES.newVisit.root);
   });
 });
 
@@ -254,7 +268,12 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Credits shipped standalone and moved under Inbox when it became a
       // section (MESITA-1381). route-structure T7 asserts this one separately,
       // because T4 can only validate a destination, never an absence.
-      { source: "/credits", destination: "/inbox/credits", permanent: true },
+      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
+      {
+        source: "/inbox/credits",
+        destination: "/new-visit/wallet",
+        permanent: true,
+      },
       { source: "/profile", destination: "/me", permanent: true },
       {
         source: "/notifications",

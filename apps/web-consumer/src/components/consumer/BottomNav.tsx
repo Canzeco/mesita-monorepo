@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, Inbox, User } from "lucide-react";
+import { QrCode, ListChecks, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -106,11 +106,14 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.inboxDefault,
-    // An inbox tray, not a calendar. CalendarCheck named RESERVATIONS — fine
-    // when the tab was the reservations surface wearing a container's name,
-    // wrong now that the container actually holds four things and a booking
-    // is only one of them (Pato, 2026-08-16).
-    Icon: Inbox,
+    // ListChecks (Pato, 2026-09-01), replacing the inbox tray. The tray named a
+    // place things ARRIVE at — never true of a reservation you made or a visit
+    // you started, and the file already flagged the glyph as worth a design
+    // pass. CalendarCheck named RESERVATIONS, one section of four. lucide's own
+    // `Activity` is a heartbeat line that reads as analytics. A checklist is the
+    // one shape that says "your items" without claiming a direction of travel
+    // or naming any single section.
+    Icon: ListChecks,
     // "Activity" is the container, not the function (Pato, 2026-08-15; renamed
     // from Inbox 2026-08-31): it holds Wallet · Visits · Orders · Reservations
     // · Notifications, so it can't be named after any one of them, and naming

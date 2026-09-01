@@ -2,37 +2,32 @@
 
 // Discover mode rail — the topbar menu across Discover's five modes.
 //
-// CONTENT-WIDTH PILLS THAT SCROLL, not equal columns. Every other row
-// (InboxSectionNav, and HomeModeNav before it) uses `grid-flow-col
-// auto-cols-fr`, where the widest label sizes every column.
+// EVERY PILL IS 20% (Pato, 2026-09-01), the same rule InboxSectionNav follows
+// at 25% and HomeModeNav followed at 20% before it. The two section rows are
+// one control and they size the same way, so this file is back in line with
+// them: `grid-flow-col auto-cols-fr` on a `w-max min-w-full` track. At rest
+// min-w-full stretches the track to the frame and the fr columns split it into
+// exact fifths; at large accessibility text w-max lets the track outgrow the
+// frame and the scroller takes over, columns still equal.
 //
-// This shipped at SEVEN modes, where equal columns were arithmetically
-// impossible: 359px content − 6 gaps×4px = 335px ÷ 7 = 47.9px per column,
-// minus 26px chrome (14px icon + 4px gap + 8px px-1), leaving 21.9px of text
-// ≈ 3 characters. "Favorites" is nine.
+// THE SCROLLER IS THE FALLBACK, NOT THE RESTING STATE. A row that scrolls at
+// rest clips a label mid-word and reads as a broken render rather than an
+// affordance.
 //
-// At FIVE it is no longer impossible, only unsafe. 5 columns give 68.6px each;
-// the widest label, "Search", needs about 68px. That is 0.6px of margin, well
-// inside the ±3px error on the 0.58em advance this arithmetic uses — a font
-// swap or a longer label breaks it silently, and a row that clips mid-word
-// reads as a broken render rather than a control. So the rail stays. If the
-// segmented look is ever wanted back, shortening one label (Search -> Find,
-// 54px) buys real headroom; do that first, do not just switch the class.
+// THE MEASUREMENT, and it is tight. Equal columns are budgeted by the LONGEST
+// label, not the average:
 //
-// THE AMENDED RULE (web-consumer/CLAUDE.md): equal columns when they fit, a
-// content-width scrolling rail when they do not. Activity keeps equal columns —
-// its four pills fit at 375px with 11px to spare, so converting it would trade
-// a working control for consistency alone.
+//   frame   content   gaps   cols   each     widest pill needs      result
+//   ------  --------  -----  -----  -------  ---------------------  --------
+//   375px   359px     16px   5      68.6px   "Search"   ~68px       fits (+0.6)
+//   375px   359px     16px   5      68.6px   "Favorites" ~89px      WOULD NOT
 //
-// EVERYTHING FITS AT FIVE. Measured track is ~292px against 359px of screen,
-// so no pill is off-screen at rest and the scroll is a fallback rather than a
-// requirement. That was not true at seven, where Social and Favorites never
-// rendered. Adding a sixth mode brings the off-screen problem back — measure
-// before adding one, and put live modes first when you do.
+// Budget per pill = text + 14px icon + 4px gap + 8px px-1. That +0.6px is why
+// "Favorites" is "Favs" and why this row went from seven modes to five: at
+// seven the columns are 47.9px and nothing with an icon fits. A SIXTH mode, or
+// a label longer than "Search", puts it back over budget — re-measure at 375px,
+// not at the 448px card, before adding either.
 //
-// Parked pills render at 55% opacity so the ladder reads as a preview rather
-// than a broken menu. Three dead pills beside two live ones needs the contrast;
-// at seven it was five dead beside two and the row read as broken.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -59,13 +54,18 @@ type Mode = {
   blurb?: string;
 };
 
-// ORDER IS LOAD-BEARING — see the header. Live modes lead so the two that work
-// are the two a guest sees without scrolling.
+// ALL FIVE ARE LIVE (Pato, 2026-09-01). Nothing here is parked any more, so
+// the row is five real destinations rather than a preview ladder: the `soon`
+// branch below is kept for the next mode that lands unfinished, not because
+// anything uses it today.
 //
-// SEARCH absorbs what were Name, Catalog and Social (Pato, 2026-09-01): one
-// surface for finding a place that is not already on your screen. The name bar
-// is live; CatalogRails and SocialFeed mount into the same page when they
-// un-park, rather than getting their pills back.
+// SEARCH absorbs what were Name, Catalog and Social: one surface for finding a
+// place that is not already on your screen. The name bar sits over the catalog
+// feed on the same page.
+//
+// ORDER runs from the least to the most committed way to browse: a map you
+// scan, a name you type, a deck you flick, a question you ask, a list you
+// already curated.
 export const MODES: Mode[] = [
   { href: CONSUMER_ROUTES.discoverTabs.map, label: "Map", Icon: MapPin },
   { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
@@ -73,22 +73,16 @@ export const MODES: Mode[] = [
     href: CONSUMER_ROUTES.discoverTabs.swipe,
     label: "Swipe",
     Icon: Flame,
-    soon: true,
-    blurb: "A photo-first deck of places near you. Landing here soon.",
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.chat,
     label: "Chat",
     Icon: Sparkles,
-    soon: true,
-    blurb: "Talk to Don Memo about where to go. Landing here soon.",
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.favs,
     label: "Favs",
     Icon: Heart,
-    soon: true,
-    blurb: "The places you save, in one grid. Landing here soon.",
   },
 ];
 
@@ -97,15 +91,15 @@ export function DiscoverModeNav() {
   const [soonMode, setSoonMode] = useState<Mode | null>(null);
   const activeRef = useRef<HTMLAnchorElement | null>(null);
 
-  // A rail that scrolls can open with the active pill off-screen — arriving at
-  // a mode and not seeing which one is selected is the failure this prevents.
-  // `nearest` so it never scrolls when the pill is already visible.
+  // Only bites when large accessibility text pushes the track past the frame
+  // and the scroller takes over. `nearest` makes it a no-op at rest, which is
+  // the normal case — the columns fit.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [pathname]);
 
   const base =
-    "flex shrink-0 items-center gap-1 rounded-full px-2 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
+    "flex items-center justify-center gap-1 rounded-full px-1 py-2 text-xs font-semibold whitespace-nowrap transition active:scale-[0.98]";
   const resting =
     "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground";
   const active = "bg-primary text-primary-foreground shadow-glow";
@@ -113,7 +107,7 @@ export function DiscoverModeNav() {
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
-        <div className="flex w-max items-center gap-1">
+        <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
           {MODES.map((mode) => {
             const { href, label, Icon, soon } = mode;
 

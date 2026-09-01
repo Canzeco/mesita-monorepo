@@ -6,77 +6,46 @@
 // + shadow-glow, real <Link> navigation between siblings under the shared
 // /inbox layout.
 //
-// ORDER IS LOAD-BEARING (Pato, 2026-08-16; Wallet added first 2026-09-01):
-// Wallet · Visits · Orders · Bookings · Alerts. Wallet leads because money
-// is what a guest checks first; the rest still runs from the thing you're
-// doing right now out to the passive feed. Don't re-sort these alphabetically
-// or by how built-out they are.
+// ORDER IS LOAD-BEARING (Pato, 2026-09-01): Alerts · Visits · Orders ·
+// Reservations. Alerts leads because it is the only section that can carry
+// something you have not seen yet; the rest runs from what you are doing right
+// now out to what you have merely booked. Don't re-sort alphabetically or by
+// how built-out each one is.
 //
-// THE DEFAULT IS NOT THE FIRST SECTION. Wallet leads this row but bare
-// /inbox lands on Visits — a visit in progress is time-critical, a balance
-// never is. That decision lives in CONSUMER_ROUTES.inboxDefault and is pinned
-// by consumer-route-contract.test.ts.
+// WALLET LEFT FOR PAY. Activity holds EVENTS, a wallet holds INSTRUMENTS —
+// the category error named on 08-31, closed by moving it rather than renaming
+// the container around it. /inbox/credits 308s to /new-visit/wallet.
 //
-// LABEL RENAMES, ROUTES UNCHANGED (2026-09-01): Reservations reads Bookings
-// and Notifications reads Alerts. A rename stops at the label — the routes
-// stay /inbox/reservations and /inbox/notifications. The renames are not
-// cosmetic: they are what bought the fifth column (see the width block).
+// THE DEFAULT IS NOT THE FIRST SECTION. Alerts leads this row but bare /inbox
+// still lands on Visits: a visit in progress is time-critical, an alert can
+// wait for you to look. That lives in CONSUMER_ROUTES.inboxDefault and is
+// pinned by consumer-route-contract.test.ts. The mismatch is the decision.
 //
-// CREDITS READS WALLET (Pato, 2026-08-31), same rule, route still
-// /inbox/credits. This one is not a relabel of the same thing — the section
-// GREW. It used to hold per-place prepaid balances and nothing else; it now
-// holds those, gifting, and the saved payment methods that were buried in
-// Me › More › Cards. "Credits" named one of the three things inside, which is
-// the mistake the container name exists to avoid — and it would have collided
-// outright once the universal Mesita Credits balance ships (MESITA-1380) and
-// lands in this same stack as a card literally called Credits.
+// LABELS: only `notifications` still reads differently from its route (Alerts).
+// `reservations` went back to reading Reservations on 2026-09-01, so Bookings
+// is gone and with it the widest pill this row ever carried.
 //
-// Wallet is 6 characters against Credits' 7, so this rename only ever RELAXES
-// the width budget below. "Bookings" is still the widest pill and the
-// arithmetic is unchanged.
+// WIDTH. Every pill is 25%, `grid-flow-col auto-cols-fr` on a `w-max
+// min-w-full` track — at rest min-w-full stretches the track to the frame and
+// the fr columns split it evenly; at large accessibility text w-max lets the
+// track outgrow the frame and the scroller takes over, columns still equal.
+// The scroller is the FALLBACK, not the resting state.
 //
-// Width: EVERY PILL IS 20% (was 25% at four sections). Content-width pills
-// made the row read as five unrelated chips of random length; equal fifths
-// read as one segmented control. `grid-flow-col auto-cols-fr` on a `w-max
-// min-w-full` track does both jobs — at rest min-w-full stretches the track to
-// the frame and the fr columns split it evenly; at large accessibility text
-// w-max lets the track outgrow the frame and the scroller takes over, columns
-// still equal (all sized to the widest label).
+//   frame   content   gaps   cols   each     widest pill needs        result
+//   ------  --------  -----  -----  -------  -----------------------  ---------
+//   375px   359px     12px   4      86.8px   "Reservations" ~96px     SCROLLS
+//   448px   432px     12px   4      105px    "Reservations" ~96px     fits (+9)
 //
-// THE MEASUREMENT, because the old version of this comment only ever
-// described the 448px frame and that is not where the constraint binds:
+// Budget per pill = text + 14px icon + 4px gap + 8px px-1. Reservations is the
+// longest label this row has ever had, so a real 375px phone scrolls it —
+// accepted when the label reverted from Bookings. Dropping the icons would
+// free 18px per pill and fit outright; that was declined on 2026-09-01, so the
+// icons stay and the phone scrolls.
 //
-//   frame   content   cols   each     widest pill needs        result
-//   ------  --------  -----  -------  -----------------------  -----------
-//   448px   432px     5      83.2px   "Bookings"      76px     fits (+7)
-//   448px   432px     5      83.2px   "Notifications" 98px     OVERFLOWS
-//   375px   359px     5      68.6px   "Bookings"      76px     scrolls
-//   375px   359px     4      86.8px   "Notifications" 98px     scrolls TODAY
-//
-// Budget per pill = text + 14px icon + 4px gap + 8px px-1. Read the last two
-// rows together: at a real 375px phone THE FOUR-PILL ROW ALREADY SCROLLED
-// before Credits existed. Adding a fifth section does not regress the phone,
-// it inherits a condition the 448px arithmetic never saw. Dropping the icons
-// would free 18px per pill and fit 375px outright; that was offered and
-// declined (Pato, 2026-09-01) — the icons stay, the phone scrolls.
-//
-// A SIXTH section makes the columns 66.4px at 448px, which nothing here fits
-// with icons. Re-measure at 375px, not 448px, before adding one.
-//
-// EVERY PILL CARRIES A SURFACE (fixed 2026-08-20, Pato: "fix the spaces and
-// bad spacing margin. it looks like shit"). The columns were already exact —
-// the RAGGED part was never the geometry, it was that only the active pill
-// had a background. Centred text inside equal invisible columns is read by the
-// eye as labels with arbitrary gaps, because the eye groups on text edges and
-// the column edges aren't drawn. One solid pill among bare words made it worse
-// — the row read as "a button, and then some labels", not one segmented
-// control.
-//
-// Drawing the inactive surface fixes it without touching the equal-width rule:
-// the rhythm you perceive is pill EDGES (equal columns, uniform gap-1) instead
-// of word edges. A background costs zero width, so the px-1 budget above is
-// untouched. Contrast stays carried by fill, not by presence — active is solid
-// primary + glow, resting is a muted surface.
+// EVERY PILL CARRIES A SURFACE: equal columns still read as ragged when only
+// the active pill is drawn, because the eye groups on text edges and the
+// column edges are invisible. Drawing the resting surface makes the perceived
+// rhythm the pill EDGES instead of the words, at zero width cost.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -85,7 +54,6 @@ import {
   CalendarCheck,
   Footprints,
   ShoppingBag,
-  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -117,18 +85,13 @@ type Section = { href: string; label: string; Icon: LucideIcon };
 // runtime effect — nothing iterates it. route-structure.test.tsx T6 pins this
 // array's order, count, labels and active state.
 export const SECTIONS: Section[] = [
-  { href: CONSUMER_ROUTES.inbox.credits, label: "Wallet", Icon: Wallet },
+  { href: CONSUMER_ROUTES.inbox.notifications, label: "Alerts", Icon: Bell },
   { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: Footprints },
   { href: CONSUMER_ROUTES.inbox.orders, label: "Orders", Icon: ShoppingBag },
   {
     href: CONSUMER_ROUTES.inbox.reservations,
-    label: "Bookings",
+    label: "Reservations",
     Icon: CalendarCheck,
-  },
-  {
-    href: CONSUMER_ROUTES.inbox.notifications,
-    label: "Alerts",
-    Icon: Bell,
   },
 ];
 

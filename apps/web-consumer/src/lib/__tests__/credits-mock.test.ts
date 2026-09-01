@@ -285,7 +285,7 @@ describe("naming", () => {
     "src/lib/mock/credits-mock.ts",
     "src/lib/mock/credits-emulator.ts",
   ];
-  const CONTAINER_SRC = ["src/app/(shell)/inbox/credits/CreditsClient.tsx"];
+  const CONTAINER_SRC = ["src/app/(shell)/new-visit/wallet/CreditsClient.tsx"];
 
   function read(rel: string): string {
     return readFileSync(join(__dirname, "..", "..", "..", rel), "utf8");

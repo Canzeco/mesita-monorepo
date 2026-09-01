@@ -34,6 +34,7 @@ import { useRouter } from "next/navigation";
 
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
+import { CatalogRails } from "@/components/consumer/home/CatalogRails";
 import { GooglePlaceSheet } from "@/components/consumer/search/GooglePlaceSheet";
 import type { AddState } from "@/components/consumer/search/add-state";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -179,16 +180,30 @@ export function DiscoverSearchClient({ apiKey }: { apiKey: string }) {
         />
       </div>
 
+      {/* IDLE IS A FEED, not an empty box. Below two characters there is
+          nothing to search, so the surface shows the catalog instead: stacked
+          horizontal carousels of places, each rail its own row, scrolling
+          sideways. That is what Catalog was as its own mode — it lives here
+          now because browsing and searching are the same job, and a blank
+          screen waiting for you to type is the worst version of it.
+
+          Typing swaps the feed for results rather than pushing it down: two
+          scrollable regions stacked in one frame means neither gets a height
+          and both fight the thumb. */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <SearchResultsPanel
-          query={query}
-          searching={searching}
-          searchError={searchError}
-          predictions={predictions}
-          addStates={addStates}
-          onPickMesita={onPickMesita}
-          onPickGoogle={onPickGoogle}
-        />
+        {trimmed.length >= MIN_QUERY || searching ? (
+          <SearchResultsPanel
+            query={query}
+            searching={searching}
+            searchError={searchError}
+            predictions={predictions}
+            addStates={addStates}
+            onPickMesita={onPickMesita}
+            onPickGoogle={onPickGoogle}
+          />
+        ) : (
+          <CatalogRails />
+        )}
       </div>
 
       <GooglePlaceSheet

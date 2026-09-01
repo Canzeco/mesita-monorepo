@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CreditCard, QrCode } from "lucide-react";
-
-import { CardsModal } from "@/components/consumer/me/CardsModal";
+import { ChevronRight, QrCode } from "lucide-react";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
@@ -98,13 +96,10 @@ export function NewVisitClient({ userId }: { userId: string }) {
   // standing in front of.
   const liveTicket = tickets.active[0] ?? null;
 
-  // Saved cards, reachable from the surface where you pay. NOT "one money
-  // surface" — that goal is unreachable from the frontend: `consumer-web-add-card`
-  // sends the guest to /me?cards=added, so Me keeps its doorway or Stripe's
-  // return trip breaks, and `supabase/` is out of scope here. This is a third
-  // door onto the SAME sheet, which is the pattern the codebase already uses
-  // (Activity › Wallet imports it rather than reimplementing it).
-  const [cardsOpen, setCardsOpen] = useState(false);
+  // The Cards row left this surface on 2026-09-01: Wallet is a real Pay
+  // SECTION now, so cards live one pill away instead of as a row wedged above
+  // the place list. Me keeps its own doorway regardless — consumer-web-add-card
+  // returns to /me?cards=added and supabase/ is out of scope here.
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (tickets.status !== "ready") return;
@@ -201,32 +196,6 @@ export function NewVisitClient({ userId }: { userId: string }) {
             {startError}
           </p>
         ) : null}
-        {/* Saved cards. It lives in the SCROLL BODY, not the header band:
-            the header is 90px and the list is the job, so a permanent money
-            row would cost the fold for something the guest needs once. It is
-            also deliberately a different shape from a place row — a button
-            that opens a sheet, not a row that creates a live ticket on one
-            tap. Display and commit must not read as the same target class. */}
-        <button
-          type="button"
-          onClick={() => setCardsOpen(true)}
-          aria-haspopup="dialog"
-          className="border-border bg-card hover:bg-muted flex h-16 shrink-0 items-center gap-3 rounded-2xl border px-4 transition active:scale-[0.99]"
-        >
-          <span className="bg-muted text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-2xl">
-            <CreditCard className="h-5 w-5" strokeWidth={2} />
-          </span>
-          <span className="min-w-0 flex-1 text-left">
-            <span className="text-foreground block type-body font-semibold">
-              Cards
-            </span>
-            <span className="text-muted-foreground block text-xs">
-              How you pay at the table
-            </span>
-          </span>
-          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
-        </button>
-
         {/* Closest 50 around the guest; the header query is name search. */}
         <PlacePickList
           origin={origin}
@@ -237,12 +206,6 @@ export function NewVisitClient({ userId }: { userId: string }) {
         />
       </div>
 
-      {/* The SAME sheet Me › More › Cards and Activity › Wallet open —
-          imported, never reimplemented. It is a LocalSheet, so it composes
-          here with no route contract: BottomSheetShell would have rendered
-          BLANK, since it opens on `isModalContractPath(pathname)` and
-          /new-visit is deliberately not a modal path. */}
-      <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
     </div>
   );
 }
