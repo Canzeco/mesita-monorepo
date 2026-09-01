@@ -121,7 +121,7 @@ export function FavoritesList({
           description="Swipe right on a place and it lands here — with its discount attached."
           action={{
             label: "Start swiping",
-            href: CONSUMER_ROUTES.search,
+            href: CONSUMER_ROUTES.discoverDefault,
           }}
         />
       ) : (

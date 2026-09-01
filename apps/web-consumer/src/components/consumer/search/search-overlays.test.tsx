@@ -483,13 +483,13 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
     );
-    expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
+    expect(read("../../../app/(shell)/discover/map/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+    expect(read("../../../app/(shell)/discover/map/loading.tsx")).not.toContain(
       "flex gap-1.5 overflow-hidden",
     );
-    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+    expect(read("../../../app/(shell)/discover/map/loading.tsx")).not.toContain(
       "mt-2 flex gap-1.5",
     );
     expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
@@ -765,7 +765,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const overlay = read("search-catalog-overlays.tsx");
     const card = read("SearchRailCard.tsx");
     const client = read("SearchClient.tsx");
-    const loading = read("../../../app/(shell)/search/loading.tsx");
+    const loading = read("../../../app/(shell)/discover/map/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
     expect(overlay).toContain("px-3");
@@ -827,7 +827,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
   it("keeps every rail card the same height when rows are missing", () => {
     const card = read("SearchRailCard.tsx");
     const overlay = read("search-catalog-overlays.tsx");
-    const loading = read("../../../app/(shell)/search/loading.tsx");
+    const loading = read("../../../app/(shell)/discover/map/loading.tsx");
     expect(card).toContain('RAIL_CARD_HEIGHT_CLASS = "h-24"');
     expect(card).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
     expect(overlay).toContain("RAIL_CARD_HEIGHT_CLASS");

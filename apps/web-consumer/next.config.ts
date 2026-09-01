@@ -30,10 +30,10 @@ const nextConfig: NextConfig = {
       // Explore era (pre-Home). Repointed straight at /search when /home was
       // retired — chaining them through /home would have made these two-hop,
       // which route-structure T4 caps at exactly 2 with no margin.
-      { source: "/explore", destination: "/search", permanent: true },
-      { source: "/explore/swipe", destination: "/search", permanent: true },
-      { source: "/explore/map", destination: "/search", permanent: true },
-      { source: "/explore/add", destination: "/search", permanent: true },
+      { source: "/explore", destination: "/discover/map", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/map", permanent: true },
+      { source: "/explore/map", destination: "/discover/map", permanent: true },
+      { source: "/explore/add", destination: "/discover/map", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -75,13 +75,14 @@ const nextConfig: NextConfig = {
       // /home/favorites goes with them: FavoritesList exists under components/
       // but nothing rendered it and it needs the parked shared-deck fetch, so
       // there was no live surface to promote.
-      { source: "/home", destination: "/search", permanent: true },
-      { source: "/home/swipe", destination: "/search", permanent: true },
-      { source: "/home/catalog", destination: "/search", permanent: true },
-      { source: "/home/chat", destination: "/search", permanent: true },
-      { source: "/home/ai", destination: "/search", permanent: true },
-      { source: "/home/social", destination: "/search", permanent: true },
-      { source: "/home/favorites", destination: "/search", permanent: true },
+      { source: "/home", destination: "/discover/map", permanent: true },
+      { source: "/home/swipe", destination: "/discover/map", permanent: true },
+      { source: "/home/catalog", destination: "/discover/map", permanent: true },
+      { source: "/home/chat", destination: "/discover/map", permanent: true },
+      { source: "/home/ai", destination: "/discover/map", permanent: true },
+      { source: "/home/social", destination: "/discover/map", permanent: true },
+      { source: "/home/favorites", destination: "/discover/map", permanent: true },
+      { source: "/search", destination: "/discover/map", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Credits shipped standalone at /credits (#1429) and moved under Inbox
       // when it became a section. It was live in production, so the bookmarks

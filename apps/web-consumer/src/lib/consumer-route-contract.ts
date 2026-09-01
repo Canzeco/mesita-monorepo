@@ -26,7 +26,36 @@ export const CONSUMER_ROUTES = {
   // git history; `HomeModeNav`, `CatalogRails` and `SocialTab` stay on disk
   // under components/ so an un-park is a new route plus a mount, not a
   // rewrite.
-  search: "/search",
+  // DISCOVER — the first tab, and seven modes under it (2026-09-01).
+  //
+  // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
+  // than the rule (Activity routes at /inbox, Pay at /new-visit, Wallet at
+  // /credits). It is deliberate: the tab moved off /search precisely so the
+  // typed mode could be a real segment instead of /search/search. Every /home*
+  // and /explore* 308 repoints straight at /discover/map in the same change —
+  // chaining them through /search would make each two hops, and
+  // route-structure T4 caps at exactly 2 with no margin.
+  //
+  // NAME, not Search: this mode searches Mesita place NAMES, which is what
+  // `consumer-web-suggest-places` actually does. It is also 4 characters
+  // against Search's 6, worth 14px on a rail that already overflows.
+  //
+  // Two modes are live (map, name). The other five are parked with their
+  // bodies on disk — swipe/, CatalogRails, AskAiTab, SocialFeed,
+  // FavoritesList — so un-parking is a route plus a mount, not a rewrite.
+  discover: "/discover",
+  discoverTabs: {
+    map: "/discover/map",
+    name: "/discover/name",
+    swipe: "/discover/swipe",
+    catalog: "/discover/catalog",
+    chat: "/discover/chat",
+    social: "/discover/social",
+    favorites: "/discover/favorites",
+  },
+  // Discover lands on the map: the only mode that needs no typing, and the only
+  // one that answers "what is near me" without a query.
+  discoverDefault: "/discover/map",
   // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
   // redirect to the hub's Soon state — `FavoritesList` exists under
   // components/ but nothing rendered it, and it needs `deckPlaces` from the
@@ -120,6 +149,11 @@ export const CONSUMER_ROUTES = {
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
+    // The map's own route, for the ~6 hours between #1437 (which made /search
+    // the Discover tab) and the seven-mode split that moved it to
+    // /discover/map. Short-lived, but it WAS the live url and production
+    // deployed it, so it forwards like any other.
+    search: "/search",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",
@@ -153,7 +187,9 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  search: "/search",
+  // One prefix for all seven Discover modes. /search is a legacy redirect
+  // source now, not a surface, so it needs no prefix.
+  discover: "/discover",
   place: "/place",
   reservations: "/reservations",
   newVisit: "/new-visit",

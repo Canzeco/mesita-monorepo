@@ -43,7 +43,7 @@ export default function InboxReservationsPage() {
           icon={CalendarCheck}
           title="No reservations yet"
           description="Reserve a table from any place and Mesita calls to book it — your bookings show up here."
-          action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
+          action={{ label: "Find a place", href: CONSUMER_ROUTES.discoverDefault }}
         />
       }
     />
