@@ -137,7 +137,7 @@ export function segmentKeyForClass(classKey: RewardClassKey): RewardSegmentKey {
 // the universal actions (Welcome, Google review, Instagram Story —
 // MESITA-909). Story's Instagram-connected gate is enforced at create /
 // submit, not here — this set drives "up to" quotes. Returned worst→best.
-export function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
+function reachableSegments(classKey: RewardClassKey): RewardSegment[] {
   const mine = segmentKeyForClass(classKey);
   const universal: RewardSegmentKey[] = ['welcome', 'review', 'story'];
   return REWARD_SEGMENTS.filter(
@@ -164,7 +164,7 @@ const CLASS_STEP: Record<RewardClassKey, number> = {
 };
 
 /** One rung's rate for a specific guest — the number they'd actually be paid. */
-export function rateForSegment(
+function rateForSegment(
   key: RewardSegmentKey,
   classKey: RewardClassKey,
   strategy: GridStrategy = PEAK_STRATEGY,

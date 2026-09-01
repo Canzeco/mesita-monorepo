@@ -38,7 +38,6 @@ import { publishFiltersHostContext } from '@/lib/filters-host-context';
 import {
   applyDiscoveryFilters,
   deriveCategoryOptions,
-  discoveryFiltersAreActive,
 } from '@/lib/discovery-filters-engine';
 import { matchPredictionToPlace } from '@/lib/match-prediction';
 import { enrichPlaceOverview } from '@/lib/place-overview';
@@ -121,10 +120,17 @@ export function SearchClient() {
   const [locating, setLocating] = useState(false);
 
   const filters = useDiscoveryFilters();
-  const filtersActive = discoveryFiltersAreActive(filters);
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : coords;
-  const nearbyOrigin = location ?? MONTERREY_CENTER;
+  // Memoised on the coordinates themselves, not on `location`'s identity:
+  // the locate button re-sets coords to a fresh object at the same spot,
+  // and that must not re-run the nearby fetch.
+  const originLat = location?.lat ?? MONTERREY_CENTER.lat;
+  const originLng = location?.lng ?? MONTERREY_CENTER.lng;
+  const nearbyOrigin = useMemo(
+    () => ({ lat: originLat, lng: originLng }),
+    [originLat, originLng],
+  );
 
   const searchInputRef = useRef<TextInput | null>(null);
   const trimmed = query.trim();
@@ -156,7 +162,7 @@ export function SearchClient() {
     return () => {
       cancelled = true;
     };
-  }, [nearbyOrigin.lat, nearbyOrigin.lng]);
+  }, [nearbyOrigin]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;

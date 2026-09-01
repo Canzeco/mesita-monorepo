@@ -132,7 +132,7 @@ const ACCESS_NAV: NavItem[] = [
  * Anything that needs to know the set imports it. Anything that only needs to
  * NAME it points here instead of enumerating.
  */
-export const CONFIGURATIONS_NAV: NavItem[] = [
+const CONFIGURATIONS_NAV: NavItem[] = [
   // General absorbed Models and Verification (MESITA-1175): a page whose
   // whole content is three controls does not earn a rail row. Ojo's policy
   // lives on Visits (who reads the proof); /ojo-config redirects there.

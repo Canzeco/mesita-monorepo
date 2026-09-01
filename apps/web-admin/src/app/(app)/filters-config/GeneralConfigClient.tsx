@@ -25,9 +25,9 @@ import {
   type NearbyTypeKey,
 } from "./catalog";
 
-export const DISCOVERY_GENERAL_EVENT = "mesita-discovery-general";
+const DISCOVERY_GENERAL_EVENT = "mesita-discovery-general";
 
-export function publishGeneralConfig(general: GeneralConfig) {
+function publishGeneralConfig(general: GeneralConfig) {
   window.dispatchEvent(new CustomEvent(DISCOVERY_GENERAL_EVENT, { detail: general }));
 }
 

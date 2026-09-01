@@ -61,7 +61,7 @@ export const DISCOVERY_CONTEXTS = ["any", "visit", "order"] as const;
  * end-to-end in promos v11 — the ladder and the knobs exist, but no ticket
  * carries a remote context, so nothing reads it.
  */
-export const DISCOVERY_CONTEXTS_SOON: readonly DiscoveryContext[] = ["order"];
+const DISCOVERY_CONTEXTS_SOON: readonly DiscoveryContext[] = ["order"];
 
 export function discoveryContextIsSoon(context: DiscoveryContext): boolean {
   return DISCOVERY_CONTEXTS_SOON.includes(context);

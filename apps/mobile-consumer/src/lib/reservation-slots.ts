@@ -46,7 +46,7 @@ export const BOOKING_HORIZON_MONTHS = 1;
  * that a place's real hours are unioned in on top of this list — a place open
  * for lunch gets lunch slots in BOTH apps.
  */
-export const BASELINE_SLOTS = [
+const BASELINE_SLOTS = [
   '13:00', '13:30', '14:00', '14:30', '18:00', '18:30', '19:00',
   '19:30', '20:00', '20:30', '21:00', '21:30', '22:00',
 ];
@@ -117,7 +117,7 @@ function toHhmm(minutes: number): string {
  * day clamped to the target month's length so Jan 31 lands on Feb 28/29 instead
  * of overflowing into March.
  */
-export function horizonDateIso(at: number = Date.now()): string {
+function horizonDateIso(at: number = Date.now()): string {
   const [y, m, d] = placeDateIso(0, at).split('-').map(Number);
   const total = m - 1 + BOOKING_HORIZON_MONTHS;
   const year = y + Math.floor(total / 12);

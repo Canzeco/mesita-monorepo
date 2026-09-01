@@ -136,7 +136,7 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 
 export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
 
-export function isListedStatus(status: unknown): boolean {
+function isListedStatus(status: unknown): boolean {
   return typeof status === "string" && LISTED_STATUSES.includes(status);
 }
 
@@ -167,7 +167,7 @@ export type PlaceStatusFacts = {
   functions: Record<string, boolean>;
 };
 
-export function readStatusFacts(
+function readStatusFacts(
   meta: Record<string, unknown> | undefined,
 ): PlaceStatusFacts | null {
   const raw = meta?.statusFacts;

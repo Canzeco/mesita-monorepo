@@ -13,7 +13,7 @@ export const FILTERS_PARENT = {
 } as const;
 
 export const DISCOVERY_MODES_HREF = "/filters-config/modes" as const;
-export const DISCOVERY_MODULES_HREF = "/filters-config/modules" as const;
+const DISCOVERY_MODULES_HREF = "/filters-config/modules" as const;
 export const DISCOVERY_MAP_HREF = "/filters-config/modes#s-map" as const;
 
 export const DISCOVERY_TABS = [

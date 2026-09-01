@@ -1,12 +1,12 @@
 // Google Place IDs are base64url-ish tokens (commonly 27 chars, length varies).
 // Accept any [A-Za-z0-9_-] run of 18+ so IDs can be pulled out of CSV cells.
 
-export const GOOGLE_PLACE_ID_RE = /^[A-Za-z0-9_-]{18,}$/;
+const GOOGLE_PLACE_ID_RE = /^[A-Za-z0-9_-]{18,}$/;
 const MESITA_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const MAX_GOOGLE_PLACE_IDS = 250;
 
-export function isGooglePlaceId(token: string): boolean {
+function isGooglePlaceId(token: string): boolean {
   return GOOGLE_PLACE_ID_RE.test(token) && !MESITA_UUID_RE.test(token);
 }
 

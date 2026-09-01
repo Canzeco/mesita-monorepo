@@ -29,7 +29,7 @@ export function setConfiguredGreeting(greeting: string | null | undefined) {
   if (trimmed.length > 0) configuredGreeting = trimmed;
 }
 
-export function greetingText(): string {
+function greetingText(): string {
   return configuredGreeting ?? FALLBACK_GREETING;
 }
 
