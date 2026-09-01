@@ -143,7 +143,7 @@ export type SocialConfig = {
   horizonDays: number;
 };
 
-export const NEARBY_TYPE_KEYS = [
+const NEARBY_TYPE_KEYS = [
   "restaurant",
   "bar",
   "cafe",
@@ -152,7 +152,7 @@ export const NEARBY_TYPE_KEYS = [
 ] as const;
 
 /** Discovery-wide cap on how many of `NEARBY_TYPE_KEYS` any engine may use. */
-export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
+const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
 export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
 /** Same ceiling as filters.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
@@ -194,27 +194,27 @@ export type DiscoveryFilters = {
 };
 
 /** Mirrors WIRED_ENGINE_KEYS in _shared/discovery-config.ts. */
-export const WIRED_ENGINE_KEYS = ["swipe"] as const;
+const WIRED_ENGINE_KEYS = ["swipe"] as const;
 export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
-export const SLOT_MIN_EVERY_NTH = 2;
-export const SLOT_MAX_EVERY_NTH = 50;
-export const MIN_RATING_MAX = 5;
-export const MAX_DISTANCE_KM_MAX = 200;
-export const CATALOG_COUNT_MAX = 20;
-export const CATALOG_PLACES_PER_RAIL_MIN = 4;
-export const CATALOG_PLACES_PER_RAIL_MAX = 20;
-export const CATALOG_MIN_SEED_PLACES_MAX = 20;
-export const SOCIAL_COUNT_MAX = 20;
-export const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
-export const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
-export const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
-export const SOCIAL_HORIZON_DAYS_MIN = 1;
-export const SOCIAL_HORIZON_DAYS_MAX = 90;
-export const MAP_MIN_POPULARITY_MAX = 1;
+const SLOT_MIN_EVERY_NTH = 2;
+const SLOT_MAX_EVERY_NTH = 50;
+const MIN_RATING_MAX = 5;
+const MAX_DISTANCE_KM_MAX = 200;
+const CATALOG_COUNT_MAX = 20;
+const CATALOG_PLACES_PER_RAIL_MIN = 4;
+const CATALOG_PLACES_PER_RAIL_MAX = 20;
+const CATALOG_MIN_SEED_PLACES_MAX = 20;
+const SOCIAL_COUNT_MAX = 20;
+const SOCIAL_EVENTS_PER_RAIL_MIN = 4;
+const SOCIAL_EVENTS_PER_RAIL_MAX = 20;
+const SOCIAL_MIN_SEED_EVENTS_MAX = 20;
+const SOCIAL_HORIZON_DAYS_MIN = 1;
+const SOCIAL_HORIZON_DAYS_MAX = 90;
+const MAP_MIN_POPULARITY_MAX = 1;
 export const MAP_RELOAD_MIN_KM_MIN = 0.25;
 export const MAP_RELOAD_MIN_KM_MAX = 4;
 export const MAP_RELOAD_MIN_SEC_MIN = 1;
@@ -248,25 +248,25 @@ export function snapMapReloadPair(
 }
 /** Map Places-set caps. Partners/Mesita max 60; Google Nearby max 20. */
 export const NAME_LANE_COUNT_MAX = 20;
-export const NAME_FAST_COUNT_DEFAULT = 5;
-export const NAME_PARTNER_COUNT_DEFAULT = 3;
-export const NAME_MESITA_COUNT_DEFAULT = 3;
-export const NAME_GOOGLE_COUNT_DEFAULT = 3;
-export const NAME_DEEP_COUNT_DEFAULT = 9;
+const NAME_FAST_COUNT_DEFAULT = 5;
+const NAME_PARTNER_COUNT_DEFAULT = 3;
+const NAME_MESITA_COUNT_DEFAULT = 3;
+const NAME_GOOGLE_COUNT_DEFAULT = 3;
+const NAME_DEEP_COUNT_DEFAULT = 9;
 
-export const SWIPE_RADIUS_KM_MIN = 1;
-export const SWIPE_RADIUS_KM_MAX = 50;
-export const SWIPE_CLOSING_BUFFER_MIN = 0;
-export const SWIPE_CLOSING_BUFFER_MAX = 180;
-export const SWIPE_STARS_EXPONENT_MIN = 1;
-export const SWIPE_STARS_EXPONENT_MAX = 3;
-export const SWIPE_LOG_DIVISOR_MIN = 1;
-export const SWIPE_LOG_DIVISOR_MAX = 20;
-export const SWIPE_PARTNER_BIAS_MIN = 1;
-export const SWIPE_PARTNER_BIAS_MAX = 2;
-export const SWIPE_RANDOMNESS_MAX_MIN = 1;
-export const SWIPE_RANDOMNESS_MAX_MAX = 2;
-export const SWIPE_PARTNER_LEVELS = [
+const SWIPE_RADIUS_KM_MIN = 1;
+const SWIPE_RADIUS_KM_MAX = 50;
+const SWIPE_CLOSING_BUFFER_MIN = 0;
+const SWIPE_CLOSING_BUFFER_MAX = 180;
+const SWIPE_STARS_EXPONENT_MIN = 1;
+const SWIPE_STARS_EXPONENT_MAX = 3;
+const SWIPE_LOG_DIVISOR_MIN = 1;
+const SWIPE_LOG_DIVISOR_MAX = 20;
+const SWIPE_PARTNER_BIAS_MIN = 1;
+const SWIPE_PARTNER_BIAS_MAX = 2;
+const SWIPE_RANDOMNESS_MAX_MIN = 1;
+const SWIPE_RANDOMNESS_MAX_MAX = 2;
+const SWIPE_PARTNER_LEVELS = [
   "none",
   "partner",
   "conservative",
@@ -274,7 +274,7 @@ export const SWIPE_PARTNER_LEVELS = [
   "dominant",
 ] as const satisfies readonly SwipePartnerLevel[];
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
-export const CHAT_PROMPT_MAX = 12_000;
+const CHAT_PROMPT_MAX = 12_000;
 
 /** Candidate Chat connections. Display only — OpenAI is the only live turn. */
 export const CHAT_CONNECTIONS = [
@@ -353,7 +353,7 @@ export const DEFAULT_SOCIAL: SocialConfig = {
   horizonDays: 14,
 };
 
-export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
+const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
   cafe: true,
@@ -371,13 +371,13 @@ export const DEFAULT_MAP: MapConfig = {
   types: DEFAULT_MAP_TYPES,
 };
 
-export const DEFAULT_NAME_FAST: NameFastConfig = {
+const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
   types: DEFAULT_MAP_TYPES,
 };
 
-export const DEFAULT_NAME_DEEP: NameDeepConfig = {
+const DEFAULT_NAME_DEEP: NameDeepConfig = {
   partnerCount: NAME_PARTNER_COUNT_DEFAULT,
   mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
@@ -397,7 +397,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   minReviews: 0,
 };
 
-export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
+const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
   none: 1,
   partner: 1.25,
   conservative: 1.5,
@@ -419,7 +419,7 @@ export const DEFAULT_SWIPE: SwipeConfig = {
 };
 
 /** Mirrors DISCOVERY_DEFAULTS. Used only as the seed on a failed load. */
-export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
+const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 },
   timing: {
     openShare: 0.7,
@@ -670,7 +670,7 @@ export const DISCOVERY_POOLS = [
 export type DiscoveryPoolKey = (typeof DISCOVERY_POOLS)[number]["key"];
 
 /** Black square = the mode requires that pool. Grey = not a gate. */
-export const DISCOVERY_MODE_POOLS: Record<
+const DISCOVERY_MODE_POOLS: Record<
   DiscoveryModeKey,
   readonly DiscoveryPoolKey[]
 > = {
@@ -707,7 +707,7 @@ export const DISCOVERY_MODE_MODULES = {
 } as const;
 
 /** Green circle = the mode may call that Places Lineup signal. */
-export const DISCOVERY_MODE_SIGNALS: Record<
+const DISCOVERY_MODE_SIGNALS: Record<
   DiscoveryModeKey,
   readonly SignalKey[]
 > = {
@@ -754,7 +754,7 @@ export const DISCOVERY_MODE_SIGNALS: Record<
 };
 
 /** Present on the mode with weight 0 — off, not missing. Map Randomness. */
-export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
+const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
   Record<DiscoveryModeKey, readonly SignalKey[]>
 > = {
   map: ["randomness"],
@@ -1014,7 +1014,7 @@ function coerceSavedAt(raw: unknown): string | null {
   return Number.isFinite(t) ? new Date(t).toISOString() : null;
 }
 
-export function coerceSwipe(raw: unknown): SwipeConfig {
+function coerceSwipe(raw: unknown): SwipeConfig {
   const s = (raw ?? {}) as Record<string, unknown>;
   const biasRaw = (s.partnerBias ?? {}) as Record<string, unknown>;
   const partnerBias = {} as SwipePartnerBias;
@@ -1072,7 +1072,7 @@ export function coerceSwipe(raw: unknown): SwipeConfig {
   };
 }
 
-export function coerceCatalog(raw: unknown): CatalogConfig {
+function coerceCatalog(raw: unknown): CatalogConfig {
   const c = (raw ?? {}) as Record<string, unknown>;
   return {
     seedCount: Math.round(num(c.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX)),
@@ -1093,7 +1093,7 @@ export function coerceCatalog(raw: unknown): CatalogConfig {
   };
 }
 
-export function coerceSocial(raw: unknown): SocialConfig {
+function coerceSocial(raw: unknown): SocialConfig {
   const s = (raw ?? {}) as Record<string, unknown>;
   return {
     seedCount: Math.round(num(s.seedCount, DEFAULT_SOCIAL.seedCount, 0, SOCIAL_COUNT_MAX)),
@@ -1122,7 +1122,7 @@ export function coerceSocial(raw: unknown): SocialConfig {
   };
 }
 
-export function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
+function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
   const rawTypes = (raw ?? {}) as Record<string, unknown>;
   const types = {} as Record<NearbyTypeKey, boolean>;
   for (const key of NEARBY_TYPE_KEYS) {
@@ -1133,7 +1133,7 @@ export function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean
   return types;
 }
 
-export function coerceGeneral(raw: unknown): GeneralConfig {
+function coerceGeneral(raw: unknown): GeneralConfig {
   const g = (raw ?? {}) as Record<string, unknown>;
   return {
     categoryCount: Math.round(
@@ -1154,7 +1154,7 @@ export function coerceGeneral(raw: unknown): GeneralConfig {
   };
 }
 
-export function coerceName(raw: unknown): NameConfig {
+function coerceName(raw: unknown): NameConfig {
   const n = (raw ?? {}) as Record<string, unknown>;
   const fast = (n.fast ?? {}) as Record<string, unknown>;
   const deep = (n.deep ?? {}) as Record<string, unknown>;
@@ -1190,7 +1190,7 @@ export function coerceName(raw: unknown): NameConfig {
   };
 }
 
-export function coerceMap(raw: unknown): MapConfig {
+function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
   const types = coerceTypeBatteries(m.types);
   const reload = snapMapReloadPair(m.reloadMinKm, m.reloadMinSec);
