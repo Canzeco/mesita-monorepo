@@ -275,14 +275,6 @@ export function intakeStatusLine(item: NotificationItem): string | null {
   return null;
 }
 
-export function itemHasStatusFact(
-  item: NotificationItem,
-  key: StatusFactKey,
-): boolean {
-  const facts = readStatusFacts(item.meta);
-  return facts ? facts[key] : false;
-}
-
 export function itemMatchesIntakeFilter(
   item: NotificationItem,
   filter: IntakeFilter,
