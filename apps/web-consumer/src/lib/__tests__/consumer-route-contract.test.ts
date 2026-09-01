@@ -41,14 +41,15 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // moved to /discover precisely so the typed mode could be a real segment
       // instead of /search/search.
       discover: "/discover",
+      // FIVE modes: Name, Catalog and Social folded into one Search surface
+      // (Pato, 2026-09-01). CatalogRails and SocialFeed mount INTO Search when
+      // they un-park rather than getting routes back.
       discoverTabs: {
         map: "/discover/map",
-        name: "/discover/name",
+        search: "/discover/search",
         swipe: "/discover/swipe",
-        catalog: "/discover/catalog",
         chat: "/discover/chat",
-        social: "/discover/social",
-        favorites: "/discover/favorites",
+        favs: "/discover/favs",
       },
       discoverDefault: "/discover/map",
       place: { prefix: "/place/" },

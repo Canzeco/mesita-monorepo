@@ -1,33 +1,40 @@
 "use client";
 
-// Search — the consumer catalog map. Composition layer for the page:
+// MAP — Discover's first mode, and the consumer catalog map.
 //
+// THE NAME SEARCH LEFT THIS FILE (2026-09-01, Pato: "remove name search from
+// map, is redundant"). It lives at Discover › Name now. Two typed-search
+// surfaces one rail-tap apart was one too many, and the map's was the worse of
+// the two: a results panel capped at 70% of the viewport, lying over the thing
+// you opened the map to look at. What went with it: the query bar, the
+// suggest/results panel, the Fast/Deep debounce, the prediction pin overlay,
+// and the whole `idle` notion — the map is never in "query mode" any more, so
+// every viewport load just loads.
+//
+// WHAT DID NOT GO: the from-Google preview sheet and the Add flow. Those were
+// never search-only. The catalog itself carries Google-only places (the grey
+// pins), so a pin or rail-card tap still reaches them through handleOpenPlace,
+// and `heldOverlay` still stashes a prediction between the select tap and the
+// open. Deleting them with the search bar would have silently removed the only
+// way to put a Google place on Mesita.
+//
+// Composition:
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
-//     gray Google, blue user).
-//   • Top overlay: query pill + Filters button. Places Venn + Super
-//     Category + How many (20 / 40 / 60) live in the map Filters
-//     sheet — there is no Category chip strip on the map. Default is
-//     + Places. Distance and time are not map knobs. Swipe keeps Discovery.
-//   • Bottom overlay (idle): catalog rail around the camera. Places
-//     scope picks the engine (Partners / + enriched Places / + Google
-//     Nearby). Super Category cuts Mesita only. The rail is closest
-//     first. A guest pan auto-reloads after reloadMinKm AND reloadMinSec.
-//     Only a finger-drag on the map counts as travel. Rail or pin
-//     selection pans rebase the km origin so click-by-click catalog
-//     browsing cannot add up. A user pan also dismisses the name
-//     overlay (query text stays; tap the bar to open it again). The
-//     rail's center card is always the selected pin. Scroll picks the
-//     center; a pin tap scrolls that card to center. Tapping the
+//     gray Google, blue user). Pins ARE the catalog now — there is no second
+//     pin source.
+//   • Top overlay: Filters only. Places Venn + Super Category + How many
+//     (20 / 40 / 60) live in the Filters sheet — no Category chip strip on the
+//     map. Default is + Places. Distance and time are not map knobs.
+//   • Bottom overlay: catalog rail around the camera. Places scope picks the
+//     engine (Partners / + enriched Places / + Google Nearby). Super Category
+//     cuts Mesita only. Closest first. A guest pan auto-reloads after
+//     reloadMinKm AND reloadMinSec.
+//     Only a finger-drag on the map counts as travel. Rail
+//     or pin selection pans rebase the km origin so click-by-click browsing
+//     cannot add up. The rail's centre card is always the selected pin; scroll
+//     picks the centre, a pin tap scrolls that card to centre. Tapping the
 //     already-selected card opens the place (Google-only stubs open
 //     GooglePlaceSheet).
-//   • Typing ≥2 chars runs Fast Search (Autocomplete, ~300ms). One second
-//     after the guest stops, Deep Search replaces that list when it has
-//     rows (Partners · Mesita · Google). Empty Deep keeps Fast. One Google
-//     session token per autocomplete session.
-//     Results hang at content height. No source labels — the colored point
-//     is membership (yellow Partner / red Mesita Place / gray Google).
-//     On-Mesita rows select the place on the map; Google-only rows open
-//     GooglePlaceSheet.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -36,7 +43,6 @@ import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiCreateProject,
-  apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
 import { useUserLocation } from "@/lib/use-user-location";
@@ -48,13 +54,11 @@ import { useSearchScope } from "@/lib/use-search-scope";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
-  buildSearchMapPins,
   catalogPlaceOnMesita,
   overlayPinDecision,
   predictionOnMesita,
 } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
-import { SearchResultsPanel } from "./SearchResultsPanel";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import {
   applyMapFilters,
@@ -63,12 +67,10 @@ import {
   takeMapResultLimit,
 } from "@/lib/map-filters-engine";
 import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
-import { SearchBar } from "./SearchBar";
 import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import {
-  EmptySearchPrompt,
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import {
@@ -88,10 +90,8 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Fast Search while typing; Deep Search after the guest stops.
-const FAST_DEBOUNCE_MS = 300;
-const DEEP_IDLE_MS = 1000;
-const MIN_SUGGEST_QUERY_LENGTH = 2;
+// The Fast/Deep autocomplete constants left with the search bar — they live in
+// DiscoverNameClient now, which owns the only typed search on Discover.
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
@@ -131,15 +131,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const sessionTokenRef = useRef(newSessionToken());
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [query, setQuery] = useState("");
-  // Opened by tapping the search field — the results/suggest panel appears on
-  // one tap, before any typing.
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
   const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
@@ -165,12 +157,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
 
-  const trimmed = query.trim();
-  // Idle = map-browse. The name overlay is a query mode, not a viewport.
-  // Closing it (map drag, map tap, X) returns the rail even if leftover
-  // query text sits in the bar.
-  const idle = !searchOpen;
-
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
@@ -186,12 +172,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
-  const searchPins = useMemo(
-    () => buildSearchMapPins(predictions, catalog),
-    [predictions, catalog],
-  );
+  // `pins` was the search-result overlay layer. With name search gone from the
+  // map there is no second pin source: the catalog IS the pins.
 
-  const idleRef = useRef(idle);
   const lastBoxRef = useRef<ViewportBox | null>(null);
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
   const lastFetchedAtMs = useRef<number | null>(null);
@@ -217,10 +200,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const loadViewport = useCallback(
     async (box: ViewportBox) => {
       lastBoxRef.current = box;
-      if (!idleRef.current) {
-        markViewport(box);
-        return;
-      }
       const nextCenter = viewportCenter(box);
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
@@ -251,13 +230,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (gen === viewportGen.current) setCatalogLoading(false);
       }
     },
-    [
-      filters.searchPower,
-      filters.familyKeys,
-      filters.resultLimit,
-      markViewport,
-      supabase,
-    ],
+    // `markViewport` left this list with the search-open guard that used to
+    // call it here — the overlay is gone, so a viewport load always loads.
+    [filters.searchPower, filters.familyKeys, filters.resultLimit, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -287,7 +262,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         if (wait > 0) {
           pendingReload.current = setTimeout(() => {
             pendingReload.current = null;
-            if (!idleRef.current || !lastBoxRef.current) return;
+            if (!lastBoxRef.current) return;
             void loadViewport(lastBoxRef.current);
           }, wait);
         }
@@ -305,12 +280,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [loadViewport],
   );
 
-  const closeNameOverlay = useCallback(() => {
-    setSearchOpen(false);
-    idleRef.current = true;
-    searchInputRef.current?.blur();
-  }, []);
-
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: { programmatic: boolean }) => {
       markViewport(box);
@@ -327,10 +296,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         }
         return;
       }
-      // Finger on the map = I want the map. Name results are a query
-      // overlay, not a viewport. Keep the typed text so a bar tap
-      // opens the same list again. Do not re-run name search.
-      closeNameOverlay();
       if (forceNextLoad.current) {
         forceNextLoad.current = false;
         clearPendingReload();
@@ -339,20 +304,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       }
       scheduleOrLoad(box);
     },
-    [
-      clearPendingReload,
-      closeNameOverlay,
-      loadViewport,
-      markViewport,
-      scheduleOrLoad,
-    ],
+    [clearPendingReload, loadViewport, markViewport, scheduleOrLoad],
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
-
-  useEffect(() => {
-    idleRef.current = idle;
-  }, [idle]);
 
   // Places scope, Super Category and How many all change the Nearby
   // engine — How many is the fetch cap now, not a client slice. Super
@@ -394,8 +349,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const openMesitaProfileFromPrediction = useCallback(
     (prediction: PlacePrediction) => {
       resetSearchSession();
-      setQuery("");
-      setSearchOpen(false);
       const fromAdd = addedProfiles[prediction.placeId];
       if (fromAdd) {
         router.push(placeHref(fromAdd));
@@ -418,90 +371,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [addedProfiles, catalog, resetSearchSession, router],
   );
 
-  // Every query write goes through here so the derived search state stays
-  // in the event handler (the set-state-in-effect lint rule bars resetting
-  // it inside the effect below): short queries clear the panel, longer
-  // ones flag `searching` immediately so the debounce window never
-  // flashes the empty state.
-  const updateQuery = (next: string) => {
-    setQuery(next);
-    const nextTrimmed = next.trim();
-    if (nextTrimmed.length < MIN_SUGGEST_QUERY_LENGTH) {
-      // Dropping below the threshold dismisses the results panel — the
-      // running autocomplete session is abandoned, so end it here and
-      // start the next search on a fresh token.
-      if (trimmed.length >= MIN_SUGGEST_QUERY_LENGTH) resetSearchSession();
-      setPredictions([]);
-      setSearching(false);
-      setSearchError(null);
-    } else if (nextTrimmed !== trimmed) {
-      setSearching(true);
-    }
-  };
-
-  // Fast Search (Autocomplete) while typing. Deep Search replaces the list
-  // after idle when it has rows. Empty Deep keeps Fast. A later Fast for
-  // this query never overwrites a Deep hit.
-  useEffect(() => {
-    if (trimmed.length < MIN_SUGGEST_QUERY_LENGTH) return;
-    let cancelled = false;
-    let deepSettled = false;
-    const token = sessionTokenRef.current;
-
-    const fastHandle = window.setTimeout(async () => {
-      try {
-        const rows = await apiSuggestPlaces(
-          supabase,
-          trimmed,
-          token,
-          center,
-          "fast",
-        );
-        if (!cancelled && !deepSettled) {
-          setPredictions(rows);
-          setSearchError(null);
-          // Empty Fast: keep searching so Deep can fill without flashing
-          // "No matches found".
-          if (rows.length > 0) setSearching(false);
-        }
-      } catch (err) {
-        if (!cancelled && !deepSettled) {
-          setPredictions([]);
-          setSearchError(errMsg(err, "Search failed — try again."));
-          setSearching(false);
-        }
-      }
-    }, FAST_DEBOUNCE_MS);
-
-    const deepHandle = window.setTimeout(async () => {
-      try {
-        const rows = await apiSuggestPlaces(
-          supabase,
-          trimmed,
-          token,
-          center,
-          "deep",
-        );
-        if (!cancelled) {
-          if (rows.length > 0) {
-            deepSettled = true;
-            setPredictions(rows);
-            setSearchError(null);
-          }
-          setSearching(false);
-        }
-      } catch {
-        // Keep Fast results if Deep fails.
-        if (!cancelled) setSearching(false);
-      }
-    }, DEEP_IDLE_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(fastHandle);
-      window.clearTimeout(deepHandle);
-    };
-  }, [supabase, trimmed, center]);
 
   // On-Mesita row tap → show the place on the map (membership fill + black
   // ring + rail card) instead of opening the detail modal; the modal is
@@ -517,10 +386,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         ? catalog.find((p) => p.id === prediction.mesitaId)
         : null) ?? matchPredictionToPlace(prediction, catalog);
     if (match) {
-      // Clearing the query is the selection that ends the Places session
-      // (updateQuery mints the next token) and hands back the idle map.
-      updateQuery("");
-      setSearchOpen(false);
+      // Selecting a place ends the Places session; mint the next token.
+      resetSearchSession();
       setRailCollapsed(false);
       setSelectedId(match.id);
       return;
@@ -584,12 +451,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   const handleSelectPin = (pin: SearchMapPin) => {
+    // The suggest list was the other source of predictions; with the search
+    // bar gone the stash is the only one left. It is still needed: a Google-only
+    // catalog pin holds its prediction here between the select tap and the open.
     const prediction =
-      predictions.find((p) => p.mesitaId === pin.id || p.placeId === pin.id) ??
-      (heldOverlay &&
+      heldOverlay &&
       (heldOverlay.placeId === pin.id || heldOverlay.mesitaId === pin.id)
         ? heldOverlay
-        : null);
+        : null;
     const place = catalog.find((p) => p.id === pin.id);
     const action = overlayPinDecision({
       selectedId: railSelectedId,
@@ -703,7 +572,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // carousel did not move. `centerOnSelect` marks the tap, survives the
   // render, and is cleared once honoured.
   useEffect(() => {
-    if (!idle || railCollapsed || !railSelectedId) return;
+    if (railCollapsed || !railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
     if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
     centerOnSelect.current = false;
@@ -712,31 +581,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       inline: "center",
       block: "nearest",
     });
-  }, [idle, railCollapsed, railSelectedId, catalog, railIndex]);
-
-  const dismissSearch = () => {
-    updateQuery("");
-    closeNameOverlay();
-  };
-
-  const openSearch = () => {
-    setSearchOpen(true);
-    idleRef.current = false;
-    // Focus after the panel mounts so the keyboard comes up on tap-to-open
-    // (map tap or bar tap) without covering the map in a 70% sheet.
-    requestAnimationFrame(() => searchInputRef.current?.focus());
-  };
-
-  const handleMapClick = () => {
-    // Bare map tap toggles the name overlay. Query text stays so a later
-    // bar tap can reopen the same list. Pan/drag uses closeNameOverlay
-    // from onUserViewport instead — Maps does not fire click on a drag.
-    if (searchOpen) {
-      closeNameOverlay();
-      return;
-    }
-    openSearch();
-  };
+  }, [railCollapsed, railSelectedId, catalog, railIndex]);
 
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -747,66 +592,47 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         userLocation={userLocation}
         viewCenter={center}
         selectedId={railSelectedId}
-        pins={searchPins}
+        pins={null}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
-        onMapClick={handleMapClick}
         onFirstViewport={onFirstViewport}
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — query pill + Filters button. Super
-          Category is in the sheet, not a chrome shortcut. max-h-[70%]
-          caps long lists so they scroll and the map stays visible
-          below. Ask AI lives on Home › Chat. */}
-      <div className="absolute inset-x-3 top-3 z-30 flex max-h-[70%] flex-col gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <SearchBar
-              query={query}
-              showClear={Boolean(query || searchOpen)}
-              onQueryChange={updateQuery}
-              onFocus={openSearch}
-              onClear={dismissSearch}
-              inputRef={searchInputRef}
-            />
-          </div>
-          {idle && (
-            <SearchFilterRow
-              count={mapFilterCount(filters)}
-              onOpenFilters={() => setFiltersOpen(true)}
-            />
-          )}
+      {/* Floating top overlay — FILTERS ONLY.
+
+          The name search that used to sit here moved to Discover › Name
+          (2026-09-01, Pato: "remove name search from map, is redundant").
+          Two typed-search surfaces one rail-tap apart is one too many, and
+          the map's version was the worse of the two: a 70%-tall results lid
+          over the thing you opened the map to see.
+
+          What the map does now is one job — pins, filters, catalog rail.
+          Typing a name is a different job and it has its own mode.
+
+          The results panel left with it. The from-Google preview sheet and the
+          Add flow did NOT: the catalog itself carries Google-only places (the
+          grey pins), so a pin or rail-card tap still reaches them through
+          handleOpenPlace. They were never search-only.
+          Super Category stays in the filters sheet, not as a chrome shortcut. */}
+      <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
+        <div className="flex min-w-0 items-center justify-end">
+          <SearchFilterRow
+            count={mapFilterCount(filters)}
+            onOpenFilters={() => setFiltersOpen(true)}
+          />
         </div>
 
-        {fetchError && idle && (
+        {fetchError && (
           <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
             {fetchError}
           </p>
         )}
-
-        {searchOpen && (
-          <div className="bg-card/95 border-border shadow-elev flex min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-            {trimmed.length > 0 ? (
-              <SearchResultsPanel
-                query={query}
-                searching={searching}
-                searchError={searchError}
-                predictions={predictions}
-                addStates={addStates}
-                onPickMesita={handlePickMesita}
-                onPickGoogle={handlePickGoogle}
-              />
-            ) : (
-              <EmptySearchPrompt />
-            )}
-          </div>
-        )}
       </div>
 
       <SearchRailOverlay
-        idle={idle}
+        idle
         places={catalog}
         catalogCount={nearby.length}
         catalogLoading={catalogLoading}
@@ -836,6 +662,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         />
       </LocalSheet>
 
+      {/* From-Google preview + Add. NOT search chrome: the catalog carries
+          Google-only places (grey pins), so a pin or rail-card tap reaches
+          this through handleOpenPlace. It outlived the search bar. */}
       <GooglePlaceSheet
         open={previewOpen}
         prediction={preview}

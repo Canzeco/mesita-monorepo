@@ -236,9 +236,9 @@ describe("T5 — exactly one tab lights per surface", () => {
   const MATRIX: [string, string][] = [
     // All seven Discover modes light one tab, live and parked alike.
     ["/discover/map", "Discover"],
-    ["/discover/name", "Discover"],
+    ["/discover/search", "Discover"],
     ["/discover/swipe", "Discover"],
-    ["/discover/favorites", "Discover"],
+    ["/discover/favs", "Discover"],
     // /place rode the Home entry until the hub was retired (2026-09-01) and
     // has no other consumer. If it is ever dropped from Discover's
     // matchPrefixes, place detail lights NOTHING and this row is what says so.
@@ -318,23 +318,21 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
 // matching its own pathname lights NOTHING, and neither tsc nor the build nor
 // any other test notices — the row just quietly loses its selected state.
 //
-// This also pins ORDER, which became load-bearing when the rail went from five
-// equal columns to seven content-width pills: the measured track is ~472px
-// against 359px of screen, so the last two never render at rest. Re-ordering
-// silently pushes a mode off-screen.
+// It also pins ORDER and COUNT. At five modes the ~292px track fits the 359px
+// screen, so nothing is off-screen — but that was NOT true at seven, where the
+// last two pills never rendered at rest. A sixth mode brings that back, and
+// this count assertion is what makes anyone adding one re-measure first.
 describe("T5b — Discover's mode rail", () => {
-  it("is exactly Map · Name · Swipe · Catalog · Chat · Social · Favorites", async () => {
+  it("is exactly Map · Search · Swipe · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
       "Map",
-      "Name",
+      "Search",
       "Swipe",
-      "Catalog",
       "Chat",
-      "Social",
-      "Favorites",
+      "Favs",
     ]);
   });
 
@@ -345,7 +343,7 @@ describe("T5b — Discover's mode rail", () => {
     const live = MODES.filter((m) => !m.soon);
     // Live modes lead so the two that WORK are the two a guest sees without
     // scrolling a rail they have no reason to think scrolls.
-    expect(live.map((m) => m.label)).toEqual(["Map", "Name"]);
+    expect(live.map((m) => m.label)).toEqual(["Map", "Search"]);
     expect(MODES.slice(0, 2).every((m) => !m.soon)).toBe(true);
     expect(MODES.slice(2).every((m) => m.soon)).toBe(true);
   });

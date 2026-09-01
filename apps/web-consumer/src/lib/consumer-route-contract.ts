@@ -36,22 +36,23 @@ export const CONSUMER_ROUTES = {
   // chaining them through /search would make each two hops, and
   // route-structure T4 caps at exactly 2 with no margin.
   //
-  // NAME, not Search: this mode searches Mesita place NAMES, which is what
-  // `consumer-web-suggest-places` actually does. It is also 4 characters
-  // against Search's 6, worth 14px on a rail that already overflows.
+  // FIVE modes, not seven (Pato, 2026-09-01). Name, Catalog and Social folded
+  // into ONE surface called Search: a name bar over browsable results, with the
+  // catalog rails and the friend feed landing on that same page when they
+  // un-park. They were three pills for one job — find a place that is not
+  // already on your screen.
   //
-  // Two modes are live (map, name). The other five are parked with their
-  // bodies on disk — swipe/, CatalogRails, AskAiTab, SocialFeed,
-  // FavoritesList — so un-parking is a route plus a mount, not a rewrite.
+  // Two are live (map, search). Swipe, Chat and Favs are parked with their
+  // bodies on disk — swipe/, AskAiTab, FavoritesList — so un-parking is a mount,
+  // not a rewrite. CatalogRails and SocialFeed stay on disk too; they mount
+  // INTO Search rather than getting routes back.
   discover: "/discover",
   discoverTabs: {
     map: "/discover/map",
-    name: "/discover/name",
+    search: "/discover/search",
     swipe: "/discover/swipe",
-    catalog: "/discover/catalog",
     chat: "/discover/chat",
-    social: "/discover/social",
-    favorites: "/discover/favorites",
+    favs: "/discover/favs",
   },
   // Discover lands on the map: the only mode that needs no typing, and the only
   // one that answers "what is near me" without a query.

@@ -45,10 +45,6 @@ describe("Search overlays never use a fixed-height empty panel", () => {
     expect(read("SearchClient.tsx")).not.toMatch(fixedHeight);
   });
 
-  it("caps the overlay stack with max-h-[70%] so long lists scroll", () => {
-    expect(read("SearchClient.tsx")).toMatch(/max-h-\[70%\]/);
-  });
-
   it("renders the empty prompt as content, not a tall sheet", () => {
     const html = renderToStaticMarkup(<EmptySearchPrompt />);
     expect(html).toContain("Where to today?");
@@ -372,23 +368,6 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     );
   });
 
-  it("closes the name overlay on a finger-drag and keeps the query", () => {
-    const src = read("SearchClient.tsx");
-    expect(src).toContain("closeNameOverlay");
-    expect(src).toContain("searchInputRef.current?.blur()");
-    expect(src).toMatch(
-      /const idle = !searchOpen/,
-    );
-    expect(src).toMatch(/\{searchOpen && \(/);
-    expect(src).not.toMatch(/searchOpen \|\| trimmed\.length > 0/);
-    expect(src).toMatch(
-      /closeNameOverlay\(\);[\s\S]*if \(forceNextLoad\.current\)/,
-    );
-    expect(src).toMatch(
-      /if \(searchOpen\) \{\s*closeNameOverlay\(\);\s*return;/,
-    );
-    expect(src).toContain("Do not re-run name search");
-  });
 
   it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
     const src = read("SearchClient.tsx");
@@ -427,14 +406,15 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(src).not.toContain("familyKeys={filters.familyKeys}");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
-    expect(src).toContain("flex min-w-0 items-center gap-2");
-    expect(src).toContain("min-w-0 flex-1");
+    // The query pill left this row (name search moved to Discover > Search),
+    // so Filters is now alone and right-aligned.
+    expect(src).toContain("flex min-w-0 items-center justify-end");
+    expect(src).not.toContain("SearchBar");
     expect(src).not.toContain("applyDiscoveryFilters");
     expect(src).not.toContain("useDiscoveryFilters");
     expect(src).not.toContain("DiscoveryFilters");
     expect(src).not.toContain("flex-[1.15]");
     expect(src).not.toContain("SearchScopeSheet");
-    expect(src).toMatch(/<SearchBar[\s\S]*?inputRef=\{searchInputRef\}\s*\/>/);
     expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
     expect(read("SearchMapFilters.tsx")).toContain("Places");
     expect(read("SearchMapFilters.tsx")).toContain("SearchPlacesScope");
@@ -475,8 +455,12 @@ describe("Search map puts the query pill and Filters button on one row", () => {
       /consumer-web-list-places[\s\S]*familyKeys/,
     );
     expect(read("SearchClient.tsx")).toContain("filters.familyKeys");
-    expect(read("SearchClient.tsx")).toContain('"fast"');
-    expect(read("SearchClient.tsx")).toContain('"deep"');
+    // The fast/deep modes moved to Discover > Search with the name bar. The
+    // point of the pin is unchanged: map FILTERS must never reach suggest.
+    const searchSrc = read("../discover/DiscoverSearchClient.tsx");
+    expect(searchSrc).toContain('"fast"');
+    expect(searchSrc).toContain('"deep"');
+    expect(searchSrc).not.toContain("filters.familyKeys");
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
     expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
@@ -883,8 +867,10 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
 });
 
 describe("Name search is Fast while typing and Deep after idle", () => {
+  // Moved off the map 2026-09-01 — Discover > Search owns the only typed
+  // search now. The behaviour is pinned here still, just against its new home.
   it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
-    const src = read("SearchClient.tsx");
+    const src = read("../discover/DiscoverSearchClient.tsx");
     expect(src).toContain("FAST_DEBOUNCE_MS");
     expect(src).toContain("DEEP_IDLE_MS");
     expect(src).toContain('"fast"');
@@ -897,7 +883,7 @@ describe("Name search is Fast while typing and Deep after idle", () => {
   });
 
   it("keeps Fast when Deep returns an empty list", () => {
-    const src = read("SearchClient.tsx");
+    const src = read("../discover/DiscoverSearchClient.tsx");
     expect(src).toContain("Empty Deep keeps Fast");
     expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
     expect(src).toContain("Keep Fast results if Deep fails.");
