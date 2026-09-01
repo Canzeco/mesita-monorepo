@@ -1,11 +1,15 @@
-import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+"use client";
 
-// Chat (Don Memo) is parked with the rest of the Discover ladder (MESITA-383: visible,
-// tappable, no Soon pill). The rail opens a coming-soon dialog rather than
-// navigating, so this page only ever catches a direct URL or an old deep link.
-// Un-park = mount the body, which is already on disk, and replace this
-// redirect with the real page.
+import { AskAiTab } from "@/components/consumer/home/AskAiTab";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+
+// Chat — un-parked 2026-09-01. Don Memo is the persona you meet inside; the
+// mode is named for what you do here, not who you meet.
 export default function DiscoverChatPage() {
-  redirect(CONSUMER_ROUTES.discoverDefault);
+  const { places } = useHomeDeck();
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <AskAiTab places={places} />
+    </div>
+  );
 }

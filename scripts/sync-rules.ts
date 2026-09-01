@@ -170,12 +170,19 @@ export const TARGETS: Target[] = [
   // for that reason: four tabs, SEVEN Discover modes, five Inbox sections, the
   // wallet, the seven-step ticket journey, and two section-nav looks.
   //
-  // 600 -> 650 (2026-09-01) when Discover's five-mode hub became seven modes
-  // with their own route tree and a scrolling-rail rule. Raised deliberately,
-  // after two compression passes took the file from 696 to 624: the next 24
-  // words would have deleted law, not prose. Raise it again only for the same
-  // reason — more product to describe, not more words to say it in.
-  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 650 },
+  // 600 -> 650 -> 680, both on 2026-09-01. The first raise covered Discover
+  // growing its own route tree; the second covers Pay becoming a container
+  // with a section row and Discover's five modes all going live with a shared
+  // deck provider. Each time the test was the same and each time it was met:
+  // more product to describe, not more words to say it in — three compression
+  // passes ran first, and the words that remained were law.
+  //
+  // TWO RAISES IN ONE DAY IS THE SIGNAL, THOUGH. This file is trying to hold
+  // the whole consumer product's law on one page. The next raise should not be
+  // a raise: move the ticket-journey and Classes paragraphs to Notion Docs >
+  // Apps, which is where deep knowledge is supposed to live, and leave this
+  // file the routing and primitive rules an agent needs before its first edit.
+  { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 680 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
   { label: "apps/web-check", dir: join(repoRoot, "apps", "web-check"), quickstart: false },
   { label: "apps/web-validate", dir: join(repoRoot, "apps", "web-validate"), quickstart: false },

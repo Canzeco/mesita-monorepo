@@ -12,21 +12,7 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical. /invite is the
   // legacy path (redirects here).
   share: "/share",
-  // DISCOVER — the first tab, and it is the map. `/home` and its five parked
-  // mode routes were retired 2026-09-01.
-  //
-  // The hub had been Soon since 2026-08-28, so the leftmost tab — the one
-  // wearing the brand mark — opened an empty state, and its pill row existed
-  // to switch between ONE live surface and four coming-soon dialogs. Moving
-  // the live map under `/home` was considered and rejected: `/home` existed to
-  // hold the pill row, and once the row is cut there is nothing left to move
-  // into. Deleting the tree was cheaper than restructuring around it.
-  //
-  // `/home` and every `/home/*` leaf 308 to here. The parked bodies live in
-  // git history; `HomeModeNav`, `CatalogRails` and `SocialTab` stay on disk
-  // under components/ so an un-park is a new route plus a mount, not a
-  // rewrite.
-  // DISCOVER — the first tab, and seven modes under it (2026-09-01).
+  // DISCOVER — the first tab, and five modes under it (2026-09-01).
   //
   // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
   // than the rule (Activity routes at /inbox, Pay at /new-visit, Wallet at
@@ -80,7 +66,21 @@ export const CONSUMER_ROUTES = {
   // surface only ever creates. /rewards, /pay and /qr all 308 here.
   newVisit: {
     root: "/new-visit",
+    // PAY IS A CONTAINER NOW (Pato, 2026-09-01): New · Wallet.
+    //
+    // New is the bare route — pick a place, start a visit. Wallet is the money
+    // you hold, moved here from Activity because a wallet holds INSTRUMENTS and
+    // Activity holds EVENTS. /inbox/credits 308s to it.
+    //
+    // The section labels are New and Wallet; the segments are `/new-visit` and
+    // `/new-visit/wallet`. Same shape as Inbox: container + sections, bare route
+    // is the default.
+    new: "/new-visit",
+    wallet: "/new-visit/wallet",
   },
+  // Pay lands on New: you open this tab standing in a place, not to check a
+  // balance. Same reasoning as inboxDefault landing on Visits.
+  newVisitDefault: "/new-visit",
   // A single visit — THE TICKET (reward -> task -> QR -> results). Top-level
   // sibling of /place and /reservation, not a child of /new-visit: you reach
   // it from the centre tab when you start one AND from Inbox > Visits when you
@@ -95,44 +95,31 @@ export const CONSUMER_ROUTES = {
   visit: {
     prefix: "/visit/",
   },
-  // Inbox — the container tab, and now genuinely ONE surface. It holds four
-  // sections in this fixed order (Pato, 2026-08-16):
-  //
-  //   Credits · Visits · Orders · Reservations · Notifications
-  //
-  // The money section leads because money is what a guest checks first; the
-  // rest still runs from the thing you're doing RIGHT NOW (a visit in
-  // progress) out to the passive feed. THREE of these keys are labelled
-  // differently on screen — `credits` reads Wallet, `reservations` reads
-  // Bookings, `notifications` reads Alerts. A rename stops at the label, so
-  // the route keys never follow. The tab itself is the same: /inbox, labelled
-  // Activity.
-  //
-  // NOTE: this key order has NO runtime effect. Nothing iterates this object;
-  // every consumer reads a named key. What the guest actually sees is
-  // InboxSectionNav.SECTIONS, and the contract test pins THAT. Sections are real nested
-  // routes so a section is linkable and the back button works between them;
-  // bare /inbox redirects to the default (visits).
-  //
-  // This closes the half-state MESITA-1046 left behind: notifications used to
-  // live at their own /inbox/mine + /inbox/global reached from Me, so the tab
-  // named two different things. Both now redirect into the notifications
-  // section and the tab is the only Inbox there is.
+  // ACTIVITY — the container tab, routed at /inbox. It holds four sections and
+  // is named for none of them; naming it for the mechanism ("Agent") would
+  // break the day places integrate directly.
   inbox: {
     root: "/inbox",
-    // Wallet (this key) LEADS the row but is deliberately NOT the default
-    // (Pato, 2026-09-01). "First in the row" and "first to open" come apart here: a
-    // visit in progress is time-critical and a balance never is, so tapping
-    // Inbox while you are standing at a table must not detour through money.
-    // inboxDefault below is `visits` on purpose — the contract test says so.
-    credits: "/inbox/credits",
+    // FOUR sections, and the ORDER is the product decision (Pato, 2026-09-01):
+    //
+    //   Alerts · Visits · Orders · Reservations
+    //
+    // Wallet LEFT for Pay — Activity holds events, a wallet holds instruments,
+    // and keeping it here was the category error named on 08-31. Alerts leads
+    // now: it is the only section that can carry something you have not seen.
+    //
+    // `notifications` reads Alerts on screen. That is the last label/route
+    // divergence in this object — `reservations` went back to reading
+    // Reservations, so Bookings is gone.
+    //
+    // NOTE: this key order has NO runtime effect. Nothing iterates this object;
+    // what the guest sees is InboxSectionNav.SECTIONS, and route-structure pins
+    // THAT. Sections are real nested routes so each is linkable.
+    notifications: "/inbox/notifications",
     visits: "/inbox/visits",
     orders: "/inbox/orders",
     reservations: "/inbox/reservations",
-    notifications: "/inbox/notifications",
   },
-  // Default landing for the Inbox tab — link straight here so the bare /inbox
-  // redirect hop is only hit by direct URLs / legacy deep links.
   inboxDefault: "/inbox/visits",
   // The Me tab is a single flat page — identity hero + modular boxes that open
   // as modals (Class, Settings, …). There are NO nested tab routes yet; /me is
@@ -150,6 +137,9 @@ export const CONSUMER_ROUTES = {
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
+    // Wallet's route while it lived under Activity (#1430 -> 2026-09-01). It
+    // was live in production, so the bookmarks are real; it 308s to Pay > Wallet.
+    inboxCredits: "/inbox/credits",
     // The map's own route, for the ~6 hours between #1437 (which made /search
     // the Discover tab) and the seven-mode split that moved it to
     // /discover/map. Short-lived, but it WAS the live url and production

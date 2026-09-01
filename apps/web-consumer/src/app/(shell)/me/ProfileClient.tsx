@@ -344,7 +344,7 @@ export function ProfileClient({
         // Credits is a ROUTE, not a sheet — the stack needs the whole card.
         // It lives as the first Inbox section now, so this is the second
         // doorway into it, not the only one.
-        onOpenCredits={() => router.push(CONSUMER_ROUTES.inbox.credits)}
+        onOpenCredits={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
         onOpenShare={() => setShareOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}

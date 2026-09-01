@@ -1,11 +1,15 @@
-import { redirect } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+"use client";
 
-// Favorites is parked with the rest of the Discover ladder (MESITA-383: visible,
-// tappable, no Soon pill). The rail opens a coming-soon dialog rather than
-// navigating, so this page only ever catches a direct URL or an old deep link.
-// Un-park = mount the body, which is already on disk, and replace this
-// redirect with the real page.
+import { FavoritesList } from "@/components/consumer/home/FavoritesList";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
+
+// Favs — un-parked 2026-09-01. Saved place ids live in localStorage and are
+// resolved against the shared deck.
+//
+// `fetchError` rides along: when the deck fetch fails the saves still render
+// from their stored previews, but the list has to SAY the picks are stale
+// rather than quietly showing a thinner screen.
 export default function DiscoverFavsPage() {
-  redirect(CONSUMER_ROUTES.discoverDefault);
+  const { places, fetchError } = useHomeDeck();
+  return <FavoritesList deckPlaces={places} deckError={fetchError} />;
 }

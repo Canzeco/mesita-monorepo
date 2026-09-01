@@ -1,11 +1,21 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { SwipeDeck } from "@/components/consumer/home/swipe/SwipeDeck";
+import { useHomeDeck } from "@/components/consumer/home/HomeDeckContext";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Swipe is parked with the rest of the Discover ladder (MESITA-383: visible,
-// tappable, no Soon pill). The rail opens a coming-soon dialog rather than
-// navigating, so this page only ever catches a direct URL or an old deep link.
-// Un-park = mount the body, which is already on disk, and replace this
-// redirect with the real page.
+// Swipe — un-parked 2026-09-01. Fills the body and owns its gestures, so it
+// gets a clipped flex slot: the page itself must never scroll here, or the
+// deck's drag fights the scroller.
 export default function DiscoverSwipePage() {
-  redirect(CONSUMER_ROUTES.discoverDefault);
+  const { places, fetchError } = useHomeDeck();
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden">
+      <SwipeDeck
+        places={places}
+        fetchError={fetchError}
+        errorRetryHref={CONSUMER_ROUTES.discoverTabs.swipe}
+      />
+    </div>
+  );
 }

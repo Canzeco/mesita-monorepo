@@ -336,16 +336,14 @@ describe("T5b — Discover's mode rail", () => {
     ]);
   });
 
-  it("has exactly two live modes, and they lead", async () => {
+  it("has no parked modes — all five are real destinations", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
-    const live = MODES.filter((m) => !m.soon);
-    // Live modes lead so the two that WORK are the two a guest sees without
-    // scrolling a rail they have no reason to think scrolls.
-    expect(live.map((m) => m.label)).toEqual(["Map", "Search"]);
-    expect(MODES.slice(0, 2).every((m) => !m.soon)).toBe(true);
-    expect(MODES.slice(2).every((m) => m.soon)).toBe(true);
+    // Swipe, Chat and Favs un-parked 2026-09-01. A `soon` flag reappearing
+    // means a mode shipped unfinished; that is allowed, but it should be a
+    // deliberate edit to this assertion rather than a silent regression.
+    expect(MODES.filter((m) => m.soon)).toEqual([]);
   });
 
   it("every mode href is a real /discover route in the contract", async () => {
@@ -404,29 +402,34 @@ describe("T6 — the Inbox section row renders as specified", () => {
     return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
   }
 
-  it("is exactly Wallet · Visits · Orders · Bookings · Alerts, in that order", async () => {
+  it("is exactly Alerts · Visits · Orders · Reservations, in that order", async () => {
     expect(labels(await renderNav("/inbox/visits"))).toEqual([
-      "Wallet",
+      "Alerts",
       "Visits",
       "Orders",
-      "Bookings",
-      "Alerts",
+      "Reservations",
     ]);
   });
 
   it("catches a dropped or added pill", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(5);
+    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(4);
+  });
+
+  // Wallet LEFT for Pay on 2026-09-01 (Activity holds events, a wallet holds
+  // instruments). A Wallet pill reappearing here means someone moved it back
+  // rather than adding a new section.
+  it("has no Wallet pill — that section lives on Pay now", async () => {
+    expect(labels(await renderNav("/inbox/visits"))).not.toContain("Wallet");
   });
 
   // The failure this catches: a section whose href stops matching its own
   // pathname lights NOTHING, and the row silently loses its active state.
   // Same shape as T5, one level down.
   const ACTIVE: [string, string][] = [
-    ["/inbox/credits", "Wallet"],
+    ["/inbox/notifications", "Alerts"],
     ["/inbox/visits", "Visits"],
     ["/inbox/orders", "Orders"],
-    ["/inbox/reservations", "Bookings"],
-    ["/inbox/notifications", "Alerts"],
+    ["/inbox/reservations", "Reservations"],
   ];
 
   it.each(ACTIVE)("%s lights exactly %s", async (pathname, expected) => {
@@ -452,10 +455,18 @@ describe("T6 — the Inbox section row renders as specified", () => {
 // the redirect is ever dropped, this goes red instead of CI going green while
 // those links 404.
 describe("T7 — legacy /credits still resolves after the move", () => {
-  it("keeps /credits redirecting to the Inbox section", async () => {
-    const redirects = await nextConfig.redirects!();
-    const entry = redirects.find((r) => r.source === "/credits");
-    expect(entry, "/credits redirect was removed").toBeDefined();
-    expect(entry!.destination).toBe("/inbox/credits");
-  });
+  // Wallet has now moved twice: standalone /credits (#1429) -> Activity section
+  // (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01). BOTH old
+  // urls were live in production, so both bookmarks are real and both must
+  // resolve in ONE hop. T4 can validate a destination but never a redirect's
+  // absence, which is why this test exists.
+  it.each(["/credits", "/inbox/credits"])(
+    "keeps %s redirecting to Pay > Wallet",
+    async (source) => {
+      const redirects = await nextConfig.redirects!();
+      const entry = redirects.find((r) => r.source === source);
+      expect(entry, `${source} redirect was removed`).toBeDefined();
+      expect(entry!.destination).toBe("/new-visit/wallet");
+    },
+  );
 });
