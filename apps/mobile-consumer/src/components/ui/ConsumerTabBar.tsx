@@ -70,7 +70,7 @@ const LABELS: Record<string, string> = {
   home: 'Home',
   search: 'Search',
   rewards: 'Pay',
-  inbox: 'Inbox',
+  inbox: 'Activity',
   me: 'Me',
 };
 

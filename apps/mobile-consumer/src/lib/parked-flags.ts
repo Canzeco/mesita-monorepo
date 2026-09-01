@@ -20,7 +20,7 @@ export const PARKED = {
     inbox: {
       soon: false,
       // Dormant copy (soon: false), but it names the SECTION, so it follows the
-      // tab label: "Inbox", not "Reservations".
+      // tab label: "Activity", not "Reservations".
       title: 'Inbox coming soon',
       body: 'Your bookings will live here. For now, reach places from Contact on a place.',
     },

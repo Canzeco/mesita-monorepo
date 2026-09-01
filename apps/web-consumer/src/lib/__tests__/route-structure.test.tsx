@@ -238,14 +238,14 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     ["/new-visit", "Pay"],
     // THE requirement from the routing v2 design review: the visit detail
-    // lights INBOX, not the centre tab, because that is where the list lives.
+    // lights ACTIVITY, not the centre tab, because that is where the list lives.
     // It lit the centre tab before only by nesting under /rewards; the rename
     // severed that nesting and this row is what holds the replacement.
-    ["/visit/t1", "Inbox"],
-    ["/inbox/credits", "Inbox"],
-    ["/inbox/visits", "Inbox"],
-    ["/inbox/reservations", "Inbox"],
-    ["/reservation/r1", "Inbox"],
+    ["/visit/t1", "Activity"],
+    ["/inbox/credits", "Activity"],
+    ["/inbox/visits", "Activity"],
+    ["/inbox/reservations", "Activity"],
+    ["/reservation/r1", "Activity"],
     ["/me", "Me"],
   ];
 
@@ -268,7 +268,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 
 // MESITA-1119 — a mockup showed a sixth "Agents" tab and "Me · {class}".
 // Product Rules §C (later, Pato-owned): five tabs, plain labels; class is
-// status on /me, never chrome; Inbox is not named for a mechanism.
+// status on /me, never chrome; Activity is not named for a mechanism.
 describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
@@ -281,12 +281,12 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Inbox · Me", async () => {
+  it("is exactly Home · Search · Pay · Activity · Me", async () => {
     expect(await tabLabels()).toEqual([
       "Home",
       "Search",
       "Pay",
-      "Inbox",
+      "Activity",
       "Me",
     ]);
   });
@@ -308,8 +308,8 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
 // order they actually see is InboxSectionNav.SECTIONS, a separate hand-listed
 // array, and mobile keeps a third copy.
 //
-// So the contract pin would stay green with Credits first in the object and
-// Credits third on screen. This is the test that would go red.
+// So the contract pin would stay green with the money section first in the
+// object and third on screen. This is the test that would go red.
 describe("T6 — the Inbox section row renders as specified", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
@@ -328,9 +328,9 @@ describe("T6 — the Inbox section row renders as specified", () => {
     return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
   }
 
-  it("is exactly Credits · Visits · Orders · Bookings · Alerts, in that order", async () => {
+  it("is exactly Wallet · Visits · Orders · Bookings · Alerts, in that order", async () => {
     expect(labels(await renderNav("/inbox/visits"))).toEqual([
-      "Credits",
+      "Wallet",
       "Visits",
       "Orders",
       "Bookings",
@@ -346,7 +346,7 @@ describe("T6 — the Inbox section row renders as specified", () => {
   // pathname lights NOTHING, and the row silently loses its active state.
   // Same shape as T5, one level down.
   const ACTIVE: [string, string][] = [
-    ["/inbox/credits", "Credits"],
+    ["/inbox/credits", "Wallet"],
     ["/inbox/visits", "Visits"],
     ["/inbox/orders", "Orders"],
     ["/inbox/reservations", "Bookings"],

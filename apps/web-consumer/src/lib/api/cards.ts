@@ -1,7 +1,10 @@
-// Frontend API surface for the Cards wallet.
+// Frontend API surface for saved payment methods.
 //
-// Cards, never "wallet" — the Credits wallet is a different thing holding a
-// different currency (Pato, 2026-08-29). Nothing here caches: every call goes
+// "Cards, never wallet" held while cards and Credits were two sibling sheets
+// in Me › More (Pato, 2026-08-29). Superseded 2026-08-31: there is now one
+// Wallet — the Activity tab's first section — and these cards are a row
+// inside it, alongside Credits and Gift. Card is still the right word for the
+// INSTRUMENT; it just is not the container any more. Nothing here caches: every call goes
 // to Stripe through its EF, so a card removed anywhere is gone everywhere on
 // the next list.
 

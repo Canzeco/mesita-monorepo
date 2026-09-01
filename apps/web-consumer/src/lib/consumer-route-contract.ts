@@ -69,10 +69,13 @@ export const CONSUMER_ROUTES = {
   //
   //   Credits · Visits · Orders · Reservations · Notifications
   //
-  // Credits leads because money is what a guest checks first; the rest still
-  // runs from the thing you're doing RIGHT NOW (a visit in progress) out to
-  // the passive feed. The LABELS for the last two read Bookings and Alerts —
-  // a rename stops at the label, so these route keys do not follow.
+  // The money section leads because money is what a guest checks first; the
+  // rest still runs from the thing you're doing RIGHT NOW (a visit in
+  // progress) out to the passive feed. THREE of these keys are labelled
+  // differently on screen — `credits` reads Wallet, `reservations` reads
+  // Bookings, `notifications` reads Alerts. A rename stops at the label, so
+  // the route keys never follow. The tab itself is the same: /inbox, labelled
+  // Activity.
   //
   // NOTE: this key order has NO runtime effect. Nothing iterates this object;
   // every consumer reads a named key. What the guest actually sees is
@@ -81,13 +84,13 @@ export const CONSUMER_ROUTES = {
   // bare /inbox redirects to the default (visits).
   //
   // This closes the half-state MESITA-1046 left behind: notifications used to
-  // live at their own /inbox/mine + /inbox/global reached from Me, so "Inbox"
+  // live at their own /inbox/mine + /inbox/global reached from Me, so the tab
   // named two different things. Both now redirect into the notifications
   // section and the tab is the only Inbox there is.
   inbox: {
     root: "/inbox",
-    // Credits LEADS the row but is deliberately NOT the default (Pato,
-    // 2026-09-01). "First in the row" and "first to open" come apart here: a
+    // Wallet (this key) LEADS the row but is deliberately NOT the default
+    // (Pato, 2026-09-01). "First in the row" and "first to open" come apart here: a
     // visit in progress is time-critical and a balance never is, so tapping
     // Inbox while you are standing at a table must not detour through money.
     // inboxDefault below is `visits` on purpose — the contract test says so.
