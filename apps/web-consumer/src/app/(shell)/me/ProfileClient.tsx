@@ -40,6 +40,7 @@ import {
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
@@ -341,7 +342,9 @@ export function ProfileClient({
         onClose={() => setMoreOpen(false)}
         onOpenCards={() => setCardsOpen(true)}
         // Credits is a ROUTE, not a sheet — the stack needs the whole card.
-        onOpenCredits={() => router.push("/credits")}
+        // It lives as the first Inbox section now, so this is the second
+        // doorway into it, not the only one.
+        onOpenCredits={() => router.push(CONSUMER_ROUTES.inbox.credits)}
         onOpenShare={() => setShareOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}

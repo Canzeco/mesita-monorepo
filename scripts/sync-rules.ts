@@ -166,7 +166,7 @@ export const TARGETS: Target[] = [
   { label: "root", dir: repoRoot, quickstart: true },
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false },
-  // Widest consumer surface: five tabs, four Inbox sections, the wallet, a five-mode hub.
+  // Widest consumer surface: five tabs, five Inbox sections, the wallet, a five-mode hub.
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 600 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false },
   { label: "apps/web-check", dir: join(repoRoot, "apps", "web-check"), quickstart: false },

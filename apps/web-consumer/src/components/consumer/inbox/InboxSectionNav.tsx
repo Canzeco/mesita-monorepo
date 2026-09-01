@@ -1,50 +1,79 @@
 "use client";
 
-// Inbox section nav — the sticky pill row across the four Inbox sections.
+// Inbox section nav — the sticky pill row across the five Inbox sections.
 // Same vocabulary as HomeModeNav (the app has exactly one section-nav look):
 // equal-width pills in a scrollbar-hidden scroller, active = solid primary
 // + shadow-glow, real <Link> navigation between siblings under the shared
 // /inbox layout.
 //
-// ORDER IS LOAD-BEARING (Pato, 2026-08-16): Visits · Orders · Reservations ·
-// Notifications runs from the thing you're doing right now out to the passive
-// feed. Don't re-sort these alphabetically or by how built-out they are.
+// ORDER IS LOAD-BEARING (Pato, 2026-08-16; Credits added first 2026-09-01):
+// Credits · Visits · Orders · Bookings · Alerts. Credits leads because money
+// is what a guest checks first; the rest still runs from the thing you're
+// doing right now out to the passive feed. Don't re-sort these alphabetically
+// or by how built-out they are.
 //
-// Width: EVERY PILL IS 25% (Pato, 2026-08-17). Content-width pills made the
-// row read as four unrelated chips of random length; four equal quarters read
-// as one segmented control. `grid-flow-col auto-cols-fr` on a `w-max
+// THE DEFAULT IS NOT THE FIRST SECTION. Credits leads this row but bare
+// /inbox lands on Visits — a visit in progress is time-critical, a balance
+// never is. That decision lives in CONSUMER_ROUTES.inboxDefault and is pinned
+// by consumer-route-contract.test.ts.
+//
+// LABEL RENAMES, ROUTES UNCHANGED (2026-09-01): Reservations reads Bookings
+// and Notifications reads Alerts. A rename stops at the label — the routes
+// stay /inbox/reservations and /inbox/notifications. The renames are not
+// cosmetic: they are what bought the fifth column (see the width block).
+//
+// Width: EVERY PILL IS 20% (was 25% at four sections). Content-width pills
+// made the row read as five unrelated chips of random length; equal fifths
+// read as one segmented control. `grid-flow-col auto-cols-fr` on a `w-max
 // min-w-full` track does both jobs — at rest min-w-full stretches the track to
-// the frame and the fr columns split it into exact quarters; at large
-// accessibility text w-max lets the track outgrow the frame and the scroller
-// takes over, columns still equal (all sized to the widest, "Notifications").
+// the frame and the fr columns split it evenly; at large accessibility text
+// w-max lets the track outgrow the frame and the scroller takes over, columns
+// still equal (all sized to the widest label).
 //
-// Equal columns are budgeted by the LONGEST label, not the average, so the
-// budget got tighter, not looser: a quarter of the 432px content box is 105px
-// and "Notifications" spends 98 of it (Inter 600 12px ≈ 72px + 14px icon +
-// gap + px-1). That is why the pill padding is px-1 here and in HomeModeNav —
-// px-2 overflows. A fifth section makes the quarters fifths (83px), which the
-// current labels do NOT fit with icons: re-measure before adding one.
+// THE MEASUREMENT, because the old version of this comment only ever
+// described the 448px frame and that is not where the constraint binds:
+//
+//   frame   content   cols   each     widest pill needs        result
+//   ------  --------  -----  -------  -----------------------  -----------
+//   448px   432px     5      83.2px   "Bookings"      76px     fits (+7)
+//   448px   432px     5      83.2px   "Notifications" 98px     OVERFLOWS
+//   375px   359px     5      68.6px   "Bookings"      76px     scrolls
+//   375px   359px     4      86.8px   "Notifications" 98px     scrolls TODAY
+//
+// Budget per pill = text + 14px icon + 4px gap + 8px px-1. Read the last two
+// rows together: at a real 375px phone THE FOUR-PILL ROW ALREADY SCROLLED
+// before Credits existed. Adding a fifth section does not regress the phone,
+// it inherits a condition the 448px arithmetic never saw. Dropping the icons
+// would free 18px per pill and fit 375px outright; that was offered and
+// declined (Pato, 2026-09-01) — the icons stay, the phone scrolls.
+//
+// A SIXTH section makes the columns 66.4px at 448px, which nothing here fits
+// with icons. Re-measure at 375px, not 448px, before adding one.
 //
 // EVERY PILL CARRIES A SURFACE (fixed 2026-08-20, Pato: "fix the spaces and
-// bad spacing margin. it looks like shit"). The quarters were already exact —
+// bad spacing margin. it looks like shit"). The columns were already exact —
 // the RAGGED part was never the geometry, it was that only the active pill
-// had a background. Centred text inside four invisible equal columns is read
-// by the eye as four labels with arbitrary gaps, because the eye groups on
-// text edges and the column edges aren't drawn: with labels running 6 to 13
-// characters the measured text-to-text gaps came out 26px / 43px / 56px on a
-// row whose columns are all exactly 105px. Mathematically perfect, optically
-// random. One solid pill among three bare words made it worse — the row read
-// as "a button, and then some labels", not as one segmented control.
+// had a background. Centred text inside equal invisible columns is read by the
+// eye as labels with arbitrary gaps, because the eye groups on text edges and
+// the column edges aren't drawn. One solid pill among bare words made it worse
+// — the row read as "a button, and then some labels", not one segmented
+// control.
 //
-// Drawing the inactive surface fixes it without touching the 25% rule: the
-// rhythm you now perceive is pill EDGES (four equal quarters, uniform gap-1)
-// instead of word edges. A background costs zero width, so the px-1 budget
-// above is untouched. Contrast stays carried by fill, not by presence —
-// active is solid primary + glow, resting is a muted surface.
+// Drawing the inactive surface fixes it without touching the equal-width rule:
+// the rhythm you perceive is pill EDGES (equal columns, uniform gap-1) instead
+// of word edges. A background costs zero width, so the px-1 budget above is
+// untouched. Contrast stays carried by fill, not by presence — active is solid
+// primary + glow, resting is a muted surface.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, CalendarCheck, Footprints, ShoppingBag } from "lucide-react";
+import {
+  Bell,
+  CalendarCheck,
+  Footprints,
+  Landmark,
+  ShoppingBag,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -57,18 +86,28 @@ type Section = { href: string; label: string; Icon: LucideIcon };
 // one control drawn twice, and neither one tells you which is which. The QR
 // is the thing you SHOW to start a visit; this section is the record that you
 // WENT. Footprints says that, and collides with nothing else in the row
-// (bag / calendar / bell).
-const SECTIONS: Section[] = [
+// (landmark / bag / calendar / bell).
+//
+// Credits is LANDMARK — the same glyph its own empty state uses, and the only
+// money-shaped icon that doesn't collide with the four above. Wallet is spent:
+// it belongs to the saved-card row in Me › More, and "two wallets, two names"
+// is a decision this app already made.
+//
+// THIS ARRAY IS WHAT THE GUEST SEES. The route contract's key order has no
+// runtime effect — nothing iterates it. route-structure.test.tsx T6 pins this
+// array's order, count, labels and active state.
+export const SECTIONS: Section[] = [
+  { href: CONSUMER_ROUTES.inbox.credits, label: "Credits", Icon: Landmark },
   { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: Footprints },
   { href: CONSUMER_ROUTES.inbox.orders, label: "Orders", Icon: ShoppingBag },
   {
     href: CONSUMER_ROUTES.inbox.reservations,
-    label: "Reservations",
+    label: "Bookings",
     Icon: CalendarCheck,
   },
   {
     href: CONSUMER_ROUTES.inbox.notifications,
-    label: "Notifications",
+    label: "Alerts",
     Icon: Bell,
   },
 ];

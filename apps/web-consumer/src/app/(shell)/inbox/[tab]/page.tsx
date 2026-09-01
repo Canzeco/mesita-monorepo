@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Legacy Inbox aliases. The four real sections (visits / orders /
+// Legacy Inbox aliases. The five real sections (credits / visits / orders /
 // reservations / notifications) are STATIC segments and win the match, so
 // this dynamic route only ever sees old paths:
 //

@@ -62,7 +62,7 @@ export function MoreModal({
   open: boolean;
   onClose: () => void;
   onOpenCards: () => void;
-  /** Navigates to /credits — a route, not a sheet. */
+  /** Navigates to the Credits Inbox section — a route, not a sheet. */
   onOpenCredits: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
@@ -91,11 +91,15 @@ export function MoreModal({
       title: "Credits",
       summary: "Earn and spend at the bill · 1 Credit = MX$1",
       // Un-parked as `soon: false` PLUS a page body, which is what un-parking
-      // means here. It could not stay `soon` and still be the demo's door: a
-      // parked row is `disabled` below, so its handler never fires — which is
-      // why the parked Share row cannot reach /share either, live route and
-      // all. The page it opens says Soon on itself instead, in the header pill
-      // and the marker under the stack.
+      // means here. It could not stay `soon` and still be a door: a parked row
+      // is `disabled` below, so its handler never fires — which is why the
+      // parked Share row cannot reach /share either, live route and all.
+      //
+      // Credits now also lives as the FIRST Inbox section (MESITA-1381). This
+      // row survives as the second doorway, the way Share does: removing it
+      // would take away a path guests already have, and Me stays seven boxes
+      // either way because this is More, not Me. The surface it opens says
+      // Soon on itself — hero pill and the marker under the stack.
       onClick: onOpenCredits,
     },
     {

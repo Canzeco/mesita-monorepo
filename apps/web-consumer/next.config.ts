@@ -68,6 +68,11 @@ const nextConfig: NextConfig = {
       // Renamed surfaces.
       { source: "/home/ai", destination: "/home/chat", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
+      // Credits shipped standalone at /credits (#1429) and moved under Inbox
+      // when it became a section. It was live in production, so the bookmarks
+      // are real. route-structure.test.tsx T7 asserts this entry still exists
+      // — T4 can only validate a redirect's DESTINATION, never its absence.
+      { source: "/credits", destination: "/inbox/credits", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {
         source: "/notifications",

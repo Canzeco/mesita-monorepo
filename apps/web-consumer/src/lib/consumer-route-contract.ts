@@ -67,10 +67,16 @@ export const CONSUMER_ROUTES = {
   // Inbox — the container tab, and now genuinely ONE surface. It holds four
   // sections in this fixed order (Pato, 2026-08-16):
   //
-  //   Visits · Orders · Reservations · Notifications
+  //   Credits · Visits · Orders · Reservations · Notifications
   //
-  // The order is the point: it runs from the thing you're doing RIGHT NOW
-  // (a visit in progress) out to the passive feed. Sections are real nested
+  // Credits leads because money is what a guest checks first; the rest still
+  // runs from the thing you're doing RIGHT NOW (a visit in progress) out to
+  // the passive feed. The LABELS for the last two read Bookings and Alerts —
+  // a rename stops at the label, so these route keys do not follow.
+  //
+  // NOTE: this key order has NO runtime effect. Nothing iterates this object;
+  // every consumer reads a named key. What the guest actually sees is
+  // InboxSectionNav.SECTIONS, and the contract test pins THAT. Sections are real nested
   // routes so a section is linkable and the back button works between them;
   // bare /inbox redirects to the default (visits).
   //
@@ -80,6 +86,12 @@ export const CONSUMER_ROUTES = {
   // section and the tab is the only Inbox there is.
   inbox: {
     root: "/inbox",
+    // Credits LEADS the row but is deliberately NOT the default (Pato,
+    // 2026-09-01). "First in the row" and "first to open" come apart here: a
+    // visit in progress is time-critical and a balance never is, so tapping
+    // Inbox while you are standing at a table must not detour through money.
+    // inboxDefault below is `visits` on purpose — the contract test says so.
+    credits: "/inbox/credits",
     visits: "/inbox/visits",
     orders: "/inbox/orders",
     reservations: "/inbox/reservations",
