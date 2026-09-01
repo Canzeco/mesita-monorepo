@@ -5,7 +5,8 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { Search, QrCode, Inbox, User } from "lucide-react";
+import { QrCode, Inbox, User } from "lucide-react";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import {
@@ -64,11 +65,13 @@ const ITEMS: Item[] = [
     // Discover IS the map. No sub-route, no mode row, no redirect hop — the
     // href is the live surface itself (2026-09-01, retiring /home).
     href: CONSUMER_ROUTES.discoverDefault,
-    // The magnifier, not the brand mark. `MesitaMark` rode the Home tab
-    // because "Home doubles as the Mesita anchor" — that reason died with
-    // Home, and a four-tab bar buys nothing from a logo while the one live
-    // discovery surface would have lost its only recognisable affordance.
-    Icon: Search,
+    // The brand mark (Pato, 2026-09-01), reversing the magnifier this tab
+    // shipped with hours earlier. The magnifier was chosen because Discover
+    // WAS the map and would otherwise lose its only recognisable affordance —
+    // that argument expired the moment Discover grew a seven-mode rail whose
+    // first two pills carry their own pin and magnifier glyphs. The tab names
+    // a place to go, and the mark is what says which product you are in.
+    Icon: MesitaMark,
     label: "Discover",
     // /place rode the Home entry before the retirement and has no other
     // consumer, so it moves here. Drop it and place detail lights NOTHING —

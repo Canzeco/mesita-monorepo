@@ -1,6 +1,7 @@
 "use client";
 
-// NAME — Discover's typed mode. Search Mesita place names, as a full list.
+// SEARCH — Discover's typed mode. Find a place that is not already on your
+// screen: Mesita place names, as a full list.
 //
 // WHY IT IS A SEPARATE MODE. On the map the same results render as an overlay
 // panel floating over the pins, capped at max-h-[70%]. That is the right shape
@@ -48,7 +49,7 @@ const FAST_DEBOUNCE_MS = 300;
 const DEEP_IDLE_MS = 1000;
 const MIN_QUERY = 2;
 
-export function DiscoverNameClient({ apiKey }: { apiKey: string }) {
+export function DiscoverSearchClient({ apiKey }: { apiKey: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
@@ -85,8 +86,8 @@ export function DiscoverNameClient({ apiKey }: { apiKey: string }) {
   }
 
   // Fast (Autocomplete) while typing; Deep replaces the list once the guest
-  // stops, but only when Deep actually has rows — an empty Deep keeps Fast
-  // rather than blanking a list the guest is already reading.
+  // stops, but only when it actually has rows. Empty Deep keeps Fast rather
+  // than blanking a list the guest is already reading.
   useEffect(() => {
     if (trimmed.length < MIN_QUERY) return;
     let cancelled = false;
@@ -136,7 +137,7 @@ export function DiscoverNameClient({ apiKey }: { apiKey: string }) {
           setSearching(false);
         }
       } catch {
-        // Keep Fast's rows if Deep fails — a worse list beats no list.
+        // Keep Fast results if Deep fails. A worse list beats no list.
         if (!cancelled) setSearching(false);
       }
     }, DEEP_IDLE_MS);

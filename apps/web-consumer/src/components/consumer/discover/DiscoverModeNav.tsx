@@ -1,36 +1,38 @@
 "use client";
 
-// Discover mode rail — the topbar menu across Discover's seven modes.
+// Discover mode rail — the topbar menu across Discover's five modes.
 //
-// CONTENT-WIDTH PILLS THAT SCROLL, not equal columns, and this is the one
-// section nav in the app that works that way. Every other row (InboxSectionNav,
-// and HomeModeNav before it) uses `grid-flow-col auto-cols-fr`, where the
-// widest label sizes every column. That rule holds up to five modes. It cannot
-// hold seven:
+// CONTENT-WIDTH PILLS THAT SCROLL, not equal columns. Every other row
+// (InboxSectionNav, and HomeModeNav before it) uses `grid-flow-col
+// auto-cols-fr`, where the widest label sizes every column.
 //
-//   359px content − 6 gaps×4px = 335px ÷ 7 = 47.9px per column
-//   − 26px chrome (14px icon + 4px gap + 8px px-1)
-//   = 21.9px of text ≈ 3 characters at Inter 600 12px
+// This shipped at SEVEN modes, where equal columns were arithmetically
+// impossible: 359px content − 6 gaps×4px = 335px ÷ 7 = 47.9px per column,
+// minus 26px chrome (14px icon + 4px gap + 8px px-1), leaving 21.9px of text
+// ≈ 3 characters. "Favorites" is nine.
 //
-// "Favorites" is nine. Seven equal pills is not tight, it is arithmetically
-// impossible, so the row changes shape instead of shrinking. Mobile's
-// SegmentNav already diverged to content-width pills for exactly this reason —
-// this converges on that rather than inventing a third look.
+// At FIVE it is no longer impossible, only unsafe. 5 columns give 68.6px each;
+// the widest label, "Search", needs about 68px. That is 0.6px of margin, well
+// inside the ±3px error on the 0.58em advance this arithmetic uses — a font
+// swap or a longer label breaks it silently, and a row that clips mid-word
+// reads as a broken render rather than a control. So the rail stays. If the
+// segmented look is ever wanted back, shortening one label (Search -> Find,
+// 54px) buys real headroom; do that first, do not just switch the class.
 //
 // THE AMENDED RULE (web-consumer/CLAUDE.md): equal columns when they fit, a
 // content-width scrolling rail when they do not. Activity keeps equal columns —
 // its four pills fit at 375px with 11px to spare, so converting it would trade
 // a working control for consistency alone.
 //
-// TWO PILLS DO NOT RENDER AT REST. Measured track is ~472px against 359px of
-// screen, so Social and Favorites sit off-screen until the guest scrolls.
-// Tolerable while both are parked. NOT tolerable the day Favorites un-parks,
-// because saved places is the mode a returning guest actively hunts for.
-// Re-order BEFORE un-parking it, not after.
+// EVERYTHING FITS AT FIVE. Measured track is ~292px against 359px of screen,
+// so no pill is off-screen at rest and the scroll is a fallback rather than a
+// requirement. That was not true at seven, where Social and Favorites never
+// rendered. Adding a sixth mode brings the off-screen problem back — measure
+// before adding one, and put live modes first when you do.
 //
 // Parked pills render at 55% opacity so the ladder reads as a preview rather
-// than a broken menu — five identical-looking dead pills next to two live ones
-// is worse at seven scrolling than it was at five equal.
+// than a broken menu. Three dead pills beside two live ones needs the contrast;
+// at seven it was five dead beside two and the row read as broken.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -38,11 +40,9 @@ import { usePathname } from "next/navigation";
 import {
   Flame,
   Heart,
-  LayoutGrid,
   MapPin,
   Search,
   Sparkles,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,25 +62,19 @@ type Mode = {
 // ORDER IS LOAD-BEARING — see the header. Live modes lead so the two that work
 // are the two a guest sees without scrolling.
 //
-// NAME, not "Search": the mode searches Mesita place NAMES, which is what
-// `consumer-web-suggest-places` actually does. It also costs 4 characters
-// against Search's 6, worth 14px on a rail that already overflows by ~113px.
+// SEARCH absorbs what were Name, Catalog and Social (Pato, 2026-09-01): one
+// surface for finding a place that is not already on your screen. The name bar
+// is live; CatalogRails and SocialFeed mount into the same page when they
+// un-park, rather than getting their pills back.
 export const MODES: Mode[] = [
   { href: CONSUMER_ROUTES.discoverTabs.map, label: "Map", Icon: MapPin },
-  { href: CONSUMER_ROUTES.discoverTabs.name, label: "Name", Icon: Search },
+  { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
     label: "Swipe",
     Icon: Flame,
     soon: true,
     blurb: "A photo-first deck of places near you. Landing here soon.",
-  },
-  {
-    href: CONSUMER_ROUTES.discoverTabs.catalog,
-    label: "Catalog",
-    Icon: LayoutGrid,
-    soon: true,
-    blurb: "Stacked rails of places to browse. Landing here soon.",
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.chat,
@@ -90,16 +84,8 @@ export const MODES: Mode[] = [
     blurb: "Talk to Don Memo about where to go. Landing here soon.",
   },
   {
-    href: CONSUMER_ROUTES.discoverTabs.social,
-    label: "Social",
-    Icon: Users,
-    soon: true,
-    blurb:
-      "See where your friends are going and share the places you love. Landing here soon.",
-  },
-  {
-    href: CONSUMER_ROUTES.discoverTabs.favorites,
-    label: "Favorites",
+    href: CONSUMER_ROUTES.discoverTabs.favs,
+    label: "Favs",
     Icon: Heart,
     soon: true,
     blurb: "The places you save, in one grid. Landing here soon.",
