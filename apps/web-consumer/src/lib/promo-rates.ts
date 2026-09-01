@@ -113,7 +113,7 @@ const STRATEGY_PRESETS: {
   { id: "dominant", w_free: 40, w_prem: 50, free: 20, prem: 30 },
 ];
 
-export function strategyForPromoMatrix(matrix: {
+function strategyForPromoMatrix(matrix: {
   welcome: { free: number | null; premium: number | null };
   default: { free: number | null; premium: number | null };
 }): PlaceStrategy {

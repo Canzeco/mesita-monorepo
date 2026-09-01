@@ -97,12 +97,12 @@ async function waitForGoogleMaps(ms = MAPS_WAIT_MS): Promise<void> {
   }
 }
 
-export function loadPlacesService(): PlacesServiceCtor | null {
+function loadPlacesService(): PlacesServiceCtor | null {
   const ctor = mapsApi()?.places?.PlacesService;
   return typeof ctor === "function" ? ctor : null;
 }
 
-export async function loadPlacesLibrary(): Promise<PlacesLibraryLike | null> {
+async function loadPlacesLibrary(): Promise<PlacesLibraryLike | null> {
   await waitForGoogleMaps();
   const maps = mapsApi();
   if (typeof maps?.importLibrary === "function") {

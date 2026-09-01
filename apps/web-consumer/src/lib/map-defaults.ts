@@ -79,7 +79,7 @@ export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.75;
 export const MAP_PIN_SCALE = 1;
-export const MAP_CIRCLE_PATH =
+const MAP_CIRCLE_PATH =
   `M -${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 ${MAP_PLACE_PIN_RADIUS} 0 A ${MAP_PLACE_PIN_RADIUS} ${MAP_PLACE_PIN_RADIUS} 0 1 0 -${MAP_PLACE_PIN_RADIUS} 0`;
 
 export function mapCircleIcon(fillColor: string, strokeColor: string) {

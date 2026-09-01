@@ -10,7 +10,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const TICKET_PROOFS_BUCKET = "ticket-proofs";
+const TICKET_PROOFS_BUCKET = "ticket-proofs";
 
 // Bucket caps at 4 MiB; a re-encoded screenshot lands around 200-500 KB, so
 // uploads stay fast on venue wifi. Screenshots are text-heavy — 0.85 JPEG at

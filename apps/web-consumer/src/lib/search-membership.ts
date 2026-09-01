@@ -64,7 +64,7 @@ export function catalogPlaceOnMesita(place: {
   return !place.id.startsWith("g:");
 }
 
-export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
+const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
   partner: MAP_PARTNER_PIN_COLOR,
   enriched: MAP_ENRICHED_PIN_COLOR,
   unlisted: MAP_GOOGLE_PIN_COLOR,

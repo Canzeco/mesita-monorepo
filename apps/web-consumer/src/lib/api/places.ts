@@ -178,9 +178,9 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
-export const LIST_PLACES_MAX = 200;
+const LIST_PLACES_MAX = 200;
 export const CATALOG_NEARBY_MAX = 60;
-export const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
+const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
 export const BBOX_MAX_SPAN_DEG = 0.75;
 
 export type PlacesBbox = {
