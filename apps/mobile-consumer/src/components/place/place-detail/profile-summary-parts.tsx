@@ -77,37 +77,6 @@ export function ProfileStat({
   );
 }
 
-// PARKED: the reward held the third stat slot until the row became the three
-// outside channels (Google · Instagram · Facebook). The reward still shows as
-// PromoMetaChip in the tag row below; keep this for a future slot.
-export function ProfileRewardStat({ place }: { place: PlaceDetail }) {
-  const { consumerClass } = useAuth();
-  const isElevated = isElevatedClass(consumerClass?.class ?? 'standard');
-  const isFirstVisit = place.promo_matrix.is_first_visit;
-  const promoPercent = resolvePromoRateFromPlaceRow(
-    {
-      listing_type: place.listing_type,
-      welcome_free_rate: place.promo_matrix.welcome.free,
-      welcome_premium_rate: place.promo_matrix.welcome.premium,
-      free_rate: place.promo_matrix.default.free,
-      premium_rate: place.promo_matrix.default.premium,
-      is_first_visit: isFirstVisit,
-    },
-    isFirstVisit,
-    isElevated,
-  );
-  if (promoPercent == null) {
-    return <ProfileStat value="—" label="No reward" gift />;
-  }
-  return (
-    <ProfileStat
-      value={`${promoPercent}%`}
-      label={isFirstVisit ? 'Welcome' : 'Returning'}
-      gift
-    />
-  );
-}
-
 export function ProfileMetaChip({ children }: { children: ReactNode }) {
   return (
     <View className="flex-row items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1">

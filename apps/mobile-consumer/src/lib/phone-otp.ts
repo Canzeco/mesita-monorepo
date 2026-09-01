@@ -89,10 +89,6 @@ export function parsePhone(countryCode: string, raw: string): PhoneParseResult {
   return { ok: true, e164: `+${country.dial}${digits}`, digits };
 }
 
-export function isSendablePhone(countryCode: string, raw: string): boolean {
-  return parsePhone(countryCode, raw).ok;
-}
-
 const TWILIO_MESSAGES: Record<string, string> = {
   '21211': "That number doesn't look valid. Check it and try again.",
   '21408': "We can't text that country yet. Try another number or reach out to us.",
