@@ -1,35 +1,35 @@
 import {
   ChartLine,
   MapPin,
-  Percent,
-  Settings,
+  SlidersHorizontal,
   Store,
   User,
 } from "lucide-react";
 
-// Tab order — Pato live 2026-08-05 (MESITA-900): place · promos ·
-// performance · settings · admin. Reservations list + AI dial lines live
-// inside Performance again (reverses MESITA-894's own-tab split). Channel
-// config moved to Partnership (Pato live 2026-08-30) — Settings is people
-// now, not rails. Admin stays last, admin-console-only.
+// Tab order — Pato live 2026-09-01: place · promos · performance · admin.
+// FOUR tabs: Profile · Controls · Activity · Admin. Partnership and Settings
+// merged into ONE tab (Controls) — every knob a place has now sits together,
+// and Team was the only box Settings still owned after the rails moved off it
+// (2026-08-30). Reservations list + AI dial lines live inside Activity. Admin
+// stays last, admin-console-only.
 /** Tabs shown in PlaceEditChrome. `soon: true` = parked: the tab renders
  *  disabled and its route serves a placeholder instead of the live section. */
 export const PLACE_TAB_SECTIONS = [
-  // decision: Pato live 2026-08-25 — Profile is the place (Store), Partner
-  // is membership/promos (Percent). ShoppingBag is Orders; Handshake and
-  // User stay off these two so Admin keeps the person glyph.
+  // decision: Pato live 2026-08-25 — Profile is the place (Store).
+  // ShoppingBag is Orders; Handshake stays off so Admin keeps the person glyph.
   { id: "place", label: "Profile", Icon: Store, soon: false },
-  // decision: Pato live 2026-08-30 — tab label Partnership (route
-  // `/promos` frozen; a rename never reaches the URL). The tab now holds
-  // every capability the place offers: the subscription, Visit Rewards,
-  // and the three rail boxes moved off Settings.
-  { id: "promos", label: "Partnership", Icon: Percent, soon: false },
-  // decision: Pato live 2026-08-09 — Performance is parked behind Soon. The
+  // decision: Pato live 2026-09-01 — tab label Controls (route `/promos`
+  // frozen; a rename never reaches the URL, same as Partnership before it).
+  // The tab holds everything the place is SET to: the subscription, Visit
+  // Rewards, the three rail boxes, and Team. Percent went with the
+  // Partnership label — a sliders glyph is the whole tab now, not one box.
+  { id: "promos", label: "Controls", Icon: SlidersHorizontal, soon: false },
+  // decision: Pato live 2026-09-01 — Performance is now Activity (route
+  // `/performance` frozen). Still parked behind Soon (Pato, 2026-08-09): the
   // per-place feed reads as empty scaffolding on real places, so it's blocked
   // rather than shown half-true. The feed itself is untouched underneath —
   // flip this back to `false` to un-park it in one line.
-  { id: "performance", label: "Performance", Icon: ChartLine, soon: true },
-  { id: "settings", label: "Settings", Icon: Settings, soon: false },
+  { id: "performance", label: "Activity", Icon: ChartLine, soon: true },
   { id: "admin", label: "Admin", Icon: User, soon: false },
 ] as const;
 

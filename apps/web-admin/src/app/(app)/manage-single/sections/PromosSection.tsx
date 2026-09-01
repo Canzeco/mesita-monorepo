@@ -30,6 +30,7 @@ import { OPERATOR_PROMOTING_LABEL } from "@/lib/status-vocabulary";
 import { placeOperatorPromotingLevel } from "./StatusCard";
 import { OrdersCard } from "./OrdersCard";
 import { ReservationsCard } from "./ReservationsCard";
+import { TeamSection } from "./TeamSection";
 import { VisitsCard } from "./VisitsCard";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -48,7 +49,7 @@ import {
   type RungWord,
 } from "./promo-state";
 
-// Admin Partnership tab — SIX boxes (Pato live 2026-08-30). The Tutorial box was
+// Admin Controls tab — SEVEN boxes (Pato live 2026-09-01). The Tutorial box was
 // DELETED: this is the operator's own console, and it explained Mesita to the
 // person who built it, in copy the other boxes already carried. Never restore
 // it here — the business console is where a partner gets taught.
@@ -69,10 +70,13 @@ import {
 //      picker option.
 //   4-6. Visits · Orders · Reservations — the three rail boxes, MOVED here
 //      from Settings (Pato live 2026-08-30): each configures a capability
-//      the place offers through Mesita, so they sit with the offerings.
-//      Settings keeps Team, which is people rather than a rail. One box per
-//      rail still holds (MESITA-1148); Visits still carries the Check PIN
-//      (MESITA-823) and the bill is still always required (MESITA-1095).
+//      the place offers through Mesita, so they sit with the offerings. One
+//      box per rail still holds (MESITA-1148); Visits still carries the Check
+//      PIN (MESITA-823) and the bill is still always required (MESITA-1095).
+//   7. Team — the last box Settings still owned, folded in when Partnership
+//      and Settings became ONE tab (Pato live 2026-09-01). People are a
+//      control like any other: this tab is now everything the place is SET
+//      to, and there is no second tab left to split it across.
 
 const MEMBERSHIP_PRICE_MXN = 1000;
 
@@ -396,12 +400,17 @@ export function PromosSection({
 
       {/* The three rail boxes, moved here from Settings (Pato live
           2026-08-30). Each configures a capability the place offers
-          through Mesita, so they belong with the offerings, not with
-          Team. One box per rail still holds (MESITA-1148); Visits still
-          carries the Check PIN. */}
+          through Mesita, so they sit right after the offerings. One box
+          per rail still holds (MESITA-1148); Visits still carries the
+          Check PIN. */}
       <VisitsCard place={v} />
       <OrdersCard place={v} />
       <ReservationsCard place={v} />
+
+      {/* Team — folded in from Settings when the two tabs merged (Pato live
+          2026-09-01). Last box on purpose: the offerings and rails are what
+          the place sells, people are who runs it. */}
+      <TeamSection place={v} />
 
       <ConfirmDialog
         open={dropOpen}

@@ -11,25 +11,27 @@ import { ReservationsList } from "../../sections/ReservationsList";
 import { Spinner } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../../PlaceContext";
 
-// Per-place Performance (MESITA-900 — Reservations back inside this tab):
+// Per-place Activity — renamed from Performance (Pato live 2026-09-01); the
+// route stays /performance, because a rename never reaches the URL
+// (MESITA-900 — Reservations back inside this tab):
 //
 //   1. Is Mesita working here? — money + Saved→Visited→Closed funnel.
 //   2. Reputation             — Mesita / Google / IG / FB / reservations boxes (Stories rail).
 //   3. Event receipts         — typed Super Boxes (analytics lead + horizontal events).
 //   4. Reservations           — Mesita bookings list + AI dial lines.
 //
-// Channel routing stays on Settings. Layout: one max-w-4xl column.
+// Channel routing stays on Controls. Layout: one max-w-4xl column.
 //
 // PARKED (Pato live 2026-08-09): the whole tab is behind the Soon gate in
 // `nav.ts`. The chrome renders it disabled and this route serves the
 // placeholder below — the feed underneath is untouched, so flipping
 // `soon: false` in nav.ts brings it all back.
-export default function PlacePerformancePage() {
-  if (isSectionSoon("performance")) return <PerformanceSoon />;
-  return <PerformanceFeed />;
+export default function PlaceActivityPage() {
+  if (isSectionSoon("performance")) return <ActivitySoon />;
+  return <ActivityFeed />;
 }
 
-function PerformanceSoon() {
+function ActivitySoon() {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 pb-10">
       <div className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-16 text-center">
@@ -37,7 +39,7 @@ function PerformanceSoon() {
           <ChartLine className="h-5 w-5" />
         </span>
         <p className="font-display text-foreground text-lg font-semibold tracking-tight">
-          Performance is coming soon
+          Activity is coming soon
         </p>
         <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
           Per-place numbers — influenced spend, the Saved → Visited → Closed
@@ -53,7 +55,7 @@ function PerformanceSoon() {
 }
 
 /** The live feed — parked behind the Soon gate above, not deleted. */
-function PerformanceFeed() {
+function ActivityFeed() {
   const { place } = usePlaceContext();
   const [activity, setActivity] = useState<PlaceActivity | null>(null);
   const [activityError, setActivityError] = useState<string | null>(null);

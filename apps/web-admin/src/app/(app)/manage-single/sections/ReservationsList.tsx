@@ -14,7 +14,7 @@ import type { PlaceActivity } from "../actions";
 // card and there is no edit control anywhere in it.
 //
 // Named ReservationsList, not ReservationsPanel: `ReservationsCard` already
-// exists on the Settings tab for channel routing, and two files a letter
+// exists on the Controls tab for channel routing, and two files a letter
 // apart is how the wrong one gets imported.
 
 const STATUS: Record<string, { label: string; chip: string }> = {
