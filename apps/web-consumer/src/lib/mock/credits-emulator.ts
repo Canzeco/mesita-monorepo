@@ -45,7 +45,7 @@ export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: EmulatorError };
 
-export function nowMsFor(state: CreditsState): number {
+function nowMsFor(state: CreditsState): number {
   return Date.now() + state.clockOffsetMs;
 }
 

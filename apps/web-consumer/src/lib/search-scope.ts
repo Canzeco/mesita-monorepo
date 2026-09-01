@@ -5,7 +5,7 @@
 export const DEFAULT_SEARCH_COUNTRY = null;
 
 /** Globe for the unset restrict — not a country, still first in the sheet. */
-export const ANY_COUNTRY_FLAG = "🌐";
+const ANY_COUNTRY_FLAG = "🌐";
 
 export const SEARCH_COUNTRIES = [
   { code: "MX", label: "Mexico", flag: "🇲🇽" },

@@ -50,7 +50,7 @@ function centerForRequest(f: DiscoveryFilters, center: DeckCenter): DeckCenter {
   return f.maxKm !== null ? center : null;
 }
 
-export function toDiscoveryPredicatesWire(
+function toDiscoveryPredicatesWire(
   f: DiscoveryFilters,
 ): DiscoveryPredicatesWire {
   return {

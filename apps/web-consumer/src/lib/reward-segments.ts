@@ -130,7 +130,7 @@ export const PEAK_STRATEGY: GridStrategy = "aggressive";
 
 // Which class rung a consumer sits on. Consumer classes map one-to-one onto
 // their same-named ladder rungs.
-export function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
+function segmentKeyForClass(classKey: ClassKey): RewardSegmentKey {
   return classKey;
 }
 
