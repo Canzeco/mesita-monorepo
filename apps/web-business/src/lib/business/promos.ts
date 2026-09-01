@@ -61,7 +61,7 @@ export type PromosConfig = {
   cap: number;
 };
 
-export const STRATEGY_KEYS: readonly StrategyKey[] = [
+const STRATEGY_KEYS: readonly StrategyKey[] = [
   "conservative",
   "aggressive",
   "dominant",
@@ -372,7 +372,7 @@ export type Assumptions = {
   actionPct: { mesita: number; story: number; google: number };
 };
 
-export const DEFAULT_ASSUMPTIONS: Assumptions = {
+const DEFAULT_ASSUMPTIONS: Assumptions = {
   welcomePct: 20,
   classPct: { bronze: 70, silver: 15, gold: 10, diamond: 5 },
   premiumPct: 15,
@@ -411,7 +411,7 @@ export type StrategyDistribution = {
 
 /** Exact expected distribution — every combination enumerated and weighted,
  *  no sampling, so the number never jitters between renders. */
-export function distributionFor(
+function distributionFor(
   cfg: PromosConfig,
   assumptions: Assumptions,
   strategy: StrategyKey,
