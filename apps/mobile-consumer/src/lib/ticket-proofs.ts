@@ -13,7 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 
 import { supabase } from "@/lib/supabase";
 
-export const TICKET_PROOFS_BUCKET = "ticket-proofs";
+const TICKET_PROOFS_BUCKET = "ticket-proofs";
 const MAX_PROOF_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);

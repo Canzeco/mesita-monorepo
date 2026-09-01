@@ -31,7 +31,7 @@ export function catalogPlaceOnMesita(place: {
   return !place.id.startsWith('g:');
 }
 
-export const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
+const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
   partner: MAP_PARTNER_PIN_COLOR,
   listed: MAP_LISTED_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
@@ -61,7 +61,7 @@ export function pinStrokeColor(selected: boolean): string {
 }
 
 /** First tap selects; a later tap on the same pin opens. Not a timed dblclick. */
-export function pinGesture(
+function pinGesture(
   selectedId: string | null,
   pinId: string,
 ): 'select' | 'open' {

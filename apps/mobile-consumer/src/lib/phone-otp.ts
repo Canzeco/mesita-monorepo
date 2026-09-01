@@ -45,7 +45,7 @@ const TRUNK_PREFIX_ZERO = new Set(['UK', 'DE', 'FR', 'NL', 'AU', 'AR']);
  * subscriber number. Mexico is the one that bites us daily: "1 55…" (the
  * old cellular prefix) and "044/045 55…" are still muscle memory.
  */
-export function normalizeNationalDigits(countryCode: string, raw: string): string {
+function normalizeNationalDigits(countryCode: string, raw: string): string {
   let digits = raw.replace(/\D/g, '');
   if (countryCode === 'MX') {
     if (digits.length === 13 && /^04[45]/.test(digits)) digits = digits.slice(3);
