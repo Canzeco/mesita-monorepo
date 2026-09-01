@@ -15,14 +15,14 @@ export default async function PlaceModalPage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id)) {
-    redirect(CONSUMER_ROUTES.home);
+    redirect(CONSUMER_ROUTES.search);
   }
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
     // Dead id (reset-away row, stale localStorage favorite, old bookmark).
     // Bounce, but say so — see <PlaceGoneNotice />.
-    redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
+    redirect(placeGoneHref(CONSUMER_ROUTES.search, id));
   }
   return (
     <PlaceDetailModalShell place={place}>

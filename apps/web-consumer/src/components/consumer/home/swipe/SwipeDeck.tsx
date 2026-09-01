@@ -98,7 +98,7 @@ function prepareDeck(rows: Place[]): Place[] {
 export function SwipeDeck({
   places,
   fetchError,
-  errorRetryHref = CONSUMER_ROUTES.home,
+  errorRetryHref = CONSUMER_ROUTES.search,
 }: {
   places: Place[];
   fetchError: string | null;
@@ -436,14 +436,11 @@ function Deck({ places }: { places: Place[] }) {
         upsertSavedPlacePreview(v);
         setSaved(v.id, true);
         if (!alreadySaved) {
-          toast.action(
-            `Saved ${v.name}`,
-            {
-              label: "View",
-              onClick: () => router.push(CONSUMER_ROUTES.favorites),
-            },
-            { tone: "success" },
-          );
+          // No "View" action while Favorites is parked (2026-09-01) — same
+          // reasoning as the place detail's Save toast. It pushed
+          // CONSUMER_ROUTES.favorites, and that route left with the /home
+          // hub. Restore both together when the shared deck un-parks.
+          toast.success(`Saved ${v.name}`);
         }
       }
       releaseCapture(cardElRef.current, activePointerIdRef.current);
@@ -451,7 +448,9 @@ function Deck({ places }: { places: Place[] }) {
       resetGesture();
       setExiting(dir);
     },
-    [isSaved, releaseCapture, resetGesture, router, setSaved, v],
+    // `router` left this list with the Saved toast's "View" action — the
+    // callback no longer navigates. It is still used elsewhere in the file.
+    [isSaved, releaseCapture, resetGesture, setSaved, v],
   );
 
   const isForeignPointer = useCallback((pointerId: number) => {

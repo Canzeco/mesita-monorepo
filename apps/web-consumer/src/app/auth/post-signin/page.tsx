@@ -50,5 +50,5 @@ export default async function PostSigninPage({
   if (!consumerResult?.onboarded) {
     redirect(withNext(CONSUMER_ROUTES.onboard, explicitNext));
   }
-  redirect(explicitNext ?? CONSUMER_ROUTES.homeDefault);
+  redirect(explicitNext ?? CONSUMER_ROUTES.search);
 }

@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
 import { Search, QrCode, Inbox, User } from "lucide-react";
-import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
 import {
@@ -15,9 +14,18 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Pay, Activity, Me.
-// Home hosts the discovery routes (Swipe / Catalog / Chat / Social /
-// Favorites); Search hosts the map + catalog search.
+// FOUR top-level surfaces: Discover, Pay, Activity, Me (2026-09-01, was five).
+//
+// Home and Search merged into Discover, and the merge was a DELETION: Home had
+// been Soon since 2026-08-28 — all five of its modes opened coming-soon
+// dialogs — while Search shipped the live map, filters, catalog rail and deep
+// search. So the dead tab was the leftmost one, it wore the brand mark, and it
+// was the most probable first tap a new guest ever made. Discover is Search,
+// unmoved, under a name that survives the parked modes shipping later.
+//
+// At four items each column is ~94px at 375px (was ~75px), which is why the
+// active underline is w-6 rather than w-5 — a 20px rule under a 94px column
+// reads thin.
 //
 // Every tab shows its plain label. Me used to append the live class ("Me ·
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
@@ -26,8 +34,9 @@ import {
 // screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
 // by Product Rules §C; `route-structure.test.tsx` pins the five plain labels.
 
-// Icon is either a lucide glyph or the Mesita brand mark (Home) — both take
-// a className and (harmlessly) a strokeWidth, so the render stays uniform.
+// Every icon is a lucide glyph now (the brand mark left with the Home tab).
+// The signature stays wider than LucideIcon so a future non-lucide glyph does
+// not force a type change at every call site.
 type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -52,22 +61,22 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Land straight on the default sub-route so the bare /home redirect hop
-    // isn't hit on every tab tap; the /home prefix still lights the tab.
-    href: CONSUMER_ROUTES.homeDefault,
-    // Brand mark instead of a generic house — Home doubles as the Mesita anchor.
-    Icon: MesitaMark,
-    label: "Home",
-    // /place — detail opened from the deck keeps Home lit (this was a special
-    // case in the render). /filters used to ride here too; it went with the
-    // discovery filter surface (MESITA-1183).
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.home, CONSUMER_ROUTE_PREFIX.place],
-  },
-  {
+    // Discover IS the map. No sub-route, no mode row, no redirect hop — the
+    // href is the live surface itself (2026-09-01, retiring /home).
     href: CONSUMER_ROUTES.search,
+    // The magnifier, not the brand mark. `MesitaMark` rode the Home tab
+    // because "Home doubles as the Mesita anchor" — that reason died with
+    // Home, and a four-tab bar buys nothing from a logo while the one live
+    // discovery surface would have lost its only recognisable affordance.
     Icon: Search,
-    label: "Search",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.search],
+    label: "Discover",
+    // /place rode the Home entry before the retirement and has no other
+    // consumer, so it moves here. Drop it and place detail lights NOTHING —
+    // route-structure T5's cardinality assertion is what catches that.
+    matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.search,
+      CONSUMER_ROUTE_PREFIX.place,
+    ],
   },
   {
     href: CONSUMER_ROUTES.newVisit.root,
@@ -188,7 +197,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                 )}
               >
                 {active && (
-                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
+                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
                 )}
 
                 <span

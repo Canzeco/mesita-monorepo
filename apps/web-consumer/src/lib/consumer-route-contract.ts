@@ -12,28 +12,29 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical. /invite is the
   // legacy path (redirects here).
   share: "/share",
-  // Discovery hub. The modes are REAL nested routes (/home/{swipe,catalog,ai,
-  // social,favorites}); bare /home redirects to the default (swipe).
-  home: "/home",
-  homeTabs: {
-    swipe: "/home/swipe",
-    catalog: "/home/catalog",
-    // The AI concierge mode. The pill has read "Chat" since 2026-08-16; the
-    // route caught up here. Don Memo is the persona you meet inside it, not
-    // the name of the destination. /home/ai 308s to this.
-    chat: "/home/chat",
-    social: "/home/social",
-    favorites: "/home/favorites",
-  },
-  // Default landing for the Home tab — link straight here so the bare /home
-  // redirect hop is only hit by direct URLs / legacy deep links.
-  homeDefault: "/home/swipe",
-  // Map + catalog search (Ask AI now lives on Home).
+  // DISCOVER — the first tab, and it is the map. `/home` and its five parked
+  // mode routes were retired 2026-09-01.
+  //
+  // The hub had been Soon since 2026-08-28, so the leftmost tab — the one
+  // wearing the brand mark — opened an empty state, and its pill row existed
+  // to switch between ONE live surface and four coming-soon dialogs. Moving
+  // the live map under `/home` was considered and rejected: `/home` existed to
+  // hold the pill row, and once the row is cut there is nothing left to move
+  // into. Deleting the tree was cheaper than restructuring around it.
+  //
+  // `/home` and every `/home/*` leaf 308 to here. The parked bodies live in
+  // git history; `HomeModeNav`, `CatalogRails` and `SocialTab` stay on disk
+  // under components/ so an un-park is a new route plus a mount, not a
+  // rewrite.
   search: "/search",
-  // The saved-places list lives on the Home > Favorites route. This is the
-  // canonical "view my saved places" destination — the old standalone
-  // /saved/places grid was a duplicate and was removed.
-  favorites: "/home/favorites",
+  // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
+  // redirect to the hub's Soon state — `FavoritesList` exists under
+  // components/ but nothing rendered it, and it needs `deckPlaces` from the
+  // shared deck fetch, which is parked too. So Favorites was never live, and
+  // promoting it to a top-level route here would have been an UN-PARK (a page
+  // body plus a fetch), which this change does not do. The one caller, a place
+  // detail's Save toast, dropped its "View" action rather than point at a map
+  // that does not show saves. Restore both together when the deck un-parks.
   place: {
     prefix: "/place/",
   },
@@ -152,7 +153,6 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  home: "/home",
   search: "/search",
   place: "/place",
   reservations: "/reservations",

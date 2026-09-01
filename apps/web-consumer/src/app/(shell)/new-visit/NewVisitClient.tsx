@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CreditCard, QrCode } from "lucide-react";
+
+import { CardsModal } from "@/components/consumer/me/CardsModal";
 
 import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { type ConsumerTicketRow } from "@/lib/api/tickets";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, visitPath } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -88,6 +90,21 @@ export function NewVisitClient({ userId }: { userId: string }) {
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
   // holds a savings reveal before settling into History.
   const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
+
+  // The one open ticket that earns the header slot. `active` is already
+  // fetched for the pick list (it decides which places re-open rather than
+  // 409); this reads it, it does not add a fetch. Most recent wins when a
+  // guest somehow holds two — the one they just started is the one they are
+  // standing in front of.
+  const liveTicket = tickets.active[0] ?? null;
+
+  // Saved cards, reachable from the surface where you pay. NOT "one money
+  // surface" — that goal is unreachable from the frontend: `consumer-web-add-card`
+  // sends the guest to /me?cards=added, so Me keeps its doorway or Stripe's
+  // return trip breaks, and `supabase/` is out of scope here. This is a third
+  // door onto the SAME sheet, which is the pattern the codebase already uses
+  // (Activity › Wallet imports it rather than reimplementing it).
+  const [cardsOpen, setCardsOpen] = useState(false);
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (tickets.status !== "ready") return;
@@ -128,13 +145,46 @@ export function NewVisitClient({ userId }: { userId: string }) {
             the destination but not the thing that moved, so the one reader it
             exists for — someone hunting the History tab — had nothing to
             match on. */}
-        <Link
-          href={CONSUMER_ROUTES.inbox.visits}
-          className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-xs font-semibold transition"
-        >
-          Your visit history lives in Inbox
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+        {liveTicket ? (
+          /* A LIVE TICKET OUTRANKS THE POINTER (2026-09-01).
+
+             This does NOT restore the Open chip. The chip was a badge on a
+             place ROW inside the list — same tap target class as "start a
+             visit here", which is why it went. This is one row in the header,
+             above the list, that navigates and cannot create anything.
+
+             The case for it: the guest standing at a table with an open
+             ticket is the moment this product exists for, and until now the
+             ticket was two taps deep in Activity while Pay showed them a list
+             to start a SECOND one. Time-critical beats passive for the one
+             piece of permanent real estate on this surface. The pointer below
+             is passive by definition, so it yields. */
+          <Link
+            href={visitPath(liveTicket.id)}
+            className="border-primary/25 bg-primary/8 hover:bg-primary/12 mt-2 flex items-center gap-2 rounded-xl border px-3 py-2 transition active:scale-[0.99]"
+          >
+            <span className="bg-primary/15 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+              <QrCode className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="text-foreground block truncate text-xs font-semibold">
+                {liveTicket.place?.name ?? "Your visit"}
+              </span>
+              <span className="text-muted-foreground type-label block">
+                Show your QR
+              </span>
+            </span>
+            <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+          </Link>
+        ) : (
+          <Link
+            href={CONSUMER_ROUTES.inbox.visits}
+            className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-xs font-semibold transition"
+          >
+            Your visit history lives in Activity
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
@@ -151,6 +201,32 @@ export function NewVisitClient({ userId }: { userId: string }) {
             {startError}
           </p>
         ) : null}
+        {/* Saved cards. It lives in the SCROLL BODY, not the header band:
+            the header is 90px and the list is the job, so a permanent money
+            row would cost the fold for something the guest needs once. It is
+            also deliberately a different shape from a place row — a button
+            that opens a sheet, not a row that creates a live ticket on one
+            tap. Display and commit must not read as the same target class. */}
+        <button
+          type="button"
+          onClick={() => setCardsOpen(true)}
+          aria-haspopup="dialog"
+          className="border-border bg-card hover:bg-muted flex h-16 shrink-0 items-center gap-3 rounded-2xl border px-4 transition active:scale-[0.99]"
+        >
+          <span className="bg-muted text-muted-foreground flex size-11 shrink-0 items-center justify-center rounded-2xl">
+            <CreditCard className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1 text-left">
+            <span className="text-foreground block type-body font-semibold">
+              Cards
+            </span>
+            <span className="text-muted-foreground block text-xs">
+              How you pay at the table
+            </span>
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+        </button>
+
         {/* Closest 50 around the guest; the header query is name search. */}
         <PlacePickList
           origin={origin}
@@ -160,6 +236,13 @@ export function NewVisitClient({ userId }: { userId: string }) {
           onClearQuery={() => setQuery("")}
         />
       </div>
+
+      {/* The SAME sheet Me › More › Cards and Activity › Wallet open —
+          imported, never reimplemented. It is a LocalSheet, so it composes
+          here with no route contract: BottomSheetShell would have rendered
+          BLANK, since it opens on `isModalContractPath(pathname)` and
+          /new-visit is deliberately not a modal path. */}
+      <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
     </div>
   );
 }
