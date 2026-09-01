@@ -57,6 +57,7 @@ import {
 import { listedFromStatus } from "../place-header-status";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
+import { methodLabel } from "../../verifications/verification-config";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   effectiveStrikeCount,
@@ -413,11 +414,6 @@ export function StatusCard({
   );
 }
 
-
-function methodLabel(method: string): string {
-  const clean = method.replace(/_/g, " ").trim();
-  return clean.charAt(0).toUpperCase() + clean.slice(1);
-}
 
 export function StatusRow({
   name,
