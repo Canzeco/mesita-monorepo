@@ -19,7 +19,13 @@ import {
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 
-// Credits — the per-place prepaid balances (MESITA-1380).
+// Credits — the Inbox's first section (MESITA-1381), per-place prepaid
+// balances (MESITA-1380).
+//
+// NO IN-BODY TITLE. Every Inbox section opens straight into its content; the
+// pill row directly above already says Credits, and repeating it renders the
+// word twice inside 40px. The Soon pill moved onto the hero, which is the
+// loudest thing on the screen and therefore where it is actually read.
 //
 // PARKED SURFACE running on an emulator, not a backend. There is no credits
 // table and no Edge Function, and the venue side does not exist at all, so
@@ -62,23 +68,22 @@ export function CreditsClient({ seed }: { seed: Seed }) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center gap-2 px-5 pt-5 pb-3">
-        <h1 className="text-2xl font-bold tracking-tight">Credits</h1>
-        <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
-          Soon
-        </span>
+      <div className="flex shrink-0 justify-end px-5 pt-4 pb-2">
         <button
           type="button"
           onClick={() => setBuying(true)}
           aria-label="Buy Credits"
-          className="border-border bg-card hover:bg-muted/50 ml-auto grid size-9 shrink-0 place-items-center rounded-full border transition"
+          className="border-border bg-card hover:bg-muted/50 grid size-9 shrink-0 place-items-center rounded-full border transition"
         >
           <Plus className="h-4 w-4" />
         </button>
-      </header>
+      </div>
 
       {credits.loading ? (
-        <div className="flex flex-col gap-3 px-5">
+        // flex-1, not content height. inbox/layout.tsx documents the bug this
+        // avoids: a section that does not grow collapses under the nav and
+        // reads as a failed render.
+        <div className="flex min-h-0 flex-1 flex-col gap-3 px-5">
           <Skeleton className="h-24 w-full rounded-panel" />
           <Skeleton className="h-11 w-full rounded-2xl" />
           <Skeleton className="h-11 w-full rounded-2xl" />
@@ -95,8 +100,16 @@ export function CreditsClient({ seed }: { seed: Seed }) {
           {/* The one saturated surface on the screen, and it is the aggregate
               rather than a card — the passport-and-list shape from Me. */}
           <TicketHero className="bg-pink-gradient mx-5 shrink-0 px-5 py-4">
-            <div className="type-meta font-semibold tracking-[0.12em] text-white/75 uppercase">
-              {spendable > 0 ? "Available now" : "Maturing"}
+            <div className="flex items-center gap-2">
+              <span className="type-meta font-semibold tracking-[0.12em] text-white/75 uppercase">
+                {spendable > 0 ? "Available now" : "Maturing"}
+              </span>
+              {/* The parked signal rides the hero now that the title is gone.
+                  It is the loudest element here, so it is the one place a
+                  guest cannot skim past. */}
+              <span className="type-meta rounded-full border border-white/40 px-1.5 py-0.5 font-semibold tracking-[0.12em] text-white/90 uppercase">
+                Soon
+              </span>
             </div>
             <div className="mt-0.5 text-3xl font-bold tracking-tight tabular-nums">
               {formatCurrency(spendable > 0 ? spendable : maturing)}

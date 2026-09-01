@@ -242,6 +242,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     // It lit the centre tab before only by nesting under /rewards; the rename
     // severed that nesting and this row is what holds the replacement.
     ["/visit/t1", "Inbox"],
+    ["/inbox/credits", "Inbox"],
     ["/inbox/visits", "Inbox"],
     ["/inbox/reservations", "Inbox"],
     ["/reservation/r1", "Inbox"],
@@ -295,5 +296,90 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     expect(labels.some((l) => l.includes("·"))).toBe(false);
     expect(labels).not.toContain("Agents");
     expect(labels).not.toContain("Agent");
+  });
+});
+
+// ── T6 — the Inbox pill row is what the guest sees ──────────────────────────
+//
+// consumer-route-contract.test.ts pins the ORDER OF THE CONTRACT's keys and
+// calls it the product decision. It isn't, quite: nothing iterates
+// CONSUMER_ROUTES.inbox at runtime — every consumer reads a named key — so
+// that object's key order has no effect on anything a guest experiences. The
+// order they actually see is InboxSectionNav.SECTIONS, a separate hand-listed
+// array, and mobile keeps a third copy.
+//
+// So the contract pin would stay green with Credits first in the object and
+// Credits third on screen. This is the test that would go red.
+describe("T6 — the Inbox section row renders as specified", () => {
+  async function renderNav(pathname: string): Promise<string> {
+    vi.resetModules();
+    vi.doMock("next/navigation", () => ({
+      usePathname: () => pathname,
+      useRouter: () => ({ push: () => {}, back: () => {} }),
+    }));
+    const { InboxSectionNav } = await import(
+      "@/components/consumer/inbox/InboxSectionNav"
+    );
+    return renderToStaticMarkup(<InboxSectionNav />);
+  }
+
+  /** Pill labels in render order. */
+  function labels(html: string): string[] {
+    return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
+  }
+
+  it("is exactly Credits · Visits · Orders · Bookings · Alerts, in that order", async () => {
+    expect(labels(await renderNav("/inbox/visits"))).toEqual([
+      "Credits",
+      "Visits",
+      "Orders",
+      "Bookings",
+      "Alerts",
+    ]);
+  });
+
+  it("catches a dropped or added pill", async () => {
+    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(5);
+  });
+
+  // The failure this catches: a section whose href stops matching its own
+  // pathname lights NOTHING, and the row silently loses its active state.
+  // Same shape as T5, one level down.
+  const ACTIVE: [string, string][] = [
+    ["/inbox/credits", "Credits"],
+    ["/inbox/visits", "Visits"],
+    ["/inbox/orders", "Orders"],
+    ["/inbox/reservations", "Bookings"],
+    ["/inbox/notifications", "Alerts"],
+  ];
+
+  it.each(ACTIVE)("%s lights exactly %s", async (pathname, expected) => {
+    const html = await renderNav(pathname);
+    // The active pill is the only one carrying the solid primary fill.
+    const lit = html
+      .split("<a ")
+      .slice(1)
+      .filter((chunk) => chunk.includes("bg-primary"))
+      .map((chunk) => chunk.match(/<span>([^<]+)</)?.[1] ?? "?");
+    expect(lit).toEqual([expected]);
+  });
+});
+
+// ── T7 — a MOVED route keeps its redirect ───────────────────────────────────
+//
+// T4 walks nextConfig.redirects() and proves every destination resolves. It
+// structurally cannot prove a redirect EXISTS: delete the entry and there is
+// simply nothing left for it to check, so it passes.
+//
+// /credits shipped standalone (#1429), went live on consumer.mesita.ai, and
+// then moved under Inbox when it became a section. The bookmarks are real. If
+// the redirect is ever dropped, this goes red instead of CI going green while
+// those links 404.
+describe("T7 — legacy /credits still resolves after the move", () => {
+  it("keeps /credits redirecting to the Inbox section", async () => {
+    const redirects = await nextConfig.redirects!();
+    const entry = redirects.find((r) => r.source === "/credits");
+    expect(entry, "/credits redirect was removed").toBeDefined();
+    expect(entry!.destination).toBe("/inbox/credits");
   });
 });

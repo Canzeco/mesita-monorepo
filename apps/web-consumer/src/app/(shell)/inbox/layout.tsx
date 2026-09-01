@@ -7,9 +7,11 @@ export const dynamic = "force-dynamic";
 // pill nav. Because Next keeps a shared layout mounted across sibling
 // navigations, switching sections never remounts the nav.
 //
-// Unlike /home there is no shared fetch here — the four sections read four
-// different sources (tickets, orders, reservations, notifications), so each
-// leaf owns its own data and its own auth gate.
+// Unlike /home there is no shared fetch here — the five sections read five
+// different sources (credits, tickets, orders, reservations, notifications),
+// so each leaf owns its own data and its own auth gate. Credits is the odd
+// one: it reads neither a table nor an Edge Function, because there is no
+// engine behind it yet — its balances come from a browser emulator.
 //
 // THE CHILDREN SLOT IS A FLEX COLUMN, not a block (fixed 2026-08-20). It used
 // to be `min-h-0 flex-1 overflow-hidden`, which is a BLOCK box, and `flex-1`

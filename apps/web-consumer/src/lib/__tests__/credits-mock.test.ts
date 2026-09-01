@@ -274,7 +274,7 @@ describe("naming", () => {
     "src/components/consumer/credits/BalanceStack.tsx",
     "src/components/consumer/credits/BalanceDetail.tsx",
     "src/components/consumer/credits/BuyCreditsSheet.tsx",
-    "src/app/(shell)/credits/CreditsClient.tsx",
+    "src/app/(shell)/inbox/credits/CreditsClient.tsx",
     "src/lib/mock/credits-mock.ts",
     "src/lib/mock/credits-emulator.ts",
   ];

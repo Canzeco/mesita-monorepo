@@ -166,7 +166,7 @@ export function SettingsModal({
         </div>
 
         <div className="mt-5 flex flex-col gap-6">
-          <SettingsGroup title="Notifications">
+          <SettingsGroup title="Alerts">
             <StoredToggleRow
               Icon={Bell}
               tint="amber"

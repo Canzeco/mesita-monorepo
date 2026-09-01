@@ -54,6 +54,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // below, since toEqual ignores it.
       inbox: {
         root: "/inbox",
+        credits: "/inbox/credits",
         visits: "/inbox/visits",
         orders: "/inbox/orders",
         reservations: "/inbox/reservations",
@@ -105,22 +106,41 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
   });
 
-  // toEqual compares keys as a set, so the section ORDER — which is the
-  // product decision (Pato, 2026-08-16), running from the thing you're doing
-  // right now out to the passive feed — needs its own assertion or a
-  // well-meaning alphabetical re-sort would pass CI.
-  it("pins the Inbox section order: visits → orders → reservations → notifications", () => {
+  // toEqual compares keys as a set, so the section ORDER — the product
+  // decision (Pato, 2026-08-16; Credits added first 2026-09-01) — needs its
+  // own assertion or a well-meaning alphabetical re-sort would pass CI.
+  //
+  // This pins the CONTRACT's order. It does NOT pin what renders: nothing
+  // iterates this object, so the order the guest sees comes from
+  // InboxSectionNav.SECTIONS. route-structure.test.tsx T6 pins that one.
+  it("pins the Inbox section order: credits → visits → orders → reservations → notifications", () => {
     const sections = Object.keys(CONSUMER_ROUTES.inbox).filter(
       (k) => k !== "root",
     );
     expect(sections).toEqual([
+      "credits",
       "visits",
       "orders",
       "reservations",
       "notifications",
     ]);
-    // The default section is the first one, not an arbitrary pick.
+  });
+
+  // THE DEFAULT IS NO LONGER THE FIRST SECTION, and that is deliberate
+  // (Pato, 2026-09-01). Credits leads the pill row because money is what a
+  // guest checks first, but bare /inbox must keep landing on Visits: a visit
+  // in progress is time-critical — you are standing at a table with staff
+  // waiting — and a balance never is. Both inbox/page.tsx and
+  // inbox/[tab]/page.tsx redirect here, so this one line decides what the
+  // Inbox TAB opens to.
+  //
+  // If you are "fixing" this to match the row order, read the paragraph above
+  // first. The mismatch is the decision, not a bug.
+  it("lands the Inbox tab on Visits, NOT on the first section", () => {
     expect(CONSUMER_ROUTES.inboxDefault).toBe(CONSUMER_ROUTES.inbox.visits);
+    expect(CONSUMER_ROUTES.inboxDefault).not.toBe(
+      CONSUMER_ROUTES.inbox.credits,
+    );
   });
 });
 
@@ -209,6 +229,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Renamed surfaces.
       { source: "/home/ai", destination: "/home/chat", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
+      // Credits shipped standalone and moved under Inbox when it became a
+      // section (MESITA-1381). route-structure T7 asserts this one separately,
+      // because T4 can only validate a destination, never an absence.
+      { source: "/credits", destination: "/inbox/credits", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {
         source: "/notifications",

@@ -77,6 +77,10 @@ export const CONSUMER_ROUTES = {
   // `/(tabs)/inbox`.
   inbox: {
     root: '/(tabs)/inbox',
+    // Credits leads the web row but is NOT the default section (web contract,
+    // 2026-09-01). Mobile's SegmentNav still renders four — the fifth pill
+    // waits for the copy pass; this key exists so the mirror stays honest.
+    credits: '/inbox/credits',
     visits: '/inbox/visits',
     orders: '/inbox/orders',
     reservations: '/inbox/reservations',
