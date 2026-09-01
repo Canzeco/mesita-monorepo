@@ -58,7 +58,7 @@ export function CatalogRails() {
         icon={Compass}
         title="Couldn't load the catalog"
         description="Tonight's places didn't come back. Pull the tab again in a moment."
-        action={{ label: "Try again", href: CONSUMER_ROUTES.homeTabs.catalog }}
+        action={{ label: "Try again", href: CONSUMER_ROUTES.search }}
       />
     );
   }

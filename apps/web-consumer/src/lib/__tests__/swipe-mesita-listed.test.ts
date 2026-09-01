@@ -37,7 +37,7 @@ describe("Swipe admits listed Mesita Map types only", () => {
   it("the Home deck drops Google-only stubs before they reach Swipe", () => {
     const boundary = read("components/consumer/home/HomeDeckBoundary.tsx");
     expect(boundary).toContain("!p.googleOnly && !p.from_google");
-    const deck = read("app/(shell)/home/swipe/SwipeDeck.tsx");
+    const deck = read("components/consumer/home/swipe/SwipeDeck.tsx");
     expect(deck).toContain("!place.googleOnly && !place.from_google");
   });
 });

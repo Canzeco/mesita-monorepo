@@ -33,17 +33,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     expect(CONSUMER_ROUTES).toEqual({
       onboard: "/onboard",
       share: "/share",
-      home: "/home",
-      homeTabs: {
-        swipe: "/home/swipe",
-        catalog: "/home/catalog",
-        chat: "/home/chat",
-        social: "/home/social",
-        favorites: "/home/favorites",
-      },
-      homeDefault: "/home/swipe",
+      // NO home / homeTabs / homeDefault / favorites keys. The hub was retired
+      // 2026-09-01 and Discover IS /search — see the contract's own note.
       search: "/search",
-      favorites: "/home/favorites",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       newVisit: { root: "/new-visit" },
@@ -93,7 +85,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
 
   it("pins the middleware prefix map", () => {
     expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      home: "/home",
       search: "/search",
       place: "/place",
       reservations: "/reservations",
@@ -193,9 +184,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   it("pins the full redirect table", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toEqual([
-      // Explore era (pre-Home).
-      { source: "/explore", destination: "/home", permanent: true },
-      { source: "/explore/swipe", destination: "/home", permanent: true },
+      // Explore era (pre-Home). Repointed at /search when /home was retired —
+      // chaining through /home would make these two-hop, and T4 caps at 2.
+      { source: "/explore", destination: "/search", permanent: true },
+      { source: "/explore/swipe", destination: "/search", permanent: true },
       { source: "/explore/map", destination: "/search", permanent: true },
       { source: "/explore/add", destination: "/search", permanent: true },
       {
@@ -226,8 +218,18 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
+      // The retired Home hub (2026-09-01). Every leaf 308s to Discover, which
+      // IS /search. /home/ai points straight here rather than chaining through
+      // /home/chat — that page is deleted, so the old chain would dangle AND
+      // cost a second hop against T4's cap of 2.
+      { source: "/home", destination: "/search", permanent: true },
+      { source: "/home/swipe", destination: "/search", permanent: true },
+      { source: "/home/catalog", destination: "/search", permanent: true },
+      { source: "/home/chat", destination: "/search", permanent: true },
+      { source: "/home/ai", destination: "/search", permanent: true },
+      { source: "/home/social", destination: "/search", permanent: true },
+      { source: "/home/favorites", destination: "/search", permanent: true },
       // Renamed surfaces.
-      { source: "/home/ai", destination: "/home/chat", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Credits shipped standalone and moved under Inbox when it became a
       // section (MESITA-1381). route-structure T7 asserts this one separately,
@@ -257,14 +259,22 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
 });
 
 describe("the AI mode is reachable by both names", () => {
-  it("308s /home/ai to /home/chat and keeps the legacy key", async () => {
+  it("308s /home/ai straight to Discover, one hop", async () => {
     const redirects = await nextConfig.redirects!();
-    const hop = redirects.find((r) => r.source === CONSUMER_ROUTES.legacy.homeAi);
-    expect(hop?.destination).toBe(CONSUMER_ROUTES.homeTabs.chat);
-    // /home?mode=ai and ?mode=askAi build `/home/${MODE_SEGMENT[mode]}` from a
-    // BARE segment string, so `grep -rn "home/ai"` never finds them. Pin the
-    // mapping here or that rename gets missed.
-    expect(CONSUMER_ROUTES.homeTabs.chat).toBe("/home/chat");
+    const hop = redirects.find(
+      (r) => r.source === CONSUMER_ROUTES.legacy.homeAi,
+    );
+    // Was /home/ai -> /home/chat. That page is gone with the rest of the hub,
+    // so the old chain would dangle; and even repaired it would have cost two
+    // hops (/home/ai -> /home/chat -> /search) against T4's cap of exactly 2,
+    // leaving zero margin for the next legacy alias anyone adds.
+    expect(hop?.destination).toBe(CONSUMER_ROUTES.search);
+    // Every retired leaf resolves in ONE hop, for the same reason.
+    const homeHops = redirects.filter((r) => r.source.startsWith("/home"));
+    expect(homeHops).not.toHaveLength(0);
+    for (const r of homeHops) {
+      expect(r.destination).toBe(CONSUMER_ROUTES.search);
+    }
   });
 });
 

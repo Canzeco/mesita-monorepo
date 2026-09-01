@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Heart, Phone, Share2 } from "lucide-react";
 
 import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
@@ -29,7 +27,6 @@ export function ProfileActions({
   place: PlaceDetail;
   className?: string;
 }) {
-  const router = useRouter();
   const { isSaved, toggle } = useSavedPlaces();
   const [contactOpen, setContactOpen] = useState(false);
   const [soonKind, setSoonKind] = useState<"share" | null>(null);
@@ -45,14 +42,13 @@ export function ProfileActions({
     const nowSaved = !saved;
     toggle(place.id);
     if (nowSaved) {
-      toast.action(
-        `Saved ${place.name}`,
-        {
-          label: "View",
-          onClick: () => router.push(CONSUMER_ROUTES.favorites),
-        },
-        { tone: "success" },
-      );
+      // No "View" action while Favorites is parked (2026-09-01). It pushed
+      // CONSUMER_ROUTES.favorites -> /home/favorites, which was itself a
+      // redirect to the hub's Soon state, so the button never reached a list.
+      // Retiring /home removed the route; pointing it at the map instead would
+      // promise saved places on a surface that does not show them. Restore the
+      // action together with the Favorites page when the shared deck un-parks.
+      toast.success(`Saved ${place.name}`);
     } else {
       toast(`Removed ${place.name} from saved`);
     }

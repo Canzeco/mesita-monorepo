@@ -231,11 +231,11 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    ["/home/swipe", "Home"],
-    ["/home/catalog", "Home"],
-    ["/home/favorites", "Home"],
-    ["/place/abc", "Home"],
-    ["/search", "Search"],
+    ["/search", "Discover"],
+    // /place rode the Home entry until the hub was retired (2026-09-01) and
+    // has no other consumer. If it is ever dropped from Discover's
+    // matchPrefixes, place detail lights NOTHING and this row is what says so.
+    ["/place/abc", "Discover"],
     ["/new-visit", "Pay"],
     // THE requirement from the routing v2 design review: the visit detail
     // lights ACTIVITY, not the centre tab, because that is where the list lives.
@@ -267,13 +267,18 @@ describe("T5 — exactly one tab lights per surface", () => {
 });
 
 // MESITA-1119 — a mockup showed a sixth "Agents" tab and "Me · {class}".
-// Product Rules §C (later, Pato-owned): five tabs, plain labels; class is
-// status on /me, never chrome; Activity is not named for a mechanism.
+// Product Rules §C (later, Pato-owned): plain labels; class is status on /me,
+// never chrome; Activity is not named for a mechanism.
+//
+// FOUR tabs since 2026-09-01, was five. Home and Search merged into Discover,
+// and the merge was a deletion: Home had been Soon since 2026-08-28 while
+// Search shipped the live map, so the dead tab was the leftmost one and wore
+// the brand mark. Discover IS /search, unmoved.
 describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
-      usePathname: () => "/home/swipe",
+      usePathname: () => "/search",
       useRouter: () => ({ push: () => {}, back: () => {} }),
     }));
     const { BottomNav } = await import("@/components/consumer/BottomNav");
@@ -281,14 +286,16 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Activity · Me", async () => {
-    expect(await tabLabels()).toEqual([
-      "Home",
-      "Search",
-      "Pay",
-      "Activity",
-      "Me",
-    ]);
+  it("is exactly Discover · Pay · Activity · Me", async () => {
+    expect(await tabLabels()).toEqual(["Discover", "Pay", "Activity", "Me"]);
+  });
+
+  // The hub is retired, not hiding. A "Home" label reappearing means someone
+  // restored the tab rather than un-parking a mode inside Discover.
+  it("has no Home or Search tab", async () => {
+    const labels = await tabLabels();
+    expect(labels).not.toContain("Home");
+    expect(labels).not.toContain("Search");
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {

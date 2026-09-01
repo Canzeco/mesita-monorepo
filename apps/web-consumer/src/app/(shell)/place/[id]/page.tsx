@@ -14,18 +14,18 @@ export default async function PlaceDetailPage({
 }) {
   const { id } = await params;
   if (!toCanonicalPlaceHrefOrNull(id)) {
-    redirect(CONSUMER_ROUTES.home);
+    redirect(CONSUMER_ROUTES.search);
   }
   const supabase = await createServerSupabase();
   const place = await apiFetchPlaceDetail(supabase, id);
   if (!place) {
     // Dead id (reset-away row, stale localStorage favorite, old bookmark).
     // Bounce, but say so — see <PlaceGoneNotice />.
-    redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
+    redirect(placeGoneHref(CONSUMER_ROUTES.search, id));
   }
   // fallbackHref, not backHref (MESITA-1070): the arrow pops history now, and
   // home is only where it lands when this tab has none to pop.
   return (
-    <PlaceDetailPageBody place={place} fallbackHref={CONSUMER_ROUTES.home} />
+    <PlaceDetailPageBody place={place} fallbackHref={CONSUMER_ROUTES.search} />
   );
 }
