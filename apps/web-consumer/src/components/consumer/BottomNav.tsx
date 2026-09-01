@@ -121,10 +121,16 @@ const ITEMS: Item[] = [
     // reads as analytics". That objection was made against the glyph alone; the
     // glyph never ships alone. Under the word "Activity" the pulse is simply
     // what it says, and it is the only candidate whose OUTLINE clears all three
-    // neighbours — a wide flat zigzag against a flame, a dense square, and a
-    // person. Clock was the runner-up and lost on exactly that test: a full
-    // circle beside User's round head is a fourth tab that looks like the last
-    // one.
+    // neighbours: a flat baseline broken by one narrow centre spike, carrying
+    // the least ink in the row and the only glyph here that encloses nothing —
+    // against a filled flame, a dense square, and a person. Verified by
+    // rendering the four together at both weights, not asserted. Clock was the
+    // runner-up and lost on that same test: a full circle beside User's round
+    // head is a fourth tab that looks like the last one.
+    //
+    // The spike is thin, so it is the faintest mark in the bar at the 1.75 rest
+    // weight — it still carries at 24px, but do not drop that weight further
+    // for this tab without looking at it again.
     //
     // Still not naming a section (Bell/Footprints/ShoppingBag/CalendarCheck are
     // spoken for, one each) and still not claiming a direction of travel, which
