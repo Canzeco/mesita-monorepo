@@ -6,8 +6,11 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 
 import type { SearchMapProps } from '@/components/search/SearchMap';
 import { GRADIENT_DIAGONAL, GRADIENTS } from '@/constants/brand';
-import { MONTERREY_CENTER } from '@/lib/map-defaults';
-import { MAP_PIN_HIT_SIZE, MAP_PLACE_PIN_DIAMETER } from '@/lib/map-defaults';
+import {
+  MAP_PIN_HIT_SIZE,
+  MAP_PLACE_PIN_DIAMETER,
+  MONTERREY_CENTER,
+} from '@/lib/map-defaults';
 import {
   pinFillColor,
   pinStrokeColor,
