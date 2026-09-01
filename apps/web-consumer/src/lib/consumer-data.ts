@@ -90,14 +90,6 @@ export function isElevatedIdentity({ cls, plan }: ClassIdentity): boolean {
   return cls !== CLASS_FLOOR.id || plan === "premium";
 }
 
-/** Convenience for the many call sites still holding a raw server class_key. */
-export function isElevatedClassKey(
-  key: string | null | undefined,
-  plan?: PlanKey | null,
-): boolean {
-  return isElevatedIdentity(identityForClassKey(key, plan));
-}
-
 // NOTE: The original Lovable export shipped a large local `Place` type
 // (with fields for popular-times bars, visitor avatars, etc.). Discover
 // surfaces now consume `Place` from `@/lib/api/places` — the EF-backed
@@ -327,19 +319,4 @@ const CLASS_LABELS: Record<ClassKey, string> = {
 
 export function classProperLabel(classKey: ClassKey | string): string {
   return CLASS_LABELS[classKey as ClassKey] ?? "Mesita";
-}
-
-const PLAN_LABELS: Record<PlanKey, string> = {
-  free: "Free",
-  premium: "Premium",
-};
-
-export function planProperLabel(planKey: PlanKey | string): string {
-  return PLAN_LABELS[planKey as PlanKey] ?? "Free";
-}
-
-/** Label a raw server `class_key` on the class axis — the common case for
- *  payloads that still speak legacy keys. */
-export function classLabelForKey(key: string | null | undefined): string {
-  return classProperLabel(identityForClassKey(key).cls);
 }

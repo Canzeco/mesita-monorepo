@@ -173,13 +173,6 @@ function rateForSegment(
   return base <= 0 ? 0 : base + CLASS_STEP[classKey];
 }
 
-export function baseRateForClass(
-  classKey: RewardClassKey,
-  strategy: GridStrategy = PEAK_STRATEGY,
-): number {
-  return rateForSegment(segmentKeyForClass(classKey), classKey, strategy);
-}
-
 /** The ceiling a consumer can reach across every rung they can unlock. */
 export function peakRateForClass(
   classKey: RewardClassKey,

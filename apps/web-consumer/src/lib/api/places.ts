@@ -181,8 +181,6 @@ export async function apiFetchPublicPlaces(
 const LIST_PLACES_MAX = 200;
 export const CATALOG_NEARBY_MAX = 60;
 const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
-export const BBOX_MAX_SPAN_DEG = 0.75;
-
 export type PlacesBbox = {
   south: number;
   west: number;

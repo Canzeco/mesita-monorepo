@@ -134,15 +134,6 @@ export function bookingWindowDays(at: number = Date.now()): number {
   return Math.round((end - start) / 86_400_000) + 1;
 }
 
-/** Is `dateIso` inside the bookable window? ISO dates sort lexicographically. */
-export function isWithinHorizon(
-  dateIso: string,
-  at: number = Date.now(),
-): boolean {
-  if (!dateIso) return false;
-  return dateIso >= placeDateIso(0, at) && dateIso <= horizonDateIso(at);
-}
-
 function parseHhmm(t: string | undefined): number | null {
   if (typeof t !== 'string') return null;
   const m = /^(\d{1,2}):(\d{2})/.exec(t.trim());
