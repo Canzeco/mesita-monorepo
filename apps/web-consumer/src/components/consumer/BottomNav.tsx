@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, Activity as ActivityPulse, User } from "lucide-react";
+import { QrCode, Inbox, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -106,51 +106,61 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.inboxDefault,
-    // The pulse (Pato, 2026-09-01, second pass). Third glyph this tab has worn:
-    // inbox tray -> ListChecks -> here.
+    // The tray, restored (Pato, 2026-09-01, third pass — "maybe inbox icon or
+    // something"). Fourth glyph, and the tab has now been all the way around:
+    // tray -> ListChecks -> Activity pulse -> tray.
     //
-    // ListChecks failed TWICE. Semantically a checklist says "things you owe" —
-    // but nothing in this tab is a task. An alert arrived, a visit happened, an
-    // order was placed, a reservation is coming: you do not complete any of
-    // them. Visually it collided with the tab NEXT DOOR — ListChecks and Pay's
-    // QrCode are both a dense field of small marks at 24px, so the two middle
-    // tabs read as one visual class and the row lost its scan.
+    // THE TRAY WAS RIGHT THE FIRST TIME. Two replacements failed for two
+    // different reasons, and the round trip is the finding:
     //
-    // Silhouette is the real constraint in a four-tab bar, and it is why this
-    // supersedes the note below that called `Activity` "a heartbeat line that
-    // reads as analytics". That objection was made against the glyph alone; the
-    // glyph never ships alone. Under the word "Activity" the pulse is simply
-    // what it says, and it is the only candidate whose OUTLINE clears all three
-    // neighbours: a flat baseline broken by one narrow centre spike, carrying
-    // the least ink in the row and the only glyph here that encloses nothing —
-    // against a filled flame, a dense square, and a person. Verified by
-    // rendering the four together at both weights, not asserted. Clock was the
-    // runner-up and lost on that same test: a full circle beside User's round
-    // head is a fourth tab that looks like the last one.
+    //   ListChecks — semantically said "things you owe" when nothing here is a
+    //   task, and visually collided with the tab NEXT DOOR: it and Pay's
+    //   QrCode are both a dense field of small marks at 24px, so the two
+    //   middle tabs read as one class.
     //
-    // The spike is thin, so it is the faintest mark in the bar at the 1.75 rest
-    // weight — it still carries at 24px, but do not drop that weight further
-    // for this tab without looking at it again.
+    //   Activity (the pulse) — cleared every silhouette test and still failed,
+    //   because a lone spiking line in the active pill reads as a vitals
+    //   monitor. THIS FILE PREDICTED THAT ("a heartbeat line that reads as
+    //   analytics") and the prediction was overridden on geometry. Silhouette
+    //   analysis measures whether you can TELL two glyphs apart; it says
+    //   nothing about what either one MEANS. Do not re-derive the pulse from a
+    //   distinctness argument — the objection was never distinctness.
     //
-    // Still not naming a section (Bell/Footprints/ShoppingBag/CalendarCheck are
-    // spoken for, one each) and still not claiming a direction of travel, which
-    // is what retired the tray.
-    Icon: ActivityPulse,
+    // What retired the tray originally was the claim that it "names a place
+    // things ARRIVE at — never true of a reservation you made or a visit you
+    // started". That was too clever. The guest did not deposit the reservation
+    // into a box, but it DOES land in this list, which is all the tray ever
+    // meant; Gmail, Linear and GitHub all name a mixed activity feed this way
+    // and nobody stumbles. A metaphor only has to survive the glance it gets.
+    //
+    // Mechanically it also clears what the other two could not: a wide notched
+    // container is not a dense grid (Pay), not a circle (Me's head), not
+    // organic (Discover's flame), and it is no section's icon —
+    // Bell/Footprints/ShoppingBag/CalendarCheck are spoken for, one each.
+    Icon: Inbox,
     // "Activity" is the container, not the function (Pato, 2026-08-15; renamed
-    // from Inbox 2026-08-31): it holds Wallet · Visits · Orders · Reservations
-    // · Notifications, so it can't be named after any one of them, and naming
-    // it for the mechanism ("Agent") would break the day places integrate
-    // directly. Inbox named a place things ARRIVE at — never true of the money
-    // section, and visibly false now that Wallet leads the row.
+    // from Inbox 2026-08-31): it holds Alerts · Visits · Orders · Reservations,
+    // so it can't be named after any one of them, and naming it for the
+    // mechanism ("Agent") would break the day places integrate directly.
+    //
+    // The LABEL stays Activity even though the glyph went back to a tray. The
+    // word had to go because "Inbox" is a claim about DIRECTION that a reader
+    // checks against four section names — and Reservations plainly is not
+    // something that arrived. The picture makes no such claim: it is a
+    // container, and a glance reads it as "your stuff", not as a proposition.
+    // A word gets parsed; an icon gets recognised. (The money section that
+    // used to sharpen this argument is gone — Wallet left for Pay on
+    // 2026-09-01 — but the reasoning holds without it.)
     //
     // ROUTE UNCHANGED — /inbox, the same rule Reservations and Alerts follow.
-    // The GLYPH is the one thing here that has moved: see the icon note above.
+    // The LABEL and the GLYPH are decoupled and always have been: the tab says
+    // Activity, wears a tray, and routes to /inbox. All three are correct.
     label: "Activity",
     // /inbox for the sections, plus the two DETAIL routes that deliberately
     // live outside the tab's namespace because you reach each from two places.
     // Both lists live under Activity, so both details light Activity:
     //   /visit/{id}       reached from the centre tab AND Activity > Visits
-    //   /reservation/{id} reached from a place AND Activity > Bookings
+    //   /reservation/{id} reached from a place AND Activity > Reservations
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.inbox,
       CONSUMER_ROUTE_PREFIX.visit,
