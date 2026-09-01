@@ -194,7 +194,7 @@ export default function MeScreen() {
         <BoxRow
           Icon={Bell}
           tint="pink"
-          title="Inbox"
+          title="Activity"
           summary="Notifications and activity"
           onPress={() => router.push(inboxTabPath())}
         />

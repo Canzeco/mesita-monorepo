@@ -6,13 +6,13 @@
 // + shadow-glow, real <Link> navigation between siblings under the shared
 // /inbox layout.
 //
-// ORDER IS LOAD-BEARING (Pato, 2026-08-16; Credits added first 2026-09-01):
-// Credits · Visits · Orders · Bookings · Alerts. Credits leads because money
+// ORDER IS LOAD-BEARING (Pato, 2026-08-16; Wallet added first 2026-09-01):
+// Wallet · Visits · Orders · Bookings · Alerts. Wallet leads because money
 // is what a guest checks first; the rest still runs from the thing you're
 // doing right now out to the passive feed. Don't re-sort these alphabetically
 // or by how built-out they are.
 //
-// THE DEFAULT IS NOT THE FIRST SECTION. Credits leads this row but bare
+// THE DEFAULT IS NOT THE FIRST SECTION. Wallet leads this row but bare
 // /inbox lands on Visits — a visit in progress is time-critical, a balance
 // never is. That decision lives in CONSUMER_ROUTES.inboxDefault and is pinned
 // by consumer-route-contract.test.ts.
@@ -21,6 +21,19 @@
 // and Notifications reads Alerts. A rename stops at the label — the routes
 // stay /inbox/reservations and /inbox/notifications. The renames are not
 // cosmetic: they are what bought the fifth column (see the width block).
+//
+// CREDITS READS WALLET (Pato, 2026-08-31), same rule, route still
+// /inbox/credits. This one is not a relabel of the same thing — the section
+// GREW. It used to hold per-place prepaid balances and nothing else; it now
+// holds those, gifting, and the saved payment methods that were buried in
+// Me › More › Cards. "Credits" named one of the three things inside, which is
+// the mistake the container name exists to avoid — and it would have collided
+// outright once the universal Mesita Credits balance ships (MESITA-1380) and
+// lands in this same stack as a card literally called Credits.
+//
+// Wallet is 6 characters against Credits' 7, so this rename only ever RELAXES
+// the width budget below. "Bookings" is still the widest pill and the
+// arithmetic is unchanged.
 //
 // Width: EVERY PILL IS 20% (was 25% at four sections). Content-width pills
 // made the row read as five unrelated chips of random length; equal fifths
@@ -71,8 +84,8 @@ import {
   Bell,
   CalendarCheck,
   Footprints,
-  Landmark,
   ShoppingBag,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -88,16 +101,23 @@ type Section = { href: string; label: string; Icon: LucideIcon };
 // WENT. Footprints says that, and collides with nothing else in the row
 // (landmark / bag / calendar / bell).
 //
-// Credits is LANDMARK — the same glyph its own empty state uses, and the only
-// money-shaped icon that doesn't collide with the four above. Wallet is spent:
-// it belongs to the saved-card row in Me › More, and "two wallets, two names"
-// is a decision this app already made.
+// Wallet is WALLET (Pato, 2026-08-31), and this REVERSES a decision made two
+// days earlier. "Two wallets, two words" held that the word belonged to the
+// saved-card row in Me › More and must never appear on this side. That split
+// is gone: this section now holds the cards as well as the Credits, so there
+// is exactly one wallet and the word is free. api/cards.ts and CardsModal
+// both carried the old note — updated in this same pass rather than left
+// contradicting the screen.
+//
+// The glyph collides with nothing above it (footprints / bag / calendar /
+// bell). CreditCard stays with the payment-methods row INSIDE the section,
+// which is the level where "card" names a specific thing again.
 //
 // THIS ARRAY IS WHAT THE GUEST SEES. The route contract's key order has no
 // runtime effect — nothing iterates it. route-structure.test.tsx T6 pins this
 // array's order, count, labels and active state.
 export const SECTIONS: Section[] = [
-  { href: CONSUMER_ROUTES.inbox.credits, label: "Credits", Icon: Landmark },
+  { href: CONSUMER_ROUTES.inbox.credits, label: "Wallet", Icon: Wallet },
   { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: Footprints },
   { href: CONSUMER_ROUTES.inbox.orders, label: "Orders", Icon: ShoppingBag },
   {

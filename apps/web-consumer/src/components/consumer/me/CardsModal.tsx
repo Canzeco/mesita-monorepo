@@ -1,10 +1,18 @@
 "use client";
 
-// Me › More › Cards (decision: Pato, 2026-08-29). The saved-card wallet for
-// Mesita Pay — the card rail Stripe Connect prepares on the place side
-// (#1415). Two wallets, two words: Credits holds Mesita Credits, which REDUCE
-// a bill; Cards holds cards, which pay one. Never call this one a wallet in
-// copy.
+// The saved payment methods for Mesita Pay — the card rail Stripe Connect
+// prepares on the place side (#1415).
+//
+// TWO DOORWAYS, ONE SHEET (Pato, 2026-08-31). Opened from Me › More › Cards
+// and from Activity › Wallet › Payment methods, which imports this component
+// rather than reimplementing it — the live Stripe flow has exactly one
+// definition. The old "two wallets, two words · never call this one a wallet"
+// rule is retired: cards are now a row INSIDE the one Wallet, so the word is
+// no longer contested and Credits keeps naming the money.
+//
+// This is the one LIVE thing on the Wallet screen. The parked framing there
+// (the hero Soon pill, the demo clock) covers the Credits emulator and must
+// never be read as covering these cards.
 //
 // Nothing here is cached. Stripe is the only store for card data, so the list
 // is fetched on first open (ref latch, same shape as MetricsModal — a render

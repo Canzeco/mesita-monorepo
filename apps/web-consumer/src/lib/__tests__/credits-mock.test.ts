@@ -264,23 +264,41 @@ describe("formatUnlock", () => {
   });
 });
 
-// The word "wallet" is spent twice over in this codebase: Cards is the
-// saved-card wallet and must never be called one in copy, and Credits is the
-// other. Identifiers are what actually drift, so ban those — while leaving the
-// lucide `Wallet` glyph importable, which the parked Credits row already uses.
+// This guard used to say "wallet is spent twice over — Cards is the saved-card
+// wallet and Credits is the other", and banned the word outright. That premise
+// retired on 2026-08-31: there is now ONE Wallet, the first Activity section,
+// and it holds the cards, the Credits and Gift together.
+//
+// What survives is the half that still bites. The MONEY files must never name
+// a balance after the container — an instrument called WalletBalance is the
+// drift this catches, and the instrument is Credits. CreditsClient is exempt
+// from that half alone, because it renders the container and legitimately
+// names a row type after it. Prepay* stays banned everywhere: a prepay is how
+// you acquire Credits, never what you hold. The lucide `Wallet` glyph stays
+// importable throughout — it never matched, needing a capital after it.
 describe("naming", () => {
-  const SRC = [
+  const MONEY_SRC = [
     "src/components/consumer/credits/BalanceCard.tsx",
     "src/components/consumer/credits/BalanceStack.tsx",
     "src/components/consumer/credits/BalanceDetail.tsx",
     "src/components/consumer/credits/BuyCreditsSheet.tsx",
-    "src/app/(shell)/inbox/credits/CreditsClient.tsx",
     "src/lib/mock/credits-mock.ts",
     "src/lib/mock/credits-emulator.ts",
   ];
+  const CONTAINER_SRC = ["src/app/(shell)/inbox/credits/CreditsClient.tsx"];
 
-  it.each(SRC)("%s declares no Wallet* or Prepay* identifier", (rel) => {
-    const src = readFileSync(join(__dirname, "..", "..", "..", rel), "utf8");
-    expect(src.match(/\b(Wallet|Prepay)[A-Z]\w*/g) ?? []).toEqual([]);
+  function read(rel: string): string {
+    return readFileSync(join(__dirname, "..", "..", "..", rel), "utf8");
+  }
+
+  it.each(MONEY_SRC)("%s declares no Wallet* identifier", (rel) => {
+    expect(read(rel).match(/\bWallet[A-Z]\w*/g) ?? []).toEqual([]);
   });
+
+  it.each([...MONEY_SRC, ...CONTAINER_SRC])(
+    "%s declares no Prepay* identifier",
+    (rel) => {
+      expect(read(rel).match(/\bPrepay[A-Z]\w*/g) ?? []).toEqual([]);
+    },
+  );
 });

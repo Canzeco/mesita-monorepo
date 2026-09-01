@@ -67,9 +67,10 @@ export const CONSUMER_ROUTES = {
     root: '/(tabs)/rewards',
     ticketPrefix: '/rewards/ticket/',
   },
-  // Inbox — the container tab, four sections in a FIXED order (Pato,
-  // 2026-08-16): Visits · Orders · Reservations · Notifications, running from
-  // what you're doing right now out to the passive feed.
+  // Activity — the container tab (labelled Inbox until 2026-08-31), four
+  // sections in a FIXED order (Pato, 2026-08-16): Visits · Orders ·
+  // Reservations · Notifications, running from what you're doing right now out
+  // to the passive feed. The route stays /inbox on both platforms.
   //
   // Web makes these nested routes (/inbox/<section>); here the tab screen
   // holds them as segments, which is the RN-native shape. These paths are the
@@ -77,9 +78,10 @@ export const CONSUMER_ROUTES = {
   // `/(tabs)/inbox`.
   inbox: {
     root: '/(tabs)/inbox',
-    // Credits leads the web row but is NOT the default section (web contract,
-    // 2026-09-01). Mobile's SegmentNav still renders four — the fifth pill
-    // waits for the copy pass; this key exists so the mirror stays honest.
+    // Labelled WALLET on web and leading the row, but NOT the default section
+    // (web contract, 2026-09-01; renamed from Credits 2026-08-31). Mobile's
+    // SegmentNav still renders four — the fifth pill waits for the copy pass;
+    // this key exists so the mirror stays honest.
     credits: '/inbox/credits',
     visits: '/inbox/visits',
     orders: '/inbox/orders',

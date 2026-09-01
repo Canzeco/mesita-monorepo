@@ -15,7 +15,7 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// Five top-level surfaces: Home, Search, Pay, Inbox, Me.
+// Five top-level surfaces: Home, Search, Pay, Activity, Me.
 // Home hosts the discovery routes (Swipe / Catalog / Chat / Social /
 // Favorites); Search hosts the map + catalog search.
 //
@@ -34,7 +34,7 @@ type Item = {
   label: string;
   /**
    * Every pathname prefix that lights this tab. A LIST, not one-plus-a-spare:
-   * the previous shape was one required prefix plus one optional spare, Inbox
+   * the previous shape was one required prefix plus one optional spare, Activity
    * had already spent the spare on /reservation, and a third prefix (Home's
    * /place) was hard-coded as a special case down in the render. Three ways to
    * say one thing meant a tab could silently light NOTHING — which is exactly
@@ -99,16 +99,24 @@ const ITEMS: Item[] = [
     // wrong now that the container actually holds four things and a booking
     // is only one of them (Pato, 2026-08-16).
     Icon: Inbox,
-    // "Inbox" is the container, not the function (Pato, 2026-08-15): it holds
-    // Visits · Orders · Reservations · Notifications, so it can't be named
-    // after any one of them, and naming it for the mechanism ("Agent") would
-    // break the day places integrate directly.
-    label: "Inbox",
+    // "Activity" is the container, not the function (Pato, 2026-08-15; renamed
+    // from Inbox 2026-08-31): it holds Wallet · Visits · Orders · Reservations
+    // · Notifications, so it can't be named after any one of them, and naming
+    // it for the mechanism ("Agent") would break the day places integrate
+    // directly. Inbox named a place things ARRIVE at — never true of the money
+    // section, and visibly false now that Wallet leads the row.
+    //
+    // ROUTE UNCHANGED — /inbox, the same rule Bookings and Alerts follow. The
+    // tray GLYPH also stays: it is brand chrome, a swap was not asked for, and
+    // "Activity" has no unambiguous lucide glyph (lucide's own `Activity` is a
+    // heartbeat line that reads as analytics). Worth a design pass, not a
+    // silent change.
+    label: "Activity",
     // /inbox for the sections, plus the two DETAIL routes that deliberately
     // live outside the tab's namespace because you reach each from two places.
-    // Both lists live under Inbox, so both details light Inbox:
-    //   /visit/{id}       reached from the centre tab AND Inbox > Visits
-    //   /reservation/{id} reached from a place AND Inbox > Reservations
+    // Both lists live under Activity, so both details light Activity:
+    //   /visit/{id}       reached from the centre tab AND Activity > Visits
+    //   /reservation/{id} reached from a place AND Activity > Bookings
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.inbox,
       CONSUMER_ROUTE_PREFIX.visit,

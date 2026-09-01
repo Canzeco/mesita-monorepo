@@ -23,17 +23,17 @@ import { cn } from "@/lib/utils";
 //
 // The split is by FREQUENCY, not importance. The seven are what a guest opens
 // repeatedly or must reach in a hurry; these seven are the long tail: one you
-// set once and forget (Cards), one that opens a parked preview surface
-// (Credits), one that doesn't exist yet (Gift), one parked (Share), and three
+// set once and forget (Cards), one that opens a half-parked surface
+// (Wallet), one that doesn't exist yet (Gift), one parked (Share), and three
 // you consult once and rarely again (Metrics, Help,
 // Contact). Twelve boxes made the surface a wall to scroll — the parked ones
 // sat between live ones, so the page read as mostly-unfinished. Behind More,
 // the unfinished work stops being the first thing you see.
 //
-// Cards leads because it is the one LIVE row here and because it must sit
-// next to Credits: two wallets, two names (Pato, 2026-08-29). Cards holds cards
-// and pays a bill; Credits holds Mesita Credits, which REDUCE one. Sharing the
-// word "wallet" between them was the confusion this ordering prevents.
+// Cards leads because it is the one LIVE row here. It used to sit next to
+// Credits under a "two wallets, two names" rule (Pato, 2026-08-29); that rule
+// is retired — the Wallet section now holds BOTH, and both rows here are
+// second doorways into it rather than rival containers.
 //
 // Neutral chips, like the boxes that lead here (MESITA-1132): colour on this
 // surface belongs to the passport alone.
@@ -62,7 +62,7 @@ export function MoreModal({
   open: boolean;
   onClose: () => void;
   onOpenCards: () => void;
-  /** Navigates to the Credits Inbox section — a route, not a sheet. */
+  /** Navigates to the Wallet section of Activity — a route, not a sheet. */
   onOpenCredits: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
@@ -88,18 +88,19 @@ export function MoreModal({
     {
       key: "credits",
       Icon: Wallet,
-      title: "Credits",
-      summary: "Earn and spend at the bill · 1 Credit = MX$1",
+      title: "Wallet",
+      summary: "Credits, gifting and your saved cards",
       // Un-parked as `soon: false` PLUS a page body, which is what un-parking
       // means here. It could not stay `soon` and still be a door: a parked row
       // is `disabled` below, so its handler never fires — which is why the
       // parked Share row cannot reach /share either, live route and all.
       //
-      // Credits now also lives as the FIRST Inbox section (MESITA-1381). This
-      // row survives as the second doorway, the way Share does: removing it
-      // would take away a path guests already have, and Me stays seven boxes
-      // either way because this is More, not Me. The surface it opens says
-      // Soon on itself — hero pill and the marker under the stack.
+      // The Wallet is the FIRST Activity section (MESITA-1381). This row
+      // survives as the second doorway, the way Share does: removing it would
+      // take away a path guests already have, and Me stays seven boxes either
+      // way because this is More, not Me. The surface it opens marks its own
+      // parked half — hero pill, Gift chip and the demo bar — while the cards
+      // row inside it is live.
       onClick: onOpenCredits,
     },
     {
