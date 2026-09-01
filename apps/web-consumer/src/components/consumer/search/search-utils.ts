@@ -68,7 +68,7 @@ export function viewportCenter(box: {
 }
 
 /** Visible width of a viewport at its center latitude. */
-export function viewportWidthKm(box: {
+function viewportWidthKm(box: {
   south: number;
   west: number;
   north: number;
@@ -91,13 +91,13 @@ export function viewportWidthKm(box: {
  * nudge never refetches.
  */
 export const CATALOG_RELOAD_MIN_KM = 0.5;
-export const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
-export const CATALOG_RELOAD_MIN_KM_MIN = 0.2;
-export const CATALOG_RELOAD_MIN_KM_MAX = 20;
+const CATALOG_RELOAD_SPAN_FRACTION = 0.2;
+const CATALOG_RELOAD_MIN_KM_MIN = 0.2;
+const CATALOG_RELOAD_MIN_KM_MAX = 20;
 /** Default wait matching discovery_config.map.reloadMinSec. */
 export const CATALOG_RELOAD_MIN_SEC = 2;
-export const CATALOG_RELOAD_MIN_SEC_MIN = 0.5;
-export const CATALOG_RELOAD_MIN_SEC_MAX = 15;
+const CATALOG_RELOAD_MIN_SEC_MIN = 0.5;
+const CATALOG_RELOAD_MIN_SEC_MAX = 15;
 
 export function clampReloadMinKm(raw: number | undefined): number {
   if (typeof raw !== "number" || !Number.isFinite(raw)) {
@@ -145,7 +145,7 @@ export function catalogMovedEnough(
   );
 }
 
-export function catalogWaitedEnough(
+function catalogWaitedEnough(
   fetchedAtMs: number | null,
   nowMs: number,
   minSec: number,
@@ -178,7 +178,7 @@ export function shouldReloadNearbyCatalog(
  * city blocks — enough to ignore idle jitter, small enough that a
  * neighborhood shift is obviously "somewhere else."
  */
-export const CATALOG_STALE_MIN_KM = 0.2;
+const CATALOG_STALE_MIN_KM = 0.2;
 
 export function catalogIsStale(
   lastCenter: { lat: number; lng: number } | null,
