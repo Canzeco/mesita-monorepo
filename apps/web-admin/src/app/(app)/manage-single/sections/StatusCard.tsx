@@ -120,7 +120,7 @@ type Verification = {
 
 
 /** Does a guest get a discount here RIGHT NOW? The live read, not the badge. */
-export function isPromotingNow(place: AdminPlace): boolean {
+function isPromotingNow(place: AdminPlace): boolean {
   if (!isMemberPlan(place.plan)) return false;
   const strategy = strategyForPlace({
     welcome_free_rate: place.welcome_free_rate,

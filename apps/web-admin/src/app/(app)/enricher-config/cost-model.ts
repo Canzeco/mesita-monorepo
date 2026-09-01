@@ -47,7 +47,7 @@ const COST_RATES = {
 
 // The five link-discovery channels, in config order. Each channel with a
 // candidate count > 0 fires one Firecrawl Search; a 0 disables it.
-export const LINK_CHANNELS = [
+const LINK_CHANNELS = [
   "website",
   "instagram",
   "facebook",
@@ -380,7 +380,7 @@ const ZERO_LINKS: LinkCounts = {
 };
 
 /** Live Intake knobs → the cost model. Vision off zeroes analyze counts. */
-export function costParamsFromSettings(
+function costParamsFromSettings(
   s: IntakeSettings,
   places: number,
 ): CostParams {

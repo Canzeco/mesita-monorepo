@@ -40,7 +40,7 @@ export function Tag({
  * Jump chips into a function module. Anchors, not buttons — Tab reaches them
  * and Enter jumps. The hash handler on the page opens the target disclosure.
  */
-export function StepChips({
+function StepChips({
   steps,
 }: {
   steps: { href: string; number: number; name: string }[];

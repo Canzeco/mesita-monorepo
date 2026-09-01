@@ -3,7 +3,7 @@
 //
 // `consumers.class_key` and `consumers.invitation_class_key` both FK to
 // `public.classes`, which holds the four metals. Plan is a separate column.
-export const STORED_CLASS_LABEL: Record<string, string> = {
+const STORED_CLASS_LABEL: Record<string, string> = {
   bronze: "Bronze",
   silver: "Silver",
   gold: "Gold",

@@ -32,7 +32,7 @@ export function readChannel(raw: unknown): ChannelKey | "" {
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 /** Digits from a wa.me URL (or plain E.164) for display. */
-export function displayWhatsApp(raw: string): string {
+function displayWhatsApp(raw: string): string {
   const t = raw.trim();
   if (!t) return "";
   const m = t.match(/wa\.me\/(\+?\d+)/i);
@@ -44,7 +44,7 @@ export function displayWhatsApp(raw: string): string {
 }
 
 /** @handle or short path from an Instagram URL. */
-export function displayInstagram(raw: string): string {
+function displayInstagram(raw: string): string {
   const t = raw.trim();
   if (!t) return "";
   try {

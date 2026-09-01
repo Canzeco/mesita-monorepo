@@ -1,5 +1,5 @@
 /** Stable keys registered via PlaceContext.setSectionDirty. */
-export const DIRTY_SECTION_ORDER = [
+const DIRTY_SECTION_ORDER = [
   "place",
   "products",
   // One key per Settings box, in box order (MESITA-1148).
@@ -17,7 +17,7 @@ export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 // called Menus (Pato live 2026-08-22: "rename products to menus"); its body
 // copy already said "No menus yet" / "New menu", so the title was the only
 // word still out of step.
-export const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
+const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
   place: "Place",
   products: "Menus",
   visits: "Visits",

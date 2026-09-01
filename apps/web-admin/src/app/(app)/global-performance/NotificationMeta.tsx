@@ -172,7 +172,7 @@ export function MetaRow({ item }: { item: NotificationItem }) {
   return <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">{tags}</div>;
 }
 
-export function MetaTag({
+function MetaTag({
   children,
   className,
   title,
