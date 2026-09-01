@@ -1,4 +1,6 @@
-// Which fixture the /credits spike renders.
+import type { Seed } from "@/lib/mock/credits-emulator";
+
+// Which seed the /credits emulator starts from on a first visit.
 //
 // Read on the SERVER, in page.tsx, and passed down as a prop — never through
 // useSearchParams(). A client-side search-param read without a <Suspense>
@@ -6,17 +8,14 @@
 // already paid for that twice ((shell)/layout.tsx's PlaceGoneNotice wrapper
 // and RouteBadge's split). Keeping it a pure function also makes it the one
 // piece of the demo plumbing that is unit-testable in a node-env harness.
-
-export type CreditsDemoVariant = "stack" | "solo" | "empty";
+//
+// It only bites on a FIRST load or after Reset — once the emulator has written
+// state to localStorage, that state wins. Reset re-seeds from this same value.
 
 export function parseCreditsDemo(
   searchParams: Record<string, string | string[] | undefined>,
-): CreditsDemoVariant {
+): Seed {
   const raw = searchParams.demo;
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === "solo") return "solo";
-  if (value === "empty") return "empty";
-  // The stack is the default because the question being asked is "how does it
-  // feel to hold several of these" — that has to be what loads.
-  return "stack";
+  return value === "empty" ? "empty" : "default";
 }

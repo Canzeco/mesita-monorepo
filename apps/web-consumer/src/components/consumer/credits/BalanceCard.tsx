@@ -3,6 +3,7 @@
 import { formatCurrency } from "@/lib/api/profile";
 import {
   formatUnlock,
+  hoursUntil,
   isLocked,
   type CreditBalance,
 } from "@/lib/mock/credits-mock";
@@ -48,19 +49,22 @@ function Monogram({ name }: { name: string }) {
 
 export function BalanceCard({
   balance,
+  nowMs,
   expanded,
   onSelect,
   className,
   style,
 }: {
   balance: CreditBalance;
+  /** Emulator time. Maturation is never read off wall time. */
+  nowMs: number;
   /** True when the stack is spread — controls the card's own aria state. */
   expanded: boolean;
   onSelect: () => void;
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const locked = isLocked(balance);
+  const locked = isLocked(balance, nowMs);
   const bonusCents = balance.balanceCents - balance.paidCents;
 
   return (
@@ -96,8 +100,8 @@ export function BalanceCard({
             <span className="text-muted-foreground text-sm font-bold tabular-nums">
               {formatCurrency(balance.balanceCents)}
             </span>
-            <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase tabular-nums">
-              {formatUnlock(balance.maturesInHours!)}
+            <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] tabular-nums uppercase">
+              {formatUnlock(hoursUntil(balance, nowMs))}
             </span>
           </span>
         ) : (
@@ -113,7 +117,7 @@ export function BalanceCard({
       <span className="min-h-0 flex-1 px-4">
         <span className="text-muted-foreground block text-xs">
           {locked
-            ? `Unlocks in ${formatUnlock(balance.maturesInHours!)} · +${balance.bonusPct}% bonus`
+            ? `Unlocks in ${formatUnlock(hoursUntil(balance, nowMs))} · +${balance.bonusPct}% bonus`
             : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
         </span>
       </span>

@@ -1,30 +1,26 @@
-// SPIKE FIXTURE — example Credits balances for the /credits surface.
+// SPIKE FIXTURE — the seed data behind the /credits emulator.
 //
 // NOTHING HERE IS LIVE. There is no table, no Edge Function and no type for a
 // prepaid balance, and the VENUE side does not exist at all: a place today
-// cannot set a bonus, cannot set a maturation window, and cannot see what it
-// owes. This file exists so the surface can be judged before any of that is
-// built (MESITA-1380).
+// cannot set a bonus, cannot set a lock window, and cannot see what it owes.
+// This exists so the surface can be exercised before any of that is built
+// (MESITA-1380).
 //
 // What is deliberately UNDECIDED and must not be read out of this fixture:
-//   · the bonus ladder (does a longer lock earn a bigger bonus, and how much)
-//   · who issues the instrument — the place or Mesita
+//   · the exact bonus ladder — the shape (longer lock earns more) is the point,
+//     the numbers are invented
+//   · who issues the instrument, the place or Mesita
 //   · whether balances expire, and what happens to the remainder if they do
-//   · the cross-venue balance, which is gated to Capital-debt venues and has
-//     no book behind it yet
-//
-// Maturation is stored as a RELATIVE offset, never an absolute date. An ISO
-// timestamp in a fixture goes stale the day after it is written, and computing
-// "time remaining" from `new Date()` during render mismatches between the
-// server pass and the client pass. Hours are inert data.
+//   · the cross-venue balance, gated to Capital-debt venues, which has no book
+//     behind it yet
 
 export type CreditActivity = {
   id: string;
   label: string;
   /** Signed, in cents. Negative spends, positive tops up. */
   amountCents: number;
-  /** Display-only, e.g. "12 Aug". Never parsed. */
-  when: string;
+  /** Real epoch ms. Rendered against the emulator clock, never against wall time. */
+  atMs: number;
 };
 
 export type CreditBalance = {
@@ -35,20 +31,55 @@ export type CreditBalance = {
   balanceCents: number;
   /** What the guest actually paid. balance - paid = the bonus. */
   paidCents: number;
-  /** Hours until this balance unlocks. null = spendable now. */
-  maturesInHours: number | null;
+  /** Real epoch ms when this unlocks. Compared against the emulator clock. */
+  maturesAtMs: number;
   /** The place's own bonus, as a whole percent. */
   bonusPct: number;
   activity: CreditActivity[];
 };
 
-/** Spendable right now — a locked balance contributes nothing. */
-export function spendableCents(b: CreditBalance): number {
-  return b.maturesInHours == null ? b.balanceCents : 0;
+/**
+ * A place you can prepay. The place sets BOTH numbers, and the pairing is the
+ * model: a longer lock earns a bigger bonus, because what the place is buying
+ * is float. That makes a prepay a term deposit rather than a discount at the
+ * table, which is the whole reason the lock exists.
+ */
+export type CreditPlace = {
+  id: string;
+  name: string;
+  bonusPct: number;
+  lockHours: number;
+};
+
+export const CREDIT_PLACES: CreditPlace[] = [
+  { id: "plc_cafe", name: "Café Nueve", bonusPct: 5, lockHours: 12 },
+  {
+    id: "plc_tono",
+    name: "Restaurante La Casa de Toño Insurgentes",
+    bonusPct: 8,
+    lockHours: 24,
+  },
+  { id: "plc_lardo", name: "Lardo", bonusPct: 13, lockHours: 24 },
+  { id: "plc_pangea", name: "Pangea", bonusPct: 25, lockHours: 72 },
+];
+
+export function placeById(id: string): CreditPlace | undefined {
+  return CREDIT_PLACES.find((p) => p.id === id);
 }
 
-export function isLocked(b: CreditBalance): boolean {
-  return b.maturesInHours != null;
+export const HOUR_MS = 3_600_000;
+
+export function isLocked(b: CreditBalance, nowMs: number): boolean {
+  return b.maturesAtMs > nowMs;
+}
+
+/** Spendable right now — a locked balance contributes nothing. */
+export function spendableCents(b: CreditBalance, nowMs: number): number {
+  return isLocked(b, nowMs) ? 0 : b.balanceCents;
+}
+
+export function hoursUntil(b: CreditBalance, nowMs: number): number {
+  return (b.maturesAtMs - nowMs) / HOUR_MS;
 }
 
 /**
@@ -57,88 +88,88 @@ export function isLocked(b: CreditBalance): boolean {
  * information nobody acts on.
  */
 export function formatUnlock(hours: number): string {
-  if (hours < 24) return `${Math.max(1, Math.round(hours))}h`;
+  if (hours < 24) return `${Math.max(1, Math.ceil(hours))}h`;
   return `${Math.round(hours / 24)}d`;
 }
 
-// The stack. Deliberately includes one very long place name (39 chars) so
-// truncation is visible in review rather than in production, one locked
-// balance, and one balance whose bonus differs from the others — the place
-// sets its own, so a uniform ladder would be a fixture that lies.
-const STACK: CreditBalance[] = [
-  {
-    id: "bal_lardo",
-    placeId: "plc_lardo",
-    placeName: "Lardo",
-    balanceCents: 124_000,
-    paidCents: 110_000,
-    maturesInHours: null,
-    bonusPct: 13,
-    activity: [
-      { id: "a1", label: "Dinner", amountCents: -48_000, when: "24 Aug" },
-      { id: "a2", label: "Bought Credits", amountCents: 110_000, when: "12 Aug" },
-    ],
-  },
-  {
-    id: "bal_toño",
-    placeId: "plc_tono",
-    placeName: "Restaurante La Casa de Toño Insurgentes",
-    balanceCents: 42_500,
-    paidCents: 40_000,
-    maturesInHours: null,
-    bonusPct: 6,
-    activity: [
-      { id: "b1", label: "Comida", amountCents: -27_500, when: "22 Aug" },
-      { id: "b2", label: "Bought Credits", amountCents: 40_000, when: "19 Aug" },
-    ],
-  },
-  {
-    id: "bal_pangea",
-    placeId: "plc_pangea",
-    placeName: "Pangea",
-    balanceCents: 200_000,
-    paidCents: 160_000,
-    maturesInHours: 18,
-    bonusPct: 25,
-    activity: [
-      { id: "c1", label: "Bought Credits", amountCents: 200_000, when: "31 Aug" },
-    ],
-  },
-  {
-    id: "bal_cafe",
-    placeId: "plc_cafe",
-    placeName: "Café Nueve",
-    balanceCents: 8_400,
-    paidCents: 8_000,
-    maturesInHours: null,
-    bonusPct: 5,
-    activity: [
-      { id: "d1", label: "Flat white", amountCents: -9_500, when: "29 Aug" },
-      { id: "d2", label: "Bought Credits", amountCents: 8_000, when: "15 Aug" },
-    ],
-  },
-];
+export function bonusFor(paidCents: number, bonusPct: number): number {
+  return Math.round((paidCents * bonusPct) / 100);
+}
 
-// The honest year-one case: ONE balance, mid-lock, nothing spendable. If the
-// surface only reads well at n=4 it does not read well, so this stays one
-// query string away rather than buried.
-const SOLO: CreditBalance[] = [
-  {
-    id: "bal_pangea",
-    placeId: "plc_pangea",
-    placeName: "Pangea",
-    balanceCents: 200_000,
-    paidCents: 160_000,
-    maturesInHours: 18,
-    bonusPct: 25,
-    activity: [
-      { id: "c1", label: "Bought Credits", amountCents: 200_000, when: "31 Aug" },
-    ],
-  },
-];
+/**
+ * "24 Aug". Only ever called from the client — balances load out of
+ * localStorage in an effect, so there is no server pass to disagree with.
+ */
+export function formatWhen(atMs: number): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+  }).format(new Date(atMs));
+}
 
-export function mockBalances(variant: "stack" | "solo" | "empty"): CreditBalance[] {
-  if (variant === "solo") return SOLO;
-  if (variant === "empty") return [];
-  return STACK;
+/**
+ * The opening state. One matured balance with history so the surface is not
+ * empty on first load, one mid-lock so the countdown is visible immediately,
+ * and one long name so truncation shows up in review rather than production.
+ */
+export function seedBalances(nowMs: number): CreditBalance[] {
+  return [
+    {
+      id: "bal_lardo",
+      placeId: "plc_lardo",
+      placeName: "Lardo",
+      balanceCents: 124_000,
+      paidCents: 110_000,
+      maturesAtMs: nowMs - 5 * 24 * HOUR_MS,
+      bonusPct: 13,
+      activity: [
+        {
+          id: "a1",
+          label: "Dinner",
+          amountCents: -48_000,
+          atMs: nowMs - 2 * 24 * HOUR_MS,
+        },
+        {
+          id: "a2",
+          label: "Bought Credits",
+          amountCents: 124_000,
+          atMs: nowMs - 6 * 24 * HOUR_MS,
+        },
+      ],
+    },
+    {
+      id: "bal_tono",
+      placeId: "plc_tono",
+      placeName: "Restaurante La Casa de Toño Insurgentes",
+      balanceCents: 43_200,
+      paidCents: 40_000,
+      maturesAtMs: nowMs - 3 * 24 * HOUR_MS,
+      bonusPct: 8,
+      activity: [
+        {
+          id: "b1",
+          label: "Bought Credits",
+          amountCents: 43_200,
+          atMs: nowMs - 4 * 24 * HOUR_MS,
+        },
+      ],
+    },
+    {
+      id: "bal_pangea",
+      placeId: "plc_pangea",
+      placeName: "Pangea",
+      balanceCents: 250_000,
+      paidCents: 200_000,
+      maturesAtMs: nowMs + 18 * HOUR_MS,
+      bonusPct: 25,
+      activity: [
+        {
+          id: "c1",
+          label: "Bought Credits",
+          amountCents: 250_000,
+          atMs: nowMs - 54 * HOUR_MS,
+        },
+      ],
+    },
+  ];
 }

@@ -31,9 +31,11 @@ const SPREAD_PX = 76;
 
 export function BalanceStack({
   balances,
+  nowMs,
   onOpen,
 }: {
   balances: CreditBalance[];
+  nowMs: number;
   onOpen: (balance: CreditBalance) => void;
 }) {
   const [spread, setSpread] = useState(false);
@@ -49,6 +51,7 @@ export function BalanceStack({
         <li key={balance.id}>
           <BalanceCard
             balance={balance}
+            nowMs={nowMs}
             expanded={spread}
             // Collapsed, a tap spreads the stack so every card is readable.
             // Spread, a tap opens that balance. One control, two states.
