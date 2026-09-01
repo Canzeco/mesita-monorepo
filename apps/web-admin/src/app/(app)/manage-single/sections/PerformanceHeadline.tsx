@@ -1,6 +1,7 @@
 "use client";
 
 import type { PlaceStats } from "../actions";
+import { formatPesosCompact } from "@/lib/format";
 
 // Performance → the answer card. Everything else on the tab supports this.
 //
@@ -20,10 +21,7 @@ import type { PlaceStats } from "../actions";
 
 function mxn(cents: number | null): string {
   if (cents == null || cents <= 0) return "—";
-  const pesos = cents / 100;
-  if (pesos >= 1_000_000) return `MX$${(pesos / 1_000_000).toFixed(1)}M`;
-  if (pesos >= 1_000) return `MX$${Math.round(pesos / 1_000)}K`;
-  return `MX$${Math.round(pesos).toLocaleString()}`;
+  return formatPesosCompact(cents);
 }
 
 function count(n: number): string {

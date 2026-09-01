@@ -38,3 +38,13 @@ export function timeAgo(iso: string, nowMs: number): string {
   if (weeks < 5) return `${weeks}w ago`;
   return formatShortDate(iso);
 }
+
+// Compact pesos from cents ("MX$1,250", "MX$12K", "MX$1.2M"). The stat boxes
+// on a place page abbreviate past a thousand so each figure stays one line;
+// callers that must render an empty state guard for it themselves.
+export function formatPesosCompact(cents: number): string {
+  const pesos = cents / 100;
+  if (pesos >= 1_000_000) return `MX$${(pesos / 1_000_000).toFixed(1)}M`;
+  if (pesos >= 1_000) return `MX$${Math.round(pesos / 1_000)}K`;
+  return `MX$${Math.round(pesos).toLocaleString()}`;
+}
