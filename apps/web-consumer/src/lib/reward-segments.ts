@@ -178,13 +178,6 @@ export function rateForSegment(
   return base <= 0 ? 0 : base + CLASS_STEP[classKey];
 }
 
-export function baseRateForClass(
-  classKey: ClassKey,
-  strategy: GridStrategy = PEAK_STRATEGY,
-): number {
-  return rateForSegment(segmentKeyForClass(classKey), classKey, strategy);
-}
-
 /**
  * The ceiling a consumer can reach — the best rate across every rung they can
  * unlock, under the most generous strategy. This is the "Max X% for you" number.

@@ -29,8 +29,3 @@ export function upToPercentFromQuote(quote: RewardQuote): number {
   }
   return Math.min(100, quote.base + b.welcome + b.story + b.google + b.mesita);
 }
-
-/** Whether a quote describes a place that pays anything at all right now. */
-export function quoteOffersDiscount(quote: RewardQuote): boolean {
-  return quote.strategy !== "zero" && upToPercentFromQuote(quote) > 0;
-}
