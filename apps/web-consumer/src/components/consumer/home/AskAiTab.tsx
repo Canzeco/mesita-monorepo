@@ -6,6 +6,7 @@
 // handlers — around the shared, inline-layout AskAiPanel.
 
 import { useCallback, useState } from "react";
+import { Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useUserLocation } from "@/lib/use-user-location";
@@ -17,11 +18,13 @@ import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
 import { AskAiPanel } from "@/components/consumer/search/AskAiPanel";
 import { MemoModeHeader } from "@/components/consumer/home/MemoModeHeader";
+import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
 import { matchPredictionToPlace } from "@/components/consumer/search/search-utils";
 import type { AddState } from "@/components/consumer/search/add-state";
 
 export function AskAiTab({ places }: { places: Place[] }) {
   const router = useRouter();
+  const [callSoon, setCallSoon] = useState(false);
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
@@ -107,8 +110,23 @@ export function AskAiTab({ places }: { places: Place[] }) {
           resolvePlace={resolvePlace}
           onInfo={handleInfo}
           onAdd={handleAdd}
+          onCall={() => setCallSoon(true)}
         />
       </div>
+
+      {/* CALL IS ANNOUNCED, NOT WIRED (Pato, live: "announced only, for now").
+          There is no Memo voice agent and no number behind it — the ElevenLabs
+          workspace holds none — so the button opens this panel instead of
+          dialling. It stays visible because the two-way shape IS the product
+          statement, and it is styled as a muted sibling of Send rather than a
+          second CTA (MESITA-601 — no "soon" badges anywhere in this app). */}
+      <ComingSoonModal
+        open={callSoon}
+        onClose={() => setCallSoon(false)}
+        title="Calling Don Memo"
+        body="Soon you'll be able to call Don Memo and just say what you're in the mood for — he'll talk you to a table. Until then he's right here, in chat."
+        icon={Phone}
+      />
     </div>
   );
 }

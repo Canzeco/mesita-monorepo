@@ -10,7 +10,7 @@ import { Z_IN_FRAME_OVERLAY } from "@/lib/z-index";
 // shape for later tools; this pass is conversation only.
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowUp, Phone, RotateCcw, Sparkles, X } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import type { Place } from "@/lib/api/places";
@@ -40,6 +40,7 @@ export function AskAiPanel({
   resolvePlace,
   onInfo,
   onAdd,
+  onCall,
   layout = "overlay",
 }: {
   /** Only meaningful in "overlay" layout (renders the floating close button). */
@@ -52,6 +53,13 @@ export function AskAiPanel({
   resolvePlace: (prediction: PlacePrediction) => Place | null;
   onInfo: (prediction: PlacePrediction) => void;
   onAdd: (prediction: PlacePrediction) => void;
+  /**
+   * Start a voice call with Memo. When present, a Call button sits in the
+   * COMPOSER, immediately left of Send — the slot a messaging app gives its
+   * voice affordance. Omit it and the composer is text-only, which is what the
+   * map's overlay usage wants.
+   */
+  onCall?: () => void;
   /**
    * "overlay" — floating card pinned over the map (legacy Search usage).
    * "inline" — fills its container as a full section (the Home Ask AI tab).
@@ -258,6 +266,27 @@ export function AskAiPanel({
             placeholder="Ask anything…"
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
+          {/* CALL SITS HERE, not in a header (Pato, 2026-09-01). Voice and text
+              are the same act — say the thing — so the control belongs beside
+              the other way of saying it, in the slot every messaging app puts
+              its mic in. As a header segment pair it read as a mode switch and
+              cost the thread 60px of pinned chrome before a word was typed.
+
+              NOT the `Button` primitive: that ships exactly one variant, the
+              pink CTA, and two pink circles in one composer compete for the
+              same tap. Muted sibling, same size-8 circle, so Send stays the
+              loudest thing in the row. */}
+          {onCall && (
+            <button
+              type="button"
+              onClick={onCall}
+              aria-haspopup="dialog"
+              aria-label="Call Don Memo"
+              className="bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground grid size-8 shrink-0 place-items-center rounded-full transition active:scale-95"
+            >
+              <Phone className="h-4 w-4" />
+            </button>
+          )}
           <Button
             type="submit"
             size="icon"
