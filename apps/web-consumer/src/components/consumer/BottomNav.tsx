@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, ListChecks, User } from "lucide-react";
+import { QrCode, Activity as ActivityPulse, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -106,14 +106,30 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.inboxDefault,
-    // ListChecks (Pato, 2026-09-01), replacing the inbox tray. The tray named a
-    // place things ARRIVE at — never true of a reservation you made or a visit
-    // you started, and the file already flagged the glyph as worth a design
-    // pass. CalendarCheck named RESERVATIONS, one section of four. lucide's own
-    // `Activity` is a heartbeat line that reads as analytics. A checklist is the
-    // one shape that says "your items" without claiming a direction of travel
-    // or naming any single section.
-    Icon: ListChecks,
+    // The pulse (Pato, 2026-09-01, second pass). Third glyph this tab has worn:
+    // inbox tray -> ListChecks -> here.
+    //
+    // ListChecks failed TWICE. Semantically a checklist says "things you owe" —
+    // but nothing in this tab is a task. An alert arrived, a visit happened, an
+    // order was placed, a reservation is coming: you do not complete any of
+    // them. Visually it collided with the tab NEXT DOOR — ListChecks and Pay's
+    // QrCode are both a dense field of small marks at 24px, so the two middle
+    // tabs read as one visual class and the row lost its scan.
+    //
+    // Silhouette is the real constraint in a four-tab bar, and it is why this
+    // supersedes the note below that called `Activity` "a heartbeat line that
+    // reads as analytics". That objection was made against the glyph alone; the
+    // glyph never ships alone. Under the word "Activity" the pulse is simply
+    // what it says, and it is the only candidate whose OUTLINE clears all three
+    // neighbours — a wide flat zigzag against a flame, a dense square, and a
+    // person. Clock was the runner-up and lost on exactly that test: a full
+    // circle beside User's round head is a fourth tab that looks like the last
+    // one.
+    //
+    // Still not naming a section (Bell/Footprints/ShoppingBag/CalendarCheck are
+    // spoken for, one each) and still not claiming a direction of travel, which
+    // is what retired the tray.
+    Icon: ActivityPulse,
     // "Activity" is the container, not the function (Pato, 2026-08-15; renamed
     // from Inbox 2026-08-31): it holds Wallet · Visits · Orders · Reservations
     // · Notifications, so it can't be named after any one of them, and naming
@@ -121,11 +137,8 @@ const ITEMS: Item[] = [
     // directly. Inbox named a place things ARRIVE at — never true of the money
     // section, and visibly false now that Wallet leads the row.
     //
-    // ROUTE UNCHANGED — /inbox, the same rule Bookings and Alerts follow. The
-    // tray GLYPH also stays: it is brand chrome, a swap was not asked for, and
-    // "Activity" has no unambiguous lucide glyph (lucide's own `Activity` is a
-    // heartbeat line that reads as analytics). Worth a design pass, not a
-    // silent change.
+    // ROUTE UNCHANGED — /inbox, the same rule Reservations and Alerts follow.
+    // The GLYPH is the one thing here that has moved: see the icon note above.
     label: "Activity",
     // /inbox for the sections, plus the two DETAIL routes that deliberately
     // live outside the tab's namespace because you reach each from two places.
