@@ -147,8 +147,12 @@ export function TiersClient() {
         </div>
       )}
 
-      <div className="-mx-4 overflow-x-auto sm:mx-0">
-        <table className="w-full min-w-[36rem] border-separate border-spacing-0 px-4 sm:px-0">
+      {/* -mx-5 matches the super box's own p-5, so the scrollport reaches the
+          screen edge on a phone. The padding rides on the scroller, not the
+          <table> — padding on a table box is not honoured consistently and
+          left the first rung's label flush against the edge. */}
+      <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
+        <table className="w-full min-w-[36rem] border-separate border-spacing-0">
           <caption className="sr-only">
             Visit strategy rates. Conservative and Aggressive. Floor, then
             signed adders.
@@ -280,7 +284,7 @@ export function TiersClient() {
       </Collapsible>
 
       <Collapsible summary="Preview all visit totals">
-        <div className="overflow-x-auto">
+        <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
           <table className="w-full min-w-[720px] border-collapse type-body">
             <thead>
               <tr className="border-border border-b-2">

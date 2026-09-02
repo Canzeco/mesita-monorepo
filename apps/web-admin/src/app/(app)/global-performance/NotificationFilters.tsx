@@ -89,7 +89,7 @@ export function NotificationFilters({
         <div
           role="tablist"
           aria-label="Domain"
-          className="border-border flex gap-1 overflow-x-auto border-b px-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:px-5 [&::-webkit-scrollbar]:hidden"
+          className="border-border flex gap-1 overflow-x-auto border-b px-4 scrollbar-none sm:px-5"
         >
           {DOMAINS.map((d) => {
             const active = domain === d.key;
@@ -114,8 +114,14 @@ export function NotificationFilters({
         </div>
       )}
 
-      <div className="flex items-stretch">
-        <div className="flex min-w-0 flex-1">
+      {/* Segments and toolbar are ONE ROW only from `sm` up. Below it the
+          toolbar alone wanted ~250px of a 375px screen and the ten `flex-1`
+          segments split what was left — roughly 12px each, so every label
+          truncated to nothing and the counts spilled. On a phone the segments
+          get the full width and scroll sideways; the toolbar drops beneath
+          them. */}
+      <div className="flex flex-col items-stretch sm:flex-row">
+        <div className="flex min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <FilterSegment
             active={
               intake ? statusFilter === "all" : typeFilter === "all"
@@ -157,7 +163,7 @@ export function NotificationFilters({
               ))}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 border-l px-3 py-2 sm:px-4">
+        <div className="border-border flex shrink-0 items-center gap-2 border-t px-3 py-2 sm:ml-auto sm:border-t-0 sm:border-l sm:px-4">
           {showStepsToggle && (
             <button
               type="button"
@@ -180,7 +186,7 @@ export function NotificationFilters({
               onChange={(e) => onPlaceQueryChange(e.target.value)}
               placeholder="Filter by place…"
               spellCheck={false}
-              className="border-border bg-background focus:border-foreground h-9 w-36 rounded-lg border px-3 text-sm outline-none sm:w-44"
+              className="border-border bg-background focus:border-foreground h-9 w-full min-w-0 flex-1 rounded-lg border px-3 text-sm outline-none sm:w-44 sm:flex-none"
             />
           )}
           <span
@@ -194,7 +200,7 @@ export function NotificationFilters({
             onClick={onRefresh}
             disabled={pending}
             title="Refresh"
-            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-8 w-8 items-center justify-center rounded-lg transition disabled:opacity-50"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition disabled:opacity-50 sm:h-8 sm:w-8"
           >
             <RefreshCw className={"h-4 w-4 " + (pending ? "animate-spin" : "")} />
           </button>
@@ -219,7 +225,13 @@ export function NotificationFilters({
 }
 
 function ChipRow({ children }: { children: ReactNode }) {
-  return <div className="border-border flex w-full border-t">{children}</div>;
+  // Eleven Intaker functions. Same story as the segment row above: they only
+  // divide the width evenly once there is width to divide.
+  return (
+    <div className="border-border flex w-full overflow-x-auto scrollbar-none border-t">
+      {children}
+    </div>
+  );
 }
 
 function FilterSegment({
@@ -240,7 +252,9 @@ function FilterSegment({
       type="button"
       onClick={onClick}
       className={
-        "inline-flex min-w-0 flex-1 items-center justify-center gap-1 border-r px-1 py-2 type-label font-medium leading-tight transition sm:gap-1.5 sm:px-2 sm:text-sm " +
+        // shrink-0 + natural width on a phone (the row scrolls); equal
+        // thirds/tenths of the bar from `sm` up (the row fits).
+        "inline-flex min-h-11 shrink-0 items-center justify-center gap-1 border-r px-3 py-2 type-label font-medium leading-tight transition sm:min-h-0 sm:min-w-0 sm:flex-1 sm:shrink sm:gap-1.5 sm:px-2 sm:text-sm " +
         (active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground")

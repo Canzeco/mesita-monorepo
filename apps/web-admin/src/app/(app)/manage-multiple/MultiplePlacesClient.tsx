@@ -27,8 +27,11 @@ function Step({
   tint: Tint;
   children: React.ReactNode;
 }) {
+  // scroll-mt clears the sticky PipelineNav: two wrapped chip rows on a
+  // phone, one row from `sm` up. The old 9rem was that height PLUS the mobile
+  // topbar, which the nav no longer offsets itself against.
   return (
-    <div id={id} className="scroll-mt-36">
+    <div id={id} className="scroll-mt-28 sm:scroll-mt-20">
       <SectionCard
         tint={tint}
         title={title}

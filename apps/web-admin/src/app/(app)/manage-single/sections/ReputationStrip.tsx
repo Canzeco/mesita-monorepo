@@ -80,7 +80,7 @@ export function ReputationStrip({
   return (
     <section
       aria-label="Reputation"
-      className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-0.5 scrollbar-none"
     >
       <Cell
         label="Mesita"

@@ -118,13 +118,13 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
 
       <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         {/* Mobile / tablet topbar — hidden lg+ */}
-        <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur lg:hidden">
+        <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b px-4 py-2.5 backdrop-blur lg:hidden">
           <button
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
             aria-expanded={open}
-            className="border-border text-foreground hover:bg-muted flex h-9 w-9 items-center justify-center rounded-full border transition"
+            className="border-border text-foreground hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition"
           >
             <Menu className="h-4 w-4" />
           </button>

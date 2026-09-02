@@ -13,7 +13,6 @@ import type { PlaceLite } from "@/lib/places-types";
 
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
 
-const MAP_HEIGHT_PX = 440;
 const MAP_DEFAULT_CENTER = { lat: 23.6345, lng: -102.5528 };
 const MAP_DEFAULT_ZOOM = 5;
 const MAP_FIT_BOUNDS_PADDING_PX = 48;
@@ -83,12 +82,18 @@ export function PlacesMap({ places }: { places: PlaceLite[] }) {
           {missing > 0 && <> · {missing} without coordinates</>}
         </p>
       </div>
-      <div style={{ height: MAP_HEIGHT_PX }} className="w-full">
+      {/* Shorter on a phone: 440px of map inside a ~700px viewport left no
+          room for the results it belongs to. */}
+      <div className="h-72 w-full sm:h-[440px]">
         <APIProvider apiKey={GOOGLE_MAPS_KEY}>
           <Map
             defaultCenter={MAP_DEFAULT_CENTER}
             defaultZoom={MAP_DEFAULT_ZOOM}
-            gestureHandling="greedy"
+            // COOPERATIVE, not greedy. Greedy hands every one-finger drag to
+            // the map, so a phone scrolling past this section got trapped in
+            // it with no way out. Cooperative pans on two fingers and lets a
+            // single finger scroll the page; the zoom buttons stay.
+            gestureHandling="cooperative"
             disableDefaultUI
             zoomControl
             clickableIcons={false}

@@ -214,7 +214,7 @@ function TagsModal({
       onClick={onClose}
     >
       <div
-        className="border-border/70 bg-card shadow-elev flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border"
+        className="border-border/70 bg-card shadow-elev flex max-h-[85dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

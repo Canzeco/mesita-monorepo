@@ -402,7 +402,7 @@ function DistributionChart({
   ];
 
   return (
-    <div className="mt-3 overflow-x-auto">
+    <div className="-mx-5 mt-3 overflow-x-auto px-5 sm:mx-0 sm:px-0">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="block h-auto w-full min-w-[520px]"

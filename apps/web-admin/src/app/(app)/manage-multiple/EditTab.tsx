@@ -44,8 +44,10 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
   return { ...rates, monthly_promo_cap: DEFAULT_DISCOUNT_CAP_MXN };
 }
 
+// max-w-full: a <select> sizes to its widest option, and "Off · also unlists"
+// is wider than the card is on a phone.
 const SELECT_CLASS =
-  "border-border bg-background h-10 rounded-xl border px-3 text-sm outline-none";
+  "border-border bg-background h-10 max-w-full min-w-0 rounded-xl border px-3 text-sm outline-none";
 
 // State + value next to Update. Listed · Active · Verified · Partnered · Promoted.
 export function UpdateFields({

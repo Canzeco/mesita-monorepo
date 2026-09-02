@@ -197,17 +197,25 @@ function NavLink({
       // Collapsed, the icon is the only affordance — the native tooltip is
       // what names the destination.
       title={collapsed ? label : undefined}
+      // The drawer instance is a TOUCH target, the desktop rail a pointer one,
+      // so the mobile sizes are the larger pair and `lg:` tightens them back
+      // down. Before this the base styles were the desktop rail's and the
+      // drawer inherited 26px-tall rows on a phone.
       className={
-        "flex items-center rounded-xl text-xs font-medium transition lg:type-body " +
+        "flex items-center rounded-xl text-sm font-medium transition lg:text-xs lg:type-body " +
         (collapsed
           ? "justify-center py-2 "
-          : "gap-2 py-1.5 pr-2 pl-2 lg:gap-2.5 lg:py-2 lg:pr-2.5 lg:pl-2.5 ") +
+          : "min-h-11 gap-3 px-3 lg:min-h-0 lg:gap-2.5 lg:px-2.5 lg:py-2 ") +
         (active
           ? "bg-secondary text-secondary-foreground"
           : "text-background/60 hover:bg-background/10 hover:text-background")
       }
     >
-      <Icon className={collapsed ? "h-4 w-4 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
+      <Icon
+        className={
+          collapsed ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5"
+        }
+      />
       <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
@@ -215,7 +223,7 @@ function NavLink({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2 pt-2 pb-1 lg:px-2.5">
+    <div className="px-3 pt-3 pb-1 lg:px-2.5 lg:pt-2">
       <span className="text-background/35 type-meta font-medium tracking-[0.14em] uppercase">
         {children}
       </span>
@@ -243,7 +251,7 @@ function SidebarNav({
   const projectId = parsePlaceId(pathname);
 
   return (
-    <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+    <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain">
       {SIDEBAR_SECTIONS.map((section, index) => (
         <div key={section.id}>
           {index === 0 ? null : collapsed ? <SectionRule /> : <SectionGap />}
@@ -304,7 +312,7 @@ export function Sidebar({
   // Dark lateral rail — only the main menu is inverted; content stays light.
   // Width is the shell's call (it animates the column), so the rail fills it.
   return (
-    <aside className="bg-foreground text-background border-background/10 flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3 lg:px-2.5">
+    <aside className="bg-foreground text-background border-background/10 pb-safe flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 lg:px-2.5 lg:pb-3">
       <Link
         href="/central"
         onClick={onNavigate}

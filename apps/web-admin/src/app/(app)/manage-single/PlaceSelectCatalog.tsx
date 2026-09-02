@@ -27,6 +27,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { CldrRegionInput } from "@/components/CldrRegionInput";
 import { OPERATOR_PROMOTING_LABEL, operatorPromotingLevel } from "@/lib/status-vocabulary";
 import { PROMOTION_SCORE_MAX } from "@/lib/business/promotion-score";
+import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
 
 // Minimum characters before a query triggers Mesita/Google search logic.
 const MIN_QUERY_LENGTH = 2;
@@ -284,8 +285,12 @@ export function PlaceSelectCatalog() {
         )}
 
         {trimmed.length === 0 && hits.length > 0 ? (
-          <div className="border-border bg-card mt-4 overflow-hidden rounded-2xl border">
-            <div className="-mx-0 overflow-x-auto">
+          // Thirteen columns of facts. On a phone the card BLEEDS through the
+          // page gutter so the scrollport is the whole screen instead of the
+          // 343px left inside two 16px margins, and the Name cell is sticky
+          // (below) so you always know whose row you are reading.
+          <div className="border-border bg-card -mx-4 mt-4 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
+            <div className="overflow-x-auto">
               {/* TWO BLOCKS, left to right (Pato, 2026-08-29). PIPELINE —
                   Active · Listed · Requested · Enriched · Enriching ·
                   Verified — answers "how far along is it". COMMERCIAL —
@@ -298,8 +303,16 @@ export function PlaceSelectCatalog() {
               <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
-                    <th className="w-14 px-4 py-3 font-semibold">Photo</th>
-                    <th className="px-4 py-3 font-semibold">Name</th>
+                    {/* The thumbnail is the one column a phone can spare —
+                        it identifies nothing the name does not, and dropping
+                        it lets Name pin to the left edge at offset 0 without
+                        having to measure the cell before it. */}
+                    <th className="hidden w-14 px-4 py-3 font-semibold sm:table-cell">
+                      Photo
+                    </th>
+                    <th className={`px-4 py-3 font-semibold ${STICKY_COL_HEAD}`}>
+                      Name
+                    </th>
                     <th className="px-4 py-3 text-center font-semibold">Active</th>
                     <th className="px-4 py-3 text-center font-semibold">Listed</th>
                     <th className="px-4 py-3 text-center font-semibold">Requested</th>
@@ -474,10 +487,12 @@ function PlaceCatalogRow({
         (disabled ? "pointer-events-none opacity-50" : "")
       }
     >
-      <td className="px-4 py-3.5">
+      <td className="hidden px-4 py-3.5 sm:table-cell">
         <PlaceThumb photo={place.photo} name={place.name} size="md" />
       </td>
-      <td className="max-w-[260px] px-4 py-3.5">
+      {/* Pinned while the status columns scroll past it on a phone; a plain
+          cell again from `sm`, where the whole table fits the column. */}
+      <td className={`max-w-[60vw] px-4 py-3.5 sm:max-w-[260px] ${STICKY_COL_CELL}`}>
         <p className="truncate font-semibold">{googleName}</p>
       </td>
       <td className="px-4 py-3.5 text-center">

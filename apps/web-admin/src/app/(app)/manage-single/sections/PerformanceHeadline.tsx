@@ -118,7 +118,7 @@ export function PerformanceHeadline({ stats }: { stats: PlaceStats }) {
         </span>
       </div>
 
-      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto scrollbar-none">
         <Figure
           label="Influenced spend"
           value={mxn(stats.influencedCents)}
