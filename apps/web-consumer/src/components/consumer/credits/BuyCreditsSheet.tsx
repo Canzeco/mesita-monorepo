@@ -7,8 +7,11 @@ import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { formatCurrency } from "@/lib/api/profile";
 import {
   bonusFor,
+  bonusPctFor,
   CREDIT_PLACES,
   formatUnlock,
+  holdHoursFor,
+  type ControlsPolicy,
   type CreditPlace,
 } from "@/lib/mock/credits-mock";
 import { cn } from "@/lib/utils";
@@ -16,11 +19,15 @@ import { cn } from "@/lib/utils";
 // Buy Credits at a place.
 //
 // The sheet's job is to make the TRADE legible, because the trade is the whole
-// model: the place sets a bonus AND a lock, and the two move together. Pangea
-// pays 25% and holds the money three days; Café Nueve pays 5% and holds it
-// half a day. Seeing those side by side is what shows a prepay is a term
-// deposit rather than a discount at the table — the place is buying float, and
-// the bonus is the rate it pays for it.
+// model: a bonus AND a hold, moving together. Cabaret pays 25% and holds the
+// money three days; a place that has set nothing inherits the console default
+// and holds it three hours for 5%. Seeing those side by side is what shows a
+// prepay is a term deposit rather than a discount at the table — the place is
+// buying float, and the bonus is the rate it pays for it.
+//
+// BOTH NUMBERS ARE RESOLVED THROUGH THE POLICY, never read off the place
+// alone: `bonusPct`/`lockHours` are null on every place that has set nothing,
+// which is all of them today, and the console owns what null means.
 //
 // Preset amounts rather than a free field: this is a demo of a shape, and a
 // numeric keypad on a phone would be three taps of friction for no insight.
@@ -29,10 +36,12 @@ const AMOUNTS = [50_000, 100_000, 200_000];
 
 function PlaceRow({
   place,
+  policy,
   selected,
   onSelect,
 }: {
   place: CreditPlace;
+  policy: ControlsPolicy;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -53,7 +62,8 @@ function PlaceRow({
           {place.name}
         </span>
         <span className="text-muted-foreground block text-xs">
-          +{place.bonusPct}% · locked {formatUnlock(place.lockHours)}
+          +{bonusPctFor(place, policy)}% · held{" "}
+          {formatUnlock(holdHoursFor(place, policy))}
         </span>
       </span>
     </button>
@@ -65,17 +75,20 @@ export function BuyCreditsSheet({
   onClose,
   onBuy,
   busy,
+  policy,
 }: {
   open: boolean;
   onClose: () => void;
   onBuy: (placeId: string, paidCents: number) => Promise<boolean>;
   busy: boolean;
+  /** Console-owned terms. A place's own values win where it set them. */
+  policy: ControlsPolicy;
 }) {
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [paidCents, setPaidCents] = useState<number>(AMOUNTS[1]);
 
   const place = CREDIT_PLACES.find((p) => p.id === placeId) ?? null;
-  const bonus = place ? bonusFor(paidCents, place.bonusPct) : 0;
+  const bonus = place ? bonusFor(paidCents, bonusPctFor(place, policy)) : 0;
 
   async function submit() {
     if (!place) return;
@@ -100,6 +113,7 @@ export function BuyCreditsSheet({
                 <PlaceRow
                   key={p.id}
                   place={p}
+                  policy={policy}
                   selected={p.id === placeId}
                   onSelect={() => setPlaceId(p.id)}
                 />
@@ -141,7 +155,8 @@ export function BuyCreditsSheet({
               </div>
               <div className="text-muted-foreground mt-1 text-xs">
                 {formatCurrency(paidCents)} paid, +{formatCurrency(bonus)} from{" "}
-                {place.name} · unlocks in {formatUnlock(place.lockHours)}
+                {place.name} · unlocks in{" "}
+                {formatUnlock(holdHoursFor(place, policy))}
               </div>
             </div>
           )}

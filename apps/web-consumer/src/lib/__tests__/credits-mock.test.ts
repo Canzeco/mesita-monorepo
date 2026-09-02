@@ -12,14 +12,25 @@ import {
 } from "@/lib/mock/credits-emulator";
 import {
   bonusFor,
+  bonusPctFor,
+  CONTROLS_FALLBACK,
   CREDIT_PLACES,
   formatUnlock,
+  holdHoursFor,
   HOUR_MS,
   hoursUntil,
   isLocked,
-  placeById,
   spendableCents,
 } from "@/lib/mock/credits-mock";
+
+// The console-owned terms every rule below resolves against. A place's own
+// bonusPct/lockHours are null unless it set them, and what null MEANS is this.
+const POLICY = CONTROLS_FALLBACK;
+
+// One place that inherits both terms (what every place does today) and one
+// that overrides both (so the ladder is exercised at all).
+const INHERITS = CREDIT_PLACES[0];
+const OVERRIDES = CREDIT_PLACES[3];
 
 // Guards for the /credits emulator (MESITA-1380).
 //
@@ -61,51 +72,138 @@ describe("seed", () => {
     expect(freshState(T0, "empty").balances).toEqual([]);
   });
 
+  // The fixture holds REAL public.places rows now, so this can only assert
+  // against the longest name the catalog actually has (26, "Tony's Tacos Valle
+  // Oriente"). The point is unchanged: the seed must contain a name that
+  // overflows the peek strip, so truncation shows up in review rather than in
+  // production. Raise this if a longer place is ever swapped in; never lower
+  // it to make a shorter fixture pass.
   it("carries a name long enough to prove truncation in review", () => {
     const longest = Math.max(
       ...seeded().balances.map((b) => b.placeName.length),
     );
-    expect(longest).toBeGreaterThanOrEqual(30);
+    expect(longest).toBeGreaterThanOrEqual(24);
+  });
+
+  it("carries card art, so the photo face is the one under test", () => {
+    expect(seeded().balances.every((b) => !!b.photoUrl)).toBe(true);
   });
 });
 
 describe("the bonus ladder", () => {
   // The shape is the model: a place pays more for holding the money longer.
-  it("pays more the longer the lock", () => {
-    const byLock = [...CREDIT_PLACES].sort((a, b) => a.lockHours - b.lockHours);
-    for (let i = 1; i < byLock.length; i += 1) {
-      expect(byLock[i].bonusPct).toBeGreaterThanOrEqual(byLock[i - 1].bonusPct);
+  // Resolved through the policy, because both terms are null on any place that
+  // has not set them and the console decides what null is worth.
+  it("pays more the longer the hold", () => {
+    const byHold = [...CREDIT_PLACES].sort(
+      (a, b) => holdHoursFor(a, POLICY) - holdHoursFor(b, POLICY),
+    );
+    for (let i = 1; i < byHold.length; i += 1) {
+      expect(bonusPctFor(byHold[i], POLICY)).toBeGreaterThanOrEqual(
+        bonusPctFor(byHold[i - 1], POLICY),
+      );
     }
+  });
+
+  it("a place that set nothing inherits the console default", () => {
+    expect(INHERITS.lockHours).toBeNull();
+    expect(INHERITS.bonusPct).toBeNull();
+    expect(holdHoursFor(INHERITS, POLICY)).toBe(POLICY.defaultHoldHours);
+    expect(bonusPctFor(INHERITS, POLICY)).toBe(POLICY.defaultBonusPct);
+  });
+
+  it("a place that set its own terms keeps them", () => {
+    expect(holdHoursFor(OVERRIDES, POLICY)).toBe(OVERRIDES.lockHours);
+    expect(bonusPctFor(OVERRIDES, POLICY)).toBe(OVERRIDES.bonusPct);
+  });
+
+  it("the shipped default hold is three hours", () => {
+    expect(POLICY.defaultHoldHours).toBe(3);
   });
 });
 
 describe("buy", () => {
-  it("credits the bonus and locks for the place's own window", () => {
-    const place = placeById("plc_pangea")!;
+  it("credits the bonus and holds for the place's own window", () => {
+    const place = OVERRIDES;
     const r = buy(freshState(T0, "empty"), {
       placeId: place.id,
       paidCents: 100_000,
       nowMs: T0,
       balanceId: "bal_x",
       activityId: "act_x",
+      policy: POLICY,
     });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const b = r.value.balances[0];
-    expect(b.balanceCents).toBe(100_000 + bonusFor(100_000, place.bonusPct));
+    expect(b.balanceCents).toBe(
+      100_000 + bonusFor(100_000, bonusPctFor(place, POLICY)),
+    );
     expect(b.paidCents).toBe(100_000);
-    expect(hoursUntil(b, T0)).toBeCloseTo(place.lockHours, 5);
+    expect(hoursUntil(b, T0)).toBeCloseTo(holdHoursFor(place, POLICY), 5);
     expect(spendableCents(b, T0)).toBe(0);
+  });
+
+  it("a place with no terms of its own is held for the console default", () => {
+    const r = buy(freshState(T0, "empty"), {
+      placeId: INHERITS.id,
+      paidCents: 100_000,
+      nowMs: T0,
+      balanceId: "bal_y",
+      activityId: "act_y",
+      policy: POLICY,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(hoursUntil(r.value.balances[0], T0)).toBeCloseTo(3, 5);
+  });
+
+  it("a console change reprices the NEXT top-up, not one already bought", () => {
+    const generous = { defaultHoldHours: 1, defaultBonusPct: 50 };
+    const before = buy(freshState(T0, "empty"), {
+      placeId: INHERITS.id,
+      paidCents: 100_000,
+      nowMs: T0,
+      balanceId: "b1",
+      activityId: "a1",
+      policy: POLICY,
+    });
+    if (!before.ok) return;
+    // The stored balance keeps the terms it was bought under.
+    expect(before.value.balances[0].bonusPct).toBe(POLICY.defaultBonusPct);
+    const after = buy(before.value, {
+      placeId: OVERRIDES.id,
+      paidCents: 100_000,
+      nowMs: T0,
+      balanceId: "b2",
+      activityId: "a2",
+      policy: generous,
+    });
+    if (!after.ok) return;
+    expect(after.value.balances[0].bonusPct).toBe(POLICY.defaultBonusPct);
+  });
+
+  it("carries the place's photo onto the balance for the card art", () => {
+    const r = buy(freshState(T0, "empty"), {
+      placeId: INHERITS.id,
+      paidCents: 100_000,
+      nowMs: T0,
+      balanceId: "b",
+      activityId: "a",
+      policy: POLICY,
+    });
+    if (!r.ok) return;
+    expect(r.value.balances[0].photoUrl).toBe(INHERITS.photoUrl);
   });
 
   it("rejects an unknown place and a non-positive amount", () => {
     const s = freshState(T0, "empty");
-    const base = { nowMs: T0, balanceId: "b", activityId: "a" };
+    const base = { nowMs: T0, balanceId: "b", activityId: "a", policy: POLICY };
     expect(buy(s, { ...base, placeId: "nope", paidCents: 1000 })).toEqual({
       ok: false,
       error: "unknown-place",
     });
-    expect(buy(s, { ...base, placeId: "plc_lardo", paidCents: 0 })).toEqual({
+    expect(buy(s, { ...base, placeId: INHERITS.id, paidCents: 0 })).toEqual({
       ok: false,
       error: "amount-not-positive",
     });
@@ -114,21 +212,23 @@ describe("buy", () => {
   it("tops up an existing balance instead of opening a second one at one place", () => {
     let s = freshState(T0, "empty");
     const first = buy(s, {
-      placeId: "plc_lardo",
+      placeId: INHERITS.id,
       paidCents: 50_000,
       nowMs: T0,
       balanceId: "b1",
       activityId: "a1",
+      policy: POLICY,
     });
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     s = first.value;
     const second = buy(s, {
-      placeId: "plc_lardo",
+      placeId: INHERITS.id,
       paidCents: 50_000,
       nowMs: T0 + HOUR_MS,
       balanceId: "b2",
       activityId: "a2",
+      policy: POLICY,
     });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
@@ -137,7 +237,7 @@ describe("buy", () => {
   });
 
   it("RE-LOCKS on top-up — new money cannot hide behind a matured balance", () => {
-    const place = placeById("plc_lardo")!;
+    const place = INHERITS;
     let s = freshState(T0, "empty");
     const first = buy(s, {
       placeId: place.id,
@@ -145,6 +245,7 @@ describe("buy", () => {
       nowMs: T0,
       balanceId: "b1",
       activityId: "a1",
+      policy: POLICY,
     });
     if (!first.ok) return;
     s = first.value;
@@ -157,11 +258,12 @@ describe("buy", () => {
       nowMs: later,
       balanceId: "b2",
       activityId: "a2",
+      policy: POLICY,
     });
     if (!second.ok) return;
     expect(isLocked(second.value.balances[0], later)).toBe(true);
     expect(hoursUntil(second.value.balances[0], later)).toBeCloseTo(
-      place.lockHours,
+      holdHoursFor(place, POLICY),
       5,
     );
   });
@@ -170,11 +272,12 @@ describe("buy", () => {
 describe("spend", () => {
   function matured(): CreditsState {
     const r = buy(freshState(T0, "empty"), {
-      placeId: "plc_cafe",
+      placeId: INHERITS.id,
       paidCents: 100_000,
       nowMs: T0,
       balanceId: "b1",
       activityId: "a1",
+      policy: POLICY,
     });
     if (!r.ok) throw new Error("seed failed");
     return r.value;

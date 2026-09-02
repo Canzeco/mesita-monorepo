@@ -8,7 +8,7 @@ import { PlacePickList } from "@/components/consumer/rewards/PlacePickList";
 import { SavingsReveal } from "@/components/consumer/rewards/SavingsReveal";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { type ConsumerTicketRow } from "@/lib/api/tickets";
-import { CONSUMER_ROUTES, visitPath } from "@/lib/consumer-route-contract";
+import { visitPath } from "@/lib/consumer-route-contract";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -128,32 +128,22 @@ export function NewVisitClient({ userId }: { userId: string }) {
           placeholder="Find the place you're at…"
         />
 
-        {/* The tab track is GONE (Pato, 2026-08-16: "move the visits history
-            there"). History moved to Inbox › Visits, which leaves this tab with
-            exactly one job — pick a place and start a visit — and no switcher
-            to justify. A one-tab tab bar is chrome pretending to be a control.
+        {/* THE FORWARDING BANNER IS GONE (Pato, 2026-09-01). A line reading
+            "Your visit history lives in Activity" sat here from 2026-08-16,
+            when History moved out of this tab. That is a one-time message, and
+            it was holding permanent real estate on the one surface a guest
+            opens while standing at a table — two weeks after the last person
+            who could have been looking for the old tab stopped looking.
 
-            The pointer stays because a feature that MOVED needs a forwarding
-            address; anyone who knew History lived here has to be told where it
-            went, once, in the place they'll look. It therefore has to say
-            HISTORY: the label read "Your visits live in Inbox", which names
-            the destination but not the thing that moved, so the one reader it
-            exists for — someone hunting the History tab — had nothing to
-            match on. */}
+            The LIVE TICKET row stays, and is the only thing that earns this
+            slot: it is time-critical, it appears only when there is something
+            to show, and it is the moment this product exists for.
+
+            This does NOT restore the Open chip. The chip was a badge on a
+            place ROW inside the list — same tap target class as "start a visit
+            here", which is why it went. This is one row in the header, above
+            the list, that navigates and cannot create anything. */}
         {liveTicket ? (
-          /* A LIVE TICKET OUTRANKS THE POINTER (2026-09-01).
-
-             This does NOT restore the Open chip. The chip was a badge on a
-             place ROW inside the list — same tap target class as "start a
-             visit here", which is why it went. This is one row in the header,
-             above the list, that navigates and cannot create anything.
-
-             The case for it: the guest standing at a table with an open
-             ticket is the moment this product exists for, and until now the
-             ticket was two taps deep in Activity while Pay showed them a list
-             to start a SECOND one. Time-critical beats passive for the one
-             piece of permanent real estate on this surface. The pointer below
-             is passive by definition, so it yields. */
           <Link
             href={visitPath(liveTicket.id)}
             className="border-primary/25 bg-primary/8 hover:bg-primary/12 mt-2 flex items-center gap-2 rounded-xl border px-3 py-2 transition active:scale-[0.99]"
@@ -171,15 +161,7 @@ export function NewVisitClient({ userId }: { userId: string }) {
             </span>
             <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
           </Link>
-        ) : (
-          <Link
-            href={CONSUMER_ROUTES.inbox.visits}
-            className="text-muted-foreground hover:text-foreground mt-2 flex items-center justify-center gap-1 text-xs font-semibold transition"
-          >
-            Your visit history lives in Activity
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        )}
+        ) : null}
       </div>
 
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col gap-3.5 overflow-y-auto px-4 pt-4 pb-6">
