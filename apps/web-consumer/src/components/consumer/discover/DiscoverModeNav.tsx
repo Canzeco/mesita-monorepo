@@ -42,7 +42,7 @@ import { usePathname } from "next/navigation";
 import {
   Flame,
   Heart,
-  LayoutGrid,
+  House,
   Search,
   Sparkles,
   type LucideIcon,
@@ -80,7 +80,7 @@ type Mode = {
 // scan, a name you type, a deck you flick, a question you ask, a list you
 // already curated.
 export const MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.home, label: "Home", Icon: LayoutGrid },
+  { href: CONSUMER_ROUTES.discoverTabs.home, label: "Home", Icon: House },
   { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
