@@ -6,8 +6,11 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: two subpages. Mode → what it can answer with → sources it may
-// call → signals. Index redirects to Modes. The locked matrix is on Modes.
+// Live HTML: two subpages — DISCOVERY MODES and SEARCH SOURCES. Mode →
+// what it can answer with → sources it may call → signals. Index redirects
+// to Modes. The locked matrix is on Modes. The second tab says Search, not
+// Discovery (Pato, 2026-09-02): all nine Sources are searches, and the
+// matrix band already read Search Sources. The route stays /sources.
 //
 //   MODES     General · Word (Fast) · Word (Deep) · Map · Catalog · Swipe ·
 //             Chat · Favorites. Each card shows locked source chips. Word
@@ -20,18 +23,21 @@
 //             are per scope, not a sum. Chat calls Text Search, Nearby, and
 //             the two Flexible sources. Favorites calls no source and gates
 //             on no pool — bookmarks may include Mesita Listed Create stubs
-//             (not enriched). Google category knobs live on Sources, not
-//             here. General sits first, under the matrix: the post-Google
-//             wipe (Active + a review floor) every mode runs on what a
-//             Google Places query returned.
+//             (not enriched). Google category knobs live on Search
+//             Sources, not here. General sits first, under the matrix:
+//             the post-Google wipe (Active + a review floor) every mode
+//             runs on what a Google Places query returned.
 //   ENTITIES  what a mode can answer with: Places always, Locations on Word
 //             only. Autocomplete is the one source that returns regions and
 //             cities, in the SAME call as the venues.
-//   SOURCES   Google types strip (categoryCount + type batteries, one list
-//             written onto Fast / Deep / Map) · the three Google Places
-//             searches · the four Mesita Places searches (Name · Nearby ·
-//             Browse · Flexible) · the two Mesita Social searches (Browse ·
-//             Flexible), all six Mesita ones Soon.
+//   SOURCES   the Search Sources subpage: Google types strip (categoryCount
+//             + type batteries, one list written onto Fast / Deep / Map) ·
+//             the three Google Places searches · the four Mesita Places
+//             searches (Name · Nearby · Browse · Flexible) · the two Mesita
+//             Social searches (Browse · Flexible). Mesita Places Name and
+//             Nearby are live without knobs of their own — their counts sit
+//             on the Word and Map mode boxes — so the four Soon boxes are
+//             Browse, Flexible, and both Social ones.
 //   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
 //             Timing · Mesita Level · Popularity · Randomness. Slotting
 //             stays a post-blend position pass. Old `semantic` folds to
@@ -557,7 +563,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other Lineup signals are not a Deep input. Google types live on Sources.",
+    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other Lineup signals are not a Deep input. Google types live on Search Sources.",
     output: "The right place.",
     state: "LIVE",
     wired: null,

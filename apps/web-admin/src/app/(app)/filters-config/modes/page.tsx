@@ -13,10 +13,10 @@ import { DEFAULT_CONFIG } from "../catalog";
 // post-Google wipe every mode runs), then one card per mode with locked
 // source chips, in section 8.1 order: Word · Map · Catalog · Swipe · Chat ·
 // Favorites. Word is one mode with two live boxes. Google types live on
-// Sources.
+// Search Sources, the other subpage.
 export const dynamic = "force-dynamic";
 
-export default async function SearchModesPage() {
+export default async function DiscoveryModesPage() {
   const seed = await getDiscoveryConfig();
   const initialConfig = seed.ok ? seed.config : DEFAULT_CONFIG;
   const initialUpdatedAt = seed.ok ? seed.updatedAt : null;

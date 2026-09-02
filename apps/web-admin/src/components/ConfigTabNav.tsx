@@ -11,7 +11,7 @@ type ConfigSubRoute = {
 };
 
 // Shared tab strip for config pages that have subpages (Discovery:
-// Discovery Modes · Discovery Sources). One row of underline tabs, one
+// Discovery Modes · Search Sources). One row of underline tabs, one
 // per subroute. Matches the tablist styling used across the admin console.
 export function ConfigTabNav({
   ariaLabel,
