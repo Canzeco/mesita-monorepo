@@ -400,21 +400,28 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map puts the query pill and Filters button on one row", () => {
-  it("cuts the nearby catalog from the Filters sheet, not a chrome Category strip", () => {
+describe("Search map's top row is the query bar ALONE", () => {
+  it("renders no Filters control and reads the DEFAULTS, not the guest store", () => {
     const src = read("SearchClient.tsx");
+    // The control is gone from the page (Pato, 2026-09-02).
+    expect(src).not.toContain("SearchFilterRow");
+    expect(src).not.toContain("SearchMapFilters");
+    expect(src).not.toContain("mapFilterCount");
+    expect(src).not.toContain("setFiltersOpen");
+    // And so is the READ of the persisted store. This is the half that would
+    // rot silently: the store lives in sessionStorage, so deleting only the
+    // button would leave whatever was last applied cutting the catalog with
+    // nothing on screen to clear it.
+    expect(src).not.toContain("useMapFilters");
+    expect(src).not.toContain("resetMapFilters");
+    expect(src).not.toContain("mapFiltersAreActive");
+    expect(src).toContain("MAP_FILTER_DEFAULTS");
+    // The default lane cut and the closest-N slice both stay — they are the
+    // mode's own defaults, not a filter a guest switched on.
     expect(src).toContain("applyMapFilters");
-    expect(src).toContain("useMapFilters");
-    expect(src).toContain("SearchMapFilters");
-    expect(src).toContain("SearchFilterRow");
+    expect(src).toContain("takeMapResultLimit");
     expect(src).not.toContain("SearchCategoryRow");
     expect(src).not.toContain("familyKeys={filters.familyKeys}");
-    expect(src).toContain("mapFilterCount");
-    expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
-    // The search bar is back on this row and Filters sits beside it, which is
-    // what the describe() above has always claimed. ONE row, not two stacked
-    // bands: this mode is the app's landing surface, so a second full-width
-    // band would letterbox the pins on a 375px phone.
     expect(src).toContain("flex min-w-0 items-center gap-2");
     expect(src).toContain("<SearchBar");
     expect(src).not.toContain("flex min-w-0 items-center justify-end");

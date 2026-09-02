@@ -56,7 +56,6 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   buildSearchMapPins,
@@ -70,13 +69,9 @@ import { SearchBar } from "./SearchBar";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   applyMapFilters,
-  mapFilterCount,
-  mapFiltersAreActive,
+  MAP_FILTER_DEFAULTS,
   takeMapResultLimit,
 } from "@/lib/map-filters-engine";
-import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
-import { SearchFilterRow } from "./SearchFilterRow";
-import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import {
   SearchRailOverlay,
@@ -163,8 +158,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const filters = useMapFilters();
+  // THE FILTERS CONTROL IS GONE FROM SEARCH (Pato, 2026-09-02). The bar and
+  // the map are the surface; a second control competing with them on the one
+  // row this mode can spend on chrome was not earning it.
+  //
+  // Search reads the DEFAULTS, not the guest store, and that is the whole
+  // point: the store persists in sessionStorage, so deleting only the button
+  // would have left whatever was last applied cutting the catalog forever
+  // with nothing on screen to clear it — an invisible filter is worse than a
+  // visible one. Swipe keeps its own predicates sheet; that store is separate.
+  const filters = MAP_FILTER_DEFAULTS;
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
@@ -176,13 +179,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  // Closest first by distance_km, then How many keeps 20 / 40 / 60.
+  // Closest first by distance_km, then the default How many keeps 20. The
+  // lane cut stays: default scope is Mesita Places, and that is the mode's
+  // own default, not something a guest switched on and can no longer see.
   const catalog = useMemo(() => {
     const cut = applyMapFilters(nearby, filters);
     return takeMapResultLimit(cut, filters.resultLimit);
   }, [nearby, filters]);
-  const filtersCutCatalog =
-    nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
@@ -724,19 +727,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — the search bar, then Filters beside it.
+      {/* Floating top overlay — the search bar, and nothing beside it.
 
-          ONE ROW, not two. This mode is the app's landing surface, so every
-          pixel it spends on chrome is map a guest does not see: the mode rail
-          is already above, the catalog rail is already below, and a second
-          full-width band here would letterbox the pins on a 375px phone.
+          ONE ROW, and now ONE CONTROL (Pato, 2026-09-02). This mode is the
+          app's landing surface, so every pixel it spends on chrome is map a
+          guest does not see: the mode rail is already above and the catalog
+          rail is already below.
 
-          The bar takes the width and Filters keeps its label on the right —
-          it was widened deliberately (Pato: "filters button must be more
-          visible") because a translucent disc is camouflage on a pale
-          basemap. The bar sits on the same solid `bg-card` for the same
-          reason; a white-on-white field would undo that fix for a new
-          control. */}
+          Filters used to sit here, and the escalation is the tell — it went
+          icon-only, then took its label, then went primary-filled to be
+          seen. A control that has to keep shouting next to the one thing the
+          guest actually came to use is competing with it, not supporting it.
+          The bar now takes the full width. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <div className="min-w-0 flex-1">
@@ -748,10 +750,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               placeholder="Search places by name…"
             />
           </div>
-          <SearchFilterRow
-            count={mapFilterCount(filters)}
-            onOpenFilters={() => setFiltersOpen(true)}
-          />
         </div>
 
         {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
@@ -810,23 +808,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onRailScroll={handleRailScroll}
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}
-          onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
           setRailCardRef={(placeId, el) => {
             railRefs.current.set(placeId, el);
           }}
         />
       )}
-
-      <LocalSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        ariaLabel="Filters"
-      >
-        <SearchMapFilters
-          onClose={() => setFiltersOpen(false)}
-          count={catalog.length}
-        />
-      </LocalSheet>
 
       {/* From-Google preview + Add. NOT search chrome: the catalog carries
           Google-only places (grey pins), so a pin or rail-card tap reaches
