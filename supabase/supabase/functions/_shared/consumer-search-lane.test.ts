@@ -388,8 +388,8 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
   ]);
 });
 
-Deno.test("Deep mask never calls randomness · proximity · timing", () => {
-  const deep = weightsForMode("deep", DISCOVERY_DEFAULTS.weights);
+Deno.test("Word mask never calls randomness · proximity · timing", () => {
+  const deep = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
   assertEquals(deep.name > 0, true);
   for (const key of ["randomness", "proximity", "timing", "summary"] as const) {
     assertEquals(deep[key], 0);

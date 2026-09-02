@@ -6,38 +6,38 @@
 // signal is a code change in both packages — deliberately, because a signal
 // nobody wrote has nothing to score.
 //
-// Live HTML: two subpages. Mode → what it can answer with → modules it may
-// call → Places Lineup signals. Index redirects to Modes. The locked matrix
-// is on Modes.
+// Live HTML: two subpages. Mode → what it can answer with → sources it may
+// call → signals. Index redirects to Modes. The locked matrix is on Modes.
 //
-//   MODES     General · Name (Fast) · Name (Deep) · Map · Swipe · Catalog · Chat ·
-//             Social · Favorites. Each card shows locked module chips.
-//             Fast is Autocomplete only. Deep concatenates Autocomplete,
-//             Text Search, Mesita Places, and Mesita Partners (Name on
-//             Mesita `places.name`, never `google_name`). Deep never
-//             calls Nearby Search. Map loads closest N of the selected
-//             Places set (Partners ⊂ Mesita ⊂ Google); inner membership
-//             paints, it does not add pins. Caps are per scope, not a sum.
-//             Chat calls Text Search, Nearby, both Perplexity modules,
-//             and Places Lineup — not Social Lineup. Favorites calls
-//             no module and gates on no pool — bookmarks may include
-//             Mesita Listed Create stubs (not enriched). Google
-//             category knobs live on Modules, not here. General sits first,
-//             under the matrix: the post-Google wipe (Active + a review
-//             floor) every mode runs on what a Google Places query returned.
-//   ENTITIES  what a mode can answer with: Places always, Locations on
-//             Fast and Deep only. Autocomplete is the one module that
-//             returns regions and cities, in the SAME call as the venues.
-//   MODULES   Google types strip (categoryCount + type batteries, one
-//             list written onto Fast / Deep / Map) · Autocomplete ·
-//             Text Search · Nearby · Perplexity Search · Perplexity
-//             Agent · Mesita Places Lineup · Social Lineup Soon.
-//   LINEUP    eight earned signals: Name · Summary · Proximity · Timing ·
-//             Category · Popularity · Mesita Level · Randomness.
-//             Slotting stays a post-blend position pass. Old `semantic`
-//             folds to Summary. Partnership and Promotion merged into
-//             Mesita Level, and Social left the library — Social Lineup
-//             is still a MODULE and Social is still a MODE (MESITA-1408).
+//   MODES     General · Word (Fast) · Word (Deep) · Map · Catalog · Swipe ·
+//             Chat · Favorites. Each card shows locked source chips. Word
+//             is ONE mode with two passes: Fast is Autocomplete only, Deep
+//             concatenates Autocomplete, Text Search, Mesita Places, and
+//             Mesita Partners (Name on Mesita `places.name`, never
+//             `google_name`). Word never calls Nearby Search. Map loads
+//             closest N of the selected Places set (Partners ⊂ Mesita ⊂
+//             Google); inner membership paints, it does not add pins. Caps
+//             are per scope, not a sum. Chat calls Text Search, Nearby, and
+//             the two Flexible sources. Favorites calls no source and gates
+//             on no pool — bookmarks may include Mesita Listed Create stubs
+//             (not enriched). Google category knobs live on Sources, not
+//             here. General sits first, under the matrix: the post-Google
+//             wipe (Active + a review floor) every mode runs on what a
+//             Google Places query returned.
+//   ENTITIES  what a mode can answer with: Places always, Locations on Word
+//             only. Autocomplete is the one source that returns regions and
+//             cities, in the SAME call as the venues.
+//   SOURCES   Google types strip (categoryCount + type batteries, one list
+//             written onto Fast / Deep / Map) · the three Google Places
+//             searches · the four Mesita Places searches (Name · Nearby ·
+//             Browse · Flexible) · the two Mesita Social searches (Browse ·
+//             Flexible), all six Mesita ones Soon.
+//   SIGNALS   eight earned signals: Name · Summary · Category · Proximity ·
+//             Timing · Mesita Level · Popularity · Randomness. Slotting
+//             stays a post-blend position pass. Old `semantic` folds to
+//             Summary. Partnership and Promotion merged into Mesita Level
+//             and Social left the library (MESITA-1408); Social then left
+//             the mode list too, and is now two Sources.
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -45,11 +45,11 @@
 export const SIGNAL_KEYS = [
   "name",
   "summary",
+  "category",
   "proximity",
   "timing",
-  "category",
-  "popularity",
   "mesita_level",
+  "popularity",
   "randomness",
 ] as const;
 
@@ -294,7 +294,7 @@ export const CHAT_CONNECTIONS = [
   {
     name: "Perplexity (web search)",
     status: "Soon",
-    note: "Perplexity Search API — ranked web results. Agent is its own module.",
+    note: "Perplexity Search API — ranked web results. Agent is a second connection. Neither is a Source.",
   },
   {
     name: "Internal search EFs",
@@ -557,7 +557,7 @@ export const ENGINES: {
     label: "Name",
     fn: "name()",
     input: "A string + optional country + guest pin.",
-    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other Lineup signals are not a Deep input. Google types live on Modules.",
+    process: "Fast: Autocomplete only. Deep: four independent query caps, then concat. Autocomplete → Text Search → Mesita Places → Mesita Partners. Overlaps drop; first query keeps the slot. Caps are per query, not nested. Deep never calls Nearby Search. A Google hit that resolves to Mesita stays in its Google query. Places Lineup Name (`places.name`, not `google_name`). Map Filters never cut this list. Lineup Summary and the other Lineup signals are not a Deep input. Google types live on Sources.",
     output: "The right place.",
     state: "LIVE",
     wired: null,
@@ -584,9 +584,9 @@ export const ENGINES: {
  * broken, it is abstaining, and the enrichment queue's semantic `summary`
  * function is what fixes that.
  *
- * `engines` names where the exponent is felt TODAY. Map, Deep, and Swipe
- * read weightsForMode. Catalog / Chat / Social stay pending. Weights on
- * a red matrix cell are 0 for that mode.
+ * `engines` names where the exponent is felt TODAY. Map, Word, and Swipe
+ * read weightsForMode. Catalog and Chat stay pending. Weights on a red
+ * matrix cell are 0 for that mode.
  */
 const UNIT: ParamField[] = [];
 const ZERO_ONE = (key: string, label: string): ParamField => ({
@@ -618,43 +618,53 @@ const HIDDEN_FIELD: Record<string, Pick<ParamField, "min" | "max" | "step">> = {
 };
 
 /**
- * Mesita Places Lineup order — Notion Docs › Discovery §8.3.
+ * Signal order — Notion Docs > Discovery section 8.3. What the caller ASKED
+ * FOR first, then what the world is, then where the place sits with us, then
+ * the tie-breaker. Presentation only: the blend is a product, so order cannot
+ * change a score.
  */
 export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "name" as const },
   { kind: "signal" as const, key: "summary" as const },
+  { kind: "signal" as const, key: "category" as const },
   { kind: "signal" as const, key: "proximity" as const },
   { kind: "signal" as const, key: "timing" as const },
-  { kind: "signal" as const, key: "category" as const },
-  { kind: "signal" as const, key: "popularity" as const },
   { kind: "signal" as const, key: "mesita_level" as const },
+  { kind: "signal" as const, key: "popularity" as const },
   { kind: "signal" as const, key: "randomness" as const },
 ] as const;
 
 // Twin of `supabase/functions/_shared/discovery-matrix.ts`. Spec mirror,
 // not a dispatcher. Change one, change the other. Vercel root is
 // apps/web-admin, so this bundle cannot import the EF file.
+//
+// TWO NOUNS, AND ONLY TWO: a **Mode** is a guest Discovery surface, a
+// **Source** is a retrieval mechanism a mode calls. `module` is retired —
+// these things do not modularize anything, they fetch, and *modo / módulo*
+// differ by two letters in the language the team speaks.
+//
+// SIX MODES (Docs > Discovery section 8.1). Name (Fast) and Name (Deep) are
+// one mode now, **Word**: the searchbar, both its passes, and the only mode
+// that can answer with a Location. Word and Map share a screen and are still
+// two modes, because they answer with different sets from different sources.
+// **Social left the mode list**; its retrieval survives as two Sources.
 export const DISCOVERY_MODE_KEYS = [
-  "fast",
-  "deep",
+  "word",
   "map",
-  "swipe",
   "catalog",
+  "swipe",
   "chat",
-  "social",
   "favorites",
 ] as const;
 
 export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
 
 export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
-  fast: "Name (Fast)",
-  deep: "Name (Deep)",
+  word: "Word",
   map: "Map",
-  swipe: "Swipe",
   catalog: "Catalog",
+  swipe: "Swipe",
   chat: "Chat",
-  social: "Social",
   favorites: "Favorites",
 };
 
@@ -672,24 +682,21 @@ export const DISCOVERY_ENTITIES = [
 export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
 
 /**
- * Autocomplete is the ONE module that answers with Locations, and it returns
- * them in the SAME call as the Places — not a second request. So the modes
- * that can hand back a Location are exactly the modes that call Autocomplete:
- * Name (Fast) and Name (Deep). Text Search returns Places even when the query
- * reads like a city, so Deep's Location rows only ever come from its
- * Autocomplete query.
+ * Autocomplete is the ONE source that answers with Locations, and it returns
+ * them in the SAME call as the Places — not a second request. So the mode
+ * that can hand back a Location is exactly the mode that calls Autocomplete:
+ * Word. Text Search returns Places even when the query reads like a city, so
+ * Word's Location rows only ever come from its Autocomplete query.
  */
 const DISCOVERY_MODE_ENTITIES: Record<
   DiscoveryModeKey,
   readonly DiscoveryEntityKey[]
 > = {
-  fast: ["place", "location"],
-  deep: ["place", "location"],
+  word: ["place", "location"],
   map: ["place"],
-  swipe: ["place"],
   catalog: ["place"],
+  swipe: ["place"],
   chat: ["place"],
-  social: ["place"],
   favorites: ["place"],
 };
 
@@ -706,78 +713,110 @@ const DISCOVERY_MODE_POOLS: Record<
   DiscoveryModeKey,
   readonly DiscoveryPoolKey[]
 > = {
-  fast: [],
-  deep: [],
+  word: [],
   map: [],
-  swipe: ["google", "listed"],
   catalog: ["google", "listed"],
+  swipe: ["google", "listed"],
   chat: [],
-  social: ["google", "listed"],
   favorites: ["google"],
 };
 
-/** Locked mode → modules. Chips are read-only until dispatch reads a persistable set. */
-export const DISCOVERY_MODE_MODULES = {
-  fast: ["Google Places Autocomplete"],
-  deep: [
-    "Google Places Autocomplete",
+/**
+ * The nine Sources — Docs > Discovery section 8.2. Signals are not a Source.
+ *
+ * `Search` survives on the three Google entries because it quotes endpoints
+ * Google itself named that way, and on the six Mesita entries because they
+ * are the same kind of thing: a call that returns candidates.
+ *
+ * PERPLEXITY IS NOT A SOURCE. It was on the old seven-module list twice
+ * (Search, Agent) and neither is retrieval Mesita performs — Chat has no
+ * external retrieval behind it today.
+ */
+export const DISCOVERY_SOURCES = [
+  "Google Places Autocomplete Search",
+  "Google Places Text Search",
+  "Google Places Nearby Search",
+  "Mesita Places Name Search",
+  "Mesita Places Nearby Search",
+  "Mesita Places Browse Search",
+  "Mesita Places Flexible Search",
+  "Mesita Social Browse Search",
+  "Mesita Social Flexible Search",
+] as const;
+
+/**
+ * Locked mode → sources. Chips are read-only until dispatch reads a
+ * persistable set.
+ *
+ * THE FOUR MESITA PLACES SOURCES ARE TOLD APART BY WHAT DRAWS THE CANDIDATE
+ * SET, never by what ranks it — Lineup ranks all four the same way, under the
+ * mode's own signal mask:
+ *
+ *   Name      a string, matched on `places.name_embedding`   → Word
+ *   Nearby    a centre and a radius, closest-N               → Map
+ *   Browse    no query at all, the catalog itself            → Catalog
+ *   Flexible  an arbitrary set of predicates                 → Swipe, Chat
+ *
+ * SWIPE IS FLEXIBLE, NOT BROWSE, and the difference is the guest's own filter
+ * sheet: Swipe admits on four predicates it was handed, Catalog admits on
+ * nothing and rails whatever the catalog holds.
+ *
+ * THE SOCIAL SOURCES OUTLIVED THE SOCIAL MODE. Social answers with events a
+ * place hosts, not with places, and it lost its own surface when the mode
+ * list became six — so its two sources hang off the two modes that can carry
+ * an event: Catalog rails it, Chat is asked about it. Both stay Soon; there
+ * is no events engine.
+ */
+export const DISCOVERY_MODE_SOURCES = {
+  word: [
+    "Google Places Autocomplete Search",
     "Google Places Text Search",
-    "Mesita Places Lineup",
+    "Mesita Places Name Search",
   ],
-  map: ["Google Places Nearby Search", "Mesita Places Lineup"],
-  swipe: ["Mesita Places Lineup"],
-  catalog: ["Mesita Places Lineup"],
+  map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
+  catalog: ["Mesita Places Browse Search", "Mesita Social Browse Search"],
+  swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",
     "Google Places Nearby Search",
-    "Perplexity Search",
-    "Perplexity Agent",
-    "Mesita Places Lineup",
+    "Mesita Places Flexible Search",
+    "Mesita Social Flexible Search",
   ],
-  social: ["Mesita Social Lineup"],
   favorites: [],
 } as const;
 
-/** Green circle = the mode may call that Places Lineup signal. */
+/** Green circle = the mode may call that signal. Section 8.3 order. */
 const DISCOVERY_MODE_SIGNALS: Record<
   DiscoveryModeKey,
   readonly SignalKey[]
 > = {
-  fast: [],
-  deep: ["name"],
-  map: [
+  word: ["name"],
+  map: ["category", "proximity", "timing", "mesita_level", "popularity"],
+  catalog: [
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
-  ],
-  swipe: [
-    "proximity",
-    "timing",
-    "category",
     "popularity",
-    "mesita_level",
     "randomness",
   ],
-  catalog: [
+  swipe: [
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
+    "popularity",
     "randomness",
   ],
   chat: [
     "name",
     "summary",
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
+    "popularity",
   ],
-  social: [],
   favorites: [],
 };
 
@@ -802,8 +841,8 @@ export function modeRequiresPool(
   return DISCOVERY_MODE_POOLS[mode].includes(pool);
 }
 
-export function modeCallsModule(mode: DiscoveryModeKey, module: string): boolean {
-  return (DISCOVERY_MODE_MODULES[mode] as readonly string[]).includes(module);
+export function modeCallsSource(mode: DiscoveryModeKey, source: string): boolean {
+  return (DISCOVERY_MODE_SOURCES[mode] as readonly string[]).includes(source);
 }
 
 export function modeSignalState(
@@ -814,17 +853,6 @@ export function modeSignalState(
   if (DISCOVERY_MODE_SIGNALS[mode].includes(signal)) return "on";
   return "off";
 }
-
-/** The seven Discovery modules. Signals are not a module. */
-export const DISCOVERY_MODULES = [
-  "Google Places Autocomplete",
-  "Google Places Text Search",
-  "Google Places Nearby Search",
-  "Perplexity Search",
-  "Perplexity Agent",
-  "Mesita Places Lineup",
-  "Mesita Social Lineup",
-] as const;
 
 export const SIGNALS: {
   key: SignalKey;

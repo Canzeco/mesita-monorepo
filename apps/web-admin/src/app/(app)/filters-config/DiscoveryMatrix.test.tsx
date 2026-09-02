@@ -4,40 +4,44 @@ import { describe, expect, it } from "vitest";
 import { DiscoveryMatrix } from "./DiscoveryMatrix";
 
 describe("Discovery matrix", () => {
-  it("marks Name (Deep) × Nearby Search red — Deep does not call that API", () => {
+  it("marks Word × Nearby Search red — the guest pin is a bias, not a call", () => {
     const html = renderToStaticMarkup(<DiscoveryMatrix />);
-    expect(html).toContain(
-      "Google Places Nearby Search · Name (Deep) · off",
-    );
-    expect(html).not.toContain(
-      "Google Places Nearby Search · Name (Deep) · on",
-    );
+    expect(html).toContain("Google Places Nearby Search · Word · off");
+    expect(html).not.toContain("Google Places Nearby Search · Word · on");
     expect(html).toContain("Google Places Nearby Search · Map · on");
     expect(html).toContain(
-      "Google Places Autocomplete · Name (Deep) · on",
+      "Google Places Autocomplete Search · Word · on",
     );
-    expect(html).toContain(
-      "Google Places Text Search · Name (Deep) · on",
-    );
+    expect(html).toContain("Google Places Text Search · Word · on");
+    expect(html).toContain("Mesita Places Name Search · Word · on");
+    expect(html).toContain("Mesita Places Nearby Search · Map · on");
+    expect(html).toContain("Mesita Places Browse Search · Catalog · on");
+    expect(html).toContain("Mesita Places Flexible Search · Swipe · on");
+    expect(html).toContain("Mesita Places Flexible Search · Chat · on");
+    // Social lost its mode, not its retrieval: Catalog rails the events and
+    // Chat is asked about them.
+    expect(html).toContain("Mesita Social Browse Search · Catalog · on");
+    expect(html).toContain("Mesita Social Flexible Search · Chat · on");
     expect(html).toContain("Mesita Listed · Favorites · not required");
     expect(html).toContain("Mesita Enriched · Favorites · not required");
     expect(html).toContain("Google Places · Favorites · required");
     expect(html).toContain("border-t-2");
-    expect(html).toContain("Places Lineup Randomness · Map · off");
+    // Band title carries the class noun; the row is the bare signal name.
+    expect(html).toContain("Randomness · Map · off");
+    expect(html).not.toContain("Places Lineup Randomness");
     expect(html).not.toContain(">0</span>");
   });
 
-  it("returns Locations on the two Name modes only — Autocomplete is the one module that answers with a region", () => {
+  it("returns Locations on Word alone — Autocomplete is the one source that answers with a region", () => {
     const html = renderToStaticMarkup(<DiscoveryMatrix />);
-    expect(html).toContain("Locations · Name (Fast) · returned");
-    expect(html).toContain("Locations · Name (Deep) · returned");
-    for (const mode of ["Map", "Swipe", "Catalog", "Chat", "Social", "Favorites"]) {
+    expect(html).toContain("Locations · Word · returned");
+    for (const mode of ["Map", "Catalog", "Swipe", "Chat", "Favorites"]) {
       expect(html).toContain(`Locations · ${mode} · not returned`);
       expect(html).toContain(`Places · ${mode} · returned`);
     }
-    // Places come back everywhere, Fast and Deep included.
-    expect(html).toContain("Places · Name (Fast) · returned");
-    expect(html).toContain("Places · Name (Deep) · returned");
-    expect(html).not.toContain("Places · Name (Fast) · not returned");
+    expect(html).toContain("Places · Word · returned");
+    expect(html).not.toContain("Places · Word · not returned");
+    // Social is not a mode any more; it has no column.
+    expect(html).not.toContain("· Social ·");
   });
 });

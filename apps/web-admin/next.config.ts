@@ -25,6 +25,18 @@ const nextConfig: NextConfig = {
         destination: "/filters-config/modes",
         permanent: true,
       },
+      // `module` is retired as a Discovery noun; the subpage is Sources now.
+      // An operator's bookmark still lands on the same boxes.
+      {
+        source: "/filters-config/modules",
+        destination: "/filters-config/sources",
+        permanent: true,
+      },
+      {
+        source: "/filters-config/modules/:path*",
+        destination: "/filters-config/sources",
+        permanent: true,
+      },
     ];
   },
 };

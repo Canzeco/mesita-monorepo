@@ -1,23 +1,25 @@
 import { MapPin, Search, TextSearch } from "lucide-react";
 import { KnobStatus, SectionCard } from "@/components/admin-ui/config";
 
-// The three Google Places modules, in taxonomy order: Autocomplete ·
+// The three Google Places sources, in taxonomy order: Autocomplete Search ·
 // Text Search · Nearby Search. Category knobs live on the shared Google
 // types strip — these cards name who calls them.
+//
+// All three keep the word `Search` because Google named its own endpoints
+// that way; every other Source drops the class noun.
 
-export function GoogleModuleCards() {
+export function GoogleSourceCards() {
   return (
     <div className="flex flex-col gap-4">
       <div id="s-autocomplete" className="scroll-mt-16">
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
-          title="Google Places Autocomplete"
-          subtitle="Predicts a place name while the guest types. Fast Search is Autocomplete only. Deep Search also calls it, then resolves and merges."
+          title="Google Places Autocomplete Search"
+          subtitle="Predicts a place name while the guest types, and is the ONE source that answers with a Location. Word's Fast pass is Autocomplete only; its Deep pass also calls it, then resolves and merges."
           status={<KnobStatus kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Name (Fast Search) and Name (Deep Search). Types come from
-            the Google types strip on this page.
+            Used by Word. Types come from the Google types strip on this page.
           </p>
         </SectionCard>
       </div>
@@ -25,12 +27,12 @@ export function GoogleModuleCards() {
         <SectionCard
           icon={<TextSearch className="text-primary h-4 w-4" />}
           title="Google Places Text Search"
-          subtitle="One Deep Search module. Candidates resolve, then merge with Autocomplete and Places Lineup Name."
+          subtitle="One Word (Deep Search) source. Candidates resolve, then merge with Autocomplete and Mesita Places Name Search."
           status={<KnobStatus kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Name (Deep Search). Types come from the Google types strip
-            on this page. Merge is after resolve, not a fourth module.
+            Used by Word and Chat. Types come from the Google types strip on
+            this page. Merge is after resolve, not a fourth source.
           </p>
         </SectionCard>
       </div>
@@ -38,12 +40,13 @@ export function GoogleModuleCards() {
         <SectionCard
           icon={<MapPin className="text-primary h-4 w-4" />}
           title="Google Places Nearby Search"
-          subtitle="The billed Nearby Search. Map calls it. Name (Deep) does not."
+          subtitle="The billed Nearby Search. Map calls it. Word does not."
           status={<KnobStatus kind="enforced" reason="list-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Map. Name (Deep) stays red on the matrix. Types come from
-            the Google types strip on this page.
+            Used by Map and Chat. Word stays red on the matrix — the guest pin
+            biases Autocomplete and Text Search, and a bias is not a call.
+            Types come from the Google types strip on this page.
           </p>
         </SectionCard>
       </div>

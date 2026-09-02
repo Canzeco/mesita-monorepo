@@ -11,12 +11,13 @@ import {
   DEFAULT_SOCIAL,
   DEFAULT_SWIPE,
   ENGINES,
-  DISCOVERY_MODE_MODULES,
-  DISCOVERY_MODULES,
+  DISCOVERY_MODE_KEYS,
+  DISCOVERY_MODE_SOURCES,
+  DISCOVERY_SOURCES,
   LIBRARY_SIGNALS,
   SIGNALS,
   SIGNAL_KEYS,
-  modeCallsModule,
+  modeCallsSource,
   modeRequiresPool,
   modeSignalState,
   snapMapReloadPair,
@@ -24,16 +25,18 @@ import {
 
 describe("Discovery function APIs", () => {
   it("every signal is a stored-index function — no vendor API at rank time", () => {
-    expect(SIGNALS.map((s) => [s.key, s.apis])).toEqual([
-      ["name", []],
-      ["summary", []],
-      ["proximity", []],
-      ["timing", []],
-      ["category", []],
-      ["popularity", []],
-      ["mesita_level", []],
-      ["randomness", []],
-    ]);
+    expect(SIGNALS.map((s) => [s.key, s.apis]).sort()).toEqual(
+      [
+        ["name", []],
+        ["summary", []],
+        ["category", []],
+        ["proximity", []],
+        ["timing", []],
+        ["mesita_level", []],
+        ["popularity", []],
+        ["randomness", []],
+      ].sort(),
+    );
   });
 
   it("only maxKm and closedFloor are extra operator knobs", () => {
@@ -42,17 +45,19 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("library order is the eight Lineup signals — Mesita Level sits after Popularity", () => {
+  it("library order is section 8.3 — asked-for, then world, then us, then the tie-break", () => {
     expect(LIBRARY_SIGNALS.map((row) => row.key)).toEqual([
       "name",
       "summary",
+      "category",
       "proximity",
       "timing",
-      "category",
-      "popularity",
       "mesita_level",
+      "popularity",
       "randomness",
     ]);
+    // The blend is a product of s^w, so the table order cannot move a score.
+    expect([...SIGNAL_KEYS]).toEqual(LIBRARY_SIGNALS.map((row) => row.key));
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
     expect(SIGNAL_KEYS).toContain("mesita_level");
@@ -79,54 +84,76 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
 
-  it("seven modules and a locked mode → module matrix", () => {
-    expect([...DISCOVERY_MODULES]).toEqual([
-      "Google Places Autocomplete",
+  it("nine sources and a locked mode → source matrix", () => {
+    expect([...DISCOVERY_MODE_KEYS]).toEqual([
+      "word",
+      "map",
+      "catalog",
+      "swipe",
+      "chat",
+      "favorites",
+    ]);
+    expect([...DISCOVERY_SOURCES]).toEqual([
+      "Google Places Autocomplete Search",
       "Google Places Text Search",
       "Google Places Nearby Search",
-      "Perplexity Search",
-      "Perplexity Agent",
-      "Mesita Places Lineup",
-      "Mesita Social Lineup",
+      "Mesita Places Name Search",
+      "Mesita Places Nearby Search",
+      "Mesita Places Browse Search",
+      "Mesita Places Flexible Search",
+      "Mesita Social Browse Search",
+      "Mesita Social Flexible Search",
     ]);
-    expect(DISCOVERY_MODE_MODULES.fast).toEqual(["Google Places Autocomplete"]);
-    expect(DISCOVERY_MODE_MODULES.deep).toEqual([
-      "Google Places Autocomplete",
+    expect(DISCOVERY_MODE_SOURCES.word).toEqual([
+      "Google Places Autocomplete Search",
       "Google Places Text Search",
-      "Mesita Places Lineup",
+      "Mesita Places Name Search",
     ]);
-    expect(DISCOVERY_MODE_MODULES.map).toEqual([
+    expect(DISCOVERY_MODE_SOURCES.map).toEqual([
       "Google Places Nearby Search",
-      "Mesita Places Lineup",
+      "Mesita Places Nearby Search",
     ]);
-    expect(DISCOVERY_MODE_MODULES.chat).toEqual([
+    expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
+      "Mesita Places Browse Search",
+      "Mesita Social Browse Search",
+    ]);
+    expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Flexible Search"]);
+    expect(DISCOVERY_MODE_SOURCES.chat).toEqual([
       "Google Places Text Search",
       "Google Places Nearby Search",
-      "Perplexity Search",
-      "Perplexity Agent",
-      "Mesita Places Lineup",
+      "Mesita Places Flexible Search",
+      "Mesita Social Flexible Search",
     ]);
-    expect(DISCOVERY_MODE_MODULES.social).toEqual(["Mesita Social Lineup"]);
-    expect(DISCOVERY_MODE_MODULES.favorites).toEqual([]);
-    expect(modeCallsModule("chat", "Mesita Social Lineup")).toBe(false);
-    expect(modeCallsModule("deep", "Google Places Nearby Search")).toBe(false);
+    expect(DISCOVERY_MODE_SOURCES.favorites).toEqual([]);
+    // The pin biases Autocomplete and Text Search; a bias is not a call.
+    expect(modeCallsSource("word", "Google Places Nearby Search")).toBe(false);
+    // Perplexity was on the old module list twice and is not retrieval we do.
+    expect(DISCOVERY_SOURCES.some((s) => s.includes("Perplexity"))).toBe(false);
+    // A Source nothing calls is not a Source.
+    for (const source of DISCOVERY_SOURCES) {
+      expect(
+        DISCOVERY_MODE_KEYS.some((mode) => modeCallsSource(mode, source)),
+        source,
+      ).toBe(true);
+    }
   });
 
-  it("pool mask is Google Places + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
+  it("pool mask is Google Places + Listed on Catalog · Swipe; Favorites requires Google Places", () => {
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "listed")).toBe(true);
     expect(modeRequiresPool("favorites", "google")).toBe(true);
     expect(modeRequiresPool("favorites", "listed")).toBe(false);
     expect(modeRequiresPool("favorites", "enriched")).toBe(false);
-    expect(modeRequiresPool("deep", "listed")).toBe(false);
+    expect(modeRequiresPool("catalog", "listed")).toBe(true);
+    expect(modeRequiresPool("word", "listed")).toBe(false);
     expect(modeRequiresPool("chat", "google")).toBe(false);
     expect(modeRequiresPool("map", "enriched")).toBe(false);
     expect(modeRequiresPool("swipe", "enriched")).toBe(false);
   });
 
-  it("Places Lineup signals light Deep Name, Chat Summary, Map without Randomness", () => {
-    expect(modeSignalState("deep", "name")).toBe("on");
-    expect(modeSignalState("deep", "summary")).toBe("off");
+  it("signals light Word Name, Chat Summary, Map without Randomness", () => {
+    expect(modeSignalState("word", "name")).toBe("on");
+    expect(modeSignalState("word", "summary")).toBe("off");
     expect(modeSignalState("chat", "summary")).toBe("on");
     expect(modeSignalState("chat", "randomness")).toBe("off");
     expect(modeSignalState("map", "proximity")).toBe("on");
@@ -136,12 +163,11 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("map", "mesita_level")).toBe("on");
     expect(modeSignalState("swipe", "mesita_level")).toBe("on");
     expect(modeSignalState("chat", "mesita_level")).toBe("on");
-    expect(modeSignalState("deep", "mesita_level")).toBe("off");
-    expect(modeSignalState("social", "name")).toBe("off");
+    expect(modeSignalState("word", "mesita_level")).toBe("off");
     expect(modeSignalState("favorites", "proximity")).toBe("off");
-    expect(SIGNAL_KEYS.every((key) => modeSignalState("fast", key) === "off")).toBe(
-      true,
-    );
+    expect(
+      SIGNAL_KEYS.every((key) => modeSignalState("favorites", key) === "off"),
+    ).toBe(true);
   });
 
   it("map() is closest N of the selected Places set", () => {
@@ -355,32 +381,33 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is two subpages — Discovery Modes and Discovery Modules", () => {
+  it("is two subpages — Discovery Modes and Discovery Sources", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const modesPage = readFileSync(join(__dirname, "modes/page.tsx"), "utf8");
-    const modulesPage = readFileSync(join(__dirname, "modules/page.tsx"), "utf8");
+    const sourcesPage = readFileSync(join(__dirname, "sources/page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
     const general = readFileSync(join(__dirname, "GeneralConfigClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
-    const social = readFileSync(join(__dirname, "SocialConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
     const signals = readFileSync(join(__dirname, "SignalsConfigClient.tsx"), "utf8");
-    const googleModules = readFileSync(join(__dirname, "GoogleModuleCards.tsx"), "utf8");
-    const chips = readFileSync(join(__dirname, "ModeModuleChips.tsx"), "utf8");
+    const googleSources = readFileSync(join(__dirname, "GoogleSourceCards.tsx"), "utf8");
+    const mesitaSources = readFileSync(join(__dirname, "MesitaSourceCards.tsx"), "utf8");
+    const chips = readFileSync(join(__dirname, "ModeSourceChips.tsx"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
 
     expect(nav).toContain('label: "Discovery Modes"');
-    expect(nav).toContain('label: "Discovery Modules"');
+    expect(nav).toContain('label: "Discovery Sources"');
     expect(nav).toContain('"/filters-config/modes"');
-    expect(nav).toContain('"/filters-config/modules"');
+    expect(nav).toContain('"/filters-config/sources"');
+    expect(nav).not.toContain("modules");
     expect(nav).toContain("/filters-config/modes#s-map");
     expect(layout).toContain("DiscoveryChrome");
     const chrome = readFileSync(join(__dirname, "DiscoveryChrome.tsx"), "utf8");
@@ -392,6 +419,9 @@ describe("Discovery page box order", () => {
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');
     expect(nextConfig).not.toContain('destination: "/filters-config",');
+    // The retired subpage keeps an operator's bookmark alive.
+    expect(nextConfig).toContain('source: "/filters-config/modules"');
+    expect(nextConfig).toContain('destination: "/filters-config/sources"');
 
     expect(general).toContain('title="Google types"');
     expect(general).toContain("NEARBY_TYPE_FIELDS");
@@ -401,17 +431,20 @@ describe("Discovery page box order", () => {
     expect(gate).toContain("Only active places");
     expect(gate).toContain("Minimum Google reviews");
     // The wipe is Discovery-wide, so it must not grow type batteries or a
-    // per-mode cap — those belong to Modules and to each mode's own box.
+    // per-mode cap — those belong to Sources and to each mode's own box.
     expect(gate).not.toContain("NEARBY_TYPE_FIELDS");
     expect(gate).not.toContain("categoryCount");
     expect(general).toContain('["general", "nameFast", "nameDeep", "map"]');
-    expect(name).toContain('title="Name (Fast Search)"');
-    expect(name).toContain('title="Name (Deep Search)"');
+    // Word is ONE mode with two passes. The blob slices keep their names.
+    expect(name).toContain('title="Word (Fast Search)"');
+    expect(name).toContain('title="Word (Deep Search)"');
+    expect(name).not.toContain('title="Name (Fast Search)"');
+    expect(name).not.toContain('title="Name (Deep Search)"');
     expect(name).toContain("Google Places Autocomplete only");
     expect(name).toContain("Name signal only");
     expect(name).toContain("places.name");
     expect(name).toContain("google_name");
-    expect(name).toContain("Deep never calls Nearby Search");
+    expect(name).toContain("Word never calls Nearby Search");
     expect(name).toContain("Needs a location. No pin, no bias.");
     expect(name).toContain("Deep reads Name (off vs on)");
     expect(name).toContain('label="Google places"');
@@ -429,7 +462,7 @@ describe("Discovery page box order", () => {
     expect(name).toContain("Map Filters never cut this list");
     expect(name).toContain("same cap");
     expect(name).not.toContain("Deep symmetry");
-    const deepKnobs = name.slice(name.indexOf('title="Name (Deep Search)"'));
+    const deepKnobs = name.slice(name.indexOf('title="Word (Deep Search)"'));
     const deepAuto = deepKnobs.indexOf('label: "Google Autocomplete"');
     const deepText = deepKnobs.indexOf('label: "Google Text Search"');
     const deepPlaces = deepKnobs.indexOf('label: "Mesita places"');
@@ -468,15 +501,14 @@ describe("Discovery page box order", () => {
     expect(catalog).toContain("ConfigSoon");
     expect(chat).toContain('title="Chat is coming soon"');
     expect(chat).toContain("ConfigSoon");
-    expect(social).toContain('title="Social is coming soon"');
-    expect(social).toContain("ConfigSoon");
     expect(surfaces).toContain('title="Favorites is coming soon"');
     expect(surfaces).toContain("ConfigSoon");
     expect(surfaces).not.toContain('title="Favs"');
     expect(surfaces).not.toContain('title="Name"');
     expect(surfaces).not.toContain('title="Swipe"');
-    expect(catalog).not.toContain("SocialConfig");
-    expect(signals).toContain('title="Mesita Places Lineup"');
+    // Social left the mode list; it has no box of its own any more.
+    expect(() => readFileSync(join(__dirname, "SocialConfigClient.tsx"))).toThrow();
+    expect(signals).toContain('title="Mesita Places Search Signals"');
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
@@ -485,20 +517,30 @@ describe("Discovery page box order", () => {
     expect(signals).toContain('kind="enforced"');
     expect(signals).toContain("Swipe read the mode mask");
     expect(signals).not.toContain("Swipe keeps its own sum");
-    expect(googleModules).toContain("Google Places Autocomplete");
-    expect(googleModules).toContain("Google Places Nearby Search");
-    expect(googleModules).toContain("Google Places Text Search");
-    expect(googleModules).toContain("Name (Deep Search)");
-    expect(googleModules).toContain("Name (Deep) does not");
-    expect(googleModules).not.toContain("pin bias");
-    expect(chips).toContain("export function ModeModuleChips");
+    expect(googleSources).toContain("Google Places Autocomplete Search");
+    expect(googleSources).toContain("Google Places Nearby Search");
+    expect(googleSources).toContain("Google Places Text Search");
+    expect(googleSources).toContain("Word (Deep Search)");
+    expect(googleSources).toContain("Word does not");
+    expect(mesitaSources).toContain("Mesita Places Name Search");
+    expect(mesitaSources).toContain("Mesita Places Nearby Search");
+    expect(mesitaSources).toContain("Mesita Places Browse Search");
+    expect(mesitaSources).toContain("Mesita Places Flexible Search");
+    expect(mesitaSources).toContain("Mesita Social Browse Search");
+    expect(mesitaSources).toContain("Mesita Social Flexible Search");
+    // Name and Nearby ship today without knobs of their own; the other four
+    // have no engine, so they are the only Soon boxes on this strip.
+    expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(4);
+    expect(chips).toContain("export function ModeSourceChips");
     expect(chips).toContain("None");
     expect(modesPage).toContain("DiscoveryMatrix");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
     expect(matrix).toContain("Places Types");
-    expect(matrix).toContain("Search Modules");
-    expect(matrix).toContain("Places Lineup Signals");
-    expect(matrix).toContain("Places Lineup {label}");
+    expect(matrix).toContain("Search Sources");
+    expect(matrix).toContain("Mesita Places Search Signals");
+    expect(matrix).not.toContain("Search Modules");
+    // The band title carries the class noun; a row never repeats it.
+    expect(matrix).not.toContain("Places Lineup {label}");
     expect(matrix).toContain("BandRule");
     expect(matrix).toContain("modeSignalState");
     expect(matrix).not.toContain("zero=");
@@ -506,26 +548,26 @@ describe("Discovery page box order", () => {
     const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
     expect(flags).not.toContain("zero");
     expect(matrix).not.toContain(">0</span>");
-    expect(name).toContain("ModeModuleChips");
+    expect(name).toContain("ModeSourceChips");
     expect(name).not.toContain("TypeBatteries");
     expect(name).not.toContain("Google categories");
-    expect(map).toContain("ModeModuleChips");
+    expect(map).toContain("ModeSourceChips");
     expect(map).not.toContain("Google categories");
-    expect(swipe).toContain("ModeModuleChips");
+    expect(swipe).toContain("ModeSourceChips");
 
     const modesJsx = modesPage.slice(modesPage.indexOf("return ("));
-    const modulesJsx = modulesPage.slice(modulesPage.indexOf("return ("));
+    const sourcesJsx = sourcesPage.slice(sourcesPage.indexOf("return ("));
     // General is the post-Google wipe: below the matrix, above Fast Search
-    // (Pato, 2026-08-29). It runs last but reads first.
+    // (Pato, 2026-08-29). It runs last but reads first. The mode cards then
+    // run in section 8.1 order.
     const modeOrder = [
       "DiscoveryMatrix",
       "GeneralGateConfigClient",
       "NameConfigClient",
       "MapConfigClient",
-      "SwipeConfigClient",
       "CatalogConfigClient",
+      "SwipeConfigClient",
       "DiscoveryConfigClient",
-      "SocialConfigClient",
       "FavsConfigCard",
     ];
     let last = -1;
@@ -534,36 +576,33 @@ describe("Discovery page box order", () => {
       expect(idx, n).toBeGreaterThan(last);
       last = idx;
     }
-    // Google types stay on Modules; the wipe stays on Modes. Two boxes,
+    expect(modesJsx).not.toContain("SocialConfigClient");
+    // Google types stay on Sources; the wipe stays on Modes. Two boxes,
     // two questions — never fold one into the other.
     expect(modesJsx).not.toContain("GeneralConfigClient");
-    expect(modulesJsx).not.toContain("GeneralGateConfigClient");
+    expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    expect(modulesJsx.indexOf("GeneralConfigClient")).toBeGreaterThan(-1);
-    expect(modulesJsx.indexOf("GoogleModuleCards")).toBeGreaterThan(
-      modulesJsx.indexOf("GeneralConfigClient"),
-    );
-    expect(modulesJsx.indexOf("s-perplexity")).toBeGreaterThan(
-      modulesJsx.indexOf("GoogleModuleCards"),
-    );
-    expect(modulesJsx.indexOf("s-perplexity-agent")).toBeGreaterThan(
-      modulesJsx.indexOf("s-perplexity"),
-    );
-    expect(modulesJsx.indexOf("SignalsConfigClient")).toBeGreaterThan(
-      modulesJsx.indexOf("s-perplexity-agent"),
-    );
-    expect(modulesJsx.indexOf("s-social-lineup")).toBeGreaterThan(
-      modulesJsx.indexOf("SignalsConfigClient"),
-    );
-    expect(modulesJsx).toContain("Mesita Social Lineup is coming soon");
-    expect(modulesJsx).toContain("Perplexity Search is coming soon");
-    expect(modulesJsx).toContain("Perplexity Agent is coming soon");
-    expect(modulesJsx).not.toContain("NameConfigClient");
-    expect(modulesJsx).not.toContain("MapConfigClient");
-    expect(modulesJsx).not.toContain("FavsConfigCard");
-    expect(modulesJsx).not.toContain('title="General"');
-    expect(modulesJsx).not.toContain('title="Signals"');
+    const sourceOrder = [
+      "GeneralConfigClient",
+      "GoogleSourceCards",
+      "MesitaSourceCards",
+      "SignalsConfigClient",
+    ];
+    let lastSource = -1;
+    for (const n of sourceOrder) {
+      const idx = sourcesJsx.indexOf(n);
+      expect(idx, n).toBeGreaterThan(lastSource);
+      lastSource = idx;
+    }
+    // Perplexity is a Chat connection, never a Source box.
+    expect(sourcesJsx).not.toContain("Perplexity");
+    expect(sourcesPage).not.toContain("Perplexity");
+    expect(sourcesJsx).not.toContain("NameConfigClient");
+    expect(sourcesJsx).not.toContain("MapConfigClient");
+    expect(sourcesJsx).not.toContain("FavsConfigCard");
+    expect(sourcesJsx).not.toContain('title="General"');
+    expect(sourcesJsx).not.toContain('title="Signals"');
   });
 });
