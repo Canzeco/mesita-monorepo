@@ -60,6 +60,8 @@ type MembershipSnapshot = {
   plan_live_at?: unknown;
   strike_count?: number | null;
   last_strike_at?: string | null;
+  /** Ghost-partner hold (MESITA-1311) — a confirmed guest report. */
+  reward_lane_pending_review_at?: unknown;
 };
 
 export type LifecycleStepState = "done" | "current" | "upcoming" | "blocked";
@@ -82,9 +84,12 @@ type PillState =
   | "pending"
   | "live"
   | "paused"
-  | "forfeited";
+  | "forfeited"
+  | "review";
 
 function pillFromSnap(snap: MembershipSnapshot, now: number): PillState {
+  // The hold outranks everything — same order as assessPromoLane in the EF.
+  if (snap.reward_lane_pending_review_at) return "review";
   if (snap.plan_forfeited_at) return "forfeited";
   if (!isMemberPlan(snap.plan)) return "not_member";
   if (
@@ -106,6 +111,16 @@ export function lifecycleView(
   const member = isMemberPlan(snap.plan);
   const onPaid = member && storedStrategy !== null && storedStrategy !== "zero";
 
+  if (pillState === "review") {
+    // Ghost-partner hold (MESITA-1311): honoring is blocked while Mesita
+    // reviews a confirmed guest report; earlier steps render their truth.
+    return {
+      kind: "rail",
+      join: member ? "done" : "upcoming",
+      strategy: onPaid ? "done" : "upcoming",
+      honor: "blocked",
+    };
+  }
   if (pillState === "forfeited") {
     return {
       kind: "rail",

@@ -87,6 +87,9 @@ type Place = {
   last_strike_at?: string | null;
   promo_paused_until?: string | null;
   plan_forfeited_at?: string | null;
+  /** Ghost-partner hold (MESITA-1311): a confirmed guest report closed the
+   *  reward lane; Mesita clears it when the review ends. Null = no hold. */
+  reward_lane_pending_review_at?: string | null;
   photos: string[];
   menu_pdf_url: string | null;
   // Display name paired with menu_pdf_url (e.g. "Dinner menu"). Null

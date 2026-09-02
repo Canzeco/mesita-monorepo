@@ -30,10 +30,12 @@ type MembershipSnapshot = {
   plan_live_at?: unknown;
   strike_count?: unknown;
   last_strike_at?: unknown;
+  /** Ghost-partner hold (MESITA-1311) — a confirmed guest report. */
+  reward_lane_pending_review_at?: unknown;
 };
 
 export type MembershipPillState =
-  "not_member" | "pending" | "live" | "paused" | "forfeited";
+  "not_member" | "pending" | "live" | "paused" | "forfeited" | "review";
 
 // A place on any paid plan holds the Partnership subscription (plan != free).
 export function isMemberPlan(plan: unknown): boolean {
@@ -67,6 +69,9 @@ export function membershipPillState(
   snap: MembershipSnapshot,
   now: number = Date.now(),
 ): MembershipPillState {
+  // The hold outranks everything — same order as assessPromoLane in the EF
+  // twin: an open review is the freshest fact about the place.
+  if (snap.reward_lane_pending_review_at) return "review";
   if (snap.plan_forfeited_at) return "forfeited";
   if (!isMemberPlan(snap.plan)) return "not_member";
   if (
@@ -91,6 +96,14 @@ export function describeMembershipStatus(
   pillState: MembershipPillState,
   now: number = Date.now(),
 ): MembershipStatusNote | null {
+  if (pillState === "review") {
+    return {
+      label:
+        "Visit Rewards on hold — a guest report was confirmed and Mesita is " +
+        "reviewing this place. Restore ends the review and reopens the lane.",
+      tone: "warn",
+    };
+  }
   if (pillState === "forfeited") {
     return {
       label:
@@ -150,6 +163,16 @@ export function lifecycleView(
   const member = isMemberPlan(snap.plan);
   const onPaid = member && storedStrategy !== null && storedStrategy !== "zero";
 
+  if (pill === "review") {
+    // Under review after a confirmed guest report: honoring is blocked
+    // whatever the earlier steps say; join/strategy render their own truth.
+    return {
+      kind: "rail",
+      join: member ? "done" : "upcoming",
+      strategy: onPaid ? "done" : "upcoming",
+      honor: "blocked",
+    };
+  }
   if (pill === "forfeited") {
     // Strike 3 broke step 3; strategy resets because re-join re-picks one.
     return {

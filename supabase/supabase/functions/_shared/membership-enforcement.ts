@@ -38,9 +38,13 @@ export type MembershipRow = {
   last_strike_at: string | null;
   promo_paused_until: string | null;
   plan_forfeited_at: string | null;
+  /** Ghost-partner hold (MESITA-1311): a confirmed guest report puts the
+   *  lane under review until admin restore clears it. Null = no hold. */
+  reward_lane_pending_review_at: string | null;
 };
 
 export type PromoLaneBlockCode =
+  | "pending_review"
   | "forfeited"
   | "paused";
 
@@ -81,6 +85,22 @@ export function assessPromoLane(
   now: Date = new Date(),
 ): PromoLaneEligibility {
   const strikeCount = effectiveStrikeCount(row, now);
+
+  // Ghost-partner hold (MESITA-1311) — checked BEFORE forfeit/pause: an
+  // open review is the freshest fact about the place, and the message the
+  // staff should see while Mesita is actively looking at a confirmed
+  // report is "under review", not the older strike consequence.
+  if (row.reward_lane_pending_review_at) {
+    return {
+      open: false,
+      code: "pending_review",
+      strikeCount,
+      staffMessage:
+        "Las promos de este local están en revisión tras un reporte " +
+        "confirmado de un guest. Mesita las reactiva cuando termine la " +
+        "revisión.",
+    };
+  }
 
   // Forfeit wins even after plan is cleared to free (strike 3).
   if (row.plan_forfeited_at) {
@@ -125,7 +145,7 @@ export async function loadMembershipRow(
   const res = await admin
     .from("projects")
     .select(
-      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at",
+      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at, reward_lane_pending_review_at",
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -147,7 +167,7 @@ async function maybeDecayStrikes(
     id: row.id,
     patch: { strike_count: effective },
     select:
-      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at",
+      "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at, reward_lane_pending_review_at",
   });
   if (!update.ok || !update.row) return { ...row, strike_count: effective };
   return update.row as MembershipRow;

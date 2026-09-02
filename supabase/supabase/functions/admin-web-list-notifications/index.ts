@@ -569,7 +569,10 @@ Deno.serve(async (req) => {
         r,
         r.created_at,
         r.details?.trim() ? truncate(r.details, 260) : null,
-        { reason: r.reason, status: r.status },
+        // reportId rides along so manage-single can drive the triage EF
+        // (admin-web-review-ticket-report, MESITA-1311) without parsing
+        // the composite item id.
+        { reason: r.reason, status: r.status, reportId: r.id },
       );
     }
 
