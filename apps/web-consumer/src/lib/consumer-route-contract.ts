@@ -160,6 +160,8 @@ export const CONSUMER_ROUTES = {
     // now, so this is the forwarding address. It was the Discover default and
     // every /home* and /explore* pointed at it, so the bookmarks are real.
     discoverMap: "/discover/map",
+    // Home's segment for the hour it shipped as Feed (#1447 -> #1448).
+    discoverFeed: "/discover/feed",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",
