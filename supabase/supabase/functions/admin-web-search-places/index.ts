@@ -125,7 +125,8 @@ Deno.serve(async (req) => {
       .select("id", { count: "exact", head: true });
     if (countErr) return json({ ok: false, error: `search_failed: ${countErr.message}` }, 500);
     total = count ?? 0;
-    for (let from = 0; from < ALL_MAX_ROWS; from += ALL_PAGE_SIZE) {
+    let from = 0;
+    while (from < ALL_MAX_ROWS) {
       const to = Math.min(from + ALL_PAGE_SIZE, ALL_MAX_ROWS) - 1;
       const { data, error } = await admin
         .from("profiles")
@@ -135,7 +136,12 @@ Deno.serve(async (req) => {
       if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
       const page = (data ?? []) as Record<string, unknown>[];
       rows.push(...page);
-      if (page.length < to - from + 1) break;
+      // Step by what CAME BACK, never by what was asked for. `db.max_rows`
+      // can trim a page below ALL_PAGE_SIZE, and a fixed stride would then
+      // skip exactly the rows the server trimmed — a silent hole in the
+      // middle of a list whose whole promise is that it is complete.
+      if (page.length === 0) break;
+      from += page.length;
     }
     rows.sort((a, b) =>
       String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, {
