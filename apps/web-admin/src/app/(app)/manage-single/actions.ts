@@ -480,6 +480,126 @@ export async function setPlaceRails(
   return { ok: true, data: r.data.rails };
 }
 
+// ── Stripe Connect mirror (read-only) ────────────────────────────────────
+//
+// The place's connected-account state, plus the full pay-readiness verdict.
+// Mesita is a PLATFORM, not a marketplace: direct charges on the place's own
+// account, the place is merchant of record, Mesita never holds funds. The law
+// is supabase/functions/_shared/stripe-connect.ts and it is frozen by tests.
+//
+// `refresh: true` re-reads the account from Stripe and re-upserts the mirror.
+// The Connect webhook is an optimization whose dashboard setup is a human
+// step, never a dependency — so the admin read self-heals rather than trusting
+// that every account.updated arrived.
+
+/** places_payment_accounts mirror row. Absent = never onboarded. */
+export type PlacePaymentAccount = {
+  /** "acct_…" real, or "mock_acct_<place_id>" when MOCK_CONNECT is on. */
+  stripe_account_id: string;
+  /** Which Stripe universe created it, from the key prefix or event.livemode. */
+  livemode: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled: boolean;
+  /** Snapshot of requirements.currently_due; [] when clear. */
+  requirements_due: string[];
+  /** requirements.disabled_reason; null = not disabled. */
+  disabled_reason: string | null;
+};
+
+/** The three-way AND that gates a card charge. All three must hold; the UI
+ *  must never imply Mesita Pay is live on `intent` alone. */
+export type PlacePayReadiness = {
+  account: PlacePaymentAccount | null;
+  /** The mirror points at an account this Stripe key cannot see. */
+  orphaned: boolean;
+  /** charges_enabled ∧ details_submitted. */
+  capability: boolean;
+  intent: boolean;
+  globalRail: boolean;
+  all: boolean;
+};
+
+/** What `business-web-start-payment-onboarding` hands back. */
+export type PaymentOnboardingStart = {
+  /** MOCK_CONNECT was on, or no Stripe key is configured. */
+  mock: boolean;
+  /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
+  url: string | null;
+  account: PlacePaymentAccount | null;
+};
+
+/**
+ * Create (if missing) the place's connected account and get a Stripe-hosted
+ * onboarding link. Super-admins pass the EF's `requireOwner` gate
+ * (`_shared/auth-membership.ts` exempts `isSuperAdmin`), which is what makes
+ * staff-assisted onboarding work at all: production places have no owners.
+ *
+ * `returnUrl` / `refreshUrl` are REQUIRED here. The EF defaults to the
+ * business console's `/unit/<id>/promos`, so an admin-initiated onboarding
+ * would otherwise strand the operator in a console they were not using.
+ *
+ * Live keys are refused by the EF (`liveChargesBlocked`, MESITA-37) unless
+ * STRIPE_ALLOW_LIVE is set — provisioning an account counts as provisioning
+ * something that later gets charged.
+ */
+export async function startPlacePaymentOnboarding(
+  placeId: string,
+  urls: { returnUrl: string; refreshUrl: string },
+): Promise<Result<PaymentOnboardingStart>> {
+  const r = await efInvoke<{
+    mock?: boolean;
+    url?: string | null;
+    account?: PlacePaymentAccount | null;
+  }>("business-web-start-payment-onboarding", {
+    placeId,
+    returnUrl: urls.returnUrl,
+    refreshUrl: urls.refreshUrl,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      mock: r.data.mock === true,
+      url: r.data.url ?? null,
+      account: r.data.account ?? null,
+    },
+  };
+}
+
+export async function getPlacePaymentAccount(
+  placeId: string,
+  opts: { refresh?: boolean } = {},
+): Promise<Result<PlacePayReadiness>> {
+  const r = await efInvoke<{
+    account: PlacePaymentAccount | null;
+    orphaned?: boolean;
+    ready?: boolean;
+    pay_ready?: {
+      intent?: boolean;
+      global_rail?: boolean;
+      capability?: boolean;
+      all?: boolean;
+    };
+  }>("admin-web-get-place-payment-account", {
+    placeId,
+    refresh: opts.refresh === true,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  const pr = r.data.pay_ready ?? {};
+  return {
+    ok: true,
+    data: {
+      account: r.data.account ?? null,
+      orphaned: r.data.orphaned === true,
+      capability: pr.capability === true,
+      intent: pr.intent === true,
+      globalRail: pr.global_rail === true,
+      all: pr.all === true,
+    },
+  };
+}
+
 /** List or unlist the place on Mesita — the ONLY write path to
  *  projects.status, which is what the consumer RLS policy
  *  projects_select_public_visible gates every guest read on. Unlisting removes
