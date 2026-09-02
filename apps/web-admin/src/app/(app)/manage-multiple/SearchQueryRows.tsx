@@ -51,7 +51,7 @@ export function QueryRow({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="hover:bg-muted/40 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition"
+        className="hover:bg-muted/40 flex w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl px-4 py-3 text-left transition"
         aria-expanded={open}
       >
         <ChevronRight
@@ -60,29 +60,36 @@ export function QueryRow({
             (open ? "rotate-90" : "")
           }
         />
-        <span className="flex-1 truncate text-sm font-medium">{q.query}</span>
-        {mesitaHits > 0 && !q.error && (
-          <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium">
-            <CheckCircle2 className="h-3 w-3" />
-            {mesitaHits} in Mesita
-          </span>
-        )}
-        {filteredOut > 0 && !q.error && (
-          <span className="text-muted-foreground bg-muted/60 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
-            {filteredOut} filtered
-          </span>
-        )}
-        {q.error ? (
-          <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
-            error
-          </span>
-        ) : (
-          <span className="text-foreground/70 bg-muted shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
-            {q.places.length}
-            {q.truncated ? "+" : ""}{" "}
-            {q.places.length === 1 ? "result" : "results"}
-          </span>
-        )}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {q.query}
+        </span>
+        {/* w-full drops the counts onto their own line on a phone. Three
+            shrink-0 pills beside the query left it about 30px wide — every
+            search read as "…" and the row said nothing about itself. */}
+        <span className="flex w-full flex-wrap items-center gap-2 pl-7 sm:w-auto sm:pl-0">
+          {mesitaHits > 0 && !q.error && (
+            <span className="bg-secondary/15 text-secondary inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium">
+              <CheckCircle2 className="h-3 w-3" />
+              {mesitaHits} in Mesita
+            </span>
+          )}
+          {filteredOut > 0 && !q.error && (
+            <span className="text-muted-foreground bg-muted/60 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
+              {filteredOut} filtered
+            </span>
+          )}
+          {q.error ? (
+            <span className="text-destructive bg-destructive/10 shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium">
+              error
+            </span>
+          ) : (
+            <span className="text-foreground/70 bg-muted shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
+              {q.places.length}
+              {q.truncated ? "+" : ""}{" "}
+              {q.places.length === 1 ? "result" : "results"}
+            </span>
+          )}
+        </span>
       </button>
       {open && (
         <div className="px-4 pb-4">

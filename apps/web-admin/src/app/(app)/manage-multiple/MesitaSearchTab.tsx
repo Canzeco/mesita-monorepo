@@ -17,6 +17,7 @@ import {
 } from "@/lib/status-vocabulary";
 import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
+import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
 
 // One table row. A paste run keys by the pasted Google Place ID and may have
 // no hit ("Not on Mesita"); an All places run keys by the Mesita id and always
@@ -195,12 +196,16 @@ export function MesitaSearchTab({
       ) : null}
 
       {rows && rows.length > 0 ? (
-        <div className="border-border bg-card mt-6 overflow-hidden rounded-2xl border">
+        // Bleeds through the card's padding on a phone so the scrollport is
+        // the full screen rather than the ~295px left inside it.
+        <div className="border-border bg-card -mx-5 mt-6 overflow-hidden border-y sm:mx-0 sm:rounded-2xl sm:border">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-sm">
               <thead>
                 <tr className="text-muted-foreground bg-muted/30 text-left type-label font-semibold tracking-[0.12em] uppercase">
-                  <th className="px-4 py-3 font-semibold">Place</th>
+                  <th className={`px-4 py-3 font-semibold ${STICKY_COL_HEAD}`}>
+                    Place
+                  </th>
                   {GENERAL_STATUS_FACTS.map((f) => (
                     <th key={f.key} className="px-3 py-3 text-center font-semibold">
                       {f.label}
@@ -218,7 +223,9 @@ export function MesitaSearchTab({
                       key={row.key}
                       className="[&>td]:border-border/60 [&>td]:border-t"
                     >
-                      <td className="max-w-[280px] px-4 py-3">
+                      <td
+                        className={`max-w-[60vw] px-4 py-3 sm:max-w-[280px] ${STICKY_COL_CELL}`}
+                      >
                         {hit ? (
                           <p className="truncate font-medium">
                             {hit.google_name || hit.name}

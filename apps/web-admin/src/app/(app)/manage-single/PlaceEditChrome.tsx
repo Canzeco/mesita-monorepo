@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeftRight, ImageOff, Loader2 } from "lucide-react";
+import { ArrowLeftRight, ChevronDown, ImageOff, Loader2 } from "lucide-react";
 import {
   getPlaceEnrichment,
   getPlaceVerification,
@@ -27,6 +27,9 @@ import {
   type EnrichFunctionState,
 } from "./sections/status-enrichment";
 import { ENGINELESS_STATUS_FACT_KEYS } from "@/lib/status-vocabulary";
+
+/** Ties the phone-only Statuses toggle to the block it opens. */
+const STATUS_CHIPS_ID = "place-header-statuses";
 
 function headerChipClass(on: boolean | "unknown"): string {
   return (
@@ -70,6 +73,12 @@ export function PlaceEditChrome({
     null,
   );
   const [enrichPollError, setEnrichPollError] = useState(false);
+  // Phone-only. The chip rows are twenty-odd pills — five wrapped lines on a
+  // 375px screen, inside chrome that is STICKY, so they permanently occupied a
+  // third of the viewport and the tab strip under them sat below the fold.
+  // Collapsed by default under `sm`, always open above it: the header is still
+  // name + statuses, the statuses are just one tap away on a phone.
+  const [statusesOpen, setStatusesOpen] = useState(false);
   const enriching =
     isEnriching(enrichStatus) ||
     isEnriching({
@@ -142,6 +151,20 @@ export function PlaceEditChrome({
       | null,
     seeded,
   );
+  // Engineless acceptance bits stay OFF the chip row: red here means "owed
+  // and fixable", and nothing can fix them until their engines exist (Pato
+  // gate 2026-08-29). The gateway / Credits PRs lift this filter. Status box
+  // still shows them.
+  const chipFacts = facts.filter(
+    (fact) =>
+      !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
+  );
+  // Drives the collapsed summary on phones — how many of these are green is
+  // the one thing worth reading without expanding.
+  const chipsTotal = chipFacts.length + intakeRows.length;
+  const chipsOn =
+    chipFacts.filter((f) => f.on === true).length +
+    intakeRows.filter((r) => r.on).length;
 
   // decision: MESITA-896 — the live enriching STATUS lives HERE, in the
   // chrome, so it is visible from every tab. The TRIGGER moved to Admin →
@@ -267,16 +290,33 @@ export function PlaceEditChrome({
                 </span>
               ) : null}
             </div>
-            <ul className="flex flex-wrap gap-1">
-              {/* Engineless acceptance bits stay OFF the chip row: red here
-                  means "owed and fixable", and nothing can fix them until
-                  their engines exist (Pato gate 2026-08-29). The gateway /
-                  Credits PRs lift this filter. Status box still shows them. */}
-              {facts
-                .filter((fact) =>
-                  !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
-                )
-                .map((fact) => (
+            <button
+              type="button"
+              onClick={() => setStatusesOpen((v) => !v)}
+              aria-expanded={statusesOpen}
+              aria-controls={STATUS_CHIPS_ID}
+              className="border-border bg-muted/50 text-muted-foreground hover:text-foreground inline-flex min-h-8 w-fit items-center gap-1.5 rounded-full border px-2.5 type-label font-semibold transition sm:hidden"
+            >
+              Statuses
+              <span className="text-foreground tabular-nums">
+                {chipsOn}/{chipsTotal}
+              </span>
+              <ChevronDown
+                className={
+                  "h-3.5 w-3.5 transition-transform " +
+                  (statusesOpen ? "rotate-180" : "")
+                }
+                aria-hidden
+              />
+            </button>
+            <div
+              id={STATUS_CHIPS_ID}
+              className={
+                "flex-col gap-1.5 sm:flex " + (statusesOpen ? "flex" : "hidden")
+              }
+            >
+              <ul className="flex flex-wrap gap-1">
+                {chipFacts.map((fact) => (
                   <li key={fact.key}>
                     <span
                       className={headerChipClass(fact.on)}
@@ -286,19 +326,20 @@ export function PlaceEditChrome({
                     </span>
                   </li>
                 ))}
-            </ul>
-            <ul className="flex flex-wrap gap-1">
-              {intakeRows.map((row) => (
-                <li key={row.key}>
-                  <span
-                    className={headerChipClass(row.on)}
-                    aria-label={`${row.label}: ${row.on ? "called" : "not called"}`}
-                  >
-                    {row.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
+              </ul>
+              <ul className="flex flex-wrap gap-1">
+                {intakeRows.map((row) => (
+                  <li key={row.key}>
+                    <span
+                      className={headerChipClass(row.on)}
+                      aria-label={`${row.label}: ${row.on ? "called" : "not called"}`}
+                    >
+                      {row.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -306,7 +347,7 @@ export function PlaceEditChrome({
           <Link
             href="/manage-single/select"
             onClick={(e) => guardNav("/manage-single/select", e)}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium transition sm:px-3.5"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-medium transition sm:h-9 sm:px-3.5"
           >
             <ArrowLeftRight className="h-4 w-4" />
             <span className="hidden sm:inline">Switch place</span>
@@ -316,62 +357,69 @@ export function PlaceEditChrome({
 
       {/* Row 2 — section nav (plain nav + aria-current; scrollbar visible so
           the last tab stays discoverable at ~375px — E-R6. Four tabs since
-          Partnership and Settings merged into Controls, 2026-09-01). */}
+          Partnership and Settings merged into Controls, 2026-09-01).
+
+          `justify-center` ON THE SCROLLER is what clipped the first tab on a
+          phone: a centred flex line that overflows spills equally off BOTH
+          edges, and scrollLeft cannot go negative, so the left spill was
+          unreachable — Profile sat half off-screen with no way to reach it.
+          Centring moved onto an inner `w-max` box: narrower than the rail it
+          centres, wider than it the over-constrained auto margins collapse to
+          left-aligned and the row scrolls from its true start. */}
       <div className="border-border border-t px-2 sm:px-4 lg:px-6">
-        <nav
-          aria-label="Place sections"
-          className="flex items-stretch justify-center gap-1 overflow-x-auto sm:gap-2"
-        >
-          {PLACE_TAB_SECTIONS.map(({ id, label, Icon, soon }) => {
-            const href = placeSectionHref(projectId, id);
-            const active = pathname === href || pathname.startsWith(`${href}/`);
+        <nav aria-label="Place sections" className="flex overflow-x-auto">
+          <div className="mx-auto flex w-max items-stretch gap-1 sm:gap-2">
+            {PLACE_TAB_SECTIONS.map(({ id, label, Icon, soon }) => {
+              const href = placeSectionHref(projectId, id);
+              const active = pathname === href || pathname.startsWith(`${href}/`);
 
-            // Parked tab — not a link at all, so the section can't be reached
-            // from the chrome (the route itself also serves the Soon page).
-            if (soon) {
-              return (
-                <span
-                  key={id}
-                  aria-disabled
-                  title={`${label} — coming soon`}
-                  className="text-muted-foreground/50 relative inline-flex min-h-11 shrink-0 cursor-not-allowed items-center gap-2 px-3 text-sm font-medium sm:min-h-12 sm:px-4"
-                >
-                  <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                  <span>{label}</span>
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 type-meta font-bold tracking-wider uppercase">
-                    Soon
-                  </span>
-                </span>
-              );
-            }
-
-            return (
-              <Link
-                key={id}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                onClick={(e) => {
-                  if (active) return;
-                  guardNav(href, e);
-                }}
-                className={
-                  "relative inline-flex min-h-11 shrink-0 items-center gap-2 px-3 text-sm font-medium transition sm:min-h-12 sm:px-4 " +
-                  (active
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-                <span>{label}</span>
-                {active ? (
+              // Parked tab — not a link at all, so the section can't be reached
+              // from the chrome (the route itself also serves the Soon page).
+              if (soon) {
+                return (
                   <span
-                    className="bg-pink-gradient absolute inset-x-2 bottom-0 h-[3px] rounded-full sm:inset-x-3"
-                    aria-hidden
-                  />
-                ) : null}
-              </Link>
-            );
-          })}
+                    key={id}
+                    aria-disabled
+                    title={`${label} — coming soon`}
+                    className="text-muted-foreground/50 relative inline-flex min-h-11 shrink-0 cursor-not-allowed items-center gap-2 px-3 text-sm font-medium sm:min-h-12 sm:px-4"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                    <span>{label}</span>
+                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 type-meta font-bold tracking-wider uppercase">
+                      Soon
+                    </span>
+                  </span>
+                );
+              }
+
+              return (
+                <Link
+                  key={id}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  onClick={(e) => {
+                    if (active) return;
+                    guardNav(href, e);
+                  }}
+                  className={
+                    "relative inline-flex min-h-11 shrink-0 items-center gap-2 px-3 text-sm font-medium transition sm:min-h-12 sm:px-4 " +
+                    (active
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+                  <span>{label}</span>
+                  {active ? (
+                    <span
+                      className="bg-pink-gradient absolute inset-x-2 bottom-0 h-[3px] rounded-full sm:inset-x-3"
+                      aria-hidden
+                    />
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
       </div>
     </div>

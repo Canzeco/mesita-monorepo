@@ -314,7 +314,7 @@ export function ProductModal({
         // itself can only be the ::backdrop.
         if (!busy && e.target === e.currentTarget) onClose();
       }}
-      className="border-border bg-card m-auto hidden max-h-[88vh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-elev backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
+      className="border-border bg-card m-auto hidden max-h-[88dvh] w-[min(28rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border p-0 shadow-elev backdrop:bg-black/45 backdrop:backdrop-blur-sm open:flex max-sm:mt-auto max-sm:mb-4"
     >
       <ArtBand
         strategy={strategy}

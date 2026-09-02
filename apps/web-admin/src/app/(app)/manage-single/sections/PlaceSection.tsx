@@ -1070,7 +1070,7 @@ function MediaMetaDialog({
       onClick={onClose}
     >
       <div
-        className="border-border/70 bg-card shadow-elev flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border"
+        className="border-border/70 bg-card shadow-elev flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-border flex items-center justify-between gap-3 border-b px-4 py-3">

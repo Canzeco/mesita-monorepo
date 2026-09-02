@@ -61,7 +61,9 @@ export function DiscoveryMatrix() {
       title="Discovery matrix"
       subtitle="Locked. The six modes across the top. Result Entities, Places Types, Search Sources, then the signals that rank them. Chips on the cards below repeat the green sources."
     >
-      <div className="overflow-x-auto">
+      {/* Bleeds through the card padding on a phone: 52rem of matrix reads
+          better across 375px than across the 311px left inside it. */}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <table className="w-full min-w-[52rem] border-collapse text-left">
           <thead>
             <tr className="border-border border-b">

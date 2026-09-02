@@ -244,7 +244,7 @@ function eventMeta(item: NotificationItem): string | null {
 }
 
 const RAIL_SCROLL =
-  "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+  "flex snap-x snap-mandatory gap-3 overflow-x-auto pb-0.5 scrollbar-none";
 
 export function EventSuperBoxes({
   place,
