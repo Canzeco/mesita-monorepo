@@ -1,48 +1,69 @@
 "use client";
 
-import { useState } from "react";
 import { BalanceCard, CARD_PX, PEEK_PX } from "./BalanceCard";
-import type { CreditBalance } from "@/lib/mock/credits-mock";
+import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
 
-// The card stack.
+// The card deck.
 //
-// TAP ONLY, on purpose. A vertical drag on an overlapping stack that lives
-// inside a vertical scroller is the textbook gesture conflict — the browser
-// claims the drag for scroll after about ten pixels and the fan stutters. The
-// one gesture stack this repo owns (home/swipe/SwipeDeck) solves that by
-// locking the HORIZONTAL axis and explicitly ignoring vertical, so it is not
-// reusable here even before you notice it is parked code coupled to the router
-// and the saved-places store. So: no pointer handlers, and no `touch-none`
-// either — killing browser panning to support a gesture that does not exist
-// would be a pure regression.
+// ONE STATE (2026-09-02 design review). It used to have two: a collapsed deck
+// and a "spread" that fanned every card apart. The spread existed to reveal the
+// balance on buried cards, and it never did — it uncovered 120px of a 176px
+// card, so it revealed the TOP HALF OF A NUMBER, sliced by the next card's
+// edge. Widening the spread until it cleared the card turned the open state
+// into a plain list of pictures, which is the row-list this deck exists to stop
+// being. So the second state is gone: the peek is deep enough (96px) that every
+// card states its own name and balance at rest, and a tap opens that balance
+// instead of rearranging the furniture. A partial reveal cannot slice anything
+// if there is no partial reveal.
 //
-// TWO DISCRETE STATES, not a spring. This package has no animation library
-// (`tw-animate-css` plus CSS transitions) and a 300ms ease-out fan is not a
-// spring — it is a slideshow. A bad imitation of Apple Wallet reads worse than
-// a deliberate thing that is not trying to be one. 300ms is the tempo
-// LocalOverlay, SlideOverShell and BottomSheetShell already share, so the app
-// keeps one clock.
+// TAP ONLY, on purpose, and that constraint is older than this rewrite. A
+// vertical drag on an overlapping deck inside a vertical scroller is the
+// textbook gesture conflict — the browser claims the drag for scroll after
+// about ten pixels. The one gesture stack this repo owns (home/swipe/SwipeDeck)
+// solves that by locking the HORIZONTAL axis and explicitly ignoring vertical,
+// so it is not reusable here even before you notice it is parked code coupled
+// to the router. So: no pointer handlers, and no `touch-none` either — killing
+// browser panning to support a gesture that does not exist is a pure
+// regression. It is also why Apple's drag-to-reorder is not on the table, and
+// therefore why the order below has to be computed rather than chosen.
 //
-// SPREAD_PX MUST CLEAR THE WHOLE CARD, NOT PART OF IT (2026-09-02, review pass
-// on the shipped deck). It was 120 against a 176px card, and the 56px it left
-// buried were exactly where
-// the face lives: every card behind the front one rendered its balance sliced
-// in half by the next card's edge. A number cut through the middle does not
-// read as a peek, it reads as a rendering bug — worse than not showing it.
-//
-// So the spread is derived from the card, not chosen: CARD_PX plus one gap, and
-// the cards stop overlapping at all. That is what "spread" has to mean here.
-// Collapsed is the deck; opened is every card whole, which is also the only
-// state in which BalanceCard hands its balance to the face. The gap is the
-// app's `gap-3`, so the opened deck sits on the same rhythm as every other
-// list on this screen.
+// NORMAL FLOW, NEGATIVE MARGINS — NOT ABSOLUTE POSITIONING. The old deck placed
+// every card with `translateY(i * offset)` inside a container whose height it
+// computed, which meant the geometry had to be known before render: three
+// constants that had to agree, and the sliced balance was them disagreeing. In
+// flow, each card sizes to its own content and the next one simply overlaps it
+// by `OVERLAP_PX`. Nothing is measured, nothing is computed, and at 200% text a
+// long place name makes its own card taller instead of clipping — the CSS does
+// what a ResizeObserver would have been written to do.
 //
 // DOM ORDER IS VISUAL ORDER. Painting the front card last would put it last in
 // tab order and announce the bottom of the pile first, so depth comes from an
 // explicit z-index instead.
 
-const SPREAD_GAP_PX = 12;
-const SPREAD_PX = CARD_PX + SPREAD_GAP_PX;
+// Enough to tuck the previous card's bottom corners under the next one. Any
+// more and the deck reads as a list; any less and the radius floats.
+const OVERLAP_PX = 18;
+
+/**
+ * Deck order: spendable money first, then the biggest balance.
+ *
+ * It used to be whatever order the fixture happened to be in, which is not an
+ * order, it is an accident. Spendable-first is the only ranking a guest can
+ * predict without being told, and it makes the maturation rule demonstrate
+ * itself: a card visibly climbs the deck the moment its hold expires, which is
+ * exactly what the demo clock is there to show.
+ */
+export function rankBalances(
+  balances: CreditBalance[],
+  nowMs: number,
+): CreditBalance[] {
+  return [...balances].sort((a, b) => {
+    const aLocked = isLocked(a, nowMs);
+    const bLocked = isLocked(b, nowMs);
+    if (aLocked !== bLocked) return aLocked ? 1 : -1;
+    return b.balanceCents - a.balanceCents;
+  });
+}
 
 export function BalanceStack({
   balances,
@@ -53,44 +74,32 @@ export function BalanceStack({
   nowMs: number;
   onOpen: (balance: CreditBalance) => void;
 }) {
-  const [spread, setSpread] = useState(false);
-  // A deck of one has nothing to spread — the single card is already whole, so
-  // the first tap would have been a tap that did nothing. It opens instead.
-  const stacked = balances.length > 1;
-  const offset = spread ? SPREAD_PX : PEEK_PX;
-  const height = offset * (balances.length - 1) + CARD_PX;
+  // PAINTED IN REVERSE OF THE RANKING. In a deck the front card is the LOWEST
+  // one — it is the card nothing else covers, and the only one that shows its
+  // face. So rank 1 has to be painted last. Sorting without reversing puts the
+  // least relevant balance in the one position that gets the big number.
+  const painted = rankBalances(balances, nowMs).reverse();
+  const front = painted.length - 1;
 
   return (
-    <ul
-      className="relative mx-auto w-full transition-[height] duration-300 ease-out motion-reduce:transition-none"
-      style={{ height }}
-    >
-      {balances.map((balance, i) => (
-        <li key={balance.id}>
+    <ul className="relative mx-auto flex w-full flex-col">
+      {painted.map((balance, i) => (
+        <li
+          key={balance.id}
+          className="relative"
+          style={{ zIndex: i + 1, marginTop: i === 0 ? 0 : -OVERLAP_PX }}
+        >
           <BalanceCard
             balance={balance}
             nowMs={nowMs}
-            expanded={stacked ? spread : undefined}
-            // Spread, nothing overlaps, so every card owns its own face.
-            covered={!spread && i < balances.length - 1}
-            // Collapsed, a tap spreads the stack so every card is readable.
-            // Spread, a tap opens that balance. One control, two states.
-            onSelect={() =>
-              spread || !stacked ? onOpen(balance) : setSpread(true)
-            }
-            className={
-              i === balances.length - 1 ? "shadow-elev" : "shadow-rest"
-            }
-            style={{
-              height: CARD_PX,
-              zIndex: i + 1,
-              transform: `translateY(${i * offset}px)`,
-              // Capped so a long stack never waits on a long cascade.
-              transitionDelay: `${Math.min(i, 3) * 30}ms`,
-            }}
+            covered={i !== front}
+            onSelect={() => onOpen(balance)}
+            className={i === front ? "shadow-elev" : "shadow-rest"}
           />
         </li>
       ))}
     </ul>
   );
 }
+
+export { CARD_PX, PEEK_PX };
