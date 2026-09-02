@@ -78,7 +78,44 @@ describe("the frame never zooms", () => {
     // `clip`, not `hidden` — `hidden` makes a scroll container and kills
     // `position: sticky` in every descendant.
     expect(css).toContain("overflow-x: clip");
-    expect(css).toContain("overscroll-behavior-x: none");
+    // `none`, not `contain`: the root has no parent to chain to, so `contain`
+    // leaves the page rubber-band exactly where it is.
+    expect(css).toContain("overscroll-behavior: none");
     expect(css).toContain("text-size-adjust: 100%");
+  });
+
+  // The rest of the mobile-web pass: the app shell behaves like chrome rather
+  // than like a document. All unlayered for the same reason as the 16px floor.
+  it("drops the iOS tap-highlight box and the long-press callout on controls", () => {
+    const css = read("app/globals.css");
+    expect(css).toContain("-webkit-tap-highlight-color: transparent");
+    expect(css).toContain("-webkit-touch-callout: none");
+    // Scoped to CONTROLS. A blanket `user-select: none` would take the place
+    // names, addresses, bills and ticket codes with it — content a guest has
+    // real reasons to copy.
+    expect(css).not.toMatch(/^\s*body\s*\{[^}]*user-select:\s*none/m);
+  });
+
+  it("tells the mobile keyboard what the search field is", () => {
+    const bar = read("components/consumer/search/SearchBar.tsx");
+    // Without these iOS capitalises the first letter, autocorrects place names
+    // mid-query, and floats the QuickType strip over the results.
+    expect(bar).toContain('autoCapitalize="none"');
+    expect(bar).toContain('autoCorrect="off"');
+    expect(bar).toContain("spellCheck={false}");
+    // Relabels the return key Search — and Enter has to actually do something,
+    // which here means dismissing the keyboard off the results.
+    expect(bar).toContain('enterKeyHint="search"');
+    expect(bar).toContain("e.currentTarget.blur()");
+    // The field must NOT be type=search — WebKit adds its own clear button
+    // beside the X this bar already draws. Asserted against the rendered
+    // markup in search-overlays.test.tsx, where a source-level check cannot
+    // tell the input apart from the comment explaining it.
+  });
+
+  it("drops Google's Keyboard shortcuts button from the map", () => {
+    const map = read("components/consumer/search/SearchMap.tsx");
+    // `disableDefaultUI` does not cover this one.
+    expect(map).toContain("keyboardShortcuts={false}");
   });
 });

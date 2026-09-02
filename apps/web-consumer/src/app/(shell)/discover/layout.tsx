@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { Skeleton } from "@/components/shared";
 import { DiscoverModeNav } from "@/components/consumer/discover/DiscoverModeNav";
+import { DiscoverChromeProvider } from "@/components/consumer/discover/discover-chrome";
 import { HomeDeckBoundary } from "@/components/consumer/home/HomeDeckBoundary";
 
 export const dynamic = "force-dynamic";
@@ -17,21 +18,28 @@ export const dynamic = "force-dynamic";
 // THE CHILDREN SLOT IS A FLEX COLUMN, not a block. SwipeDeck, FavoritesList
 // and the map all ask for `min-h-0 flex-1`, and a block parent makes that
 // inert — the scroller sizes to content and the frame clips under the tab bar.
+//
+// The rail and the active mode are SIBLINGS, so the one thing they share —
+// whether the guest is mid-search — travels through DiscoverChromeProvider.
+// A server component cannot hold that state; this is the client boundary that
+// contains both. See discover-chrome.tsx.
 export default function DiscoverLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <DiscoverModeNav />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <Suspense
-          fallback={
-            <div className="min-h-0 flex-1 p-4">
-              <Skeleton className="h-full w-full rounded-2xl" />
-            </div>
-          }
-        >
-          <HomeDeckBoundary>{children}</HomeDeckBoundary>
-        </Suspense>
+    <DiscoverChromeProvider>
+      <div className="flex h-full min-h-0 flex-col">
+        <DiscoverModeNav />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="min-h-0 flex-1 p-4">
+                <Skeleton className="h-full w-full rounded-2xl" />
+              </div>
+            }
+          >
+            <HomeDeckBoundary>{children}</HomeDeckBoundary>
+          </Suspense>
+        </div>
       </div>
-    </div>
+    </DiscoverChromeProvider>
   );
 }
