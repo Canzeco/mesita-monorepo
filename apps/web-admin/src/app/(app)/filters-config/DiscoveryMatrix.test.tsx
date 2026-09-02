@@ -26,4 +26,18 @@ describe("Discovery matrix", () => {
     expect(html).toContain("Places Lineup Randomness · Map · off");
     expect(html).not.toContain(">0</span>");
   });
+
+  it("returns Locations on the two Name modes only — Autocomplete is the one module that answers with a region", () => {
+    const html = renderToStaticMarkup(<DiscoveryMatrix />);
+    expect(html).toContain("Locations · Name (Fast) · returned");
+    expect(html).toContain("Locations · Name (Deep) · returned");
+    for (const mode of ["Map", "Swipe", "Catalog", "Chat", "Social", "Favorites"]) {
+      expect(html).toContain(`Locations · ${mode} · not returned`);
+      expect(html).toContain(`Places · ${mode} · returned`);
+    }
+    // Places come back everywhere, Fast and Deep included.
+    expect(html).toContain("Places · Name (Fast) · returned");
+    expect(html).toContain("Places · Name (Deep) · returned");
+    expect(html).not.toContain("Places · Name (Fast) · not returned");
+  });
 });

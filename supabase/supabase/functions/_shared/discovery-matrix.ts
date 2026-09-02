@@ -1,4 +1,4 @@
-// Discovery mode × pool × module × signal matrix.
+// Discovery mode × entity × pool × module × signal matrix.
 //
 // SPEC MIRROR, NOT A DISPATCHER. Twin of admin
 // `apps/web-admin/.../filters-config/catalog.ts` DISCOVERY_MODE_*. Change one,
@@ -26,6 +26,40 @@ export const DISCOVERY_MODE_KEYS = [
 ] as const;
 
 export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
+
+/**
+ * What a mode can put IN FRONT OF THE GUEST. A Place is a venue; a Location
+ * is a region or a city — name, type, and the coordinates the next step
+ * needs (Pato, 2026-09-02).
+ */
+export const DISCOVERY_ENTITIES = [
+  { key: "place", label: "Places" },
+  { key: "location", label: "Locations" },
+] as const;
+
+export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
+
+/**
+ * Autocomplete is the ONE module that answers with Locations, and it returns
+ * them in the SAME call as the Places — not a second request. So the modes
+ * that can hand back a Location are exactly the modes that call Autocomplete:
+ * Name (Fast) and Name (Deep). Text Search returns Places even when the query
+ * reads like a city, so Deep's Location rows only ever come from its
+ * Autocomplete query.
+ */
+export const DISCOVERY_MODE_ENTITIES: Record<
+  DiscoveryModeKey,
+  readonly DiscoveryEntityKey[]
+> = {
+  fast: ["place", "location"],
+  deep: ["place", "location"],
+  map: ["place"],
+  swipe: ["place"],
+  catalog: ["place"],
+  chat: ["place"],
+  social: ["place"],
+  favorites: ["place"],
+};
 
 export const DISCOVERY_POOLS = [
   { key: "google", label: "Google Places" },
@@ -131,6 +165,13 @@ export const DISCOVERY_MODE_SIGNAL_ZERO: Partial<
 > = {
   map: ["randomness"],
 };
+
+export function modeReturnsEntity(
+  mode: DiscoveryModeKey,
+  entity: DiscoveryEntityKey,
+): boolean {
+  return DISCOVERY_MODE_ENTITIES[mode].includes(entity);
+}
 
 export function modeRequiresPool(
   mode: DiscoveryModeKey,
