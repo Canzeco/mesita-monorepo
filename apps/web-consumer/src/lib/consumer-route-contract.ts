@@ -12,37 +12,45 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical. /invite is the
   // legacy path (redirects here).
   share: "/share",
-  // DISCOVER — the first tab, and five modes under it (2026-09-01).
+  // DISCOVER — the first tab, and five modes under it.
   //
   // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
   // than the rule (Activity routes at /inbox, Pay at /new-visit, Wallet at
-  // /credits). It is deliberate: the tab moved off /search precisely so the
-  // typed mode could be a real segment instead of /search/search. Every /home*
-  // and /explore* 308 repoints straight at /discover/map in the same change —
-  // chaining them through /search would make each two hops, and
-  // route-structure T4 caps at exactly 2 with no margin.
+  // /credits). It is deliberate, and it is what makes a relabel a ROUTE rename:
+  // renaming a pill without moving its segment breaks the rule silently.
   //
-  // FIVE modes, not seven (Pato, 2026-09-01). Name, Catalog and Social folded
-  // into ONE surface called Search: a name bar over browsable results, with the
-  // catalog rails and the friend feed landing on that same page when they
-  // un-park. They were three pills for one job — find a place that is not
-  // already on your screen.
+  // SEARCH IS THE MAP (Pato, 2026-09-01). A search bar is a control, and it
+  // belongs on the surface it serves — the map is where a found place has
+  // somewhere to land, and it is the only mode that also answers "what is near
+  // me" with no query at all. So the typed control lives on the pins, and the
+  // word Search names the mode that carries it.
   //
-  // Two are live (map, search). Swipe, Chat and Favs are parked with their
-  // bodies on disk — swipe/, AskAiTab, FavoritesList — so un-parking is a mount,
-  // not a rewrite. CatalogRails and SocialFeed stay on disk too; they mount
-  // INTO Search rather than getting routes back.
+  // FEED is what is left once the bar moves off the list: CatalogRails on their
+  // own, a browse surface with no query. It carries NO search bar — two typed
+  // inputs one pill apart was the redundancy that started this.
+  //
+  // Feed is NOT called Home even though it leads the rail. Home promises to be
+  // where you land, and Discover lands on Search; worse, /home* already 308s
+  // elsewhere, so /home and /discover/home would have named two screens.
+  //
+  // All five are live. CatalogRails is Feed's whole body; SocialFeed stays on
+  // disk and mounts INTO Feed when it un-parks, rather than getting a route.
   discover: "/discover",
   discoverTabs: {
-    map: "/discover/map",
+    feed: "/discover/feed",
     search: "/discover/search",
     swipe: "/discover/swipe",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
-  // Discover lands on the map: the only mode that needs no typing, and the only
-  // one that answers "what is near me" without a query.
-  discoverDefault: "/discover/map",
+  // DEFAULT IS NOT FIRST, deliberately — the same call Activity makes with bare
+  // /inbox landing on Visits while Alerts leads the row. Feed leads because
+  // browsing is the calmer entry, but a guest opening Discover wants the map:
+  // it needs no typing and answers "what is near me" on its own. Every /home*,
+  // /explore* and /search 308 points straight here, never through
+  // /discover/map — that segment is a 308 itself now, and route-structure T4
+  // caps a chain at exactly 2 hops with no margin.
+  discoverDefault: "/discover/search",
   // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
   // redirect to the hub's Soon state — `FavoritesList` exists under
   // components/ but nothing rendered it, and it needs `deckPlaces` from the
@@ -140,11 +148,14 @@ export const CONSUMER_ROUTES = {
     // Wallet's route while it lived under Activity (#1430 -> 2026-09-01). It
     // was live in production, so the bookmarks are real; it 308s to Pay > Wallet.
     inboxCredits: "/inbox/credits",
-    // The map's own route, for the ~6 hours between #1437 (which made /search
-    // the Discover tab) and the seven-mode split that moved it to
-    // /discover/map. Short-lived, but it WAS the live url and production
-    // deployed it, so it forwards like any other.
+    // The bare /search tab, from before Discover existed. It forwards to
+    // /discover/search, which is once again a map with a search bar on it — the
+    // path is legacy, the destination is not a coincidence.
     search: "/search",
+    // The map's segment while the rail called it Map. Search carries the map
+    // now, so this is the forwarding address. It was the Discover default and
+    // every /home* and /explore* pointed at it, so the bookmarks are real.
+    discoverMap: "/discover/map",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",
@@ -178,7 +189,7 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  // One prefix for all seven Discover modes. /search is a legacy redirect
+  // One prefix for all five Discover modes. /search is a legacy redirect
   // source now, not a surface, so it needs no prefix.
   discover: "/discover",
   place: "/place",

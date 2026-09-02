@@ -234,8 +234,8 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    // All seven Discover modes light one tab, live and parked alike.
-    ["/discover/map", "Discover"],
+    // Every Discover mode lights one tab.
+    ["/discover/feed", "Discover"],
     ["/discover/search", "Discover"],
     ["/discover/swipe", "Discover"],
     ["/discover/favs", "Discover"],
@@ -285,7 +285,7 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
-      usePathname: () => "/discover/map",
+      usePathname: () => "/discover/search",
       useRouter: () => ({ push: () => {}, back: () => {} }),
     }));
     const { BottomNav } = await import("@/components/consumer/BottomNav");
@@ -323,17 +323,48 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
 // last two pills never rendered at rest. A sixth mode brings that back, and
 // this count assertion is what makes anyone adding one re-measure first.
 describe("T5b — Discover's mode rail", () => {
-  it("is exactly Map · Search · Swipe · Chat · Favs", async () => {
+  it("is exactly Feed · Search · Swipe · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
-      "Map",
+      "Feed",
       "Search",
       "Swipe",
       "Chat",
       "Favs",
     ]);
+  });
+
+  // The width budget, as an assertion rather than a comment. `auto-cols-fr`
+  // sizes every column to the WIDEST pill, so the track is 5 x widest + 16px
+  // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
+  // 26px: a 14px icon, gap-1, and px-1 either side.
+  //
+  // This is why the browse mode is "Feed" and not "Catalog" (44.0px text, a
+  // 366px track, 7px of scroll at rest that clips Favs mid-word). Measured
+  // with real Inter 600 at 12px — the numbers below are that measurement, so
+  // a new label gets checked against arithmetic instead of a guess.
+  it("keeps every label inside the 359px track", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    const TEXT_PX: Record<string, number> = {
+      Feed: 28.0,
+      Search: 40.0,
+      Swipe: 34.7,
+      Chat: 26.7,
+      Favs: 27.4,
+    };
+    const widest = Math.max(
+      ...MODES.map((m) => {
+        const text = TEXT_PX[m.label];
+        expect(text, `unmeasured label "${m.label}" — measure it at 375px`).
+          toBeTypeOf("number");
+        return text + 26;
+      }),
+    );
+    expect(widest * MODES.length + 16).toBeLessThanOrEqual(359);
   });
 
   it("has no parked modes — all five are real destinations", async () => {
@@ -357,12 +388,12 @@ describe("T5b — Discover's mode rail", () => {
     expect(MODES).toHaveLength(contract.length);
   });
 
-  it("lands Discover on the map, and the default is never a parked mode", async () => {
+  it("lands Discover on Search, and the default is never a parked mode", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.map,
+      CONSUMER_ROUTES.discoverTabs.search,
     );
     // The guard that makes "the first tab lands on nothing" impossible to
     // reintroduce: whatever the default points at must be a LIVE mode.
@@ -370,6 +401,18 @@ describe("T5b — Discover's mode rail", () => {
       (m) => m.href === CONSUMER_ROUTES.discoverDefault,
     );
     expect(landed?.soon ?? false).toBe(false);
+  });
+
+  // DEFAULT IS NOT FIRST, and that is the product decision — the same one
+  // Activity makes with bare /inbox landing on Visits while Alerts leads.
+  // Pinned because it reads like a bug to anyone who meets it cold, and the
+  // cheap "fix" is to quietly repoint the default at the first pill.
+  it("keeps the default OFF the leading pill", async () => {
+    const { MODES } = await import(
+      "@/components/consumer/discover/DiscoverModeNav"
+    );
+    expect(MODES[0].href).not.toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(MODES[0].label).toBe("Feed");
   });
 });
 

@@ -1,11 +1,11 @@
-import { DiscoverSearchClient } from "@/components/consumer/discover/DiscoverSearchClient";
+import { SearchClient } from "@/components/consumer/search/SearchClient";
 
 export const dynamic = "force-dynamic";
 
-// Name — search Mesita places by name, as a list. The Google key is read
-// server-side, same as the map's page: GooglePlaceSheet needs it for the
-// photo, and a client-side env read would not see it.
+// SEARCH — the map, and the mode that carries the search bar. Named for the
+// control rather than the basemap: a found place needs somewhere to land, and
+// the pins are that somewhere.
 export default function DiscoverSearchPage() {
   const mapKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
-  return <DiscoverSearchClient apiKey={mapKey} />;
+  return <SearchClient apiKey={mapKey} />;
 }

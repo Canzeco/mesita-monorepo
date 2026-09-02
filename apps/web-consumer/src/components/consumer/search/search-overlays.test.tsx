@@ -411,10 +411,13 @@ describe("Search map puts the query pill and Filters button on one row", () => {
     expect(src).not.toContain("familyKeys={filters.familyKeys}");
     expect(src).toContain("mapFilterCount");
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
-    // The query pill left this row (name search moved to Discover > Search),
-    // so Filters is now alone and right-aligned.
-    expect(src).toContain("flex min-w-0 items-center justify-end");
-    expect(src).not.toContain("SearchBar");
+    // The search bar is back on this row and Filters sits beside it, which is
+    // what the describe() above has always claimed. ONE row, not two stacked
+    // bands: this mode is the app's landing surface, so a second full-width
+    // band would letterbox the pins on a 375px phone.
+    expect(src).toContain("flex min-w-0 items-center gap-2");
+    expect(src).toContain("<SearchBar");
+    expect(src).not.toContain("flex min-w-0 items-center justify-end");
     expect(src).not.toContain("applyDiscoveryFilters");
     expect(src).not.toContain("useDiscoveryFilters");
     expect(src).not.toContain("DiscoveryFilters");
@@ -460,25 +463,35 @@ describe("Search map puts the query pill and Filters button on one row", () => {
       /consumer-web-list-places[\s\S]*familyKeys/,
     );
     expect(read("SearchClient.tsx")).toContain("filters.familyKeys");
-    // The fast/deep modes moved to Discover > Search with the name bar. The
-    // point of the pin is unchanged: map FILTERS must never reach suggest.
-    const searchSrc = read("../discover/DiscoverSearchClient.tsx");
-    expect(searchSrc).toContain('"fast"');
-    expect(searchSrc).toContain('"deep"');
-    expect(searchSrc).not.toContain("filters.familyKeys");
+    // Fast/Deep is back on the map with the search bar, so the pin has to get
+    // SHARPER, not looser: SearchClient legitimately contains
+    // "filters.familyKeys" for its CATALOG fetch, and a bare not.toContain
+    // would now be asserting the opposite of what it means.
+    //
+    // The invariant is about the suggest CALL, so assert on its arguments:
+    // map filters describe what to draw on the basemap, and leaking them into
+    // autocomplete would silently narrow a typed name to the current chips.
+    const searchSrc = read("SearchClient.tsx");
+    const suggestArgs = [
+      ...searchSrc.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
+    ].map((m) => m[1]);
+    expect(suggestArgs).toHaveLength(2); // one Fast, one Deep
+    expect(suggestArgs.join("\n")).toContain('"fast"');
+    expect(suggestArgs.join("\n")).toContain('"deep"');
+    for (const args of suggestArgs) expect(args).not.toContain("filters");
     expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
     expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
     expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
     expect(read("search-catalog-overlays.tsx")).toContain(
       "No places match these filters",
     );
-    expect(read("../../../app/(shell)/discover/map/loading.tsx")).toContain(
+    expect(read("../../../app/(shell)/discover/search/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(read("../../../app/(shell)/discover/map/loading.tsx")).not.toContain(
+    expect(read("../../../app/(shell)/discover/search/loading.tsx")).not.toContain(
       "flex gap-1.5 overflow-hidden",
     );
-    expect(read("../../../app/(shell)/discover/map/loading.tsx")).not.toContain(
+    expect(read("../../../app/(shell)/discover/search/loading.tsx")).not.toContain(
       "mt-2 flex gap-1.5",
     );
     expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
@@ -754,7 +767,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
     const overlay = read("search-catalog-overlays.tsx");
     const card = read("SearchRailCard.tsx");
     const client = read("SearchClient.tsx");
-    const loading = read("../../../app/(shell)/discover/map/loading.tsx");
+    const loading = read("../../../app/(shell)/discover/search/loading.tsx");
     expect(overlay).toContain("snap-x snap-mandatory");
     expect(overlay).toContain("w-4/5 shrink-0 snap-center");
     expect(overlay).toContain("px-3");
@@ -816,7 +829,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
   it("keeps every rail card the same height when rows are missing", () => {
     const card = read("SearchRailCard.tsx");
     const overlay = read("search-catalog-overlays.tsx");
-    const loading = read("../../../app/(shell)/discover/map/loading.tsx");
+    const loading = read("../../../app/(shell)/discover/search/loading.tsx");
     expect(card).toContain('RAIL_CARD_HEIGHT_CLASS = "h-24"');
     expect(card).toContain("grid-rows-[1.25rem_repeat(3,1rem)]");
     expect(overlay).toContain("RAIL_CARD_HEIGHT_CLASS");
@@ -872,10 +885,10 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
 });
 
 describe("Name search is Fast while typing and Deep after idle", () => {
-  // Moved off the map 2026-09-01 — Discover > Search owns the only typed
-  // search now. The behaviour is pinned here still, just against its new home.
+  // Back on the map: Search IS the map and owns the only typed search on
+  // Discover. Feed carries no bar, so there is exactly one suggest caller.
   it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
-    const src = read("../discover/DiscoverSearchClient.tsx");
+    const src = read("SearchClient.tsx");
     expect(src).toContain("FAST_DEBOUNCE_MS");
     expect(src).toContain("DEEP_IDLE_MS");
     expect(src).toContain('"fast"');
@@ -888,7 +901,7 @@ describe("Name search is Fast while typing and Deep after idle", () => {
   });
 
   it("keeps Fast when Deep returns an empty list", () => {
-    const src = read("../discover/DiscoverSearchClient.tsx");
+    const src = read("SearchClient.tsx");
     expect(src).toContain("Empty Deep keeps Fast");
     expect(src).toMatch(/if \(rows\.length > 0\) \{\s*deepSettled = true/);
     expect(src).toContain("Keep Fast results if Deep fails.");
