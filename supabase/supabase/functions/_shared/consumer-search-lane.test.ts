@@ -6,14 +6,18 @@ import {
   resolveMode,
   admitNameFloor,
   applyResolvedMesitaName,
+  classifyPredictionKind,
   deepModuleFlags,
   laneDedupeKeys,
   listedNotPartner,
+  locationTypeOf,
   mergeNameDeepQueries,
   orderDeepLineup,
   splitResolvedNameHits,
   stripPlacesPrefix,
   takeFastLane,
+  toWire,
+  weaveStampedAutocomplete,
   type LaneItem,
   type ListedRow,
 } from "./consumer-search-lane.ts";
@@ -456,6 +460,101 @@ Deno.test("resolveMode: mesita is its own mode, unknown still falls back to fast
   // with Pay's intent, and must never crash: fast is the safe default.
   assertEquals(resolveMode("MESITA"), "fast");
   assertEquals(resolveMode("embeddings"), "fast");
+});
+
+// ── Locations: Word's second entity (MESITA-1403) ─────────────────────
+
+Deno.test("classifyPredictionKind: locality without establishment is a Location", () => {
+  assertEquals(
+    classifyPredictionKind(["locality", "political", "geocode"]),
+    "location",
+  );
+  assertEquals(
+    classifyPredictionKind(["administrative_area_level_1", "political", "geocode"]),
+    "location",
+  );
+  assertEquals(classifyPredictionKind(["postal_code", "geocode"]), "location");
+});
+
+Deno.test("classifyPredictionKind: an establishment marker wins outright", () => {
+  assertEquals(
+    classifyPredictionKind([
+      "restaurant",
+      "food",
+      "point_of_interest",
+      "establishment",
+    ]),
+    "place",
+  );
+  // A venue inside a named area still reads as a venue.
+  assertEquals(
+    classifyPredictionKind(["geocode", "point_of_interest", "establishment"]),
+    "place",
+  );
+});
+
+Deno.test("classifyPredictionKind: missing/empty/unknown types stay Places", () => {
+  // An unexpected payload must behave exactly as today.
+  assertEquals(classifyPredictionKind(undefined), "place");
+  assertEquals(classifyPredictionKind(null), "place");
+  assertEquals(classifyPredictionKind([]), "place");
+  assertEquals(classifyPredictionKind(["cafe", "food"]), "place");
+});
+
+Deno.test("locationTypeOf: most specific type, blanket markers last", () => {
+  assertEquals(locationTypeOf(["locality", "political", "geocode"]), "locality");
+  assertEquals(
+    locationTypeOf(["political", "administrative_area_level_1", "geocode"]),
+    "administrative_area_level_1",
+  );
+  // Blanket-only rows still name something rather than nothing.
+  assertEquals(locationTypeOf(["political", "geocode"]), "political");
+  assertEquals(locationTypeOf([]), undefined);
+});
+
+Deno.test("weaveStampedAutocomplete: Locations hold their slots; gated Places drop", () => {
+  const city = item({
+    placeId: "loc-1",
+    mainText: "Ciudad de México",
+    kind: "location",
+    locationType: "locality",
+  });
+  const venueA = item({ placeId: "v-a", mainText: "Venue A" });
+  const venueB = item({ placeId: "v-b", mainText: "Venue B" });
+  const resolvedA = item({
+    placeId: "v-a",
+    mainText: "Mesita Venue A",
+    mesitaId: "m-a",
+    status: "web_listed",
+  });
+  // Venue B died at the gate: only A survived the stamp.
+  const out = weaveStampedAutocomplete([venueA, city, venueB], [resolvedA]);
+  assertEquals(out.map((p) => p.mainText), ["Mesita Venue A", "Ciudad de México"]);
+  assertEquals(out[1].kind, "location");
+});
+
+Deno.test("toWire: kind rides Location rows only — venue rows stay byte-identical", () => {
+  const venue = toWire(item({ placeId: "v-1", mainText: "Venue" }));
+  assertEquals("kind" in venue, false);
+  assertEquals("locationType" in venue, false);
+  const city = toWire(item({
+    placeId: "loc-1",
+    mainText: "Ciudad de México",
+    kind: "location",
+    locationType: "locality",
+  }));
+  assertEquals(city.kind, "location");
+  assertEquals(city.locationType, "locality");
+  // A Location has no coordinates from Autocomplete — those arrive on pick.
+  assertEquals("lat" in city, false);
+  assertEquals("lng" in city, false);
+});
+
+Deno.test("Locations dedupe on g:<placeId> like any Google row", () => {
+  assertEquals(
+    laneDedupeKeys({ placeId: "ChIJcity" }),
+    ["g:ChIJcity"],
+  );
 });
 
 Deno.test("Pay has no Google fallback, so its lane cap never collapses", () => {
