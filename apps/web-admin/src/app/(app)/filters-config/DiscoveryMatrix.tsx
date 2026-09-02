@@ -2,6 +2,7 @@ import { LayoutGrid } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/config";
 import { Flag, Square } from "./DiscoveryFlags";
 import {
+  DISCOVERY_ENTITIES,
   DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_LABELS,
   DISCOVERY_MODULES,
@@ -10,12 +11,21 @@ import {
   SIGNALS,
   modeCallsModule,
   modeRequiresPool,
+  modeReturnsEntity,
   modeSignalState,
 } from "./catalog";
 
-// Locked mode × pool × module × signal matrix (Pato, 2026-08-28).
-// Three bands: Places Types · Search Modules · Places Lineup Signals.
-// Two rules separate the bands. Map Randomness is off, not a printed 0.
+// Locked mode × entity × pool × module × signal matrix (Pato, 2026-08-28;
+// Result Entities added 2026-09-02).
+// Four bands: Result Entities · Places Types · Search Modules · Places
+// Lineup Signals. Rules separate the bands. Map Randomness is off, not a
+// printed 0.
+//
+// RESULT ENTITIES LEADS because it answers the first question an operator
+// asks of a mode — what comes back — and the three bands under it are the
+// machinery that produces it. Squares, not the green/red flags: an entity
+// is a SET the mode can answer with, the same kind of fact as a pool, while
+// green/red means a call fires.
 
 const COLS = 1 + DISCOVERY_MODE_KEYS.length;
 
@@ -48,7 +58,7 @@ export function DiscoveryMatrix() {
     <SectionCard
       icon={<LayoutGrid className="text-muted-foreground size-4" />}
       title="Discovery matrix"
-      subtitle="Locked. Modes across the top. Places Types, Search Modules, then Places Lineup Signals. Chips on the cards below repeat the green modules."
+      subtitle="Locked. Modes across the top. Result Entities, Places Types, Search Modules, then Places Lineup Signals. Chips on the cards below repeat the green modules."
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[52rem] border-collapse text-left">
@@ -68,6 +78,26 @@ export function DiscoveryMatrix() {
             </tr>
           </thead>
           <tbody>
+            <BandTitle title="Result Entities" />
+            {DISCOVERY_ENTITIES.map((entity) => (
+              <tr key={entity.key} className="border-border/60 border-b">
+                <th className="type-label font-medium pr-3 py-2">
+                  {entity.label}
+                </th>
+                {DISCOVERY_MODE_KEYS.map((mode) => {
+                  const on = modeReturnsEntity(mode, entity.key);
+                  return (
+                    <td key={mode} className="px-1.5 py-2 text-center">
+                      <Square
+                        on={on}
+                        label={`${entity.label} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "returned" : "not returned"}`}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            <BandRule />
             <BandTitle title="Places Types" />
             {DISCOVERY_POOLS.map((pool) => (
               <tr key={pool.key} className="border-border/60 border-b">

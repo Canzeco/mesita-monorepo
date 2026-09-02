@@ -1,10 +1,13 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import {
+  DISCOVERY_ENTITIES,
+  DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_MODULES,
   DISCOVERY_MODULES,
   modeCallsModule,
   modeRequiresPool,
+  modeReturnsEntity,
   modeSignalState,
   weightsForMode,
 } from "./discovery-matrix.ts";
@@ -43,6 +46,20 @@ Deno.test("seven modules and the locked mode → module matrix", () => {
   assertEquals([...DISCOVERY_MODE_MODULES.favorites], []);
   assertEquals(modeCallsModule("chat", "Mesita Social Lineup"), false);
   assertEquals(modeCallsModule("deep", "Google Places Nearby Search"), false);
+});
+
+Deno.test("Locations come back on the two Name modes only — Places come back everywhere", () => {
+  assertEquals(DISCOVERY_ENTITIES.map((e) => e.key), ["place", "location"]);
+  assertEquals(modeReturnsEntity("fast", "location"), true);
+  assertEquals(modeReturnsEntity("deep", "location"), true);
+  for (const mode of DISCOVERY_MODE_KEYS) {
+    // Every mode answers with Places; only the Autocomplete modes add Locations.
+    assertEquals(modeReturnsEntity(mode, "place"), true);
+    assertEquals(
+      modeReturnsEntity(mode, "location"),
+      modeCallsModule(mode, "Google Places Autocomplete"),
+    );
+  }
 });
 
 Deno.test("pool mask is Google + Listed on Swipe · Catalog · Social; Favorites requires Google Places", () => {
