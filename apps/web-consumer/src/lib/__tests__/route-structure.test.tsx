@@ -1,4 +1,4 @@
-import { readdirSync, existsSync, statSync } from "node:fs";
+import { readdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -235,7 +235,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   const MATRIX: [string, string][] = [
     // Every Discover mode lights one tab.
-    ["/discover/home", "Discover"],
+    ["/discover/catalog", "Discover"],
     ["/discover/search", "Discover"],
     ["/discover/swipe", "Discover"],
     ["/discover/favs", "Discover"],
@@ -323,12 +323,12 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
 // last two pills never rendered at rest. A sixth mode brings that back, and
 // this count assertion is what makes anyone adding one re-measure first.
 describe("T5b — Discover's mode rail", () => {
-  it("is exactly Home · Search · Swipe · Chat · Favs", async () => {
+  it("is exactly Catalog · Search · Swipe · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
-      "Home",
+      "Catalog",
       "Search",
       "Swipe",
       "Chat",
@@ -341,20 +341,38 @@ describe("T5b — Discover's mode rail", () => {
   // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
   // 26px: a 14px icon, gap-1, and px-1 either side.
   //
-  // This is why the browse mode is "Home" and not "Catalog" (44.0px text, a
-  // 366px track, 7px of scroll at rest that clips Favs mid-word). Measured
-  // with real Inter 600 at 12px — the numbers below are that measurement, so
-  // a new label gets checked against arithmetic instead of a guess.
+  // MEASURED AT 11px (`type-label`), not 12px (`text-xs`). "Catalog" is 44.0px
+  // at 12px, which put the track at 366px — the 7px of scroll that was the
+  // whole case for calling the mode "Home" until 2026-09-02. The rail dropped
+  // one type step to buy it back, so these numbers are the 12px measurements
+  // scaled by 11/12 and the widest is Catalog at 40.3.
+  //
+  // The size assertion below is load-bearing: if the rail ever goes back to
+  // `text-xs`, this arithmetic silently starts describing a track 8% narrower
+  // than the one that renders, and Favs clips mid-word again.
   it("keeps every label inside the 359px track", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
+    const navSrc = readFileSync(
+      join(
+        __dirname,
+        "..",
+        "..",
+        "components/consumer/discover/DiscoverModeNav.tsx",
+      ),
+      "utf8",
+    );
+    // Match the `base` class string itself, not the word anywhere in the file
+    // — both sizes are NAMED in that file's comment explaining the swap.
+    expect(navSrc).toContain('"type-label flex items-center');
+    expect(navSrc).not.toContain("py-2 text-xs font-semibold");
     const TEXT_PX: Record<string, number> = {
-      Home: 33.3,
-      Search: 40.0,
-      Swipe: 34.7,
-      Chat: 26.7,
-      Favs: 27.4,
+      Catalog: 40.3,
+      Search: 36.7,
+      Swipe: 31.8,
+      Chat: 24.5,
+      Favs: 25.1,
     };
     const widest = Math.max(
       ...MODES.map((m) => {
@@ -412,7 +430,7 @@ describe("T5b — Discover's mode rail", () => {
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES[0].href).not.toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Home");
+    expect(MODES[0].label).toBe("Catalog");
   });
 });
 
