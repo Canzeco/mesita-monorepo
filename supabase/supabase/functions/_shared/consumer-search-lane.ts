@@ -23,12 +23,20 @@
 // A Google hit that resolves to Mesita stays in its Google query; later
 // Mesita queries skip it. Summary and the other six Lineup signals are
 // not a Deep input. Membership is a boolean `partner`.
+// Word answers with TWO entities (MESITA-1403): Places are venues,
+// Locations are regions/cities. Autocomplete returns both in one call;
+// classification reads `types` off rows the response already carries —
+// never a Details call while typing. Locations skip the venue gates and
+// Mesita resolution whole, and only the consumer caller opts into them
+// (the matrix: Locations ride Word alone). Coordinates come later, on
+// selection, through the anchor read (one Details call per PICK).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
 import { adminClient, type EFEnv } from "./auth.ts";
 import {
   classifyGoogleError,
+  fetchLocationAnchor,
   fetchPlaceSignals,
   friendlyGoogleError,
   GOOGLE_PLACES_AUTOCOMPLETE_URL,
@@ -101,6 +109,9 @@ export const GOOGLE_TEXT_MAX = 20;
  */
 export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
+/** Word's two entities: a venue, or a region/city from Autocomplete. */
+export type LaneKind = "place" | "location";
+
 export type LaneItem = {
   placeId: string;
   mainText: string;
@@ -109,6 +120,14 @@ export type LaneItem = {
   partner: boolean;
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
+  /**
+   * Absent = "place". Only Autocomplete rows are classified; the Text and
+   * Mesita lanes are venues by construction. A Location never carries
+   * membership, mesitaId, or coordinates — those arrive on selection.
+   */
+  kind?: LaneKind;
+  /** Most specific Google type on a Location row (e.g. "locality"). */
+  locationType?: string;
   mesitaId?: string;
   mesitaSlug?: string;
   lat?: number | null;
@@ -117,6 +136,58 @@ export type LaneItem = {
   businessStatus?: string | null;
   reviewCount?: number | null;
 };
+
+// Autocomplete (New) marks regions, cities and areas with these types.
+// administrative_area_level_* matches by prefix. An establishment marker
+// wins outright: a venue carries "establishment"/"point_of_interest" next
+// to its specific types, while a locality is political/geocode-family only.
+const LOCATION_TYPE_MARKERS = new Set([
+  "locality",
+  "postal_code",
+  "political",
+  "geocode",
+]);
+const ESTABLISHMENT_TYPE_MARKERS = new Set([
+  "establishment",
+  "point_of_interest",
+]);
+
+/**
+ * Classify an Autocomplete row from the `types` the response already
+ * carries — never a Details call while typing. Missing/empty types read
+ * as "place", so an unexpected payload behaves exactly as today.
+ */
+export function classifyPredictionKind(
+  types?: readonly string[] | null,
+): LaneKind {
+  if (!Array.isArray(types) || types.length === 0) return "place";
+  let location = false;
+  for (const t of types) {
+    if (ESTABLISHMENT_TYPE_MARKERS.has(t)) return "place";
+    if (
+      LOCATION_TYPE_MARKERS.has(t) ||
+      t.startsWith("administrative_area_level_")
+    ) {
+      location = true;
+    }
+  }
+  return location ? "location" : "place";
+}
+
+/**
+ * Display type for a Location row: the most specific type. Google orders
+ * most-specific first; "political"/"geocode" are blanket markers, so the
+ * first type outside them names the entity ("locality", "neighborhood").
+ */
+export function locationTypeOf(
+  types?: readonly string[] | null,
+): string | undefined {
+  if (!Array.isArray(types) || types.length === 0) return undefined;
+  for (const t of types) {
+    if (t !== "political" && t !== "geocode") return t;
+  }
+  return types[0];
+}
 
 export function laneDedupeKeys(item: {
   placeId?: string | null;
@@ -219,6 +290,12 @@ export type ConsumerSearchArgs = {
   country?: string | null;
   /** Default fast — pickers and older clients stay Autocomplete. */
   mode?: SuggestPlacesMode | string | null;
+  /**
+   * Locations ride Word alone (the matrix, MESITA-1402): only the consumer
+   * searchbar caller opts in. Off, Location rows drop BEFORE the stamp, so
+   * a venue picker never pays a Details call for a city it would discard.
+   */
+  locations?: boolean;
 };
 
 export type ListedRow = {
@@ -380,6 +457,7 @@ export async function runConsumerSearchLane(
   const origin = originOf(args.lat, args.lng);
   const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
   const mode = resolveMode(args.mode);
+  const locations = args.locations === true;
 
   const predictions = mode === "mesita"
     // Pay: the Mesita name embeddings alone. No Google lane, no Google bill.
@@ -404,6 +482,7 @@ export async function runConsumerSearchLane(
       input,
       sessionToken,
       origin,
+      locations,
     )
     : await runFastSearch(
       admin,
@@ -414,6 +493,7 @@ export async function runConsumerSearchLane(
       input,
       sessionToken,
       origin,
+      locations,
     );
 
   if ("errorEnvelope" in predictions) {
@@ -437,6 +517,7 @@ async function runFastSearch(
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
+  locations: boolean,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const cap = Math.min(name.fast.count, name.fast.googleCount);
   if (cap <= 0 || googleTypeFilterForTypes(name.fast.types) === "skip") {
@@ -450,14 +531,61 @@ async function runFastSearch(
     origin,
   );
   if (googleAuto.errorEnvelope) return { errorEnvelope: googleAuto.errorEnvelope };
-  const stamped = await stampGoogleAgainstCatalog(
-    googleAuto.predictions,
+  const stamped = await stampAutocompleteLane(
+    keepWantedKinds(googleAuto.predictions, locations),
     admin,
     apiKey,
     gate,
     general,
   );
   return takeFastLane(stamped, cap);
+}
+
+/** Callers that answer with Places alone drop Location rows pre-stamp. */
+function keepWantedKinds(items: LaneItem[], locations: boolean): LaneItem[] {
+  return locations ? items : items.filter((row) => row.kind !== "location");
+}
+
+/**
+ * Locations skip the venue machinery whole: no catalog resolve, no
+ * Details call, no Map or General gate — those ask questions about a
+ * business, and a city has none of the answers. Survivors return in
+ * Autocomplete order with Location rows holding their slots.
+ */
+export function weaveStampedAutocomplete(
+  original: LaneItem[],
+  stampedPlaces: LaneItem[],
+): LaneItem[] {
+  const byId = new Map<string, LaneItem>();
+  for (const p of stampedPlaces) byId.set(p.placeId, p);
+  const out: LaneItem[] = [];
+  for (const row of original) {
+    if (row.kind === "location") {
+      out.push(row);
+      continue;
+    }
+    const stamped = byId.get(row.placeId);
+    if (stamped) out.push(stamped);
+  }
+  return out;
+}
+
+async function stampAutocompleteLane(
+  items: LaneItem[],
+  admin: SupabaseClient,
+  apiKey: string,
+  gate: MapConfig,
+  general: GeneralConfig,
+): Promise<LaneItem[]> {
+  const places = items.filter((row) => row.kind !== "location");
+  const stamped = await stampGoogleAgainstCatalog(
+    places,
+    admin,
+    apiKey,
+    gate,
+    general,
+  );
+  return weaveStampedAutocomplete(items, stamped);
 }
 
 /** After resolve: Mesita partners, Mesita listed, leftover Google stubs. */
@@ -518,6 +646,7 @@ async function runDeepSearch(
   input: string,
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
+  locations: boolean,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = mapWithTypes(map, deep.types);
@@ -549,8 +678,17 @@ async function runDeepSearch(
     ? []
     : googleAuto.predictions;
 
+  // Deep keeps Location rows from its Autocomplete query only: Text Search
+  // returns Places even for "Ciudad de México", and the Mesita lanes are
+  // venues by construction.
   const [stampedAuto, stampedText] = await Promise.all([
-    stampGoogleAgainstCatalog(autoPreds, admin, apiKey, gate, general),
+    stampAutocompleteLane(
+      keepWantedKinds(autoPreds, locations),
+      admin,
+      apiKey,
+      gate,
+      general,
+    ),
     stampGoogleAgainstCatalog(
       googleText,
       admin,
@@ -626,7 +764,7 @@ async function runMesitaNameSearch(
   return takeListedLane(ordered, mesitaNameCap(name.deep));
 }
 
-function toWire(item: LaneItem) {
+export function toWire(item: LaneItem) {
   return {
     placeId: item.placeId,
     mainText: item.mainText,
@@ -634,6 +772,14 @@ function toWire(item: LaneItem) {
     status: item.status,
     partner: item.partner,
     enriched: item.enriched === true,
+    // `kind` rides Location rows only — absent reads "place", and the
+    // Places path stays byte-identical for a venue query.
+    ...(item.kind === "location"
+      ? {
+        kind: "location" as const,
+        ...(item.locationType ? { locationType: item.locationType } : {}),
+      }
+      : {}),
     ...(item.mesitaId ? { mesitaId: item.mesitaId } : {}),
     ...(item.mesitaSlug ? { mesitaSlug: item.mesitaSlug } : {}),
     ...(item.lat != null ? { lat: item.lat } : {}),
@@ -643,6 +789,28 @@ function toWire(item: LaneItem) {
 // businessStatus / reviewCount are deliberately NOT on the wire. They are
 // gate inputs, and `business_status` stays an operator fact (place-columns.ts
 // keeps it out of the public payload for the same reason).
+
+/**
+ * Selection-time anchor read for a picked Location (consumed by the map
+ * anchor, MESITA-1405): ONE Location-shaped Details call per pick, never
+ * per keystroke. Wire status stays 200 — supabase-js's invoke helper
+ * swallows non-2xx bodies.
+ */
+export async function runLocationAnchor(rawPlaceId: string): Promise<Response> {
+  const keyRes = readGooglePlacesKey();
+  if (!keyRes.ok) return keyRes.response;
+  const placeId = stripPlacesPrefix(rawPlaceId.trim());
+  if (!placeId) return json({ ok: false, error: "Missing anchorPlaceId" });
+  const anchor = await fetchLocationAnchor(placeId, keyRes.key);
+  if (!anchor) {
+    return json({
+      ok: false,
+      code: "anchor_not_found",
+      error: "Couldn't resolve that location right now.",
+    });
+  }
+  return json({ ok: true, anchor });
+}
 
 async function embedQueryVector(
   admin: SupabaseClient,
@@ -741,19 +909,26 @@ async function fetchAutocomplete(
           secondaryText?: { text?: string };
         };
         text?: { text?: string };
+        types?: string[];
       };
     }>;
   };
   const predictions = (data.suggestions ?? [])
     .map((s) => s.placePrediction)
     .filter((p): p is NonNullable<typeof p> => !!p)
-    .map<LaneItem>((p) => ({
-      placeId: stripPlacesPrefix(p.placeId),
-      mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
-      secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
-      status: "not_in_mesita",
-      partner: false,
-    }))
+    .map<LaneItem>((p) => {
+      const kind = classifyPredictionKind(p.types);
+      return {
+        placeId: stripPlacesPrefix(p.placeId),
+        mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
+        secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
+        status: "not_in_mesita",
+        partner: false,
+        ...(kind === "location"
+          ? { kind, locationType: locationTypeOf(p.types) }
+          : {}),
+      };
+    })
     .filter((p) => p.placeId && p.mainText);
   return { predictions };
 }
