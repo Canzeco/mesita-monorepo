@@ -10,9 +10,30 @@ on:
     paths:
       - "supabase/**"
       - ".github/workflows/supabase.yml"
+  # MESITA-1379. This suite can go red with NO commit touching it, and the
+  # path filters above mean nothing would run to find out — main reads green
+  # while it is broken, and the next PR to touch supabase/** inherits the red.
+  # Two ways that happens here and nowhere else in this repo:
+  #   · these EFs import jsr:/npm:/https: UNPINNED by design (see the lint
+  #     exclusions below), so an upstream release can break them on its own;
+  #   · a date-relative fixture can simply come due — a `promo_paused_until`
+  #     ten days past a FROZEN `NOW` turned place-promoting.test.ts red on
+  #     2026-08-31 and stayed invisible until an unrelated PR ran this job.
+  # Every apps/web-* package pins through a lockfile and cannot drift this
+  # way, so the clock-driven run belongs on this one package, not repo-wide.
+  # Off-peak minute: GitHub queues :00 heavily. Note GitHub disables cron on
+  # repos with no activity for 60 days.
+  schedule:
+    - cron: "17 6 * * *"
+  # Same job on demand, without waiting for the cron.
+  workflow_dispatch:
 
 concurrency:
-  group: supabase-ci-${{ github.ref }}
+  # `event_name` keeps the scheduled run in its own lane. Without it a cron
+  # firing during a push to main shares this group and one cancels the other,
+  # which is exactly the "nothing ran and nobody noticed" failure above.
+  # PR-to-PR cancellation is unchanged: same ref, same event.
+  group: supabase-ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 defaults:
