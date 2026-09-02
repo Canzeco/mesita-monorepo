@@ -61,20 +61,23 @@ describe("the page chrome names the three surfaces", () => {
 });
 
 describe("Mesita Search returns the whole catalog too", () => {
-  it("ships an All places button that needs no paste, and never arms Intake", () => {
+  it("ships an All places button that needs no paste, and loads the shared box", () => {
     const tab = readFileSync(join(here, "MesitaSearchTab.tsx"), "utf8");
     expect(tab).toContain("listAllPlaces");
     expect(tab).toContain("All places");
     // Gated on nothing but a run already in flight — the paste is the OTHER
     // button's input, so requiring IDs here would defeat the point.
     expect(tab).toContain("disabled={busy}");
-    // Read-only: the shared ID box feeds Mesita Intake, which WRITES state.
-    // An All places run must never load it with every place on Mesita.
+    // The shortcut: the run loads the shared ID box with the catalog's Google
+    // Place IDs, so Mesita Intake is one scroll away with no paste. Capped
+    // where the box caps, and a place with no google_place_id is skipped.
     const run = tab.slice(
       tab.indexOf("async function runAllPlaces"),
       tab.indexOf("return (", tab.indexOf("async function runAllPlaces")),
     );
-    expect(run).not.toContain("onTextChange");
+    expect(run).toContain("onTextChange(");
+    expect(run).toContain("google_place_id");
+    expect(run).toContain("MAX_GOOGLE_PLACE_IDS");
   });
 
   it("walks the catalog in the EF — paged, capped, and honest about the cap", () => {
