@@ -10,6 +10,7 @@ import type { AdminPlace } from "../../actions";
 // in offerings.test.ts.
 vi.mock("../../actions", () => ({
   getPlacePaymentAccount: vi.fn(async () => ({ ok: false, error: "not called in SSR" })),
+  startPlacePaymentOnboarding: vi.fn(),
   setPlacePlan: vi.fn(),
   setPlaceRails: vi.fn(),
   setPlaceStrategy: vi.fn(),
@@ -158,5 +159,26 @@ describe("CRITICAL — the nested config is hidden, never unmounted", () => {
   it("renders the Reservation channel regardless of any switch", () => {
     const html = render(place());
     expect(html).toContain("Reservation channel");
+  });
+});
+
+describe("the Stripe rung is actionable, and only when it can be", () => {
+  it("offers Connect Stripe to a partner with no account", () => {
+    const html = render(place({ plan: "pro_discount" }));
+    expect(html).toContain("Mesita Stripe Account");
+    expect(html).toContain("Connect Stripe");
+  });
+
+  it("offers NOTHING to a non-partner — the rung is locked, not actionable", () => {
+    // Handing someone a Connect button before they have partnered is an
+    // action that cannot succeed; the row states the prerequisite instead.
+    const html = render(place({ plan: "free" }));
+    expect(html).not.toContain("Connect Stripe");
+    expect(html).toContain("Needs the partnership");
+  });
+
+  it("locks Mesita Pay behind the Stripe account, naming it", () => {
+    const html = render(place({ plan: "pro_discount" }));
+    expect(html).toContain("Needs an active Stripe account");
   });
 });

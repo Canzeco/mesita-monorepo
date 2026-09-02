@@ -10,6 +10,7 @@ import {
 import { planForSubscription } from "@/lib/business/plans";
 import {
   getPlacePaymentAccount,
+  startPlacePaymentOnboarding,
   setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
@@ -108,6 +109,36 @@ export function PromosSection({
       alive = false;
     };
   }, [place.id]);
+
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+
+  // Stripe owns the next screen, so this is a FULL navigation, not a new tab —
+  // the hosted Account Link expects to come back to `returnUrl` in the same
+  // context. Returning re-mounts this component, and the effect above re-reads
+  // the mirror with refresh:true, so no explicit ?connect= handling is needed.
+  const startConnect = async () => {
+    if (connectBusy) return;
+    setConnectBusy(true);
+    setConnectError(null);
+    const base = `${window.location.origin}/manage-single/${place.id}/promos`;
+    const r = await startPlacePaymentOnboarding(place.id, {
+      returnUrl: `${base}?connect=return`,
+      refreshUrl: `${base}?connect=refresh`,
+    });
+    if (!r.ok) {
+      setConnectBusy(false);
+      setConnectError(r.error);
+      return;
+    }
+    if (r.data.url) {
+      window.location.assign(r.data.url);
+      return;
+    }
+    // Mock mode: no hosted page exists, so reflect the new row in place.
+    setConnectBusy(false);
+    setConnect(connectStateFrom(r.data.account, false));
+  };
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
@@ -290,7 +321,24 @@ export function PromosSection({
               </NestedConfig>
             </LadderRow>
 
-            <LadderRow row={byKey.stripe} />
+            <LadderRow
+              row={byKey.stripe}
+              error={connectError}
+              control={
+                byKey.stripe.state.kind === "on" ||
+                byKey.stripe.state.kind === "locked" ? undefined : (
+                  <button
+                    type="button"
+                    onClick={() => void startConnect()}
+                    disabled={connectBusy || connectLoading}
+                    className="bg-foreground text-background inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                  >
+                    {connectBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    {byKey.stripe.state.kind === "off" ? "Connect Stripe" : "Finish setup"}
+                  </button>
+                )
+              }
+            />
 
             <LadderRow
               row={byKey.mesita_pay}

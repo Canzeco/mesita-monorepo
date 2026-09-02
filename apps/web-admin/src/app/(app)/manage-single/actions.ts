@@ -493,6 +493,53 @@ export type PlacePayReadiness = {
   all: boolean;
 };
 
+/** What `business-web-start-payment-onboarding` hands back. */
+export type PaymentOnboardingStart = {
+  /** MOCK_CONNECT was on, or no Stripe key is configured. */
+  mock: boolean;
+  /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
+  url: string | null;
+  account: PlacePaymentAccount | null;
+};
+
+/**
+ * Create (if missing) the place's connected account and get a Stripe-hosted
+ * onboarding link. Super-admins pass the EF's `requireOwner` gate
+ * (`_shared/auth-membership.ts` exempts `isSuperAdmin`), which is what makes
+ * staff-assisted onboarding work at all: production places have no owners.
+ *
+ * `returnUrl` / `refreshUrl` are REQUIRED here. The EF defaults to the
+ * business console's `/unit/<id>/promos`, so an admin-initiated onboarding
+ * would otherwise strand the operator in a console they were not using.
+ *
+ * Live keys are refused by the EF (`liveChargesBlocked`, MESITA-37) unless
+ * STRIPE_ALLOW_LIVE is set — provisioning an account counts as provisioning
+ * something that later gets charged.
+ */
+export async function startPlacePaymentOnboarding(
+  placeId: string,
+  urls: { returnUrl: string; refreshUrl: string },
+): Promise<Result<PaymentOnboardingStart>> {
+  const r = await efInvoke<{
+    mock?: boolean;
+    url?: string | null;
+    account?: PlacePaymentAccount | null;
+  }>("business-web-start-payment-onboarding", {
+    placeId,
+    returnUrl: urls.returnUrl,
+    refreshUrl: urls.refreshUrl,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: {
+      mock: r.data.mock === true,
+      url: r.data.url ?? null,
+      account: r.data.account ?? null,
+    },
+  };
+}
+
 export async function getPlacePaymentAccount(
   placeId: string,
   opts: { refresh?: boolean } = {},
