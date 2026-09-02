@@ -23,16 +23,26 @@ import type { CreditBalance } from "@/lib/mock/credits-mock";
 // LocalOverlay, SlideOverShell and BottomSheetShell already share, so the app
 // keeps one clock.
 //
-// SPREAD_PX EXISTS TO REVEAL THE AMOUNT. The peek is 62px (identity + balance);
-// spreading to 120px uncovers the big number and the terms line on every card
-// at once, which is the whole reason the gesture is here. A smaller spread
-// would buy empty gradient and make the tap pointless.
+// SPREAD_PX MUST CLEAR THE WHOLE CARD, NOT PART OF IT (2026-09-02, review pass
+// on the shipped deck). It was 120 against a 176px card, and the 56px it left
+// buried were exactly where
+// the face lives: every card behind the front one rendered its balance sliced
+// in half by the next card's edge. A number cut through the middle does not
+// read as a peek, it reads as a rendering bug — worse than not showing it.
+//
+// So the spread is derived from the card, not chosen: CARD_PX plus one gap, and
+// the cards stop overlapping at all. That is what "spread" has to mean here.
+// Collapsed is the deck; opened is every card whole, which is also the only
+// state in which BalanceCard hands its balance to the face. The gap is the
+// app's `gap-3`, so the opened deck sits on the same rhythm as every other
+// list on this screen.
 //
 // DOM ORDER IS VISUAL ORDER. Painting the front card last would put it last in
 // tab order and announce the bottom of the pile first, so depth comes from an
 // explicit z-index instead.
 
-const SPREAD_PX = 120;
+const SPREAD_GAP_PX = 12;
+const SPREAD_PX = CARD_PX + SPREAD_GAP_PX;
 
 export function BalanceStack({
   balances,
@@ -44,6 +54,9 @@ export function BalanceStack({
   onOpen: (balance: CreditBalance) => void;
 }) {
   const [spread, setSpread] = useState(false);
+  // A deck of one has nothing to spread — the single card is already whole, so
+  // the first tap would have been a tap that did nothing. It opens instead.
+  const stacked = balances.length > 1;
   const offset = spread ? SPREAD_PX : PEEK_PX;
   const height = offset * (balances.length - 1) + CARD_PX;
 
@@ -57,10 +70,14 @@ export function BalanceStack({
           <BalanceCard
             balance={balance}
             nowMs={nowMs}
-            expanded={spread}
+            expanded={stacked ? spread : undefined}
+            // Spread, nothing overlaps, so every card owns its own face.
+            covered={!spread && i < balances.length - 1}
             // Collapsed, a tap spreads the stack so every card is readable.
             // Spread, a tap opens that balance. One control, two states.
-            onSelect={() => (spread ? onOpen(balance) : setSpread(true))}
+            onSelect={() =>
+              spread || !stacked ? onOpen(balance) : setSpread(true)
+            }
             className={
               i === balances.length - 1 ? "shadow-elev" : "shadow-rest"
             }

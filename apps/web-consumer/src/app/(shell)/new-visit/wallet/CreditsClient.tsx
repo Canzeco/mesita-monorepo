@@ -9,7 +9,7 @@ import { BalanceDetail } from "@/components/consumer/credits/BalanceDetail";
 import { BuyCreditsSheet } from "@/components/consumer/credits/BuyCreditsSheet";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
 import { formatCurrency } from "@/lib/api/profile";
-import type { CreditBalance } from "@/lib/mock/credits-mock";
+import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 import { cn } from "@/lib/utils";
@@ -120,6 +120,10 @@ export function CreditsClient({ seed }: { seed: Seed }) {
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
   const held = balances.reduce((sum, b) => sum + b.balanceCents, 0);
+  const onHold = balances.reduce(
+    (sum, b) => sum + (isLocked(b, nowMs) ? b.balanceCents : 0),
+    0,
+  );
 
   // The open sheet reads from live state, not the snapshot it was opened with,
   // so a spend updates the sheet it was made from instead of going stale.
@@ -137,24 +141,37 @@ export function CreditsClient({ seed }: { seed: Seed }) {
             <Skeleton className="h-14 w-full rounded-2xl" />
           </div>
         ) : balances.length === 0 ? (
+          // No `action`. EmptyState normally carries one, and the rule behind
+          // that is real — a zero state without a next step is a dead end. It
+          // already has one here: the labelled Top up tile renders directly
+          // below, on every state of this screen. Passing the action too put
+          // two "Top up" buttons 60px apart, which is the same control asking
+          // to be pressed twice.
           <EmptyState
             icon={Wallet}
             title="No Credits yet"
             description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
-            action={{ label: "Top up", onClick: () => setBuying(true) }}
           />
         ) : (
           <>
             {/* The total, stated rather than shouted. It answers "how much do
                 I have on Mesita" and stops there — it is a sum of venue-locked
-                balances, so it is a count, never a spendable amount. */}
+                balances, so it is a count, never a spendable amount.
+
+                AND IT NAMES THE HELD PART. "Spendable only where you paid" was
+                the only qualifier, which reads as "all of it, at those places"
+                — while a balance still inside its hold is spendable NOWHERE,
+                and the seeded wallet opens with most of its money in that
+                state. The clause appears only when there is something to
+                declare, so a fully matured wallet keeps the shorter line. */}
             <p className="text-muted-foreground px-5 pt-4 pb-1 text-xs leading-relaxed">
               <span className="text-foreground text-sm font-bold tabular-nums">
                 {formatCurrency(held)}
               </span>{" "}
               across {balances.length}{" "}
-              {balances.length === 1 ? "place" : "places"} · spendable only where
-              you paid
+              {balances.length === 1 ? "place" : "places"}
+              {onHold > 0 && <> · {formatCurrency(onHold)} still on hold</>} ·
+              spendable only where you paid
               <span className="border-border text-muted-foreground type-meta ml-1.5 rounded-full border px-1.5 py-0.5 align-[1px] font-semibold tracking-[0.12em] uppercase">
                 Soon
               </span>
