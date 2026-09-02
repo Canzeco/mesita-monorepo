@@ -68,7 +68,7 @@ export function PromosDistributionClient() {
     <div className="space-y-6">
       {loadError && (
         <ErrorNote
-          message={`Failed to load the saved Promos config — simulating over launch defaults. (${loadError})`}
+          message={`Failed to load the saved Rewards config — simulating over launch defaults. (${loadError})`}
         />
       )}
 

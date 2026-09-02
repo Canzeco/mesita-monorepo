@@ -4,7 +4,7 @@ import { PromosState } from "./PromosState";
 import { getPromosConfig } from "./actions";
 import { DEFAULT_PROMOS } from "./promos";
 
-// Promos Config — one page. The layout owns the DOCUMENT: server-seed, dirty
+// Rewards Config — one page. The layout owns the DOCUMENT: server-seed, dirty
 // flag, one Save. Save sits on the page after the knobs so the simulator
 // below does not own a control.
 //

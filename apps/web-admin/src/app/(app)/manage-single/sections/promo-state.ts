@@ -260,7 +260,7 @@ export function giveLevel(cfg: PromosConfig, id: StrategyId): GiveLevel {
   );
 
   // Dots are RELATIVE to the most generous posture, so the top strategy always
-  // fills the rail and an edit in Promos Config moves the others. A posture
+  // fills the rail and an edit in Rewards Config moves the others. A posture
   // that pays anything keeps at least one lit segment.
   const dots =
     mine.mean <= 0 || top <= 0

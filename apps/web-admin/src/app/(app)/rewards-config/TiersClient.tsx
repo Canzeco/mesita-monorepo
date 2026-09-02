@@ -26,7 +26,7 @@ import {
 // program. Floor first, then signed adders. Pinned rungs (Bronze, Free) are
 // an em dash — "0%" is a real rate and would read as one.
 //
-// Promos Config prices VISITS only. Orders and prepaid are not reward
+// Rewards Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
 // Save round-trips it without knobs. Dominant stays in the blob for leftover
 // rows and is not a column here.

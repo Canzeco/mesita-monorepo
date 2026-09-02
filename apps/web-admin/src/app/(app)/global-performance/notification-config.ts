@@ -185,7 +185,7 @@ type CategoryDef = {
 export const CATEGORIES: CategoryDef[] = [
   { key: "atlas", label: "Intake", Icon: Compass, live: true },
   { key: "consumer", label: "Guests", Icon: Users, live: true },
-  { key: "rewards", label: "Promos", Icon: Ticket, live: true },
+  { key: "rewards", label: "Rewards", Icon: Ticket, live: true },
   { key: "reservations", label: "Reservations", Icon: CalendarCheck, live: true },
   { key: "billing", label: "Billing", Icon: CreditCard, live: false },
   { key: "verifications", label: "Verifications", Icon: ShieldCheck, live: false },
