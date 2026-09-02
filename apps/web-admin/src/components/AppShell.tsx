@@ -50,8 +50,20 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
     document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
   };
 
+  // THE FRAME IS PINNED, NOT MEASURED. `fixed inset-0` resolves against the
+  // layout viewport — the same box `html { height: 100% }` uses — and
+  // re-resolves on every resize, so the shell can never disagree with the
+  // window the way a `100dvh` box can. Nothing is left in body flow, so the
+  // document has nothing to scroll: `main` below is the only scroller.
+  //
+  // `overflow-clip`, never `overflow-hidden`: a hidden box is still a scroll
+  // CONTAINER, so a find-in-page hit, an autoFocus, or any scrollIntoView
+  // under a subtree that momentarily overflows will scroll the frame — rail
+  // and content slide up together, dead space opens below, and with no
+  // scrollbar there is no way back short of a reload. Clip creates no scroll
+  // container at all, so that cannot happen.
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="fixed inset-0 flex overflow-clip">
       {/* Desktop sidebar — visible lg+. The column owns the width; the rail fills it. */}
       <div
         className={
@@ -104,7 +116,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
         {/* Mobile / tablet topbar — hidden lg+ */}
         <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex items-center gap-3 border-b px-4 py-3 backdrop-blur lg:hidden">
           <button

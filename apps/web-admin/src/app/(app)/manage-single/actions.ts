@@ -210,6 +210,30 @@ export async function searchPlacesByGoogleIds(
   return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
 }
 
+/**
+ * Every place on Mesita — no paste, no query. Mesita Search's All places
+ * button. The EF walks the whole catalog server-side and ships `total`
+ * beside the rows, so a run that hits its ceiling can say so instead of
+ * reading as a short catalog.
+ */
+export async function listAllPlaces(): Promise<
+  Result<{ places: PlaceHit[]; total: number }>
+> {
+  const r = await efInvoke<{ places: RawPlaceHit[]; total?: number | null }>(
+    "admin-web-search-places",
+    { all: true },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  const places = (r.data.places ?? []).map(normalizePlaceHit);
+  return {
+    ok: true,
+    data: {
+      places,
+      total: typeof r.data.total === "number" ? r.data.total : places.length,
+    },
+  };
+}
+
 // One menu / catalog entry under products.menu (and legacy menus).
 export type AdminMenuItem = {
   name?: string | null;
