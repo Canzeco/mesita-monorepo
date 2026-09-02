@@ -93,6 +93,7 @@ export function InvitePinModal({
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={PIN_LENGTH}
+            data-field-size="lg"
             className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-1 h-12 w-full rounded-lg border px-5 text-center font-mono text-lg tracking-[0.3em] tabular-nums outline-none"
           />
           <p className="text-muted-foreground type-label mt-2 text-center">

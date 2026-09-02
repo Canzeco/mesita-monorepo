@@ -524,3 +524,59 @@
     animation: none;
   }
 }
+
+/* THE APP IS ALWAYS 100% OF THE VISIBLE FRAME — never zoomed, never panned
+   sideways. The declarative half of the lock lives in layout.tsx's viewport
+   export and the imperative half in ViewportLock; this is the third part, and
+   the only one that addresses the CAUSE rather than the gesture.
+
+   UNLAYERED ON PURPOSE. Tailwind puts everything in @layer, and layer order
+   beats specificity, so a `text-sm` utility wins over any rule inside
+   @layer base no matter how it is written. These rules sit outside every
+   layer, which is the only place a floor can hold. */
+
+html {
+  /* `manipulation` = pan + pinch, minus double-tap-to-zoom. It is a
+     NARROWING, so descendants that ask for less still get less —
+     SwipeDeck's `touch-none` and the map's own handling both survive.
+     Pinch stays permitted here because Google Maps needs the touches;
+     ViewportLock is what stops Safari turning them into a page zoom. */
+  touch-action: manipulation;
+  /* iOS inflates body text in landscape unless this is pinned, which is a
+     zoom by another name — it reflows a frame that is sized to the viewport. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  /* `clip`, not `hidden`: `hidden` makes the element a scroll container, which
+     silently kills `position: sticky` in every descendant. `clip` refuses the
+     sideways scroll outright and leaves sticky alone. */
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
+/* iOS Safari ZOOMS THE WHOLE PAGE when a form control that would render below
+   16px takes focus, and no viewport meta can stop it — Apple treats it as
+   legibility, not layout. The search bar's input was `text-sm` (14px), so one
+   tap on "Search places by name…" scaled the entire app and left the Discover
+   tab row bleeding off both edges.
+   16px is the exact threshold, so this floor is the whole fix: at 1rem Safari
+   has nothing to correct and never zooms. Touch devices only — desktop keeps
+   the compact 14px fields, where no such behaviour exists. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="file"]
+    ),
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+  /* The floor is a floor, not a size. Fields that deliberately render LARGER
+     — the OTP and invite-PIN code boxes at `text-lg` — are already clear of
+     the 16px threshold and opt back out by name. */
+  [data-field-size="lg"] {
+    font-size: 1.125rem;
+  }
+}

@@ -208,6 +208,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
           placeholder="123456"
+          data-field-size="lg"
           className={cn(INPUT_CLASS, "text-center text-lg tracking-[0.5em]")}
           autoFocus
           required
