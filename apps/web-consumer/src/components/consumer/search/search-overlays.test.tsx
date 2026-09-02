@@ -6,10 +6,7 @@ import { describe, expect, it } from "vitest";
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
-import {
-  buildSearchMapPins,
-  locationTypeLabel,
-} from "@/lib/search-membership";
+import { buildSearchMapPins, locationTypeLabel } from "@/lib/search-membership";
 import {
   EmptySearchPrompt,
   SearchRailOverlay,
@@ -98,6 +95,27 @@ describe("SearchBar scope affordance", () => {
     expect(html).not.toContain("SlidersHorizontal");
   });
 
+  // THE MOBILE KEYBOARD, told what this field is. Rendered rather than read
+  // off the source: the comment in SearchBar explaining why type=search is
+  // wrong contains the string a source-level check would trip over.
+  it("asks iOS for a search keyboard without WebKit's second clear button", () => {
+    const html = renderToStaticMarkup(
+      <SearchBar
+        query=""
+        showClear={false}
+        onQueryChange={() => {}}
+        onClear={() => {}}
+      />,
+    );
+    // React passes these through with their JSX casing intact.
+    expect(html).toContain('enterKeyHint="search"');
+    expect(html).toContain('autoCapitalize="none"');
+    expect(html).toContain('autoCorrect="off"');
+    expect(html).toContain('spellCheck="false"');
+    // WebKit draws its own X on a search input, one pill away from ours.
+    expect(html).not.toContain('type="search"');
+  });
+
   it("renders the Any globe when country is unset", () => {
     const html = renderToStaticMarkup(
       <SearchBar
@@ -155,13 +173,15 @@ describe("SearchMapFilters", () => {
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
-    expect(html.indexOf("Mesita Places")).toBeLessThan(html.indexOf("How many"));
+    expect(html.indexOf("Mesita Places")).toBeLessThan(
+      html.indexOf("How many"),
+    );
     expect(html).toContain("How many");
     // 4 places under a cap of 20: the line states BOTH so it cannot
     // disagree with the button one row below.
     expect(html).toContain("Showing 4 of up to 20 closest.");
     expect(html).not.toContain("Closest 20 places.");
-    expect(html).toContain("role=\"radiogroup\"");
+    expect(html).toContain('role="radiogroup"');
     // TWO sets only — Partners is a paint, never a scope.
     expect(html).toContain("Mesita Places");
     expect(html).toContain("Google Places");
@@ -175,7 +195,7 @@ describe("SearchMapFilters", () => {
     expect(html).toContain(">40<");
     expect(html).toContain(">60<");
     // The Venn is gone — dense sheet, every option directly visible.
-    expect(html).not.toContain("viewBox=\"0 0 104 104\"");
+    expect(html).not.toContain('viewBox="0 0 104 104"');
     expect(html).not.toContain("overflow-y-auto");
     expect(html).toContain(
       'aria-checked="true" aria-label="Mesita Places only"',
@@ -225,7 +245,9 @@ describe("SearchPlacesScope", () => {
       <SearchPlacesScope power={1} onPower={() => {}} />,
     );
     expect(html.match(/role="radio"/g)?.length).toBe(2);
-    expect(html).toContain('aria-checked="true" aria-label="Mesita Places only"');
+    expect(html).toContain(
+      'aria-checked="true" aria-label="Mesita Places only"',
+    );
     expect(html).toContain(
       'aria-checked="false" aria-label="Mesita Places and Google Places"',
     );
@@ -286,9 +308,15 @@ describe("SearchResultLimit", () => {
     );
     expect(html.match(/role="radio"/g)?.length).toBe(3);
     expect(html).toContain("Closest 40 places.");
-    expect(html).toContain('aria-checked="true" aria-label="Closest 40 places"');
-    expect(html).toContain('aria-checked="false" aria-label="Closest 20 places"');
-    expect(html).toContain('aria-checked="false" aria-label="Closest 60 places"');
+    expect(html).toContain(
+      'aria-checked="true" aria-label="Closest 40 places"',
+    );
+    expect(html).toContain(
+      'aria-checked="false" aria-label="Closest 20 places"',
+    );
+    expect(html).toContain(
+      'aria-checked="false" aria-label="Closest 60 places"',
+    );
     expect(html).toContain(">20<");
     expect(html).toContain(">40<");
     expect(html).toContain(">60<");
@@ -296,7 +324,6 @@ describe("SearchResultLimit", () => {
     expect(html).not.toContain('type="number"');
   });
 });
-
 
 describe("SearchScopeSheet country pills", () => {
   const sheet = (
@@ -383,7 +410,6 @@ describe("Search map catalog auto-reloads after distance and time", () => {
       /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*scheduleOrLoad/,
     );
   });
-
 
   it("rebases lastFetchedCenter on rail or pin pans so those meters do not accrue", () => {
     const src = read("SearchClient.tsx");
@@ -512,12 +538,12 @@ describe("Search map's top row is the query bar ALONE, and Filters sits below", 
     expect(read("../../../app/(shell)/discover/search/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(read("../../../app/(shell)/discover/search/loading.tsx")).not.toContain(
-      "flex gap-1.5 overflow-hidden",
-    );
-    expect(read("../../../app/(shell)/discover/search/loading.tsx")).not.toContain(
-      "mt-2 flex gap-1.5",
-    );
+    expect(
+      read("../../../app/(shell)/discover/search/loading.tsx"),
+    ).not.toContain("flex gap-1.5 overflow-hidden");
+    expect(
+      read("../../../app/(shell)/discover/search/loading.tsx"),
+    ).not.toContain("mt-2 flex gap-1.5");
     expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
   });
 
@@ -595,9 +621,34 @@ describe("Search results drop from the bar, not from the bottom", () => {
     expect(src).not.toMatch(/(?<!max-)h-\[55dvh\]/);
   });
 
-  it("hides the catalog rail while a query is live", () => {
+  // THE RAIL STEPS ASIDE FOR THE KEYBOARD, not for the second character.
+  // `querying` starts at MIN_QUERY, which is the wrong moment twice over on a
+  // phone: the keyboard is already up at zero characters, and it is still up
+  // while the guest deletes back down to one. Both halves are load-bearing —
+  // focus opens search mode, a live query holds it open past the blur that a
+  // result tap causes, so the rail cannot flash back in under the camera move.
+  it("hides the catalog rail for the whole of search mode", () => {
     const src = read("SearchClient.tsx");
-    expect(src).toMatch(/\{!querying && \(\s*<SearchRailOverlay/);
+    expect(src).toMatch(/const searchMode = barFocused \|\| querying;/);
+    expect(src).toMatch(/\{!searchMode && \(\s*<SearchRailOverlay/);
+  });
+
+  it("publishes bar focus so the mode rail collapses with it", () => {
+    const src = read("SearchClient.tsx");
+    // Both edges. onFocus alone leaves the rail collapsed for the session.
+    expect(src).toContain("onFocus={() => setBarFocused(true)}");
+    expect(src).toContain("onBlur={() => setBarFocused(false)}");
+
+    const nav = read("../discover/DiscoverModeNav.tsx");
+    expect(nav).toContain("useDiscoverChrome()");
+    expect(nav).toMatch(/barFocused \? "max-h-0 opacity-0"/);
+    // A collapsed row is not a row you can tab into or hear.
+    expect(nav).toContain("inert={barFocused}");
+
+    // The provider is what makes the two siblings reachable at all: the
+    // Discover layout is a server component and cannot hold the state.
+    const layout = read("../../../app/(shell)/discover/layout.tsx");
+    expect(layout).toContain("<DiscoverChromeProvider>");
   });
 });
 
@@ -618,7 +669,9 @@ describe("Every terminal search state offers a way out", () => {
   it("wires retry to a nonce, since the debounce keys on the query text", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("searchNonce");
-    expect(src).toMatch(/\[supabase, trimmedQuery, searchOrigin, searchNonce\]/);
+    expect(src).toMatch(
+      /\[supabase, trimmedQuery, searchOrigin, searchNonce\]/,
+    );
     expect(src).toContain("setSearchNonce((n) => n + 1)");
   });
 });
@@ -710,10 +763,20 @@ describe("shouldReloadNearbyCatalog", () => {
       east: -100.295,
     };
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.505, lng: -100.3 }, blockBox, 0.5),
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.505, lng: -100.3 },
+        blockBox,
+        0.5,
+      ),
     ).toBe(true);
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, blockBox, 0.5),
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.501, lng: -100.3 },
+        blockBox,
+        0.5,
+      ),
     ).toBe(false);
   });
 
@@ -734,11 +797,17 @@ describe("shouldReloadNearbyCatalog", () => {
       }),
     ).toBe(true);
     expect(
-      shouldReloadNearbyCatalog(last, { lat: 25.501, lng: -100.3 }, cityBox, 5, {
-        fetchedAtMs: 1_000,
-        nowMs: 10_000,
-        minSec: 2,
-      }),
+      shouldReloadNearbyCatalog(
+        last,
+        { lat: 25.501, lng: -100.3 },
+        cityBox,
+        5,
+        {
+          fetchedAtMs: 1_000,
+          nowMs: 10_000,
+          minSec: 2,
+        },
+      ),
     ).toBe(false);
   });
 });
@@ -1107,8 +1176,12 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     );
     // A pick is a camera move + a forced reload + card one.
     expect(client).toContain("const anchorMapTo = (");
-    expect(client).toContain("anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow)");
-    expect(client).toMatch(/anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/);
+    expect(client).toContain(
+      "anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow)",
+    );
+    expect(client).toMatch(
+      /anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/,
+    );
     expect(client).toContain("cameraAnchor={anchor?.camera ?? null}");
     // The modal and the Google sheet moved to the SECOND tap — the pin /
     // rail-card open paths — and stayed off the bar pick.
@@ -1319,7 +1392,11 @@ describe("anchor helpers", () => {
       "b",
     ]);
     // Inside it: the catalog's own richer row wins the front slot.
-    const richer = { ...RAIL_PLACE, id: "b", photos: ["https://x/p.jpg"] } as Place;
+    const richer = {
+      ...RAIL_PLACE,
+      id: "b",
+      photos: ["https://x/p.jpg"],
+    } as Place;
     const woven = prependAnchorPlace([a, richer], b);
     expect(woven.map((p) => p.id)).toEqual(["b", "a"]);
     expect(woven[0].photos).toEqual(["https://x/p.jpg"]);

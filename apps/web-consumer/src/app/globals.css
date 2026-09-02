@@ -554,7 +554,15 @@ body {
      silently kills `position: sticky` in every descendant. `clip` refuses the
      sideways scroll outright and leaves sticky alone. */
   overflow-x: clip;
-  overscroll-behavior-x: none;
+  /* THE PAGE ITSELF NEVER RUBBER-BANDS. MobileFrame is `h-dvh` and every
+     scroller lives inside it, so a bounce at THIS level can only drag the
+     whole app off its own edge and show bare page behind it — on iOS that is
+     the "this is a website, not an app" tell.
+     `none`, not `contain`: the root has no parent to chain to, so `contain`
+     would leave the bounce exactly where it is. The inner scrollers are
+     separate elements and keep their own, which is the part that reads as
+     native. */
+  overscroll-behavior: none;
 }
 
 /* iOS Safari ZOOMS THE WHOLE PAGE when a form control that would render below
@@ -579,4 +587,39 @@ body {
   [data-field-size="lg"] {
     font-size: 1.125rem;
   }
+}
+
+/* THE APP CHROME BEHAVES LIKE CHROME, NOT LIKE A DOCUMENT. Same unlayered
+   reasoning as above: these have to beat utilities.
+
+   Everything here is scoped to controls — links, buttons, tabs, the bottom
+   nav. Place names, addresses, bills, ticket codes and reviews stay selectable
+   and long-pressable, because those are content a guest has real reasons to
+   copy. */
+
+/* iOS paints a grey rectangle over whatever you tap, sized to the element's
+   box — so a rounded pill flashes a SQUARE, and a card flashes the whole card.
+   Every control in this app already has its own press state (`active:scale`,
+   a hover fill), so the default is a second, uglier one drawn on top. */
+a,
+button,
+[role="button"],
+[role="tab"],
+summary,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A slow tap on a tab label selects the word and pops the iOS callout
+   ("Copy · Look Up · Share") over the app. Nobody is copying the word "Favs".
+   Inputs and textareas are deliberately absent — they need both. */
+a,
+button,
+[role="button"],
+[role="tab"],
+nav,
+summary {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }

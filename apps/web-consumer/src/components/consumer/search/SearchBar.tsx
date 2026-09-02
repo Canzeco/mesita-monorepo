@@ -19,6 +19,8 @@ type SearchBarProps = {
   /** Defaults to the discovery wording; the wallet asks a narrower question. */
   placeholder?: string;
   onFocus?: () => void;
+  /** Paired with onFocus by hosts that put chrome aside while the bar is live. */
+  onBlur?: () => void;
   inputRef?: RefObject<HTMLInputElement | null>;
   /** Opens the two-knob scope sheet (country + location). Omit on Visit. */
   onOpenScope?: () => void;
@@ -33,6 +35,7 @@ export function SearchBar({
   showClear,
   onQueryChange,
   onFocus,
+  onBlur,
   onClear,
   placeholder = "Search places…",
   inputRef,
@@ -56,8 +59,33 @@ export function SearchBar({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onFocus={onFocus}
+        onBlur={onBlur}
+        // ENTER DISMISSES THE KEYBOARD. Results are live-searched on every
+        // keystroke, so there is nothing to submit — but a return key that
+        // visibly does nothing reads as a broken field, and on a phone the
+        // keyboard is covering the results the guest just asked for.
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
         placeholder={placeholder}
         aria-label={placeholder}
+        // THE MOBILE KEYBOARD, told what this field is. Place names are not
+        // prose: iOS otherwise capitalises the first letter, autocorrects
+        // "Tec" to "Tech" mid-query, and floats the QuickType strip ("I ·
+        // The · I'm") over the results — a fourth row of chrome on a screen
+        // the keyboard already halved.
+        //
+        // `enterKeyHint` relabels the return key Search. NOT `type="search"`:
+        // that adds WebKit's own clear button beside the X this bar already
+        // draws, and two clears in one pill is worse than none.
+        enterKeyHint="search"
+        autoCapitalize="none"
+        autoCorrect="off"
+        autoComplete="off"
+        spellCheck={false}
         className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
       />
       {showClear && (

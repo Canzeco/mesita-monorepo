@@ -65,6 +65,7 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
+import { useDiscoverChrome } from "@/components/consumer/discover/discover-chrome";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   buildSearchMapPins,
@@ -91,9 +92,7 @@ import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
-import {
-  SearchRailOverlay,
-} from "./search-catalog-overlays";
+import { SearchRailOverlay } from "./search-catalog-overlays";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
@@ -173,7 +172,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   const [addStates, setAddStates] = useState<Record<string, AddState>>({});
   /** Google placeId → Mesita slug/id after Add to Mesita succeeds. */
-  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>({});
+  const [addedProfiles, setAddedProfiles] = useState<Record<string, string>>(
+    {},
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (profile or
   // Google sheet) after the suggest list is gone. Holds Google and overlay-only
@@ -251,6 +252,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [searchNonce, setSearchNonce] = useState(0);
   const trimmedQuery = query.trim();
   const querying = trimmedQuery.length >= MIN_QUERY || searching;
+
+  // THE CHROME REACTS TO THE KEYBOARD, not to the query length. `querying`
+  // starts at two characters, which is the wrong moment twice over: the
+  // keyboard is already up at zero, and it is still up while the guest deletes
+  // back down to one. The mode rail above reads the same flag through
+  // DiscoverChromeProvider and collapses with the rail below.
+  //
+  // A LIVE QUERY KEEPS IT OPEN AFTER BLUR. Picking a result blurs the field,
+  // and a rail that springs back in the same frame as the camera move reads as
+  // a flicker — so the rail returns only once the query is really gone.
+  const { barFocused, setBarFocused } = useDiscoverChrome();
+  const searchMode = barFocused || querying;
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -648,7 +661,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         (p) =>
           (p.google_place_id ??
             (p.googleOnly || p.from_google ? p.slug : null)) ===
-            prediction.placeId,
+          prediction.placeId,
       ) ??
       matchPredictionToPlace(prediction, nearby);
     const anchorRow =
@@ -863,6 +876,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               query={query}
               showClear={query.length > 0}
               onQueryChange={updateQuery}
+              onFocus={() => setBarFocused(true)}
+              onBlur={() => setBarFocused(false)}
               onClear={() => updateQuery("")}
               placeholder="Search places by name…"
             />
@@ -907,10 +922,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         )}
       </div>
 
-      {/* The catalog rail steps aside while a query is live: its cards are the
-          nearby catalog, not the results, and showing both would be two lists
-          answering different questions at once. */}
-      {!querying && (
+      {/* The catalog rail steps aside for the whole of search mode: its cards
+          are the nearby catalog, not the results, so showing both would be two
+          lists answering different questions at once — and on a phone the
+          keyboard is already covering the half of the map they shared. */}
+      {!searchMode && (
         <SearchRailOverlay
           idle
           places={catalog}
