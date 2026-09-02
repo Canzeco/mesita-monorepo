@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { CalendarCheck } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { useSectionSaver } from "../useSectionDirty";
 import { usePlaceContext } from "../PlaceContext";
-import { SectionCard } from "@/components/admin-ui/manage";
 import {
   ChannelPicker,
   readChannel,
@@ -64,12 +62,7 @@ export function ReservationsCard({
   );
 
   return (
-    <SectionCard
-      icon={<CalendarCheck className="h-4 w-4" />}
-      tint="teal"
-      title="Reservations"
-    >
-      <div className="mt-3.5">
+    <div>
         <ChannelPicker
           place={place}
           selected={channel}
@@ -78,7 +71,6 @@ export function ReservationsCard({
           ariaLabel="Reservation channel"
           noneHint="This place does not take reservations."
         />
-      </div>
-    </SectionCard>
+    </div>
   );
 }

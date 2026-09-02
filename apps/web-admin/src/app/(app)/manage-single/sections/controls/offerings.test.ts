@@ -7,6 +7,7 @@ import {
   PROMOTION_SCORE_MAX,
   railWriteFailure,
   shouldRenderConfig,
+  connectStateFrom,
   type ConnectState,
   type LadderInput,
 } from "./offerings";
@@ -200,5 +201,61 @@ describe("shouldRenderConfig — the keep-mounted guard", () => {
 
   it("hides only the case that is both off and clean — nothing to lose", () => {
     expect(shouldRenderConfig(false, false)).toBe(false);
+  });
+});
+
+describe("connectStateFrom", () => {
+  const acct = (over: Partial<Parameters<typeof connectStateFrom>[0] & object> = {}) => ({
+    charges_enabled: false,
+    details_submitted: false,
+    requirements_due: [] as string[],
+    disabled_reason: null as string | null,
+    ...over,
+  });
+
+  it("treats a missing mirror row as no account", () => {
+    expect(connectStateFrom(null)).toEqual({ kind: "none" });
+  });
+
+  it("treats an orphaned row as no account — the key cannot see it", () => {
+    expect(
+      connectStateFrom(acct({ charges_enabled: true, details_submitted: true }), true),
+    ).toEqual({ kind: "none" });
+  });
+
+  it("does NOT call a never-onboarded account 'disabled'", () => {
+    // Stripe stamps requirements.past_due on brand-new accounts. Reading
+    // disabled_reason first would tell a place that never started that Stripe
+    // turned them off.
+    expect(
+      connectStateFrom(
+        acct({ disabled_reason: "requirements.past_due", requirements_due: ["dob"] }),
+      ),
+    ).toEqual({ kind: "incomplete", requirementsDue: ["dob"] });
+  });
+
+  it("reports disabled only once details were actually submitted", () => {
+    expect(
+      connectStateFrom(
+        acct({ details_submitted: true, disabled_reason: "rejected.fraud" }),
+      ),
+    ).toEqual({ kind: "disabled", reason: "rejected.fraud" });
+  });
+
+  it("is ready only when charges are enabled AND details are submitted", () => {
+    expect(
+      connectStateFrom(acct({ details_submitted: true, charges_enabled: true })),
+    ).toEqual({ kind: "ready" });
+    // Submitted but not yet approved is incomplete, not ready.
+    expect(
+      connectStateFrom(
+        acct({ details_submitted: true, requirements_due: ["verification.document"] }),
+      ),
+    ).toEqual({ kind: "incomplete", requirementsDue: ["verification.document"] });
+  });
+
+  it("survives a payload with no requirements array", () => {
+    const bare = { charges_enabled: false, details_submitted: false } as never;
+    expect(connectStateFrom(bare)).toEqual({ kind: "incomplete", requirementsDue: [] });
   });
 });

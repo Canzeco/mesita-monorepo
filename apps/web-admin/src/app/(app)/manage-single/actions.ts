@@ -453,6 +453,79 @@ export async function setPlaceRails(
   return { ok: true, data: r.data.rails };
 }
 
+// ── Stripe Connect mirror (read-only) ────────────────────────────────────
+//
+// The place's connected-account state, plus the full pay-readiness verdict.
+// Mesita is a PLATFORM, not a marketplace: direct charges on the place's own
+// account, the place is merchant of record, Mesita never holds funds. The law
+// is supabase/functions/_shared/stripe-connect.ts and it is frozen by tests.
+//
+// `refresh: true` re-reads the account from Stripe and re-upserts the mirror.
+// The Connect webhook is an optimization whose dashboard setup is a human
+// step, never a dependency — so the admin read self-heals rather than trusting
+// that every account.updated arrived.
+
+/** places_payment_accounts mirror row. Absent = never onboarded. */
+export type PlacePaymentAccount = {
+  /** "acct_…" real, or "mock_acct_<place_id>" when MOCK_CONNECT is on. */
+  stripe_account_id: string;
+  /** Which Stripe universe created it, from the key prefix or event.livemode. */
+  livemode: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled: boolean;
+  /** Snapshot of requirements.currently_due; [] when clear. */
+  requirements_due: string[];
+  /** requirements.disabled_reason; null = not disabled. */
+  disabled_reason: string | null;
+};
+
+/** The three-way AND that gates a card charge. All three must hold; the UI
+ *  must never imply Mesita Pay is live on `intent` alone. */
+export type PlacePayReadiness = {
+  account: PlacePaymentAccount | null;
+  /** The mirror points at an account this Stripe key cannot see. */
+  orphaned: boolean;
+  /** charges_enabled ∧ details_submitted. */
+  capability: boolean;
+  intent: boolean;
+  globalRail: boolean;
+  all: boolean;
+};
+
+export async function getPlacePaymentAccount(
+  placeId: string,
+  opts: { refresh?: boolean } = {},
+): Promise<Result<PlacePayReadiness>> {
+  const r = await efInvoke<{
+    account: PlacePaymentAccount | null;
+    orphaned?: boolean;
+    ready?: boolean;
+    pay_ready?: {
+      intent?: boolean;
+      global_rail?: boolean;
+      capability?: boolean;
+      all?: boolean;
+    };
+  }>("admin-web-get-place-payment-account", {
+    placeId,
+    refresh: opts.refresh === true,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  const pr = r.data.pay_ready ?? {};
+  return {
+    ok: true,
+    data: {
+      account: r.data.account ?? null,
+      orphaned: r.data.orphaned === true,
+      capability: pr.capability === true,
+      intent: pr.intent === true,
+      globalRail: pr.global_rail === true,
+      all: pr.all === true,
+    },
+  };
+}
+
 /** List or unlist the place on Mesita — the ONLY write path to
  *  projects.status, which is what the consumer RLS policy
  *  projects_select_public_visible gates every guest read on. Unlisting removes

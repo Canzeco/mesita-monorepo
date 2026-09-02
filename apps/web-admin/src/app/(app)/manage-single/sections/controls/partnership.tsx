@@ -1,9 +1,8 @@
 "use client";
 
-import { Check, Loader2, Percent } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
 import { type AdminPlace } from "../../actions";
-import { SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   describeMembershipStatus,
@@ -221,7 +220,7 @@ function StepMarker({
 
 // ─── Box 2 · Partnership ───────────────────────────────────────────────────
 
-export function MembershipBox({
+export function PartnershipBody({
   place,
   pillState,
   storedStrategy,
@@ -255,13 +254,7 @@ export function MembershipBox({
       : "Switching to Zero pauses discounts without ending the partnership. Dropping is separate.";
 
   return (
-    <SectionCard
-      icon={<Percent className="h-4 w-4" />}
-      tint="pink"
-      title="Partnership"
-      action={<MembershipStatusPill state={pillState} />}
-    >
-      <div className="mt-4 flex flex-col gap-3">
+    <div className="flex flex-col gap-3 pb-3">
         <LifecycleBanner
           place={place}
           pillState={pillState}
@@ -332,8 +325,7 @@ export function MembershipBox({
             Drop partnership
           </button>
         )}
-      </div>
-    </SectionCard>
+    </div>
   );
 }
 
@@ -384,7 +376,7 @@ function StripeMark({ className }: { className?: string }) {
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-function MembershipStatusPill({ state }: { state: MembershipPillState }) {
+export function MembershipStatusPill({ state }: { state: MembershipPillState }) {
   const labels: Record<MembershipPillState, string> = {
     not_member: "Not a partner",
     pending: "Partner — pending",

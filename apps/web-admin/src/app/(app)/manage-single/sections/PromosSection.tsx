@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Loader2, Percent } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Loader2, TrendingUp } from "lucide-react";
 import {
   STRATEGY_BY_ID,
   strategyForPlace,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
 import {
+  getPlacePaymentAccount,
   setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
@@ -19,50 +20,47 @@ import { OrdersCard } from "./OrdersCard";
 import { ReservationsCard } from "./ReservationsCard";
 import { TeamSection } from "./TeamSection";
 import { VisitsCard } from "./VisitsCard";
-import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
+import { ConfirmDialog, GroupLabel, SectionCard } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
+import { usePlaceContext } from "../PlaceContext";
 import {
   isMemberPlan,
   membershipPillState,
   promoCardState,
 } from "./promo-state";
-import { PromosBar } from "./controls/offerings-bar";
-import { MembershipBox } from "./controls/partnership";
+import { placeOperatorPromotingLevel } from "./StatusCard";
+import { PartnershipBody, MembershipStatusPill } from "./controls/partnership";
 import { ProductModal, StrategyCard } from "./controls/strategy-cards";
+import { LadderRow, NestedConfig } from "./controls/ladder-row";
 import {
-  pickerStrategies,
-  strategySwitchPatch,
-  ZERO_STRATEGY_ID,
-} from "./controls/shared";
+  connectStateFrom,
+  offeringRows,
+  PROMOTION_SCORE_MAX,
+  railWriteFailure,
+  shouldRenderConfig,
+  type ConnectState,
+  type LadderRowKey,
+} from "./controls/offerings";
+import { pickerStrategies, strategySwitchPatch, ZERO_STRATEGY_ID } from "./controls/shared";
 
-// Admin Controls tab — SEVEN boxes (Pato live 2026-09-01). The Tutorial box was
-// DELETED: this is the operator's own console, and it explained Mesita to the
-// person who built it, in copy the other boxes already carried. Never restore
-// it here — the business console is where a partner gets taught.
-//   1. Offerings — the PROGRESS BAR over what the place offers: the
-//      0–7 score summing what the place offers, its components as rows.
-//      Partnership is the first step; the four rail rows are LIVE TOGGLES
-//      (admin-web-set-place-rails); Mesita Capital is a locked Soon row.
-//      Display-only — never a discovery input; rank is never for sale.
-//      NAMING (Pato, 2026-08-30): "promo" and "membership" are OUT of
-//      copy. The box and the catalog column are both "Offerings"; the
-//      wire key stays `promotion` and the module stays promotion-score.ts
-//      — labels move, wire keys never follow.
-//   2. Partnership — MX$1,000/month is the subscription. Stripe-look mock
-//      Join writes plan=pro at Zero (admin-web-set-plan, no charge).
-//      Strategy unlocks after. Lifecycle rail, status pill, drop.
-//   3. Visit Rewards — Zero · Conservative · Aggressive tiles. Give and
-//      placement are a Low · Mid · High word ladder. Dominant is not a
-//      picker option.
-//   4-6. Visits · Orders · Reservations — the three rail boxes, MOVED here
-//      from Settings (Pato live 2026-08-30): each configures a capability
-//      the place offers through Mesita, so they sit with the offerings. One
-//      box per rail still holds (MESITA-1148); Visits still carries the Check
-//      PIN (MESITA-823) and the bill is still always required (MESITA-1095).
-//   7. Team — the last box Settings still owned, folded in when Partnership
-//      and Settings became ONE tab (Pato live 2026-09-01). People are a
-//      control like any other: this tab is now everything the place is SET
-//      to, and there is no second tab left to split it across.
+// Admin Controls tab — TWO ZONES (Pato live 2026-09-02).
+//
+//   OFFERINGS — what a guest can do at this place through Mesita, as a
+//               DEPENDENCY LADDER. The 0–7 meter is the zone header, not a
+//               card: PlaceEditChrome already carries the place name and the
+//               Partnered chip on every tab, and Profile already owns a meter
+//               in ProfileCompleteness, so a second one here would be chrome
+//               competing with chrome.
+//   SETTINGS  — how the place is RUN. Staff PIN, Team. Quieter on purpose.
+//
+// That rule — "what a guest can do" vs "how it is run" — is what puts
+// Reservations in Offerings despite scoring zero, and the staff PIN in
+// Settings despite gating a guest-facing flow. Do not re-derive it from the
+// score: promotionScore counts six of the nine rows, which is exactly why
+// every row carries a points cell.
+//
+// Seven cards became two zones. The ladder itself lives in controls/offerings.ts
+// (pure, node-tested); this file is composition and writes only.
 
 export function PromosSection({
   place,
@@ -72,12 +70,11 @@ export function PromosSection({
   onSaved: (v: AdminPlace) => void;
 }) {
   const [v, setV] = useState(place);
-  // Write-through / optimistic — no draft dirtyMap (E-R0). Strategy SWITCH
-  // stays optimistic (rates-only; the moving ring is the feedback).
-  // Membership writes — join, drop — are PESSIMISTIC: they apply on EF
-  // success only. Switch is optimistic. Join errors land on Partnership;
-  // switch errors under the strategy grid; drop errors in the confirm.
+  const { dirtyLabels } = usePlaceContext();
 
+  // Write-through / optimistic — no draft dirtyMap. Strategy SWITCH stays
+  // optimistic (rates-only; the moving ring is the feedback). Membership
+  // writes — join, drop — are PESSIMISTIC: they apply on EF success only.
   const [switchPending, startSwitch] = useTransition();
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [modalId, setModalId] = useState<StrategyId | null>(null);
@@ -87,33 +84,63 @@ export function PromosSection({
   const [dropBusy, setDropBusy] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
   const [railBusy, setRailBusy] = useState<keyof PlaceRails | null>(null);
-  const [railError, setRailError] = useState<string | null>(null);
+  // Per-ROW, so the reason lands beside the switch that failed rather than at
+  // the foot of the card, where it used to sit.
+  const [rowError, setRowError] = useState<
+    { key: LadderRowKey; message: string } | null
+  >(null);
+
+  // The Connect mirror. Read-only here; onboarding is its own PR. Refresh-on-
+  // read, because the webhook endpoint's dashboard setup is a human step and
+  // must never be a dependency.
+  const [connect, setConnect] = useState<ConnectState>({ kind: "none" });
+  const [connectLoading, setConnectLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    void getPlacePaymentAccount(place.id, { refresh: true }).then((r) => {
+      if (!alive) return;
+      setConnectLoading(false);
+      // A failed read is NOT "no account" — but the ladder cannot unlock a
+      // rung it cannot verify, so `none` is the safe reduction either way.
+      if (r.ok) setConnect(connectStateFrom(r.data.account, r.data.orphaned));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
 
   const member = isMemberPlan(v.plan);
   const pillState = membershipPillState(v);
   const storedStrategy = strategyForPlace(v);
   const forfeited = pillState === "forfeited";
+  const level = placeOperatorPromotingLevel(v);
+
+  const rails: Record<keyof PlaceRails, boolean> = {
+    mesita_pay: v.mesita_pay_enabled === true,
+    credits: v.credits_enabled === true,
+    pickup: v.pickup_orders_enabled === true,
+    delivery: v.delivery_orders_enabled === true,
+  };
+
+  const rows = offeringRows({ member, visitRewardsLevel: level, rails, connect });
+  const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
+  const score = rows.reduce((n, r) => n + (r.earned && r.points ? r.points : 0), 0);
 
   const applyPlace = (next: AdminPlace) => {
     setV(next);
     onSaved(next);
   };
-
   const revertPlace = (prev: AdminPlace) => {
     setV(prev);
     onSaved(prev);
   };
 
-  // Partnership join is its own door (setPlacePlan at Zero). The EF clears
-  // the forfeit stamp + strikes on re-grant. Strategy is a later switch.
   const commitJoinPartnership = async () => {
     if (joinBusy || (member && !forfeited)) return;
     const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
-    const plan = planForSubscription("pro_discount");
-
     setJoinBusy(true);
     setJoinError(null);
-    const r = await setPlacePlan(v.id, plan, rates);
+    const r = await setPlacePlan(v.id, planForSubscription("pro_discount"), rates);
     setJoinBusy(false);
     if (!r.ok) {
       setJoinError(r.error);
@@ -125,11 +152,9 @@ export function PromosSection({
   const commitDrop = async () => {
     if (dropBusy || !member) return;
     const rates = strategySwitchPatch(ZERO_STRATEGY_ID, v, storedStrategy);
-    const plan = planForSubscription("free");
-
     setDropBusy(true);
     setDropError(null);
-    const r = await setPlacePlan(v.id, plan, rates);
+    const r = await setPlacePlan(v.id, planForSubscription("free"), rates);
     setDropBusy(false);
     if (!r.ok) {
       setDropError(r.error);
@@ -143,12 +168,9 @@ export function PromosSection({
     setModalId(null);
     if (switchPending || !member || target === storedStrategy) return;
     const rates = strategySwitchPatch(target, v, storedStrategy);
-
     const prev = v;
-    const optimistic: AdminPlace = { ...v, ...rates };
-    applyPlace(optimistic);
+    applyPlace({ ...v, ...rates });
     setSwitchError(null);
-
     startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
       if (!r.ok) {
@@ -160,9 +182,6 @@ export function PromosSection({
     });
   };
 
-  // Rail toggles — optimistic per-toggle with revert, mirroring the strategy
-  // switch. One rail writes at a time; the response's post-write truth is
-  // merged so a concurrent flip elsewhere cannot leave a stale bit.
   const RAIL_COLUMN = {
     mesita_pay: "mesita_pay_enabled",
     credits: "credits_enabled",
@@ -170,18 +189,29 @@ export function PromosSection({
     delivery: "delivery_orders_enabled",
   } as const;
 
-  const commitRail = async (key: keyof PlaceRails, next: boolean) => {
+  // Optimistic per-toggle with revert. One rail writes at a time; the
+  // response's post-write truth is merged so a concurrent flip elsewhere
+  // cannot leave a stale bit.
+  const commitRail = async (
+    key: keyof PlaceRails,
+    rowKey: LadderRowKey,
+    label: string,
+    next: boolean,
+  ) => {
     if (railBusy) return;
     const prev = v;
     const optimistic: AdminPlace = { ...v, [RAIL_COLUMN[key]]: next };
     applyPlace(optimistic);
     setRailBusy(key);
-    setRailError(null);
+    setRowError(null);
     const r = await setPlaceRails(prev.id, { [key]: next });
     setRailBusy(null);
     if (!r.ok) {
       revertPlace(prev);
-      setRailError(r.error);
+      // The operator gets a sentence they can act on; the raw Edge Function
+      // error goes to the console, never the DOM.
+      console.error(`[controls] setPlaceRails ${key}=${next} failed:`, r.error);
+      setRowError({ key: rowKey, message: railWriteFailure(label, next) });
       return;
     }
     applyPlace({
@@ -193,91 +223,171 @@ export function PromosSection({
     });
   };
 
-  const onCardOpen = (id: StrategyId) => {
-    setModalId(id);
-  };
-
-  const onModalConfirm = (target: StrategyId) => {
-    if (!member || forfeited) return;
-    commitSwitch(target);
-  };
-
-  const onModalClose = () => {
-    setModalId(null);
-  };
-
   const modalStrategy = modalId ? STRATEGY_BY_ID[modalId] : null;
+  const errFor = (key: LadderRowKey) =>
+    rowError?.key === key ? rowError.message : null;
+  const railProps = (key: keyof PlaceRails, rowKey: LadderRowKey, label: string) => ({
+    busy: railBusy === key,
+    otherBusy: railBusy !== null && railBusy !== key,
+    error: errFor(rowKey),
+    onToggle: (next: boolean) => void commitRail(key, rowKey, label, next),
+  });
 
   return (
-    <div className="flex flex-col gap-4">
-      <PromosBar
-        place={v}
-        member={member}
-        railBusy={railBusy}
-        railError={railError}
-        onToggle={(key, next) => void commitRail(key, next)}
-      />
+    <div className="flex flex-col gap-7">
+      {/* ══ ZONE 1 · OFFERINGS ══════════════════════════════════════════ */}
+      <section aria-labelledby="zone-offerings">
+        <div className="mb-2.5 flex items-end justify-between gap-4 px-1">
+          <GroupLabel>
+            <span id="zone-offerings">Offerings</span>
+          </GroupLabel>
+          <span className="type-label text-foreground font-semibold tabular-nums">
+            {score} of {PROMOTION_SCORE_MAX}
+          </span>
+        </div>
+        <div
+          className="bg-muted mb-4 h-1.5 w-full overflow-hidden rounded-full"
+          role="img"
+          aria-label={`Offerings ${score} of ${PROMOTION_SCORE_MAX}`}
+        >
+          <div
+            className="h-full rounded-full bg-violet-500 transition-[width] duration-300"
+            style={{ width: `${(score / PROMOTION_SCORE_MAX) * 100}%` }}
+          />
+        </div>
 
-      <MembershipBox
-        place={v}
-        pillState={pillState}
-        storedStrategy={storedStrategy}
-        member={member}
-        joinBusy={joinBusy}
-        joinError={joinError}
-        onJoinClick={() => void commitJoinPartnership()}
-        onDropClick={() => {
-          setDropError(null);
-          setDropOpen(true);
-        }}
-      />
+        <SectionCard
+          icon={<TrendingUp className="h-4 w-4" />}
+          tint="violet"
+          title="What guests can do here"
+          subtitle="Each rung unlocks the next. A row that cannot be turned on says what it needs."
+          action={
+            connectLoading ? (
+              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+            ) : undefined
+          }
+        >
+          <div className="mt-4 flex flex-col">
+            <LadderRow
+              row={byKey.partnership}
+              error={joinError}
+              control={<MembershipStatusPill state={pillState} />}
+            >
+              <NestedConfig visible label="Subscription">
+                <PartnershipBody
+                  place={v}
+                  pillState={pillState}
+                  storedStrategy={storedStrategy}
+                  member={member}
+                  joinBusy={joinBusy}
+                  joinError={joinError}
+                  onJoinClick={() => void commitJoinPartnership()}
+                  onDropClick={() => {
+                    setDropError(null);
+                    setDropOpen(true);
+                  }}
+                />
+              </NestedConfig>
+            </LadderRow>
 
-      <SectionCard
-        icon={<Percent className="h-4 w-4" />}
-        tint="amber"
-        title="Visit Rewards"
-        subtitle="Zero · Conservative · Aggressive — orders and prepaid stay off."
-        action={
-          switchPending ? (
-            <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-          ) : undefined
-        }
-      >
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {pickerStrategies().map((s) => (
-            <StrategyCard
-              key={s.id}
-              strategy={s}
-              state={promoCardState({
-                member,
-                forfeited,
-                storedStrategy,
-                cardId: s.id,
-                paid: s.id !== ZERO_STRATEGY_ID,
-              })}
-              pending={switchPending && s.id === storedStrategy}
-              onOpen={() => onCardOpen(s.id)}
+            <LadderRow row={byKey.stripe} />
+
+            <LadderRow
+              row={byKey.mesita_pay}
+              {...railProps("mesita_pay", "mesita_pay", "Mesita Pay")}
             />
-          ))}
-        </div>
 
-        {(storedStrategy === null || storedStrategy === "dominant") && member && (
-          <p className="text-muted-foreground mt-2.5 type-label">
-            Current rates don&apos;t match a strategy — pick one to standardize.
+            <LadderRow
+              row={byKey.visit_rewards}
+              error={switchError}
+              control={
+                switchPending ? (
+                  <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                ) : undefined
+              }
+            >
+              <NestedConfig visible={member} label="Strategy">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {pickerStrategies().map((s) => (
+                    <StrategyCard
+                      key={s.id}
+                      strategy={s}
+                      state={promoCardState({
+                        member,
+                        forfeited,
+                        storedStrategy,
+                        cardId: s.id,
+                        paid: s.id !== ZERO_STRATEGY_ID,
+                      })}
+                      pending={switchPending && s.id === storedStrategy}
+                      onOpen={() => setModalId(s.id)}
+                    />
+                  ))}
+                </div>
+                {(storedStrategy === null || storedStrategy === "dominant") && member && (
+                  <p className="text-muted-foreground mt-2.5 type-label">
+                    Current rates don&apos;t match a strategy — pick one to standardize.
+                  </p>
+                )}
+              </NestedConfig>
+            </LadderRow>
+
+            <LadderRow
+              row={byKey.accept_prepays}
+              {...railProps("credits", "accept_prepays", "Accept Prepays")}
+            />
+
+            <LadderRow row={byKey.sell_prepays} />
+
+            <LadderRow row={byKey.pickup} {...railProps("pickup", "pickup", "Pickup Orders")} />
+
+            <LadderRow
+              row={byKey.delivery}
+              {...railProps("delivery", "delivery", "Delivery Orders")}
+            >
+              {/* Kept MOUNTED and hidden with CSS: unmounting runs
+                  registerSaver(section, null) and silently drops the draft.
+                  Visible whenever dirty, so an unsaved edit is never invisible. */}
+              <NestedConfig
+                visible={shouldRenderConfig(
+                  rails.pickup || rails.delivery,
+                  dirtyLabels.includes("Orders"),
+                )}
+                label="Order channel"
+              >
+                <OrdersCard place={v} />
+              </NestedConfig>
+            </LadderRow>
+
+            <LadderRow row={byKey.reservations}>
+              <NestedConfig
+                visible={shouldRenderConfig(true, dirtyLabels.includes("Reservations"))}
+                label="Reservation channel"
+              >
+                <ReservationsCard place={v} />
+              </NestedConfig>
+            </LadderRow>
+          </div>
+
+          <p className="text-muted-foreground mt-3 border-t border-border/60 pt-3 text-xs leading-snug">
+            Switches save instantly. A display score for oversight — it never buys
+            rank. Mesita Capital is not live yet.
           </p>
-        )}
+        </SectionCard>
+      </section>
 
-        {/* Always-mounted live region: a region that mounts together with its
-            message does not announce. Switch errors land here, beside the
-            gesture; join/drop errors live in their modal/dialog. */}
-        <div aria-live="polite">
-          {switchError && (
-            <div className="mt-3">
-              <ErrorNote message={switchError} />
-            </div>
-          )}
+      {/* ══ ZONE 2 · SETTINGS ═══════════════════════════════════════════ */}
+      <section aria-labelledby="zone-settings">
+        <div className="mb-2.5 px-1">
+          <GroupLabel>
+            <span id="zone-settings">Settings</span>
+          </GroupLabel>
         </div>
-      </SectionCard>
+        <div className="flex flex-col gap-4">
+          <VisitsCard place={v} />
+          <TeamSection place={v} />
+        </div>
+      </section>
 
       {modalStrategy && (
         <ProductModal
@@ -293,24 +403,17 @@ export function PromosSection({
           member={member}
           busy={switchPending}
           error={null}
-          onConfirm={() => onModalConfirm(modalStrategy.id)}
-          onClose={onModalClose}
+          onConfirm={() => {
+            if (!member || forfeited) return;
+            commitSwitch(modalStrategy.id);
+          }}
+          onClose={() => setModalId(null)}
         />
       )}
 
-      {/* The three rail boxes, moved here from Settings (Pato live
-          2026-08-30). Each configures a capability the place offers
-          through Mesita, so they sit right after the offerings. One box
-          per rail still holds (MESITA-1148); Visits still carries the
-          Check PIN. */}
-      <VisitsCard place={v} />
-      <OrdersCard place={v} />
-      <ReservationsCard place={v} />
-
-      {/* Team — folded in from Settings when the two tabs merged (Pato live
-          2026-09-01). Last box on purpose: the offerings and rails are what
-          the place sells, people are who runs it. */}
-      <TeamSection place={v} />
+      <div aria-live="polite">
+        {switchError && <ErrorNote message={switchError} />}
+      </div>
 
       <ConfirmDialog
         open={dropOpen}
@@ -331,4 +434,3 @@ export function PromosSection({
     </div>
   );
 }
-

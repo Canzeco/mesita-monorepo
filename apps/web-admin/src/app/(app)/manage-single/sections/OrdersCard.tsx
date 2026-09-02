@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { ShoppingBag } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { useSectionSaver } from "../useSectionDirty";
 import { usePlaceContext } from "../PlaceContext";
-import { SectionCard } from "@/components/admin-ui/manage";
 import { CrossTabLink } from "../ui";
 import {
   ChannelPicker,
@@ -68,23 +66,14 @@ export function OrdersCard({
   ].filter((l) => typeof l.value === "string" && l.value.trim() !== "");
 
   return (
-    <SectionCard
-      icon={<ShoppingBag className="h-4 w-4" />}
-      tint="violet"
-      title="Orders"
-      action={
-        <span className="bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-1 type-meta font-bold tracking-wider uppercase">
-          Soon
-        </span>
-      }
-    >
-      <p className="text-muted-foreground mt-5 text-xs leading-relaxed">
+    <div className="flex flex-col">
+      <p className="text-muted-foreground text-xs leading-relaxed">
         Order tickets don&apos;t exist yet — no rail, no ticket, no receipt to
         read. The channel below saves now; the rail reads it the day it ships.
         Quotas, minimums and fulfilment are Mesita-wide, under Configurations
         → Orders.
       </p>
-      <div className="mt-3.5">
+      <div className="mt-3">
         <ChannelPicker
           place={place}
           selected={channel}
@@ -120,6 +109,6 @@ export function OrdersCard({
           </CrossTabLink>
         </div>
       </div>
-    </SectionCard>
+    </div>
   );
 }

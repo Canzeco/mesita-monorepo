@@ -35,6 +35,39 @@ export type ConnectState =
   | { kind: "ready" }
   | { kind: "disabled"; reason: string | null };
 
+/**
+ * Reduce the Connect mirror row to the state the ladder acts on.
+ *
+ * Order matters and is not obvious. Stripe stamps `disabled_reason:
+ * "requirements.past_due"` on brand-new accounts that have never finished
+ * onboarding, so reading disabled_reason FIRST would show "Stripe disabled
+ * this account" to a place that simply has not started. `details_submitted`
+ * is what separates "never finished" from "was live, then restricted".
+ *
+ * `orphaned` means the mirror points at an account the current Stripe key
+ * cannot see (a rotated sandbox, or a livemode/testmode mismatch). Treated as
+ * `none`: from the operator's side there is no usable account.
+ */
+export function connectStateFrom(
+  account: {
+    charges_enabled: boolean;
+    details_submitted: boolean;
+    requirements_due: string[];
+    disabled_reason: string | null;
+  } | null,
+  orphaned = false,
+): ConnectState {
+  if (!account || orphaned) return { kind: "none" };
+  if (!account.details_submitted) {
+    return { kind: "incomplete", requirementsDue: account.requirements_due ?? [] };
+  }
+  if (account.disabled_reason) {
+    return { kind: "disabled", reason: account.disabled_reason };
+  }
+  if (account.charges_enabled) return { kind: "ready" };
+  return { kind: "incomplete", requirementsDue: account.requirements_due ?? [] };
+}
+
 export type LadderRowKey =
   | "partnership"
   | "stripe"
