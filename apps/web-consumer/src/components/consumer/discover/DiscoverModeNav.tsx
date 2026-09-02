@@ -14,19 +14,26 @@
 // rest clips a label mid-word and reads as a broken render rather than an
 // affordance.
 //
-// THE MEASUREMENT, and it is tight. Equal columns are budgeted by the LONGEST
-// label, not the average:
+// THE MEASUREMENT, and it is tight. `auto-cols-fr` sizes EVERY column to the
+// widest pill, so the track is 5 x widest + 16px of gaps and it must fit 359px:
 //
-//   frame   content   gaps   cols   each     widest pill needs      result
-//   ------  --------  -----  -----  -------  ---------------------  --------
-//   375px   359px     16px   5      68.6px   "Search"   ~68px       fits (+0.6)
-//   375px   359px     16px   5      68.6px   "Favorites" ~89px      WOULD NOT
+//   label      text    + 26px chrome   track (5w+16)   vs 359px
+//   ---------  ------  --------------  --------------  ----------
+//   Search     40.0    66.0            346.0           fits (+13)
+//   Catalog    44.0    70.0            366.0           SCROLLS (-7)
+//   Favorites  59.4    85.4            443.0           SCROLLS (-84)
 //
-// Budget per pill = text + 14px icon + 4px gap + 8px px-1. That +0.6px is why
-// "Favorites" is "Favs" and why this row went from seven modes to five: at
-// seven the columns are 47.9px and nothing with an icon fits. A SIXTH mode, or
-// a label longer than "Search", puts it back over budget — re-measure at 375px,
-// not at the 448px card, before adding either.
+// Measured with real Inter 600 at 12px, not estimated. Chrome per pill = 14px
+// icon + 4px gap-1 + 8px px-1. That is why "Favorites" is "Favs", why this row
+// went from seven modes to five (at seven the columns are 47.9px and nothing
+// with an icon fits), and why the browse mode is "Feed" (54.0) rather than
+// "Catalog" or "Browse" — both of those overflow.
+//
+// A SIXTH mode, or any label wider than "Search", puts it back over budget.
+// Re-measure at 375px before adding either. If a wider word is worth it, the
+// escape is `type-label` (0.6875rem, globals.css) on the pill, NOT a
+// `text-[11px]` arbitrary value — eslint's off-scale-font-size rule bans those
+// and names the role tokens as the sanctioned way down.
 //
 
 import { useEffect, useRef, useState } from "react";
@@ -35,7 +42,7 @@ import { usePathname } from "next/navigation";
 import {
   Flame,
   Heart,
-  MapPin,
+  LayoutGrid,
   Search,
   Sparkles,
   type LucideIcon,
@@ -59,15 +66,20 @@ type Mode = {
 // branch below is kept for the next mode that lands unfinished, not because
 // anything uses it today.
 //
-// SEARCH absorbs what were Name, Catalog and Social: one surface for finding a
-// place that is not already on your screen. The name bar sits over the catalog
-// feed on the same page.
+// SEARCH IS THE MAP, and it carries the search bar. A found place needs
+// somewhere to land, and on a list it lands nowhere — so the typed control sits
+// on the pins. FEED is the catalog rails with that bar removed: browsing and
+// typing are different jobs, and two inputs one pill apart was the redundancy
+// this row is fixing.
 //
-// ORDER runs from the least to the most committed way to browse: a map you
+// FEED LEADS BUT SEARCH IS THE DEFAULT (see `discoverDefault`). Feed is not
+// called Home for exactly that reason — Home promises to be where you land.
+//
+// ORDER runs from the least to the most committed way to browse: rails you
 // scan, a name you type, a deck you flick, a question you ask, a list you
 // already curated.
 export const MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.map, label: "Map", Icon: MapPin },
+  { href: CONSUMER_ROUTES.discoverTabs.feed, label: "Feed", Icon: LayoutGrid },
   { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,

@@ -34,24 +34,26 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       onboard: "/onboard",
       share: "/share",
       // NO home / homeTabs / homeDefault / favorites keys — the hub was retired
-      // 2026-09-01. Discover then grew seven modes and moved off /search, which
+      // 2026-09-01. Discover moved off /search, which
       // is now a legacy redirect source (see the legacy block below).
       //
       // SEGMENTS MATCH LABELS here, the exception in this codebase: the tab
       // moved to /discover precisely so the typed mode could be a real segment
       // instead of /search/search.
       discover: "/discover",
-      // FIVE modes: Name, Catalog and Social folded into one Search surface
-      // (Pato, 2026-09-01). CatalogRails and SocialFeed mount INTO Search when
-      // they un-park rather than getting routes back.
+      // FIVE modes. SEARCH IS THE MAP and carries the search bar; FEED is the
+      // catalog rails with no bar at all. SocialFeed mounts INTO Feed when it
+      // un-parks rather than getting a route back.
       discoverTabs: {
-        map: "/discover/map",
+        feed: "/discover/feed",
         search: "/discover/search",
         swipe: "/discover/swipe",
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
-      discoverDefault: "/discover/map",
+      // Default is NOT the first pill, deliberately — same call bare /inbox
+      // makes landing on Visits while Alerts leads.
+      discoverDefault: "/discover/search",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // Pay is a container now: New (bare) + Wallet.
@@ -84,6 +86,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         homeAi: "/home/ai",
         inboxCredits: "/inbox/credits",
         search: "/search",
+        discoverMap: "/discover/map",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
@@ -110,7 +113,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
 
   it("pins the middleware prefix map", () => {
     expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      // One prefix covers all seven Discover modes. /search is a redirect
+      // One prefix covers all five Discover modes. /search is a redirect
       // source now, not a surface, so it has no prefix.
       discover: "/discover",
       place: "/place",
@@ -219,10 +222,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
     expect(redirects).toEqual([
       // Explore era (pre-Home). Repointed at /search when /home was retired —
       // chaining through /home would make these two-hop, and T4 caps at 2.
-      { source: "/explore", destination: "/discover/map", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/map", permanent: true },
-      { source: "/explore/map", destination: "/discover/map", permanent: true },
-      { source: "/explore/add", destination: "/discover/map", permanent: true },
+      { source: "/explore", destination: "/discover/search", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/search", permanent: true },
+      { source: "/explore/map", destination: "/discover/search", permanent: true },
+      { source: "/explore/add", destination: "/discover/search", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -255,15 +258,24 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // IS /search. /home/ai points straight here rather than chaining through
       // /home/chat — that page is deleted, so the old chain would dangle AND
       // cost a second hop against T4's cap of 2.
-      { source: "/home", destination: "/discover/map", permanent: true },
-      { source: "/home/swipe", destination: "/discover/map", permanent: true },
-      { source: "/home/catalog", destination: "/discover/map", permanent: true },
-      { source: "/home/chat", destination: "/discover/map", permanent: true },
-      { source: "/home/ai", destination: "/discover/map", permanent: true },
-      { source: "/home/social", destination: "/discover/map", permanent: true },
-      { source: "/home/favorites", destination: "/discover/map", permanent: true },
+      { source: "/home", destination: "/discover/search", permanent: true },
+      { source: "/home/swipe", destination: "/discover/search", permanent: true },
+      { source: "/home/catalog", destination: "/discover/search", permanent: true },
+      { source: "/home/chat", destination: "/discover/search", permanent: true },
+      { source: "/home/ai", destination: "/discover/search", permanent: true },
+      { source: "/home/social", destination: "/discover/search", permanent: true },
+      { source: "/home/favorites", destination: "/discover/search", permanent: true },
       // Renamed surfaces.
-      { source: "/search", destination: "/discover/map", permanent: true },
+      { source: "/search", destination: "/discover/search", permanent: true },
+      // The map's segment while the rail called it Map. Search carries the map
+      // now, so this forwards. Nothing above may CHAIN through it — every
+      // /home* and /explore* points at the mode directly, because a chain
+      // here would cost a second hop and T4 caps at exactly 2.
+      {
+        source: "/discover/map",
+        destination: "/discover/search",
+        permanent: true,
+      },
       { source: "/invite", destination: "/share", permanent: true },
       // Credits shipped standalone and moved under Inbox when it became a
       // section (MESITA-1381). route-structure T7 asserts this one separately,

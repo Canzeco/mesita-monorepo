@@ -43,9 +43,11 @@ import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiCreateProject,
+  apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
 import { useUserLocation } from "@/lib/use-user-location";
+import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
@@ -54,12 +56,15 @@ import { useSearchScope } from "@/lib/use-search-scope";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
+  buildSearchMapPins,
   catalogPlaceOnMesita,
   overlayPinDecision,
   predictionOnMesita,
 } from "@/lib/search-membership";
 import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
+import { SearchBar } from "./SearchBar";
+import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   applyMapFilters,
   mapFilterCount,
@@ -90,8 +95,12 @@ import {
   withDistances,
 } from "./search-utils";
 
-// The Fast/Deep autocomplete constants left with the search bar — they live in
-// DiscoverNameClient now, which owns the only typed search on Discover.
+// Fast (Autocomplete) while typing, Deep once the guest stops. Deep only
+// REPLACES Fast when it actually has rows — an empty Deep would blank a list
+// the guest is already reading.
+const FAST_DEBOUNCE_MS = 300;
+const DEEP_IDLE_MS = 1000;
+const MIN_QUERY = 2;
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
@@ -172,8 +181,117 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
-  // `pins` was the search-result overlay layer. With name search gone from the
-  // map there is no second pin source: the catalog IS the pins.
+  // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
+  // land, and on a bare list it lands nowhere.
+  //
+  // THERE IS NO "QUERY MODE". The map never stops being the map: the catalog
+  // keeps loading, the camera keeps its own rules, and typing only swaps the
+  // BOTTOM overlay and adds a pin layer. That is the difference from the
+  // version this replaces, which put a 70%-tall results lid over the pins.
+  const [query, setQuery] = useState("");
+  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const trimmedQuery = query.trim();
+  const querying = trimmedQuery.length >= MIN_QUERY || searching;
+
+  // Search biases to the CAMERA, not the device: on a map you have panned to
+  // another neighbourhood, results near your house are the wrong answer.
+  const searchOrigin = cameraCenter ?? location ?? MONTERREY_CENTER;
+
+  // Derived search state stays in the handler, not an effect — the
+  // set-state-in-effect lint rule bars resetting it there, and flagging
+  // `searching` on the keystroke is what stops the debounce window from
+  // flashing an empty state between characters.
+  const updateQuery = useCallback(
+    (next: string) => {
+      setQuery(next);
+      const nextTrimmed = next.trim();
+      if (nextTrimmed.length < MIN_QUERY) {
+        // Google bills autocomplete per session, so a token that never rotates
+        // is one unbounded session. Dropping below the threshold ends this run.
+        // Minted inline rather than through resetSearchSession, which is
+        // declared further down and would be in the TDZ from this dep array.
+        if (trimmedQuery.length >= MIN_QUERY) {
+          sessionTokenRef.current = newSessionToken();
+        }
+        setPredictions([]);
+        setSearching(false);
+        setSearchError(null);
+      } else if (nextTrimmed !== trimmedQuery) {
+        setSearching(true);
+      }
+    },
+    [trimmedQuery],
+  );
+
+  useEffect(() => {
+    if (trimmedQuery.length < MIN_QUERY) return;
+    let cancelled = false;
+    let deepSettled = false;
+    const token = sessionTokenRef.current;
+
+    const fast = window.setTimeout(async () => {
+      try {
+        const rows = await apiSuggestPlaces(
+          supabase,
+          trimmedQuery,
+          token,
+          searchOrigin,
+          "fast",
+        );
+        if (cancelled || deepSettled) return;
+        setPredictions(rows);
+        setSearchError(null);
+        // Empty Fast keeps `searching` true so Deep can fill without the list
+        // flashing "no matches" in between.
+        if (rows.length > 0) setSearching(false);
+      } catch (err) {
+        if (cancelled || deepSettled) return;
+        setPredictions([]);
+        setSearchError(errMsg(err, "Search failed — try again."));
+        setSearching(false);
+      }
+    }, FAST_DEBOUNCE_MS);
+
+    const deep = window.setTimeout(async () => {
+      try {
+        const rows = await apiSuggestPlaces(
+          supabase,
+          trimmedQuery,
+          token,
+          searchOrigin,
+          "deep",
+        );
+        if (cancelled) return;
+        // Empty Deep keeps Fast — Deep only REPLACES the list when it has
+        // rows, so a slower, better query can never blank one the guest is
+        // already reading.
+        if (rows.length > 0) {
+          deepSettled = true;
+          setPredictions(rows);
+          setSearchError(null);
+        }
+        setSearching(false);
+      } catch {
+        // Keep Fast results if Deep fails. A worse list beats no list.
+        if (!cancelled) setSearching(false);
+      }
+    }, DEEP_IDLE_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(fast);
+      window.clearTimeout(deep);
+    };
+  }, [supabase, trimmedQuery, searchOrigin]);
+
+  // The second pin source. null hands the map back its catalog pins, so the
+  // basemap is never blank while you type — results ADD to what is there.
+  const searchPins = useMemo(
+    () => (querying ? buildSearchMapPins(predictions, catalog) : null),
+    [querying, predictions, catalog],
+  );
 
   const lastBoxRef = useRef<ViewportBox | null>(null);
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
@@ -592,7 +710,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         userLocation={userLocation}
         viewCenter={center}
         selectedId={railSelectedId}
-        pins={null}
+        pins={searchPins}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
@@ -600,24 +718,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — FILTERS ONLY.
+      {/* Floating top overlay — the search bar, then Filters beside it.
 
-          The name search that used to sit here moved to Discover › Name
-          (2026-09-01, Pato: "remove name search from map, is redundant").
-          Two typed-search surfaces one rail-tap apart is one too many, and
-          the map's version was the worse of the two: a 70%-tall results lid
-          over the thing you opened the map to see.
+          ONE ROW, not two. This mode is the app's landing surface, so every
+          pixel it spends on chrome is map a guest does not see: the mode rail
+          is already above, the catalog rail is already below, and a second
+          full-width band here would letterbox the pins on a 375px phone.
 
-          What the map does now is one job — pins, filters, catalog rail.
-          Typing a name is a different job and it has its own mode.
-
-          The results panel left with it. The from-Google preview sheet and the
-          Add flow did NOT: the catalog itself carries Google-only places (the
-          grey pins), so a pin or rail-card tap still reaches them through
-          handleOpenPlace. They were never search-only.
-          Super Category stays in the filters sheet, not as a chrome shortcut. */}
+          The bar takes the width and Filters keeps its label on the right —
+          it was widened deliberately (Pato: "filters button must be more
+          visible") because a translucent disc is camouflage on a pale
+          basemap. The bar sits on the same solid `bg-card` for the same
+          reason; a white-on-white field would undo that fix for a new
+          control. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
-        <div className="flex min-w-0 items-center justify-end">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={updateQuery}
+              onClear={() => updateQuery("")}
+              placeholder="Search places by name…"
+            />
+          </div>
           <SearchFilterRow
             count={mapFilterCount(filters)}
             onOpenFilters={() => setFiltersOpen(true)}
@@ -631,25 +755,53 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         )}
       </div>
 
-      <SearchRailOverlay
-        idle
-        places={catalog}
-        catalogCount={nearby.length}
-        catalogLoading={catalogLoading}
-        railCollapsed={railCollapsed}
-        railIndex={railIndex}
-        selectedId={railSelectedId}
-        railScrollRef={railScrollRef}
-        onShowRail={() => setRailCollapsed(false)}
-        onHideRail={() => setRailCollapsed(true)}
-        onRailScroll={handleRailScroll}
-        onSelectPlace={handleSelectPlace}
-        onOpenPlace={handleOpenPlace}
-        onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
-        setRailCardRef={(placeId, el) => {
-          railRefs.current.set(placeId, el);
-        }}
-      />
+      {/* BOTTOM OVERLAY — results while typing, the catalog rail otherwise.
+
+          RESULTS TAKE THE RAIL'S PLACE, they do not stack on top of it. Two
+          scrollable regions in one frame means neither gets a height and both
+          fight the thumb, and a panel anchored to the TOP is the 70%-tall lid
+          this surface had before: it covered the pins you typed to find.
+
+          Capped at 55dvh and docked low, so the upper half of the map — where
+          buildSearchMapPins just dropped the prediction pins — stays visible
+          while you read the list. The list is a text list on purpose: a
+          prediction is a name, an address and a membership dot, and it has
+          none of the photo, rating or hours a rail card is built to show. */}
+      {querying ? (
+        <div className="absolute inset-x-0 bottom-0 z-20 max-h-[55dvh] min-h-0">
+          <div className="border-border bg-card/95 flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t shadow-elev backdrop-blur-xl">
+            <SearchResultsPanel
+              query={query}
+              searching={searching}
+              searchError={searchError}
+              predictions={predictions}
+              addStates={addStates}
+              onPickMesita={handlePickMesita}
+              onPickGoogle={handlePickGoogle}
+            />
+          </div>
+        </div>
+      ) : (
+        <SearchRailOverlay
+          idle
+          places={catalog}
+          catalogCount={nearby.length}
+          catalogLoading={catalogLoading}
+          railCollapsed={railCollapsed}
+          railIndex={railIndex}
+          selectedId={railSelectedId}
+          railScrollRef={railScrollRef}
+          onShowRail={() => setRailCollapsed(false)}
+          onHideRail={() => setRailCollapsed(true)}
+          onRailScroll={handleRailScroll}
+          onSelectPlace={handleSelectPlace}
+          onOpenPlace={handleOpenPlace}
+          onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
+          setRailCardRef={(placeId, el) => {
+            railRefs.current.set(placeId, el);
+          }}
+        />
+      )}
 
       <LocalSheet
         open={filtersOpen}
