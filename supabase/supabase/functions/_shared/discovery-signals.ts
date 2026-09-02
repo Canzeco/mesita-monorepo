@@ -8,19 +8,27 @@
 // never leaves the function. That is the whole contract, and it is what lets
 // every engine reach the same library instead of each one inventing a scale.
 //
-// THERE ARE TEN, Notion Docs › Discovery §8.3 order: Name · Summary ·
-// Proximity · Timing · Category · Popularity · Partnership · Promotion ·
-// Randomness · Social. Slotting still runs AFTER the blend
-// (discovery-blend.ts) and still buys a POSITION, not an exponent.
-// Promotion is the earned read of the public `promoting` boolean — live
-// discount right now. Partnership still reads `plan` only. Nothing here
-// may read rates, strategy, or pause columns.
+// THERE ARE EIGHT: Name · Summary · Proximity · Timing · Category ·
+// Popularity · Mesita Level · Randomness. Slotting still runs AFTER the
+// blend (discovery-blend.ts) and still buys a POSITION, not an exponent.
+//
+// Partnership and Promotion merged into MESITA LEVEL (MESITA-1408): one
+// continuous axis for where a place sits on the Mesita spectrum, from
+// catalog row to actively promoting. They were never independent — a place
+// only promotes if it pays — so two exponents over one underlying fact let
+// an operator double-count money by accident. Level reads `plan` and the
+// public `promoting` boolean, and nothing else: never rates, strategy, or
+// pause columns.
+//
+// The key is `mesita_level`, never bare `level`. `places.price_level` is
+// Google's field and create-door-profile.ts already writes "Price level:"
+// into a signal-shaped line; a bare Level would collide exactly there.
 //
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
-// (`places.embedding` — the Summary blurb, never Presentation). Social
-// abstains until Social Lineup writes a place-level score. Social Lineup
-// is still a module; this signal is the place-feed reading of social
-// proof, not that module.
+// (`places.embedding` — the Summary blurb, never Presentation). Social left
+// the library — it permanently abstained because Social Lineup never wrote
+// a place-level index. Social Lineup is still a MODULE and Social is still
+// a MODE; neither is a signal.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the
@@ -48,7 +56,7 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 
-/** The ten earned signals, in the order the Lineup table renders them. */
+/** The eight earned signals, in the order the Lineup table renders them. */
 export const SIGNAL_KEYS = [
   "name",
   "summary",
@@ -56,10 +64,8 @@ export const SIGNAL_KEYS = [
   "timing",
   "category",
   "popularity",
-  "partnership",
-  "promotion",
+  "mesita_level",
   "randomness",
-  "social",
 ] as const;
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
@@ -106,9 +112,9 @@ export type SignalPlace = {
   embedding: unknown;
   /** Name vector (`places.name_embedding`). */
   nameEmbedding?: unknown;
-  /** Membership plan. Partnership reads this; nothing else may. */
+  /** Membership plan. Mesita Level reads this; nothing else may. */
   plan?: string | null;
-  /** Live discount right now. Promotion reads this; nothing else may. */
+  /** Live discount right now. Mesita Level reads this; nothing else may. */
   promoting?: boolean;
 };
 
@@ -394,48 +400,53 @@ export function summary(
   return vectorScore(place.embedding, intent.queryVector, unembedded);
 }
 
-// ── 7. Partnership ───────────────────────────────────────────────────────────
+// ── 7. Mesita Level ───────────────────────────────────────────
 
 /**
- * How partnered the place is. Reads `plan` only — never strategy, promo
- * flags, or rates. A free or missing plan is demoted, not deleted. A paid
- * plan scores 1. Fine rungs (conservative / aggressive / dominant) are
- * Promoting, not this signal.
+ * Where the place sits on the Mesita spectrum, from catalog row to actively
+ * promoting. The merge of the old Partnership and Promotion signals
+ * (MESITA-1408).
+ *
+ * Two facts, read and nothing else: a paid `plan`, and the public
+ * `promoting` boolean — `toLineupPlace` has already collapsed rates,
+ * strategy and pause columns into that one flag. Fine rungs (conservative /
+ * aggressive / dominant) are Promoting's business, not this signal's.
+ *
+ * THREE RUNGS, GEOMETRICALLY SPACED. Each step up is the same ratio (×5), so
+ * under `s^w` every rung is the same distance from its neighbour in log
+ * space — which is the only spacing that stays even once the blend raises
+ * the score to a power.
+ *
+ * The rungs are deliberately the old product: Level is exactly the value
+ * `partnership(place) * promotion(place)` used to contribute at the default
+ * weights of 1 and 1, for all four input combinations. Landing the merge
+ * therefore changes what the axis is CALLED and how an operator tunes it,
+ * not the order any guest sees. A place that somehow reads `promoting` on a
+ * free plan lands on the middle rung rather than the floor — it is doing
+ * something — which is what the old product did too.
+ *
+ * LEVEL IS DERIVED, NEVER STORED. There is no `places.level` column and
+ * there must not be one: every fact it reads already has an owner, and a
+ * stored copy is a second source of truth that will drift (🔤 Vocabulary).
  */
-export const PARTNERSHIP_NONE = 0.2;
-export const PARTNERSHIP_PARTNER = 1;
+export const LEVEL_LISTED = 0.04;
+export const LEVEL_PARTNER = 0.2;
+export const LEVEL_PROMOTING = 1;
 
-export function partnership(
+export function mesitaLevel(
   place: SignalPlace,
   _intent?: SignalIntent,
   _params?: SignalParamBag,
 ): number {
   const plan = (place.plan ?? "free").toLowerCase();
-  if (plan === "" || plan === "free") return PARTNERSHIP_NONE;
-  return PARTNERSHIP_PARTNER;
+  const partnered = plan !== "" && plan !== "free";
+  const promoting = place.promoting === true;
+  if (partnered && promoting) return LEVEL_PROMOTING;
+  if (partnered || promoting) return LEVEL_PARTNER;
+  return LEVEL_LISTED;
 }
 
-// ── 8. Promotion ─────────────────────────────────────────────────────────────
-
-/**
- * Whether the place is giving a live discount right now. Reads the
- * computed `promoting` boolean — never rates, strategy, or pause
- * columns. `toLineupPlace` collapses those into this one public fact.
- * Not promoting is demoted, not deleted. Slotting still moves promoting
- * places after the blend.
- */
-export const PROMOTION_NONE = 0.2;
-export const PROMOTION_LIVE = 1;
-
-export function promotion(
-  place: SignalPlace,
-  _intent?: SignalIntent,
-  _params?: SignalParamBag,
-): number {
-  return place.promoting === true ? PROMOTION_LIVE : PROMOTION_NONE;
-}
-
-// ── 9. Randomness ────────────────────────────────────────────────────────────
+// ── 8. Randomness ────────────────────────────────────────────────────────────
 
 /**
  * The only signal that reads nothing about the place.
@@ -449,20 +460,6 @@ export function promotion(
 export function randomness(_place: SignalPlace, intent?: SignalIntent): number {
   const rng = intent?.random ?? Math.random;
   return clamp01(rng());
-}
-
-// ── 10. Social ───────────────────────────────────────────────────────────────
-
-/**
- * Place-level social proof. Social Lineup writes the index this reads.
- * Until that module ships there is no index, so the signal abstains.
- */
-export function social(
-  _place: SignalPlace,
-  _intent?: SignalIntent,
-  _params?: SignalParamBag,
-): number {
-  return NEUTRAL;
 }
 
 // ── The library ──────────────────────────────────────────────────────────────
@@ -485,10 +482,8 @@ export const SIGNALS: Record<SignalKey, SignalFn> = {
   timing,
   category,
   popularity,
-  partnership,
-  promotion,
+  mesita_level: mesitaLevel,
   randomness,
-  social,
 };
 
 /** Operator-facing names. The admin weights table renders these. */
@@ -499,10 +494,8 @@ export const SIGNAL_LABELS: Record<SignalKey, string> = {
   timing: "Timing",
   category: "Category",
   popularity: "Popularity",
-  partnership: "Partnership",
-  promotion: "Promotion",
+  mesita_level: "Mesita Level",
   randomness: "Randomness",
-  social: "Social",
 };
 
 /** One line each, for the same table. What the signal asks, not how it works. */
@@ -513,8 +506,7 @@ export const SIGNAL_BLURBS: Record<SignalKey, string> = {
   timing: "Is it open, and is this its hour — read in the place's own local time.",
   category: "Does the type answer what the guest asked for.",
   popularity: "Rating shrunk toward the catalog mean by review volume.",
-  partnership: "How partnered the place is, from plan. Never a bought score.",
-  promotion: "Is there a live discount right now. Never rates or strategy.",
+  mesita_level:
+    "How far up the Mesita spectrum the place sits, from catalog row to actively promoting.",
   randomness: "Reads nothing about the place. Keeps the deck from freezing.",
-  social: "Place-level social proof. Abstains until Social Lineup writes the index.",
 };

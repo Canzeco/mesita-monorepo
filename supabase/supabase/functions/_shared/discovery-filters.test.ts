@@ -175,8 +175,7 @@ Deno.test("a blob from before this change reads back with the new sections defau
   assertEquals(cfg.weights.proximity, 2);
   assertEquals(cfg.weights.summary, 1);
   assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.partnership, 1);
-  assertEquals(cfg.weights.promotion, 1);
+  assertEquals(cfg.weights.mesita_level, 1);
   assertEquals(cfg.slotting.everyNth, 7);
   // ...and the new sections arrive at their defaults rather than undefined.
   assertEquals(cfg.filters, DISCOVERY_DEFAULTS.filters);
@@ -237,7 +236,7 @@ Deno.test("normalize folds semantic weight and params onto summary", () => {
   assertEquals(cfg.weights.summary, 2.4);
   assertEquals(cfg.params.summary.unembedded, 0.15);
   assertEquals(cfg.weights.name, 1);
-  assertEquals(cfg.weights.partnership, 1);
+  assertEquals(cfg.weights.mesita_level, 1);
   const kept = normalizeDiscoveryConfig({
     weights: { semantic: 2, summary: 0.5 },
   });
@@ -418,4 +417,19 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp",
   });
   assertEquals(missingAuto.name.deep.autoCount, 3);
   assertEquals(missingAuto.name.deep.googleCount, 20);
+});
+
+Deno.test("a blob carrying the retired partnership/promotion/social weights normalizes to Mesita Level", () => {
+  const cfg = normalizeDiscoveryConfig({
+    weights: { partnership: 2, promotion: 3, social: 4, proximity: 1.5 },
+    params: { partnership: {}, promotion: {}, social: {} },
+  });
+  // The weights map is rebuilt from SIGNAL_KEYS, so retired keys cannot survive.
+  assertEquals(Object.hasOwn(cfg.weights, "partnership"), false);
+  assertEquals(Object.hasOwn(cfg.weights, "promotion"), false);
+  assertEquals(Object.hasOwn(cfg.weights, "social"), false);
+  assertEquals(Object.hasOwn(cfg.params, "partnership"), false);
+  // The merged axis arrives at its default rather than inheriting either number.
+  assertEquals(cfg.weights.mesita_level, DISCOVERY_DEFAULTS.weights.mesita_level);
+  assertEquals(cfg.weights.proximity, 1.5);
 });

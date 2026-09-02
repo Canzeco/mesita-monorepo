@@ -1,12 +1,12 @@
-// DISCOVERY BLEND — how the ten earned signals compose, and where the bought
+// DISCOVERY BLEND — how the eight earned signals compose, and where the bought
 // lane attaches (Docs › Discovery §A, MESITA-1196).
 //
 // TWO LANES, AND THEY NEVER MIX.
 //
-//   Lane 1 · EARNED    blend() — the product of `s^w` across the ten signals
-//                      in discovery-signals.ts. It cannot read a rate or
-//                      strategy. Partnership may read `plan`. Promotion may
-//                      read the computed `promoting` boolean.
+//   Lane 1 · EARNED    blend() — the product of `s^w` across the eight
+//                      signals in discovery-signals.ts. It cannot read a rate
+//                      or strategy. Mesita Level may read `plan` and the
+//                      computed `promoting` boolean; nothing else may.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
 //                      that moves promoting places forward into fixed slot
 //                      positions. It cannot read a score, because it does not

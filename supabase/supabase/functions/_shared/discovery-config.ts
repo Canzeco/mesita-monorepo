@@ -494,10 +494,8 @@ export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   },
   name: { unembedded: NAME_UNEMBEDDED },
   summary: { unembedded: SUMMARY_UNEMBEDDED },
-  partnership: {},
-  promotion: {},
+  mesita_level: {},
   randomness: {},
-  social: {},
 };
 
 /** Legal ranges for every param the console may edit. */
@@ -536,10 +534,8 @@ export const SIGNAL_PARAM_BOUNDS: Record<
   summary: {
     unembedded: { min: 0, max: 1, decimals: 2 },
   },
-  partnership: {},
-  promotion: {},
+  mesita_level: {},
   randomness: {},
-  social: {},
 };
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -550,10 +546,8 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
     popularity: 1,
     name: 1,
     summary: 1,
-    partnership: 1,
-    promotion: 1,
+    mesita_level: 1,
     randomness: 0.35,
-    social: 1,
   },
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: {
