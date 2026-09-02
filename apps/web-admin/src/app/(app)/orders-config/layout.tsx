@@ -10,7 +10,7 @@ export default function OrdersConfigLayout({
     <ConfigPageLayout
       eyebrow="Product · Orders"
       title="Orders Config"
-      description="Mesita prices two contexts and only one of them shipped: a visit, where the guest is at the place and a ticket carries the discount, and an order, where they are not. This page is everything about an order except what it pays — channels, fulfilment, per-plan quotas and what makes one eligible. Rates live in Promos Config, whose orders column is parked with it. There is no orders table, EF or consumer type yet, so there is nothing to configure and the page stays empty until one exists."
+      description="Mesita prices two contexts and only one of them shipped: a visit, where the guest is at the place and a ticket carries the discount, and an order, where they are not. This page is everything about an order except what it pays — channels, fulfilment, per-plan quotas and what makes one eligible. Rates live in Rewards Config, whose orders column is parked with it. There is no orders table, EF or consumer type yet, so there is nothing to configure and the page stays empty until one exists."
     >
       {children}
     </ConfigPageLayout>

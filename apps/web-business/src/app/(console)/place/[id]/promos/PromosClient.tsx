@@ -275,7 +275,7 @@ export function PromosClient({
       />
 
       <Section
-        title="Promos"
+        title="Visit Rewards"
         description="Zero, Conservative, or Aggressive — switch free anytime."
       >
         <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">

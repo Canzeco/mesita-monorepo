@@ -5,7 +5,7 @@ import { PromosSaveFooter } from "./PromosSaveFooter";
 import { PromosCalculator } from "./PromosCalculator";
 import { PromosSuperBox } from "./PromosSuperBox";
 
-// Promos Config — ONE page, three super boxes. Old /tiers and /distribution
+// Rewards Config — ONE page, three super boxes. Old /tiers and /distribution
 // URLs redirect here. No tab strip.
 export default function PromosConfigPage() {
   return (

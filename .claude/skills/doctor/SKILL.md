@@ -214,8 +214,8 @@ reads to an operator as a control that does something.
 
 4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
     admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**
-    additive bill engine; the column was renamed with the page, but the
-    `/rewards-config` route keeps the older name).
+    additive bill engine; the page is Rewards Config on the matching
+    `/rewards-config` route, but the COLUMN keeps the older name).
 4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
     falling back to defaults. This is the single most common invisible bug class here.
 4.3 **Dead knobs.** Every field in the blob: grep for a reader in EFs/apps. No reader = dead knob.
@@ -328,7 +328,7 @@ and reporting it as drift would be a false P1 on the doc that called it first.
     Intake `*enrich*`, `_shared/enrich-*.ts`, `_shared/channels*.ts` ·
     Discovery `*discover*`, `*filter*`, `_shared/embeddings*.ts` ·
     Passport `_shared/class-doors.ts`, `_shared/consumer-*.ts`, `admin-web-grant-class` ·
-    Promos `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
+    Rewards `_shared/promo-strategy.ts`, `_shared/promo-rates.ts`, `_shared/discount-cap.ts`, `_shared/place-promoting.ts` ·
     Visits `*visit*`, `_shared/business-ticket-billing.ts`, `apps/web-validate` ·
     Orders `*order*` (expect DESIGNED NOT BUILT) · Reservations `*reserv*` ·
     Checkout `*stripe*` · Credits — no code; a page claiming shipped machinery IS the finding ·

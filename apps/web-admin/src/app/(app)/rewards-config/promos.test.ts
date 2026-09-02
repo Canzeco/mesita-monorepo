@@ -324,7 +324,7 @@ describe("Tiers HTML prices visits only", () => {
   });
 });
 
-describe("Promos Config is one page", () => {
+describe("Rewards Config is one page", () => {
   it("has three super boxes and no tab nav", () => {
     const shell = readFileSync(
       join(__dirname, "PromosLayoutShell.tsx"),

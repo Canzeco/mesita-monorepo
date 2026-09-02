@@ -30,7 +30,7 @@
 // row. That failure would be silent and unauditable, so it is tested, not
 // trusted.
 //
-// Facts here mirror Notion Docs (🔤 Vocabulary · 🛂 Passport · 🎁 Promos ·
+// Facts here mirror Notion Docs (🔤 Vocabulary · 🛂 Passport · 🎁 Rewards ·
 // 🪑 Visits). Docs are the knowledge; when one changes, this file changes with
 // it in the same session.
 
