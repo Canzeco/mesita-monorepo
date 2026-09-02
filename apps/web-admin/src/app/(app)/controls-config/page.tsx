@@ -2,8 +2,9 @@ import { getControlsConfig } from "./actions";
 import { ControlsConfigClient } from "./ControlsConfigClient";
 import { CONTROLS_FALLBACK } from "./defaults";
 
-// Controls — one box of WIRED knobs (the Credits hold and the bonus that pays
-// for it) plus a parked Gifting box. One blob, one Save: controls_config.
+// Credits — one box of WIRED knobs (the Terms box: the hold, the bonus that
+// pays for it, and the expiry) plus a parked Gifting box. One blob, one Save:
+// controls_config, whose name the label rename deliberately did not follow.
 export const dynamic = "force-dynamic";
 
 export default async function ControlsConfigPage() {
