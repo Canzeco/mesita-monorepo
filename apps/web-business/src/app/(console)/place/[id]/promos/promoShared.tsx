@@ -233,14 +233,19 @@ export type MembershipPillState =
   | "pending"
   | "live"
   | "paused"
-  | "forfeited";
+  | "forfeited"
+  | "review";
 
 export function membershipPillState(place: {
   plan: string;
   plan_forfeited_at?: string | null;
   plan_live_at?: string | null;
   promo_paused_until?: string | null;
+  reward_lane_pending_review_at?: string | null;
 }): MembershipPillState {
+  // Ghost-partner hold (MESITA-1311) outranks everything — same order as
+  // assessPromoLane in the EF.
+  if (place.reward_lane_pending_review_at) return "review";
   if (place.plan_forfeited_at) return "forfeited";
   if (place.plan === "free") return "not_member";
   if (
@@ -264,14 +269,16 @@ export function MembershipStatusPill({
     live: "Partner — live",
     paused: "Paused",
     forfeited: "Forfeited",
+    review: "Under review",
   };
   const liveish = state === "live" || state === "pending";
+  const amber = state === "paused" || state === "review";
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
-        state === "paused" && "bg-amber-500/12 text-amber-800",
+        amber && "bg-amber-500/12 text-amber-800",
         liveish && "bg-emerald-500/12 text-emerald-700",
         state === "not_member" && "bg-muted text-muted-foreground",
       )}
@@ -280,7 +287,7 @@ export function MembershipStatusPill({
         className={cn(
           "h-1.5 w-1.5 rounded-full",
           state === "forfeited" && "bg-destructive",
-          state === "paused" && "bg-amber-500",
+          amber && "bg-amber-500",
           liveish && "bg-emerald-500",
           state === "not_member" && "bg-muted-foreground/50",
         )}

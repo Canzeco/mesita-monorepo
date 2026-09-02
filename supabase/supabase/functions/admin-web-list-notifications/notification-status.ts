@@ -43,7 +43,7 @@ export type PlaceStatusFacts = {
 };
 
 const PROFILE_COLS =
-  "id, google_place_id, status, business_status, content_status, request_count, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at";
+  "id, google_place_id, status, business_status, content_status, request_count, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at";
 
 const EMPTY_ENRICHMENT: EnrichmentMap = {
   functions: {},

@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   // strike/pause fields are what isPlacePromoting weighs.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at, business_status, business_status_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: elsewhere the count of a filtered read is the
   // number of rows already returned, and a second query would say nothing.

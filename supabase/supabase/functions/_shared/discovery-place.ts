@@ -54,6 +54,7 @@ export const BOUGHT_LANE_COLUMNS = [
   "last_strike_at",
   "promo_paused_until",
   "plan_forfeited_at",
+  "reward_lane_pending_review_at",
 ] as const;
 
 function nOrNull(v: unknown): number | null {

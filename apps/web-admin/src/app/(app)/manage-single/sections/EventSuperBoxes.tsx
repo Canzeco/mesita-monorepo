@@ -23,7 +23,7 @@ import {
   TYPE_CONFIG,
   UNKNOWN_TYPE_CONFIG,
 } from "../../global-performance/notification-config";
-import type { AdminPlace, PlaceStats } from "../actions";
+import { reviewTicketReport, type AdminPlace, type PlaceStats } from "../actions";
 import { formatPesosCompact } from "@/lib/format";
 
 // Performance → Event Super Boxes (collapse-empty horizontal rails).
@@ -531,6 +531,7 @@ export function EventSuperBoxes({
                   ref={panelRef}
                   item={expandedItem}
                   onClose={() => setExpandedId(null)}
+                  onTriaged={refresh}
                 />
               )}
             </div>
@@ -636,8 +637,8 @@ function EventCard({
 
 const ExpandPanel = forwardRef<
   HTMLDivElement,
-  { item: NotificationItem; onClose: () => void }
->(function ExpandPanel({ item, onClose }, ref) {
+  { item: NotificationItem; onClose: () => void; onTriaged?: () => void }
+>(function ExpandPanel({ item, onClose, onTriaged }, ref) {
   const cfg = TYPE_CONFIG[item.type] ?? UNKNOWN_TYPE_CONFIG;
   const labelId = useId();
 
@@ -681,10 +682,96 @@ const ExpandPanel = forwardRef<
         <MetaRow item={item} />
       </div>
       {item.type === "rewards.ticket_reported" && (
-        <p className="text-muted-foreground mt-3 type-label">
-          View only on this tab — follow up outside Performance.
-        </p>
+        <ReportTriageRow item={item} onTriaged={onTriaged} />
       )}
     </div>
   );
 });
+
+// Ghost-partner hold triage (MESITA-1311). A report is EVIDENCE, never an
+// auto-strike — this is where the human call happens. Confirm marks the
+// report reviewed AND puts the place's Visit Rewards on hold
+// (pending_review closes the lane until Restore in the Partnership box);
+// Dismiss just closes the report.
+function ReportTriageRow({
+  item,
+  onTriaged,
+}: {
+  item: NotificationItem;
+  onTriaged?: () => void;
+}) {
+  const [busy, setBusy] = useState<"confirm" | "dismiss" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<string | null>(null);
+
+  const reportId =
+    typeof item.meta.reportId === "string" ? item.meta.reportId : null;
+  const status = typeof item.meta.status === "string" ? item.meta.status : null;
+
+  if (!reportId) {
+    // An older feed payload without the id — nothing to drive.
+    return (
+      <p className="text-muted-foreground mt-3 type-label">
+        Refresh the feed to triage this report.
+      </p>
+    );
+  }
+
+  if (outcome) {
+    return <p className="text-muted-foreground mt-3 type-label">{outcome}</p>;
+  }
+
+  if (status !== "open") {
+    return (
+      <p className="text-muted-foreground mt-3 type-label">
+        Already {status} — the trail lives on the report row.
+      </p>
+    );
+  }
+
+  const triage = async (action: "confirm" | "dismiss") => {
+    if (busy) return;
+    setBusy(action);
+    setError(null);
+    const r = await reviewTicketReport({ action, reportId });
+    setBusy(null);
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
+    setOutcome(
+      action === "confirm"
+        ? "Confirmed — Visit Rewards are on hold. Restore lives in the Partnership box."
+        : "Dismissed — no place state changed.",
+    );
+    onTriaged?.();
+  };
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void triage("confirm")}
+          disabled={busy !== null}
+          className="bg-destructive/10 text-destructive hover:bg-destructive/15 inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
+        >
+          {busy === "confirm" ? "Confirming…" : "Confirm — hold Visit Rewards"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void triage("dismiss")}
+          disabled={busy !== null}
+          className="border-border bg-card hover:bg-muted/60 inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
+        >
+          {busy === "dismiss" ? "Dismissing…" : "Dismiss report"}
+        </button>
+      </div>
+      <div aria-live="polite">
+        {error && (
+          <p className="text-destructive type-label">{error}</p>
+        )}
+      </div>
+    </div>
+  );
+}
