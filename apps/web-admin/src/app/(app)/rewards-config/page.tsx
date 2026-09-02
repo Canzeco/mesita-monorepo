@@ -12,7 +12,7 @@ export default function PromosConfigPage() {
     <div className="flex flex-col gap-8">
       <PromosSuperBox
         title="Strategies"
-        subtitle="Visit rewards only — not orders, not prepaid. A place picks one column. That column is the whole program."
+        subtitle="A place picks one column. That column is the whole program."
       >
         <TiersClient />
       </PromosSuperBox>

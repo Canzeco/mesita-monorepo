@@ -214,7 +214,7 @@ reads to an operator as a control that does something.
 
 4.1 **Blob exists and parses** in `app_config`, and validates against the TS schema the
     admin page and the consuming EFs expect (e.g. `promos_config` carries the **v11**
-    additive bill engine; the page is Rewards Config on the matching
+    additive bill engine; the page is Rewards on the matching
     `/rewards-config` route, but the COLUMN keeps the older name).
 4.2 **Shape skew.** Stored blob shape older/newer than its reader → the reader is silently
     falling back to defaults. This is the single most common invisible bug class here.

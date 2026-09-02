@@ -3,6 +3,7 @@
 import { AlertTriangle } from "lucide-react";
 
 import { Collapsible, KnobStatus } from "@/components/admin-ui/config";
+import { STICKY_COL_CELL } from "@/lib/ui-classes";
 import { RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
 import {
@@ -57,6 +58,10 @@ function GroupRow({ label }: { label: string }) {
   );
 }
 
+// The rung column is the table's identity column: pinned while the strategy
+// columns scroll past it on glass narrower than the table, static again from
+// `sm`. STICKY_COL_CELL and not STICKY_COL_HEAD on both cells of the column —
+// this header row carries no muted tint, so bg-card is the exact opaque twin.
 function LabelCell({
   label,
   hint,
@@ -65,10 +70,13 @@ function LabelCell({
   hint?: string;
 }) {
   return (
-    <th scope="row" className="border-border/60 border-t py-2 pr-4 text-left">
+    <th
+      scope="row"
+      className={`border-border/60 border-t py-2 pr-4 text-left ${STICKY_COL_CELL}`}
+    >
       <p className="text-foreground truncate type-body font-semibold">{label}</p>
       <p
-        className="text-muted-foreground h-4 truncate type-label leading-4"
+        className="text-muted-foreground type-label leading-4 sm:h-4 sm:truncate"
         title={hint || undefined}
       >
         {hint || "\u00a0"}
@@ -147,29 +155,34 @@ export function TiersClient() {
         </div>
       )}
 
+      <KnobStatus kind="enforced" reason="THE TICKET" />
+
       {/* -mx-5 matches the super box's own p-5, so the scrollport reaches the
           screen edge on a phone. The padding rides on the scroller, not the
           <table> — padding on a table box is not honoured consistently and
-          left the first rung's label flush against the edge. */}
+          left the first rung's label flush against the edge (#1466). The
+          min-width is the phone's: two rate columns plus the rung column fit
+          the 318px a 390px viewport leaves, so the scroller usually has
+          nothing to scroll. It is still there for narrower glass. */}
       <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-        <table className="w-full min-w-[36rem] border-separate border-spacing-0">
+        <table className="w-full min-w-[19.5rem] border-separate border-spacing-0 sm:min-w-[36rem]">
           <caption className="sr-only">
             Visit strategy rates. Conservative and Aggressive. Floor, then
             signed adders.
           </caption>
           <thead>
             <tr className="text-left">
-              <th scope="col" className="w-[min(40%,16rem)] pb-3 pr-4">
+              <th
+                scope="col"
+                className={`w-[46%] pb-3 pr-4 sm:w-[min(40%,16rem)] ${STICKY_COL_CELL}`}
+              >
                 <span className="sr-only">Rung</span>
               </th>
               {LIVE_STRATEGY_KEYS.map((s) => (
                 <th key={s} scope="col" className="pb-3">
-                  <p className="font-display text-base font-semibold tracking-tight">
+                  <p className="font-display text-sm font-semibold tracking-tight sm:text-base">
                     {STRATEGY_META[s].name}
                   </p>
-                  <div className="mt-1.5">
-                    <KnobStatus kind="enforced" reason="THE TICKET" />
-                  </div>
                 </th>
               ))}
             </tr>

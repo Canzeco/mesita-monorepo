@@ -8,11 +8,17 @@ import { ALLOWED_RATES } from "./promos";
 // INCREMENT. Floors render plain ("20%"); increments render signed ("+20");
 // a pinned-zero rung is an em dash — "0%" is a real rate.
 //
-// Rate controls are h-9 w-24. Native <select> uses the same box as the
-// pinned dash (appearance-none + kit chevron).
+// Rate controls are h-9, w-20 on a phone and w-24 from sm up: two of them
+// plus the rung column have to fit the 318px of table content a 390px
+// viewport leaves, or the primary knob table can only be read sideways
+// (MESITA-1421). Not narrower than that, because globals.css forces every
+// phone-width <select> to 16px — iOS Safari zooms the page in below that —
+// so the closed box carries 16px glyphs, not the 14px type-body scale.
+// Native <select> uses the same box as the pinned dash (appearance-none + kit
+// chevron).
 
 const RATE_BOX =
-  "box-border h-9 w-24 rounded-lg border type-body tabular-nums";
+  "box-border h-9 w-20 rounded-lg border type-body tabular-nums sm:w-24";
 
 /**
  * A rate on the 5% grid. `signed` renders it as an increment (+15) and, when
@@ -47,7 +53,7 @@ export function RateSelect({
     );
   }
   return (
-    <span className="relative inline-block h-9 w-24 shrink-0">
+    <span className="relative inline-block h-9 w-20 shrink-0 sm:w-24">
       <select
         value={value}
         disabled={disabled}
