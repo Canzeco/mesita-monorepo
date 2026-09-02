@@ -1,8 +1,10 @@
 // The Wallet's Credits policy, read from the console-owned blob.
 //
 // Exists so the Wallet stops hard-coding a hold the admin console claims to
-// own. `app_config.controls_config` is edited at Configurations > Controls and
-// reaches this surface through consumer-web-get-controls-config — an admin
+// own. `app_config.controls_config` is edited at Configurations > Credits — the
+// page was renamed 2026-09-02 and the blob, route and EF names deliberately did
+// not follow — and reaches this surface through consumer-web-get-controls-config
+// — an admin
 // knob nothing reads is the "unenforced config = bug" failure root CLAUDE.md
 // names, and this file is the reader.
 //

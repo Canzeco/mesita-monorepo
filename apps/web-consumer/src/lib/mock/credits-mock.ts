@@ -8,7 +8,8 @@
 //
 // THE HOLD IS NO LONGER INVENTED HERE (Pato, 2026-09-01). The default sits in
 // app_config.controls_config, owned by admin console > Configurations >
-// Controls, and reaches this surface through consumer-web-get-controls-config.
+// Credits (the page, renamed 2026-09-02; the blob and the route kept the old
+// word), and reaches this surface through consumer-web-get-controls-config.
 // A place may still override it — `lockHours: null` means "inherit", which is
 // what every place does until someone sets one. Same for `bonusPct`.
 //
