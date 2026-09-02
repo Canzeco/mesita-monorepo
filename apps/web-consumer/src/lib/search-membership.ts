@@ -70,6 +70,33 @@ const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
   unlisted: MAP_GOOGLE_PIN_COLOR,
 };
 
+/**
+ * A Location row's accessible label names the ENTITY — "City", "State" —
+ * never the absence of a profile: "No profile yet" is a venue answer, and
+ * a Location was never asked the membership question (MESITA-1404). The
+ * visible mark is the location icon; this is its spoken half.
+ */
+export function locationTypeLabel(locationType?: string | null): string {
+  switch (locationType) {
+    case "locality":
+      return "City";
+    case "administrative_area_level_1":
+      return "State";
+    case "administrative_area_level_2":
+      return "Region";
+    case "country":
+      return "Country";
+    case "postal_code":
+      return "Postal code";
+    case "neighborhood":
+    case "sublocality":
+    case "sublocality_level_1":
+      return "Neighborhood";
+    default:
+      return "Location";
+  }
+}
+
 /** Name-lane rows. No column fallback on this wire, so a payload without
  *  `enriched` reads as gray: understating beats promising a profile that
  *  is not there. */
@@ -161,6 +188,8 @@ export type SearchPinPrediction = {
   mainText: string;
   status?: string | null;
   partner?: boolean | null;
+  /** Word's second entity — a Location is a camera destination, never a pin. */
+  kind?: "place" | "location";
   mesitaId?: string | null;
   lat?: number | null;
   lng?: number | null;
@@ -188,6 +217,9 @@ export function buildSearchMapPins(
   const byId = new Map(catalog.map((place) => [place.id, place]));
   const pins: BuiltSearchPin[] = [];
   for (const prediction of predictions) {
+    // A Location is a camera destination, never a pin (MESITA-1404) — a
+    // marker would claim a point for an entity that IS an area.
+    if (prediction.kind === "location") continue;
     const hit = prediction.mesitaId ? byId.get(prediction.mesitaId) : undefined;
     const lat = prediction.lat ?? hit?.lat ?? null;
     const lng = prediction.lng ?? hit?.lng ?? null;

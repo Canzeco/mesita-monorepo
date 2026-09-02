@@ -4,7 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
+import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
 import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
+import {
+  buildSearchMapPins,
+  locationTypeLabel,
+} from "@/lib/search-membership";
 import {
   EmptySearchPrompt,
   SearchRailOverlay,
@@ -1170,6 +1175,86 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     expect(memo.indexOf("takeMapResultLimit")).toBeLessThan(
       memo.indexOf("prependAnchorPlace"),
     );
+  });
+});
+
+describe("a Location wears the location icon, never a membership colour (MESITA-1404)", () => {
+  const rows: PlacePrediction[] = [
+    {
+      placeId: "loc-1",
+      mainText: "Ciudad de México",
+      secondaryText: "CDMX, Mexico",
+      status: "not_in_mesita",
+      kind: "location",
+      locationType: "locality",
+    },
+    {
+      placeId: "ven-1",
+      mainText: "Taquería Nueva",
+      secondaryText: "Calle Falsa 123",
+      status: "not_in_mesita",
+    },
+  ];
+
+  it("marks the Location row with the icon and keeps the venue dot untouched", () => {
+    const html = renderToStaticMarkup(
+      <SearchResultsPanel
+        query="ciudad"
+        searching={false}
+        searchError={null}
+        predictions={rows}
+        addStates={{}}
+        onPickMesita={() => {}}
+        onPickGoogle={() => {}}
+      />,
+    );
+    expect(html).toContain("lucide-map-pin");
+    // The spoken half of the mark names the ENTITY, not a missing profile.
+    expect(html).toContain("Ciudad de México, CDMX, Mexico, City");
+    // The venue row keeps its gray dot and its venue answer.
+    expect(html).toContain("No profile yet");
+    // Exactly ONE membership dot renders — the city carries none, so the
+    // two semantics never share a mark (no fourth colour, no shared gray).
+    expect(html.match(/background-color:#9ca3af/g)?.length).toBe(1);
+    expect(html).not.toContain("#ffc400");
+    // No source labels, no badge, no section header — the icon says it.
+    expect(html).not.toContain(">City<");
+    expect(html).not.toContain(">Location<");
+    expect(html).not.toContain("From Google");
+  });
+
+  it("branches on kind BEFORE the tone function is asked anything", () => {
+    const panel = read("SearchResultsPanel.tsx");
+    const branchAt = panel.indexOf('prediction.kind === "location"');
+    expect(branchAt).toBeGreaterThan(-1);
+    expect(branchAt).toBeLessThan(panel.indexOf("membershipTone(prediction)"));
+  });
+
+  it("buildSearchMapPins skips Locations — a camera destination, never a pin", () => {
+    // Even WITH coordinates (post-anchor rows), a Location draws no marker.
+    expect(
+      buildSearchMapPins(
+        [
+          {
+            placeId: "loc-1",
+            mainText: "CDMX",
+            kind: "location",
+            lat: 19.4,
+            lng: -99.1,
+          },
+        ],
+        [],
+      ),
+    ).toBe(null);
+  });
+
+  it("locationTypeLabel names the entity, with Location as the floor", () => {
+    expect(locationTypeLabel("locality")).toBe("City");
+    expect(locationTypeLabel("administrative_area_level_1")).toBe("State");
+    expect(locationTypeLabel("country")).toBe("Country");
+    expect(locationTypeLabel("neighborhood")).toBe("Neighborhood");
+    expect(locationTypeLabel("political")).toBe("Location");
+    expect(locationTypeLabel(undefined)).toBe("Location");
   });
 });
 
