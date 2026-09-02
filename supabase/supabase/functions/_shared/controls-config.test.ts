@@ -4,6 +4,7 @@ import {
   type ControlsConfig,
   guestControlsPolicy,
   normalizeControlsConfig,
+  resolveExpiryDays,
   resolveHoldHours,
 } from "./controls-config.ts";
 
@@ -70,8 +71,75 @@ Deno.test("resolveHoldHours: zero is a real override, not an absent one", () => 
 });
 
 Deno.test("guestControlsPolicy: the operator's window is not guest-facing", () => {
+  // The expiry DEFAULT crosses and its FLOOR does not: a guest is owed the date
+  // their own Credits die, never the range a venue could have picked from.
   assertEquals(guestControlsPolicy(CONTROLS_DEFAULTS), {
     defaultHoldHours: 3,
     defaultBonusPct: 5,
+    defaultExpiryDays: 90,
   });
+});
+
+Deno.test("normalizeControlsConfig: the shipped expiry is 90 days, floored at 30", () => {
+  const c = normalizeControlsConfig({});
+  assertEquals(c.defaultExpiryDays, 90);
+  assertEquals(c.minExpiryDays, 30);
+});
+
+Deno.test("normalizeControlsConfig: expiry is read in DAYS, not hours", () => {
+  // The regression this catches is an operator (or a migration) typing the
+  // expiry in the hold's unit. 90 stays 90; it is never rescaled by 24.
+  assertEquals(normalizeControlsConfig({ defaultExpiryDays: 90 })
+    .defaultExpiryDays, 90);
+});
+
+Deno.test("normalizeControlsConfig: the default expiry is floored, never stranded under it", () => {
+  const c = normalizeControlsConfig({ defaultExpiryDays: 7, minExpiryDays: 30 });
+  assertEquals(c.defaultExpiryDays, 30);
+});
+
+Deno.test("normalizeControlsConfig: Credits can never expire before they mature", () => {
+  // A 30-day hold ceiling with a 1-day floor would sell money that is locked
+  // for its whole life. The floor is raised to cover the longest hold instead.
+  const c = normalizeControlsConfig({ maxHoldHours: 720, minExpiryDays: 1 });
+  assertEquals(c.minExpiryDays, 30);
+  assertEquals(c.defaultExpiryDays, 90);
+});
+
+Deno.test("normalizeControlsConfig: a stored expiry survives the round trip", () => {
+  const stored: ControlsConfig = {
+    ...CONTROLS_DEFAULTS,
+    defaultExpiryDays: 180,
+    minExpiryDays: 60,
+  };
+  assertEquals(normalizeControlsConfig(stored), stored);
+});
+
+Deno.test("normalizeControlsConfig: a blob written before expiry existed reads at the defaults", () => {
+  // Every live row is one of these until the migration lands, and the EF must
+  // answer with a policy rather than an undefined.
+  const legacy = {
+    defaultHoldHours: 3,
+    defaultBonusPct: 5,
+    maxHoldHours: 72,
+    minHoldHours: 0,
+  };
+  assertEquals(normalizeControlsConfig(legacy), CONTROLS_DEFAULTS);
+});
+
+Deno.test("resolveExpiryDays: no place override inherits the default", () => {
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, null), 90);
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, undefined), 90);
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, Number.NaN), 90);
+});
+
+Deno.test("resolveExpiryDays: a place may sell a LONGER life, never a shorter one", () => {
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, 365), 365);
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, 7), 30);
+});
+
+Deno.test("resolveExpiryDays: zero is not instant-expiry, it floors", () => {
+  // resolveHoldHours honours 0 because instant-use Credits are a real product.
+  // Money that dies on purchase is not, so the mirror case must NOT mirror.
+  assertEquals(resolveExpiryDays(CONTROLS_DEFAULTS, 0), 30);
 });

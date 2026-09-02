@@ -15,13 +15,19 @@ import {
   bonusPctFor,
   CONTROLS_FALLBACK,
   CREDIT_PLACES,
+  DAY_MS,
+  daysUntilExpiry,
+  expiryDaysFor,
+  formatExpiry,
   formatUnlock,
   holdHoursFor,
   HOUR_MS,
   hoursUntil,
+  isExpired,
   isLocked,
   spendableCents,
 } from "@/lib/mock/credits-mock";
+import { rankBalances } from "@/components/consumer/credits/BalanceStack";
 
 // The console-owned terms every rule below resolves against. A place's own
 // bonusPct/lockHours are null unless it set them, and what null MEANS is this.
@@ -159,7 +165,11 @@ describe("buy", () => {
   });
 
   it("a console change reprices the NEXT top-up, not one already bought", () => {
-    const generous = { defaultHoldHours: 1, defaultBonusPct: 50 };
+    const generous = {
+      defaultHoldHours: 1,
+      defaultBonusPct: 50,
+      defaultExpiryDays: 365,
+    };
     const before = buy(freshState(T0, "empty"), {
       placeId: INHERITS.id,
       paidCents: 100_000,
@@ -282,7 +292,11 @@ describe("spend", () => {
     if (!r.ok) throw new Error("seed failed");
     return r.value;
   }
-  const AFTER = T0 + 365 * 24 * HOUR_MS;
+  // Inside the hold's shadow but well short of the 90-day expiry. It used to be
+  // a year out, which is now a DEAD balance: a matured-and-spendable moment has
+  // to sit between the two dates, and picking one that does not is the exact
+  // mistake the expiry rule exists to catch.
+  const AFTER = T0 + 7 * 24 * HOUR_MS;
 
   it("draws the balance down and records it", () => {
     const s = matured();
@@ -352,6 +366,151 @@ describe("the demo clock", () => {
     expect(same.maturesAtMs).toBe(locked.maturesAtMs);
     expect(isLocked(same, nowAfter)).toBe(false);
     expect(spendableCents(same, nowAfter)).toBe(same.balanceCents);
+  });
+});
+
+describe("expiry", () => {
+  // 90 days, in DAYS, is the shipped term. A test that reads the constant back
+  // out of the fixture would pass against any number; this one is the pin.
+  it("the shipped default expiry is 90 days", () => {
+    expect(POLICY.defaultExpiryDays).toBe(90);
+  });
+
+  it("a place that set nothing inherits the console default", () => {
+    expect(INHERITS.expiryDays).toBeNull();
+    expect(expiryDaysFor(INHERITS, POLICY)).toBe(POLICY.defaultExpiryDays);
+  });
+
+  it("a place that sells a longer life keeps it", () => {
+    expect(expiryDaysFor(OVERRIDES, POLICY)).toBe(OVERRIDES.expiryDays);
+    expect(expiryDaysFor(OVERRIDES, POLICY)).toBeGreaterThan(
+      POLICY.defaultExpiryDays,
+    );
+  });
+
+  it("dates a top-up's expiry in DAYS from the purchase, not from maturity", () => {
+    const r = buy(freshState(T0, "empty"), {
+      placeId: OVERRIDES.id,
+      paidCents: 100_000,
+      nowMs: T0,
+      balanceId: "b",
+      activityId: "a",
+      policy: POLICY,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const b = r.value.balances[0];
+    // Exactly the override, off T0 — NOT off the 72h hold that place also sets.
+    expect(b.expiresAtMs).toBe(T0 + OVERRIDES.expiryDays! * DAY_MS);
+    expect(b.expiresAtMs).toBeGreaterThan(b.maturesAtMs);
+  });
+
+  it("every seeded balance matures before it expires", () => {
+    // The degenerate state — money locked for its entire life — is what the
+    // config's floor exists to prevent, so no fixture may ship in it.
+    for (const b of seeded().balances) {
+      expect(b.maturesAtMs).toBeLessThan(b.expiresAtMs);
+    }
+  });
+
+  it("stops being spendable the moment it expires, without touching the balance", () => {
+    const s = seeded();
+    const b = s.balances[0];
+    const justBefore = b.expiresAtMs - 1;
+    const atExpiry = b.expiresAtMs;
+    expect(isExpired(b, justBefore)).toBe(false);
+    expect(spendableCents(b, justBefore)).toBe(b.balanceCents);
+    expect(isExpired(b, atExpiry)).toBe(true);
+    expect(spendableCents(b, atExpiry)).toBe(0);
+    // The money is still ON the balance — expiry answers what can be spent,
+    // not what happens to the remainder, which nothing has decided.
+    expect(b.balanceCents).toBeGreaterThan(0);
+  });
+
+  it("refuses a spend on an expired balance, and says expired not short", () => {
+    const s = seeded();
+    const b = s.balances[0];
+    expect(
+      spend(s, {
+        balanceId: b.id,
+        amountCents: 999_999_999,
+        nowMs: b.expiresAtMs + DAY_MS,
+        activityId: "a",
+      }),
+    ).toEqual({ ok: false, error: "balance-expired" });
+  });
+
+  it("a top-up re-dates the whole balance, in the guest's favour", () => {
+    let s = freshState(T0, "empty");
+    const first = buy(s, {
+      placeId: INHERITS.id,
+      paidCents: 50_000,
+      nowMs: T0,
+      balanceId: "b1",
+      activityId: "a1",
+      policy: POLICY,
+    });
+    if (!first.ok) return;
+    s = first.value;
+    const later = T0 + 60 * 24 * HOUR_MS;
+    const second = buy(s, {
+      placeId: INHERITS.id,
+      paidCents: 50_000,
+      nowMs: later,
+      balanceId: "b2",
+      activityId: "a2",
+      policy: POLICY,
+    });
+    if (!second.ok) return;
+    const b = second.value.balances[0];
+    expect(b.expiresAtMs).toBe(later + POLICY.defaultExpiryDays * DAY_MS);
+    // The older money rode the new date up rather than dragging the new money
+    // down to the old one.
+    expect(b.expiresAtMs).toBeGreaterThan(
+      first.value.balances[0].expiresAtMs,
+    );
+  });
+
+  it("the demo clock kills a balance by moving time, not by touching it", () => {
+    const s = seeded();
+    const before = s.balances[0];
+    const days = Math.ceil(daysUntilExpiry(before, T0));
+    const advanced = advanceClock(s, (days + 1) * 24);
+    const nowAfter = T0 + advanced.clockOffsetMs;
+    const same = advanced.balances.find((b) => b.id === before.id)!;
+    expect(same.expiresAtMs).toBe(before.expiresAtMs);
+    expect(isExpired(same, nowAfter)).toBe(true);
+    expect(spendableCents(same, nowAfter)).toBe(0);
+  });
+});
+
+describe("deck order", () => {
+  it("ranks spendable, then locked, then expired", () => {
+    const s = seeded();
+    const dead = s.balances[0].expiresAtMs + DAY_MS;
+    // Far enough out that the seed's own locked card has matured, so the only
+    // thing separating these is expiry.
+    const ranked = rankBalances(s.balances, dead);
+    const states = ranked.map((b) =>
+      isExpired(b, dead) ? 2 : isLocked(b, dead) ? 1 : 0,
+    );
+    expect([...states].sort()).toEqual(states);
+  });
+});
+
+describe("formatExpiry", () => {
+  it("rounds DOWN — overstating an expiry costs a guest the money", () => {
+    expect(formatExpiry(89.9)).toBe("89d");
+    expect(formatExpiry(6)).toBe("6d");
+  });
+
+  it("names the last day rather than rounding it to nothing", () => {
+    expect(formatExpiry(0.4)).toBe("Today");
+  });
+
+  it("says Expired once it has passed", () => {
+    expect(formatExpiry(0)).toBe("Expired");
+    expect(formatExpiry(-3)).toBe("Expired");
   });
 });
 

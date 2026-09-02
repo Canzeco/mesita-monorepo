@@ -3,9 +3,15 @@
 // Controls — the Wallet's Credits policy. One box of WIRED knobs plus a parked
 // Gifting box. The unrendered key (minHoldHours) still rides the whole blob
 // (Ojo/Reservations law): no reader for a floor yet, so it is not a question.
+//
+// TWO GROUPS IN ONE BOX, BECAUSE THEY WEAR DIFFERENT UNITS. The hold and the
+// bonus are priced against each other and read in HOURS; expiry reads in DAYS
+// and answers a different question — not when the money wakes up, but when it
+// dies. Five fields in one undivided grid is where an operator types 90 into an
+// hours box, so every label carries its unit and the rule sits above its pair.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Gift, Hourglass, Percent, Timer } from "lucide-react";
+import { CalendarClock, CalendarX2, Gift, Hourglass, Percent, Timer } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -65,19 +71,29 @@ export function ControlsConfigClient({
     setCfg((c) => ({ ...c, ...p }));
   };
 
-  // The default has to be a hold a place could actually be given. Saying so
-  // BEFORE the save runs is the point — the EF clamps either way, and a value
-  // that silently snapped on save is how an operator stops trusting the page.
-  const defaultAboveCeiling =
-    cfg.defaultHoldHours > cfg.maxHoldHours
-      ? "The default hold is above the ceiling; saving snaps it down."
-      : null;
+  // Every term has to be one a place could actually be given. Saying so BEFORE
+  // the save runs is the point — the EF clamps either way, and a value that
+  // silently snapped on save is how an operator stops trusting the page.
+  //
+  // Ordered by which correction lands first in normalize, so the note names the
+  // number that will actually move.
+  const willSnap = cfg.defaultHoldHours > cfg.maxHoldHours
+    ? "The default hold is above the ceiling; saving snaps it down."
+    : cfg.minExpiryDays * 24 < cfg.maxHoldHours
+      ? "Credits would expire before they mature; saving raises the shortest expiry to cover the longest hold."
+      : cfg.defaultExpiryDays < cfg.minExpiryDays
+        ? "The default expiry is below the shortest a place may set; saving raises it."
+        : null;
 
   const save = () => {
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
       const maxHold = Math.max(cfg.minHoldHours, cfg.maxHoldHours);
+      // Mirrors _shared/controls-config.ts. The EF normalizes regardless; doing
+      // it here too means the value that comes back is the one the page already
+      // warned about, rather than a surprise on the round trip.
+      const minExpiry = Math.max(Math.ceil(maxHold / 24), cfg.minExpiryDays);
       const next: ControlsConfig = {
         ...cfg,
         maxHoldHours: maxHold,
@@ -85,6 +101,8 @@ export function ControlsConfigClient({
           maxHold,
           Math.max(cfg.minHoldHours, cfg.defaultHoldHours),
         ),
+        minExpiryDays: minExpiry,
+        defaultExpiryDays: Math.max(minExpiry, cfg.defaultExpiryDays),
       };
       const r = await updateControlsConfig(next);
       if (r.ok) {
@@ -105,7 +123,7 @@ export function ControlsConfigClient({
       <SectionCard
         icon={<Hourglass className="text-secondary h-4 w-4" />}
         title="Credits"
-        subtitle="How long a prepaid balance is held before a guest can spend it, and what the place pays for that hold."
+        subtitle="How long a prepaid balance is held before a guest can spend it, what the place pays for that hold, and how long the Credits live before they expire."
         status={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
@@ -157,10 +175,46 @@ export function ControlsConfigClient({
           />
         </div>
 
-        {defaultAboveCeiling ? (
-          <p className="text-muted-foreground mt-3 type-label">
-            {defaultAboveCeiling}
+        {/* Expiry is the other end of the instrument's life and it is counted
+            in DAYS. It gets its own rule, its own sentence and its own pair, so
+            the unit change is a visible boundary rather than a suffix an
+            operator has to notice on the fifth label in a grid. */}
+        <div className="border-border mt-6 border-t pt-5">
+          <p className="text-muted-foreground type-label leading-relaxed">
+            Unspent Credits expire. This is counted in DAYS from the top-up, not
+            from the moment the hold lifts. The guard here is a FLOOR, not a
+            ceiling — a place may always sell a longer life, never a shorter one,
+            because a short expiry is the term that costs a guest.
           </p>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <NumberField
+              icon={
+                <CalendarClock className="text-muted-foreground mt-0.5 h-4 w-4" />
+              }
+              label="Default expiry on Credits (days)"
+              value={cfg.defaultExpiryDays}
+              min={0}
+              max={3650}
+              disabled={pending}
+              onChange={(v) => patch({ defaultExpiryDays: v })}
+            />
+            <NumberField
+              icon={
+                <CalendarX2 className="text-muted-foreground mt-0.5 h-4 w-4" />
+              }
+              label="Shortest expiry a place may set (days)"
+              value={cfg.minExpiryDays}
+              min={0}
+              max={3650}
+              disabled={pending}
+              onChange={(v) => patch({ minExpiryDays: v })}
+            />
+          </div>
+        </div>
+
+        {willSnap ? (
+          <p className="text-muted-foreground mt-3 type-label">{willSnap}</p>
         ) : null}
 
         <SaveRow

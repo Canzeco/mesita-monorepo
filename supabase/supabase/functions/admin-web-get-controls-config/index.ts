@@ -4,9 +4,11 @@
 //
 // Returns the Wallet's Credits policy from the public.app_config singleton for
 // the admin console's Controls Config page — the hold a place inherits when it
-// sets none, the bonus that goes with it, and the ceiling on a per-place
-// override. Whether Credits may settle a bill at all is a different question
-// answered by visits_config.payCredits. See _shared/controls-config.ts.
+// sets none, the bonus that goes with it, the ceiling on a per-place hold, and
+// how long unspent Credits live (in DAYS) with the floor under a per-place
+// override of it. Whether Credits may settle a bill at all is a different
+// question answered by visits_config.payCredits. See
+// _shared/controls-config.ts.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

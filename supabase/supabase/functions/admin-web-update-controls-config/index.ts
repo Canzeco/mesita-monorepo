@@ -6,9 +6,11 @@
 // WHOLE-BLOB write of the Wallet's Credits policy from the admin console — the
 // house pattern for jsonb configs here. The knobs are a related set (the
 // ceiling can never sit below the floor; the default hold has to be a value
-// inside the window it is the default for), so a per-key merge could persist a
-// default no place could ever actually be given. The client always sends the
-// whole policy and _shared/controls-config normalizes it.
+// inside the window it is the default for; Credits may never expire before
+// they mature, which ties the expiry floor to the hold ceiling), so a per-key
+// merge could persist a default no place could ever actually be given. The
+// client always sends the whole policy and _shared/controls-config normalizes
+// it.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

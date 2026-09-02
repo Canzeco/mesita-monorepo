@@ -10,18 +10,22 @@
 // call sites. Clients call Edge Functions and never the DB (root CLAUDE.md);
 // nothing here should teach a future session otherwise.
 //
-// THE CLOCK IS THE POINT. Real maturation is measured in hours and days, so a
-// demo that waits for wall time demonstrates nothing. State stores absolute
-// timestamps and a single `clockOffsetMs`; every read derives "now" from
-// `Date.now() + offset`. Pushing the clock forward runs the SAME maturation
-// logic a real 18-hour wait would, which is what makes the lock legible.
+// THE CLOCK IS THE POINT. Real maturation is measured in hours and days, and
+// expiry in months, so a demo that waits for wall time demonstrates nothing.
+// State stores absolute timestamps and a single `clockOffsetMs`; every read
+// derives "now" from `Date.now() + offset`. Pushing the clock forward runs the
+// SAME maturation logic a real 18-hour wait would, which is what makes the lock
+// legible — and the same expiry logic a real 90-day wait would.
 
 import {
   bonusFor,
   bonusPctFor,
   CONTROLS_FALLBACK,
+  DAY_MS,
+  expiryDaysFor,
   holdHoursFor,
   HOUR_MS,
+  isExpired,
   placeById,
   seedBalances,
   type ControlsPolicy,
@@ -29,7 +33,12 @@ import {
 } from "./credits-mock";
 
 const STORAGE_KEY = "mesita.credits.emulator";
-const STATE_VERSION = 1;
+// 2: balances carry `expiresAtMs` (2026-09-02). A v1 balance has no expiry, and
+// `isExpired` on an undefined date is quietly false — money that never dies,
+// which is the one thing this shape change exists to stop. `read()` drops a
+// state whose version does not match, so a stale wallet re-seeds instead of
+// running the new rules against a shape that cannot answer them.
+const STATE_VERSION = 2;
 
 export type CreditsState = {
   v: typeof STATE_VERSION;
@@ -42,6 +51,7 @@ export type EmulatorError =
   | "unknown-place"
   | "unknown-balance"
   | "balance-locked"
+  | "balance-expired"
   | "insufficient-credits"
   | "amount-not-positive";
 
@@ -89,23 +99,34 @@ export function buy(
   if (!place) return { ok: false, error: "unknown-place" };
   if (args.paidCents <= 0) return { ok: false, error: "amount-not-positive" };
 
-  // The hold and the bonus are resolved TOGETHER and stored on the balance,
-  // so a later console change never silently reprices Credits a guest already
-  // bought. What the operator changes is what the NEXT top-up gets.
+  // The hold, the bonus and the expiry are resolved TOGETHER and stored on the
+  // balance, so a later console change never silently reprices Credits a guest
+  // already bought. What the operator changes is what the NEXT top-up gets.
   const bonusPct = bonusPctFor(place, args.policy);
   const credited = args.paidCents + bonusFor(args.paidCents, bonusPct);
   const maturesAtMs = args.nowMs + holdHoursFor(place, args.policy) * HOUR_MS;
+  // From the TOP-UP, not from maturity. Dating expiry off the unlock would let
+  // a place buy its Credits a longer life by holding them longer, which is the
+  // opposite of what the hold costs a guest.
+  const expiresAtMs = args.nowMs + expiryDaysFor(place, args.policy) * DAY_MS;
   const existing = state.balances.find((b) => b.placeId === args.placeId);
 
   // Topping up an existing balance RE-LOCKS the whole thing. The lock is what
   // the place is paying the bonus for, so letting new money hide behind an
   // already-matured balance would sell float that was never delivered.
+  //
+  // It RE-DATES the expiry the same way, and in the guest's favour: the older
+  // money rides the new expiry rather than the new money inheriting the old
+  // one. A single balance can only carry one date, and the alternative — new
+  // Credits dying on the schedule of Credits bought months ago — would take
+  // away a term the guest just paid for.
   const next: CreditBalance = existing
     ? {
         ...existing,
         balanceCents: existing.balanceCents + credited,
         paidCents: existing.paidCents + args.paidCents,
         maturesAtMs,
+        expiresAtMs,
         bonusPct,
         activity: [
           {
@@ -124,6 +145,7 @@ export function buy(
         balanceCents: credited,
         paidCents: args.paidCents,
         maturesAtMs,
+        expiresAtMs,
         bonusPct,
         photoUrl: place.photoUrl,
         activity: [
@@ -162,6 +184,10 @@ export function spend(
   if (args.amountCents <= 0) return { ok: false, error: "amount-not-positive" };
   if (balance.maturesAtMs > args.nowMs)
     return { ok: false, error: "balance-locked" };
+  // Expiry is checked BEFORE the amount: a guest who typed too much into a dead
+  // balance needs to be told it is dead, not that they were a few pesos over.
+  if (isExpired(balance, args.nowMs))
+    return { ok: false, error: "balance-expired" };
   if (args.amountCents > balance.balanceCents)
     return { ok: false, error: "insufficient-credits" };
 

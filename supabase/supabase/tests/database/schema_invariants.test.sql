@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(78);
+select plan(82);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -444,6 +444,49 @@ select has_column(
 select has_column(
   'public', 'app_config', 'memo_config',
   'app_config.memo_config holds Memo greeting/instructions/legacy model keys'
+);
+
+-- ━━━ app_config.controls_config — the Wallet's Credits terms ━━━━━━━━━━━━━━━
+
+select has_column(
+  'public', 'app_config', 'controls_config',
+  'app_config.controls_config holds the Wallet Credits terms'
+);
+
+-- Every key the EFs normalize against. A migration that rewrites this blob and
+-- drops one hands every place a default nobody chose, silently, because
+-- normalizeControlsConfig is deliberately tolerant of a missing key.
+select is_empty(
+  $$select k from unnest(array[
+      'defaultHoldHours', 'defaultBonusPct', 'maxHoldHours', 'minHoldHours',
+      'defaultExpiryDays', 'minExpiryDays'
+    ]) k
+    where not exists (
+      select 1 from public.app_config c
+       where c.id = 1 and c.controls_config ? k
+    )$$,
+  'controls_config carries every key the Controls page and the EFs read'
+);
+
+-- EXPIRY IS IN DAYS, THE HOLD IS IN HOURS. The two knobs sit in one blob
+-- wearing different units, so the failure this pins is an expiry written in the
+-- hold's unit: 2160 for a quarter reads as a six-year life and nothing else
+-- would notice. Ten years is the outer bound on any real term.
+select ok(
+  (select (controls_config->>'defaultExpiryDays')::numeric <= 3650
+      and (controls_config->>'minExpiryDays')::numeric <= 3650
+     from public.app_config where id = 1),
+  'controls_config expiry is a DAY count, not the hold''s hours smuggled across'
+);
+
+-- The one combination of these numbers that sells a guest money they can never
+-- spend: a life shorter than the longest hold a place may set. The EF clamps it
+-- on write; this catches a migration writing the blob directly.
+select ok(
+  (select (controls_config->>'minExpiryDays')::numeric * 24
+        >= (controls_config->>'maxHoldHours')::numeric
+     from public.app_config where id = 1),
+  'controls_config can never expire Credits before they mature'
 );
 
 select has_column(

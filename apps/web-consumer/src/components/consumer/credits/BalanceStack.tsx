@@ -1,7 +1,11 @@
 "use client";
 
 import { BalanceCard, CARD_PX, PEEK_PX } from "./BalanceCard";
-import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
+import {
+  isExpired,
+  isLocked,
+  type CreditBalance,
+} from "@/lib/mock/credits-mock";
 
 // The card deck.
 //
@@ -45,22 +49,29 @@ import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
 const OVERLAP_PX = 18;
 
 /**
- * Deck order: spendable money first, then the biggest balance.
+ * Deck order: spendable money first, then waiting money, then dead money, and
+ * within each the biggest balance.
  *
  * It used to be whatever order the fixture happened to be in, which is not an
  * order, it is an accident. Spendable-first is the only ranking a guest can
- * predict without being told, and it makes the maturation rule demonstrate
- * itself: a card visibly climbs the deck the moment its hold expires, which is
- * exactly what the demo clock is there to show.
+ * predict without being told, and it makes both rules demonstrate themselves: a
+ * card visibly climbs the deck the moment its hold lifts and sinks to the back
+ * the moment it expires, which is exactly what the demo clock is there to show.
+ *
+ * EXPIRED SINKS BELOW LOCKED rather than being dropped. It is the one card that
+ * will never come back up, so it belongs at the bottom — but it is also the
+ * only record the guest has that the money was ever there.
  */
 export function rankBalances(
   balances: CreditBalance[],
   nowMs: number,
 ): CreditBalance[] {
+  // 0 spendable · 1 still inside its hold · 2 expired.
+  const rank = (b: CreditBalance) =>
+    isExpired(b, nowMs) ? 2 : isLocked(b, nowMs) ? 1 : 0;
   return [...balances].sort((a, b) => {
-    const aLocked = isLocked(a, nowMs);
-    const bLocked = isLocked(b, nowMs);
-    if (aLocked !== bLocked) return aLocked ? 1 : -1;
+    const byState = rank(a) - rank(b);
+    if (byState !== 0) return byState;
     return b.balanceCents - a.balanceCents;
   });
 }
