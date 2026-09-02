@@ -4,8 +4,9 @@
 // Functions via the Result-style efInvoke (never throws). Backed by
 // admin-web-get/update-controls-config on app_config.controls_config.
 // WHOLE-BLOB save: the knobs are a related set — the ceiling can never sit
-// below the floor, and the default hold has to be a value inside the window it
-// is the default for. No client ever touches the DB.
+// below the floor, the default hold has to be a value inside the window it is
+// the default for, and Credits may never expire before they mature, which ties
+// the expiry floor to the hold ceiling. No client ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { CONTROLS_FALLBACK, type ControlsConfig } from "./defaults";
@@ -30,6 +31,19 @@ function normalize(raw: unknown): ControlsConfig {
     minHold,
     Math.round(num(r.maxHoldHours, CONTROLS_FALLBACK.maxHoldHours, 0, 720)),
   );
+  // Credits may never expire before they mature: the shortest life a place may
+  // sell has to outlast the longest hold it may set. HOURS on the left of the
+  // slash, DAYS on the right — the two knobs wear different units on purpose.
+  const minExpiry = Math.max(
+    Math.ceil(maxHold / 24),
+    Math.round(num(r.minExpiryDays, CONTROLS_FALLBACK.minExpiryDays, 0, 3650)),
+  );
+  const defaultExpiry = Math.max(
+    minExpiry,
+    Math.round(
+      num(r.defaultExpiryDays, CONTROLS_FALLBACK.defaultExpiryDays, 0, 3650),
+    ),
+  );
   return {
     defaultHoldHours: Math.min(
       maxHold,
@@ -45,6 +59,8 @@ function normalize(raw: unknown): ControlsConfig {
     ),
     maxHoldHours: maxHold,
     minHoldHours: minHold,
+    defaultExpiryDays: defaultExpiry,
+    minExpiryDays: minExpiry,
   };
 }
 

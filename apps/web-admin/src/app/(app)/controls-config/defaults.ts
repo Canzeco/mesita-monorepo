@@ -9,6 +9,10 @@ export type ControlsConfig = {
   maxHoldHours: number;
   /** Unrendered: no reader for a floor yet. Round-trips on save. */
   minHoldHours: number;
+  /** DAYS from a top-up until unspent Credits expire. Not hours — see the page. */
+  defaultExpiryDays: number;
+  /** DAYS. The shortest life a place may sell: a FLOOR, where the hold has a ceiling. */
+  minExpiryDays: number;
 };
 
 export const CONTROLS_FALLBACK: ControlsConfig = {
@@ -16,4 +20,6 @@ export const CONTROLS_FALLBACK: ControlsConfig = {
   defaultBonusPct: 5,
   maxHoldHours: 72,
   minHoldHours: 0,
+  defaultExpiryDays: 90,
+  minExpiryDays: 30,
 };

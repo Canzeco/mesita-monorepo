@@ -29,10 +29,11 @@ import {
 // battery cost for information nobody acts on.
 const TICK_MS = 60_000;
 
-// THE POLICY IS REAL EVEN THOUGH THE BALANCES ARE NOT. The hold and the bonus
-// come from app_config.controls_config via consumer-web-get-controls-config,
-// so the admin console's Controls page actually governs this surface. The
-// balances around them are still a browser emulator.
+// THE POLICY IS REAL EVEN THOUGH THE BALANCES ARE NOT. The hold, the bonus and
+// the expiry come from app_config.controls_config via
+// consumer-web-get-controls-config, so the admin console's Controls page
+// actually governs this surface. The balances around them are still a browser
+// emulator.
 //
 // The seed waits for the policy: a wallet seeded at the fallback and then
 // re-seeded at the real hold would show two different countdowns in the first
@@ -72,7 +73,7 @@ export function useCredits(seed: Seed): CreditsApi {
     void (async () => {
       // A failed policy read is not a failed wallet: the shipped defaults are
       // the same numbers the EF would have returned on a cold blob, so the
-      // surface degrades to 3h rather than to an error.
+      // surface degrades to 3h and 90d rather than to an error.
       let resolved = CONTROLS_FALLBACK;
       try {
         resolved = await apiGetControlsPolicy(supabase);
@@ -171,6 +172,8 @@ export function errorMessage(error: EmulatorError): string {
       return "That balance no longer exists.";
     case "balance-locked":
       return "These Credits haven't unlocked yet.";
+    case "balance-expired":
+      return "These Credits have expired.";
     case "insufficient-credits":
       return "You don't have that many Credits here.";
     case "amount-not-positive":

@@ -12,7 +12,11 @@ import {
 import { BalanceDetail } from "@/components/consumer/credits/BalanceDetail";
 import { BuyCreditsSheet } from "@/components/consumer/credits/BuyCreditsSheet";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
-import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
+import {
+  isExpired,
+  isLocked,
+  type CreditBalance,
+} from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 
@@ -72,6 +76,13 @@ import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 // NO IN-BODY TITLE. Every section opens straight into its content; the pill
 // row directly above already says which one this is.
 
+/** The demo clock's rungs, in hours. One per scale the terms are written in. */
+const CLOCK_RUNGS = [
+  { hours: 1, label: "+1h" },
+  { hours: 24, label: "+24h" },
+  { hours: 24 * 30, label: "+30d" },
+];
+
 export function CreditsClient({ seed }: { seed: Seed }) {
   const credits = useCredits(seed);
   const [open, setOpen] = useState<CreditBalance | null>(null);
@@ -80,9 +91,15 @@ export function CreditsClient({ seed }: { seed: Seed }) {
 
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
+  // `held` is every peso the guest has here, expired included — the Top up sheet
+  // states what the wallet holds, and quietly dropping dead money would make
+  // the total disagree with the deck the guest is looking at. `onHold` is the
+  // slice that is merely waiting, so an expired balance is not in it: it is not
+  // going to become spendable.
   const held = balances.reduce((sum, b) => sum + b.balanceCents, 0);
   const onHold = balances.reduce(
-    (sum, b) => sum + (isLocked(b, nowMs) ? b.balanceCents : 0),
+    (sum, b) =>
+      sum + (isLocked(b, nowMs) && !isExpired(b, nowMs) ? b.balanceCents : 0),
     0,
   );
 
@@ -159,27 +176,34 @@ export function CreditsClient({ seed }: { seed: Seed }) {
         </p>
       )}
 
-      {/* The demo bar. A hold is measured in hours, so without a way to move
-          the clock the maturation rule is invisible — you would have to leave
-          the tab open for the whole window to watch a balance unlock. Pushing
-          time forward runs the same rule a real wait would. It drives the
-          CREDITS half only; Payment methods is live and reads Stripe, not this
-          clock. Its caption is now the only place the screen states that the
-          balances are not real, so it does not get shortened away. */}
+      {/* The demo bar. A hold is measured in hours and an expiry in months, so
+          without a way to move the clock neither rule is visible — you would
+          have to leave the tab open for the whole window to watch a balance
+          unlock, and for a quarter to watch one die. Pushing time forward runs
+          the same rules a real wait would. It drives the CREDITS half only;
+          Payment methods is live and reads Stripe, not this clock. Its caption
+          is now the only place the screen states that the balances are not
+          real, so it does not get shortened away.
+
+          ONE RUNG PER TERM, and +6h was not one. The rungs are the scales the
+          product actually has: +1h walks the 3h default hold, +24h walks the
+          72h ceiling, +30d walks the 90-day expiry — which at +24h a click was
+          ninety clicks away, i.e. a rule the demo could not reach. The count is
+          unchanged, so the row still fits beside the label at 390px. */}
       <div className="border-border shrink-0 border-t px-5 py-3">
         <div className="flex items-center gap-2">
           <span className="type-meta text-muted-foreground font-semibold tracking-[0.12em] uppercase">
             Demo clock
           </span>
           <div className="ml-auto flex items-center gap-1.5">
-            {[1, 6, 24].map((h) => (
+            {CLOCK_RUNGS.map((rung) => (
               <button
-                key={h}
+                key={rung.label}
                 type="button"
-                onClick={() => credits.advance(h)}
+                onClick={() => credits.advance(rung.hours)}
                 className="border-border bg-card hover:bg-muted/50 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border px-3 text-xs font-semibold tabular-nums transition"
               >
-                +{h}h
+                {rung.label}
               </button>
             ))}
             <button

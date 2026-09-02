@@ -9,6 +9,7 @@ import {
   bonusFor,
   bonusPctFor,
   CREDIT_PLACES,
+  expiryDaysFor,
   formatUnlock,
   holdHoursFor,
   type ControlsPolicy,
@@ -25,9 +26,16 @@ import { cn } from "@/lib/utils";
 // prepay is a term deposit rather than a discount at the table — the place is
 // buying float, and the bonus is the rate it pays for it.
 //
-// BOTH NUMBERS ARE RESOLVED THROUGH THE POLICY, never read off the place
-// alone: `bonusPct`/`lockHours` are null on every place that has set nothing,
-// which is all of them today, and the console owns what null means.
+// AND THE EXPIRY IS ON THIS SHEET, not only on the card afterwards. This is the
+// screen where a guest agrees to the terms; a life the money has is a term, and
+// a term first met on the balance you already paid for is a term you were not
+// offered. It rides the same lines as the hold rather than a warning of its
+// own — 90 days is generous, and shouting it would sell it as a catch.
+//
+// ALL THREE NUMBERS ARE RESOLVED THROUGH THE POLICY, never read off the place
+// alone: `bonusPct`/`lockHours`/`expiryDays` are null on every place that has
+// set nothing, which is all of them today, and the console owns what null
+// means.
 //
 // Preset amounts rather than a free field: this is a demo of a shape, and a
 // numeric keypad on a phone would be three taps of friction for no insight.
@@ -63,7 +71,10 @@ function PlaceRow({
         </span>
         <span className="text-muted-foreground block text-xs">
           +{bonusPctFor(place, policy)}% · held{" "}
-          {formatUnlock(holdHoursFor(place, policy))}
+          {formatUnlock(holdHoursFor(place, policy))} · {expiryDaysFor(
+            place,
+            policy,
+          )}d to spend
         </span>
       </span>
     </button>
@@ -183,7 +194,8 @@ export function BuyCreditsSheet({
               <div className="text-muted-foreground mt-1 text-xs">
                 {formatCurrency(paidCents)} paid, +{formatCurrency(bonus)} from{" "}
                 {place.name} · unlocks in{" "}
-                {formatUnlock(holdHoursFor(place, policy))}
+                {formatUnlock(holdHoursFor(place, policy))} · expires{" "}
+                {expiryDaysFor(place, policy)} days after today
               </div>
             </div>
           )}
