@@ -8,10 +8,9 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Receipt } from "lucide-react";
 import { setCheckGates, type AdminPlace } from "../actions";
 import { useSectionDirty } from "../useSectionDirty";
-import { SaveBar, SectionCard } from "@/components/admin-ui/manage";
+import { SaveBar } from "@/components/admin-ui/manage";
 
 // Visits — ONE box for the visit ticket, the local context (MESITA-1148).
 //
@@ -78,14 +77,17 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
   const gatesOn = current.pin !== "" ? 1 : 0;
 
   return (
-    <SectionCard
-      icon={<Receipt className="h-4 w-4" />}
-      tint="amber"
-      title="Visits"
-      action={
+    <div>
+      <div className="flex items-center justify-between gap-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Staff PIN</p>
+          <p className="text-muted-foreground mt-0.5 text-xs leading-snug">
+            The one place-owned gate on the visit ticket.
+          </p>
+        </div>
         <span
           className={
-            "inline-flex items-center rounded-full px-2.5 py-1 type-label font-semibold " +
+            "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 type-label font-semibold " +
             (gatesOn > 0
               ? "bg-amber-500/10 text-amber-700"
               : "bg-muted text-muted-foreground")
@@ -93,9 +95,8 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
         >
           {gatesOn === 0 ? "No PIN" : "PIN on"}
         </span>
-      }
-    >
-      <ol className="mt-5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      </div>
+      <ol className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         {LIFECYCLE.map((step, i) => (
           <li key={step} className="flex items-center gap-1.5">
             <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
@@ -110,7 +111,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
         ))}
       </ol>
 
-      <div className="border-border/60 mt-5 border-t pt-4">
+      <div className="border-border/60 mt-4 border-t pt-4">
         <div className="flex min-h-4 items-center justify-between gap-2">
           <span className="text-foreground/90 type-body font-medium">
             Staff PIN
@@ -158,7 +159,7 @@ export function VisitsCard({ place }: { place: AdminPlace }) {
         onSave={save}
         onCancel={resetDraft}
       />
-    </SectionCard>
+    </div>
   );
 }
 

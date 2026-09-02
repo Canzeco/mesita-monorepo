@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { Mail, Trash2, UserPlus, Users } from "lucide-react";
+import { ChevronDown, Mail, Trash2, UserPlus } from "lucide-react";
 import {
   inviteEditor,
   listTeam,
@@ -12,12 +12,12 @@ import {
 } from "../actions";
 import {
   ConfirmDialog,
-  SectionCard,
   SelectField,
   Spinner,
   TextField,
 } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
+import { usePlaceUI } from "../PlaceUIContext";
 import { formatShortDate } from "@/lib/format";
 
 /** All three place roles — owner is unique & transferable (MESITA-919). */
@@ -64,6 +64,10 @@ export function TeamSection({ place }: { place: AdminPlace }) {
   const [, start] = useTransition();
   const [confirm, setConfirm] = useState<ConfirmTarget | null>(null);
   const [inviteFlash, setInviteFlash] = useState(false);
+
+  // Expand state lives above the tab (PlaceUIContext) so it survives
+  // Profile → Controls → Profile. Decision 4 of MESITA-1399.
+  const { teamExpanded, setTeamExpanded } = usePlaceUI();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("editor");
@@ -170,17 +174,50 @@ export function TeamSection({ place }: { place: AdminPlace }) {
     });
   };
 
+  const pending = snap?.pendingBusinessInvites.length ?? 0;
+  const summary = loading
+    ? "Checking…"
+    : !snap
+      ? "Couldn't load"
+      : [
+          `${members.length} member${members.length === 1 ? "" : "s"}`,
+          pending > 0 ? `${pending} pending invite${pending === 1 ? "" : "s"}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
   return (
-    <SectionCard
-      icon={<Users className="h-4 w-4" />}
-      tint="indigo"
-      title="Team"
-      action={
-        <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
-          Saves instantly
+    <div>
+      {/* Collapsed by default and expanded in place — no modal, because this
+          tab already carries two overlay idioms (ProductModal, ConfirmDialog).
+          The whole row is the control, so the hit area clears 44px. */}
+      <button
+        type="button"
+        aria-expanded={teamExpanded}
+        aria-controls="team-panel"
+        onClick={() => setTeamExpanded(!teamExpanded)}
+        className="flex w-full items-center gap-3 py-2.5 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium">Team</span>
+          <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+            {summary}
+          </span>
         </span>
-      }
-    >
+        <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 type-label font-semibold">
+          Manage
+          <ChevronDown
+            className={
+              "h-3.5 w-3.5 transition-transform " + (teamExpanded ? "rotate-180" : "")
+            }
+            aria-hidden
+          />
+        </span>
+      </button>
+
+      {/* Hidden with CSS, never unmounted: listTeam runs on mount and the
+          summary above needs its counts whether or not the panel is open. */}
+      <div id="team-panel" className={teamExpanded ? "" : "hidden"} aria-hidden={!teamExpanded}>
       {error && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <ErrorNote message={error} />
@@ -298,7 +335,10 @@ export function TeamSection({ place }: { place: AdminPlace }) {
               );
             })}
             {members.length === 0 && (
-              <Empty>No members on this project yet.</Empty>
+              <Empty>
+                No one from this place has an account yet. Invite them above and
+                they get console access as soon as they accept.
+              </Empty>
             )}
           </Group>
 
@@ -335,6 +375,8 @@ export function TeamSection({ place }: { place: AdminPlace }) {
           </Group>
         </div>
       )}
+
+      </div>
 
       <ConfirmDialog
         open={confirm != null}
@@ -396,7 +438,7 @@ export function TeamSection({ place }: { place: AdminPlace }) {
         }}
         onCancel={() => setConfirm(null)}
       />
-    </SectionCard>
+    </div>
   );
 }
 

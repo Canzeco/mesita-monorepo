@@ -7,6 +7,7 @@ import { getPlace, type AdminPlace } from "./actions";
 import { withListedFromStatus } from "./place-header-status";
 import { PlaceEditChrome } from "./PlaceEditChrome";
 import { PlaceProvider } from "./PlaceContext";
+import { PlaceUIProvider } from "./PlaceUIContext";
 import { PlaceSaveBar } from "./PlaceSaveBar";
 import { Spinner } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
@@ -120,11 +121,16 @@ export function PlaceEditShell({
           The save bar is rendered ONCE here rather than per tab, so every tab
           gets the same one save without knowing it exists — and so switching
           tabs cannot strand a half-saved page behind a bar that unmounted. */}
-      <div className="w-full">
-        <PlaceEditChrome projectId={projectId} place={place} />
-        <div className="px-4 pt-6 sm:px-6 lg:px-8">{children}</div>
-        <PlaceSaveBar />
-      </div>
+      {/* Per-tab UI state lives in its own provider, NOT in PlaceContext:
+          same lifetime (so a panel stays open across tab switches) without
+          putting an expand flag in the one-save memo. */}
+      <PlaceUIProvider>
+        <div className="w-full">
+          <PlaceEditChrome projectId={projectId} place={place} />
+          <div className="px-4 pt-6 sm:px-6 lg:px-8">{children}</div>
+          <PlaceSaveBar />
+        </div>
+      </PlaceUIProvider>
     </PlaceProvider>
   );
 }

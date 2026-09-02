@@ -182,3 +182,46 @@ describe("the Stripe rung is actionable, and only when it can be", () => {
     expect(html).toContain("Needs an active Stripe account");
   });
 });
+
+describe("SETTINGS is one card, and Team remembers whether it was open", () => {
+  const cardCount = (html: string) =>
+    (html.match(/rounded-2xl border p-5 sm:p-6/g) ?? []).length;
+
+  it("renders exactly TWO cards on the whole tab — seven became two", () => {
+    // The point of the restructure. Offerings holds the ladder; Settings holds
+    // the staff PIN and Team. Nothing else gets a card.
+    expect(cardCount(render(place()))).toBe(2);
+  });
+
+  it("collapses Team to a summary line that states its counts", () => {
+    const html = render(place());
+    expect(html).toContain("Manage");
+    expect(html).toContain('aria-expanded="false"');
+    // listTeam has not resolved under renderToStaticMarkup (no effects), so
+    // the summary must still say something rather than render blank.
+    expect(html).toContain("Checking…");
+  });
+
+  it("keeps the Team panel MOUNTED while collapsed, hidden by CSS", () => {
+    // The summary needs listTeam's counts whether or not the panel is open,
+    // so the fetch must not be gated behind the expand.
+    const html = render(place());
+    expect(html).toContain('id="team-panel"');
+    expect(html).toMatch(/id="team-panel"[^>]*class="hidden"/);
+    // ...and the invite form is in the markup, just not visible.
+    expect(html).toContain("Invite member");
+  });
+
+  // NOT asserted here: the zero-member empty state. Its copy sits behind
+  // listTeam's useEffect, and renderToStaticMarkup never runs effects, so any
+  // assertion about it would pass vacuously whether the copy existed or not.
+  // Asserting it against the SOURCE text is the exact antipattern the old
+  // nav.test.ts describe was deleted for. It needs a DOM harness or an
+  // extracted pure view-model; flagged rather than faked.
+
+  it("puts the staff PIN in Settings, not in Offerings", () => {
+    const html = render(place());
+    const settings = html.indexOf("How this place is run");
+    expect(html.indexOf("Staff PIN")).toBeGreaterThan(settings);
+  });
+});
