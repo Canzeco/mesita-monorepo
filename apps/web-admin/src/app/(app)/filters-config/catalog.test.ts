@@ -31,10 +31,8 @@ describe("Discovery function APIs", () => {
       ["timing", []],
       ["category", []],
       ["popularity", []],
-      ["partnership", []],
-      ["promotion", []],
+      ["mesita_level", []],
       ["randomness", []],
-      ["social", []],
     ]);
   });
 
@@ -44,7 +42,7 @@ describe("Discovery function APIs", () => {
     ).toEqual(["proximity.maxKm", "timing.closedFloor"]);
   });
 
-  it("library order is the ten Lineup signals — Promotion sits after Partnership", () => {
+  it("library order is the eight Lineup signals — Mesita Level sits after Popularity", () => {
     expect(LIBRARY_SIGNALS.map((row) => row.key)).toEqual([
       "name",
       "summary",
@@ -52,19 +50,21 @@ describe("Discovery function APIs", () => {
       "timing",
       "category",
       "popularity",
-      "partnership",
-      "promotion",
+      "mesita_level",
       "randomness",
-      "social",
     ]);
     expect(SIGNAL_KEYS).not.toContain("promoting");
     expect(SIGNAL_KEYS).not.toContain("semantic");
-    expect(SIGNAL_KEYS).toContain("promotion");
+    expect(SIGNAL_KEYS).toContain("mesita_level");
+    // Never bare `level` — `places.price_level` owns that word on a place.
+    expect(SIGNAL_KEYS).not.toContain("level");
     expect(SIGNAL_KEYS).toContain("randomness");
     expect(SIGNAL_KEYS).toContain("name");
     expect(SIGNAL_KEYS).toContain("summary");
-    expect(SIGNAL_KEYS).toContain("partnership");
-    expect(SIGNAL_KEYS).toContain("social");
+    // Merged into mesita_level; Social left the library (MESITA-1408).
+    expect(SIGNAL_KEYS).not.toContain("partnership");
+    expect(SIGNAL_KEYS).not.toContain("promotion");
+    expect(SIGNAL_KEYS).not.toContain("social");
   });
 
   it("coerceConfig folds old semantic weight and params onto summary", () => {
@@ -74,8 +74,7 @@ describe("Discovery function APIs", () => {
     });
     expect(cfg.weights.summary).toBe(2);
     expect(cfg.weights.name).toBe(1);
-    expect(cfg.weights.partnership).toBe(1);
-    expect(cfg.weights.promotion).toBe(1);
+    expect(cfg.weights.mesita_level).toBe(1);
     expect(cfg.params.summary.unembedded).toBe(0.2);
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
@@ -133,18 +132,16 @@ describe("Discovery function APIs", () => {
     expect(modeSignalState("map", "proximity")).toBe("on");
     expect(modeSignalState("map", "randomness")).toBe("zero");
     expect(modeSignalState("swipe", "randomness")).toBe("on");
-    expect(modeSignalState("catalog", "partnership")).toBe("on");
-    expect(modeSignalState("map", "promotion")).toBe("on");
-    expect(modeSignalState("swipe", "promotion")).toBe("on");
-    expect(modeSignalState("catalog", "promotion")).toBe("on");
-    expect(modeSignalState("chat", "promotion")).toBe("on");
-    expect(modeSignalState("deep", "promotion")).toBe("off");
+    expect(modeSignalState("catalog", "mesita_level")).toBe("on");
+    expect(modeSignalState("map", "mesita_level")).toBe("on");
+    expect(modeSignalState("swipe", "mesita_level")).toBe("on");
+    expect(modeSignalState("chat", "mesita_level")).toBe("on");
+    expect(modeSignalState("deep", "mesita_level")).toBe("off");
     expect(modeSignalState("social", "name")).toBe("off");
     expect(modeSignalState("favorites", "proximity")).toBe("off");
     expect(SIGNAL_KEYS.every((key) => modeSignalState("fast", key) === "off")).toBe(
       true,
     );
-    expect(modeSignalState("chat", "social")).toBe("off");
   });
 
   it("map() is closest N of the selected Places set", () => {
@@ -483,8 +480,7 @@ describe("Discovery page box order", () => {
     expect(signals).toContain("LIBRARY_SIGNALS");
     expect(signals).not.toContain("Promoting");
     expect(signals).toContain("randomness");
-    expect(signals).toContain("promotion");
-    expect(signals).toContain("Megaphone");
+    expect(signals).toContain("mesita_level");
     expect(signals).toContain("modeSignalState");
     expect(signals).toContain('kind="enforced"');
     expect(signals).toContain("Swipe read the mode mask");

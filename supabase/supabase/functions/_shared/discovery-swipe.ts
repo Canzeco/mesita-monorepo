@@ -2,7 +2,7 @@
 //
 // Home UI is Soon. The deck endpoint is still live (mobile Home). Admission
 // cuts first; rankByBlend then scores under weightsForMode("swipe"):
-// proximity, timing, category, popularity, partnership, randomness.
+// proximity, timing, category, popularity, mesita_level, randomness.
 // Name, Summary, and Social stay 0. The 2026-08-26 two-signal SUM and
 // partnerBias / randomnessMax multipliers are retired — those knobs stay
 // on the blob, unread.

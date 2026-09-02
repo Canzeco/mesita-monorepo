@@ -32,11 +32,12 @@
 //             list written onto Fast / Deep / Map) · Autocomplete ·
 //             Text Search · Nearby · Perplexity Search · Perplexity
 //             Agent · Mesita Places Lineup · Social Lineup Soon.
-//   LINEUP    ten earned signals: Name · Summary · Proximity · Timing ·
-//             Category · Popularity · Partnership · Promotion ·
-//             Randomness · Social. Slotting stays a post-blend position
-//             pass. Old `semantic` folds to Summary. Social abstains
-//             until Social Lineup writes an index.
+//   LINEUP    eight earned signals: Name · Summary · Proximity · Timing ·
+//             Category · Popularity · Mesita Level · Randomness.
+//             Slotting stays a post-blend position pass. Old `semantic`
+//             folds to Summary. Partnership and Promotion merged into
+//             Mesita Level, and Social left the library — Social Lineup
+//             is still a MODULE and Social is still a MODE (MESITA-1408).
 //
 // Operator filters still live on the blob so a whole-blob Save cannot
 // reset them. They have no knobs on this page.
@@ -48,10 +49,8 @@ export const SIGNAL_KEYS = [
   "timing",
   "category",
   "popularity",
-  "partnership",
-  "promotion",
+  "mesita_level",
   "randomness",
-  "social",
 ] as const;
 
 export type SignalKey = (typeof SIGNAL_KEYS)[number];
@@ -439,10 +438,8 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   popularity: { priorRating: 4.2, confidence: 60, floorRating: 3 },
   name: { unembedded: 0.4 },
   summary: { unembedded: 0.4 },
-  partnership: {},
-  promotion: {},
+  mesita_level: {},
   randomness: {},
-  social: {},
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -453,10 +450,8 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
     popularity: 1,
     name: 1,
     summary: 1,
-    partnership: 1,
-    promotion: 1,
+    mesita_level: 1,
     randomness: 0.35,
-    social: 1,
   },
   params: DEFAULT_SIGNAL_PARAMS,
   slotting: { enabled: true, everyNth: 5 },
@@ -632,10 +627,8 @@ export const LIBRARY_SIGNALS = [
   { kind: "signal" as const, key: "timing" as const },
   { kind: "signal" as const, key: "category" as const },
   { kind: "signal" as const, key: "popularity" as const },
-  { kind: "signal" as const, key: "partnership" as const },
-  { kind: "signal" as const, key: "promotion" as const },
+  { kind: "signal" as const, key: "mesita_level" as const },
   { kind: "signal" as const, key: "randomness" as const },
-  { kind: "signal" as const, key: "social" as const },
 ] as const;
 
 // Twin of `supabase/functions/_shared/discovery-matrix.ts`. Spec mirror,
@@ -757,16 +750,14 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "timing",
     "category",
     "popularity",
-    "partnership",
-    "promotion",
+    "mesita_level",
   ],
   swipe: [
     "proximity",
     "timing",
     "category",
     "popularity",
-    "partnership",
-    "promotion",
+    "mesita_level",
     "randomness",
   ],
   catalog: [
@@ -774,8 +765,7 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "timing",
     "category",
     "popularity",
-    "partnership",
-    "promotion",
+    "mesita_level",
     "randomness",
   ],
   chat: [
@@ -785,8 +775,7 @@ const DISCOVERY_MODE_SIGNALS: Record<
     "timing",
     "category",
     "popularity",
-    "partnership",
-    "promotion",
+    "mesita_level",
   ],
   social: [],
   favorites: [],
@@ -909,22 +898,12 @@ export const SIGNALS: {
     fields: UNIT,
   },
   {
-    key: "partnership",
-    label: "Partnership",
-    fn: "partnership()",
-    input: "Place plan. Never strategy, promo flags, or rates.",
-    process: "Free or missing → none floor. Paid → 1.",
-    output: "How partnered the place is. Not the Promotion signal.",
-    apis: [],
-    fields: UNIT,
-  },
-  {
-    key: "promotion",
-    label: "Promotion",
-    fn: "promotion()",
-    input: "The computed promoting boolean. Never rates, strategy, or pause columns.",
-    process: "Live discount → 1. Otherwise none floor. Demotes, never hides.",
-    output: "Whether a guest gets a discount here right now.",
+    key: "mesita_level",
+    label: "Mesita Level",
+    fn: "mesitaLevel()",
+    input: "Place plan and the computed promoting boolean. Never strategy, rates, or pause columns.",
+    process: "Three rungs, ×5 apart: neither → 0.04, one → 0.2, both → 1. Demotes, never hides.",
+    output: "How far up the Mesita spectrum the place sits, from catalog row to actively promoting.",
     apis: [],
     fields: UNIT,
   },
@@ -935,16 +914,6 @@ export const SIGNALS: {
     input: "Nothing about the place. A uniform draw.",
     process: "rng() in [0, 1). The exponent is the only knob.",
     output: "A number that only breaks near-ties when the exponent is soft.",
-    apis: [],
-    fields: UNIT,
-  },
-  {
-    key: "social",
-    label: "Social",
-    fn: "social()",
-    input: "Place-level social proof. Social Lineup writes the index.",
-    process: "Abstains at 1 until that index exists.",
-    output: "Neutral until Social Lineup ships.",
     apis: [],
     fields: UNIT,
   },

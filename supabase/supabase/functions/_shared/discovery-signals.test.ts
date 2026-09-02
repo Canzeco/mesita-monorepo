@@ -9,13 +9,10 @@ import {
   PROXIMITY_MAX_KM,
   randomness,
   name,
-  partnership,
-  PARTNERSHIP_NONE,
-  PARTNERSHIP_PARTNER,
-  promotion,
-  PROMOTION_NONE,
-  PROMOTION_LIVE,
-  social,
+  LEVEL_LISTED,
+  LEVEL_PARTNER,
+  LEVEL_PROMOTING,
+  mesitaLevel,
   summary,
   SIGNAL_BLURBS,
   SIGNAL_KEYS,
@@ -72,8 +69,8 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
   }
 });
 
-Deno.test("the library, the labels and the blurbs name the same ten signals", () => {
-  assertEquals(SIGNAL_KEYS.length, 10);
+Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
+  assertEquals(SIGNAL_KEYS.length, 8);
   assertEquals([...SIGNAL_KEYS], [
     "name",
     "summary",
@@ -81,26 +78,25 @@ Deno.test("the library, the labels and the blurbs name the same ten signals", ()
     "timing",
     "category",
     "popularity",
-    "partnership",
-    "promotion",
+    "mesita_level",
     "randomness",
-    "social",
   ]);
   assertEquals(Object.keys(SIGNALS).sort(), [...SIGNAL_KEYS].sort());
   assertEquals(Object.keys(SIGNAL_LABELS).sort(), [...SIGNAL_KEYS].sort());
   assertEquals(Object.keys(SIGNAL_BLURBS).sort(), [...SIGNAL_KEYS].sort());
 });
 
-Deno.test("Promotion is a signal; the bought-lane key promoting is not", () => {
-  assert((SIGNAL_KEYS as readonly string[]).includes("promotion"));
+Deno.test("Mesita Level is the key; bare level and the merged pair are not", () => {
+  assert((SIGNAL_KEYS as readonly string[]).includes("mesita_level"));
+  // Never bare `level` — `places.price_level` and the door profile own that word.
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("level"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("promoting"));
   assert(!(SIGNAL_KEYS as readonly string[]).includes("semantic"));
-  assert((SIGNAL_KEYS as readonly string[]).includes("social"));
-});
-
-Deno.test("social abstains until Social Lineup writes an index", () => {
-  assertEquals(social(place()), NEUTRAL);
-  assertEquals(social(place(), { lat: CDMX.lat, lng: CDMX.lng }), NEUTRAL);
+  // Merged into mesita_level (MESITA-1408).
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("partnership"));
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("promotion"));
+  // Left the library — Social Lineup never wrote a place-level index.
+  assert(!(SIGNAL_KEYS as readonly string[]).includes("social"));
 });
 
 Deno.test("clamp01 turns non-finite into the neutral element, not zero", () => {
@@ -340,29 +336,49 @@ Deno.test("summary unembedded floor is an operator knob", () => {
   assertEquals(summary(place({ embedding: null }), { queryVector: q }, { unembedded: 0.2 }), 0.2);
 });
 
-// ── Partnership ──────────────────────────────────────────────────────────────
+// ── Mesita Level ─────────────────────────────────────────────────────────────
 
-Deno.test("partnership scores paid above free and never reads a promo field", () => {
-  assertEquals(partnership(place()), PARTNERSHIP_NONE);
-  assertEquals(partnership(place({ plan: "free" })), PARTNERSHIP_NONE);
-  assertEquals(partnership(place({ plan: "pro" })), PARTNERSHIP_PARTNER);
-  assertEquals(partnership(place({ plan: "PRO" })), PARTNERSHIP_PARTNER);
+Deno.test("Mesita Level climbs from catalog row to actively promoting", () => {
+  // Floor: neither fact true.
+  assertEquals(mesitaLevel(place()), LEVEL_LISTED);
+  assertEquals(mesitaLevel(place({ plan: "free" })), LEVEL_LISTED);
   assertEquals(
-    partnership(place({ plan: "free", promoting: true })),
-    PARTNERSHIP_NONE,
+    mesitaLevel(place({ plan: "free", promoting: false })),
+    LEVEL_LISTED,
   );
-  assert(PARTNERSHIP_NONE > 0, "free is demoted, not deleted");
+  // Middle: exactly one.
+  assertEquals(mesitaLevel(place({ plan: "pro" })), LEVEL_PARTNER);
+  assertEquals(mesitaLevel(place({ plan: "PRO" })), LEVEL_PARTNER);
+  assertEquals(
+    mesitaLevel(place({ plan: "free", promoting: true })),
+    LEVEL_PARTNER,
+  );
+  // Top: both.
+  assertEquals(
+    mesitaLevel(place({ plan: "pro", promoting: true })),
+    LEVEL_PROMOTING,
+  );
+  assert(LEVEL_LISTED > 0, "a catalog row is demoted, not deleted");
+  assert(LEVEL_LISTED < LEVEL_PARTNER && LEVEL_PARTNER < LEVEL_PROMOTING);
 });
 
-Deno.test("promotion scores a live discount above the none floor", () => {
-  assertEquals(promotion(place()), PROMOTION_NONE);
-  assertEquals(promotion(place({ promoting: false })), PROMOTION_NONE);
-  assertEquals(promotion(place({ promoting: true })), PROMOTION_LIVE);
-  assertEquals(
-    promotion(place({ plan: "pro", promoting: false })),
-    PROMOTION_NONE,
-  );
-  assert(PROMOTION_NONE > 0, "not promoting is demoted, not deleted");
+Deno.test("Mesita Level rungs are geometric, so each step is equal under s^w", () => {
+  assertAlmostEquals(LEVEL_PARTNER / LEVEL_LISTED, LEVEL_PROMOTING / LEVEL_PARTNER, 1e-12);
+});
+
+Deno.test("Mesita Level reproduces the old partnership x promotion product", () => {
+  // The merge changes what the axis is called, not the order guests see:
+  // at the old default weights of 1 and 1 the product of the two retired
+  // signals equalled the single Level score for every input combination.
+  const PARTNERSHIP = { none: 0.2, partner: 1 };
+  const PROMOTION = { none: 0.2, live: 1 };
+  for (const plan of ["free", "pro"]) {
+    for (const promoting of [false, true]) {
+      const legacy = (plan === "free" ? PARTNERSHIP.none : PARTNERSHIP.partner) *
+        (promoting ? PROMOTION.live : PROMOTION.none);
+      assertAlmostEquals(mesitaLevel(place({ plan, promoting })), legacy, 1e-12);
+    }
+  }
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────

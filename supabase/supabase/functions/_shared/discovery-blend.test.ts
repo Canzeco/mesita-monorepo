@@ -7,8 +7,8 @@ import {
   type SignalWeights,
 } from "./discovery-blend.ts";
 import {
-  PROMOTION_LIVE,
-  PROMOTION_NONE,
+  LEVEL_PARTNER,
+  LEVEL_PROMOTING,
   SIGNAL_KEYS,
   type SignalPlace,
 } from "./discovery-signals.ts";
@@ -92,10 +92,8 @@ const WEIGHTS_OFF: SignalWeights = {
   timing: 0,
   category: 0,
   popularity: 0,
-  partnership: 0,
-  promotion: 0,
+  mesita_level: 0,
   randomness: 0,
-  social: 0,
 };
 
 /** Popularity alone, so the earned order is deterministic and legible. */
@@ -239,13 +237,21 @@ Deno.test("a popularity-only blend ignores promoting — Promotion is its own we
   assertEquals(a.parts, b.parts);
 });
 
-Deno.test("Promotion weight lifts a live discount without reading rates", () => {
-  const w: SignalWeights = { ...WEIGHTS_OFF, promotion: 1 };
-  const quiet = blend({ ...project(row("quiet", 4.5)), promoting: false }, {}, w);
-  const live = blend({ ...project(row("live", 4.5)), promoting: true }, {}, w);
+Deno.test("Mesita Level weight lifts a live discount without reading rates", () => {
+  const w: SignalWeights = { ...WEIGHTS_OFF, mesita_level: 1 };
+  const quiet = blend(
+    { ...project(row("quiet", 4.5)), plan: "pro", promoting: false },
+    {},
+    w,
+  );
+  const live = blend(
+    { ...project(row("live", 4.5)), plan: "pro", promoting: true },
+    {},
+    w,
+  );
   assert(live.score > quiet.score, `live ${live.score} must beat quiet ${quiet.score}`);
-  assertEquals(quiet.parts.promotion, PROMOTION_NONE);
-  assertEquals(live.parts.promotion, PROMOTION_LIVE);
+  assertEquals(quiet.parts.mesita_level, LEVEL_PARTNER);
+  assertEquals(live.parts.mesita_level, LEVEL_PROMOTING);
 });
 
 Deno.test("slotting off is a no-op", () => {

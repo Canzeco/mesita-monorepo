@@ -1,9 +1,9 @@
 "use client";
 
-// Mesita Places Lineup — ten earned signals. Engines call these; they
+// Mesita Places Lineup — eight earned signals. Engines call these; they
 // do not invent a second scale. Weights and params persist on
 // discovery_config. Slotting is a post-blend position pass, not a
-// weight. Promotion is the earned live-discount row.
+// weight. Mesita Level is the merged partnership + promotion row.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -13,11 +13,9 @@ import {
   Dices,
   FileText,
   MapPin,
-  Megaphone,
   Star,
   Tags,
   Type,
-  Users,
 } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
@@ -47,10 +45,8 @@ const ICONS: Record<SignalKey, typeof MapPin> = {
   timing: Clock,
   category: Tags,
   popularity: Star,
-  partnership: BadgeCheck,
-  promotion: Megaphone,
+  mesita_level: BadgeCheck,
   randomness: Dices,
-  social: Users,
 };
 
 export function SignalsConfigClient({
@@ -140,7 +136,7 @@ export function SignalsConfigClient({
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Lineup"
-        subtitle="The ranked Mesita place feed. Ten earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
+        subtitle="The ranked Mesita place feed. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         status={
           <KnobStatus
             kind="enforced"

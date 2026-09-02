@@ -82,19 +82,17 @@ Deno.test("Places Lineup signals match the admin matrix", () => {
   assertEquals(modeSignalState("map", "proximity"), "on");
   assertEquals(modeSignalState("map", "randomness"), "zero");
   assertEquals(modeSignalState("swipe", "randomness"), "on");
-  assertEquals(modeSignalState("catalog", "partnership"), "on");
-  assertEquals(modeSignalState("map", "promotion"), "on");
-  assertEquals(modeSignalState("swipe", "promotion"), "on");
-  assertEquals(modeSignalState("catalog", "promotion"), "on");
-  assertEquals(modeSignalState("chat", "promotion"), "on");
-  assertEquals(modeSignalState("deep", "promotion"), "off");
+  assertEquals(modeSignalState("catalog", "mesita_level"), "on");
+  assertEquals(modeSignalState("map", "mesita_level"), "on");
+  assertEquals(modeSignalState("swipe", "mesita_level"), "on");
+  assertEquals(modeSignalState("chat", "mesita_level"), "on");
+  assertEquals(modeSignalState("deep", "mesita_level"), "off");
   assertEquals(modeSignalState("social", "name"), "off");
   assertEquals(modeSignalState("favorites", "proximity"), "off");
   assertEquals(
     SIGNAL_KEYS.every((key) => modeSignalState("fast", key) === "off"),
     true,
   );
-  assertEquals(modeSignalState("chat", "social"), "off");
 });
 
 Deno.test("weightsForMode zeros off and Map randomness against defaults", () => {
@@ -103,8 +101,7 @@ Deno.test("weightsForMode zeros off and Map randomness against defaults", () => 
   assertEquals(map.name, 0);
   assertEquals(map.summary, 0);
   assertEquals(map.proximity, DISCOVERY_DEFAULTS.weights.proximity);
-  assertEquals(map.partnership, DISCOVERY_DEFAULTS.weights.partnership);
-  assertEquals(map.promotion, DISCOVERY_DEFAULTS.weights.promotion);
+  assertEquals(map.mesita_level, DISCOVERY_DEFAULTS.weights.mesita_level);
   const deep = weightsForMode("deep", DISCOVERY_DEFAULTS.weights);
   assertEquals(deep.name, DISCOVERY_DEFAULTS.weights.name);
   for (const key of SIGNAL_KEYS) {
