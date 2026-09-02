@@ -6,8 +6,11 @@ import {
   offeringRows,
   PROMOTION_SCORE_MAX,
   railWriteFailure,
+  connectStartFailure,
+  controlWriteFailure,
   shouldRenderConfig,
   connectStateFrom,
+  STRIPE_LIVE_BLOCKED,
   type ConnectState,
   type LadderInput,
 } from "./offerings";
@@ -184,6 +187,49 @@ describe("railWriteFailure", () => {
     expect(railWriteFailure("Accept Prepays", false)).toBe(
       "Couldn't turn Accept Prepays off. Nothing changed — try again.",
     );
+  });
+});
+
+describe("controlWriteFailure", () => {
+  it("keeps every Controls write in one voice", () => {
+    expect(controlWriteFailure("join the partnership")).toBe(
+      "Couldn't join the partnership. Nothing changed — try again.",
+    );
+  });
+
+  it("is the sentence railWriteFailure builds on", () => {
+    expect(railWriteFailure("Mesita Pay", true)).toBe(
+      controlWriteFailure("turn Mesita Pay on"),
+    );
+  });
+});
+
+describe("connectStartFailure — MESITA-1419", () => {
+  // The defect verbatim: `liveChargesBlocked` returns a runbook line naming
+  // two Deno env vars, PromosSection piped it into LadderRow's `error` slot,
+  // and an operator on admin.mesita.ai read "set STRIPE_ALLOW_LIVE=true".
+  const RUNBOOK = /STRIPE_SECRET_KEY|STRIPE_ALLOW_LIVE|sk_live_/;
+
+  it("never puts a server env var in front of an operator", () => {
+    expect(connectStartFailure(STRIPE_LIVE_BLOCKED)).not.toMatch(RUNBOOK);
+    expect(connectStartFailure(null)).not.toMatch(RUNBOOK);
+    expect(connectStartFailure("account_insert")).not.toMatch(RUNBOOK);
+  });
+
+  it("tells the operator the live block is not theirs to retry", () => {
+    const msg = connectStartFailure(STRIPE_LIVE_BLOCKED);
+    expect(msg).toContain("human step");
+    expect(msg).toContain("MESITA-37");
+    // The distinction that earns its own branch: this is the environment,
+    // not a failed attempt, so it must NOT read as "try again".
+    expect(msg).not.toContain("try again");
+  });
+
+  it("falls back to the shared retry sentence for anything else", () => {
+    expect(connectStartFailure(null)).toBe(
+      controlWriteFailure("start Stripe onboarding"),
+    );
+    expect(connectStartFailure("account_write")).toContain("try again");
   });
 });
 

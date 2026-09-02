@@ -13,7 +13,14 @@ import type { PlanKey } from "@/lib/business/plans";
 // rejects it — it's the paid door's field, so admin gets its own).
 // ════════════════════════════════════════════════════════════════════════
 
-type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+// `code` is the EF's machine-readable failure (efInvoke already keeps it off
+// `body.code`). It is optional because most call sites only ever show a
+// sentence — but a call site that must BRANCH on a specific refusal needs
+// something other than the prose to branch on, and re-matching the prose is
+// how a copy edit in Deno silently breaks a screen in Next.
+type Result<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; code?: string | null };
 
 // ── Place search + load ──────────────────────────────────────────────────
 
@@ -556,7 +563,9 @@ export async function startPlacePaymentOnboarding(
     returnUrl: urls.returnUrl,
     refreshUrl: urls.refreshUrl,
   });
-  if (!r.ok) return { ok: false, error: r.error };
+  // `code` rides along: "stripe_live_blocked" is an environment fact, not a
+  // failed attempt, and the row renders it differently for that reason.
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
   return {
     ok: true,
     data: {
