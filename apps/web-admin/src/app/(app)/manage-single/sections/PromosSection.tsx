@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, TrendingUp } from "lucide-react";
+import { Loader2, SlidersHorizontal, TrendingUp } from "lucide-react";
 import {
   STRATEGY_BY_ID,
   strategyForPlace,
@@ -470,10 +470,17 @@ export function PromosSection({
             <span id="zone-settings">Settings</span>
           </GroupLabel>
         </div>
-        <div className="flex flex-col gap-4">
-          <VisitsCard place={v} />
-          <TeamSection place={v} />
-        </div>
+        <SectionCard
+          icon={<SlidersHorizontal className="h-4 w-4" />}
+          tint="slate"
+          title="How this place is run"
+          subtitle="Internal — nothing here is something a guest can do."
+        >
+          <div className="divide-border/60 mt-2 flex flex-col divide-y">
+            <VisitsCard place={v} />
+            <TeamSection place={v} />
+          </div>
+        </SectionCard>
       </section>
 
       {modalStrategy && (
