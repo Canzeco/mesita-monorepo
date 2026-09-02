@@ -23,11 +23,16 @@ import type { CreditBalance } from "@/lib/mock/credits-mock";
 // LocalOverlay, SlideOverShell and BottomSheetShell already share, so the app
 // keeps one clock.
 //
+// SPREAD_PX EXISTS TO REVEAL THE AMOUNT. The peek is 62px (identity + balance);
+// spreading to 120px uncovers the big number and the terms line on every card
+// at once, which is the whole reason the gesture is here. A smaller spread
+// would buy empty gradient and make the tap pointless.
+//
 // DOM ORDER IS VISUAL ORDER. Painting the front card last would put it last in
 // tab order and announce the bottom of the pile first, so depth comes from an
 // explicit z-index instead.
 
-const SPREAD_PX = 76;
+const SPREAD_PX = 120;
 
 export function BalanceStack({
   balances,

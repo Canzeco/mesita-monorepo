@@ -41,6 +41,23 @@ export function payRowFromPlace(place: Place): PayListRow {
   };
 }
 
+/**
+ * Payable places first, then the rest, each group keeping the order it came in
+ * (distance for the nearby list, relevance for a name search).
+ *
+ * This is the other half of dropping the per-row Soon badge. The badge was
+ * carried by the MAJORITY of rows, so it distinguished nothing and just
+ * repeated the same state fifty times; the signal belongs on the exception.
+ * But an exception buried at row 34 is not a signal either — a guest scanning
+ * a billboard reads the top. Sorting is what makes the chip findable, and
+ * `sort` is stable in every engine this ships to, so neither group scrambles.
+ */
+export function sortPayableFirst(rows: PayListRow[]): PayListRow[] {
+  return [...rows].sort(
+    (a, b) => Number(b.canStart) - Number(a.canStart),
+  );
+}
+
 /** Name-search hit. Prefer the nearby Place when ids match (photos + promoting). */
 export function payRowFromPrediction(
   pred: PlacePrediction,

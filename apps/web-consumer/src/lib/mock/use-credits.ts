@@ -1,6 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { apiGetControlsPolicy } from "@/lib/api/controls-config";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  CONTROLS_FALLBACK,
+  type ControlsPolicy,
+} from "./credits-mock";
 import {
   emulatorAdvance,
   emulatorBuy,
@@ -23,8 +29,19 @@ import {
 // battery cost for information nobody acts on.
 const TICK_MS = 60_000;
 
+// THE POLICY IS REAL EVEN THOUGH THE BALANCES ARE NOT. The hold and the bonus
+// come from app_config.controls_config via consumer-web-get-controls-config,
+// so the admin console's Controls page actually governs this surface. The
+// balances around them are still a browser emulator.
+//
+// The seed waits for the policy: a wallet seeded at the fallback and then
+// re-seeded at the real hold would show two different countdowns in the first
+// second. One fetch, then one seed.
+
 export type CreditsApi = {
   state: CreditsState | null;
+  /** Console-owned terms. Falls back to the shipped defaults if the read fails. */
+  policy: ControlsPolicy;
   loading: boolean;
   busy: boolean;
   error: EmulatorError | null;
@@ -38,6 +55,8 @@ export type CreditsApi = {
 };
 
 export function useCredits(seed: Seed): CreditsApi {
+  const supabase = useBrowserSupabase();
+  const [policy, setPolicy] = useState<ControlsPolicy>(CONTROLS_FALLBACK);
   const [state, setState] = useState<CreditsState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -50,16 +69,28 @@ export function useCredits(seed: Seed): CreditsApi {
 
   useEffect(() => {
     let alive = true;
-    void emulatorLoad(seed).then((loaded) => {
+    void (async () => {
+      // A failed policy read is not a failed wallet: the shipped defaults are
+      // the same numbers the EF would have returned on a cold blob, so the
+      // surface degrades to 3h rather than to an error.
+      let resolved = CONTROLS_FALLBACK;
+      try {
+        resolved = await apiGetControlsPolicy(supabase);
+      } catch {
+        resolved = CONTROLS_FALLBACK;
+      }
+      if (!alive) return;
+      setPolicy(resolved);
+      const loaded = await emulatorLoad(seed, resolved);
       if (!alive) return;
       setState(loaded);
       setWallMs(Date.now());
       setLoading(false);
-    });
+    })();
     return () => {
       alive = false;
     };
-  }, [seed]);
+  }, [seed, supabase]);
 
   useEffect(() => {
     const t = setInterval(() => setWallMs(Date.now()), TICK_MS);
@@ -70,7 +101,7 @@ export function useCredits(seed: Seed): CreditsApi {
     async (placeId: string, paidCents: number) => {
       if (!state) return false;
       setBusy(true);
-      const result = await emulatorBuy(state, placeId, paidCents);
+      const result = await emulatorBuy(state, placeId, paidCents, policy);
       setBusy(false);
       if (!result.ok) {
         setError(result.error);
@@ -80,7 +111,7 @@ export function useCredits(seed: Seed): CreditsApi {
       setWallMs(Date.now());
       return true;
     },
-    [state],
+    [state, policy],
   );
 
   const spend = useCallback(
@@ -110,13 +141,14 @@ export function useCredits(seed: Seed): CreditsApi {
   );
 
   const reset = useCallback(() => {
-    setState(emulatorReset(seed));
+    setState(emulatorReset(seed, policy));
     setWallMs(Date.now());
     setError(null);
-  }, [seed]);
+  }, [seed, policy]);
 
   return {
     state,
+    policy,
     loading,
     busy,
     error,

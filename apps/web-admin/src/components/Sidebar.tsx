@@ -23,6 +23,7 @@ import { ORDERS_PARENT } from "@/app/(app)/orders-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
+import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
 import {
   parsePlaceId,
   TOOL_ROUTES,
@@ -147,6 +148,7 @@ const CONFIGURATIONS_NAV: NavItem[] = [
   ORDERS_PARENT,
   RESERVATIONS_PARENT,
   REWARDS_PARENT,
+  CONTROLS_PARENT,
 ];
 
 // Testing — operator tools that probe live systems rather than configure them.

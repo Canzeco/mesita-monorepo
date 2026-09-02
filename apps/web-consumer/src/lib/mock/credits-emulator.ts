@@ -18,9 +18,13 @@
 
 import {
   bonusFor,
+  bonusPctFor,
+  CONTROLS_FALLBACK,
+  holdHoursFor,
   HOUR_MS,
   placeById,
   seedBalances,
+  type ControlsPolicy,
   type CreditBalance,
 } from "./credits-mock";
 
@@ -52,10 +56,14 @@ function nowMsFor(state: CreditsState): number {
 /** `empty` exists so the zero state is reachable without spending three balances to nothing. */
 export type Seed = "default" | "empty";
 
-export function freshState(nowMs: number, seed: Seed = "default"): CreditsState {
+export function freshState(
+  nowMs: number,
+  seed: Seed = "default",
+  policy: ControlsPolicy = CONTROLS_FALLBACK,
+): CreditsState {
   return {
     v: STATE_VERSION,
-    balances: seed === "empty" ? [] : seedBalances(nowMs),
+    balances: seed === "empty" ? [] : seedBalances(nowMs, policy),
     clockOffsetMs: 0,
   };
 }
@@ -73,14 +81,20 @@ export function buy(
     nowMs: number;
     balanceId: string;
     activityId: string;
+    /** Console-owned terms. A place's own values still win where it set them. */
+    policy: ControlsPolicy;
   },
 ): Result<CreditsState> {
   const place = placeById(args.placeId);
   if (!place) return { ok: false, error: "unknown-place" };
   if (args.paidCents <= 0) return { ok: false, error: "amount-not-positive" };
 
-  const credited = args.paidCents + bonusFor(args.paidCents, place.bonusPct);
-  const maturesAtMs = args.nowMs + place.lockHours * HOUR_MS;
+  // The hold and the bonus are resolved TOGETHER and stored on the balance,
+  // so a later console change never silently reprices Credits a guest already
+  // bought. What the operator changes is what the NEXT top-up gets.
+  const bonusPct = bonusPctFor(place, args.policy);
+  const credited = args.paidCents + bonusFor(args.paidCents, bonusPct);
+  const maturesAtMs = args.nowMs + holdHoursFor(place, args.policy) * HOUR_MS;
   const existing = state.balances.find((b) => b.placeId === args.placeId);
 
   // Topping up an existing balance RE-LOCKS the whole thing. The lock is what
@@ -92,7 +106,7 @@ export function buy(
         balanceCents: existing.balanceCents + credited,
         paidCents: existing.paidCents + args.paidCents,
         maturesAtMs,
-        bonusPct: place.bonusPct,
+        bonusPct,
         activity: [
           {
             id: args.activityId,
@@ -110,7 +124,8 @@ export function buy(
         balanceCents: credited,
         paidCents: args.paidCents,
         maturesAtMs,
-        bonusPct: place.bonusPct,
+        bonusPct,
+        photoUrl: place.photoUrl,
         activity: [
           {
             id: args.activityId,
@@ -226,10 +241,13 @@ function id(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${nextId}`;
 }
 
-export async function emulatorLoad(seed: Seed): Promise<CreditsState> {
+export async function emulatorLoad(
+  seed: Seed,
+  policy: ControlsPolicy = CONTROLS_FALLBACK,
+): Promise<CreditsState> {
   const stored = read();
   if (stored) return settle(stored);
-  const seeded = freshState(Date.now(), seed);
+  const seeded = freshState(Date.now(), seed, policy);
   write(seeded);
   return settle(seeded);
 }
@@ -238,6 +256,7 @@ export async function emulatorBuy(
   state: CreditsState,
   placeId: string,
   paidCents: number,
+  policy: ControlsPolicy = CONTROLS_FALLBACK,
 ): Promise<Result<CreditsState>> {
   const result = buy(state, {
     placeId,
@@ -245,6 +264,7 @@ export async function emulatorBuy(
     nowMs: nowMsFor(state),
     balanceId: id("bal"),
     activityId: id("act"),
+    policy,
   });
   if (result.ok) write(result.value);
   return settle(result);
@@ -275,8 +295,11 @@ export function emulatorAdvance(
   return next;
 }
 
-export function emulatorReset(seed: Seed): CreditsState {
-  const next = freshState(Date.now(), seed);
+export function emulatorReset(
+  seed: Seed,
+  policy: ControlsPolicy = CONTROLS_FALLBACK,
+): CreditsState {
+  const next = freshState(Date.now(), seed, policy);
   write(next);
   return next;
 }

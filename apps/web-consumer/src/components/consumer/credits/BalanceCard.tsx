@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import { formatCurrency } from "@/lib/api/profile";
 import {
   formatUnlock,
@@ -11,26 +13,64 @@ import { cn } from "@/lib/utils";
 
 // One place's Credits balance, as a card in the stack.
 //
-// WHITE, like every other list card in this app. The Apple Wallet look leans on
-// per-issuer colour, but every saturated token here already means something
-// (pink = brand, the four metals = class rungs, black = Premium, the IG
-// gradient = Instagram) and new ones are generated from brand.json, not
-// hand-written. Inventing four gradients would also be inventing brand identity
-// for four venues that never approved it. Colour on this surface carries STATE
-// and nothing else: foreground spendable, muted locked. Identity is the
-// monogram and the name — the same reasoning that put colour on the passport
-// alone and left the list underneath a list (MESITA-1132).
+// THE PLACE'S OWN PHOTO IS THE CARD ART (Pato, 2026-09-01). This reverses the
+// rule that stood here before — "WHITE, like every other list card in this
+// app" — and the reversal is narrow, so read why before widening it. The old
+// argument was that per-issuer colour would be inventing brand identity for
+// venues that never approved it, and that every saturated token in this app
+// already means something. Both still hold. What changed is the source: a
+// venue's own `places.photos[0]` is not invented identity, it is theirs, and it
+// is already on every Place row this app fetches. Nothing new is generated and
+// no venue is assigned a colour it did not choose.
+//
+// The carve-out is THIS COMPONENT and the art layer inside it. White-on-dark
+// stops at the card edge; everything around it stays semantic tokens, exactly
+// as `TicketHero`/`bg-pink-gradient` and `GiftCardDeck` are bounded today.
+//
+// STILL `BalanceCard`. The money files may not name an instrument after its
+// container (`credits-mock.test.ts` > naming, which greps this file): the
+// Wallet is the section that HOLDS these, Credits is what they are. The face
+// changed; what the thing IS did not, so neither does the name.
+//
+// THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE. A photo is
+// uncontrolled input: the venue picked it, not us, and white text over an
+// unknown image is the "busy imagery behind text" failure. The gradient is
+// therefore calculated against the WORST case (a pure-white photo) rather than
+// tuned against the fixtures:
+//
+//   top    .62 over white → ~6.4:1   the peek strip, always visible
+//   62px   .42                       the fold, no text lives here
+//   44%    .30                       the quiet middle
+//   bottom .86 over white → ~13.7:1  the amount and the terms
+//
+// Both text bands clear WCAG AA (4.5:1) on any image that can exist, so there
+// is nothing to sample and no canvas to taint. `text-shadow` is belt-and-braces
+// for the two bands, not the mechanism.
+//
+// NO PHOTO, OR A PHOTO THAT FAILS TO LOAD, RENDERS THE INK FACE — the same
+// card with the art layer swapped for a gradient. It is a fallback, not a
+// second design.
 
 /** The strip that stays visible when this card is buried in the stack. */
-export const PEEK_PX = 44;
-// Tall enough for the strip plus one line of terms and no more. The stack
-// spreads by 76px, so the 32px past the peek has to be the terms line — a
-// taller card would spend the reveal on empty space and make spreading
-// pointless.
-export const CARD_PX = 116;
+export const PEEK_PX = 62;
+// Tall enough for the strip, the amount, the terms line and the action. The
+// stack spreads by SPREAD_PX; anything past the peek has to earn itself.
+export const CARD_PX = 176;
+
+const SCRIM =
+  "linear-gradient(180deg," +
+  "rgba(20,6,11,0.62) 0px," +
+  "rgba(20,6,11,0.42) 62px," +
+  "rgba(20,6,11,0.30) 44%," +
+  "rgba(20,6,11,0.86) 100%)";
+
+// The ink face. Deep enough that white text clears AA without a scrim, and
+// warm rather than neutral so a wallet of fallbacks still reads as this app.
+const INK = "linear-gradient(150deg,#4a1a26 0%,#2a0c14 62%)";
 
 function Monogram({ name }: { name: string }) {
-  // First letter of the first two words — "Café Nueve" reads CN, "Lardo" L.
+  // First letter of the first two words — "Cabaret Social Room" reads CS,
+  // "Lardo" L.
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
@@ -40,7 +80,7 @@ function Monogram({ name }: { name: string }) {
   return (
     <span
       aria-hidden
-      className="bg-muted text-foreground/70 grid size-8 shrink-0 place-items-center rounded-xl text-xs font-bold"
+      className="type-label text-foreground grid size-8 shrink-0 place-items-center rounded-xl bg-white/90 font-bold"
     >
       {initials}
     </span>
@@ -64,60 +104,100 @@ export function BalanceCard({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const [artFailed, setArtFailed] = useState(false);
   const locked = isLocked(balance, nowMs);
   const bonusCents = balance.balanceCents - balance.paidCents;
+  const unlock = formatUnlock(hoursUntil(balance, nowMs));
+  const showArt = !!balance.photoUrl && !artFailed;
+
+  // The peek chip reads "3h" — enough for a glance, not enough for a screen
+  // reader, which gets the whole sentence instead.
+  const label = locked
+    ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, unlocks in ${unlock}`
+    : `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend`;
 
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-expanded={expanded}
+      aria-label={label}
       style={style}
       className={cn(
-        "border-border bg-card absolute inset-x-0 top-0 flex flex-col rounded-2xl border text-left",
+        "absolute inset-x-0 top-0 flex flex-col overflow-hidden rounded-2xl text-left text-white",
         "transition-[transform,box-shadow] duration-300 ease-out",
         "motion-reduce:transition-none",
         "active:scale-[0.99] motion-reduce:active:scale-100",
         className,
       )}
     >
+      {/* Art layer. Decorative: identity is carried by the text above it, so a
+          screen reader is told the place's name, never "photo of a bar". */}
+      <span aria-hidden className="absolute inset-0" style={{ background: INK }}>
+        {showArt ? (
+          <Image
+            src={balance.photoUrl as string}
+            alt=""
+            fill
+            sizes="(max-width: 480px) 100vw, 420px"
+            className="object-cover"
+            onError={() => setArtFailed(true)}
+          />
+        ) : null}
+        <span className="absolute inset-0" style={{ background: SCRIM }} />
+      </span>
+
       {/* The strip. Everything above PEEK_PX must be readable with the rest of
           the card buried, so it carries identity on the left and money on the
           right, and nothing else. */}
       <span
-        className="flex shrink-0 items-center gap-3 px-4"
+        className="relative flex shrink-0 items-center gap-3 px-4"
         style={{ height: PEEK_PX }}
       >
         <Monogram name={balance.placeName} />
-        <span className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight">
+        <span
+          className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight"
+          style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
+        >
           {balance.placeName}
         </span>
         {locked ? (
           // A locked balance is not "MX$0". Rendering the zero would lead with
           // the most alarming number available for a state that is simply
-          // not-yet — so the amount goes muted and the chip says when.
+          // not-yet — so the amount goes quiet and the chip says when.
           <span className="flex shrink-0 items-center gap-1.5">
-            <span className="text-muted-foreground text-sm font-bold tabular-nums">
+            <span
+              className="text-sm font-bold tabular-nums text-white/75"
+              style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
+            >
               {formatCurrency(balance.balanceCents)}
             </span>
-            <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] tabular-nums uppercase">
-              {formatUnlock(hoursUntil(balance, nowMs))}
+            <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] tabular-nums uppercase backdrop-blur-sm">
+              {unlock}
             </span>
           </span>
         ) : (
-          <span className="shrink-0 text-sm font-bold tabular-nums">
+          <span
+            className="shrink-0 text-sm font-bold tabular-nums"
+            style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
+          >
             {formatCurrency(balance.balanceCents)}
           </span>
         )}
       </span>
 
-      {/* The terms, directly under the strip so spreading the stack actually
-          reveals them. Never the only home of anything load-bearing — the
-          strip already carries identity and amount. */}
-      <span className="min-h-0 flex-1 px-4">
-        <span className="text-muted-foreground block text-xs">
+      {/* The face, in the darkest band. Never the only home of anything
+          load-bearing — the strip already carries identity and amount. */}
+      <span className="relative mt-auto block px-4 pb-3.5">
+        <span
+          className="block text-3xl leading-none font-bold tracking-tight tabular-nums"
+          style={{ textShadow: "0 2px 10px rgba(0,0,0,.5)" }}
+        >
+          {formatCurrency(balance.balanceCents)}
+        </span>
+        <span className="mt-1.5 block truncate text-xs text-white/85">
           {locked
-            ? `Unlocks in ${formatUnlock(hoursUntil(balance, nowMs))} · +${balance.bonusPct}% bonus`
+            ? `Unlocks in ${unlock} · +${balance.bonusPct}% bonus`
             : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
         </span>
       </span>

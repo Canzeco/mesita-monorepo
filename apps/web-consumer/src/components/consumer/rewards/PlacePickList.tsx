@@ -10,15 +10,29 @@
 // lane would bill an API call to return a row this list must immediately
 // lock. Google Nearby pins are Search's map fill, not this list.
 //
-// One tap creates the ticket. Non-promoting rows stay visible and locked
-// (Soon). Live tickets never get an "Open" chip here — they live in Inbox.
+// One tap creates the ticket. Live tickets never get an "Open" chip here —
+// they live in Inbox.
+//
+// THE PER-ROW SOON BADGE IS GONE (Pato, 2026-09-01: "remove the shit that
+// leaves there"). Every row carried it, in grayscale, above a footnote saying
+// the same thing a third time — and a badge the majority of rows share
+// distinguishes nothing, it just spends the list's whole visual budget
+// repeating the base state. The signal now sits on the EXCEPTION: places you
+// can actually pay get one pink "Pay here" chip and sort to the top, and
+// everything else is a plain, full-colour row.
+//
+// A ROW THAT CANNOT START STILL ANSWERS A TAP. Dropping the badge without
+// this would leave a guest standing in a Subway tapping a dead div — which
+// reads as a broken app, and is worse than the badge. One toast, at the moment
+// of the tap, is the whole explanation: brief, timely, unavoidable, and it
+// costs the list nothing at rest. It is a <button> now rather than an
+// aria-disabled <div>, so a keyboard can reach it at all.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   ChevronRight,
   Loader2,
-  Lock,
   MapPin,
   QrCode,
   SearchX,
@@ -39,12 +53,13 @@ import {
   PAY_SUGGEST_MIN_CHARS,
   payRowFromPlace,
   payRowFromPrediction,
+  sortPayableFirst,
   type PayListRow,
 } from "@/lib/pay-place-list";
+import { toast } from "@/lib/toast";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { SeedPlace } from "@/lib/ticket-seed";
-import { cn } from "@/lib/utils";
 
 export function PlacePickList({
   origin,
@@ -138,11 +153,18 @@ export function PlacePickList({
 
   const nearbyRows = useMemo(
     () =>
-      filterPlacesByQuery(places, nameSearch ? "" : query).map(payRowFromPlace),
+      sortPayableFirst(
+        filterPlacesByQuery(places, nameSearch ? "" : query).map(
+          payRowFromPlace,
+        ),
+      ),
     [places, query, nameSearch],
   );
   const searchRows = useMemo(
-    () => predictions.map((pred) => payRowFromPrediction(pred, places)),
+    () =>
+      sortPayableFirst(
+        predictions.map((pred) => payRowFromPrediction(pred, places)),
+      ),
     [predictions, places],
   );
   const nameResultsReady = nameSearch && suggestFor === trimmed;
@@ -151,7 +173,6 @@ export function PlacePickList({
       ? searchRows
       : []
     : nearbyRows;
-  const anyLocked = visible.some((row) => !row.canStart);
   const showSuggestPending = nameSearch && !nameResultsReady;
 
   if (status === "loading") {
@@ -219,25 +240,17 @@ export function PlacePickList({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
-        {visible.map((row) => (
-          <li key={row.key}>
-            <PlaceRow
-              row={row}
-              busy={busyPlaceId === row.seed?.id}
-              onPick={onPick}
-            />
-          </li>
-        ))}
-      </ul>
-      {anyLocked ? (
-        <p className="text-muted-foreground/80 type-label px-1 leading-snug">
-          Only places running a Mesita reward can open a ticket — the rest
-          stay on the list as Soon.
-        </p>
-      ) : null}
-    </div>
+    <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
+      {visible.map((row) => (
+        <li key={row.key}>
+          <PlaceRow
+            row={row}
+            busy={busyPlaceId === row.seed?.id}
+            onPick={onPick}
+          />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -250,86 +263,58 @@ function PlaceRow({
   busy?: boolean;
   onPick: (place: SeedPlace) => void;
 }) {
-  const body = (
-    <>
+  const payable = row.canStart && !!row.seed;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (row.seed) {
+          onPick(row.seed);
+          return;
+        }
+        // The one place this is ever explained, said once, when it matters.
+        toast(`${row.name} isn't on Mesita Pay yet.`);
+      }}
+      className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
+    >
+      {/* Full colour either way. The grayscale treatment here used to mark a
+          non-payable row, which meant most of the list rendered as a dead
+          catalogue of places the guest could see were real. */}
       {row.photo ? (
         <Image
           src={row.photo}
           alt=""
           width={48}
           height={48}
-          className={cn(
-            "size-12 shrink-0 rounded-xl object-cover",
-            !row.canStart && "opacity-60 grayscale",
-          )}
+          className="size-12 shrink-0 rounded-xl object-cover"
         />
       ) : (
-        <span
-          className={cn(
-            "grid size-12 shrink-0 place-items-center rounded-xl",
-            row.canStart
-              ? "bg-secondary/10 text-secondary"
-              : "bg-muted text-muted-foreground",
-          )}
-        >
+        <span className="bg-secondary/10 text-secondary grid size-12 shrink-0 place-items-center rounded-xl">
           <Store className="size-5" />
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "block truncate text-sm leading-tight font-bold",
-            row.canStart ? "text-foreground" : "text-muted-foreground",
-          )}
-        >
+        <span className="text-foreground block truncate text-sm leading-tight font-bold">
           {row.name}
         </span>
         <span className="text-muted-foreground/80 mt-0.5 block truncate text-xs">
           {row.subtitle}
         </span>
       </span>
-      {!row.canStart ? (
-        <span className="bg-muted text-muted-foreground type-meta flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-extrabold tracking-wide uppercase">
-          <Lock className="size-2.5" />
-          Soon
-        </span>
-      ) : (
+      {payable ? (
         <>
-          <span
-            aria-hidden="true"
-            className="border-primary/30 bg-primary/5 text-primary/70 grid size-9 shrink-0 place-items-center rounded-lg border border-dashed"
-          >
+          <span className="bg-pink-gradient shadow-glow-sm type-meta flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-extrabold tracking-wide text-white uppercase">
             {busy ? (
-              <Loader2 className="size-[18px] animate-spin" />
+              <Loader2 className="size-3 animate-spin" />
             ) : (
-              <QrCode className="size-[18px]" />
+              <QrCode className="size-3" />
             )}
+            Pay here
           </span>
           <ChevronRight className="text-muted-foreground size-4 shrink-0" />
         </>
-      )}
-    </>
-  );
-
-  if (!row.canStart || !row.seed) {
-    return (
-      <div
-        aria-disabled="true"
-        className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
-      >
-        {body}
-      </div>
-    );
-  }
-
-  const seed = row.seed;
-  return (
-    <button
-      type="button"
-      onClick={() => onPick(seed)}
-      className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
-    >
-      {body}
+      ) : null}
     </button>
   );
 }
