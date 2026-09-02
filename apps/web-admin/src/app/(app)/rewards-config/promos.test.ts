@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { snapDiscountCap } from "@/lib/business/strategies";
@@ -309,11 +309,25 @@ describe("Tiers HTML prices visits only", () => {
     expect(src).not.toContain("RowGroup");
     expect(src).not.toContain("BoxRow");
     const ui = readFileSync(join(__dirname, "promos-ui.tsx"), "utf8");
-    expect(ui).toContain("w-24");
+    // Two rate columns plus the rung column fit 318px at a 390px viewport
+    // only while the control narrows below sm (MESITA-1421).
+    expect(ui).toContain("w-20");
+    expect(ui).toContain("sm:w-24");
     expect(ui).toContain("h-9");
     expect(ui).toContain("appearance-none");
     expect(ui).not.toContain("STRATEGY_COLUMN_TRACKS");
     expect(ui).not.toContain("BoxRow");
+  });
+
+  it("states ENFORCED once for the whole table, not per column", () => {
+    const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
+    expect(src.match(/KnobStatus kind="enforced"/g)).toHaveLength(1);
+    // The rung column anchors the table on glass too narrow for it, through
+    // the shared helper rather than a route-local sticky (#1466).
+    expect(src).toContain("STICKY_COL_CELL");
+    // A column head is the strategy name alone — the badge sat under both,
+    // saying the same thing twice and widening the table off a phone.
+    expect(src).not.toMatch(/<div className="mt-1\.5">\s*<KnobStatus/);
   });
 
   it("picks Conservative and Aggressive only", () => {
@@ -326,18 +340,23 @@ describe("Tiers HTML prices visits only", () => {
 
 describe("Rewards Config is one page", () => {
   it("has three super boxes and no tab nav", () => {
-    const shell = readFileSync(
-      join(__dirname, "PromosLayoutShell.tsx"),
-      "utf8",
-    );
+    const shell = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     expect(shell).not.toContain("ConfigTabNav");
+    // Chrome comes from the shared kit, never a route-local shim, and the
+    // title is the rail label — the eyebrow already says Product · Rewards.
+    expect(shell).toContain("ConfigPageLayout");
+    expect(shell).toContain('title="Rewards"');
+    expect(shell).not.toContain('title="Rewards Config"');
+    expect(existsSync(join(__dirname, "PromosLayoutShell.tsx"))).toBe(false);
+    // The scope line is stated ONCE, by the layout — no box repeats it.
+    expect(shell).toContain("Visit rewards only");
+    expect(page).not.toContain("Visit rewards only");
     expect(nav).not.toContain("PROMOS_SUBROUTES");
     expect(page).toContain('title="Strategies"');
     expect(page).toContain('title="Discount Cap"');
     expect(page).toContain('title="Expected Distribution"');
-    expect(page).toContain("Visit rewards only");
     expect(page).toContain("TiersClient");
     expect(page).toContain("DiscountCapClient");
     expect(page).toContain("PromosDistributionClient");
