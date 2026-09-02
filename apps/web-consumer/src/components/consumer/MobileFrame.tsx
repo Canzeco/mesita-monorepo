@@ -1,4 +1,9 @@
+"use client";
+
+import type { CSSProperties } from "react";
+
 import { cn } from "@/lib/utils";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 
 /**
  * Consumer surface frame — a mobile / vertical visualizer.
@@ -38,8 +43,20 @@ export function MobileFrame({
   children: React.ReactNode;
   className?: string;
 }) {
+  // The software keyboard, as a length both breakpoints can subtract.
+  //
+  // The frame is the RIGHT place for this: it is `h-dvh` and BottomNav is a
+  // flow child, so shrinking here reflows the tab bar, the map's results panel
+  // and every sticky footer in one move. Patching each surface would leave the
+  // next one to rediscover the bug. `--kb` is 0px whenever the keyboard is
+  // closed, so the calc() collapses to the value it always had.
+  const keyboardInset = useKeyboardInset();
+
   return (
-    <div className="bg-background md:bg-hero flex h-dvh items-stretch justify-center md:min-h-dvh md:items-center md:py-4">
+    <div
+      className="bg-background md:bg-hero flex h-[calc(100dvh-var(--kb,0px))] items-stretch justify-center md:min-h-[calc(100dvh-var(--kb,0px))] md:items-center md:py-4"
+      style={{ "--kb": `${keyboardInset}px` } as CSSProperties}
+    >
       <div
         id={APP_CARD_ID}
         className={cn(
@@ -51,7 +68,7 @@ export function MobileFrame({
           // Desktop: fill almost the whole viewport height (thin py-4 margin),
           // keeping the mobile-narrow width — a tall vertical visualizer.
           // Rounded corners + elevation only kick in at md+.
-          "md:shadow-elev md:h-[calc(100dvh-2rem)] md:rounded-3xl",
+          "md:shadow-elev md:h-[calc(100dvh-2rem-var(--kb,0px))] md:rounded-3xl",
         )}
       >
         <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>

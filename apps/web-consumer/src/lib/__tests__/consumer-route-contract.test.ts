@@ -45,7 +45,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // catalog rails with no bar at all. SocialFeed mounts INTO Feed when it
       // un-parks rather than getting a route back.
       discoverTabs: {
-        feed: "/discover/feed",
+        home: "/discover/home",
         search: "/discover/search",
         swipe: "/discover/swipe",
         chat: "/discover/chat",
@@ -87,6 +87,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         inboxCredits: "/inbox/credits",
         search: "/search",
         discoverMap: "/discover/map",
+        discoverFeed: "/discover/feed",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
@@ -274,6 +275,13 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: "/discover/map",
         destination: "/discover/search",
+        permanent: true,
+      },
+      // Home shipped as "Feed" for about an hour. It was live in production,
+      // so it forwards like any other retired url.
+      {
+        source: "/discover/feed",
+        destination: "/discover/home",
         permanent: true,
       },
       { source: "/invite", destination: "/share", permanent: true },

@@ -235,7 +235,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   const MATRIX: [string, string][] = [
     // Every Discover mode lights one tab.
-    ["/discover/feed", "Discover"],
+    ["/discover/home", "Discover"],
     ["/discover/search", "Discover"],
     ["/discover/swipe", "Discover"],
     ["/discover/favs", "Discover"],
@@ -323,12 +323,12 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
 // last two pills never rendered at rest. A sixth mode brings that back, and
 // this count assertion is what makes anyone adding one re-measure first.
 describe("T5b — Discover's mode rail", () => {
-  it("is exactly Feed · Search · Swipe · Chat · Favs", async () => {
+  it("is exactly Home · Search · Swipe · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
-      "Feed",
+      "Home",
       "Search",
       "Swipe",
       "Chat",
@@ -341,7 +341,7 @@ describe("T5b — Discover's mode rail", () => {
   // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
   // 26px: a 14px icon, gap-1, and px-1 either side.
   //
-  // This is why the browse mode is "Feed" and not "Catalog" (44.0px text, a
+  // This is why the browse mode is "Home" and not "Catalog" (44.0px text, a
   // 366px track, 7px of scroll at rest that clips Favs mid-word). Measured
   // with real Inter 600 at 12px — the numbers below are that measurement, so
   // a new label gets checked against arithmetic instead of a guess.
@@ -350,7 +350,7 @@ describe("T5b — Discover's mode rail", () => {
       "@/components/consumer/discover/DiscoverModeNav"
     );
     const TEXT_PX: Record<string, number> = {
-      Feed: 28.0,
+      Home: 33.3,
       Search: 40.0,
       Swipe: 34.7,
       Chat: 26.7,
@@ -412,7 +412,7 @@ describe("T5b — Discover's mode rail", () => {
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES[0].href).not.toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Feed");
+    expect(MODES[0].label).toBe("Home");
   });
 });
 

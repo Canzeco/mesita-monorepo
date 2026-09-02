@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
@@ -16,6 +16,20 @@ const fraunces = Fraunces({
   display: "swap",
   axes: ["opsz"],
 });
+
+// THE KEYBOARD MUST SHRINK THE PAGE, not sit on top of it. `MobileFrame` is
+// `h-dvh` with `BottomNav` as a flow child, so anything anchored to the bottom
+// — the tab bar, the map's results panel, a sticky footer — lands underneath
+// the keyboard the moment the layout viewport stops matching the visible one.
+//
+// `resizes-content` makes Chrome/Android shrink the layout viewport itself, so
+// dvh and bottom-0 stay honest with no JS at all. Safari ignores it, which is
+// what `useKeyboardInset` is for; the two compose, they do not double up.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://consumer.mesita.ai"),

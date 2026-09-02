@@ -93,6 +93,10 @@ const nextConfig: NextConfig = {
       // the forwarding address. T7 pins this entry — T4 can validate a
       // redirect's destination but never its absence.
       { source: "/discover/map", destination: "/discover/search", permanent: true },
+      // Home shipped as "Feed" for about an hour (#1447 -> #1448). Short, but
+      // it WAS the live url and production deployed it, so it forwards like
+      // the rest. Straight to /discover/home, not via another 308.
+      { source: "/discover/feed", destination: "/discover/home", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Credits shipped standalone at /credits (#1429) and moved under Inbox
       // when it became a section. It was live in production, so the bookmarks

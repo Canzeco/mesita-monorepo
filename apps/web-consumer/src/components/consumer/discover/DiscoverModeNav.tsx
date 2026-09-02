@@ -26,7 +26,7 @@
 // Measured with real Inter 600 at 12px, not estimated. Chrome per pill = 14px
 // icon + 4px gap-1 + 8px px-1. That is why "Favorites" is "Favs", why this row
 // went from seven modes to five (at seven the columns are 47.9px and nothing
-// with an icon fits), and why the browse mode is "Feed" (54.0) rather than
+// with an icon fits), and why the browse mode is "Home" (59.3) rather than
 // "Catalog" or "Browse" — both of those overflow.
 //
 // A SIXTH mode, or any label wider than "Search", puts it back over budget.
@@ -72,14 +72,15 @@ type Mode = {
 // typing are different jobs, and two inputs one pill apart was the redundancy
 // this row is fixing.
 //
-// FEED LEADS BUT SEARCH IS THE DEFAULT (see `discoverDefault`). Feed is not
-// called Home for exactly that reason — Home promises to be where you land.
+// HOME LEADS BUT SEARCH IS THE DEFAULT (see `discoverDefault`), so the first
+// pill is not the landing screen. That reads like a bug until you know it is a
+// call, which is why route-structure pins it.
 //
 // ORDER runs from the least to the most committed way to browse: rails you
 // scan, a name you type, a deck you flick, a question you ask, a list you
 // already curated.
 export const MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.feed, label: "Feed", Icon: LayoutGrid },
+  { href: CONSUMER_ROUTES.discoverTabs.home, label: "Home", Icon: LayoutGrid },
   { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
