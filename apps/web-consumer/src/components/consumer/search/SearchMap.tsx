@@ -73,6 +73,20 @@ export type SearchMapPin = {
   tone: MembershipTone;
 };
 
+/**
+ * A searchbar pick's camera request (MESITA-1405). `gen` makes every pick
+ * fire — re-picking the same place must pan back even though its lat/lng
+ * did not change, which the selection-keyed PanTo cannot do. With
+ * `bounds` (a Location's Details viewport) the camera FITS them, so a
+ * city opens wide and a neighbourhood close; without, it pans venue-style.
+ */
+export type CameraAnchor = {
+  gen: number;
+  lat: number;
+  lng: number;
+  bounds?: { south: number; west: number; north: number; east: number } | null;
+};
+
 export type ViewportBox = {
   south: number;
   west: number;
@@ -104,6 +118,8 @@ export function SearchMap({
   viewCenter,
   selectedId,
   pins,
+  cameraAnchor,
+  panTargetId,
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
@@ -117,6 +133,15 @@ export function SearchMap({
   viewCenter: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
+  cameraAnchor?: CameraAnchor | null;
+  /**
+   * The EXPLICIT pick (tap, scroll, bar) the camera may follow. Distinct
+   * from `selectedId`, which also carries defaultRailSelection's card-0
+   * FALLBACK: a fallback rings the card but must never pan — after a
+   * Location anchor fits a whole city, a fallback pan-and-zoom to the
+   * closest venue would collapse the view nobody asked to leave.
+   */
+  panTargetId?: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
@@ -155,6 +180,8 @@ export function SearchMap({
           viewCenter={viewCenter}
           selectedId={selectedId}
           pins={pins}
+          cameraAnchor={cameraAnchor}
+          panTargetId={panTargetId}
           onSelectPlace={onSelectPlace}
           onOpenPlace={onOpenPlace}
           onSelectPin={onSelectPin}
@@ -242,6 +269,8 @@ function SearchMapCanvas({
   viewCenter,
   selectedId,
   pins,
+  cameraAnchor,
+  panTargetId,
   onSelectPlace,
   onOpenPlace,
   onSelectPin,
@@ -255,6 +284,8 @@ function SearchMapCanvas({
   viewCenter: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
+  cameraAnchor?: CameraAnchor | null;
+  panTargetId?: string | null;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
@@ -268,11 +299,15 @@ function SearchMapCanvas({
 }) {
   const located = places.filter(hasCoords);
   const lookAt = viewCenter ?? userLocation;
-  const selected = pins != null
-    ? (pins.find((p) => p.id === selectedId) ?? null)
-    : (located.find((p) => p.id === selectedId) ?? null);
-  const selectedLat = selected?.lat ?? null;
-  const selectedLng = selected?.lng ?? null;
+  // The camera follows EXPLICIT picks only. `selectedId` also carries the
+  // defaultRailSelection card-0 fallback, which rings a card without
+  // anybody choosing it — panning on that would snap the view around
+  // after every reload (fatal right after a Location anchor fit a city).
+  const panTarget = pins != null
+    ? (pins.find((p) => p.id === panTargetId) ?? null)
+    : (located.find((p) => p.id === panTargetId) ?? null);
+  const panLat = panTarget?.lat ?? null;
+  const panLng = panTarget?.lng ?? null;
 
   return (
     <Map
@@ -337,8 +372,9 @@ function SearchMapCanvas({
             />
           ))}
       <Recentre target={lookAt} />
-      {selectedLat != null && selectedLng != null && (
-        <PanTo lat={selectedLat} lng={selectedLng} />
+      {cameraAnchor && <AnchorCamera anchor={cameraAnchor} />}
+      {panLat != null && panLng != null && (
+        <PanTo lat={panLat} lng={panLng} />
       )}
       <ViewportReporter
         onFirst={onFirstViewport}
@@ -413,5 +449,26 @@ function PanTo({ lat, lng }: { lat: number; lng: number }) {
     if (!map) return;
     panAndEnsureZoom(map, { lat, lng });
   }, [map, lat, lng]);
+  return null;
+}
+
+// The searchbar pick's camera move. Keyed on the anchor OBJECT — each
+// pick stores a fresh one (`gen` guarantees distinctness), so re-picking
+// the same entity pans back after the guest wandered off, while plain
+// re-renders (the object is state-held, never a literal) fight nobody.
+// A Location fits its own viewport bounds (city wide, neighbourhood
+// close); a Place pans venue-style. Both count as programmatic so the
+// idle that follows rebases the km origin instead of accruing travel.
+function AnchorCamera({ anchor }: { anchor: CameraAnchor }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    noteProgrammaticCamera();
+    if (anchor.bounds) {
+      map.fitBounds(anchor.bounds);
+      return;
+    }
+    panAndEnsureZoom(map, { lat: anchor.lat, lng: anchor.lng });
+  }, [map, anchor]);
   return null;
 }

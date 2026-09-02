@@ -99,7 +99,13 @@ export function clampResultLimit(value: unknown): MapResultLimit {
   return best;
 }
 
-/** Closest N after membership. Always distance-sorts, then slices. */
+/**
+ * Closest N after membership. Always distance-sorts, then slices. The cap
+ * governs the MAP QUERY's set — the fetch already obeys it and this keeps
+ * a stale mid-refetch catalog honest. It is NOT a carousel cap: an
+ * anchored searchbar pick prepends AFTER it (MESITA-1405), so the guest
+ * sees N unique when the pick is inside the N and N + 1 when outside.
+ */
 export function takeMapResultLimit<T extends { distance_km?: number | null }>(
   places: T[],
   limit: MapResultLimit,

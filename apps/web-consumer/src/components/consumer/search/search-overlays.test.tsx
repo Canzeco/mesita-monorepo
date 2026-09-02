@@ -15,17 +15,23 @@ import { SearchPlacesScope } from "@/components/consumer/search/SearchPlacesScop
 import { SearchResultLimit } from "@/components/consumer/search/SearchResultLimit";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
+  ANCHOR_DROP_KM,
+  anchorPlaceFromPrediction,
+  anchorSurvivesReload,
+  anchorViewportBounds,
   catalogIsStale,
   clampReloadMinKm,
   clampReloadMinSec,
   defaultRailSelection,
   shouldCenterRailCard,
   nearbyReloadThresholdKm,
+  prependAnchorPlace,
   railCenterIndex,
   shouldReloadNearbyCatalog,
   viewportCenter,
 } from "@/components/consumer/search/search-utils";
 import type { Place } from "@/lib/api/places";
+import type { PlacePrediction } from "@/lib/api/place-search";
 
 const SEARCH_DIR = join(__dirname);
 
@@ -1082,17 +1088,191 @@ describe("GooglePlaceSheet loads the first Places photo on open only", () => {
   });
 });
 
-describe("on-Mesita places open the profile modal, not GooglePlaceSheet", () => {
-  it("routes predictions with Mesita identity to the profile and skips the add sheet", () => {
+describe("every searchbar pick anchors the map (MESITA-1405)", () => {
+  it("routes BOTH panel picks through one anchoring handler, never the modal", () => {
     const client = read("SearchClient.tsx");
-    const panel = read("SearchResultsPanel.tsx");
-    expect(client).toContain("predictionOnMesita");
-    expect(client).toContain("openMesitaProfileFromPrediction");
-    expect(client).toContain("catalogPlaceOnMesita");
-    expect(client).toContain("addedProfiles");
-    expect(panel).toContain("predictionOnMesita(p) ? onPickMesita : onPickGoogle");
-    expect(client).toMatch(
-      /if \(predictionOnMesita\(prediction\)\) \{\s*openMesitaProfileFromPrediction/,
+    // One handler for both entities — the panel's Mesita/Google split no
+    // longer picks a destination, only (later) a row mark.
+    expect(client).toContain("onPickMesita={handleBarPick}");
+    expect(client).toContain("onPickGoogle={handleBarPick}");
+    // The early return that opened the modal the moment a row carried a
+    // mesitaSlug/mesitaId is the line that went.
+    expect(client).not.toMatch(
+      /if \(prediction\.mesitaSlug \?\? prediction\.mesitaId\) \{\s*openMesitaProfileFromPrediction/,
     );
+    // A pick is a camera move + a forced reload + card one.
+    expect(client).toContain("const anchorMapTo = (");
+    expect(client).toContain("anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow)");
+    expect(client).toMatch(/anchorMapTo[\s\S]{0,400}forceNextLoad\.current = true/);
+    expect(client).toContain("cameraAnchor={anchor?.camera ?? null}");
+    // The modal and the Google sheet moved to the SECOND tap — the pin /
+    // rail-card open paths — and stayed off the bar pick.
+    expect(client).toContain("openGooglePreview");
+    expect(client).toContain("openMesitaProfileFromPrediction");
+    const barPick = client.slice(
+      client.indexOf("const handleBarPick"),
+      client.indexOf("const handleOpenPlace"),
+    );
+    expect(barPick).not.toContain("openGooglePreview");
+    expect(barPick).not.toContain("setPreviewOpen");
+    // The no-coordinates Mesita row keeps the direct-open fallback; that
+    // is the only router.push a bar pick may reach.
+    expect(barPick.match(/router\.push/g)?.length).toBe(1);
+  });
+
+  it("resolves a Location on PICK — one Details call, viewport decides zoom", () => {
+    const client = read("SearchClient.tsx");
+    const barPick = client.slice(
+      client.indexOf("const handleBarPick"),
+      client.indexOf("const handleOpenPlace"),
+    );
+    expect(barPick).toContain('prediction.kind === "location"');
+    expect(barPick).toContain("apiResolveLocationAnchor");
+    expect(barPick).toContain("anchorViewportBounds(resolved.viewport)");
+    // Never resolved while typing: the suggest debounce effect stays clean.
+    const debounce = client.slice(
+      client.indexOf("const fast = window.setTimeout"),
+      client.indexOf("const searchPins"),
+    );
+    expect(debounce).not.toContain("apiResolveLocationAnchor");
+    // The camera side: a bounds anchor FITS (city wide, neighbourhood
+    // close); a venue anchor pans.
+    const map = read("SearchMap.tsx");
+    expect(map).toContain("function AnchorCamera");
+    expect(map).toContain("map.fitBounds(anchor.bounds)");
+    expect(map).toMatch(/AnchorCamera[\s\S]{0,600}noteProgrammaticCamera\(\)/);
+  });
+
+  it("the card-0 fallback rings but never pans — only explicit picks do", () => {
+    const client = read("SearchClient.tsx");
+    const map = read("SearchMap.tsx");
+    // railSelectedId (ring + zIndex) and panTargetId (camera) are split:
+    // defaultRailSelection's fallback would otherwise snap the view to the
+    // closest venue after every reload — fatal right after a Location
+    // anchor fits a whole city.
+    expect(client).toContain("panTargetId={selectedId}");
+    expect(map).toMatch(/<PanTo lat=\{panLat\} lng=\{panLng\}/);
+    expect(map).not.toContain("<PanTo lat={selectedLat}");
+    // A Location pick clears the lingering explicit selection too.
+    expect(client).toMatch(/\} else \{[\s\S]{0,220}setSelectedId\(null\);/);
+  });
+
+  it("prepends the pick after the filters and the cap — they never veto it", () => {
+    const client = read("SearchClient.tsx");
+    const memo = client.slice(
+      client.indexOf("const catalog = useMemo"),
+      client.indexOf("const filtersCutCatalog"),
+    );
+    expect(memo).toContain("applyMapFilters");
+    expect(memo).toContain("takeMapResultLimit");
+    // Prepend runs LAST, so a partners-only filter cannot hide the
+    // Google-only place the guest explicitly typed.
+    expect(memo.indexOf("takeMapResultLimit")).toBeLessThan(
+      memo.indexOf("prependAnchorPlace"),
+    );
+  });
+});
+
+describe("anchor helpers", () => {
+  const GOOGLE_PICK: PlacePrediction = {
+    placeId: "ChIJx",
+    mainText: "Taquería Nueva",
+    secondaryText: "Calle Falsa 123",
+    status: "not_in_mesita",
+    lat: 25.66,
+    lng: -100.31,
+  };
+
+  it("anchorPlaceFromPrediction mirrors the Google-stub shape", () => {
+    const stub = anchorPlaceFromPrediction(GOOGLE_PICK)!;
+    expect(stub.id).toBe("g:ChIJx");
+    expect(stub.slug).toBe("ChIJx");
+    expect(stub.google_place_id).toBe("ChIJx");
+    expect(stub.googleOnly).toBe(true);
+    expect(stub.from_google).toBe(true);
+    expect(stub.name).toBe("Taquería Nueva");
+    expect(stub.photos).toEqual([]);
+  });
+
+  it("anchorPlaceFromPrediction keeps Mesita identity for stamped rows", () => {
+    const row = anchorPlaceFromPrediction({
+      ...GOOGLE_PICK,
+      status: "web_listed",
+      mesitaId: "m-1",
+      mesitaSlug: "taqueria-nueva",
+      partner: true,
+      enriched: true,
+    })!;
+    expect(row.id).toBe("m-1");
+    expect(row.slug).toBe("taqueria-nueva");
+    expect(row.partner).toBe(true);
+    expect(row.enriched).toBe(true);
+    expect(row.googleOnly).toBeUndefined();
+  });
+
+  it("anchorPlaceFromPrediction refuses a row without coordinates", () => {
+    expect(
+      anchorPlaceFromPrediction({ ...GOOGLE_PICK, lat: null, lng: null }),
+    ).toBe(null);
+    expect(
+      anchorPlaceFromPrediction({
+        ...GOOGLE_PICK,
+        lat: undefined,
+        lng: undefined,
+      }),
+    ).toBe(null);
+  });
+
+  it("prependAnchorPlace: inside the N stays N unique, outside becomes N + 1", () => {
+    const a = { ...RAIL_PLACE, id: "a" } as Place;
+    const b = { ...RAIL_PLACE, id: "b" } as Place;
+    const outside = { ...RAIL_PLACE, id: "c" } as Place;
+    // Outside the capped set: 21 is correct, not a bug.
+    expect(prependAnchorPlace([a, b], outside).map((p) => p.id)).toEqual([
+      "c",
+      "a",
+      "b",
+    ]);
+    // Inside it: the catalog's own richer row wins the front slot.
+    const richer = { ...RAIL_PLACE, id: "b", photos: ["https://x/p.jpg"] } as Place;
+    const woven = prependAnchorPlace([a, richer], b);
+    expect(woven.map((p) => p.id)).toEqual(["b", "a"]);
+    expect(woven[0].photos).toEqual(["https://x/p.jpg"]);
+    expect(prependAnchorPlace([a, b], null)).toEqual([a, b]);
+  });
+
+  it("prependAnchorPlace joins a stub to the catalog row on the Google spine", () => {
+    const stub = anchorPlaceFromPrediction(GOOGLE_PICK)!;
+    const catalogStub = {
+      ...RAIL_PLACE,
+      id: "g:ChIJx",
+      slug: "ChIJx",
+      googleOnly: true,
+      from_google: true,
+    } as Place;
+    const woven = prependAnchorPlace(
+      [{ ...RAIL_PLACE, id: "a" } as Place, catalogStub],
+      stub,
+    );
+    expect(woven.map((p) => p.id)).toEqual(["g:ChIJx", "a"]);
+  });
+
+  it("anchorSurvivesReload keeps its own load and drops real travel", () => {
+    const at = { lat: 25.66, lng: -100.31 };
+    expect(anchorSurvivesReload(at, { lat: 25.66, lng: -100.31 })).toBe(true);
+    // Under the 0.5 km drag-reload floor, so a pick's own load never clears.
+    expect(ANCHOR_DROP_KM).toBeLessThan(0.5);
+    expect(anchorSurvivesReload(at, { lat: 25.7, lng: -100.31 })).toBe(false);
+    expect(anchorSurvivesReload({ lat: null, lng: null }, at)).toBe(false);
+  });
+
+  it("anchorViewportBounds converts the wire viewport and passes null through", () => {
+    expect(
+      anchorViewportBounds({
+        low: { lat: 19.18, lng: -99.32 },
+        high: { lat: 19.59, lng: -98.96 },
+      }),
+    ).toEqual({ south: 19.18, west: -99.32, north: 19.59, east: -98.96 });
+    expect(anchorViewportBounds(null)).toBe(null);
   });
 });

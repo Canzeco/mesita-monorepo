@@ -1,9 +1,9 @@
 // Small pure helpers for the Search surface: session tokens for Google
-// Places autocomplete billing, prediction↔catalog matching, and distance
-// derivation/formatting for the rail cards.
+// Places autocomplete billing, prediction↔catalog matching, the anchored
+// searchbar pick, and distance derivation/formatting for the rail cards.
 
 import type { Place } from "@/lib/api/places";
-import type { PlacePrediction } from "@/lib/api/place-search";
+import type { LocationAnchor, PlacePrediction } from "@/lib/api/place-search";
 import { haversineKm } from "@/lib/utils";
 
 // Stable per-page-session token, passed on every consumer-suggest-places
@@ -46,6 +46,139 @@ export function matchPredictionToPlace(
     if (normalizeName(place.name) === target) return place;
   }
   return null;
+}
+
+// ── The anchored searchbar pick (MESITA-1405) ─────────────────────────
+//
+// EVERY pick anchors the map: camera to the coordinates, catalog reload
+// there, and — for a Place — the chosen result as card ONE. The modal is
+// one more tap away, on that card or its pin. A Location is a camera
+// destination, never a card.
+
+/**
+ * Synthesize the rail-card Place for an anchored pick that is not in the
+ * nearby snapshot. Mirrors `consumer-web-list-places`' Google stub shape
+ * (`g:<placeId>` id, slug = the Google place id) so the pin/card second
+ * tap flows through the exact same open paths as a catalog row. Returns
+ * null without coordinates — a camera cannot anchor nowhere.
+ */
+export function anchorPlaceFromPrediction(
+  prediction: PlacePrediction,
+): Place | null {
+  if (
+    typeof prediction.lat !== "number" ||
+    typeof prediction.lng !== "number"
+  ) {
+    return null;
+  }
+  const onMesita = Boolean(prediction.mesitaId);
+  return {
+    id: onMesita ? prediction.mesitaId! : `g:${prediction.placeId}`,
+    slug: onMesita
+      ? (prediction.mesitaSlug ?? prediction.mesitaId!)
+      : prediction.placeId,
+    google_place_id: prediction.placeId || null,
+    name: prediction.mainText,
+    category: null,
+    category_label: null,
+    vibe: null,
+    price_level: null,
+    currency: "MXN",
+    listing_type: "web",
+    status: onMesita ? "active" : "lead",
+    fiscal_type: "informal",
+    plan: "free",
+    partner: prediction.partner ?? false,
+    enriched: prediction.enriched ?? false,
+    lat: prediction.lat,
+    lng: prediction.lng,
+    address: prediction.secondaryText || null,
+    closes_at: null,
+    phone: null,
+    pitch: null,
+    story: null,
+    photos: [],
+    website_url: null,
+    instagram_url: null,
+    facebook_url: null,
+    whatsapp_url: null,
+    opentable_url: null,
+    resy_url: null,
+    uber_eats_url: null,
+    x_url: null,
+    threads_url: null,
+    reddit_url: null,
+    didi_food_url: null,
+    google_maps_url: null,
+    email: null,
+    created_at: new Date(0).toISOString(),
+    ...(onMesita ? {} : { googleOnly: true, from_google: true }),
+  } as Place;
+}
+
+/** Same entity? id, then the Google spine (a stub's slug IS the place id). */
+function samePlaceRow(a: Place, b: Place): boolean {
+  if (a.id === b.id) return true;
+  const gidA = a.google_place_id ?? (a.googleOnly || a.from_google ? a.slug : null);
+  const gidB = b.google_place_id ?? (b.googleOnly || b.from_google ? b.slug : null);
+  return Boolean(gidA) && gidA === gidB;
+}
+
+/**
+ * The chosen result is card ONE, whatever `applyMapFilters` and the How
+ * many cap said — the bar does not apply the map's filters, so they never
+ * veto a pick. Dedupe decides the total: the anchor already inside the N
+ * keeps N unique (the catalog's own richer row wins the slot); outside it
+ * the guest sees N + 1 — 21 is correct, not a bug (Pato).
+ */
+export function prependAnchorPlace(
+  places: Place[],
+  anchor: Place | null,
+): Place[] {
+  if (!anchor) return places;
+  const own = places.find((p) => samePlaceRow(p, anchor));
+  const rest = places.filter((p) => !samePlaceRow(p, anchor));
+  return [own ?? anchor, ...rest];
+}
+
+/**
+ * A reload centered away from the anchored place ends the anchor: the
+ * guest moved on, and a far-away card one would misorder the new set. A
+ * reload AT the place (its own forced load, a filter refetch there) keeps
+ * it. 0.4 km sits under the 0.5 km drag-reload floor, so any genuine
+ * travel clears and the pick's own load never does.
+ */
+export const ANCHOR_DROP_KM = 0.4;
+
+export function anchorSurvivesReload(
+  anchor: { lat: number | null; lng: number | null },
+  loadedCenter: { lat: number; lng: number },
+): boolean {
+  if (typeof anchor.lat !== "number" || typeof anchor.lng !== "number") {
+    return false;
+  }
+  return (
+    haversineKm(anchor.lat, anchor.lng, loadedCenter.lat, loadedCenter.lng) <
+    ANCHOR_DROP_KM
+  );
+}
+
+/**
+ * A Location's Details viewport → the bounds the camera should fit: a
+ * city opens wide, a neighbourhood close — `fitBounds` derives the zoom
+ * from the entity's own extent instead of a fixed venue zoom. Null when
+ * the viewport is missing; the caller falls back to a plain pan.
+ */
+export function anchorViewportBounds(
+  viewport: LocationAnchor["viewport"],
+): { south: number; west: number; north: number; east: number } | null {
+  if (!viewport) return null;
+  return {
+    south: viewport.low.lat,
+    west: viewport.low.lng,
+    north: viewport.high.lat,
+    east: viewport.high.lng,
+  };
 }
 
 /**
