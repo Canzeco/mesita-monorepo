@@ -45,8 +45,11 @@ export function SearchBar({
     locationSet ? "location set" : "location not set",
   ].join(", ");
 
+  // h-11, NOT h-12: 44px is the touch-target floor, so this is as short as the
+  // bar goes. It also matches SearchFilterRow beside it on the map — two pills
+  // of different heights in one row read as a misalignment.
   return (
-    <div className="border-border bg-card/95 shadow-elev flex h-12 shrink-0 items-center rounded-full border pl-4 backdrop-blur-xl">
+    <div className="border-border bg-card/95 shadow-elev flex h-11 shrink-0 items-center rounded-full border pl-4 backdrop-blur-xl">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
       <input
         ref={inputRef}

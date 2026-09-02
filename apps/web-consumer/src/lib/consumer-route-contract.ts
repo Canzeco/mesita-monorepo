@@ -25,26 +25,30 @@ export const CONSUMER_ROUTES = {
   // me" with no query at all. So the typed control lives on the pins, and the
   // word Search names the mode that carries it.
   //
-  // FEED is what is left once the bar moves off the list: CatalogRails on their
+  // HOME is what is left once the bar moves off the list: CatalogRails on their
   // own, a browse surface with no query. It carries NO search bar — two typed
   // inputs one pill apart was the redundancy that started this.
   //
-  // Feed is NOT called Home even though it leads the rail. Home promises to be
-  // where you land, and Discover lands on Search; worse, /home* already 308s
-  // elsewhere, so /home and /discover/home would have named two screens.
+  // TWO "HOME" URLS EXIST AND THEY ARE NOT THE SAME SCREEN (Pato, 2026-09-01,
+  // choosing the name over this objection). `/discover/home` is this mode.
+  // Bare `/home` and every `/home/*` leaf are the RETIRED hub's redirects and
+  // still 308 to the Discover default, which is Search. Do not "tidy" them to
+  // point at /discover/home: they were the old hub's URLs, the hub is gone, and
+  // the default is where a stale bookmark belongs. Read the redirect table in
+  // next.config.ts before touching either.
   //
-  // All five are live. CatalogRails is Feed's whole body; SocialFeed stays on
-  // disk and mounts INTO Feed when it un-parks, rather than getting a route.
+  // All five are live. CatalogRails is Home's whole body; SocialFeed stays on
+  // disk and mounts INTO Home when it un-parks, rather than getting a route.
   discover: "/discover",
   discoverTabs: {
-    feed: "/discover/feed",
+    home: "/discover/home",
     search: "/discover/search",
     swipe: "/discover/swipe",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
   // DEFAULT IS NOT FIRST, deliberately — the same call Activity makes with bare
-  // /inbox landing on Visits while Alerts leads the row. Feed leads because
+  // /inbox landing on Visits while Alerts leads the row. Home leads because
   // browsing is the calmer entry, but a guest opening Discover wants the map:
   // it needs no typing and answers "what is near me" on its own. Every /home*,
   // /explore* and /search 308 points straight here, never through

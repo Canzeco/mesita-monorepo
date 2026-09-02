@@ -543,6 +543,62 @@ describe("Search pin two-tap (select then open)", () => {
   });
 });
 
+describe("Search results drop from the bar, not from the bottom", () => {
+  // The convention every autocomplete follows, and how the standalone Search
+  // page stacked them: header band, then the list directly beneath it.
+  //
+  // NESTED IN THE TOP OVERLAY, deliberately. An absolutely-positioned panel
+  // with its own `top` offset has to be kept in sync with the bar's height by
+  // hand, and the bar just went h-12 -> h-11. Sharing the flex column means
+  // the browser does that arithmetic.
+  it("renders the results inside the top overlay column, not docked bottom", () => {
+    const src = read("SearchClient.tsx");
+    const overlay = src.slice(src.indexOf("absolute inset-x-3 top-3"));
+    const results = overlay.indexOf("<SearchResultsPanel");
+    const closes = overlay.indexOf("<SearchRailOverlay");
+    expect(results).toBeGreaterThan(-1);
+    // The panel is reached before the rail, i.e. still inside the top column.
+    expect(results).toBeLessThan(closes);
+    expect(src).not.toContain("inset-x-0 bottom-0 z-20");
+  });
+
+  it("caps the dropdown with max-h so short lists leave the map visible", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("max-h-[55dvh]");
+    // A bare height would bring back the regression the 2026-09-01 removal was
+    // actually right about: a panel that claimed the same slab of screen
+    // whether it held two rows or ten.
+    expect(src).not.toMatch(/(?<!max-)h-\[55dvh\]/);
+  });
+
+  it("hides the catalog rail while a query is live", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(/\{!querying && \(\s*<SearchRailOverlay/);
+  });
+});
+
+describe("Every terminal search state offers a way out", () => {
+  // The panel covers part of a map. An empty or failed search that just sits
+  // there is a lid with nothing under it, so both states carry an action.
+  it("gives no-matches a Clear search and an error a Try again", () => {
+    const panel = read("SearchResultsPanel.tsx");
+    expect(panel).toContain("Clear search");
+    expect(panel).toContain("Try again");
+    expect(panel).toContain("onClearSearch");
+    expect(panel).toContain("onRetry");
+    // The below-minimum prompt was unreachable once this panel stopped being a
+    // full page — it only mounts at 2+ characters.
+    expect(panel).not.toContain("Keep typing");
+  });
+
+  it("wires retry to a nonce, since the debounce keys on the query text", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toContain("searchNonce");
+    expect(src).toMatch(/\[supabase, trimmedQuery, searchOrigin, searchNonce\]/);
+    expect(src).toContain("setSearchNonce((n) => n + 1)");
+  });
+});
+
 describe("Search results are one unlabeled lane", () => {
   it("does not print On Mesita / From Google section headers", () => {
     const src = read("SearchResultsPanel.tsx");
@@ -886,7 +942,7 @@ describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () 
 
 describe("Name search is Fast while typing and Deep after idle", () => {
   // Back on the map: Search IS the map and owns the only typed search on
-  // Discover. Feed carries no bar, so there is exactly one suggest caller.
+  // Discover. Home carries no bar, so there is exactly one suggest caller.
   it("calls suggest-places twice: Autocomplete then Deep 3+3+3", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("FAST_DEBOUNCE_MS");

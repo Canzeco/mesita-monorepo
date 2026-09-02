@@ -45,7 +45,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // catalog rails with no bar at all. SocialFeed mounts INTO Feed when it
       // un-parks rather than getting a route back.
       discoverTabs: {
-        feed: "/discover/feed",
+        home: "/discover/home",
         search: "/discover/search",
         swipe: "/discover/swipe",
         chat: "/discover/chat",

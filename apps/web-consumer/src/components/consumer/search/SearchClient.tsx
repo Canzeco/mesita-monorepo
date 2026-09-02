@@ -1,40 +1,43 @@
 "use client";
 
-// MAP — Discover's first mode, and the consumer catalog map.
+// SEARCH — Discover's default mode: the consumer catalog map, and the one
+// surface in the app that carries a search bar.
 //
-// THE NAME SEARCH LEFT THIS FILE (2026-09-01, Pato: "remove name search from
-// map, is redundant"). It lives at Discover › Name now. Two typed-search
-// surfaces one rail-tap apart was one too many, and the map's was the worse of
-// the two: a results panel capped at 70% of the viewport, lying over the thing
-// you opened the map to look at. What went with it: the query bar, the
-// suggest/results panel, the Fast/Deep debounce, the prediction pin overlay,
-// and the whole `idle` notion — the map is never in "query mode" any more, so
-// every viewport load just loads.
+// THE BAR BELONGS ON THE PINS. A search bar is a control, and a found place
+// needs somewhere to land — on a bare list it lands nowhere. This is also the
+// mode every session opens on, so a map with no way to type a name was asking
+// the most common intent to go find another screen first.
 //
-// WHAT DID NOT GO: the from-Google preview sheet and the Add flow. Those were
-// never search-only. The catalog itself carries Google-only places (the grey
-// pins), so a pin or rail-card tap still reaches them through handleOpenPlace,
-// and `heldOverlay` still stashes a prediction between the select tap and the
-// open. Deleting them with the search bar would have silently removed the only
-// way to put a Google place on Mesita.
+// WHAT THE 2026-09-01 REMOVAL WAS ACTUALLY RIGHT ABOUT, and what it over-cut:
+// the old results panel claimed a fixed 70% of the viewport whether it held
+// two rows or ten, so it covered the map you typed to search. That was the
+// FIXED HEIGHT, not the top anchor. Results drop from under the bar again —
+// the convention, and how the standalone Search page stacked them — but they
+// size to content under a cap, so three rows take a third of the screen.
+//
+// THERE IS NO "QUERY MODE". The map never stops being the map: the catalog
+// keeps loading, the camera keeps its own rules, and typing only adds a pin
+// layer and swaps the bottom rail out. A viewport load is always just a load.
+//
+// The from-Google preview sheet and the Add flow are NOT search chrome. The
+// catalog itself carries Google-only places (the grey pins), so a pin or
+// rail-card tap reaches them through handleOpenPlace, and `heldOverlay` still
+// stashes a prediction between the select tap and the open.
 //
 // Composition:
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
-//     gray Google, blue user). Pins ARE the catalog now — there is no second
-//     pin source.
-//   • Top overlay: Filters only. Places Venn + Super Category + How many
-//     (20 / 40 / 60) live in the Filters sheet — no Category chip strip on the
-//     map. Default is + Places. Distance and time are not map knobs.
-//   • Bottom overlay: catalog rail around the camera. Places scope picks the
-//     engine (Partners / + enriched Places / + Google Nearby). Super Category
-//     cuts Mesita only. Closest first. A guest pan auto-reloads after
+//     gray Google, blue user). Catalog pins by default; `searchPins` overlays
+//     the predictions while a query is live.
+//   • Top overlay: the search bar and Filters on ONE row, then the results
+//     dropdown directly beneath them. Places scope + Super Category + How many
+//     (20 / 40 / 60) live in the Filters sheet, never as chips on the map.
+//   • Bottom overlay: the catalog rail around the camera, hidden while
+//     querying. Places scope picks the engine (Partners / + enriched Places /
+//     + Google Nearby). Closest first. A guest pan auto-reloads after
 //     reloadMinKm AND reloadMinSec.
-//     Only a finger-drag on the map counts as travel. Rail
-//     or pin selection pans rebase the km origin so click-by-click browsing
-//     cannot add up. The rail's centre card is always the selected pin; scroll
-//     picks the centre, a pin tap scrolls that card to centre. Tapping the
-//     already-selected card opens the place (Google-only stubs open
-//     GooglePlaceSheet).
+//     Only a finger-drag on the map counts as travel — rail or pin selection
+//     rebases the km origin so click-by-click browsing cannot add up. The
+//     rail's centre card is always the selected pin.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -187,11 +190,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // THERE IS NO "QUERY MODE". The map never stops being the map: the catalog
   // keeps loading, the camera keeps its own rules, and typing only swaps the
   // BOTTOM overlay and adds a pin layer. That is the difference from the
-  // version this replaces, which put a 70%-tall results lid over the pins.
+  // version this replaces, which put a fixed-height results lid over the pins.
   const [query, setQuery] = useState("");
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Bumped by Try again. The debounce effect keys on the query TEXT, so a
+  // retry of the same string would otherwise be a no-op re-render.
+  const [searchNonce, setSearchNonce] = useState(0);
   const trimmedQuery = query.trim();
   const querying = trimmedQuery.length >= MIN_QUERY || searching;
 
@@ -284,7 +290,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       window.clearTimeout(fast);
       window.clearTimeout(deep);
     };
-  }, [supabase, trimmedQuery, searchOrigin]);
+  }, [supabase, trimmedQuery, searchOrigin, searchNonce]);
 
   // The second pin source. null hands the map back its catalog pins, so the
   // basemap is never blank while you type — results ADD to what is there.
@@ -748,28 +754,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           />
         </div>
 
-        {fetchError && (
-          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
-            {fetchError}
-          </p>
-        )}
-      </div>
+        {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
+            way the old standalone Search page stacked them: header band, then
+            the list directly beneath it. Nesting them in this same flex column
+            is what guarantees that — no top offset to keep in sync with the
+            bar's height, and `inset-x-3` already lines the edges up.
 
-      {/* BOTTOM OVERLAY — results while typing, the catalog rail otherwise.
-
-          RESULTS TAKE THE RAIL'S PLACE, they do not stack on top of it. Two
-          scrollable regions in one frame means neither gets a height and both
-          fight the thumb, and a panel anchored to the TOP is the 70%-tall lid
-          this surface had before: it covered the pins you typed to find.
-
-          Capped at 55dvh and docked low, so the upper half of the map — where
-          buildSearchMapPins just dropped the prediction pins — stays visible
-          while you read the list. The list is a text list on purpose: a
-          prediction is a name, an address and a membership dot, and it has
-          none of the photo, rating or hours a rail card is built to show. */}
-      {querying ? (
-        <div className="absolute inset-x-0 bottom-0 z-20 max-h-[55dvh] min-h-0">
-          <div className="border-border bg-card/95 flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-t-2xl border-t shadow-elev backdrop-blur-xl">
+            THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
+            claimed 70% of the viewport whether it held two rows or ten is what
+            covered the map. `max-h` sizes to content, so three results take a
+            third of the screen and the pins stay visible underneath — the
+            overlays test pins the absence of a fixed height. */}
+        {querying && (
+          <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
             <SearchResultsPanel
               query={query}
               searching={searching}
@@ -778,10 +775,27 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               addStates={addStates}
               onPickMesita={handlePickMesita}
               onPickGoogle={handlePickGoogle}
+              onClearSearch={() => updateQuery("")}
+              onRetry={() => {
+                setSearchError(null);
+                setSearching(true);
+                setSearchNonce((n) => n + 1);
+              }}
             />
           </div>
-        </div>
-      ) : (
+        )}
+
+        {fetchError && (
+          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
+            {fetchError}
+          </p>
+        )}
+      </div>
+
+      {/* The catalog rail steps aside while a query is live: its cards are the
+          nearby catalog, not the results, and showing both would be two lists
+          answering different questions at once. */}
+      {!querying && (
         <SearchRailOverlay
           idle
           places={catalog}
