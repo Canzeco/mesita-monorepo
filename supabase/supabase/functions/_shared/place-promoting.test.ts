@@ -9,6 +9,14 @@ const NOW = new Date("2026-08-21T00:00:00Z");
 const days = (n: number) =>
   new Date(NOW.getTime() + n * 86_400_000).toISOString();
 
+// withFamilyKeys takes NO clock — it is the wire shaper, and a guest's badge
+// must read against the real one. So its fixture dates hang off the real
+// clock too. Hanging them off the frozen NOW above is a time bomb: a "paused
+// ten days out" written against 2026-08-21 came due on 2026-08-31 and turned
+// the suite red on a day nobody had touched this file.
+const fromNow = (n: number) =>
+  new Date(Date.now() + n * 86_400_000).toISOString();
+
 // Conservative preset (see _shared/rewards-config strategyForRates).
 const CONSERVATIVE = {
   free_rate: 10,
@@ -83,11 +91,11 @@ Deno.test("withFamilyKeys: computes promoting and drops the private columns", ()
     category: "restaurant",
     plan: "pro",
     strike_count: 2,
-    last_strike_at: days(-1),
-    promo_paused_until: days(10),
+    last_strike_at: fromNow(-1),
+    promo_paused_until: fromNow(10),
     plan_forfeited_at: null,
-    plan_live_at: days(-90),
-    first_ticket_honored_at: days(-80),
+    plan_live_at: fromNow(-90),
+    first_ticket_honored_at: fromNow(-80),
     ...CONSERVATIVE,
   }) as Record<string, unknown>;
 
