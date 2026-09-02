@@ -35,11 +35,14 @@ import { PartnershipBody, MembershipStatusPill } from "./controls/partnership";
 import { ProductModal, StrategyCard } from "./controls/strategy-cards";
 import { LadderRow, NestedConfig } from "./controls/ladder-row";
 import {
+  connectStartFailure,
   connectStateFrom,
+  controlWriteFailure,
   offeringRows,
   PROMOTION_SCORE_MAX,
   railWriteFailure,
   shouldRenderConfig,
+  STRIPE_LIVE_BLOCKED,
   type ConnectState,
   type LadderRowKey,
 } from "./controls/offerings";
@@ -115,6 +118,11 @@ export function PromosSection({
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  // Latched by an environment-level refusal (STRIPE_LIVE_BLOCKED), never by a
+  // transient one: the button goes quiet while `connectError` keeps saying
+  // why. Scoped to this mount on purpose — the next place re-asks rather than
+  // inheriting a verdict this component never re-verified.
+  const [connectRefused, setConnectRefused] = useState(false);
 
   // Stripe owns the next screen, so this is a FULL navigation, not a new tab —
   // the hosted Account Link expects to come back to `returnUrl` in the same
@@ -131,7 +139,12 @@ export function PromosSection({
     });
     if (!r.ok) {
       setConnectBusy(false);
-      setConnectError(r.error);
+      console.error("[controls] startPlacePaymentOnboarding failed:", r.error);
+      setConnectError(connectStartFailure(r.code ?? null));
+      // The live-charge block belongs to the environment, so it holds for
+      // every place and every retry. Stop offering an action that cannot
+      // succeed — the same rule the non-partner row already follows.
+      if (r.code === STRIPE_LIVE_BLOCKED) setConnectRefused(true);
       return;
     }
     if (r.data.url) {
@@ -153,7 +166,8 @@ export function PromosSection({
     const r = await reviewTicketReport({ action: "restore", placeId: v.id });
     setRestoreBusy(false);
     if (!r.ok) {
-      setRestoreError(r.error);
+      console.error("[controls] reviewTicketReport restore failed:", r.error);
+      setRestoreError(controlWriteFailure("restore Visit Rewards"));
       return;
     }
     applyPlace({ ...v, reward_lane_pending_review_at: null });
@@ -193,7 +207,8 @@ export function PromosSection({
     const r = await setPlacePlan(v.id, planForSubscription("pro_discount"), rates);
     setJoinBusy(false);
     if (!r.ok) {
-      setJoinError(r.error);
+      console.error("[controls] setPlacePlan join failed:", r.error);
+      setJoinError(controlWriteFailure("join the partnership"));
       return;
     }
     applyPlace(r.data);
@@ -207,7 +222,8 @@ export function PromosSection({
     const r = await setPlacePlan(v.id, planForSubscription("free"), rates);
     setDropBusy(false);
     if (!r.ok) {
-      setDropError(r.error);
+      console.error("[controls] setPlacePlan drop failed:", r.error);
+      setDropError(controlWriteFailure("drop the partnership"));
       return;
     }
     applyPlace(r.data);
@@ -224,8 +240,9 @@ export function PromosSection({
     startSwitch(async () => {
       const r = await setPlaceStrategy(prev.id, rates);
       if (!r.ok) {
+        console.error("[controls] setPlaceStrategy failed:", r.error);
         revertPlace(prev);
-        setSwitchError(r.error);
+        setSwitchError(controlWriteFailure("switch strategy"));
         return;
       }
       applyPlace(r.data);
@@ -352,7 +369,7 @@ export function PromosSection({
                   <button
                     type="button"
                     onClick={() => void startConnect()}
-                    disabled={connectBusy || connectLoading}
+                    disabled={connectBusy || connectLoading || connectRefused}
                     className="bg-foreground text-background inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
                   >
                     {connectBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

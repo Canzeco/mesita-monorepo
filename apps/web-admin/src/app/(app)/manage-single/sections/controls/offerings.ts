@@ -298,7 +298,42 @@ export { PROMOTION_SCORE_MAX };
  * on a Postgres constraint name and an engineer can read the console.
  */
 export function railWriteFailure(label: string, next: boolean): string {
-  return `Couldn't turn ${label} ${next ? "on" : "off"}. Nothing changed — try again.`;
+  return controlWriteFailure(`turn ${label} ${next ? "on" : "off"}`);
+}
+
+/**
+ * The same sentence shape for every other Controls write (MESITA-1419).
+ *
+ * `railWriteFailure` had the rule right and was the only caller obeying it:
+ * every other write on this tab piped `r.error` — the Edge Function's own
+ * words — straight into `LadderRow`'s error slot, whose doc comment says
+ * "Never a raw Edge Function string". A server sentence is written for a log.
+ * `action` is an infinitive phrase: "join the partnership", "switch strategy".
+ */
+export function controlWriteFailure(action: string): string {
+  return `Couldn't ${action}. Nothing changed — try again.`;
+}
+
+/** EF failure codes this tab BRANCHES on rather than prints. */
+export const STRIPE_LIVE_BLOCKED = "stripe_live_blocked";
+
+/**
+ * What a refused Connect onboarding says to the operator.
+ *
+ * `liveChargesBlocked` (MESITA-37) answers with a runbook line — it names
+ * STRIPE_SECRET_KEY, STRIPE_ALLOW_LIVE and the value to set. That is the right
+ * message for whoever runs the deploy and the wrong one for the console: an
+ * operator cannot export a Deno env var, so the row says what is true of THIS
+ * place and who can change it. The env names stay in `console.error`.
+ *
+ * It is also not a retry. The block is a property of the environment, not of
+ * the attempt, so the copy says so and the caller stops offering the button.
+ */
+export function connectStartFailure(code: string | null): string {
+  if (code === STRIPE_LIVE_BLOCKED) {
+    return "Stripe onboarding is off: Mesita is on live keys with real charges disabled, so connecting would open a live account. Flipping that is a human step (MESITA-37) — retrying won't change it.";
+  }
+  return controlWriteFailure("start Stripe onboarding");
 }
 
 /**
