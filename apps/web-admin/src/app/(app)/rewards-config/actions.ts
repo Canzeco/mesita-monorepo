@@ -1,6 +1,6 @@
 "use server";
 
-// Server actions for Promos Config (v10, MESITA-991). Thin wrappers over the
+// Server actions for Rewards Config (v10, MESITA-991). Thin wrappers over the
 // admin-web-* Edge Functions via the Result-style efInvoke (never throws) —
 // same contract as the Reservations / Sourcing / Memo config actions.
 //

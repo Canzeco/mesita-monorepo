@@ -49,7 +49,7 @@ import { cn, errMsg } from "@/lib/utils";
 // config cases would break it, and both need this line revisited:
 //   · an AGGRESSIVE place pays +20, so the claim would UNDERSTATE it
 //   · a ZERO-strategy place runs no program at all, so there is no uplift
-// The grid is operator-editable at Admin › Promos Config; move the Premium
+// The grid is operator-editable at Admin › Rewards Config; move the Premium
 // step and this string goes stale. The rule that held twice now: the copy
 // follows the engine, so a change here comes with a migration.
 const PERKS: { label: string; soon?: boolean }[] = [

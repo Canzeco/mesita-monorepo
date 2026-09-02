@@ -96,7 +96,7 @@ const MANAGE_NAV: NavItem[] = [
 //   demand    a guest's night: how they find a place (Discovery) → how they
 //             book it (Reservations) → the journey once they sit down (Visits,
 //             the local context) → or ordering without going at all (Orders,
-//             the remote one) → what either context pays them (Promos)
+//             the remote one) → what either context pays them (Rewards)
 //   proof     who reads the screenshot (Ojo) — composed onto Visits, not a
 //             rail row; blob stays ojo_config
 //

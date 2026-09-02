@@ -96,9 +96,7 @@ export type ViewportBox = {
 
 type MapInstance = NonNullable<ReturnType<typeof useMap>>;
 
-function readViewportBox(
-  map: MapInstance,
-): ViewportBox | null {
+function readViewportBox(map: MapInstance): ViewportBox | null {
   const bounds = map.getBounds();
   if (!bounds) return null;
   const sw = bounds.getSouthWest();
@@ -147,10 +145,7 @@ export function SearchMap({
   onSelectPin?: (pin: SearchMapPin) => void;
   onMapClick?: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (
-    box: ViewportBox,
-    meta: { programmatic: boolean },
-  ) => void;
+  onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
   // beat — hold a muted skeleton veil over it until tiles actually land
@@ -292,10 +287,7 @@ function SearchMapCanvas({
   onMapClick?: () => void;
   onReady: () => void;
   onFirstViewport?: (box: ViewportBox) => void;
-  onUserViewport?: (
-    box: ViewportBox,
-    meta: { programmatic: boolean },
-  ) => void;
+  onUserViewport?: (box: ViewportBox, meta: { programmatic: boolean }) => void;
 }) {
   const located = places.filter(hasCoords);
   const lookAt = viewCenter ?? userLocation;
@@ -303,9 +295,10 @@ function SearchMapCanvas({
   // defaultRailSelection card-0 fallback, which rings a card without
   // anybody choosing it — panning on that would snap the view around
   // after every reload (fatal right after a Location anchor fit a city).
-  const panTarget = pins != null
-    ? (pins.find((p) => p.id === panTargetId) ?? null)
-    : (located.find((p) => p.id === panTargetId) ?? null);
+  const panTarget =
+    pins != null
+      ? (pins.find((p) => p.id === panTargetId) ?? null)
+      : (located.find((p) => p.id === panTargetId) ?? null);
   const panLat = panTarget?.lat ?? null;
   const panLng = panTarget?.lng ?? null;
 
@@ -315,6 +308,12 @@ function SearchMapCanvas({
       defaultZoom={lookAt ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
       gestureHandling="greedy"
       disableDefaultUI
+      // `disableDefaultUI` does NOT cover this one. Google keeps a "Keyboard
+      // shortcuts" button in the bottom attribution strip, which on a phone is
+      // an offer of a keyboard the guest cannot use, sitting in the few pixels
+      // of map the result card has not already taken. The attribution and
+      // Terms beside it are Google's licence terms and stay.
+      keyboardShortcuts={false}
       clickableIcons={false}
       reuseMaps
       draggableCursor={MAP_PIN_CURSOR}
@@ -373,13 +372,8 @@ function SearchMapCanvas({
           ))}
       <Recentre target={lookAt} />
       {cameraAnchor && <AnchorCamera anchor={cameraAnchor} />}
-      {panLat != null && panLng != null && (
-        <PanTo lat={panLat} lng={panLng} />
-      )}
-      <ViewportReporter
-        onFirst={onFirstViewport}
-        onUser={onUserViewport}
-      />
+      {panLat != null && panLng != null && <PanTo lat={panLat} lng={panLng} />}
+      <ViewportReporter onFirst={onFirstViewport} onUser={onUserViewport} />
     </Map>
   );
 }

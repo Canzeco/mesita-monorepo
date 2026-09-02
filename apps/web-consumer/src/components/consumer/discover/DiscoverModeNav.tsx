@@ -63,6 +63,7 @@ import { cn } from "@/lib/utils";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { useDiscoverChrome } from "@/components/consumer/discover/discover-chrome";
 
 type Mode = {
   href: string;
@@ -99,7 +100,11 @@ type Mode = {
 // scan, a name you type, a deck you flick, a question you ask, a list you
 // already curated.
 export const MODES: Mode[] = [
-  { href: CONSUMER_ROUTES.discoverTabs.catalog, label: "Catalog", Icon: LayoutGrid },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.catalog,
+    label: "Catalog",
+    Icon: LayoutGrid,
+  },
   { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
@@ -122,6 +127,8 @@ export function DiscoverModeNav() {
   const pathname = usePathname();
   const [soonMode, setSoonMode] = useState<Mode | null>(null);
   const activeRef = useRef<HTMLAnchorElement | null>(null);
+  // False on every mode but Search, and false there until the bar is live.
+  const { barFocused } = useDiscoverChrome();
 
   // Only bites when large accessibility text pushes the track past the frame
   // and the scroller takes over. `nearest` makes it a no-op at rest, which is
@@ -139,7 +146,24 @@ export function DiscoverModeNav() {
   const active = "bg-primary text-primary-foreground shadow-glow";
 
   return (
-    <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
+    <div
+      className={cn(
+        "border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl",
+        // THE RAIL STEPS ASIDE WHILE THE GUEST IS SEARCHING. On a phone the
+        // keyboard takes a little over half the frame, and these 44px were
+        // being spent on four modes the guest has just demonstrated they do
+        // not want. Height, not `hidden`: the row animates out instead of the
+        // map jumping up under the guest's thumb, and `inert` below keeps the
+        // links out of the tab order and off the screen reader while it is
+        // closed — a collapsed row is not a row you can reach.
+        "overflow-hidden transition-[max-height,opacity] duration-200 ease-out",
+        barFocused ? "max-h-0 opacity-0" : "max-h-16 opacity-100",
+      )}
+      // The border would still paint as a 1px line across the frame at
+      // max-h-0, which reads as a seam rather than an absence.
+      style={barFocused ? { borderBottomWidth: 0 } : undefined}
+      inert={barFocused}
+    >
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
         <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
           {MODES.map((mode) => {

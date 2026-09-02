@@ -77,8 +77,8 @@ export function GeneralGateConfigClient({
   }, []);
 
   // Only this box's two knobs. The Google category count rides the same
-  // `general` slice but is edited on Modules (Google types), so a stale
-  // count must never light up Save here.
+  // `general` slice but is edited on Search Sources (Google types), so a
+  // stale count must never light up Save here.
   const dirty = useMemo(
     () =>
       cfg.general.requireActive !== saved.general.requireActive ||

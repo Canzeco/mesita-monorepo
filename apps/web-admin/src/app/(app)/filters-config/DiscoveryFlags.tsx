@@ -1,5 +1,6 @@
-// Locked matrix marks. Squares = pools and modules. Circles = Places
-// Lineup signals. Black / green = on. Grey / red = off.
+// Locked matrix marks. Squares = entities and pools. Circles = Places
+// Lineup signals; sources are squares that fire. Black / green = on.
+// Grey / red = off. `module` is retired as a Discovery noun.
 
 export function Square({
   on,

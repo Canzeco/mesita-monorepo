@@ -381,7 +381,7 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is two subpages — Discovery Modes and Discovery Sources", () => {
+  it("is two subpages — Discovery Modes and Search Sources", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -404,7 +404,10 @@ describe("Discovery page box order", () => {
     );
 
     expect(nav).toContain('label: "Discovery Modes"');
-    expect(nav).toContain('label: "Discovery Sources"');
+    // The second tab is Search Sources: all nine are searches, and the
+    // matrix band on Modes has said so since it was drawn (Pato, 2026-09-02).
+    expect(nav).toContain('label: "Search Sources"');
+    expect(nav).not.toContain('label: "Discovery Sources"');
     expect(nav).toContain('"/filters-config/modes"');
     expect(nav).toContain('"/filters-config/sources"');
     expect(nav).not.toContain("modules");
@@ -547,6 +550,7 @@ describe("Discovery page box order", () => {
     expect(matrix).not.toContain("Map Randomness is 0");
     const flags = readFileSync(join(__dirname, "DiscoveryFlags.tsx"), "utf8");
     expect(flags).not.toContain("zero");
+    expect(flags).not.toContain("modules");
     expect(matrix).not.toContain(">0</span>");
     expect(name).toContain("ModeSourceChips");
     expect(name).not.toContain("TypeBatteries");

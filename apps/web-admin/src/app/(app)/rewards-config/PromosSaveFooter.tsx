@@ -45,7 +45,7 @@ export function PromosSaveFooter() {
         onClick={save}
         loadError={
           loadBlocked
-            ? (error ?? "Failed to load Promos config")
+            ? (error ?? "Failed to load Rewards config")
             : ladderError
               ? "Fix the ladder above before saving"
               : null
