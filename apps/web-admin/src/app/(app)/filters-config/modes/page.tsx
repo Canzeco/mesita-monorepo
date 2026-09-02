@@ -5,14 +5,15 @@ import { FavsConfigCard } from "../DiscoverySurfaceCards";
 import { GeneralGateConfigClient } from "../GeneralGateConfigClient";
 import { MapConfigClient } from "../MapConfigClient";
 import { NameConfigClient } from "../NameConfigClient";
-import { SocialConfigClient } from "../SocialConfigClient";
 import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
 // Discovery Modes — ways guests look. Matrix first, then General (the
 // post-Google wipe every mode runs), then one card per mode with locked
-// module chips. Home boxes are Soon. Google types live on Modules.
+// source chips, in section 8.1 order: Word · Map · Catalog · Swipe · Chat ·
+// Favorites. Word is one mode with two live boxes. Google types live on
+// Sources.
 export const dynamic = "force-dynamic";
 
 export default async function SearchModesPage() {
@@ -38,10 +39,9 @@ export default async function SearchModesPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <SwipeConfigClient />
       <CatalogConfigClient />
+      <SwipeConfigClient />
       <DiscoveryConfigClient />
-      <SocialConfigClient />
       <FavsConfigCard />
     </div>
   );

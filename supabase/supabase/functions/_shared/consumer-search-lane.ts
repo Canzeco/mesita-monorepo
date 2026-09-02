@@ -568,7 +568,7 @@ async function runDeepSearch(
     ? orderDeepLineup(
       admitted,
       queryVec,
-      weightsForMode("deep", weights),
+      weightsForMode("word", weights),
       params,
     )
     : [];
@@ -620,7 +620,7 @@ async function runMesitaNameSearch(
   const ordered = orderDeepLineup(
     admitNameFloor(embedPool, queryVec, NAME_MIN_COSINE),
     queryVec,
-    weightsForMode("deep", weights),
+    weightsForMode("word", weights),
     params,
   );
   return takeListedLane(ordered, mesitaNameCap(name.deep));

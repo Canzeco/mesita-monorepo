@@ -1,9 +1,11 @@
 "use client";
 
-// Mesita Places Lineup — eight earned signals. Engines call these; they
-// do not invent a second scale. Weights and params persist on
-// discovery_config. Slotting is a post-blend position pass, not a
-// weight. Mesita Level is the merged partnership + promotion row.
+// Mesita Places Search Signals — the eight earned signals every Mesita
+// Places source is ranked by (Docs > Discovery 8.3). Sources retrieve;
+// Lineup ranks; these are what it reads. Engines do not invent a second
+// scale. Weights and params persist on discovery_config. Slotting is a
+// post-blend position pass, not a weight. Mesita Level is the merged
+// partnership + promotion row.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -135,12 +137,12 @@ export function SignalsConfigClient({
 
       <SectionCard
         icon={<Compass className="text-primary h-4 w-4" />}
-        title="Mesita Places Lineup"
-        subtitle="The ranked Mesita place feed. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
+        title="Mesita Places Search Signals"
+        subtitle="What ranks every Mesita Places source. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
         status={
           <KnobStatus
             kind="enforced"
-            reason="Places Lineup · Map · Deep · Swipe read the mode mask"
+            reason="Lineup · Map · Word · Swipe read the mode mask"
           />
         }
       >

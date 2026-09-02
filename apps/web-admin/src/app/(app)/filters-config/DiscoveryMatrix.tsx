@@ -5,21 +5,21 @@ import {
   DISCOVERY_ENTITIES,
   DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_LABELS,
-  DISCOVERY_MODULES,
+  DISCOVERY_SOURCES,
   DISCOVERY_POOLS,
   LIBRARY_SIGNALS,
   SIGNALS,
-  modeCallsModule,
+  modeCallsSource,
   modeRequiresPool,
   modeReturnsEntity,
   modeSignalState,
 } from "./catalog";
 
-// Locked mode × entity × pool × module × signal matrix (Pato, 2026-08-28;
-// Result Entities added 2026-09-02).
-// Four bands: Result Entities · Places Types · Search Modules · Places
-// Lineup Signals. Rules separate the bands. Map Randomness is off, not a
-// printed 0.
+// Locked mode × entity × pool × source × signal matrix (Pato, 2026-08-28;
+// Result Entities added 2026-09-02; Modules became Sources 2026-09-02).
+// Four bands: Result Entities · Places Types · Search Sources · Mesita
+// Places Search Signals. Rules separate the bands. Map Randomness is off,
+// not a printed 0.
 //
 // RESULT ENTITIES LEADS because it answers the first question an operator
 // asks of a mode — what comes back — and the three bands under it are the
@@ -58,7 +58,7 @@ export function DiscoveryMatrix() {
     <SectionCard
       icon={<LayoutGrid className="text-muted-foreground size-4" />}
       title="Discovery matrix"
-      subtitle="Locked. Modes across the top. Result Entities, Places Types, Search Modules, then Places Lineup Signals. Chips on the cards below repeat the green modules."
+      subtitle="Locked. The six modes across the top. Result Entities, Places Types, Search Sources, then the signals that rank them. Chips on the cards below repeat the green sources."
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[52rem] border-collapse text-left">
@@ -116,18 +116,18 @@ export function DiscoveryMatrix() {
               </tr>
             ))}
             <BandRule />
-            <BandTitle title="Search Modules" />
-            {DISCOVERY_MODULES.map((module) => (
-              <tr key={module} className="border-border/60 border-b">
-                <th className="type-label font-medium pr-3 py-2">{module}</th>
+            <BandTitle title="Search Sources" />
+            {DISCOVERY_SOURCES.map((source) => (
+              <tr key={source} className="border-border/60 border-b">
+                <th className="type-label font-medium pr-3 py-2">{source}</th>
                 {DISCOVERY_MODE_KEYS.map((mode) => {
-                  const on = modeCallsModule(mode, module);
+                  const on = modeCallsSource(mode, source);
                   return (
                     <td key={mode} className="px-1.5 py-2 text-center">
                       <Flag
                         on={on}
                         shape="square"
-                        label={`${module} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "on" : "off"}`}
+                        label={`${source} · ${DISCOVERY_MODE_LABELS[mode]} · ${on ? "on" : "off"}`}
                       />
                     </td>
                   );
@@ -135,15 +135,13 @@ export function DiscoveryMatrix() {
               </tr>
             ))}
             <BandRule />
-            <BandTitle title="Places Lineup Signals" />
+            <BandTitle title="Mesita Places Search Signals" />
             {LIBRARY_SIGNALS.map((row) => {
               const label =
                 SIGNALS.find((s) => s.key === row.key)?.label ?? row.key;
               return (
                 <tr key={row.key} className="border-border/60 border-b last:border-0">
-                  <th className="type-label font-medium pr-3 py-2">
-                    Places Lineup {label}
-                  </th>
+                  <th className="type-label font-medium pr-3 py-2">{label}</th>
                   {DISCOVERY_MODE_KEYS.map((mode) => {
                     const state = modeSignalState(mode, row.key);
                     return (
@@ -151,7 +149,7 @@ export function DiscoveryMatrix() {
                         <Flag
                           on={state === "on"}
                           shape="circle"
-                          label={`Places Lineup ${label} · ${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
+                          label={`${label} · ${DISCOVERY_MODE_LABELS[mode]} · ${state === "on" ? "on" : "off"}`}
                         />
                       </td>
                     );

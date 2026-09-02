@@ -56,15 +56,23 @@ import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
 
-/** The eight earned signals, in the order the Lineup table renders them. */
+/**
+ * The eight earned signals, in Notion Docs > Discovery section 8.3 order:
+ * what the caller ASKED FOR first (name, summary, category), then what the
+ * world is (proximity, timing), then where the place sits with us
+ * (mesita_level, popularity), then the tie-breaker.
+ *
+ * ORDER IS PRESENTATION ONLY. The blend is a product of `s^w`, so it is
+ * commutative; nothing downstream may read a signal by index.
+ */
 export const SIGNAL_KEYS = [
   "name",
   "summary",
+  "category",
   "proximity",
   "timing",
-  "category",
-  "popularity",
   "mesita_level",
+  "popularity",
   "randomness",
 ] as const;
 
