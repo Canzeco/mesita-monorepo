@@ -400,24 +400,30 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar ALONE", () => {
-  it("renders no Filters control and reads the DEFAULTS, not the guest store", () => {
+describe("Search map's top row is the query bar ALONE, and Filters sits below", () => {
+  it("keeps the Filters control OFF the bar's row and ON the bottom overlay", () => {
     const src = read("SearchClient.tsx");
-    // The control is gone from the page (Pato, 2026-09-02).
+    const overlays = read("search-catalog-overlays.tsx");
+    // OFF THE TOP ROW. It escalated three times trying to be seen next to the
+    // bar (icon-only -> label -> primary-filled) before coming off entirely.
     expect(src).not.toContain("SearchFilterRow");
-    expect(src).not.toContain("SearchMapFilters");
-    expect(src).not.toContain("mapFilterCount");
-    expect(src).not.toContain("setFiltersOpen");
-    // And so is the READ of the persisted store. This is the half that would
-    // rot silently: the store lives in sessionStorage, so deleting only the
-    // button would leave whatever was last applied cutting the catalog with
-    // nothing on screen to clear it.
-    expect(src).not.toContain("useMapFilters");
-    expect(src).not.toContain("resetMapFilters");
-    expect(src).not.toContain("mapFiltersAreActive");
-    expect(src).toContain("MAP_FILTER_DEFAULTS");
-    // The default lane cut and the closest-N slice both stay — they are the
-    // mode's own defaults, not a filter a guest switched on.
+    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
+    // ON THE BOTTOM OVERLAY, next to the count it changes.
+    expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
+    expect(src).toContain("filterCount={mapFilterCount(filters)}");
+    expect(overlays).toContain("SlidersHorizontal");
+    expect(overlays).toContain("filtersPill");
+    // The sheet is still the body behind the pill.
+    expect(src).toContain("SearchMapFilters");
+    // THE STORE READ AND THE CONTROL SHIP TOGETHER, always. While the control
+    // was gone this file read MAP_FILTER_DEFAULTS, because useMapFilters
+    // persists in sessionStorage and a filter with no visible control is one
+    // nobody can clear. Either both are here or neither is.
+    expect(src).toContain("const filters = useMapFilters()");
+    expect(src).toContain("resetMapFilters");
+    // The assignment, not the word — the comment above it names the constant
+    // to explain why the defaults were a stopgap and are not the law now.
+    expect(src).not.toContain("const filters = MAP_FILTER_DEFAULTS");
     expect(src).toContain("applyMapFilters");
     expect(src).toContain("takeMapResultLimit");
     expect(src).not.toContain("SearchCategoryRow");

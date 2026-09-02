@@ -25,30 +25,43 @@ export const CONSUMER_ROUTES = {
   // me" with no query at all. So the typed control lives on the pins, and the
   // word Search names the mode that carries it.
   //
-  // HOME is what is left once the bar moves off the list: CatalogRails on their
-  // own, a browse surface with no query. It carries NO search bar — two typed
-  // inputs one pill apart was the redundancy that started this.
+  // CATALOG is what is left once the bar moves off the list: CatalogRails on
+  // their own, a browse surface with no query. It carries NO search bar — two
+  // typed inputs one pill apart was the redundancy that started this.
   //
-  // TWO "HOME" URLS EXIST AND THEY ARE NOT THE SAME SCREEN (Pato, 2026-09-01,
-  // choosing the name over this objection). `/discover/home` is this mode.
+  // IT IS "CATALOG", NOT "HOME" (Pato, 2026-09-02), reversing the 2026-09-01
+  // call. Home only ever won on width — the rail is `auto-cols-fr`, so every
+  // column sizes to the widest pill, and Catalog overflowed the 359px track by
+  // 7px. DiscoverModeNav pays that 7px with `type-label` and the word says what
+  // the screen is. Three things had made Home ambiguous:
+  //   1. HOME WAS NOT THE HOME. `discoverDefault` is Search, so the pill named
+  //      for the landing screen was the one screen you never landed on.
+  //   2. TWO "HOME" URLS EXISTED AND WERE NOT THE SAME SCREEN — the objection
+  //      logged here on 2026-09-01 and overruled at the time.
+  //   3. `home` IS THE SWIPE DECK IN CODE — HomeDeckBoundary, HomeDeckContext,
+  //      components/consumer/home/swipe/. That namespace is the deck's.
+  // Catalog also rejoins the vocabulary every other surface already speaks: the
+  // `catalog` mode key, CatalogRails, `consumer-web-list-catalog`, the Catalog
+  // column in the admin Discovery matrix, and the mode list in Docs > Discovery.
+  //
   // Bare `/home` and every `/home/*` leaf are the RETIRED hub's redirects and
   // still 308 to the Discover default, which is Search. Do not "tidy" them to
-  // point at /discover/home: they were the old hub's URLs, the hub is gone, and
-  // the default is where a stale bookmark belongs. Read the redirect table in
-  // next.config.ts before touching either.
+  // point at /discover/catalog: they were the old hub's URLs, the hub is gone,
+  // and the default is where a stale bookmark belongs. Read the redirect table
+  // in next.config.ts before touching either.
   //
-  // All five are live. CatalogRails is Home's whole body; SocialFeed stays on
-  // disk and mounts INTO Home when it un-parks, rather than getting a route.
+  // All five are live. CatalogRails is Catalog's whole body; SocialFeed stays
+  // on disk and mounts INTO Catalog when it un-parks, not as its own route.
   discover: "/discover",
   discoverTabs: {
-    home: "/discover/home",
+    catalog: "/discover/catalog",
     search: "/discover/search",
     swipe: "/discover/swipe",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
   // DEFAULT IS NOT FIRST, deliberately — the same call Activity makes with bare
-  // /inbox landing on Visits while Alerts leads the row. Home leads because
+  // /inbox landing on Visits while Alerts leads the row. Catalog leads because
   // browsing is the calmer entry, but a guest opening Discover wants the map:
   // it needs no typing and answers "what is near me" on its own. Every /home*,
   // /explore* and /search 308 points straight here, never through
@@ -160,8 +173,13 @@ export const CONSUMER_ROUTES = {
     // now, so this is the forwarding address. It was the Discover default and
     // every /home* and /explore* pointed at it, so the bookmarks are real.
     discoverMap: "/discover/map",
-    // Home's segment for the hour it shipped as Feed (#1447 -> #1448).
+    // Catalog's segment for the hour it shipped as Feed (#1447 -> #1448).
     discoverFeed: "/discover/feed",
+    // And for the day it shipped as Home (#1448 -> 2026-09-02). Live in
+    // production both times, so both bookmarks are real and both forward
+    // STRAIGHT to /discover/catalog — never Feed through Home through Catalog,
+    // which would be the 3-hop chain T4 refuses.
+    discoverHome: "/discover/home",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",

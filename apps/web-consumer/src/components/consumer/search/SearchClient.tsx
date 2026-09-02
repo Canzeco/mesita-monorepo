@@ -69,9 +69,13 @@ import { SearchBar } from "./SearchBar";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   applyMapFilters,
-  MAP_FILTER_DEFAULTS,
+  mapFilterCount,
+  mapFiltersAreActive,
   takeMapResultLimit,
 } from "@/lib/map-filters-engine";
+import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import {
   SearchRailOverlay,
@@ -158,16 +162,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  // THE FILTERS CONTROL IS GONE FROM SEARCH (Pato, 2026-09-02). The bar and
-  // the map are the surface; a second control competing with them on the one
-  // row this mode can spend on chrome was not earning it.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // THE FILTERS CONTROL MOVED, IT DID NOT LEAVE (Pato, 2026-09-02). It came off
+  // the top row earlier the same day for competing with the search bar, and the
+  // next question was "where are the filters???" — so it lives in the BOTTOM
+  // overlay now, beside the count it changes. SearchRailOverlay owns the pill.
   //
-  // Search reads the DEFAULTS, not the guest store, and that is the whole
-  // point: the store persists in sessionStorage, so deleting only the button
-  // would have left whatever was last applied cutting the catalog forever
-  // with nothing on screen to clear it — an invisible filter is worse than a
-  // visible one. Swipe keeps its own predicates sheet; that store is separate.
-  const filters = MAP_FILTER_DEFAULTS;
+  // The store read comes back WITH it, and that pairing is the rule: while the
+  // control was gone this read `MAP_FILTER_DEFAULTS`, because `useMapFilters`
+  // persists in sessionStorage and a filter nobody can see is worse than one
+  // they can. A visible control makes the persisted set legitimate again.
+  const filters = useMapFilters();
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
@@ -179,13 +184,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  // Closest first by distance_km, then the default How many keeps 20. The
-  // lane cut stays: default scope is Mesita Places, and that is the mode's
-  // own default, not something a guest switched on and can no longer see.
+  // Closest first by distance_km, then How many keeps 20 / 40 / 60.
   const catalog = useMemo(() => {
     const cut = applyMapFilters(nearby, filters);
     return takeMapResultLimit(cut, filters.resultLimit);
   }, [nearby, filters]);
+  const filtersCutCatalog =
+    nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
@@ -808,11 +813,25 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onRailScroll={handleRailScroll}
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}
+          onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
+          filterCount={mapFilterCount(filters)}
+          onOpenFilters={() => setFiltersOpen(true)}
           setRailCardRef={(placeId, el) => {
             railRefs.current.set(placeId, el);
           }}
         />
       )}
+
+      <LocalSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        ariaLabel="Filters"
+      >
+        <SearchMapFilters
+          onClose={() => setFiltersOpen(false)}
+          count={catalog.length}
+        />
+      </LocalSheet>
 
       {/* From-Google preview + Add. NOT search chrome: the catalog carries
           Google-only places (grey pins), so a pin or rail-card tap reaches

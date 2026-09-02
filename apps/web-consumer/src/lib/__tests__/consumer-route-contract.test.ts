@@ -41,11 +41,11 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // moved to /discover precisely so the typed mode could be a real segment
       // instead of /search/search.
       discover: "/discover",
-      // FIVE modes. SEARCH IS THE MAP and carries the search bar; FEED is the
-      // catalog rails with no bar at all. SocialFeed mounts INTO Feed when it
-      // un-parks rather than getting a route back.
+      // FIVE modes. SEARCH IS THE MAP and carries the search bar; CATALOG is
+      // the catalog rails with no bar at all. SocialFeed mounts INTO Catalog
+      // when it un-parks rather than getting a route back.
       discoverTabs: {
-        home: "/discover/home",
+        catalog: "/discover/catalog",
         search: "/discover/search",
         swipe: "/discover/swipe",
         chat: "/discover/chat",
@@ -88,6 +88,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         search: "/search",
         discoverMap: "/discover/map",
         discoverFeed: "/discover/feed",
+        discoverHome: "/discover/home",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
@@ -277,11 +278,19 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/discover/search",
         permanent: true,
       },
-      // Home shipped as "Feed" for about an hour. It was live in production,
-      // so it forwards like any other retired url.
+      // The browse mode shipped as "Feed" for about an hour and as "Home" for
+      // a day. Both were live in production, so both forward like any other
+      // retired url — and both land STRAIGHT on /discover/catalog. Feed must
+      // never be re-pointed through /discover/home: that is a 3-hop chain and
+      // route-structure T4 caps it at exactly 2.
       {
         source: "/discover/feed",
-        destination: "/discover/home",
+        destination: "/discover/catalog",
+        permanent: true,
+      },
+      {
+        source: "/discover/home",
+        destination: "/discover/catalog",
         permanent: true,
       },
       { source: "/invite", destination: "/share", permanent: true },

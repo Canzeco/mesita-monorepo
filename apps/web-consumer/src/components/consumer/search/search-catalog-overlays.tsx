@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { ChevronUp, MapPin, Search, X } from "lucide-react";
+import { ChevronUp, MapPin, Search, SlidersHorizontal, X } from "lucide-react";
 
 import type { Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -65,6 +65,8 @@ export function SearchRailOverlay({
   onSelectPlace,
   onOpenPlace,
   onResetFilters,
+  filterCount = 0,
+  onOpenFilters,
   setRailCardRef,
 }: {
   idle: boolean;
@@ -83,9 +85,54 @@ export function SearchRailOverlay({
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
   onResetFilters?: () => void;
+  /** Applied-filter count for the badge. 0 renders the resting pill. */
+  filterCount?: number;
+  /** Omitted = no Filters pill at all, which is how Pay and any other
+   *  non-map caller of this overlay keeps its bottom row clean. */
+  onOpenFilters?: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   if (!idle) return null;
+
+  // FILTERS LIVE DOWN HERE (Pato, 2026-09-02), beside the count they change.
+  //
+  // It rode the top row until 2026-09-02 and kept escalating to be seen —
+  // icon-only, then a label, then primary-filled — because it was competing
+  // with the search bar for the one row this mode can spend on chrome. Then it
+  // came off entirely, and the answer was "where are the filters???".
+  //
+  // Down here it is not competing with anything, and it sits next to the
+  // number it edits: "2 / 16 places" and the control that decides the 16. It
+  // cannot go directly UNDER the bar either — the results dropdown owns that
+  // space and would cover it the moment anyone typed.
+  //
+  // It wears the COUNTER's chrome, not the old top-row button's: same
+  // type-label, same border and blur, so the two read as one cluster rather
+  // than a small pill next to a shouting one.
+  const filtersPill = onOpenFilters ? (
+    <button
+      type="button"
+      onClick={onOpenFilters}
+      aria-label={
+        filterCount > 0 ? `Filters, ${filterCount} applied` : "Filter places"
+      }
+      aria-haspopup="dialog"
+      className={cn(
+        "shadow-rest type-label flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold backdrop-blur transition active:scale-95",
+        filterCount > 0
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card/95 text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <SlidersHorizontal className="h-3 w-3 shrink-0" strokeWidth={2.25} />
+      Filters
+      {filterCount > 0 && (
+        <span className="bg-primary-foreground/25 ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none font-bold tabular-nums">
+          {filterCount}
+        </span>
+      )}
+    </button>
+  ) : null;
 
   if (overspan) {
     return (
@@ -120,7 +167,8 @@ export function SearchRailOverlay({
         railCollapsed ? (
           // Dismissed -> a single floating pill reopens the rail. Tapping
           // any pin reopens it too (handleSelectPlace).
-          <div className="flex justify-center">
+          <div className="flex items-center justify-center gap-1.5">
+            {filtersPill}
             <button
               type="button"
               onClick={onShowRail}
@@ -143,7 +191,8 @@ export function SearchRailOverlay({
                 {truncated}
               </p>
             )}
-            <div className="mb-2 flex justify-center">
+            <div className="mb-2 flex items-center justify-center gap-1.5">
+              {filtersPill}
               <span className="border-border bg-card/95 text-muted-foreground shadow-rest type-label flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-2.5 font-semibold tabular-nums backdrop-blur">
                 {catalogLoading ? (
                   <Spinner size="sm" label="Updating nearby places" />
@@ -211,15 +260,21 @@ export function SearchRailOverlay({
                 ? "No places match these filters"
                 : "No places to show here yet."}
             </p>
-            {onResetFilters && (
-              <button
-                type="button"
-                onClick={onResetFilters}
-                className="text-primary text-xs font-semibold"
-              >
-                Reset filters
-              </button>
-            )}
+            {/* Empty because the filters cut everything is the ONE state that
+                most needs the filters reachable — Reset is the blunt way out,
+                the pill is the way to fix one predicate and keep the rest. */}
+            <div className="flex items-center gap-2">
+              {filtersPill}
+              {onResetFilters && (
+                <button
+                  type="button"
+                  onClick={onResetFilters}
+                  className="text-primary text-xs font-semibold"
+                >
+                  Reset filters
+                </button>
+              )}
+            </div>
           </div>
         )
       )}
