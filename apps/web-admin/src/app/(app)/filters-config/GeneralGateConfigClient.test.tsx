@@ -80,7 +80,7 @@ describe("Discovery General — the post-Google wipe", () => {
     ).toBe(false);
   });
 
-  it("edits only its own slice — Google types stay on Modules", () => {
+  it("edits only its own slice — Google types stay on Search Sources", () => {
     const html = render();
     expect(html).not.toContain("Google categories");
     expect(html).not.toContain("Categories available");

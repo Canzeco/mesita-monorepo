@@ -18,7 +18,8 @@ import {
 // Locked mode × entity × pool × source × signal matrix (Pato, 2026-08-28;
 // Result Entities added 2026-09-02; Modules became Sources 2026-09-02).
 // Four bands: Result Entities · Places Types · Search Sources · Mesita
-// Places Search Signals. Rules separate the bands. Map Randomness is off,
+// Places Search Signals. The third band names the subpage that configures
+// it — the tab followed the band here, not the other way round. Rules separate the bands. Map Randomness is off,
 // not a printed 0.
 //
 // RESULT ENTITIES LEADS because it answers the first question an operator

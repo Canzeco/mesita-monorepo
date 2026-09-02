@@ -2,7 +2,8 @@
 
 // Map hyperparameters — live. Places scope picks one of TWO nested sets
 // (Mesita Places ⊂ Google Places). Closest N of that set; inner
-// membership paints, it does not add pins. Google types live on Modules.
+// membership paints, it does not add pins. Google types live on the
+// Search Sources subpage.
 //
 // MESITA PLACES MEANS CREATED **AND** ENRICHED (Pato, 2026-08-29) — the
 // honest name is Mesita Enriched Places, shortened on the guest's sheet.
@@ -12,7 +13,8 @@
 //
 // THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29). How
 // many is the guest's How many; the operator only decides IF Google may
-// be called (Modules › googleFill + types). Never re-add a count knob.
+// be called (Search Sources › Google types, plus googleFill here). Never
+// re-add a count knob.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Map as MapIcon, RefreshCw } from "lucide-react";
