@@ -15,6 +15,34 @@ import { invokeEF } from "./_invoke";
 
 export { apiSuggestPlaces, type PlacePrediction, type SuggestPlacesMode } from "./places";
 
+/** Where a picked Location lands the camera; viewport decides the zoom. */
+export type LocationAnchor = {
+  lat: number;
+  lng: number;
+  viewport: {
+    low: { lat: number; lng: number };
+    high: { lat: number; lng: number };
+  } | null;
+};
+
+/**
+ * Resolve a picked Location's coordinates — ONE Details call per pick,
+ * never per keystroke (MESITA-1403). The map anchor (MESITA-1405)
+ * consumes this when a `kind: "location"` row is chosen from the bar.
+ */
+export async function apiResolveLocationAnchor(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<LocationAnchor> {
+  const { anchor } = await invokeEF<{ anchor: LocationAnchor }>(
+    client,
+    "consumer-web-suggest-places",
+    { anchorPlaceId: placeId },
+    "Couldn't open that location right now.",
+  );
+  return anchor;
+}
+
 type CreatedProject = {
   ok: boolean;
   /** The freshly created ugly profile (ready, not Enriched). */

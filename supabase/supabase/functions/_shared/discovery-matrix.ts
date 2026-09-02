@@ -1,13 +1,24 @@
-// Discovery mode × entity × pool × module × signal matrix.
+// Discovery mode × entity × pool × source × signal matrix.
 //
 // SPEC MIRROR, NOT A DISPATCHER. Twin of admin
 // `apps/web-admin/.../filters-config/catalog.ts` DISCOVERY_MODE_*. Change one,
 // change the other. Vercel root is apps/web-admin so that bundle cannot import
-// this file.
+// this file. Do not dispatch from modeCallsSource.
 //
-// Deep does not call Nearby Search. That cell is red. Guest pin bias on
-// Autocomplete / Text Search / name match is not this API. Do not
-// dispatch from modeCallsModule.
+// TWO NOUNS, AND ONLY TWO: a **Mode** is a guest Discovery surface, a
+// **Source** is a retrieval mechanism a mode calls. `module` is retired —
+// these things do not modularize anything, they fetch. Spanish decided it:
+// *modo / módulo* differ by two letters, *modo / fuente* cannot be confused.
+//
+// SIX MODES (Notion Docs > Discovery section 8.1). Word is the searchbar —
+// fast, deep, and the one mode that can answer with a Location. Map is the
+// pins. They share a screen and are still two modes, because they answer with
+// different sets from different sources. Social left the mode list; its
+// retrieval survives as the two Social sources below.
+//
+// NINE SOURCES (section 8.2). `Search` survives only where it quotes an
+// endpoint Google itself named that way, plus the Mesita four that mirror
+// them. Perplexity is not a Source: Chat has no external retrieval behind it.
 
 import {
   SIGNAL_KEYS,
@@ -15,13 +26,11 @@ import {
 } from "./discovery-signals.ts";
 
 export const DISCOVERY_MODE_KEYS = [
-  "fast",
-  "deep",
+  "word",
   "map",
-  "swipe",
   "catalog",
+  "swipe",
   "chat",
-  "social",
   "favorites",
 ] as const;
 
@@ -40,24 +49,21 @@ export const DISCOVERY_ENTITIES = [
 export type DiscoveryEntityKey = (typeof DISCOVERY_ENTITIES)[number]["key"];
 
 /**
- * Autocomplete is the ONE module that answers with Locations, and it returns
- * them in the SAME call as the Places — not a second request. So the modes
- * that can hand back a Location are exactly the modes that call Autocomplete:
- * Name (Fast) and Name (Deep). Text Search returns Places even when the query
- * reads like a city, so Deep's Location rows only ever come from its
- * Autocomplete query.
+ * Autocomplete is the ONE source that answers with Locations, and it returns
+ * them in the SAME call as the Places — not a second request. So the mode
+ * that can hand back a Location is exactly the mode that calls Autocomplete:
+ * Word. Text Search returns Places even when the query reads like a city, so
+ * Word's Location rows only ever come from its Autocomplete query.
  */
 export const DISCOVERY_MODE_ENTITIES: Record<
   DiscoveryModeKey,
   readonly DiscoveryEntityKey[]
 > = {
-  fast: ["place", "location"],
-  deep: ["place", "location"],
+  word: ["place", "location"],
   map: ["place"],
-  swipe: ["place"],
   catalog: ["place"],
+  swipe: ["place"],
   chat: ["place"],
-  social: ["place"],
   favorites: ["place"],
 };
 
@@ -73,44 +79,63 @@ export const DISCOVERY_MODE_POOLS: Record<
   DiscoveryModeKey,
   readonly DiscoveryPoolKey[]
 > = {
-  fast: [],
-  deep: [],
+  word: [],
   map: [],
-  swipe: ["google", "listed"],
   catalog: ["google", "listed"],
+  swipe: ["google", "listed"],
   chat: [],
-  social: ["google", "listed"],
   favorites: ["google"],
 };
 
-export const DISCOVERY_MODULES = [
-  "Google Places Autocomplete",
+export const DISCOVERY_SOURCES = [
+  "Google Places Autocomplete Search",
   "Google Places Text Search",
   "Google Places Nearby Search",
-  "Perplexity Search",
-  "Perplexity Agent",
-  "Mesita Places Lineup",
-  "Mesita Social Lineup",
+  "Mesita Places Name Search",
+  "Mesita Places Nearby Search",
+  "Mesita Places Browse Search",
+  "Mesita Places Flexible Search",
+  "Mesita Social Browse Search",
+  "Mesita Social Flexible Search",
 ] as const;
 
-export const DISCOVERY_MODE_MODULES = {
-  fast: ["Google Places Autocomplete"],
-  deep: [
-    "Google Places Autocomplete",
+/**
+ * Locked mode → sources.
+ *
+ * THE FOUR MESITA PLACES SOURCES ARE TOLD APART BY WHAT DRAWS THE CANDIDATE
+ * SET, never by what ranks it — Lineup ranks all four the same way, under the
+ * mode's own signal mask:
+ *
+ *   Name      a string, matched on `places.name_embedding`   → Word
+ *   Nearby    a centre and a radius, closest-N               → Map
+ *   Browse    no query at all, the catalog itself            → Catalog
+ *   Flexible  an arbitrary set of predicates                 → Swipe, Chat
+ *
+ * SWIPE IS FLEXIBLE, NOT BROWSE, and the difference is the guest's own filter
+ * sheet: Swipe admits on four predicates it was handed, Catalog admits on
+ * nothing and rails whatever the catalog holds.
+ *
+ * THE SOCIAL SOURCES OUTLIVED THE SOCIAL MODE. Social answers with events a
+ * place hosts, not with places, and it lost its own surface when the mode list
+ * became six — so its two sources hang off the two modes that can carry an
+ * event: Catalog rails it, Chat is asked about it. Both are still Soon; no
+ * events engine exists.
+ */
+export const DISCOVERY_MODE_SOURCES = {
+  word: [
+    "Google Places Autocomplete Search",
     "Google Places Text Search",
-    "Mesita Places Lineup",
+    "Mesita Places Name Search",
   ],
-  map: ["Google Places Nearby Search", "Mesita Places Lineup"],
-  swipe: ["Mesita Places Lineup"],
-  catalog: ["Mesita Places Lineup"],
+  map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
+  catalog: ["Mesita Places Browse Search", "Mesita Social Browse Search"],
+  swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",
     "Google Places Nearby Search",
-    "Perplexity Search",
-    "Perplexity Agent",
-    "Mesita Places Lineup",
+    "Mesita Places Flexible Search",
+    "Mesita Social Flexible Search",
   ],
-  social: ["Mesita Social Lineup"],
   favorites: [],
 } as const;
 
@@ -118,41 +143,33 @@ export const DISCOVERY_MODE_SIGNALS: Record<
   DiscoveryModeKey,
   readonly SignalKey[]
 > = {
-  fast: [],
-  deep: ["name"],
-  map: [
+  word: ["name"],
+  map: ["category", "proximity", "timing", "mesita_level", "popularity"],
+  catalog: [
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
-  ],
-  swipe: [
-    "proximity",
-    "timing",
-    "category",
     "popularity",
-    "mesita_level",
     "randomness",
   ],
-  catalog: [
+  swipe: [
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
+    "popularity",
     "randomness",
   ],
   chat: [
     "name",
     "summary",
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
+    "popularity",
   ],
-  social: [],
   favorites: [],
 };
 
@@ -176,8 +193,8 @@ export function modeRequiresPool(
   return DISCOVERY_MODE_POOLS[mode].includes(pool);
 }
 
-export function modeCallsModule(mode: DiscoveryModeKey, module: string): boolean {
-  return (DISCOVERY_MODE_MODULES[mode] as readonly string[]).includes(module);
+export function modeCallsSource(mode: DiscoveryModeKey, source: string): boolean {
+  return (DISCOVERY_MODE_SOURCES[mode] as readonly string[]).includes(source);
 }
 
 export function modeSignalState(

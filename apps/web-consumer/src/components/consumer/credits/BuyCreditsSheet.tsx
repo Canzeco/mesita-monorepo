@@ -76,6 +76,8 @@ export function BuyCreditsSheet({
   onBuy,
   busy,
   policy,
+  heldCents,
+  onHoldCents,
 }: {
   open: boolean;
   onClose: () => void;
@@ -83,6 +85,10 @@ export function BuyCreditsSheet({
   busy: boolean;
   /** Console-owned terms. A place's own values win where it set them. */
   policy: ControlsPolicy;
+  /** Everything already held, across every place. */
+  heldCents: number;
+  /** The part of it still inside a hold, and therefore spendable nowhere. */
+  onHoldCents: number;
 }) {
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [paidCents, setPaidCents] = useState<number>(AMOUNTS[1]);
@@ -104,6 +110,27 @@ export function BuyCreditsSheet({
       <div className={SHEET_TITLE_CLASS}>Buy Credits</div>
       <div className={SHEET_BODY_CLASS}>
         <div className="flex flex-col gap-5">
+          {/* WHAT YOU ALREADY HOLD (2026-09-02 design review). This line used
+              to lead the Wallet itself, where it was the first thing read on a
+              screen whose subject was underneath it — and it describes money
+              that can be spent nowhere but the place that issued it. Here it is
+              standing where a guest is deciding whether to add more, which is
+              the one moment the number is actually load-bearing. Suppressed at
+              zero: a first-time buyer does not need to be told they hold
+              nothing. */}
+          {heldCents > 0 && (
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              <span className="text-foreground text-sm font-bold tabular-nums">
+                {formatCurrency(heldCents)}
+              </span>{" "}
+              already held
+              {onHoldCents > 0 && (
+                <> · {formatCurrency(onHoldCents)} still inside its hold</>
+              )}{" "}
+              · spendable only where you paid
+            </p>
+          )}
+
           <div>
             <div className="type-eyebrow text-muted-foreground mb-2">
               Where

@@ -144,6 +144,9 @@ const COLUMNS: readonly string[] = [
   "last_strike_at",
   "promo_paused_until",
   "plan_forfeited_at",
+  // Ghost-partner hold (MESITA-1311) — a lane input like the strike columns,
+  // stripped for guests by BUSINESS_PRIVATE_PLACE_KEYS at the wire.
+  "reward_lane_pending_review_at",
 ];
 
 // Consumer reads — used by every public/consumer-facing EF. No `updated_at`

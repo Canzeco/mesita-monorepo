@@ -692,6 +692,11 @@ verify_jwt = true
 [functions.admin-web-set-plan]
 verify_jwt = true
 
+# Ghost-partner hold triage (MESITA-1311): confirm/dismiss a guest report,
+# restore the reward lane when review ends. Super-admin gated in-function.
+[functions.admin-web-review-ticket-report]
+verify_jwt = true
+
 [functions.admin-web-set-place-listed]
 verify_jwt = true
 

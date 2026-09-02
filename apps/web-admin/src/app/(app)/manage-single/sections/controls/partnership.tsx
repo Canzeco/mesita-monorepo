@@ -227,6 +227,9 @@ export function PartnershipBody({
   member,
   joinBusy,
   joinError,
+  restoreBusy,
+  restoreError,
+  onRestoreClick,
   onJoinClick,
   onDropClick,
 }: {
@@ -236,6 +239,9 @@ export function PartnershipBody({
   member: boolean;
   joinBusy: boolean;
   joinError: string | null;
+  restoreBusy: boolean;
+  restoreError: string | null;
+  onRestoreClick: () => void;
   onJoinClick: () => void;
   onDropClick: () => void;
 }) {
@@ -244,10 +250,13 @@ export function PartnershipBody({
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
-  const canDrop = !notMember && !forfeited;
+  const underReview = pillState === "review";
+  // The review pill masks the membership fact, so gate drop on `member`
+  // directly — a held member may still drop (the hold survives the drop).
+  const canDrop = member && !forfeited;
   const showJoin = notMember || forfeited;
 
-  const nextLine = notMember
+  const nextLine = notMember || underReview
     ? null
     : forfeited
       ? "Re-join Partnership to clear the forfeit and strikes; then pick a strategy again."
@@ -297,6 +306,26 @@ export function PartnershipBody({
           <p className="text-muted-foreground text-xs leading-snug">
             {nextLine}
           </p>
+        )}
+
+        {underReview && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onRestoreClick}
+              disabled={restoreBusy}
+              className="border-border bg-card hover:bg-muted/60 inline-flex h-9 w-fit items-center rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-60"
+            >
+              {restoreBusy ? "Restoring…" : "Restore Visit Rewards"}
+            </button>
+            <p className="text-muted-foreground type-meta leading-snug">
+              Ends the review — the lane reopens to whatever the strike
+              ladder already says.
+            </p>
+            <div aria-live="polite">
+              {restoreError && <ErrorNote message={restoreError} />}
+            </div>
+          </div>
         )}
 
         {showJoin && (
@@ -383,14 +412,16 @@ export function MembershipStatusPill({ state }: { state: MembershipPillState }) 
     live: "Partner — live",
     paused: "Paused",
     forfeited: "Forfeited",
+    review: "Under review",
   };
   const liveish = state === "live" || state === "pending";
+  const amber = state === "paused" || state === "review";
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-meta font-bold tracking-wide uppercase",
         state === "forfeited" && "bg-destructive/10 text-destructive",
-        state === "paused" && "bg-amber-500/12 text-amber-800",
+        amber && "bg-amber-500/12 text-amber-800",
         liveish && "bg-emerald-500/12 text-emerald-700",
         state === "not_member" && "bg-muted text-muted-foreground",
       )}
@@ -399,7 +430,7 @@ export function MembershipStatusPill({ state }: { state: MembershipPillState }) 
         className={cx(
           "h-1.5 w-1.5 rounded-full",
           state === "forfeited" && "bg-destructive",
-          state === "paused" && "bg-amber-500",
+          amber && "bg-amber-500",
           liveish && "bg-emerald-500",
           state === "not_member" && "bg-muted-foreground/50",
         )}

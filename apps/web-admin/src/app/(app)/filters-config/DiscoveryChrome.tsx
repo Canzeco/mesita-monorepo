@@ -5,7 +5,7 @@ import { ConfigTabNav } from "@/components/ConfigTabNav";
 import { PageHeader } from "@/components/PageContainer";
 import { DISCOVERY_TABS } from "./nav";
 
-// Title follows the active subpage: Discovery Modes · Discovery Modules.
+// Title follows the active subpage: Discovery Modes · Discovery Sources.
 export function DiscoveryChrome() {
   const pathname = usePathname();
   const tab = DISCOVERY_TABS.find(

@@ -92,7 +92,9 @@ export function LifecycleStepper({
     view.honor === "blocked"
       ? forfeited
         ? "Partnership forfeited after 3 strikes — re-join on this page."
-        : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
+        : pillState === "review"
+          ? "Visit Rewards are under review after a confirmed guest report — Mesita reactivates them when the review ends."
+          : `Discounts paused until ${String(place.promo_paused_until ?? "").slice(0, 10)} (strike 2 of 3).`
       : view.honor === "current"
         ? "Staff scan the guest's QR on Mesita Validate — honor the first check at the bill to go live."
         : view.honor === "done"

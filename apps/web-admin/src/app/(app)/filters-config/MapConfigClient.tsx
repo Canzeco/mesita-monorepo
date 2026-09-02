@@ -27,12 +27,12 @@ import {
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
-  DISCOVERY_MODE_MODULES,
+  DISCOVERY_MODE_SOURCES,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
   type MapConfig,
 } from "./catalog";
-import { ModeModuleChips } from "./ModeModuleChips";
+import { ModeSourceChips } from "./ModeSourceChips";
 
 export function MapConfigClient({
   initialConfig,
@@ -115,7 +115,7 @@ export function MapConfigClient({
           />
         }
       >
-        <ModeModuleChips modules={DISCOVERY_MODE_MODULES.map} />
+        <ModeSourceChips sources={DISCOVERY_MODE_SOURCES.map} />
         <div className="mt-5">
           <p className="type-label text-muted-foreground mb-1 font-semibold tracking-wide">
             Places sets

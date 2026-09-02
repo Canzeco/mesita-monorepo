@@ -1,9 +1,13 @@
 "use client";
 
-// Name hyperparameters — live. Two boxes, one blob (`discovery_config.name`).
-// Fast Search is Autocomplete only. Deep Search concatenates four independent
-// queries: Autocomplete → Text Search → Mesita Places → Mesita Partners.
-// Overlaps drop; first query keeps the slot. Deep never calls Nearby Search.
+// Word hyperparameters — live. TWO BOXES, ONE MODE (Docs > Discovery 8.1):
+// Fast and Deep are the searchbar's two passes, not two modes, and they share
+// one blob (`discovery_config.name`, whose `fast` / `deep` slices keep their
+// stored names). Fast Search is Autocomplete only. Deep Search concatenates
+// four independent queries: Autocomplete → Text Search → Mesita Places →
+// Mesita Partners. Overlaps drop; first query keeps the slot. Word never
+// calls Nearby Search — the guest pin biases the two Google calls, and a bias
+// is not a call.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -25,13 +29,16 @@ import {
 import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
-  DISCOVERY_MODE_MODULES,
+  DISCOVERY_MODE_SOURCES,
   NAME_LANE_COUNT_MAX,
   type DiscoveryConfig,
   type NameDeepConfig,
   type NameFastConfig,
 } from "./catalog";
-import { ModeModuleChips } from "./ModeModuleChips";
+import { ModeSourceChips } from "./ModeSourceChips";
+
+/** Word's Fast pass stops at Autocomplete; Deep adds the other two. */
+const WORD_FAST_SOURCES = ["Google Places Autocomplete Search"] as const;
 
 export function NameConfigClient({
   initialConfig,
@@ -112,10 +119,10 @@ export function NameConfigClient({
     <div className="flex flex-col gap-10">
       {error ? <ErrorNote message={error} /> : null}
 
-      <div id="s-name-fast" className="scroll-mt-16">
+      <div id="s-word-fast" className="scroll-mt-16">
         <SectionCard
           icon={<Search className="text-primary h-4 w-4" />}
-          title="Name (Fast Search)"
+          title="Word (Fast Search)"
           subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap. 0 is off. Map Filters never cut this list."
           status={
             <KnobStatus
@@ -124,7 +131,8 @@ export function NameConfigClient({
             />
           }
         >
-          <ModeModuleChips modules={DISCOVERY_MODE_MODULES.fast} />
+          {/* Fast is Autocomplete alone; Deep is the whole Word set. */}
+          <ModeSourceChips sources={WORD_FAST_SOURCES} />
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <NumberField
               icon={<Globe className="mt-0.5 h-4 w-4 shrink-0" />}
@@ -160,19 +168,19 @@ export function NameConfigClient({
         </SectionCard>
       </div>
 
-      <div id="s-name-deep" className="scroll-mt-16">
+      <div id="s-word-deep" className="scroll-mt-16">
         <SectionCard
           icon={<Layers className="text-primary h-4 w-4" />}
-          title="Name (Deep Search)"
-          subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Deep never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
+          title="Word (Deep Search)"
+          subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
           status={
             <KnobStatus
               kind="enforced"
-              reason="Places Lineup · Deep reads Name (off vs on)"
+              reason="Lineup · Deep reads Name (off vs on)"
             />
           }
         >
-          <ModeModuleChips modules={DISCOVERY_MODE_MODULES.deep} />
+          <ModeSourceChips sources={DISCOVERY_MODE_SOURCES.word} />
           <p className="text-muted-foreground mt-2 type-meta">
             Needs a location. No pin, no bias.
           </p>

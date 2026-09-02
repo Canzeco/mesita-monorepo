@@ -71,14 +71,16 @@ Deno.test("every signal returns [0,1] for every shape of garbage", () => {
 
 Deno.test("the library, the labels and the blurbs name the same eight signals", () => {
   assertEquals(SIGNAL_KEYS.length, 8);
+  // Docs > Discovery section 8.3 order. Presentation only: the blend is a
+  // product of s^w, so nothing downstream may read a signal by index.
   assertEquals([...SIGNAL_KEYS], [
     "name",
     "summary",
+    "category",
     "proximity",
     "timing",
-    "category",
-    "popularity",
     "mesita_level",
+    "popularity",
     "randomness",
   ]);
   assertEquals(Object.keys(SIGNALS).sort(), [...SIGNAL_KEYS].sort());

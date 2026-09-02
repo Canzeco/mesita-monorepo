@@ -350,6 +350,15 @@ export type PlacePrediction = {
   /** Server's answer: did we write a profile? No column fallback on this
    *  lane, so an older payload reads as not-enriched (gray understates). */
   enriched?: boolean;
+  /**
+   * Word's second entity (MESITA-1403). Absent = "place" — a venue row
+   * reads exactly as before. A Location is a region/city from
+   * Autocomplete: no membership, no mesitaId, and no coordinates until
+   * the anchor resolve on pick (apiResolveLocationAnchor).
+   */
+  kind?: "place" | "location";
+  /** Most specific Google type on a Location row (e.g. "locality"). */
+  locationType?: string;
   // Forward-compatible Mesita identity: consumer-suggest-places is adding
   // these to its payload for on-Mesita rows. When present, clients navigate
   // via placeHref(slug ?? id) directly instead of the fuzzy name join.

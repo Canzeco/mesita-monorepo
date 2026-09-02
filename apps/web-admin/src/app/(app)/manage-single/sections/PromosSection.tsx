@@ -10,6 +10,7 @@ import {
 import { planForSubscription } from "@/lib/business/plans";
 import {
   getPlacePaymentAccount,
+  reviewTicketReport,
   startPlacePaymentOnboarding,
   setPlacePlan,
   setPlaceRails,
@@ -110,6 +111,8 @@ export function PromosSection({
     };
   }, [place.id]);
 
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
 
@@ -138,6 +141,22 @@ export function PromosSection({
     // Mock mode: no hosted page exists, so reflect the new row in place.
     setConnectBusy(false);
     setConnect(connectStateFrom(r.data.account, false));
+  };
+
+  // Ghost-partner hold restore (MESITA-1311, arrived on main mid-rebuild):
+  // the review ended, so the reward lane reopens to whatever the strike
+  // ladder already says. The EF returns only the cleared hold.
+  const commitRestore = async () => {
+    if (restoreBusy) return;
+    setRestoreBusy(true);
+    setRestoreError(null);
+    const r = await reviewTicketReport({ action: "restore", placeId: v.id });
+    setRestoreBusy(false);
+    if (!r.ok) {
+      setRestoreError(r.error);
+      return;
+    }
+    applyPlace({ ...v, reward_lane_pending_review_at: null });
   };
 
   const member = isMemberPlan(v.plan);
@@ -312,6 +331,9 @@ export function PromosSection({
                   member={member}
                   joinBusy={joinBusy}
                   joinError={joinError}
+                  restoreBusy={restoreBusy}
+                  restoreError={restoreError}
+                  onRestoreClick={() => void commitRestore()}
                   onJoinClick={() => void commitJoinPartnership()}
                   onDropClick={() => {
                     setDropError(null);

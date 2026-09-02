@@ -214,3 +214,19 @@ Deno.test("promoting level: a closed promo lane is 0, not the signed-up strategy
     0,
   );
 });
+
+Deno.test("promoting: a ghost-partner hold reads 0 whatever the strategy says (MESITA-1311)", () => {
+  // Under review after a confirmed guest report: the guest gets nothing
+  // right now, so the pin/badge must not promise a discount.
+  assertEquals(
+    placePromotingLevel({
+      plan: "pro",
+      welcome_free_rate: 40,
+      welcome_premium_rate: 50,
+      free_rate: 20,
+      premium_rate: 30,
+      reward_lane_pending_review_at: "2026-09-01T00:00:00Z",
+    }),
+    0,
+  );
+});

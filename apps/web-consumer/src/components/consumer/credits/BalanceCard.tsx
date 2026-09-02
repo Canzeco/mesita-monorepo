@@ -11,7 +11,7 @@ import {
 } from "@/lib/mock/credits-mock";
 import { cn } from "@/lib/utils";
 
-// One place's Credits balance, as a card in the stack.
+// One place's Credits balance, as a card in the deck.
 //
 // THE PLACE'S OWN PHOTO IS THE CARD ART (Pato, 2026-09-01). This reverses the
 // rule that stood here before — "WHITE, like every other list card in this
@@ -29,68 +29,79 @@ import { cn } from "@/lib/utils";
 //
 // STILL `BalanceCard`. The money files may not name an instrument after its
 // container (`credits-mock.test.ts` > naming, which greps this file): the
-// Wallet is the section that HOLDS these, Credits is what they are. The face
-// changed; what the thing IS did not, so neither does the name.
+// section HOLDS these, Credits is what they are. The face changed; what the
+// thing IS did not, so neither does the name.
 //
 // THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE. A photo is
 // uncontrolled input: the venue picked it, not us, and white text over an
-// unknown image is the "busy imagery behind text" failure. The gradient is
-// therefore calculated against the WORST case (a pure-white photo) rather than
-// tuned against the fixtures:
+// unknown image is the "busy imagery behind text" failure. Both gradients below
+// are calculated against the WORST case (a pure-white photo) rather than tuned
+// against the fixtures, so both text bands clear WCAG AA (4.5:1) on any image
+// that can exist. There is nothing to sample and no canvas to taint.
 //
-//   top    .62 over white → ~6.4:1   the peek strip, always visible
-//   62px   .42                       the fold, no text lives here
-//   44%    .30                       the quiet middle
-//   bottom .86 over white → ~13.7:1  the amount and the terms
+//   FULL (the open card)            COVERED (a card with one on top of it)
+//   top    .62 → ~6.4:1  the strip  top    .62 → ~6.4:1  the strip
+//   62px   .42                      bottom .30           no text lives here
+//   44%    .30
+//   bottom .86 → ~13.7:1 the face
 //
-// Both text bands clear WCAG AA (4.5:1) on any image that can exist, so there
-// is nothing to sample and no canvas to taint. `text-shadow` is belt-and-braces
-// for the two bands, not the mechanism.
+// A COVERED CARD IS A STRIP, NOT A CROPPED CARD (2026-09-02 design review). It
+// used to be a full-height card with most of itself hidden under the next one,
+// which is why its geometry had to be known in advance and why a wrong constant
+// could slice a balance in half. Now it renders only what is on screen and
+// sizes to its own content, so nothing can be cut off and nothing has to be
+// measured: at 200% text the name takes two taller lines and the strip simply
+// grows. `PEEK_PX` and `CARD_PX` are MINIMUMS, not heights.
+//
+// THE AMOUNT HAS ONE HOME AT A TIME. The strip's copy exists for the COVERED
+// state — it is the only line of a card lying under another. The open card
+// states its balance once, on the face, in the size that makes it a card
+// instead of a row, which also hands the whole strip to the place's name.
+//
+// FRAUNCES ON THE BALANCE, and only there. `brand.json` assigns the display
+// face to "numerals in hero positions" and a card balance is the definitive one
+// in this product; Inter here was also the "gave up on typography" signal.
+// `tabular-nums` stays, or the digits jitter every time the clock advances.
 //
 // NO PHOTO, OR A PHOTO THAT FAILS TO LOAD, RENDERS THE INK FACE — the same
 // card with the art layer swapped for a gradient. It is a fallback, not a
 // second design.
+//
+// A LOCKED CARD IS DORMANT ART. Colour used to carry state on this surface and
+// the photo took that job away — with a full-bleed face, the balance you CANNOT
+// spend was the most vivid thing on the screen. Locked desaturates and dims the
+// photo, so the deck reads spendable-first before a word is read. The dimming
+// sits UNDER the scrim, so it only ever improves contrast.
 
-/** The strip that stays visible when this card is buried in the stack. */
-export const PEEK_PX = 62;
-// Tall enough for the strip, the amount, the terms line and the action. The
-// stack spreads by SPREAD_PX; anything past the peek has to earn itself.
-export const CARD_PX = 176;
+/** Minimum height of a covered card: the strip, and nothing else. */
+export const PEEK_PX = 96;
+/** Minimum height of the open card: the strip, the balance and its terms. */
+export const CARD_PX = 200;
 
-const SCRIM =
+const SCRIM_FULL =
   "linear-gradient(180deg," +
   "rgba(20,6,11,0.62) 0px," +
   "rgba(20,6,11,0.42) 62px," +
   "rgba(20,6,11,0.30) 44%," +
   "rgba(20,6,11,0.86) 100%)";
 
-// The ink face. Deep enough that white text clears AA without a scrim, and
-// warm rather than neutral so a wallet of fallbacks still reads as this app.
-const INK = "linear-gradient(150deg,#4a1a26 0%,#2a0c14 62%)";
+// No text lives below the strip on a covered card, so the dark bottom band the
+// face needs would be shading nothing. It stops at the same .62 the strip's
+// contrast is computed from.
+const SCRIM_PEEK =
+  "linear-gradient(180deg," +
+  "rgba(20,6,11,0.62) 0px," +
+  "rgba(20,6,11,0.42) 62px," +
+  "rgba(20,6,11,0.30) 100%)";
 
-function Monogram({ name }: { name: string }) {
-  // First letter of the first two words — "Cabaret Social Room" reads CS,
-  // "Lardo" L.
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0] ?? "")
-    .join("")
-    .toUpperCase();
-  return (
-    <span
-      aria-hidden
-      className="type-label text-foreground grid size-8 shrink-0 place-items-center rounded-xl bg-white/90 font-bold"
-    >
-      {initials}
-    </span>
-  );
-}
+// The ink face. Deep enough that white text clears AA without a scrim, and
+// warm rather than neutral so a deck of fallbacks still reads as this app.
+const INK = "linear-gradient(150deg,#4a1a26 0%,#2a0c14 62%)";
 
 export function BalanceCard({
   balance,
   nowMs,
-  expanded,
+  covered,
   onSelect,
   className,
   style,
@@ -98,8 +109,8 @@ export function BalanceCard({
   balance: CreditBalance;
   /** Emulator time. Maturation is never read off wall time. */
   nowMs: number;
-  /** True when the stack is spread — controls the card's own aria state. */
-  expanded: boolean;
+  /** Another card lies on top of this one, so only the strip is on screen. */
+  covered: boolean;
   onSelect: () => void;
   className?: string;
   style?: React.CSSProperties;
@@ -111,7 +122,8 @@ export function BalanceCard({
   const showArt = !!balance.photoUrl && !artFailed;
 
   // The peek chip reads "3h" — enough for a glance, not enough for a screen
-  // reader, which gets the whole sentence instead.
+  // reader, which gets the whole sentence instead. It says the same thing
+  // whether the amount is painted small, big, or not at all.
   const label = locked
     ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, unlocks in ${unlock}`
     : `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend`;
@@ -120,12 +132,11 @@ export function BalanceCard({
     <button
       type="button"
       onClick={onSelect}
-      aria-expanded={expanded}
       aria-label={label}
-      style={style}
+      style={{ minHeight: covered ? PEEK_PX : CARD_PX, ...style }}
       className={cn(
-        "absolute inset-x-0 top-0 flex flex-col overflow-hidden rounded-2xl text-left text-white",
-        "transition-[transform,box-shadow] duration-300 ease-out",
+        "relative flex w-full flex-col overflow-hidden rounded-2xl text-left text-white",
+        "transition-transform duration-300 ease-out",
         "motion-reduce:transition-none",
         "active:scale-[0.99] motion-reduce:active:scale-100",
         className,
@@ -140,39 +151,50 @@ export function BalanceCard({
             alt=""
             fill
             sizes="(max-width: 480px) 100vw, 420px"
-            className="object-cover"
+            className={cn(
+              "object-cover",
+              // On-scale utilities, not tuned values: the scrim above already
+              // owns contrast, so this only has to read as "asleep".
+              locked && "brightness-75 saturate-50",
+            )}
             onError={() => setArtFailed(true)}
           />
         ) : null}
-        <span className="absolute inset-0" style={{ background: SCRIM }} />
+        <span
+          className="absolute inset-0"
+          style={{ background: covered ? SCRIM_PEEK : SCRIM_FULL }}
+        />
       </span>
 
-      {/* The strip. Everything above PEEK_PX must be readable with the rest of
-          the card buried, so it carries identity on the left and money on the
-          right, and nothing else. */}
+      {/* The strip. On a covered card this is the whole card, so it carries
+          identity on the left and money on the right. On the open one the money
+          moves to the face and the name gets the full width. */}
       <span
-        className="relative flex shrink-0 items-center gap-3 px-4"
-        style={{ height: PEEK_PX }}
+        // NOT `grow`. If the strip absorbed the card's free space, the name
+        // would centre at a different height on the open card than on the
+        // covered ones and the deck would lose its rhythm. It stays PEEK_PX
+        // tall on every card; `mt-auto` on the face takes the slack.
+        className="relative flex shrink-0 items-center gap-3 px-4 py-4"
+        style={{ minHeight: PEEK_PX }}
       >
-        <Monogram name={balance.placeName} />
         <span
-          className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight"
+          className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-bold tracking-tight"
           style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
         >
           {balance.placeName}
         </span>
-        {locked ? (
+        {!covered ? null : locked ? (
           // A locked balance is not "MX$0". Rendering the zero would lead with
           // the most alarming number available for a state that is simply
           // not-yet — so the amount goes quiet and the chip says when.
           <span className="flex shrink-0 items-center gap-1.5">
             <span
-              className="text-sm font-bold tabular-nums text-white/75"
+              className="text-sm font-bold text-white/75 tabular-nums"
               style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
             >
               {formatCurrency(balance.balanceCents)}
             </span>
-            <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] tabular-nums uppercase backdrop-blur-sm">
+            <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase tabular-nums backdrop-blur-sm">
               {unlock}
             </span>
           </span>
@@ -186,21 +208,22 @@ export function BalanceCard({
         )}
       </span>
 
-      {/* The face, in the darkest band. Never the only home of anything
-          load-bearing — the strip already carries identity and amount. */}
-      <span className="relative mt-auto block px-4 pb-3.5">
-        <span
-          className="block text-3xl leading-none font-bold tracking-tight tabular-nums"
-          style={{ textShadow: "0 2px 10px rgba(0,0,0,.5)" }}
-        >
-          {formatCurrency(balance.balanceCents)}
+      {/* The face, in the darkest band. Only the open card has one. */}
+      {covered ? null : (
+        <span className="relative mt-auto block px-4 pb-3.5">
+          <span
+            className="font-display block text-4xl leading-none font-bold tracking-tight tabular-nums"
+            style={{ textShadow: "0 2px 10px rgba(0,0,0,.5)" }}
+          >
+            {formatCurrency(balance.balanceCents)}
+          </span>
+          <span className="mt-1.5 block truncate text-xs text-white/85">
+            {locked
+              ? `Unlocks in ${unlock} · +${balance.bonusPct}% bonus`
+              : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
+          </span>
         </span>
-        <span className="mt-1.5 block truncate text-xs text-white/85">
-          {locked
-            ? `Unlocks in ${unlock} · +${balance.bonusPct}% bonus`
-            : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
-        </span>
-      </span>
+      )}
     </button>
   );
 }

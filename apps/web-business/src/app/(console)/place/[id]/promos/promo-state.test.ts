@@ -117,6 +117,42 @@ describe("lifecycleView — the Box 0 stepper state machine", () => {
     });
   });
 
+  it("ghost-partner hold blocks honoring, outranking live/pause/forfeit (MESITA-1311)", () => {
+    expect(
+      lifecycleView(
+        {
+          plan: "pro",
+          plan_live_at: "2026-08-01T00:00:00Z",
+          reward_lane_pending_review_at: "2026-09-01T00:00:00Z",
+        },
+        "conservative",
+        NOW,
+      ),
+    ).toEqual({
+      kind: "rail",
+      join: "done",
+      strategy: "done",
+      honor: "blocked",
+    });
+    // Even a forfeited row reads review first — the freshest fact wins.
+    expect(
+      lifecycleView(
+        {
+          plan: "free",
+          plan_forfeited_at: "2026-08-01T00:00:00Z",
+          reward_lane_pending_review_at: "2026-09-01T00:00:00Z",
+        },
+        null,
+        NOW,
+      ),
+    ).toEqual({
+      kind: "rail",
+      join: "upcoming",
+      strategy: "upcoming",
+      honor: "blocked",
+    });
+  });
+
   it("pending on a paid strategy: steps 1-2 done, step 3 current", () => {
     expect(lifecycleView({ plan: "pro" }, "conservative", NOW)).toEqual({
       kind: "rail",

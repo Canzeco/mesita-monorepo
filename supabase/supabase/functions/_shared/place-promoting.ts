@@ -37,6 +37,8 @@ export type PromotingFields = {
   last_strike_at?: string | null;
   promo_paused_until?: string | null;
   plan_forfeited_at?: string | null;
+  /** Ghost-partner hold (MESITA-1311) — a held place is not promoting. */
+  reward_lane_pending_review_at?: string | null;
 };
 
 /**
@@ -66,6 +68,7 @@ export function isPlacePromoting(
       last_strike_at: row.last_strike_at ?? null,
       promo_paused_until: row.promo_paused_until ?? null,
       plan_forfeited_at: row.plan_forfeited_at ?? null,
+      reward_lane_pending_review_at: row.reward_lane_pending_review_at ?? null,
     },
     now,
   );
@@ -88,6 +91,7 @@ export const BUSINESS_PRIVATE_PLACE_KEYS = [
   "plan_forfeited_at",
   "plan_live_at",
   "first_ticket_honored_at",
+  "reward_lane_pending_review_at",
 ] as const;
 
 /**

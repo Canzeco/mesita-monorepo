@@ -1,115 +1,76 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, CreditCard, Gift, Plus, RotateCcw, Wallet } from "lucide-react";
+import { ChevronRight, Plus, RotateCcw, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { BalanceStack } from "@/components/consumer/credits/BalanceStack";
+import {
+  BalanceStack,
+  CARD_PX,
+  PEEK_PX,
+} from "@/components/consumer/credits/BalanceStack";
 import { BalanceDetail } from "@/components/consumer/credits/BalanceDetail";
 import { BuyCreditsSheet } from "@/components/consumer/credits/BuyCreditsSheet";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
-import { formatCurrency } from "@/lib/api/profile";
-import type { CreditBalance } from "@/lib/mock/credits-mock";
+import { isLocked, type CreditBalance } from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
-import { cn } from "@/lib/utils";
 
-// Wallet — the Pay tab's second section, at /new-visit/wallet.
+// The Pay tab's second section, at /new-visit/wallet.
 //
 // THE SECTION IS A CONTAINER, NOT A CURRENCY (Pato, 2026-08-31). It was called
 // Credits while per-place prepaid balances were the only thing on it. It now
-// holds the Credits stack, the saved payment methods that were buried in
+// holds the Credits deck, the saved payment methods that were buried in
 // Me › More › Cards, and gifting — so naming it after one of them was the
 // mistake a container name exists to prevent. Credits stays the word for the
 // MONEY: 🪙 Credits §D is untouched, `places.credits_enabled` and
 // `visits_config.payCredits` are untouched.
 //
-// THE CARDS LEAD (Pato, 2026-09-01). A pink "Total held" hero used to sit
-// above them, and it was the loudest element on a screen whose subject was
-// underneath it. Worse, the number itself is unspendable: these balances are
-// venue-locked and do not pool, so no sum of them can be spent anywhere at all
-// — the comment that used to live here spent twenty lines saying so while the
-// hero went on shouting it. The total is now one quiet line that answers "how
-// much do I have on Mesita" without pretending to be money you can move, and
-// the saturation it was carrying moved onto the card faces, where the photo
-// scrim earns it. One saturated surface per screen, still.
+// THE DECK IS THE SCREEN (Pato, 2026-09-02: "a lot cleaner, more minimalistic,
+// must feel like an Apple Wallet"). This surface used to run SIX chrome systems
+// at once — the section pill row, the photo cards, two bordered action tiles, an
+// eyebrow section label, a bordered settings row, and a demo bar carrying a
+// two-line paragraph. Apple runs one, cards, plus a ＋. It runs three now: the
+// deck, two hairline rows, the demo strip. What left, and why:
 //
-// TWO LABELLED ACTIONS, NOT AN ICON IN A CORNER. Top up used to be a bare `＋`
-// in the top-right, which is the discoverability failure the whole app avoids
-// elsewhere; Gift used to be a row in an "In your wallet" list nobody reads as
-// a control. They are now a labelled pair under the cards: you open a wallet to
-// see what you have, and buying more is what you do next.
+//   · THE TOTAL LINE. It led a screen it is not the subject of, wrapped to two
+//     lines at 390px, and described money that cannot be spent anywhere — the
+//     same objection that killed the pink hero before it. The deck states every
+//     balance at rest now, so the sum is derivable; where you would ACT on it,
+//     the Top up sheet, is where it moved.
+//   · BOTH ACTION TILES. A bordered box with an icon in a tinted rounded square,
+//     a bold title and a two-line summary, repeated symmetrically, is the most
+//     recognisable generated-UI layout there is. Top up is a row. Gift is gone
+//     entirely: a control that cannot be pressed is decoration, not discovery,
+//     and the instrument's giftability lives in the model, not in a dead chip.
+//   · "ALSO IN YOUR WALLET" AND THE BORDERED ROW UNDER IT. One eyebrow over one
+//     row is a section label for a section of one. Payment methods is a plain
+//     row with a chevron — still a button, still keyboard-reachable, and the
+//     chevron is the affordance iOS already taught everyone to read.
 //
-// MIXED LIVENESS, and the page says which is which. The Credits BALANCES are
-// PARKED on a browser emulator — no table, no Edge Function, no venue side.
+// THE ROWS SIT DIRECTLY UNDER THE DECK, not pinned to the bottom. Bottom-anchored
+// they leave ~200px of nothing in the MIDDLE of the screen, which reads as a gap;
+// under the deck the same emptiness falls at the bottom beside the demo strip,
+// where it reads as calm. Proximity: the actions belong to the deck.
+//
+// THIS IS THE SECOND BOUNDED CARVE-OUT ON THIS SCREEN. `BalanceCard`'s photo
+// face is the first (CLAUDE.md names it). Border-less rows are a deviation from
+// the app's one list-row look and they stop at this file.
+//
+// MIXED LIVENESS, and the page still says which is which. The Credits BALANCES
+// are PARKED on a browser emulator — no table, no Edge Function, no venue side.
 // The TERMS are real: the hold and the bonus come from the console's Controls
 // page through consumer-web-get-controls-config. Payment methods is fully live
-// and opens the real Stripe-backed CardsModal. Never let the parked framing
-// bleed onto that row.
+// and opens the real Stripe-backed CardsModal.
+//
+// AND THE PARKED CLAIM SURVIVED THE CLEANUP. The SOON pill rode the total line
+// and the other rode the Gift tile, so cutting both would have shipped the
+// prettiest version of this screen as the first one that shows a guest MX$4,172
+// of restaurant money with nothing saying it is emulated. The demo strip carries
+// it now, in one line: nothing live has a +24h button, and the caption names it.
 //
 // NO IN-BODY TITLE. Every section opens straight into its content; the pill
-// row directly above already says Wallet.
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="type-eyebrow text-muted-foreground px-5 pt-4 pb-2">
-      {children}
-    </div>
-  );
-}
-
-/** One of the two labelled actions under the cards. */
-function ActionTile({
-  Icon,
-  title,
-  summary,
-  soon = false,
-  onClick,
-}: {
-  Icon: typeof Gift;
-  title: string;
-  summary: string;
-  /** Parked: no table, EF or type yet. Visible, inert, honest. */
-  soon?: boolean;
-  onClick?: () => void;
-}) {
-  const inert = soon || !onClick;
-  return (
-    <button
-      type="button"
-      onClick={inert ? undefined : onClick}
-      disabled={inert}
-      aria-disabled={inert}
-      title={soon ? "Coming soon" : undefined}
-      className={cn(
-        "border-border bg-card flex flex-1 items-center gap-3 rounded-2xl border p-3.5 text-left transition active:scale-[0.99]",
-        inert ? "opacity-60" : "hover:bg-muted/50",
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-xl",
-          soon ? "bg-muted text-foreground/70" : "bg-primary/10 text-primary",
-        )}
-      >
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="text-sm font-bold tracking-tight">{title}</span>
-          {soon && (
-            <span className="border-border text-muted-foreground type-meta rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
-              Soon
-            </span>
-          )}
-        </span>
-        <span className="text-muted-foreground block truncate text-xs">
-          {summary}
-        </span>
-      </span>
-    </button>
-  );
-}
+// row directly above already says which one this is.
 
 export function CreditsClient({ seed }: { seed: Seed }) {
   const credits = useCredits(seed);
@@ -120,6 +81,10 @@ export function CreditsClient({ seed }: { seed: Seed }) {
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
   const held = balances.reduce((sum, b) => sum + b.balanceCents, 0);
+  const onHold = balances.reduce(
+    (sum, b) => sum + (isLocked(b, nowMs) ? b.balanceCents : 0),
+    0,
+  );
 
   // The open sheet reads from live state, not the snapshot it was opened with,
   // so a spend updates the sheet it was made from instead of going stale.
@@ -131,80 +96,57 @@ export function CreditsClient({ seed }: { seed: Seed }) {
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto">
         {credits.loading ? (
-          <div className="flex flex-col gap-3 px-5 pt-5">
-            <Skeleton className="h-4 w-2/3 rounded-full" />
-            <Skeleton className="h-44 w-full rounded-2xl" />
-            <Skeleton className="h-14 w-full rounded-2xl" />
+          // Derived from the deck's own minimums, so it cannot drift from what
+          // lands on top of it: two peeks and one open card.
+          <div className="px-5 pt-5" style={{ height: PEEK_PX * 2 + CARD_PX }}>
+            <Skeleton className="h-full w-full rounded-2xl" />
           </div>
         ) : balances.length === 0 ? (
+          // No `action`. EmptyState normally carries one, and the rule behind
+          // that is real — a zero state without a next step is a dead end. It
+          // already has one here: the Top up row renders directly below, on
+          // every state of this screen.
           <EmptyState
             icon={Wallet}
             title="No Credits yet"
             description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
-            action={{ label: "Top up", onClick: () => setBuying(true) }}
           />
         ) : (
-          <>
-            {/* The total, stated rather than shouted. It answers "how much do
-                I have on Mesita" and stops there — it is a sum of venue-locked
-                balances, so it is a count, never a spendable amount. */}
-            <p className="text-muted-foreground px-5 pt-4 pb-1 text-xs leading-relaxed">
-              <span className="text-foreground text-sm font-bold tabular-nums">
-                {formatCurrency(held)}
-              </span>{" "}
-              across {balances.length}{" "}
-              {balances.length === 1 ? "place" : "places"} · spendable only where
-              you paid
-              <span className="border-border text-muted-foreground type-meta ml-1.5 rounded-full border px-1.5 py-0.5 align-[1px] font-semibold tracking-[0.12em] uppercase">
-                Soon
-              </span>
-            </p>
-
-            <div className="px-5 pt-3">
-              <BalanceStack
-                balances={balances}
-                nowMs={nowMs}
-                onOpen={setOpen}
-              />
-            </div>
-          </>
+          <div className="px-5 pt-5">
+            <BalanceStack balances={balances} nowMs={nowMs} onOpen={setOpen} />
+          </div>
         )}
 
-        <div className="flex gap-2.5 px-5 pt-4">
-          <ActionTile
-            Icon={Plus}
-            title="Top up"
-            summary="Buy Credits for later"
-            onClick={() => setBuying(true)}
-          />
-          <ActionTile
-            Icon={Gift}
-            title="Gift"
-            summary="Send to a friend"
-            soon
-          />
-        </div>
-
-        <SectionLabel>Also in your wallet</SectionLabel>
-        <div className="px-5 pb-5">
-          <button
-            type="button"
-            onClick={() => setCardsOpen(true)}
-            className="border-border bg-card hover:bg-muted/50 flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition active:scale-[0.99]"
-          >
-            <span className="bg-muted text-foreground/70 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl">
-              <CreditCard className="h-[22px] w-[22px]" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold tracking-tight">
-                Payment methods
-              </span>
-              <span className="text-muted-foreground block truncate text-xs">
-                Saved cards for Premium and Mesita Pay
-              </span>
-            </span>
-            <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
-          </button>
+        {/* mt-4: the first hairline sits flush against the deck's bottom edge
+            otherwise, which reads as the card having a border rather than the
+            list having a rule. */}
+        <div className="mt-4 px-5">
+          <div className="border-border border-t">
+            <button
+              type="button"
+              onClick={() => setBuying(true)}
+              // `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary`
+              // (pink-500, 3.66:1) — this is body text and 500 fails AA. The
+              // token has no Tailwind utility, and an arbitrary `text-[...]`
+              // trips the off-scale-font-size rule, so it rides an inline
+              // style. globals.css:26 documents the pair.
+              style={{ color: "var(--brand-pink-text)" }}
+              className="flex min-h-[52px] w-full items-center gap-2.5 py-4 text-left text-sm font-bold transition active:scale-[0.99]"
+            >
+              <Plus className="h-[18px] w-[18px] shrink-0" strokeWidth={2.5} />
+              Top up
+            </button>
+          </div>
+          <div className="border-border border-t">
+            <button
+              type="button"
+              onClick={() => setCardsOpen(true)}
+              className="flex min-h-[52px] w-full items-center gap-3 py-4 text-left text-sm font-semibold transition active:scale-[0.99]"
+            >
+              Payment methods
+              <ChevronRight className="text-muted-foreground ml-auto h-4 w-4 shrink-0" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -222,7 +164,8 @@ export function CreditsClient({ seed }: { seed: Seed }) {
           the tab open for the whole window to watch a balance unlock. Pushing
           time forward runs the same rule a real wait would. It drives the
           CREDITS half only; Payment methods is live and reads Stripe, not this
-          clock. */}
+          clock. Its caption is now the only place the screen states that the
+          balances are not real, so it does not get shortened away. */}
       <div className="border-border shrink-0 border-t px-5 py-3">
         <div className="flex items-center gap-2">
           <span className="type-meta text-muted-foreground font-semibold tracking-[0.12em] uppercase">
@@ -234,7 +177,7 @@ export function CreditsClient({ seed }: { seed: Seed }) {
                 key={h}
                 type="button"
                 onClick={() => credits.advance(h)}
-                className="border-border bg-card hover:bg-muted/50 rounded-full border px-2.5 py-1 text-xs font-semibold tabular-nums transition"
+                className="border-border bg-card hover:bg-muted/50 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border px-3 text-xs font-semibold tabular-nums transition"
               >
                 +{h}h
               </button>
@@ -243,16 +186,14 @@ export function CreditsClient({ seed }: { seed: Seed }) {
               type="button"
               onClick={credits.reset}
               aria-label="Reset the emulator"
-              className="border-border bg-card hover:bg-muted/50 grid size-7 place-items-center rounded-full border transition"
+              className="border-border bg-card hover:bg-muted/50 grid min-h-[44px] min-w-[44px] place-items-center rounded-full border transition"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
+              <RotateCcw className="h-4 w-4" />
             </button>
           </div>
         </div>
         <p className="text-muted-foreground/80 type-label mt-2">
-          Emulated — example Credits in this browser only. Prepaid Credits
-          aren&rsquo;t live yet. Your saved cards, and the {credits.policy.defaultHoldHours}
-          h hold set in the console, are real.
+          Emulated · Credits aren&rsquo;t live yet.
         </p>
       </div>
 
@@ -262,6 +203,8 @@ export function CreditsClient({ seed }: { seed: Seed }) {
         onBuy={credits.buy}
         busy={credits.busy}
         policy={credits.policy}
+        heldCents={held}
+        onHoldCents={onHold}
       />
 
       {/* The SAME sheet Me › More › Cards opens — imported, not reimplemented,

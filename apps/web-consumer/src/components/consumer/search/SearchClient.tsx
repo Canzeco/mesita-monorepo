@@ -19,6 +19,14 @@
 // keeps loading, the camera keeps its own rules, and typing only adds a pin
 // layer and swaps the bottom rail out. A viewport load is always just a load.
 //
+// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a Location or a
+// Place moves the camera to its coordinates and reloads the catalog there;
+// a Place becomes card ONE of the carousel — prepended after the filters
+// and the How many cap, which govern the map query only — and its modal is
+// one more tap away, on the card or its pin. A Location (kind: "location")
+// is a camera destination: coordinates + viewport resolve on pick, never
+// per keystroke, and the viewport picks the zoom.
+//
 // The from-Google preview sheet and the Add flow are NOT search chrome. The
 // catalog itself carries Google-only places (the grey pins), so a pin or
 // rail-card tap reaches them through handleOpenPlace, and `heldOverlay` still
@@ -46,6 +54,7 @@ import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
   apiCreateProject,
+  apiResolveLocationAnchor,
   apiSuggestPlaces,
   type PlacePrediction,
 } from "@/lib/api/place-search";
@@ -63,7 +72,12 @@ import {
   overlayPinDecision,
   predictionOnMesita,
 } from "@/lib/search-membership";
-import { SearchMap, type SearchMapPin, type ViewportBox } from "./SearchMap";
+import {
+  SearchMap,
+  type CameraAnchor,
+  type SearchMapPin,
+  type ViewportBox,
+} from "./SearchMap";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
 import { SearchResultsPanel } from "./SearchResultsPanel";
@@ -81,6 +95,9 @@ import {
   SearchRailOverlay,
 } from "./search-catalog-overlays";
 import {
+  anchorPlaceFromPrediction,
+  anchorSurvivesReload,
+  anchorViewportBounds,
   CATALOG_RELOAD_MIN_KM,
   CATALOG_RELOAD_MIN_SEC,
   catalogIsStale,
@@ -91,6 +108,7 @@ import {
   shouldCenterRailCard,
   matchPredictionToPlace,
   newSessionToken,
+  prependAnchorPlace,
   railCenterIndex,
   shouldReloadNearbyCatalog,
   viewportCenter,
@@ -103,6 +121,16 @@ import {
 const FAST_DEBOUNCE_MS = 300;
 const DEEP_IDLE_MS = 1000;
 const MIN_QUERY = 2;
+
+/**
+ * A live searchbar pick (MESITA-1405). `camera` is the move the map owes
+ * the guest; `place` is the chosen venue for card ONE of the carousel —
+ * null for a Location, which is a camera destination, never a card.
+ */
+type AnchorPick = {
+  camera: CameraAnchor;
+  place: Place | null;
+};
 
 function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   if (!place.googleOnly && !place.from_google) return null;
@@ -177,6 +205,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
 
+  // EVERY searchbar pick anchors the map (MESITA-1405): camera to the
+  // coordinates, catalog reload there, chosen Place as card ONE. Cleared
+  // when a reload lands away from the anchored place — the guest moved on.
+  const [anchor, setAnchor] = useState<AnchorPick | null>(null);
+  const anchorGen = useRef(0);
+
   // Distances follow the camera the catalog was fetched for, so a pan
   // ranks and labels the same nearby set. GPS still recenters the map.
   const distanceCenter = cameraCenter ?? location;
@@ -184,11 +218,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  // Closest first by distance_km, then How many keeps 20 / 40 / 60.
+  // Closest first by distance_km, then How many keeps 20 / 40 / 60 — the
+  // cap governs the MAP QUERY's set. The anchored pick prepends AFTER the
+  // filters and the cap, because the bar never applies either: a guest
+  // filtered to partners still lands on the Google-only place they typed.
+  // Dedupe decides the total — N unique when the pick is inside the N,
+  // N + 1 when outside.
   const catalog = useMemo(() => {
     const cut = applyMapFilters(nearby, filters);
-    return takeMapResultLimit(cut, filters.resultLimit);
-  }, [nearby, filters]);
+    const capped = takeMapResultLimit(cut, filters.resultLimit);
+    const anchorRow = anchor?.place
+      ? withDistances([enrichPlaceOverview(anchor.place)], distanceCenter)[0]
+      : null;
+    return prependAnchorPlace(capped, anchorRow);
+  }, [nearby, filters, anchor, distanceCenter]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
 
@@ -355,6 +398,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         reloadMinSecRef.current = clampReloadMinSec(result.reloadMinSec);
         setCameraCenter(nextCenter);
         setPlaces(result.places);
+        // A reload centered away from the anchored place ends the anchor —
+        // the guest moved on. The pick's own forced load (and a filter
+        // refetch at the same spot) lands ON the place, so it survives. A
+        // Location anchor has no card to keep and clears with its load.
+        setAnchor((a) =>
+          a?.place && anchorSurvivesReload(a.place, nextCenter) ? a : null,
+        );
       } catch (err) {
         if (gen !== viewportGen.current) return;
         setFetchError(errMsg(err, "Couldn't load places in this area."));
@@ -503,44 +553,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [addedProfiles, catalog, resetSearchSession, router],
   );
 
-
-  // On-Mesita row tap → show the place on the map (membership fill + black
-  // ring + rail card) instead of opening the detail modal; the modal is
-  // one more tap away on the pin or the card. The EF-provided Mesita id is the
-  // primary join; the exact-name match covers older suggest payloads.
-  const handlePickMesita = (prediction: PlacePrediction) => {
-    if (prediction.mesitaSlug ?? prediction.mesitaId) {
-      openMesitaProfileFromPrediction(prediction);
-      return;
-    }
-    const match =
-      (prediction.mesitaId
-        ? catalog.find((p) => p.id === prediction.mesitaId)
-        : null) ?? matchPredictionToPlace(prediction, catalog);
-    if (match) {
-      // Selecting a place ends the Places session; mint the next token.
-      resetSearchSession();
-      setRailCollapsed(false);
-      setSelectedId(match.id);
-      return;
-    }
-    // On Mesita per the EF but outside the mappable catalog snapshot — no
-    // coordinates to pin, so fall back to opening the detail modal directly.
-    resetSearchSession();
-    const direct = prediction.mesitaSlug ?? prediction.mesitaId;
-    if (direct) {
-      router.push(placeHref(direct));
-      return;
-    }
-    toast(
-      "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
-    );
-  };
-
-  // From-Google row tap → the not-on-Mesita preview sheet (the Add flow
-  // lives there now). Tapping a row is the selection that ends the current
-  // Places autocomplete session.
-  const handlePickGoogle = (prediction: PlacePrediction) => {
+  // Pin / rail-card SECOND tap on a from-Google row → the not-on-Mesita
+  // preview sheet (the Add flow lives there). The bar pick never lands
+  // here any more — it anchors, and the sheet moved to this second tap.
+  const openGooglePreview = (prediction: PlacePrediction) => {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
       resetSearchSession();
@@ -566,10 +582,104 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     setPreviewOpen(true);
   };
 
+  // One pick = one camera move + one forced reload + (for a Place) card
+  // ONE. Clearing the query dismisses the results panel, brings the rail
+  // back, and rotates the Places billing session — a pick ends a session.
+  const anchorMapTo = (
+    camera: Omit<CameraAnchor, "gen">,
+    place: Place | null,
+  ) => {
+    anchorGen.current += 1;
+    forceNextLoad.current = true;
+    setAnchor({ camera: { ...camera, gen: anchorGen.current }, place });
+    if (place) {
+      setHeldOverlay(null);
+      centerOnSelect.current = true;
+      setRailCollapsed(false);
+      setSelectedId(place.id);
+    } else {
+      // A Location has no card: drop any lingering explicit selection so
+      // nothing pans the camera off the freshly fitted viewport.
+      setSelectedId(null);
+    }
+    updateQuery("");
+  };
+
+  // EVERY BAR PICK ANCHORS THE MAP — both entities (MESITA-1405). A Place
+  // stops opening its modal from the bar: the camera lands on the venue,
+  // the catalog reloads there, and the modal is one more tap away on the
+  // card or its pin. A Google-only pick anchors too — the sheet moves to
+  // the second tap, the gesture the grey pin already speaks, so the rule
+  // has no exception to learn. Map filters never veto any of it.
+  const handleBarPick = (prediction: PlacePrediction) => {
+    if (prediction.kind === "location") {
+      // A Location is a camera destination, never a card. Coordinates are
+      // resolved ON PICK — one Details call per selection, never per
+      // keystroke — and the viewport decides the zoom: a city opens wide,
+      // a neighbourhood close.
+      void (async () => {
+        try {
+          const resolved = await apiResolveLocationAnchor(
+            supabase,
+            prediction.placeId,
+          );
+          anchorMapTo(
+            {
+              lat: resolved.lat,
+              lng: resolved.lng,
+              bounds: anchorViewportBounds(resolved.viewport),
+            },
+            null,
+          );
+        } catch (err) {
+          toast.error(errMsg(err, "Couldn't open that location right now."));
+        }
+      })();
+      return;
+    }
+    // The catalog's own row wins the card — it carries photos and the
+    // real distance. The synthesized stub covers picks outside the
+    // snapshot; either way the EF already shipped coordinates on the row.
+    const own =
+      (prediction.mesitaId
+        ? nearby.find((p) => p.id === prediction.mesitaId)
+        : null) ??
+      nearby.find(
+        (p) =>
+          (p.google_place_id ??
+            (p.googleOnly || p.from_google ? p.slug : null)) ===
+            prediction.placeId,
+      ) ??
+      matchPredictionToPlace(prediction, nearby);
+    const anchorRow =
+      own && typeof own.lat === "number" && typeof own.lng === "number"
+        ? own
+        : anchorPlaceFromPrediction(prediction);
+    if (
+      !anchorRow ||
+      typeof anchorRow.lat !== "number" ||
+      typeof anchorRow.lng !== "number"
+    ) {
+      // No coordinates anywhere — a camera cannot anchor nowhere. The
+      // rare coordinate-less Mesita row keeps the direct-open fallback.
+      resetSearchSession();
+      const direct = prediction.mesitaSlug ?? prediction.mesitaId;
+      if (direct) {
+        router.push(placeHref(direct));
+        return;
+      }
+      toast(
+        "This place is on Mesita but isn't in the map snapshot yet — opening it from search is coming soon.",
+      );
+      return;
+    }
+    anchorMapTo({ lat: anchorRow.lat, lng: anchorRow.lng }, anchorRow);
+  };
+
   const handleOpenPlace = (place: Place) => {
     const google = googlePredictionFromPlace(place);
     if (google) {
-      handlePickGoogle(google);
+      openGooglePreview(google);
       return;
     }
     router.push(placeHref(place.slug || place.id));
@@ -601,13 +711,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     });
     switch (action) {
       case "open-google":
-        if (prediction) handlePickGoogle(prediction);
+        if (prediction) openGooglePreview(prediction);
         return;
       case "open-catalog":
         if (place) handleOpenPlace(place);
         return;
       case "open-mesita-slug":
-        if (prediction) handlePickMesita(prediction);
+        if (prediction) openMesitaProfileFromPrediction(prediction);
         return;
       case "select-google":
       case "select-mesita-overlay":
@@ -618,16 +728,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         setSelectedId(pin.id);
         return;
       case "select-mesita-catalog":
-        setHeldOverlay(null);
+        // A pin gesture, not a bar pick — select the card, never anchor.
         centerOnSelect.current = true;
-        if (prediction) {
-          handlePickMesita(prediction);
-          return;
-        }
         if (place) {
           setHeldOverlay(googlePredictionFromPlace(place));
           setRailCollapsed(false);
           setSelectedId(place.id);
+        } else {
+          setHeldOverlay(null);
         }
         return;
       case "noop":
@@ -725,6 +833,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         viewCenter={center}
         selectedId={railSelectedId}
         pins={searchPins}
+        cameraAnchor={anchor?.camera ?? null}
+        // The RAW selection — a tap, a scroll, a bar pick. railSelectedId
+        // adds the card-0 fallback, which rings but must never pan.
+        panTargetId={selectedId}
         onSelectPlace={handleSelectPlace}
         onOpenPlace={handleOpenPlace}
         onSelectPin={handleSelectPin}
@@ -776,8 +888,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searchError={searchError}
               predictions={predictions}
               addStates={addStates}
-              onPickMesita={handlePickMesita}
-              onPickGoogle={handlePickGoogle}
+              onPickMesita={handleBarPick}
+              onPickGoogle={handleBarPick}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);

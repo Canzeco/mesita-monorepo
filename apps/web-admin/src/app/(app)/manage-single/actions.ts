@@ -312,6 +312,9 @@ export type AdminPlace = {
   free_rate: number | null;
   premium_rate: number | null;
   monthly_promo_cap: number | null;
+  /** Ghost-partner hold (MESITA-1311): a confirmed guest report closes the
+   *  reward lane until restore. Null/absent = no hold. */
+  reward_lane_pending_review_at?: string | null;
   // Reviews tab (read-only; carried on the overview place payload).
   google_stars_overall: number | null;
   google_review_count: number | null;
@@ -427,6 +430,30 @@ export async function setPlacePlan(
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
+}
+
+// Ghost-partner hold triage (MESITA-1311). Confirming a guest report marks
+// it reviewed AND sets projects.reward_lane_pending_review_at, which closes
+// the reward lane (pending_review) until restore clears it. A report is
+// evidence, never an auto-strike — this is the deliberate human call.
+export type ReviewReportResult = {
+  /** ISO timestamp of the hold now on the place; null after dismiss/restore. */
+  hold: string | null;
+  placeId?: string;
+  report?: { id: string; status: string };
+};
+
+export async function reviewTicketReport(
+  input:
+    | { action: "confirm" | "dismiss"; reportId: string }
+    | { action: "restore"; placeId: string },
+): Promise<Result<ReviewReportResult>> {
+  const r = await efInvoke<ReviewReportResult>(
+    "admin-web-review-ticket-report",
+    input,
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
 }
 
 /** The four rail toggles' post-write truth, from admin-web-set-place-rails. */

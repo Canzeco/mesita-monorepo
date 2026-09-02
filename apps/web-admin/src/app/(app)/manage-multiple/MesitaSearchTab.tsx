@@ -15,7 +15,7 @@ import {
   operatorPromotingLevel,
   STATUS_FACT_FALSE_TONE,
 } from "@/lib/status-vocabulary";
-import { parseGooglePlaceIds } from "./google-place-ids";
+import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
 
 // One table row. A paste run keys by the pasted Google Place ID and may have
@@ -91,9 +91,11 @@ export function MesitaSearchTab({
     }
   }
 
-  // The whole catalog, no paste required. Read-only like the lookup beside
-  // it — the IDs box is left alone so an All places run can never arm Mesita
-  // Intake, which writes state, with every place on Mesita.
+  // The whole catalog, no paste required — and the shortcut: every Google
+  // Place ID it finds lands in the shared box, so the catalog moves on to a
+  // lookup, or to Mesita Intake, without anyone pasting 250 lines. The box
+  // caps where parseGooglePlaceIds caps, and a place with no
+  // google_place_id has no token to give — the summary says both out loud.
   async function runAllPlaces() {
     if (busy) return;
     setRunning("all");
@@ -114,10 +116,19 @@ export function MesitaSearchTab({
           hit,
         })),
       );
-      setSummary(
+      const withIds = places
+        .map((hit) => hit.google_place_id)
+        .filter((id): id is string => Boolean(id));
+      const ids = withIds.slice(0, MAX_GOOGLE_PLACE_IDS);
+      onTextChange(ids.join("\n"));
+      const caught =
         places.length < total
           ? `${places.length} of ${total} places (capped)`
-          : `${places.length} place${places.length === 1 ? "" : "s"} on Mesita`,
+          : `${places.length} place${places.length === 1 ? "" : "s"} on Mesita`;
+      const missing = places.length - withIds.length;
+      setSummary(
+        `${caught} · ${ids.length} ID${ids.length === 1 ? "" : "s"} in the box` +
+          (missing > 0 ? `, ${missing} without a Google ID` : ""),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
