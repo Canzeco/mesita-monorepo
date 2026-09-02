@@ -50,6 +50,27 @@ import { cn } from "@/lib/utils";
 // NO PHOTO, OR A PHOTO THAT FAILS TO LOAD, RENDERS THE INK FACE — the same
 // card with the art layer swapped for a gradient. It is a fallback, not a
 // second design.
+//
+// THE AMOUNT HAS ONE HOME AT A TIME (Pato, 2026-09-02). It used to have two:
+// the strip carried it small and the face carried it big, 60px apart on the
+// same card, so any card you could actually see stated its balance twice. The
+// strip's copy exists for the BURIED state — it is the only line of a card
+// with another card lying on top of it. So it renders only when `covered`, and
+// an uncovered card states its balance once, on the face, in the size that
+// makes it a card instead of a row. The screen-reader label is unaffected: it
+// always carries name, amount and state, whichever half is painted.
+//
+// FREED BY THE SAME MOVE: the place's name gets the whole strip on an uncovered
+// card and wraps to two lines instead of clipping. Franchise branches carry
+// `BRAND + zone` names by rule, so "Tony's Tacos Valle Oriente" is the norm
+// here and an ellipsis through a venue's own name was the row-thinking this
+// card was supposed to leave behind.
+//
+// A LOCKED CARD IS DORMANT ART. Colour used to carry state on this surface and
+// the photo took that job away — with a full-bleed face, the balance you CANNOT
+// spend was the most vivid thing on the screen. Locked desaturates and dims the
+// photo, so the deck reads spendable-first before a word is read. The scrim is
+// untouched, so both text bands keep the contrast computed above.
 
 /** The strip that stays visible when this card is buried in the stack. */
 export const PEEK_PX = 62;
@@ -91,6 +112,7 @@ export function BalanceCard({
   balance,
   nowMs,
   expanded,
+  covered,
   onSelect,
   className,
   style,
@@ -98,8 +120,14 @@ export function BalanceCard({
   balance: CreditBalance;
   /** Emulator time. Maturation is never read off wall time. */
   nowMs: number;
-  /** True when the stack is spread — controls the card's own aria state. */
-  expanded: boolean;
+  /**
+   * True when the stack is spread. Undefined when this card does not spread
+   * anything — a deck of one opens on the first tap, and `aria-expanded="false"`
+   * would promise a state it does not have.
+   */
+  expanded?: boolean;
+  /** Another card lies on top of this one, so only the strip is on screen. */
+  covered: boolean;
   onSelect: () => void;
   className?: string;
   style?: React.CSSProperties;
@@ -140,7 +168,12 @@ export function BalanceCard({
             alt=""
             fill
             sizes="(max-width: 480px) 100vw, 420px"
-            className="object-cover"
+            className={cn(
+              "object-cover",
+              // On-scale utilities, not tuned values: the scrim above already
+              // owns contrast, so this only has to read as "asleep".
+              locked && "brightness-75 saturate-50",
+            )}
             onError={() => setArtFailed(true)}
           />
         ) : null}
@@ -148,20 +181,20 @@ export function BalanceCard({
       </span>
 
       {/* The strip. Everything above PEEK_PX must be readable with the rest of
-          the card buried, so it carries identity on the left and money on the
-          right, and nothing else. */}
+          the card buried, so it carries identity on the left and — only while
+          something is lying on top of it — money on the right. */}
       <span
         className="relative flex shrink-0 items-center gap-3 px-4"
         style={{ height: PEEK_PX }}
       >
         <Monogram name={balance.placeName} />
         <span
-          className="min-w-0 flex-1 truncate text-sm font-bold tracking-tight"
+          className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-bold tracking-tight"
           style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
         >
           {balance.placeName}
         </span>
-        {locked ? (
+        {!covered ? null : locked ? (
           // A locked balance is not "MX$0". Rendering the zero would lead with
           // the most alarming number available for a state that is simply
           // not-yet — so the amount goes quiet and the chip says when.
