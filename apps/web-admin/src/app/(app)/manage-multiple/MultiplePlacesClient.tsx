@@ -85,7 +85,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[1].id}
         tint="violet"
         title={PIPELINE_STEPS[1].label}
-        blurb="Google Place IDs in. Mesita states out. Read-only."
+        blurb="Google Place IDs in — or All places. Mesita states out. Read-only."
       >
         <MesitaSearchTab text={sharedIds} onTextChange={setSharedIds} />
       </Step>

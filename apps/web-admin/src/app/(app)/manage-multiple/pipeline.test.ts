@@ -60,6 +60,45 @@ describe("the page chrome names the three surfaces", () => {
   });
 });
 
+describe("Mesita Search returns the whole catalog too", () => {
+  it("ships an All places button that needs no paste, and never arms Intake", () => {
+    const tab = readFileSync(join(here, "MesitaSearchTab.tsx"), "utf8");
+    expect(tab).toContain("listAllPlaces");
+    expect(tab).toContain("All places");
+    // Gated on nothing but a run already in flight — the paste is the OTHER
+    // button's input, so requiring IDs here would defeat the point.
+    expect(tab).toContain("disabled={busy}");
+    // Read-only: the shared ID box feeds Mesita Intake, which WRITES state.
+    // An All places run must never load it with every place on Mesita.
+    const run = tab.slice(
+      tab.indexOf("async function runAllPlaces"),
+      tab.indexOf("return (", tab.indexOf("async function runAllPlaces")),
+    );
+    expect(run).not.toContain("onTextChange");
+  });
+
+  it("walks the catalog in the EF — paged, capped, and honest about the cap", () => {
+    const ef = readFileSync(
+      join(
+        here,
+        "../../../../../../supabase/supabase/functions/admin-web-search-places/index.ts",
+      ),
+      "utf8",
+    );
+    expect(ef).toContain("all?: unknown");
+    expect(ef).toContain("bodyRes.body.all === true");
+    // Pages, because PostgREST caps one response at db.max_rows.
+    expect(ef).toContain("ALL_PAGE_SIZE");
+    expect(ef).toContain("ALL_MAX_ROWS");
+    expect(ef).toContain(".range(from, to)");
+    // `total` is what lets the console say a run was truncated.
+    expect(ef).toContain('count: "exact", head: true');
+    expect(ef).toContain("places, total");
+    // The two id-scoped side reads ride the URL, so ALL chunks them.
+    expect(ef).toContain("chunked(ids, ID_CHUNK)");
+  });
+});
+
 describe("spend calculator stays off this page", () => {
   it("does not mount CostCalculator — Create/Enrich estimates live on Intake", () => {
     const searchTab = readFileSync(join(here, "SearchTab.tsx"), "utf8");

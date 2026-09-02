@@ -7,6 +7,10 @@
 // existing business-* EFs (super-admin bypass in _shared/auth.ts grants
 // access regardless of project_members).
 //
+// Four read modes, checked in this order: `all` (the WHOLE catalog, for
+// Mesita Search's All places button), `googlePlaceIds` (a paste), an empty
+// query (recent places), and free text. Every mode shapes the same row.
+//
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.
 
@@ -32,10 +36,32 @@ import {
   placeIdsMatchingNameHistory,
 } from "../_shared/place-name-history.ts";
 
-type Body = { query?: unknown; limit?: unknown; googlePlaceIds?: unknown };
+type Body = {
+  query?: unknown;
+  limit?: unknown;
+  googlePlaceIds?: unknown;
+  all?: unknown;
+};
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// ALL mode. PostgREST caps one response at db.max_rows (1000), so the whole
+// catalog is walked in pages rather than asked for in a single limit. The
+// ceiling is the honest stop: past it the run reports `total` and truncates,
+// instead of shipping a payload the console cannot render.
+const ALL_PAGE_SIZE = 500;
+const ALL_MAX_ROWS = 2000;
+
+// `in` lists ride in the URL, so the two id-scoped side reads below are
+// walked in chunks — an ALL run can carry far more ids than a 250-id paste.
+const ID_CHUNK = 200;
+
+function chunked<T>(xs: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
+  return out;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -53,6 +79,9 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
+  // ALL wins over every other mode: it takes no input, so a stray query or
+  // paste alongside it can only be leftover state from the last run.
+  const all = bodyRes.body.all === true;
   const q = typeof bodyRes.body.query === "string" ? bodyRes.body.query.trim() : "";
   const googlePlaceIds = Array.isArray(bodyRes.body.googlePlaceIds)
     ? [
@@ -83,8 +112,43 @@ Deno.serve(async (req) => {
   const cols =
     "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, business_status, business_status_at, updated_at";
   let rows: Record<string, unknown>[] = [];
+  // Only ALL mode reports it: elsewhere the count of a filtered read is the
+  // number of rows already returned, and a second query would say nothing.
+  let total: number | null = null;
 
-  if (googlePlaceIds.length > 0) {
+  if (all) {
+    // Page by id — unique, so a page boundary can neither drop nor repeat a
+    // place the way a shared `updated_at` or `name` could. The label order
+    // the operator reads is applied once, below, over the assembled set.
+    const { count, error: countErr } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true });
+    if (countErr) return json({ ok: false, error: `search_failed: ${countErr.message}` }, 500);
+    total = count ?? 0;
+    let from = 0;
+    while (from < ALL_MAX_ROWS) {
+      const to = Math.min(from + ALL_PAGE_SIZE, ALL_MAX_ROWS) - 1;
+      const { data, error } = await admin
+        .from("profiles")
+        .select(cols)
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
+      const page = (data ?? []) as Record<string, unknown>[];
+      rows.push(...page);
+      // Step by what CAME BACK, never by what was asked for. `db.max_rows`
+      // can trim a page below ALL_PAGE_SIZE, and a fixed stride would then
+      // skip exactly the rows the server trimmed — a silent hole in the
+      // middle of a list whose whole promise is that it is complete.
+      if (page.length === 0) break;
+      from += page.length;
+    }
+    rows.sort((a, b) =>
+      String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, {
+        sensitivity: "base",
+      })
+    );
+  } else if (googlePlaceIds.length > 0) {
     const { data, error } = await admin
       .from("profiles")
       .select(cols)
@@ -188,13 +252,13 @@ Deno.serve(async (req) => {
     string,
     { mesitaPay: boolean; credits: boolean; pickup: boolean; delivery: boolean }
   >();
-  if (ids.length > 0) {
+  for (const idPart of chunked(ids, ID_CHUNK)) {
     const [verificationRes, enrichmentRes] = await Promise.all([
       admin
         .from("project_verifications")
         .select("place_id")
         .eq("status", "approved")
-        .in("place_id", ids),
+        .in("place_id", idPart),
       // The four acceptance intent bits ride the same places-direct read:
       // admin-only columns, deliberately NEVER added to the profiles view
       // (the view is SELECT-granted to the anon key, so a view column is
@@ -204,7 +268,7 @@ Deno.serve(async (req) => {
         "id, enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
       ).in(
         "id",
-        ids,
+        idPart,
       ),
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
@@ -326,5 +390,6 @@ Deno.serve(async (req) => {
     };
   });
 
-  return json({ ok: true, places });
+  // `total` is null outside ALL mode — see the declaration above.
+  return json({ ok: true, places, total });
 });
