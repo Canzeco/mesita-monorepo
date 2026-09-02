@@ -51,7 +51,8 @@ import { cn } from "@/lib/utils";
 // card with the art layer swapped for a gradient. It is a fallback, not a
 // second design.
 //
-// THE AMOUNT HAS ONE HOME AT A TIME (Pato, 2026-09-02). It used to have two:
+// THE AMOUNT HAS ONE HOME AT A TIME (2026-09-02, review pass on the shipped
+// deck — the Pato-dated rules above are unchanged). It used to have two:
 // the strip carried it small and the face carried it big, 60px apart on the
 // same card, so any card you could actually see stated its balance twice. The
 // strip's copy exists for the BURIED state — it is the only line of a card

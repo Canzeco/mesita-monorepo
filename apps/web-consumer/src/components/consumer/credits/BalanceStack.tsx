@@ -23,8 +23,9 @@ import type { CreditBalance } from "@/lib/mock/credits-mock";
 // LocalOverlay, SlideOverShell and BottomSheetShell already share, so the app
 // keeps one clock.
 //
-// SPREAD_PX MUST CLEAR THE WHOLE CARD, NOT PART OF IT (Pato, 2026-09-02). It
-// was 120 against a 176px card, and the 56px it left buried were exactly where
+// SPREAD_PX MUST CLEAR THE WHOLE CARD, NOT PART OF IT (2026-09-02, review pass
+// on the shipped deck). It was 120 against a 176px card, and the 56px it left
+// buried were exactly where
 // the face lives: every card behind the front one rendered its balance sliced
 // in half by the next card's edge. A number cut through the middle does not
 // read as a peek, it reads as a rendering bug — worse than not showing it.
