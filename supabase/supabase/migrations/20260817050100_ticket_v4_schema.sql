@@ -37,7 +37,7 @@ alter table public.tickets
 comment on column public.tickets.tip_pct is
   'Preset tip percent the guest picked (10/15/20); NULL = custom peso amount. tip_cents stays the single tip truth — this only lets a bill re-entry recompute it.';
 comment on column public.tickets.approved_at is
-  'Staff approved the ticket (check-web-approve-ticket). Approval freezes the amount: reprice early-returns once set.';
+  'Staff approved the ticket (validate-web-approve-ticket). Approval freezes the amount: reprice early-returns once set.';
 comment on column public.tickets.approved_discount_cents is
   'Snapshot of discount_cents at approval — "the last moment anything can change the amount", made enforceable.';
 comment on column public.tickets.approved_amount_due_cents is
@@ -47,7 +47,7 @@ comment on column public.tickets.fix_requested is
 comment on column public.tickets.paid_method is
   'How the guest settles after approval: at_place (live) | mesita (staged — the EF 501s).';
 comment on column public.tickets.validated_at is
-  'Payment confirmed and the ticket closed (check-web-validate-ticket). revealed stays the terminal status; this is the v4 timestamp.';
+  'Payment confirmed and the ticket closed (validate-web-validate-ticket). revealed stays the terminal status; this is the v4 timestamp.';
 
 -- 2 ── Approve and send-back are mutually exclusive BY CONSTRUCTION. Two
 --     devices holding the same QR are equally authorized by design, so a
