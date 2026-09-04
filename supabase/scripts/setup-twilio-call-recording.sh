@@ -5,8 +5,10 @@
 #
 # Targets come from integrations/twilio/numbers.json — every entry with
 # recordIncoming=true — NOT from a hardcoded list. The old inline default was
-# the two WhatsApp numbers, both now released. Override with TWILIO_PHONE_NUMBERS
-# for a one-off.
+# the two former WhatsApp numbers; neither is releasable today (one was
+# renamed and reused as the consumer reservations line, the other is tied to
+# a third-party login) — see numbers.json for current state. Override with
+# TWILIO_PHONE_NUMBERS for a one-off.
 #
 # NEVER add an elevenlabs-owned number here: its Twilio voice URL points at
 # ElevenLabs, and overwriting it with this TwiML silently kills the
