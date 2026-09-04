@@ -78,8 +78,8 @@ export function LifecycleStepper({
 
   const joinDetail =
     view.join === "current"
-      ? `${price}/month — Join Partnership on this page.`
-      : `${price}/month — switch strategies free anytime.`;
+      ? `${price}/year — Join Partnership on this page.`
+      : `${price}/year — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`

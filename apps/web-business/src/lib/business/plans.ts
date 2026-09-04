@@ -37,7 +37,7 @@ export const SUBSCRIPTIONS: SubscriptionRow[] = [
     id: "partner",
     label: "Partnership",
     price: "MX$1,000 + IVA",
-    cadence: "/ month",
+    cadence: "/ year",
     tagline: "Partnership, guest rewards, Performance, Reservationist.",
     setup: "WhatsApp ping + first ticket",
     featured: true,

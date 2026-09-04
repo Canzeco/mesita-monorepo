@@ -20,7 +20,7 @@ export function MembershipBox({
     <div className="flex min-h-11 items-center gap-2">
       <MembershipStatusPill state={pillState} />
       <p className="text-muted-foreground min-w-0 flex-1 truncate text-[12px] leading-none">
-        {price}/month
+        {price}/year
       </p>
       {canDrop ? (
         <button
