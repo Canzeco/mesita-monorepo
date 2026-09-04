@@ -75,7 +75,7 @@ export function FaqsBox({
           />
         </Faq>
 
-        <Faq q={`What exactly does the ${price}/month buy?`}>
+        <Faq q={`What exactly does the ${price}/year buy?`}>
           <p>
             Partnership. Conservative and Aggressive unlock after you join —
             pick either, switch free anytime. Zero stays selectable with no

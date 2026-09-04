@@ -86,7 +86,7 @@ function LifecycleBanner({
   const joinDetail =
     view.join === "current"
       ? "Join with the Stripe mock below."
-      : `${price}/month — switch strategies free anytime.`;
+      : `${price}/year — switch strategies free anytime.`;
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -290,7 +290,7 @@ export function PartnershipBody({
             {price}
             <span className="text-muted-foreground text-xs font-normal">
               {" "}
-              / month
+              / year
             </span>
           </p>
           <p className="text-muted-foreground type-body leading-snug">
@@ -383,7 +383,7 @@ function StripeJoinButton({
         <StripeMark className="h-5 w-5 shrink-0" />
       )}
       {forfeited
-        ? `Re-join Partnership · ${price}/month`
+        ? `Re-join Partnership · ${price}/year`
         : "Join Partnership"}
     </button>
   );

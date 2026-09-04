@@ -27,7 +27,7 @@ export function PartnershipOffer({
         <p className="font-display text-[2.25rem] leading-none font-semibold tracking-tight">
           {price}
           <span className="text-muted-foreground ml-1.5 text-base font-normal tracking-normal">
-            / month
+            / year
           </span>
         </p>
         <p className="text-muted-foreground mt-1 text-[13px] leading-snug">
@@ -47,9 +47,9 @@ export function PartnershipOffer({
           {billingBusy ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : forfeited ? (
-            `Re-join Partnership · ${price}/month`
+            `Re-join Partnership · ${price}/year`
           ) : (
-            `Join Partnership · ${price}/month`
+            `Join Partnership · ${price}/year`
           )}
         </button>
         <p className="text-muted-foreground text-[11px] leading-snug">
