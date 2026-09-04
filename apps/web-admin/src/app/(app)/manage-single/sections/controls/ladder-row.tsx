@@ -148,7 +148,14 @@ export function LadderRow({
     <>
       <Body row={row} />
       <PointsCell row={row} className="hidden w-6 text-right sm:block" />
-      {right}
+      {/* ONE CONTROL COLUMN. Every rung's control — switch, pill, lock chip —
+          right-aligns to the same axis, so scanning the right edge reads as a
+          single column instead of a ragged one. Fixed width, not `ml-auto`:
+          auto margins align the LEFT edge of a variable-width control, which
+          is what made a lock chip and a switch sit on different axes. */}
+      <span className="flex w-[9.5rem] shrink-0 justify-end sm:w-[11rem]">
+        {right}
+      </span>
     </>
   );
 

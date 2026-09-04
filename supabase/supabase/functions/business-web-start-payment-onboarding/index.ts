@@ -57,6 +57,24 @@ type Body = {
   refreshUrl?: string;
 };
 
+// Stripe's OWN WORDS reach the operator. Every failure on this path is a
+// configuration fact a retry cannot change — Connect not signed up for, a key
+// that is actually a key id, branding missing — and Stripe names each one
+// precisely. Swallowing that into "try again" sends the operator to the logs
+// (or to an agent) to learn something the API already said. The Controls row
+// renders `blocked` as "Stripe: <reason>", so this lands in an idiom that
+// already exists.
+function stripeFailure(err: unknown): Response {
+  const raw = (err as { raw?: { message?: unknown } }).raw?.message;
+  const top = (err as { message?: unknown }).message;
+  const message = typeof raw === "string"
+    ? raw
+    : typeof top === "string"
+    ? top
+    : "Stripe rejected the request.";
+  return json({ ok: false, error: message, code: "stripe_error" }, 400);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
@@ -158,12 +176,18 @@ Deno.serve(async (req) => {
   }
 
   // "create", "replace", or a 404ed "use": provision a fresh account.
-  const account = await stripe.accounts.create({
-    country: "MX",
-    controller: MESITA_CONNECT_CONTROLLER,
-    capabilities: MESITA_CONNECT_CAPABILITIES,
-    metadata: { place_id: placeId },
-  });
+  let account: Stripe.Account;
+  try {
+    account = await stripe.accounts.create({
+      country: "MX",
+      controller: MESITA_CONNECT_CONTROLLER,
+      capabilities: MESITA_CONNECT_CAPABILITIES,
+      metadata: { place_id: placeId },
+    });
+  } catch (err) {
+    console.error("[start-payment-onboarding] accounts.create failed:", err);
+    return stripeFailure(err);
+  }
 
   const snapshot = accountSnapshotFromStripe(account, livemode);
   const written = existing
@@ -193,6 +217,15 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `account_write: ${reason}` }, 500);
   }
 
-  const url = await linkFor(account.id);
+  let url: string;
+  try {
+    url = await linkFor(account.id);
+  } catch (err) {
+    // The account exists and its row is written; only the link failed (most
+    // often Connect branding is unset). Report Stripe's reason and keep the
+    // account — the next press reuses it through the "use" path.
+    console.error("[start-payment-onboarding] accountLinks.create failed:", err);
+    return stripeFailure(err);
+  }
   return json({ ok: true, mock: false, url, account: written.row });
 });
