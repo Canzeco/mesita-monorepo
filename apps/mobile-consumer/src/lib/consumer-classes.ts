@@ -3,6 +3,16 @@
 // (default) < influencer (Instagram ≥ 2,000 followers, automatic) < premium
 // (paid) < aura (invite-only presence class) — mirrors classes.rank in the DB
 // and the money ladder (class steps +5 influencer / +10 premium / +15 aura).
+//
+// GUEST-FACING NAMES ARE bronze/silver/gold/diamond (MESITA-1449): the `id`s
+// below stay the legacy standard/influencer/premium/aura keys — they are the
+// DB values (classes.rank) and drive every comparison in this file and its
+// consumers (isElevatedClass, follower-threshold lookups, etc.) — only the
+// display `label`s changed, matching TicketScreen.tsx's existing
+// legacyKey -> bronze/silver/gold/diamond bridge exactly (standard->Bronze,
+// influencer->Silver, premium->Gold, aura->Diamond). Same two-layer shape web
+// already documents for its own class-context: legacy keys bridge underneath,
+// never merged into the earned-name ladder guests actually see.
 
 import {
   CreditCard,
@@ -24,13 +34,13 @@ export const CLASSES: {
 }[] = [
   {
     id: 'standard',
-    label: 'Standard',
+    label: 'Bronze',
     priceMxn: 0,
     followerThreshold: 0,
   },
   {
     id: 'influencer',
-    label: 'Influencer',
+    label: 'Silver',
     priceMxn: 0,
     // Mirrors classes.follower_threshold in the DB — the EF grants off that
     // row, so this constant is display-only and must track it.
@@ -38,13 +48,13 @@ export const CLASSES: {
   },
   {
     id: 'premium',
-    label: 'Premium',
+    label: 'Gold',
     priceMxn: 50,
     followerThreshold: 0,
   },
   {
     id: 'aura',
-    label: 'Aura',
+    label: 'Diamond',
     priceMxn: 0,
     followerThreshold: 0,
   },
@@ -81,10 +91,10 @@ export function isElevatedClass(classKey: string): boolean {
 
 // Compact Title-Case label per class id. Unknown values fall back to "Mesita".
 const CLASS_LABELS: Record<string, string> = {
-  standard: 'Standard',
-  premium: 'Premium',
-  influencer: 'Influencer',
-  aura: 'Aura',
+  standard: 'Bronze',
+  premium: 'Gold',
+  influencer: 'Silver',
+  aura: 'Diamond',
 };
 
 export function classProperLabel(classKey: string): string {

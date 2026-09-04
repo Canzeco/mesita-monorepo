@@ -87,7 +87,7 @@ export function HelpModal({
         <ExplainRow
           icon={<Crown size={18} color="#ce74e3" fill="#ce74e3" />}
           bold="Elevated classes boost them."
-          rest="Standard gets the base discount; Premium, Influencer and Aura unlock bigger ones — Influencer is free with Instagram reach, Aura is invite-only."
+          rest="Bronze gets the base discount; Gold, Silver and Diamond unlock bigger ones — Silver is free with Instagram reach, Diamond is invite-only."
         />
         <ExplainRow
           icon={<Sparkles size={18} color="#cf0360" />}

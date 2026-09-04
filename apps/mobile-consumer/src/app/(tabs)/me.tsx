@@ -85,7 +85,7 @@ export default function MeScreen() {
   const sexLabel = formatSex(profile?.sex);
 
   const classLabel =
-    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Standard';
+    CLASSES.find((c) => c.id === effective.key)?.label ?? 'Bronze';
   // Prefer effective handle so IG mock (@mock) wins over a stale profile.
   const handle = effective.handle ?? profile?.instagram_handle ?? null;
   const igConnected = effective.origin === 'instagram' || Boolean(handle);

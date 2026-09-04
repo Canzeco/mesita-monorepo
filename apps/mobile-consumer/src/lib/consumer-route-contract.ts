@@ -8,17 +8,29 @@ import type { Href } from 'expo-router';
 // ef.ts / tokens). Any change to routes or helpers on either side MUST update
 // both files in the same PR — web/mobile IA parity is a product rule.
 //
+// MOBILE IS FROZEN (Pato, 2026-08-20). This file is one of only three mobile
+// writes the freeze still allows (the others: ticket-journey.ts byte-identical,
+// api/tickets.ts ACTIVE_TICKET_STATUSES) — kept in lockstep so it never drifts
+// from web's own pinned test (consumer-route-contract.test.ts). The freeze
+// forbids restructuring mobile's actual screens or tab bar, so below: every
+// key a live mobile call site depends on keeps its CURRENT name and value;
+// only the parts nothing outside this file reads are renamed to mirror web's
+// current shape. Where mobile genuinely has not done the underlying screen
+// work web already shipped, that gap is called out below, not hidden.
+//
 // Expo Router ↔ web href map (agents):
-//   web /home[/swipe|catalog|ai|social|favorites]
-//                                          →  Expo /(tabs)/home  (modes are
-//       in-screen state on mobile, not nested routes — same IA)
-//   web /search                            →  Expo /(tabs)/search
-//   web /rewards                           →  Expo /(tabs)/rewards  (also /rewards)
-// WEB HAS MOVED AHEAD (routing v2 S1, 2026-08-17). The port is a SEPARATE PR
-// because it is a file-move on this side (Expo route files ARE the paths) with
-// its own Metro verification loop:
-//   web /rewards            ->  /new-visit        (Expo: (tabs)/rewards.tsx)
-//   web /rewards/ticket/:id ->  /visit/:id        (Expo: app/rewards/ticket/[id].tsx)
+//   web /discover[/catalog|search|swipe|chat|favs]  (was /home + /search,
+//       merged 2026-09-01, MESITA-1400)      →  Expo /(tabs)/home +
+//       /(tabs)/search — mobile has NOT merged these; the tab bar is frozen
+//       at five tabs (MESITA-1485), so `search` stays its own real Expo
+//       screen and the other four modes stay in-screen state inside Home
+//       (same IA as before web's merge, renamed below to match web's current
+//       mode names).
+//   web /new-visit[/wallet]  (was /rewards, split into New + Wallet sections,
+//       2026-09-01)                           →  Expo /(tabs)/rewards —
+//       mobile has NOT split it; one screen still covers both.
+//   web /visit/:id  (was /rewards/ticket/:id)  →  Expo app/rewards/ticket/[id].tsx
+//       — mobile has NOT renamed the ticket route; still /rewards/ticket/[id].
 //   web /home/ai            ->  /home/chat        (Expo: Home screen segment)
 //   web /saved/*            DELETED
 // SANCTIONED DIVERGENCE: web lights the Inbox tab from /visit/:id via a
@@ -32,62 +44,97 @@ import type { Href } from 'expo-router';
 //   web /pay (legacy)                      →  Expo /pay → /(tabs)/rewards
 //   web /me                                →  Expo /(tabs)/me
 //   web /place/:id                         →  Expo /place/[id]
-//   web /rewards/ticket/:id                →  Expo /rewards/ticket/[id]
 //   web /onboard                           →  Expo /onboard
 //   web /share                             →  Expo /share
 //   web /inbox/{mine,global} (legacy)      →  Expo /inbox/* → the Inbox tab
 
 export const CONSUMER_ROUTES = {
   onboard: '/onboard',
-  // The referral page is named Share — /share is canonical on web.
+  // The referral page is named Share — /share is canonical on web. Mobile
+  // already has the screen (src/app/share.tsx); this key was simply missing.
   share: '/share',
-  // Discovery hub. On web, modes are nested routes; on Expo they are SegmentNav
-  // state inside /(tabs)/home. Constants keep the mental model aligned.
-  home: '/(tabs)/home',
-  homeTabs: {
-    swipe: '/(tabs)/home',
+  // DISCOVER (web, MESITA-1400, 2026-09-01): web merged Home + Search into
+  // one rail. Mobile has NOT — the tab bar is frozen at five separate tabs
+  // (see apps/mobile-consumer/CLAUDE.md, MESITA-1485), so Home and Search
+  // stay two distinct Expo screens. These keys mirror web's discoverTabs
+  // SHAPE for concept parity: `search` maps to mobile's own separate, real
+  // screen; the other four (renamed to web's current names — `ai`→`chat`,
+  // `social` folded into `catalog`, `favorites`→`favs`) collapse onto Home's
+  // in-screen state, same convention the old `homeTabs` used.
+  discoverTabs: {
     catalog: '/(tabs)/home',
-    ai: '/(tabs)/home',
-    social: '/(tabs)/home',
-    favorites: '/(tabs)/home',
+    search: '/(tabs)/search',
+    swipe: '/(tabs)/home',
+    chat: '/(tabs)/home',
+    favs: '/(tabs)/home',
   },
+  // Web's default is search-first now (`discoverDefault: "/discover/search"`,
+  // 2026-09-01). Repointing mobile's default landing tab to Search would be
+  // a real behavior change, which the freeze forbids — this stays Home until
+  // the copy pass actually merges the tabs.
+  discoverDefault: '/(tabs)/home',
+  // Same value as discoverDefault, kept under its OLD name only because
+  // app/index.tsx's auth-gate redirect — one of the files this freeze
+  // forbids touching — imports `homeDefault` by that exact name. A future
+  // non-frozen PR that repoints app/index.tsx to `discoverDefault` can
+  // delete this alias.
   homeDefault: '/(tabs)/home',
-  search: '/(tabs)/search',
-  // Shared discovery Filters modal — web /filters peer (MESITA-905). Expo
-  // Stack screen with presentation: 'modal'; values stay in the store.
+  // Shared discovery Filters modal — web /filters peer (MESITA-905). Web's
+  // redesigned Filters is now a bottom-overlay pill with no route of its own
+  // (dropped from web's contract entirely); mobile's modal screen
+  // (app/filters.tsx) is still live, so this key stays.
   filters: '/filters',
-  favorites: '/(tabs)/home',
   place: {
     prefix: '/place/',
   },
   reservation: {
     prefix: '/reservation/',
   },
+  // Web split this into `newVisit` (New + Wallet sections) plus a separate
+  // top-level `visit` for the ticket screen (2026-09-01). Mobile has NOT made
+  // that split — `/(tabs)/rewards` is still one screen covering both, and
+  // the ticket is still at /rewards/ticket/[id], not /visit/[id] — so this
+  // stays named `rewards`, matching mobile's real, current routes. `root` is
+  // live: app/pay/index.tsx and components/place/place-detail/rewards.tsx
+  // (both frozen files) import it by that exact name.
   rewards: {
     root: '/(tabs)/rewards',
     ticketPrefix: '/rewards/ticket/',
   },
-  // Activity — the container tab (labelled Inbox until 2026-08-31), four
-  // sections in a FIXED order (Pato, 2026-08-16): Visits · Orders ·
-  // Reservations · Notifications, running from what you're doing right now out
-  // to the passive feed. The route stays /inbox on both platforms.
+  // Activity — the container tab, routed at /inbox on both platforms. Web's
+  // four sections run, in the load-bearing product order (Pato, 2026-09-01):
+  // Alerts · Visits · Orders · Reservations, Alerts leading. Mobile's own
+  // (tabs)/inbox.tsx SECTIONS array has NOT been updated to that order — it
+  // is still Visits · Orders · Reservations · Notifications (Pato,
+  // 2026-08-16), Notifications last, not leading (MESITA-1486). Fixing the
+  // order is a screen change, which the freeze forbids here.
   //
-  // Web makes these nested routes (/inbox/<section>); here the tab screen
-  // holds them as segments, which is the RN-native shape. These paths are the
-  // web contract mirrored for deep-link parity — the tab route itself is
-  // `/(tabs)/inbox`.
+  // NO `credits` key any more: web moved Wallet out of Activity into Pay
+  // (`newVisit.wallet`, 2026-09-01), and nothing in mobile ever consumed
+  // `inbox.credits` — no Credits/Wallet section exists anywhere under
+  // components/inbox/ — so it is dropped rather than carried forward dead.
+  //
+  // Key order below follows MOBILE's actual current section order, not
+  // web's: this object has no runtime effect (nothing iterates it; the guest
+  // sees (tabs)/inbox.tsx's own SECTIONS array), so the order here is
+  // documentation and should describe mobile's reality, not claim parity it
+  // doesn't have.
   inbox: {
     root: '/(tabs)/inbox',
-    // Labelled WALLET on web and leading the row, but NOT the default section
-    // (web contract, 2026-09-01; renamed from Credits 2026-08-31). Mobile's
-    // SegmentNav still renders four — the fifth pill waits for the copy pass;
-    // this key exists so the mirror stays honest.
-    credits: '/inbox/credits',
     visits: '/inbox/visits',
     orders: '/inbox/orders',
     reservations: '/inbox/reservations',
     notifications: '/inbox/notifications',
   },
+  // Was pointing at the bare tab root with no explanation. Mobile's Inbox tab
+  // already defaults its own internal segment state to 'visits' (see the
+  // useState in (tabs)/inbox.tsx) — matching web's inboxDefault
+  // (/inbox/visits) semantically. The VALUE below intentionally stays the
+  // tab route rather than the literal string "/inbox/visits": mobile has no
+  // distinct per-section screen (app/inbox/[tab].tsx blanket-redirects any
+  // /inbox/:tab, "visits" included, straight back to inboxTabPath()), so
+  // setting this to "/inbox/visits" would make that redirect loop on itself.
+  // This value is the correct, working one.
   inboxDefault: '/(tabs)/inbox',
   me: '/(tabs)/me',
   // Premium checkout deliberately has NO mobile route (Apple review — the
