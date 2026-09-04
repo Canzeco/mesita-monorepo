@@ -131,8 +131,8 @@ export function AiConnectModal({ visible, onClose }: Props) {
       <Text style={{ color: '#775254', lineHeight: 20, fontSize: 14 }}>
         Generate a personal access token, then add Mesita as an MCP server in
         Claude, Cursor, or ChatGPT. Your AI can then find places, save them,
-        book tables, and check rewards — as you. Available for Premium,
-        Influencer and Aura members — not on Standard.
+        book tables, and check rewards — as you. Available for Gold,
+        Silver and Diamond members — not on Bronze.
       </Text>
 
       {!canConnect ? (
@@ -149,7 +149,7 @@ export function AiConnectModal({ visible, onClose }: Props) {
         >
           <Crown color="#b45309" size={16} style={{ marginTop: 2 }} />
           <Text style={{ flex: 1, color: '#78350f', lineHeight: 18, fontSize: 13 }}>
-            You’re on Standard. Upgrade to Premium — or reach Influencer via
+            You’re on Bronze. Upgrade to Gold — or reach Silver via
             Instagram — to create an MCP token and let an AI control your
             profile.
           </Text>
