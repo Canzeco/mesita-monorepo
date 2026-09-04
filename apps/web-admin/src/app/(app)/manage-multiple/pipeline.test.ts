@@ -36,7 +36,7 @@ describe("the page chrome names the three surfaces", () => {
     expect(intake).toContain('label="Update"');
     expect(intake).toContain("runCreateThenEnrich");
     expect(intake).toContain("alreadyExisted");
-    expect(intake).toContain("Listed · Active · Verified · Partnered · Promoted");
+    expect(intake).toContain("Listed · Active · Verified · Partnered · Visit Rewards");
     expect(intake).toContain("Create + Enrich is create then enrich");
     expect(intake).toContain("Copy failed IDs");
     expect(intake).toContain("Promise.all(ids.map");

@@ -149,9 +149,9 @@ Deno.serve(async (req) => {
   const livemode = keyIsLive(stripeKey!);
   const origin = req.headers.get("origin") ?? "";
   const returnUrl = bodyRes.body.returnUrl ??
-    `${origin}/unit/${placeId}/promos?connect=return`;
+    `${origin}/place/${placeId}/promos?connect=return`;
   const refreshUrl = bodyRes.body.refreshUrl ??
-    `${origin}/unit/${placeId}/promos?connect=refresh`;
+    `${origin}/place/${placeId}/promos?connect=refresh`;
 
   const linkFor = async (accountId: string) => {
     const link = await stripe.accountLinks.create({

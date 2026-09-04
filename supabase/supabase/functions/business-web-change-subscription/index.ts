@@ -136,10 +136,10 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
   const successUrl =
     bodyRes.body.successUrl ??
-    `${origin}/unit/${projectId}/promos?subscription=success`;
+    `${origin}/place/${projectId}/promos?subscription=success`;
   const cancelUrl =
     bodyRes.body.cancelUrl ??
-    `${origin}/unit/${projectId}/promos?subscription=cancelled`;
+    `${origin}/place/${projectId}/promos?subscription=cancelled`;
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
