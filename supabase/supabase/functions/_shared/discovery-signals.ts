@@ -27,8 +27,9 @@
 // Semantic died. It split into Name (`places.name_embedding`) and Summary
 // (`places.embedding` — the Summary blurb, never Presentation). Social left
 // the library — it permanently abstained because Social Lineup never wrote
-// a place-level index. Social Lineup is still a MODULE and Social is still
-// a MODE; neither is a signal.
+// a place-level index. Social Lineup is still Soon, and Social itself left
+// the mode list (discovery-matrix.ts) — its retrieval survives only as two
+// sources there, and `module` is retired along with it. Neither is a signal.
 //
 // NEUTRAL IS 1, NOT 0.5. Signals compose as `s^w` (see discovery-blend.ts), so
 // the identity element of the blend is 1 — a signal with s=1 drops out of the

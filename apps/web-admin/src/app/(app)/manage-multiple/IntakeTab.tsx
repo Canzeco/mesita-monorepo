@@ -98,7 +98,7 @@ export function IntakeTab({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Create runs every ID at once. Enrich is queued. Update writes Listed · Active · Verified · Partnered · Promoted. Create + Enrich is create then enrich.
+          Create runs every ID at once. Enrich is queued. Update writes Listed · Active · Verified · Partnered · Visit Rewards. Create + Enrich is create then enrich.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton

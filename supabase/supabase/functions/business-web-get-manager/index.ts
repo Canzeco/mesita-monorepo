@@ -56,10 +56,10 @@ Deno.serve(async (req) => {
         .select("id, full_name, first_name, last_name, email, phone, created_at")
         .single();
       if (!refresh.error) {
-        return json({ ok: true, business: refresh.data });
+        return json({ ok: true, manager: refresh.data });
       }
     }
-    return json({ ok: true, business: existing.data });
+    return json({ ok: true, manager: existing.data });
   }
 
   const inserted = await admin
@@ -73,5 +73,5 @@ Deno.serve(async (req) => {
       500,
     );
   }
-  return json({ ok: true, business: inserted.data });
+  return json({ ok: true, manager: inserted.data });
 });

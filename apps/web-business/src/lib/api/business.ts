@@ -22,13 +22,13 @@ export type BusinessProfile = {
 export async function apiGetBusinessProfile(
   client: SupabaseClient,
 ): Promise<BusinessProfile> {
-  const { business } = await invokeEF<{ business: BusinessProfile }>(
+  const { manager } = await invokeEF<{ manager: BusinessProfile }>(
     client,
     "business-web-get-manager",
     {},
     "Couldn't load your business profile.",
   );
-  return business;
+  return manager;
 }
 
 export async function apiCreateBusinessProfile(
