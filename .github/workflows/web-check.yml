@@ -1,0 +1,54 @@
+name: web-check CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web-check/**"
+      - ".github/workflows/web-check.yml"
+  pull_request:
+    paths:
+      - "apps/web-check/**"
+      - ".github/workflows/web-check.yml"
+
+concurrency:
+  group: web-check-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: apps/web-check
+
+jobs:
+  check:
+    name: lint · typecheck · build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web-check/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

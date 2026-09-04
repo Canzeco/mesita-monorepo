@@ -195,6 +195,7 @@
     "web": [
       "web-admin",
       "web-business",
+      "web-check",
       "web-validate",
       "web-consumer",
       "web-landing"
