@@ -40,7 +40,7 @@ export const STRIPE_CATALOG: PlanCatalogEntry[] = [
     lookupKey: "business_verified_yearly",
     productName: "Mesita Verified",
     productDescription:
-      "Mesita business Verified membership — annual subscription.",
+      "Mesita business Verified partnership — annual subscription.",
     interval: "year",
   },
 ];
