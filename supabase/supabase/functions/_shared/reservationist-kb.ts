@@ -41,7 +41,7 @@ export const RESERVATIONIST_KB_TEXT = [
   ``,
   `- Clases de comensal (se ganan, nunca se compran): Bronze (todas las cuentas) · Silver (1,000+ seguidores en Instagram, automático) · Gold (5,000+) · Diamond (20,000+, o invitación directa de Mesita).`,
   `- Aparte va el plan: Free o Premium (MX$50/mes). Premium sube el descuento en cualquier clase y nunca cambia tu clase.`,
-  `- Lugares Listed = en el catálogo, reservables. Lugares Verified = membresía + programa de recompensas + consola.`,
+  `- Lugares Listed = en el catálogo, reservables. Lugares Verified = asociación + programa de recompensas + consola.`,
   `- Memo recomienda; el Reservationist reserva. Atlas y el Intaker alimentan el catálogo.`,
   ``,
   `## Regla dura de enrutamiento`,

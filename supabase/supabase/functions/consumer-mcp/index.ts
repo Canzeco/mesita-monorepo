@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
     return json(
       {
         ok: false,
-        error: "AI connect is for Mesita Premium members only",
+        error: "AI connect requires Mesita Premium",
         code: "mcp_premium_required",
       },
       403,

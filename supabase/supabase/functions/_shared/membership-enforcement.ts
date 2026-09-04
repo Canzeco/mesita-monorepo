@@ -108,7 +108,7 @@ export function assessPromoLane(
       open: false,
       code: "forfeited",
       strikeCount,
-      staffMessage: "La membresía de este local fue removida tras 3 strikes. " +
+      staffMessage: "La asociación de este local fue removida tras 3 strikes. " +
         "El lugar sigue listado, pero las promos están apagadas.",
     };
   }

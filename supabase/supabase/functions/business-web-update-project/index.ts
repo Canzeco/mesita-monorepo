@@ -521,7 +521,7 @@ Deno.serve(async (req) => {
         {
           ok: false,
           code: "not_a_member",
-          error: "Strategy switching requires an active membership.",
+          error: "Strategy switching requires an active partnership.",
         },
         409,
       );
