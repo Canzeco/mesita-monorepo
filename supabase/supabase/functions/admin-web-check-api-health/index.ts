@@ -527,6 +527,8 @@ const PROBES: ProbeSpec[] = [
                   ? "STRIPE_SECRET_KEY holds a restricted key (rk_…). Billing Test needs the secret key (sk_live_… / sk_test_…)."
                   : key.startsWith("pk_")
                   ? "STRIPE_SECRET_KEY holds a publishable key (pk_…). Paste the secret key (sk_live_… / sk_test_…)."
+                  : key.startsWith("mk_")
+                  ? "STRIPE_SECRET_KEY holds an API key ID (mk_…), not the key. The dashboard shows both — copy the token that starts sk_test_… / sk_live_…, not the identifier beside it."
                   : "STRIPE_SECRET_KEY does not look like a Stripe secret key (expected sk_live_… or sk_test_…).",
               },
             }),

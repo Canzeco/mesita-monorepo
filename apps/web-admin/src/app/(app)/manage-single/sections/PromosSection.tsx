@@ -140,7 +140,7 @@ export function PromosSection({
     if (!r.ok) {
       setConnectBusy(false);
       console.error("[controls] startPlacePaymentOnboarding failed:", r.error);
-      setConnectError(connectStartFailure(r.code ?? null));
+      setConnectError(connectStartFailure(r.code ?? null, r.error ?? null));
       // The live-charge block belongs to the environment, so it holds for
       // every place and every retry. Stop offering an action that cannot
       // succeed — the same rule the non-partner row already follows.

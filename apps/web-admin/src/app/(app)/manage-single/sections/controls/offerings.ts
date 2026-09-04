@@ -329,10 +329,18 @@ export const STRIPE_LIVE_BLOCKED = "stripe_live_blocked";
  * It is also not a retry. The block is a property of the environment, not of
  * the attempt, so the copy says so and the caller stops offering the button.
  */
-export function connectStartFailure(code: string | null): string {
+export function connectStartFailure(
+  code: string | null,
+  message?: string | null,
+): string {
   if (code === STRIPE_LIVE_BLOCKED) {
-    return "Stripe onboarding is off: Mesita is on live keys with real charges disabled, so connecting would open a live account. Flipping that is a human step (MESITA-37) — retrying won't change it.";
+    return "Stripe onboarding is off: Mesita is on live keys with real charges disabled, so connecting would open a live account. Flipping that is a human step (MESITA-37) \u2014 retrying won't change it.";
   }
+  // Stripe named the problem; say what it said. Everything this endpoint can
+  // fail on is configuration ("you can only create new accounts if you've
+  // signed up for Connect", "this looks like the ID of an API key"), so a
+  // generic "try again" is both useless and false.
+  if (code === "stripe_error" && message) return `Stripe: ${message}`;
   return controlWriteFailure("start Stripe onboarding");
 }
 
