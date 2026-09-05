@@ -21,6 +21,7 @@ import { coercePromosConfig, type PromosConfig } from "@/lib/business/promos";
 import { cn, errMsg, formatMoney } from "@/lib/utils";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { CheckPinCard } from "./CheckPinCard";
+import { PaymentsCard } from "./PaymentsCard";
 import { FaqsBox } from "./FaqsBox";
 import { LifecycleStepper } from "./LifecycleStepper";
 import { MembershipBox } from "./MembershipBox";
@@ -352,6 +353,8 @@ export function PromosClient({
         member={subscribed}
         cfg={cfg}
       />
+
+      {isOwner ? <PaymentsCard projectId={place.id} /> : null}
 
       {capabilityBand}
 
