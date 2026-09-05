@@ -10,13 +10,13 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// /places is no longer here: it reads the real catalog behind a session,
+// so it is covered by the route-contract and middleware tests instead.
+
 import AccountPage from "./(shell)/account/page";
 import OrganizationPage from "./(shell)/page";
-import PlacePage from "./(shell)/places/[id]/page";
-import PlacesPage from "./(shell)/places/page";
 
 const sp = (org?: string) => Promise.resolve(org ? { org } : {});
-const params = (id: string) => Promise.resolve({ id });
 
 async function render(el: Promise<React.ReactNode>) {
   return renderToStaticMarkup(<>{await el}</>);
@@ -42,30 +42,6 @@ describe("organization page (the / layer)", () => {
       OrganizationPage({ searchParams: sp("garbage") }),
     );
     expect(html).toContain("Grupo Ruiz");
-  });
-});
-
-describe("places layer", () => {
-  it("lists places and the day-one empty state", async () => {
-    expect(await render(PlacesPage({ searchParams: sp() }))).toContain(
-      "Polanco",
-    );
-    expect(await render(PlacesPage({ searchParams: sp("nuevo") }))).toContain(
-      "No places yet",
-    );
-  });
-  it("renders one place with profile, services and status sections", async () => {
-    const html = await render(
-      PlacePage({ params: params("p-polanco"), searchParams: sp() }),
-    );
-    expect(html).toContain("Av. Presidente Masaryk");
-    expect(html).toContain("Reservations");
-    expect(html).toContain("Verified");
-  });
-  it("unknown place id hits notFound", async () => {
-    await expect(
-      render(PlacePage({ params: params("nope"), searchParams: sp() })),
-    ).rejects.toThrow("SENTINEL_NOT_FOUND");
   });
 });
 
