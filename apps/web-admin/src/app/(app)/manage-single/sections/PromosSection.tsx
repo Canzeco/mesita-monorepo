@@ -33,7 +33,7 @@ import {
   membershipPillState,
   promoCardState,
 } from "./promo-state";
-import { placeOperatorPromotingLevel } from "./StatusCard";
+import { placeOperatorPromotingLevel } from "./StateCard";
 import { PartnershipBody, MembershipStatusPill } from "./controls/partnership";
 import { ProductModal, StrategyCard } from "./controls/strategy-cards";
 import { LadderRow, NestedConfig } from "./controls/ladder-row";

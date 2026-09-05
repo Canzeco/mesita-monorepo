@@ -27,7 +27,7 @@ import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
 
-export type PlaceStatusFacts = {
+export type PlaceStateFacts = {
   seeded: boolean;
   active: boolean;
   listed: boolean;
@@ -63,7 +63,7 @@ export function completedFunctions(
   return out;
 }
 
-export function placeStatusFacts(input: {
+export function placeStateFacts(input: {
   googlePlaceId: unknown;
   status: unknown;
   businessStatus: unknown;
@@ -74,7 +74,7 @@ export function placeStatusFacts(input: {
   verified: boolean;
   promotingRow: Parameters<typeof isPlacePromoting>[0];
   functions?: FunctionStateMap;
-}): PlaceStatusFacts {
+}): PlaceStateFacts {
   const highWater = Number.isFinite(input.highWater) ? input.highWater : 0;
   return {
     seeded: isPlaceSeeded(input.googlePlaceId),
@@ -96,7 +96,7 @@ export function placeStatusFacts(input: {
 }
 
 /** Stamp `meta.statusFacts` on every item that has a place id. Best-effort. */
-export async function attachPlaceStatusFacts(
+export async function attachPlaceStateFacts(
   admin: SupabaseClient,
   items: NotificationItem[],
 ): Promise<void> {
@@ -145,13 +145,13 @@ export async function attachPlaceStatusFacts(
     if (row.enrichment) enrichment.set(row.id, row.enrichment);
   }
 
-  const factsById = new Map<string, PlaceStatusFacts>();
+  const factsById = new Map<string, PlaceStateFacts>();
   for (const row of (profileRes.data ?? []) as Array<Record<string, unknown>>) {
     const id = typeof row.id === "string" ? row.id : "";
     if (!id) continue;
     factsById.set(
       id,
-      placeStatusFacts({
+      placeStateFacts({
         googlePlaceId: row.google_place_id,
         status: row.status,
         businessStatus: row.business_status,

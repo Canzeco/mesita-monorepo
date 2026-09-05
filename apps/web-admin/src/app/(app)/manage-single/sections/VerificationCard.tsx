@@ -19,7 +19,7 @@ import {
 } from "@/components/admin-ui/manage";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatAbsoluteUtc } from "@/lib/format";
-import { statusBoolChip } from "@/lib/status-vocabulary";
+import { stateBoolChip } from "@/lib/state-vocabulary";
 
 // Verification — the ownership-proof box on Admin (MESITA-1320).
 //
@@ -83,7 +83,7 @@ export function VerificationCard({
     ? "?"
     : verification === undefined
       ? "…"
-      : statusBoolChip(verified);
+      : stateBoolChip(verified);
 
   return (
     <SectionCard

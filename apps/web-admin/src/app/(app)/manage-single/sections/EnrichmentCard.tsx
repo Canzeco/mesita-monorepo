@@ -11,7 +11,7 @@ import {
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
-import { isEnriching } from "../place-header-status";
+import { isEnriching } from "../place-header-state";
 
 // Enrichment — one button. This is not a scheduler (Pato, 2026-08-25).
 // Cadence and mode chips lived here and made a press look like config.

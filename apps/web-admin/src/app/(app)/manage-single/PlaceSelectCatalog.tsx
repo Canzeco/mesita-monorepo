@@ -25,7 +25,7 @@ import { PlaceThumb } from "./PlaceEditChrome";
 import { usePlaceCatalogSearch } from "./usePlaceCatalogSearch";
 import { ErrorNote } from "@/components/ErrorNote";
 import { CldrRegionInput } from "@/components/CldrRegionInput";
-import { OPERATOR_PROMOTING_LABEL, operatorPromotingLevel } from "@/lib/status-vocabulary";
+import { OPERATOR_PROMOTING_LABEL, operatorPromotingLevel } from "@/lib/state-vocabulary";
 import { PROMOTION_SCORE_MAX } from "@/lib/business/promotion-score";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
 

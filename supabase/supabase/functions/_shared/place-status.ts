@@ -49,10 +49,10 @@ export function isPlaceSeeded(googlePlaceId: unknown): boolean {
  * only), so a `lead` place is reachable by link and search but never pooled for
  * Memo's RAG leg.
  */
-export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
+export const LISTED_STATES: readonly string[] = ["active", "lead"];
 
 export function isPlaceListed(status: unknown): boolean {
-  return typeof status === "string" && LISTED_STATUSES.includes(status);
+  return typeof status === "string" && LISTED_STATES.includes(status);
 }
 
 /**

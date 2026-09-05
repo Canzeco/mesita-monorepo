@@ -2,7 +2,7 @@ import {
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
   type IntakeFunctionKey,
-} from "@/lib/status-vocabulary";
+} from "@/lib/state-vocabulary";
 
 export type EnrichFunctionState = {
   status: "pending" | "completed" | "failed";

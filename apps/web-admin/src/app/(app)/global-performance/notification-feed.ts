@@ -1,11 +1,11 @@
 import {
-  ENGINELESS_STATUS_FACT_KEYS,
-  GENERAL_STATUS_FACTS,
+  ENGINELESS_STATE_FACT_KEYS,
+  GENERAL_STATE_FACTS,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
-  type GeneralStatusKey,
+  type GeneralStateKey,
   type IntakeFunctionKey,
-} from "@/lib/status-vocabulary";
+} from "@/lib/state-vocabulary";
 import type { NotificationItem, NotificationType } from "./actions";
 import { TYPE_ORDER } from "./notification-config";
 
@@ -134,23 +134,23 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 //   INTAKE (11)   0. Seed … 10. Embedding — each a bool, called or not
 // Enriched is a yes. Wire key `seeded`. `listing_type` backs NONE of them.
 
-export const LISTED_STATUSES: readonly string[] = ["active", "lead"];
+export const LISTED_STATES: readonly string[] = ["active", "lead"];
 
 function isListedStatus(status: unknown): boolean {
-  return typeof status === "string" && LISTED_STATUSES.includes(status);
+  return typeof status === "string" && LISTED_STATES.includes(status);
 }
 
-export type StatusFactKey = GeneralStatusKey;
-export const STATUS_FACTS = GENERAL_STATUS_FACTS;
+export type StateFactKey = GeneralStateKey;
+export const STATE_FACTS = GENERAL_STATE_FACTS;
 export { INTAKE_FUNCTIONS };
 export type { IntakeFunctionKey };
 
 export type IntakeFilter =
   | "all"
-  | StatusFactKey
+  | StateFactKey
   | `fn:${IntakeFunctionKey}`;
 
-export type PlaceStatusFacts = {
+export type PlaceStateFacts = {
   seeded: boolean;
   active: boolean;
   listed: boolean;
@@ -167,9 +167,9 @@ export type PlaceStatusFacts = {
   functions: Record<string, boolean>;
 };
 
-function readStatusFacts(
+function readStateFacts(
   meta: Record<string, unknown> | undefined,
-): PlaceStatusFacts | null {
+): PlaceStateFacts | null {
   const raw = meta?.statusFacts;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const f = raw as Record<string, unknown>;
@@ -208,20 +208,20 @@ function readStatusFacts(
 // Function 10 is `embedding` (renamed from `semantic`, §8.4). Events are
 // append-only history: old payloads stamp `semantic`, and pre-merge ones
 // stamp `name` + `summary` — all fold into the one Embedding chip.
-function embeddingOn(facts: PlaceStatusFacts): boolean {
+function embeddingOn(facts: PlaceStateFacts): boolean {
   if (facts.functions.embedding === true) return true;
   if (facts.functions.semantic === true) return true;
   return facts.functions.name === true && facts.functions.summary === true;
 }
 
-function fnOn(facts: PlaceStatusFacts, key: string): boolean {
+function fnOn(facts: PlaceStateFacts, key: string): boolean {
   if (key === "seed") return facts.seeded;
   if (key === "embedding") return embeddingOn(facts);
   return facts.functions[key] === true;
 }
 
 export type IntakeFactChip = {
-  key: StatusFactKey;
+  key: StateFactKey;
   label: string;
   on: boolean;
 };
@@ -230,10 +230,10 @@ export type IntakeFactChip = {
  *  filtered out until an event stamper writes them (their chips would be
  *  permanently muted noise); the gateway / Credits PRs lift this. */
 export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
-  const facts = readStatusFacts(item.meta);
+  const facts = readStateFacts(item.meta);
   if (!facts) return [];
-  return STATUS_FACTS.filter(
-    (def) => !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(def.key),
+  return STATE_FACTS.filter(
+    (def) => !(ENGINELESS_STATE_FACT_KEYS as readonly string[]).includes(def.key),
   ).map((def) => ({
     key: def.key,
     on: facts[def.key],
@@ -245,8 +245,8 @@ export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
  * Compact Intake verb: every TRUE general fact, Status-box order.
  * Enriched is a bool — incomplete places just omit it.
  */
-export function intakeStatusLine(item: NotificationItem): string | null {
-  const facts = readStatusFacts(item.meta);
+export function intakeStateLine(item: NotificationItem): string | null {
+  const facts = readStateFacts(item.meta);
   if (facts) {
     const parts: string[] = [];
     if (facts.seeded) parts.push("Created");
@@ -280,24 +280,24 @@ export function itemMatchesIntakeFilter(
   filter: IntakeFilter,
 ): boolean {
   if (filter === "all") return true;
-  const facts = readStatusFacts(item.meta);
+  const facts = readStateFacts(item.meta);
   if (!facts) return false;
   if (filter.startsWith("fn:")) {
     return fnOn(facts, filter.slice("fn:".length));
   }
-  return facts[filter as StatusFactKey];
+  return facts[filter as StateFactKey];
 }
 
 export function statusFactCounts(
   items: NotificationItem[],
-): Record<StatusFactKey, number> {
+): Record<StateFactKey, number> {
   const counts = Object.fromEntries(
-    STATUS_FACTS.map((f) => [f.key, 0]),
-  ) as Record<StatusFactKey, number>;
+    STATE_FACTS.map((f) => [f.key, 0]),
+  ) as Record<StateFactKey, number>;
   for (const item of items) {
-    const facts = readStatusFacts(item.meta);
+    const facts = readStateFacts(item.meta);
     if (!facts) continue;
-    for (const def of STATUS_FACTS) {
+    for (const def of STATE_FACTS) {
       if (facts[def.key]) counts[def.key] += 1;
     }
   }
@@ -311,7 +311,7 @@ export function intakeFunctionCounts(
     INTAKE_FUNCTIONS.map((f) => [f.key, 0]),
   ) as Record<IntakeFunctionKey, number>;
   for (const item of items) {
-    const facts = readStatusFacts(item.meta);
+    const facts = readStateFacts(item.meta);
     if (!facts) continue;
     for (const def of INTAKE_FUNCTIONS) {
       if (fnOn(facts, def.key)) counts[def.key] += 1;
@@ -327,7 +327,7 @@ export type IntakeFnChip = {
 };
 
 export function intakeFunctionChips(item: NotificationItem): IntakeFnChip[] {
-  const facts = readStatusFacts(item.meta);
+  const facts = readStateFacts(item.meta);
   if (!facts) return [];
   return INTAKE_FUNCTIONS.map((def) => ({
     key: def.key,

@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
-  ENGINELESS_STATUS_FACT_KEYS,
-  GENERAL_STATUS_COUNT,
-  GENERAL_STATUS_FACTS,
+  ENGINELESS_STATE_FACT_KEYS,
+  GENERAL_STATE_COUNT,
+  GENERAL_STATE_FACTS,
   INTAKE_FUNCTION_COUNT,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
-  STATUS_FACT_FALSE_TONE,
+  STATE_FACT_FALSE_TONE,
   operatorPromotingLevel,
   promotingLevelChip,
   promotingLevelFromStrategy,
   requestCountChip,
   requestCountFromRow,
-  statusBoolChip,
-} from "./status-vocabulary";
+  stateBoolChip,
+} from "./state-vocabulary";
 
 describe("status vocabulary", () => {
   it("is eleven general facts plus eleven Intake functions 0–10", () => {
-    expect(GENERAL_STATUS_COUNT).toBe(11);
+    expect(GENERAL_STATE_COUNT).toBe(11);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);
-    expect(GENERAL_STATUS_FACTS.map((f) => f.label)).toEqual([
+    expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Active",
       "Listed",
@@ -51,19 +51,19 @@ describe("status vocabulary", () => {
   });
 
   it("acceptance bits: neutral false tone, engineless (no chips/segments) until their engines land", () => {
-    expect(STATUS_FACT_FALSE_TONE.partner).toBe("neutral");
-    expect(STATUS_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
-    expect(STATUS_FACT_FALSE_TONE.credits).toBe("neutral");
-    expect(STATUS_FACT_FALSE_TONE.verified).toBeUndefined();
-    expect([...ENGINELESS_STATUS_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
+    expect(STATE_FACT_FALSE_TONE.partner).toBe("neutral");
+    expect(STATE_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
+    expect(STATE_FACT_FALSE_TONE.credits).toBe("neutral");
+    expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
+    expect([...ENGINELESS_STATE_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
   });
 
   it("binary chips are true / false, not the fact name", () => {
-    expect(statusBoolChip(true)).toBe("true");
-    expect(statusBoolChip(false)).toBe("false");
-    expect(statusBoolChip("unknown")).toBe("?");
-    expect(statusBoolChip("loading")).toBe("…");
-    expect(statusBoolChip(null)).toBe("?");
+    expect(stateBoolChip(true)).toBe("true");
+    expect(stateBoolChip(false)).toBe("false");
+    expect(stateBoolChip("unknown")).toBe("?");
+    expect(stateBoolChip("loading")).toBe("…");
+    expect(stateBoolChip(null)).toBe("?");
   });
 
   it("Visit Rewards is 0 | 1 | 2 — engine Dominant displays as 2", () => {

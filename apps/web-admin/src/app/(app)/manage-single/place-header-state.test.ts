@@ -3,15 +3,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { PlaceEnrichmentStatus } from "./actions";
-import { GENERAL_STATUS_FACTS } from "@/lib/status-vocabulary";
+import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
 import {
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
-  listedFromStatus,
-  withListedFromStatus,
-} from "./place-header-status";
-import { requestCountFromRow } from "@/lib/status-vocabulary";
+  listedFromState,
+  withListedFromState,
+} from "./place-header-state";
+import { requestCountFromRow } from "@/lib/state-vocabulary";
 
 function status(
   partial: Partial<PlaceEnrichmentStatus>,
@@ -62,13 +62,13 @@ describe("generalHeaderFacts", () => {
     verified: false as boolean | "unknown",
   };
 
-  it("labels match GENERAL_STATUS_FACTS", () => {
+  it("labels match GENERAL_STATE_FACTS", () => {
     const facts = generalHeaderFacts(base);
     expect(facts.map((f) => f.key)).toEqual(
-      GENERAL_STATUS_FACTS.map((f) => f.key),
+      GENERAL_STATE_FACTS.map((f) => f.key),
     );
     expect(facts.map((f) => f.label)).toEqual(
-      GENERAL_STATUS_FACTS.map((f) => f.label),
+      GENERAL_STATE_FACTS.map((f) => f.label),
     );
   });
 
@@ -190,22 +190,22 @@ describe("requestCountFromRow", () => {
   });
 });
 
-describe("listedFromStatus", () => {
+describe("listedFromState", () => {
   it("active and lead are listed; paused is not", () => {
-    expect(listedFromStatus("active")).toBe(true);
-    expect(listedFromStatus("lead")).toBe(true);
-    expect(listedFromStatus("paused")).toBe(false);
-    expect(listedFromStatus("archived")).toBe(false);
-    expect(listedFromStatus(null)).toBe("unknown");
+    expect(listedFromState("active")).toBe(true);
+    expect(listedFromState("lead")).toBe(true);
+    expect(listedFromState("paused")).toBe(false);
+    expect(listedFromState("archived")).toBe(false);
+    expect(listedFromState(null)).toBe("unknown");
   });
 
-  it("withListedFromStatus overwrites a stale listed flag after Unlist", () => {
-    const merged = withListedFromStatus({
+  it("withListedFromState overwrites a stale listed flag after Unlist", () => {
+    const merged = withListedFromState({
       status: "paused",
       listed: true,
     });
     expect(merged.listed).toBe(false);
-    expect(withListedFromStatus({ status: "active", listed: false }).listed).toBe(
+    expect(withListedFromState({ status: "active", listed: false }).listed).toBe(
       true,
     );
   });

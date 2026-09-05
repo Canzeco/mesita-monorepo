@@ -1,18 +1,18 @@
 "use client";
 
-// The status boxes — THREE, split by the question each answers (Pato,
+// The state boxes — THREE, split by the question each answers (Pato,
 // 2026-08-30). One eleven-row wall made the operator read the whole list to
 // find one fact; each box now has a single job:
 //
-//   General Statuses      is this place real, reachable, and proven?
+//   General States      is this place real, reachable, and proven?
 //                         Created · Active · Listed · Requested · Verified
-//   Partnership Statuses  what does it offer commercially?
+//   Partnership States  what does it offer commercially?
 //                         Partnered · Visit Rewards · Mesita Pay · Mesita Credits
-//   Intake Statuses       how far has the pipeline gotten? Enriched ·
+//   Intake States       how far has the pipeline gotten? Enriched ·
 //                         Enriching + the eleven functions — all of it in
-//                         IntakeStatusCard, which OWNS the enrichment read.
+//                         IntakeStateCard, which OWNS the enrichment read.
 //
-// This file renders the first two; `StatusRow` is exported so the Intake box
+// This file renders the first two; `StateRow` is exported so the Intake box
 // prints its two summary facts in the same shape.
 //
 // The state is Created; Seed is Intake function 0. Wire key `seeded` /
@@ -39,13 +39,18 @@
 // Google is wrong sometimes, and auto-unlisting on a third-party signal would
 // vanish a live place with no human in the loop (the Ojo posture).
 //
-// NAMING (Pato, 2026-08-22). This box is Status, and PULSE names something
-// else entirely: the enrichment machinery. One word, one meaning.
+// NAMING (Pato, 2026-08-22 · renamed 2026-09-05, MESITA-1541). This box is
+// State, and PULSE names something else entirely: the enrichment machinery.
+// One word, one meaning.
 //
-// The word collides with `projects.status` (lead/active/paused/archived) —
-// NOT `places.status`, which does not exist: the column moved to `projects`
-// when the entity was split, and never came back. The collision is handled by
-// each row's own detail line naming the column value, not by renaming the box.
+// It used to be Status, which collided with `projects.status`
+// (lead/active/paused/archived) — and the collision was handled by each row's
+// detail line naming the column value rather than by renaming the box. That
+// compromise is over: the house word is STATE, and `status` survives only
+// inside a payload we did not author (HTTP, Stripe, Google). The columns
+// still say `status` until MESITA-1542 moves them, so every `place.status` /
+// `content_status` / `business_status` read below is deliberate — renaming a
+// mirror ahead of its column would manufacture the drift this fixes.
 
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2, Percent } from "lucide-react";
@@ -54,7 +59,7 @@ import {
   setPlaceListed,
   type AdminPlace,
 } from "../actions";
-import { listedFromStatus } from "../place-header-status";
+import { listedFromState } from "../place-header-state";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { methodLabel } from "../../verifications/verification-config";
@@ -71,10 +76,10 @@ import {
   promotingLevelFromStrategy,
   requestCountChip,
   requestCountFromRow,
-  statusBoolChip,
-} from "@/lib/status-vocabulary";
+  stateBoolChip,
+} from "@/lib/state-vocabulary";
 
-// Statuses box (Pato, 2026-08-25 · acceptance bits 2026-08-29): nine bools +
+// States box (Pato, 2026-08-25 · acceptance bits 2026-08-29): nine bools +
 // Requested 0…n + Promoted 0|1|2. Intake is the next box — not chips under
 // Enriched, and not a Create 1–5 / Enrich 1–10 split. Chips never repeat the
 // row name.
@@ -154,7 +159,7 @@ const PLAN_LABEL: Record<string, string> = {
   ultra: "Ultra",
 };
 
-export function StatusCard({
+export function StateCard({
   place,
   verification,
   verificationError,
@@ -184,7 +189,7 @@ export function StatusCard({
   // failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
-  const listedFromRow = listedFromStatus(place.status);
+  const listedFromRow = listedFromState(place.status);
   const listed: boolean | "unknown" =
     listedFromRow !== "unknown"
       ? listedFromRow
@@ -203,14 +208,14 @@ export function StatusCard({
 
   const listedDetailBase =
     listed === "unknown"
-      ? "Couldn't read the place's status."
+      ? "Couldn't read the place's listing state."
       : placeStatus === "active"
         ? "active — on every consumer surface, and in the discovery pool."
         : placeStatus === "lead"
           ? "lead — reachable by link and by search, but discovery pools active places only."
           : placeStatus
             ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
-            : "No status on the row.";
+            : "No state on the row.";
   const listedDetail = listedDetailBase;
 
   const requestedDetail =
@@ -315,43 +320,43 @@ export function StatusCard({
       <SectionCard
         icon={<CircleCheck className="h-4 w-4" />}
         tint="emerald"
-        title="General Statuses"
+        title="General States"
       >
         <div className="mt-5 flex flex-col">
-          <StatusRow
+          <StateRow
             name="Created"
             on={seeded === true}
-            chip={statusBoolChip(seeded)}
+            chip={stateBoolChip(seeded)}
             tint="slate"
             detail={seededDetail}
           />
-          <StatusRow
+          <StateRow
             name="Active (Google pulse)"
             on={operating === true}
-            chip={statusBoolChip(operating)}
+            chip={stateBoolChip(operating)}
             tint="teal"
             detail={operatingDetail}
             action={<ActiveToggle place={place} operating={operating} />}
           />
-          <StatusRow
+          <StateRow
             name="Listed"
             on={listed === true}
-            chip={statusBoolChip(listed)}
+            chip={stateBoolChip(listed)}
             tint="indigo"
             detail={listedDetail}
             action={<ListedToggle place={place} listed={listed} />}
           />
-          <StatusRow
+          <StateRow
             name="Requested"
             on={requestCount !== "unknown" && requestCount > 0}
             chip={requestCountChip(place.request_count)}
             tint="indigo"
             detail={requestedDetail}
           />
-          <StatusRow
+          <StateRow
             name="Verified"
             on={verified === true}
-            chip={statusBoolChip(verified)}
+            chip={stateBoolChip(verified)}
             tint="emerald"
             detail={verifiedDetail}
           />
@@ -361,34 +366,34 @@ export function StatusCard({
       <SectionCard
         icon={<Percent className="h-4 w-4" />}
         tint="pink"
-        title="Partnership Statuses"
+        title="Partnership States"
       >
         <div className="mt-5 flex flex-col">
-          <StatusRow
+          <StateRow
             name="Partnered"
             on={partner}
-            chip={statusBoolChip(partner)}
+            chip={stateBoolChip(partner)}
             tint="sky"
             detail={partnerDetail}
           />
-          <StatusRow
+          <StateRow
             name="Visit Rewards"
             on={promotingLevel > 0}
             chip={promotingLevelChip(promotingLevel)}
             tint="pink"
             detail={promotingDetail}
           />
-          <StatusRow
+          <StateRow
             name="Mesita Pay"
             on={mesitaPay === true}
-            chip={statusBoolChip(mesitaPay)}
+            chip={stateBoolChip(mesitaPay)}
             tint="amber"
             detail={mesitaPayDetail}
           />
-          <StatusRow
+          <StateRow
             name="Mesita Credits"
             on={credits === true}
-            chip={statusBoolChip(credits)}
+            chip={stateBoolChip(credits)}
             tint="orange"
             detail={creditsDetail}
           />
@@ -415,7 +420,7 @@ export function StatusCard({
 }
 
 
-export function StatusRow({
+export function StateRow({
   name,
   on,
   chip,

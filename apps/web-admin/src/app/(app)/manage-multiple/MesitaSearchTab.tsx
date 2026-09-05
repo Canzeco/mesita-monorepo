@@ -9,12 +9,12 @@ import {
   type PlaceHit,
 } from "../manage-single/actions";
 import {
-  GENERAL_STATUS_FACTS,
+  GENERAL_STATE_FACTS,
   INTAKE_FUNCTIONS,
   OPERATOR_PROMOTING_LABEL,
   operatorPromotingLevel,
-  STATUS_FACT_FALSE_TONE,
-} from "@/lib/status-vocabulary";
+  STATE_FACT_FALSE_TONE,
+} from "@/lib/state-vocabulary";
 import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
 import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
@@ -27,7 +27,7 @@ type Row = { key: string; googleId: string | null; hit: PlaceHit | null };
 /** Which button is mid-flight — both share the table below. */
 type Run = "ids" | "all";
 
-function factOn(hit: PlaceHit, key: (typeof GENERAL_STATUS_FACTS)[number]["key"]): boolean {
+function factOn(hit: PlaceHit, key: (typeof GENERAL_STATE_FACTS)[number]["key"]): boolean {
   if (key === "seeded") return hit.seeded;
   if (key === "active") return hit.business_status === "OPERATIONAL";
   if (key === "listed") return hit.listed;
@@ -206,7 +206,7 @@ export function MesitaSearchTab({
                   <th className={`px-4 py-3 font-semibold ${STICKY_COL_HEAD}`}>
                     Place
                   </th>
-                  {GENERAL_STATUS_FACTS.map((f) => (
+                  {GENERAL_STATE_FACTS.map((f) => (
                     <th key={f.key} className="px-3 py-3 text-center font-semibold">
                       {f.label}
                     </th>
@@ -242,7 +242,7 @@ export function MesitaSearchTab({
                         )}
                       </td>
                       {hit
-                        ? GENERAL_STATUS_FACTS.map((f) => (
+                        ? GENERAL_STATE_FACTS.map((f) => (
                             <td key={f.key} className="px-3 py-3 text-center">
                               {f.key === "promoting" ? (
                                 <span className="tabular-nums">
@@ -269,12 +269,12 @@ export function MesitaSearchTab({
                               ) : (
                                 <StatePill
                                   on={factOn(hit, f.key)}
-                                  falseTone={STATUS_FACT_FALSE_TONE[f.key]}
+                                  falseTone={STATE_FACT_FALSE_TONE[f.key]}
                                 />
                               )}
                             </td>
                           ))
-                        : GENERAL_STATUS_FACTS.map((f) => (
+                        : GENERAL_STATE_FACTS.map((f) => (
                             <td
                               key={f.key}
                               className="text-muted-foreground px-3 py-3 text-center"
@@ -327,7 +327,7 @@ export function MesitaSearchTab({
   );
 }
 
-// falseTone comes from the fact vocabulary (STATUS_FACT_FALSE_TONE): rose for
+// falseTone comes from the fact vocabulary (STATE_FACT_FALSE_TONE): rose for
 // a pending debt, plain grey for a fact that is merely not true — the same
 // taxonomy the catalog's BoolCell uses, so the two tables can't disagree.
 function StatePill({

@@ -18,18 +18,18 @@ import {
   generalHeaderFacts,
   isEnrichFailed,
   isEnriching,
-  listedFromStatus,
-} from "./place-header-status";
+  listedFromState,
+} from "./place-header-state";
 import { isMemberPlan } from "./sections/promo-state";
-import { placeOperatorPromotingLevel } from "./sections/StatusCard";
+import { placeOperatorPromotingLevel } from "./sections/StateCard";
 import {
   intakeFunctionRows,
   type EnrichFunctionState,
-} from "./sections/status-enrichment";
-import { ENGINELESS_STATUS_FACT_KEYS } from "@/lib/status-vocabulary";
+} from "./sections/state-enrichment";
+import { ENGINELESS_STATE_FACT_KEYS } from "@/lib/state-vocabulary";
 
-/** Ties the phone-only Statuses toggle to the block it opens. */
-const STATUS_CHIPS_ID = "place-header-statuses";
+/** Ties the phone-only States toggle to the block it opens. */
+const STATE_CHIPS_ID = "place-header-statees";
 
 function headerChipClass(on: boolean | "unknown"): string {
   return (
@@ -77,8 +77,8 @@ export function PlaceEditChrome({
   // 375px screen, inside chrome that is STICKY, so they permanently occupied a
   // third of the viewport and the tab strip under them sat below the fold.
   // Collapsed by default under `sm`, always open above it: the header is still
-  // name + statuses, the statuses are just one tap away on a phone.
-  const [statusesOpen, setStatusesOpen] = useState(false);
+  // name + states, the states are just one tap away on a phone.
+  const [statesOpen, setStatesOpen] = useState(false);
   const enriching =
     isEnriching(enrichStatus) ||
     isEnriching({
@@ -130,7 +130,7 @@ export function PlaceEditChrome({
       : Boolean(verification?.verifiedByEmail);
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
-  const listedFromRow = listedFromStatus(place.status);
+  const listedFromRow = listedFromState(place.status);
   const facts = generalHeaderFacts({
     seeded: place.seeded,
     listed: listedFromRow === "unknown" ? place.listed : listedFromRow,
@@ -153,11 +153,11 @@ export function PlaceEditChrome({
   );
   // Engineless acceptance bits stay OFF the chip row: red here means "owed
   // and fixable", and nothing can fix them until their engines exist (Pato
-  // gate 2026-08-29). The gateway / Credits PRs lift this filter. Status box
+  // gate 2026-08-29). The gateway / Credits PRs lift this filter. State box
   // still shows them.
   const chipFacts = facts.filter(
     (fact) =>
-      !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
+      !(ENGINELESS_STATE_FACT_KEYS as readonly string[]).includes(fact.key),
   );
   // Drives the collapsed summary on phones — how many of these are green is
   // the one thing worth reading without expanding.
@@ -286,33 +286,33 @@ export function PlaceEditChrome({
                   className="text-muted-foreground type-label font-medium"
                   aria-live="polite"
                 >
-                  Status unknown
+                  State unknown
                 </span>
               ) : null}
             </div>
             <button
               type="button"
-              onClick={() => setStatusesOpen((v) => !v)}
-              aria-expanded={statusesOpen}
-              aria-controls={STATUS_CHIPS_ID}
+              onClick={() => setStatesOpen((v) => !v)}
+              aria-expanded={statesOpen}
+              aria-controls={STATE_CHIPS_ID}
               className="border-border bg-muted/50 text-muted-foreground hover:text-foreground inline-flex min-h-8 w-fit items-center gap-1.5 rounded-full border px-2.5 type-label font-semibold transition sm:hidden"
             >
-              Statuses
+              States
               <span className="text-foreground tabular-nums">
                 {chipsOn}/{chipsTotal}
               </span>
               <ChevronDown
                 className={
                   "h-3.5 w-3.5 transition-transform " +
-                  (statusesOpen ? "rotate-180" : "")
+                  (statesOpen ? "rotate-180" : "")
                 }
                 aria-hidden
               />
             </button>
             <div
-              id={STATUS_CHIPS_ID}
+              id={STATE_CHIPS_ID}
               className={
-                "flex-col gap-1.5 sm:flex " + (statusesOpen ? "flex" : "hidden")
+                "flex-col gap-1.5 sm:flex " + (statesOpen ? "flex" : "hidden")
               }
             >
               <ul className="flex flex-wrap gap-1">
