@@ -65,16 +65,18 @@ export function NotificationsClient({ userId }: { userId: string }) {
 
   return (
     <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6">
-      {/* pt-4, not pt-2: Visits and Reservations both open their scroller on
-          `py-4`, so an 8px top here made the content start jump by half a step
-          the moment you tabbed onto Notifications. Same rhythm across all four
-          sections or the row isn't one control. */}
-      <header className="pt-4">
-        <h2 className="font-display text-lg font-semibold tracking-tight">
-          Your recent moves
-        </h2>
-      </header>
+      {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
+          moves. it looks NOT clean. be direct"). This section carried an
+          <h2> "Your recent moves" and it was the ONLY one of Activity's four
+          that did — Visits, Orders and Reservations all open straight into
+          their content, and the section row directly above already names this
+          one. A heading that repeats the pill you just tapped is furniture,
+          and the cute phrasing made it read as marketing over a list of
+          facts.
 
+          The 16px top rhythm the old header carried is unchanged: every
+          branch below opens on `mt-4`, which is the same step Visits and
+          Reservations get from their `py-4` scroller. */}
       {error ? (
         <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
           {error}
