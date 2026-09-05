@@ -23,14 +23,17 @@ export const PROTECTED_PREFIXES = [
   "/add",
   "/central",
   "/settings",
+  // The console shell's catalog layer reads the whole place catalogue and
+  // hands off to the per-place console, so it needs a session like the
+  // rest. "/" and "/account" stay open: they are still mock skeleton.
+  "/places",
 ];
 
 // Routes where a signed-in visitor should be bounced through
-// /auth/post-signin. EMPTY during the mock era: `/` now hosts the new
-// console shell (mock data), not the auth surface, so a session cookie
-// must not bounce visitors away from it. When real data + auth land,
-// sign-in gets its own route and this set gets it back.
-const SIGNED_IN_BOUNCE = new Set<string>([]);
+// /auth/post-signin. `/` hosts the console shell now, so the auth surface
+// moved to /signin and the bounce follows it there. A signed-in visitor
+// never needs to see sign-in.
+const SIGNED_IN_BOUNCE = new Set<string>(["/signin"]);
 export { SIGNED_IN_BOUNCE };
 
 export function shouldGate(pathname: string): boolean {
@@ -83,7 +86,7 @@ export async function updateSupabaseSession(request: NextRequest) {
   // Signed-out wall.
   if (shouldGate(pathname) && !user) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = "/";
+    signInUrl.pathname = "/signin";
     signInUrl.search = `?next=${encodeURIComponent(
       pathname + request.nextUrl.search,
     )}`;

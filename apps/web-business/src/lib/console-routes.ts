@@ -11,9 +11,9 @@ export const SHELL_ROUTES = {
   account: "/account",
 } as const;
 
-export function placePath(id: string): string {
-  return `/places/${id}`;
-}
+// Place DETAIL is the real console at /place/<id>/... — see
+// lib/business-route-contract.ts. The shell's Places layer is the catalog
+// that leads there, so it owns no per-place route of its own.
 
 /** Append the mock-org switch to an href. Default org stays clean URLs. */
 export function withOrg(href: string, orgKey: string | null): string {
