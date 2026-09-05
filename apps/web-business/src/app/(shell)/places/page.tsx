@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+// PLACE states, read straight off the catalogue row. Partner is NOT here:
+// it is a property of the organization that operates the place (does it
+// have a live payment account), so it cannot be a per-place badge.
 function Flag({ on, label }: { on: boolean; label: string }) {
   if (!on) return null;
   return (
@@ -103,7 +106,6 @@ export default async function PlacesPage({
               <div className="flex shrink-0 items-center gap-1.5">
                 <Flag on={p.listed} label="Listed" />
                 <Flag on={p.verified} label="Verified" />
-                <Flag on={p.partnered} label="Partner" />
               </div>
             </Link>
           ))}

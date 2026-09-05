@@ -11,7 +11,6 @@ export const grupoRuiz: OrgData = {
     legalName: "Operadora Ruiz Hermanos (mock)",
     rfc: "RFC-MOCK-GR2024",
     currency: "MXN",
-    rung: "partner",
   },
   paymentAccount: {
     state: "live",

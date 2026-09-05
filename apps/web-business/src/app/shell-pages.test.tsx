@@ -26,16 +26,30 @@ describe("organization page (the / layer)", () => {
   it("renders identity + finances + members + commercial for the partner org", async () => {
     const html = await render(OrganizationPage({ searchParams: sp() }));
     expect(html).toContain("Grupo Ruiz");
+    expect(html).toContain("Connected");
     expect(html).toContain("RFC-MOCK-GR2024");
     expect(html).toContain("Credits owed");
     expect(html).toContain("Patricia Ruiz");
     expect(html).toContain("Aggression");
   });
-  it("renders the day-one org: no account, commercial locked", async () => {
+  it("renders the day-one org: not connected, no account, commercial locked", async () => {
     const html = await render(OrganizationPage({ searchParams: sp("nuevo") }));
     expect(html).toContain("La Nueva");
+    expect(html).toContain("Not connected");
     expect(html).toContain("No payment account yet");
     expect(html).toContain("Locked at Zero");
+  });
+
+  it("never shows a PLACE state as the organization's status", async () => {
+    // Listed / Verified / Partner describe one address, not a legal
+    // person. The org header must not borrow them.
+    for (const org of [undefined, "nuevo"]) {
+      const html = await render(OrganizationPage({ searchParams: sp(org) }));
+      const header = html.slice(0, html.indexOf("Identity"));
+      expect(header).not.toContain("Listed");
+      expect(header).not.toContain("Verified");
+      expect(header).not.toContain("Partner");
+    }
   });
   it("survives a garbage org param", async () => {
     const html = await render(
