@@ -40,9 +40,11 @@ import {
   accountSnapshotFromStripe,
   classifyExistingAccount,
   isMockConnect,
+  isSupportedConnectCountry,
   keyIsLive,
   MESITA_CONNECT_CAPABILITIES,
   MESITA_CONNECT_CONTROLLER,
+  MESITA_CONNECT_COUNTRIES,
   mockConnectAccountId,
 } from "../_shared/stripe-connect.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
@@ -56,6 +58,10 @@ type Body = {
   projectId?: string;
   returnUrl?: string;
   refreshUrl?: string;
+  /** ISO-3166-1 alpha-2, allowlisted (MESITA_CONNECT_COUNTRIES). Defaults to
+   *  MX — every place onboarded so far is Mexican — but it is validated, not
+   *  trusted, because Stripe bakes it into the account permanently. */
+  country?: string;
 };
 
 // Stripe's OWN WORDS reach the operator. Every failure on this path is a
@@ -91,6 +97,20 @@ Deno.serve(async (req) => {
   const placeId = readPlaceIdAlias(bodyRes.body);
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
+  // Country is PERMANENT on the account Stripe is about to create, so it is
+  // validated against the allowlist here — before the ownership check, before
+  // the DB read, before Stripe is touched at all. A bad value must cost a 400,
+  // never a permanently mis-countried connected account.
+  const country = bodyRes.body.country ?? "MX";
+  if (!isSupportedConnectCountry(country)) {
+    return json({
+      ok: false,
+      error:
+        `country must be one of ${MESITA_CONNECT_COUNTRIES.join(", ")} (got ${JSON.stringify(country)}).`,
+      code: "unsupported_country",
+    }, 400);
+  }
+
   const admin = adminClient(envRes.env);
 
   const ownerRes = await requireOwner(
@@ -121,6 +141,7 @@ Deno.serve(async (req) => {
   const action = classifyExistingAccount(existing, {
     mockMode,
     keyLive: stripeKey ? keyIsLive(stripeKey) : false,
+    country,
   });
 
   // ── Mock mode: insert-if-missing, NEVER overwrite a real row. ─────────────
@@ -164,10 +185,27 @@ Deno.serve(async (req) => {
     return link.url;
   };
 
-  if (action === "use") {
+  if (action === "use" || action === "use_country_mismatch") {
     try {
       const url = await linkFor(existing!.stripe_account_id);
-      return json({ ok: true, mock: false, url, account: existing });
+      // A country mismatch still gets a working link — the existing account is
+      // real and finishing its onboarding is the useful action — but it is
+      // NEVER reported as if the requested country were honoured. Country is
+      // per-account permanent; changing it means deleting the account at
+      // Stripe, which is an operator decision, not something an EF may infer.
+      return json({
+        ok: true,
+        mock: false,
+        url,
+        account: existing,
+        ...(action === "use_country_mismatch"
+          ? {
+            country_mismatch: true,
+            requested_country: country,
+            account_country: existing!.country,
+          }
+          : {}),
+      });
     } catch (err) {
       // The account no longer exists in this universe (deleted, or a rotated
       // sandbox) — self-heal by falling through to the replace path.
@@ -180,7 +218,7 @@ Deno.serve(async (req) => {
   let account: Stripe.Account;
   try {
     account = await stripe.accounts.create({
-      country: "MX",
+      country,
       controller: MESITA_CONNECT_CONTROLLER,
       capabilities: MESITA_CONNECT_CAPABILITIES,
       metadata: { place_id: placeId },

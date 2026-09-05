@@ -527,6 +527,16 @@ export type PlacePayReadiness = {
   all: boolean;
 };
 
+/** The countries a Mesita connected account may be created in. Mirrors
+ *  MESITA_CONNECT_COUNTRIES in supabase `_shared/stripe-connect.ts`; the EF
+ *  validates independently, so this list is a UI convenience, not the gate. */
+export const CONNECT_COUNTRIES = [
+  { code: "MX", label: "Mexico" },
+  { code: "US", label: "United States" },
+] as const;
+
+export type MesitaConnectCountry = typeof CONNECT_COUNTRIES[number]["code"];
+
 /** What `business-web-start-payment-onboarding` hands back. */
 export type PaymentOnboardingStart = {
   /** MOCK_CONNECT was on, or no Stripe key is configured. */
@@ -534,6 +544,11 @@ export type PaymentOnboardingStart = {
   /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
   url: string | null;
   account: PlacePaymentAccount | null;
+  /** The place already has an account in a DIFFERENT country than the one
+   *  requested. The link is still valid (for the EXISTING account) — country
+   *  is per-account permanent, so it was not and cannot be changed. */
+  countryMismatch: boolean;
+  accountCountry: string | null;
 };
 
 /**
@@ -552,16 +567,19 @@ export type PaymentOnboardingStart = {
  */
 export async function startPlacePaymentOnboarding(
   placeId: string,
-  urls: { returnUrl: string; refreshUrl: string },
+  urls: { returnUrl: string; refreshUrl: string; country: MesitaConnectCountry },
 ): Promise<Result<PaymentOnboardingStart>> {
   const r = await efInvoke<{
     mock?: boolean;
     url?: string | null;
     account?: PlacePaymentAccount | null;
+    country_mismatch?: boolean;
+    account_country?: string | null;
   }>("business-web-start-payment-onboarding", {
     placeId,
     returnUrl: urls.returnUrl,
     refreshUrl: urls.refreshUrl,
+    country: urls.country,
   });
   // `code` rides along: "stripe_live_blocked" is an environment fact, not a
   // failed attempt, and the row renders it differently for that reason.
@@ -572,7 +590,36 @@ export async function startPlacePaymentOnboarding(
       mock: r.data.mock === true,
       url: r.data.url ?? null,
       account: r.data.account ?? null,
+      countryMismatch: r.data.country_mismatch === true,
+      accountCountry: r.data.account_country ?? null,
     },
+  };
+}
+
+/**
+ * Mint a single-use Express Dashboard link for the place's connected account.
+ *
+ * Under the old Standard controller this had no reason to exist — the place
+ * logged into stripe.com. Under Express (MESITA-1532) a platform-minted link
+ * is the ONLY entrance, so this is how anyone reaches the account's balance,
+ * payout bank account or disputes. Staff-assisted for now: super-admins are
+ * exempt from the EF's owner gate, which is what makes it usable while
+ * production places have no owners.
+ *
+ * The URL grants access to the account holder's Stripe data, so it is never
+ * stored — it is opened and forgotten.
+ */
+export async function getPlacePaymentDashboardLink(
+  placeId: string,
+): Promise<Result<{ mock: boolean; url: string | null }>> {
+  const r = await efInvoke<{ mock?: boolean; url?: string | null }>(
+    "business-web-get-payment-dashboard-link",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return {
+    ok: true,
+    data: { mock: r.data.mock === true, url: r.data.url ?? null },
   };
 }
 

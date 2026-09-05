@@ -9,13 +9,16 @@ import {
 } from "@/lib/business/strategies";
 import { planForSubscription } from "@/lib/business/plans";
 import {
+  CONNECT_COUNTRIES,
   getPlacePaymentAccount,
+  getPlacePaymentDashboardLink,
   reviewTicketReport,
   startPlacePaymentOnboarding,
   setPlacePlan,
   setPlaceRails,
   setPlaceStrategy,
   type AdminPlace,
+  type MesitaConnectCountry,
   type PlaceRails,
 } from "../actions";
 import { OrdersCard } from "./OrdersCard";
@@ -118,6 +121,29 @@ export function PromosSection({
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [connectBusy, setConnectBusy] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  // Asked, not derived (gate D2, 2026-09-05). `places.country` holds Google's
+  // display text ("México"), and deriving it was rejected: no mapping layer,
+  // no fallback when the text is unexpected, and the operator should look at
+  // this every time because Stripe bakes it into the account PERMANENTLY.
+  const [connectCountry, setConnectCountry] = useState<MesitaConnectCountry>("MX");
+  const [dashboardBusy, setDashboardBusy] = useState(false);
+
+  // Opens the Express Dashboard. New tab, NOT a full navigation like the
+  // onboarding redirect: onboarding has to come back to returnUrl, whereas
+  // this is a side trip and losing the console page would be rude.
+  const openDashboard = async () => {
+    if (dashboardBusy) return;
+    setDashboardBusy(true);
+    setConnectError(null);
+    const r = await getPlacePaymentDashboardLink(place.id);
+    setDashboardBusy(false);
+    if (!r.ok) {
+      console.error("[controls] getPlacePaymentDashboardLink failed:", r.error);
+      setConnectError(connectStartFailure(r.code ?? null, r.error ?? null));
+      return;
+    }
+    if (r.data.url) window.open(r.data.url, "_blank", "noopener,noreferrer");
+  };
   // Latched by an environment-level refusal (STRIPE_LIVE_BLOCKED), never by a
   // transient one: the button goes quiet while `connectError` keeps saying
   // why. Scoped to this mount on purpose — the next place re-asks rather than
@@ -136,6 +162,7 @@ export function PromosSection({
     const r = await startPlacePaymentOnboarding(place.id, {
       returnUrl: `${base}?connect=return`,
       refreshUrl: `${base}?connect=refresh`,
+      country: connectCountry,
     });
     if (!r.ok) {
       setConnectBusy(false);
@@ -145,6 +172,17 @@ export function PromosSection({
       // every place and every retry. Stop offering an action that cannot
       // succeed — the same rule the non-partner row already follows.
       if (r.code === STRIPE_LIVE_BLOCKED) setConnectRefused(true);
+      return;
+    }
+    // The place already had an account in another country. The link is real
+    // and points at THAT account — country is permanent, so nothing was
+    // changed to match the request. Say so instead of redirecting silently
+    // into an onboarding flow for a country the operator did not choose.
+    if (r.data.countryMismatch) {
+      setConnectBusy(false);
+      setConnectError(
+        `This place already has a ${r.data.accountCountry ?? "different"} Stripe account, so ${connectCountry} was not applied. A country can't be changed after the account exists — delete it at Stripe first.`,
+      );
       return;
     }
     if (r.data.url) {
@@ -364,17 +402,46 @@ export function PromosSection({
               row={byKey.stripe}
               error={connectError}
               control={
-                byKey.stripe.state.kind === "on" ||
-                byKey.stripe.state.kind === "locked" ? undefined : (
-                  <button
-                    type="button"
-                    onClick={() => void startConnect()}
-                    disabled={connectBusy || connectLoading || connectRefused}
-                    className="bg-foreground text-background inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
-                  >
-                    {connectBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    {byKey.stripe.state.kind === "off" ? "Connect Stripe" : "Finish setup"}
-                  </button>
+                byKey.stripe.state.kind === "locked" ? undefined
+                  : byKey.stripe.state.kind === "on" ? (
+                    <button
+                      type="button"
+                      onClick={() => void openDashboard()}
+                      disabled={dashboardBusy}
+                      className="border-border inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    >
+                      {dashboardBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Open dashboard
+                    </button>
+                  ) : (
+                  <div className="flex shrink-0 items-center gap-2">
+                    {/* Only before an account exists. Country is per-account
+                        permanent, so re-offering it on "Finish setup" would be
+                        a control that cannot do anything. */}
+                    {byKey.stripe.state.kind === "off" && (
+                      <select
+                        aria-label="Country for this Stripe account"
+                        value={connectCountry}
+                        onChange={(e) =>
+                          setConnectCountry(e.target.value as MesitaConnectCountry)}
+                        disabled={connectBusy || connectLoading || connectRefused}
+                        className="border-border bg-background h-9 shrink-0 rounded-full border px-3 text-sm disabled:opacity-50"
+                      >
+                        {CONNECT_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code}>{c.label}</option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void startConnect()}
+                      disabled={connectBusy || connectLoading || connectRefused}
+                      className="bg-foreground text-background inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    >
+                      {connectBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      {byKey.stripe.state.kind === "off" ? "Connect Stripe" : "Finish setup"}
+                    </button>
+                  </div>
                 )
               }
             />

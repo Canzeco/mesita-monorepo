@@ -9,7 +9,15 @@ import type { AdminPlace } from "../../actions";
 // `{enabled && <Config/>}`. The decision logic itself is unit-tested directly
 // in offerings.test.ts.
 vi.mock("../../actions", () => ({
+  // Real value, not a stub: the Connect row renders one <option> per entry, so
+  // a mocked-away list would make the country selector silently disappear from
+  // exactly the assertions that exist to prove the rung is actionable.
+  CONNECT_COUNTRIES: [
+    { code: "MX", label: "Mexico" },
+    { code: "US", label: "United States" },
+  ],
   getPlacePaymentAccount: vi.fn(async () => ({ ok: false, error: "not called in SSR" })),
+  getPlacePaymentDashboardLink: vi.fn(),
   startPlacePaymentOnboarding: vi.fn(),
   setPlacePlan: vi.fn(),
   setPlaceRails: vi.fn(),
@@ -167,6 +175,23 @@ describe("the Stripe rung is actionable, and only when it can be", () => {
     const html = render(place({ plan: "pro_discount" }));
     expect(html).toContain("Mesita Stripe Account");
     expect(html).toContain("Connect Stripe");
+  });
+
+  it("asks the country BEFORE onboarding, and only while there is no account", () => {
+    // Country is baked into the Stripe account permanently (MESITA-1532), so
+    // the operator picks it before anything is created, not after. Gate D2
+    // chose asking outright over deriving from places.country.
+    const html = render(place({ plan: "pro_discount" }));
+    expect(html).toContain("Country for this Stripe account");
+    expect(html).toContain("Mexico");
+    expect(html).toContain("United States");
+    // MX is the default — every place onboarded so far is Mexican.
+    expect(html).toMatch(/<option[^>]*value="MX"[^>]*>/);
+  });
+
+  it("offers no country picker to a non-partner, since it offers no Connect either", () => {
+    const html = render(place({ plan: "free" }));
+    expect(html).not.toContain("Country for this Stripe account");
   });
 
   it("offers NOTHING to a non-partner — the rung is locked, not actionable", () => {

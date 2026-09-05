@@ -48,6 +48,10 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   // Stripe Connect PLATFORM account layer (skeleton, no charges).
   { name: "business-web-start-payment-onboarding", path: "../business-web-start-payment-onboarding/index.ts", accepts: ["POST"] },
   { name: "admin-web-get-place-payment-account", path: "../admin-web-get-place-payment-account/index.ts", accepts: ["POST"] },
+  // The Express Dashboard door (MESITA-1532): it mints a single-use link that
+  // grants access to the account holder's Stripe data, so its auth gate is
+  // money-path-critical even though it moves no money itself.
+  { name: "business-web-get-payment-dashboard-link", path: "../business-web-get-payment-dashboard-link/index.ts", accepts: ["POST"] },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,
