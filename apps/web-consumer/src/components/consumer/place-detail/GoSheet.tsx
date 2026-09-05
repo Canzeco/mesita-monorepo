@@ -11,7 +11,11 @@ import {
 } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { ORDER_BLOCKED, RESERVE_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
+import {
+  CREDITS_BLOCKED,
+  ORDER_BLOCKED,
+  RESERVE_BLOCKED,
+} from "@/components/consumer/place-detail/place-actions-copy";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { useStartVisit } from "@/lib/hooks/useStartVisit";
@@ -27,18 +31,24 @@ import {
 // The Go sheet (MESITA-1072) — what the deck's fifth action button opens.
 //
 // The rail used to end in a calendar wired straight to ReservationSheet: one
-// verb, and the narrowest of the three the product actually offers. Place
-// detail already carries all three in a pinned bar (MESITA-1065) and each one
-// lands in an Inbox section that exists (MESITA-1053), so the deck was simply
-// a verb behind. This catches it up without spending a sixth slot in a rail
-// that is already at its width budget.
+// verb, and the narrowest of the ones the product actually offers. Place
+// detail already carries them all in a pinned bar (MESITA-1065) and each one
+// lands in an Activity section that exists (MESITA-1053), so the deck was
+// simply a verb behind. This catches it up without spending a sixth slot in a
+// rail that is already at its width budget.
 //
-// WHY A SHEET AND NOT THREE MORE BUTTONS. The rail is icon-only and sized for
-// five circles; three commitment verbs cannot live there without either
-// shrinking the whole row or dropping Filter/Place. A sheet also buys each
-// verb a line of explanation, which the bar on place detail has no room for —
-// and the guest arriving from a swipe card has read far less about this place
-// than the guest who opened its detail page.
+// WHY A SHEET AND NOT MORE BUTTONS. The rail is icon-only and sized for five
+// circles; the commitment verbs cannot live there without either shrinking the
+// whole row or dropping Filter/Place. A sheet also buys each verb a line of
+// explanation, which the bar on place detail has no room for — and the guest
+// arriving from a swipe card has read far less about this place than the guest
+// who opened its detail page.
+//
+// IT MIRRORS THE BAR'S COUNT ON PURPOSE. Both surfaces answer the same
+// question — what can I start here — so a sheet offering three where the bar
+// offers four would read as one of them being broken. The count is kept in
+// step through the shared copy module, which is why Credits arrived here the
+// same commit it arrived there.
 //
 // SELF-CONTAINED ON PURPOSE, not a refactor of PlaceActionBar. The part that
 // must never drift is already shared as code: useStartVisit owns the create,
@@ -84,7 +94,7 @@ export function GoSheet({
       <div className="p-5">
         <h2 className={SHEET_TITLE_CLASS}>Go to {place.name}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Three ways in — pick one.
+          Four ways in — pick one.
         </p>
 
         {/* The create can fail (cold EF, dropped connection). Swallowing it
@@ -92,6 +102,15 @@ export function GoSheet({
         {error ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{error}</p> : null}
 
         <div className="mt-4 flex flex-col gap-2">
+          {/* CREDITS — locked at every place until the engine lands, so the
+                hint carries the parked claim rather than blaming the venue. */}
+          <GoOption
+            Icon={Lock}
+            title="Credits"
+            hint={CREDITS_BLOCKED.hint}
+            disabled
+          />
+
           {/* VISIT — the money action, so it's the only tinted row.
                 Non-partners render LOCKED rather than hidden, matching
                 PlaceActionBar and PlacePickList: consumer-web-create-ticket

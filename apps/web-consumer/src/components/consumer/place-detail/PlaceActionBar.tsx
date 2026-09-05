@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { CalendarCheck, Loader2, Lock, QrCode, UtensilsCrossed } from "lucide-react";
 
-import { ORDER_BLOCKED, RESERVE_BLOCKED } from "@/components/consumer/place-detail/place-actions-copy";
+import {
+  CREDITS_BLOCKED,
+  ORDER_BLOCKED,
+  RESERVE_BLOCKED,
+} from "@/components/consumer/place-detail/place-actions-copy";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { useConsumerIdentity } from "@/lib/class-context";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
@@ -17,7 +21,8 @@ import {
   isReserveActionEnabled,
 } from "@/lib/place-profile-actions";
 
-// The place-detail action bar (MESITA-1065): Visit · Order · Reserve, pinned.
+// The place-detail action bar (MESITA-1065): Credits · Visit · Order · Reserve,
+// pinned.
 //
 // FIXED MEANS OUTSIDE THE SCROLL CONTAINER, not `position: fixed`. Both
 // callers — PlaceDetailPageBody and PlaceDetailModalShell — are flex columns
@@ -26,11 +31,25 @@ import {
 // z-tier and no fight with BottomNav (z-40) or the slide-over (z-120), and it
 // can't escape the MobileFrame card on desktop the way `fixed` would.
 //
-// WHY THESE THREE WORDS. They are not new vocabulary: Inbox already tracks
-// Visits · Orders · Reservations (MESITA-1053), so the bar is "the three
-// things you can start here" and each one has somewhere it lands afterwards.
-// The body's row keeps the verbs that act on your relationship to the PAGE
-// (Save · Contact · Share); commitment verbs live down here.
+// WHY THESE FOUR WORDS. They are not new vocabulary: Activity already tracks
+// Visits · Orders · Reservations and Pay owns the Credits wallet, so the bar is
+// "the things you can start here" and each one has somewhere it lands
+// afterwards. The body's row keeps the verbs that act on your relationship to
+// the PAGE (Save · Contact · Share); commitment verbs live down here.
+//
+// CREDITS LEADS AND IS LOCKED EVERYWHERE. It is the money you bring, so it
+// reads before the money you spend — but its engine is unbuilt, which is a
+// fact about Mesita and not about this venue, so the copy says so rather than
+// letting the lock imply the place fell short (place-actions-copy.ts).
+//
+// THE CELLS STACK — icon over label, not beside it. MEASURED, not chosen: at
+// 13px semibold "Reserve" beside a 16px icon is 74.6px wide, and four cells in
+// this bar (px-4, gap-2) get only 66.0px at 320px and 79.8px at 375px. One row
+// of four would have overflowed the narrowest phones outright and cleared 375px
+// by 5px — and `type-body` is rem-based, so a guest who bumps their browser
+// font size eats even that. Stacked, the cell needs just the label: 51.3px,
+// which clears at every width with room to spare. Adding the fourth verb is
+// what forced this; nothing else about the bar changed.
 
 export function PlaceActionBar({
   place,
@@ -57,7 +76,7 @@ export function PlaceActionBar({
   const starting = startingId === place.id;
 
   const btn =
-    "inline-flex items-center justify-center gap-1.5 rounded-xl py-3 type-body font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
+    "inline-flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 type-body font-semibold whitespace-nowrap transition active:scale-[0.99] disabled:active:scale-100";
   const outline = "border-border bg-card text-foreground hover:bg-muted border";
 
   return (
@@ -76,7 +95,20 @@ export function PlaceActionBar({
             {error}
           </p>
         ) : null}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
+          {/* CREDITS — the balance you already hold here. Locked at every
+              place until the Credits engine lands; see CREDITS_BLOCKED. */}
+          <button
+            type="button"
+            disabled
+            aria-label={CREDITS_BLOCKED.aria}
+            title={CREDITS_BLOCKED.title}
+            className={cn(btn, "bg-muted text-muted-foreground cursor-not-allowed")}
+          >
+            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            Credits
+          </button>
+
           {/* VISIT — the money action, so it's the only filled button.
               Same one-tap contract as the Visit wallet: create at "base" and
               land on THE TICKET; a place already holding a live ticket
