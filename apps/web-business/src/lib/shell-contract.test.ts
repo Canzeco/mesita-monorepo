@@ -21,10 +21,15 @@ describe("middleware contract", () => {
   it("gates the catalog layer, which reads real data", () => {
     expect(shouldGate("/places")).toBe(true);
   });
-  it("keeps the old console protected", () => {
-    expect(shouldGate("/central")).toBe(true);
+  it("keeps the per-place console protected", () => {
     expect(shouldGate("/place/abc")).toBe(true);
-    expect(shouldGate("/onboard")).toBe(true);
+    expect(shouldGate("/settings")).toBe(true);
+  });
+  it("does not gate routes that no longer exist", () => {
+    // /central (the entity hub) and /onboard (the name prompt) were
+    // deleted; gating a missing route just costs a pointless redirect.
+    expect(shouldGate("/central")).toBe(false);
+    expect(shouldGate("/onboard")).toBe(false);
   });
   it("leaves the still-mock shell routes open", () => {
     expect(shouldGate(SHELL_ROUTES.organization)).toBe(false);

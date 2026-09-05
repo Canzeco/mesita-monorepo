@@ -6,8 +6,8 @@ import { apiBusinessSigninEmail } from "@/lib/api/auth";
 //
 //   1. Call the business post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
-//   2. Decide where to send the user — /onboard if the profile row is
-//      missing required fields, /central otherwise.
+//   2. Send them to the place catalog. There is no onboarding branch:
+//      managing a place never required knowing your name.
 //
 // Why a dedicated server page: it runs server-side with the session
 // cookie, so the EF call carries the freshly-issued JWT and any errors
@@ -32,12 +32,13 @@ export default async function PostSigninPage({
       ? params.next
       : null;
 
-  let result: Awaited<ReturnType<typeof apiBusinessSigninEmail>> | null = null;
   try {
-    result = await apiBusinessSigninEmail(supabase);
+    // Fire-and-check: stamps app_metadata.role and lazy-creates the
+    // profile row. Its answer no longer routes anyone.
+    await apiBusinessSigninEmail(supabase);
   } catch (err) {
     console.error("[post-signin] business-web-signin-email:", err);
   }
   if (explicitNext) redirect(explicitNext);
-  redirect(result?.onboarded ? "/central" : "/onboard");
+  redirect("/places");
 }
