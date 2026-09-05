@@ -15,9 +15,10 @@ export const CONSUMER_ROUTES = {
   // DISCOVER — the first tab, and five modes under it.
   //
   // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
-  // than the rule (Activity routes at /inbox, Pay at /new-visit, Wallet at
-  // /credits). It is deliberate, and it is what makes a relabel a ROUTE rename:
-  // renaming a pill without moving its segment breaks the rule silently.
+  // than the rule (Activity routes at /inbox, Pay at /new-visit) — Wallet
+  // joined the exception on 2026-09-05 when it became a tab at /wallet. It is
+  // deliberate, and it is what makes a relabel a ROUTE rename: renaming a pill
+  // without moving its segment breaks the rule silently.
   //
   // SEARCH IS THE MAP (Pato, 2026-09-01). A search bar is a control, and it
   // belongs on the surface it serves — the map is where a found place has
@@ -89,23 +90,35 @@ export const CONSUMER_ROUTES = {
   // The centre tab: pick a place, start a visit. A VERB on purpose — it is
   // the primary action, and the visits LIST lives in Inbox > Visits, so this
   // surface only ever creates. /rewards, /pay and /qr all 308 here.
+  //
+  // PAY IS ONE SURFACE AGAIN (Pato, 2026-09-05): a place list, nothing else.
+  //
+  // It was a container with two sections for four days. Wallet was the second,
+  // and Wallet is now its own TAB — so what is left is one section, and a
+  // one-section row is chrome pretending to be a control. PaySectionNav and
+  // this object's `new` / `wallet` keys went with it; `root` is the whole tab.
   newVisit: {
     root: "/new-visit",
-    // PAY IS A CONTAINER NOW (Pato, 2026-09-01): New · Wallet.
-    //
-    // New is the bare route — pick a place, start a visit. Wallet is the money
-    // you hold, moved here from Activity because a wallet holds INSTRUMENTS and
-    // Activity holds EVENTS. /inbox/credits 308s to it.
-    //
-    // The section labels are New and Wallet; the segments are `/new-visit` and
-    // `/new-visit/wallet`. Same shape as Inbox: container + sections, bare route
-    // is the default.
-    new: "/new-visit",
-    wallet: "/new-visit/wallet",
   },
-  // Pay lands on New: you open this tab standing in a place, not to check a
-  // balance. Same reasoning as inboxDefault landing on Visits.
   newVisitDefault: "/new-visit",
+  // WALLET — a TOP-LEVEL TAB (Pato, 2026-09-05: "five pages now — Discover,
+  // Activity, Pay, Wallet, Me"), and a top-level ROUTE to match.
+  //
+  // This is its third address in five days: /credits, then /inbox/credits, then
+  // /new-visit/wallet. Each move was a demotion into somebody else's container
+  // and each one was argued from what a wallet HOLDS — instruments, not events,
+  // so not Activity; money you spend, so Pay. The tab settles it by not asking:
+  // the money you hold is a destination of its own, not a subsection of the
+  // place you spend it at.
+  //
+  // SEGMENT MATCHES LABEL, which Discover is otherwise the only one to do
+  // (Activity routes at /inbox, Pay at /new-visit). It costs nothing here —
+  // there was no incumbent `/wallet` to forward — and it means a relabel would
+  // be a route rename, which is the guard Discover's comment describes.
+  //
+  // All THREE old addresses 308 straight here, never through each other:
+  // route-structure T4 caps a chain at 2 hops and /credits already spent one.
+  wallet: "/wallet",
   // A single visit — THE TICKET (reward -> task -> QR -> results). Top-level
   // sibling of /place and /reservation, not a child of /new-visit: you reach
   // it from the centre tab when you start one AND from Inbox > Visits when you
@@ -162,9 +175,14 @@ export const CONSUMER_ROUTES = {
     invite: "/invite",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
-    // Wallet's route while it lived under Activity (#1430 -> 2026-09-01). It
-    // was live in production, so the bookmarks are real; it 308s to Pay > Wallet.
+    // Wallet's first two addresses. Both were live in production, so both sets
+    // of bookmarks are real, and both 308 STRAIGHT to /wallet — never
+    // /inbox/credits through /new-visit/wallet, which would be the 3-hop chain
+    // T4 refuses (bare /credits already spends the first hop).
     inboxCredits: "/inbox/credits",
+    // Wallet's route for the four days it was Pay's second section
+    // (2026-09-01 -> 2026-09-05).
+    newVisitWallet: "/new-visit/wallet",
     // The bare /search tab, from before Discover existed. It forwards to
     // /discover/search, which is once again a map with a search bar on it — the
     // path is legacy, the destination is not a coincidence.
@@ -221,6 +239,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   newVisit: "/new-visit",
   visit: "/visit",
   inbox: "/inbox",
+  wallet: "/wallet",
   me: "/me",
   saved: "/saved",
 } as const;

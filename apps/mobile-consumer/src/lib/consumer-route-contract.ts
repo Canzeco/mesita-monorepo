@@ -26,9 +26,14 @@ import type { Href } from 'expo-router';
 //       screen and the other four modes stay in-screen state inside Home
 //       (same IA as before web's merge, renamed below to match web's current
 //       mode names).
-//   web /new-visit[/wallet]  (was /rewards, split into New + Wallet sections,
-//       2026-09-01)                           →  Expo /(tabs)/rewards —
-//       mobile has NOT split it; one screen still covers both.
+//   web /new-visit  (was /rewards; split into New + Wallet sections
+//       2026-09-01, collapsed back to one surface 2026-09-05 when Wallet left)
+//                                             →  Expo /(tabs)/rewards.
+//   web /wallet  (Wallet became web's FOURTH tab 2026-09-05, out of Pay's
+//       section row)                          →  no Expo route. Mobile has no
+//       wallet screen at all, so there is deliberately no `wallet` key below:
+//       this file describes mobile's real routes, and a key pointing at a
+//       screen that does not exist is worse than an absent one.
 //   web /visit/:id  (was /rewards/ticket/:id)  →  Expo app/rewards/ticket/[id].tsx
 //       — mobile has NOT renamed the ticket route; still /rewards/ticket/[id].
 //   web /home/ai            ->  /home/chat        (Expo: Home screen segment)
@@ -90,9 +95,11 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: '/reservation/',
   },
-  // Web split this into `newVisit` (New + Wallet sections) plus a separate
-  // top-level `visit` for the ticket screen (2026-09-01). Mobile has NOT made
-  // that split — `/(tabs)/rewards` is still one screen covering both, and
+  // Web renamed this `newVisit` and split off a separate top-level `visit` for
+  // the ticket screen (2026-09-01). Web's own New/Wallet split came and went
+  // in four days — Wallet is a top-level tab there since 2026-09-05 — so the
+  // only lasting web change is the rename. Mobile has NOT made that split:
+  // `/(tabs)/rewards` is still one screen covering both, and
   // the ticket is still at /rewards/ticket/[id], not /visit/[id] — so this
   // stays named `rewards`, matching mobile's real, current routes. `root` is
   // live: app/pay/index.tsx and components/place/place-detail/rewards.tsx
@@ -110,9 +117,10 @@ export const CONSUMER_ROUTES = {
   // order is a screen change, which the freeze forbids here.
   //
   // NO `credits` key any more: web moved Wallet out of Activity into Pay
-  // (`newVisit.wallet`, 2026-09-01), and nothing in mobile ever consumed
-  // `inbox.credits` — no Credits/Wallet section exists anywhere under
-  // components/inbox/ — so it is dropped rather than carried forward dead.
+  // (2026-09-01) and then out of Pay entirely, to its own tab at /wallet
+  // (2026-09-05). Nothing in mobile ever consumed `inbox.credits` — no
+  // Credits/Wallet section exists anywhere under components/inbox/ — so it is
+  // dropped rather than carried forward dead.
   //
   // Key order below follows MOBILE's actual current section order, not
   // web's: this object has no runtime effect (nothing iterates it; the guest
