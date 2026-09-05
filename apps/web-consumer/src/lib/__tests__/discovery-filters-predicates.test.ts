@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
 import {
@@ -242,5 +244,33 @@ describe("the rule that must survive the discovery rebuild", () => {
     );
     expect(kept).toHaveLength(1);
     expect(kept.some((p) => p.id === "shut")).toBe(false);
+  });
+});
+
+// ── The sheet's count means MATCHES, not the unseen remainder ──────────────
+//
+// Pato, 2026-09-05: "fix these stupid fake filters. it don't works like that
+// anymore." SwipeDeck used to pass `count={deck.length}`, where `deck` is
+// `filtered` minus every place already swiped. Two visible lies came out of it:
+// the number fell as you swiped with the filters untouched, and once you had
+// seen everything the sheet rendered "No matches — reset filters" — blaming the
+// predicates for an exhausted deck, where resetting them changed nothing.
+//
+// Source-level pin: the runtime value lives inside a `useMemo` chain in a
+// client component, so a render test would need the whole deck harness. The
+// substring is the contract.
+describe("DiscoveryFilters count is the match count", () => {
+  const src = readFileSync(
+    join(__dirname, "../../components/consumer/home/swipe/SwipeDeck.tsx"),
+    "utf8",
+  );
+
+  it("passes the filtered count, never the unseen deck", () => {
+    expect(src).toContain("count={filtered.length}");
+    expect(src).not.toContain("count={deck.length}");
+  });
+
+  it("keeps exhaustion on its own surface, not on the filter sheet", () => {
+    expect(src).toContain("ExhaustedDeck");
   });
 });

@@ -655,7 +655,16 @@ function Deck({ places }: { places: Place[] }) {
       <DiscoveryFilters
         onClose={() => setFiltersOpen(false)}
         categoryOptions={categoryOptions}
-        count={deck.length}
+        // MATCHES, not the unseen remainder (`deck`). The sheet's count answers
+        // one question — "do my filters match anything" — and `deck` is
+        // `filtered` MINUS every place already swiped, which answers a
+        // different one. Passing `deck` made the number fall as you swiped with
+        // the filters untouched, and drove the zero branch into "No matches —
+        // reset filters" once you had seen everything: it blamed the filters
+        // for an exhausted deck, and resetting them fixed nothing because the
+        // places were seen, not excluded. Exhaustion has its own surface
+        // (`exhausted` -> ExhaustedDeck); this number is about predicates.
+        count={filtered.length}
         hasLocation={coords != null}
       />
     </LocalSheet>
