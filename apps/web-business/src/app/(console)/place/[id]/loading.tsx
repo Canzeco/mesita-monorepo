@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 
-// Business shell Suspense boundary. PlaceHeader + PlaceDock stay mounted
+// Business shell Suspense boundary. PlaceNav stays mounted
 // on the place layout; the page body shows this fallback while a section
 // destination fetches its server data.
 export default function BusinessShellLoading() {

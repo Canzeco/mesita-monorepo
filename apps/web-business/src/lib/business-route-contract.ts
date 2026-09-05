@@ -5,12 +5,14 @@ import {
 } from "@/components/business/place/place-subtabs";
 
 export const BUSINESS_ROUTES = {
-  central: "/central",
+  // The catalog replaced /central (an entity hub offering Event, Community,
+  // Products and Services that do not exist) and /onboard (a name prompt
+  // nobody needs to manage a place).
+  central: "/places",
   // Account-level settings (billing, sign-out) — distinct from the per-place
   // Settings tab, which is `place/<id>/settings`.
   settings: "/settings",
   add: "/add",
-  onboard: "/onboard",
 } as const;
 
 type PlaceSection = "performance" | "settings";

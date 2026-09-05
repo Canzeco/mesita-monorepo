@@ -10,18 +10,14 @@ import type { Database } from "./database.types";
 //
 // 2. "Already-signed-in bounce" — / hosts the auth surface; signed-in
 //    visitors should not see it. We bounce them through
-//    /auth/post-signin which forwards to /onboard or /central depending
-//    on whether the business profile has a full_name.
+//    /auth/post-signin, which forwards to the place catalog.
 //
-// The onboarded-vs-not check is intentionally NOT in middleware — that
-// requires an Edge Function call per request, which is too expensive.
-// Onboard pages and dashboards each do their own server-side check.
+// There is no onboarded-vs-not check anywhere any more: you sign in, you
+// pick a place, you manage it.
 
 export const PROTECTED_PREFIXES = [
   "/place",
-  "/onboard",
   "/add",
-  "/central",
   "/settings",
   // The console shell's catalog layer reads the whole place catalogue and
   // hands off to the per-place console, so it needs a session like the

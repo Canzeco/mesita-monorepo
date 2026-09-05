@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getPlaceOverview } from "@/lib/api/place";
 import { AppHeader, type HeaderPlace } from "@/components/auth/AppHeader";
-import { MobileFrame } from "@/components/business/MobileFrame";
 import { CreatePlaceForm } from "./CreatePlaceForm";
 
 // /add lets a business operator claim a place. Distinct from /onboard,
@@ -35,7 +34,7 @@ export default async function CreatePlacePage() {
   }
 
   return (
-    <MobileFrame>
+    <div className="bg-background flex min-h-screen flex-col">
       <AppHeader email={user.email ?? null} places={places} />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-[640px] flex-col px-5 py-8">
@@ -51,6 +50,6 @@ export default async function CreatePlacePage() {
           <CreatePlaceForm signedInEmail={user.email ?? ""} />
         </div>
       </div>
-    </MobileFrame>
+    </div>
   );
 }
