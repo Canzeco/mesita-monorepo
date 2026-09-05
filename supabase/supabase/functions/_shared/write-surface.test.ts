@@ -155,7 +155,18 @@ Deno.test("PLACE: no new writer of places/profiles outside the allowlist", async
 // should not match — so an empty allowlist here is the correct, current
 // baseline, not an oversight. If this test ever fails, it means a NEW file
 // wrote `.from("projects")` directly, bypassing the door.
-const PROJECT_UPDATE_ALLOWLIST: string[] = [];
+const PROJECT_UPDATE_ALLOWLIST: string[] = [
+  // WINDOWING FALSE POSITIVE, verified by reading the source (per this
+  // file's own header rule, not assumed): auth-membership.ts touches
+  // `projects` exactly once, at checkMembership's `.from("projects")
+  // .select(...)` — a READ, resolving the caller's organization path to a
+  // place. The only `.update()` in the file is the super_admins lazy
+  // user_id backfill 58 lines further down, on a different table; the
+  // scan's character window spans both and reports the file as a writer.
+  // business-web-{claim,release}-place DO write projects and are correctly
+  // absent here: they go through _shared/place-doc.ts writePlace().
+  "_shared/auth-membership.ts",
+];
 
 Deno.test("PROJECT: no new writer of projects outside the allowlist", async () => {
   const found = await findWriters("projects", WRITE_VERBS);

@@ -484,6 +484,24 @@ verify_jwt = true
 [functions.business-web-list-members]
 verify_jwt = true
 
+# ── Account / Organization / Place hierarchy (2026-09-05) ──────────────
+# All five require a session: organizations are the thing places get
+# claimed into, so none of this is public.
+[functions.business-web-list-organizations]
+verify_jwt = true
+
+[functions.business-web-create-organization]
+verify_jwt = true
+
+[functions.business-web-list-places]
+verify_jwt = true
+
+[functions.business-web-claim-place]
+verify_jwt = true
+
+[functions.business-web-release-place]
+verify_jwt = true
+
 [functions.business-web-invite-member]
 verify_jwt = true
 
