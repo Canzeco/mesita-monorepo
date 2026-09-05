@@ -4,8 +4,20 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Expandable About card. English only (Mesita core). Spanish TMS is later
-// (MESITA-939) — do not show a second language here.
+// The place's Presentation card. English only (Mesita core). Spanish TMS is
+// later (MESITA-939) — do not show a second language here.
+//
+// THE HEADING IS "PRESENTATION" (Pato, 2026-09-05) and it carries no place
+// name. It used to read "About <name>", and the name was doing real work: on a
+// page that also carries a reward block, a bare "ABOUT" would have been read
+// as "about the reward" by the section directly above it. "Presentation" does
+// not have that ambiguity — it names the thing itself rather than pointing at
+// a subject — so the name became redundant and the `name` prop went with it.
+//
+// THE RENAME STOPS AT THE LABEL. The component, its file and its prop stay
+// AboutBox/`text`, matching how every other label change in this repo is
+// scoped (root CLAUDE.md: a rename never travels into routes, code or
+// columns). `places.description` is untouched.
 //
 // Short stories render in full — no toggle, no ellipsis. Only when the
 // description is extremely long (over ~600 characters, ≈ 10 mobile lines)
@@ -36,19 +48,18 @@ function formatAboutDisplay(text: string): string {
   return soft.length > 1 ? soft.join("\n\n") : normalized;
 }
 
-export function AboutBox({ text, name }: { text: string; name: string }) {
+const HEADING = "Presentation";
+
+export function AboutBox({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = text.length > LONG_TEXT_THRESHOLD;
-  // Include the place name so this header reads as "about the place", not
-  // "about the reward" sitting directly above it.
-  const heading = `About ${name}`;
   const body = formatAboutDisplay(text);
 
   if (!isLong) {
     return (
       <section className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
         <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-          {heading}
+          {HEADING}
         </h3>
         <p className="text-muted-foreground text-base leading-relaxed whitespace-pre-wrap">
           {body}
@@ -65,7 +76,7 @@ export function AboutBox({ text, name }: { text: string; name: string }) {
       className="border-border bg-card hover:bg-card/80 flex flex-col gap-3 rounded-2xl border p-4 text-left transition"
     >
       <h3 className="text-muted-foreground type-meta font-bold tracking-[0.14em] uppercase">
-        {heading}
+        {HEADING}
       </h3>
       <p
         className={cn(
