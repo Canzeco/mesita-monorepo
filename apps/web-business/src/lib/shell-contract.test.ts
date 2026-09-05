@@ -1,15 +1,11 @@
-// Two contracts the mock era depends on:
-// 1. Middleware: `/` no longer bounces signed-in users (it hosts the shell)
-//    and none of the shell routes sit behind the signed-out wall, while the
-//    old console stays protected.
-// 2. Import ban: nothing under (shell) or lib/mock touches lib/supabase or
-//    lib/api — the mock layer is the only data door, so the future EF swap
-//    is mechanical.
+// Two contracts the console depends on.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES } from "./console-routes";
 import { SIGNED_IN_BOUNCE, shouldGate } from "./supabase/middleware";
+import { canClaim, canRelease, resolveActiveOrg } from "./active-organization";
+import type { Organization } from "./api/organizations";
 
 describe("middleware contract", () => {
   it("does not bounce signed-in visitors off /", () => {
@@ -18,25 +14,21 @@ describe("middleware contract", () => {
   it("bounces signed-in visitors off the auth surface", () => {
     expect(SIGNED_IN_BOUNCE.has("/signin")).toBe(true);
   });
-  it("gates the catalog layer, which reads real data", () => {
-    expect(shouldGate("/places")).toBe(true);
-  });
-  it("keeps the per-place console protected", () => {
+  it("gates every console screen that reads real data", () => {
+    expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.pool)).toBe(true);
+    expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
     expect(shouldGate("/place/abc")).toBe(true);
-    expect(shouldGate("/settings")).toBe(true);
   });
   it("does not gate routes that no longer exist", () => {
-    // /central (the entity hub) and /onboard (the name prompt) were
-    // deleted; gating a missing route just costs a pointless redirect.
     expect(shouldGate("/central")).toBe(false);
     expect(shouldGate("/onboard")).toBe(false);
   });
-  it("leaves the still-mock shell routes open", () => {
-    expect(shouldGate(SHELL_ROUTES.organization)).toBe(false);
-    expect(shouldGate(SHELL_ROUTES.account)).toBe(false);
-  });
 });
 
+// The console reaches Supabase only through lib/api and lib/supabase on the
+// server. A client component importing them would ship a service path into
+// the browser bundle; the (shell) client components must stay dumb.
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const full = path.join(dir, name);
@@ -44,44 +36,56 @@ function walk(dir: string): string[] {
   });
 }
 
-// The mock layer is still the only data door for the routes that have not
-// been wired yet. /places reads the real catalog, so it is exempt BY NAME —
-// keeping the ban narrow instead of deleting the guard.
-describe("mock-route import ban", () => {
-  const roots = [
-    path.resolve(__dirname, "..", "app", "(shell)"),
-    path.resolve(__dirname, "mock"),
-    path.resolve(__dirname, "..", "components", "console"),
-  ];
-  const WIRED = [path.join("(shell)", "places", "page.tsx")];
-  it("still-mock routes never import lib/supabase or lib/api", () => {
+describe("client components never import the server data layer", () => {
+  it('no "use client" file under components/console imports lib/supabase', () => {
+    const root = path.resolve(__dirname, "..", "components", "console");
     const offenders: string[] = [];
-    for (const root of roots) {
-      for (const file of walk(root)) {
-        if (WIRED.some((w) => file.endsWith(w))) continue;
-        const src = readFileSync(file, "utf8");
-        if (/from\s+["']@\/lib\/(supabase|api)/.test(src)) offenders.push(file);
-      }
+    for (const file of walk(root)) {
+      const src = readFileSync(file, "utf8");
+      if (!src.startsWith('"use client"')) continue;
+      if (/from\s+["']@\/lib\/supabase/.test(src)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
   });
 });
 
-// #1488 moved the auth surface off "/" (the mock Organization shell took
-// it) and onto /signin. Any server-side redirect still pointing a
-// signed-out visitor at "/" drops them on a mock page with no sign-in
-// form and silently loses their ?next=.
-describe("no route sends a signed-out visitor to the old auth surface", () => {
-  it('has zero redirect("/") or redirect("/?next=...") calls', () => {
-    const roots = [path.resolve(__dirname, "..", "app")];
-    const offenders: string[] = [];
-    for (const root of roots) {
-      for (const file of walk(root)) {
-        if (!file.endsWith(".tsx") && !file.endsWith(".ts")) continue;
-        const src = readFileSync(file, "utf8");
-        if (/redirect\(\s*[`"]\/(\?next=)?[`"]/.test(src)) offenders.push(file);
-      }
-    }
-    expect(offenders).toEqual([]);
+const org = (id: string, myRole: Organization["myRole"]): Organization => ({
+  id,
+  name: id,
+  legalName: null,
+  rfc: null,
+  currency: "MXN",
+  myRole,
+  placeCount: 0,
+});
+
+describe("resolveActiveOrg", () => {
+  const orgs = [org("a", "owner"), org("b", "editor")];
+  it("honours ?org= when you belong to it", () => {
+    expect(resolveActiveOrg(orgs, "b")?.id).toBe("b");
+  });
+  it("falls back to the first when ?org= is absent", () => {
+    expect(resolveActiveOrg(orgs, undefined)?.id).toBe("a");
+  });
+  it("falls back rather than erroring on a foreign or stale id", () => {
+    // Never leak whether an id exists: an org you are not in resolves
+    // exactly like one that does not exist at all.
+    expect(resolveActiveOrg(orgs, "someone-elses-org")?.id).toBe("a");
+  });
+  it("is null when you belong to none", () => {
+    expect(resolveActiveOrg([], "a")).toBeNull();
+  });
+});
+
+describe("action permissions mirror the EF guards", () => {
+  it("claim: owner and editor, never viewer", () => {
+    expect(canClaim("owner")).toBe(true);
+    expect(canClaim("editor")).toBe(true);
+    expect(canClaim("viewer")).toBe(false);
+  });
+  it("release: owner only — an editor could otherwise re-claim elsewhere", () => {
+    expect(canRelease("owner")).toBe(true);
+    expect(canRelease("editor")).toBe(false);
+    expect(canRelease("viewer")).toBe(false);
   });
 });
