@@ -29,6 +29,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
+import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 
 // Statuses that still bill (or still owe us money). `canceled` / `incomplete_
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `subscription_read: ${subsErr.message}` }, 500);
   }
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
   const liveSubIds = (subs ?? [])
     .map((s) => (s.stripe_subscription_id ?? "") as string)
     .filter((id) => id && !id.startsWith("mock_"));

@@ -45,6 +45,7 @@ import {
   MESITA_CONNECT_CONTROLLER,
   mockConnectAccountId,
 } from "../_shared/stripe-connect.ts";
+import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
   type PaymentAccountRow,
   writePaymentAccount,
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
   );
   if (!ownerRes.ok) return ownerRes.response;
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
   if (stripeKey) {
     const blocked = liveChargesBlocked(stripeKey);
     if (blocked) return json({ ok: false, error: blocked, code: "stripe_live_blocked" }, 409);

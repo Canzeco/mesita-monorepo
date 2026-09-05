@@ -17,7 +17,7 @@
 // MOCK is OPT-IN (`MOCK_CARDS=true`), matching the Connect posture in
 // stripe-connect.ts: with the TEST key present these EFs do REAL work in the
 // test universe, because a wallet you cannot actually put a card into proves
-// nothing. Mock also fires when there is no STRIPE_SECRET_KEY at all, so a
+// nothing. Mock also fires when there is no Stripe secret key at all, so a
 // project with no Stripe secret still boots.
 
 import Stripe from "npm:stripe@17";
@@ -28,6 +28,7 @@ import {
   liveChargesBlocked,
   STRIPE_API_VERSION,
 } from "./stripe-billing.ts";
+import { stripeSecretKey } from "./stripe-env.ts";
 
 /** The allowlisted card shape. A raw Stripe PaymentMethod never ships. */
 export type CardSummary = {
@@ -75,7 +76,7 @@ export async function cardContext(
   consumerId: string,
   mockBody: Record<string, unknown>,
 ): Promise<{ ok: true; ctx: CardContext } | { ok: false; response: Response }> {
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
   if (cardsMockMode(stripeKey)) {
     return {
       ok: false,

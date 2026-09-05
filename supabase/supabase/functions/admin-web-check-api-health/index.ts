@@ -32,6 +32,11 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import {
+  STRIPE_SECRET_KEY_NAMES,
+  stripeMode,
+  stripeSecretKeyNames,
+} from "../_shared/stripe-env.ts";
 
 // How long any single probe may take before we call it dead. Vendors that are
 // merely slow are still a problem worth surfacing, so this is deliberately
@@ -513,9 +518,30 @@ const PROBES: ProbeSpec[] = [
     id: "stripe",
     label: "Stripe",
     impact: "Business plans + consumer Premium subscriptions",
-    envKeys: ["STRIPE_SECRET_KEY"],
+    envKeys: STRIPE_SECRET_KEY_NAMES,
     run: async (keys) => {
-      const key = firstKey(keys, ["STRIPE_SECRET_KEY"])!;
+      // STRIPE_MODE picks WHICH key, and the other universe's key is never a
+      // fallback — so "a Stripe secret is set" is not yet "the active mode
+      // has one". Say which name won; it is the operator's only window onto
+      // a switch that is otherwise a single invisible secret (MESITA-1530).
+      const mode = stripeMode();
+      const names = stripeSecretKeyNames(mode);
+      const name = names.find((n) => firstKey(keys, [n]));
+      const key = name ? firstKey(keys, [name])! : null;
+      if (!key) {
+        return {
+          res: new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  `STRIPE_MODE=${mode}, but neither ${names.join(" nor ")} is set. Another universe's key is present and is deliberately never used as a fallback — set the ${mode} key or flip STRIPE_MODE.`,
+              },
+            }),
+            { status: 401 },
+          ),
+          detail: (b) => errorLine(b, ""),
+        };
+      }
       // Restricted keys (rk_…) can't hit /v1/balance; secret keys are sk_*.
       // Catch the wrong kind before Stripe's opaque "Invalid API Key".
       if (!/^sk_(live|test)_/.test(key)) {
@@ -524,12 +550,12 @@ const PROBES: ProbeSpec[] = [
             JSON.stringify({
               error: {
                 message: key.startsWith("rk_")
-                  ? "STRIPE_SECRET_KEY holds a restricted key (rk_…). Billing Test needs the secret key (sk_live_… / sk_test_…)."
+                  ? `${name} holds a restricted key (rk_…). Billing Test needs the secret key (sk_live_… / sk_test_…).`
                   : key.startsWith("pk_")
-                  ? "STRIPE_SECRET_KEY holds a publishable key (pk_…). Paste the secret key (sk_live_… / sk_test_…)."
+                  ? `${name} holds a publishable key (pk_…). Paste the secret key (sk_live_… / sk_test_…).`
                   : key.startsWith("mk_")
-                  ? "STRIPE_SECRET_KEY holds an API key ID (mk_…), not the key. The dashboard shows both — copy the token that starts sk_test_… / sk_live_…, not the identifier beside it."
-                  : "STRIPE_SECRET_KEY does not look like a Stripe secret key (expected sk_live_… or sk_test_…).",
+                  ? `${name} holds an API key ID (mk_…), not the key. The dashboard shows both — copy the token that starts sk_test_… / sk_live_…, not the identifier beside it.`
+                  : `${name} does not look like a Stripe secret key (expected sk_live_… or sk_test_…).`,
               },
             }),
             { status: 401 },
@@ -540,15 +566,27 @@ const PROBES: ProbeSpec[] = [
       const res = await timedFetch("https://api.stripe.com/v1/balance", {
         headers: { Authorization: `Bearer ${key}` },
       });
+      // Stripe's own answer, not the key prefix, is the authority on which
+      // universe answered — a key that disagrees with STRIPE_MODE means the
+      // env addresses one account while believing it addresses the other.
+      const agrees = (b: unknown) => {
+        const live = (b as { livemode?: unknown } | null)?.livemode;
+        return typeof live === "boolean" ? live === (mode === "live") : null;
+      };
       return {
         res,
+        verdict: (b) => agrees(b) === false ? "degraded" : null,
         detail: (b) => {
           const live = (b as { livemode?: unknown } | null)?.livemode;
-          return live === true
-            ? "Key accepted — LIVE mode."
+          const universe = live === true
+            ? "LIVE mode"
             : live === false
-            ? "Key accepted — test mode."
-            : "Key accepted.";
+            ? "test mode"
+            : "mode not reported";
+          const head = `Key accepted — ${universe} · ${name} (STRIPE_MODE=${mode})`;
+          return agrees(b) === false
+            ? `${head}. MISMATCH: the key addresses the other universe — every EF is talking to the wrong Stripe account.`
+            : `${head}.`;
         },
       };
     },

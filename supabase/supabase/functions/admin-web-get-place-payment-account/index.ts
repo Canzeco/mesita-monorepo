@@ -34,6 +34,7 @@ import {
   isMockConnectAccountId,
   keyIsLive,
 } from "../_shared/stripe-connect.ts";
+import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
   isConnectChargeReady,
   type PaymentAccountRow,
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
   let row = (rowRes.data as PaymentAccountRow | null) ?? null;
   let orphaned = false;
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
   const wantsRefresh = bodyRes.body.refresh === true;
   const refreshable = wantsRefresh && row !== null && stripeKey &&
     !isMockConnectAccountId(row.stripe_account_id) &&

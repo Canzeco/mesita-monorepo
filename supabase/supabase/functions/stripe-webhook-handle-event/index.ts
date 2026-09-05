@@ -2,10 +2,14 @@
 //
 // Public endpoint (verify_jwt disabled at the gateway). Security rests
 // entirely on Stripe signature verification — an unsigned or mis-signed
-// request is rejected. TWO signing secrets serve the one URL: the platform
-// endpoint's STRIPE_WEBHOOK_SECRET, and STRIPE_CONNECT_WEBHOOK_SECRET once
-// the operator creates the Connect endpoint (same URL, enabled_events pinned
-// to ["account.updated"]) — see webhook-verify.ts.
+// request is rejected. SEVERAL signing secrets serve the one URL: the
+// platform endpoint's, and the Connect endpoint's once the operator creates
+// it (same URL, enabled_events pinned to ["account.updated"]) — in both
+// universes, since STRIPE_MODE keeps test and live credentials side by side
+// (stripe-env.ts). Every configured secret is tried (webhook-verify.ts), so a
+// correctly-signed event from the universe STRIPE_MODE is NOT on still
+// verifies — and is then acked WITHOUT being processed, which is what keeps a
+// mode flip from costing a multi-day Stripe retry storm.
 //
 // One endpoint, three surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
@@ -32,6 +36,12 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { jsonError, rejectUnlessMethods } from "../_shared/http.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import {
+  eventMatchesMode,
+  stripeMode,
+  stripeSecretKey,
+  stripeWebhookSecrets,
+} from "../_shared/stripe-env.ts";
+import {
   resolveConsumerId,
   resolvePlanKey,
   resolveProjectId,
@@ -54,9 +64,10 @@ Deno.serve(async (req) => {
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-  if (!stripeKey || !webhookSecret) {
+  const mode = stripeMode();
+  const stripeKey = stripeSecretKey();
+  const webhookSecrets = stripeWebhookSecrets();
+  if (!stripeKey || webhookSecrets.length === 0) {
     return jsonError("Stripe not configured", 500);
   }
   const stripe = new Stripe(stripeKey, { apiVersion: STRIPE_API_VERSION });
@@ -67,13 +78,25 @@ Deno.serve(async (req) => {
   const raw = await req.text();
   let event: Stripe.Event;
   try {
-    event = await verifyStripeEvent(stripe, raw, sig, [
-      webhookSecret,
-      Deno.env.get("STRIPE_CONNECT_WEBHOOK_SECRET"),
-    ]);
+    event = await verifyStripeEvent(stripe, raw, sig, webhookSecrets);
   } catch (err) {
     console.error("[stripe-webhook-handle-event] signature verification failed:", err);
     return jsonError("Invalid signature", 400);
+  }
+
+  // A correctly-signed delivery from the OTHER universe: the endpoint we are
+  // no longer listening to still has our URL, or both endpoints do. It is not
+  // ours to act on — a live subscription must never move a row while
+  // STRIPE_MODE=test, and vice versa. Ack so Stripe stops retrying, record
+  // nothing, so that flipping the mode later replays these events cleanly.
+  if (!eventMatchesMode(event, mode)) {
+    console.log(
+      `[stripe-webhook-handle-event] ignored ${event.type} (${event.id}): livemode=${event.livemode} under STRIPE_MODE=${mode}`,
+    );
+    return new Response(
+      JSON.stringify({ received: true, ignored: "livemode_mismatch" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   const admin = adminClient(envRes.env);
