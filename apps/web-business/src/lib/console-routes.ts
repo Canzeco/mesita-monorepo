@@ -1,22 +1,18 @@
-// Route contract for the (shell) console — every href in the shell comes
-// from here, never a hand-written string, and a test asserts each entry
-// maps to a real route file on disk. Same pattern as
-// business-route-contract.ts for the legacy console.
+// Route contract for the (shell) console — every href comes from here and a
+// test asserts each entry maps to a route file on disk.
+//
+// THREE ENTITY LAYERS (Pato, 2026-09-05): Organization · Place · Account.
+// Three destinations, no more. Everything else is a section INSIDE its
+// layer, never a nav item.
 
 export const SHELL_ROUTES = {
-  home: "/",
-  finances: "/finances",
-  members: "/members",
-  commercial: "/commercial",
+  organization: "/",
   places: "/places",
   account: "/account",
 } as const;
 
-export const PLACE_TABS = ["profile", "services", "status"] as const;
-export type PlaceTab = (typeof PLACE_TABS)[number];
-
-export function placePath(id: string, tab?: PlaceTab): string {
-  return tab ? `/places/${id}/${tab}` : `/places/${id}`;
+export function placePath(id: string): string {
+  return `/places/${id}`;
 }
 
 /** Append the mock-org switch to an href. Default org stays clean URLs. */

@@ -38,7 +38,7 @@ export default async function PlacesPage({
           {data.places.map((p) => (
             <Link
               key={p.id}
-              href={withOrg(placePath(p.id, "profile"), orgKey)}
+              href={withOrg(placePath(p.id), orgKey)}
               className="border-border/60 hover:bg-muted/40 -mx-4 flex items-center justify-between gap-3 border-b px-4 py-3.5 transition last:border-b-0"
             >
               <div className="min-w-0">
