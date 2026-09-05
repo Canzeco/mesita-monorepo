@@ -17,7 +17,7 @@ import type { Database } from "./database.types";
 // requires an Edge Function call per request, which is too expensive.
 // Onboard pages and dashboards each do their own server-side check.
 
-const PROTECTED_PREFIXES = [
+export const PROTECTED_PREFIXES = [
   "/place",
   "/onboard",
   "/add",
@@ -26,12 +26,14 @@ const PROTECTED_PREFIXES = [
 ];
 
 // Routes where a signed-in visitor should be bounced through
-// /auth/post-signin. Only `/` now — the legacy /sign-in and /sign-up
-// redirect routes were removed once external callers (the landing page)
-// were updated to point at `/` directly.
-const SIGNED_IN_BOUNCE = new Set(["/"]);
+// /auth/post-signin. EMPTY during the mock era: `/` now hosts the new
+// console shell (mock data), not the auth surface, so a session cookie
+// must not bounce visitors away from it. When real data + auth land,
+// sign-in gets its own route and this set gets it back.
+const SIGNED_IN_BOUNCE = new Set<string>([]);
+export { SIGNED_IN_BOUNCE };
 
-function shouldGate(pathname: string): boolean {
+export function shouldGate(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
