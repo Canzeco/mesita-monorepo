@@ -26,7 +26,7 @@ export default async function CentralPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/?next=/central");
+  if (!user) redirect("/signin?next=/central");
 
   let profile: BusinessProfile | null = null;
   try {

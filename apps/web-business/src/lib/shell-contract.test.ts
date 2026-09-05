@@ -61,3 +61,22 @@ describe("mock-route import ban", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// #1488 moved the auth surface off "/" (the mock Organization shell took
+// it) and onto /signin. Any server-side redirect still pointing a
+// signed-out visitor at "/" drops them on a mock page with no sign-in
+// form and silently loses their ?next=.
+describe("no route sends a signed-out visitor to the old auth surface", () => {
+  it('has zero redirect("/") or redirect("/?next=...") calls', () => {
+    const roots = [path.resolve(__dirname, "..", "app")];
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of walk(root)) {
+        if (!file.endsWith(".tsx") && !file.endsWith(".ts")) continue;
+        const src = readFileSync(file, "utf8");
+        if (/redirect\(\s*[`"]\/(\?next=)?[`"]/.test(src)) offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

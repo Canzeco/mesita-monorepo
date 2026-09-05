@@ -23,7 +23,7 @@ export default async function BusinessPromosPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=${encodeURIComponent(promosPath(id))}`);
+  if (!user) redirect(`/signin?next=${encodeURIComponent(promosPath(id))}`);
 
   let overview: Awaited<ReturnType<typeof getPlaceOverview>> | null = null;
   let overviewError: string | null = null;

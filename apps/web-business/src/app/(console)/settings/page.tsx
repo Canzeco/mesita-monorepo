@@ -19,7 +19,7 @@ export default async function SettingsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/?next=/settings");
+  if (!user) redirect("/signin?next=/settings");
 
   const cookieStore = await cookies();
   const cookiePlaceId = cookieStore.get(ACTIVE_PLACE_COOKIE)?.value ?? null;

@@ -32,7 +32,7 @@ export default async function BusinessPlaceTabPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=${encodeURIComponent(placePath(id, tab))}`);
+  if (!user) redirect(`/signin?next=${encodeURIComponent(placePath(id, tab))}`);
 
   let overview: Awaited<ReturnType<typeof getPlaceOverview>> | null = null;
   let overviewError: string | null = null;

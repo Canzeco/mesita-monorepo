@@ -25,7 +25,7 @@ export default async function PlaceSettingsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=/place/${id}/settings`);
+  if (!user) redirect(`/signin?next=/place/${id}/settings`);
 
   let initialSnapshot: TeamSnapshot | null = null;
   let initialError: string | null = null;
