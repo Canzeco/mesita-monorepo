@@ -1,4 +1,4 @@
-// The status-vocabulary partition (MESITA-1085). Pure, no network/DB.
+// The state-vocabulary partition (MESITA-1085). Pure, no network/DB.
 //   deno test supabase/functions/_shared/ticket-status.test.ts
 //
 // The contract: every enum label lives in exactly one lifecycle bucket

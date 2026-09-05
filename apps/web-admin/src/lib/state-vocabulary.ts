@@ -1,4 +1,4 @@
-// Status — two boxes (Pato, 2026-08-25 · 2026-08-29).
+// State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
 //   STATUSES (11) Created · Active · Listed · Enriched · Enriching ·
 //                 Verified · Partnered · Mesita Pay · Mesita Credits are bools
@@ -14,16 +14,16 @@
 // Repeating the row name on the chip is redundant. Enriching is the live run;
 // Enriched is last-completed — they are independent. Intake just names the
 // eleven functions. Create 1–5 / Enrich 1–10 stay Config sequences; they are
-// not a third Status ladder. Wire key `seeded` stays; the label is Created.
+// not a third State ladder. Wire key `seeded` stays; the label is Created.
 // Function 10 was renamed `semantic` → `embedding` (§8.4); stored blobs and
 // event payloads may still say `semantic` — readers fold, never rewrite.
 
-export type StatusBoolChip = "true" | "false" | "?" | "…";
+export type StateBoolChip = "true" | "false" | "?" | "…";
 
-/** Chip for a binary Status fact. Loading and unknown stay distinct. */
-export function statusBoolChip(
+/** Chip for a binary State fact. Loading and unknown stay distinct. */
+export function stateBoolChip(
   value: boolean | "unknown" | "loading" | null | undefined,
-): StatusBoolChip {
+): StateBoolChip {
   if (value === "loading") return "…";
   if (value === "unknown" || value == null) return "?";
   return value ? "true" : "false";
@@ -48,7 +48,7 @@ export function promotingLevelChip(
   return String(operatorPromotingLevel(raw)) as "0" | "1" | "2";
 }
 
-/** Guest request count. Missing is "?"; the Status fact is the number. */
+/** Guest request count. Missing is "?"; the State fact is the number. */
 export function requestCountFromRow(
   requestCount: unknown,
 ): number | "unknown" {
@@ -80,7 +80,7 @@ export function promotingLevelFromStrategy(
   return 2;
 }
 
-export const GENERAL_STATUS_FACTS = [
+export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "active", label: "Active" },
   { key: "listed", label: "Listed" },
@@ -94,12 +94,12 @@ export const GENERAL_STATUS_FACTS = [
   { key: "credits", label: "Mesita Credits" },
 ] as const;
 
-export type GeneralStatusKey = (typeof GENERAL_STATUS_FACTS)[number]["key"];
+export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 
 /** Facts whose FALSE is a state, not a pending debt: grey pill, never rose.
  *  Same taxonomy as the catalog's BoolCell falseTone — a free place and a
  *  place that doesn't take a not-yet-live rail are not defects. */
-export const STATUS_FACT_FALSE_TONE: Partial<Record<GeneralStatusKey, "neutral">> = {
+export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> = {
   partner: "neutral",
   mesita_pay: "neutral",
   credits: "neutral",
@@ -110,8 +110,8 @@ export const STATUS_FACT_FALSE_TONE: Partial<Record<GeneralStatusKey, "neutral">
  *  and a reader (the Promotion score), but the rails themselves stay staged —
  *  header chips, Global Monitor filter segments and notification meta chips
  *  OMIT these until the Mesita Pay gateway / Credits PRs lift the
- *  filters; the catalog table and the Status box still show them. */
-export const ENGINELESS_STATUS_FACT_KEYS: readonly GeneralStatusKey[] = [
+ *  filters; the catalog table and the State box still show them. */
+export const ENGINELESS_STATE_FACT_KEYS: readonly GeneralStateKey[] = [
   "mesita_pay",
   "credits",
 ];
@@ -132,7 +132,7 @@ export const INTAKE_FUNCTIONS = [
 
 export type IntakeFunctionKey = (typeof INTAKE_FUNCTIONS)[number]["key"];
 
-export const GENERAL_STATUS_COUNT = GENERAL_STATUS_FACTS.length;
+export const GENERAL_STATE_COUNT = GENERAL_STATE_FACTS.length;
 export const INTAKE_FUNCTION_COUNT = INTAKE_FUNCTIONS.length;
 
 /** Operator label: `0. Seed` … `10. Embedding`. */

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { getPlace, type AdminPlace } from "./actions";
-import { withListedFromStatus } from "./place-header-status";
+import { withListedFromState } from "./place-header-state";
 import { PlaceEditChrome } from "./PlaceEditChrome";
 import { PlaceProvider } from "./PlaceContext";
 import { PlaceUIProvider } from "./PlaceUIContext";
@@ -36,7 +36,7 @@ export function PlaceEditShell({
       setPlace(null);
       setLoadError(r.error);
     } else {
-      setPlace(withListedFromStatus(r.data));
+      setPlace(withListedFromState(r.data));
       setLoadError(null);
     }
     setLoadedId(id);
@@ -51,7 +51,7 @@ export function PlaceEditShell({
   // but the overview's computed `listed: true` would otherwise stick.
   const mergePlace = useCallback((next: AdminPlace) => {
     setPlace((prev) =>
-      withListedFromStatus(prev ? { ...prev, ...next } : next),
+      withListedFromState(prev ? { ...prev, ...next } : next),
     );
   }, []);
 
@@ -66,7 +66,7 @@ export function PlaceEditShell({
         setPlace(null);
         setLoadError(r.error);
       } else {
-        setPlace(withListedFromStatus(r.data));
+        setPlace(withListedFromState(r.data));
         setLoadError(null);
       }
       setLoadedId(projectId);

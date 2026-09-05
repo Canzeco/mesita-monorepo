@@ -4,7 +4,7 @@ import {
   groupConsecutiveSteps,
   intakeFactChips,
   intakeFunctionChips,
-  intakeStatusLine,
+  intakeStateLine,
   itemMatchesIntakeFilter,
   pinReports,
   showCategoryOnCompact,
@@ -74,7 +74,7 @@ describe("pinReports", () => {
   });
 });
 
-describe("intakeStatusLine", () => {
+describe("intakeStateLine", () => {
   const facts = {
     seeded: true,
     active: true,
@@ -97,10 +97,10 @@ describe("intakeStatusLine", () => {
       type: "atlas.place_created",
       meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
     });
-    expect(intakeStatusLine(created)).toBe("Created · Active · Listed");
-    expect(intakeStatusLine(created)).not.toMatch(/\d+\/\d+/);
-    expect(intakeStatusLine(created)).not.toMatch(/claim/i);
-    expect(intakeStatusLine(created)).not.toMatch(/new place/i);
+    expect(intakeStateLine(created)).toBe("Created · Active · Listed");
+    expect(intakeStateLine(created)).not.toMatch(/\d+\/\d+/);
+    expect(intakeStateLine(created)).not.toMatch(/claim/i);
+    expect(intakeStateLine(created)).not.toMatch(/new place/i);
   });
 
   it("names Enriched · Verified · Partnered · Visit Rewards when those facts are on", () => {
@@ -118,7 +118,7 @@ describe("intakeStatusLine", () => {
         },
       },
     });
-    expect(intakeStatusLine(created)).toBe(
+    expect(intakeStateLine(created)).toBe(
       "Created · Active · Listed · Enriched · Verified · Partnered · Visit Rewards",
     );
   });
@@ -136,7 +136,7 @@ describe("intakeStatusLine", () => {
         },
       },
     });
-    expect(intakeStatusLine(created)).toBe(
+    expect(intakeStateLine(created)).toBe(
       "Created · Active · Listed · Requested · Enriched · Enriching",
     );
   });
@@ -149,7 +149,7 @@ describe("intakeStatusLine", () => {
         statusFacts: { ...facts, mesita_pay: true, credits: true },
       },
     });
-    expect(intakeStatusLine(created)).toBe(
+    expect(intakeStateLine(created)).toBe(
       "Created · Active · Listed · Mesita Pay · Mesita Credits",
     );
     // Engineless facts never render meta chips until a stamper exists
@@ -166,7 +166,7 @@ describe("intakeStatusLine", () => {
       type: "atlas.place_created",
       meta: { status: "paused" },
     });
-    expect(intakeStatusLine(created)).toBe("Created · Unlisted");
+    expect(intakeStateLine(created)).toBe("Created · Unlisted");
   });
 });
 

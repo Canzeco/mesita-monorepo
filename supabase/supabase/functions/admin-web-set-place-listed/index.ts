@@ -56,12 +56,12 @@ import {
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 
-/** The statuses the consumer RLS policy treats as reachable. */
-const LISTED_STATUSES = ["active", "lead"] as const;
+/** The states the consumer RLS policy treats as reachable. */
+const LISTED_STATES = ["active", "lead"] as const;
 /** Where an unlist lands — outside the visible set, and reversible. */
-const UNLISTED_STATUS = "paused";
+const UNLISTED_STATE = "paused";
 /** Where a re-list lands. */
-const LISTED_STATUS = "active";
+const LISTED_STATE = "active";
 
 type Body = { placeId?: unknown; projectId?: unknown; listed?: unknown };
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   if (!current) return json({ ok: false, error: "Place not found" }, 404);
 
   const currentStatus = (current as { status: string | null }).status ?? "";
-  const alreadyListed = (LISTED_STATUSES as readonly string[]).includes(
+  const alreadyListed = (LISTED_STATES as readonly string[]).includes(
     currentStatus,
   );
 
@@ -119,12 +119,12 @@ Deno.serve(async (req) => {
     return json({ ok: true, listed, status: currentStatus, place });
   }
 
-  const nextStatus = listed ? LISTED_STATUS : UNLISTED_STATUS;
+  const nextState = listed ? LISTED_STATE : UNLISTED_STATE;
   const updRes = await writePlace(admin, {
     table: "projects",
     mode: "update",
     id: projectId,
-    patch: { status: nextStatus },
+    patch: { status: nextState },
     select: "id",
     selectMode: "maybeSingle",
   });
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       event: "place_listing_changed",
       project: projectId,
       from: currentStatus,
-      to: nextStatus,
+      to: nextState,
       actor: authRes.user.email ?? authRes.user.id,
     }),
   );
@@ -152,5 +152,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
   }
 
-  return json({ ok: true, listed, status: nextStatus, place });
+  return json({ ok: true, listed, status: nextState, place });
 });

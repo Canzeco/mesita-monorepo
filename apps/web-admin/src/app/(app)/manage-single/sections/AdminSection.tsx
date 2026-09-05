@@ -10,27 +10,27 @@ import {
 } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
-import { StatusCard } from "./StatusCard";
-import { IntakeStatusCard } from "./IntakeStatusCard";
+import { StateCard } from "./StateCard";
+import { IntakeStateCard } from "./IntakeStateCard";
 import { VerificationCard } from "./VerificationCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
 //
-// Admin — statuses are THREE boxes (Pato, 2026-08-30), each answering one
+// Admin — states are THREE boxes (Pato, 2026-08-30), each answering one
 // question instead of one eleven-row wall answering all three:
-//   General Statuses      is this place real, reachable, proven? Created ·
+//   General States      is this place real, reachable, proven? Created ·
 //                         Active · Listed · Requested `0…n` · Verified.
 //                         Owns both operator writes (Active, Listed).
-//   Partnership Statuses  what does it offer? Partnered · Visit Rewards
+//   Partnership States  what does it offer? Partnered · Visit Rewards
 //                         `0|1|2` · Mesita Pay · Mesita Credits — the last two
 //                         are acceptance intent bits set on the Partner tab;
 //                         engines still gate each rail. Carries the
 //                         listing_type drift warning, which is about these rows.
-//   Intake Statuses       how far did the pipeline get? Enriched (last
+//   Intake States       how far did the pipeline get? Enriched (last
 //                         completed) · Enriching (live run) over the eleven
 //                         functions 0. Seed … 10. Embedding. OWNS the
-//                         enrichment read — StatusCard no longer fetches it.
+//                         enrichment read — StateCard no longer fetches it.
 // Then the rest:
 //   Enrichment  queues the full Intaker process
 //   Verification ownership proof (who / when / method + queue decide)
@@ -67,12 +67,12 @@ export function AdminSection({ place }: { place: AdminPlace }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
-      <StatusCard
+      <StateCard
         place={place}
         verification={verification}
         verificationError={verificationError}
       />
-      <IntakeStatusCard place={place} />
+      <IntakeStateCard place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <VerificationCard

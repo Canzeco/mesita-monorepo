@@ -7,20 +7,20 @@ import { TYPE_CONFIG, TYPE_ORDER, TONES } from "./notification-config";
 import {
   DOMAINS,
   INTAKE_FUNCTIONS,
-  STATUS_FACTS,
+  STATE_FACTS,
   STEP_TYPE,
   typesInDomain,
   type DomainKey,
   type IntakeFilter,
   type IntakeFunctionKey,
-  type StatusFactKey,
+  type StateFactKey,
 } from "./notification-feed";
-import { ENGINELESS_STATUS_FACT_KEYS } from "@/lib/status-vocabulary";
+import { ENGINELESS_STATE_FACT_KEYS } from "@/lib/state-vocabulary";
 
 export type TypeFilter = "all" | NotificationType;
 export type StatusFilter = IntakeFilter;
 
-const STATUS_DOT: Record<StatusFactKey, string> = {
+const STATUS_DOT: Record<StateFactKey, string> = {
   seeded: TONES.indigo.dot,
   active: TONES.emerald.dot,
   listed: TONES.sky.dot,
@@ -63,7 +63,7 @@ export function NotificationFilters({
   includeSteps: boolean;
   total: number;
   counts: NotificationsPayload["counts"];
-  statusCounts: Record<StatusFactKey, number>;
+  statusCounts: Record<StateFactKey, number>;
   functionCounts: Record<IntakeFunctionKey, number>;
   placeQuery: string;
   updatedLabel: string;
@@ -135,12 +135,12 @@ export function NotificationFilters({
             }
           />
           {intake
-            ? STATUS_FACTS.filter(
+            ? STATE_FACTS.filter(
                 // No event stamper writes the acceptance bits yet, so their
                 // segments would count 0 forever and read as a broken feed.
                 // The gateway / Credits PRs lift this with their stampers.
                 (fact) =>
-                  !(ENGINELESS_STATUS_FACT_KEYS as readonly string[]).includes(fact.key),
+                  !(ENGINELESS_STATE_FACT_KEYS as readonly string[]).includes(fact.key),
               ).map((fact) => (
                 <FilterSegment
                   key={fact.key}

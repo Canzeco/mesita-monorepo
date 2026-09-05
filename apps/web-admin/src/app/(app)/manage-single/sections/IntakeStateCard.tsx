@@ -8,25 +8,25 @@ import {
   type AdminPlace,
   type PlaceEnrichmentStatus,
 } from "../actions";
-import { isEnriching } from "../place-header-status";
-import { statusBoolChip } from "@/lib/status-vocabulary";
-import { StatusRow } from "./StatusCard";
+import { isEnriching } from "../place-header-state";
+import { stateBoolChip } from "@/lib/state-vocabulary";
+import { StateRow } from "./StateCard";
 import {
   intakeFunctionRows,
   type EnrichFunctionState,
-} from "./status-enrichment";
+} from "./state-enrichment";
 
 /**
- * Intake Statuses — the whole pipeline picture in one box (Pato, 2026-08-30):
+ * Intake States — the whole pipeline picture in one box (Pato, 2026-08-30):
  * the two SUMMARY facts (Enriched, Enriching) over the eleven functions,
  * 0. Seed … 10. Embedding, each a bool (called / not). Create 1–5 /
  * Enrich 1–10 stay Config sequences, not a third ladder.
  *
- * This box OWNS the enrichment read. It moved here from StatusCard with the
+ * This box OWNS the enrichment read. It moved here from StateCard with the
  * two rows that need it, so the Admin tab still issues exactly one
  * getPlaceEnrichment call.
  */
-export function IntakeStatusCard({ place }: { place: AdminPlace }) {
+export function IntakeStateCard({ place }: { place: AdminPlace }) {
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
   const enrichFunctions = (place.enrich_functions ?? null) as
@@ -90,20 +90,20 @@ export function IntakeStatusCard({ place }: { place: AdminPlace }) {
     <SectionCard
       icon={<Sprout className="h-4 w-4" />}
       tint="violet"
-      title="Intake Statuses"
+      title="Intake States"
     >
       <div className="mt-5 flex flex-col">
-        <StatusRow
+        <StateRow
           name="Enriched"
           on={enriched === true}
-          chip={statusBoolChip(enriched)}
+          chip={stateBoolChip(enriched)}
           tint="violet"
           detail={enrichedDetail}
         />
-        <StatusRow
+        <StateRow
           name="Enriching"
           on={enriching}
-          chip={statusBoolChip(enriching)}
+          chip={stateBoolChip(enriching)}
           tint="violet"
           detail={enrichingDetail}
         />
