@@ -35,6 +35,11 @@ export type PaymentAccountRow = {
   requirements_due: string[];
   /** requirements.disabled_reason; null = not disabled. */
   disabled_reason: string | null;
+  /** ISO-3166-1 alpha-2, as STRIPE reports it on the Account — not as we
+   *  requested it. Per-account permanent, so this is the field that decides
+   *  whether a later onboarding request is a mismatch (stripe-connect.ts
+   *  classifyExistingAccount). Null only on rows written before MESITA-1532. */
+  country: string | null;
 };
 
 export const PAYMENT_ACCOUNT_PATCH_KEYS = [
@@ -45,6 +50,7 @@ export const PAYMENT_ACCOUNT_PATCH_KEYS = [
   "payouts_enabled",
   "requirements_due",
   "disabled_reason",
+  "country",
 ] as const satisfies readonly (keyof Omit<
   PaymentAccountRow,
   "place_id" | "created_at" | "updated_at"
@@ -80,6 +86,12 @@ function checkField(key: string, v: unknown): string | null {
       return typeof v === "string" && v.trim().length > 0
         ? null
         : "stripe_account_id must be a non-empty string";
+    case "country":
+      // Null is legal (pre-MESITA-1532 rows, and accounts Stripe answers
+      // without a country); a non-ISO string never is.
+      return v === null || (typeof v === "string" && /^[A-Z]{2}$/.test(v))
+        ? null
+        : "country must be a 2-letter ISO country code or null";
     case "requirements_due":
       return Array.isArray(v) && v.every((x) => typeof x === "string")
         ? null

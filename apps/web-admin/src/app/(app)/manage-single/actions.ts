@@ -527,6 +527,16 @@ export type PlacePayReadiness = {
   all: boolean;
 };
 
+/** The countries a Mesita connected account may be created in. Mirrors
+ *  MESITA_CONNECT_COUNTRIES in supabase `_shared/stripe-connect.ts`; the EF
+ *  validates independently, so this list is a UI convenience, not the gate. */
+export const CONNECT_COUNTRIES = [
+  { code: "MX", label: "Mexico" },
+  { code: "US", label: "United States" },
+] as const;
+
+export type MesitaConnectCountry = typeof CONNECT_COUNTRIES[number]["code"];
+
 /** What `business-web-start-payment-onboarding` hands back. */
 export type PaymentOnboardingStart = {
   /** MOCK_CONNECT was on, or no Stripe key is configured. */
@@ -534,6 +544,11 @@ export type PaymentOnboardingStart = {
   /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
   url: string | null;
   account: PlacePaymentAccount | null;
+  /** The place already has an account in a DIFFERENT country than the one
+   *  requested. The link is still valid (for the EXISTING account) — country
+   *  is per-account permanent, so it was not and cannot be changed. */
+  countryMismatch: boolean;
+  accountCountry: string | null;
 };
 
 /**
@@ -552,16 +567,19 @@ export type PaymentOnboardingStart = {
  */
 export async function startPlacePaymentOnboarding(
   placeId: string,
-  urls: { returnUrl: string; refreshUrl: string },
+  urls: { returnUrl: string; refreshUrl: string; country: MesitaConnectCountry },
 ): Promise<Result<PaymentOnboardingStart>> {
   const r = await efInvoke<{
     mock?: boolean;
     url?: string | null;
     account?: PlacePaymentAccount | null;
+    country_mismatch?: boolean;
+    account_country?: string | null;
   }>("business-web-start-payment-onboarding", {
     placeId,
     returnUrl: urls.returnUrl,
     refreshUrl: urls.refreshUrl,
+    country: urls.country,
   });
   // `code` rides along: "stripe_live_blocked" is an environment fact, not a
   // failed attempt, and the row renders it differently for that reason.
@@ -572,6 +590,8 @@ export async function startPlacePaymentOnboarding(
       mock: r.data.mock === true,
       url: r.data.url ?? null,
       account: r.data.account ?? null,
+      countryMismatch: r.data.country_mismatch === true,
+      accountCountry: r.data.account_country ?? null,
     },
   };
 }

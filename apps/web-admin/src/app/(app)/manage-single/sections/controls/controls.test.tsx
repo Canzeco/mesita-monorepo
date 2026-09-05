@@ -9,6 +9,13 @@ import type { AdminPlace } from "../../actions";
 // `{enabled && <Config/>}`. The decision logic itself is unit-tested directly
 // in offerings.test.ts.
 vi.mock("../../actions", () => ({
+  // Real value, not a stub: the Connect row renders one <option> per entry, so
+  // a mocked-away list would make the country selector silently disappear from
+  // exactly the assertions that exist to prove the rung is actionable.
+  CONNECT_COUNTRIES: [
+    { code: "MX", label: "Mexico" },
+    { code: "US", label: "United States" },
+  ],
   getPlacePaymentAccount: vi.fn(async () => ({ ok: false, error: "not called in SSR" })),
   startPlacePaymentOnboarding: vi.fn(),
   setPlacePlan: vi.fn(),

@@ -21,7 +21,24 @@ Deno.test("patch keys cover exactly the mutable columns", () => {
     "payouts_enabled",
     "requirements_due",
     "disabled_reason",
+    "country",
   ]);
+});
+
+Deno.test("validate: country accepts ISO-2 or null and rejects everything else", () => {
+  // Country is baked into the Stripe account permanently, so the write door
+  // is the last place a malformed value can be stopped (MESITA-1532).
+  assert(validatePaymentAccountPatch({ country: "MX" }).ok);
+  assert(validatePaymentAccountPatch({ country: "US" }).ok);
+  // Null is legal: rows predating the column, and accounts Stripe answers
+  // without one.
+  assert(validatePaymentAccountPatch({ country: null }).ok);
+
+  for (const bad of ["mx", "MEX", "M", "México", "", 52, true, {}]) {
+    const res = validatePaymentAccountPatch({ country: bad });
+    assert(!res.ok, `country ${JSON.stringify(bad)} should be rejected`);
+    assertEquals(res.error, "country must be a 2-letter ISO country code or null");
+  }
 });
 
 Deno.test("validate: accepts a full snapshot patch", () => {

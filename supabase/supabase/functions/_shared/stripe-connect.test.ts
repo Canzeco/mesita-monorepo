@@ -9,19 +9,53 @@ import {
   accountSnapshotFromStripe,
   classifyExistingAccount,
   isMockConnectAccountId,
+  isSupportedConnectCountry,
   keyIsLive,
   MESITA_CONNECT_CAPABILITIES,
   MESITA_CONNECT_CONTROLLER,
+  MESITA_CONNECT_COUNTRIES,
   mockConnectAccountId,
 } from "./stripe-connect.ts";
 
-Deno.test("PLATFORM law: the controller literal is the typeless-Standard configuration", () => {
+Deno.test("PLATFORM law: the controller literal is the Express-dashboard configuration", () => {
   assertEquals(MESITA_CONNECT_CONTROLLER, {
-    stripe_dashboard: { type: "full" },
+    stripe_dashboard: { type: "express" },
     fees: { payer: "account" },
     losses: { payments: "stripe" },
     requirement_collection: "stripe",
   });
+});
+
+Deno.test("PLATFORM law: the IFPE posture survives Express — Stripe eats losses, the place pays fees", () => {
+  // This is the whole reason the Express pivot was allowed (MESITA-1532).
+  // Stripe's 2026-06-24 Dahlia changelog made fees.payer=account legal on
+  // Express and requires losses.payments=stripe alongside it. If a future
+  // edit sets fees.payer to "application", Stripe forces platform loss
+  // liability and Mesita enters the funds flow — the exact thing the
+  // 2026-08-29 gate exists to prevent. Assert the PAIR, not just the values.
+  assertEquals(MESITA_CONNECT_CONTROLLER.fees.payer, "account");
+  assertEquals(MESITA_CONNECT_CONTROLLER.losses.payments, "stripe");
+  assert(
+    MESITA_CONNECT_CONTROLLER.fees.payer !== "account" ||
+      MESITA_CONNECT_CONTROLLER.losses.payments === "stripe",
+    "fees.payer=account REQUIRES losses.payments=stripe",
+  );
+  // Stripe collects KYC: the hosted flow is what keeps us out of PII storage.
+  assertEquals(MESITA_CONNECT_CONTROLLER.requirement_collection, "stripe");
+});
+
+Deno.test("country allowlist: only MX and US, and never a free-text passthrough", () => {
+  assertEquals([...MESITA_CONNECT_COUNTRIES], ["MX", "US"]);
+  assert(isSupportedConnectCountry("MX"));
+  assert(isSupportedConnectCountry("US"));
+  // Country is baked into the account permanently, so near-misses must fail.
+  assert(!isSupportedConnectCountry("mx"));
+  assert(!isSupportedConnectCountry("MEX"));
+  assert(!isSupportedConnectCountry("México"));
+  assert(!isSupportedConnectCountry(""));
+  assert(!isSupportedConnectCountry(undefined));
+  assert(!isSupportedConnectCountry(null));
+  assert(!isSupportedConnectCountry(42));
 });
 
 Deno.test("PLATFORM law: capabilities are requested explicitly (typeless creation requests nothing implicitly)", () => {
@@ -56,6 +90,7 @@ Deno.test("snapshot mapper: livemode is explicit; optional/null requirements def
     requirements_due: [],
     disabled_reason: null,
     livemode: false,
+    country: null,
   });
 
   const full = accountSnapshotFromStripe(
@@ -84,6 +119,49 @@ Deno.test("snapshot mapper: livemode is explicit; optional/null requirements def
     false,
   );
   assertEquals(nullDue.requirements_due, []);
+
+  // Country comes from STRIPE's answer, never from what we requested — the
+  // two can differ and Stripe's is the one that governs KYC and payouts.
+  assertEquals(
+    accountSnapshotFromStripe(
+      { id: "acct_4", country: "MX" } as unknown as Stripe.Account,
+      false,
+    ).country,
+    "MX",
+  );
+});
+
+Deno.test("transition law: a COUNTRY mismatch is never replaceable", () => {
+  // Universe mismatch is replaceable because the account is unreachable.
+  // Country mismatch is NOT: the account is real, may hold KYC, may be taking
+  // money, and country is per-account permanent. Silently minting a second
+  // account and orphaning the first is the failure this guards.
+  const mx = { stripe_account_id: "acct_mx", livemode: false, country: "MX" };
+  assertEquals(
+    classifyExistingAccount(mx, { mockMode: false, keyLive: false, country: "US" }),
+    "use_country_mismatch",
+  );
+  assertEquals(
+    classifyExistingAccount(mx, { mockMode: false, keyLive: false, country: "MX" }),
+    "use",
+  );
+  // A row written before the column existed cannot be "wrong".
+  const legacy = { stripe_account_id: "acct_old", livemode: false, country: null };
+  assertEquals(
+    classifyExistingAccount(legacy, { mockMode: false, keyLive: false, country: "US" }),
+    "use",
+  );
+  // Universe mismatch still wins over country: an unreachable account is
+  // replaceable no matter what country it claims.
+  assertEquals(
+    classifyExistingAccount(mx, { mockMode: false, keyLive: true, country: "US" }),
+    "replace",
+  );
+  // Mock mode never touches a real row, country notwithstanding.
+  assertEquals(
+    classifyExistingAccount(mx, { mockMode: true, keyLive: false, country: "US" }),
+    "return_untouched",
+  );
 });
 
 Deno.test("transition law: mock never overwrites real; real replaces mock; universe mismatch replaceable", () => {
