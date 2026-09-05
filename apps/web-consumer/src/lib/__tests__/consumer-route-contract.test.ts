@@ -56,20 +56,22 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       discoverDefault: "/discover/search",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      // Pay is a container now: New (bare) + Wallet.
+      // Pay is ONE surface again — Wallet became its own tab 2026-09-05, and
+      // a container with one section is not a container.
       newVisit: {
         root: "/new-visit",
-        new: "/new-visit",
-        wallet: "/new-visit/wallet",
       },
       newVisitDefault: "/new-visit",
+      // Wallet is top-level now, segment matching label.
+      wallet: "/wallet",
       visit: { prefix: "/visit/" },
       // Four sections, and the ORDER is load-bearing: Visits · Orders ·
       // Reservations · Notifications runs from what you're doing right now
       // out to the passive feed. Object key order is asserted separately
       // below, since toEqual ignores it.
-      // FOUR sections. Wallet left for Pay (a wallet holds instruments,
-      // Activity holds events) and Alerts leads the row now.
+      // FOUR sections. Wallet left for Pay on 2026-09-01 (a wallet holds
+      // instruments, Activity holds events) and became its own tab on 09-05;
+      // Alerts leads the row.
       inbox: {
         root: "/inbox",
         notifications: "/inbox/notifications",
@@ -94,6 +96,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meClass: "/me/class",
         meSettings: "/me/settings",
         mePlan: "/me/plan",
+        // Wallet's address while it was Pay's second section (09-01 -> 09-05).
+        newVisitWallet: "/new-visit/wallet",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
@@ -123,6 +127,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       newVisit: "/new-visit",
       visit: "/visit",
       inbox: "/inbox",
+      wallet: "/wallet",
       me: "/me",
       saved: "/saved",
     });
@@ -165,11 +170,18 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     );
   });
 
-  // Pay's first section and its default AGREE, unlike Activity's. You open
-  // this tab standing in a place, and that is also the leftmost pill.
-  it("lands the Pay tab on New, which is also its first section", () => {
-    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.new);
-    expect(CONSUMER_ROUTES.newVisit.new).toBe(CONSUMER_ROUTES.newVisit.root);
+  // Pay has no sections at all now, so its default IS its root. The pin
+  // survives the collapse to catch a future re-split that forgets the default.
+  it("lands the Pay tab on its own root", () => {
+    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.root);
+  });
+
+  // Wallet is a TAB, not a child of Pay or Activity. A future "tidy" that
+  // nests it back under either container has to delete this line to do it.
+  it("keeps Wallet top-level, under nobody's container", () => {
+    expect(CONSUMER_ROUTES.wallet).toBe("/wallet");
+    expect(CONSUMER_ROUTES.wallet.startsWith("/new-visit")).toBe(false);
+    expect(CONSUMER_ROUTES.wallet.startsWith("/inbox")).toBe(false);
   });
 });
 
@@ -294,13 +306,19 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/invite", destination: "/share", permanent: true },
-      // Credits shipped standalone and moved under Inbox when it became a
-      // section (MESITA-1381). route-structure T7 asserts this one separately,
-      // because T4 can only validate a destination, never an absence.
-      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
+      // Wallet's three former addresses, each pointing STRAIGHT at /wallet —
+      // never at one another, which would be the 3-hop chain T4 refuses.
+      // route-structure T7 asserts these separately, because T4 can only
+      // validate a destination, never an absence.
+      { source: "/credits", destination: "/wallet", permanent: true },
       {
         source: "/inbox/credits",
-        destination: "/new-visit/wallet",
+        destination: "/wallet",
+        permanent: true,
+      },
+      {
+        source: "/new-visit/wallet",
+        destination: "/wallet",
         permanent: true,
       },
       { source: "/profile", destination: "/me", permanent: true },

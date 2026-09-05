@@ -249,10 +249,15 @@ describe("T5 — exactly one tab lights per surface", () => {
     // It lit the centre tab before only by nesting under /rewards; the rename
     // severed that nesting and this row is what holds the replacement.
     ["/visit/t1", "Activity"],
-    ["/inbox/credits", "Activity"],
     ["/inbox/visits", "Activity"],
     ["/inbox/reservations", "Activity"],
     ["/reservation/r1", "Activity"],
+
+    // Wallet is its own tab and its own prefix (2026-09-05). It was
+    // /inbox/credits and then /new-visit/wallet; both are redirect SOURCES
+    // now, never rendered, so neither belongs in this matrix — a nested path
+    // asserted here would keep passing while lighting somebody else's tab.
+    ["/wallet", "Wallet"],
     ["/me", "Me"],
   ];
 
@@ -277,10 +282,15 @@ describe("T5 — exactly one tab lights per surface", () => {
 // Product Rules §C (later, Pato-owned): plain labels; class is status on /me,
 // never chrome; Activity is not named for a mechanism.
 //
-// FOUR tabs since 2026-09-01, was five. Home and Search merged into Discover,
-// and the merge was a deletion: Home had been Soon since 2026-08-28 while
-// Search shipped the live map, so the dead tab was the leftmost one and wore
-// the brand mark. Discover IS /search, unmoved.
+// FIVE tabs since 2026-09-05, in the order Pato gave them: Discover ·
+// Activity · Pay · Wallet · Me. Wallet was promoted out of Pay's section row,
+// and Activity moved ahead of Pay.
+//
+// The count going back to five is NOT the 2026-09-01 merge being undone. That
+// merge was a DELETION — Home had been Soon since 2026-08-28 while Search
+// shipped the live map, so the dead tab was the leftmost one and wore the
+// brand mark — and it stands: Discover IS /search, unmoved. This fifth tab is
+// a different thing entirely, a live surface promoted out of a section row.
 describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
@@ -293,8 +303,14 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Discover · Pay · Activity · Me", async () => {
-    expect(await tabLabels()).toEqual(["Discover", "Pay", "Activity", "Me"]);
+  it("is exactly Discover · Activity · Pay · Wallet · Me", async () => {
+    expect(await tabLabels()).toEqual([
+      "Discover",
+      "Activity",
+      "Pay",
+      "Wallet",
+      "Me",
+    ]);
   });
 
   // The hub is retired, not hiding. A "Home" label reappearing means someone
@@ -515,19 +531,25 @@ describe("T6 — the Inbox section row renders as specified", () => {
 // then moved under Inbox when it became a section. The bookmarks are real. If
 // the redirect is ever dropped, this goes red instead of CI going green while
 // those links 404.
-describe("T7 — legacy /credits still resolves after the move", () => {
-  // Wallet has now moved twice: standalone /credits (#1429) -> Activity section
-  // (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01). BOTH old
-  // urls were live in production, so both bookmarks are real and both must
-  // resolve in ONE hop. T4 can validate a destination but never a redirect's
-  // absence, which is why this test exists.
-  it.each(["/credits", "/inbox/credits"])(
-    "keeps %s redirecting to Pay > Wallet",
+describe("T7 — every former Wallet url still resolves after the move", () => {
+  // Wallet has moved THREE times: standalone /credits (#1429) -> Activity
+  // section (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01) ->
+  // its own tab (/wallet, 2026-09-05). All three old urls were live in
+  // production, so all three sets of bookmarks are real.
+  //
+  // EACH RESOLVES IN ONE HOP, and that is the point of asserting the
+  // destination rather than just the entry: pointing /credits at
+  // /inbox/credits (or /inbox/credits at /new-visit/wallet) would still be a
+  // working redirect, and would still be a 3-hop chain that T4 refuses. T4 can
+  // validate a destination but never a redirect's ABSENCE, which is why this
+  // test exists alongside it.
+  it.each(["/credits", "/inbox/credits", "/new-visit/wallet"])(
+    "keeps %s redirecting straight to the Wallet tab",
     async (source) => {
       const redirects = await nextConfig.redirects!();
       const entry = redirects.find((r) => r.source === source);
       expect(entry, `${source} redirect was removed`).toBeDefined();
-      expect(entry!.destination).toBe("/new-visit/wallet");
+      expect(entry!.destination).toBe("/wallet");
     },
   );
 });

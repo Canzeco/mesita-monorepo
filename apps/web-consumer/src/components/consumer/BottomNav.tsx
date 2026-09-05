@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, Inbox, User } from "lucide-react";
+import { QrCode, Inbox, User, Wallet } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -15,25 +15,35 @@ import {
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
 
-// FOUR top-level surfaces: Discover, Pay, Activity, Me (2026-09-01, was five).
+// FIVE top-level surfaces, in this order (Pato, 2026-09-05: "five pages now —
+// Discover, Activity, Pay, Wallet, Me"):
 //
-// Home and Search merged into Discover, and the merge was a DELETION: Home had
-// been Soon since 2026-08-28 — all five of its modes opened coming-soon
-// dialogs — while Search shipped the live map, filters, catalog rail and deep
-// search. So the dead tab was the leftmost one, it wore the brand mark, and it
-// was the most probable first tap a new guest ever made. Discover is Search,
-// unmoved, under a name that survives the parked modes shipping later.
+//   Discover · Activity · Pay · Wallet · Me
 //
-// At four items each column is ~94px at 375px (was ~75px), which is why the
-// active underline is w-6 rather than w-5 — a 20px rule under a 94px column
-// reads thin.
+// TWO changes at once, and they are independent. Wallet was promoted out of
+// Pay to a tab of its own, and Activity moved AHEAD of Pay. The order is the
+// instruction's, and it reads as the guest's own arc: find a place, see what
+// you have going, pay for tonight, hold what is left, be yourself.
+//
+// A COUNT OF FIVE IS NOT A RESTORATION. The bar ran five until 2026-09-01,
+// when Home and Search merged into Discover — that merge was a DELETION of a
+// parked tab and it stands. This is a different fifth: a live surface that was
+// buried one level down inside Pay's section row.
+//
+// At five items each column is ~74px at 375px (~63px at 320px), back to what
+// it was before the merge — so the active underline goes back to w-5 with it.
+// A 24px rule under a 74px column is the same overhang the w-6 comment was
+// written to avoid in the other direction. The labels clear that column with
+// room: the widest, "Discover", measures 36.1px at type-meta, so nothing
+// truncates even at 320px.
 //
 // Every tab shows its plain label. Me used to append the live class ("Me ·
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
 // label names a DESTINATION; the class is status, and status belongs on the Me
 // page where it can be read and acted on, not stamped into the chrome of every
 // screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
-// by Product Rules §C; `route-structure.test.tsx` pins the five plain labels.
+// by Product Rules §C; `route-structure.test.tsx` pins the plain labels, in
+// order, and their count.
 
 // Every icon is a lucide glyph now (the brand mark left with the Home tab).
 // The signature stays wider than LucideIcon so a future non-lucide glyph does
@@ -82,29 +92,6 @@ const ITEMS: Item[] = [
     ],
   },
   {
-    href: CONSUMER_ROUTES.newVisit.root,
-    // QR is the right glyph and stays: showing the QR IS the visit.
-    Icon: QrCode,
-    // "Pay" (Pato, 2026-08-17), reversing the 2026-08-16 call for "Visit".
-    // The tab is named for what the guest came to DO — the QR they show is the
-    // moment they pay — rather than for the object it creates.
-    //
-    // THE LABEL MOVED, AND NOTHING ELSE. The route is still /new-visit, the
-    // detail is still /visit/{id} and the object is still a visit ticket. This
-    // tab has now been called Rewards, Pay, Visit and Pay again; every one of
-    // those renames stayed in the label, which is why the URLs and the schema
-    // survived four of them.
-    //
-    // "Pay" no longer collides with Stripe: `checkout` is the word for Stripe
-    // in this codebase, and the one Stripe surface a consumer can reach says
-    // "Continue to checkout" (PlanModal). Paying a BILL and checking out of a
-    // SUBSCRIPTION stay two different words.
-    label: "Pay",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.newVisit],
-    // LIVE — the pass (QR + code + what you can claim + live visit) and the
-    // ticket stack are built; the tab opens the real page.
-  },
-  {
     href: CONSUMER_ROUTES.inboxDefault,
     // The tray, restored (Pato, 2026-09-01, third pass — "maybe inbox icon or
     // something"). Fourth glyph, and the tab has now been all the way around:
@@ -150,7 +137,8 @@ const ITEMS: Item[] = [
     // container, and a glance reads it as "your stuff", not as a proposition.
     // A word gets parsed; an icon gets recognised. (The money section that
     // used to sharpen this argument is gone — Wallet left for Pay on
-    // 2026-09-01 — but the reasoning holds without it.)
+    // 2026-09-01 and became its own tab on 09-05 — but the reasoning holds
+    // without it.)
     //
     // ROUTE UNCHANGED — /inbox, the same rule Reservations and Alerts follow.
     // The LABEL and the GLYPH are decoupled and always have been: the tab says
@@ -166,6 +154,59 @@ const ITEMS: Item[] = [
       CONSUMER_ROUTE_PREFIX.visit,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
     ],
+  },
+  {
+    href: CONSUMER_ROUTES.newVisit.root,
+    // QR is the right glyph and stays: showing the QR IS the visit.
+    Icon: QrCode,
+    // "Pay" (Pato, 2026-08-17), reversing the 2026-08-16 call for "Visit".
+    // The tab is named for what the guest came to DO — the QR they show is the
+    // moment they pay — rather than for the object it creates.
+    //
+    // THE LABEL MOVED, AND NOTHING ELSE. The route is still /new-visit, the
+    // detail is still /visit/{id} and the object is still a visit ticket. This
+    // tab has now been called Rewards, Pay, Visit and Pay again; every one of
+    // those renames stayed in the label, which is why the URLs and the schema
+    // survived four of them.
+    //
+    // "Pay" no longer collides with Stripe: `checkout` is the word for Stripe
+    // in this codebase, and the one Stripe surface a consumer can reach says
+    // "Continue to checkout" (PlanModal). Paying a BILL and checking out of a
+    // SUBSCRIPTION stay two different words.
+    label: "Pay",
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.newVisit],
+    // LIVE — the pass (QR + code + what you can claim + live visit) and the
+    // ticket stack are built; the tab opens the real page.
+  },
+  {
+    href: CONSUMER_ROUTES.wallet,
+    // The wallet glyph, and it is the ONE tab whose icon and label are the
+    // same word. That is not laziness: every other tab names a place and the
+    // glyph is a metaphor for it, while a wallet IS the object. Reaching for a
+    // Coins or CreditCard mark to avoid the repetition would name what is
+    // INSIDE the wallet, which is the container/currency confusion Vocabulary
+    // exists to stop.
+    //
+    // The one pairing to watch is Activity's tray — both are container
+    // rectangles. They separate on the detail that defines each: the tray's
+    // silhouette is a V notched out of its TOP edge, the wallet's is a pocket
+    // on its RIGHT. Pay sits between them, so they are never adjacent, and the
+    // other three are nothing like either (a dense grid, a circle on
+    // shoulders, the organic brand mark). If a future glyph change flattens
+    // either detail, this is the pair that goes ambiguous first.
+    Icon: Wallet,
+    // "Wallet" — the money CONTAINER, never the currency. Credits is what is
+    // INSIDE it, alongside the saved payment methods and gifting, which is
+    // exactly why the tab cannot be called Credits.
+    //
+    // PROMOTED OUT OF PAY (Pato, 2026-09-05), its third address in five days:
+    // /credits, /inbox/credits, /new-visit/wallet, /wallet. The first two moves
+    // were arguments about which container it belonged in — Activity holds
+    // EVENTS so not there, Pay is where you spend so there. A tab ends the
+    // argument: the money you hold is a destination, not a subsection of the
+    // place you spend it at. All three old paths 308 straight here.
+    label: "Wallet",
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.wallet],
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -232,7 +273,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                 )}
               >
                 {active && (
-                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
+                  <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full" />
                 )}
 
                 <span

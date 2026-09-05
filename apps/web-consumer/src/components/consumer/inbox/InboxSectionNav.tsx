@@ -14,7 +14,8 @@
 //
 // WALLET LEFT FOR PAY. Activity holds EVENTS, a wallet holds INSTRUMENTS —
 // the category error named on 08-31, closed by moving it rather than renaming
-// the container around it. /inbox/credits 308s to /new-visit/wallet.
+// the container around it. /inbox/credits 308s to /wallet, which is its own
+// tab now (2026-09-05).
 //
 // THE DEFAULT IS NOT THE FIRST SECTION. Alerts leads this row but bare /inbox
 // still lands on Visits: a visit in progress is time-critical, an alert can
