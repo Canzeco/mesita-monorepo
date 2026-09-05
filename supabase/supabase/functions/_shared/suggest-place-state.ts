@@ -1,14 +1,14 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { PredictionStatus } from "./suggest-places-helpers.ts";
+import type { PredictionState } from "./suggest-places-helpers.ts";
 
 // One owner-lookup pass over a place-row set, returning the per-placeId
-// PredictionStatus. `web_listed` for unowned rows; `verified_partner_self/_other`
+// PredictionState. `web_listed` for unowned rows; `verified_partner_self/_other`
 // for owned ones depending on whether the caller is the owner.
-export async function statusesForPlaces(
+export async function statesForPlaces(
   admin: SupabaseClient,
   rows: Array<{ id: string; google_place_id: string }>,
   callerId: string | null,
-): Promise<Map<string, PredictionStatus>> {
+): Promise<Map<string, PredictionState>> {
   if (rows.length === 0) return new Map();
   const { data, error } = await admin
     .from("project_members")
@@ -27,7 +27,7 @@ export async function statusesForPlaces(
   ) {
     ownerByPlace.set(m.place_id, m.manager_id);
   }
-  const out = new Map<string, PredictionStatus>();
+  const out = new Map<string, PredictionState>();
   for (const v of rows) {
     const ownerId = ownerByPlace.get(v.id);
     out.set(

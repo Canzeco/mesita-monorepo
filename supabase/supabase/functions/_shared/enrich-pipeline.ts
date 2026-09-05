@@ -75,7 +75,7 @@ export type PlaceResearchRow = {
   place_id: string;
   google_place_id: string;
   stage: ResearchStage;
-  status: "pending" | "running";
+  state: "pending" | "running";
   attempts: number;
   gathered: GatheredPayload | null;
   analysis: AnalysisPayload | null;
@@ -140,7 +140,7 @@ export async function reportEnrichmentStep(
   // `SX` is kept in the union for historical rows. New stamps are `S<n>`.
   step: `S${number}` | "SX",
   stepName: string,
-  status: "started" | "completed" | "failed" | "skipped",
+  state: "started" | "completed" | "failed" | "skipped",
   detail: string,
   meta: Record<string, unknown> = {},
 ): Promise<void> {
@@ -149,7 +149,7 @@ export async function reportEnrichmentStep(
       place_id: projectId,
       step,
       step_name: stepName.slice(0, 80),
-      status,
+      state,
       detail: detail.slice(0, 500),
       meta,
     });

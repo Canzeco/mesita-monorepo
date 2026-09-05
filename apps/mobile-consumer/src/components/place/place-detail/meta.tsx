@@ -72,7 +72,7 @@ function MetaPill({
 }
 
 export function VerificationBox({ place }: { place: PlaceDetail }) {
-  // decision: Tags-harmonic status pill + short support (MESITA-927).
+  // decision: Tags-harmonic state pill + short support (MESITA-927).
   const isPartner = place.listing_type === 'partner';
   return (
     <Box

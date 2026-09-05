@@ -24,7 +24,7 @@
 // simply hides.
 //
 // Note: the open/closed *label* ("Open · until 22:00") is formatted at the
-// render site by `getOpeningStatusLabel` in lib/place-status.ts off the
+// render site by `getOpeningStateLabel` in lib/place-state.ts off the
 // open_now / opens_at / closes_at this mapper produces — same split as web.
 
 import { computeOpenState, neighborhoodFromAddress } from '@/lib/adapters/place-to-detail';
@@ -70,12 +70,12 @@ export function enrichPlaceOverview(v: Place): Place {
     currency,
   });
 
-  // Same predicate as placeRowToDetail — content_status stays queued/
+  // Same predicate as placeRowToDetail — content_state stays queued/
   // generating for the full pipeline; only contents lands 'ready'.
-  const contentStatus = str(row.content_status);
+  const contentState = str(row.content_state);
   const isEnriching =
     v.is_enriching ??
-    (contentStatus === 'queued' || contentStatus === 'generating');
+    (contentState === 'queued' || contentState === 'generating');
 
   return {
     ...v,

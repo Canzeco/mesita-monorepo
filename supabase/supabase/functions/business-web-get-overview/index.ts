@@ -18,7 +18,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
-import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-status.ts";
+import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
 import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
@@ -29,11 +29,11 @@ import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
   ", embedding, embedding_source_hash, embedding_source_text, name_embedding, name_embedding_hash";
 
-// Status (MESITA-1186). The place editor's Status box answers `seeded` off the
+// State (MESITA-1186). The place editor's State box answers `seeded` off the
 // identity spine, so the super-admin read needs the column. Admin-only for the
 // same reason the embedding columns are: a business has no use for Google's id,
 // and it must never widen PLACE_PUBLIC_COLUMNS.
-const PLACE_ADMIN_STATUS_COLUMNS = ", google_place_id";
+const PLACE_ADMIN_STATE_COLUMNS = ", google_place_id";
 
 // `placeId` is the canonical place-row id key (MESITA-26); `activeUnitId` (legacy)
 // is this EF's legacy alias, kept working during the client migration window.
@@ -82,10 +82,10 @@ Deno.serve(async (req) => {
       );
     }
     // One round trip for both: the place row, and the materialized enrichment
-    // map the Status box's `enriched` high-water reads from (MESITA-1249).
+    // map the State box's `enriched` high-water reads from (MESITA-1249).
     // Parallel, so the extra fact costs no latency. `enrichment` is read off
     // `places` directly, not `profiles` — it is deliberately NOT in the
-    // profiles view's column list (same reasoning as the embedding/status
+    // profiles view's column list (same reasoning as the embedding/state
     // columns just above staying admin-only: a heavy field only this file and
     // admin-web-search-places need, and adding it to the view means rebuilding
     // its two INSTEAD OF triggers, a documented recurring pain point).
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       admin
         .from("profiles")
         .select(
-          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_STATUS_COLUMNS,
+          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_STATE_COLUMNS,
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
@@ -113,9 +113,9 @@ Deno.serve(async (req) => {
     }
     const placeFields = placeRow.data as unknown as Record<string, unknown>;
     // Same best-effort posture: a missing/null row simply falls back to the
-    // CREATED-floor default, which reads as 0 — the Status box and the
-    // catalog table MUST show the same number either way, a status that
-    // disagrees with itself across two screens being worse than no status.
+    // CREATED-floor default, which reads as 0 — the State box and the
+    // catalog table MUST show the same number either way, a state that
+    // disagrees with itself across two screens being worse than no state.
     if (enrichmentRow.error) {
       console.error("[get-overview] places.enrichment:", enrichmentRow.error.message);
     }
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
     // `name` arrives already resolved — it is a generated column
     // (mesita_name → google_name), so no display pass is needed here.
     //
-    // The three pipeline facts of Status ride along, admin-only and computed
+    // The three pipeline facts of State ride along, admin-only and computed
     // (never stored): seeded · listed · enriched. The other three the box
     // derives itself — partner and promoting from columns already on this row,
     // verified from admin-web-get-place-verification. The four acceptance
@@ -156,10 +156,10 @@ Deno.serve(async (req) => {
         ...placeFields,
         my_role: "owner",
         seeded: isPlaceSeeded(placeFields.google_place_id),
-        listed: isPlaceListed(placeFields.status),
+        listed: isPlaceListed(placeFields.state),
         requested: isPlaceRequested({
           requestCount: placeFields.request_count,
-          contentStatus: placeFields.content_status,
+          contentState: placeFields.content_state,
         }),
         enrich_pulse: enrichPulse,
         enrich_pulse_total: PULSE_TOTAL,
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
       .from("visit_tickets")
       .select(
         // story_ojo_* (MESITA-1034): same rationale as business-web-list-tickets.
-        "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
+        "id, state, story_state, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name)",
       )
       .eq("place_id", activeId)
       .order("created_at", { ascending: false })

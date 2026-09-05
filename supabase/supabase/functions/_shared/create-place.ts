@@ -27,7 +27,7 @@
 //
 // queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
 // profile and do NOT seed Intaker. Enriched is `places.enriched_at`, not
-// content_status. Guests vote on the Enrich tab; the Intake threshold
+// content_state. Guests vote on the Enrich tab; the Intake threshold
 // seeds the queue. Business create still queues. Admin Enrich /
 // Create+Enrich is a second call.
 //
@@ -59,7 +59,7 @@ const CHANNEL_KEYS = [
   "didi_food_url", "google_maps_url",
 ];
 
-export type CreatedPlace = { id: string; slug: string; name: string; status: string };
+export type CreatedPlace = { id: string; slug: string; name: string; state: string };
 
 // The `enrichment` block every create response carries (response-contract
 // compatibility from the days enrichment was synchronous — now always async).
@@ -114,7 +114,7 @@ export async function createMinimalPlace(opts: {
   // guard; gating here keeps a duplicate click cheap. ──
   const { data: existing } = await admin
     .from("profiles")
-    .select("id, slug, name, status, listing_type")
+    .select("id, slug, name, state, listing_type")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
   if (existing) {
@@ -204,12 +204,12 @@ export async function createMinimalPlace(opts: {
     // CLOSED_TEMPORARILY and null are three different facts and the box says
     // which. Stamped with the observation time so a stale claim cannot read as
     // current.
-    business_status: basicsRes.businessStatus ?? null,
-    business_status_at: basicsRes.businessStatus ? new Date().toISOString() : null,
+    business_state: basicsRes.businessStatus ?? null,
+    business_state_at: basicsRes.businessStatus ? new Date().toISOString() : null,
   };
 
   // ── 2) Persist the minimal rows (in-process). queueEnrich lands
-  // content_status='generating' until contents flips it to ready. A cheap
+  // content_state='generating' until contents flips it to ready. A cheap
   // mint lands 'ready' with enriched_at null — the ugly profile is
   // viewable; Enriched stays no until Intaker finishes. ──
   const saveRes = await savePlaceData(
@@ -340,7 +340,7 @@ export async function createMinimalPlace(opts: {
   const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {
     ok: true,
-    place: { id: saved.project_id, slug: saved.slug, name: saved.name, status: saved.status },
+    place: { id: saved.project_id, slug: saved.slug, name: saved.name, state: saved.state },
     enrichment: {
       google: true,
       enrichmentTriggered: trigger.ok,

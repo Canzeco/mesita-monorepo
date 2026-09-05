@@ -62,8 +62,8 @@ export function MetaRow({ item }: { item: NotificationItem }) {
         <MetaTag key="me">{CLAIM_METHOD_LABEL[m.method] ?? m.method}</MetaTag>,
       );
     }
-    if (typeof m.status === "string") {
-      tags.push(<ClaimStatusTag key="cs" status={m.status} />);
+    if (typeof m.state === "string") {
+      tags.push(<ClaimStateTag key="cs" state={m.state} />);
     }
   }
 
@@ -86,14 +86,14 @@ export function MetaRow({ item }: { item: NotificationItem }) {
         </MetaTag>,
       );
     }
-    if (typeof m.status === "string") {
-      tags.push(<StepStatusTag key="ss" status={m.status} />);
+    if (typeof m.state === "string") {
+      tags.push(<StepStateTag key="ss" state={m.state} />);
     }
   }
 
   // Consumer-activity tags (per-place Performance feed — MESITA-834).
   if (item.type === "rewards.ticket_created" || item.type === "rewards.ticket_visit") {
-    if (typeof m.status === "string") tags.push(<MetaTag key="ts">{m.status}</MetaTag>);
+    if (typeof m.state === "string") tags.push(<MetaTag key="ts">{m.state}</MetaTag>);
   }
 
   if (item.type === "rewards.ticket_closed") {
@@ -140,13 +140,13 @@ export function MetaRow({ item }: { item: NotificationItem }) {
         <MetaTag key="rr">{REPORT_REASON[m.reason] ?? m.reason}</MetaTag>,
       );
     }
-    if (typeof m.status === "string") {
-      tags.push(<MetaTag key="rst">{m.status}</MetaTag>);
+    if (typeof m.state === "string") {
+      tags.push(<MetaTag key="rst">{m.state}</MetaTag>);
     }
   }
 
   if (item.type === "reservations.reservation_created") {
-    if (typeof m.status === "string") tags.push(<MetaTag key="rs">{m.status}</MetaTag>);
+    if (typeof m.state === "string") tags.push(<MetaTag key="rs">{m.state}</MetaTag>);
     if (typeof m.partySize === "number") {
       tags.push(<MetaTag key="ps">party of {m.partySize}</MetaTag>);
     }
@@ -193,11 +193,11 @@ function MetaTag({
   );
 }
 
-// Status chip for enrichment step events: completed = green-ish (secondary
+// State chip for enrichment step events: completed = green-ish (secondary
 // accent, same as approved claims), failed = destructive, started/skipped =
 // muted secondary chips.
-function StepStatusTag({ status }: { status: string }) {
-  if (status === "completed") {
+function StepStateTag({ state }: { state: string }) {
+  if (state === "completed") {
     return (
       <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <CheckCircle2 className="h-3 w-3" />
@@ -205,7 +205,7 @@ function StepStatusTag({ status }: { status: string }) {
       </span>
     );
   }
-  if (status === "failed") {
+  if (state === "failed") {
     return (
       <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <XCircle className="h-3 w-3" />
@@ -213,7 +213,7 @@ function StepStatusTag({ status }: { status: string }) {
       </span>
     );
   }
-  if (status === "started") {
+  if (state === "started") {
     return (
       <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <Clock className="h-3 w-3" />
@@ -223,13 +223,13 @@ function StepStatusTag({ status }: { status: string }) {
   }
   return (
     <span className="bg-muted text-muted-foreground/70 inline-flex items-center rounded-md px-2 py-0.5 type-label font-medium">
-      {status}
+      {state}
     </span>
   );
 }
 
-function ClaimStatusTag({ status }: { status: string }) {
-  if (status === "approved") {
+function ClaimStateTag({ state }: { state: string }) {
+  if (state === "approved") {
     return (
       <span className="bg-secondary/10 text-secondary inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <CheckCircle2 className="h-3 w-3" />
@@ -237,7 +237,7 @@ function ClaimStatusTag({ status }: { status: string }) {
       </span>
     );
   }
-  if (status === "rejected") {
+  if (state === "rejected") {
     return (
       <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-0.5 type-label font-medium">
         <XCircle className="h-3 w-3" />

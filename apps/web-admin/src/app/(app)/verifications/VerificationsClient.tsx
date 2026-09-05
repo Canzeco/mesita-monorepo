@@ -21,7 +21,7 @@ export function VerificationsClient({
         v.id === id
           ? {
               ...v,
-              status: decision,
+              state: decision,
               decided_at: new Date().toISOString(),
               decided_via: "admin" as const,
               reject_reason: decision === "rejected" ? rejectReason : null,

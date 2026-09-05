@@ -8,7 +8,7 @@ import { Banknote, Flag, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   SaveRow,
   SectionCard,
   Switch,
@@ -116,7 +116,7 @@ export function VisitsConfigClient({
         icon={<Banknote className="text-secondary h-4 w-4" />}
         title="Bill"
         subtitle="Tip chips on the guest bill. Always calculated on the pre-discount total."
-        status={
+        state={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
               Updated {formatShortDate(updatedAt)}
@@ -125,7 +125,7 @@ export function VisitsConfigClient({
         }
       >
         <div className="mt-4">
-          <KnobStatus
+          <KnobState
             kind="enforced"
             reason="consumer-web-get-ticket + consumer-web-submit-ticket-bill"
           />
@@ -226,7 +226,7 @@ export function VisitsConfigClient({
         subtitle="Polling is the handshake. Realtime stays off visit_tickets."
       >
         <div className="mt-4">
-          <KnobStatus
+          <KnobState
             kind="enforced"
             reason="Guest poll on consumer-web-get-ticket · staff poll on validate-web-get-ticket"
           />
@@ -307,7 +307,7 @@ export function VisitsConfigClient({
         subtitle="The guest's route that is not arguing with the floor."
       >
         <div className="mt-4">
-          <KnobStatus
+          <KnobState
             kind="enforced"
             reason="consumer-web-report-ticket · THE TICKET footer"
           />

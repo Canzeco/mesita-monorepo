@@ -38,7 +38,7 @@ export function PlacePickList({
   onClearQuery?: () => void;
 }) {
   const [places, setPlaces] = useState<Place[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+  const [state, setState] = useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [reloadKey, setReloadKey] = useState(0);
@@ -50,10 +50,10 @@ export function PlacePickList({
         const rows = await apiFetchPublicPlaces(supabase, 100);
         if (!cancelled) {
           setPlaces(rows);
-          setStatus("ready");
+          setState("ready");
         }
       } catch {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) setState("error");
       }
     })();
     return () => {
@@ -79,11 +79,11 @@ export function PlacePickList({
   );
   const anyLocked = visible.some((p) => p.listing_type !== "partner");
 
-  if (status === "loading") {
+  if (state === "loading") {
     return <ActivityIndicator style={{ paddingVertical: 24 }} />;
   }
 
-  if (status === "error") {
+  if (state === "error") {
     return (
       <View className="flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
         <Text className="text-muted-foreground" style={{ fontSize: 12.5 }}>
@@ -91,7 +91,7 @@ export function PlacePickList({
         </Text>
         <Pressable
           onPress={() => {
-            setStatus("loading");
+            setState("loading");
             setReloadKey((k) => k + 1);
           }}
           accessibilityRole="button"

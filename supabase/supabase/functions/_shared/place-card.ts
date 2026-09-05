@@ -17,7 +17,7 @@
 // .ts's PLACE_CARD_COLUMNS verbatim (every public column except the five
 // enrichment-filled jsonb ones), not a hand-picked subset. A prior version of
 // this file DID hand-pick 13 fields, which would have dropped lat/lng,
-// welcome/premium rates, status, hours and ~70 other columns the two real
+// welcome/premium rates, state, hours and ~70 other columns the two real
 // list/swipe EFs and their web-consumer client actually send and read today
 // — verified before wiring, not assumed: apps/web-consumer's Place type (
 // api/places.ts) declares ~50 fields beyond the old 13, and grepping the

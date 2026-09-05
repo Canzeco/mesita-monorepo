@@ -95,7 +95,7 @@ describe("intakeStateLine", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
-      meta: { statusFacts: facts, listingType: "unclaimed", claimed: false },
+      meta: { stateFacts: facts, listingType: "unclaimed", claimed: false },
     });
     expect(intakeStateLine(created)).toBe("Created · Active · Listed");
     expect(intakeStateLine(created)).not.toMatch(/\d+\/\d+/);
@@ -108,7 +108,7 @@ describe("intakeStateLine", () => {
       id: "c",
       type: "atlas.place_created",
       meta: {
-        statusFacts: {
+        stateFacts: {
           ...facts,
           enriched: true,
           enrichPulse: 10,
@@ -128,7 +128,7 @@ describe("intakeStateLine", () => {
       id: "c",
       type: "atlas.place_created",
       meta: {
-        statusFacts: {
+        stateFacts: {
           ...facts,
           requested: true,
           enriching: true,
@@ -146,7 +146,7 @@ describe("intakeStateLine", () => {
       id: "c",
       type: "atlas.place_created",
       meta: {
-        statusFacts: { ...facts, mesita_pay: true, credits: true },
+        stateFacts: { ...facts, mesita_pay: true, credits: true },
       },
     });
     expect(intakeStateLine(created)).toBe(
@@ -160,11 +160,11 @@ describe("intakeStateLine", () => {
     expect(chipKeys).toContain("partner");
   });
 
-  it("falls back for create events that predate statusFacts", () => {
+  it("falls back for create events that predate stateFacts", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
-      meta: { status: "paused" },
+      meta: { state: "paused" },
     });
     expect(intakeStateLine(created)).toBe("Created · Unlisted");
   });
@@ -192,7 +192,7 @@ describe("itemMatchesIntakeFilter", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
-      meta: { statusFacts: facts },
+      meta: { stateFacts: facts },
     });
     expect(itemMatchesIntakeFilter(created, "seeded")).toBe(true);
     expect(itemMatchesIntakeFilter(created, "fn:seed")).toBe(true);
@@ -209,7 +209,7 @@ describe("intakeFunctionChips", () => {
         id: "c",
         type: "atlas.place_created",
         meta: {
-          statusFacts: {
+          stateFacts: {
             seeded: true,
             active: false,
             listed: false,
@@ -253,7 +253,7 @@ describe("intakeFunctionChips", () => {
 });
 
 describe("showCategoryOnCompact", () => {
-  it("hides category on Intake rows so it cannot pass as a status", () => {
+  it("hides category on Intake rows so it cannot pass as a state", () => {
     expect(
       showCategoryOnCompact(item({ id: "c", type: "atlas.place_created" })),
     ).toBe(false);

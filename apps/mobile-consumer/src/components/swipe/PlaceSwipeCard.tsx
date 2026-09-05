@@ -19,7 +19,7 @@ import type { Place } from '@/lib/api/places';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { enrichPlaceOverview } from '@/lib/place-overview';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
-import { getOpeningStatusLabel } from '@/lib/place-status';
+import { getOpeningStateLabel } from '@/lib/place-state';
 import { resolvePromoRateFromPlaceRow } from '@/lib/promo-rates';
 import {
   firstInitial,
@@ -54,7 +54,7 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
     categoryLabel: place.category_label,
     category: place.category,
   });
-  const statusLabel = getOpeningStatusLabel(place);
+  const stateLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   const isVerified = place.listing_type === 'partner';
   const isFirstVisit = place.is_first_visit !== false;
@@ -162,14 +162,14 @@ export function PlaceSwipeCard({ place: rawPlace }: { place: Place }) {
               {zoneLabel ?? 'Neighborhood'}
             </Text>
           </MetaChip>
-          {statusLabel ? (
+          {stateLabel ? (
             <MetaChip>
               <Clock
                 color={isOpen ? '#34d399' : 'rgba(255,255,255,0.7)'}
                 size={12}
               />
               <Text className="text-[11px] font-semibold text-white">
-                {statusLabel}
+                {stateLabel}
               </Text>
             </MetaChip>
           ) : null}

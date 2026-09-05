@@ -1,11 +1,11 @@
 // State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATUSES (11) Created · Active · Listed · Enriched · Enriching ·
+//   STATES (11)   Created · Active · Listed · Enriched · Enriching ·
 //                 Verified · Partnered · Mesita Pay · Mesita Credits are bools
 //                 (`true` / `false`). Requested is the guest request count,
 //                 0…n — not a Yes/No. Visit Rewards (wire key `promoting`,
 //                 formerly labeled Promoted) is 0 | 1 | 2. Never a
-//                 projects.status. Mesita Pay / Mesita Credits are per-place
+//                 projects.state. Mesita Pay / Mesita Credits are per-place
 //                 acceptance intent bits (places.mesita_pay_enabled /
 //                 places.credits_enabled) — operator toggles on the Partner tab
 //                 (admin-web-set-place-rails); engines still gate each rail.

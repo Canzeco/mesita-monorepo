@@ -2,7 +2,7 @@
 // discount surface: a reward is earned by SHOWING UP, so the rates live on
 // the visit ticket that snapshots them, never on the booking.
 
-export type ReservationStatus = "booking" | "booked" | "cancelled";
+export type ReservationState = "booking" | "booked" | "cancelled";
 
 export type ReservationAlternative = {
   time: string;
@@ -23,12 +23,12 @@ export type ReservationItem = {
    */
   reservedAt?: string;
   partySize: number;
-  status: ReservationStatus;
-  statusNote?: string;
+  state: ReservationState;
+  stateNote?: string;
   /** MESITA-787 */
   guestNotify?: "call" | "app";
   guestConfirmedAt?: string | null;
   alternatives?: ReservationAlternative[];
-  /** Raw DB status — needed for counter-offer accept gating. */
-  dbStatus?: "pending" | "confirmed" | "declined" | "no_show" | "cancelled" | "unreachable" | "unresolved";
+  /** Raw DB state — needed for counter-offer accept gating. */
+  dbState?: "pending" | "confirmed" | "declined" | "no_show" | "cancelled" | "unreachable" | "unresolved";
 };

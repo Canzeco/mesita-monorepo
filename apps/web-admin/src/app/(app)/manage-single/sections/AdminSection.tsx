@@ -184,7 +184,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // `embedding_source_text` / `embedding_source_hash`. The write goes through
 // the `profiles` view because that is the write door, NOT because a profile
 // or a project is what gets embedded: no plan, no rates, no listing_type, no
-// status is in the vector. That is deliberate — commercial state changes
+// state is in the vector. That is deliberate — commercial state changes
 // weekly and would poison a semantic index that answers "what is this place
 // like".
 //
@@ -359,7 +359,7 @@ function SerpSummaryCard({ place }: { place: AdminPlace }) {
       if (!alive) return;
       setFetched({
         id: place.id,
-        summary: r.ok ? (r.data.status?.serp_summary ?? null) : null,
+        summary: r.ok ? (r.data.state?.serp_summary ?? null) : null,
       });
     });
     return () => {

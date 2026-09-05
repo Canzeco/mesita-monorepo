@@ -1,4 +1,4 @@
-import type { PlaceEnrichmentStatus } from "./actions";
+import type { PlaceEnrichmentState } from "./actions";
 import {
   operatorPromotingLevel,
   promotingLevelChip,
@@ -10,17 +10,17 @@ import {
 /** True while the Intaker pipeline is mid-flight.
  *  decision: Pato (MESITA-453) — Enriching = the WHOLE pipeline:
  *  research OR analysis OR contents. Never clear after research alone. */
-export function isEnriching(status: PlaceEnrichmentStatus | null): boolean {
-  const stage = status?.stage ?? null;
+export function isEnriching(state: PlaceEnrichmentState | null): boolean {
+  const stage = state?.stage ?? null;
   if (stage === "research" || stage === "analysis" || stage === "contents") {
     return true;
   }
-  const contentStatus = status?.content_status ?? null;
-  return contentStatus === "generating" || contentStatus === "queued";
+  const contentState = state?.content_state ?? null;
+  return contentState === "generating" || contentState === "queued";
 }
 
-export function isEnrichFailed(status: PlaceEnrichmentStatus | null): boolean {
-  return status?.stage === "failed";
+export function isEnrichFailed(state: PlaceEnrichmentState | null): boolean {
+  return state?.stage === "failed";
 }
 
 export type HeaderFact = {
@@ -31,21 +31,21 @@ export type HeaderFact = {
   chip: string;
 };
 
-/** Same predicate as `_shared/place-status.ts::isPlaceListed` and the
+/** Same predicate as `_shared/place-state.ts::isPlaceListed` and the
  *  consumer RLS policy: only `active` and `lead` are reachable. */
 export const LISTED_STATES = ["active", "lead"] as const;
 
-export function listedFromState(status: unknown): boolean | "unknown" {
-  if (typeof status !== "string" || status === "") return "unknown";
-  return (LISTED_STATES as readonly string[]).includes(status);
+export function listedFromState(state: unknown): boolean | "unknown" {
+  if (typeof state !== "string" || state === "") return "unknown";
+  return (LISTED_STATES as readonly string[]).includes(state);
 }
 
-/** Stamp `listed` from `status` so a merged write payload cannot keep a
+/** Stamp `listed` from `state` so a merged write payload cannot keep a
  *  stale overview flag (Unlist wrote `paused` but left `listed: true`). */
-export function withListedFromState<T extends { status?: unknown; listed?: boolean }>(
+export function withListedFromState<T extends { state?: unknown; listed?: boolean }>(
   place: T,
 ): T {
-  const listed = listedFromState(place.status);
+  const listed = listedFromState(place.state);
   if (listed === "unknown") return place;
   return { ...place, listed };
 }
@@ -53,7 +53,7 @@ export function withListedFromState<T extends { status?: unknown; listed?: boole
 export function generalHeaderFacts(input: {
   seeded?: boolean;
   listed?: boolean;
-  business_status?: string | null;
+  business_state?: string | null;
   /** Live Intaker run. Independent of Enriched (last-completed). */
   enriching?: boolean;
   requestCount?: number;
@@ -73,9 +73,9 @@ export function generalHeaderFacts(input: {
   const listed: boolean | "unknown" =
     typeof input.listed === "boolean" ? input.listed : "unknown";
   const active: boolean | "unknown" =
-    input.business_status == null || input.business_status === ""
+    input.business_state == null || input.business_state === ""
       ? "unknown"
-      : input.business_status === "OPERATIONAL";
+      : input.business_state === "OPERATIONAL";
   const pulse = typeof input.enrich_pulse === "number" ? input.enrich_pulse : null;
   const total = typeof input.enrich_pulse_total === "number" ? input.enrich_pulse_total : null;
   const enriched: boolean | "unknown" =

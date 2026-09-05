@@ -30,8 +30,8 @@ import {
 } from "../_shared/auth.ts";
 
 type Body = {
-  // Filter by status. Omit / undefined / null = all.
-  status?: "pending" | "approved" | "rejected" | null;
+  // Filter by state. Omit / undefined / null = all.
+  state?: "pending" | "approved" | "rejected" | null;
   limit?: number;
   // Per-place inspector: only this project's rows, no method gate.
   projectId?: string | null;
@@ -55,19 +55,19 @@ Deno.serve(async (req) => {
   const limit = Math.min(200, Math.max(1, body.limit ?? 100));
 
   // project_verifications FKs to `projects`, never to `places`, so the place
-  // has to come through the project. `slug` and `status` are project columns;
+  // has to come through the project. `slug` and `state` are project columns;
   // only name/address/phone/google_place_id live on `places`. Embedding
   // places directly here fails the whole query with PGRST200 — same trap
   // admin-web-list-notifications documents.
   let query = admin
     .from("project_verifications")
     .select(
-      "id, place_id, requester_id, method, payload, requester_email, status, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, status, place:places(name, address, phone, google_place_id))",
+      "id, place_id, requester_id, method, payload, requester_email, state, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, state, place:places(name, address, phone, google_place_id))",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (body.status) {
-    query = query.eq("status", body.status);
+  if (body.state) {
+    query = query.eq("state", body.state);
   }
   const projectId = readPlaceIdAlias(body) || null;
   if (projectId) {
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   }
 
   // Flatten project+place back into the single `place` object the admin
-  // web renders. id/slug/status come from the project, the rest from the
+  // web renders. id/slug/state come from the project, the rest from the
   // place — the shape the client sees is unchanged.
   type PlaceRow = {
     name: string | null;
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
   type ProjectRow = {
     id: string;
     slug: string | null;
-    status: string | null;
+    state: string | null;
     place: PlaceRow | PlaceRow[] | null;
   };
   const one = <T,>(v: T | T[] | null): T | null =>
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         ? {
             id: p.id,
             slug: p.slug,
-            status: p.status,
+            state: p.state,
             name: pl?.name ?? null,
             address: pl?.address ?? null,
             phone: pl?.phone ?? null,

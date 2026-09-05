@@ -76,16 +76,16 @@ Deno.test("withFamilyKeysList maps a list", () => {
 // everything else. The SERVER states `enriched`, next to `partner` and
 // `promoting`, so no client re-derives it.
 Deno.test("isEnrichedPlace counts ready OR a stamped enriched_at, never one alone", () => {
-  assertEquals(isEnrichedPlace({ content_status: "ready" }), true);
+  assertEquals(isEnrichedPlace({ content_state: "ready" }), true);
   assertEquals(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" }), true);
   // 27% of the live catalog is ready with a null enriched_at (measured
   // 2026-08-29), so an enriched_at-only test would grey a quarter of it.
   assertEquals(
-    isEnrichedPlace({ content_status: "ready", enriched_at: null }),
+    isEnrichedPlace({ content_state: "ready", enriched_at: null }),
     true,
   );
-  assertEquals(isEnrichedPlace({ content_status: "queued" }), false);
-  assertEquals(isEnrichedPlace({ content_status: "generating" }), false);
+  assertEquals(isEnrichedPlace({ content_state: "queued" }), false);
+  assertEquals(isEnrichedPlace({ content_state: "generating" }), false);
   assertEquals(isEnrichedPlace({}), false);
   assertEquals(isEnrichedPlace(null), false);
 });
@@ -94,7 +94,7 @@ Deno.test("withFamilyKeys states enriched on the wire beside partner", () => {
   const ready = withFamilyKeys({
     id: "1",
     category: "gastropub",
-    content_status: "ready",
+    content_state: "ready",
   });
   assertEquals(ready.enriched, true);
 

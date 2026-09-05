@@ -10,7 +10,7 @@ export function candidateBlock(
     const bits: string[] = [c.mainText];
     if (c.secondaryText) bits.push(c.secondaryText.split(",")[0].trim());
     if (typeof c.rating === "number") bits.push(`★${c.rating.toFixed(1)}`);
-    if (c.status !== "not_in_mesita") bits.push("on Mesita");
+    if (c.state !== "not_in_mesita") bits.push("on Mesita");
     if (c.openNow === true) bits.push("open now");
     else if (c.openNow === false) bits.push("closed now");
     return `${i + 1}. ${bits.join(" · ")}`;
@@ -34,8 +34,8 @@ export function mergeAndRankMemoPredictions(
   }
 
   return Array.from(merged.values()).sort((a, b) => {
-    const aIn = a.status !== "not_in_mesita" ? 1 : 0;
-    const bIn = b.status !== "not_in_mesita" ? 1 : 0;
+    const aIn = a.state !== "not_in_mesita" ? 1 : 0;
+    const bIn = b.state !== "not_in_mesita" ? 1 : 0;
     if (aIn !== bIn) return bIn - aIn;
     const openDelta = openScore(b.openNow) - openScore(a.openNow);
     if (openDelta !== 0) return openDelta;

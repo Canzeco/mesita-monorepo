@@ -34,7 +34,7 @@ import {
   promoCardState,
 } from "./promo-state";
 import { placeOperatorPromotingLevel } from "./StateCard";
-import { PartnershipBody, MembershipStatusPill } from "./controls/partnership";
+import { PartnershipBody, MembershipStatePill } from "./controls/partnership";
 import { ProductModal, StrategyCard } from "./controls/strategy-cards";
 import { LadderRow, NestedConfig } from "./controls/ladder-row";
 import {
@@ -376,7 +376,7 @@ export function PromosSection({
             <LadderRow
               row={byKey.partnership}
               error={joinError}
-              control={<MembershipStatusPill state={pillState} />}
+              control={<MembershipStatePill state={pillState} />}
             >
               <NestedConfig visible label="Subscription">
                 <PartnershipBody

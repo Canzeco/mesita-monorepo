@@ -134,7 +134,7 @@ export function placeRowToDetail(
     updated_label: updatedLabel,
     last_updated_label: updatedLabel,
     is_enriching:
-      row.content_status === 'queued' || row.content_status === 'generating',
+      row.content_state === 'queued' || row.content_state === 'generating',
     photos,
     // English default (MESITA-963) — label_es stays dormant for future TMS.
     tags: arr<ResolvedTag>(tags).map((t) => ({

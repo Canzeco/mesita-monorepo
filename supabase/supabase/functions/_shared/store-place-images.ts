@@ -61,7 +61,7 @@ export async function storeFirstPlaceImage(
         place_id: projectId,
         source: "google",
         source_url: url,
-        status: "pending",
+        state: "pending",
         likes_count: null,
         caption: null,
         analysis_text: null,
@@ -78,7 +78,7 @@ export async function storeFirstPlaceImage(
   const { error: updateErr } = await admin
     .from("place_media_assets")
     .update({
-      status: mirrored.ok ? "saved" : "failed",
+      state: mirrored.ok ? "saved" : "failed",
       storage_path: mirrored.path,
       public_url: mirrored.publicUrl,
       mime_type: mirrored.contentType,
@@ -125,7 +125,7 @@ export async function storePlaceImages(
     place_id: projectId,
     source: a.source,
     source_url: a.source_url,
-    status: "pending",
+    state: "pending",
     likes_count: a.likes_count,
     caption: a.caption,
     analysis_text: a.analysis_text,
@@ -159,7 +159,7 @@ async function processAssetsInBackground(
     const { error } = await admin
       .from("place_media_assets")
       .update({
-        status: mirrored.ok ? "saved" : "failed",
+        state: mirrored.ok ? "saved" : "failed",
         storage_path: mirrored.path,
         public_url: mirrored.publicUrl,
         mime_type: mirrored.contentType,

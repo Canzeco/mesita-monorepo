@@ -6,7 +6,7 @@ import { SectionCard } from "@/components/admin-ui/manage";
 import {
   getPlaceEnrichment,
   type AdminPlace,
-  type PlaceEnrichmentStatus,
+  type PlaceEnrichmentState,
 } from "../actions";
 import { isEnriching } from "../place-header-state";
 import { stateBoolChip } from "@/lib/state-vocabulary";
@@ -34,27 +34,27 @@ export function IntakeStateCard({ place }: { place: AdminPlace }) {
     | null;
   const rows = intakeFunctionRows(enrichFunctions, seeded);
 
-  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
+  const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
     null,
   );
   useEffect(() => {
     let alive = true;
     getPlaceEnrichment(place.id).then((r) => {
       if (!alive) return;
-      if (r.ok) setEnrichStatus(r.data.status);
+      if (r.ok) setEnrichState(r.data.state);
     });
     return () => {
       alive = false;
     };
   }, [place.id]);
 
-  const contentStatus =
-    typeof place.content_status === "string" ? place.content_status : null;
+  const contentState =
+    typeof place.content_state === "string" ? place.content_state : null;
   const enriching = isEnriching(
-    enrichStatus ?? {
-      content_status: contentStatus,
+    enrichState ?? {
+      content_state: contentState,
       stage: null,
-      stage_status: null,
+      stage_state: null,
       error: null,
       last_enriched_at: null,
       updated_at: null,

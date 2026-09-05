@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { PlaceEnrichmentStatus } from "./actions";
+import type { PlaceEnrichmentState } from "./actions";
 import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
 import {
   generalHeaderFacts,
@@ -13,13 +13,13 @@ import {
 } from "./place-header-state";
 import { requestCountFromRow } from "@/lib/state-vocabulary";
 
-function status(
-  partial: Partial<PlaceEnrichmentStatus>,
-): PlaceEnrichmentStatus {
+function state(
+  partial: Partial<PlaceEnrichmentState>,
+): PlaceEnrichmentState {
   return {
-    content_status: null,
+    content_state: null,
     stage: null,
-    stage_status: null,
+    stage_state: null,
     error: null,
     last_enriched_at: null,
     updated_at: null,
@@ -30,27 +30,27 @@ function status(
 
 describe("isEnriching", () => {
   it("is true for every live pipeline stage, not just research", () => {
-    expect(isEnriching(status({ stage: "research" }))).toBe(true);
-    expect(isEnriching(status({ stage: "analysis" }))).toBe(true);
-    expect(isEnriching(status({ stage: "contents" }))).toBe(true);
+    expect(isEnriching(state({ stage: "research" }))).toBe(true);
+    expect(isEnriching(state({ stage: "analysis" }))).toBe(true);
+    expect(isEnriching(state({ stage: "contents" }))).toBe(true);
   });
 
   it("is true while contents is queued even if stage is stale", () => {
-    expect(isEnriching(status({ content_status: "queued" }))).toBe(true);
-    expect(isEnriching(status({ content_status: "generating" }))).toBe(true);
+    expect(isEnriching(state({ content_state: "queued" }))).toBe(true);
+    expect(isEnriching(state({ content_state: "generating" }))).toBe(true);
   });
 
   it("is false when idle or failed", () => {
     expect(isEnriching(null)).toBe(false);
-    expect(isEnriching(status({ stage: "done" }))).toBe(false);
-    expect(isEnriching(status({ stage: "failed" }))).toBe(false);
+    expect(isEnriching(state({ stage: "done" }))).toBe(false);
+    expect(isEnriching(state({ stage: "failed" }))).toBe(false);
   });
 });
 
 describe("isEnrichFailed", () => {
   it("is only the failed stage", () => {
-    expect(isEnrichFailed(status({ stage: "failed" }))).toBe(true);
-    expect(isEnrichFailed(status({ stage: "research" }))).toBe(false);
+    expect(isEnrichFailed(state({ stage: "failed" }))).toBe(true);
+    expect(isEnrichFailed(state({ stage: "research" }))).toBe(false);
     expect(isEnrichFailed(null)).toBe(false);
   });
 });
@@ -75,7 +75,7 @@ describe("generalHeaderFacts", () => {
   it("operational → Active on", () => {
     const facts = generalHeaderFacts({
       ...base,
-      business_status: "OPERATIONAL",
+      business_state: "OPERATIONAL",
     });
     expect(facts.find((f) => f.key === "active")?.on).toBe(true);
   });
@@ -112,7 +112,7 @@ describe("generalHeaderFacts", () => {
     expect(facts.find((f) => f.key === "seeded")?.on).toBe("unknown");
   });
 
-  it("header facts keep Status-box chip encoding; Requested is n; Visit Rewards is 0 | 1 | 2", () => {
+  it("header facts keep State-box chip encoding; Requested is n; Visit Rewards is 0 | 1 | 2", () => {
     const off = generalHeaderFacts(base);
     expect(off.find((f) => f.key === "partner")?.label).toBe("Partnered");
     expect(off.find((f) => f.key === "partner")?.chip).toBe("false");
@@ -201,17 +201,17 @@ describe("listedFromState", () => {
 
   it("withListedFromState overwrites a stale listed flag after Unlist", () => {
     const merged = withListedFromState({
-      status: "paused",
+      state: "paused",
       listed: true,
     });
     expect(merged.listed).toBe(false);
-    expect(withListedFromState({ status: "active", listed: false }).listed).toBe(
+    expect(withListedFromState({ state: "active", listed: false }).listed).toBe(
       true,
     );
   });
 });
 
-describe("the header is name + statuses, nothing else", () => {
+describe("the header is name + states, nothing else", () => {
   const chrome = readFileSync(
     join(process.cwd(), "src/app/(app)/manage-single/PlaceEditChrome.tsx"),
     "utf8",

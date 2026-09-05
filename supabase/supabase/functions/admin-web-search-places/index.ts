@@ -27,7 +27,7 @@ import {
   isPlacePromoting,
   placePromotingLevel,
 } from "../_shared/place-promoting.ts";
-import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-status.ts";
+import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
 import { promotionScore } from "../_shared/promotion-score.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
@@ -105,12 +105,12 @@ Deno.serve(async (req) => {
   // acceptance intent bits (mesita_pay · credits) that are not pipeline rungs.
   // Everything except the two id-scoped reads below lives on profiles, so no
   // join is required here.
-  // google_place_id is the seeded spine; business_status is Google's
+  // google_place_id is the seeded spine; business_state is Google's
   // OPERATIONAL fact (Active); plan + the four rate columns + the
   // strike/pause fields are what isPlacePromoting weighs.
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, status, address, photos, zone, google_stars_overall, google_review_count, content_status, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at, business_status, business_status_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, request_count, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: elsewhere the count of a filtered read is the
   // number of rows already returned, and a second query would say nothing.
@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
       admin
         .from("project_verifications")
         .select("place_id")
-        .eq("status", "approved")
+        .eq("state", "approved")
         .in("place_id", idPart),
       // The four acceptance intent bits ride the same places-direct read:
       // admin-only columns, deliberately NEVER added to the profiles view
@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
     ]);
     // Best-effort: a flag lookup must never 500 the catalog. A failed read
     // degrades to 0 / not-verified, which reads as "less done than it is" —
-    // the safe direction for a status column.
+    // the safe direction for a state column.
     if (verificationRes.error) {
       console.error("[search-places] project_verifications:", verificationRes.error.message);
     }
@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
   // table now shows google_name specifically, so both ride along.
   const places = rows.map((v) => {
     const id = String(v.id);
-    const contentStatus = (v.content_status as string | null) ?? null;
+    const contentState = (v.content_state as string | null) ?? null;
     const listingType = (v.listing_type as string | null) ?? null;
     const label = String(v.name ?? "");
     return {
@@ -316,27 +316,27 @@ Deno.serve(async (req) => {
       google_name: (v.google_name as string | null) ?? null,
       category: v.category,
       category_label: v.category_label,
-      status: v.status,
+      state: v.state,
       address: v.address,
       zone: (v.zone as string | null) ?? null,
       google_stars_overall:
         typeof v.google_stars_overall === "number" ? v.google_stars_overall : null,
       google_review_count:
         typeof v.google_review_count === "number" ? v.google_review_count : null,
-      content_status: contentStatus,
+      content_state: contentState,
       request_count: Number(v.request_count) || 0,
       listing_type: listingType,
-      // The ten status facts, in table order (plus promoting_level below).
+      // The ten state facts, in table order (plus promoting_level below).
       seeded: isPlaceSeeded(v.google_place_id),
       // Google's OPERATIONAL fact — a FLAG, never a visibility gate.
       // NULL is silence, not "not operational".
-      business_status: (v.business_status as string | null) ?? null,
-      business_status_at: (v.business_status_at as string | null) ?? null,
-      // The Listed fact. No extra read — `status` is already selected.
-      listed: isPlaceListed(v.status),
+      business_state: (v.business_state as string | null) ?? null,
+      business_state_at: (v.business_state_at as string | null) ?? null,
+      // The Listed fact. No extra read — `state` is already selected.
+      listed: isPlaceListed(v.state),
       requested: isPlaceRequested({
         requestCount: v.request_count,
-        contentStatus: contentStatus,
+        contentState: contentState,
       }),
       // PULSE: how far the TEN-function ENRICH queue got, 0-10
       // (MESITA-1253). Not a count of functions that worked — the index of

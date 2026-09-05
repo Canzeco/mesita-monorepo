@@ -25,13 +25,13 @@ import {
 } from "../_shared/auth.ts";
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "../_shared/models-config.ts";
-import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
 /** Fallback when models_config.supabase.model is unset. */
 const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.supabase.model!;
-const CLOSED_STATUS = CLOSED_TICKET_STATUS;
+const CLOSED_STATE = CLOSED_TICKET_STATE;
 const REVIEW_SNIPPET_LIMIT = 5;
 
 const STRATEGIES = [
@@ -248,26 +248,26 @@ async function loadPerfContext(
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS),
+      .eq("state", CLOSED_STATE),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .in("story_status", [...attested]),
+      .in("story_state", [...attested]),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .in("review_status", [...attested]),
+      .in("review_state", [...attested]),
     admin
       .from("ticket_reviews")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId),
     admin
       .from("visit_tickets")
-      .select("consumer_id, story_status, review_status")
+      .select("consumer_id, story_state, review_state")
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS)
+      .eq("state", CLOSED_STATE)
       .order("created_at", { ascending: false })
       .limit(1000),
     admin
@@ -294,8 +294,8 @@ async function loadPerfContext(
 
   type ClosedLite = {
     consumer_id: string;
-    story_status: string | null;
-    review_status: string | null;
+    story_state: string | null;
+    review_state: string | null;
   };
   const closed = (closedSample.data ?? []) as unknown as ClosedLite[];
   const visitsByConsumer = new Map<string, number>();
@@ -344,8 +344,8 @@ async function loadPerfContext(
         welcome: closed.filter((t) =>
           (visitsByConsumer.get(t.consumer_id) ?? 0) === 1
         ).length,
-        story: closed.filter((t) => isAttested(t.story_status)).length,
-        review: closed.filter((t) => isAttested(t.review_status)).length,
+        story: closed.filter((t) => isAttested(t.story_state)).length,
+        review: closed.filter((t) => isAttested(t.review_state)).length,
       },
       content: {
         storiesPosted: storiesRes.count ?? 0,
@@ -357,11 +357,11 @@ async function loadPerfContext(
   };
 }
 
-function isAttested(status: string | null): boolean {
-  return status === "self_verified" ||
-    status === "ai_verified" ||
-    status === "staff_verified" ||
-    status === "waiter_verified";
+function isAttested(state: string | null): boolean {
+  return state === "self_verified" ||
+    state === "ai_verified" ||
+    state === "staff_verified" ||
+    state === "waiter_verified";
 }
 
 async function askMemoPromo(

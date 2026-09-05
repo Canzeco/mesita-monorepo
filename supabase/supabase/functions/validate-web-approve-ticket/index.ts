@@ -32,7 +32,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
-import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string; expectedUpdatedAt?: string };
@@ -82,18 +82,18 @@ Deno.serve(async (req) => {
   // A repeat of a transition the caller already won answers 200, never 409 —
   // a waiter's second tap must not read as failure (§12).
   if (
-    ticket.status === TICKET_STATUS.approved ||
-    ticket.status === TICKET_STATUS.paying
+    ticket.state === TICKET_STATE.approved ||
+    ticket.state === TICKET_STATE.paying
   ) {
-    return json({ ok: true, already: true, status: ticket.status });
+    return json({ ok: true, already: true, state: ticket.state });
   }
-  if (ticket.status !== TICKET_STATUS.scanned) {
+  if (ticket.state !== TICKET_STATE.scanned) {
     return json(
       {
         ok: false,
         code: "stale_state",
-        status: ticket.status,
-        error: `Ticket is ${ticket.status} — nothing to approve.`,
+        state: ticket.state,
+        error: `Ticket is ${ticket.state} — nothing to approve.`,
       },
       409,
     );
@@ -133,16 +133,16 @@ Deno.serve(async (req) => {
     mode: "update",
     id: ticket.id,
     patch: {
-      status: TICKET_STATUS.approved,
+      state: TICKET_STATE.approved,
       approved_at: now,
       approved_discount_cents: ticket.discount_cents ?? 0,
       approved_amount_due_cents: frozenDue,
     },
     guard: {
-      eq: { status: TICKET_STATUS.scanned, updated_at: expectedUpdatedAt },
+      eq: { state: TICKET_STATE.scanned, updated_at: expectedUpdatedAt },
       is: { fix_requested: null },
     },
-    select: "id, status, approved_at",
+    select: "id, state, approved_at",
   });
   if (!update.ok) {
     return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
@@ -150,14 +150,14 @@ Deno.serve(async (req) => {
   if (!update.row) {
     const fresh = await admin
       .from("visit_tickets")
-      .select("id, status, fix_requested, updated_at")
+      .select("id, state, fix_requested, updated_at")
       .eq("id", ticket.id)
       .maybeSingle();
     const row = fresh.data as
-      | { status: string; fix_requested: string | null; updated_at: string }
+      | { state: string; fix_requested: string | null; updated_at: string }
       | null;
-    if (row?.status === TICKET_STATUS.approved || row?.status === TICKET_STATUS.paying) {
-      return json({ ok: true, already: true, status: row.status });
+    if (row?.state === TICKET_STATE.approved || row?.state === TICKET_STATE.paying) {
+      return json({ ok: true, already: true, state: row.state });
     }
     if (row?.fix_requested) {
       return json(

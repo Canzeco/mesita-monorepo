@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   const base = admin
     .from("profiles")
     .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
-    .eq("status", "active");
+    .eq("state", "active");
 
   const { data, error } = await applyDiscoveryFilters(base, cfg.filters, geo)
     .limit(POOL_CAP);

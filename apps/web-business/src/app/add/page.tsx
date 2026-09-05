@@ -44,7 +44,7 @@ export default async function CreatePlacePage() {
             </h1>
             <p className="text-muted-foreground mt-2 text-[14.5px] leading-[1.55]">
               Type the place&apos;s name — we pull the profile straight from
-              Google and show its current Mesita status inline.
+              Google and show its current Mesita state inline.
             </p>
           </header>
           <CreatePlaceForm signedInEmail={user.email ?? ""} />

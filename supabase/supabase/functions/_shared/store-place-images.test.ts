@@ -129,7 +129,7 @@ Deno.test("storeFirstPlaceImage awaits one Google photo into place-images", asyn
       "create",
     );
     assertEquals(
-      (calls.assetUpdates[0] as { status: string }).status,
+      (calls.assetUpdates[0] as { state: string }).state,
       "saved",
     );
   } finally {
@@ -157,7 +157,7 @@ Deno.test("storeFirstPlaceImage keeps the Google URL when the mirror fails", asy
     assertEquals(calls.uploads.length, 0);
     assertEquals(calls.placePatches, [{ photos: [source] }]);
     assertEquals(
-      (calls.assetUpdates[0] as { status: string }).status,
+      (calls.assetUpdates[0] as { state: string }).state,
       "failed",
     );
   } finally {

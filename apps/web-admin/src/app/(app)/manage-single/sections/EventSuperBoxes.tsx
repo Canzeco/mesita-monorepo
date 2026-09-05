@@ -201,8 +201,8 @@ function eventMeta(item: NotificationItem): string | null {
           ? m.rewardClass
           : typeof m.class === "string"
             ? m.class
-            : typeof m.status === "string"
-              ? m.status
+            : typeof m.state === "string"
+              ? m.state
               : null;
       return cls;
     }
@@ -706,7 +706,7 @@ function ReportTriageRow({
 
   const reportId =
     typeof item.meta.reportId === "string" ? item.meta.reportId : null;
-  const status = typeof item.meta.status === "string" ? item.meta.status : null;
+  const state = typeof item.meta.state === "string" ? item.meta.state : null;
 
   if (!reportId) {
     // An older feed payload without the id — nothing to drive.
@@ -721,10 +721,10 @@ function ReportTriageRow({
     return <p className="text-muted-foreground mt-3 type-label">{outcome}</p>;
   }
 
-  if (status !== "open") {
+  if (state !== "open") {
     return (
       <p className="text-muted-foreground mt-3 type-label">
-        Already {status} — the trail lives on the report row.
+        Already {state} — the trail lives on the report row.
       </p>
     );
   }

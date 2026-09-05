@@ -481,8 +481,8 @@ describe("Search map's top row is the query bar ALONE, and Filters sits below", 
     expect(read("SearchMapFilters.tsx")).toContain("Super Category");
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Types"');
     expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');
-    expect(read("SearchMapFilters.tsx")).not.toContain("MAP_STATUS_OPTIONS");
-    expect(read("SearchMapFilters.tsx")).not.toContain("toggleMapStatus");
+    expect(read("SearchMapFilters.tsx")).not.toContain("MAP_STATE_OPTIONS");
+    expect(read("SearchMapFilters.tsx")).not.toContain("toggleMapState");
     expect(read("../../../lib/map-filters-engine.ts")).not.toContain(
       "Mesita Partners",
     );
@@ -821,7 +821,7 @@ const RAIL_PLACE = {
   price_level: 4,
   currency: "MXN",
   listing_type: "web",
-  status: "active",
+  state: "active",
   fiscal_type: "informal",
   plan: "free",
   lat: 25.67,
@@ -1257,7 +1257,7 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
       placeId: "loc-1",
       mainText: "Ciudad de México",
       secondaryText: "CDMX, Mexico",
-      status: "not_in_mesita",
+      state: "not_in_mesita",
       kind: "location",
       locationType: "locality",
     },
@@ -1265,7 +1265,7 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
       placeId: "ven-1",
       mainText: "Taquería Nueva",
       secondaryText: "Calle Falsa 123",
-      status: "not_in_mesita",
+      state: "not_in_mesita",
     },
   ];
 
@@ -1336,7 +1336,7 @@ describe("anchor helpers", () => {
     placeId: "ChIJx",
     mainText: "Taquería Nueva",
     secondaryText: "Calle Falsa 123",
-    status: "not_in_mesita",
+    state: "not_in_mesita",
     lat: 25.66,
     lng: -100.31,
   };
@@ -1355,7 +1355,7 @@ describe("anchor helpers", () => {
   it("anchorPlaceFromPrediction keeps Mesita identity for stamped rows", () => {
     const row = anchorPlaceFromPrediction({
       ...GOOGLE_PICK,
-      status: "web_listed",
+      state: "web_listed",
       mesitaId: "m-1",
       mesitaSlug: "taqueria-nueva",
       partner: true,

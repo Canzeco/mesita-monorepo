@@ -12,7 +12,7 @@ import type { PlacePlan } from "@/lib/api/places";
 // folds onto it for display. Never sell organic ranking: the bundle is
 // named explicitly, not "algorithm placement".
 
-/** Catalog id — Free or the single Membership (Partner status). */
+/** Catalog id — Free or the single Membership (Partner state). */
 type SubscriptionId = "free" | "partner";
 
 type SubscriptionRow = {

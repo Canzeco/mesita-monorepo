@@ -199,7 +199,7 @@ Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async ()
 // transition logic would be misleading); no reconciliation needed beyond
 // listing the new door + ojo-engine.ts below.
 const TICKET_ALLOWLIST = [
-  "_shared/ojo-engine.ts", // real writer (Ojo, MESITA-1034/#1159, merged after this ratchet's baseline scan) — annotation + status-transition updates on visit_tickets, all CAS-guarded (see the file itself)
+  "_shared/ojo-engine.ts", // real writer (Ojo, MESITA-1034/#1159, merged after this ratchet's baseline scan) — annotation + state-transition updates on visit_tickets, all CAS-guarded (see the file itself)
   "_shared/ticket-doc.ts", // THE ticket door (writeTicket, MESITA-1281/#1161)
   "_shared/ticket-informal.ts",
   "_shared/ticket-reprice.ts",

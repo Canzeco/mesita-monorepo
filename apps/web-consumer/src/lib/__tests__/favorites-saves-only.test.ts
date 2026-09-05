@@ -2,7 +2,7 @@
 // The "More like your saves" rail ranked unsaved deck places by category/zone
 // overlap and rendered empty-heart suggestion tiles. Pato's live screenshot
 // killed that: this tab shows only saved places. mobile-consumer has no test
-// runner, so this file reads both sources the same way ticket-status-drift does.
+// runner, so this file reads both sources the same way ticket-state-drift does.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

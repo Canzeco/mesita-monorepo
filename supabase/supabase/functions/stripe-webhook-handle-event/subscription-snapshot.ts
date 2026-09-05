@@ -1,7 +1,7 @@
 import Stripe from "npm:stripe@17";
 
 export type SubscriptionSnapshot = {
-  localStatus: string;
+  localState: string;
   customerId: string;
   periodEnd: string | null;
   priceCents: number | null;
@@ -10,18 +10,18 @@ export type SubscriptionSnapshot = {
 };
 
 export function subscriptionSnapshot(sub: Stripe.Subscription): SubscriptionSnapshot {
-  const localStatus = mapStatus(sub.status);
+  const localState = mapState(sub.status);
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end * 1000).toISOString()
     : null;
   const priceCents = sub.items.data[0]?.price.unit_amount ?? null;
   const currency = (sub.items.data[0]?.price.currency ?? "mxn").toUpperCase();
-  const isLive = localStatus === "active" || localStatus === "past_due";
-  return { localStatus, customerId, periodEnd, priceCents, currency, isLive };
+  const isLive = localState === "active" || localState === "past_due";
+  return { localState, customerId, periodEnd, priceCents, currency, isLive };
 }
 
-function mapStatus(s: string): string {
+function mapState(s: string): string {
   switch (s) {
     case "active":
     case "trialing":

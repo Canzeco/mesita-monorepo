@@ -88,7 +88,7 @@ import {
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
-  ACTIVE_TICKET_STATUSES,
+  ACTIVE_TICKET_STATES,
   REPORT_REASONS,
   apiCancelTicket,
   apiGetRewardQuote,
@@ -214,7 +214,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     [listTicket, polled],
   );
 
-  const live = ticket ? ACTIVE_TICKET_STATUSES.has(ticket.status) : false;
+  const live = ticket ? ACTIVE_TICKET_STATES.has(ticket.state) : false;
 
   // ── The guest side of the handshake: poll THIS ticket at 10s while it is
   //    live, re-sync on visibilitychange, stop at terminal (F1). Transport
@@ -235,8 +235,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const pollMs = (visits?.consumerPollSeconds ?? 10) * 1000;
   const approveFocusTimer = useRef<number | null>(null);
   const stepBodyRef = useRef<HTMLDivElement | null>(null);
-  const lastSyncRef = useRef<{ status: string | null; fix: string | null }>({
-    status: null,
+  const lastSyncRef = useRef<{ state: string | null; fix: string | null }>({
+    state: null,
     fix: null,
   });
   useEffect(() => {
@@ -258,11 +258,11 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         const prev = lastSyncRef.current;
         const freshFix = fresh.fix_requested ?? null;
         const placeName = fresh.place?.name ?? "the place";
-        if (prev.status !== null) {
-          if (fresh.status !== prev.status) {
-            if (fresh.status === "scanned" && !freshFix) {
+        if (prev.state !== null) {
+          if (fresh.state !== prev.state) {
+            if (fresh.state === "scanned" && !freshFix) {
               setAnnounce(`Scanned. Waiting for ${placeName} to approve.`);
-            } else if (fresh.status === "approved") {
+            } else if (fresh.state === "approved") {
               setAnnounce(`Approved by ${placeName}.`);
               // Auto-advance lands on Pay via the machine after ~900ms; move
               // focus with it so the change is never a silent teleport.
@@ -275,7 +275,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                 setStepChoice(null);
                 stepBodyRef.current?.focus();
               }, FOCUS_AFTER_APPROVE_MS);
-            } else if (fresh.status === "revealed") {
+            } else if (fresh.state === "revealed") {
               setAnnounce("Visit complete.");
               setStepChoice(null);
             }
@@ -291,7 +291,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             stepBodyRef.current?.focus();
           }
         }
-        lastSyncRef.current = { status: fresh.status, fix: freshFix };
+        lastSyncRef.current = { state: fresh.state, fix: freshFix };
       } catch {
         if (!cancelled) setPollMisses((n) => n + 1);
       }
@@ -497,15 +497,15 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     }
   }, [supabase, ticketId, tickets, router]);
 
-  const waiting = ticket?.status === "scanned" && !ticket.fix_requested;
+  const waiting = ticket?.state === "scanned" && !ticket.fix_requested;
 
-  if (tickets.status === "loading" && !ticket) {
+  if (tickets.state === "loading" && !ticket) {
     return <TicketSkeleton />;
   }
 
   // A failed list call is NOT a missing ticket: error → retry; only a
   // successful list that lacks the row gets "not found".
-  if (!ticket && tickets.status === "error") {
+  if (!ticket && tickets.state === "error") {
     return (
       <Shell>
         <div className="surface-card flex flex-col items-center gap-3 rounded-2xl px-6 py-12 text-center">
@@ -554,8 +554,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     );
   }
 
-  const saved = ticket.status === "revealed";
-  const cancelled = ticket.status === "cancelled";
+  const saved = ticket.state === "revealed";
+  const cancelled = ticket.state === "cancelled";
   const placeName = ticket.place?.name ?? "Partner place";
   const photo = ticket.place?.photos?.[0] ?? null;
   const category = ticket.place?.category ?? null;
@@ -587,9 +587,9 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       : quote.base;
 
   const storyOnTicket =
-    ticket.story_status != null && ticket.story_status !== "not_required";
+    ticket.story_state != null && ticket.story_state !== "not_required";
   const reviewOnTicket =
-    ticket.review_status != null && ticket.review_status !== "not_required";
+    ticket.review_state != null && ticket.review_state !== "not_required";
   const persistedTask: ActionKind | null = storyOnTicket
     ? "story"
     : reviewOnTicket
@@ -608,8 +608,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
   const pick: RewardPick | null = localPick ?? persistedTask;
   const chosenAction: ActionKind | null = pick === "base" ? null : pick;
 
-  const storyVerified = taskStateFor(ticket.story_status) === "done";
-  const googleVerified = taskStateFor(ticket.review_status) === "done";
+  const storyVerified = taskStateFor(ticket.story_state) === "done";
+  const googleVerified = taskStateFor(ticket.review_state) === "done";
   const mesitaVerified = reviewDone;
   const verifiedActions: ActionKind[] = [
     ...(storyVerified ? (["story"] as const) : []),
@@ -632,8 +632,8 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           : "todo"
         : taskStateFor(
             chosenAction === "story"
-              ? ticket.story_status
-              : ticket.review_status,
+              ? ticket.story_state
+              : ticket.review_state,
           );
 
   const actionBonus = (a: ActionKind | null): number =>
@@ -670,7 +670,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
 
   const igConnected = Boolean(igHandle?.trim());
   const pickLocked =
-    !live || ticket.status === "approved" || ticket.status === "paying";
+    !live || ticket.state === "approved" || ticket.state === "paying";
   const storySelectable =
     Boolean(quote?.storyEligible) && igConnected && !pickLocked;
   const googleSelectable = (quote?.bonuses.google ?? 0) > 0 && !pickLocked;
@@ -704,7 +704,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     ? ticket.fix_requested
     : null;
   const journey: JourneyInput = {
-    status: ticket.status,
+    state: ticket.state,
     live,
     billed,
     priced,
@@ -1070,7 +1070,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             ) : null}
 
             {live &&
-            (ticket.status === "open" || ticket.status === "scanned") ? (
+            (ticket.state === "open" || ticket.state === "scanned") ? (
               <button
                 type="button"
                 onClick={() => goToStep("bill")}
@@ -1160,7 +1160,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
           ends at approval (§12): after that, walking away is the place's
           call. */}
       <div className="flex shrink-0 items-center justify-center gap-2.5 pt-2">
-        {ticket.status === "open" || ticket.status === "scanned" ? (
+        {ticket.state === "open" || ticket.state === "scanned" ? (
           <button
             type="button"
             onClick={() => void cancel()}
@@ -1171,7 +1171,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             Cancel ticket
           </button>
         ) : null}
-        {(ticket.status === "open" || ticket.status === "scanned") &&
+        {(ticket.state === "open" || ticket.state === "scanned") &&
         !cancelled ? (
           <span aria-hidden="true" className="text-muted-foreground/40 text-xs">
             ·

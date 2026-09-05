@@ -72,7 +72,7 @@ export const PERPLEXITY_OPTIONS = [
 // memo). Intaker / Embeddings stay read-only — their values live in atlas_*
 // columns and models_config. Intake edits the atlas_* quality/preset knobs;
 // this page does not.
-export type ModelStatus = "live" | "staged" | "locked";
+export type ModelState = "live" | "staged" | "locked";
 
 // A model shown "up front" on a card — the id (rendered as a mono chip) plus a
 // short note on what it is / what it's for.
@@ -82,7 +82,7 @@ type SubsystemMeta = {
   key: SubsystemKey;
   label: string;
   Icon: LucideIcon;
-  status: ModelStatus;
+  state: ModelState;
   // The model(s) this subsystem uses, shown as chips at the top of the card.
   // Omitted when the card renders live picks from cfg instead.
   models?: ModelChip[];
@@ -98,7 +98,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "supabase",
     label: "Supabase Edge Functions",
     Icon: Database,
-    status: "live",
+    state: "live",
     detail:
       "General OpenAI default for EFs without their own model (today: business-web-suggest-promo). Read live via models_config.supabase.model (MESITA-941).",
     editableHere: true,
@@ -108,7 +108,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "enricher",
     label: "Intaker",
     Icon: Sparkles,
-    status: "live",
+    state: "live",
     models: [
       { id: "gpt-4o-mini · gpt-4o", note: "text — by the stored atlas_synthesis_quality" },
       { id: "gpt-4o-mini · gpt-4o", note: "vision — by the stored atlas_vision_quality" },
@@ -126,7 +126,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "embeddings",
     label: "Embeddings",
     Icon: Layers,
-    status: "locked",
+    state: "locked",
     models: [
       { id: "text-embedding-3-small", note: "1536-d — place ↔ intent · models_config.embeddings.model" },
     ],
@@ -139,7 +139,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "memo",
     label: "Memo",
     Icon: MessagesSquare,
-    status: "live",
+    state: "live",
     detail:
       "Live OpenAI + Perplexity picks for Memo. Served by supabase-edgefunc-get-memo-config from models_config.memo.*. Memo has no editor page — it runs on these picks plus in-code defaults.",
     editableHere: true,
@@ -149,7 +149,7 @@ export const SUBSYSTEMS: readonly SubsystemMeta[] = [
     key: "ojo",
     label: "Ojo",
     Icon: Eye,
-    status: "live",
+    state: "live",
     detail:
       "Vision model reading a guest's story/review screenshot (MESITA-1034). Defaults to gpt-4o, not the enricher's gpt-4o-mini — Ojo decides whether a guest earns money, not whether a photo is worth ranking. Enabled / threshold / fail-action live on Visits.",
     editableHere: true,

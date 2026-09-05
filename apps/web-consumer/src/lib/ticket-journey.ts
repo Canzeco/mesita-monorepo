@@ -4,13 +4,13 @@
 // lived as ~20 lines of nested ternaries inside a 1700-line component where
 // no test could reach it, and the one bug that matters here — a fix-request
 // bouncing the guest to a step the clamps then refuse — only reproduced at a
-// real restaurant. ticket-journey.test.ts sweeps every status × billed ×
+// real restaurant. ticket-journey.test.ts sweeps every state × billed ×
 // pick × fix combination and asserts the resolved step is always reachable.
 //
 // The journey (Notion 🦚 Main › Tickets Workflow): the place is picked in
 // the wallet, then Bill · Reward · Task · QR · Pay · Validate · Results —
 // guest does five, restaurant does one. `fix_requested` is a COLUMN at
-// `scanned`, never a status: a send-back returns the guest to the named
+// `scanned`, never a state: a send-back returns the guest to the named
 // step, same check_code, no new QR.
 
 export type TicketStepId =
@@ -72,9 +72,9 @@ export function isTicketFix(v: unknown): v is TicketFix {
 
 /** Everything the machine needs to know about one ticket, pre-digested. */
 export type JourneyInput = {
-  /** Raw ticket status (open · scanned · approved · paying · revealed · …). */
-  status: string;
-  /** The ticket screen's own liveness check (ACTIVE_TICKET_STATUSES). */
+  /** Raw ticket state (open · scanned · approved · paying · revealed · …). */
+  state: string;
+  /** The ticket screen's own liveness check (ACTIVE_TICKET_STATES). */
   live: boolean;
   /** A bill is on record — C3: the QR is gated on it. */
   billed: boolean;
@@ -93,8 +93,8 @@ export type JourneyInput = {
 /** Where the ticket naturally IS — before any tap the guest made. */
 export function naturalStep(t: JourneyInput): TicketStepId {
   if (!t.live) return "results";
-  if (t.status === "paying") return "validate";
-  if (t.status === "approved") return "pay";
+  if (t.state === "paying") return "validate";
+  if (t.state === "approved") return "pay";
   if (t.fix) {
     // A fix aimed at a step whose prerequisites are gone (a proof fix on a
     // ticket that no longer carries an action, say) must not deadlock the
@@ -114,9 +114,9 @@ export function naturalStep(t: JourneyInput): TicketStepId {
  *  a step that vanishes stops telling you the journey has seven of them. */
 export function stepReachable(t: JourneyInput, id: TicketStepId): boolean {
   if (!t.live) return id === "results";
-  if (t.status === "paying") return id === "pay" || id === "validate";
-  if (t.status === "approved") return id === "pay";
-  const editable = t.status === "open" || t.status === "scanned";
+  if (t.state === "paying") return id === "pay" || id === "validate";
+  if (t.state === "approved") return id === "pay";
+  const editable = t.state === "open" || t.state === "scanned";
   switch (id) {
     case "bill":
       return editable;
@@ -146,10 +146,10 @@ export function resolveStep(
   choice: TicketStepId | null,
 ): TicketStepId {
   if (!t.live) return "results";
-  if (t.status === "paying") {
+  if (t.state === "paying") {
     return choice === "pay" ? "pay" : "validate";
   }
-  if (t.status === "approved") return "pay";
+  if (t.state === "approved") return "pay";
   const candidate = choice ?? naturalStep(t);
   if (stepReachable(t, candidate)) return candidate;
   return naturalStep(t);

@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     .from("project_verifications")
     .select("requester_email, decided_at, method, decided_via")
     .eq("place_id", projectId)
-    .eq("status", "approved")
+    .eq("state", "approved")
     .order("decided_at", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(1)

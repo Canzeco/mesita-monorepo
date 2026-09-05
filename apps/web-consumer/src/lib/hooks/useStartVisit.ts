@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { EFError } from "@/lib/api/_invoke";
 import {
-  ACTIVE_TICKET_STATUSES,
+  ACTIVE_TICKET_STATES,
   apiCreateTicket,
   apiGetRewardQuote,
   apiListConsumerTickets,
@@ -95,7 +95,7 @@ export function useStartVisit({
               rows.find(
                 (t) =>
                   t.project_id === place.id &&
-                  ACTIVE_TICKET_STATUSES.has(t.status),
+                  ACTIVE_TICKET_STATES.has(t.state),
               )?.id ?? null;
           }
           if (id) {

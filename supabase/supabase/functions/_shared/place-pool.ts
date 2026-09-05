@@ -58,7 +58,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
     const { data, error } = await admin
       .from("profiles")
       .select(POOL_PLACE_COLUMNS)
-      .eq("status", "active")
+      .eq("state", "active")
       .gte("lat", lat - latDelta)
       .lte("lat", lat + latDelta)
       .gte("lng", lng - lngDelta)
@@ -76,7 +76,7 @@ export async function fetchCandidatePool<T extends { lat: number | null; lng: nu
   const { data, error } = await admin
     .from("profiles")
     .select(POOL_PLACE_COLUMNS)
-    .eq("status", "active")
+    .eq("state", "active")
     .order("created_at", { ascending: false })
     .limit(poolSize);
   if (error) return { ok: false, error: error.message };

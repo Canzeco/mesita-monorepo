@@ -64,7 +64,7 @@ type Sheet =
 // Me screen — 583 chrome (NativeWind BoxRow) + 568 conversion modals.
 // Order (MESITA-955): Instagram → Class → Personal → Settings → Metrics →
 // Inbox → Share → AI → Help → Contact → Sign out.
-// Box summaries mirror the card's live IG / Class status.
+// Box summaries mirror the card's live IG / Class state.
 // decision: conversion rows LIVE (design lock profile-premium-20260720); no Stripe.
 export default function MeScreen() {
   const router = useRouter();

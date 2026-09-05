@@ -22,7 +22,7 @@ import {
   accountDeletedResponse,
   isDeletedConsumer,
 } from "../_shared/delete-history-free.ts";
-import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -149,10 +149,10 @@ Deno.serve(async (req) => {
   const { data: subscriptionRows } = await admin
     .from("consumer_subscriptions")
     .select(
-      "status, price_cents, currency, current_period_end, cancel_at_period_end",
+      "state, price_cents, currency, current_period_end, cancel_at_period_end",
     )
     .eq("consumer_id", userId)
-    .in("status", ["active", "past_due"])
+    .in("state", ["active", "past_due"])
     .order("current_period_end", { ascending: false })
     .limit(1);
   const subscription = subscriptionRows?.[0] ?? null;
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
     .eq("consumer_id", userId)
     .eq("is_test", false)
     .gte("created_at", monthStart.toISOString())
-    .neq("status", TICKET_STATUS.cancelled);
+    .neq("state", TICKET_STATE.cancelled);
   used = count ?? 0;
 
   const subscriptionClass = {
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     .from("visit_tickets")
     .select("id", { count: "exact", head: true })
     .eq("consumer_id", userId)
-    .eq("status", CLOSED_TICKET_STATUS);
+    .eq("state", CLOSED_TICKET_STATE);
 
   return json({
     ok: true,

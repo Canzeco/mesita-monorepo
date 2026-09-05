@@ -29,14 +29,14 @@ Deno.test("validateReservationPatch: accepts a well-formed booking-lifecycle pat
   const res = validateReservationPatch({
     reserved_at: "2026-09-01T20:00:00.000Z",
     party_size: 4,
-    status: "pending",
+    state: "pending",
     notes: "window table please",
     consumer_notify: "call",
   });
   assert(res.ok);
 });
 
-Deno.test("validateReservationPatch: accepts every reservation_status enum value", () => {
+Deno.test("validateReservationPatch: accepts every reservation_state enum value", () => {
   for (
     const s of [
       "pending",
@@ -48,7 +48,7 @@ Deno.test("validateReservationPatch: accepts every reservation_status enum value
       "unresolved",
     ]
   ) {
-    assert(validateReservationPatch({ status: s }).ok, s);
+    assert(validateReservationPatch({ state: s }).ok, s);
   }
 });
 
@@ -73,9 +73,9 @@ Deno.test("validateReservationPatch: accepts every reported_verdict value, and n
   assert(validateReservationPatch({ reported_verdict: null }).ok);
 });
 
-Deno.test("validateReservationPatch: accepts the a1-report-outcome write shape (verdict + alternatives + note, no status)", () => {
+Deno.test("validateReservationPatch: accepts the a1-report-outcome write shape (verdict + alternatives + note, no state)", () => {
   // This is the exact shape eleven-a1-report-outcome writes — proof the
-  // validator does NOT force status to travel alongside these fields.
+  // validator does NOT force state to travel alongside these fields.
   const res = validateReservationPatch({
     reported_verdict: "counter_offer",
     alternatives: [{ time: "21:30", note: "en la terraza" }],
@@ -84,12 +84,12 @@ Deno.test("validateReservationPatch: accepts the a1-report-outcome write shape (
   assert(res.ok);
 });
 
-Deno.test("validateReservationPatch: accepts status and reported_verdict set together", () => {
+Deno.test("validateReservationPatch: accepts state and reported_verdict set together", () => {
   // The OTHER legitimate truth: business-web-confirm-reservation and
   // eleven-a2-confirm-reservation DO set both in one patch. No invariant
   // should forbid this combination either.
   const res = validateReservationPatch({
-    status: "confirmed",
+    state: "confirmed",
     reported_verdict: "confirmed",
     confirmed_at: "2026-08-23T22:00:00.000Z",
   });
@@ -124,7 +124,7 @@ Deno.test("validateReservationPatch: accepts cancelled_by 'consumer' / 'business
 Deno.test("validateReservationPatch: accepts the cancelTicket write shape", () => {
   // _shared/agent-tools.ts's cancelTicket — the shared door 4 callers use.
   const res = validateReservationPatch({
-    status: "cancelled",
+    state: "cancelled",
     cancelled_at: "2026-08-23T22:00:00.000Z",
     cancelled_by: "consumer",
     outcome_note: null,
@@ -190,7 +190,7 @@ Deno.test("validateReservationPatch: accepts the full reschedule-reset patch (ma
     reschedules_today: 1,
     reschedules_day: "2026-08-23",
     modification_of: null,
-    status: "pending",
+    state: "pending",
     reported_verdict: null,
     alternatives: [],
     consumer_confirmed_at: null,
@@ -207,7 +207,7 @@ Deno.test("validateReservationPatch: accepts the full reschedule-reset patch (ma
     next_attempt_at: null,
     last_conversation_id: null,
     last_called_at: null,
-    last_call_status: "rescheduled by the guest — calling the place again",
+    last_call_state: "rescheduled by the guest — calling the place again",
     reserved_at: "2026-09-05T19:00:00.000Z",
     party_size: 2,
     notes: null,
@@ -230,9 +230,9 @@ Deno.test("validateReservationPatch: rejects an unknown field (closed key set)",
   assert(!validateReservationPatch({ discount_cents: 500 }).ok);
 });
 
-Deno.test("validateReservationPatch: rejects a status outside the enum", () => {
-  assert(!validateReservationPatch({ status: "booked" }).ok);
-  assert(!validateReservationPatch({ status: "" }).ok);
+Deno.test("validateReservationPatch: rejects a state outside the enum", () => {
+  assert(!validateReservationPatch({ state: "booked" }).ok);
+  assert(!validateReservationPatch({ state: "" }).ok);
 });
 
 Deno.test("validateReservationPatch: rejects party_size <= 0 and non-integers", () => {
@@ -315,14 +315,14 @@ Deno.test("writeReservation: an invalid patch never reaches the DB", async () =>
   // A real caller decodes agent-tool / HTTP JSON as `unknown` and casts to
   // ReservationPatch before calling the write door — the same bypass of
   // Belt 1 (the compiler) this cast simulates.
-  const invalidPatch = { status: "booked" } as unknown as ReservationPatch;
+  const invalidPatch = { state: "booked" } as unknown as ReservationPatch;
   const res = await writeReservation(admin, {
     mode: "update",
     id: "11111111-1111-1111-1111-111111111111",
     patch: invalidPatch,
   });
   assert(!res.ok);
-  assert(res.error.startsWith("status must be one of"));
+  assert(res.error.startsWith("state must be one of"));
 });
 
 // Minimal Supabase mock recording every insert/update call and every .eq()
@@ -384,19 +384,19 @@ Deno.test("writeReservation: update mode chains `match` guards after `id` — th
     mode: "update",
     id: "res-1",
     patch: { consumer_confirmed_at: "2026-08-23T22:00:00.000Z" },
-    match: { consumer_id: "consumer-9", status: "pending" },
+    match: { consumer_id: "consumer-9", state: "pending" },
   });
   assert(res.ok);
   assertEquals(calls[0].eqs, [
     ["id", "res-1"],
     ["consumer_id", "consumer-9"],
-    ["status", "pending"],
+    ["state", "pending"],
   ]);
 });
 
 Deno.test("writeReservation: insert mode with select returns the re-read row", async () => {
   const { admin } = fakeReservationAdmin({
-    row: { id: "res-1", reference_code: "12345678", status: "pending" },
+    row: { id: "res-1", reference_code: "12345678", state: "pending" },
   });
   const res = await writeReservation(admin, {
     mode: "insert",
@@ -406,13 +406,13 @@ Deno.test("writeReservation: insert mode with select returns the re-read row", a
       reserved_at: "2026-09-01T20:00:00.000Z",
       party_size: 2,
       reference_code: "12345678",
-      status: "pending",
+      state: "pending",
       consumer_notify: "call",
     },
-    select: "id, reference_code, status",
+    select: "id, reference_code, state",
   });
   assert(res.ok);
-  assertEquals(res.row, { id: "res-1", reference_code: "12345678", status: "pending" });
+  assertEquals(res.row, { id: "res-1", reference_code: "12345678", state: "pending" });
 });
 
 Deno.test("writeReservation: surfaces the Postgres error code for a reference_code collision retry", async () => {

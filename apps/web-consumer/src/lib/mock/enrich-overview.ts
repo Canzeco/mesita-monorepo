@@ -33,7 +33,7 @@ import { DEFAULT_CURRENCY } from "@/lib/money";
 
 // Derives the overview-parity fields from the raw places columns on Place.
 // Mirrors placeRowToDetail so the card and the detail modal compute
-// identical rating / status / zone / freshness.
+// identical rating / state / zone / freshness.
 export function enrichPlaceOverview(v: Place): Place {
   const rating = num(v.google_stars_overall);
   const count = num(v.google_review_count);
@@ -54,7 +54,7 @@ export function enrichPlaceOverview(v: Place): Place {
   const rewardCapMxn = num(v.monthly_promo_cap);
 
   // Only trust the live open/closed math when the row actually carries an
-  // hours table — otherwise leave the fields null so the status chip hides.
+  // hours table — otherwise leave the fields null so the state chip hides.
   const hasHours =
     !!v.hours &&
     typeof v.hours === "object" &&
@@ -70,12 +70,12 @@ export function enrichPlaceOverview(v: Place): Place {
     currency,
   });
 
-  // Same predicate as placeRowToDetail — content_status stays queued/
+  // Same predicate as placeRowToDetail — content_state stays queued/
   // generating for the full pipeline; only contents lands 'ready'.
-  const contentStatus = str(v.content_status);
+  const contentState = str(v.content_state);
   const isEnriching =
     v.is_enriching ??
-    (contentStatus === "queued" || contentStatus === "generating");
+    (contentState === "queued" || contentState === "generating");
 
   return {
     ...v,

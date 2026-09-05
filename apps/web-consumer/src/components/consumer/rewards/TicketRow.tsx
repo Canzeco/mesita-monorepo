@@ -2,7 +2,7 @@
 
 // Compact ticket row (MESITA-857) — the wallet's ticket lists are just doors
 // into THE ticket screen, so one row serves both the live rows pinned atop
-// New and the History list (MESITA-1024): thumb, place, one-line status, and
+// New and the History list (MESITA-1024): thumb, place, one-line state, and
 // the money once there is money. The big in-list QR card died with the
 // modal; the QR lives on the ticket.
 
@@ -32,11 +32,11 @@ function hasPendingTask(t: ConsumerTicketRow): boolean {
     v === "submitted" ||
     v === "ai_rejected" ||
     v === "staff_rejected";
-  return gating(t.story_status) || gating(t.review_status);
+  return gating(t.story_state) || gating(t.review_state);
 }
 
 function caption(t: ConsumerTicketRow): string {
-  switch (t.status) {
+  switch (t.state) {
     case "open":
       return t.first_scanned_at
         ? "Scanned — visit started"
@@ -50,7 +50,7 @@ function caption(t: ConsumerTicketRow): string {
     case "cancelled":
       return "Cancelled";
     default:
-      return t.status;
+      return t.state;
   }
 }
 
@@ -62,8 +62,8 @@ export function TicketRow({
   onOpen: () => void;
 }) {
   const photo = ticket.place?.photos?.[0] ?? null;
-  const closed = ticket.status === "revealed" || ticket.status === "cancelled";
-  const saved = ticket.status === "revealed" ? (ticket.discount_cents ?? 0) : 0;
+  const closed = ticket.state === "revealed" || ticket.state === "cancelled";
+  const saved = ticket.state === "revealed" ? (ticket.discount_cents ?? 0) : 0;
 
   return (
     <button
@@ -79,7 +79,7 @@ export function TicketRow({
           height={48}
           className={cn(
             "size-12 shrink-0 rounded-xl object-cover",
-            ticket.status === "cancelled" && "opacity-50 grayscale",
+            ticket.state === "cancelled" && "opacity-50 grayscale",
           )}
         />
       ) : (

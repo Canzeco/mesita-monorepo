@@ -96,7 +96,7 @@ function todayWeekdayLabel(tz: string | undefined): string {
 
 export function HoursBox({ place }: { place: PlaceDetail }) {
   const today = todayWeekdayLabel(place.timezone);
-  const statusDetail = place.open_now
+  const stateDetail = place.open_now
     ? place.closes_at
       ? `until ${place.closes_at}`
       : null
@@ -121,8 +121,8 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           >
             {place.open_now ? 'Open' : 'Closed'}
           </Text>
-          {statusDetail ? (
-            <Text className="text-foreground/80"> · {statusDetail}</Text>
+          {stateDetail ? (
+            <Text className="text-foreground/80"> · {stateDetail}</Text>
           ) : null}
         </Text>
         {place.hours_table.length > 0 ? (

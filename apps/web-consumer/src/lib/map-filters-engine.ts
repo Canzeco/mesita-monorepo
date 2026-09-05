@@ -14,7 +14,7 @@
 import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
 
-export type MapStatusKey =
+export type MapStateKey =
   | "not_on_mesita"
   | "created"
   | "requested"
@@ -132,12 +132,12 @@ export function searchPowerCaption(power: MapSearchPower): string {
   return "Mesita Places & Google Places";
 }
 
-/** Highest rung wins so a place has one atlas status. */
-export function placeMapStatus(place: Place): MapStatusKey {
+/** Highest rung wins so a place has one atlas state. */
+export function placeMapState(place: Place): MapStateKey {
   if (place.googleOnly || place.from_google) return "not_on_mesita";
   if (place.promoting === true) return "promoted";
   if (place.partner === true) return "partnered";
-  if (place.content_status === "ready" || Boolean(place.enriched_at)) {
+  if (place.content_state === "ready" || Boolean(place.enriched_at)) {
     return "enriched";
   }
   const requests = Number(place.request_count);
@@ -150,11 +150,11 @@ export function placeMapStatus(place: Place): MapStatusKey {
  * Mesita Places is enriched only, never a thin stub.
  */
 export function placeSearchLane(place: Place): MapSearchLane | null {
-  const status = placeMapStatus(place);
-  if (status === "not_on_mesita") return "google";
+  const state = placeMapState(place);
+  if (state === "not_on_mesita") return "google";
   // Partners are Mesita Places — yellow paint, not a lane of their own.
-  if (status === "promoted" || status === "partnered") return "places";
-  if (status === "enriched") return "places";
+  if (state === "promoted" || state === "partnered") return "places";
+  if (state === "enriched") return "places";
   return null;
 }
 

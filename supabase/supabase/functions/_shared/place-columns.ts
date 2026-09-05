@@ -40,7 +40,7 @@ const COLUMNS: readonly string[] = [
   // hard-coding it.
   "currency",
   "listing_type",
-  "status",
+  "state",
   "fiscal_type",
   "plan",
   "lat",
@@ -119,13 +119,13 @@ const COLUMNS: readonly string[] = [
   "menus",
   "popular_times",
   "enriched_at",
-  // Enrichment lifecycle (projects.content_status: queued | generating |
+  // Enrichment lifecycle (projects.content_state: queued | generating |
   // ready | failed). Stays 'generating' for the FULL pipeline
   // (research → analysis → contents); only contents lands 'ready'.
   // Public-safe — lets consumer surfaces show "(Enriching)" until done.
-  "content_status",
+  "content_state",
   // Consumer Requests count. Progress toward Intake atlasRequestThreshold.
-  // Requested is derived (count > 0 and content_status <> ready).
+  // Requested is derived (count > 0 and content_state <> ready).
   "request_count",
   // Description/Actions (Intaker function 9) — guest Order / Reserve CTAs.
   "orders_enabled",
@@ -196,13 +196,13 @@ const ROUTING_COLUMNS: readonly string[] = [
 // consumer surface to gate on a third-party signal, which is precisely the
 // auto-unlisting the issue argued against. Listed stays the visibility gate.
 const OPERATING_COLUMNS: readonly string[] = [
-  "business_status",
-  "business_status_at",
+  "business_state",
+  "business_state_at",
 ];
 
 // Business reads — includes `updated_at` so the business UI can show
 // "saved · 2 min ago" style affordances, plus the routing columns the
-// Settings rails edit and the Operating fact the Status box renders.
+// Settings rails edit and the Operating fact the State box renders.
 export const PLACE_BUSINESS_COLUMNS = [
   ...COLUMNS,
   ...ROUTING_COLUMNS,

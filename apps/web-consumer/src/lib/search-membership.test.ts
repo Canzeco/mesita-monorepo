@@ -32,7 +32,7 @@ describe("search membership tones — partner > enriched > everything else", () 
   // THE LAW (Pato, 2026-08-29): yellow beats red beats gray, and red is
   // EARNED by enrichment. A row existing is not enough.
   it("paints map rows in that order", () => {
-    const ready = { content_status: "ready" };
+    const ready = { content_state: "ready" };
     expect(placeMembershipTone({ partner: true, ...ready })).toBe("partner");
     // Partner beats enriched: an unenriched partner is still yellow.
     expect(placeMembershipTone({ partner: true })).toBe("partner");
@@ -50,20 +50,20 @@ describe("search membership tones — partner > enriched > everything else", () 
 
   it("paints name-lane rows the same way, gray when the server is silent", () => {
     expect(
-      membershipTone({ status: "web_listed", partner: true, enriched: false }),
+      membershipTone({ state: "web_listed", partner: true, enriched: false }),
     ).toBe("partner");
     expect(
-      membershipTone({ status: "web_listed", partner: false, enriched: true }),
+      membershipTone({ state: "web_listed", partner: false, enriched: true }),
     ).toBe("enriched");
     // THE FIX: a Google hit resolving onto a Created stub used to be red.
     expect(
-      membershipTone({ status: "web_listed", partner: false, enriched: false }),
+      membershipTone({ state: "web_listed", partner: false, enriched: false }),
     ).toBe("unlisted");
     // Older payload with no `enriched` at all: understate, never overclaim.
-    expect(membershipTone({ status: "web_listed", partner: false })).toBe(
+    expect(membershipTone({ state: "web_listed", partner: false })).toBe(
       "unlisted",
     );
-    expect(membershipTone({ status: "not_in_mesita", partner: true })).toBe(
+    expect(membershipTone({ state: "not_in_mesita", partner: true })).toBe(
       "unlisted",
     );
   });
@@ -72,13 +72,13 @@ describe("search membership tones — partner > enriched > everything else", () 
     // 27% of the live catalog is ready with a null enriched_at
     // (measured 2026-08-29). An enriched_at-only test would grey a
     // quarter of the catalog on deploy.
-    expect(isEnrichedPlace({ content_status: "ready" })).toBe(true);
+    expect(isEnrichedPlace({ content_state: "ready" })).toBe(true);
     expect(isEnrichedPlace({ enriched_at: "2026-08-01T00:00:00Z" })).toBe(true);
-    expect(isEnrichedPlace({ content_status: "queued" })).toBe(false);
+    expect(isEnrichedPlace({ content_state: "queued" })).toBe(false);
     expect(isEnrichedPlace({})).toBe(false);
     // The server's boolean wins over the columns, both ways.
     expect(isEnrichedPlace({ enriched: true })).toBe(true);
-    expect(isEnrichedPlace({ enriched: false, content_status: "ready" })).toBe(
+    expect(isEnrichedPlace({ enriched: false, content_state: "ready" })).toBe(
       false,
     );
   });
@@ -112,19 +112,19 @@ describe("search membership tones — partner > enriched > everything else", () 
 });
 
 describe("membershipTone", () => {
-  it("treats mesitaId as on-Mesita even when status is not_in_mesita", () => {
-    // mesitaId still wins over a stale status — but being on Mesita is no
+  it("treats mesitaId as on-Mesita even when state is not_in_mesita", () => {
+    // mesitaId still wins over a stale state — but being on Mesita is no
     // longer enough for red. Enrichment is what earns it.
     expect(
       membershipTone({
-        status: "not_in_mesita",
+        state: "not_in_mesita",
         mesitaId: "uuid-1",
         enriched: true,
       }),
     ).toBe("enriched");
     expect(
       membershipTone({
-        status: "not_in_mesita",
+        state: "not_in_mesita",
         mesitaId: "uuid-1",
         enriched: false,
       }),
@@ -133,15 +133,15 @@ describe("membershipTone", () => {
 });
 
 describe("predictionOnMesita", () => {
-  it("uses mesitaId/slug over a stale not_in_mesita status", () => {
+  it("uses mesitaId/slug over a stale not_in_mesita state", () => {
     expect(
-      predictionOnMesita({ status: "not_in_mesita", mesitaId: "x" }),
+      predictionOnMesita({ state: "not_in_mesita", mesitaId: "x" }),
     ).toBe(true);
     expect(
-      predictionOnMesita({ status: "not_in_mesita", mesitaSlug: "slug" }),
+      predictionOnMesita({ state: "not_in_mesita", mesitaSlug: "slug" }),
     ).toBe(true);
-    expect(predictionOnMesita({ status: "not_in_mesita" })).toBe(false);
-    expect(predictionOnMesita({ status: "web_listed" })).toBe(true);
+    expect(predictionOnMesita({ state: "not_in_mesita" })).toBe(false);
+    expect(predictionOnMesita({ state: "web_listed" })).toBe(true);
   });
 });
 
@@ -255,7 +255,7 @@ describe("buildSearchMapPins", () => {
         {
           placeId: "ChIJ1",
           mainText: "Strana",
-          status: "web_listed",
+          state: "web_listed",
           partner: true,
           mesitaId: "m1",
           lat: 25.6,
@@ -282,7 +282,7 @@ describe("buildSearchMapPins", () => {
           {
             placeId: "ChIJ1",
             mainText: "Nowhere",
-            status: "not_in_mesita",
+            state: "not_in_mesita",
             partner: false,
           },
         ],

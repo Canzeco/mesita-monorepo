@@ -1,5 +1,5 @@
-// The ticket-status vocabulary has THREE copies (MESITA-1085): the source of
-// truth in supabase `_shared/ticket-status.ts`, and one `ACTIVE_TICKET_STATUSES`
+// The ticket-state vocabulary has THREE copies (MESITA-1085): the source of
+// truth in supabase `_shared/ticket-state.ts`, and one `ACTIVE_TICKET_STATES`
 // mirror in each consumer app (`lib/api/tickets.ts`). The apps can't import
 // across package roots (independent install roots, no shared workspace), so
 // this test reads all three SOURCES and fails when any pair drifts — the
@@ -27,33 +27,33 @@ function setLiteral(source: string, constName: string): string[] {
   return [...m[1].matchAll(/["']([a-z_]+)["']/g)].map((x) => x[1]).sort();
 }
 
-/** Quoted string literals inside `X: readonly TicketStatus[] = [ ... ];`. */
+/** Quoted string literals inside `X: readonly TicketState[] = [ ... ];`. */
 function arrayLiteral(source: string, constName: string): string[] {
   const m = source.match(new RegExp(`${constName}[^=]*= \\[([\\s\\S]*?)\\];`));
   if (!m) throw new Error(`no array literal found for ${constName}`);
   return [...m[1].matchAll(/["']([a-z_]+)["']/g)].map((x) => x[1]).sort();
 }
 
-describe("ticket status vocabulary drift (supabase · web · mobile)", () => {
-  const supa = read("supabase/supabase/functions/_shared/ticket-status.ts");
+describe("ticket state vocabulary drift (supabase · web · mobile)", () => {
+  const supa = read("supabase/supabase/functions/_shared/ticket-state.ts");
   const web = read("apps/web-consumer/src/lib/api/tickets.ts");
   const mobile = read("apps/mobile-consumer/src/lib/api/tickets.ts");
 
-  const live = arrayLiteral(supa, "LIVE_STATUSES");
+  const live = arrayLiteral(supa, "LIVE_STATES");
 
-  it("web-consumer ACTIVE_TICKET_STATUSES mirrors supabase LIVE_STATUSES", () => {
-    expect(setLiteral(web, "ACTIVE_TICKET_STATUSES")).toEqual(live);
+  it("web-consumer ACTIVE_TICKET_STATES mirrors supabase LIVE_STATES", () => {
+    expect(setLiteral(web, "ACTIVE_TICKET_STATES")).toEqual(live);
   });
 
-  it("mobile-consumer ACTIVE_TICKET_STATUSES mirrors supabase LIVE_STATUSES", () => {
-    expect(setLiteral(mobile, "ACTIVE_TICKET_STATUSES")).toEqual(live);
+  it("mobile-consumer ACTIVE_TICKET_STATES mirrors supabase LIVE_STATES", () => {
+    expect(setLiteral(mobile, "ACTIVE_TICKET_STATES")).toEqual(live);
   });
 
   it("the mirrored set is non-empty and holds real labels", () => {
     // Guards the regexes themselves: an extraction bug that returns [] would
     // otherwise make the two assertions above vacuously green together.
     expect(live.length).toBeGreaterThan(0);
-    const all = arrayLiteral(supa, "ALL_TICKET_STATUSES");
+    const all = arrayLiteral(supa, "ALL_TICKET_STATES");
     for (const s of live) expect(all).toContain(s);
   });
 });

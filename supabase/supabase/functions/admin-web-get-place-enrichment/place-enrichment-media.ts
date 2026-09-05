@@ -1,7 +1,7 @@
 export type MediaRow = {
   public_url: string | null;
   source: string | null;
-  status: string | null;
+  state: string | null;
   analysis_text: string | null;
   caption: string | null;
   likes_count: number | null;
@@ -21,7 +21,7 @@ export function indexMediaByUrl(rows: MediaRow[]): Record<string, MediaMeta> {
   for (const r of rows) {
     const meta: MediaMeta = {
       source: r.source,
-      status: r.status,
+      state: r.state,
       analysis_text: r.analysis_text,
       caption: r.caption,
       likes_count: r.likes_count,

@@ -8,7 +8,7 @@ type BusinessReservation = {
   id: string;
   reservedAt: string | null;
   partySize: number | null;
-  status: string | null;
+  state: string | null;
   isTest: boolean;
   guest: string;
 };

@@ -17,14 +17,14 @@ import { errMsg } from "@/lib/utils";
 // auth.user. If the user isn't signed in we bounce them to the sign-in
 // page with a ?next=... pointing back here so the token isn't lost.
 
-type Status = "claiming" | "needs_signin" | "success" | "error";
+type State = "claiming" | "needs_signin" | "success" | "error";
 
 function initialFromParams(token: string | null): {
-  status: Status;
+  state: State;
   message: string;
 } {
-  if (!token) return { status: "error", message: "Missing invite token." };
-  return { status: "claiming", message: "" };
+  if (!token) return { state: "error", message: "Missing invite token." };
+  return { state: "claiming", message: "" };
 }
 
 export function AcceptInviteClient() {
@@ -34,7 +34,7 @@ export function AcceptInviteClient() {
   const token = params.get("token");
 
   const initial = initialFromParams(token);
-  const [status, setStatus] = useState<Status>(initial.status);
+  const [state, setState] = useState<State>(initial.state);
   const [message, setMessage] = useState<string>(initial.message);
   const [projectId, setPlaceId] = useState<string | null>(null);
 
@@ -46,21 +46,21 @@ export function AcceptInviteClient() {
       const { data } = await supabase.auth.getUser();
       if (cancelled) return;
       if (!data.user) {
-        setStatus("needs_signin");
+        setState("needs_signin");
         return;
       }
       try {
         const res = await apiAcceptEditorInvite(supabase, token);
         if (cancelled) return;
         setPlaceId(res.projectId);
-        setStatus("success");
+        setState("success");
         window.setTimeout(() => {
           router.replace(placePath(res.projectId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
         setMessage(errMsg(err, "Couldn't claim that invite."));
-        setStatus("error");
+        setState("error");
       }
     })();
 
@@ -69,7 +69,7 @@ export function AcceptInviteClient() {
     };
   }, [supabase, token, router]);
 
-  if (status === "claiming") {
+  if (state === "claiming") {
     return (
       <div className="text-muted-foreground flex items-center gap-2 text-sm">
         <Loader2 className="h-4 w-4 animate-spin" /> Joining your team…
@@ -77,7 +77,7 @@ export function AcceptInviteClient() {
     );
   }
 
-  if (status === "needs_signin") {
+  if (state === "needs_signin") {
     const next = `/accept-invite?token=${encodeURIComponent(token ?? "")}`;
     return (
       <div className="flex flex-col gap-3">
@@ -96,7 +96,7 @@ export function AcceptInviteClient() {
     );
   }
 
-  if (status === "success") {
+  if (state === "success") {
     return (
       <div className="flex flex-col items-center gap-3 text-center">
         <CheckCircle2 className="text-whatsapp-deep h-10 w-10" />

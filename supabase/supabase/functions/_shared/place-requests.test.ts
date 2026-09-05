@@ -11,14 +11,14 @@ import {
 
 Deno.test("zero requests: listed, no auto-enrich", () => {
   assertEquals(
-    placeRequestLifecycle({ contentStatus: "queued", requestCount: 0 }),
+    placeRequestLifecycle({ contentState: "queued", requestCount: 0 }),
     "listed",
   );
   assertEquals(
     shouldTriggerRequestEnrichment({
       requestCount: 0,
       threshold: 3,
-      contentStatus: "queued",
+      contentState: "queued",
     }),
     false,
   );
@@ -27,14 +27,14 @@ Deno.test("zero requests: listed, no auto-enrich", () => {
 
 Deno.test("below-threshold requests: Requested, no auto-enrich", () => {
   assertEquals(
-    placeRequestLifecycle({ contentStatus: "failed", requestCount: 2 }),
+    placeRequestLifecycle({ contentState: "failed", requestCount: 2 }),
     "requested",
   );
   assertEquals(
     shouldTriggerRequestEnrichment({
       requestCount: 2,
       threshold: 3,
-      contentStatus: "failed",
+      contentState: "failed",
     }),
     false,
   );
@@ -46,7 +46,7 @@ Deno.test("threshold crossing: trigger when not ready and not already enriching"
     shouldTriggerRequestEnrichment({
       requestCount: 3,
       threshold: 3,
-      contentStatus: "failed",
+      contentState: "failed",
     }),
     true,
   );
@@ -54,7 +54,7 @@ Deno.test("threshold crossing: trigger when not ready and not already enriching"
     shouldTriggerRequestEnrichment({
       requestCount: 4,
       threshold: 3,
-      contentStatus: "queued",
+      contentState: "queued",
     }),
     false,
     "queued is already in-flight — do not re-seed",
@@ -63,7 +63,7 @@ Deno.test("threshold crossing: trigger when not ready and not already enriching"
     shouldTriggerRequestEnrichment({
       requestCount: 4,
       threshold: 3,
-      contentStatus: "generating",
+      contentState: "generating",
     }),
     false,
   );
@@ -74,13 +74,13 @@ Deno.test("duplicate requests: count is the stored number, not a second incremen
     requestCount: 1,
     threshold: 3,
     requested: true,
-    contentStatus: "failed",
+    contentState: "failed",
   });
   const duplicate = placeRequestState({
     requestCount: 1,
     threshold: 3,
     requested: true,
-    contentStatus: "failed",
+    contentState: "failed",
   });
   assertEquals(first.request_count, duplicate.request_count);
   assertEquals(first.request_lifecycle, "requested");
@@ -88,7 +88,7 @@ Deno.test("duplicate requests: count is the stored number, not a second incremen
     shouldTriggerRequestEnrichment({
       requestCount: duplicate.request_count,
       threshold: 3,
-      contentStatus: "failed",
+      contentState: "failed",
     }),
     false,
   );
@@ -100,7 +100,7 @@ Deno.test("Admin bypass: create/enrich does not consult the threshold", () => {
     shouldTriggerRequestEnrichment({
       requestCount: 0,
       threshold: 3,
-      contentStatus: "failed",
+      contentState: "failed",
     }),
     false,
     "consumer path still waits for the threshold; admin never calls this",
@@ -113,7 +113,7 @@ Deno.test("successful transition to Enriched unlocks the profile", () => {
   assertEquals(isPlaceProfileReady("generating"), false);
   assertEquals(isPlaceProfileReady("failed"), false);
   assertEquals(
-    placeRequestLifecycle({ contentStatus: "ready", requestCount: 7 }),
+    placeRequestLifecycle({ contentState: "ready", requestCount: 7 }),
     "enriched",
     "Enriched wins over a leftover request count",
   );
@@ -121,7 +121,7 @@ Deno.test("successful transition to Enriched unlocks the profile", () => {
     shouldTriggerRequestEnrichment({
       requestCount: 7,
       threshold: 3,
-      contentStatus: "ready",
+      contentState: "ready",
     }),
     false,
   );
@@ -129,7 +129,7 @@ Deno.test("successful transition to Enriched unlocks the profile", () => {
     requestCount: 7,
     threshold: 3,
     requested: true,
-    contentStatus: "ready",
+    contentState: "ready",
   });
   assertEquals(state.is_profile_ready, true);
   assertEquals(state.is_enriched, true);
@@ -139,7 +139,7 @@ Deno.test("successful transition to Enriched unlocks the profile", () => {
 Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () => {
   assertEquals(
     placeRequestLifecycle({
-      contentStatus: "ready",
+      contentState: "ready",
       requestCount: 0,
       enrichedAt: null,
     }),
@@ -147,7 +147,7 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
   );
   assertEquals(
     placeRequestLifecycle({
-      contentStatus: "ready",
+      contentState: "ready",
       requestCount: 2,
       enrichedAt: null,
     }),
@@ -157,7 +157,7 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
     shouldTriggerRequestEnrichment({
       requestCount: 3,
       threshold: 3,
-      contentStatus: "ready",
+      contentState: "ready",
       enrichedAt: null,
     }),
     true,
@@ -166,7 +166,7 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
     shouldTriggerRequestEnrichment({
       requestCount: 3,
       threshold: 3,
-      contentStatus: "ready",
+      contentState: "ready",
       enrichedAt: "2026-08-28T00:00:00Z",
     }),
     false,
@@ -175,7 +175,7 @@ Deno.test("ugly Create profile: ready + no enriched_at still accepts votes", () 
     requestCount: 2,
     threshold: 3,
     requested: true,
-    contentStatus: "ready",
+    contentState: "ready",
     enrichedAt: null,
   });
   assertEquals(ugly.is_profile_ready, true);

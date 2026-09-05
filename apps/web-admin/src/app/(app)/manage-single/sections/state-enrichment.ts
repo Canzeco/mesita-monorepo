@@ -5,7 +5,7 @@ import {
 } from "@/lib/state-vocabulary";
 
 export type EnrichFunctionState = {
-  status: "pending" | "completed" | "failed";
+  state: "pending" | "completed" | "failed";
   at: string | null;
   detail: string | null;
 };
@@ -17,18 +17,18 @@ export type IntakeFunctionRow = {
   on: boolean;
 };
 
-function called(status: EnrichFunctionState["status"] | undefined): boolean {
-  return status === "completed" || status === "failed";
+function called(state: EnrichFunctionState["state"] | undefined): boolean {
+  return state === "completed" || state === "failed";
 }
 
 function functionCalled(
   functions: Record<string, EnrichFunctionState> | null | undefined,
   key: string,
 ): boolean {
-  if (called(functions?.[key]?.status)) return true;
+  if (called(functions?.[key]?.state)) return true;
   // Function 10 was renamed `semantic` → `embedding` (§8.4). Stored blobs
   // stamped before the rename still say `semantic` — fold, never rewrite.
-  if (key === "embedding") return called(functions?.semantic?.status);
+  if (key === "embedding") return called(functions?.semantic?.state);
   return false;
 }
 

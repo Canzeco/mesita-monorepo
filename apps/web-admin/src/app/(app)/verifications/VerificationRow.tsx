@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Loader2, MessageSquare, X } from "lucide-react";
 import { type AdminVerification, decideVerification } from "./actions";
 import { METHOD_ICON, METHOD_LABEL } from "./verification-config";
-import { KV, StatusBadge, formatDate } from "./verification-ui";
+import { KV, StateBadge, formatDate } from "./verification-ui";
 
 export function VerificationRow({
   verification,
@@ -48,7 +48,7 @@ export function VerificationRow({
     <li
       className={
         "border-border bg-card flex flex-col gap-4 rounded-2xl border p-5 " +
-        (verification.status === "pending" ? "" : "opacity-80")
+        (verification.state === "pending" ? "" : "opacity-80")
       }
     >
       <div className="flex items-start gap-3">
@@ -65,8 +65,8 @@ export function VerificationRow({
             <span className="font-mono">{verification.requester_email}</span>
           </p>
         </div>
-        <StatusBadge
-          status={verification.status}
+        <StateBadge
+          state={verification.state}
           decidedVia={verification.decided_via}
         />
       </div>
@@ -110,7 +110,7 @@ export function VerificationRow({
             </KV>
           </>
         )}
-        {verification.status === "rejected" && verification.reject_reason && (
+        {verification.state === "rejected" && verification.reject_reason && (
           <KV label="Rejection reason" wide>
             {verification.reject_reason}
           </KV>
@@ -123,7 +123,7 @@ export function VerificationRow({
         </p>
       )}
 
-      {verification.status === "pending" && (
+      {verification.state === "pending" && (
         <div className="flex flex-col gap-3">
           {showRejectForm ? (
             <div className="flex flex-col gap-2">

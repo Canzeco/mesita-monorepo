@@ -9,7 +9,7 @@ import {
   MAP_RESULT_LIMITS,
   mapFilterCount,
   mapFiltersAreActive,
-  placeMapStatus,
+  placeMapState,
   placeSearchLane,
   searchPowerCaption,
   takeMapResultLimit,
@@ -31,25 +31,25 @@ function filters(over: Partial<MapFilters> = {}): MapFilters {
   return { ...MAP_FILTER_DEFAULTS, ...over };
 }
 
-describe("placeMapStatus", () => {
+describe("placeMapState", () => {
   it("ladders Google → promoted → partnered → enriched → requested → created", () => {
-    expect(placeMapStatus(place({ googleOnly: true }))).toBe("not_on_mesita");
-    expect(placeMapStatus(place({ from_google: true }))).toBe("not_on_mesita");
-    expect(placeMapStatus(place({ promoting: true, partner: true }))).toBe(
+    expect(placeMapState(place({ googleOnly: true }))).toBe("not_on_mesita");
+    expect(placeMapState(place({ from_google: true }))).toBe("not_on_mesita");
+    expect(placeMapState(place({ promoting: true, partner: true }))).toBe(
       "promoted",
     );
-    expect(placeMapStatus(place({ partner: true }))).toBe("partnered");
-    expect(placeMapStatus(place({ content_status: "ready" }))).toBe("enriched");
-    expect(placeMapStatus(place({ enriched_at: "2026-08-01T00:00:00Z" }))).toBe(
+    expect(placeMapState(place({ partner: true }))).toBe("partnered");
+    expect(placeMapState(place({ content_state: "ready" }))).toBe("enriched");
+    expect(placeMapState(place({ enriched_at: "2026-08-01T00:00:00Z" }))).toBe(
       "enriched",
     );
     expect(
-      placeMapStatus(place({ request_count: 2, content_status: "queued" })),
+      placeMapState(place({ request_count: 2, content_state: "queued" })),
     ).toBe("requested");
     expect(
-      placeMapStatus(place({ request_count: 4, content_status: "ready" })),
+      placeMapState(place({ request_count: 4, content_state: "ready" })),
     ).toBe("enriched");
-    expect(placeMapStatus(place())).toBe("created");
+    expect(placeMapState(place())).toBe("created");
   });
 });
 
@@ -57,7 +57,7 @@ describe("placeSearchLane", () => {
   it("maps Partners / enriched Places / Google; Created and Requested are out", () => {
     expect(placeSearchLane(place({ partner: true }))).toBe("places");
     expect(placeSearchLane(place({ promoting: true }))).toBe("places");
-    expect(placeSearchLane(place({ content_status: "ready" }))).toBe("places");
+    expect(placeSearchLane(place({ content_state: "ready" }))).toBe("places");
     expect(
       placeSearchLane(place({ enriched_at: "2026-08-01T00:00:00Z" })),
     ).toBe("places");
@@ -65,7 +65,7 @@ describe("placeSearchLane", () => {
     expect(placeSearchLane(place({ from_google: true }))).toBe("google");
     expect(placeSearchLane(place())).toBeNull();
     expect(
-      placeSearchLane(place({ request_count: 3, content_status: "queued" })),
+      placeSearchLane(place({ request_count: 3, content_state: "queued" })),
     ).toBeNull();
   });
 });
@@ -84,12 +84,12 @@ describe("search power", () => {
 
 describe("applyMapFilters", () => {
   const partner = place({ id: "partner", partner: true });
-  const enriched = place({ id: "enriched", content_status: "ready" });
+  const enriched = place({ id: "enriched", content_state: "ready" });
   const created = place({ id: "created" });
   const requested = place({
     id: "requested",
     request_count: 2,
-    content_status: "queued",
+    content_state: "queued",
   });
   const google = place({ id: "google", googleOnly: true });
   const deck = [partner, enriched, created, requested, google];
@@ -132,13 +132,13 @@ describe("applyMapFilters", () => {
       id: "bar",
       category: "night_club",
       family_keys: ["bars_nightlife"],
-      content_status: "ready",
+      content_state: "ready",
     });
     const taco = place({
       id: "taco",
       category: "mexican_restaurant",
       family_keys: ["restaurants"],
-      content_status: "ready",
+      content_state: "ready",
     });
     expect(
       applyMapFilters(
@@ -153,13 +153,13 @@ describe("applyMapFilters", () => {
       id: "brunch",
       category: "brunch",
       family_keys: ["restaurants"],
-      content_status: "ready",
+      content_state: "ready",
     });
     const karaoke = place({
       id: "karaoke",
       category: "karaoke",
       family_keys: ["bars_nightlife"],
-      content_status: "ready",
+      content_state: "ready",
     });
     const set = [brunch, karaoke];
     expect(
@@ -189,7 +189,7 @@ describe("applyMapFilters", () => {
             id: "unk",
             category: "undefined",
             family_keys: ["undefined"],
-            content_status: "ready",
+            content_state: "ready",
           }),
         ],
         filters({ familyKeys: ["undefined"] }),

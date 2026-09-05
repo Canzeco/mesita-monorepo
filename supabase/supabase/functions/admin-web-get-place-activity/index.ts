@@ -18,7 +18,7 @@
 //     plausible number that was wrong, on the one card whose entire job is to
 //     be trusted. Aggregates can't drift from the truth that way.
 //
-//   reservations — the compact booking list: when, who, party, status. The
+//   reservations — the compact booking list: when, who, party, state. The
 //     call-lifecycle columns (attempts, verdicts, alternatives, retries) are
 //     deliberately NOT returned any more; they were agent-debugging detail on
 //     a page meant to be read at a glance.
@@ -43,15 +43,15 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { consumerFromNumber, reservationFromNumber } from "../_shared/elevenlabs.ts";
-import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 type Body = { placeId?: string; projectId?: string; limit?: number };
 
 // A ticket counts as CLOSED once staff marked the visit done (v3b /
 // MESITA-850). Matches business-web-get-performance. paid_at is still stamped
-// by informal close, but vocabulary and predicates follow status=revealed.
-const CLOSED_STATUS = CLOSED_TICKET_STATUS;
+// by informal close, but vocabulary and predicates follow state=revealed.
+const CLOSED_STATE = CLOSED_TICKET_STATE;
 const CLOSED_PAGE = 1000;
 
 // supabase-js types a to-one embed as T | T[]; normalise.
@@ -96,7 +96,7 @@ async function fetchAllClosedMoney(
       .from("visit_tickets")
       .select("bill_subtotal_cents, total_cents, discount_cents, bill_source")
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS)
+      .eq("state", CLOSED_STATE)
       .order("created_at", { ascending: false })
       .range(from, from + CLOSED_PAGE - 1);
     if (error) return { ok: false, error: error.message };
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const limit = clampIntRange(Number(bodyRes.body.limit ?? 8), 1, 50);
 
   // A visit = the guest's QR met the venue (first_scanned_at stamped).
-  // A close = status revealed (v3b — "marks as done", not a payment).
+  // A close = state revealed (v3b — "marks as done", not a payment).
   const [
     savesRes,
     ticketsRes,
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS),
+      .eq("state", CLOSED_STATE),
     admin
       .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     admin
       .from("reservation_tickets")
       .select(
-        "id, reserved_at, party_size, status, is_test, " +
+        "id, reserved_at, party_size, state, is_test, " +
           "consumer:consumers(full_name, first_name, instagram_handle)",
       )
       .eq("place_id", projectId)
@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
     id: string;
     reserved_at: string | null;
     party_size: number | null;
-    status: string | null;
+    state: string | null;
     is_test: boolean | null;
     consumer: GuestShape | GuestShape[] | null;
   };
@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
     id: r.id,
     reservedAt: r.reserved_at,
     partySize: r.party_size,
-    status: r.status,
+    state: r.state,
     isTest: r.is_test === true,
     guest: guestName(one(r.consumer)),
   }));

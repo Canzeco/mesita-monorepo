@@ -1,12 +1,12 @@
 // Supabase Edge Function — admin-web-set-place-listed
 //
-// The ONLY door onto projects.status.
+// The ONLY door onto projects.state.
 //
-// Listed is one of the nine facts the admin Status box reports — "can a guest
+// Listed is one of the nine facts the admin State box reports — "can a guest
 // reach this place on Mesita at all" — and until now it was the only one
 // nothing in the product could change. The column was enforced (the consumer
 // RLS policy projects_select_public_visible gates SELECT on it) and
-// unreachable: business-web-update-project does not accept `status`, and no
+// unreachable: business-web-update-project does not accept `state`, and no
 // admin EF wrote it. Every row read 'active' purely because nothing had ever
 // written anything else. Pato, 2026-08-22: "maybe we want to activate or not
 // the place in Mesita."
@@ -14,15 +14,15 @@
 // LISTED is exactly the policy's predicate, not a new idea:
 //
 //   projects_select_public_visible USING
-//     status IN ('active','lead') AND content_status IN (...)
+//     state IN ('active','lead') AND content_state IN (...)
 //
-// The content_status leg allows all four labels of its enum, so `status`
+// The content_state leg allows all four labels of its enum, so `state`
 // alone decides. Unlisting therefore removes the place from every guest
 // surface at once — browse, search, the swipe deck, a shared link — because
 // they all read through that one policy with the anon key.
 //
 // Body:     { placeId | projectId, listed: boolean }
-// Response: { ok: true, listed, status, place }
+// Response: { ok: true, listed, state, place }
 //           `place` is the same AdminPlace shape business-web-update-project
 //           returns, so the console reconciles from one call.
 // Auth:     caller's JWT email must be in public.super_admins.
@@ -32,7 +32,7 @@
 // toggle. `archived` reads as terminal and is left to whatever eventually
 // handles real deletion.
 //
-// KNOWN NARROWING: `lead` is also a listed status, so unlisting a lead place
+// KNOWN NARROWING: `lead` is also a listed state, so unlisting a lead place
 // and re-listing it lands on 'active' — the lead/active distinction does not
 // survive the round trip. That is deliberate rather than overlooked: carrying
 // the prior value would need somewhere to store it, and nothing in the product
@@ -92,17 +92,17 @@ Deno.serve(async (req) => {
 
   const { data: current, error: readCurrent } = await admin
     .from("projects")
-    .select("status")
+    .select("state")
     .eq("id", projectId)
     .maybeSingle();
   if (readCurrent) {
-    return json({ ok: false, error: `status_read: ${readCurrent.message}` }, 500);
+    return json({ ok: false, error: `state_read: ${readCurrent.message}` }, 500);
   }
   if (!current) return json({ ok: false, error: "Place not found" }, 404);
 
-  const currentStatus = (current as { status: string | null }).status ?? "";
+  const currentState = (current as { state: string | null }).state ?? "";
   const alreadyListed = (LISTED_STATES as readonly string[]).includes(
-    currentStatus,
+    currentState,
   );
 
   // Already where the caller wants it — report success without a write, so a
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     if (readError) {
       return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
     }
-    return json({ ok: true, listed, status: currentStatus, place });
+    return json({ ok: true, listed, state: currentState, place });
   }
 
   const nextState = listed ? LISTED_STATE : UNLISTED_STATE;
@@ -124,12 +124,12 @@ Deno.serve(async (req) => {
     table: "projects",
     mode: "update",
     id: projectId,
-    patch: { status: nextState },
+    patch: { state: nextState },
     select: "id",
     selectMode: "maybeSingle",
   });
   if (!updRes.ok) {
-    return json({ ok: false, error: `status_update: ${updRes.error}` }, 500);
+    return json({ ok: false, error: `state_update: ${updRes.error}` }, 500);
   }
   if (!updRes.row) return json({ ok: false, error: "Place not found" }, 404);
 
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
     JSON.stringify({
       event: "place_listing_changed",
       project: projectId,
-      from: currentStatus,
+      from: currentState,
       to: nextState,
       actor: authRes.user.email ?? authRes.user.id,
     }),
@@ -152,5 +152,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
   }
 
-  return json({ ok: true, listed, status: nextState, place });
+  return json({ ok: true, listed, state: nextState, place });
 });

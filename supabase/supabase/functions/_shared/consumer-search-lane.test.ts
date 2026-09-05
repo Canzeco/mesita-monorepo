@@ -28,7 +28,7 @@ import { SIGNAL_KEYS, type SignalKey } from "./discovery-signals.ts";
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
     secondaryText: over.secondaryText ?? "",
-    status: over.status ?? "not_in_mesita",
+    state: over.state ?? "not_in_mesita",
     partner: over.partner ?? false,
     ...over,
   };
@@ -80,7 +80,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
       placeId: "ChIJ1",
       mainText: "Mesita override",
       secondaryText: "Mesita address",
-      status: "web_listed",
+      state: "web_listed",
       partner: true,
       mesitaId: "m-1",
       mesitaSlug: "mesita-override",
@@ -154,13 +154,13 @@ Deno.test("mergeNameDeepQueries: partner already in Mesita query appears once", 
         mainText: "Strana again",
         partner: true,
         mesitaId: "mesita-1",
-        status: "web_listed",
+        state: "web_listed",
       }),
       item({
         placeId: "ChIJ2",
         mainText: "Listed cafe",
         mesitaId: "mesita-2",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
     partners: [
@@ -169,7 +169,7 @@ Deno.test("mergeNameDeepQueries: partner already in Mesita query appears once", 
         mainText: "Strana",
         partner: true,
         mesitaId: "mesita-1",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
   });
@@ -183,7 +183,7 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
         placeId: "ChIJ1",
         mainText: "Resolved Autocomplete",
         mesitaId: "m-1",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
     text: [
@@ -191,7 +191,7 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
         placeId: "ChIJ2",
         mainText: "Resolved Text",
         mesitaId: "m-2",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
     mesita: [
@@ -199,13 +199,13 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
         placeId: "ChIJ1",
         mainText: "Dup Mesita",
         mesitaId: "m-1",
-        status: "web_listed",
+        state: "web_listed",
       }),
       item({
         placeId: "ChIJ3",
         mainText: "Only Mesita",
         mesitaId: "m-3",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
     partners: [
@@ -214,14 +214,14 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
         mainText: "Dup Partner",
         mesitaId: "m-2",
         partner: true,
-        status: "web_listed",
+        state: "web_listed",
       }),
       item({
         placeId: "ChIJ4",
         mainText: "Only Partner",
         mesitaId: "m-4",
         partner: true,
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
   });
@@ -341,7 +341,7 @@ function listed(
   name: string,
   embedding: number[],
   plan: string | null = "free",
-  content_status: string | null = "ready",
+  content_state: string | null = "ready",
 ): ListedRow {
   return {
     id,
@@ -352,9 +352,9 @@ function listed(
     lat: 19.4,
     lng: -99.1,
     plan,
-    content_status,
+    content_state,
     enriched_at: null,
-    business_status: "OPERATIONAL",
+    business_state: "OPERATIONAL",
     google_review_count: null,
     name_embedding: embedding,
     embedding: null,
@@ -431,7 +431,7 @@ Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita ski
         placeId: "overflow",
         mainText: "Resolved overflow",
         mesitaId: "m-overflow",
-        status: "web_listed",
+        state: "web_listed",
       }),
       item({ placeId: "fresh", mainText: "Fresh Google" }),
     ],
@@ -441,7 +441,7 @@ Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita ski
         placeId: "overflow",
         mainText: "Should skip",
         mesitaId: "m-overflow",
-        status: "web_listed",
+        state: "web_listed",
       }),
     ],
     partners: [],
@@ -525,7 +525,7 @@ Deno.test("weaveStampedAutocomplete: Locations hold their slots; gated Places dr
     placeId: "v-a",
     mainText: "Mesita Venue A",
     mesitaId: "m-a",
-    status: "web_listed",
+    state: "web_listed",
   });
   // Venue B died at the gate: only A survived the stamp.
   const out = weaveStampedAutocomplete([venueA, city, venueB], [resolvedA]);

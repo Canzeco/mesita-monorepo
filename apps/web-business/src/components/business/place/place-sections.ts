@@ -58,7 +58,7 @@ const PLACE_SECTIONS: readonly {
   {
     id: "details",
     label: "From Google",
-    description: "Status and info synced from Google.",
+    description: "State and info synced from Google.",
     inNav: false,
   },
   {

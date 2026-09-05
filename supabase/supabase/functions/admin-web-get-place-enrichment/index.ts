@@ -8,8 +8,8 @@
 //     instagram), the enricher vision ANALYSIS text, plus the pre-analysis
 //     source metadata: caption/likes for Instagram (+ comments/timestamp/video
 //     flag) and alt/page/dimensions for website images.
-//   • status — enrichment progress for the place: projects.content_status +
-//     the place_research stage/status/error + last_enriched_at (the moment the
+//   • state — enrichment progress for the place: projects.content_state +
+//     the place_research stage/state/error + last_enriched_at (the moment the
 //     pipeline last reached stage='done').
 //   • serpSummary — the SERP Summary (Agent X's soft editorial read) for the
 //     last run. Selected as a JSON PATH, never as the whole `gathered` blob:
@@ -65,19 +65,19 @@ Deno.serve(async (req) => {
     admin
       .from("place_media_assets")
       .select(
-        "public_url, source, status, analysis_text, caption, likes_count, source_url, source_metadata",
+        "public_url, source, state, analysis_text, caption, likes_count, source_url, source_metadata",
       )
       .eq("place_id", projectId)
       .order("created_at", { ascending: true }),
     admin
       .from("projects")
-      .select("content_status")
+      .select("content_state")
       .eq("id", projectId)
       .maybeSingle(),
     admin
       .from("place_research")
       .select(
-        "stage, status, error, updated_at, serp_summary:gathered->grounding->>serpSummary",
+        "stage, state, error, updated_at, serp_summary:gathered->grounding->>serpSummary",
       )
       .eq("place_id", projectId)
       .maybeSingle(),
@@ -107,17 +107,17 @@ Deno.serve(async (req) => {
   const research = researchRes.data as
     | {
         stage: string | null;
-        status: string | null;
+        state: string | null;
         error: string | null;
         updated_at: string | null;
         serp_summary: string | null;
       }
     | null;
 
-  const status = {
-    content_status: (projectRes.data?.content_status ?? null) as string | null,
+  const state = {
+    content_state: (projectRes.data?.content_state ?? null) as string | null,
     stage: research?.stage ?? null,
-    stage_status: research?.status ?? null,
+    stage_state: research?.state ?? null,
     error: research?.error ?? null,
     // The pipeline stamps updated_at on every stage advance; when the row is
     // 'done' that timestamp is the completion time.
@@ -143,10 +143,10 @@ Deno.serve(async (req) => {
     mode: placeRow?.enrich_mode ?? "full",
     nextAt: placeRow?.enrich_next_at ?? null,
     // places.enriched_at is stamped by the contents stage on a successful
-    // persist — the durable "last enriched", where status.last_enriched_at
+    // persist — the durable "last enriched", where state.last_enriched_at
     // only survives while the research row still sits at 'done'.
     lastEnrichedAt: placeRow?.enriched_at ?? null,
   };
 
-  return json({ ok: true, media, status, schedule, count: rows.length });
+  return json({ ok: true, media, state, schedule, count: rows.length });
 });

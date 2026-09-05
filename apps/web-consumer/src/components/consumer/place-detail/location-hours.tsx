@@ -151,7 +151,7 @@ function HoursDayRow({
 export function HoursBox({ place }: { place: PlaceDetail }) {
   // decision: Pato — Time below Location (full-width stack); keep timezone
   const today = todayWeekdayLabel(place.timezone);
-  const statusDetail = place.open_now
+  const stateDetail = place.open_now
     ? place.closes_at
       ? `until ${place.closes_at}`
       : null
@@ -182,10 +182,10 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
         >
           {place.open_now ? "Open" : "Closed"}
         </span>
-        {statusDetail && (
+        {stateDetail && (
           <>
             <span className="text-muted-foreground"> · </span>
-            <span className="text-foreground/80">{statusDetail}</span>
+            <span className="text-foreground/80">{stateDetail}</span>
           </>
         )}
       </p>

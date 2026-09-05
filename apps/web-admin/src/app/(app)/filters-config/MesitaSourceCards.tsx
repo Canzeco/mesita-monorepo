@@ -1,6 +1,6 @@
 import { Compass, Layers, MapPin, PartyPopper, Sparkles, Type } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
-import { KnobStatus, SectionCard } from "@/components/admin-ui/config";
+import { KnobState, SectionCard } from "@/components/admin-ui/config";
 
 // The six Mesita sources, in taxonomy order: the four over Places, then the
 // two over Social.
@@ -25,8 +25,8 @@ export function MesitaSourceCards() {
           icon={<Type className="text-primary h-4 w-4" />}
           title="Mesita Places Name Search"
           subtitle="Cosine match on `places.name_embedding` — the Mesita name, never `google_name` and never the summary. Admits on a raw-cosine floor, then Lineup orders on the Name signal alone."
-          status={
-            <KnobStatus kind="enforced" reason="suggest-places · Word (Deep) · Pay" />
+          state={
+            <KnobState kind="enforced" reason="suggest-places · Word (Deep) · Pay" />
           }
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
@@ -40,7 +40,7 @@ export function MesitaSourceCards() {
           icon={<MapPin className="text-primary h-4 w-4" />}
           title="Mesita Places Nearby Search"
           subtitle="Closest N listed Mesita Places around the camera centre. Always runs; the Google lane beside it is the opt-in one."
-          status={<KnobStatus kind="enforced" reason="list-places · Map" />}
+          state={<KnobState kind="enforced" reason="list-places · Map" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             Used by Map. N is the guest&apos;s How many, never a console

@@ -115,7 +115,7 @@ export type ChannelSet = Channels;
 
 // ── FunctionState ────────────────────────────────────────────────────────
 //
-// "{status, at, detail} x 10 enrichment functions" — the 10 is not a round
+// "{state, at, detail} x 10 enrichment functions" — the 10 is not a round
 // number, it is PULSE_PIECES.length (Pulse through Embedding), the exact
 // closed set pulse-pieces.ts already defines and pulse-report.ts already
 // writes through StampablePulseStep. FunctionState formalizes the PER-STEP
@@ -126,10 +126,10 @@ export type ChannelSet = Channels;
 // inventing its own shape.
 // KNOWN GAP (MESITA-1247 survey, deliberately left for MESITA-1249, which
 // owns materializing this map): the DB event log's `started` and `skipped`
-// statuses (place_enrichment_events.status CHECK) have no home in this
+// statuses (place_enrichment_events.state CHECK) have no home in this
 // three-value enum, and the write-side PieceOutcome (pulse-report.ts) is
 // narrower still (`completed | failed`, no `pending`). Whether `skipped`
-// projects as `completed` (skipped but fine), needs a fourth status, or
+// projects as `completed` (skipped but fine), needs a fourth state, or
 // something else, is 1249's call — don't let it get decided by accident
 // when this map's first real writer lands. `detail` being nullable here
 // while PieceOutcome.detail is not is correct as designed, not a bug: this
@@ -137,7 +137,7 @@ export type ChannelSet = Channels;
 // PieceOutcome structurally cannot hold since a piece that hasn't run never
 // gets a PieceOutcome written at all.
 export type FunctionState = {
-  status: "pending" | "completed" | "failed";
+  state: "pending" | "completed" | "failed";
   /** ISO timestamp of the latest event for this step, or null if never run. */
   at: string | null;
   detail: string | null;
@@ -150,7 +150,7 @@ export function isFunctionState(v: unknown): v is FunctionState {
   if (typeof v !== "object" || v === null) return false;
   const f = v as Record<string, unknown>;
   return (
-    (f.status === "pending" || f.status === "completed" || f.status === "failed") &&
+    (f.state === "pending" || f.state === "completed" || f.state === "failed") &&
     (f.at === null || typeof f.at === "string") &&
     (f.detail === null || typeof f.detail === "string")
   );
@@ -168,7 +168,7 @@ export const FUNCTION_STATE_KEYS: readonly PulseStep[] = [
 ];
 
 export const FunctionStateSchema: Schema<FunctionState> = object({
-  status: enumOf(["pending", "completed", "failed"] as const),
+  state: enumOf(["pending", "completed", "failed"] as const),
   at: nullable(str()),
   detail: nullable(str()),
 });
@@ -176,7 +176,7 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
 /**
  * A `FunctionStateMap` is a PARTIAL record — most places have not run every
  * one of the 10 steps yet, and an absent key means exactly that, not
- * `{status:"pending",...}`. `object()` iterates every key of its shape
+ * `{state:"pending",...}`. `object()` iterates every key of its shape
  * regardless of presence, which is the right behavior for a fixed-shape
  * document (place-doc.ts's own PlacePatch keys) but wrong here: a place
  * that has only run `pulse` must round-trip as `{pulse: {...}}`, not as
@@ -201,36 +201,55 @@ function foldSemanticPair(
 ): FunctionState | undefined {
   const parts = [name, summary].filter((p): p is FunctionState => p != null);
   if (parts.length === 0) return undefined;
-  const failed = parts.find((p) => p.status === "failed");
-  const completed = parts.filter((p) => p.status === "completed");
+  const failed = parts.find((p) => p.state === "failed");
+  const completed = parts.filter((p) => p.state === "completed");
   const at = parts.reduce<string | null>((acc, p) => laterAt(acc, p.at), null);
   if (failed) {
-    return { status: "failed", at, detail: failed.detail };
+    return { state: "failed", at, detail: failed.detail };
   }
   if (completed.length > 0) {
     const detail = completed
       .map((p) => p.detail)
       .filter((d): d is string => typeof d === "string" && d.length > 0)
       .join(" · ") || null;
-    return { status: "completed", at, detail };
+    return { state: "completed", at, detail };
   }
-  return { status: "pending", at, detail: null };
+  return { state: "pending", at, detail: null };
+}
+
+/**
+ * Pre-MESITA-1542 maps spell the per-function field `status`. The identifier
+ * rename did not rewrite stored `places.enrichment` JSONB, so the fold
+ * absorbs the old spelling on read — the same read-side absorption
+ * PULSE_RENAMES gives a renamed KEY. The next successful write
+ * re-materializes the map in the new spelling.
+ */
+function foldLegacyStateSpelling(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
+  const rec = raw as Record<string, unknown>;
+  if ("state" in rec || !("status" in rec)) return raw;
+  const { status: legacy, ...rest } = rec;
+  return { ...rest, state: legacy };
 }
 
 /**
  * Fold legacy keys into `embedding`: the rename (`semantic`, the same
  * function 10 under its pre-§8.4-v3 name) and the pre-merge `name`/`summary`
  * extras. Precedence: a real `embedding` stamp wins, then `semantic`, then
- * the folded extras pair.
+ * the folded extras pair. Legacy `status`-spelled records fold first.
  */
 export function foldFunctionStateMap(
   map: Partial<Record<string, FunctionState>>,
 ): FunctionStateMap {
-  const embedding = map.embedding ?? map.semantic ??
-    foldSemanticPair(map.name, map.summary);
+  const norm: Partial<Record<string, FunctionState>> = {};
+  for (const [key, rec] of Object.entries(map)) {
+    if (rec) norm[key] = foldLegacyStateSpelling(rec) as FunctionState;
+  }
+  const embedding = norm.embedding ?? norm.semantic ??
+    foldSemanticPair(norm.name, norm.summary);
   const out: FunctionStateMap = {};
   for (const key of PULSE_PIECES) {
-    const rec = map[key];
+    const rec = norm[key];
     if (rec) out[key] = rec;
   }
   if (embedding) out.embedding = embedding;
@@ -240,7 +259,7 @@ export function foldFunctionStateMap(
 
 /**
  * The ten Enrich operator functions (1–10), every key present
- * so Status can list them without inventing a second ladder.
+ * so State can list them without inventing a second ladder.
  */
 export function operatorFunctionStates(
   map: Partial<Record<string, FunctionState>>,
@@ -248,7 +267,7 @@ export function operatorFunctionStates(
   const folded = foldFunctionStateMap(map);
   const out: Record<string, FunctionState> = {};
   for (const key of FUNCTION_STATE_KEYS) {
-    out[key] = folded[key] ?? { status: "pending", at: null, detail: null };
+    out[key] = folded[key] ?? { state: "pending", at: null, detail: null };
   }
   return out;
 }
@@ -267,7 +286,7 @@ export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
     }
     const value: Record<string, FunctionState> = {};
     for (const key of Object.keys(rawObj)) {
-      const r = FunctionStateSchema.parse(rawObj[key]);
+      const r = FunctionStateSchema.parse(foldLegacyStateSpelling(rawObj[key]));
       if (!r.ok) return { ok: false, error: `${key}: ${r.error}` };
       value[key] = r.value;
     }
@@ -278,7 +297,7 @@ export const FunctionStateMapSchema: Schema<FunctionStateMap> = {
 const PulseBlockSchema: Schema<PulseBlock> = object({
   key: enumOf(PULSE_PIECES),
   index: refine(num(), (v) => Number.isInteger(v) && v >= 1 && v <= PULSE_TOTAL ? null : `index must be an integer between 1 and ${PULSE_TOTAL}`),
-  status: enumOf(["failed", "missing"] as const),
+  state: enumOf(["failed", "missing"] as const),
 });
 
 // ── The materialized enrichment state map (MESITA-1249) ────────────────────
@@ -326,7 +345,7 @@ function functionStateMapToEvents(map: FunctionStateMap): PulseEvent[] {
   return PULSE_PIECES.flatMap((piece) => {
     const rec = map[piece];
     if (!rec) return [];
-    return [{ step_name: piece, status: rec.status, created_at: rec.at ?? "" }];
+    return [{ step_name: piece, state: rec.state, created_at: rec.at ?? "" }];
   });
 }
 
@@ -339,11 +358,11 @@ export function pulseBlockedAtFromMap(map: FunctionStateMap): PulseBlock | null 
 }
 
 /**
- * Raw `place_enrichment_events.status` -> `FunctionState.status`. Only
+ * Raw `place_enrichment_events.state` -> `FunctionState.state`. Only
  * needed for translating HISTORICAL event rows (the migration backfill) —
  * the live write path (pulse-report.ts) only ever produces `PieceOutcome`,
- * whose status is already `"completed" | "failed"`, a strict subset of
- * `FunctionState.status`, so it never needs this mapping.
+ * whose state is already `"completed" | "failed"`, a strict subset of
+ * `FunctionState.state`, so it never needs this mapping.
  *
  * `completed` stays itself. `started` (in-flight, no outcome yet) becomes
  * `pending`. Everything else — `failed`, the `skipped` a legacy row might
@@ -354,8 +373,8 @@ export function pulseBlockedAtFromMap(map: FunctionStateMap): PulseBlock | null 
  * flagged as 1249's to make is "reuse the ladder's existing skipped-is-a-
  * form-of-failed rule", not a fresh one.
  */
-export function toFunctionStatus(rawStatus: string): FunctionState["status"] {
-  if (rawStatus === "completed") return "completed";
-  if (rawStatus === "started") return "pending";
+export function toFunctionState(rawState: string): FunctionState["state"] {
+  if (rawState === "completed") return "completed";
+  if (rawState === "started") return "pending";
   return "failed";
 }

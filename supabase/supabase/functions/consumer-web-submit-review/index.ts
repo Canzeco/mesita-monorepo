@@ -2,7 +2,7 @@
 //
 // Lifecycle v3 (MESITA-849): the guest leaves their Google review and tells us
 // here — BEFORE the business is involved. Their declaration is the
-// verification: review_status goes straight to 'self_verified'. No screenshot,
+// verification: review_state goes straight to 'self_verified'. No screenshot,
 // no staff approval (that was check-web-verify-action / business-web-verify-review,
 // both retired in this change).
 //
@@ -43,7 +43,7 @@ import {
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
-import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { TASKABLE_STATE_SET } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { queueOjoVerification } from "../_shared/ojo-engine.ts";
 
@@ -51,7 +51,7 @@ type Body = { ticketId?: string; screenshotUrl?: string };
 
 // Ticket states that can still take a task. A closed ticket can't — the
 // reward is already settled.
-const OPEN_TO_TASKS = TASKABLE_STATUS_SET;
+const OPEN_TO_TASKS = TASKABLE_STATE_SET;
 
 const ALREADY_CLAIMED = {
   ok: false,
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, place_id, consumer_id, status, review_status, fix_requested")
+    .select("id, place_id, consumer_id, state, review_state, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       403,
     );
   }
-  if (!OPEN_TO_TASKS.has(ticket.status)) {
+  if (!OPEN_TO_TASKS.has(ticket.state)) {
     return json(
       { ok: false, error: "This ticket is closed — reviews attach to open tickets." },
       409,
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
   }
 
   // Already done — idempotent, so a double-tap or a retry is harmless.
-  if (isActionVerified(ticket.review_status)) {
+  if (isActionVerified(ticket.review_state)) {
     return json({ ok: true, ticket, alreadyVerified: true });
   }
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
     mode: "update",
     id: ticketId,
     patch: {
-      review_status: "self_verified",
+      review_state: "self_verified",
       review_submitted_at: now,
       review_verified_at: now,
       // FKs to managers (business-side); self-verification has no approver.
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
         ? { fix_requested: null, fix_note: null }
         : {}),
     },
-    select: "id, status, review_status, review_submitted_at",
+    select: "id, state, review_state, review_submitted_at",
     single: true,
   });
   if (!updated.ok) {

@@ -40,7 +40,7 @@ export function cardToPrediction(card: MemoPlaceCard): Prediction {
     placeId: card.googlePlaceId ?? card.id, // align with the Google leg's key when we have it
     mainText: card.name,
     secondaryText: card.address ?? card.category ?? "On Mesita",
-    status: card.listingType === "partner" ? "verified_partner_other" : "web_listed",
+    state: card.listingType === "partner" ? "verified_partner_other" : "web_listed",
     mesitaId: card.id,
     mesitaSlug: card.slug,
     rating: card.rating,

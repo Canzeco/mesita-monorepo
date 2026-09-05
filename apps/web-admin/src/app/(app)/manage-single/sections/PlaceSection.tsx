@@ -425,7 +425,7 @@ export function PlaceSection({
 
   // Per-place Intaker inspector data — per-photo metadata (source + vision
   // analysis) for the ⓘ dialog, keyed by image URL. Loads once; the live
-  // enriching status (and its poll) lives on the Admin tab's Metadata card.
+  // enriching state (and its poll) lives on the Admin tab's Metadata card.
   const [media, setMedia] = useState<Record<string, PlaceMediaMeta>>({});
   const [metaFor, setMetaFor] = useState<string | null>(null);
 
@@ -968,7 +968,7 @@ function AnalysisText({ text }: { text: string }) {
   );
 }
 
-const STATUS_CHIP: Record<string, string> = {
+const STATE_CHIP: Record<string, string> = {
   saved: "bg-green-500/10 text-green-600",
   pending: "bg-amber-500/10 text-amber-600",
   failed: "bg-red-500/10 text-red-600",
@@ -1024,7 +1024,7 @@ function sourceMetaRows(
 }
 
 // Intaker inspector: shows one image's metadata — source, gallery order, save
-// status, the pre-analysis source signals (likes/comments/dims/…), and the
+// state, the pre-analysis source signals (likes/comments/dims/…), and the
 // vision analysis text — in a small modal.
 //
 // This is Mesita-internal data but it deliberately stays on Place rather than
@@ -1059,9 +1059,9 @@ function MediaMetaDialog({
   const chip =
     (source && SOURCE_CHIP[source]) || "bg-muted text-muted-foreground";
   const analysis = meta?.analysis_text?.trim() || null;
-  const status = meta?.status ?? null;
-  const statusChip =
-    (status && STATUS_CHIP[status]) || "bg-muted text-muted-foreground";
+  const state = meta?.state ?? null;
+  const stateChip =
+    (state && STATE_CHIP[state]) || "bg-muted text-muted-foreground";
   const metaRows = sourceMetaRows(source, meta?.source_metadata ?? null);
 
   return (
@@ -1110,14 +1110,14 @@ function MediaMetaDialog({
                 not in gallery
               </span>
             )}
-            {status && (
+            {state && (
               <span
                 className={
                   "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold " +
-                  statusChip
+                  stateChip
                 }
               >
-                {status}
+                {state}
               </span>
             )}
           </div>

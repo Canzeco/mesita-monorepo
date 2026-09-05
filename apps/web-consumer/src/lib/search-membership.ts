@@ -31,27 +31,27 @@ export type MembershipTone = "partner" | "enriched" | "unlisted";
 /**
  * Did we write a profile? The server's `enriched` is the answer. The column
  * pair is only a fallback for a payload minted before the field existed:
- * `content_status = 'ready'` OR a stamped `enriched_at`, never one alone —
+ * `content_state = 'ready'` OR a stamped `enriched_at`, never one alone —
  * 27% of the live catalog is ready with a null `enriched_at` (measured
  * 2026-08-29), so an `enriched_at`-only test would grey a quarter of it.
  */
 export function isEnrichedPlace(place: {
   enriched?: boolean | null;
-  content_status?: string | null;
+  content_state?: string | null;
   enriched_at?: string | null;
 }): boolean {
   if (typeof place.enriched === "boolean") return place.enriched;
-  return place.content_status === "ready" || Boolean(place.enriched_at);
+  return place.content_state === "ready" || Boolean(place.enriched_at);
 }
 
-/** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita status. */
+/** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
-  status?: string | null;
+  state?: string | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
 }): boolean {
   if (item.mesitaId || item.mesitaSlug) return true;
-  return item.status !== "not_in_mesita";
+  return item.state !== "not_in_mesita";
 }
 
 /** Google Nearby stub that was added — real Mesita id, not a g: prefix. */
@@ -101,7 +101,7 @@ export function locationTypeLabel(locationType?: string | null): string {
  *  `enriched` reads as gray: understating beats promising a profile that
  *  is not there. */
 export function membershipTone(item: {
-  status?: string | null;
+  state?: string | null;
   partner?: boolean | null;
   enriched?: boolean | null;
   mesitaId?: string | null;
@@ -172,7 +172,7 @@ export function placeMembershipTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;
   enriched?: boolean | null;
-  content_status?: string | null;
+  content_state?: string | null;
   enriched_at?: string | null;
 }): MembershipTone {
   if (place.googleOnly || place.from_google) return "unlisted";
@@ -186,7 +186,7 @@ export function placeMembershipTone(place: {
 export type SearchPinPrediction = {
   placeId: string;
   mainText: string;
-  status?: string | null;
+  state?: string | null;
   partner?: boolean | null;
   /** Word's second entity — a Location is a camera destination, never a pin. */
   kind?: "place" | "location";

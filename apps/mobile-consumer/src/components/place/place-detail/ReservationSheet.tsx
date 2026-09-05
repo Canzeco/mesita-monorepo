@@ -173,7 +173,7 @@ export function ReservationSheet({
 
   // Look for a live booking at this place whenever the sheet opens. `upcoming`
   // is exactly "active" server-side: consumer-web-list-reservations filters to
-  // status pending|confirmed AND reserved_at >= now - 4h, so cancelled,
+  // state pending|confirmed AND reserved_at >= now - 4h, so cancelled,
   // declined, unreachable and long-gone tickets never come back.
   useEffect(() => {
     if (!visible) return;

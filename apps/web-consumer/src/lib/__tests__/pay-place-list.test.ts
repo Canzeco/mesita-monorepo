@@ -17,7 +17,7 @@ const basePlace = {
   price_level: 4,
   currency: "MXN",
   listing_type: "web",
-  status: "active",
+  state: "active",
   fiscal_type: "informal",
   plan: "free",
   lat: 25.67,
@@ -73,13 +73,13 @@ describe("payRowFromPrediction", () => {
     placeId: "ChIJgoogle",
     mainText: "Starbucks Manali",
     secondaryText: "Palchan",
-    status: "not_in_mesita",
+    state: "not_in_mesita",
   };
   const mesita: PlacePrediction = {
     placeId: "ChIJcosmo",
     mainText: "Cosmo San Pedro",
     secondaryText: "Del Valle",
-    status: "web_listed",
+    state: "web_listed",
     mesitaId: "p1",
   };
 

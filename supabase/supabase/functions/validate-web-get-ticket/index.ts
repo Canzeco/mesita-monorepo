@@ -29,7 +29,7 @@ import {
 import { loadRewardsGrid } from "../_shared/rewards-config.ts";
 import { resolveBillCapPesos } from "../_shared/discount-cap.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
-import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { loadVisitsConfig, staffVisitsPolicy } from "../_shared/visits-config.ts";
 
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   }
 
   // self_view: the request carried the OWNER's consumer JWT (the app's own
-  // status poll, or lazy in-app self-service). Anonymous browsers are null.
+  // state poll, or lazy in-app self-service). Anonymous browsers are null.
   const { user } = await getOptionalAuthedUser(req, envRes.env);
   const selfView = user?.id === ticket.consumer_id;
 
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
   let liveCapPesos: number | null = null;
   const unbilled = (ticket.total_cents ?? 0) <= 0 &&
     (ticket.bill_subtotal_cents ?? 0) <= 0;
-  if (unbilled && ticket.status === TICKET_STATUS.open) {
+  if (unbilled && ticket.state === TICKET_STATE.open) {
     const live = await resolveLiveTicketRate(admin, ticket);
     if (live.ok) {
       offerRatePercent = live.ratePercent;

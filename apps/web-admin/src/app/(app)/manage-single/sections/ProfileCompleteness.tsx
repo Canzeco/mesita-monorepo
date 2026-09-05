@@ -122,10 +122,10 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
-  // Pipeline status lives in place chrome (MESITA-896). When Intaker is mid-
+  // Pipeline state lives in place chrome (MESITA-896). When Intaker is mid-
   // flight, a quiet footnote here explains why completeness chips may lag.
   const enriching =
-    place.content_status === "generating" || place.content_status === "queued";
+    place.content_state === "generating" || place.content_state === "queued";
 
   // Chip hue tracks the band so the banner reads at a glance.
   const chip = complete

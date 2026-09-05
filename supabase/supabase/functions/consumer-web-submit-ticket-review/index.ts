@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
 
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, place_id, status")
+    .select("id, consumer_id, place_id, state")
     .eq("id", ticketId)
     .eq("consumer_id", userId)
     .maybeSingle();
@@ -136,11 +136,11 @@ Deno.serve(async (req) => {
 
   await admin
     .from("consumer_notifications")
-    .update({ status: "completed", resolved_at: now })
+    .update({ state: "completed", resolved_at: now })
     .eq("ticket_id", ticketId)
     .eq("consumer_id", userId)
     .eq("kind", "review")
-    .eq("status", "pending");
+    .eq("state", "pending");
 
   return json({ ok: true, reviewId: insert.data.id });
 });

@@ -46,7 +46,7 @@ export async function apiResolveLocationAnchor(
 type CreatedProject = {
   ok: boolean;
   /** The freshly created ugly profile (ready, not Enriched). */
-  place: { id: string; slug: string; name: string; status: string };
+  place: { id: string; slug: string; name: string; state: string };
 };
 
 /**

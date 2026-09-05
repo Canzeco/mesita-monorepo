@@ -17,7 +17,7 @@ export type PlaceRow = {
   vibe: string | null;
   price_level: number | null;
   listing_type: "partner" | "web";
-  status: string;
+  state: string;
   fiscal_type: string | null;
   plan: string | null;
   lat: number | null;

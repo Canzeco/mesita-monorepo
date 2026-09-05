@@ -1,14 +1,14 @@
-// Place Status facts for Global Monitor — same nine the Status box and
+// Place State facts for Global Monitor — same nine the State box and
 // the Single Place catalog use, derived from the same helpers. Never
 // listing_type. Never "claimed" as a fact (that's an owner row, not
 // Verified).
 //
 //   created    google_place_id present (operator label Created; wire `seeded`)
-//   active     Google business_status === OPERATIONAL
-//   listed     projects.status ∈ (active, lead)
-//   requested  request_count > 0 and content_status is not ready
+//   active     Google business_state === OPERATIONAL
+//   listed     projects.state ∈ (active, lead)
+//   requested  request_count > 0 and content_state is not ready
 //   enriched   PULSE high-water complete. Independent of enriching.
-//   enriching  content_status generating/queued (live run)
+//   enriching  content_state generating/queued (live run)
 //   verified   an approved project_verifications row
 //   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)
@@ -22,7 +22,7 @@ import {
   isPlaceListed,
   isPlaceRequested,
   isPlaceSeeded,
-} from "../_shared/place-status.ts";
+} from "../_shared/place-state.ts";
 import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionStateMap } from "../_shared/schema-catalog.ts";
 import type { NotificationItem } from "./notification-mappers.ts";
@@ -43,7 +43,7 @@ export type PlaceStateFacts = {
 };
 
 const PROFILE_COLS =
-  "id, google_place_id, status, business_status, content_status, request_count, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at";
+  "id, google_place_id, state, business_state, content_state, request_count, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, promo_paused_until, plan_forfeited_at, strike_count, last_strike_at, reward_lane_pending_review_at";
 
 const EMPTY_ENRICHMENT: EnrichmentMap = {
   functions: {},
@@ -58,16 +58,16 @@ export function completedFunctions(
   if (!map) return out;
   for (const [key, rec] of Object.entries(map)) {
     if (!rec) continue;
-    if (rec.status === "completed") out[key] = true;
+    if (rec.state === "completed") out[key] = true;
   }
   return out;
 }
 
 export function placeStateFacts(input: {
   googlePlaceId: unknown;
-  status: unknown;
+  state: unknown;
   businessStatus: unknown;
-  contentStatus?: unknown;
+  contentState?: unknown;
   requestCount?: unknown;
   plan: unknown;
   highWater: number;
@@ -79,12 +79,12 @@ export function placeStateFacts(input: {
   return {
     seeded: isPlaceSeeded(input.googlePlaceId),
     active: input.businessStatus === "OPERATIONAL",
-    listed: isPlaceListed(input.status),
+    listed: isPlaceListed(input.state),
     requested: isPlaceRequested({
       requestCount: input.requestCount,
-      contentStatus: input.contentStatus,
+      contentState: input.contentState,
     }),
-    enriching: isPlaceEnriching(input.contentStatus),
+    enriching: isPlaceEnriching(input.contentState),
     enriched: highWater === PULSE_TOTAL,
     enrichPulse: highWater,
     enrichPulseTotal: PULSE_TOTAL,
@@ -95,7 +95,7 @@ export function placeStateFacts(input: {
   };
 }
 
-/** Stamp `meta.statusFacts` on every item that has a place id. Best-effort. */
+/** Stamp `meta.stateFacts` on every item that has a place id. Best-effort. */
 export async function attachPlaceStateFacts(
   admin: SupabaseClient,
   items: NotificationItem[],
@@ -114,7 +114,7 @@ export async function attachPlaceStateFacts(
     admin
       .from("project_verifications")
       .select("place_id")
-      .eq("status", "approved")
+      .eq("state", "approved")
       .in("place_id", ids),
     admin.from("places").select("id, enrichment").in("id", ids),
   ]);
@@ -153,9 +153,9 @@ export async function attachPlaceStateFacts(
       id,
       placeStateFacts({
         googlePlaceId: row.google_place_id,
-        status: row.status,
-        businessStatus: row.business_status,
-        contentStatus: row.content_status,
+        state: row.state,
+        businessStatus: row.business_state,
+        contentState: row.content_state,
         requestCount: row.request_count,
         plan: row.plan,
         highWater: (enrichment.get(id) ?? EMPTY_ENRICHMENT).highWater,
@@ -171,6 +171,6 @@ export async function attachPlaceStateFacts(
     if (!id) continue;
     const facts = factsById.get(id);
     if (!facts) continue;
-    item.meta = { ...item.meta, statusFacts: facts };
+    item.meta = { ...item.meta, stateFacts: facts };
   }
 }

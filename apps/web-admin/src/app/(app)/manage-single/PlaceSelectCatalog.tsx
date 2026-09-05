@@ -18,7 +18,7 @@ import {
   findPlaceByPlaceId,
   suggestPlaces,
   type PlacePrediction,
-  type PlacePredictionStatus,
+  type PlacePredictionState,
   type PlaceHit } from "./actions";
 import { placeSectionHref } from "./nav";
 import { PlaceThumb } from "./PlaceEditChrome";
@@ -32,8 +32,8 @@ import { STICKY_COL_CELL, STICKY_COL_HEAD } from "@/lib/ui-classes";
 // Minimum characters before a query triggers Mesita/Google search logic.
 const MIN_QUERY_LENGTH = 2;
 
-const STATUS_BADGE: Record<
-  PlacePredictionStatus,
+const STATE_BADGE: Record<
+  PlacePredictionState,
   { label: string; className: string; Icon: typeof MapPin }
 > = {
   not_in_mesita: {
@@ -171,7 +171,7 @@ export function PlaceSelectCatalog() {
       pickPlace(prediction.mesitaId);
       return;
     }
-    if (prediction.status === "not_in_mesita") {
+    if (prediction.state === "not_in_mesita") {
       setCreateError(null);
       setConfirm(prediction);
       return;
@@ -371,8 +371,8 @@ export function PlaceSelectCatalog() {
               )}
 
               {deepPredictions.map((p) => {
-                const badge = STATUS_BADGE[p.status];
-                const canCreate = p.status === "not_in_mesita";
+                const badge = STATE_BADGE[p.state];
+                const canCreate = p.state === "not_in_mesita";
                 return (
                   <button
                     key={p.mesitaId ?? p.placeId}
@@ -490,15 +490,15 @@ function PlaceCatalogRow({
       <td className="hidden px-4 py-3.5 sm:table-cell">
         <PlaceThumb photo={place.photo} name={place.name} size="md" />
       </td>
-      {/* Pinned while the status columns scroll past it on a phone; a plain
+      {/* Pinned while the state columns scroll past it on a phone; a plain
           cell again from `sm`, where the whole table fits the column. */}
       <td className={`max-w-[60vw] px-4 py-3.5 sm:max-w-[260px] ${STICKY_COL_CELL}`}>
         <p className="truncate font-semibold">{googleName}</p>
       </td>
       <td className="px-4 py-3.5 text-center">
         <ActiveCell
-          status={place.business_status}
-          seenAt={place.business_status_at}
+          state={place.business_state}
+          seenAt={place.business_state_at}
         />
       </td>
       <td className="px-4 py-3.5 text-center">
@@ -634,26 +634,26 @@ function RequestCountCell({ count }: { count: number }) {
 // stale claim must not read as current. Silence from Google is "?", a third
 // state that is NOT "closed".
 function ActiveCell({
-  status,
+  state,
   seenAt,
 }: {
-  status: string | null;
+  state: string | null;
   seenAt: string | null;
 }) {
   const seen =
     seenAt && !Number.isNaN(new Date(seenAt).getTime())
       ? ` (seen ${new Date(seenAt).toLocaleDateString()})`
       : "";
-  if (status === "OPERATIONAL") {
+  if (state === "OPERATIONAL") {
     return (
       <span title={`Google reports this business as open and trading${seen}`}>
         <BoolCell value={true} trueLabel="Yes" falseLabel="No" />
       </span>
     );
   }
-  if (status === "CLOSED_TEMPORARILY" || status === "CLOSED_PERMANENTLY") {
+  if (state === "CLOSED_TEMPORARILY" || state === "CLOSED_PERMANENTLY") {
     const label =
-      status === "CLOSED_TEMPORARILY" ? "Temporarily closed" : "Permanently closed";
+      state === "CLOSED_TEMPORARILY" ? "Temporarily closed" : "Permanently closed";
     return (
       <span title={`${label}${seen}`}>
         <BoolCell value={false} trueLabel="Yes" falseLabel="No" />

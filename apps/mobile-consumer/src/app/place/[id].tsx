@@ -96,7 +96,7 @@ function placeDetailToPreview(place: PlaceDetail) {
     price_level: place.price_level,
     currency: place.currency,
     listing_type: place.listing_type,
-    status: 'active' as const,
+    state: 'active' as const,
     fiscal_type: 'formal' as const,
     plan: 'free' as const,
     lat: place.lat,

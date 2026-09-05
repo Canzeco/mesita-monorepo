@@ -106,16 +106,16 @@ Deno.test("validatePlacePatch: accepts null enrich_every_days (schedule cleared)
   assert(validatePlacePatch({ enrich_every_days: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts business_status + business_status_at together", () => {
+Deno.test("validatePlacePatch: accepts business_state + business_state_at together", () => {
   const res = validatePlacePatch({
-    business_status: "CLOSED_TEMPORARILY",
-    business_status_at: "2026-08-23T00:00:00Z",
+    business_state: "CLOSED_TEMPORARILY",
+    business_state_at: "2026-08-23T00:00:00Z",
   });
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: accepts business_status = null (Google was silent)", () => {
-  assert(validatePlacePatch({ business_status: null }).ok);
+Deno.test("validatePlacePatch: accepts business_state = null (Google was silent)", () => {
+  assert(validatePlacePatch({ business_state: null }).ok);
 });
 
 Deno.test("validatePlacePatch: accepts star ratings at the boundaries (0 and 5) and null", () => {
@@ -206,9 +206,9 @@ Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field i
 Deno.test("validatePlacePatch: accepts a real places.enrichment patch", () => {
   const res = validatePlacePatch({
     enrichment: {
-      functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+      functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
       highWater: 1,
-      blockedAt: { key: "details", index: 2, status: "missing" },
+      blockedAt: { key: "details", index: 2, state: "missing" },
     },
   });
   assert(res.ok);
@@ -258,8 +258,8 @@ Deno.test("validatePlacePatch: rejects an enrich_mode outside the closed set, an
   assert(!validatePlacePatch({ enrich_mode: null }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a business_status outside the closed set", () => {
-  assert(!validatePlacePatch({ business_status: "TEMPORARILY_CLOSED" }).ok);
+Deno.test("validatePlacePatch: rejects a business_state outside the closed set", () => {
+  assert(!validatePlacePatch({ business_state: "TEMPORARILY_CLOSED" }).ok);
 });
 
 Deno.test("validatePlacePatch: rejects a star rating outside 0..5", () => {
@@ -306,9 +306,9 @@ Deno.test("validatePlacePatch: rejects google_place_id of the wrong type", () =>
 
 // ── validateProjectPatch: accept ────────────────────────────────────────────
 
-Deno.test("validateProjectPatch: accepts a status transition within the closed enum", () => {
-  assert(validateProjectPatch({ status: "active" }).ok);
-  assert(validateProjectPatch({ status: "pending_verification" }).ok);
+Deno.test("validateProjectPatch: accepts a state transition within the closed enum", () => {
+  assert(validateProjectPatch({ state: "active" }).ok);
+  assert(validateProjectPatch({ state: "pending_verification" }).ok);
 });
 
 Deno.test("validateProjectPatch: accepts plan + listing_type + rate fields", () => {
@@ -345,9 +345,9 @@ Deno.test("validateProjectPatch: accepts well-formed CFDI fields", () => {
   assert(res.ok);
 });
 
-Deno.test("validateProjectPatch: accepts the content_status ladder", () => {
+Deno.test("validateProjectPatch: accepts the content_state ladder", () => {
   for (const s of ["queued", "generating", "ready", "failed"]) {
-    assert(validateProjectPatch({ content_status: s }).ok, s);
+    assert(validateProjectPatch({ content_state: s }).ok, s);
   }
 });
 
@@ -359,8 +359,8 @@ Deno.test("validateProjectPatch: rejects an unknown field (closed key set)", () 
   assertEquals(res.error, "unknown project field: owner_id");
 });
 
-Deno.test("validateProjectPatch: rejects a status outside the closed enum", () => {
-  assert(!validateProjectPatch({ status: "deleted" }).ok);
+Deno.test("validateProjectPatch: rejects a state outside the closed enum", () => {
+  assert(!validateProjectPatch({ state: "deleted" }).ok);
 });
 
 Deno.test("validateProjectPatch: rejects a rate outside the legal tens grid", () => {
@@ -402,14 +402,14 @@ Deno.test("validateProfilePatch: accepts a patch mixing places and projects fiel
   const res = validateProfilePatch({
     mesita_name: "El Nuevo Nombre",
     category: "cafe",
-    status: "active",
+    state: "active",
     welcome_free_rate: 20,
   });
   assert(res.ok);
 });
 
 Deno.test("validateProfilePatch: still enforces each field's own rule regardless of which table it belongs to", () => {
-  assert(!validateProfilePatch({ status: "deleted" }).ok, "bad projects field");
+  assert(!validateProfilePatch({ state: "deleted" }).ok, "bad projects field");
   assert(!validateProfilePatch({ price_level: 9 }).ok, "bad places field");
 });
 
@@ -535,20 +535,20 @@ Deno.test("writePlace: places insert with select returns the re-read row", async
 });
 
 Deno.test("writePlace: projects insert carries the shared id alongside the patch", async () => {
-  const { admin, calls } = fakePlaceAdmin({ row: { id: "place-1", slug: "cafe-central", status: "active" } });
+  const { admin, calls } = fakePlaceAdmin({ row: { id: "place-1", slug: "cafe-central", state: "active" } });
   const res = await writePlace(admin, {
     table: "projects",
     mode: "insert",
     id: "place-1",
-    patch: { slug: "cafe-central", status: "active", content_status: "ready" },
-    select: "id, slug, status",
+    patch: { slug: "cafe-central", state: "active", content_state: "ready" },
+    select: "id, slug, state",
   });
   assert(res.ok);
   assertEquals(calls[0].value, {
     id: "place-1",
     slug: "cafe-central",
-    status: "active",
-    content_status: "ready",
+    state: "active",
+    content_state: "ready",
   });
 });
 
@@ -565,13 +565,13 @@ Deno.test("writePlace: profiles update accepts a patch mixing both tables' field
     table: "profiles",
     mode: "update",
     id: "place-1",
-    patch: { mesita_name: "Nuevo Nombre", status: "active" },
+    patch: { mesita_name: "Nuevo Nombre", state: "active" },
   });
   assert(res.ok);
   assertEquals(calls, [{
     table: "profiles",
     op: "update",
-    value: { mesita_name: "Nuevo Nombre", status: "active" },
+    value: { mesita_name: "Nuevo Nombre", state: "active" },
   }]);
 });
 
@@ -593,7 +593,7 @@ Deno.test("writePlace: maybeSingle select mode reaches the DB the same as single
     table: "projects",
     mode: "update",
     id: "missing-project",
-    patch: { status: "active" },
+    patch: { state: "active" },
     select: "id",
     selectMode: "maybeSingle",
   });

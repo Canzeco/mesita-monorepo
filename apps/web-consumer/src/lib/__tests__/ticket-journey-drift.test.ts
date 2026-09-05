@@ -2,7 +2,7 @@
 // `lib/ticket-journey.ts` BYTE-IDENTICALLY — the module is pure TS with zero
 // platform deps, so the two copies can and must be the same file. mobile has
 // no test runner; this equality pin is its coverage, same mechanism as the
-// status-constant drift test.
+// state-constant drift test.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

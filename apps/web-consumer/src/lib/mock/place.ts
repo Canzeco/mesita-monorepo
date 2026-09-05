@@ -62,10 +62,10 @@ export type PlaceDetail = {
   last_updated_label: string;
   // True while the Intaker is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by
-  // projects.content_status ∈ {queued, generating} — stays generating until
+  // projects.content_state ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
-  /** Viewable profile (content_status ready). Ugly Create profiles are ready. */
+  /** Viewable profile (content_state ready). Ugly Create profiles are ready. */
   is_profile_ready: boolean;
   /** Intaker finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
@@ -74,7 +74,7 @@ export type PlaceDetail = {
   request_threshold: number;
   /** This consumer already voted on this place. */
   requested: boolean;
-  /** Derived: listed | requested | enriched. Never a status-per-count. */
+  /** Derived: listed | requested | enriched. Never a state-per-count. */
   request_lifecycle: "listed" | "requested" | "enriched";
 
   // 2. Media

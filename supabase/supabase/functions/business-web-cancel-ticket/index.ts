@@ -17,9 +17,9 @@ import {
   recordMembershipStrike,
 } from "../_shared/membership-enforcement.ts";
 import {
-  BUSINESS_CANCELLABLE_STATUSES,
-  TICKET_STATUS,
-} from "../_shared/ticket-status.ts";
+  BUSINESS_CANCELLABLE_STATES,
+  TICKET_STATE,
+} from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string; reason?: string };
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, place_id, status, consumer_id")
+    .select("id, place_id, state, consumer_id")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error) {
@@ -56,13 +56,13 @@ Deno.serve(async (req) => {
   const membership = await requireEditor(admin, authRes.user, ticket.data.place_id);
   if (!membership.ok) return membership.response;
 
-  if (ticket.data.status === TICKET_STATUS.cancelled) {
+  if (ticket.data.state === TICKET_STATE.cancelled) {
     return json({ ok: true, alreadyCancelled: true });
   }
-  const cancellable = new Set<string>(BUSINESS_CANCELLABLE_STATUSES);
-  if (!cancellable.has(ticket.data.status)) {
+  const cancellable = new Set<string>(BUSINESS_CANCELLABLE_STATES);
+  if (!cancellable.has(ticket.data.state)) {
     return json(
-      { ok: false, error: `Cannot cancel a ${ticket.data.status} ticket` },
+      { ok: false, error: `Cannot cancel a ${ticket.data.state} ticket` },
       409,
     );
   }
@@ -71,9 +71,9 @@ Deno.serve(async (req) => {
   const update = await writeTicket(admin, {
     mode: "update",
     id: ticketId,
-    patch: { status: TICKET_STATUS.cancelled, cancelled_at: cancelledAt, cancel_reason: reason },
-    guard: { in: { status: [...BUSINESS_CANCELLABLE_STATUSES] } },
-    select: "id, status, cancelled_at, cancel_reason",
+    patch: { state: TICKET_STATE.cancelled, cancelled_at: cancelledAt, cancel_reason: reason },
+    guard: { in: { state: [...BUSINESS_CANCELLABLE_STATES] } },
+    select: "id, state, cancelled_at, cancel_reason",
     single: true,
   });
   if (!update.ok) {

@@ -38,7 +38,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
-import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string };
@@ -78,25 +78,25 @@ Deno.serve(async (req) => {
   });
   if (!pinRes.ok) return pinRes.response;
 
-  if (ticket.status === CLOSED_TICKET_STATUS) {
+  if (ticket.state === CLOSED_TICKET_STATE) {
     return json({ ok: true, alreadyPaid: true });
   }
   if (
-    ticket.status !== TICKET_STATUS.paying &&
-    ticket.status !== TICKET_STATUS.approved
+    ticket.state !== TICKET_STATE.paying &&
+    ticket.state !== TICKET_STATE.approved
   ) {
     return json(
       {
         ok: false,
         code: "stale_state",
-        status: ticket.status,
-        error: `Ticket is ${ticket.status} — approve it before confirming the payment.`,
+        state: ticket.state,
+        error: `Ticket is ${ticket.state} — approve it before confirming the payment.`,
       },
       409,
     );
   }
 
-  // Stamp the v4 close facts first (CAS on the two payable statuses), then
+  // Stamp the v4 close facts first (CAS on the two payable states), then
   // run the shared close — which flips to revealed, records first-honor and
   // queues the guest's review, exactly like every close before it.
   const now = new Date().toISOString();
@@ -109,9 +109,9 @@ Deno.serve(async (req) => {
     id: ticket.id,
     patch: {
       validated_at: now,
-      ...(ticket.status === TICKET_STATUS.paying ? {} : { paid_method: "at_place" as const }),
+      ...(ticket.state === TICKET_STATE.paying ? {} : { paid_method: "at_place" as const }),
     },
-    guard: { in: { status: [TICKET_STATUS.paying, TICKET_STATUS.approved] } },
+    guard: { in: { state: [TICKET_STATE.paying, TICKET_STATE.approved] } },
     select: "id",
   });
   if (!stamp.ok) {
@@ -121,10 +121,10 @@ Deno.serve(async (req) => {
     // Someone else closed or cancelled it between the read and the stamp.
     const fresh = await admin
       .from("visit_tickets")
-      .select("id, status")
+      .select("id, state")
       .eq("id", ticket.id)
       .maybeSingle();
-    if ((fresh.data as { status?: string } | null)?.status === CLOSED_TICKET_STATUS) {
+    if ((fresh.data as { state?: string } | null)?.state === CLOSED_TICKET_STATE) {
       return json({ ok: true, alreadyPaid: true });
     }
     return json({ ok: false, code: "stale_state", error: "Ticket changed — refresh." }, 409);

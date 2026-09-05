@@ -24,7 +24,7 @@ import { stateBoolChip } from "@/lib/state-vocabulary";
 // Verification — the ownership-proof box on Admin (MESITA-1320).
 //
 // Verified = somebody proved they own the place. One-time, never lapses,
-// grants nothing on its own. Independent of Partner / plan. Status still
+// grants nothing on its own. Independent of Partner / plan. State still
 // prints the bool; this box is who / when / method and the operator door
 // onto the existing queue (admin-web-list-verifications +
 // admin-web-decide-verification). No second ownership model.
@@ -75,9 +75,9 @@ export function VerificationCard({
   }, [place.id]);
 
   const verified = Boolean(verification?.verifiedByEmail);
-  const pending = rows?.find((row) => row.status === "pending") ?? null;
+  const pending = rows?.find((row) => row.state === "pending") ?? null;
   const latestRejected =
-    rows?.find((row) => row.status === "rejected") ?? null;
+    rows?.find((row) => row.state === "rejected") ?? null;
 
   const chip = verificationError
     ? "?"
@@ -93,7 +93,7 @@ export function VerificationCard({
       subtitle="Ownership proof — one-time, never lapses, grants nothing."
     >
       <div className="mt-5 flex flex-col gap-4">
-        <ReadField label="Status" boxed>
+        <ReadField label="State" boxed>
           <span className="flex min-w-0 flex-wrap items-center gap-2">
             <span
               className={

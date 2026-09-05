@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 
-import { Collapsible, KnobStatus } from "@/components/admin-ui/config";
+import { Collapsible, KnobState } from "@/components/admin-ui/config";
 import { STICKY_COL_CELL } from "@/lib/ui-classes";
 import { RateSelect } from "./promos-ui";
 import { usePromosState } from "./PromosState";
@@ -155,7 +155,7 @@ export function TiersClient() {
         </div>
       )}
 
-      <KnobStatus kind="enforced" reason="THE TICKET" />
+      <KnobState kind="enforced" reason="THE TICKET" />
 
       {/* -mx-5 matches the super box's own p-5, so the scrollport reaches the
           screen edge on a phone. The padding rides on the scroller, not the

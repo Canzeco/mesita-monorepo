@@ -19,7 +19,7 @@
 // Results, MESITA-1084 v4) with a guest and staff writing the same row from
 // different devices. Every call site researched here (17 of 18) guards its
 // UPDATE with extra .eq()/.is()/.in() predicates beyond the row id — compare-
-// and-swap on status, a null-check on approved_at, an expectedUpdatedAt CAS
+// and-swap on state, a null-check on approved_at, an expectedUpdatedAt CAS
 // token (MESITA-1090 §12) — because a write that lands on a row the caller
 // never saw is exactly the race this machine cannot allow (a stale approval,
 // a guest's edit silently discarded). Belt 2 must not force every call site
@@ -33,7 +33,7 @@
 // codebase has needed this yet; visit_tickets is the first.
 //
 // STEP ORDER IS DELIBERATELY NOT ENFORCED HERE. lib/ticket-journey.ts (web
-// client) is the tested state machine that owns which status may follow
+// client) is the tested state machine that owns which state may follow
 // which; this validator checks the STORED SHAPE of one patch only — the same
 // scope consumer-doc.ts drew around itself (birthday format yes, age-gate
 // business rule no). Encoding a transition table here risks blocking a legal
@@ -47,10 +47,10 @@
 // verbatim mirror of a live Postgres CHECK on visit_tickets (confirmed via
 // pg_get_constraintdef against the project, 2026-08-23) or the column's own
 // enum type, which Postgres enforces exactly as strictly as a CHECK would:
-//   - status is one of ALL_TICKET_STATUSES (ticket_status enum, imported
-//     from ticket-status.ts — the code-owned vocabulary already, not
+//   - state is one of ALL_TICKET_STATES (ticket_state enum, imported
+//     from ticket-state.ts — the code-owned vocabulary already, not
 //     re-typed here).
-//   - story_status / review_status are one of the 8 story_status enum labels
+//   - story_state / review_state are one of the 8 story_state enum labels
 //     (both columns share the one Postgres enum; read via pg_enum).
 //   - bill_source, if set: 'business' | 'consumer' (visit_tickets_bill_
 //     source_check).
@@ -87,13 +87,13 @@ import {
   remapPlaceIdSelect,
   toPlaceIdPatch,
 } from "./place-id.ts";
-import { ALL_TICKET_STATUSES, type TicketStatus } from "./ticket-status.ts";
+import { ALL_TICKET_STATES, type TicketState } from "./ticket-state.ts";
 
 // ── TicketDoc — the full row shape ──────────────────────────────────────
 
-/** The 8 live labels of the story_status Postgres enum, shared verbatim by
- * review_status (one enum, two columns) — read via pg_enum, 2026-08-23. */
-export type TicketActionStatus =
+/** The 8 live labels of the story_state Postgres enum, shared verbatim by
+ * review_state (one enum, two columns) — read via pg_enum, 2026-08-23. */
+export type TicketActionState =
   | "not_required"
   | "pending"
   | "submitted"
@@ -103,7 +103,7 @@ export type TicketActionStatus =
   | "staff_rejected"
   | "self_verified";
 
-const TICKET_ACTION_STATUS_VALUES = new Set<string>([
+const TICKET_ACTION_STATE_VALUES = new Set<string>([
   "not_required",
   "pending",
   "submitted",
@@ -125,7 +125,7 @@ export type TicketDoc = {
   project_id: string;
   consumer_id: string;
   opened_by: string;
-  status: TicketStatus;
+  state: TicketState;
   bill_subtotal_cents: number | null;
   tip_cents: number | null;
   total_cents: number | null;
@@ -134,7 +134,7 @@ export type TicketDoc = {
   cancelled_at: string | null;
   redeem_cents: number | null;
   cancel_reason: string | null;
-  story_status: TicketActionStatus;
+  story_state: TicketActionState;
   story_screenshot_url: string | null;
   story_submitted_at: string | null;
   story_verified_at: string | null;
@@ -143,7 +143,7 @@ export type TicketDoc = {
   discount_percent: number | null;
   discount_cents: number | null;
   revealed_at: string | null;
-  review_status: TicketActionStatus;
+  review_state: TicketActionState;
   review_screenshot_url: string | null;
   review_submitted_at: string | null;
   review_verified_at: string | null;
@@ -185,7 +185,7 @@ export const TICKET_PATCH_KEYS = [
   "project_id",
   "consumer_id",
   "opened_by",
-  "status",
+  "state",
   "bill_subtotal_cents",
   "tip_cents",
   "total_cents",
@@ -194,7 +194,7 @@ export const TICKET_PATCH_KEYS = [
   "cancelled_at",
   "redeem_cents",
   "cancel_reason",
-  "story_status",
+  "story_state",
   "story_screenshot_url",
   "story_submitted_at",
   "story_verified_at",
@@ -203,7 +203,7 @@ export const TICKET_PATCH_KEYS = [
   "discount_percent",
   "discount_cents",
   "revealed_at",
-  "review_status",
+  "review_state",
   "review_screenshot_url",
   "review_submitted_at",
   "review_verified_at",
@@ -264,7 +264,7 @@ const BILL_SOURCE_VALUES = new Set(["business", "consumer"]);
 const FIX_REQUESTED_VALUES = new Set(["bill", "proof", "reward"]);
 const PAID_METHOD_VALUES = new Set(["at_place", "mesita"]);
 const OJO_VERDICT_VALUES = new Set(["pass", "unsure", "fail"]);
-const TICKET_STATUS_VALUES = new Set<string>(ALL_TICKET_STATUSES);
+const TICKET_STATE_VALUES = new Set<string>(ALL_TICKET_STATES);
 
 function isNullableString(v: unknown): v is string | null {
   return v === null || typeof v === "string";
@@ -321,20 +321,20 @@ export function validateTicketPatch(input: unknown): TicketValidationResult {
     }
     patch[key] = v;
   }
-  if ("status" in raw) {
-    const v = raw.status;
-    if (typeof v !== "string" || !TICKET_STATUS_VALUES.has(v)) {
-      return { ok: false, error: `status must be one of ${[...TICKET_STATUS_VALUES].join(", ")}` };
+  if ("state" in raw) {
+    const v = raw.state;
+    if (typeof v !== "string" || !TICKET_STATE_VALUES.has(v)) {
+      return { ok: false, error: `state must be one of ${[...TICKET_STATE_VALUES].join(", ")}` };
     }
-    patch.status = v as TicketStatus;
+    patch.state = v as TicketState;
   }
-  for (const key of ["story_status", "review_status"] as const) {
+  for (const key of ["story_state", "review_state"] as const) {
     if (!(key in raw)) continue;
     const v = raw[key];
-    if (typeof v !== "string" || !TICKET_ACTION_STATUS_VALUES.has(v)) {
-      return { ok: false, error: `${key} must be one of ${[...TICKET_ACTION_STATUS_VALUES].join(", ")}` };
+    if (typeof v !== "string" || !TICKET_ACTION_STATE_VALUES.has(v)) {
+      return { ok: false, error: `${key} must be one of ${[...TICKET_ACTION_STATE_VALUES].join(", ")}` };
     }
-    patch[key] = v as TicketActionStatus;
+    patch[key] = v as TicketActionState;
   }
   for (
     const key of [

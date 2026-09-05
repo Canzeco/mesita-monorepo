@@ -46,7 +46,7 @@ import { methodsFor, type PlaceRow } from "./find-place-methods.ts";
 type Body = { googlePlaceId?: string; placeId?: string };
 
 const PLACE_COLUMNS =
-  "id, slug, name, status, listing_type, address, phone, email, website_url, photos, category, vibe, created_at, updated_at";
+  "id, slug, name, state, listing_type, address, phone, email, website_url, photos, category, vibe, created_at, updated_at";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -116,11 +116,11 @@ Deno.serve(async (req) => {
   const { data: pendingForMe } = await admin
     .from("project_verifications")
     .select(
-      "id, method, payload, requester_email, status, reject_reason, decided_at, decided_via, created_at",
+      "id, method, payload, requester_email, state, reject_reason, decided_at, decided_via, created_at",
     )
     .eq("place_id", place.id)
     .eq("requester_id", userId)
-    .eq("status", "pending")
+    .eq("state", "pending")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     .from("project_verifications")
     .select("id")
     .eq("place_id", place.id)
-    .eq("status", "pending")
+    .eq("state", "pending")
     .neq("requester_id", userId)
     .limit(1)
     .maybeSingle();

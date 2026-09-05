@@ -127,7 +127,7 @@ export function OjoConfigClient({
         icon={<Eye className="h-4 w-4" />}
         title="Ojo"
         subtitle="Reads the screenshot a guest posts as proof and scores it. Off by default — flip the switch below to run it for real (MESITA-1034)."
-        status={
+        state={
           <span className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 type-meta font-semibold tracking-wide uppercase">
             Enforced
           </span>

@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     .from("project_verifications")
     .select("id")
     .eq("place_id", projectId)
-    .eq("status", "approved")
+    .eq("state", "approved")
     .limit(1)
     .maybeSingle();
   if (existingErr) {
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     requester_id: authRes.user.id,
     requester_email: email,
     method: "manual_contact",
-    status: "approved",
+    state: "approved",
     decided_at: now,
     decided_by: authRes.user.id,
     decided_via: "admin",

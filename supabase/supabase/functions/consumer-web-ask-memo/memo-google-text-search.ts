@@ -14,8 +14,8 @@ import { openScore } from "../_shared/local-time.ts";
 // the admin playground engine). Imported for this file's own use and re-exported
 // so downstream local importers (index.ts, memo-answer.ts, memo-catalog-helpers)
 // are unchanged.
-import type { Prediction, PredictionStatus } from "../_shared/memo-types.ts";
-export type { Prediction, PredictionStatus };
+import type { Prediction, PredictionState } from "../_shared/memo-types.ts";
+export type { Prediction, PredictionState };
 
 export async function googleTextSearch(
   key: string,
@@ -88,7 +88,7 @@ export async function googleTextSearch(
       placeId: p.id ?? "",
       mainText: p.displayName?.text ?? "",
       secondaryText: p.formattedAddress ?? "",
-      status: "not_in_mesita",
+      state: "not_in_mesita",
       rating: p.rating ?? null,
       ratingCount: p.userRatingCount ?? null,
       openNow: p.currentOpeningHours?.openNow ?? null,

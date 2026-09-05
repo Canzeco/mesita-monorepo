@@ -22,7 +22,7 @@ import {
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
@@ -139,8 +139,8 @@ export function SignalsConfigClient({
         icon={<Compass className="text-primary h-4 w-4" />}
         title="Mesita Places Search Signals"
         subtitle="What ranks every Mesita Places source. Eight earned signals, each one number in [0, 1]. Blend is Π s^w. Slotting stays a post-blend position pass."
-        status={
-          <KnobStatus
+        state={
+          <KnobState
             kind="enforced"
             reason="Lineup · Map · Word · Swipe read the mode mask"
           />

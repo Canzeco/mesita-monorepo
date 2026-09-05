@@ -9,7 +9,7 @@ const BUILT = [
   "One founder + an AI fleet",
 ];
 
-// Status plus evidence in the same viewport — a pre-launch badge next to
+// State plus evidence in the same viewport — a pre-launch badge next to
 // nothing reads as vaporware.
 function Close() {
   return (

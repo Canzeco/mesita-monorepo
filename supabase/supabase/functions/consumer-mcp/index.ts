@@ -157,17 +157,17 @@ async function runTool(
       let q = admin
         .from("reservation_tickets")
         .select(
-          "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, place_id",
+          "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, place_id",
         )
         .eq("consumer_id", consumerId)
         // Operator test tickets (is_test) reference real consumers — hidden.
         .eq("is_test", false)
         .order("reserved_at", { ascending: scope === "past" ? false : true })
         .limit(limit);
-      if (scope === "upcoming") q = q.in("status", ["pending", "confirmed"]);
+      if (scope === "upcoming") q = q.in("state", ["pending", "confirmed"]);
       else if (scope === "past") {
         // Engine outcomes included, else those tickets are invisible in both scopes.
-        q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
+        q = q.in("state", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
       }
       const { data, error } = await q;
       if (error) return toolError(error.message);
@@ -202,7 +202,7 @@ async function runTool(
           .eq("consumer_id", consumerId)
           .eq("is_test", false)
           .gte("created_at", monthStart.toISOString())
-          .neq("status", "cancelled");
+          .neq("state", "cancelled");
         if (countErr) return toolError(countErr.message);
         if ((count ?? 0) >= monthlyLimit) {
           return toolError(
@@ -227,10 +227,10 @@ async function runTool(
             party_size: partySize,
             notes,
             consumer_notify: guestNotify,
-            status: "pending",
+            state: "pending",
           },
           select:
-            "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, project_id",
+            "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, project_id",
         });
         if (ins.ok) {
           reservation = ins.row as Record<string, unknown>;

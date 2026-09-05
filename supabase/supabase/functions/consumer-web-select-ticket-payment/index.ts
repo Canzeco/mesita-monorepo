@@ -19,7 +19,7 @@
 // Caller: consumer. Verb: select. Noun: ticket-payment.
 //
 // Body:     { ticketId, method: "at_place" | null }
-// Response: { ok: true, status } | 400 | 404 | 409 | 410 retired
+// Response: { ok: true, state } | 400 | 404 | 409 | 410 retired
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -29,7 +29,7 @@ import {
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { parseSelectTicketPaymentMethod } from "../_shared/select-ticket-payment-method.ts";
 
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, status, paid_method")
+    .select("id, consumer_id, state, paid_method")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -72,16 +72,16 @@ Deno.serve(async (req) => {
   const ticket = ticketRow.data;
 
   if (method === "at_place") {
-    if (ticket.status === TICKET_STATUS.paying) {
-      return json({ ok: true, already: true, status: ticket.status });
+    if (ticket.state === TICKET_STATE.paying) {
+      return json({ ok: true, already: true, state: ticket.state });
     }
-    if (ticket.status !== TICKET_STATUS.approved) {
+    if (ticket.state !== TICKET_STATE.approved) {
       return json(
         {
           ok: false,
           code: "stale_state",
-          status: ticket.status,
-          error: `Ticket is ${ticket.status} — payment starts after approval.`,
+          state: ticket.state,
+          error: `Ticket is ${ticket.state} — payment starts after approval.`,
         },
         409,
       );
@@ -89,9 +89,9 @@ Deno.serve(async (req) => {
     const update = await writeTicket(admin, {
       mode: "update",
       id: ticket.id,
-      patch: { status: TICKET_STATUS.paying, paid_method: "at_place" },
-      guard: { eq: { status: TICKET_STATUS.approved } },
-      select: "id, status",
+      patch: { state: TICKET_STATE.paying, paid_method: "at_place" },
+      guard: { eq: { state: TICKET_STATE.approved } },
+      select: "id, state",
     });
     if (!update.ok) {
       return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
@@ -103,20 +103,20 @@ Deno.serve(async (req) => {
         error: "Ticket changed — refresh.",
       }, 409);
     }
-    return json({ ok: true, status: TICKET_STATUS.paying });
+    return json({ ok: true, state: TICKET_STATE.paying });
   }
 
   // method === null — abandon the payment, back to approved.
-  if (ticket.status === TICKET_STATUS.approved) {
-    return json({ ok: true, already: true, status: ticket.status });
+  if (ticket.state === TICKET_STATE.approved) {
+    return json({ ok: true, already: true, state: ticket.state });
   }
-  if (ticket.status !== TICKET_STATUS.paying) {
+  if (ticket.state !== TICKET_STATE.paying) {
     return json(
       {
         ok: false,
         code: "stale_state",
-        status: ticket.status,
-        error: `Ticket is ${ticket.status}.`,
+        state: ticket.state,
+        error: `Ticket is ${ticket.state}.`,
       },
       409,
     );
@@ -124,9 +124,9 @@ Deno.serve(async (req) => {
   const rollback = await writeTicket(admin, {
     mode: "update",
     id: ticket.id,
-    patch: { status: TICKET_STATUS.approved, paid_method: null },
-    guard: { eq: { status: TICKET_STATUS.paying } },
-    select: "id, status",
+    patch: { state: TICKET_STATE.approved, paid_method: null },
+    guard: { eq: { state: TICKET_STATE.paying } },
+    select: "id, state",
   });
   if (!rollback.ok) {
     return json({ ok: false, error: `ticket_update: ${rollback.error}` }, 500);
@@ -138,5 +138,5 @@ Deno.serve(async (req) => {
       error: "Ticket changed — refresh.",
     }, 409);
   }
-  return json({ ok: true, status: TICKET_STATUS.approved });
+  return json({ ok: true, state: TICKET_STATE.approved });
 });

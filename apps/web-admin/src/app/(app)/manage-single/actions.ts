@@ -33,7 +33,7 @@ type Result<T> =
 export type PulseBlock = {
   key: string;
   index: number;
-  status: "failed" | "missing";
+  state: "failed" | "missing";
 };
 
 export type PlaceHit = {
@@ -47,40 +47,40 @@ export type PlaceHit = {
   category_label: string | null;
   /** Super Categories: Intaker-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
-  status: string | null;
+  state: string | null;
   address: string | null;
   photo: string | null;
   zone: string | null;
   google_stars_overall: number | null;
   google_review_count: number | null;
-  content_status: string | null;
+  content_state: string | null;
   listing_type: string | null;
-  // ── The status facts (labels: Created · Active · Listed · Requested ·
+  // ── The state facts (labels: Created · Active · Listed · Requested ·
   //    Enriched · Enriching · Verified · Partnered · Visit Rewards ·
   //    Mesita Pay · Mesita Credits) plus the quick-view commercial block
   //    (promotion · pickup · delivery). Bools except Requested (0…n),
   //    Visit Rewards (0|1|2) and promotion (0–7). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
-  //    content_status generating/queued (MESITA-453 whole-pipeline). The
+  //    content_state generating/queued (MESITA-453 whole-pipeline). The
   //    acceptance bits are stored operator toggles on places.
   /** Google Place ID spine — used to match a Mesita Search paste. */
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
-  /** A guest can reach it: projects.status, per the consumer RLS policy. */
+  /** A guest can reach it: projects.state, per the consumer RLS policy. */
   listed: boolean;
-  /** Derived has-demand for filters. Catalog Status shows request_count. */
+  /** Derived has-demand for filters. Catalog State shows request_count. */
   requested: boolean;
-  /** Guest request count — the Requested Status fact, 0…n. */
+  /** Guest request count — the Requested State fact, 0…n. */
   request_count: number;
-  /** Intaker pipeline mid-flight (content_status generating/queued). */
+  /** Intaker pipeline mid-flight (content_state generating/queued). */
   enriching: boolean;
   /** Operating (MESITA-1239): Google's businessStatus, verbatim. NULL = Google
    *  is silent, which is a third state and not OPERATIONAL. A FLAG, never a
    *  visibility gate — Listed above is the gate. */
-  business_status: string | null;
+  business_state: string | null;
   /** When Operating was last observed. Without it a stale claim reads current. */
-  business_status_at: string | null;
+  business_state_at: string | null;
   /** PULSE: how far the ten-piece queue got, 0-10. 0 means it never started
    *  — or the place predates piece reporting and has no events. */
   enrich_pulse: number;
@@ -127,7 +127,7 @@ async function fetchPlaces(query: string, limit = 50): Promise<Result<PlaceHit[]
 }
 
 function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
-  const contentStatus = raw.content_status ?? null;
+  const contentState = raw.content_state ?? null;
   const listingType = raw.listing_type ?? null;
   return {
     id: raw.id,
@@ -136,7 +136,7 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     google_name: raw.google_name ?? null,
     category: raw.category ?? null,
     category_label: raw.category_label ?? null,
-    status: raw.status ?? null,
+    state: raw.state ?? null,
     address: raw.address ?? null,
     photo: raw.photo ?? null,
     zone: raw.zone ?? null,
@@ -144,9 +144,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
       typeof raw.google_stars_overall === "number" ? raw.google_stars_overall : null,
     google_review_count:
       typeof raw.google_review_count === "number" ? raw.google_review_count : null,
-    content_status: contentStatus,
+    content_state: contentState,
     listing_type: listingType,
-    enriching: contentStatus === "generating" || contentStatus === "queued",
+    enriching: contentState === "generating" || contentState === "queued",
     // No listing_type fallbacks here any more: it fuses paying and promoting
     // into one stale enum, so guessing from it would put a wrong flag on
     // screen rather than an honest "not yet" (MESITA-1152 / MESITA-1166).
@@ -160,13 +160,13 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     requested:
       typeof raw.requested === "boolean"
         ? raw.requested
-        : contentStatus !== "ready" &&
+        : contentState !== "ready" &&
           typeof raw.request_count === "number" &&
           raw.request_count > 0,
-    business_status:
-      typeof raw.business_status === "string" ? raw.business_status : null,
-    business_status_at:
-      typeof raw.business_status_at === "string" ? raw.business_status_at : null,
+    business_state:
+      typeof raw.business_state === "string" ? raw.business_state : null,
+    business_state_at:
+      typeof raw.business_state_at === "string" ? raw.business_state_at : null,
     enrich_pulse: raw.enrich_pulse ?? 0,
     // No `?? 9` here any more: the total and the labels come from the same
     // server list, so a client fallback could only ever disagree with it. The
@@ -270,7 +270,7 @@ export type AdminPlace = {
   category_label: string | null;
   /** Super Categories: Intaker-inferred (stored); membership derives live. */
   family_keys?: string[] | null;
-  status: string | null;
+  state: string | null;
   currency: string | null;
   // Catalog tier: "web" (listed) vs "partner" (Mesita partner). Separate from
   // ownership (project_members.role = owner) — see place-ownership.ts.
@@ -347,22 +347,22 @@ export type AdminPlace = {
   embedding_source_text?: string | null;
   name_embedding?: string | number[] | null;
   name_embedding_hash?: string | null;
-  // ── Status, super-admin overview only (MESITA-1186) ──────────────────────
-  // Computed by business-web-get-overview off _shared/place-status.ts — the
+  // ── State, super-admin overview only (MESITA-1186) ───────────────────────
+  // Computed by business-web-get-overview off _shared/place-state.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
   // the box and the table can never disagree. Absent (undefined) means the
   // payload predates them; the box renders "?" rather than a false "no".
   /** google_place_id present — the identity spine every enrichment run needs. */
   seeded?: boolean;
-  /** projects.status ∈ (active, lead) — a guest can reach the place at all. */
+  /** projects.state ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
-  /** Derived has-demand for filters. Status chip is request_count. */
+  /** Derived has-demand for filters. State chip is request_count. */
   requested?: boolean;
-  /** Guest request count — the Requested Status fact, 0…n. */
+  /** Guest request count — the Requested State fact, 0…n. */
   request_count?: number;
   /** Operating: Google's businessStatus, verbatim (MESITA-1239). */
-  business_status?: string | null;
-  business_status_at?: string | null;
+  business_state?: string | null;
+  business_state_at?: string | null;
   /** PULSE: how far the TEN-function ENRICH queue got, 0-10 (0 = created).
    *  Absent on a payload that
    *  predates it; the box renders "?" rather than a false 0. */
@@ -375,12 +375,12 @@ export type AdminPlace = {
   enrich_pulse_blocked?: PulseBlock | null;
   /** Per Enrich subfunction (1–10). Overview payload only. */
   enrich_functions?: Record<string, {
-    status: "pending" | "completed" | "failed";
+    state: "pending" | "completed" | "failed";
     at: string | null;
     detail: string | null;
   }> | null;
   /** Intaker lifecycle on the project row. Overview already carries this. */
-  content_status?: string | null;
+  content_state?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
   /** places.mesita_pay_enabled — acceptance intent bit, read via the places
@@ -447,7 +447,7 @@ export type ReviewReportResult = {
   /** ISO timestamp of the hold now on the place; null after dismiss/restore. */
   hold: string | null;
   placeId?: string;
-  report?: { id: string; status: string };
+  report?: { id: string; state: string };
 };
 
 export async function reviewTicketReport(
@@ -657,10 +657,10 @@ export async function getPlacePaymentAccount(
 }
 
 /** List or unlist the place on Mesita — the ONLY write path to
- *  projects.status, which is what the consumer RLS policy
+ *  projects.state, which is what the consumer RLS policy
  *  projects_select_public_visible gates every guest read on. Unlisting removes
  *  the place from browse, search, the swipe deck and any shared link at once.
- *  business-web-update-project does not accept `status`, so this is its own
+ *  business-web-update-project does not accept `state`, so this is its own
  *  admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
@@ -683,7 +683,7 @@ export async function setPlaceListed(
   };
 }
 
-/** Operator Active (Status box). Writes business_status. Active off also
+/** Operator Active (State box). Writes business_state. Active off also
  *  unlists — guests disappear in the same apply. Active on does not list. */
 export async function setPlaceActive(
   placeId: string,
@@ -693,8 +693,8 @@ export async function setPlaceActive(
     place: AdminPlace;
     active?: boolean;
     listed?: boolean;
-    business_status?: string | null;
-    status?: string | null;
+    business_state?: string | null;
+    state?: string | null;
   }>("admin-web-set-place-active", { placeId, active });
   if (!r.ok) return { ok: false, error: r.error };
   return {
@@ -702,10 +702,10 @@ export async function setPlaceActive(
     data: {
       ...r.data.place,
       listed: r.data.listed ?? r.data.place.listed,
-      business_status: r.data.business_status ?? r.data.place.business_status,
-      // Stamp status so mergePlace's withListedFromStatus sees paused after
+      business_state: r.data.business_state ?? r.data.place.business_state,
+      // Stamp state so mergePlace's withListedFromState sees paused after
       // Active off, even if an older place payload omitted it.
-      status: r.data.status ?? r.data.place.status,
+      state: r.data.state ?? r.data.place.state,
     },
   };
 }
@@ -751,7 +751,7 @@ export type PlaceStats = {
   saves: number;
   tickets: number;
   visits: number;
-  /** Visits marked done (status=revealed). EF also echoes as `paid` for compat. */
+  /** Visits marked done (state=revealed). EF also echoes as `paid` for compat. */
   closed: number;
   reservations: number;
   influencedCents: number;
@@ -770,7 +770,7 @@ type PlaceReservation = {
   id: string;
   reservedAt: string | null;
   partySize: number | null;
-  status: string | null;
+  state: string | null;
   isTest: boolean;
   guest: string;
 };
@@ -921,11 +921,11 @@ export async function listPlaceTagCatalog(): Promise<Result<PlaceTagCatalog>> {
 // ── Per-place Intaker inspector (admin-only) ────────────────────────────
 // Internal enricher output for the Place editor: per-photo metadata for the
 // ⓘ inspector (keyed by public_url, matches AdminPlace.photos[]) + the place's
-// enrichment status. Super-admin gated EF.
+// enrichment state. Super-admin gated EF.
 
 export type PlaceMediaMeta = {
   source: string | null;
-  status: string | null;
+  state: string | null;
   analysis_text: string | null;
   caption: string | null;
   likes_count: number | null;
@@ -936,10 +936,10 @@ export type PlaceMediaMeta = {
   source_metadata: Record<string, unknown> | null;
 };
 
-export type PlaceEnrichmentStatus = {
-  content_status: string | null;
+export type PlaceEnrichmentState = {
+  content_state: string | null;
   stage: string | null;
-  stage_status: string | null;
+  stage_state: string | null;
   error: string | null;
   last_enriched_at: string | null;
   updated_at: string | null;
@@ -959,7 +959,7 @@ export type PlaceEnrichmentSchedule = {
 
 type PlaceEnrichment = {
   media: Record<string, PlaceMediaMeta>;
-  status: PlaceEnrichmentStatus | null;
+  state: PlaceEnrichmentState | null;
   schedule: PlaceEnrichmentSchedule | null;
 };
 
@@ -968,7 +968,7 @@ export async function getPlaceEnrichment(
 ): Promise<Result<PlaceEnrichment>> {
   const r = await efInvoke<{
     media: Record<string, PlaceMediaMeta>;
-    status: PlaceEnrichmentStatus | null;
+    state: PlaceEnrichmentState | null;
     schedule: PlaceEnrichmentSchedule | null;
   }>("admin-web-get-place-enrichment", { projectId });
   if (!r.ok) return { ok: false, error: r.error };
@@ -976,7 +976,7 @@ export async function getPlaceEnrichment(
     ok: true,
     data: {
       media: r.data.media ?? {},
-      status: r.data.status ?? null,
+      state: r.data.state ?? null,
       schedule: r.data.schedule ?? null,
     },
   };
@@ -1078,7 +1078,7 @@ export type PlaceVerificationRequest = {
   id: string;
   method: string;
   requester_email: string;
-  status: "pending" | "approved" | "rejected";
+  state: "pending" | "approved" | "rejected";
   reject_reason: string | null;
   decided_at: string | null;
   decided_via: "auto" | "admin" | null;
@@ -1152,7 +1152,7 @@ type FoundPlace = {
   id: string;
   slug: string;
   name: string;
-  status: string;
+  state: string;
   created_at: string;
   updated_at: string;
 };
@@ -1200,7 +1200,7 @@ export async function findPlaceByPlaceId(
 
 // ── Name Deep Search (same engine as consumer Search) ────────────────────
 
-export type PlacePredictionStatus =
+export type PlacePredictionState =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -1210,7 +1210,7 @@ export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  status: PlacePredictionStatus;
+  state: PlacePredictionState;
   partner?: boolean;
   mesitaId?: string;
 };

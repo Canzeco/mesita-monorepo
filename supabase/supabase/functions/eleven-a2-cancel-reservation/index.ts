@@ -5,7 +5,7 @@
 //
 //   { reference_code, reason? }
 //
-// status → cancelled, cancelled_by = consumer (it is the guest's decision,
+// state → cancelled, cancelled_by = consumer (it is the guest's decision,
 // captured by the agent). Auth: anon bearer + x-agent-secret.
 //
 // Deploy: supabase functions deploy eleven-a2-cancel-reservation
@@ -47,13 +47,13 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (ticket.status === "cancelled") {
+  if (ticket.state === "cancelled") {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
   // A CONFIRMED table is being walked away from — the venue is holding it and
   // must hear (Docs › Reservations §B leg 5). Pending tickets owe nothing.
-  const notice = ticket.status === "confirmed" ? "venue_cancel" as const : null;
+  const notice = ticket.state === "confirmed" ? "venue_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
   if (err) return json({ ok: false, error: err }, 500);
 

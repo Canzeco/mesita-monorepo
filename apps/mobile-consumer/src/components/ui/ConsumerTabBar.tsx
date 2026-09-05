@@ -79,7 +79,7 @@ const LABELS: Record<string, string> = {
 //
 // Every tab shows its plain label. Me used to append the live class ("Me ·
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
-// label names a DESTINATION; the class is status, and it belongs on the Me
+// label names a DESTINATION; the class is state, and it belongs on the Me
 // screen where it can be read and acted on, not in the chrome of every screen.
 // Parked flags/copy live in parked-flags.ts (flip `soon` to unpark).
 // Deep-linked parked routes stay live; tab tap always opens ComingSoonModal.

@@ -321,13 +321,13 @@ describe("Tiers HTML prices visits only", () => {
 
   it("states ENFORCED once for the whole table, not per column", () => {
     const src = readFileSync(join(__dirname, "TiersClient.tsx"), "utf8");
-    expect(src.match(/KnobStatus kind="enforced"/g)).toHaveLength(1);
+    expect(src.match(/KnobState kind="enforced"/g)).toHaveLength(1);
     // The rung column anchors the table on glass too narrow for it, through
     // the shared helper rather than a route-local sticky (#1466).
     expect(src).toContain("STICKY_COL_CELL");
     // A column head is the strategy name alone — the badge sat under both,
     // saying the same thing twice and widening the table off a phone.
-    expect(src).not.toMatch(/<div className="mt-1\.5">\s*<KnobStatus/);
+    expect(src).not.toMatch(/<div className="mt-1\.5">\s*<KnobState/);
   });
 
   it("picks Conservative and Aggressive only", () => {

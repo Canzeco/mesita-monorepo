@@ -8,7 +8,7 @@ type VerificationMethod =
   | "video"
   | "postcard"
   | "manual_contact";
-type VerificationStatus = "pending" | "approved" | "rejected";
+type VerificationState = "pending" | "approved" | "rejected";
 
 export type AdminVerification = {
   id: string;
@@ -17,19 +17,19 @@ export type AdminVerification = {
   method: VerificationMethod;
   payload: Record<string, unknown>;
   requester_email: string;
-  status: VerificationStatus;
+  state: VerificationState;
   reject_reason: string | null;
   decided_at: string | null;
   decided_by: string | null;
   decided_via: "auto" | "admin" | null;
   created_at: string;
-  // Flattened by the EF from project + place: id/slug/status are the
+  // Flattened by the EF from project + place: id/slug/state are the
   // project's, the rest the place's.
   place: {
     id: string;
     slug: string | null;
     name: string | null;
-    status: string | null;
+    state: string | null;
     phone: string | null;
     address: string | null;
     google_place_id: string | null;

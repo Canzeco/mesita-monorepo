@@ -17,7 +17,7 @@ import {
 } from "./actions";
 import {
   NotificationFilters,
-  type StatusFilter,
+  type StateFilter,
   type TypeFilter,
 } from "./NotificationFilters";
 import { NotificationRow, NotificationStepGroup } from "./NotificationRow";
@@ -28,7 +28,7 @@ import {
   intakeFunctionCounts,
   itemMatchesIntakeFilter,
   pinReports,
-  statusFactCounts,
+  stateFactCounts,
   typesForFetch,
 } from "./notification-feed";
 
@@ -55,7 +55,7 @@ export function GlobalPerformanceClient({
   const [error, setError] = useState<string | null>(null);
   const [domain, setDomain] = useState<DomainKey>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [stateFilter, setStateFilter] = useState<StateFilter>("all");
   const [includeSteps, setIncludeSteps] = useState(false);
   const [placeQuery, setPlaceQuery] = useState("");
   const [pending, startRefresh] = useTransition();
@@ -112,7 +112,7 @@ export function GlobalPerformanceClient({
   const onDomainChange = useCallback((next: DomainKey) => {
     setDomain(next);
     setTypeFilter("all");
-    setStatusFilter("all");
+    setStateFilter("all");
     if (next !== "all" && next !== "atlas") setIncludeSteps(false);
   }, []);
 
@@ -126,13 +126,13 @@ export function GlobalPerformanceClient({
     return data.notifications.filter(
       (n) =>
         (typeFilter === "all" || n.type === typeFilter) &&
-        (statusFilter === "all" || itemMatchesIntakeFilter(n, statusFilter)) &&
+        (stateFilter === "all" || itemMatchesIntakeFilter(n, stateFilter)) &&
         (q === "" || (n.place?.name ?? "").toLowerCase().includes(q)),
     );
-  }, [data.notifications, placeQuery, typeFilter, statusFilter]);
+  }, [data.notifications, placeQuery, typeFilter, stateFilter]);
 
   const factCounts = useMemo(
-    () => statusFactCounts(data.notifications),
+    () => stateFactCounts(data.notifications),
     [data.notifications],
   );
   const functionCounts = useMemo(
@@ -153,11 +153,11 @@ export function GlobalPerformanceClient({
       <NotificationFilters
         domain={domain}
         typeFilter={typeFilter}
-        statusFilter={statusFilter}
+        stateFilter={stateFilter}
         includeSteps={includeSteps}
         total={data.total}
         counts={data.counts}
-        statusCounts={factCounts}
+        stateCounts={factCounts}
         functionCounts={functionCounts}
         placeQuery={placeQuery}
         updatedLabel={updatedLabel}
@@ -166,7 +166,7 @@ export function GlobalPerformanceClient({
         showDomains={!projectId}
         onDomainChange={onDomainChange}
         onTypeFilterChange={onTypeFilterChange}
-        onStatusFilterChange={setStatusFilter}
+        onStateFilterChange={setStateFilter}
         onIncludeStepsChange={(next) => {
           setIncludeSteps(next);
           if (!next && typeFilter === "atlas.enrichment_step") {

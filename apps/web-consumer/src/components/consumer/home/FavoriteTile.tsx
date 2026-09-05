@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Heart, Navigation } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { PromoChip } from "@/components/consumer/PromoChip";
-import { getOpeningStatusLabel } from "@/lib/place-status";
+import { getOpeningStateLabel } from "@/lib/place-state";
 import { placeHref } from "@/lib/place-route";
 import { cn, firstInitial, formatDistanceKm } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ export function FavoriteTile({
       ? formatDistanceKm(place.distance_km)
       : null;
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(" · ");
-  const openingLabel = getOpeningStatusLabel(place);
+  const openingLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
 
   return (
@@ -88,7 +88,7 @@ export function FavoriteTile({
                 <span className="truncate">{subtitle}</span>
               </p>
             )}
-            {/* Opening status + reward summary. Each child self-hides when the
+            {/* Opening state + reward summary. Each child self-hides when the
                 tile lacks data (no hours table, or a place with no reward), so
                 an info-less tile just shows its name + location. */}
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 empty:mt-0">

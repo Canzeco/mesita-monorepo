@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (ticket.status === "cancelled") {
+  if (ticket.state === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
   }
 
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       ok: true,
       guest_confirmed: true,
       changed: false,
-      both_confirmed: ticket.status === "confirmed",
+      both_confirmed: ticket.state === "confirmed",
       reference_code: ticket.reference_code,
       date_es: esDate(ticket.reserved_at),
       time_es: esTime(ticket.reserved_at),
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
     const nowIso = new Date().toISOString();
     const patch: ReservationPatch = {
       reserved_at: next.toISOString(),
-      status: "confirmed",
+      state: "confirmed",
       reported_verdict: "confirmed",
       confirmed_at: nowIso,
       consumer_confirmed_at: nowIso,
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       callback_state: "skipped",
       callback_next_attempt_at: null,
       ...reminderParkPatch(lng, next, "call"),
-      last_call_status: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
+      last_call_state: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
     };
     if (note) patch.outcome_note = note;
     const confirm = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
   const patch: ReservationPatch = {
     reserved_at: next.toISOString(),
     // New terms — the venue hasn't agreed to them yet.
-    status: "pending",
+    state: "pending",
     reported_verdict: null,
     consumer_confirmed_at: new Date().toISOString(),
     negotiation_rounds: rounds + 1,

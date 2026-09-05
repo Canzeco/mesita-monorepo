@@ -9,8 +9,8 @@
 // Discovery-wide on purpose — copying it into four mode boxes is how two
 // screens end up disagreeing about what "active" means.
 //
-// ONLY ACTIVE PLACES (Pato, 2026-08-29). Active is the Status-box fact:
-// `business_status === "OPERATIONAL"` on Mesita, Google's `businessStatus`
+// ONLY ACTIVE PLACES (Pato, 2026-08-29). Active is the State-box fact:
+// `business_state === "OPERATIONAL"` on Mesita, Google's `businessStatus`
 // on a Google-only row. On-Mesita rows used to be waved through here — a
 // place the operator had switched Active OFF still came back from search.
 // That was the bug this box closes, so the switch defaults ON.
@@ -24,7 +24,7 @@ import { CircleSlash2, MessageSquare, SlidersHorizontal } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   NumberField,
   SaveRow,
   SectionCard,
@@ -117,8 +117,8 @@ export function GeneralGateConfigClient({
         icon={<SlidersHorizontal className="text-primary h-4 w-4" />}
         title="General"
         subtitle="The wipe that runs after every Google Places query. Fast, Deep, and Map all apply it — to Google results and to the Mesita rows they resolve to."
-        status={
-          <KnobStatus
+        state={
+          <KnobState
             kind="enforced"
             reason="Fast · Deep · Map · suggest-places"
           />
@@ -141,7 +141,7 @@ export function GeneralGateConfigClient({
                   <span className="text-foreground font-semibold">
                     OPERATIONAL
                   </span>{" "}
-                  — the same fact the Status box shows. Temporarily and
+                  — the same fact the State box shows. Temporarily and
                   permanently closed both go, and so does a place that
                   never told us: unknown is not active.
                 </p>

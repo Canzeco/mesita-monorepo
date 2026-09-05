@@ -2,7 +2,7 @@ import Image from "next/image";
 import { BadgeCheck, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { getOpeningStatusLabel } from "@/lib/place-status";
+import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { cn, firstInitial, formatKm, formatRating } from "@/lib/utils";
 import { isPromoting } from "@/lib/promo-rates";
@@ -32,7 +32,7 @@ export function RailCard({
     category: place.category,
   });
   const subtitle = [category, place.zone].filter(Boolean).join(" · ");
-  const openingLabel = getOpeningStatusLabel(place);
+  const openingLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   const priceSymbols = formatPlacePriceLevelSymbols(place.price_level);
   const hasMeta =
@@ -68,7 +68,7 @@ export function RailCard({
           </span>
         )}
       </div>
-      {/* Four rows always: name / subtitle / meta / status. Empty rows still
+      {/* Four rows always: name / subtitle / meta / state. Empty rows still
           occupy the slot so a sparse place is the same box as a full one. */}
       <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[1.25rem_repeat(3,1rem)] content-center gap-1 py-2 pr-2 pl-2.5">
         <span className="flex h-5 items-center gap-1">

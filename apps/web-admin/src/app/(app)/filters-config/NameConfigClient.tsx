@@ -20,7 +20,7 @@ import {
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   NumberField,
   QueryConcatCaps,
   SaveRow,
@@ -124,8 +124,8 @@ export function NameConfigClient({
           icon={<Search className="text-primary h-4 w-4" />}
           title="Word (Fast Search)"
           subtitle="Google Places Autocomplete only. Google Places and Max results are the same cap. 0 is off. Map Filters never cut this list."
-          status={
-            <KnobStatus
+          state={
+            <KnobState
               kind="enforced"
               reason="suggest-places · Search"
             />
@@ -173,8 +173,8 @@ export function NameConfigClient({
           icon={<Layers className="text-primary h-4 w-4" />}
           title="Word (Deep Search)"
           subtitle="Four independent queries, then concat. Overlaps drop; first query keeps the slot. Word never calls Nearby Search. Guest pin biases Autocomplete, Text Search, and name match. Name signal only (`places.name`, not `google_name`). Map Filters never cut this list."
-          status={
-            <KnobStatus
+          state={
+            <KnobState
               kind="enforced"
               reason="Lineup · Deep reads Name (off vs on)"
             />

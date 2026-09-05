@@ -7,7 +7,7 @@
 //
 // New terms mean the venue has to agree again, so this resets the ticket to
 // the start of the lifecycle (back to `booking`) and re-fires the call engine:
-// status → pending, the previous verdict/confirmation cleared, run state
+// state → pending, the previous verdict/confirmation cleared, run state
 // wiped, and negotiation_rounds back to 0 — an app reschedule is a deliberate
 // human decision, so it earns a fresh pair of agent rounds rather than
 // inheriting the cap burned by the last voice negotiation (decision, MESITA-775).
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
   const { data: row, error: readErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, status, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
+      "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
     )
     .eq("id", id)
     .maybeSingle();
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   if (!row || row.consumer_id !== authRes.user.id) {
     return json({ ok: false, error: "Reservation not found" }, 404);
   }
-  if (row.status === "cancelled") {
+  if (row.state === "cancelled") {
     return json({ ok: false, error: "This reservation is cancelled — book a new one." }, 409);
   }
   if (new Date(row.reserved_at).getTime() < Date.now() - PASSED_GRACE_MS) {
@@ -136,10 +136,10 @@ Deno.serve(async (req) => {
     outage_retries: 0,
     reschedules_today: usedToday + 1,
     reschedules_day: todayStr,
-    modification_of: row.status === "confirmed"
+    modification_of: row.state === "confirmed"
       ? row.reserved_at
       : (row.modification_of ?? null),
-    status: "pending",
+    state: "pending",
     reported_verdict: null,
     alternatives: [],
     consumer_confirmed_at: null,
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     next_attempt_at: null,
     last_conversation_id: null,
     last_called_at: null,
-    last_call_status: "rescheduled by the guest — calling the place again",
+    last_call_state: "rescheduled by the guest — calling the place again",
   });
 
   const write = await writeReservation(admin, { mode: "update", id, patch });
@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
     ok: true,
     updated: true,
     reservation_id: id,
-    status: "pending",
+    state: "pending",
     reference_code: row.reference_code ?? null,
     reserved_at: (patch.reserved_at as string | undefined) ?? row.reserved_at,
     call_started: fired.ok,

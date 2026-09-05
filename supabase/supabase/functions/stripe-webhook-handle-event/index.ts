@@ -216,7 +216,7 @@ async function reconcileConsumerSubscription(
   consumerId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
-  const { localStatus, customerId, periodEnd, priceCents, currency, isLive } =
+  const { localState, customerId, periodEnd, priceCents, currency, isLive } =
     subscriptionSnapshot(sub);
 
   if (isLive) {
@@ -225,10 +225,10 @@ async function reconcileConsumerSubscription(
     // incoming subscription can't collide with consumer_subscriptions_one_live.
     const retire = await admin
       .from("consumer_subscriptions")
-      .update({ status: "canceled" })
+      .update({ state: "canceled" })
       .eq("consumer_id", consumerId)
       .neq("stripe_subscription_id", sub.id)
-      .in("status", ["active", "past_due"]);
+      .in("state", ["active", "past_due"]);
     if (retire.error) {
       throw new Error(`consumer_retire_prior_live: ${retire.error.message}`);
     }
@@ -241,7 +241,7 @@ async function reconcileConsumerSubscription(
         consumer_id: consumerId,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,
-        status: localStatus,
+        state: localState,
         price_cents: priceCents,
         currency,
         current_period_end: periodEnd,
@@ -267,7 +267,7 @@ async function reconcileProjectSubscription(
   projectId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
-  const { localStatus, customerId, periodEnd, priceCents, currency, isLive } =
+  const { localState, customerId, periodEnd, priceCents, currency, isLive } =
     subscriptionSnapshot(sub);
 
   const planKey = await resolvePlanKey(admin, sub);
@@ -284,10 +284,10 @@ async function reconcileProjectSubscription(
     // incoming subscription can't collide with project_subscriptions_one_live.
     const retire = await admin
       .from("project_subscriptions")
-      .update({ status: "canceled" })
+      .update({ state: "canceled" })
       .eq("place_id", projectId)
       .neq("stripe_subscription_id", sub.id)
-      .in("status", ["active", "past_due"]);
+      .in("state", ["active", "past_due"]);
     if (retire.error) {
       throw new Error(`project_retire_prior_live: ${retire.error.message}`);
     }
@@ -301,7 +301,7 @@ async function reconcileProjectSubscription(
         plan_key: planKey,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,
-        status: localStatus,
+        state: localState,
         price_cents: priceCents,
         currency,
         current_period_end: periodEnd,

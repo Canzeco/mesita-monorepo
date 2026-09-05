@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
-  ACTIVE_TICKET_STATUSES,
+  ACTIVE_TICKET_STATES,
   apiListConsumerTickets,
   type ConsumerTicketRow,
 } from '@/lib/api/tickets';
@@ -13,22 +13,22 @@ import { usePayNotificationPoll } from '@/lib/hooks/usePayNotificationPoll';
 export type ConsumerTicketsState = {
   active: ConsumerTicketRow[];
   history: ConsumerTicketRow[];
-  status: 'loading' | 'ready' | 'error';
+  state: 'loading' | 'ready' | 'error';
   refresh: () => Promise<void>;
   retry: () => void;
 };
 
 export function useConsumerTickets(userId: string): ConsumerTicketsState {
   const [rows, setRows] = useState<ConsumerTicketRow[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const refresh = useCallback(async () => {
     try {
       const tickets = await apiListConsumerTickets();
       setRows(tickets);
-      setStatus('ready');
+      setState('ready');
     } catch {
-      setStatus((prev) => (prev === 'ready' ? prev : 'error'));
+      setState((prev) => (prev === 'ready' ? prev : 'error'));
     }
   }, []);
 
@@ -39,10 +39,10 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
         const tickets = await apiListConsumerTickets();
         if (!cancelled) {
           setRows(tickets);
-          setStatus('ready');
+          setState('ready');
         }
       } catch {
-        if (!cancelled) setStatus((prev) => (prev === 'ready' ? prev : 'error'));
+        if (!cancelled) setState((prev) => (prev === 'ready' ? prev : 'error'));
       }
     })();
     return () => {
@@ -53,7 +53,7 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
   usePayNotificationPoll(refresh, Boolean(userId));
 
   const retry = useCallback(() => {
-    setStatus('loading');
+    setState('loading');
     void refresh();
   }, [refresh]);
 
@@ -64,10 +64,10 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
       // NOTE: there is no reservation row to skip. Reservations are their own
       // table (reservation_tickets); the ticket discriminator that once
       // claimed otherwise was born dead and has since been dropped.
-      (ACTIVE_TICKET_STATUSES.has(row.status) ? active : history).push(row);
+      (ACTIVE_TICKET_STATES.has(row.state) ? active : history).push(row);
     }
     return { active, history };
   }, [rows]);
 
-  return { active, history, status, refresh, retry };
+  return { active, history, state, refresh, retry };
 }

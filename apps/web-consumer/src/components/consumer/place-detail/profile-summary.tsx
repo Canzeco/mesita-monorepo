@@ -15,7 +15,7 @@ import { PromoChip } from "@/components/consumer/PromoChip";
 import { Spinner } from "@/components/shared";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { formatPlacePriceChip } from "@/lib/place-price";
-import { getOpeningStatusLabel } from "@/lib/place-status";
+import { getOpeningStateLabel } from "@/lib/place-state";
 import type { PromoChipPlace } from "@/lib/promo-rates";
 import {
   cn,
@@ -54,7 +54,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
       priceLevel: place.price_level,
       currency: place.currency,
     }) ?? null;
-  const statusValue = getOpeningStatusLabel(place);
+  const stateValue = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   const promoPlace = placeDetailAsPromoPlace(place);
   const partner = isPartner(place);
@@ -152,7 +152,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
             {formatDistanceKm(place.distance_km)}
           </span>
         </ProfileMetaChip>
-        {statusValue && (
+        {stateValue && (
           <ProfileMetaChip>
             <Clock
               className={cn(
@@ -166,7 +166,7 @@ export function ProfileSummary({ place }: { place: PlaceDetail }) {
                 isOpen ? "text-emerald-700" : undefined,
               )}
             >
-              {statusValue}
+              {stateValue}
             </span>
           </ProfileMetaChip>
         )}

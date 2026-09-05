@@ -29,8 +29,8 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, anonClient, readEFEnv } from "../_shared/auth.ts";
 import {
-  COMPLETED_VISIT_STATUSES,
-  FEATURED_RESERVATION_STATUSES,
+  COMPLETED_VISIT_STATES,
+  FEATURED_RESERVATION_STATES,
   mapReservationTickets,
   mapStoryTickets,
   mapVisitTickets,
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       admin
         .from("visit_tickets")
         .select(
-          `id, story_status, story_screenshot_url, story_submitted_at, ` +
+          `id, story_state, story_screenshot_url, story_submitted_at, ` +
             `story_verified_at, created_at, ${CONSUMER_JOIN}`,
         )
         .eq("place_id", projectId)
@@ -100,18 +100,18 @@ Deno.serve(async (req) => {
       admin
         .from("visit_tickets")
         .select(
-          `id, status, discount_percent, paid_at, validated_at, created_at, ` +
+          `id, state, discount_percent, paid_at, validated_at, created_at, ` +
             CONSUMER_JOIN,
         )
         .eq("place_id", projectId)
-        .in("status", COMPLETED_VISIT_STATUSES)
+        .in("state", COMPLETED_VISIT_STATES)
         .order("paid_at", { ascending: false, nullsFirst: false })
         .limit(FEED_LIMIT),
       admin
         .from("reservation_tickets")
-        .select(`id, status, reserved_at, party_size, created_at, ${CONSUMER_JOIN}`)
+        .select(`id, state, reserved_at, party_size, created_at, ${CONSUMER_JOIN}`)
         .eq("place_id", projectId)
-        .in("status", FEATURED_RESERVATION_STATUSES)
+        .in("state", FEATURED_RESERVATION_STATES)
         .order("reserved_at", { ascending: false, nullsFirst: false })
         .limit(FEED_LIMIT),
       admin

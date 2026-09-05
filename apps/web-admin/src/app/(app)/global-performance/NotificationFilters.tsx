@@ -18,9 +18,9 @@ import {
 import { ENGINELESS_STATE_FACT_KEYS } from "@/lib/state-vocabulary";
 
 export type TypeFilter = "all" | NotificationType;
-export type StatusFilter = IntakeFilter;
+export type StateFilter = IntakeFilter;
 
-const STATUS_DOT: Record<StateFactKey, string> = {
+const STATE_DOT: Record<StateFactKey, string> = {
   seeded: TONES.indigo.dot,
   active: TONES.emerald.dot,
   listed: TONES.sky.dot,
@@ -39,11 +39,11 @@ const STATUS_DOT: Record<StateFactKey, string> = {
 export function NotificationFilters({
   domain,
   typeFilter,
-  statusFilter,
+  stateFilter,
   includeSteps,
   total,
   counts,
-  statusCounts,
+  stateCounts,
   functionCounts,
   placeQuery,
   updatedLabel,
@@ -52,18 +52,18 @@ export function NotificationFilters({
   showDomains = true,
   onDomainChange,
   onTypeFilterChange,
-  onStatusFilterChange,
+  onStateFilterChange,
   onIncludeStepsChange,
   onPlaceQueryChange,
   onRefresh,
 }: {
   domain: DomainKey;
   typeFilter: TypeFilter;
-  statusFilter: StatusFilter;
+  stateFilter: StateFilter;
   includeSteps: boolean;
   total: number;
   counts: NotificationsPayload["counts"];
-  statusCounts: Record<StateFactKey, number>;
+  stateCounts: Record<StateFactKey, number>;
   functionCounts: Record<IntakeFunctionKey, number>;
   placeQuery: string;
   updatedLabel: string;
@@ -72,7 +72,7 @@ export function NotificationFilters({
   showDomains?: boolean;
   onDomainChange: (domain: DomainKey) => void;
   onTypeFilterChange: (filter: TypeFilter) => void;
-  onStatusFilterChange: (filter: StatusFilter) => void;
+  onStateFilterChange: (filter: StateFilter) => void;
   onIncludeStepsChange: (next: boolean) => void;
   onPlaceQueryChange?: (query: string) => void;
   onRefresh: () => void;
@@ -124,13 +124,13 @@ export function NotificationFilters({
         <div className="flex min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <FilterSegment
             active={
-              intake ? statusFilter === "all" : typeFilter === "all"
+              intake ? stateFilter === "all" : typeFilter === "all"
             }
             label="All"
             count={total}
             onClick={() =>
               intake
-                ? onStatusFilterChange("all")
+                ? onStateFilterChange("all")
                 : onTypeFilterChange("all")
             }
           />
@@ -144,11 +144,11 @@ export function NotificationFilters({
               ).map((fact) => (
                 <FilterSegment
                   key={fact.key}
-                  active={statusFilter === fact.key}
+                  active={stateFilter === fact.key}
                   label={fact.label}
-                  count={statusCounts[fact.key] ?? 0}
-                  dot={STATUS_DOT[fact.key]}
-                  onClick={() => onStatusFilterChange(fact.key)}
+                  count={stateCounts[fact.key] ?? 0}
+                  dot={STATE_DOT[fact.key]}
+                  onClick={() => onStateFilterChange(fact.key)}
                 />
               ))
             : domainTypes.map((t) => (
@@ -212,10 +212,10 @@ export function NotificationFilters({
           {INTAKE_FUNCTIONS.map((fact) => (
             <FilterSegment
               key={fact.key}
-              active={statusFilter === `fn:${fact.key}`}
+              active={stateFilter === `fn:${fact.key}`}
               label={`${fact.n} ${fact.label}`}
               count={functionCounts[fact.key] ?? 0}
-              onClick={() => onStatusFilterChange(`fn:${fact.key}`)}
+              onClick={() => onStateFilterChange(`fn:${fact.key}`)}
             />
           ))}
         </ChipRow>

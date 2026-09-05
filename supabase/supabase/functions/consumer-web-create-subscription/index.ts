@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           consumer_id: consumerId,
           stripe_subscription_id: mockSubId,
           stripe_customer_id: `mock_cus_${consumerId}`,
-          status: "active",
+          state: "active",
           price_cents: premium?.price_cents ?? 5000,
           currency: premium?.currency ?? "MXN",
           current_period_end: periodEnd,
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     {
       consumer_id: consumerId,
       stripe_customer_id: customerId,
-      status: "incomplete",
+      state: "incomplete",
       price_cents: resolved.priceCents,
       currency: resolved.currency,
     },

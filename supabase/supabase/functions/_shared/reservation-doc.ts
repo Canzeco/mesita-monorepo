@@ -33,7 +33,7 @@
 //     reaches Postgres.
 //
 // THE INVARIANTS, and why each is real (not invented):
-//   - status, if set, is one of the reservation_status enum's 7 values
+//   - state, if set, is one of the reservation_state enum's 7 values
 //     (pending/confirmed/declined/no_show/cancelled/unreachable/unresolved)
 //     — the exact Postgres enum type, read live via pg_enum.
 //   - party_size, if set, is a positive integer — the exact DB CHECK
@@ -66,13 +66,13 @@
 //     result} shape supabase-edgefunc-reservation-call's own AttemptEntry
 //     type already defines and is the only writer of.
 //
-// WHAT THIS VALIDATOR DELIBERATELY DOES NOT DO: couple `status` to
+// WHAT THIS VALIDATOR DELIBERATELY DOES NOT DO: couple `state` to
 // `reported_verdict`/`alternatives`/`outcome_note` in one invariant. Per this
 // issue's own landmine note, those three are written mid-call by
-// eleven-a1-report-outcome WITHOUT flipping status (status transitions are
+// eleven-a1-report-outcome WITHOUT flipping state (state transitions are
 // owned by supabase-edgefunc-reservation-call) — but OTHER legitimate patches
 // (business-web-confirm-reservation, eleven-a2-confirm-reservation,
-// consumer-web-update-reservation's reschedule reset) DO set status and
+// consumer-web-update-reservation's reschedule reset) DO set state and
 // reported_verdict together in the same write. There is no single rule that
 // covers both truths, so this validator type-checks each field independently
 // and leaves the "which fields travel together" decision where it already
@@ -104,7 +104,7 @@ import {
 
 // ── ReservationDoc — the full row shape ─────────────────────────────────────
 
-export type ReservationStatus =
+export type ReservationState =
   | "pending"
   | "confirmed"
   | "declined"
@@ -185,7 +185,7 @@ export type ReservationDoc = {
   project_id: string;
   reserved_at: string;
   party_size: number;
-  status: ReservationStatus;
+  state: ReservationState;
   notes: string | null;
   confirmed_at: string | null;
   completed_at: string | null;
@@ -193,7 +193,7 @@ export type ReservationDoc = {
   call_attempts: number;
   last_conversation_id: string | null;
   last_called_at: string | null;
-  last_call_status: string | null;
+  last_call_state: string | null;
   reference_code: string | null;
   is_test: boolean;
   place_phone: string | null;
@@ -243,7 +243,7 @@ export const RESERVATION_PATCH_KEYS = [
   "project_id",
   "reserved_at",
   "party_size",
-  "status",
+  "state",
   "notes",
   "confirmed_at",
   "completed_at",
@@ -251,7 +251,7 @@ export const RESERVATION_PATCH_KEYS = [
   "call_attempts",
   "last_conversation_id",
   "last_called_at",
-  "last_call_status",
+  "last_call_state",
   "reference_code",
   "is_test",
   "place_phone",
@@ -311,7 +311,7 @@ export type ReservationValidationResult =
   | { ok: true; patch: ReservationPatch }
   | { ok: false; error: string };
 
-const STATUS_VALUES = new Set<string>([
+const STATE_VALUES = new Set<string>([
   "pending",
   "confirmed",
   "declined",
@@ -472,18 +472,18 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
     }
     patch.party_size = v;
   }
-  if ("status" in raw) {
-    const v = raw.status;
-    if (typeof v !== "string" || !STATUS_VALUES.has(v)) {
-      return { ok: false, error: `status must be one of ${[...STATUS_VALUES].join(", ")}` };
+  if ("state" in raw) {
+    const v = raw.state;
+    if (typeof v !== "string" || !STATE_VALUES.has(v)) {
+      return { ok: false, error: `state must be one of ${[...STATE_VALUES].join(", ")}` };
     }
-    patch.status = v as ReservationStatus;
+    patch.state = v as ReservationState;
   }
   for (
     const key of [
       "notes",
       "last_conversation_id",
-      "last_call_status",
+      "last_call_state",
       "place_phone",
       "consumer_phone",
       "callback_conversation_id",
@@ -651,7 +651,7 @@ export type ReservationWriteArgs =
     id: string;
     patch: ReservationPatch;
     /** Extra equality guards beyond `id` — e.g. {consumer_id}, {run_id},
-     * {status: "pending"}. For a filter this door doesn't model (`.in(...)`,
+     * {state: "pending"}. For a filter this door doesn't model (`.in(...)`,
      * `.or(...)`, a bulk sweep with no single id), call
      * validateReservationPatch directly and build the query yourself — see
      * business-web-confirm-reservation and supabase-cron-reservation-retries. */

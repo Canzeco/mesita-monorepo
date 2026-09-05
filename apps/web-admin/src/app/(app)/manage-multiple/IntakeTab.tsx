@@ -17,12 +17,12 @@ import {
   type EditValues,
 } from "./EditTab";
 import { IdListField } from "./IdListField";
-import { StatusIcon, type BatchRowStatus } from "./StatusIcon";
+import { StateIcon, type BatchRowState } from "./StateIcon";
 
 type Running = IntakeAction | "create_then_enrich";
 
 type Row = {
-  status: BatchRowStatus;
+  state: BatchRowState;
   name?: string;
   detail?: string;
   error?: string;
@@ -56,24 +56,24 @@ export function IntakeTab({
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
-    const s = results[id]?.status;
+    const s = results[id]?.state;
     return s === "ok" || s === "existed" || s === "enriching" || s === "error";
   }).length;
-  const created = placeIds.filter((id) => results[id]?.status === "ok").length;
-  const existed = placeIds.filter((id) => results[id]?.status === "existed").length;
-  const enriching = placeIds.filter((id) => results[id]?.status === "enriching").length;
+  const created = placeIds.filter((id) => results[id]?.state === "ok").length;
+  const existed = placeIds.filter((id) => results[id]?.state === "existed").length;
+  const enriching = placeIds.filter((id) => results[id]?.state === "enriching").length;
   const written = placeIds.filter((id) => {
-    const s = results[id]?.status;
+    const s = results[id]?.state;
     return s === "ok" || s === "existed";
   }).length;
-  const failed = placeIds.filter((id) => results[id]?.status === "error").length;
+  const failed = placeIds.filter((id) => results[id]?.state === "error").length;
 
   async function run(action: Running) {
     if (busy || placeIds.length === 0) return;
     setRunning(action);
     setLastRun(action);
     setResults(
-      Object.fromEntries(placeIds.map((id) => [id, { status: "pending" as const }])),
+      Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
     await Promise.all(ids.map((id) => runRow(id, action, fact, values, setResults)));
@@ -81,7 +81,7 @@ export function IntakeTab({
   }
 
   function copyFailed() {
-    const ids = placeIds.filter((id) => results[id]?.status === "error");
+    const ids = placeIds.filter((id) => results[id]?.state === "error");
     void navigator.clipboard.writeText(ids.join("\n"));
   }
 
@@ -172,7 +172,7 @@ function ResultList({
           if (!r) return null;
           return (
             <li key={id} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <StatusIcon status={r.status} />
+              <StateIcon state={r.state} />
               <div className="min-w-0 flex-1">
                 {r.name ? (
                   <span className="truncate font-medium">{r.name}</span>
@@ -231,7 +231,7 @@ async function runRow(
   values: EditValues,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
-  setResults((prev) => ({ ...prev, [googleId]: { status: "running" } }));
+  setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
   try {
     const row = await runOne(googleId, action, fact, values);
     setResults((prev) => ({ ...prev, [googleId]: row }));
@@ -239,7 +239,7 @@ async function runRow(
     setResults((prev) => ({
       ...prev,
       [googleId]: {
-        status: "error",
+        state: "error",
         error: err instanceof Error ? err.message : "Unexpected error",
       },
     }));
@@ -248,10 +248,10 @@ async function runRow(
 
 async function createOne(googleId: string): Promise<Row> {
   const r = await createPlaceFromGooglePlaceId(googleId);
-  if (!r.ok) return { status: "error", error: r.error };
+  if (!r.ok) return { state: "error", error: r.error };
   if (r.alreadyExisted) {
     return {
-      status: "existed",
+      state: "existed",
       name: r.name,
       detail: "Already on Mesita — skipped create",
       projectId: r.projectId,
@@ -259,7 +259,7 @@ async function createOne(googleId: string): Promise<Row> {
     };
   }
   return {
-    status: "ok",
+    state: "ok",
     name: r.name,
     detail: r.enrichmentTriggered
       ? "Created · enrich queued"
@@ -275,11 +275,11 @@ async function enrichOne(
   const found = known
     ? { ok: true as const, projectId: known.projectId, name: known.name ?? "" }
     : await resolveMesitaId(googleId);
-  if (!found.ok) return { status: "error", error: found.error };
+  if (!found.ok) return { state: "error", error: found.error };
   const en = await enrichPlace(found.projectId, "full");
-  if (!en.ok) return { status: "error", name: found.name, error: en.error };
+  if (!en.ok) return { state: "error", name: found.name, error: en.error };
   return {
-    status: "enriching",
+    state: "enriching",
     name: found.name,
     detail: "Re-enrich from zero — Intaker 1–10 queued",
   };
@@ -287,14 +287,14 @@ async function enrichOne(
 
 async function runCreateThenEnrich(googleId: string): Promise<Row> {
   const created = await createOne(googleId);
-  if (created.status === "error" || !created.projectId) return created;
+  if (created.state === "error" || !created.projectId) return created;
   const en = await enrichOne(googleId, {
     projectId: created.projectId,
     name: created.name,
   });
-  if (en.status === "error") {
+  if (en.state === "error") {
     return {
-      status: "error",
+      state: "error",
       name: created.name,
       error: created.alreadyExisted
         ? `Already on Mesita · enrich not queued: ${en.error}`
@@ -302,7 +302,7 @@ async function runCreateThenEnrich(googleId: string): Promise<Row> {
     };
   }
   return {
-    status: created.alreadyExisted ? "existed" : "enriching",
+    state: created.alreadyExisted ? "existed" : "enriching",
     name: created.name,
     detail: created.alreadyExisted
       ? "Already on Mesita — enrich queued"

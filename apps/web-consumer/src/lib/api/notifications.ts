@@ -12,8 +12,8 @@ export type ConsumerNotification = ConsumerNotificationRow & {
 
 type PayTicketMeta = {
   kind?: string;
-  status?: string;
-  story_status?: string;
+  state?: string;
+  story_state?: string;
   story_submitted_at?: string | null;
   first_scanned_at?: string | null;
   total_cents?: number | null;

@@ -6,7 +6,7 @@ import {
   isPlaceProfileReady,
   isPlaceRequested,
   isPlaceSeeded,
-} from "./place-status.ts";
+} from "./place-state.ts";
 
 Deno.test("seeded: a blank or missing google_place_id is not seeded", () => {
   assertEquals(isPlaceSeeded(null), false);
@@ -22,26 +22,26 @@ Deno.test("listed: only active and lead are reachable by a guest", () => {
   }
 });
 
-// The statuses that are NOT reachable. The list above is only half the
-// contract: project_status also carries paused, archived, pending_review and
+// The states that are NOT reachable. The list above is only half the
+// contract: project_state also carries paused, archived, pending_review and
 // pending_verification, and every one of them must read as not-listed. Pinning
-// them by name means a new status added to the enum shows up here as a
+// them by name means a new state added to the enum shows up here as a
 // deliberate choice rather than defaulting into visibility.
-Deno.test("listed: every other project_status is unreachable", () => {
+Deno.test("listed: every other project_state is unreachable", () => {
   for (
-    const status of [
+    const state of [
       "paused",
       "archived",
       "pending_review",
       "pending_verification",
     ]
   ) {
-    assertEquals(isPlaceListed(status), false, `${status} must not be listed`);
+    assertEquals(isPlaceListed(state), false, `${state} must not be listed`);
   }
 });
 
-Deno.test("listed: a missing or non-string status is never listed", () => {
-  // The search EF degrades a failed read to the safe direction for a status
+Deno.test("listed: a missing or non-string state is never listed", () => {
+  // The search EF degrades a failed read to the safe direction for a state
   // column. Claiming a place is guest-visible when we do not know is the one
   // direction that misleads.
   for (const bad of [null, undefined, "", 0, {}, []]) {
@@ -51,23 +51,23 @@ Deno.test("listed: a missing or non-string status is never listed", () => {
 
 Deno.test("requested: count > 0 and not ready; Enriched wins", () => {
   assertEquals(
-    isPlaceRequested({ requestCount: 1, contentStatus: "queued" }),
+    isPlaceRequested({ requestCount: 1, contentState: "queued" }),
     true,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: 2, contentStatus: "failed" }),
+    isPlaceRequested({ requestCount: 2, contentState: "failed" }),
     true,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: 0, contentStatus: "queued" }),
+    isPlaceRequested({ requestCount: 0, contentState: "queued" }),
     false,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: 7, contentStatus: "ready" }),
+    isPlaceRequested({ requestCount: 7, contentState: "ready" }),
     false,
   );
   assertEquals(
-    isPlaceRequested({ requestCount: null, contentStatus: "queued" }),
+    isPlaceRequested({ requestCount: null, contentState: "queued" }),
     false,
   );
   assertEquals(isPlaceRequested({}), false);
@@ -81,7 +81,7 @@ Deno.test("enriching: generating or queued is mid-flight", () => {
   assertEquals(isPlaceEnriching(null), false);
 });
 
-Deno.test("enriched: a stamp on places.enriched_at, never content_status", () => {
+Deno.test("enriched: a stamp on places.enriched_at, never content_state", () => {
   assertEquals(isPlaceEnriched("2026-08-28T00:00:00Z"), true);
   assertEquals(isPlaceEnriched(null), false);
   assertEquals(isPlaceEnriched(""), false);
@@ -89,7 +89,7 @@ Deno.test("enriched: a stamp on places.enriched_at, never content_status", () =>
   assertEquals(
     isPlaceRequested({
       requestCount: 2,
-      contentStatus: "ready",
+      contentState: "ready",
       enrichedAt: null,
     }),
     true,
@@ -98,14 +98,14 @@ Deno.test("enriched: a stamp on places.enriched_at, never content_status", () =>
   assertEquals(
     isPlaceRequested({
       requestCount: 2,
-      contentStatus: "ready",
+      contentState: "ready",
       enrichedAt: "2026-08-28T00:00:00Z",
     }),
     false,
   );
 });
 
-Deno.test("profile ready: only content_status ready is a usable profile", () => {
+Deno.test("profile ready: only content_state ready is a usable profile", () => {
   assertEquals(isPlaceProfileReady("ready"), true);
   assertEquals(isPlaceProfileReady("queued"), false);
   assertEquals(isPlaceProfileReady("generating"), false);

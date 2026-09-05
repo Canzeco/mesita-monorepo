@@ -48,7 +48,7 @@ function stubClient(): {
             data: {
               id: "place-uuid-1",
               slug: (pending?.slug as string) ?? "",
-              status: (pending?.status as string) ?? "",
+              state: (pending?.state as string) ?? "",
             },
             error: null,
           });
@@ -100,7 +100,7 @@ Deno.test("savePlaceData accepts a fetchGoogleBasics payload (no `name` key)", a
   // Slug and returned label derive from the Google observation, not "".
   assertEquals(writes.projects.slug, "cuerno-calzada");
   assertEquals(res.saved.name, "Cuerno Calzada");
-  assertEquals(res.saved.status, "active");
+  assertEquals(res.saved.state, "active");
 });
 
 Deno.test("savePlaceData still honours the legacy `name` alias", async () => {

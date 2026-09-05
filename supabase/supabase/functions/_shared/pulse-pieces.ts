@@ -59,7 +59,7 @@
 // linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
 // question anything can ask in SQL: this value is a read-time fold over the
 // run-event log, not a column, so it cannot appear in a WHERE clause. Consumer
-// visibility therefore gates on `content_status = 'ready'` instead
+// visibility therefore gates on `content_state = 'ready'` instead
 // (MESITA-1228) — a real predicate, applied before the pool cap.
 //
 // THIS IS NOT THE TRIGGER MATRIX'S VOCABULARY. `enrich-triggers.ts` keys what a
@@ -95,7 +95,7 @@ export const PULSE_EXTRA_ALIASES = ["summary", "name"] as const;
 /**
  * RENAMED function keys: the same function under its old name. Unlike the
  * display-only extras above, a rename COUNTS everywhere — the ladder walk,
- * the stored map merge, the Status fold — because function 10 did not
+ * the stored map merge, the State fold — because function 10 did not
  * change, only its name did (§8.4 v3: Semantic → Embedding, 2026-08-29).
  * NOTE the vocabulary firewall: `embedding` is also a trigger-matrix
  * subprocess key — a coincidence of subject, not a shared enum; neither
@@ -178,7 +178,7 @@ export const PULSE_TOTAL = PULSE_PIECES.length;
 /** One event row, narrowed to what the high-water needs. */
 export type PulseEvent = {
   step_name?: string | null;
-  status?: string | null;
+  state?: string | null;
   created_at?: string | null;
 };
 
@@ -189,8 +189,8 @@ const INDEX = new Map<string, number>(
 /** Latest event per known function key — the log is append-only. */
 function latestByPiece(
   events: readonly PulseEvent[],
-): Map<string, { status: string; at: string }> {
-  const latest = new Map<string, { status: string; at: string }>();
+): Map<string, { state: string; at: string }> {
+  const latest = new Map<string, { state: string; at: string }>();
   for (const e of events) {
     const raw = (e.step_name ?? "").trim();
     // Renamed keys COUNT (the function is the same; only the name moved):
@@ -198,13 +198,13 @@ function latestByPiece(
     const key = PULSE_RENAMES[raw] ?? raw;
     // Unknown keys are ignored on purpose: legacy stage beacons (`gather`,
     // `publish`), retired rungs (`semantics`), and pre-merge `name`/`summary`
-    // extras (those fold into `embedding` on the Status map, not this walk —
+    // extras (those fold into `embedding` on the State map, not this walk —
     // an old `name` rung must not count as function 10).
     if (!INDEX.has(key)) continue;
     const at = e.created_at ?? "";
     const prev = latest.get(key);
     if (!prev || at >= prev.at) {
-      latest.set(key, { status: (e.status ?? "").trim(), at });
+      latest.set(key, { state: (e.state ?? "").trim(), at });
     }
   }
   return latest;
@@ -237,7 +237,7 @@ export function pulseHighWater(events: readonly PulseEvent[]): number {
     const rec = latest.get(piece);
     // Only `completed` advances the queue. A missing function is one that has
     // never run — not a pass.
-    if (!rec || rec.status !== "completed") break;
+    if (!rec || rec.state !== "completed") break;
     high = PULSE_PIECE_META[piece].index;
   }
   return high;
@@ -262,7 +262,7 @@ export function pulseHighWater(events: readonly PulseEvent[]): number {
 export type PulseBlock = {
   key: PulsePiece;
   index: number;
-  status: "failed" | "missing";
+  state: "failed" | "missing";
 };
 
 export function pulseBlockedAt(
@@ -271,14 +271,14 @@ export function pulseBlockedAt(
   const latest = latestByPiece(events);
   for (const piece of PULSE_PIECES) {
     const rec = latest.get(piece);
-    if (rec?.status === "completed") continue;
+    if (rec?.state === "completed") continue;
     return {
       key: piece,
       index: PULSE_PIECE_META[piece].index,
       // Anything that is not `completed` and not absent — `failed`, or the
       // `skipped` a legacy row might carry — is the function having run and
       // not delivered. Only a total absence of events is "not yet".
-      status: rec ? "failed" : "missing",
+      state: rec ? "failed" : "missing",
     };
   }
   return null;
@@ -294,5 +294,5 @@ export function completedPulsePieces(
   events: readonly PulseEvent[],
 ): PulsePiece[] {
   const latest = latestByPiece(events);
-  return PULSE_PIECES.filter((p) => latest.get(p)?.status === "completed");
+  return PULSE_PIECES.filter((p) => latest.get(p)?.state === "completed");
 }

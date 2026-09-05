@@ -10,9 +10,9 @@ import type { ReservationItem } from '@/lib/mock/reservations-mock';
 import { toReservationItem } from '@/lib/reservations-adapter';
 
 type State =
-  | { status: 'loading' }
-  | { status: 'found'; r: ReservationItem }
-  | { status: 'missing' };
+  | { state: 'loading' }
+  | { state: 'found'; r: ReservationItem }
+  | { state: 'missing' };
 
 // consumer-web-list-reservations has no get-by-id, so the detail screen pulls
 // the caller's full list once (scope "all") and finds the row. Web parity:
@@ -21,11 +21,11 @@ export default function ReservationDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const id = typeof params.id === 'string' ? params.id : (params.id?.[0] ?? '');
-  const [fetched, setFetched] = useState<State>({ status: 'loading' });
+  const [fetched, setFetched] = useState<State>({ state: 'loading' });
   const [reloadTick, setReloadTick] = useState(0);
   // An absent id can never resolve to a row, so it reads as missing without
   // ever entering the loading state.
-  const state: State = id ? fetched : { status: 'missing' };
+  const state: State = id ? fetched : { state: 'missing' };
 
   useEffect(() => {
     // No id = nothing to fetch; the missing state is DERIVED below rather than
@@ -42,12 +42,12 @@ export default function ReservationDetailScreen() {
         if (!cancelled) {
           setFetched(
             match
-              ? { status: 'found', r: toReservationItem(match) }
-              : { status: 'missing' },
+              ? { state: 'found', r: toReservationItem(match) }
+              : { state: 'missing' },
           );
         }
       } catch {
-        if (!cancelled) setFetched({ status: 'missing' });
+        if (!cancelled) setFetched({ state: 'missing' });
       }
     })();
     return () => {
@@ -55,7 +55,7 @@ export default function ReservationDetailScreen() {
     };
   }, [id, reloadTick]);
 
-  if (state.status === 'loading') {
+  if (state.state === 'loading') {
     return (
       <ReservationDetailModalShell placeName="Reservation">
         <View className="flex-1 items-center justify-center">
@@ -65,7 +65,7 @@ export default function ReservationDetailScreen() {
     );
   }
 
-  if (state.status === 'missing') {
+  if (state.state === 'missing') {
     return (
       <ReservationDetailModalShell placeName="Reservation">
         <View className="flex-1 items-center justify-center gap-3 px-8">

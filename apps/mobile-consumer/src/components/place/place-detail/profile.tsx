@@ -35,7 +35,7 @@ export function ProfileSummary({
     priceLevel: place.price_level,
     currency: place.currency,
   });
-  const statusValue = place.open_now
+  const stateValue = place.open_now
     ? `Open · until ${place.closes_at || '—'}`
     : `Closed · opens ${place.opens_at || '—'}`;
   const isPartner = place.listing_type === 'partner';
@@ -128,7 +128,7 @@ export function ProfileSummary({
               place.open_now ? 'text-emerald-700' : 'text-foreground'
             }`}
           >
-            {statusValue}
+            {stateValue}
           </Text>
         </ProfileMetaChip>
         <PromoMetaChip place={place} />

@@ -30,7 +30,7 @@
 //   rewards.ticket_created              a reward ticket was opened in-app
 //   rewards.ticket_visit                its QR met the venue (first scan)
 //   rewards.ticket_closed               staff marked the visit done (v3b;
-//                                       status=revealed — not a payment event)
+//                                       state=revealed — not a payment event)
 //   rewards.review_submitted            the post-visit review landed
 //   rewards.ticket_reported             the GUEST filed a complaint about the
 //                                       visit (v3c, MESITA-851) — the one
@@ -77,7 +77,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import {
   one,
   placeRef,
@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
         let qb = admin
           .from("profiles")
           .select(
-            "id, slug, name, address, category_label, google_place_id, listing_type, status, created_at, enriched_at",
+            "id, slug, name, address, category_label, google_place_id, listing_type, state, created_at, enriched_at",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
         let qb = admin
           .from("place_enrichment_events")
           .select(
-            "id, place_id, step, step_name, status, detail, meta, created_at, place:places(id, name, address, category_label, google_place_id)",
+            "id, place_id, step, step_name, state, detail, meta, created_at, place:places(id, name, address, category_label, google_place_id)",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
             // project_verifications has no FK to places — it references the
             // projects entity (shared PK with places). Hop through projects to
             // reach the profile; slug lives on projects, the rest on places.
-            "id, place_id, method, requester_email, status, created_at, project:projects(id, slug, place:places(name, address, category_label, google_place_id))",
+            "id, place_id, method, requester_email, state, created_at, project:projects(id, slug, place:places(name, address, category_label, google_place_id))",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
       place_id: string;
       step: string;
       step_name: string;
-      status: string;
+      state: string;
       detail: string | null;
       meta: Record<string, unknown> | null;
       created_at: string;
@@ -340,7 +340,7 @@ Deno.serve(async (req) => {
         meta: {
           step: e.step,
           stepName: e.step_name,
-          status: e.status,
+          state: e.state,
           ...(e.meta && typeof e.meta === "object" ? e.meta : {}),
         },
       });
@@ -352,7 +352,7 @@ Deno.serve(async (req) => {
       place_id: string;
       method: string | null;
       requester_email: string | null;
-      status: string | null;
+      state: string | null;
       created_at: string;
       project: ProjectPlaceShape | ProjectPlaceShape[] | null;
     }>) {
@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
         place: projectPlaceRef(one(c.project)),
         actor: c.requester_email ?? null,
         detail: null,
-        meta: { method: c.method, status: c.status },
+        meta: { method: c.method, state: c.state },
       });
     }
   }
@@ -421,25 +421,25 @@ Deno.serve(async (req) => {
         activitySource("favorites", "", "created_at", wantType("consumer.place_saved")),
         activitySource(
           "visit_tickets",
-          "status, ",
+          "state, ",
           "created_at",
           wantType("rewards.ticket_created"),
         ),
         activitySource(
           "visit_tickets",
-          "status, first_scanned_at, ",
+          "state, first_scanned_at, ",
           "first_scanned_at",
           wantType("rewards.ticket_visit"),
         ),
-        // Close = status revealed (v3b). Order by revealed_at so a later
-        // status rewrite can't reshuffle history; paid_at is still stamped
+        // Close = state revealed (v3b). Order by revealed_at so a later
+        // state rewrite can't reshuffle history; paid_at is still stamped
         // by informal close but is no longer the feed's vocabulary.
         activitySource(
           "visit_tickets",
-          "status, revealed_at, bill_subtotal_cents, discount_percent, discount_cents, currency, ",
+          "state, revealed_at, bill_subtotal_cents, discount_percent, discount_cents, currency, ",
           "revealed_at",
           wantType("rewards.ticket_closed"),
-          { status: CLOSED_TICKET_STATUS },
+          { state: CLOSED_TICKET_STATE },
         ),
         activitySource(
           "ticket_reviews",
@@ -449,13 +449,13 @@ Deno.serve(async (req) => {
         ),
         activitySource(
           "ticket_reports",
-          "reason, details, status, ",
+          "reason, details, state, ",
           "created_at",
           wantType("rewards.ticket_reported"),
         ),
         activitySource(
           "reservation_tickets",
-          "status, party_size, reserved_at, is_test, ",
+          "state, party_size, reserved_at, is_test, ",
           "created_at",
           wantType("reservations.reservation_created"),
         ),
@@ -499,25 +499,25 @@ Deno.serve(async (req) => {
     }
 
     for (const r of ((tCreatedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
-      status: string;
+      state: string;
     }>) {
       push("rewards.ticket_created", "rewards", r, r.created_at, null, {
-        status: r.status,
+        state: r.state,
       });
     }
 
     // A first scan is the visit signal — the guest's QR met the venue.
     for (const r of ((tVisitRes.data ?? []) as unknown[]) as Array<ActivityRow & {
-      status: string;
+      state: string;
       first_scanned_at: string;
     }>) {
       push("rewards.ticket_visit", "rewards", r, r.first_scanned_at, null, {
-        status: r.status,
+        state: r.state,
       });
     }
 
     for (const r of ((tClosedRes.data ?? []) as unknown[]) as Array<ActivityRow & {
-      status: string;
+      state: string;
       revealed_at: string;
       bill_subtotal_cents: number | null;
       discount_percent: number | null;
@@ -525,7 +525,7 @@ Deno.serve(async (req) => {
       currency: string | null;
     }>) {
       push("rewards.ticket_closed", "rewards", r, r.revealed_at, null, {
-        status: r.status,
+        state: r.state,
         subtotalCents: r.bill_subtotal_cents,
         discountPercent: r.discount_percent,
         discountCents: r.discount_cents,
@@ -561,7 +561,7 @@ Deno.serve(async (req) => {
     for (const r of ((reportsRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       reason: string;
       details: string | null;
-      status: string;
+      state: string;
     }>) {
       push(
         "rewards.ticket_reported",
@@ -572,18 +572,18 @@ Deno.serve(async (req) => {
         // reportId rides along so manage-single can drive the triage EF
         // (admin-web-review-ticket-report, MESITA-1311) without parsing
         // the composite item id.
-        { reason: r.reason, status: r.status, reportId: r.id },
+        { reason: r.reason, state: r.state, reportId: r.id },
       );
     }
 
     for (const r of ((resvRes.data ?? []) as unknown[]) as Array<ActivityRow & {
-      status: string;
+      state: string;
       party_size: number | null;
       reserved_at: string | null;
       is_test: boolean;
     }>) {
       push("reservations.reservation_created", "reservations", r, r.created_at, null, {
-        status: r.status,
+        state: r.state,
         partySize: r.party_size,
         reservedAt: r.reserved_at,
         isTest: r.is_test,
@@ -591,8 +591,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Stamp the eight Status facts on every item that has a place. Same
-  // helpers as the catalog / Status box so the Monitor cannot disagree.
+  // Stamp the eight State facts on every item that has a place. Same
+  // helpers as the catalog / State box so the Monitor cannot disagree.
   await attachPlaceStateFacts(admin, items);
 
   // Place-name substring filter, then newest-first across every type, then cap

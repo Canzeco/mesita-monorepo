@@ -28,7 +28,7 @@ import {
 // Composition stays flat: one function per section, top to bottom.
 //
 //   1.  <Nav />                 Sticky bar, anchors + CTA
-//   2.  <Hero />                Status, promise, photo with UI chips
+//   2.  <Hero />                State, promise, photo with UI chips
 //   3.  <Summary />             The quotable paragraph, typographic
 //   4.  <ThreeSides />          Guests · partners · everyone else (~100:1)
 //   5.  <Products />            Consumer app · consumer MCP · business app

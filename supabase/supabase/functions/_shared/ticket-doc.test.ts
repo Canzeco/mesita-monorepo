@@ -31,15 +31,15 @@ Deno.test("validateTicketPatch: accepts the identity fields an insert writes", (
     project_id: "11111111-1111-1111-1111-111111111111",
     consumer_id: "22222222-2222-2222-2222-222222222222",
     opened_by: "22222222-2222-2222-2222-222222222222",
-    status: "open",
-    story_status: "not_required",
-    review_status: "not_required",
+    state: "open",
+    story_state: "not_required",
+    review_state: "not_required",
     check_code: "abc123",
   });
   assert(res.ok);
 });
 
-Deno.test("validateTicketPatch: accepts every live ticket_status label", () => {
+Deno.test("validateTicketPatch: accepts every live ticket_state label", () => {
   for (
     const s of [
       "open",
@@ -54,11 +54,11 @@ Deno.test("validateTicketPatch: accepts every live ticket_status label", () => {
       "paying",
     ]
   ) {
-    assert(validateTicketPatch({ status: s }).ok, s);
+    assert(validateTicketPatch({ state: s }).ok, s);
   }
 });
 
-Deno.test("validateTicketPatch: accepts every live story_status/review_status label", () => {
+Deno.test("validateTicketPatch: accepts every live story_state/review_state label", () => {
   for (
     const s of [
       "not_required",
@@ -71,8 +71,8 @@ Deno.test("validateTicketPatch: accepts every live story_status/review_status la
       "self_verified",
     ]
   ) {
-    assert(validateTicketPatch({ story_status: s }).ok, s);
-    assert(validateTicketPatch({ review_status: s }).ok, s);
+    assert(validateTicketPatch({ story_state: s }).ok, s);
+    assert(validateTicketPatch({ review_state: s }).ok, s);
   }
 });
 
@@ -103,11 +103,11 @@ Deno.test("validateTicketPatch: accepts a fix request within the closed vocabula
   assert(res.ok);
 });
 
-Deno.test("validateTicketPatch: accepts clearing a fix (both null) alongside a real status", () => {
+Deno.test("validateTicketPatch: accepts clearing a fix (both null) alongside a real state", () => {
   const res = validateTicketPatch({
     fix_requested: null,
     fix_note: null,
-    review_status: "self_verified",
+    review_state: "self_verified",
   });
   assert(res.ok);
 });
@@ -149,14 +149,14 @@ Deno.test("validateTicketPatch: rejects an unknown field (closed key set)", () =
   assert(!res2.ok);
 });
 
-Deno.test("validateTicketPatch: rejects a status outside the live ticket_status enum", () => {
-  const res = validateTicketPatch({ status: "settled" });
+Deno.test("validateTicketPatch: rejects a state outside the live ticket_state enum", () => {
+  const res = validateTicketPatch({ state: "settled" });
   assert(!res.ok);
 });
 
-Deno.test("validateTicketPatch: rejects a story_status/review_status outside the live enum", () => {
-  assert(!validateTicketPatch({ story_status: "waiter_verified" }).ok, "retired label");
-  assert(!validateTicketPatch({ review_status: "verified" }).ok);
+Deno.test("validateTicketPatch: rejects a story_state/review_state outside the live enum", () => {
+  assert(!validateTicketPatch({ story_state: "waiter_verified" }).ok, "retired label");
+  assert(!validateTicketPatch({ review_state: "verified" }).ok);
 });
 
 Deno.test("validateTicketPatch: rejects a negative money value on every *_cents column", () => {
@@ -238,14 +238,14 @@ Deno.test("writeTicket: an invalid patch never reaches the DB", async () => {
   // before calling the write door — the same Belt-1 bypass this cast
   // simulates. Belt 2 (validateTicketPatch, run inside writeTicket) is what
   // catches an invalid value once TypeScript can no longer see it.
-  const invalidPatch = { status: "settled" } as unknown as TicketPatch;
+  const invalidPatch = { state: "settled" } as unknown as TicketPatch;
   const res = await writeTicket(admin, {
     mode: "update",
     id: "11111111-1111-1111-1111-111111111111",
     patch: invalidPatch,
   });
   assert(!res.ok);
-  assert(res.error.includes("status must be one of"));
+  assert(res.error.includes("state must be one of"));
 });
 
 Deno.test("writeTicket: a same-patch approved_at + fix_requested violation never reaches the DB", async () => {
@@ -355,17 +355,17 @@ Deno.test("writeTicket: update mode applies an is-null guard alongside the id (v
 });
 
 Deno.test("writeTicket: update mode applies an eq CAS guard and returns the re-read row via maybeSingle (validate-web-scan-ticket's shape)", async () => {
-  const { admin, calls } = fakeTicketAdmin({ row: { id: "ticket-1", status: "scanned" } });
+  const { admin, calls } = fakeTicketAdmin({ row: { id: "ticket-1", state: "scanned" } });
   const res = await writeTicket(admin, {
     mode: "update",
     id: "ticket-1",
-    patch: { status: "scanned" },
-    guard: { eq: { status: "open" } },
-    select: "id, status",
+    patch: { state: "scanned" },
+    guard: { eq: { state: "open" } },
+    select: "id, state",
   });
   assert(res.ok);
-  assertEquals(res.row, { id: "ticket-1", status: "scanned" });
-  assertEquals(calls[0].eq, [["id", "ticket-1"], ["status", "open"]]);
+  assertEquals(res.row, { id: "ticket-1", state: "scanned" });
+  assertEquals(calls[0].eq, [["id", "ticket-1"], ["state", "open"]]);
   assertEquals(calls[0].terminal, "maybeSingle");
 });
 
@@ -374,9 +374,9 @@ Deno.test("writeTicket: update mode's lost CAS surfaces as row:null under maybeS
   const res = await writeTicket(admin, {
     mode: "update",
     id: "ticket-1",
-    patch: { status: "cancelled" },
-    guard: { eq: { status: "open" } },
-    select: "id, status",
+    patch: { state: "cancelled" },
+    guard: { eq: { state: "open" } },
+    select: "id, state",
   });
   assert(res.ok);
   assertEquals(res.row, null);
@@ -387,16 +387,16 @@ Deno.test("writeTicket: update mode combines eq + is + in guards, single() termi
   await writeTicket(admin, {
     mode: "update",
     id: "ticket-1",
-    patch: { status: "approved", approved_at: "2026-08-23T00:00:00Z" },
+    patch: { state: "approved", approved_at: "2026-08-23T00:00:00Z" },
     guard: {
-      eq: { status: "scanned" },
+      eq: { state: "scanned" },
       is: { fix_requested: null },
       in: { currency: ["MXN", "USD"] },
     },
     select: "id",
     single: true,
   });
-  assertEquals(calls[0].eq, [["id", "ticket-1"], ["status", "scanned"]]);
+  assertEquals(calls[0].eq, [["id", "ticket-1"], ["state", "scanned"]]);
   assertEquals(calls[0].is, [["fix_requested", null]]);
   assertEquals(calls[0].in, [["currency", ["MXN", "USD"]]]);
   assertEquals(calls[0].terminal, "single");
@@ -404,7 +404,7 @@ Deno.test("writeTicket: update mode combines eq + is + in guards, single() termi
 
 Deno.test("writeTicket: insert mode with select returns the re-read row", async () => {
   const { admin, calls } = fakeTicketAdmin({
-    row: { id: "ticket-1", check_code: "abc123", status: "open" },
+    row: { id: "ticket-1", check_code: "abc123", state: "open" },
   });
   const res = await writeTicket(admin, {
     mode: "insert",
@@ -412,13 +412,13 @@ Deno.test("writeTicket: insert mode with select returns the re-read row", async 
       project_id: "11111111-1111-1111-1111-111111111111",
       consumer_id: "22222222-2222-2222-2222-222222222222",
       opened_by: "22222222-2222-2222-2222-222222222222",
-      status: "open",
+      state: "open",
       check_code: "abc123",
     },
-    select: "id, check_code, status",
+    select: "id, check_code, state",
   });
   assert(res.ok);
-  assertEquals(res.row, { id: "ticket-1", check_code: "abc123", status: "open" });
+  assertEquals(res.row, { id: "ticket-1", check_code: "abc123", state: "open" });
   assertEquals(calls[0].op, "insert");
   assertEquals(
     calls[0].value?.place_id,

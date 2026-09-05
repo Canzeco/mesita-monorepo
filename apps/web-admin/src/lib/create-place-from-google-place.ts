@@ -26,7 +26,7 @@ type CreatedPlace = {
   id?: string;
   slug?: string | null;
   name?: string;
-  status?: string;
+  state?: string;
 };
 
 type CreatePlaceResponse = {

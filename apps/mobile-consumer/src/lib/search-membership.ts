@@ -11,14 +11,14 @@ import {
 
 export type MembershipTone = 'partner' | 'listed' | 'google';
 
-/** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita status. */
+/** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
-  status?: string | null;
+  state?: string | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
 }): boolean {
   if (item.mesitaId || item.mesitaSlug) return true;
-  return item.status !== 'not_in_mesita';
+  return item.state !== 'not_in_mesita';
 }
 
 /** Google Nearby stub that was added — real Mesita id, not a g: prefix. */
@@ -38,7 +38,7 @@ const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
 };
 
 export function membershipTone(item: {
-  status?: string | null;
+  state?: string | null;
   partner?: boolean | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
@@ -118,7 +118,7 @@ export function placeMembershipTone(place: {
 export type SearchPinPrediction = {
   placeId: string;
   mainText: string;
-  status?: string | null;
+  state?: string | null;
   partner?: boolean | null;
   mesitaId?: string | null;
   lat?: number | null;

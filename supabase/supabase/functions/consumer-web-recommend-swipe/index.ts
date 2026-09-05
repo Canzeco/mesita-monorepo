@@ -5,7 +5,7 @@
 // Hard filters admit; Places Lineup ranks under the locked Swipe mask
 // (Pato, 2026-08-28). The 2026-08-26 two-signal SUM is gone.
 //
-//   1. ADMIT  — enriched (content_status ready), reviews floor, fixed radius,
+//   1. ADMIT  — enriched (content_state ready), reviews floor, fixed radius,
 //               Map type batteries, open now + closing buffer, then the
 //               guest's predicates (category is the guest toggle).
 //   2. RANK   — Places Lineup Π s^w: proximity, timing, category,
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
   const base = admin
     .from("profiles")
     .select(`${PLACE_CARD_COLUMNS}, ${DISCOVERY_EXTRA_COLUMNS}`)
-    .eq("status", "active");
+    .eq("state", "active");
 
   // Swipe owns radius / reviews / ready. Map floors stay off this query so a
   // Map rating knob cannot empty the deck this engine just scored.

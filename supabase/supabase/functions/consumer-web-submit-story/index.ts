@@ -2,7 +2,7 @@
 //
 // Lifecycle v3 (MESITA-849): the guest posts their tagged Instagram story and
 // tells us here — BEFORE the business is involved at all. Their declaration is
-// the verification: story_status goes straight to 'self_verified'. No
+// the verification: story_state goes straight to 'self_verified'. No
 // screenshot, no queue, no staff verdict.
 //
 // Why self-attestation and not a check: there is no Instagram connection in
@@ -48,7 +48,7 @@ import {
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { repriceTicketAfterAction } from "../_shared/ticket-reprice.ts";
-import { TASKABLE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { TASKABLE_STATE_SET } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { queueOjoVerification } from "../_shared/ojo-engine.ts";
 
@@ -56,7 +56,7 @@ type Body = { ticketId?: string; screenshotUrl?: string };
 
 // Ticket states that can still take a task. A closed ticket can't — the
 // reward is already settled.
-const OPEN_TO_TASKS = TASKABLE_STATUS_SET;
+const OPEN_TO_TASKS = TASKABLE_STATE_SET;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, place_id, consumer_id, status, story_status, fix_requested")
+    .select("id, place_id, consumer_id, state, story_state, fix_requested")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       403,
     );
   }
-  if (!OPEN_TO_TASKS.has(ticket.status)) {
+  if (!OPEN_TO_TASKS.has(ticket.state)) {
     return json(
       {
         ok: false,
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
   }
 
   // Already done — idempotent, so a double-tap or a retry is harmless.
-  if (isActionVerified(ticket.story_status)) {
+  if (isActionVerified(ticket.story_state)) {
     return json({ ok: true, ticket, alreadyVerified: true });
   }
 
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     mode: "update",
     id: ticketId,
     patch: {
-      story_status: "self_verified",
+      story_state: "self_verified",
       story_submitted_at: now,
       story_verified_at: now,
       // visit_tickets.story_verified_by FKs to managers (business-side) — a consumer
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
         ? { fix_requested: null, fix_note: null }
         : {}),
     },
-    select: "id, status, story_status, story_submitted_at",
+    select: "id, state, story_state, story_submitted_at",
     single: true,
   });
   if (!updated.ok) {

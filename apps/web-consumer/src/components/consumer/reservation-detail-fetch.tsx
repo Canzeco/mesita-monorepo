@@ -13,16 +13,16 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 type State =
-  | { status: "loading" }
-  | { status: "found"; r: ReservationItem }
-  | { status: "missing" };
+  | { state: "loading" }
+  | { state: "found"; r: ReservationItem }
+  | { state: "missing" };
 
 // consumer-web-list-reservations has no get-by-id, so the detail surface pulls
 // the caller's full list once (scope "all") and finds the row. N is small — a
 // single account rarely holds more than a handful of bookings.
 function useReservationById(id: string): { state: State; reload: () => void } {
   const supabase = useBrowserSupabase();
-  const [state, setState] = useState<State>({ status: "loading" });
+  const [state, setState] = useState<State>({ state: "loading" });
   // Bumped by the detail actions (cancel / reschedule) so the ticket's phase,
   // banner and available actions re-derive from the server, not from guesses.
   const [nonce, setNonce] = useState(0);
@@ -40,12 +40,12 @@ function useReservationById(id: string): { state: State; reload: () => void } {
         if (!cancelled) {
           setState(
             match
-              ? { status: "found", r: toReservationItem(match) }
-              : { status: "missing" },
+              ? { state: "found", r: toReservationItem(match) }
+              : { state: "missing" },
           );
         }
       } catch {
-        if (!cancelled) setState({ status: "missing" });
+        if (!cancelled) setState({ state: "missing" });
       }
     })();
     return () => {
@@ -77,10 +77,10 @@ function ReservationNotFound() {
 // own header around this.
 export function ReservationDetailFetcher({ id }: { id: string }) {
   const { state, reload } = useReservationById(id);
-  if (state.status === "loading") {
+  if (state.state === "loading") {
     return <LoadingFill label="Loading reservation" />;
   }
-  if (state.status === "missing") return <ReservationNotFound />;
+  if (state.state === "missing") return <ReservationNotFound />;
   return <ReservationDetailBody r={state.r} onChanged={reload} />;
 }
 
@@ -89,12 +89,12 @@ export function ReservationDetailFetcher({ id }: { id: string }) {
 export function ReservationDetailModalClient({ id }: { id: string }) {
   const { state, reload } = useReservationById(id);
   const placeName =
-    state.status === "found" ? state.r.placeName : "your reservation";
+    state.state === "found" ? state.r.placeName : "your reservation";
   return (
     <ReservationDetailModalShell placeName={placeName}>
-      {state.status === "loading" ? (
+      {state.state === "loading" ? (
         <LoadingFill label="Loading reservation" />
-      ) : state.status === "missing" ? (
+      ) : state.state === "missing" ? (
         <ReservationNotFound />
       ) : (
         <ReservationDetailBody r={state.r} onChanged={reload} />

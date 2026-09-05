@@ -32,8 +32,8 @@ import { isConnectChargeReady } from "../_shared/payment-account-doc.ts";
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
 const TICKET_COLUMNS =
-  "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, " +
-  "review_status, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, " +
+  "id, state, story_state, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, " +
+  "review_state, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, " +
   "check_code, first_scanned_at, bill_subtotal_cents, tip_cents, tip_pct, total_cents, redeem_cents, " +
   "discount_percent, discount_cents, bill_source, revealed_at, " +
   "approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, " +
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
  *   ∧ isConnectChargeReady     (Stripe-derived Connect capability)
  *
  * Returned as ONE derived boolean. The legs themselves never cross the wire:
- * `mesita_pay_enabled` is an admin-only Status fact (#10), deliberately kept
+ * `mesita_pay_enabled` is an admin-only State fact (#10), deliberately kept
  * off the publicly-readable profiles view, and a guest has no business
  * learning a place's Connect state either.
  *

@@ -14,10 +14,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
-  GUEST_CANCELLABLE_STATUS_SET,
-  GUEST_CANCELLABLE_STATUSES,
-  TICKET_STATUS,
-} from "../_shared/ticket-status.ts";
+  GUEST_CANCELLABLE_STATE_SET,
+  GUEST_CANCELLABLE_STATES,
+  TICKET_STATE,
+} from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string };
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, status")
+    .select("id, consumer_id, state")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -53,10 +53,10 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  if (ticket.status === TICKET_STATUS.cancelled) {
+  if (ticket.state === TICKET_STATE.cancelled) {
     return json({ ok: true, alreadyCancelled: true });
   }
-  if (!GUEST_CANCELLABLE_STATUS_SET.has(ticket.status)) {
+  if (!GUEST_CANCELLABLE_STATE_SET.has(ticket.state)) {
     return json(
       {
         ok: false,
@@ -70,12 +70,12 @@ Deno.serve(async (req) => {
     mode: "update",
     id: ticketId,
     patch: {
-      status: TICKET_STATUS.cancelled,
+      state: TICKET_STATE.cancelled,
       cancelled_at: new Date().toISOString(),
       cancel_reason: "consumer_cancelled",
     },
-    guard: { in: { status: [...GUEST_CANCELLABLE_STATUSES] } },
-    select: "id, status, cancelled_at",
+    guard: { in: { state: [...GUEST_CANCELLABLE_STATES] } },
+    select: "id, state, cancelled_at",
     single: true,
   });
   if (!updated.ok) {

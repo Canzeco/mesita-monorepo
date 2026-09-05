@@ -16,7 +16,7 @@ import {
   stepReachable,
 } from "@/lib/ticket-journey";
 
-const STATUSES = [
+const STATES = [
   "open",
   "scanned",
   "approved",
@@ -29,20 +29,20 @@ const FIXES: (TicketFix | null)[] = [null, "bill", "proof", "reward"];
 const BOOLS = [false, true] as const;
 
 function* inputs(): Generator<JourneyInput> {
-  for (const status of STATUSES) {
+  for (const state of STATES) {
     for (const billed of BOOLS) {
       for (const priced of BOOLS) {
         for (const pickMade of BOOLS) {
           for (const hasAction of BOOLS) {
             for (const actionDone of BOOLS) {
               for (const fix of FIXES) {
-                // fix only exists at scanned (a column, never a status), and
+                // fix only exists at scanned (a column, never a state), and
                 // an action state implies a pick was made.
-                if (fix && status !== "scanned") continue;
+                if (fix && state !== "scanned") continue;
                 if (hasAction && !pickMade) continue;
                 yield {
-                  status,
-                  live: LIVE.has(status),
+                  state,
+                  live: LIVE.has(state),
                   billed,
                   priced,
                   pickMade,
@@ -93,11 +93,11 @@ describe("the deadlock guard", () => {
         const step = resolveStep(t, choice);
         // The resolved step is either reachable by the tap rules, or one of
         // the machine-forced states (pay/validate/results) matching the
-        // ticket's own status.
+        // ticket's own state.
         const forced =
           (!t.live && step === "results") ||
-          (t.status === "approved" && step === "pay") ||
-          (t.status === "paying" && (step === "validate" || step === "pay"));
+          (t.state === "approved" && step === "pay") ||
+          (t.state === "paying" && (step === "validate" || step === "pay"));
         expect(
           forced || stepReachable(t, step),
           `unreachable ${step} for ${JSON.stringify(t)} choice=${choice}`,
@@ -130,7 +130,7 @@ describe("the fix loop (D3)", () => {
   it("a fix at scanned resolves to its own step and that step is reachable", () => {
     for (const fix of ["bill", "proof", "reward"] as TicketFix[]) {
       const t: JourneyInput = {
-        status: "scanned",
+        state: "scanned",
         live: true,
         billed: true,
         priced: true,
@@ -156,7 +156,7 @@ describe("the fix loop (D3)", () => {
 
 describe("the machine's spine", () => {
   const base: JourneyInput = {
-    status: "open",
+    state: "open",
     live: true,
     billed: false,
     priced: true,
@@ -183,17 +183,17 @@ describe("the machine's spine", () => {
   });
 
   it("approval locks the journey onto Pay; paying onto Validate", () => {
-    const approved = { ...base, status: "approved", billed: true };
+    const approved = { ...base, state: "approved", billed: true };
     expect(resolveStep(approved, "bill")).toBe("pay");
     expect(stepReachable(approved, "bill")).toBe(false);
-    const paying = { ...base, status: "paying", billed: true };
+    const paying = { ...base, state: "paying", billed: true };
     expect(resolveStep(paying, null)).toBe("validate");
     expect(resolveStep(paying, "pay")).toBe("pay");
   });
 
-  it("terminal statuses always resolve to results", () => {
-    for (const status of ["revealed", "cancelled"]) {
-      const t = { ...base, status, live: false };
+  it("terminal states always resolve to results", () => {
+    for (const state of ["revealed", "cancelled"]) {
+      const t = { ...base, state, live: false };
       expect(resolveStep(t, "bill")).toBe("results");
     }
   });

@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   const { data: ticket, error: loadErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, status, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
+      "id, state, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
     )
     .eq("id", body.reservation_id)
     .maybeSingle();
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   if (!ticket || ticket.consumer_id !== consumerId || ticket.is_test) {
     return json({ ok: false, error: "reservation not found" }, 404);
   }
-  if (ticket.status === "cancelled") {
+  if (ticket.state === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
   }
 
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
   // Accept the current slot (venue already confirmed, or ack app-only confirm).
   if (!wantsChange) {
-    if (ticket.status !== "confirmed" && ticket.status !== "pending") {
+    if (ticket.state !== "confirmed" && ticket.state !== "pending") {
       return json({ ok: false, error: "reservation is not open to confirm" }, 409);
     }
     const nowIso = new Date().toISOString();
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         consumer_confirmed_at: nowIso,
         callback_state: "skipped",
         callback_next_attempt_at: null,
-        last_call_status: "guest confirmed in the app",
+        last_call_state: "guest confirmed in the app",
       },
     });
     if (!write.ok) return json({ ok: false, error: write.error }, 500);
@@ -92,12 +92,12 @@ Deno.serve(async (req) => {
       ok: true,
       guest_confirmed: true,
       changed: false,
-      both_confirmed: ticket.status === "confirmed",
+      both_confirmed: ticket.state === "confirmed",
     });
   }
 
   // Pick a venue alternative — only when the ticket is still pending with offers.
-  if (ticket.status !== "pending") {
+  if (ticket.state !== "pending") {
     return json({
       ok: false,
       error: "alternatives can only be accepted on a pending counter-offer",
@@ -138,10 +138,10 @@ Deno.serve(async (req) => {
   const confirm = await writeReservation(admin, {
     mode: "update",
     id: ticket.id,
-    match: { consumer_id: consumerId, status: "pending" },
+    match: { consumer_id: consumerId, state: "pending" },
     patch: {
       reserved_at: next.toISOString(),
-      status: "confirmed",
+      state: "confirmed",
       reported_verdict: "confirmed",
       confirmed_at: nowIso,
       consumer_confirmed_at: nowIso,
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       callback_state: "skipped",
       callback_next_attempt_at: null,
       ...reminderParkPatch(lng, next, guestNotify),
-      last_call_status:
+      last_call_state:
         `guest took the venue's own ${date} ${time} offer in the app — confirmed on the spot`,
     },
   });

@@ -13,7 +13,7 @@ import {
   STRATEGY_BY_ID,
   type StrategyId,
 } from "@/lib/business/strategies";
-import type { BatchRowStatus } from "./StatusIcon";
+import type { BatchRowState } from "./StateIcon";
 
 export type EditFact = "listed" | "active" | "verified" | "partner" | "promoting";
 
@@ -32,7 +32,7 @@ export const DEFAULT_EDIT_VALUES: EditValues = {
 };
 
 type Row = {
-  status: BatchRowStatus;
+  state: BatchRowState;
   name?: string;
   detail?: string;
   error?: string;
@@ -173,35 +173,35 @@ export async function applyOne(
   values: EditValues,
 ): Promise<Row> {
   const looked = await searchPlacesByGoogleIds([googleId]);
-  if (!looked.ok) return { status: "error", error: looked.error };
+  if (!looked.ok) return { state: "error", error: looked.error };
   const hit =
     looked.data.find((p) => p.google_place_id === googleId) ?? looked.data[0];
-  if (!hit) return { status: "error", error: "Not on Mesita" };
+  if (!hit) return { state: "error", error: "Not on Mesita" };
   const name = hit.google_name || hit.name;
 
   if (fact === "listed") {
     const r = await setPlaceListed(hit.id, values.listedOn);
-    if (!r.ok) return { status: "error", name, error: r.error };
+    if (!r.ok) return { state: "error", name, error: r.error };
     return {
-      status: "ok",
+      state: "ok",
       name,
       detail: values.listedOn ? "Listed on" : "Listed off",
     };
   }
   if (fact === "active") {
     const r = await setPlaceActive(hit.id, values.activeOn);
-    if (!r.ok) return { status: "error", name, error: r.error };
+    if (!r.ok) return { state: "error", name, error: r.error };
     return {
-      status: "ok",
+      state: "ok",
       name,
       detail: values.activeOn ? "Active on" : "Active off · unlisted",
     };
   }
   if (fact === "verified") {
     const r = await setPlaceVerified(hit.id);
-    if (!r.ok) return { status: "error", name, error: r.error };
+    if (!r.ok) return { state: "error", name, error: r.error };
     return {
-      status: r.data.alreadyVerified ? "existed" : "ok",
+      state: r.data.alreadyVerified ? "existed" : "ok",
       name,
       detail: r.data.alreadyVerified ? "Already verified" : "Verified yes",
     };
@@ -210,9 +210,9 @@ export async function applyOne(
     // Plan-only write. Rates ride Promoted, not Partner — do not zero
     // a live strategy when flipping membership.
     const r = await setPlacePlan(hit.id, values.partnerOn ? "pro" : "free");
-    if (!r.ok) return { status: "error", name, error: r.error };
+    if (!r.ok) return { state: "error", name, error: r.error };
     return {
-      status: "ok",
+      state: "ok",
       name,
       detail: values.partnerOn ? "Partner on" : "Partner off",
     };
@@ -224,9 +224,9 @@ export async function applyOne(
         ? "conservative"
         : "aggressive";
   const r = await setPlaceStrategy(hit.id, strategyRates(strategy));
-  if (!r.ok) return { status: "error", name, error: r.error };
+  if (!r.ok) return { state: "error", name, error: r.error };
   return {
-    status: "ok",
+    state: "ok",
     name,
     detail: `Promoted ${values.promoting}`,
   };

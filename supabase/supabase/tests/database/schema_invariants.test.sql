@@ -233,7 +233,7 @@ select ok(
 
 select has_column(
   'public', 'consumers', 'deleted_at',
-  'consumers.deleted_at exists (deletion is a status; tickets stay)'
+  'consumers.deleted_at exists (deletion is a state; tickets stay)'
 );
 
 select ok(

@@ -1,6 +1,6 @@
 // Votes — consumer demand for Intaker on an already-created ugly profile.
 //
-// Create mints a viewable profile (content_status ready, enriched_at null).
+// Create mints a viewable profile (content_state ready, enriched_at null).
 // Enriched is `places.enriched_at`. Guests vote on the Enrich tab. When
 // request_count reaches Intake atlasRequestThreshold, seed Intaker.
 // Admin Enrich / Create+Enrich never calls this door — that is the bypass.
@@ -14,7 +14,7 @@ import {
   isPlaceListed,
   isPlaceProfileReady,
   isPlaceRequested,
-} from "./place-status.ts";
+} from "./place-state.ts";
 
 export { isPlaceProfileReady };
 
@@ -40,18 +40,18 @@ export type PlaceRequestState = {
  * ready still means enriched (legacy callers / tests).
  */
 export function placeRequestLifecycle(input: {
-  contentStatus: unknown;
+  contentState: unknown;
   requestCount: number;
   enrichedAt?: unknown;
 }): PlaceRequestLifecycle {
   if (isPlaceEnriched(input.enrichedAt)) return "enriched";
-  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)) {
+  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)) {
     return "enriched";
   }
   if (
     isPlaceRequested({
       requestCount: input.requestCount,
-      contentStatus: input.contentStatus,
+      contentState: input.contentState,
       enrichedAt: input.enrichedAt,
     })
   ) {
@@ -64,14 +64,14 @@ export function placeRequestLifecycle(input: {
 export function shouldTriggerRequestEnrichment(input: {
   requestCount: number;
   threshold: number;
-  contentStatus: unknown;
+  contentState: unknown;
   enrichedAt?: unknown;
 }): boolean {
   if (isPlaceEnriched(input.enrichedAt)) return false;
-  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)) {
+  if (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)) {
     return false;
   }
-  if (isPlaceEnriching(input.contentStatus)) return false;
+  if (isPlaceEnriching(input.contentState)) return false;
   if (input.threshold < REQUEST_THRESHOLD_MIN) return false;
   return input.requestCount >= input.threshold;
 }
@@ -91,7 +91,7 @@ export function placeRequestState(input: {
   requestCount: number;
   threshold: number;
   requested: boolean;
-  contentStatus: unknown;
+  contentState: unknown;
   enrichedAt?: unknown;
   enrichmentTriggered?: boolean;
 }): PlaceRequestState {
@@ -104,11 +104,11 @@ export function placeRequestState(input: {
     request_count,
     request_threshold,
     requested: input.requested,
-    is_profile_ready: isPlaceProfileReady(input.contentStatus),
+    is_profile_ready: isPlaceProfileReady(input.contentState),
     is_enriched: isPlaceEnriched(input.enrichedAt) ||
-      (input.enrichedAt === undefined && isPlaceProfileReady(input.contentStatus)),
+      (input.enrichedAt === undefined && isPlaceProfileReady(input.contentState)),
     request_lifecycle: placeRequestLifecycle({
-      contentStatus: input.contentStatus,
+      contentState: input.contentState,
       requestCount: request_count,
       enrichedAt: input.enrichedAt,
     }),
@@ -143,7 +143,7 @@ export async function applyPlaceRequest(
 > {
   const { data: place, error: placeErr } = await admin
     .from("profiles")
-    .select("id, status, content_status, google_place_id, request_count, enriched_at")
+    .select("id, state, content_state, google_place_id, request_count, enriched_at")
     .eq("id", opts.placeId)
     .maybeSingle();
   if (placeErr) {
@@ -152,7 +152,7 @@ export async function applyPlaceRequest(
   if (!place) {
     return { ok: false, status: 404, error: "Place not found", code: "place_not_found" };
   }
-  if (!isPlaceListed((place as { status?: unknown }).status)) {
+  if (!isPlaceListed((place as { state?: unknown }).state)) {
     return {
       ok: false,
       status: 404,
@@ -162,7 +162,7 @@ export async function applyPlaceRequest(
   }
 
   const threshold = await loadRequestThreshold(admin);
-  const contentStatus = (place as { content_status?: unknown }).content_status;
+  const contentState = (place as { content_state?: unknown }).content_state;
   const enrichedAt = (place as { enriched_at?: unknown }).enriched_at;
   const existingCount = Number((place as { request_count?: unknown }).request_count) || 0;
 
@@ -173,7 +173,7 @@ export async function applyPlaceRequest(
         requestCount: existingCount,
         threshold,
         requested: true,
-        contentStatus,
+        contentState,
         enrichedAt,
         enrichmentTriggered: false,
       }),
@@ -195,7 +195,7 @@ export async function applyPlaceRequest(
   if (shouldTriggerRequestEnrichment({
     requestCount: count,
     threshold,
-    contentStatus,
+    contentState,
     enrichedAt,
   })) {
     const googlePlaceId = String(
@@ -237,7 +237,7 @@ export async function applyPlaceRequest(
       requestCount: count,
       threshold,
       requested: true,
-      contentStatus,
+      contentState,
       enrichedAt,
       enrichmentTriggered,
     }),

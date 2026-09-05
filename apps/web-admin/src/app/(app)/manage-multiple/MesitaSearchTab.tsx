@@ -29,7 +29,7 @@ type Run = "ids" | "all";
 
 function factOn(hit: PlaceHit, key: (typeof GENERAL_STATE_FACTS)[number]["key"]): boolean {
   if (key === "seeded") return hit.seeded;
-  if (key === "active") return hit.business_status === "OPERATIONAL";
+  if (key === "active") return hit.business_state === "OPERATIONAL";
   if (key === "listed") return hit.listed;
   if (key === "requested") return hit.request_count > 0;
   if (key === "enriched") {

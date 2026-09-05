@@ -11,9 +11,9 @@ import {
   PhoneCall,
   X,
 } from "lucide-react";
-import type { ReservationStatus } from "@/lib/mock/reservations-mock";
+import type { ReservationState } from "@/lib/mock/reservations-mock";
 
-type ReservationStatusMeta = {
+type ReservationStateMeta = {
   label: string;
   /** Pill styling — border + tint + text, semantic tokens only. */
   pillClass: string;
@@ -21,13 +21,13 @@ type ReservationStatusMeta = {
   iconClass: string;
   /** Muted/struck treatment for the finished-and-not-happening phases. */
   spent: boolean;
-  /** Fallback banner when the row carries no statusNote. */
+  /** Fallback banner when the row carries no stateNote. */
   banner: string | null;
 };
 
-const RESERVATION_STATUS_META: Record<
-  ReservationStatus,
-  ReservationStatusMeta
+const RESERVATION_STATE_META: Record<
+  ReservationState,
+  ReservationStateMeta
 > = {
   created: {
     label: "Created",
@@ -81,13 +81,13 @@ const RESERVATION_STATUS_META: Record<
 };
 
 /** The happy path, in order — the detail view renders it as a stepper. */
-export const RESERVATION_FLOW: ReservationStatus[] = [
+export const RESERVATION_FLOW: ReservationState[] = [
   "created",
   "booking",
   "confirmed",
   "passed",
 ];
 
-export function statusMeta(status: ReservationStatus): ReservationStatusMeta {
-  return RESERVATION_STATUS_META[status] ?? RESERVATION_STATUS_META.created;
+export function stateMeta(state: ReservationState): ReservationStateMeta {
+  return RESERVATION_STATE_META[state] ?? RESERVATION_STATE_META.created;
 }

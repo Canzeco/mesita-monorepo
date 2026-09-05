@@ -48,12 +48,12 @@ Deno.serve(async (req) => {
       error: "caller number does not match this reservation's guest",
     }, 403);
   }
-  if (ticket.status === "cancelled") {
+  if (ticket.state === "cancelled") {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
   // Leg 5: a confirmed table means the venue is holding it — it must hear.
-  const notice = ticket.status === "confirmed" ? "venue_cancel" as const : null;
+  const notice = ticket.state === "confirmed" ? "venue_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
   if (err) return json({ ok: false, error: err }, 500);
 

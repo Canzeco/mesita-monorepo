@@ -37,7 +37,7 @@
 // self-attested (MESITA-849) and no URL is ever captured, so the counts are
 // real and the artefacts don't exist.
 //
-// Closed = status "revealed" (v3b: the close is the unconditional signal).
+// Closed = state "revealed" (v3b: the close is the unconditional signal).
 // Admin Performance aligned to the same close predicate in MESITA-890.
 //
 // Body:     { placeId: string, feedLimit?: number, reviewLimit?: number }
@@ -51,7 +51,7 @@ import {
   readEFEnv,
   requireMembership,
 } from "../_shared/auth.ts";
-import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const DEFAULT_FEED_LIMIT = 40;
@@ -65,9 +65,9 @@ const FEED_TICKET_PAGE = 80;
 
 // A ticket counts as HONORED once it closed — v3b made the close the single
 // unconditional signal (MESITA-850), so this matches what activation records.
-const CLOSED_STATUS = CLOSED_TICKET_STATUS;
+const CLOSED_STATE = CLOSED_TICKET_STATE;
 
-const ATTESTED_STATUSES = [
+const ATTESTED_STATES = [
   "self_verified",
   "ai_verified",
   "staff_verified",
@@ -84,8 +84,8 @@ type Body = {
 type ClosedTicketRow = {
   id: string;
   consumer_id: string;
-  story_status: string | null;
-  review_status: string | null;
+  story_state: string | null;
+  review_state: string | null;
   bill_subtotal_cents: number | null;
   total_cents: number | null;
   discount_cents: number | null;
@@ -99,7 +99,7 @@ type ClosedTicketRow = {
 
 type FeedTicketRow = {
   id: string;
-  status: string;
+  state: string;
   first_scanned_at: string | null;
   created_at: string;
   revealed_at: string | null;
@@ -113,11 +113,11 @@ type FeedTicketRow = {
 
 // Mirrors _shared/rewards-config isActionVerified — an action counts once the
 // guest attested it (self_verified since MESITA-849) or it was ever approved.
-function isAttested(status: string | null): boolean {
-  return status === "self_verified" ||
-    status === "ai_verified" ||
-    status === "staff_verified" ||
-    status === "waiter_verified";
+function isAttested(state: string | null): boolean {
+  return state === "self_verified" ||
+    state === "ai_verified" ||
+    state === "staff_verified" ||
+    state === "waiter_verified";
 }
 
 /** Drain every closed ticket for this place (narrow columns only). */
@@ -131,12 +131,12 @@ async function fetchAllClosedTickets(
     const { data, error } = await admin
       .from("visit_tickets")
       .select(
-        "id, consumer_id, story_status, review_status, " +
+        "id, consumer_id, story_state, review_state, " +
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, " +
           "bill_source, currency, created_at, revealed_at, first_scanned_at",
       )
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS)
+      .eq("state", CLOSED_STATE)
       .order("created_at", { ascending: false })
       .range(from, from + CLOSED_PAGE - 1);
     if (error) return { ok: false, error: error.message };
@@ -211,22 +211,22 @@ Deno.serve(async (req) => {
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .eq("status", CLOSED_STATUS),
+      .eq("state", CLOSED_STATE),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .eq("status", TICKET_STATUS.cancelled),
+      .eq("state", TICKET_STATE.cancelled),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .in("story_status", [...ATTESTED_STATUSES]),
+      .in("story_state", [...ATTESTED_STATES]),
     admin
       .from("visit_tickets")
       .select("id", { count: "exact", head: true })
       .eq("place_id", projectId)
-      .in("review_status", [...ATTESTED_STATUSES]),
+      .in("review_state", [...ATTESTED_STATES]),
     admin
       .from("ticket_reviews")
       .select("id", { count: "exact", head: true })
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
     admin
       .from("visit_tickets")
       .select(
-        "id, status, first_scanned_at, created_at, revealed_at, cancelled_at, " +
+        "id, state, first_scanned_at, created_at, revealed_at, cancelled_at, " +
           "bill_subtotal_cents, total_cents, discount_cents, discount_percent, bill_source",
       )
       .eq("place_id", projectId)
@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
       .limit(FEED_TICKET_PAGE),
     admin
       .from("reservation_tickets")
-      .select("id, status, party_size, reserved_at, created_at")
+      .select("id, state, party_size, reserved_at, created_at")
       .eq("place_id", projectId)
       .order("created_at", { ascending: false })
       .limit(MAX_FEED_LIMIT),
@@ -335,8 +335,8 @@ Deno.serve(async (req) => {
     byAction: {
       welcome: closed.filter((t) => (visitsByConsumer.get(t.consumer_id) ?? 0) === 1)
         .length,
-      story: closed.filter((t) => isAttested(t.story_status)).length,
-      review: closed.filter((t) => isAttested(t.review_status)).length,
+      story: closed.filter((t) => isAttested(t.story_state)).length,
+      review: closed.filter((t) => isAttested(t.review_state)).length,
     },
     currency: closed.find((t) => t.currency)?.currency ?? "MXN",
   };
@@ -435,7 +435,7 @@ Deno.serve(async (req) => {
   for (
     const r of (resvRes.data ?? []) as Array<{
       id: string;
-      status: string;
+      state: string;
       party_size: number | null;
       reserved_at: string | null;
       created_at: string;
@@ -446,7 +446,7 @@ Deno.serve(async (req) => {
       type: "reservations.reservation_created",
       occurredAt: r.created_at,
       meta: {
-        status: r.status,
+        state: r.state,
         partySize: r.party_size,
         reservedAt: r.reserved_at,
       },
