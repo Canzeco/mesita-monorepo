@@ -1,113 +1,110 @@
-// Places — the catalog layer. Lists EVERY place on the platform, not just
-// the ones you are a member of, and hands off to the real per-place
-// console at /place/[id]/place. Reads through admin-web-search-places
-// (super-admin), so this page needs a super-admin session; the writes it
-// leads to are ordinary business-web-* calls that bypass membership for
-// super-admins.
+// Org Places — what this organization holds. Release sends one back to the
+// public pool; the row links into the real per-place console.
+import { Store } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search, Store } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
+import { PlaceRow } from "@/components/console/PlaceRow";
+import { NoOrganization } from "@/components/console/NoOrganization";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { searchAnyPlaces, type CatalogPlace } from "@/lib/api/catalog";
-import { placePath } from "@/lib/business-route-contract";
+import {
+  apiListConsolePlaces,
+  apiListOrganizations,
+  type ConsolePlace,
+} from "@/lib/api/organizations";
+import { canRelease, resolveActiveOrg } from "@/lib/active-organization";
+import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
-import { INPUT_CLASS, TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// PLACE states, read straight off the catalogue row. Partner is NOT here:
-// it is a property of the organization that operates the place (does it
-// have a live payment account), so it cannot be a per-place badge.
-function Flag({ on, label }: { on: boolean; label: string }) {
-  if (!on) return null;
-  return (
-    <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]">
-      {label}
-    </span>
-  );
-}
-
-export default async function PlacesPage({
+export default async function OrgPlacesPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const query = typeof sp.q === "string" ? sp.q : "";
-
   const supabase = await createServerSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/signin?next=/places");
 
-  let places: CatalogPlace[] = [];
+  const orgs = await apiListOrganizations(supabase).catch(() => []);
+  const org = resolveActiveOrg(orgs, sp.org);
+  if (!org) {
+    return (
+      <>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          Org Places
+        </h1>
+        <NoOrganization />
+      </>
+    );
+  }
+
+  let places: ConsolePlace[] = [];
   let error: string | null = null;
   try {
-    places = await searchAnyPlaces(supabase, query);
+    places = await apiListConsolePlaces(supabase, {
+      scope: "org",
+      organizationId: org.id,
+    });
   } catch (e) {
-    error = errMsg(e, "Couldn't load the place catalog.");
+    error = errMsg(e, "Couldn't load this organization's places.");
   }
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <span className={TINY_LABEL_CLASS}>Manage any place</span>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Places
-        </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            Org Places
+          </h1>
+          <p className="text-muted-foreground text-[13px]">
+            Held by {org.name}
+          </p>
+        </div>
+        <Link
+          href={withOrg(SHELL_ROUTES.pool, org.id)}
+          className={CTA_BUTTON_CLASS}
+        >
+          Claim from the pool
+        </Link>
       </div>
-
-      <form action="/places" className="relative">
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by name or address..."
-          aria-label="Search places"
-          className={cn(INPUT_CLASS, "pl-9")}
-        />
-      </form>
 
       {error ? (
         <PageErrorState
-          heading="Couldn't load the catalog"
+          heading="Couldn't load these places"
           message={error}
-          retryHref="/places"
+          retryHref={withOrg(SHELL_ROUTES.places, org.id)}
         />
       ) : places.length === 0 ? (
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
-          title={query ? "No places match that" : "No places yet"}
-          description={
-            query
-              ? "Try a different name, or clear the search to see the whole catalog."
-              : "The catalog is empty."
+          title="No places yet"
+          description="Every place starts in the public pool. Claim one and it shows up here."
+          action={
+            <Link
+              href={withOrg(SHELL_ROUTES.pool, org.id)}
+              className={CTA_BUTTON_CLASS}
+            >
+              Browse the pool
+            </Link>
           }
         />
       ) : (
         <div className="border-border bg-card rounded-2xl border px-4">
           {places.map((p) => (
-            <Link
+            <PlaceRow
               key={p.id}
-              href={placePath(p.id)}
-              className="border-border/60 hover:bg-muted/40 -mx-4 flex items-center justify-between gap-3 border-b px-4 py-3.5 transition last:border-b-0"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{p.name}</p>
-                <p className="text-muted-foreground truncate text-[12px]">
-                  {p.address ?? p.zone ?? "No address"}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <Flag on={p.listed} label="Listed" />
-                <Flag on={p.verified} label="Verified" />
-              </div>
-            </Link>
+              place={p}
+              action="release"
+              organizationId={org.id}
+              allowed={canRelease(org.myRole)}
+            />
           ))}
         </div>
       )}

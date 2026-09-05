@@ -19,10 +19,12 @@ export const PROTECTED_PREFIXES = [
   "/place",
   "/add",
   "/settings",
-  // The console shell's catalog layer reads the whole place catalogue and
-  // hands off to the per-place console, so it needs a session like the
-  // rest. "/" and "/account" stay open: they are still mock skeleton.
+  // Every console screen reads real data through business-web EFs now, so
+  // all four are behind the signed-out wall. Nothing in the shell is mock
+  // any more.
   "/places",
+  "/pool",
+  "/account",
 ];
 
 // Routes where a signed-in visitor should be bounced through

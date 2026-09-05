@@ -1,13 +1,21 @@
-// Organization — the legal person, one page. Identity, then its three
-// facets as calm sections: Finances, Members, Commercial. No dashboard,
-// no stream: the skeleton IS the model.
-import { Landmark } from "lucide-react";
+// Organization — the legal person. Identity, team size, and what it holds.
+//
+// State is Not connected / Connected: an organization's own status is
+// about money, not about places. Listed and Verified describe one address
+// and live on the place, never here.
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
-import { EmptyState } from "@/components/shared/EmptyState";
-import { DataRow, OrgStateBadge, StatePill } from "@/components/console/badges";
-import { formatMxn, organizationState } from "@/lib/model/format";
-import { getOrg } from "@/lib/mock";
-import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
+import { DataRow, OrgStateBadge } from "@/components/console/badges";
+import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { apiListOrganizations } from "@/lib/api/organizations";
+import { resolveActiveOrg } from "@/lib/active-organization";
+import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { errMsg } from "@/lib/utils";
+import { PageErrorState } from "@/components/business/PageErrorState";
+
+export const dynamic = "force-dynamic";
 
 export default async function OrganizationPage({
   searchParams,
@@ -15,121 +23,92 @@ export default async function OrganizationPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const data = getOrg(sp.org);
-  const org = data.organization;
-  const pa = data.paymentAccount;
-  const c = data.commercial;
-  const orgState = organizationState(pa.state);
-  const placeName = (id: string) =>
-    data.places.find((p) => p.id === id)?.name ?? id;
+  const supabase = await createServerSupabase();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/signin");
+
+  let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
+  let error: string | null = null;
+  try {
+    orgs = await apiListOrganizations(supabase);
+  } catch (e) {
+    error = errMsg(e, "Couldn't load your organizations.");
+  }
+  if (error) {
+    return (
+      <PageErrorState
+        heading="Couldn't load your organizations"
+        message={error}
+        retryHref="/"
+      />
+    );
+  }
+
+  const org = resolveActiveOrg(orgs, sp.org);
+
+  if (!org) {
+    return (
+      <>
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          Create your organization
+        </h1>
+        <p className="text-muted-foreground -mt-2 text-sm">
+          One legal person, one RFC. It holds the places you claim, and the
+          account that gets paid.
+        </p>
+        <Section title="New organization">
+          <CreateOrganizationForm />
+        </Section>
+      </>
+    );
+  }
 
   return (
     <>
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {org.name}
-          </h1>
-          <OrgStateBadge state={orgState} />
-        </div>
-        <p className="text-muted-foreground text-[13px]">
-          {orgState === "connected"
-            ? "Payments are live. Rewards, Credits and orders are yours to run."
-            : "Connect payments to fund rewards, sell Credits and take prepaid orders."}
-        </p>
-      </header>
+      <div className="flex items-center gap-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">
+          {org.name}
+        </h1>
+        {/* No payment account exists yet for any organization, so this is
+            Not connected until the merchant migration lands. */}
+        <OrgStateBadge state="not_connected" />
+      </div>
 
-      <Section title="Identity" description="One legal person, one RFC, one account.">
+      <Section
+        title="Identity"
+        description="One legal person, one RFC, one account."
+      >
         <div>
-          <DataRow label="Legal name">{org.legalName}</DataRow>
-          <DataRow label="RFC">{org.rfc}</DataRow>
+          <DataRow label="Legal name">{org.legalName ?? "Not set"}</DataRow>
+          <DataRow label="RFC">{org.rfc ?? "Not set"}</DataRow>
           <DataRow label="Currency">{org.currency}</DataRow>
+          <DataRow label="Your role">
+            <span className="capitalize">{org.myRole}</span>
+          </DataRow>
         </div>
       </Section>
 
       <Section
-        title="Finances"
-        description="Where money lands, and the Credits it owes."
-        right={<StatePill state={pa.state} />}
-      >
-        {pa.state === "none" ? (
-          <EmptyState
-            icon={<Landmark className="text-muted-foreground h-5 w-5" />}
-            title="No payment account yet"
-            description="Connect payments to fund rewards, sell Credits and take prepaid orders."
-            action={
-              <button type="button" className={CTA_BUTTON_CLASS} disabled>
-                Connect payments (soon)
-              </button>
-            }
-            className="p-6"
-          />
-        ) : (
-          <div>
-            <DataRow label="Bank">
-              {pa.bank} · ···· {pa.clabeLast4}
-            </DataRow>
-            <DataRow label="Payouts">{pa.payoutSchedule}</DataRow>
-            <DataRow label="Credits owed">
-              {formatMxn(pa.creditsLiabilityCents)}
-            </DataRow>
-            <DataRow label="Credits bonus">
-              {pa.creditsBonusPct}% one-time · {pa.creditsRecurringBonusPct}%
-              recurring
-            </DataRow>
-            <DataRow label="Hold · expiry">
-              {pa.creditsHoldHours} h · {pa.creditsExpiryDays} days
-            </DataRow>
-          </div>
-        )}
-      </Section>
-
-      <Section
-        title="Members"
-        description="Roles live at the organization; scope decides which places."
+        title="Places"
+        description="What this organization holds."
+        right={
+          <Link
+            href={withOrg(SHELL_ROUTES.places, org.id)}
+            className="text-muted-foreground hover:text-foreground text-[12px]"
+          >
+            Manage
+          </Link>
+        }
       >
         <div>
-          {data.members.map((m) => (
-            <DataRow key={m.id} label={m.name}>
-              <span className="capitalize">{m.role}</span>
-              <span className="text-muted-foreground">
-                {" "}
-                ·{" "}
-                {m.placeIds === null
-                  ? "all places"
-                  : m.placeIds.map(placeName).join(", ")}
-              </span>
-            </DataRow>
-          ))}
+          <DataRow label="Held">{org.placeCount}</DataRow>
         </div>
       </Section>
 
-      <Section
-        title="Commercial"
-        description="What a guest pays — one configuration for every place."
-      >
-        {orgState !== "connected" ? (
-          <p className="text-muted-foreground text-sm">
-            Locked at Zero until payments are connected.
-          </p>
-        ) : (
-          <div>
-            <DataRow label="Aggression">
-              {c.aggression}/100 · cap{" "}
-              {c.discountCapMxn ? formatMxn(c.discountCapMxn * 100) : "—"}
-            </DataRow>
-            <DataRow label="Pass">
-              {c.pass?.enabled
-                ? `${formatMxn(c.pass.priceCents)} / ${c.pass.period} · +${c.pass.grantsBonusPct}% Credits`
-                : "Not offered"}
-            </DataRow>
-            <DataRow label="Orders">
-              {c.orderFees
-                ? `pickup min ${formatMxn(c.orderFees.pickupMinCents)} · delivery ${formatMxn(c.orderFees.deliveryFeeCents)}, min ${formatMxn(c.orderFees.deliveryMinCents)}`
-                : "Off"}
-            </DataRow>
-          </div>
-        )}
+      <Section title="Add another organization">
+        <CreateOrganizationForm />
       </Section>
     </>
   );

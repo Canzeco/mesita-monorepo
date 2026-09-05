@@ -1,5 +1,5 @@
-// Small server-safe display atoms for the (shell) console: rung badge,
-// payment-state pill, stat tile, data row, mock chip. Rows not cards —
+// Small server-safe display atoms for the (shell) console: state badges,
+// payment-state pill, stat tile, data row. Rows not cards —
 // these are calm utility chrome, not decoration.
 //
 // Two ladders, deliberately kept apart: an ORGANIZATION is Not connected
@@ -128,13 +128,5 @@ export function DataRow({
       <span className="text-muted-foreground">{label}</span>
       <span className="min-w-0 text-right font-medium">{children}</span>
     </div>
-  );
-}
-
-export function MockChip() {
-  return (
-    <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold tracking-[0.14em] text-amber-700 uppercase">
-      Mock data
-    </span>
   );
 }
