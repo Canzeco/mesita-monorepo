@@ -11,6 +11,7 @@ import { planForSubscription } from "@/lib/business/plans";
 import {
   CONNECT_COUNTRIES,
   getPlacePaymentAccount,
+  getPlacePaymentDashboardLink,
   reviewTicketReport,
   startPlacePaymentOnboarding,
   setPlacePlan,
@@ -125,6 +126,24 @@ export function PromosSection({
   // no fallback when the text is unexpected, and the operator should look at
   // this every time because Stripe bakes it into the account PERMANENTLY.
   const [connectCountry, setConnectCountry] = useState<MesitaConnectCountry>("MX");
+  const [dashboardBusy, setDashboardBusy] = useState(false);
+
+  // Opens the Express Dashboard. New tab, NOT a full navigation like the
+  // onboarding redirect: onboarding has to come back to returnUrl, whereas
+  // this is a side trip and losing the console page would be rude.
+  const openDashboard = async () => {
+    if (dashboardBusy) return;
+    setDashboardBusy(true);
+    setConnectError(null);
+    const r = await getPlacePaymentDashboardLink(place.id);
+    setDashboardBusy(false);
+    if (!r.ok) {
+      console.error("[controls] getPlacePaymentDashboardLink failed:", r.error);
+      setConnectError(connectStartFailure(r.code ?? null, r.error ?? null));
+      return;
+    }
+    if (r.data.url) window.open(r.data.url, "_blank", "noopener,noreferrer");
+  };
   // Latched by an environment-level refusal (STRIPE_LIVE_BLOCKED), never by a
   // transient one: the button goes quiet while `connectError` keeps saying
   // why. Scoped to this mount on purpose — the next place re-asks rather than
@@ -383,8 +402,18 @@ export function PromosSection({
               row={byKey.stripe}
               error={connectError}
               control={
-                byKey.stripe.state.kind === "on" ||
-                byKey.stripe.state.kind === "locked" ? undefined : (
+                byKey.stripe.state.kind === "locked" ? undefined
+                  : byKey.stripe.state.kind === "on" ? (
+                    <button
+                      type="button"
+                      onClick={() => void openDashboard()}
+                      disabled={dashboardBusy}
+                      className="border-border inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
+                    >
+                      {dashboardBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      Open dashboard
+                    </button>
+                  ) : (
                   <div className="flex shrink-0 items-center gap-2">
                     {/* Only before an account exists. Country is per-account
                         permanent, so re-offering it on "Finish setup" would be

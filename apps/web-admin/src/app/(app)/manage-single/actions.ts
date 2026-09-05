@@ -596,6 +596,33 @@ export async function startPlacePaymentOnboarding(
   };
 }
 
+/**
+ * Mint a single-use Express Dashboard link for the place's connected account.
+ *
+ * Under the old Standard controller this had no reason to exist — the place
+ * logged into stripe.com. Under Express (MESITA-1532) a platform-minted link
+ * is the ONLY entrance, so this is how anyone reaches the account's balance,
+ * payout bank account or disputes. Staff-assisted for now: super-admins are
+ * exempt from the EF's owner gate, which is what makes it usable while
+ * production places have no owners.
+ *
+ * The URL grants access to the account holder's Stripe data, so it is never
+ * stored — it is opened and forgotten.
+ */
+export async function getPlacePaymentDashboardLink(
+  placeId: string,
+): Promise<Result<{ mock: boolean; url: string | null }>> {
+  const r = await efInvoke<{ mock?: boolean; url?: string | null }>(
+    "business-web-get-payment-dashboard-link",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return {
+    ok: true,
+    data: { mock: r.data.mock === true, url: r.data.url ?? null },
+  };
+}
+
 export async function getPlacePaymentAccount(
   placeId: string,
   opts: { refresh?: boolean } = {},
