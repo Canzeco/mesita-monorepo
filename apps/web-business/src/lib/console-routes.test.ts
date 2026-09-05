@@ -3,7 +3,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { PLACE_TABS, placePath, SHELL_ROUTES, withOrg } from "./console-routes";
+import { placePath, SHELL_ROUTES, withOrg } from "./console-routes";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 
@@ -20,29 +20,22 @@ describe("SHELL_ROUTES map to route files", () => {
   }
 });
 
-describe("placePath maps to route files", () => {
-  it("bare place path has a redirect page", () => {
+describe("placePath maps to a route file", () => {
+  it("place detail page exists", () => {
+    expect(placePath("p-x")).toBe("/places/p-x");
     expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
       true,
     );
   });
-  for (const tab of PLACE_TABS) {
-    it(`tab ${tab}`, () => {
-      expect(placePath("p-x", tab)).toBe(`/places/p-x/${tab}`);
-      expect(
-        existsSync(path.join(SHELL_DIR, "places", "[id]", tab, "page.tsx")),
-      ).toBe(true);
-    });
-  }
 });
 
 describe("withOrg", () => {
   it("keeps default-org URLs clean", () => {
-    expect(withOrg("/finances", "grupo-ruiz")).toBe("/finances");
-    expect(withOrg("/finances", null)).toBe("/finances");
+    expect(withOrg("/places", "grupo-ruiz")).toBe("/places");
+    expect(withOrg("/places", null)).toBe("/places");
   });
   it("appends the switch for the other org", () => {
-    expect(withOrg("/finances", "nuevo")).toBe("/finances?org=nuevo");
+    expect(withOrg("/places", "nuevo")).toBe("/places?org=nuevo");
     expect(withOrg("/x?a=1", "nuevo")).toBe("/x?a=1&org=nuevo");
   });
 });

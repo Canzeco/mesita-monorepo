@@ -1,141 +1,132 @@
-// Org home = Activity, with an orientation band first (Design D1): who you
-// are, where you stand on the ladder, today's three numbers — THEN the
-// stream. Place chips filter server-side via ?place=.
-import Link from "next/link";
-import { CalendarClock, ReceiptText, ShoppingBag, Store } from "lucide-react";
-import { cn } from "@/lib/utils";
+// Organization — the legal person, one page. Identity, then its three
+// facets as calm sections: Finances, Members, Commercial. No dashboard,
+// no stream: the skeleton IS the model.
+import { Landmark } from "lucide-react";
+import { Section } from "@/components/shared/Section";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { MockChip, RungBadge, StatTile } from "@/components/console/badges";
+import { DataRow, RungBadge, StatePill } from "@/components/console/badges";
 import { RungStrip } from "@/components/console/RungStrip";
 import { formatMxn } from "@/lib/model/format";
-import { getOrg, resolveOrgKey } from "@/lib/mock";
-import { withOrg } from "@/lib/console-routes";
-import type { EventKind } from "@/lib/model/types";
+import { getOrg } from "@/lib/mock";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 
-const KIND_ICON: Record<EventKind, React.ReactNode> = {
-  ticket: <ReceiptText className="text-muted-foreground h-4 w-4" />,
-  reservation: <CalendarClock className="text-muted-foreground h-4 w-4" />,
-  order: <ShoppingBag className="text-muted-foreground h-4 w-4" />,
-};
-
-export default async function OrgHomePage({
+export default async function OrganizationPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const orgKey = resolveOrgKey(sp.org);
   const data = getOrg(sp.org);
-  const placeFilter =
-    typeof sp.place === "string" &&
-    data.places.some((p) => p.id === sp.place)
-      ? sp.place
-      : null;
-  const events = placeFilter
-    ? data.events.filter((e) => e.placeId === placeFilter)
-    : data.events;
+  const org = data.organization;
+  const pa = data.paymentAccount;
+  const c = data.commercial;
   const placeName = (id: string) =>
     data.places.find((p) => p.id === id)?.name ?? id;
 
   return (
     <>
-      {/* Anchor band */}
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-semibold tracking-tight">
-              {data.organization.name}
-            </h1>
-            <RungBadge rung={data.organization.rung} />
-          </div>
-          <MockChip />
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-2xl font-semibold tracking-tight">
+            {org.name}
+          </h1>
+          <RungBadge rung={org.rung} />
         </div>
-        <RungStrip rung={data.organization.rung} />
+        <RungStrip rung={org.rung} />
       </header>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <StatTile label="Covers today" value={String(data.statsToday.covers)} />
-        <StatTile
-          label="Discounts funded"
-          value={formatMxn(data.statsToday.discountsFundedCents)}
-          hint="today, across all places"
-        />
-        <StatTile
-          label="Credits owed"
-          value={formatMxn(data.paymentAccount.creditsLiabilityCents)}
-          hint="outstanding balance"
-        />
-      </div>
-
-      <section aria-label="Activity" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-display mr-1 text-sm font-semibold tracking-tight">
-            Activity
-          </h2>
-          <Link
-            href={withOrg("/", orgKey)}
-            className={cn(
-              "rounded-full px-3 py-1 text-[12px] font-medium transition",
-              !placeFilter
-                ? "bg-foreground text-background"
-                : "border-border text-muted-foreground border",
-            )}
-          >
-            All places
-          </Link>
-          {data.places.map((p) => (
-            <Link
-              key={p.id}
-              href={`${withOrg("/", orgKey)}${orgKey === "grupo-ruiz" ? "?" : "&"}place=${p.id}`}
-              className={cn(
-                "rounded-full px-3 py-1 text-[12px] font-medium transition",
-                placeFilter === p.id
-                  ? "bg-foreground text-background"
-                  : "border-border text-muted-foreground border",
-              )}
-            >
-              {p.name}
-            </Link>
-          ))}
+      <Section title="Identity" description="One legal person, one RFC, one account.">
+        <div>
+          <DataRow label="Legal name">{org.legalName}</DataRow>
+          <DataRow label="RFC">{org.rfc}</DataRow>
+          <DataRow label="Currency">{org.currency}</DataRow>
         </div>
+      </Section>
 
-        {events.length === 0 ? (
+      <Section
+        title="Finances"
+        description="Where money lands, and the Credits it owes."
+        right={<StatePill state={pa.state} />}
+      >
+        {pa.state === "none" ? (
           <EmptyState
-            icon={<Store className="text-muted-foreground h-5 w-5" />}
-            title="Nothing yet"
-            description="Tickets, reservations and orders will land here the moment a guest shows up."
+            icon={<Landmark className="text-muted-foreground h-5 w-5" />}
+            title="No payment account yet"
+            description="Connect payments to fund rewards, sell Credits and take prepaid orders."
+            action={
+              <button type="button" className={CTA_BUTTON_CLASS} disabled>
+                Connect payments (soon)
+              </button>
+            }
+            className="p-6"
           />
         ) : (
-          <div className="border-border bg-card rounded-2xl border px-4">
-            {events.map((e) => (
-              <div
-                key={e.id}
-                className="border-border/60 flex items-center gap-3 border-b py-3 last:border-b-0"
-              >
-                {KIND_ICON[e.kind]}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{e.label}</p>
-                  <p className="text-muted-foreground text-[12px]">
-                    {placeName(e.placeId)} · {e.at}
-                  </p>
-                </div>
-                <div className="text-right">
-                  {e.amountCents !== null && (
-                    <p className="text-sm font-semibold">
-                      {formatMxn(e.amountCents)}
-                    </p>
-                  )}
-                  {e.discountPct !== null && (
-                    <p className="text-muted-foreground text-[12px]">
-                      {e.discountPct}% off
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div>
+            <DataRow label="Bank">
+              {pa.bank} · ···· {pa.clabeLast4}
+            </DataRow>
+            <DataRow label="Payouts">{pa.payoutSchedule}</DataRow>
+            <DataRow label="Credits owed">
+              {formatMxn(pa.creditsLiabilityCents)}
+            </DataRow>
+            <DataRow label="Credits bonus">
+              {pa.creditsBonusPct}% one-time · {pa.creditsRecurringBonusPct}%
+              recurring
+            </DataRow>
+            <DataRow label="Hold · expiry">
+              {pa.creditsHoldHours} h · {pa.creditsExpiryDays} days
+            </DataRow>
           </div>
         )}
-      </section>
+      </Section>
+
+      <Section
+        title="Members"
+        description="Roles live at the organization; scope decides which places."
+      >
+        <div>
+          {data.members.map((m) => (
+            <DataRow key={m.id} label={m.name}>
+              <span className="capitalize">{m.role}</span>
+              <span className="text-muted-foreground">
+                {" "}
+                ·{" "}
+                {m.placeIds === null
+                  ? "all places"
+                  : m.placeIds.map(placeName).join(", ")}
+              </span>
+            </DataRow>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        title="Commercial"
+        description="What a guest pays — one configuration for every place."
+      >
+        {org.rung !== "partner" ? (
+          <p className="text-muted-foreground text-sm">
+            Locked at Zero until payments go live.
+          </p>
+        ) : (
+          <div>
+            <DataRow label="Aggression">
+              {c.aggression}/100 · cap{" "}
+              {c.discountCapMxn ? formatMxn(c.discountCapMxn * 100) : "—"}
+            </DataRow>
+            <DataRow label="Pass">
+              {c.pass?.enabled
+                ? `${formatMxn(c.pass.priceCents)} / ${c.pass.period} · +${c.pass.grantsBonusPct}% Credits`
+                : "Not offered"}
+            </DataRow>
+            <DataRow label="Orders">
+              {c.orderFees
+                ? `pickup min ${formatMxn(c.orderFees.pickupMinCents)} · delivery ${formatMxn(c.orderFees.deliveryFeeCents)}, min ${formatMxn(c.orderFees.deliveryMinCents)}`
+                : "Off"}
+            </DataRow>
+          </div>
+        )}
+      </Section>
     </>
   );
 }
