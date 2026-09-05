@@ -20,7 +20,7 @@ export default async function ConsoleLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  if (!user) redirect("/signin");
 
   const [overviewResult, profileResult] = await Promise.allSettled([
     getPlaceOverview(supabase, null),

@@ -21,7 +21,7 @@ export default async function CreatePlacePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/?next=/add");
+  if (!user) redirect("/signin?next=/add");
 
   // Best-effort places fetch so AppHeader can render the
   // jump-to-place menu. Failure here shouldn't break /add itself —

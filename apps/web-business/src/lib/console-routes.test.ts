@@ -21,6 +21,16 @@ describe("SHELL_ROUTES map to route files", () => {
   }
 });
 
+describe("/places/<id> stays aliased", () => {
+  // #1486 shipped a real page here and #1488 removed it. Bookmarks and the
+  // installed PWA can still point at it, so the alias is load-bearing.
+  it("has an alias page that redirects into the console", () => {
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
+      true,
+    );
+  });
+});
+
 describe("the catalog hands off to the real per-place console", () => {
   it("placePath targets the (console) route tree, not the shell", () => {
     expect(placePath("p-x")).toBe("/place/p-x/place/preview");

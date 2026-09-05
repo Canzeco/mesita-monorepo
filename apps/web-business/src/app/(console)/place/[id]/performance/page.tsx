@@ -21,7 +21,7 @@ export default async function PerformancePage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=/place/${id}/performance`);
+  if (!user) redirect(`/signin?next=/place/${id}/performance`);
 
   // Overview + performance + reservations in parallel — the route id IS the
   // project id, so we don't need to wait on the overview to know what to fetch.

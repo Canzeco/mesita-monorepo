@@ -17,7 +17,7 @@ export default async function BusinessPlaceIndexPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/?next=${encodeURIComponent(placePath(id))}`);
+  if (!user) redirect(`/signin?next=${encodeURIComponent(placePath(id))}`);
 
   const sp = await searchParams;
   if (sp.tab) {

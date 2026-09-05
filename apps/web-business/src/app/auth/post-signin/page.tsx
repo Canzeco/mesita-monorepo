@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiBusinessSigninEmail } from "@/lib/api/auth";
 
-// Post-sign-in router. The sign-in surface (now `/`) redirects here. We:
+// Post-sign-in router. The sign-in surface (/signin) redirects here. We:
 //
 //   1. Call the business post-sign-in EF (stamps app_metadata.role,
 //      lazy-creates the profile row).
@@ -24,7 +24,7 @@ export default async function PostSigninPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  if (!user) redirect("/signin");
 
   const params = await searchParams;
   const explicitNext =

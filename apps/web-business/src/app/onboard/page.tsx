@@ -29,7 +29,7 @@ export default async function BusinessOnboardPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/?next=/onboard");
+  if (!user) redirect("/signin?next=/onboard");
 
   // redirect() throws NEXT_REDIRECT, so it MUST live outside the
   // try/catch — otherwise the catch swallows the redirect and the
