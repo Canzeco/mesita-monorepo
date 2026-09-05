@@ -11,9 +11,17 @@
 //   ├── Places       what each address is and does
 //   └── Activity     what happened (events stamp organization_id)
 
-/** Ladder rung. Listed = Atlas found it · Verified = ownership proven ·
- *  Partner = live Stripe Connect (funds guests + takes money). */
-export type Rung = "listed" | "verified" | "partner";
+/** PLACE state. A property of one address, not of the organization:
+ *  Listed = Atlas found it and a guest can reach it · Verified = someone
+ *  proved they operate it. Verification is granted per place
+ *  (admin-web-set-place-verified), which is why it cannot describe an org. */
+export type PlaceState = "listed" | "verified";
+
+/** ORGANIZATION state. A property of the legal person, and it is about
+ *  money: is there a payment account it can be paid through. The precise
+ *  Stripe lifecycle lives in PaymentAccountState and is shown inside
+ *  Finances; this is the headline the operator reads. */
+export type OrganizationState = "not_connected" | "connected";
 
 /** Stripe Connect account lifecycle — not a boolean. `charges_only` means
  *  money can land but not pay out: cash-in must stay blocked there. */
@@ -33,7 +41,6 @@ export interface Organization {
   legalName: string;
   rfc: string;
   currency: "MXN";
-  rung: Rung;
 }
 
 /** Finances. Credits terms live HERE, not in Commercial: anything pooled

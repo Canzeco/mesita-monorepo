@@ -4,9 +4,8 @@
 import { Landmark } from "lucide-react";
 import { Section } from "@/components/shared/Section";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { DataRow, RungBadge, StatePill } from "@/components/console/badges";
-import { RungStrip } from "@/components/console/RungStrip";
-import { formatMxn } from "@/lib/model/format";
+import { DataRow, OrgStateBadge, StatePill } from "@/components/console/badges";
+import { formatMxn, organizationState } from "@/lib/model/format";
 import { getOrg } from "@/lib/mock";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 
@@ -20,19 +19,24 @@ export default async function OrganizationPage({
   const org = data.organization;
   const pa = data.paymentAccount;
   const c = data.commercial;
+  const orgState = organizationState(pa.state);
   const placeName = (id: string) =>
     data.places.find((p) => p.id === id)?.name ?? id;
 
   return (
     <>
-      <header className="flex flex-col gap-3">
+      <header className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             {org.name}
           </h1>
-          <RungBadge rung={org.rung} />
+          <OrgStateBadge state={orgState} />
         </div>
-        <RungStrip rung={org.rung} />
+        <p className="text-muted-foreground text-[13px]">
+          {orgState === "connected"
+            ? "Payments are live. Rewards, Credits and orders are yours to run."
+            : "Connect payments to fund rewards, sell Credits and take prepaid orders."}
+        </p>
       </header>
 
       <Section title="Identity" description="One legal person, one RFC, one account.">
@@ -104,9 +108,9 @@ export default async function OrganizationPage({
         title="Commercial"
         description="What a guest pays — one configuration for every place."
       >
-        {org.rung !== "partner" ? (
+        {orgState !== "connected" ? (
           <p className="text-muted-foreground text-sm">
-            Locked at Zero until payments go live.
+            Locked at Zero until payments are connected.
           </p>
         ) : (
           <div>

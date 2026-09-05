@@ -17,9 +17,10 @@ export type CatalogPlace = {
   name: string;
   address: string | null;
   zone: string | null;
+  // PLACE states only. "Partnered" is an ORGANIZATION state (it means the
+  // operator has a live payment account), so it does not belong on a place.
   listed: boolean;
   verified: boolean;
-  partnered: boolean;
 };
 
 /** The EF only guarantees id/name; everything else may be absent. */
@@ -44,6 +45,5 @@ export async function searchAnyPlaces(
     zone: p.zone ?? null,
     listed: p.listed ?? false,
     verified: p.verified ?? false,
-    partnered: p.partnered ?? false,
   }));
 }

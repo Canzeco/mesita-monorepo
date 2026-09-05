@@ -10,7 +10,6 @@ export const nuevo: OrgData = {
     legalName: "La Nueva (mock)",
     rfc: "RFC-MOCK-NV2026",
     currency: "MXN",
-    rung: "verified",
   },
   paymentAccount: {
     state: "none",

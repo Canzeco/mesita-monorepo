@@ -2,30 +2,33 @@
 // payment-state pill, stat tile, data row, mock chip. Rows not cards —
 // these are calm utility chrome, not decoration.
 //
-// NOTE: rung colors use Tailwind palette classes for the mock era; the
-// deferred token cleanup replaces the stale two-tier `--tier-*` vars with
-// `--rung-*` tokens in one pass.
+// Two ladders, deliberately kept apart: an ORGANIZATION is Not connected
+// or Connected (does money land), a PLACE is Listed or Verified (can a
+// guest reach it, did someone prove they run it). Neither describes the
+// other, so neither badge is reusable for the other.
 import { cn } from "@/lib/utils";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import type { PaymentAccountState, Rung } from "@/lib/model/types";
+import type {
+  OrganizationState,
+  PaymentAccountState,
+  PlaceState,
+} from "@/lib/model/types";
 
-const RUNG_LABEL: Record<Rung, string> = {
+const PLACE_STATE_LABEL: Record<PlaceState, string> = {
   listed: "Listed",
   verified: "Verified",
-  partner: "Partner",
 };
 
-const RUNG_DOT: Record<Rung, string> = {
+const PLACE_STATE_DOT: Record<PlaceState, string> = {
   listed: "bg-muted-foreground/50",
-  verified: "bg-amber-500",
-  partner: "bg-emerald-500",
+  verified: "bg-emerald-500",
 };
 
-export function RungBadge({
-  rung,
+export function PlaceStateBadge({
+  state,
   className,
 }: {
-  rung: Rung;
+  state: PlaceState;
   className?: string;
 }) {
   return (
@@ -35,8 +38,29 @@ export function RungBadge({
         className,
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", RUNG_DOT[rung])} />
-      {RUNG_LABEL[rung]}
+      <span
+        className={cn("h-1.5 w-1.5 rounded-full", PLACE_STATE_DOT[state])}
+      />
+      {PLACE_STATE_LABEL[state]}
+    </span>
+  );
+}
+
+const ORG_STATE_LABEL: Record<OrganizationState, string> = {
+  not_connected: "Not connected",
+  connected: "Connected",
+};
+
+const ORG_STATE_DOT: Record<OrganizationState, string> = {
+  not_connected: "bg-muted-foreground/50",
+  connected: "bg-emerald-500",
+};
+
+export function OrgStateBadge({ state }: { state: OrganizationState }) {
+  return (
+    <span className="border-border bg-card inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold">
+      <span className={cn("h-1.5 w-1.5 rounded-full", ORG_STATE_DOT[state])} />
+      {ORG_STATE_LABEL[state]}
     </span>
   );
 }
