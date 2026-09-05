@@ -22,13 +22,51 @@ type Membership = {
 };
 
 // Returns whether the caller is a member of the place (or a
-// super-admin). Runs the two lookups in parallel.
+// super-admin). Runs the lookups in parallel.
+//
+// TWO PATHS, and they are not equal:
+//
+//   1. project_members — the direct Account <-> PLACE grant. Full range,
+//      including `owner`.
+//   2. organization_members joined through projects.organization_id — the
+//      Account <-> ORGANIZATION <-> PLACE path added with the org
+//      hierarchy (2026-09-05). **CAPPED AT EDITOR.**
+//
+// The cap is not a style choice. place-ownership.ts `isLastOwnerOfPlace`
+// counts project_members rows with role='owner', so an org-derived owner
+// counts 0 and would make ownership transfer and member removal misfire
+// against `project_members_one_owner_per_project`; and
+// business-web-get-overview attaches the Staff Check PIN on the owner
+// branch, a column deliberately kept out of viewer payloads. Anything that
+// genuinely needs the place's owner must use `requireProjectOwner` below,
+// which reads project_members alone.
+//
+// The stronger of the two paths wins, after the cap is applied.
+const ROLE_RANK: Record<MembershipRole, number> = {
+  viewer: 1,
+  staff: 1,
+  editor: 2,
+  owner: 3,
+};
+
+/** The best role the ORG path may ever grant. See the cap note above. */
+const ORG_PATH_CEILING: MembershipRole = "editor";
+
+function strongerRole(
+  a: MembershipRole | null,
+  b: MembershipRole | null,
+): MembershipRole | null {
+  if (!a) return b;
+  if (!b) return a;
+  return ROLE_RANK[a] >= ROLE_RANK[b] ? a : b;
+}
+
 export async function checkMembership(
   admin: SupabaseClient,
   user: AuthedUser,
   projectId: string,
 ): Promise<Membership> {
-  const [isSuperAdmin, vm] = await Promise.all([
+  const [isSuperAdmin, vm, org] = await Promise.all([
     checkSuperAdmin(admin, user),
     admin
       .from("project_members")
@@ -36,28 +74,37 @@ export async function checkMembership(
       .eq("place_id", projectId)
       .eq("manager_id", user.id)
       .maybeSingle(),
+    // One round trip, not two: read the place's organization and the
+    // caller's membership of it in a single embedded select. This sits on
+    // the hot path of every membership-gated EF.
+    admin
+      .from("projects")
+      .select("organization_id, organizations!inner(organization_members!inner(role))")
+      .eq("id", projectId)
+      .eq("organizations.organization_members.manager_id", user.id)
+      .maybeSingle(),
   ]);
-  const role = (vm.data?.role as MembershipRole | undefined) ?? null;
+
+  const directRole = (vm.data?.role as MembershipRole | undefined) ?? null;
+
+  const orgRoleRaw = ((org.data as
+    | { organizations?: { organization_members?: { role?: string }[] } }
+    | null)?.organizations?.organization_members?.[0]?.role ?? null) as
+    | MembershipRole
+    | null;
+  // Apply the ceiling: an org owner is an EDITOR of the org's places.
+  const orgRole = orgRoleRaw
+    ? (ROLE_RANK[orgRoleRaw] > ROLE_RANK[ORG_PATH_CEILING]
+        ? ORG_PATH_CEILING
+        : orgRoleRaw)
+    : null;
+
   return {
     isSuperAdmin,
-    role,
+    role: strongerRole(directRole, orgRole),
   };
 }
 
-// Resolves the super-admin allowlist row for the caller, lazy-backfilling
-// user_id so future audit logs can join by uuid without re-reading
-// auth.users. Returns `null` if the caller isn't on the list.
-//
-// Matches on EITHER identity the caller carries: email (Google OAuth
-// operators) or phone (phone-OTP operators). A session may carry only one
-// of the two — `super_admins` rows are keyed by email (PK) but may also
-// pin a `phone`, so a phone-only operator is allowlisted by that column.
-//
-// Pattern moved out of 12+ admin EFs that each reimplemented the same
-// lookup + lazy backfill. Callers that need a hard 403 should use
-// `requireSuperAdmin` below; callers that want to render a soft "you're
-// not on the list" state (auth-get-identity, business-web-get-overview) should
-// call this directly and inspect the boolean.
 export async function checkSuperAdmin(
   admin: SupabaseClient,
   user: AuthedUser,
@@ -141,6 +188,12 @@ export async function requireMembership(
 }
 
 // 403s unless the caller is an owner (or super-admin).
+// SAFE UNDER THE ORG PATH BY CONSTRUCTION: this tests `role !== "owner"`,
+// and checkMembership caps the organization path at `editor`, so `owner`
+// can only ever come from project_members (or the super-admin bypass).
+// That is what keeps the one-owner-per-place invariant, ownership
+// transfer, member removal and the Staff Check PIN intact without editing
+// the seven EFs that call this.
 export async function requireOwner(
   admin: SupabaseClient,
   user: AuthedUser,

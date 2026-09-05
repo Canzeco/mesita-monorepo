@@ -323,6 +323,12 @@ export type ProjectRow = {
   id: string;
   created_at: string;
   updated_at: string;
+  // The organization holding this place; null = the PUBLIC POOL.
+  // claimed_by/claimed_at are provenance, not authorization — see the
+  // organizations migration.
+  organization_id: string | null;
+  claimed_by: string | null;
+  claimed_at: string | null;
   slug: string;
   status: "lead" | "active" | "paused" | "archived" | "pending_review" | "pending_verification";
   listing_type: "partner" | "web" | "unclaimed";
@@ -353,6 +359,12 @@ export type ProjectRow = {
 };
 
 export const PROJECT_PATCH_KEYS = [
+  // The organization that holds this place; null = the public pool. Written
+  // by business-web-{claim,release}-place, which is why they go through
+  // this door instead of touching `projects` directly.
+  "organization_id",
+  "claimed_by",
+  "claimed_at",
   "slug",
   "status",
   "listing_type",
@@ -658,6 +670,12 @@ function checkProjectField(key: string, v: unknown): string | null {
     return isNullableLegalSet(v, RATE_LEGAL_VALUES) ? null
       : `${key} must be null or one of ${RATE_LEGAL_VALUES.join(", ")}`;
   }
+  if (key === "organization_id" || key === "claimed_by") {
+    return isNullableString(v) ? null : `${key} must be a uuid string or null`;
+  }
+  if (key === "claimed_at") {
+    return isNullableString(v) ? null : "claimed_at must be an ISO timestamp string or null";
+  }
   if (PROJECT_TIMESTAMP_KEYS.has(key)) {
     return isNullableString(v) ? null : `${key} must be an ISO timestamp string or null`;
   }
@@ -806,10 +824,15 @@ export type PlaceWriteArgs =
     patch: ProjectPatch;
     select?: string;
     selectMode?: SelectMode;
-    /** Extra `.eq()` guard(s) beyond `id` — an optimistic-concurrency check
-     * an existing call site already runs (e.g. `.eq("plan", planKey)` so a
-     * revoke doesn't clobber a plan that changed underneath it). */
-    guard?: Record<string, string>;
+    /** Extra guard(s) beyond `id` — an optimistic-concurrency check an
+     * existing call site already runs (e.g. `.eq("plan", planKey)` so a
+     * revoke doesn't clobber a plan that changed underneath it).
+     *
+     * A `null` value means IS NULL, not `= null`: PostgREST renders
+     * `.eq(col, null)` as `col=eq.null`, which matches no row, so a claim
+     * guarded on "this place is still unclaimed" would silently never
+     * apply. business-web-claim-place depends on this. */
+    guard?: Record<string, string | null>;
   }
   | {
     table: "profiles";
@@ -884,7 +907,9 @@ export async function writePlace(
   let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
   if (args.table === "projects" && args.guard) {
     for (const [col, val] of Object.entries(args.guard)) {
-      updateBuilder = updateBuilder.eq(col, val);
+      updateBuilder = val === null
+        ? updateBuilder.is(col, null)
+        : updateBuilder.eq(col, val);
     }
   }
   if (args.select) {
