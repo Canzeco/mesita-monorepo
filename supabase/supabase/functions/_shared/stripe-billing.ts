@@ -2,10 +2,10 @@
 // Catalog entries live in stripe-billing-catalog.ts (re-exported below).
 //
 // resolvePlanPrice() is self-provisioning: the first real checkout after a
-// deploy materializes the product + price in whatever Stripe account
-// STRIPE_SECRET_KEY points at (live or sandbox), idempotently via lookup_key,
-// and caches the resulting price id back onto the lookup row (consumer_plans /
-// project_plans). A price change in the DB (e.g. Premium $200 → $100) is
+// deploy materializes the product + price in whatever Stripe account the
+// active secret points at (test or live — stripe-env.ts resolves it from
+// STRIPE_MODE), idempotently via lookup_key, and caches the resulting price id
+// back onto the lookup row (consumer_plans / project_plans). A price change in the DB (e.g. Premium $200 → $100) is
 // self-healing too: the cached price is re-verified against the row and a
 // mismatched price is replaced (old one deactivated, lookup_key transferred).
 // No dashboard step, and the secret never leaves the server.
@@ -32,13 +32,14 @@ export const STRIPE_API_VERSION = "2025-03-31.basil" as Stripe.LatestApiVersion;
 // business-web-start-payment-onboarding) refuse an `sk_live_` secret unless
 // STRIPE_ALLOW_LIVE=true. Cancels, webhooks, and the admin health probe are
 // not this gate. Flipping the env is the needs-human step; this helper never
-// does it.
+// does it. Orthogonal to STRIPE_MODE (stripe-env.ts): the mode says which
+// account is addressed, this says whether it may be charged.
 export function liveChargesBlocked(secretKey: string): string | null {
   if (!secretKey.startsWith("sk_live_")) return null;
   const allow = (Deno.env.get("STRIPE_ALLOW_LIVE") ?? "").toLowerCase() ===
     "true";
   if (allow) return null;
-  return "Stripe live charges are blocked. STRIPE_SECRET_KEY is sk_live_; set STRIPE_ALLOW_LIVE=true only when ready to take real money (MESITA-37).";
+  return "Stripe live charges are blocked. The active Stripe secret is sk_live_; set STRIPE_ALLOW_LIVE=true only when ready to take real money (MESITA-37).";
 }
 
 export type ResolvedPrice = {

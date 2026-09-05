@@ -1,11 +1,13 @@
-// Signature verification for the one Stripe webhook endpoint, now serving
-// TWO signing secrets: the platform endpoint's STRIPE_WEBHOOK_SECRET and —
-// once the operator creates the Connect endpoint (same URL, pinned to
-// account.updated) — STRIPE_CONNECT_WEBHOOK_SECRET. Each delivery is signed
-// by exactly one endpoint's secret, so verification tries each configured
-// secret in order and the first match wins. A request no secret verifies is
+// Signature verification for the one Stripe webhook endpoint, which several
+// signing secrets serve: the platform endpoint's, and — once the operator
+// creates the Connect endpoint (same URL, pinned to account.updated) — the
+// Connect one, in each universe that has credentials (stripe-env.ts orders
+// the set from STRIPE_MODE, active mode first). Each delivery is signed by
+// exactly one endpoint's secret, so verification tries each configured secret
+// in order and the first match wins. A request no secret verifies is
 // rejected; signature verification remains the ENTIRE auth story of this
-// verify_jwt=false surface.
+// verify_jwt=false surface. Verifying a delivery is not the same as acting on
+// it — the caller drops events from the other universe (see index.ts).
 
 import type Stripe from "npm:stripe@17";
 

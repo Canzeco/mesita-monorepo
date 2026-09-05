@@ -16,7 +16,7 @@
 //
 //   • MOCK — grants the plan immediately, records a mock active subscription
 //     row, and returns the success URL. No money moves. Also runs whenever
-//     STRIPE_SECRET_KEY is absent so a project with no Stripe secret still
+//     the active Stripe key is absent so a project with no Stripe secret still
 //     works out of the box.
 //
 //   • REAL — creates a Stripe Checkout Session (or cancels the live
@@ -42,6 +42,7 @@ import {
   resolvePlanPrice,
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
+import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
     bodyRes.body.cancelUrl ??
     `${origin}/place/${projectId}/promos?subscription=cancelled`;
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
   const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
 
   // The one live billing row for this project, if any. Mock rows are

@@ -32,6 +32,7 @@ import {
   resolvePlanPrice,
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
+import { stripeSecretKey } from "../_shared/stripe-env.ts";
 
 type Body = { successUrl?: string; cancelUrl?: string };
 
@@ -42,7 +43,7 @@ const MOCK_PERIOD_DAYS = 30;
 // When true, "Subscribe" grants Premium right away with no payment and no
 // Stripe call. This is the easy change: set the MOCK_SUBSCRIPTION env to
 // "false" (or flip this default to false) and redeploy to require a real
-// Stripe Checkout payment again. Mock also runs whenever STRIPE_SECRET_KEY
+// Stripe Checkout payment again. Mock also runs whenever the active Stripe key
 // is absent, so a project with no Stripe secret still works out of the box.
 const MOCK_SUBSCRIPTION =
   (Deno.env.get("MOCK_SUBSCRIPTION") ?? "true").toLowerCase() !== "false";
@@ -74,7 +75,7 @@ Deno.serve(async (req) => {
   const cancelUrl = body.cancelUrl ??
     `${origin}/profile?subscription=cancelled`;
 
-  const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const stripeKey = stripeSecretKey();
 
   // ── MOCK mode ───────────────────────────────────────────────────────────
   // Fires when the demo toggle is on, or when there's no Stripe secret to
