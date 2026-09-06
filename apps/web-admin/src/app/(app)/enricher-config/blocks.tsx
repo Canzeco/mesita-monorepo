@@ -285,7 +285,9 @@ function PromptBlock({
   return (
     <div>
       <p className="text-muted-foreground m-0 mb-1.5 type-label">{label}</p>
-      <pre className="bg-muted/40 text-foreground/90 m-0 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+      {/* text-xs, not an arbitrary px: this is a block to READ, and a frozen
+          px size ignores the operator's own browser font-size setting. */}
+      <pre className="bg-muted/40 text-foreground/90 m-0 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
         {children}
       </pre>
     </div>
