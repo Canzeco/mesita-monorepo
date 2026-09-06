@@ -231,8 +231,9 @@ export const PLANS: {
   { id: "premium", label: "Premium", req: "$50 MXN / mo", priceMxn: 50 },
 ];
 
-export const PREMIUM_PLAN_PRICE_MXN = PLANS.find((p) => p.id === "premium")!
-  .priceMxn;
+export const PREMIUM_PLAN_PRICE_MXN = PLANS.find(
+  (p) => p.id === "premium",
+)!.priceMxn;
 
 // The floor — the rung an account is on before it clears anything, found by
 // SHAPE (the one rung with no follower bar) rather than by naming a metal.
@@ -300,6 +301,23 @@ export function classBadgeClass(classKey: ClassKey): string {
       return "bg-tier-gold text-foreground";
     case "diamond":
       return "bg-tier-diamond text-foreground";
+  }
+}
+
+/** The bare metal, with NO ink paired to it — for surfaces where nothing sits
+ *  on top of the fill: the passport's band, the avatar ring. Anything that
+ *  prints a label on the metal takes `classBadgeClass` instead, which is the
+ *  only place fill and ink are paired (see the note above it). */
+export function classFillClass(classKey: ClassKey): string {
+  switch (classKey) {
+    case "bronze":
+      return "bg-tier-bronze";
+    case "silver":
+      return "bg-tier-silver";
+    case "gold":
+      return "bg-tier-gold";
+    case "diamond":
+      return "bg-tier-diamond";
   }
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bot,
+  IdCard,
   Instagram,
   MoreHorizontal,
   Settings as SettingsIcon,
@@ -23,6 +24,7 @@ import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
 import { MoreModal } from "@/components/consumer/me/MoreModal";
+import { PassportModal } from "@/components/consumer/me/PassportModal";
 import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -44,11 +46,17 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — Passport + SEVEN boxes (decision: Pato, MESITA-1123):
+// The Me surface — Passport + EIGHT boxes (decision: Pato, MESITA-1123):
 //
 //   Instagram · Class · Plan     who you are and what you pay
+//   Passport                     the document those three add up to
 //   Profile · Settings           your account
 //   AI Connector · More          the tool that isn't live yet, then the tail
+//
+// PASSPORT SITS UNDER PLAN (decision: Pato, this session) because it is the
+// SUM of the three rows above it, not a fourth axis: the card at the top is
+// its cover, and the row opens the data page — the same identity as fields,
+// plus the member number, which no other consumer surface renders.
 //
 // Twelve boxes made this a wall to scroll, with parked rows (Credits, Gift,
 // Share) sitting between live ones so the page read as mostly-unfinished.
@@ -105,6 +113,7 @@ export function ProfileClient({
   const [moreOpen, setMoreOpen] = useState(false);
   const [cardsOpen, setCardsOpen] = useState(openCards);
   const [planOpen, setPlanOpen] = useState(false);
+  const [passportOpen, setPassportOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,6 +204,15 @@ export function ProfileClient({
     [name, formatPhoneDisplay(profile?.phone)].filter(Boolean).join(" · ") ||
     "Name, phone, birthday, photo";
 
+  // The number leads: it is the fact this row adds. Visibility follows because
+  // it is the one thing on the passport a guest can change.
+  const passportSummary = [
+    profile?.code ? `No. ${profile.code}` : null,
+    profile?.privacy_public ? "Public" : "Private",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const metricsSummary = [
     savedCents == null ? null : `${formatCurrency(savedCents)} saved`,
     visits == null ? null : `${visits} visits`,
@@ -241,6 +259,15 @@ export function ProfileClient({
             title="Plan"
             summary={loading ? "…" : planSummary}
             onClick={() => setPlanOpen(true)}
+          />
+
+          {/* The document the three rows above add up to — read-only, and the
+              only place the member number is shown. */}
+          <BoxRow
+            Icon={IdCard}
+            title="Passport"
+            summary={loading ? "…" : passportSummary}
+            onClick={() => setPassportOpen(true)}
           />
 
           {/* Your account. */}
@@ -337,6 +364,17 @@ export function ProfileClient({
         onClose={() => setDeleteOpen(false)}
       />
       <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
+      <PassportModal
+        open={passportOpen}
+        onClose={() => setPassportOpen(false)}
+        profile={profile}
+        // One LocalSheet layer (z-130), so the passport closes before Settings
+        // opens — the same handoff openVerify makes from the Class sheet.
+        onOpenSettings={() => {
+          setPassportOpen(false);
+          setSettingsOpen(true);
+        }}
+      />
       <MoreModal
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
