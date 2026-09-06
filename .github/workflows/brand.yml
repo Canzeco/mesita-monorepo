@@ -31,7 +31,13 @@ jobs:
     outputs:
       changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.brand == 'true' }}
     steps:
+      # Full history: paths-filter diffs against the PR's merge-base, which a
+      # shallow (default fetch-depth: 1) checkout doesn't carry — without it,
+      # paths-filter can't find the base and fails safe by reporting every
+      # filter as changed, defeating the skip this job exists to compute.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
         with:
