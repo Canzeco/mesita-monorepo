@@ -33,8 +33,8 @@ import {
   DISCOVERY_MODE_LABELS,
   LIBRARY_SIGNALS,
   SIGNALS,
-  WEIGHT_MAX,
   WEIGHT_MIN,
+  weightMaxFor,
   modeSignalState,
   type DiscoveryConfig,
   type SignalKey,
@@ -188,7 +188,11 @@ export function SignalsConfigClient({
                       type="number"
                       inputMode="decimal"
                       min={WEIGHT_MIN}
-                      max={WEIGHT_MAX}
+                      // Per-signal, not the uniform ceiling: Level is capped at
+                      // what the merge shipped (MESITA-1410). The EF clamps
+                      // server-side regardless; this stops the dial from
+                      // offering a number the backend would silently refuse.
+                      max={weightMaxFor(spec.key)}
                       step={0.05}
                       value={cfg.weights[spec.key]}
                       disabled={pending || loadBlocked}
@@ -196,7 +200,13 @@ export function SignalsConfigClient({
                         const raw = Number(e.target.value);
                         if (Number.isNaN(raw)) return;
                         const n = Math.round(raw * 100) / 100;
-                        patchWeight(spec.key, Math.max(WEIGHT_MIN, Math.min(WEIGHT_MAX, n)));
+                        patchWeight(
+                          spec.key,
+                          Math.max(
+                            WEIGHT_MIN,
+                            Math.min(weightMaxFor(spec.key), n),
+                          ),
+                        );
                       }}
                       className="border-border bg-card focus:border-foreground h-9 w-full rounded-lg border px-3 text-right text-sm tabular-nums outline-none disabled:opacity-50"
                     />
