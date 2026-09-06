@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   });
   if (!created.ok) return json(created.body, created.status);
 
-  // `venue` is the legacy alias for pre-rename admin-web builds.
+  // `place` is the legacy alias for pre-rename admin-web builds.
   return json(
     { ok: true, place: created.place, enrichment: created.enrichment },
     201,

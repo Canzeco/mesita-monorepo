@@ -37,7 +37,7 @@
 
 /** Who observed the fact. Confidence is read per-source, never globally. */
 export type CorrectionSource =
-  | "reservationist" // heard it on a call with the venue
+  | "reservationist" // heard it on a call with the place
   | "business" // the place's own team said so in the console
   | "consumer_report" // a guest reported it from a ticket
   | "ojo" // vision read it off a submitted proof
@@ -104,8 +104,8 @@ export type FieldProposal = {
 };
 
 /**
- * Auto-apply floor per source. A call with the venue outranks a guest report on
- * hours because the venue IS the authority on its own hours; Ojo reads pixels,
+ * Auto-apply floor per source. A call with the place outranks a guest report on
+ * hours because the place IS the authority on its own hours; Ojo reads pixels,
  * so it proposes and a human decides.
  */
 export const CORRECTION_AUTO_APPLY_FLOOR: Record<CorrectionSource, number> = {

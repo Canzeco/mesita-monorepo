@@ -11,7 +11,7 @@
 //
 // Returns the GUEST slice only. maxHoldHours, minHoldHours and minExpiryDays
 // are operator policy about what a PLACE may choose; a guest reads the terms on
-// their own card, not the range a venue was allowed to pick from. The expiry
+// their own card, not the range a place was allowed to pick from. The expiry
 // DEFAULT crosses because a guest is owed the date their own Credits die.
 //
 // Auth: any signed-in consumer. There is nothing per-user here — it is the

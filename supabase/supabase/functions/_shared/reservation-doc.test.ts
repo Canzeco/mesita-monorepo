@@ -108,8 +108,8 @@ Deno.test("validateReservationPatch: accepts every attempts_state / callback_sta
   }
 });
 
-Deno.test("validateReservationPatch: accepts notice_kind 'venue_cancel' / 'guest_cancel', and null", () => {
-  assert(validateReservationPatch({ notice_kind: "venue_cancel" }).ok);
+Deno.test("validateReservationPatch: accepts notice_kind 'place_cancel' / 'guest_cancel', and null", () => {
+  assert(validateReservationPatch({ notice_kind: "place_cancel" }).ok);
   assert(validateReservationPatch({ notice_kind: "guest_cancel" }).ok);
   assert(validateReservationPatch({ notice_kind: null }).ok);
 });
@@ -134,7 +134,7 @@ Deno.test("validateReservationPatch: accepts the cancelTicket write shape", () =
     callback_next_attempt_at: null,
     run_id: "22222222-2222-2222-2222-222222222222",
     claimed_at: null,
-    notice_kind: "venue_cancel",
+    notice_kind: "place_cancel",
     notice_state: "pending",
     notice_attempts: 0,
     notice_next_at: null,
@@ -269,7 +269,7 @@ Deno.test("validateReservationPatch: rejects a reminder_state outside its closed
   assert(validateReservationPatch({ reminder_at: null }).ok);
 });
 
-Deno.test("validateReservationPatch: rejects a notice_kind outside {venue_cancel, guest_cancel}", () => {
+Deno.test("validateReservationPatch: rejects a notice_kind outside {place_cancel, guest_cancel}", () => {
   assert(!validateReservationPatch({ notice_kind: "reminder" }).ok);
 });
 

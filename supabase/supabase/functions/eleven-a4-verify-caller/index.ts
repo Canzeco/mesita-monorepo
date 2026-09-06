@@ -1,6 +1,6 @@
 // Supabase Edge Function — eleven-a4-verify-caller (vendor caller)
 //
-// Caller = eleven-a4: the business INBOUND line — a venue phones Mesita to
+// Caller = eleven-a4: the business INBOUND line — a place phones Mesita to
 // ask about or change bookings. THE GATE for every a4 conversation: verifies
 // the caller by phone number against the place's lines (places.phone and the
 // reservation_target endpoint) and returns the place plus its upcoming

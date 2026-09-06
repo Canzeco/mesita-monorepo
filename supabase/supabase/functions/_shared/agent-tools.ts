@@ -2,7 +2,7 @@
 // Reservationist agents' mid-call server tools (plain webhook tools on the
 // ElevenLabs agents; MCP deliberately unused). One agent = one caller prefix:
 //
-//   eleven-a1-*  c2b outbound — the Booker calls the venue for the guest
+//   eleven-a1-*  c2b outbound — the Booker calls the place for the guest
 //   eleven-a2-*  b2c outbound — the Confirmer calls the human guest
 //   eleven-a3-*  c inbound   — a consumer calls Mesita (support / cancel)
 //   eleven-a4-*  b inbound   — a business calls Mesita (support / changes)
@@ -100,9 +100,6 @@ export function parsePlaceLocal(date: unknown, time: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** @deprecated Use parsePlaceLocal. */
-export const parseVenueLocal = parsePlaceLocal;
-
 /** ISO instant → place-local "YYYY-MM-DD" (CDMX) — defaulting for partial changes. */
 export function placeLocalDate(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -122,11 +119,6 @@ export function placeLocalTime(iso: string): string {
     hour12: false,
   }).format(new Date(iso));
 }
-
-/** @deprecated Use placeLocalDate — kept for one-release import compatibility. */
-export const venueLocalDate = placeLocalDate;
-/** @deprecated Use placeLocalTime — kept for one-release import compatibility. */
-export const venueLocalTime = placeLocalTime;
 
 // ── Guest-name matching (the PRIMARY lookup key — the code is secondary) ─────
 
@@ -278,8 +270,8 @@ export async function ticketsOfPlace(
 
 /**
  * Cancel + owe the notice. `notice` names the side that must HEAR about it
- * (Docs › Reservations §B legs 5/6): 'venue_cancel' when the guest walks
- * away from a table the venue is holding, 'guest_cancel' when the venue calls
+ * (Docs › Reservations §B legs 5/6): 'place_cancel' when the guest walks
+ * away from a table the place is holding, 'guest_cancel' when the place calls
  * it off. null = nobody to tell (the ticket never got confirmed). The caller
  * then fires the engine with intent 'cancel_notice'; the retry cron is the
  * safety net for a notice left 'pending'.
@@ -289,7 +281,7 @@ export async function cancelTicket(
   id: string,
   by: "consumer" | "business" | "agent",
   reason: string,
-  notice: "venue_cancel" | "guest_cancel" | null = null,
+  notice: "place_cancel" | "guest_cancel" | null = null,
 ): Promise<string | null> {
   const res = await writeReservation(admin, {
     mode: "update",

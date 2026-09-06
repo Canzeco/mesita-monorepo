@@ -1,14 +1,14 @@
 // Supabase Edge Function — consumer-web-confirm-reservation (product caller)
 //
-// Authenticated guest accepts the venue's confirmation, or picks one of the
-// venue's structured alternatives, without an a2 phone call (MESITA-787
+// Authenticated guest accepts the place's confirmation, or picks one of the
+// place's structured alternatives, without an a2 phone call (MESITA-787
 // app-only notify). Mirrors the accept / on-the-spot paths of
 // eleven-a2-confirm-reservation under consumer ownership.
 //
 // Body:
 //   { reservation_id: uuid }
 //   { reservation_id: uuid, new_date?: "YYYY-MM-DD", new_time?: "HH:mm" }
-//     — when date/time provided, must match a venue alternative (matchesOffer)
+//     — when date/time provided, must match a place alternative (matchesOffer)
 //
 // Deploy: supabase functions deploy consumer-web-confirm-reservation
 
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
   const wantsChange = body.new_date !== undefined || body.new_time !== undefined;
 
-  // Accept the current slot (venue already confirmed, or ack app-only confirm).
+  // Accept the current slot (place already confirmed, or ack app-only confirm).
   if (!wantsChange) {
     if (ticket.state !== "confirmed" && ticket.state !== "pending") {
       return json({ ok: false, error: "reservation is not open to confirm" }, 409);
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Pick a venue alternative — only when the ticket is still pending with offers.
+  // Pick a place alternative — only when the ticket is still pending with offers.
   if (ticket.state !== "pending") {
     return json({
       ok: false,
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
       callback_next_attempt_at: null,
       ...reminderParkPatch(lng, next, guestNotify),
       last_call_state:
-        `guest took the venue's own ${date} ${time} offer in the app — confirmed on the spot`,
+        `guest took the place's own ${date} ${time} offer in the app — confirmed on the spot`,
     },
   });
   if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);

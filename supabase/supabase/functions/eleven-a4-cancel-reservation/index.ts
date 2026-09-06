@@ -1,6 +1,6 @@
 // Supabase Edge Function — eleven-a4-cancel-reservation (vendor caller)
 //
-// Caller = eleven-a4: the business INBOUND line. A verified venue cancels a
+// Caller = eleven-a4: the business INBOUND line. A verified place cancels a
 // booking at ITS OWN place ("we're closed that night") — scope re-verified
 // server-side against the caller's phone number:
 //
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
-  // Leg 6: the venue calls it off, so the GUEST must hear — a2 rings them
+  // Leg 6: the place calls it off, so the GUEST must hear — a2 rings them
   // with call_context "cancelled_by_venue". The flag below used to be a
   // dead letter; the notice columns + this engine fire make it real.
   const err = await cancelTicket(admin, ticket.id, "business", cleanNote(body.reason), "guest_cancel");

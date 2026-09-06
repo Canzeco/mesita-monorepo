@@ -41,13 +41,13 @@ export type ControlsConfig = {
   defaultHoldHours: number;
   /** Bonus a top-up earns, as a whole percent, when the place sets none. */
   defaultBonusPct: number;
-  /** Ceiling on a per-place hold override. No venue locks money indefinitely. */
+  /** Ceiling on a per-place hold override. No place locks money indefinitely. */
   maxHoldHours: number;
   /** Floor on a per-place hold override. Unrendered: no reader yet. */
   minHoldHours: number;
   /** Days from a top-up until unspent Credits expire, when the place sets none. */
   defaultExpiryDays: number;
-  /** Floor on a per-place expiry override. No venue sells Credits that die young. */
+  /** Floor on a per-place expiry override. No place sells Credits that die young. */
   minExpiryDays: number;
 };
 
@@ -200,7 +200,7 @@ export async function loadControlsConfig(
 /**
  * Guest-facing slice — rides consumer-web-get-controls-config. The hold window
  * and the expiry floor are operator policy about what a PLACE may choose; a
- * guest reads the terms on their own card, not the range a venue was allowed to
+ * guest reads the terms on their own card, not the range a place was allowed to
  * pick from. The expiry DEFAULT crosses, because a guest is owed the date their
  * own Credits die.
  */

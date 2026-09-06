@@ -6,7 +6,7 @@
 // this module owns the agent-runtime knobs the Reservations Config page added.
 
 // `number` is the BUSINESS-side test line (what the agent dials instead of a
-// venue while test mode is on). `consumerNumber` is the GUEST-side test line the
+// place while test mode is on). `consumerNumber` is the GUEST-side test line the
 // admin Playground can put in a call brief instead of a real consumer's phone —
 // playground-only, never read by the production calling path.
 export type TestCall = { enabled: boolean; number: string; consumerNumber: string };
@@ -15,16 +15,16 @@ export type TestCall = { enabled: boolean; number: string; consumerNumber: strin
 // metered phone call, so the doors are capped. Knobs, not constants — tunable
 // from the admin Reservations Config page; enforcement lives in the EFs.
 export type ReservationLimits = {
-  /** Reschedules per ticket per day — each one resets call_attempts (= buys venue calls). */
+  /** Reschedules per ticket per day — each one resets call_attempts (= buys place calls). */
   reschedulesPerTicketPerDay: number;
-  /** Outbound VENUE calls per place per day (booking + notices), any ticket. */
-  venueCallsPerPlacePerDay: number;
+  /** Outbound PLACE calls per place per day (booking + notices), any ticket. */
+  placeCallsPerPlacePerDay: number;
   /** Hard stop: no outbound reservation call of any kind while on. */
   killSwitch: boolean;
 };
 export const LIMITS_SEED: ReservationLimits = {
   reschedulesPerTicketPerDay: 3,
-  venueCallsPerPlacePerDay: 10,
+  placeCallsPerPlacePerDay: 10,
   killSwitch: false,
 };
 
@@ -42,13 +42,13 @@ export type ReservationsCallConfig = {
 };
 
 // FIXED at 2 by protocol — not configurable. Attempt 1 fires immediately;
-// attempt 2 fires 5 minutes later if the venue is open, else 30 minutes after
+// attempt 2 fires 5 minutes later if the place is open, else 30 minutes after
 // it next opens (that scheduler is the production follow-up). Coerce pins this
 // regardless of what the stored row says.
 export const ATTEMPTS = 2;
 
 // Current testing seed — while under test the agent dials this ONE number for
-// EVERY reservation instead of any real venue. Ships ENABLED so a config row that
+// EVERY reservation instead of any real place. Ships ENABLED so a config row that
 // predates the knob (or a reset) can never fall through to a real place. Mirror of
 // TEST_CALL_SEED in the web-admin catalog. consumerNumber ships empty — an
 // operator sets it in Reservations Config before using it in the Playground.
@@ -58,7 +58,7 @@ export const TEST_CALL_SEED: TestCall = { enabled: true, number: "+524445499597"
  * Coerce the stored reservations_config jsonb into the agent-runtime knobs.
  * Anything missing/malformed resolves to the safe default (test mode on, the test
  * line) — the calling path must never crash on a bad row, and must never default
- * into ringing a real venue. Attempts are fixed at 2 regardless of the row.
+ * into ringing a real place. Attempts are fixed at 2 regardless of the row.
  */
 export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConfig {
   const c = raw && typeof raw === "object" && !Array.isArray(raw)
@@ -101,9 +101,9 @@ function coerceLimits(raw: unknown): ReservationLimits {
       l.reschedulesPerTicketPerDay,
       LIMITS_SEED.reschedulesPerTicketPerDay,
     ),
-    venueCallsPerPlacePerDay: posInt(
-      l.venueCallsPerPlacePerDay,
-      LIMITS_SEED.venueCallsPerPlacePerDay,
+    placeCallsPerPlacePerDay: posInt(
+      l.placeCallsPerPlacePerDay,
+      LIMITS_SEED.placeCallsPerPlacePerDay,
     ),
     killSwitch: typeof l.killSwitch === "boolean" ? l.killSwitch : LIMITS_SEED.killSwitch,
   };

@@ -5,7 +5,7 @@ import {
   noticeNextAt,
   OUTAGE_MAX_RETRIES,
   outageRetryAt,
-  VENUE_NOTICE_ATTEMPTS,
+  PLACE_NOTICE_ATTEMPTS,
 } from "./reservation-run.ts";
 
 Deno.test("placement: auth/quota/rate/5xx/network are OURS, validation is not", () => {
@@ -39,11 +39,11 @@ Deno.test("outage backoff: doubles from 15 min, jitters, caps at 8", () => {
   assert(outageRetryAt(0, now, mid)!.reason.includes("NOT charged"));
 });
 
-Deno.test("notice cap: venue side stops at 2, guest side rides the ladder", () => {
+Deno.test("notice cap: place side stops at 2, guest side rides the ladder", () => {
   const now = new Date(Date.UTC(2026, 7, 10, 20)); // 14:00 CDMX
   const slot = new Date(now.getTime() + 24 * 3600_000);
-  assert(noticeNextAt("venue_cancel", 1, null, -99, slot, now) !== null);
-  assertEquals(noticeNextAt("venue_cancel", VENUE_NOTICE_ATTEMPTS, null, -99, slot, now), null);
+  assert(noticeNextAt("place_cancel", 1, null, -99, slot, now) !== null);
+  assertEquals(noticeNextAt("place_cancel", PLACE_NOTICE_ATTEMPTS, null, -99, slot, now), null);
   assert(noticeNextAt("guest_cancel", 1, null, -99, slot, now) !== null);
   assertEquals(noticeNextAt("guest_cancel", 3, null, -99, slot, now), null);
 });

@@ -38,7 +38,7 @@ export async function inferPlaceReservationsLikely(
   ].filter(Boolean).join("\n");
 
   const system =
-    "You decide whether guests typically NEED or EXPECT reservations at this kind of venue. " +
+    "You decide whether guests typically NEED or EXPECT reservations at this kind of place. " +
     "Walk-in casual (fast food, taquería, street tacos, coffee to-go, food court) → false. " +
     "Sit-down dining, fine dining, tasting menu, nightclub with tables, omakase → true. " +
     'Respond with JSON only: {"reservations_likely":true} or {"reservations_likely":false}.';

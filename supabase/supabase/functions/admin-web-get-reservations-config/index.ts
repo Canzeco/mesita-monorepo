@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   //   · attempts_state=error     booking run died (platform outage persisted,
   //                              no number, crash)
   //   · callback_state=failed    guest leg could not be placed at all
-  //   · confirmed-but-unheard    venue said yes, the guest ladder ran dry and
+  //   · confirmed-but-unheard    place said yes, the guest ladder ran dry and
   //                              nobody picked up — the table exists and its
   //                              owner doesn't know
   const { data: attention } = await admin

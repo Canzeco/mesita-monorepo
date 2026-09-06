@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
-  // Leg 5: a confirmed table means the venue is holding it — it must hear.
-  const notice = ticket.state === "confirmed" ? "venue_cancel" as const : null;
+  // Leg 5: a confirmed table means the place is holding it — it must hear.
+  const notice = ticket.state === "confirmed" ? "place_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
   if (err) return json({ ok: false, error: err }, 500);
 
@@ -67,6 +67,6 @@ Deno.serve(async (req) => {
     ok: true,
     cancelled: true,
     reference_code: ticket.reference_code,
-    venue_notified: notice !== null,
+    place_notified: notice !== null,
   });
 });
