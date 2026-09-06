@@ -270,6 +270,57 @@
   .bg-welcome-gradient {
     background: var(--gradient-welcome);
   }
+  /* The manage-single type + surface vocabulary, ported from web-admin
+     with MESITA-1537: the Place screen mounts admin's Single Place
+     components verbatim, and they lean on these 142 times (type-label x74,
+     type-meta x28, type-body x18, shadow-card x18, shadow-save x4).
+     Tailwind DROPS unknown classes silently, so without these every
+     10-11px micro-label renders at inherited ~14-16px and every card goes
+     flat — it compiles, deploys, and looks broken. */
+  .type-meta {
+    font-size: 0.625rem; /* 10px */
+    line-height: 1.4;
+  }
+  .type-label {
+    font-size: 0.6875rem; /* 11px */
+    line-height: 1.4;
+  }
+  .type-body {
+    font-size: 0.8125rem; /* 13px */
+    line-height: 1.5;
+  }
+  .type-eyebrow {
+    font-size: 0.75rem; /* 12px */
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .shadow-card {
+    box-shadow:
+      0 1px 2px oklch(0.18 0.06 15 / 0.05),
+      0 16px 40px -28px oklch(0.18 0.06 15 / 0.22);
+  }
+  .shadow-save {
+    box-shadow: 0 8px 20px -8px oklch(0.65 0.24 5 / 0.55);
+  }
+  .text-pink-gradient {
+    background: var(--gradient-pink);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }

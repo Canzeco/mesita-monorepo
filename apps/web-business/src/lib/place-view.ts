@@ -1,12 +1,17 @@
-// The Place screen's shared spine (MESITA-1537).
+// The Place screen's spine (MESITA-1537).
 //
-// One request-scoped get-place call feeds the layout (tab row + 404
-// verdict) AND whichever tab page renders — React cache() dedupes, so
-// authority stays single without prop-threading through a server layout.
+// Two request-cached loads feed every place route, so the layout and the tab
+// page each ask and only one EF call happens:
+//   getPlaceView  — identity, holder, claimable, the 404 verdict
+//   getManagePlace — the AdminPlace the ported manage sections read, plus
+//                    whether this caller is a super-admin
 //
-// The tab MATRIX is the law (autoplan D3): who sees which tabs, decided
-// here once, rendered by the layout, enforced again by each tab page
-// (a URL is not a capability).
+// The TAB MATRIX is the law (Pato, 2026-09-06): Profile · Capabilities ·
+// Activity · Admin — the same set admin's Single Place uses. Admin renders
+// ONLY for super-admins: every box on it calls admin-web-* endpoints, so a
+// restaurant would get 403s rendered as confident falsehoods ("never been
+// embedded", eleven blank pipeline pills) plus buttons to approve its own
+// ownership proof.
 
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -14,46 +19,60 @@ import {
   apiGetConsolePlace,
   type ConsolePlaceView,
 } from "@/lib/api/organizations";
+import { getPlaceAndRole } from "@/components/place-manage/actions";
+import type { AdminPlace } from "@/components/place-manage/actions";
 
 export const getPlaceView = cache(
   async (client: SupabaseClient, placeId: string): Promise<ConsolePlaceView> =>
     apiGetConsolePlace(client, placeId),
 );
 
+/** Null when the caller holds no membership the overview can resolve — a
+ *  POOL place, which has no manage surface until it is claimed. */
+export const getManagePlace = cache(
+  async (
+    placeId: string,
+  ): Promise<{ place: AdminPlace; isSuperAdmin: boolean } | null> => {
+    const r = await getPlaceAndRole(placeId);
+    return r.ok ? r.data : null;
+  },
+);
+
 export const PLACE_TABS = [
-  "overview",
   "profile",
-  "partnership",
-  "performance",
-  "settings",
+  "capabilities",
+  "activity",
+  "admin",
 ] as const;
-export type PlaceTab = typeof PLACE_TABS[number];
+export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
-  overview: "Overview",
   profile: "Profile",
-  partnership: "Partnership",
-  performance: "Performance",
-  settings: "Settings",
+  capabilities: "Capabilities",
+  activity: "Activity",
+  admin: "Admin",
 };
 
-/** The visibility matrix, verbatim from the approved plan:
- *  pool place                → Overview only (+ Claim on it)
- *  held · any org member     → all five (owner-only controls render as
- *                              explained locked states inside the tabs)
- *  held · org viewer         → Overview + Performance
- *  held directly, no org     → all five (the old-style owned place)
- *  held by another org       → never reaches here (get-place 404s). */
-export function visibleTabs(view: ConsolePlaceView): PlaceTab[] {
-  if (view.holder) {
-    if (view.holder.myRole === "viewer") return ["overview", "performance"];
-    return [...PLACE_TABS];
-  }
-  if (view.myDirectRole) return [...PLACE_TABS];
-  return ["overview"];
+/** Which tabs this caller may see on this place.
+ *  pool place            → Profile only (it carries Claim)
+ *  held · org viewer     → Profile + Activity (read surfaces)
+ *  held · member/direct  → Profile + Capabilities + Activity
+ *  super-admin           → + Admin (operator internals)
+ *  held by another org   → never reaches here; get-place answers 404. */
+export function visibleTabs(
+  view: ConsolePlaceView,
+  manage: { isSuperAdmin: boolean } | null,
+): PlaceTab[] {
+  if (!manage) return ["profile"];
+  const viewer = view.holder?.myRole === "viewer";
+  const tabs: PlaceTab[] = viewer
+    ? ["profile", "activity"]
+    : ["profile", "capabilities", "activity"];
+  if (manage.isSuperAdmin) tabs.push("admin");
+  return tabs;
 }
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   const base = `/places/${encodeURIComponent(placeId)}`;
-  return tab === "overview" ? base : `${base}/${tab}`;
+  return tab === "profile" ? base : `${base}/${tab}`;
 }

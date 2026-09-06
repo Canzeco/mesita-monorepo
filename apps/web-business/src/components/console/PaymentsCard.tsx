@@ -1,5 +1,6 @@
 "use client";
 
+import { CONNECT_COUNTRIES } from "@/lib/connect-countries";
 import { useActionState } from "react";
 import { StatePill, DataRow } from "@/components/console/badges";
 import {
@@ -20,13 +21,6 @@ import {
 
 const INITIAL: PaymentsActionState = { error: null, note: null };
 
-/** Mirror of the EF allowlist (stripe-connect.ts MESITA_CONNECT_COUNTRIES).
- *  Country is permanent on the Stripe account, so it is asked exactly once —
- *  here, at connect time — and never again. */
-const CONNECT_COUNTRIES = [
-  { code: "MX", label: "Mexico" },
-  { code: "US", label: "United States" },
-] as const;
 
 export function PaymentsCard({
   orgId,

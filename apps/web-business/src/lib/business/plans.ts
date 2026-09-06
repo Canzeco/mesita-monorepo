@@ -52,3 +52,20 @@ function isPartner(p: PlacePlan): boolean {
 export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
   return isPartner(p) ? "partner" : "free";
 }
+
+// Ported with MESITA-1537 (the Place screen mounts admin's Single Place
+// components). `plan` is billing, not profile: it reaches the DB through the
+// paid door only — business-web-update-project rejects any body carrying it.
+/** The LEGACY strategy ids the ported Controls components still speak.
+ *  Distinct from this file's own SubscriptionId (free | partner), which is
+ *  the live catalog. */
+type StrategySubscriptionId = "free" | "pro_discount" | "ultra_discount";
+
+/** The `membership` enum value a strategy maps to. */
+export type PlanKey = "free" | "pro" | "ultra";
+
+export function planForSubscription(sub: StrategySubscriptionId): PlanKey {
+  if (sub === "pro_discount") return "pro";
+  if (sub === "ultra_discount") return "ultra";
+  return "free";
+}
