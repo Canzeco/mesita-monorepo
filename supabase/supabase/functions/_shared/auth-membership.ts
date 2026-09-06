@@ -9,9 +9,8 @@ import type { AuthedUser } from "./auth.ts";
 import { json } from "./http.ts";
 
 // Mirrors public.member_role. Team surface speaks owner/editor/viewer only
-// (_shared/roles.ts). 'staff' remains in this union so old rows still type-
-// check; waiter identity was retired (MESITA-833) — 0 live staff rows expected.
-type MembershipRole = "owner" | "editor" | "viewer" | "staff";
+// (_shared/roles.ts). Waiter identity was retired (MESITA-833); the enum has no staff value.
+type MembershipRole = "owner" | "editor" | "viewer";
 
 type Membership = {
   isSuperAdmin: boolean;
@@ -44,7 +43,6 @@ type Membership = {
 // The stronger of the two paths wins, after the cap is applied.
 const ROLE_RANK: Record<MembershipRole, number> = {
   viewer: 1,
-  staff: 1,
   editor: 2,
   owner: 3,
 };
