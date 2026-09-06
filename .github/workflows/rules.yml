@@ -34,31 +34,49 @@ on:
       - "scripts/**"
       - "deno.json"
       - ".github/workflows/rules.yml"
-  pull_request:
-    paths:
-      - "**/*.md"
-      - "**/*.MD"
-      - "**/*.mdx"
-      - "**/*.mdc"
-      - "**/*.icns"
-      - "**/*.ICNS"
-      - "**/*.jxl"
-      - "**/*.JXL"
-      - "**/*.heif"
-      - "**/*.HEIF"
-      - "**/*.heic"
-      - "**/*.HEIC"
-      - "scripts/**"
-      - "deno.json"
-      - ".github/workflows/rules.yml"
+  # Unfiltered on `pull_request` (MESITA-1576): a required check a path
+  # filter skips never reports, and branch protection blocks a PR on an
+  # "Expected" check that will never arrive. The `changes` job below decides
+  # per-PR whether there's anything to check.
+  pull_request: {}
 
 concurrency:
   group: rules-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: detect rules-scoped changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.rules == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rules:
+              - '**/*.md'
+              - '**/*.MD'
+              - '**/*.mdx'
+              - '**/*.mdc'
+              - '**/*.icns'
+              - '**/*.ICNS'
+              - '**/*.jxl'
+              - '**/*.JXL'
+              - '**/*.heif'
+              - '**/*.HEIF'
+              - '**/*.heic'
+              - '**/*.HEIC'
+              - 'scripts/**'
+              - 'deno.json'
+              - '.github/workflows/rules.yml'
+
   check:
     name: instruction files in sync
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
