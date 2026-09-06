@@ -5,6 +5,19 @@
 -- Prod already ran 0036 against coupons, so bronze_rate is gone and this
 -- block is a no-op. Empty-volume replay: 20260531120003 still creates the
 -- eight-tier columns, then we collapse them here.
+--
+-- MESITA-1479: 0036's tail also unconditionally recreated
+-- public.tg_saved_venues_issue_coupon(), copy-pasted into this replay file
+-- too. That function was renamed away in 20260626260000 (venues to places)
+-- and its renamed sibling (tg_saved_places_issue_coupon, plus the trigger
+-- and public.coupons itself) was dropped for good in 20260818090000, six
+-- days before this file was written. Nothing has pointed at the
+-- venues-named function since June; this migration's own job is only the
+-- column-snapshot ALTER above, so recreating a dead venues/coupons trigger
+-- function served no purpose and, on a full fresh-history replay, just
+-- resurrects banned vocabulary as permanently dead code. Removed. See
+-- 20260818090000 for the real teardown of the (already renamed)
+-- trigger/function/table.
 
 do $mesita_1278$
 begin
@@ -46,47 +59,5 @@ begin
   end if;
 end
 $mesita_1278$;
-
-create or replace function public.tg_saved_venues_issue_coupon()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v record;
-begin
-  select
-    listing_type,
-    welcome_free_rate, welcome_premium_rate,
-    free_rate, premium_rate,
-    currency
-  into v
-  from public.venues
-  where id = new.venue_id;
-
-  if not found or v.listing_type <> 'partner' then
-    return new;
-  end if;
-
-  insert into public.coupons (
-    consumer_id, venue_id, saved_venue_id,
-    welcome_free_rate, welcome_premium_rate,
-    free_rate, premium_rate,
-    cap_cents, currency
-  ) values (
-    new.consumer_id, new.venue_id, new.id,
-    v.welcome_free_rate, v.welcome_premium_rate,
-    v.free_rate, v.premium_rate,
-    0,
-    coalesce(v.currency, 'MXN')
-  )
-  on conflict (consumer_id, venue_id) where status = 'active' do nothing;
-
-  return new;
-end;
-$$;
-
-revoke execute on function public.tg_saved_venues_issue_coupon() from anon, authenticated, public;
 
 notify pgrst, 'reload schema';
