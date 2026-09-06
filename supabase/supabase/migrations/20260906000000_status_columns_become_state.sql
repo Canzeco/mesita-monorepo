@@ -37,23 +37,44 @@ alter table public.consumer_subscriptions  rename column status             to s
 alter table public.project_subscriptions   rename column status             to state;
 
 -- 3 · Index and constraint names follow ---------------------------------------
+-- Drift-tolerant: some of these names exist only on the live singleton (added
+-- out-of-band, the same drift the country_iso skip-notice documents), so the
+-- rename must succeed both there and on the replayed ledger, where a missing
+-- name is simply skipped. RENAME CONSTRAINT has no IF EXISTS; the DO block is
+-- its equivalent.
 
-alter index public.projects_status_idx             rename to projects_state_idx;
-alter index public.projects_adea_status_idx        rename to projects_adea_state_idx;
-alter index public.visit_tickets_status_idx        rename to visit_tickets_state_idx;
-alter index public.visit_tickets_story_status_idx  rename to visit_tickets_story_state_idx;
-alter index public.visit_tickets_review_status_idx rename to visit_tickets_review_state_idx;
-alter index public.place_media_assets_status_idx   rename to place_media_assets_state_idx;
-alter index public.place_research_stage_status_idx rename to place_research_stage_state_idx;
+alter index if exists public.projects_status_idx             rename to projects_state_idx;
+alter index if exists public.projects_adea_status_idx        rename to projects_adea_state_idx;
+alter index if exists public.visit_tickets_status_idx        rename to visit_tickets_state_idx;
+alter index if exists public.visit_tickets_story_status_idx  rename to visit_tickets_story_state_idx;
+alter index if exists public.visit_tickets_review_status_idx rename to visit_tickets_review_state_idx;
+alter index if exists public.place_media_assets_status_idx   rename to place_media_assets_state_idx;
+alter index if exists public.place_research_stage_status_idx rename to place_research_stage_state_idx;
 
-alter table public.places                  rename constraint places_business_status_check         to places_business_state_check;
-alter table public.place_enrichment_events rename constraint place_enrichment_events_status_check to place_enrichment_events_state_check;
-alter table public.place_research          rename constraint place_research_status_check          to place_research_state_check;
-alter table public.place_media_assets      rename constraint place_media_assets_status_check      to place_media_assets_state_check;
-alter table public.consumer_notifications  rename constraint consumer_notifications_status_check  to consumer_notifications_state_check;
-alter table public.ticket_reports          rename constraint ticket_reports_status_check          to ticket_reports_state_check;
-alter table public.consumer_subscriptions  rename constraint consumer_subscriptions_status_check  to consumer_subscriptions_state_check;
-alter table public.project_subscriptions   rename constraint project_subscriptions_status_check   to project_subscriptions_state_check;
+do $$
+declare
+  r record;
+begin
+  for r in
+    select conrelid::regclass as tbl,
+           conname,
+           replace(conname, 'status', 'state') as newname
+      from pg_constraint
+     where connamespace = 'public'::regnamespace
+       and conname in (
+         'places_business_status_check',
+         'place_enrichment_events_status_check',
+         'place_research_status_check',
+         'place_media_assets_status_check',
+         'consumer_notifications_status_check',
+         'ticket_reports_status_check',
+         'consumer_subscriptions_status_check',
+         'project_subscriptions_status_check')
+  loop
+    execute format('alter table %s rename constraint %I to %I',
+                   r.tbl, r.conname, r.newname);
+  end loop;
+end $$;
 
 -- 4 · profiles ----------------------------------------------------------------
 -- Output-column renames cannot ride CREATE OR REPLACE; the view is dropped
