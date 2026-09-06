@@ -258,6 +258,42 @@ export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
 
+/**
+ * Per-signal ceilings, for the signals the uniform WEIGHT_MAX is wrong for.
+ *
+ * The 4 above is reasoned from a signal that floors around 0.85. `mesita_level`
+ * floors at LEVEL_LISTED = 0.04, so the same exponent means something else
+ * entirely: the promoting-over-listed ratio is (1 / 0.04)^w = 25^w.
+ *
+ *   w = 1   25x        the value the merge shipped and preserved
+ *   w = 2   625x
+ *   w = 4   390,625x
+ *
+ * Every other signal is bounded in (0, 1] and abstains at 1, so at w = 4 there
+ * is no combination of relevance that can outrank money — Level stops being a
+ * signal and becomes a sort key. By the WEIGHT_MAX comment's own test ("past
+ * that the signal is not important, it is a filter"), Level is filter-shaped at
+ * a far lower exponent than the other seven.
+ *
+ * WHY 1, AND WHY NOT A ROUNDER-SOUNDING NUMBER (MESITA-1410). Level is today
+ * entirely bought: `plan` is money and `promoting` is only true if the place
+ * pays. How far money may move the deck is a product decision nobody has made
+ * yet — MESITA-1408 merged the two old money exponents into this one and was
+ * deliberately value-preserving at w = 1, which makes 1 the only exponent
+ * anyone has actually evaluated. Capping at the shipped default changes nothing
+ * on landing and stops the console from silently going past it, which is the
+ * same reasoning `requireReady` ships ON by. Raise it in one place once the
+ * question in MESITA-1410 is answered.
+ */
+export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
+  mesita_level: 1,
+};
+
+/** The ceiling that actually applies to one signal's exponent. */
+export function weightMaxFor(key: SignalKey): number {
+  return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
+}
+
 /** Bought slots can never be denser than every other card. */
 export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
@@ -845,7 +881,12 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
 
   const weights = {} as Record<SignalKey, number>;
   for (const key of SIGNAL_KEYS) {
-    const v = num(rawWeights[key], DISCOVERY_DEFAULTS.weights[key], WEIGHT_MIN, WEIGHT_MAX);
+    const v = num(
+      rawWeights[key],
+      DISCOVERY_DEFAULTS.weights[key],
+      WEIGHT_MIN,
+      weightMaxFor(key),
+    );
     weights[key] = Math.round(v * 100) / 100;
   }
 

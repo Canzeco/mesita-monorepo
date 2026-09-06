@@ -210,6 +210,23 @@ export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
+
+/**
+ * Mirrors SIGNAL_WEIGHT_MAX / weightMaxFor in _shared/discovery-config.ts.
+ *
+ * Level's exponent is capped at the value the merge shipped, because Level is
+ * entirely bought and 25^w means money annihilates relevance well before the
+ * uniform ceiling of 4 (MESITA-1410). The EF clamps this server-side either
+ * way — the mirror is here so the console's dial cannot offer a number the
+ * backend will silently refuse.
+ */
+export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
+  mesita_level: 1,
+};
+
+export function weightMaxFor(key: SignalKey): number {
+  return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
+}
 const SLOT_MIN_EVERY_NTH = 2;
 const SLOT_MAX_EVERY_NTH = 50;
 const MIN_RATING_MAX = 5;
@@ -984,7 +1001,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
 
   const weights = {} as Record<SignalKey, number>;
   for (const key of SIGNAL_KEYS) {
-    const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, WEIGHT_MAX);
+    const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, weightMaxFor(key));
     weights[key] = Math.round(v * 100) / 100;
   }
 
