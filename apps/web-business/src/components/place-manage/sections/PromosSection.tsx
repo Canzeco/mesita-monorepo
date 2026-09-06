@@ -380,7 +380,7 @@ export function PromosSection({
               error={joinError}
               control={<MembershipStatePill state={pillState} />}
             >
-              <NestedConfig visible label="Subscription">
+              <NestedConfig visible label="Partnership">
                 <PartnershipBody
                   place={v}
                   pillState={pillState}
@@ -555,7 +555,6 @@ export function PromosSection({
       {modalStrategy && (
         <ProductModal
           strategy={modalStrategy}
-          currency={v.currency}
           state={promoCardState({
             member,
             forfeited,

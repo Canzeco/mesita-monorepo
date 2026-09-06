@@ -10,12 +10,7 @@ import {
   type LifecycleStepState,
   type MembershipPillState,
 } from "../promo-state";
-import {
-  cx,
-  formatMoney,
-  MEMBERSHIP_PRICE_MXN,
-  ZERO_STRATEGY_ID,
-} from "./shared";
+import { cx, ZERO_STRATEGY_ID } from "./shared";
 
 // Partnership box + its lifecycle rail + the status pill. Moved verbatim out
 // of PromosSection.tsx on 2026-09-02 (file split, no behaviour change).
@@ -50,7 +45,6 @@ function LifecycleBanner({
   member: boolean;
 }) {
   const view = lifecycleView(place, storedStrategy);
-  const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const strategy =
     member && storedStrategy ? STRATEGY_BY_ID[storedStrategy] : null;
 
@@ -85,8 +79,8 @@ function LifecycleBanner({
   // step's line renders.
   const joinDetail =
     view.join === "current"
-      ? "Join with the Stripe mock below."
-      : `${price}/year — switch strategies free anytime.`;
+      ? "Join below — it's free."
+      : "Free to join — switch strategies anytime.";
   const strategyDetail =
     view.strategy === "done" && strategy
       ? `${strategy.emoji} ${strategy.name} — switch free anytime.`
@@ -247,7 +241,6 @@ export function PartnershipBody({
 }) {
   const stateNote =
     pillState === "pending" ? null : describeMembershipState(place, pillState);
-  const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
   const underReview = pillState === "review";
@@ -285,22 +278,13 @@ export function PartnershipBody({
           </p>
         )}
 
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <p className="font-display text-2xl leading-none font-semibold tracking-tight">
-            {price}
-            <span className="text-muted-foreground text-xs font-normal">
-              {" "}
-              / year
-            </span>
-          </p>
-          <p className="text-muted-foreground type-body leading-snug">
-            Unlocks{" "}
-            <span className="text-foreground font-semibold">Conservative</span>{" "}
-            and{" "}
-            <span className="text-foreground font-semibold">Aggressive</span>{" "}
-            after you join. Zero stays free.
-          </p>
-        </div>
+        <p className="text-muted-foreground type-body leading-snug">
+          <span className="text-foreground font-semibold">Free to join.</span>{" "}
+          Unlocks{" "}
+          <span className="text-foreground font-semibold">Conservative</span>{" "}
+          and <span className="text-foreground font-semibold">Aggressive</span>{" "}
+          after you join. Zero stays free too.
+        </p>
 
         {nextLine && (
           <p className="text-muted-foreground text-xs leading-snug">
@@ -330,14 +314,13 @@ export function PartnershipBody({
 
         {showJoin && (
           <div className="flex flex-col gap-2">
-            <StripeJoinButton
-              price={price}
+            <JoinPartnershipButton
               busy={joinBusy}
               forfeited={forfeited}
               onClick={onJoinClick}
             />
             <p className="text-muted-foreground type-meta leading-snug">
-              Mock checkout — no charge.
+              Free — no charge, ever.
             </p>
             <div aria-live="polite">
               {joinError && <ErrorNote message={joinError} />}
@@ -358,14 +341,12 @@ export function PartnershipBody({
   );
 }
 
-/** Stripe Checkout-shaped mock. Writes plan via admin-web-set-plan. */
-function StripeJoinButton({
-  price,
+/** Free join — writes plan via admin-web-set-plan. No charge, ever. */
+function JoinPartnershipButton({
   busy,
   forfeited,
   onClick,
 }: {
-  price: string;
   busy: boolean;
   forfeited: boolean;
   onClick: () => void;
@@ -375,30 +356,11 @@ function StripeJoinButton({
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="inline-flex h-12 w-full max-w-md items-center justify-center gap-2.5 rounded-md bg-[#635BFF] px-5 type-body font-semibold text-white shadow-sm transition hover:bg-[#5851EA] active:scale-[0.99] disabled:opacity-70"
+      className="bg-foreground text-background inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-5 type-body font-semibold transition hover:opacity-90 active:scale-[0.99] disabled:opacity-60"
     >
-      {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <StripeMark className="h-5 w-5 shrink-0" />
-      )}
-      {forfeited
-        ? `Re-join Partnership · ${price}/year`
-        : "Join Partnership"}
+      {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+      {forfeited ? "Re-join Partnership" : "Join Partnership"}
     </button>
-  );
-}
-
-function StripeMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-      fill="currentColor"
-    >
-      <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.115 1.787-1.115 1.634 0 3.415.66 4.64 1.25v-3.2C15.82 2.89 14.196 2.4 12.407 2.4c-3.96 0-6.582 2.075-6.582 5.546 0 2.705 1.94 4.14 5.162 5.29 2.28.811 3.056 1.426 3.056 2.348 0 .96-.84 1.258-2.12 1.258-1.732 0-3.9-.757-5.492-1.76V18.4c1.632.88 3.53 1.34 5.49 1.34 4.082 0 6.75-2.02 6.75-5.604 0-2.873-1.875-4.406-5.695-5.986z" />
-    </svg>
   );
 }
 

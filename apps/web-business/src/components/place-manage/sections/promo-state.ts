@@ -37,7 +37,7 @@ type MembershipSnapshot = {
 export type MembershipPillState =
   "not_member" | "pending" | "live" | "paused" | "forfeited" | "review";
 
-// A place on any paid plan holds the Partnership subscription (plan != free).
+// A place on any paid plan holds the Partnership (plan != free). Free to join.
 export function isMemberPlan(plan: unknown): boolean {
   return !!plan && plan !== "free";
 }
