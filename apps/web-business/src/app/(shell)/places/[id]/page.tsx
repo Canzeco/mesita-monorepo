@@ -15,6 +15,7 @@ import { notFound, redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
 import { DataRow, PlaceStateBadge } from "@/components/console/badges";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
+import { PlaceGallery } from "@/components/console/PlaceGallery";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -28,7 +29,13 @@ import {
   resolveActiveOrg,
 } from "@/lib/active-organization";
 import { SHELL_ROUTES, placeHref, withOrg } from "@/lib/console-routes";
-import { errMsg, formatDay, formatRelative } from "@/lib/utils";
+import {
+  errMsg,
+  formatCompactCount,
+  formatDay,
+  formatRating,
+  formatRelative,
+} from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +113,21 @@ export default async function PlacePage({
     .filter(Boolean)
     .join(" · ");
 
+  // Defaulted HERE, not in the type: the fields are optional so the window
+  // between the EF deploy and the Vercel build cannot throw inside this
+  // server component. An old EF simply means no photos for a minute.
+  const photos = place.photos ?? [];
+  const totalPhotos = place.totalPhotos ?? photos.length;
+
+  // The rating is a fact about the address, so it belongs beside the other
+  // Identity facts — not floating on the image, where it would restate the
+  // header in white over a scrim.
+  const googleRating = formatRating(place.googleStars);
+  const googleReviews =
+    place.googleReviewCount != null && place.googleReviewCount > 0
+      ? formatCompactCount(place.googleReviewCount)
+      : null;
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -134,6 +156,12 @@ export default async function PlacePage({
         )}
       </div>
 
+      <PlaceGallery
+        photos={photos}
+        totalPhotos={totalPhotos}
+        name={place.name}
+      />
+
       <Section title="Identity" description="What this address is.">
         <div>
           <DataRow label="Address">{place.address ?? "Not set"}</DataRow>
@@ -142,6 +170,15 @@ export default async function PlacePage({
           <DataRow label="Phone">{place.phone ?? "Not set"}</DataRow>
           <DataRow label="Timezone">{place.timezone ?? "Not set"}</DataRow>
           <DataRow label="Currency">{place.currency}</DataRow>
+          {/* Omitted entirely when Google has no score — an em dash in a row
+              labelled "Google rating" reads as a zero, not as an absence. */}
+          {googleRating && (
+            <DataRow label="Google rating">
+              {googleReviews
+                ? `${googleRating} · ${googleReviews} reviews`
+                : googleRating}
+            </DataRow>
+          )}
         </div>
       </Section>
 

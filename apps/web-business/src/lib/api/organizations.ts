@@ -228,6 +228,19 @@ export type ConsolePlaceDetail = {
   listed: boolean;
   enriched: boolean;
   verified: boolean;
+  /** Photos, ratings and the true photo count are OPTIONAL on purpose.
+   *
+   *  Merging to main auto-deploys every EF and triggers the Vercel build in
+   *  parallel, so there is a window where a browser runs the new page against
+   *  the old EF. If these were required, `photos.length` would throw inside a
+   *  server component and the whole screen would 500 — the page's try/catch
+   *  wraps the fetch, not the render. Optional plus a default at the read site
+   *  turns that window into a place with no photos for a minute. */
+  photos?: string[] | null;
+  /** The real count before the wire cap, so the caption can say "10 of 13". */
+  totalPhotos?: number | null;
+  googleStars?: number | null;
+  googleReviewCount?: number | null;
 };
 
 export type ConsolePlaceView = {
