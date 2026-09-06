@@ -1,17 +1,12 @@
 "use client";
 
-// The place tab row — the TopNav pill idiom one level down (autoplan D6):
-// calm text pills, no icons, no accent color, second row under the title.
-// Which tabs exist comes from the layout's matrix; this only renders and
-// highlights.
+// The place tab row — the TopNav pill idiom one level down: calm text pills,
+// no icons, no accent color. Which tabs exist is the layout's matrix; this
+// only renders and highlights.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  PLACE_TAB_LABEL,
-  placeTabHref,
-  type PlaceTab,
-} from "@/lib/place-view";
+import { PLACE_TAB_LABEL, placeTabHref, type PlaceTab } from "@/lib/place-view";
 import { cn } from "@/lib/utils";
 
 export function PlaceTabs({
@@ -27,7 +22,7 @@ export function PlaceTabs({
       {tabs.map((tab) => {
         const href = placeTabHref(placeId, tab);
         const active =
-          tab === "overview"
+          tab === "profile"
             ? pathname === href
             : pathname === href || pathname.startsWith(`${href}/`);
         return (
