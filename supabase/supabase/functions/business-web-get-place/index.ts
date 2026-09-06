@@ -30,6 +30,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { orgRoleFor } from "../_shared/org-membership.ts";
 import { isPlaceClaimable } from "../_shared/place-claim.ts";
 import { isPlaceEnriched, isPlaceListed } from "../_shared/place-state.ts";
+import { capPhotos, GET_PLACE_SELECT, totalPhotos } from "./place-projection.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
@@ -55,22 +56,23 @@ Deno.serve(async (req) => {
   // embedded places row carries what the address IS. One round trip, the
   // same join business-web-list-places uses.
   //
-  // `plan` and `listing_type` are deliberately NOT selected. Both encode
-  // the retired two-tier membership; the decided ladder is Listed →
-  // Verified → Partner, where Partner is a live Stripe Connect account on
-  // the ORGANIZATION (MESITA-1534). Putting the old tiers on the wire is
-  // how a screen ends up restating a model we no longer run.
+  // The column list lives in place-projection.ts so a test can assert the
+  // audience boundary — `plan` and `listing_type` and the strike columns are
+  // named there and proven absent, rather than promised in a comment here.
   const { data, error } = await admin
     .from("projects")
-    .select(
-      "id, state, content_state, currency, organization_id, claimed_at, created_at, updated_at, " +
-        "places!inner(name, address, zone, city, category, category_label, phone, timezone, enriched_at)",
-    )
+    .select(GET_PLACE_SELECT)
     .eq("id", placeId)
     .maybeSingle();
 
   if (error) return json({ ok: false, error: error.message }, 500);
-  if (!data) return json(NOT_FOUND, 404);
+  if (!data) {
+    // Both 404 branches log, because the response deliberately cannot tell
+    // them apart. Without this, "the operator says their place 404s" is
+    // unreconstructible three weeks later.
+    console.error(`[get-place] absent: ${placeId}`);
+    return json(NOT_FOUND, 404);
+  }
 
   type Row = {
     id: string;
@@ -91,6 +93,9 @@ Deno.serve(async (req) => {
       phone: string | null;
       timezone: string | null;
       enriched_at: string | null;
+      photos: string[] | null;
+      google_stars_overall: number | null;
+      google_review_count: number | null;
     };
   };
   const row = data as unknown as Row;
@@ -102,7 +107,12 @@ Deno.serve(async (req) => {
 
   if (row.organization_id) {
     const myRole = await orgRoleFor(admin, authRes.user, row.organization_id);
-    if (!myRole) return json(NOT_FOUND, 404);
+    if (!myRole) {
+      console.error(
+        `[get-place] not a member: place=${placeId} org=${row.organization_id}`,
+      );
+      return json(NOT_FOUND, 404);
+    }
     const { data: orgRow } = await admin
       .from("organizations")
       .select("name")
@@ -117,6 +127,7 @@ Deno.serve(async (req) => {
   } else if (!(await isPlaceClaimable(admin, placeId))) {
     // In no organization, but directly owned the old way. Not the pool,
     // and not yours — the same answer as a place that does not exist.
+    console.error(`[get-place] directly owned, not pooled: ${placeId}`);
     return json(NOT_FOUND, 404);
   }
 
@@ -152,6 +163,13 @@ Deno.serve(async (req) => {
       state: row.state,
       contentState: row.content_state,
       enrichedAt: row.places.enriched_at,
+      // Capped for the wire; `totalPhotos` keeps the truth so the screen can
+      // honestly say "10 of 13". See place-projection.ts for why the cap
+      // cannot live in the select.
+      photos: capPhotos(row.places.photos),
+      totalPhotos: totalPhotos(row.places.photos),
+      googleStars: row.places.google_stars_overall,
+      googleReviewCount: row.places.google_review_count,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       // Derived, never stored — the same helpers every other surface reads,

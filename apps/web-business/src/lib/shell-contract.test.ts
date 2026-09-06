@@ -52,6 +52,63 @@ describe("client components never import the server data layer", () => {
   });
 });
 
+// The 2am-Friday test.
+//
+// `business-web-get-overview` resolves a non-super-admin's places from
+// `project_members` alone, so it cannot load an org-claimed place — that is
+// the whole reason the shell has its own `business-web-get-place`. Anything
+// that reaches back into `lib/api/places` (the overview's `MyPlace` type) or
+// into `components/business/place/**` (the unlinked (console) tree that
+// MESITA-1534 deletes) re-couples the live shell to the broken read.
+//
+// It walks BOTH roots and does NOT filter on "use client": the edge that
+// actually matters is a SERVER component under app/(shell) importing the
+// overview type, which the guard above cannot see from either direction.
+const FORBIDDEN_IMPORTS: { pattern: RegExp; why: string }[] = [
+  {
+    pattern: /from\s+["']@\/lib\/api\/places["']/,
+    why: "lib/api/places is the business-web-get-overview shape; the shell reads business-web-get-place",
+  },
+  {
+    pattern: /from\s+["']@\/components\/business\/place\//,
+    why: "components/business/place/** belongs to the unlinked (console) tree (MESITA-1534)",
+  },
+];
+
+describe("the shell never re-couples to the overview EF", () => {
+  it("no file under app/(shell) or components/console imports the forbidden modules", () => {
+    const roots = [
+      path.resolve(__dirname, "..", "app", "(shell)"),
+      path.resolve(__dirname, "..", "components", "console"),
+    ];
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of walk(root)) {
+        if (!/\.tsx?$/.test(file)) continue;
+        const src = readFileSync(file, "utf8");
+        for (const { pattern, why } of FORBIDDEN_IMPORTS) {
+          if (pattern.test(src)) {
+            offenders.push(`${path.relative(root, file)} — ${why}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("the walker actually reaches server components (guard on the guard)", () => {
+    // The previous version of this rule filtered on `"use client"` and rooted
+    // only at components/console, so it could never have failed. If this
+    // count ever drops to zero the rule above has silently stopped looking.
+    const shell = path.resolve(__dirname, "..", "app", "(shell)");
+    const serverFiles = walk(shell).filter(
+      (f) =>
+        /\.tsx$/.test(f) && !readFileSync(f, "utf8").startsWith('"use client"'),
+    );
+    expect(serverFiles.length).toBeGreaterThan(0);
+  });
+});
+
 const org = (id: string, myRole: Organization["myRole"]): Organization => ({
   id,
   name: id,
