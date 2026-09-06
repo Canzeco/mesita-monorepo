@@ -122,6 +122,10 @@ Deno.test("validateTicketPatch: accepts a paid_method of at_place, and clearing 
   assert(validateTicketPatch({ paid_method: null }).ok);
 });
 
+Deno.test("validateTicketPatch: accepts mesita_pay (MESITA-1414)", () => {
+  assert(validateTicketPatch({ paid_method: "mesita_pay" }).ok);
+});
+
 Deno.test("validateTicketPatch: accepts rate columns as plain numbers (no invented range)", () => {
   const res = validateTicketPatch({
     welcome_free_rate: 15,

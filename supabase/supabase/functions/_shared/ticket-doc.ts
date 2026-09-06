@@ -56,8 +56,8 @@
 //     source_check).
 //   - fix_requested, if set: 'bill' | 'proof' | 'reward' (visit_tickets_
 //     fix_requested_kind).
-//   - paid_method, if set: 'at_place' | 'mesita' (visit_tickets_paid_
-//     method_kind).
+//   - paid_method, if set: 'at_place' | 'mesita' | 'mesita_pay' (visit_
+//     tickets_paid_method_kind).
 //   - story_ojo_verdict / review_ojo_verdict, if set: 'pass' | 'unsure' |
 //     'fail' (visit_tickets_story/review_ojo_verdict_check).
 //   - bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_
@@ -163,7 +163,7 @@ export type TicketDoc = {
   approved_amount_due_cents: number | null;
   fix_requested: "bill" | "proof" | "reward" | null;
   fix_note: string | null;
-  paid_method: "at_place" | "mesita" | null;
+  paid_method: "at_place" | "mesita" | "mesita_pay" | null;
   validated_at: string | null;
   story_ojo_verdict: "pass" | "unsure" | "fail" | null;
   story_ojo_confidence: number | null;
@@ -262,7 +262,7 @@ export type TicketValidationResult =
 
 const BILL_SOURCE_VALUES = new Set(["business", "consumer"]);
 const FIX_REQUESTED_VALUES = new Set(["bill", "proof", "reward"]);
-const PAID_METHOD_VALUES = new Set(["at_place", "mesita"]);
+const PAID_METHOD_VALUES = new Set(["at_place", "mesita", "mesita_pay"]);
 const OJO_VERDICT_VALUES = new Set(["pass", "unsure", "fail"]);
 const TICKET_STATE_VALUES = new Set<string>(ALL_TICKET_STATES);
 
@@ -420,9 +420,12 @@ export function validateTicketPatch(input: unknown): TicketValidationResult {
   if ("paid_method" in raw) {
     const v = raw.paid_method;
     if (v !== null && (typeof v !== "string" || !PAID_METHOD_VALUES.has(v))) {
-      return { ok: false, error: "paid_method must be 'at_place', 'mesita', or null" };
+      return {
+        ok: false,
+        error: "paid_method must be 'at_place', 'mesita', 'mesita_pay', or null",
+      };
     }
-    patch.paid_method = v as "at_place" | "mesita" | null;
+    patch.paid_method = v as "at_place" | "mesita" | "mesita_pay" | null;
   }
   for (const key of ["story_ojo_verdict", "review_ojo_verdict"] as const) {
     if (!(key in raw)) continue;

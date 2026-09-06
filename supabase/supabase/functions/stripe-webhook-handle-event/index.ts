@@ -4,22 +4,30 @@
 // entirely on Stripe signature verification — an unsigned or mis-signed
 // request is rejected. SEVERAL signing secrets serve the one URL: the
 // platform endpoint's, and the Connect endpoint's once the operator creates
-// it (same URL, enabled_events pinned to ["account.updated"]) — in both
-// universes, since STRIPE_MODE keeps test and live credentials side by side
-// (stripe-env.ts). Every configured secret is tried (webhook-verify.ts), so a
-// correctly-signed event from the universe STRIPE_MODE is NOT on still
-// verifies — and is then acked WITHOUT being processed, which is what keeps a
-// mode flip from costing a multi-day Stripe retry storm.
+// it (same URL — needs-human dashboard step: enabled_events must name
+// account.updated, payment_intent.succeeded and payment_intent.payment_
+// failed, not just the first) — in both universes, since STRIPE_MODE keeps
+// test and live credentials side by side (stripe-env.ts). Every configured
+// secret is tried (webhook-verify.ts), so a correctly-signed event from the
+// universe STRIPE_MODE is NOT on still verifies — and is then acked WITHOUT
+// being processed, which is what keeps a mode flip from costing a
+// multi-day Stripe retry storm.
 //
-// One endpoint, three surfaces:
+// One endpoint, four surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
 //   • project_id   → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
 //     projects.plan on the back of the paid door.
 //   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
-//     account layer, connect-account.ts). Connect-DELIVERED events (top-level
-//     event.account set) are guarded to account.updated ONLY: a restaurant's
-//     own Stripe subscriptions must never enter the platform reconcilers.
+//     account layer, connect-account.ts).
+//   • Connect payment_intent.{succeeded,payment_failed} → Mesita Pay's
+//     reliability backstop (MESITA-1414, ticket-payment-intent.ts) — the
+//     synchronous charge in consumer-web-select-ticket-payment closes the
+//     ticket itself in the common case; this only matters if that request
+//     crashed between Stripe confirming and the close running.
+//   Connect-DELIVERED events (top-level event.account set) are guarded to
+//   exactly these three types: a restaurant's own Stripe subscriptions or
+//   other account activity must never reach the platform reconcilers below.
 //
 // Idempotency: Stripe retries deliveries. We record every processed event id
 // in public.stripe_events and no-op on replays.
@@ -55,6 +63,10 @@ import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 import { verifyStripeEvent } from "./webhook-verify.ts";
 import { handleConnectAccountUpdated } from "./connect-account.ts";
+import {
+  handleTicketPaymentIntentFailed,
+  handleTicketPaymentIntentSucceeded,
+} from "./ticket-payment-intent.ts";
 
 Deno.serve(async (req) => {
   // Vendor webhook — no CORS preflight; POST-only.
@@ -138,14 +150,29 @@ async function handleStripeEvent(
   stripe: Stripe,
   event: Stripe.Event,
 ): Promise<void> {
-  // Connect-DELIVERED events (top-level event.account) are guarded to the one
-  // type the Connect endpoint exists for. Anything else a mis-configured
+  // Connect-DELIVERED events (top-level event.account) are guarded to the
+  // types the Connect endpoint exists for. Anything else a mis-configured
   // endpoint subscribes (e.g. a restaurant's own customer.subscription.*)
   // is acknowledged and ignored — it must never reach the platform
   // subscription reconcilers below.
   if (typeof event.account === "string" && event.account.length > 0) {
-    if (event.type === "account.updated") {
-      await handleConnectAccountUpdated(admin, event);
+    switch (event.type) {
+      case "account.updated":
+        await handleConnectAccountUpdated(admin, event);
+        break;
+      case "payment_intent.succeeded":
+        // Mesita Pay's reliability backstop (MESITA-1414) — see
+        // ticket-payment-intent.ts. The synchronous charge path in
+        // consumer-web-select-ticket-payment already closes the ticket in
+        // the common case; this only does anything if that request crashed
+        // between Stripe confirming and the close running.
+        await handleTicketPaymentIntentSucceeded(admin, event);
+        break;
+      case "payment_intent.payment_failed":
+        await handleTicketPaymentIntentFailed(admin, event);
+        break;
+      default:
+        break;
     }
     return;
   }
