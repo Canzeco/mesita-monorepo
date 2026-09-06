@@ -16,7 +16,7 @@
 //     flips a consumer to/from Premium on the back of the paid door.
 //   • project_id   → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
 //     projects.plan on the back of the paid door.
-//   • Connect account.updated → place_payment_accounts mirror (PLATFORM
+//   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
 //     account layer, connect-account.ts). Connect-DELIVERED events (top-level
 //     event.account set) are guarded to account.updated ONLY: a restaurant's
 //     own Stripe subscriptions must never enter the platform reconcilers.

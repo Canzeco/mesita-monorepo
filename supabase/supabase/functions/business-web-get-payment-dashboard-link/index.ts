@@ -10,10 +10,9 @@
 // a dispute. That is why it ships in the same PR as the controller flip and
 // not "later".
 //
-// Auth: owner of the place (super-admins are exempt via
-// _shared/auth-membership.ts, same as business-web-start-payment-onboarding —
-// which is what lets staff-assisted access work while production places have
-// no owners).
+// Auth: owner of the ORGANIZATION — the merchant of record (MESITA-1545).
+// Deliberately no super-admin exemption: org membership is a business fact
+// (org-membership.ts), and an operator acting on an org should join it.
 //
 // Single-use and short-lived: the returned URL grants access to the account
 // holder's Stripe data, so it is never cached, never stored, and never sent
@@ -25,15 +24,10 @@ import {
   corsPreflight,
   json,
   readJson,
-  readPlaceIdAlias,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireOwner,
-} from "../_shared/auth.ts";
+import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { requireOrgRole } from "../_shared/org-membership.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
@@ -42,7 +36,7 @@ import {
 } from "../_shared/stripe-connect.ts";
 import type { PaymentAccountRow } from "../_shared/payment-account-doc.ts";
 
-type Body = { placeId?: string; projectId?: string };
+type Body = { orgId?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -56,35 +50,30 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const placeId = readPlaceIdAlias(bodyRes.body);
-  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
+  const orgId = (bodyRes.body.orgId ?? "").trim();
+  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
 
   const admin = adminClient(envRes.env);
-  const ownerRes = await requireOwner(
-    admin,
-    authRes.user,
-    placeId,
-    "Only owners can open the payments dashboard.",
-  );
-  if (!ownerRes.ok) return ownerRes.response;
+  const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
+  if (!roleRes.ok) return roleRes.response;
 
   const rowRes = await admin
-    .from("place_payment_accounts")
+    .from("organization_payment_accounts")
     .select()
-    .eq("place_id", placeId)
+    .eq("organization_id", orgId)
     .maybeSingle();
   if (rowRes.error) {
     return json({ ok: false, error: `account_read: ${rowRes.error.message}` }, 500);
   }
   const row = (rowRes.data as PaymentAccountRow | null) ?? null;
 
-  // Nothing to open. This is a normal state (the place has never onboarded),
+  // Nothing to open. This is a normal state (the organization has never onboarded),
   // so it answers with a code the console can branch on rather than an error
   // string it would have to pattern-match.
   if (!row) {
     return json({
       ok: false,
-      error: "This place has no Stripe account yet.",
+      error: "This organization has no Stripe account yet.",
       code: "not_onboarded",
     }, 409);
   }
@@ -110,7 +99,7 @@ Deno.serve(async (req) => {
     return json({
       ok: false,
       error:
-        "This place's Stripe account belongs to the other Stripe environment.",
+        "This organization's Stripe account belongs to the other Stripe environment.",
       code: "account_wrong_universe",
     }, 409);
   }

@@ -1,10 +1,11 @@
 // Supabase Edge Function — business-web-start-payment-onboarding (business console)
 //
-// Creates (if missing) the place's Stripe CONNECT account — PLATFORM posture,
+// Creates (if missing) the ORGANIZATION's Stripe CONNECT account — the
+// merchant of record is the organization (MESITA-1545) — PLATFORM posture,
 // typeless-Standard controller + requested capabilities (the law lives in
 // _shared/stripe-connect.ts) — and returns a Stripe-hosted onboarding
-// Account Link. Owner-only: onboarding binds the place's own Stripe
-// relationship, same level as changing the subscription.
+// Account Link. Org-owner-only: onboarding binds the organization's own
+// Stripe relationship.
 //
 // No charges here, ever. This is the ACCOUNT layer only; the charge path
 // (direct charges + application fees) is the gateway PR's scope. Live keys
@@ -23,15 +24,10 @@ import {
   corsPreflight,
   json,
   readJson,
-  readPlaceIdAlias,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireOwner,
-} from "../_shared/auth.ts";
+import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { requireOrgRole } from "../_shared/org-membership.ts";
 import {
   liveChargesBlocked,
   STRIPE_API_VERSION,
@@ -54,12 +50,11 @@ import {
 } from "../_shared/payment-account-doc.ts";
 
 type Body = {
-  placeId?: string;
-  projectId?: string;
+  orgId?: string;
   returnUrl?: string;
   refreshUrl?: string;
   /** ISO-3166-1 alpha-2, allowlisted (MESITA_CONNECT_COUNTRIES). Defaults to
-   *  MX — every place onboarded so far is Mexican — but it is validated, not
+   *  MX — every organization onboarded so far is Mexican — but it is validated, not
    *  trusted, because Stripe bakes it into the account permanently. */
   country?: string;
 };
@@ -94,8 +89,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const placeId = readPlaceIdAlias(bodyRes.body);
-  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
+  const orgId = (bodyRes.body.orgId ?? "").trim();
+  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
 
   // Country is PERMANENT on the account Stripe is about to create, so it is
   // validated against the allowlist here — before the ownership check, before
@@ -113,13 +108,8 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  const ownerRes = await requireOwner(
-    admin,
-    authRes.user,
-    placeId,
-    "Only owners can start payment onboarding.",
-  );
-  if (!ownerRes.ok) return ownerRes.response;
+  const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
+  if (!roleRes.ok) return roleRes.response;
 
   const stripeKey = stripeSecretKey();
   if (stripeKey) {
@@ -129,9 +119,9 @@ Deno.serve(async (req) => {
   const mockMode = isMockConnect(stripeKey);
 
   const existingRes = await admin
-    .from("place_payment_accounts")
+    .from("organization_payment_accounts")
     .select()
-    .eq("place_id", placeId)
+    .eq("organization_id", orgId)
     .maybeSingle();
   if (existingRes.error) {
     return json({ ok: false, error: `account_read: ${existingRes.error.message}` }, 500);
@@ -154,9 +144,9 @@ Deno.serve(async (req) => {
     }
     const inserted = await writePaymentAccount(admin, {
       mode: "insert",
-      placeId,
+      organizationId: orgId,
       row: {
-        stripe_account_id: mockConnectAccountId(placeId),
+        stripe_account_id: mockConnectAccountId(orgId),
         livemode: false,
       },
     });
@@ -171,9 +161,9 @@ Deno.serve(async (req) => {
   const livemode = keyIsLive(stripeKey!);
   const origin = req.headers.get("origin") ?? "";
   const returnUrl = bodyRes.body.returnUrl ??
-    `${origin}/place/${placeId}/promos?connect=return`;
+    `${origin}/?org=${orgId}&connect=return`;
   const refreshUrl = bodyRes.body.refreshUrl ??
-    `${origin}/place/${placeId}/promos?connect=refresh`;
+    `${origin}/?org=${orgId}&connect=refresh`;
 
   const linkFor = async (accountId: string) => {
     const link = await stripe.accountLinks.create({
@@ -221,7 +211,7 @@ Deno.serve(async (req) => {
       country,
       controller: MESITA_CONNECT_CONTROLLER,
       capabilities: MESITA_CONNECT_CAPABILITIES,
-      metadata: { place_id: placeId },
+      metadata: { organization_id: orgId },
     });
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);
@@ -232,13 +222,13 @@ Deno.serve(async (req) => {
   const written = existing
     ? await writePaymentAccount(admin, {
       mode: "update",
-      by: "place_id",
-      id: placeId,
+      by: "organization_id",
+      id: orgId,
       patch: { stripe_account_id: account.id, ...snapshot },
     })
     : await writePaymentAccount(admin, {
       mode: "insert",
-      placeId,
+      organizationId: orgId,
       row: { stripe_account_id: account.id, ...snapshot },
     });
   if (!written.ok || !written.row) {

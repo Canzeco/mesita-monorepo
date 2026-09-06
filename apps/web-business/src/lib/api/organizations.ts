@@ -9,6 +9,7 @@
 // Every call is a business-web EF, so an ordinary business account works
 // here — nothing on this path needs super-admin.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PaymentAccountState } from "@/lib/model/types";
 import { invokeEF } from "./_invoke";
 
 export type OrgRole = "owner" | "editor" | "viewer";
@@ -73,6 +74,75 @@ export async function apiUpdateOrganization(
     "Couldn't save the legal details.",
   );
   return organization;
+}
+
+/** The organization's Stripe Connect mirror row (MESITA-1545: the merchant
+ *  of record is the organization). Snake case — this is the EF's row shape. */
+export type PaymentAccount = {
+  organization_id: string;
+  stripe_account_id: string;
+  livemode: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+  payouts_enabled: boolean;
+  requirements_due: string[];
+  disabled_reason: string | null;
+  country: string | null;
+};
+
+/** One derivation, shared by the badge and the pill — never re-derived. */
+export function paymentAccountState(
+  account: PaymentAccount | null,
+  orphaned: boolean,
+): PaymentAccountState {
+  if (!account) return "none";
+  if (orphaned || account.disabled_reason) return "restricted";
+  if (!account.details_submitted) return "pending";
+  if (account.charges_enabled && account.payouts_enabled) return "live";
+  if (account.charges_enabled) return "charges_only";
+  return "pending";
+}
+
+export async function apiGetPaymentAccount(
+  client: SupabaseClient,
+  orgId: string,
+): Promise<{ account: PaymentAccount | null; orphaned: boolean }> {
+  const { account, orphaned } = await invokeEF<{
+    account: PaymentAccount | null;
+    orphaned: boolean;
+  }>(
+    client,
+    "business-web-get-payment-account",
+    { orgId },
+    "Couldn't load the payment account.",
+  );
+  return { account: account ?? null, orphaned: orphaned === true };
+}
+
+export async function apiStartPaymentOnboarding(
+  client: SupabaseClient,
+  input: { orgId: string; country: string },
+): Promise<{ url: string | null; mock: boolean }> {
+  const { url, mock } = await invokeEF<{ url: string | null; mock: boolean }>(
+    client,
+    "business-web-start-payment-onboarding",
+    input,
+    "Couldn't start payment onboarding.",
+  );
+  return { url: url ?? null, mock: mock === true };
+}
+
+export async function apiGetPaymentDashboardLink(
+  client: SupabaseClient,
+  orgId: string,
+): Promise<string | null> {
+  const { url } = await invokeEF<{ url: string | null }>(
+    client,
+    "business-web-get-payment-dashboard-link",
+    { orgId },
+    "Couldn't open the payments dashboard.",
+  );
+  return url ?? null;
 }
 
 /** scope "org" needs organizationId; scope "public" is the pool. */

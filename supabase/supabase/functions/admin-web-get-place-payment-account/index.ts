@@ -63,11 +63,27 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const rowRes = await admin
-    .from("place_payment_accounts")
-    .select()
-    .eq("place_id", placeId)
+  // The merchant of record is the ORGANIZATION (MESITA-1545): the place's
+  // account is its organization's account. A pooled place has none.
+  const orgRes = await admin
+    .from("projects")
+    .select("organization_id")
+    .eq("id", placeId)
     .maybeSingle();
+  if (orgRes.error) {
+    return json({ ok: false, error: `org_read: ${orgRes.error.message}` }, 500);
+  }
+  const orgId =
+    (orgRes.data as { organization_id?: string | null } | null)
+      ?.organization_id ?? null;
+
+  const rowRes = orgId
+    ? await admin
+      .from("organization_payment_accounts")
+      .select()
+      .eq("organization_id", orgId)
+      .maybeSingle()
+    : { data: null, error: null };
   if (rowRes.error) {
     return json({ ok: false, error: `account_read: ${rowRes.error.message}` }, 500);
   }
@@ -86,8 +102,8 @@ Deno.serve(async (req) => {
       const snapshot = accountSnapshotFromStripe(account, keyIsLive(stripeKey!));
       const written = await writePaymentAccount(admin, {
         mode: "update",
-        by: "place_id",
-        id: placeId,
+        by: "organization_id",
+        id: orgId!,
         patch: snapshot,
       });
       if (written.ok && written.row) row = written.row;

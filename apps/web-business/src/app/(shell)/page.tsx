@@ -15,7 +15,12 @@ import { AddOrganizationDisclosure } from "@/components/console/AddOrganizationD
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
 import { OrgIdentityCard } from "@/components/console/OrgIdentityCard";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiListOrganizations } from "@/lib/api/organizations";
+import {
+  apiGetPaymentAccount,
+  apiListOrganizations,
+  type PaymentAccount,
+} from "@/lib/api/organizations";
+import { PaymentsCard } from "@/components/console/PaymentsCard";
 import { resolveActiveOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -72,15 +77,27 @@ export default async function OrganizationPage({
     );
   }
 
+  // The merchant of record is the organization (MESITA-1545). Refresh-through
+  // read: while the webhook endpoint is missing (MESITA-1531), this load IS
+  // the moment the mirror syncs with Stripe. A failure degrades to "none" and
+  // the card's own actions report their errors.
+  let account: PaymentAccount | null = null;
+  let orphaned = false;
+  try {
+    ({ account, orphaned } = await apiGetPaymentAccount(supabase, org.id));
+  } catch (e) {
+    console.error("[organization] business-web-get-payment-account:", e);
+  }
+
   return (
     <>
       <div className="flex items-center gap-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {org.name}
         </h1>
-        {/* No payment account exists yet for any organization, so this is
-            Not connected until the merchant migration lands. */}
-        <OrgStateBadge state="not_connected" />
+        <OrgStateBadge
+          state={account?.charges_enabled ? "connected" : "not_connected"}
+        />
       </div>
 
       <OrgIdentityCard
@@ -90,6 +107,18 @@ export default async function OrganizationPage({
         currency={org.currency}
         myRole={org.myRole}
       />
+
+      <Section
+        title="Payments"
+        description="The Stripe account this organization gets paid through."
+      >
+        <PaymentsCard
+          orgId={org.id}
+          account={account}
+          orphaned={orphaned}
+          isOwner={org.myRole === "owner"}
+        />
+      </Section>
 
       <Section
         title="Places"
