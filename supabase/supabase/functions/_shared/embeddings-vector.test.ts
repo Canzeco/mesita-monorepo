@@ -60,7 +60,7 @@ Deno.test("clampToWordLimit never truncates mid-word", () => {
   const long =
     "Strana is a high-energy night club located in the upscale Del Valle " +
     "neighborhood of San Pedro Garza Garcia. Known for its vibrant atmosphere, " +
-    "the venue features immersive lighting, acrobatic performances, and pulsating " +
+    "the place features immersive lighting, acrobatic performances, and pulsating " +
     "music from top DJs and international artists, creating an unforgettable " +
     "nightlife experience. With a focus on glamour and spectacle, Strana offers " +
     "a unique setting for those seeking an extraordinary night out.";

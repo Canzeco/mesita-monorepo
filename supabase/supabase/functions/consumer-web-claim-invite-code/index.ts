@@ -4,7 +4,7 @@
 // code.
 //
 // Authenticated. The TRANSFERABLE invitation door (MESITA-1168). A partner —
-// a modelling agency, a venue, an event — is handed a batch of 10-digit PINs
+// a modelling agency, a place, an event — is handed a batch of 10-digit PINs
 // and gives them to people Mesita has never met. The holder signs up on their
 // own schedule, enters the PIN here, and the invitation door opens.
 //

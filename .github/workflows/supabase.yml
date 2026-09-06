@@ -6,10 +6,12 @@ on:
     paths:
       - "supabase/**"
       - ".github/workflows/supabase.yml"
-  pull_request:
-    paths:
-      - "supabase/**"
-      - ".github/workflows/supabase.yml"
+  # Unfiltered on `pull_request` (MESITA-1576): a required check that a path
+  # filter skips never reports, and branch protection blocks a PR on an
+  # "Expected" check that will never arrive. The `changes` job below decides
+  # per-PR whether there's anything to check; a PR outside `supabase/**` gets
+  # a cheap skip that still reports, so the name is always there to require.
+  pull_request: {}
   # MESITA-1379. This suite can go red with NO commit touching it, and the
   # path filters above mean nothing would run to find out — main reads green
   # while it is broken, and the next PR to touch supabase/** inherits the red.
@@ -41,8 +43,30 @@ defaults:
     working-directory: supabase/supabase/functions
 
 jobs:
+  # MESITA-1576: decides once whether this event touches supabase/** so the
+  # three jobs below can report a real (not "Expected") status on every PR
+  # without re-running the checkout+diff themselves. `push` to main never
+  # skips — main-protection only cares about `pull_request`, and `changed`
+  # here always resolves 'true' for a push (no `base` to diff against).
+  changes:
+    name: detect supabase changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.supabase == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            supabase:
+              - 'supabase/**'
+              - '.github/workflows/supabase.yml'
+
   check:
     name: deno lint · test
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -143,6 +167,8 @@ jobs:
   # otherwise never load (that is how two linklab runners sat broken for weeks).
   typecheck:
     name: deno check
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -189,6 +215,8 @@ jobs:
   # cannot PUT the ruleset (403); the law is the names, the click is residue.
   schema:
     name: pgTAP · schema invariants
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

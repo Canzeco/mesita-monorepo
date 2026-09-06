@@ -131,14 +131,20 @@ export const CONSUMER_ROUTES = {
   visit: {
     prefix: "/visit/",
   },
-  // ACTIVITY — the container tab, routed at /inbox. It holds four sections and
-  // is named for none of them; naming it for the mechanism ("Agent") would
-  // break the day places integrate directly.
+  // ACTIVITY — the container tab, routed at /inbox. It holds three sections
+  // and is named for none of them; naming it for the mechanism ("Agent")
+  // would break the day places integrate directly.
   inbox: {
     root: "/inbox",
-    // FOUR sections, and the ORDER is the product decision (Pato, 2026-09-01):
+    // THREE sections, and the ORDER is the product decision (Pato, 2026-09-01,
+    // Orders folded 2026-09-06 — MESITA-1389):
     //
-    //   Alerts · Visits · Orders · Reservations
+    //   Alerts · Visits · Reservations
+    //
+    // Orders folded into Visits: it had no table, no Edge Function and no
+    // type, so it was a pill that could never render anything. An order is a
+    // visit you didn't sit down for, and it reappears as rows inside Visits
+    // when it becomes real. /inbox/orders 308s to /inbox/visits.
     //
     // Wallet LEFT for Pay — Activity holds events, a wallet holds instruments,
     // and keeping it here was the category error named on 08-31. Alerts leads
@@ -153,7 +159,6 @@ export const CONSUMER_ROUTES = {
     // THAT. Sections are real nested routes so each is linkable.
     notifications: "/inbox/notifications",
     visits: "/inbox/visits",
-    orders: "/inbox/orders",
     reservations: "/inbox/reservations",
   },
   inboxDefault: "/inbox/visits",
@@ -176,6 +181,10 @@ export const CONSUMER_ROUTES = {
     // Wallet's route while it lived under Activity (#1430 -> 2026-09-01). It
     // was live in production, so the bookmarks are real; it 308s to Pay > Wallet.
     inboxCredits: "/inbox/credits",
+    // Orders' route while it was its own Activity section (#1430 ->
+    // 2026-09-06, MESITA-1389). Live in production, so the bookmarks are
+    // real; it 308s straight to Visits, the section it folded into.
+    inboxOrders: "/inbox/orders",
     // Wallet's route for the day it was a top-level TAB (#1492, 2026-09-05 ->
     // 09-06). It shipped to production, so its bookmarks are as real as the
     // other two, and like them it 308s STRAIGHT to /new-visit/wallet — never

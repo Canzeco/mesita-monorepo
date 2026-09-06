@@ -317,7 +317,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // a Mesita-entered number). Email is never written by the enricher at all.
   //
   // Corrections (MESITA-1190) — a pinned phone outranks the Google spine.
-  // `phone` is a CorrectableField and the Reservationist calling a venue is
+  // `phone` is a CorrectableField and the Reservationist calling a place is
   // exactly how we learn the listed number is dead, so this write is the second
   // of the two persist doors that must stand down for a pin. (The other is S8
   // in supabase-cron-enrich-place-contents, which owns hours/address/website/

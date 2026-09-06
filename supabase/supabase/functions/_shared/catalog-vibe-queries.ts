@@ -10,7 +10,7 @@ export const CATALOG_VIBE_QUERIES: VibeQuery[] = [
   { key: "rooftop", label: "Rooftops", query: "rooftop bar terrace city view" },
   { key: "natural-wine", label: "Natural wine", query: "natural wine bar small plates" },
   { key: "breakfast", label: "Breakfast", query: "breakfast brunch cafe" },
-  { key: "live-music", label: "Live music", query: "live music venue jazz concert" },
+  { key: "live-music", label: "Live music", query: "live music place jazz concert" },
   { key: "cheap-eats", label: "Cheap eats", query: "cheap eats casual local food" },
   { key: "fine-dining", label: "Fine dining", query: "fine dining tasting menu" },
   { key: "seafood", label: "Seafood", query: "fresh seafood oyster bar" },

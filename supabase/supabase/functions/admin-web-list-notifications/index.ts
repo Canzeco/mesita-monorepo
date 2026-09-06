@@ -28,7 +28,7 @@
 //
 //   consumer.place_saved                a consumer saved the place
 //   rewards.ticket_created              a reward ticket was opened in-app
-//   rewards.ticket_visit                its QR met the venue (first scan)
+//   rewards.ticket_visit                its QR met the place (first scan)
 //   rewards.ticket_closed               staff marked the visit done (v3b;
 //                                       state=revealed — not a payment event)
 //   rewards.review_submitted            the post-visit review landed
@@ -506,7 +506,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // A first scan is the visit signal — the guest's QR met the venue.
+    // A first scan is the visit signal — the guest's QR met the place.
     for (const r of ((tVisitRes.data ?? []) as unknown[]) as Array<ActivityRow & {
       state: string;
       first_scanned_at: string;

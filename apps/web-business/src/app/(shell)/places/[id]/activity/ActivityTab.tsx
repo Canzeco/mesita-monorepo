@@ -2,7 +2,7 @@
 
 // Activity — admin's Activity feed, shipped LIVE here rather than parked.
 // In the operator console this tab sits behind a Soon gate because the feed
-// reads as empty scaffolding across 20k places; on a venue's own screen it
+// reads as empty scaffolding across 20k places; on a place's own screen it
 // is the tab they open most, so it ships with real numbers and an honest
 // zero state.
 //

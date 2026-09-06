@@ -26,7 +26,7 @@ export default function Onboard() {
   const [firstName, setFirstName] = useState(profile?.first_name ?? '');
   // Last name is required, not cosmetic: the EF joins first + last into
   // full_name, and that's the name the reservation agent books the table
-  // under with the venue (web-consumer onboarding parity).
+  // under with the place (web-consumer onboarding parity).
   const [lastName, setLastName] = useState(profile?.last_name ?? '');
   const [sex, setSex] = useState<SexValue | null>(storedSex);
   const [birthday, setBirthday] = useState(profile?.birthday ?? '');

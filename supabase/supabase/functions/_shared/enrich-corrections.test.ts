@@ -14,7 +14,7 @@ import {
 
 // THE SHIP GATE for corrections (MESITA-1190).
 //
-// The whole feature is one claim: a fact an agent learned by CALLING the venue
+// The whole feature is one claim: a fact an agent learned by CALLING the place
 // outranks a fact the Intaker can refetch. Two things can break that claim
 // quietly, and both are tested here.
 //
@@ -134,7 +134,7 @@ Deno.test("identity and generated prose are not correctable", () => {
   }
 });
 
-Deno.test("Ojo never auto-applies; the venue's own team always does", () => {
+Deno.test("Ojo never auto-applies; the place's own team always does", () => {
   const base = {
     placeId: "p",
     field: "hours" as const,

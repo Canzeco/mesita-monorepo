@@ -7,7 +7,7 @@
 //
 // SWEEP ORDER IS LOAD-BEARING (eng-review 2026-08-04): dead work is buried
 // BEFORE live work is woken, so a recovery after a cron outage can never dial
-// a venue about a slot that already passed.
+// a place about a slot that already passed.
 //
 //   1 · expiry     pending 4 h past reserved_at → 'unresolved' (no call).
 //                  `passed` stays DERIVED in the app; confirmed rows are
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
   const { data: ntRows } = await admin
     .from("reservation_tickets")
     .select("id")
-    .in("notice_kind", ["venue_cancel", "guest_cancel"])
+    .in("notice_kind", ["place_cancel", "guest_cancel"])
     .or(`notice_state.eq.pending,and(notice_state.eq.scheduled,notice_next_at.lte.${nowIso})`)
     .limit(limit);
   const notices = { due: (ntRows ?? []).length, woken: 0 };

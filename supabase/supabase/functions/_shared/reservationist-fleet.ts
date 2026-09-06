@@ -17,6 +17,15 @@
 // mode "fleet" makes the live workspace match it (agents created once — their
 // prompts are then console-tunable and never overwritten; tools + attachments
 // re-synced on every run).
+//
+// `venue` is a banned word (MESITA-1591) everywhere EXCEPT the handful of
+// literals below ({{venue_name}}, {{venue_alternatives}}, the call_context
+// value "cancelled_by_venue", and the "e_talk_venue_cancel_done" node it
+// names): those are baked into the LIVE agent's prompt text right now. Renaming
+// them here without also re-running the sync would desync the deployed voice
+// agent from this file — a real phone-call break, not a lint nit — so they
+// stay `venue_*` until a human runs supabase-edgefunc-sync-reservationist
+// alongside the rename, in one session (I-5).
 
 export type FleetAgentKey = "a1" | "a2" | "a3" | "a4";
 

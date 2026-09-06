@@ -6,7 +6,7 @@ import type { NeedsAttentionRow } from "./catalog";
 
 function whyAttention(row: NeedsAttentionRow): string {
   if (row.notice_state === "failed") {
-    return row.notice_kind === "venue_cancel"
+    return row.notice_kind === "place_cancel"
       ? "Place never told the table was cancelled"
       : "Guest never told the table was cancelled";
   }

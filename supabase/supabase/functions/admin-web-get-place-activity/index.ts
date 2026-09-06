@@ -28,7 +28,7 @@
 //     edited. just must call the ai … just give the phone numbers to
 //     reschedule". No reservation write exists here, and the tab renders no
 //     edit affordance — rescheduling happens on the phone with a3 (guests) /
-//     a4 (venues), the only path that keeps the agent's own state consistent.
+//     a4 (places), the only path that keeps the agent's own state consistent.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 //
@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
   if (!projectId) return jsonError("placeId is required", 400);
   const limit = clampIntRange(Number(bodyRes.body.limit ?? 8), 1, 50);
 
-  // A visit = the guest's QR met the venue (first_scanned_at stamped).
+  // A visit = the guest's QR met the place (first_scanned_at stamped).
   // A close = state revealed (v3b — "marks as done", not a payment).
   const [
     savesRes,

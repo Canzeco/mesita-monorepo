@@ -94,6 +94,8 @@ export function guestLegFirstMessage(v: ReservationLegVars): string {
 // cancelled and the OTHER side must hear it. call_context rides as
 // "cancellation" (a1 → place) / "cancelled_by_venue" (a2 → guest); the fleet
 // graphs branch on it, and these per-call overrides cover the fallback agent.
+// "cancelled_by_venue" is a live ElevenLabs prompt literal (reservationist-fleet.ts)
+// — renames only together with a synced agent config (MESITA-1591); deferred.
 
 /** Leg 5 · consumer → business: the guest cancelled a CONFIRMED table. */
 export function placeCancelNoticePrompt(v: ReservationLegVars): string {
@@ -164,7 +166,11 @@ export function legDynamicVariables(
 ): Record<string, string | number | boolean> {
   return {
     call_direction: direction,
-    venue_name: v.placeName, // ElevenLabs wire key (legacy name)
+    // ElevenLabs wire key — {{venue_name}} is baked into the live
+    // Reservationist prompt text (reservationist-fleet.ts); renaming the key
+    // desyncs the agent unless a config sync ships in the same change
+    // (MESITA-1591 defers this — see reservation-legs.ts / fleet header).
+    venue_name: v.placeName,
     guest_name: v.guestName,
     guest_phone: v.guestPhone,
     reference_code: v.referenceCode,
@@ -175,7 +181,7 @@ export function legDynamicVariables(
     special_requests: v.specialRequests,
     call_context: extra?.callContext ??
       (direction === "guest_confirmation" ? "confirmation" : "booking"),
-    venue_alternatives: extra?.placeAlternatives ?? "", // ElevenLabs wire key
+    venue_alternatives: extra?.placeAlternatives ?? "", // ElevenLabs wire key, same reason
     // Generation token — bound to the outbound tools' run_id property so a
     // report from an orphaned call is recognized and ignored server-side.
     run_id: v.runId,

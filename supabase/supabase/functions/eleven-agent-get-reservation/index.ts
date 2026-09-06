@@ -38,7 +38,7 @@ type AgentTicket = {
   reference_code: string | null;
   guest_name: string;
   place_name: string;
-  /** Venue-local es-MX date + time the agent can speak back. */
+  /** Place-local es-MX date + time the agent can speak back. */
   date_es: string;
   time_es: string;
   reserved_at: string;

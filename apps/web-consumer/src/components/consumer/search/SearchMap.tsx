@@ -78,7 +78,7 @@ export type SearchMapPin = {
  * fire — re-picking the same place must pan back even though its lat/lng
  * did not change, which the selection-keyed PanTo cannot do. With
  * `bounds` (a Location's Details viewport) the camera FITS them, so a
- * city opens wide and a neighbourhood close; without, it pans venue-style.
+ * city opens wide and a neighbourhood close; without, it pans place-style.
  */
 export type CameraAnchor = {
   gen: number;
@@ -137,7 +137,7 @@ export function SearchMap({
    * from `selectedId`, which also carries defaultRailSelection's card-0
    * FALLBACK: a fallback rings the card but must never pan — after a
    * Location anchor fits a whole city, a fallback pan-and-zoom to the
-   * closest venue would collapse the view nobody asked to leave.
+   * closest place would collapse the view nobody asked to leave.
    */
   panTargetId?: string | null;
   onSelectPlace: (place: Place) => void;
@@ -451,7 +451,7 @@ function PanTo({ lat, lng }: { lat: number; lng: number }) {
 // the same entity pans back after the guest wandered off, while plain
 // re-renders (the object is state-held, never a literal) fight nobody.
 // A Location fits its own viewport bounds (city wide, neighbourhood
-// close); a Place pans venue-style. Both count as programmatic so the
+// close); a Place pans place-style. Both count as programmatic so the
 // idle that follows rebases the km origin instead of accruing travel.
 function AnchorCamera({ anchor }: { anchor: CameraAnchor }) {
   const map = useMap();

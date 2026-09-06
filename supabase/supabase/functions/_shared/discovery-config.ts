@@ -258,6 +258,43 @@ export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
 
+/**
+ * Per-signal ceilings, for the signals the uniform WEIGHT_MAX is wrong for.
+ *
+ * The 4 above is reasoned from a signal that floors around 0.85. `mesita_level`
+ * floors at LEVEL_LISTED = 0.04, so the same exponent means something else
+ * entirely: the promoting-over-listed ratio is (1 / 0.04)^w = 25^w.
+ *
+ *   w = 1   25x
+ *   w = 2   625x        the ceiling (Pato, MESITA-1410)
+ *   w = 4   390,625x    the uniform WEIGHT_MAX
+ *
+ * Every other signal is bounded in (0, 1] and abstains at 1, so at w = 4 there
+ * is no combination of relevance that can outrank money — Level stops being a
+ * signal and becomes a sort key. By the WEIGHT_MAX comment's own test ("past
+ * that the signal is not important, it is a filter"), Level is filter-shaped at
+ * a far lower exponent than the other seven.
+ *
+ * WHY 2 (Pato, MESITA-1410). Level is entirely bought: `plan` is money and
+ * `promoting` is only true if the place pays, so turning its weight up is
+ * turning money up. At the uniform ceiling of 4 the floor rung becomes
+ * 0.04^4 ≈ 0.0000026 — a ~390,000x demotion that mathematically erases a
+ * non-paying place from ranking regardless of its other signals, a pay-to-win
+ * filter rather than a tunable importance weight. 2 (0.04^2 = 0.0016, a 625x
+ * demotion) keeps Level tunable and meaningful without letting it fully
+ * override the rest of the blend. The rungs themselves (LEVEL_LISTED /
+ * LEVEL_PARTNER / LEVEL_PROMOTING) are unchanged — this caps the exponent
+ * only.
+ */
+export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
+  mesita_level: 2,
+};
+
+/** The ceiling that actually applies to one signal's exponent. */
+export function weightMaxFor(key: SignalKey): number {
+  return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
+}
+
 /** Bought slots can never be denser than every other card. */
 export const SLOT_MIN_EVERY_NTH = 2;
 export const SLOT_MAX_EVERY_NTH = 50;
@@ -845,7 +882,12 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
 
   const weights = {} as Record<SignalKey, number>;
   for (const key of SIGNAL_KEYS) {
-    const v = num(rawWeights[key], DISCOVERY_DEFAULTS.weights[key], WEIGHT_MIN, WEIGHT_MAX);
+    const v = num(
+      rawWeights[key],
+      DISCOVERY_DEFAULTS.weights[key],
+      WEIGHT_MIN,
+      weightMaxFor(key),
+    );
     weights[key] = Math.round(v * 100) / 100;
   }
 

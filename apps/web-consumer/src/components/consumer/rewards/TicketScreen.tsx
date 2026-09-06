@@ -70,6 +70,7 @@ import { JourneyRail } from "@/components/consumer/rewards/JourneyRail";
 import { TicketHero } from "@/components/consumer/rewards/TicketHero";
 import { TicketSkeleton } from "@/components/consumer/rewards/TicketSkeleton";
 import { TaskProof } from "@/components/consumer/rewards/TaskProof";
+import { MesitaPayDisclosureDialog } from "@/components/consumer/rewards/MesitaPayDisclosureDialog";
 import {
   GoogleGlyph,
   InstagramGlyph,
@@ -108,7 +109,7 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerClass, useConsumerIdentity } from "@/lib/class-context";
 import { classProperLabel } from "@/lib/consumer-data";
-import { useStoredString } from "@/lib/local-store";
+import { useStoredString, useStoredStringSet } from "@/lib/local-store";
 import { strategyForPlaceRow } from "@/lib/promo-rates";
 import { peekTicketSeed } from "@/lib/ticket-seed";
 import {
@@ -172,6 +173,7 @@ const ACTION_SHORT = {
 const PAY_METHOD_LABEL = {
   at_place: "Paid at the place",
   mesita: "Card through Mesita",
+  mesita_pay: "Paid with Mesita Pay",
 } as const satisfies Record<string, string>;
 
 /** The freshest of the wallet row and the 10s poll, by updated_at. */
@@ -441,7 +443,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     [supabase, ticketId, tickets, setStepChoice],
   );
 
-  // ── Pay (step 5): the ONE live path — the guest pays the place. ─────────
+  // ── Pay (step 5): at_place, or Mesita Pay (MESITA-1414). ────────────────
   const [payBusy, setPayBusy] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
   const confirmAtPlace = useCallback(async () => {
@@ -464,6 +466,51 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
       setPayBusy(false);
     }
   }, [supabase, ticketId, setStepChoice]);
+
+  const confirmMesitaPay = useCallback(async () => {
+    setPayBusy(true);
+    setPayError(null);
+    try {
+      await apiSelectTicketPayment(supabase, ticketId, "mesita_pay");
+      const {
+        ticket: fresh,
+        visits: policy,
+        settlement: rails,
+      } = await apiGetTicket(supabase, ticketId);
+      if (policy) setVisits(policy);
+      if (rails) setSettlement(rails);
+      setPolled(fresh);
+      setStepChoice(null);
+    } catch (err) {
+      setPayError(
+        errMsg(err, "Couldn't charge your card — try again or pay at the register."),
+      );
+    } finally {
+      setPayBusy(false);
+    }
+  }, [supabase, ticketId, setStepChoice]);
+
+  // Disclosed once per place (Pato decision 2026-09-02): cloning the card
+  // onto that place's connected Stripe account creates a customer record
+  // in ITS dashboard, so the "once" is per organization, and place is the
+  // guest-facing proxy for that.
+  const [disclosedPlaces, markPlaceDisclosed] = useStoredStringSet(
+    "mesita-pay-disclosed-places",
+  );
+  const [showMesitaPayDisclosure, setShowMesitaPayDisclosure] = useState(false);
+  const mesitaPayPlaceId = ticket?.place?.id ?? null;
+  const payWithMesitaPay = useCallback(() => {
+    if (mesitaPayPlaceId && !disclosedPlaces.has(mesitaPayPlaceId)) {
+      setShowMesitaPayDisclosure(true);
+      return;
+    }
+    void confirmMesitaPay();
+  }, [mesitaPayPlaceId, disclosedPlaces, confirmMesitaPay]);
+  const acceptMesitaPayDisclosure = useCallback(() => {
+    if (mesitaPayPlaceId) markPlaceDisclosed(mesitaPayPlaceId);
+    setShowMesitaPayDisclosure(false);
+    void confirmMesitaPay();
+  }, [mesitaPayPlaceId, markPlaceDisclosed, confirmMesitaPay]);
 
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportDetails, setReportDetails] = useState("");
@@ -1095,8 +1142,16 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
             error={payError}
             cardRailAvailable={settlement?.cardRail ?? false}
             onConfirmAtPlace={() => void confirmAtPlace()}
+            onPayMesitaPay={payWithMesitaPay}
           />
         ) : null}
+
+        <MesitaPayDisclosureDialog
+          open={showMesitaPayDisclosure}
+          onClose={() => setShowMesitaPayDisclosure(false)}
+          onAccept={acceptMesitaPayDisclosure}
+          placeName={placeName}
+        />
 
         {step === "validate" ? <StepValidate placeName={placeName} /> : null}
 

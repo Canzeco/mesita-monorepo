@@ -3,7 +3,7 @@
 // THE Reservationist call engine — the sandbox AND the admin Playground are
 // retired (2026-07-27): every ticket is a real public.reservation_tickets row and
 // testing happens through the consumer app with config testCall mode ON (the
-// venue leg dials the test line instead of a real place). Invoked with
+// place leg dials the test line instead of a real place). Invoked with
 // { reservation_id } by:
 //   · consumer-web-create-reservation  (guest tapped Reserve)
 //   · consumer-mcp                     (assistant-created reservation)
@@ -15,7 +15,7 @@
 // creator EFs never block on a phone call.
 //
 //   Leg 1 · consumer → business  up to ATTEMPTS (fixed 2) call intents — the
-//     agent calls the venue ON BEHALF OF the guest; no answer → next intent.
+//     agent calls the place ON BEHALF OF the guest; no answer → next intent.
 //     Once answered, the verdict: what a1 RECORDED via a1_report_outcome
 //     (confirmed / counter_offer + alternatives / declined) outranks the
 //     post-call analysis heuristic (call_successful=success → CONFIRMED).
@@ -28,22 +28,22 @@
 //
 // RETRIES ARE OPEN-HOURS AWARE (no longer seconds apart): a no-answer parks
 // the ticket with attempts_state='scheduled' + next_attempt_at — +5 min if the
-// venue is open right now, else ~30 min after it next opens — and
+// place is open right now, else ~30 min after it next opens — and
 // supabase-cron-reservation-retries wakes it. A run therefore places ONE call
 // and returns; the run that resumes reads call_attempts and continues the
 // sequence. See _shared/reservation-retry.ts.
 //
 // Number resolution, per side:
 //   business — reservations.place_phone when pre-resolved (test tickets),
-//     else config testCall (test mode defaults ON → never rings a real venue
+//     else config testCall (test mode defaults ON → never rings a real place
 //     by accident), else places.reservation_target when the channel is phone (MESITA-842 —
 //     voice-only; whatsapp/instagram picks ignored → places.phone fallback).
 //   consumer — reservations.consumer_phone when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
-// And per LINE: leg 1 dials FROM the venue-facing line, leg 2 FROM the
+// And per LINE: leg 1 dials FROM the place-facing line, leg 2 FROM the
 // guest-facing one, so each side saves a different caller ID and a callback
-// reaches the right inbound agent (a4 for venues, a3 for guests) without a
+// reaches the right inbound agent (a4 for places, a3 for guests) without a
 // caller-ID lookup. An unresolvable consumer line degrades to the business
 // line rather than dropping a reservation that may already be confirmed.
 //
@@ -107,7 +107,7 @@ import { rowPlaceId } from "../_shared/place-id.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
-// the side that DIDN'T cancel (legs 5/6, notice_kind picks a1-venue/a2-guest).
+// the side that DIDN'T cancel (legs 5/6, notice_kind picks a1-place/a2-guest).
 type Body = { reservation_id?: string; intent?: string };
 
 // ── Run pacing — one background task under the edge-runtime ~400s wall ───────
@@ -232,13 +232,13 @@ async function guardedRecord(
   if (!result.ok || !result.row) throw new OrphanedRunError();
 }
 
-// Per-place daily venue-call meter (abuse guard): atomic bump, returns the
+// Per-place daily place-call meter (abuse guard): atomic bump, returns the
 // count AFTER this call. Failure to count must never block a call — the
 // meter is a guard, not a ledger.
-async function bumpVenueCalls(admin: SupabaseClient, projectId: string): Promise<number | null> {
+async function bumpPlaceCalls(admin: SupabaseClient, projectId: string): Promise<number | null> {
   const { data, error } = await admin.rpc("bump_reservation_call_counter", { pid: projectId });
   if (error) {
-    console.error(`[reservation-call] venue-call counter failed: ${error.message}`);
+    console.error(`[reservation-call] place-call counter failed: ${error.message}`);
     return null;
   }
   return typeof data === "number" ? data : null;
@@ -264,7 +264,7 @@ async function readReportedVerdict(
   };
 }
 
-// After the venue answered, wait for the post-call verdict.
+// After the place answered, wait for the post-call verdict.
 async function watchVerdict(
   key: string,
   conversationId: string,
@@ -284,7 +284,7 @@ async function watchVerdict(
   return "unknown";
 }
 
-// One line per audience: the venue leg dials from the business line, the guest
+// One line per audience: the place leg dials from the business line, the guest
 // leg from the consumer line. The business line is required; the consumer line
 // degrades to the business one rather than dropping a call that may matter.
 async function resolveLines(
@@ -311,7 +311,7 @@ async function resolveLines(
 // Leg 2/3 · business → consumer — ONE Confirmer call to the human, plus the
 // retry ladder (Docs › Reservations §B leg 3): a missed call parks
 // callback_state='scheduled' + callback_next_attempt_at per nextGuestCallAt
-// (+10 min, then +1 h, cap 3, quiet hours 09:00–22:00 venue-local, nothing
+// (+10 min, then +1 h, cap 3, quiet hours 09:00–22:00 place-local, nothing
 // within 30 min of the slot) and the retry cron re-fires this engine with
 // intent "callback_retry". Past the ladder the app is the fallback — never a
 // fourth ring.
@@ -342,7 +342,7 @@ async function callGuest(input: {
     await record({
       callback_state: "skipped",
       callback_next_attempt_at: null,
-      // Plain venue confirm: in-app state IS the ack. Counter-offers stay
+      // Plain place confirm: in-app state IS the ack. Counter-offers stay
       // open for the guest to pick an alternative in the app.
       ...(input.context === "confirmation"
         ? { consumer_confirmed_at: new Date().toISOString() }
@@ -635,9 +635,9 @@ async function runReminder(input: {
 }
 
 // Legs 5/6 · the cancellation notice — tell the side that DIDN'T cancel.
-// venue_cancel → a1 rings the venue to release the held table (paced by the
-// venue's own hours, cap 2); guest_cancel → a2 rings the guest (guest ladder,
-// cap 3). Delivery: a venue-side voicemail counts (it's the venue's own line);
+// place_cancel → a1 rings the place to release the held table (paced by the
+// place's own hours, cap 2); guest_cancel → a2 rings the guest (guest ladder,
+// cap 3). Delivery: a place-side voicemail counts (it's the place's own line);
 // a GUEST voicemail does NOT — one more ladder rung fires before we claim the
 // guest was told (eng-review 2026-08-04). Platform failures park on the
 // outage clock without consuming notice attempts. Exhausted → 'failed',
@@ -647,7 +647,7 @@ async function runCancelNotice(input: {
   reservationId: string;
   runId: string;
   key: string;
-  kind: "venue_cancel" | "guest_cancel";
+  kind: "place_cancel" | "guest_cancel";
   attemptsDone: number;
   outageRetries: number;
   toNumber: string;
@@ -657,15 +657,15 @@ async function runCancelNotice(input: {
   placeLng: number | null;
   reservedAtIso: string;
   projectId: string;
-  venueCallCap: number;
+  placeCallCap: number;
   guestNotify: "call" | "app";
 }): Promise<void> {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
-  const isPlaceSide = input.kind === "venue_cancel"; // wire kind keeps venue_cancel
+  const isPlaceSide = input.kind === "place_cancel";
   const who = isPlaceSide ? "place" : "guest";
-  // guest_cancel wire kind = tell the GUEST the venue cancelled (leg 6).
+  // guest_cancel wire kind = tell the GUEST the place cancelled (leg 6).
   if (!isPlaceSide && input.guestNotify === "app") {
     await record({
       notice_state: "skipped",
@@ -719,13 +719,13 @@ async function runCancelNotice(input: {
   };
   try {
     if (isPlaceSide) {
-      const calls = await bumpVenueCalls(admin, input.projectId);
-      if (calls !== null && calls > input.venueCallCap) {
+      const calls = await bumpPlaceCalls(admin, input.projectId);
+      if (calls !== null && calls > input.placeCallCap) {
         await record({
           notice_state: "scheduled",
           notice_next_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
           last_call_state:
-            `cancel notice (venue) — daily venue-call cap (${input.venueCallCap}) reached — deferred`
+            `cancel notice (place) — daily place-call cap (${input.placeCallCap}) reached — deferred`
               .slice(0, 200),
         });
         return;
@@ -743,7 +743,13 @@ async function runCancelNotice(input: {
       dynamicVariables: legDynamicVariables(
         isPlaceSide ? "business_booking" : "guest_confirmation",
         input.legVars,
-        { callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue", placeAlternatives: "" },
+        {
+          // "cancelled_by_venue" is a live ElevenLabs Reservationist prompt
+          // literal (_shared/reservationist-fleet.ts) — renames only together
+          // with a synced agent config (MESITA-1591); deferred, not touched.
+          callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue",
+          placeAlternatives: "",
+        },
       ),
       overrides: {
         prompt: isPlaceSide
@@ -870,7 +876,7 @@ async function runIntents(input: {
   attemptsDone: number;
   /** Log carried across runs so the ticket keeps its full history. */
   priorAttempts: AttemptEntry[];
-  /** The venue's weekly hours + lng — when the next try is allowed to fire. */
+  /** The place's weekly hours + lng — when the next try is allowed to fire. */
   placeHours: unknown;
   placeLng: number | null;
   businessNumber: string;
@@ -884,7 +890,7 @@ async function runIntents(input: {
   runId: string;
   projectId: string;
   outageRetries: number;
-  venueCallCap: number;
+  placeCallCap: number;
   /** Old reserved_at when this run MODIFIES a confirmed booking (T3/eng-review). */
   modificationOfIso: string | null;
   guestNotify: "call" | "app";
@@ -894,11 +900,11 @@ async function runIntents(input: {
   const attempts: AttemptEntry[] = [...input.priorAttempts];
   const record = (patch: Record<string, unknown>) =>
     guardedRecord(admin, reservationId, input.runId, patch);
-  // Failed to book new terms while the venue still HOLDS the old slot → the
+  // Failed to book new terms while the place still HOLDS the old slot → the
   // old hold must be released (leg 5 through the reschedule door). The cron
   // sweeps the owed notice within a minute.
   const releaseOldHold = input.modificationOfIso
-    ? { notice_kind: "venue_cancel", notice_state: "pending", notice_attempts: 0, notice_next_at: null }
+    ? { notice_kind: "place_cancel", notice_state: "pending", notice_attempts: 0, notice_next_at: null }
     : {};
   // Leg 2 with everything threaded — outcomes and the ladder live in callGuest.
   const guestCall = (
@@ -961,9 +967,9 @@ async function runIntents(input: {
         last_call_state: `intent ${n}: dialing`,
       });
 
-      // Per-place daily meter — booking calls and venue notices share it.
-      const meter = await bumpVenueCalls(admin, input.projectId);
-      if (meter !== null && meter > input.venueCallCap) {
+      // Per-place daily meter — booking calls and place notices share it.
+      const meter = await bumpPlaceCalls(admin, input.projectId);
+      if (meter !== null && meter > input.placeCallCap) {
         attempts.pop(); // never rang — the entry must not count
         await record({
           attempts,
@@ -971,7 +977,7 @@ async function runIntents(input: {
           attempts_state: "scheduled",
           next_attempt_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
           last_call_state:
-            `intent ${n}: daily venue-call cap (${input.venueCallCap}) reached — deferred`
+            `intent ${n}: daily place-call cap (${input.placeCallCap}) reached — deferred`
               .slice(0, 200),
         });
         return;
@@ -992,7 +998,7 @@ async function runIntents(input: {
       });
 
       if (!call.ok) {
-        // OUR outage (quota, 5xx, network) is not the venue's silence: the
+        // OUR outage (quota, 5xx, network) is not the place's silence: the
         // attempt is uncharged and the ticket parks on the outage clock.
         if (classifyPlacementFailure(call.httpStatus) === "platform") {
           attempts.pop();
@@ -1083,7 +1089,7 @@ async function runIntents(input: {
       if (outcome === "no_answer") {
         entry.result = "no_answer";
         if (n < attemptsPlanned) {
-          // Park it: the venue's own hours decide when we try again, and a run
+          // Park it: the place's own hours decide when we try again, and a run
           // can't sleep 30 minutes. supabase-cron-reservation-retries wakes it.
           const next = nextAttemptAt(input.placeHours, input.placeLng);
           await record({
@@ -1113,7 +1119,7 @@ async function runIntents(input: {
         return;
       }
 
-      // Answered — wait for the venue's VERDICT before anything else.
+      // Answered — wait for the place's VERDICT before anything else.
       entry.result = "answered";
       await record({
         attempts,
@@ -1135,7 +1141,7 @@ async function runIntents(input: {
         ? reported.verdict
         : analyzed;
 
-      // The line is not this venue. Terminal on the spot: redialling would just
+      // The line is not this place. Terminal on the spot: redialling would just
       // ring the same stranger, so this must NOT consume the retry path.
       if (verdict === "wrong_number") {
         entry.result = "wrong_number";
@@ -1146,7 +1152,7 @@ async function runIntents(input: {
           state: "unresolved",
           callback_state: "skipped",
           last_call_state:
-            `intent ${n}: wrong number — the line isn't the venue${
+            `intent ${n}: wrong number — the line isn't the place${
               reported.note ? ` (${reported.note})` : ""
             }`.slice(0, 200),
         });
@@ -1194,7 +1200,7 @@ async function runIntents(input: {
           callback_state: "calling",
           callback_at: new Date().toISOString(),
           outage_retries: 0,
-          // A confirmed MODIFICATION means the venue moved the booking on
+          // A confirmed MODIFICATION means the place moved the booking on
           // this very call — the old hold is gone conversationally.
           modification_of: null,
           ...reminderParkPatch(
@@ -1202,13 +1208,13 @@ async function runIntents(input: {
             input.reservedAtIso ? new Date(input.reservedAtIso) : null,
             input.guestNotify,
           ),
-          last_call_state: `intent ${n}: venue confirmed — calling the guest`,
+          last_call_state: `intent ${n}: place confirmed — calling the guest`,
         });
         await guestCall(key, lines.guestLineId, "confirmation", "");
         return;
       }
       if (verdict === "counter_offer") {
-        // Venue offered options — the ticket STAYS pending; the guest hears
+        // Place offered options — the ticket STAYS pending; the guest hears
         // them on the Confirmer leg and their pick (via
         // eleven-a2-confirm-reservation) re-fires this engine.
         entry.result = "counter_offer";
@@ -1218,13 +1224,13 @@ async function runIntents(input: {
           next_attempt_at: null,
           callback_state: "calling",
           callback_at: new Date().toISOString(),
-          last_call_state: `intent ${n}: venue counter-offer — calling the guest`,
+          last_call_state: `intent ${n}: place counter-offer — calling the guest`,
         });
         await guestCall(key, lines.guestLineId, "counter_offer", reported.alternativesText);
         return;
       }
       if (verdict === "declined") {
-        // The venue ANSWERED and said no — terminal.
+        // The place ANSWERED and said no — terminal.
         entry.result = "declined";
         await record({
           attempts,
@@ -1232,10 +1238,10 @@ async function runIntents(input: {
           next_attempt_at: null,
           state: "declined",
           callback_state: "skipped",
-          // Modification declined: a1's brief asks the venue to drop the old
+          // Modification declined: a1's brief asks the place to drop the old
           // booking too, so the decline settles both slots — no notice owed.
           modification_of: null,
-          last_call_state: `intent ${n}: venue declined — no guest call`,
+          last_call_state: `intent ${n}: place declined — no guest call`,
         });
         return;
       }
@@ -1331,12 +1337,12 @@ Deno.serve(async (req) => {
   } else if (intent === "cancel_notice") {
     // A notice is owed by its columns, not by one state: 'cancelled' is the
     // normal case, and a failed MODIFICATION leaves the ticket unreachable/
-    // unresolved while the venue still holds the OLD slot. A live ticket
+    // unresolved while the place still holds the OLD slot. A live ticket
     // never owes one.
     if (r.state === "pending" || r.state === "confirmed") {
       return json({ ok: true, skipped: `reservation is ${r.state} — no notice while live` });
     }
-    if (r.notice_kind !== "venue_cancel" && r.notice_kind !== "guest_cancel") {
+    if (r.notice_kind !== "place_cancel" && r.notice_kind !== "guest_cancel") {
       return json({ ok: true, skipped: "no cancellation notice owed" });
     }
   } else if (intent === "reminder") {
@@ -1419,7 +1425,7 @@ Deno.serve(async (req) => {
       via = "test-mode number";
     } else {
       // Dial only when the door is Phone (or never picked — keep the
-      // places.phone fallback so existing rows still reach the venue).
+      // places.phone fallback so existing rows still reach the place).
       // WhatsApp / Instagram / Web / Not are not voice endpoints.
       const channel = place?.reservation_channel ?? null;
       if (
@@ -1437,10 +1443,10 @@ Deno.serve(async (req) => {
       }
     }
   }
-  const dialsVenue = intent === "book" ||
-    (intent === "cancel_notice" && r.notice_kind === "venue_cancel");
-  if (!businessNumber && dialsVenue) {
-    // Only a venue-dialing errand dies on a missing venue number — and a
+  const dialsPlace = intent === "book" ||
+    (intent === "cancel_notice" && r.notice_kind === "place_cancel");
+  if (!businessNumber && dialsPlace) {
+    // Only a place-dialing errand dies on a missing place number — and a
     // cancel notice must never corrupt attempts_state (it's 'cancelled').
     if (intent === "book") {
       await writeReservation(admin, {
@@ -1454,7 +1460,7 @@ Deno.serve(async (req) => {
         id: reservationId,
         patch: {
           notice_state: "failed",
-          last_call_state: `cancel notice — no venue number (${via})`,
+          last_call_state: `cancel notice — no place number (${via})`,
         },
       });
     }
@@ -1483,8 +1489,8 @@ Deno.serve(async (req) => {
   const placeLng = typeof place?.lng === "number" ? place.lng : null;
 
   if (intent === "cancel_notice") {
-    const kind = r.notice_kind as "venue_cancel" | "guest_cancel";
-    const toNumber = kind === "venue_cancel" ? businessNumber : consumerNumber;
+    const kind = r.notice_kind as "place_cancel" | "guest_cancel";
+    const toNumber = kind === "place_cancel" ? businessNumber : consumerNumber;
     if (!toNumber) {
       await writeReservation(admin, {
         mode: "update",
@@ -1519,10 +1525,10 @@ Deno.serve(async (req) => {
       .in("notice_state", ["pending", "scheduled"])
       .select("id");
     if (!claimed?.length) return json({ ok: true, skipped: "notice already claimed" });
-    // A venue RELEASE after a failed modification speaks about the OLD slot —
-    // the one the venue is still holding — not the ticket's new ask.
+    // A place RELEASE after a failed modification speaks about the OLD slot —
+    // the one the place is still holding — not the ticket's new ask.
     const noticeLegVars: ReservationLegVars =
-      kind === "venue_cancel" && modificationOfIso && r.state !== "cancelled"
+      kind === "place_cancel" && modificationOfIso && r.state !== "cancelled"
         ? { ...legVars, dateEs: esDate(modificationOfIso), timeEs: esTime(modificationOfIso) }
         : legVars;
     runInBackground(
@@ -1535,13 +1541,13 @@ Deno.serve(async (req) => {
         attemptsDone: typeof r.notice_attempts === "number" ? r.notice_attempts : 0,
         outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
         toNumber,
-        agentId: kind === "venue_cancel" ? bookerAgentId : confirmerAgentId,
+        agentId: kind === "place_cancel" ? bookerAgentId : confirmerAgentId,
         legVars: noticeLegVars,
         placeHours: place?.hours ?? null,
         placeLng,
         reservedAtIso: r.reserved_at,
         projectId: placeId,
-        venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
+        placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
         guestNotify,
       }),
     );
@@ -1663,7 +1669,7 @@ Deno.serve(async (req) => {
 
   // Claim the booking run compare-and-swap style: only ONE engine may flip a
   // non-running pending ticket to running (the old read-then-write let two
-  // concurrent invokes both pass the gate and double-dial the venue). The
+  // concurrent invokes both pass the gate and double-dial the place). The
   // claim rotates run_id — every background write is guarded by it.
   // Routed through validateReservationPatch directly (not the writeReservation
   // door — this update's `.or(...)` filter is a shape the door doesn't model;
@@ -1716,7 +1722,7 @@ Deno.serve(async (req) => {
       runId,
       projectId: placeId,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
-      venueCallCap: cfg.limits.venueCallsPerPlacePerDay,
+      placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
       modificationOfIso,
       guestNotify,
     }),

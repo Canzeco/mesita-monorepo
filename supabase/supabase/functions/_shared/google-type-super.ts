@@ -10,6 +10,11 @@
 // (478 types) on 2026-08-29.
 // Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes /
 // includedType slugs sent to Nearby, Autocomplete, and Text Search.
+//
+// The `*_venue` keys below (event_venue, go_karting_venue, live_music_venue,
+// wedding_venue) are Google's own Table A type slugs, not ours — `venue` is
+// banned in OUR vocabulary (MESITA-1591) but these must match Google's API
+// literally, so they stay as Google spells them.
 
 export type SuperOrOther =
   | "restaurants"

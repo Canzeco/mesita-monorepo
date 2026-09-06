@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { EFError } from "@/lib/api/_invoke";
@@ -19,6 +19,7 @@ import {
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics/track";
 
 // Starting a visit, extracted (MESITA-1065). This was NewVisitClient's private
 // `startTicket`/`onPick` pair until the place-detail action bar grew a Visit
@@ -44,16 +45,28 @@ export type StartVisitState = {
 export function useStartVisit({
   activeTickets,
   onCreated,
+  source,
 }: {
   /** Live tickets, so a place that already holds one re-opens it (D5). */
   activeTickets: readonly ConsumerTicketRow[];
   /** Called after a successful create — callers refresh their ticket list. */
   onCreated?: () => void;
+  /** MESITA-1387 ticket_created.from — which surface's tap started this. */
+  source: string;
 }): StartVisitState {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const [startingId, setStartingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // The in-flight latch is a REF, not `startingId` (MESITA-1597). Two taps
+  // arrive in two separate event handlers, and a state write is not visible to
+  // the second one until React re-renders — on a real double-tap that render
+  // has not happened yet, so a `startingId !== null` guard still reads null and
+  // BOTH taps dispatch. This is written synchronously below, before
+  // startTicket's first await, so the second tap sees it whenever it lands.
+  // `startingId` stays exactly as it was: it is what rows paint a spinner from.
+  const inFlight = useRef(false);
 
   const openTicket = useCallback(
     (id: string) => {
@@ -64,6 +77,7 @@ export function useStartVisit({
 
   const startTicket = useCallback(
     async (place: SeedPlace) => {
+      inFlight.current = true;
       setStartingId(place.id);
       setError(null);
       // The quote starts NOW, in parallel with the create (MESITA-1029 S4),
@@ -78,6 +92,10 @@ export function useStartVisit({
         // Seed BEFORE navigating (S3): THE TICKET paints QR-and-all on its
         // first frame from this row; list-tickets reconciles in background.
         seedTicket(ticketRowFromCreate(res.ticket, place), quotePromise);
+        trackEvent(supabase, "ticket_created", {
+          place_id: place.id,
+          from: source,
+        });
         onCreated?.();
         router.push(ticketPath(res.ticket.id), { scroll: false });
       } catch (err) {
@@ -105,14 +123,24 @@ export function useStartVisit({
         }
         setError(errMsg(err, "Couldn't start your ticket."));
       } finally {
+        inFlight.current = false;
         setStartingId(null);
       }
     },
-    [supabase, router, openTicket, onCreated],
+    [supabase, router, openTicket, onCreated, source],
   );
 
   const pickPlace = useCallback(
     (place: SeedPlace) => {
+      // A create is already running — drop this tap entirely (MESITA-1597).
+      // Nothing downstream stops it: the server's `already_open` guard is
+      // PER-PLACE, so tapping a DIFFERENT place sails through it and makes a
+      // second real ticket, and `activeTickets` cannot hold the in-flight one
+      // because it only refreshes via onCreated, after the create returns.
+      // This sits ahead of the existing-ticket branch on purpose: that branch
+      // navigates, and a second router.push racing the create's own push is
+      // the other half of the same bug.
+      if (inFlight.current) return;
       const existing = activeTickets.find((t) => t.project_id === place.id);
       if (existing) {
         // Live ticket → open it rather than making a second one (D5).

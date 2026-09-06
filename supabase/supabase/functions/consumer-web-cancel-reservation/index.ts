@@ -67,11 +67,11 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "This reservation already happened." }, 409);
   }
 
-  // A CONFIRMED table means the venue is holding it — it must HEAR about the
+  // A CONFIRMED table means the place is holding it — it must HEAR about the
   // cancel or this becomes a Mesita-made no-show (Docs › Reservations §B
-  // leg 5). Pending tickets owe nothing: never ring a venue to cancel what it
+  // leg 5). Pending tickets owe nothing: never ring a place to cancel what it
   // never agreed to.
-  const notice = row.state === "confirmed" ? "venue_cancel" as const : null;
+  const notice = row.state === "confirmed" ? "place_cancel" as const : null;
   // ONE cancel write-shape for all four doors (app + a2/a3/a4 voice) —
   // cancelTicket owns it, including the run_id rotation that orphans any
   // mid-flight engine run.
@@ -91,6 +91,6 @@ Deno.serve(async (req) => {
     reservation_id: id,
     state: "cancelled",
     reference_code: row.reference_code ?? null,
-    venue_notified: notice !== null,
+    place_notified: notice !== null,
   });
 });

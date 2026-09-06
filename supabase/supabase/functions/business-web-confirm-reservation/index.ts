@@ -6,7 +6,7 @@
 // lifecycle: pending/confirmed -> confirmed | declined.
 //
 // CONSOLE CONFIRM TELLS THE GUEST (eng-review 2026-08-04): the phone path
-// always follows a venue yes with the a2 guest call; this door used to flip
+// always follows a place yes with the a2 guest call; this door used to flip
 // state silently. Now a confirm SEEDS the callback (callback_state=
 // 'scheduled' on the guest ladder's clock — quiet-hours aware) and the
 // minute cron fires the engine's callback_retry intent through its normal
@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
   const memberRes = await requireEditor(admin, authRes.user, projectId);
   if (!memberRes.ok) return memberRes.response;
 
-  // The guest-callback seed needs the slot + the venue's longitude (quiet
-  // hours run venue-local). Read them before the write.
+  // The guest-callback seed needs the slot + the place's longitude (quiet
+  // hours run place-local). Read them before the write.
   const { data: current } = await admin
     .from("reservation_tickets")
     .select("reserved_at, consumer_confirmed_at, consumer_notify")
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     };
     // Seed the a2 call unless the guest already confirmed their side, or they
     // opted out of phone callbacks (MESITA-787). The ladder's own schedule
-    // (~10 min out, held to 09:00–22:00 venue-local) keeps a 1 a.m. console
+    // (~10 min out, held to 09:00–22:00 place-local) keeps a 1 a.m. console
     // confirm from ringing anyone at 1 a.m.
     if (!current?.consumer_confirmed_at && current?.consumer_notify !== "app") {
       const reservedAt = current?.reserved_at ? new Date(current.reserved_at) : null;

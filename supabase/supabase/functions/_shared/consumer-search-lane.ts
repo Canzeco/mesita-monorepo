@@ -23,10 +23,10 @@
 // A Google hit that resolves to Mesita stays in its Google query; later
 // Mesita queries skip it. Summary and the other six Lineup signals are
 // not a Deep input. Membership is a boolean `partner`.
-// Word answers with TWO entities (MESITA-1403): Places are venues,
+// Word answers with TWO entities (MESITA-1403): Places are places,
 // Locations are regions/cities. Autocomplete returns both in one call;
 // classification reads `types` off rows the response already carries —
-// never a Details call while typing. Locations skip the venue gates and
+// never a Details call while typing. Locations skip the place gates and
 // Mesita resolution whole, and only the consumer caller opts into them
 // (the matrix: Locations ride Word alone). Coordinates come later, on
 // selection, through the anchor read (one Details call per PICK).
@@ -109,7 +109,7 @@ export const GOOGLE_TEXT_MAX = 20;
  */
 export type SuggestPlacesMode = "fast" | "deep" | "mesita";
 
-/** Word's two entities: a venue, or a region/city from Autocomplete. */
+/** Word's two entities: a place, or a region/city from Autocomplete. */
 export type LaneKind = "place" | "location";
 
 export type LaneItem = {
@@ -122,7 +122,7 @@ export type LaneItem = {
   enriched?: boolean;
   /**
    * Absent = "place". Only Autocomplete rows are classified; the Text and
-   * Mesita lanes are venues by construction. A Location never carries
+   * Mesita lanes are places by construction. A Location never carries
    * membership, mesitaId, or coordinates — those arrive on selection.
    */
   kind?: LaneKind;
@@ -139,7 +139,7 @@ export type LaneItem = {
 
 // Autocomplete (New) marks regions, cities and areas with these types.
 // administrative_area_level_* matches by prefix. An establishment marker
-// wins outright: a venue carries "establishment"/"point_of_interest" next
+// wins outright: a place carries "establishment"/"point_of_interest" next
 // to its specific types, while a locality is political/geocode-family only.
 const LOCATION_TYPE_MARKERS = new Set([
   "locality",
@@ -259,7 +259,7 @@ export function mergeNameDeepQueries(queries: NameDeepQueries): LaneItem[] {
   ]);
 }
 
-/** Fast Search: Autocomplete order, unique venues, cap. */
+/** Fast Search: Autocomplete order, unique places, cap. */
 export function takeFastLane(items: LaneItem[], cap: number): LaneItem[] {
   const byKey = new Map<string, LaneItem>();
   const order: LaneItem[] = [];
@@ -293,7 +293,7 @@ export type ConsumerSearchArgs = {
   /**
    * Locations ride Word alone (the matrix, MESITA-1402): only the consumer
    * searchbar caller opts in. Off, Location rows drop BEFORE the stamp, so
-   * a venue picker never pays a Details call for a city it would discard.
+   * a place picker never pays a Details call for a city it would discard.
    */
   locations?: boolean;
 };
@@ -547,7 +547,7 @@ function keepWantedKinds(items: LaneItem[], locations: boolean): LaneItem[] {
 }
 
 /**
- * Locations skip the venue machinery whole: no catalog resolve, no
+ * Locations skip the place machinery whole: no catalog resolve, no
  * Details call, no Map or General gate — those ask questions about a
  * business, and a city has none of the answers. Survivors return in
  * Autocomplete order with Location rows holding their slots.
@@ -680,7 +680,7 @@ async function runDeepSearch(
 
   // Deep keeps Location rows from its Autocomplete query only: Text Search
   // returns Places even for "Ciudad de México", and the Mesita lanes are
-  // venues by construction.
+  // places by construction.
   const [stampedAuto, stampedText] = await Promise.all([
     stampAutocompleteLane(
       keepWantedKinds(autoPreds, locations),
@@ -773,7 +773,7 @@ export function toWire(item: LaneItem) {
     partner: item.partner,
     enriched: item.enriched === true,
     // `kind` rides Location rows only — absent reads "place", and the
-    // Places path stays byte-identical for a venue query.
+    // Places path stays byte-identical for a place query.
     ...(item.kind === "location"
       ? {
         kind: "location" as const,

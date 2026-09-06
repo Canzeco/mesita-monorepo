@@ -80,7 +80,7 @@
 //
 // CHANNEL SHAPE: place_phone/consumer_phone are validated as flat nullable
 // strings, on purpose — reservation_tickets stores PRE-RESOLVED phone numbers
-// for this one ticket's calls, not the venue's own {channel,value}+fallbacks[]
+// for this one ticket's calls, not the place's own {channel,value}+fallbacks[]
 // contact configuration (that shape lives on places.reservation_channel /
 // reservation_target, the place aggregate's concern, not this one's).
 //
@@ -147,7 +147,7 @@ export type NoticeState =
   | "failed"
   | "skipped";
 
-export type NoticeKind = "venue_cancel" | "guest_cancel";
+export type NoticeKind = "place_cancel" | "guest_cancel";
 
 export type ReminderState =
   | "idle"
@@ -354,7 +354,7 @@ const NOTICE_STATE_VALUES = new Set<string>([
   "failed",
   "skipped",
 ]);
-const NOTICE_KIND_VALUES = new Set<string>(["venue_cancel", "guest_cancel"]);
+const NOTICE_KIND_VALUES = new Set<string>(["place_cancel", "guest_cancel"]);
 const REMINDER_STATE_VALUES = new Set<string>([
   "idle",
   "scheduled",

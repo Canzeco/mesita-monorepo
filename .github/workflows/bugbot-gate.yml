@@ -1,0 +1,66 @@
+name: bugbot gate
+
+# MESITA-1406: Cursor Bugbot posts conclusion `neutral` when it hits a usage or
+# spend limit — GitHub treats `neutral` as non-blocking even on a REQUIRED
+# check (confirmed live: adding "Cursor Bugbot" itself to main-protection's
+# required checks did not stop a neutral-concluding run from merging), so the
+# vendor's own check can never be the gate. This job polls Bugbot's check run
+# for this commit and turns "no completed real review" into an actual failing
+# status — THIS job's name is what main-protection requires, not Bugbot's.
+#
+# Unfiltered on purpose, same reasoning as closes.yml: a required check a path
+# filter skips blocks the PR as "Expected" forever.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: bugbot-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  checks: read
+
+jobs:
+  gate:
+    name: Bugbot gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for a completed Cursor Bugbot run, require a real conclusion
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Bugbot's own run can take minutes; a usage-limit skip completes in
+          # ~1s. 20 tries * 15s = 5 minutes, generous for the real-review case.
+          for i in $(seq 1 20); do
+            RUN=$(gh api "repos/$REPO/commits/$SHA/check-runs" --jq '[.check_runs[] | select(.name == "Cursor Bugbot")] | sort_by(.started_at) | last')
+            if [ -z "$RUN" ] || [ "$RUN" = "null" ]; then
+              echo "no Cursor Bugbot run found yet for $SHA (try $i/20)"
+              sleep 15
+              continue
+            fi
+            STATUS=$(echo "$RUN" | jq -r '.status')
+            if [ "$STATUS" != "completed" ]; then
+              echo "Cursor Bugbot still $STATUS (try $i/20)"
+              sleep 15
+              continue
+            fi
+            CONCLUSION=$(echo "$RUN" | jq -r '.conclusion')
+            echo "Cursor Bugbot completed with conclusion: $CONCLUSION"
+            case "$CONCLUSION" in
+              success|failure)
+                echo "ok: Bugbot ran a real review (conclusion: $CONCLUSION)"
+                exit 0
+                ;;
+              *)
+                TITLE=$(echo "$RUN" | jq -r '.output.title // "no output"')
+                echo "::error::BUGBOT DID NOT REVIEW: conclusion was '$CONCLUSION' ($TITLE) — no completed review signal exists for this commit. If this is a usage/spend-limit skip, raise it at https://www.cursor.com/dashboard/spending (needs-human, MESITA-1406). Human review is required to merge."
+                exit 1
+                ;;
+            esac
+          done
+          echo "::error::BUGBOT TIMED OUT: no completed Cursor Bugbot run appeared for $SHA within 5 minutes — treating as no review signal."
+          exit 1

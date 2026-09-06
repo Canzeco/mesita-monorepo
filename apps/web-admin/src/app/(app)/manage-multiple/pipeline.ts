@@ -1,4 +1,4 @@
-// Manage Multiple Places — three boxes. Create, Enrich, Update, and
+// Manage Places — three boxes. Create, Enrich, Update, and
 // Create + Enrich share one Mesita Intake box — not a fourth card.
 // The sticky rail and the cards both read from here so a surface cannot
 // appear on one and vanish from the other.

@@ -6,10 +6,10 @@
 //   { reference_code, new_date?: "YYYY-MM-DD", new_time?: "HH:mm", note? }
 //
 // Plain acceptance → consumer_confirmed_at stamps (both-sides-confirmed when the
-// venue already said yes). A datetime — the guest picking one of the venue's
+// place already said yes). A datetime — the guest picking one of the place's
 // alternatives OR proposing something entirely new ("mejor mañana a las 9") —
 // moves reserved_at, returns the ticket to pending and RE-FIRES the Booker
-// (supabase-edgefunc-reservation-call) so the venue gets the follow-up call:
+// (supabase-edgefunc-reservation-call) so the place gets the follow-up call:
 // consumer ⇒ agent ⇒ business, double calls until both sides match. Partial
 // input is fine — a missing date or time defaults from the current reservation.
 // Capped at 2 negotiation rounds; past the cap the ticket parks in-app
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   const wantsChange = body.new_date !== undefined || body.new_time !== undefined;
   const note = cleanNote(body.note);
 
-  // ── No change: the guest accepts what the venue confirmed ──────────────────
+  // ── No change: the guest accepts what the place confirmed ──────────────────
   if (!wantsChange) {
     const patch: ReservationPatch = {
       consumer_confirmed_at: new Date().toISOString(),
@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ── Change: alternative picked or a new proposal → new venue call ──────────
-  // Partial input defaults from the current reservation (venue-local CDMX), so
+  // ── Change: alternative picked or a new proposal → new place call ──────────
+  // Partial input defaults from the current reservation (place-local CDMX), so
   // "solo cambia la hora" works without the agent re-stating the date.
   const date = typeof body.new_date === "string" && body.new_date.trim()
     ? body.new_date
@@ -119,13 +119,13 @@ Deno.serve(async (req) => {
     }, 400);
   }
 
-  // ── Did the guest just accept one of the venue's OWN offers? ─────────────
-  // If so the venue has already said that slot is free — re-calling it to ask
+  // ── Did the guest just accept one of the place's OWN offers? ─────────────
+  // If so the place has already said that slot is free — re-calling it to ask
   // for a slot it volunteered is a question that was answered a minute ago,
   // and calling the guest back afterwards reports news they gave us
   // themselves. That was 4 calls for one booking; this makes it 2. a1's
-  // counter-offer close asks the venue to hold what it offered, so acting on
-  // it here is a promise the venue already made, not an assumption.
+  // counter-offer close asks the place to hold what it offered, so acting on
+  // it here is a promise the place already made, not an assumption.
   const offered = normalizeAlternatives(ticket.alternatives);
   if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
     const { data: placeRow } = await admin
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
       callback_state: "skipped",
       callback_next_attempt_at: null,
       ...reminderParkPatch(lng, next, "call"),
-      last_call_state: `guest took the venue's own ${date} ${time} offer — confirmed on the spot`,
+      last_call_state: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
     };
     if (note) patch.outcome_note = note;
     const confirm = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       changed: true,
       confirmed_on_the_spot: true,
       both_confirmed: true,
-      needs_new_venue_call: false,
+      needs_new_place_call: false,
       reference_code: ticket.reference_code,
       date_es: esDate(next.toISOString()),
       time_es: esTime(next.toISOString()),
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
 
   const patch: ReservationPatch = {
     reserved_at: next.toISOString(),
-    // New terms — the venue hasn't agreed to them yet.
+    // New terms — the place hasn't agreed to them yet.
     state: "pending",
     reported_verdict: null,
     consumer_confirmed_at: new Date().toISOString(),
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
   const write = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
-  // The double call: fire the Booker at the venue with the new terms. The
+  // The double call: fire the Booker at the place with the new terms. The
   // engine acks early; its run updates the ticket as it goes.
   const fired = await invokeInternalCaller(
     envRes.env,
@@ -222,8 +222,8 @@ Deno.serve(async (req) => {
     reference_code: ticket.reference_code,
     date_es: esDate(next.toISOString()),
     time_es: esTime(next.toISOString()),
-    needs_new_venue_call: true,
-    venue_call_started: fired.ok,
+    needs_new_place_call: true,
+    place_call_started: fired.ok,
     round: rounds + 1,
   });
 });

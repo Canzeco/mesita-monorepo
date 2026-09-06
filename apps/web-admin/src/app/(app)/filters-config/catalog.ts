@@ -30,7 +30,7 @@
 //             runs on what a Google Places query returned.
 //   ENTITIES  what a mode can answer with: Places always, Locations on Word
 //             only. Autocomplete is the one source that returns regions and
-//             cities, in the SAME call as the venues.
+//             cities, in the SAME call as the places.
 //   SOURCES   the Search Sources subpage: Google types strip (categoryCount
 //             + type batteries, one list written onto Fast / Deep / Map) ·
 //             the three Google Places searches · the four Mesita Places
@@ -210,6 +210,23 @@ export type WiredEngineKey = (typeof WIRED_ENGINE_KEYS)[number];
 /** Mirrors WEIGHT_MIN / WEIGHT_MAX in _shared/discovery-config.ts. */
 export const WEIGHT_MIN = 0;
 export const WEIGHT_MAX = 4;
+
+/**
+ * Mirrors SIGNAL_WEIGHT_MAX / weightMaxFor in _shared/discovery-config.ts.
+ *
+ * Level's exponent is capped at 2, not the uniform 4, because Level is
+ * entirely bought and 0.04^w means money annihilates relevance long before
+ * the uniform ceiling: 625x at 2 vs ~390,000x at 4 (Pato, MESITA-1410). The
+ * EF clamps this server-side either way — the mirror is here so the
+ * console's dial cannot offer a number the backend will silently refuse.
+ */
+export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
+  mesita_level: 2,
+};
+
+export function weightMaxFor(key: SignalKey): number {
+  return SIGNAL_WEIGHT_MAX[key] ?? WEIGHT_MAX;
+}
 const SLOT_MIN_EVERY_NTH = 2;
 const SLOT_MAX_EVERY_NTH = 50;
 const MIN_RATING_MAX = 5;
@@ -676,7 +693,7 @@ export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
 };
 
 /**
- * What a mode can put IN FRONT OF THE GUEST. A Place is a venue; a Location
+ * What a mode can put IN FRONT OF THE GUEST. A Place is a place; a Location
  * is a region or a city — name, type, and the coordinates the next step
  * needs (Pato, 2026-09-02). Black square = the mode can answer with that
  * entity.
@@ -984,7 +1001,7 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
 
   const weights = {} as Record<SignalKey, number>;
   for (const key of SIGNAL_KEYS) {
-    const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, WEIGHT_MAX);
+    const v = num(w[key], DEFAULT_CONFIG.weights[key], WEIGHT_MIN, weightMaxFor(key));
     weights[key] = Math.round(v * 100) / 100;
   }
 

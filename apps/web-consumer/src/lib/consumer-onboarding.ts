@@ -1,7 +1,7 @@
 // The onboarded predicate — ONE definition, because three drifting copies
 // is how a consumer ends up ping-ponging between /home and /onboard.
 //
-// Required: first + last name (reservations are booked with the venue under
+// Required: first + last name (reservations are booked with the place under
 // the guest's full name, and the host system keys on "last name + party
 // size"), plus birthday (age gate, MESITA-727) and sex (segmentation).
 // Phone is deliberately NOT checked: sign-in is phone OTP, so every authed

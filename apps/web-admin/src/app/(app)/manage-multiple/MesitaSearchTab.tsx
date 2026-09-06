@@ -7,7 +7,7 @@ import {
   listAllPlaces,
   searchPlacesByGoogleIds,
   type PlaceHit,
-} from "../manage-single/actions";
+} from "./actions";
 import {
   GENERAL_STATE_FACTS,
   INTAKE_FUNCTIONS,

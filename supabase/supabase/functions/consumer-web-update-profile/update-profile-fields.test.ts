@@ -6,7 +6,7 @@ import {
 } from "./update-profile-fields.ts";
 
 // The name pair is the reservation's booking name — a consumer with only
-// half of it can't be booked with the venue, so the EF refuses the write.
+// half of it can't be booked with the place, so the EF refuses the write.
 
 Deno.test("parseName: both halves present", () => {
   const res = parseName(

@@ -486,7 +486,7 @@ Deno.test("classifyPredictionKind: an establishment marker wins outright", () =>
     ]),
     "place",
   );
-  // A venue inside a named area still reads as a venue.
+  // A place inside a named area still reads as a place.
   assertEquals(
     classifyPredictionKind(["geocode", "point_of_interest", "establishment"]),
     "place",
@@ -519,24 +519,24 @@ Deno.test("weaveStampedAutocomplete: Locations hold their slots; gated Places dr
     kind: "location",
     locationType: "locality",
   });
-  const venueA = item({ placeId: "v-a", mainText: "Venue A" });
-  const venueB = item({ placeId: "v-b", mainText: "Venue B" });
+  const placeA = item({ placeId: "v-a", mainText: "Place A" });
+  const placeB = item({ placeId: "v-b", mainText: "Place B" });
   const resolvedA = item({
     placeId: "v-a",
-    mainText: "Mesita Venue A",
+    mainText: "Mesita Place A",
     mesitaId: "m-a",
     state: "web_listed",
   });
-  // Venue B died at the gate: only A survived the stamp.
-  const out = weaveStampedAutocomplete([venueA, city, venueB], [resolvedA]);
-  assertEquals(out.map((p) => p.mainText), ["Mesita Venue A", "Ciudad de México"]);
+  // Place B died at the gate: only A survived the stamp.
+  const out = weaveStampedAutocomplete([placeA, city, placeB], [resolvedA]);
+  assertEquals(out.map((p) => p.mainText), ["Mesita Place A", "Ciudad de México"]);
   assertEquals(out[1].kind, "location");
 });
 
-Deno.test("toWire: kind rides Location rows only — venue rows stay byte-identical", () => {
-  const venue = toWire(item({ placeId: "v-1", mainText: "Venue" }));
-  assertEquals("kind" in venue, false);
-  assertEquals("locationType" in venue, false);
+Deno.test("toWire: kind rides Location rows only — place rows stay byte-identical", () => {
+  const place = toWire(item({ placeId: "v-1", mainText: "Place" }));
+  assertEquals("kind" in place, false);
+  assertEquals("locationType" in place, false);
   const city = toWire(item({
     placeId: "loc-1",
     mainText: "Ciudad de México",

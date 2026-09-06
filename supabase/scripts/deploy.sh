@@ -15,13 +15,6 @@ set -euo pipefail
 
 PROJECT_REF="yjalywfzdelacdzccpgb"
 
-# Types are copied into each app package that keeps a generated
-# `database.types.ts` (web-admin / web-landing / web-check / mobile do not).
-WEB_REPOS=(
-  "../apps/web-business"
-  "../apps/web-consumer"
-)
-
 cd "$(dirname "$0")/.."
 
 # Supabase CLI reads project-root .env for config.toml env(TWILIO_*).
@@ -45,15 +38,12 @@ if ! supabase db push --include-all; then
 fi
 fi
 
-for repo in "${WEB_REPOS[@]}"; do
-  target="$repo/src/lib/supabase/database.types.ts"
-  if [ -d "$repo" ] && [ -f "$target" ]; then
-    echo "▶ Regenerating $target"
-    supabase gen types typescript --linked > "$target" 2>/dev/null
-  else
-    echo "⚠ Skipping $repo (path or types file not found)"
-  fi
-done
+# Types are copied into each app package that keeps a generated
+# `database.types.ts` (web-admin / web-landing / web-check / mobile do not).
+# See regen-types.sh — same step, callable on its own after a cloud-side
+# migration that didn't go through this script (e.g. Supabase MCP
+# `apply_migration`), so types don't drift between deploys (MESITA-1546).
+bash scripts/regen-types.sh
 
 echo ""
 echo "OK Deploy complete."

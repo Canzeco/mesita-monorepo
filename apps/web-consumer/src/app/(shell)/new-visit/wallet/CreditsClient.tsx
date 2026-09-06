@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, Plus, RotateCcw, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -19,6 +19,8 @@ import {
 } from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
+import { trackEvent } from "@/lib/analytics/track";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // The Pay tab's second section, at /new-visit/wallet.
 //
@@ -62,7 +64,7 @@ import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 // the app's one list-row look and they stop at this file.
 //
 // MIXED LIVENESS, and the page still says which is which. The Credits BALANCES
-// are PARKED on a browser emulator — no table, no Edge Function, no venue side.
+// are PARKED on a browser emulator — no table, no Edge Function, no place side.
 // The TERMS are real: the hold and the bonus come from the console's Controls
 // page through consumer-web-get-controls-config. Payment methods is fully live
 // and opens the real Stripe-backed CardsModal.
@@ -88,6 +90,21 @@ export function CreditsClient({ seed }: { seed: Seed }) {
   const [open, setOpen] = useState<CreditBalance | null>(null);
   const [buying, setBuying] = useState(false);
   const [cardsOpen, setCardsOpen] = useState(false);
+  const supabase = useBrowserSupabase();
+
+  // MESITA-1387: "whether anyone opens the Wallet" — fires once per mount,
+  // regardless of how the guest arrived (the pill row is the only path
+  // today, but a redirect or a back-button return should count the same).
+  useEffect(() => {
+    trackEvent(supabase, "wallet_open", { from: "pay_section_nav" });
+  }, [supabase]);
+
+  const openBalanceCard = (balance: CreditBalance) => {
+    trackEvent(supabase, "balance_card_tap", {
+      balance_cents: balance.balanceCents,
+    });
+    setOpen(balance);
+  };
 
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
@@ -130,7 +147,7 @@ export function CreditsClient({ seed }: { seed: Seed }) {
           />
         ) : (
           <div className="px-5 pt-5">
-            <BalanceStack balances={balances} nowMs={nowMs} onOpen={setOpen} />
+            <BalanceStack balances={balances} nowMs={nowMs} onOpen={openBalanceCard} />
           </div>
         )}
 

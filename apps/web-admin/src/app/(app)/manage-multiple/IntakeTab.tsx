@@ -6,7 +6,7 @@ import {
   createPlaceFromGooglePlaceId,
   enrichPlace,
   searchPlacesByGoogleIds,
-} from "../manage-single/actions";
+} from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { IntakeAction } from "./intake-batch";
 import {

@@ -3,7 +3,7 @@
 // per-leg notice cap. No clock, no DB, no fetch — testable like the ladder.
 //
 // WHY the platform/target split exists: a call reads status=failed both when
-// the VENUE doesn't pick up (a real protocol event — burn an attempt) and when
+// the PLACE doesn't pick up (a real protocol event — burn an attempt) and when
 // ELEVENLABS ITSELF kills it (quota error 1002, 5xx — our outage, not their
 // silence). The engine used to charge both against the ticket, so one credit
 // dip marked live reservations "unreachable" while blaming the place. Now a
@@ -14,7 +14,7 @@ import { nextAttemptAt } from "./reservation-retry.ts";
 import { nextGuestCallAt } from "./reservation-callback.ts";
 
 /** Attempts a1 gets to deliver a place-release notice (leg 5). */
-export const VENUE_NOTICE_ATTEMPTS = 2;
+export const PLACE_NOTICE_ATTEMPTS = 2;
 
 /** Outage backoff: 15 min doubling to a 4 h ceiling, capped at 8 parks. */
 export const OUTAGE_MAX_RETRIES = 8;
@@ -78,15 +78,15 @@ export function outageRetryAt(
  * the one decision that dials real places is provable without a phone.
  */
 export function noticeNextAt(
-  kind: "venue_cancel" | "guest_cancel",
+  kind: "place_cancel" | "guest_cancel",
   attemptsDone: number,
   placeHours: unknown,
   placeLng: number | null,
   reservedAt: Date | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } | null {
-  if (kind === "venue_cancel") {
-    if (attemptsDone >= VENUE_NOTICE_ATTEMPTS) return null;
+  if (kind === "place_cancel") {
+    if (attemptsDone >= PLACE_NOTICE_ATTEMPTS) return null;
     return nextAttemptAt(placeHours, placeLng, now);
   }
   return nextGuestCallAt(attemptsDone, placeLng, reservedAt, now);

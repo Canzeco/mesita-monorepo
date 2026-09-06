@@ -324,18 +324,27 @@ Deno.test("MD_SCAN_GLOBS scans .mdc — Cursor reads it as rules (ASDM §D)", ()
   assert(MD_SCAN_GLOBS.includes("*.mdc"));
 });
 
-Deno.test("every scanned extension also triggers rules.yml, on BOTH events", async () => {
-  // An extension scanned here but absent from the workflow filter is worse than
+Deno.test("every scanned extension also triggers rules.yml on push, and pull_request stays unfiltered", async () => {
+  // An extension scanned here but absent from the `push` filter is worse than
   // not scanning it: the workflow never fires, so the gate reports green because
   // it never ran. This test is the only thing holding the two files together.
   // Both scan sets are covered: the markdown allowlist and the forbidden assets
   // run off the same `git ls-files` machinery and need the same trigger.
+  //
+  // `pull_request` is deliberately unfiltered (MESITA-1576): a required check
+  // a path filter skips shows as Expected and blocks the PR forever, so every
+  // PR triggers this workflow and its `changes` job decides whether there's
+  // anything to check. That trivially covers every glob on the PR side — only
+  // `push` still filters by path, so only push needs each glob spelled out.
   const yml = await Deno.readTextFile(join(repoRoot, ".github", "workflows", "rules.yml"));
+  assert(
+    /pull_request:\s*\{\}/.test(yml),
+    "rules.yml's pull_request trigger must stay unfiltered (MESITA-1576) — a path filter here means the required check never reports on an out-of-scope PR",
+  );
   for (const glob of [...MD_SCAN_GLOBS, ...FORBIDDEN_ASSET_GLOBS]) {
-    const occurrences = yml.split(`"**/${glob}"`).length - 1;
     assert(
-      occurrences >= 2,
-      `rules.yml must list "**/${glob}" under both push and pull_request paths (found ${occurrences})`,
+      yml.includes(`"**/${glob}"`),
+      `rules.yml must list "**/${glob}" under push paths`,
     );
   }
 });

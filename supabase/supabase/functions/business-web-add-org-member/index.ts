@@ -1,29 +1,34 @@
 // Supabase Edge Function — business-web-add-org-member
 //
-// Owner-only direct add of an EXISTING business account to the organization.
-// Deliberately minimal (the plan's N=1 slice): no invites table, no tokens,
-// no email sends — an unknown address answers `unknown_manager` and the
-// console tells the owner to have the person sign in first. The full invite
-// lifecycle (with `expires_at`, per project_invites law) is a filed follow-up.
+// Owner-only. Two paths (MESITA-1550, mirroring business-web-invite-member):
 //
-// Roles: editor | viewer ONLY. Owner grants are a distinct ceremony that
-// lands together with remove/role-change and the ≥1-owner backstop — the
-// same posture as the place-level invite_owner_forbidden rule: an owner
-// grant with no in-product revocation is not a form field.
+//   1. Email matches an existing managers row → link directly: insert
+//      organization_members at the requested role. No email goes out.
 //
-// Errors carry MACHINE CODES (`not_owner` · `unknown_manager` ·
-// `already_member`) so the console maps code→copy instead of string-matching.
+//   2. Email is unknown → create an organization_invites row with a fresh
+//      token AND ask Supabase Auth to send the standard invite email
+//      (auth.admin.inviteUserByEmail). The redirect URL embeds the token
+//      so business-web-accept-org-invite can claim it once the new user
+//      signs in.
+//
+// Owner is now an addable role: unlike the place model, organizations
+// allow several owners (organization_members' own migration comment), and
+// the ≥1-owner backstop (a DB constraint trigger, not a racy app-level
+// count) means an owner grant here carries no ownership-transfer hazard —
+// there is nothing to protect against by refusing it.
+//
+// Errors carry MACHINE CODES (`not_owner` · `already_member` ·
+// `invite_pending`) so the console maps code→copy instead of string-matching.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { orgRoleFor } from "../_shared/org-membership.ts";
 import { isEmailish } from "../_shared/input.ts";
+import { isMemberRole, type MemberRole } from "../_shared/roles.ts";
+import { newInviteToken } from "../_shared/tokens.ts";
 
-type Body = { orgId?: string; email?: string; role?: string };
-
-const ADDABLE_ROLES = ["editor", "viewer"] as const;
-type AddableRole = typeof ADDABLE_ROLES[number];
+type Body = { orgId?: string; email?: string; role?: MemberRole; redirectBase?: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -38,13 +43,14 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const orgId = (body.orgId ?? "").trim();
   const email = (body.email ?? "").trim().toLowerCase();
-  const role = (body.role ?? "editor") as AddableRole;
+  const role = body.role ?? "editor";
+  const redirectBase = (body.redirectBase ?? "").trim().replace(/\/$/, "");
   if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
   if (!isEmailish(email)) {
     return json({ ok: false, error: "A valid email is required" }, 400);
   }
-  if (!ADDABLE_ROLES.includes(role)) {
-    return json({ ok: false, error: "role must be editor | viewer" }, 400);
+  if (!isMemberRole(role)) {
+    return json({ ok: false, error: "role must be owner | editor | viewer" }, 400);
   }
 
   const admin = adminClient(envRes.env);
@@ -72,39 +78,95 @@ Deno.serve(async (req) => {
   const manager =
     (found?.[0] as { id: string; full_name: string | null; email: string | null } | undefined) ??
       null;
-  if (!manager) {
-    return json(
-      {
-        ok: false,
-        error: "No business account with that email",
-        code: "unknown_manager",
-      },
-      404,
-    );
-  }
 
-  const { error: insErr } = await admin
-    .from("organization_members")
-    .insert({ organization_id: orgId, manager_id: manager.id, role });
-  if (insErr) {
-    // unique (organization_id, manager_id) — the duplicate answers a code,
-    // and the race between check-then-insert never existed to begin with.
-    if (insErr.code === "23505") {
+  if (manager) {
+    const { data: existingMember } = await admin
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("manager_id", manager.id)
+      .maybeSingle();
+    if (existingMember) {
       return json(
         { ok: false, error: "Already a member", code: "already_member" },
         409,
       );
     }
-    return json({ ok: false, error: insErr.message }, 500);
+    const { error: insErr } = await admin
+      .from("organization_members")
+      .insert({ organization_id: orgId, manager_id: manager.id, role });
+    if (insErr) {
+      if (insErr.code === "23505") {
+        return json(
+          { ok: false, error: "Already a member", code: "already_member" },
+          409,
+        );
+      }
+      return json({ ok: false, error: insErr.message }, 500);
+    }
+    return json({
+      ok: true,
+      mode: "linked",
+      member: { managerId: manager.id, name: manager.full_name, email: manager.email, role },
+    });
+  }
+
+  // Unknown email — send an invite (mirrors business-web-invite-member).
+  const existingInvite = await admin
+    .from("organization_invites")
+    .select("id")
+    .eq("organization_id", orgId)
+    .ilike("email", email)
+    .is("claimed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (existingInvite.data) {
+    return json(
+      { ok: false, code: "invite_pending", error: "An invite for that email is already pending." },
+      409,
+    );
+  }
+
+  const token = newInviteToken();
+  const invite = await admin
+    .from("organization_invites")
+    .insert({ organization_id: orgId, email, role, token, created_by: authRes.user.id })
+    .select("id, token, expires_at")
+    .single();
+  if (invite.error) {
+    return json({ ok: false, error: `invite_insert: ${invite.error.message}` }, 500);
+  }
+
+  const redirectTo = redirectBase
+    ? `${redirectBase}/accept-org-invite?token=${encodeURIComponent(token)}&organizationId=${encodeURIComponent(orgId)}`
+    : undefined;
+  let emailSent = false;
+  let emailError: string | null = null;
+  try {
+    const inviteRes = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { organizationId: orgId, role, orgInviteToken: token },
+      redirectTo,
+    });
+    if (inviteRes.error) {
+      // "User already registered" is fine: the organization_invites row is
+      // still good and the recipient can use the link directly.
+      emailError = inviteRes.error.message;
+    } else {
+      emailSent = true;
+    }
+  } catch (err) {
+    emailError = err instanceof Error ? err.message : "invite_email_failed";
   }
 
   return json({
     ok: true,
-    member: {
-      managerId: manager.id,
-      name: manager.full_name,
-      email: manager.email,
-      role,
-    },
+    mode: "invited",
+    inviteId: invite.data.id,
+    token: invite.data.token,
+    expiresAt: invite.data.expires_at,
+    email,
+    role,
+    emailSent,
+    emailError,
   });
 });

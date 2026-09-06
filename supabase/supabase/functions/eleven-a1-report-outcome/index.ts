@@ -1,18 +1,18 @@
 // Supabase Edge Function — eleven-a1-report-outcome (vendor caller)
 //
 // Caller = eleven-a1: the c2b OUTBOUND Booker — the agent leg that calls the
-// venue on the guest's behalf. Mid-call it reports what the venue actually
+// place on the guest's behalf. Mid-call it reports what the place actually
 // said, replacing inference from ElevenLabs' coarse call_successful flag:
 //
 //   { reference_code,
 //     verdict: "confirmed" | "counter_offer" | "declined"
 //            | "unreachable"   // never reached anyone who can book: voicemail,
 //                              // IVR dead-end, "call back later"  → RETRYABLE
-//            | "wrong_number", // the line is not this venue           → TERMINAL
+//            | "wrong_number", // the line is not this place           → TERMINAL
 //     alternatives?: string[],   // speakable options: "afuera a las 10"
 //     note?: string }
 //
-// unreachable vs declined matters: declined is the venue SAYING NO (terminal,
+// unreachable vs declined matters: declined is the place SAYING NO (terminal,
 // real signal); unreachable is us never getting to ask (worth another attempt).
 // wrong_number must never retry — redialling just rings a stranger again.
 //
@@ -23,7 +23,7 @@
 //
 // on_reservation_failed emitter (MESITA-1189): a "wrong_number" verdict is the
 // ONE terminal, unambiguous signal that the stored channel is stale — declined
-// and counter_offer mean the venue answered (channel works), unreachable is
+// and counter_offer mean the place answered (channel works), unreachable is
 // documented and implemented as retryable (voicemail, IVR, "call back later").
 // Firing on those would burn the cooldown window on a channel that isn't
 // actually broken. Best-effort: a seeding failure here never fails the
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
 
   // Structured {time,date?,note?} entries — see _shared/reservation-alternatives.ts.
   // Storing prose made every guest pick look like a brand-new proposal and cost
-  // the venue a second call. normalizeAlternatives still accepts the old string
+  // the place a second call. normalizeAlternatives still accepts the old string
   // form, so an agent build that hasn't picked up the new schema keeps working.
   const alternatives = normalizeAlternatives(body.alternatives).slice(0, 5);
 

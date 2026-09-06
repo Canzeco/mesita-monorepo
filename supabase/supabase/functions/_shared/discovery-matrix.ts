@@ -37,7 +37,7 @@ export const DISCOVERY_MODE_KEYS = [
 export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
 
 /**
- * What a mode can put IN FRONT OF THE GUEST. A Place is a venue; a Location
+ * What a mode can put IN FRONT OF THE GUEST. A Place is a place; a Location
  * is a region or a city — name, type, and the coordinates the next step
  * needs (Pato, 2026-09-02).
  */

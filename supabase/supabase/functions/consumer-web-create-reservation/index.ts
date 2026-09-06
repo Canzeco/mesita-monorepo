@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
   if (Number.isNaN(reservedAt.getTime())) {
     return json({ ok: false, error: "reserved_at must be a valid ISO 8601 timestamp" }, 400);
   }
-  // A past slot must never reach the Booker — it would phone a venue to ask for
+  // A past slot must never reach the Booker — it would phone a place to ask for
   // a table that has already come and gone. The clients block past slots in the
   // picker, but this is the real gate: consumer-web-update-reservation has
   // always rejected past instants and create silently did not.
@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
     reservation as { project_id?: string | null },
   ]);
 
-  // Attempt 1 is immediate: hand off to the Reservationist to phone the venue.
+  // Attempt 1 is immediate: hand off to the Reservationist to phone the place.
   // Best-effort — the reservation already exists, so a call-trigger failure must
   // NOT fail the request (the call EF returns 503 until ELEVENLABS_KEY is set).
   const call = await invokeInternalCaller(

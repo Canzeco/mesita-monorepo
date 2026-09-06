@@ -79,6 +79,7 @@ export function GoSheet({
     onCreated: () => {
       void tickets.refresh();
     },
+    source: "go_sheet",
   });
   const promoting = isPromoting(place);
   const orderEnabled = isOrderActionEnabled(place);
@@ -103,7 +104,7 @@ export function GoSheet({
 
         <div className="mt-4 flex flex-col gap-2">
           {/* CREDITS — locked at every place until the engine lands, so the
-                hint carries the parked claim rather than blaming the venue. */}
+                hint carries the parked claim rather than blaming the place. */}
           <GoOption
             Icon={Lock}
             title="Credits"

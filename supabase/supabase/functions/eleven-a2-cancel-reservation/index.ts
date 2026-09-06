@@ -51,9 +51,9 @@ Deno.serve(async (req) => {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 
-  // A CONFIRMED table is being walked away from — the venue is holding it and
+  // A CONFIRMED table is being walked away from — the place is holding it and
   // must hear (Docs › Reservations §B leg 5). Pending tickets owe nothing.
-  const notice = ticket.state === "confirmed" ? "venue_cancel" as const : null;
+  const notice = ticket.state === "confirmed" ? "place_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
   if (err) return json({ ok: false, error: err }, 500);
 
@@ -67,6 +67,6 @@ Deno.serve(async (req) => {
     ok: true,
     cancelled: true,
     reference_code: ticket.reference_code,
-    venue_notified: notice !== null,
+    place_notified: notice !== null,
   });
 });

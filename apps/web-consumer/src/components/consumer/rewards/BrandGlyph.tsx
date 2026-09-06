@@ -4,7 +4,7 @@
 // … white with logos for example google and instagram").
 //
 // A lucide outline said "camera-ish shape" where the guest needs to recognise
-// INSTAGRAM in a dark venue at arm's length. These are the official marks in
+// INSTAGRAM in a dark place at arm's length. These are the official marks in
 // their own colours — the one place colour is allowed on this deliberately
 // neutral screen, because a Google G that isn't Google-coloured is not a
 // recognition cue, it's decoration.

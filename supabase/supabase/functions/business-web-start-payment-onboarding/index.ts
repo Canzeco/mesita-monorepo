@@ -27,7 +27,7 @@ import {
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
+import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import {
   liveChargesBlocked,
   STRIPE_API_VERSION,
@@ -57,6 +57,10 @@ import {
 
 type Body = {
   orgId?: string;
+  /** The place console knows its placeId, not the org that holds it — when
+   *  orgId is omitted this EF resolves it server-side (clients never query
+   *  the DB). Ignored when orgId is present. */
+  placeId?: string;
   returnUrl?: string;
   refreshUrl?: string;
   /** ISO-3166-1 alpha-2, allowlisted (MESITA_CONNECT_COUNTRIES). Defaults to
@@ -124,8 +128,25 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const orgId = (bodyRes.body.orgId ?? "").trim();
-  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
+  const admin = adminClient(envRes.env);
+
+  const bodyOrgId = (bodyRes.body.orgId ?? "").trim();
+  const bodyPlaceId = (bodyRes.body.placeId ?? "").trim();
+  if (!bodyOrgId && !bodyPlaceId) {
+    return json({ ok: false, error: "orgId or placeId is required" }, 400);
+  }
+  let orgId = bodyOrgId;
+  if (!orgId) {
+    const resolved = await orgIdForPlace(admin, bodyPlaceId);
+    if (!resolved) {
+      return json({
+        ok: false,
+        error: "This place has no organization to connect Stripe under yet.",
+        code: "place_has_no_organization",
+      }, 400);
+    }
+    orgId = resolved;
+  }
 
   // Country is PERMANENT on the account Stripe is about to create, so it is
   // validated against the allowlist here — before the ownership check, before
@@ -159,8 +180,6 @@ Deno.serve(async (req) => {
       code: "unsupported_entity_type",
     }, 400);
   }
-
-  const admin = adminClient(envRes.env);
 
   const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
   if (!roleRes.ok) return roleRes.response;

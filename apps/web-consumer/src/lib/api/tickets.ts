@@ -314,14 +314,13 @@ export async function apiGetTicket(
 }
 
 // THE TICKET v4, step 5 (MESITA-1092): after approval the guest picks how
-// they settle. `at_place` is the ONE live path. Mesita Pay (the card rail) is
-// staged, not live: the Connect account layer landed in #1415 and the charge
-// path is still to come, so this door still accepts only `at_place`. The
-// gateway PR is the one that reopens it with a new method value.
+// they settle. `at_place` pays the place directly; `mesita_pay` (MESITA-1414)
+// is the gateway — a direct Stripe charge on the place's connected account,
+// gated per ticket by settlement.cardRail (consumer-web-get-ticket).
 export async function apiSelectTicketPayment(
   client: SupabaseClient,
   ticketId: string,
-  method: "at_place" | null,
+  method: "at_place" | "mesita_pay" | null,
 ): Promise<{ state: string }> {
   return await invokeEF<{ state: string }>(
     client,
@@ -332,7 +331,7 @@ export async function apiSelectTicketPayment(
 
 // v3c report button (MESITA-851): the guest's route when a place doesn't
 // honor the ticket. Live for the whole ticket and for a window after it
-// closes — people realise they were shorted once they're outside the venue.
+// closes — people realise they were shorted once they're outside the place.
 // A report is evidence for an operator, never an automatic strike.
 export const REPORT_REASONS = [
   {

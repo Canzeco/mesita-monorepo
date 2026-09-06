@@ -174,7 +174,7 @@ export async function apiDeleteConsumerAccount(): Promise<void> {
 }
 
 // Same predicate as the web (shell)/layout.tsx guard. First AND last name:
-// reservations are booked with the venue under the guest's full name, so a
+// reservations are booked with the place under the guest's full name, so a
 // first-name-only profile isn't onboarded (consumers from before that rule
 // get sent back to /onboard once).
 // The onboarded predicate — hand-mirrored from web
