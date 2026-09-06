@@ -46,6 +46,7 @@ import {
   mockConnectAccountId,
 } from "../_shared/stripe-connect.ts";
 import {
+  isStripeKeyRejection,
   resolveStripeSecret,
   stripeSecretKeyProblem,
 } from "../_shared/stripe-env.ts";
@@ -75,6 +76,16 @@ type Body = {
 // (or to an agent) to learn something the API already said. The Controls row
 // renders `blocked` as "Stripe: <reason>", so this lands in an idiom that
 // already exists.
+//
+// ONE exception, and it is the reason this function exists rather than a bare
+// `json(err.message)`: a 401. The reader here is a RESTAURANT OWNER, not a
+// Mesita operator. "Expired API Key provided: sk_test_…8QBF1y" tells them
+// nothing they can act on, implies the failure is theirs, and echoes our
+// platform credential into their browser — the very leak the shape guard on
+// the key was added to prevent, arriving through the one door it cannot cover
+// (an expired or revoked key is perfectly SHAPED, so it passes that guard and
+// only dies on the first real call). Every other Stripe rejection still
+// travels verbatim.
 function stripeFailure(err: unknown): Response {
   const raw = (err as { raw?: { message?: unknown } }).raw?.message;
   const top = (err as { message?: unknown }).message;
@@ -83,6 +94,21 @@ function stripeFailure(err: unknown): Response {
     : typeof top === "string"
     ? top
     : "Stripe rejected the request.";
+  if (isStripeKeyRejection(err)) {
+    const secret = resolveStripeSecret();
+    console.error(
+      `[start-payment-onboarding] Stripe REJECTED the platform key` +
+        `${secret ? ` in ${secret.name}` : ""}: ${message}. ` +
+        `The key is shaped correctly but is not usable — expired, rolled, ` +
+        `revoked, or issued for a different Stripe account. Rotate it.`,
+    );
+    return json({
+      ok: false,
+      error:
+        "Payments aren\u2019t configured on Mesita\u2019s side yet \u2014 nothing to fix on your end. We\u2019ve been notified.",
+      code: "stripe_key_rejected",
+    }, 503);
+  }
   return json({ ok: false, error: message, code: "stripe_error" }, 400);
 }
 
