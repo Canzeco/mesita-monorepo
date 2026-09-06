@@ -89,4 +89,39 @@ export function useStoredString(
   return [value, set];
 }
 
-// ─── String set (joined communities, multi-select) ───────────────────────
+// ─── String set (joined communities, multi-select; also backs the
+//     Mesita Pay one-per-place disclosure, TicketScreen) ──────────────────
+
+function readSet(key: string): ReadonlySet<string> {
+  const raw = readString(key);
+  if (!raw) return EMPTY_SET;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? new Set(parsed.filter((v): v is string => typeof v === "string"))
+      : EMPTY_SET;
+  } catch {
+    return EMPTY_SET;
+  }
+}
+
+const EMPTY_SET: ReadonlySet<string> = new Set();
+
+export function useStoredStringSet(
+  key: string,
+): [ReadonlySet<string>, (value: string) => void] {
+  const set = useSyncExternalStore(
+    subscribe,
+    () => readSet(key),
+    () => EMPTY_SET,
+  );
+  const add = useCallback(
+    (value: string) => {
+      const current = readSet(key);
+      if (current.has(value)) return;
+      writeString(key, JSON.stringify([...current, value]));
+    },
+    [key],
+  );
+  return [set, add];
+}

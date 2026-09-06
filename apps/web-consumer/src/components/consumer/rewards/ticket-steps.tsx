@@ -321,6 +321,7 @@ export function StepPay({
   error,
   cardRailAvailable = false,
   onConfirmAtPlace,
+  onPayMesitaPay,
 }: {
   placeName: string;
   pct: number;
@@ -334,7 +335,12 @@ export function StepPay({
   /** Server-derived three-leg pay-readiness for this ticket's place. */
   cardRailAvailable?: boolean;
   onConfirmAtPlace: () => void;
+  /** Omitted while cardRailAvailable is false — Mesita Pay isn't selectable. */
+  onPayMesitaPay?: () => void;
 }) {
+  const [method, setMethod] = useState<"at_place" | "mesita_pay">("at_place");
+  const payingWithCard = cardRailAvailable && method === "mesita_pay";
+
   return (
     <div className="flex flex-col gap-3">
       <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/[0.06] p-3.5">
@@ -342,8 +348,10 @@ export function StepPay({
           {placeName} approved it
         </p>
         <p className="text-muted-foreground mt-1 text-xs">
-          {pct > 0 ? `${pct}% off is locked. ` : ""}Pay at the table like always
-          — the ticket closes the moment they confirm.
+          {pct > 0 ? `${pct}% off is locked. ` : ""}
+          {payingWithCard
+            ? "Charging your saved card settles it — nothing to hand over at the table."
+            : "Pay at the table like always — the ticket closes the moment they confirm."}
         </p>
       </div>
 
@@ -358,7 +366,8 @@ export function StepPay({
             icon={<Wallet className="text-muted-foreground size-4" />}
             label="At the register"
             sub="Cash or card, straight to the place"
-            selected
+            selected={!payingWithCard}
+            onSelect={busy ? undefined : () => setMethod("at_place")}
           />
         </div>
         {cardRailAvailable ? (
@@ -371,8 +380,9 @@ export function StepPay({
             <PayMethodRow
               icon={<CreditCard className="text-muted-foreground size-4" />}
               label="Pay with my card"
-              sub="Coming soon · settle the bill from your saved card"
-              soon
+              sub="Settle the bill now from your saved card"
+              selected={payingWithCard}
+              onSelect={busy ? undefined : () => setMethod("mesita_pay")}
             />
           </>
         ) : null}
@@ -400,7 +410,7 @@ export function StepPay({
           value={formatCurrency(tipCents)}
         />
         <MoneyRow
-          label="You pay at the table"
+          label={payingWithCard ? "You pay now" : "You pay at the table"}
           value={formatCurrency(amountDueCents)}
         />
       </div>
@@ -411,11 +421,13 @@ export function StepPay({
         type="button"
         size="lg"
         disabled={busy}
-        onClick={onConfirmAtPlace}
+        onClick={payingWithCard ? onPayMesitaPay : onConfirmAtPlace}
         className="shadow-glow w-full text-sm font-bold disabled:opacity-45"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-        I&apos;m paying {formatCurrency(amountDueCents)} at the register
+        {payingWithCard
+          ? `Pay ${formatCurrency(amountDueCents)} with my card`
+          : `I'm paying ${formatCurrency(amountDueCents)} at the register`}
       </Button>
 
       <TipHonesty subtotalCents={subtotalCents} tipPct={tipPct} />
@@ -429,22 +441,23 @@ function PayMethodRow({
   sub,
   selected = false,
   soon = false,
+  onSelect,
 }: {
   icon: React.ReactNode;
   label: string;
   sub: string;
   selected?: boolean;
   soon?: boolean;
+  /** Omitted (or the row is `soon`/already busy) → a plain, unclickable row. */
+  onSelect?: () => void;
 }) {
-  return (
-    <div
-      aria-disabled={soon || undefined}
-      className={cn(
-        "relative flex min-h-14 items-center gap-3 px-3.5 py-2.5",
-        selected && "bg-primary/[0.06]",
-        soon && "opacity-50",
-      )}
-    >
+  const rowClassName = cn(
+    "relative flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-left",
+    selected && "bg-primary/[0.06]",
+    soon && "opacity-50",
+  );
+  const content = (
+    <>
       {selected ? (
         <span
           aria-hidden="true"
@@ -485,6 +498,24 @@ function PayMethodRow({
           <span className="size-[7px] rounded-full bg-white" />
         ) : null}
       </span>
+    </>
+  );
+
+  if (onSelect && !soon) {
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={rowClassName}
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div aria-disabled={soon || undefined} className={rowClassName}>
+      {content}
     </div>
   );
 }

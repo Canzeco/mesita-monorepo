@@ -27,7 +27,7 @@ import {
   guestVisitsPolicy,
   loadVisitsConfig,
 } from "../_shared/visits-config.ts";
-import { isConnectChargeReady } from "../_shared/payment-account-doc.ts";
+import { resolveChargeableOrganizationAccount } from "../_shared/mesita-pay-readiness.ts";
 
 // The wallet's list columns plus the v4 journey state. updated_at rides along
 // so the client can keep the freshest of (wallet row · this poll).
@@ -85,64 +85,20 @@ Deno.serve(async (req) => {
   const visitsConfig = await loadVisitsConfig(admin);
   const visits = guestVisitsPolicy(visitsConfig);
   const settlement = {
-    cardRail: await cardRailReady(admin, visitsConfig.payCard, row.project_id),
+    // Mesita Pay readiness for THIS ticket's place — the full three-leg
+    // chain lives in _shared/mesita-pay-readiness.ts so this poll and
+    // consumer-web-select-ticket-payment's actual charge attempt can never
+    // disagree. Returned as ONE derived boolean: the legs themselves never
+    // cross the wire (mesita_pay_enabled is admin-only, and a guest has no
+    // business learning a place's Connect state either). payCard is checked
+    // first inside the helper and short-circuits, so while it's false —
+    // every ticket in production today — this adds zero queries to a poll
+    // that runs every consumerPollSeconds.
+    cardRail: (await resolveChargeableOrganizationAccount(
+      admin,
+      visitsConfig.payCard,
+      row.project_id,
+    )) !== null,
   };
   return json({ ok: true, ticket, visits, settlement });
 });
-
-/**
- * Mesita Pay readiness for THIS ticket's place — the full three-leg chain the
- * intent-bit column comments promise (_shared/payment-account-doc.ts):
- *
- *   places.mesita_pay_enabled  (operator intent bit)
- *   ∧ visits_config.payCard    (global rail switch)
- *   ∧ isConnectChargeReady     (Stripe-derived Connect capability)
- *
- * Returned as ONE derived boolean. The legs themselves never cross the wire:
- * `mesita_pay_enabled` is an admin-only State fact (#10), deliberately kept
- * off the publicly-readable profiles view, and a guest has no business
- * learning a place's Connect state either.
- *
- * The global switch is checked FIRST and short-circuits, so while payCard is
- * false — which is every ticket in production today — this adds zero queries
- * to a poll that runs every consumerPollSeconds.
- */
-async function cardRailReady(
-  admin: ReturnType<typeof adminClient>,
-  payCard: boolean,
-  placeId: string | null,
-): Promise<boolean> {
-  if (!payCard || !placeId) return false;
-  // The merchant is the ORGANIZATION (MESITA-1545): capability lives on the
-  // place's org account; a pooled place (no organization) can never charge.
-  const [place, org] = await Promise.all([
-    admin
-      .from("places")
-      .select("mesita_pay_enabled")
-      .eq("id", placeId)
-      .maybeSingle(),
-    admin
-      .from("projects")
-      .select("organization_id")
-      .eq("id", placeId)
-      .maybeSingle(),
-  ]);
-  const intent = (place.data as { mesita_pay_enabled?: boolean } | null)
-    ?.mesita_pay_enabled ===
-    true;
-  if (!intent) return false;
-  const orgId =
-    (org.data as { organization_id?: string | null } | null)
-      ?.organization_id ?? null;
-  if (!orgId) return false;
-  const account = await admin
-    .from("organization_payment_accounts")
-    .select("charges_enabled, details_submitted")
-    .eq("organization_id", orgId)
-    .maybeSingle();
-  return isConnectChargeReady(
-    account.data as
-      | { charges_enabled: boolean; details_submitted: boolean }
-      | null,
-  );
-}

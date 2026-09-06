@@ -8,6 +8,13 @@ Deno.test("at_place is the live path", () => {
   });
 });
 
+Deno.test("mesita_pay is the gateway live path (MESITA-1414)", () => {
+  assertEquals(parseSelectTicketPaymentMethod("mesita_pay"), {
+    ok: true,
+    method: "mesita_pay",
+  });
+});
+
 Deno.test("null and omitted roll back / mean no pick", () => {
   assertEquals(parseSelectTicketPaymentMethod(null), {
     ok: true,
