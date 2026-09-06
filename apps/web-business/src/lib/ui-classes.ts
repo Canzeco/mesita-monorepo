@@ -65,6 +65,32 @@ export const SECTION_TITLE_CLASS =
 export const GHOST_PILL_BUTTON_CLASS =
   "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60";
 
+// ── The shell's one width law (MESITA-1558) ────────────────────────────────
+//
+// The console is FLUID: no max-width. Pato asked it to use all the space, and
+// the repo's own rule for keeping that readable is one line down — cap the
+// form, not the card. Wide is fine for a card, a data row or a list; it is a
+// form field that must not become a 2000px box for a 13-character RFC.
+//
+// SHELL_GUTTER and SHELL_BLEED are a PAIR and must stay in lockstep: the bleed
+// is exactly the negative of the gutter at every breakpoint, so a full-bleed
+// child of <main> lands flush against the window. Change one, change the other
+// — `shell-chrome.test.ts` fails if they ever disagree.
+export const SHELL_GUTTER = "px-4 sm:px-6 lg:px-8";
+export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
+
+/** Row 1's occupied height: the h-14 bar (56px) PLUS its 1px bottom border.
+ *  Row 2 parks at exactly this offset. Larger and a strip of body content
+ *  scrolls through the gap between them; smaller and they overlap, which is
+ *  invisible because row 1 paints above. */
+export const TOPNAV_OCCUPIED_PX = 57;
+
+/** Row 2's sticky offset. The literal 57 has to be written out — Tailwind
+ *  scans source text and cannot read a constant — so `shell-chrome.test.ts`
+ *  asserts this string and TOPNAV_OCCUPIED_PX agree, and that the mobile
+ *  offset is 0 because row 1 is `static` there. */
+export const PLACEBAR_STICKY_CLASS = "sticky top-0 sm:top-[57px]";
+
 // Readable measure for a single-column form. Inputs inherit the width of
 // their container, and a 900px-wide box for a 13-character RFC reads as a
 // mistake — cap the form, not the card.

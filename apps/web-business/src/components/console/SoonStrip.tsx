@@ -1,6 +1,6 @@
 // A future box, honestly. One dashed row — title, one line, a Soon pill —
 // never a full-rank card: dashed reads "not yet real" against the solid live
-// Sections (the (console)/settings RowDisabled idiom), and the one-line
+// Sections (the disabled-row idiom), and the one-line
 // height is what keeps three of these stacked from becoming gray porridge.
 // House law: an unbuilt engine shows Soon, never knobs, never a fake feed.
 

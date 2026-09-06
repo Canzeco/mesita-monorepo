@@ -458,7 +458,12 @@ export function PlaceSection({
     // (SectionCard) and gets the gutter margin + break-inside-avoid via
     // [&>section]; the fixed photo dialog is a <div>, exempt and out of flow.
     // lg (not xl): admin content + sidebar rarely reaches 1280px of free width.
-    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
+// xl:columns-3 is for the BUSINESS console (MESITA-1558), which has no
+// sidebar and a fluid container, so at xl it genuinely has the ~1300px
+// three ~440px columns need — the measure these cards were drawn at. In
+// admin the xl breakpoint is simply never reached behind the w-60 rail,
+// so this is the same reasoning applied to a wider box, not a new rule.
+    <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
           Basics → Location → Hours → Channels → Photos → Menus (children) →

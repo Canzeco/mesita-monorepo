@@ -3,13 +3,15 @@
 // Admin — the same components the operator console uses.
 //
 // This layout is the ONE authority: it resolves the 404 verdict, the holder,
-// the tab set, and the AdminPlace the ported sections read. Both loads are
-// request-cached, so the tab page re-asking costs nothing.
+// the tab set, and the AdminPlace the ported sections read. PlaceBar takes all
+// of it as props rather than re-resolving any of it, so there is exactly one
+// place that decides what this viewer may see.
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
-import { PlaceStateBadge } from "@/components/console/badges";
-import { PlaceTabs } from "./PlaceTabs";
+import { resolveActiveOrg } from "@/lib/active-organization";
+import { apiListOrganizations } from "@/lib/api/organizations";
+import { PlaceBar } from "@/components/console/PlaceBar";
 import { PlaceManageShell } from "./PlaceManageShell";
 
 export const dynamic = "force-dynamic";
@@ -42,44 +44,44 @@ export default async function PlaceLayout({
   const manage = await getManagePlace(id);
   const tabs = visibleTabs(view, manage);
 
-  const header = (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          {view.place.name}
-        </h1>
-        {view.place.verified ? (
-          <PlaceStateBadge state="verified" />
-        ) : view.place.listed ? (
-          <PlaceStateBadge state="listed" />
-        ) : null}
-      </div>
-      {view.holder && (
-        <p className="text-muted-foreground -mt-1 text-[13px]">
-          Held by {view.holder.organizationName}
-        </p>
-      )}
-      {tabs.length > 1 && <PlaceTabs placeId={id} tabs={tabs} />}
-    </div>
+  // The org the tab hrefs must carry. A layout cannot read searchParams, so
+  // it resolves the same way every page does: the holder when there is one,
+  // else the caller's first organization.
+  let organizationId = view.holder?.organizationId ?? null;
+  if (!organizationId) {
+    const orgs = await apiListOrganizations(supabase).catch(() => []);
+    organizationId = resolveActiveOrg(orgs, undefined)?.id ?? null;
+  }
+
+  // ONE call site for the bar. Building it twice — once per branch — is the
+  // drift this layout's docblock exists to prevent.
+  const bar = (
+    <PlaceBar
+      placeId={id}
+      name={view.place.name}
+      tabs={tabs}
+      organizationId={organizationId}
+      verified={view.place.verified}
+      listed={view.place.listed}
+      guarded={manage !== null}
+    />
   );
 
   // Without a manage payload there is no PlaceContext to provide — and
-  // nothing that needs one, since only Profile renders.
+  // nothing that needs one, since only Profile renders. The bar still shows,
+  // unguarded: a pool place has no editable state to discard.
   if (!manage) {
     return (
       <>
-        {header}
+        {bar}
         {children}
       </>
     );
   }
 
   return (
-    <>
-      {header}
-      <PlaceManageShell placeId={id} initialPlace={manage.place}>
-        {children}
-      </PlaceManageShell>
-    </>
+    <PlaceManageShell placeId={id} initialPlace={manage.place} header={bar}>
+      {children}
+    </PlaceManageShell>
   );
 }

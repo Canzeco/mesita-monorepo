@@ -14,6 +14,15 @@
 // ownership proof.
 
 import { cache } from "react";
+// Re-exported so server callers keep one import site; the vocabulary itself
+// lives in a client-safe module (see place-tabs.ts).
+export {
+  PLACE_TAB_LABEL,
+  PLACE_TABS,
+  placeTabHref,
+  type PlaceTab,
+} from "@/lib/place-tabs";
+import type { PlaceTab } from "@/lib/place-tabs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   apiGetConsolePlace,
@@ -38,21 +47,6 @@ export const getManagePlace = cache(
   },
 );
 
-export const PLACE_TABS = [
-  "profile",
-  "capabilities",
-  "activity",
-  "admin",
-] as const;
-export type PlaceTab = (typeof PLACE_TABS)[number];
-
-export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
-  profile: "Profile",
-  capabilities: "Capabilities",
-  activity: "Activity",
-  admin: "Admin",
-};
-
 /** Which tabs this caller may see on this place.
  *  pool place            → Profile only (it carries Claim)
  *  held · org viewer     → Profile + Activity (read surfaces)
@@ -70,9 +64,4 @@ export function visibleTabs(
     : ["profile", "capabilities", "activity"];
   if (manage.isSuperAdmin) tabs.push("admin");
   return tabs;
-}
-
-export function placeTabHref(placeId: string, tab: PlaceTab): string {
-  const base = `/places/${encodeURIComponent(placeId)}`;
-  return tab === "profile" ? base : `${base}/${tab}`;
 }
