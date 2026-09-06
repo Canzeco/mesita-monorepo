@@ -2,10 +2,10 @@
 //
 // Surfaces (see the web-admin design map (Notion Docs › Design)):
 //   config  — flat/tabbed config pages (canonical for greenfield)
-//   manage  — single-place records editor
+//   manage  — records editors (cards, filled inputs, SaveBar)
 //
 // Prefer `@/components/admin-ui` (or `/config` `/manage`) over route-local
-// files. `manage-single/ui` is only `CrossTabLink` (needs PlaceContext).
+// files.
 
 export {
   KnobState,

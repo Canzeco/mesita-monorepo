@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useId, useState } from "react";
 import { ChevronDown, Flag, MapPin } from "lucide-react";
 import { formatAbsoluteUtc, timeAgo } from "@/lib/format";
@@ -102,7 +101,6 @@ function ExpandableRow({
       ? formatAbsoluteUtc(item.occurredAt)
       : timeAgo(item.occurredAt, now);
   const place = item.place;
-  const href = place?.id ? `/manage-single/${place.id}/place` : null;
 
   return (
     <li className={pinned ? "bg-destructive/5" : undefined}>
@@ -174,15 +172,7 @@ function ExpandableRow({
                 ))}
               </ol>
             ) : (
-              <ExpandedBody item={item} href={href} />
-            )}
-            {group && href && (
-              <Link
-                href={href}
-                className="text-secondary inline-flex text-xs font-medium hover:underline"
-              >
-                Open place
-              </Link>
+              <ExpandedBody item={item} />
             )}
           </div>
         </div>
@@ -191,13 +181,7 @@ function ExpandableRow({
   );
 }
 
-function ExpandedBody({
-  item,
-  href,
-}: {
-  item: NotificationItem;
-  href: string | null;
-}) {
+function ExpandedBody({ item }: { item: NotificationItem }) {
   const place = item.place;
   return (
     <>
@@ -212,14 +196,6 @@ function ExpandedBody({
         <p className="text-muted-foreground text-xs leading-relaxed">{item.detail}</p>
       )}
       <MetaRow item={item} />
-      {href && (
-        <Link
-          href={href}
-          className="text-secondary inline-flex text-xs font-medium hover:underline"
-        >
-          Open place
-        </Link>
-      )}
     </>
   );
 }

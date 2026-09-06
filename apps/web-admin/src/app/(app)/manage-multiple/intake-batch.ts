@@ -1,4 +1,4 @@
-// Multiple Places Intake — one box: Create, Enrich, Update, Create + Enrich.
+// Places Intake — one box: Create, Enrich, Update, Create + Enrich.
 //
 // Create is NOT scheduled. Fire every Google Place ID in one batch — Google
 // accepts that fan-out. Enrich IS scheduled: admin-web-enrich-place only

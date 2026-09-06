@@ -189,8 +189,7 @@ export const PLAN_META: Record<
   },
 };
 
-// Shared action vocabulary — consumed by manage-single's per-strategy matrix
-// besides this page. "standing" is the base/None column.
+// Shared action vocabulary. "standing" is the base/None column.
 export const ACTION_META: Record<ActionKey, { name: string; emoji: string }> = {
   standing: { name: "None (Standing)", emoji: "🎫" },
   mesita_review: { name: "Mesita Review", emoji: "🍽️" },

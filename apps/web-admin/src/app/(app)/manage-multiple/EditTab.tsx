@@ -7,7 +7,7 @@ import {
   setPlacePlan,
   setPlaceStrategy,
   setPlaceVerified,
-} from "../manage-single/actions";
+} from "./actions";
 import {
   DEFAULT_DISCOUNT_CAP_MXN,
   STRATEGY_BY_ID,
