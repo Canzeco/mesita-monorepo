@@ -552,7 +552,7 @@ export const ENGINES: {
     key: "social",
     label: "Social",
     fn: "social()",
-    input: "Upcoming events at listed places (happenings, not venues).",
+    input: "Upcoming events at listed places (happenings, not places).",
     process: "Parked. Home is Soon. Admin box is Soon; knobs persist on the blob; no events engine yet. Will query events, not places.",
     output: "Event rails on Home › Social, when unparked.",
     state: "PARKED",
