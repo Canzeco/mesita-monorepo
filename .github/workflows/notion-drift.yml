@@ -1,0 +1,31 @@
+name: notion drift
+
+# The one ungated hop in the knowledge chain (Development Rules §C): Notion Rules §0 is
+# the master and scripts/rules-quickstart.md is its hand mirror. This compares the two
+# as words. Without the NOTION_TOKEN secret it prints a warning and passes; it never
+# reads as green for a reason it did not check (ASDM I-8, Rules v7 decision D-E).
+on:
+  pull_request:
+    paths:
+      - "scripts/rules-quickstart.md"
+      - "scripts/notion-drift.ts"
+      - ".github/workflows/notion-drift.yml"
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+jobs:
+  drift:
+    name: Notion §0 matches the quickstart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.1
+      - name: Compare
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: deno run --allow-net=api.notion.com --allow-env=NOTION_TOKEN --allow-read scripts/notion-drift.ts

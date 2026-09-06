@@ -96,7 +96,7 @@ export function countWords(text: string): number {
 // script's quickstart source, and agent tooling config. Anything else fails CI.
 //
 // `.mdc` is scanned because Cursor reads `.cursor/rules/*.mdc` as rules (ASDM
-// §K4) — an unscanned dialect is a rule channel outside the allowlist, which is
+// §D, the Cursor rows) — an unscanned dialect is a rule channel outside the allowlist, which is
 // how a stray package rule once lived in the repo unnoticed.
 //
 // KEEP IN SYNC with the `paths:` filters in .github/workflows/rules.yml — YAML

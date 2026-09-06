@@ -320,7 +320,7 @@ Deno.test("findStrayMarkdown treats a package CLAUDE.md of an unregistered packa
 
 // ── The cross-file coupling that YAML cannot import ──────────────────────────
 
-Deno.test("MD_SCAN_GLOBS scans .mdc — Cursor reads it as rules (ASDM §K4)", () => {
+Deno.test("MD_SCAN_GLOBS scans .mdc — Cursor reads it as rules (ASDM §D)", () => {
   assert(MD_SCAN_GLOBS.includes("*.mdc"));
 });
 
