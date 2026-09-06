@@ -3,3 +3,6 @@ url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa,web_search_adva
 
 [mcp_servers.linear-server]
 url = "https://mcp.linear.app/mcp"
+
+[mcp_servers.notion]
+url = "https://mcp.notion.com/mcp"

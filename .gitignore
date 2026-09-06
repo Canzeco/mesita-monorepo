@@ -22,3 +22,6 @@ node_modules/
 .cursor/skills/gstack/ETHOS.md
 .cursor/skills/gstack/design
 .cursor/skills/gstack/VERSION
+
+# Claude Code worktree fleet (ASDM I-3): never tracked, seeded from .worktreeinclude
+.claude/worktrees/
