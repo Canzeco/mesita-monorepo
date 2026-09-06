@@ -3,16 +3,22 @@
 // State is Not connected / Connected: an organization's own state is
 // about money, not about places. Listed and Verified describe one address
 // and live on the place, never here.
+//
+// Read-mostly on purpose. Everything here is typed once and looked at
+// often, so the default is four rows and a count — the forms live behind
+// the affordance that opens them.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
 import { DataRow, OrgStateBadge } from "@/components/console/badges";
+import { AddOrganizationDisclosure } from "@/components/console/AddOrganizationDisclosure";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
-import { OrgLegalForm } from "@/components/console/OrgLegalForm";
+import { OrgIdentityCard } from "@/components/console/OrgIdentityCard";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { resolveActiveOrg } from "@/lib/active-organization";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 import { PageErrorState } from "@/components/business/PageErrorState";
 
@@ -77,52 +83,49 @@ export default async function OrganizationPage({
         <OrgStateBadge state="not_connected" />
       </div>
 
-      <Section
-        title="Identity"
-        description="One legal person, one RFC — needed only to partner places and get paid."
-      >
-        <div className="flex flex-col gap-4">
-          {org.myRole === "owner" ? (
-            <OrgLegalForm
-              orgId={org.id}
-              legalName={org.legalName}
-              rfc={org.rfc}
-            />
-          ) : (
-            <div>
-              <DataRow label="Legal name">{org.legalName ?? "Not set"}</DataRow>
-              <DataRow label="RFC">{org.rfc ?? "Not set"}</DataRow>
-            </div>
-          )}
-          <div>
-            <DataRow label="Currency">{org.currency}</DataRow>
-            <DataRow label="Your role">
-              <span className="capitalize">{org.myRole}</span>
-            </DataRow>
-          </div>
-        </div>
-      </Section>
+      <OrgIdentityCard
+        orgId={org.id}
+        legalName={org.legalName}
+        rfc={org.rfc}
+        currency={org.currency}
+        myRole={org.myRole}
+      />
 
       <Section
         title="Places"
         description="What this organization holds."
         right={
-          <Link
-            href={withOrg(SHELL_ROUTES.places, org.id)}
-            className="text-muted-foreground hover:text-foreground text-[12px]"
-          >
-            Manage
-          </Link>
+          org.placeCount > 0 ? (
+            <Link
+              href={withOrg(SHELL_ROUTES.places, org.id)}
+              className={GHOST_PILL_BUTTON_CLASS}
+            >
+              Manage
+            </Link>
+          ) : undefined
         }
       >
-        <div>
-          <DataRow label="Held">{org.placeCount}</DataRow>
-        </div>
+        {org.placeCount === 0 ? (
+          // Zero is not a data point worth a row. It is a next step.
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted-foreground text-sm">
+              None yet. Every place starts in the public pool.
+            </p>
+            <Link
+              href={withOrg(SHELL_ROUTES.pool, org.id)}
+              className={PILL_BUTTON_CLASS}
+            >
+              Claim from the pool
+            </Link>
+          </div>
+        ) : (
+          <div>
+            <DataRow label="Held">{org.placeCount}</DataRow>
+          </div>
+        )}
       </Section>
 
-      <Section title="Add another organization">
-        <CreateOrganizationForm />
-      </Section>
+      <AddOrganizationDisclosure />
     </>
   );
 }

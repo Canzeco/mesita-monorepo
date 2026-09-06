@@ -57,3 +57,15 @@ export const CTA_BUTTON_CLASS =
 // Section / empty-state title — display face, xl, tight tracking.
 export const SECTION_TITLE_CLASS =
   "font-display text-xl font-semibold tracking-tight";
+
+// Quiet pill action — the secondary partner to PILL_BUTTON_CLASS ("Edit",
+// "Cancel", "Manage"). Border ring, no fill, so it reads as available
+// without competing with the dark CTA beside it. A 12px grey text link is
+// not enough affordance for a real action; this is.
+export const GHOST_PILL_BUTTON_CLASS =
+  "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-60";
+
+// Readable measure for a single-column form. Inputs inherit the width of
+// their container, and a 900px-wide box for a 13-character RFC reads as a
+// mistake — cap the form, not the card.
+export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
