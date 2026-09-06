@@ -485,8 +485,10 @@ verify_jwt = true
 verify_jwt = true
 
 # ── Account / Organization / Place hierarchy (2026-09-05) ──────────────
-# All five require a session: organizations are the thing places get
-# claimed into, so none of this is public.
+# Every one of these requires a session: organizations are the thing places
+# get claimed into, so none of this is public. get-place is the read behind
+# the Place screen — the pool half of it is no wider than list-places
+# scope=public, but it still answers as YOU, so it needs your JWT.
 [functions.business-web-list-organizations]
 verify_jwt = true
 
@@ -497,6 +499,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.business-web-list-places]
+verify_jwt = true
+
+[functions.business-web-get-place]
 verify_jwt = true
 
 [functions.business-web-claim-place]

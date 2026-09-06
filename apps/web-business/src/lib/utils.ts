@@ -26,6 +26,18 @@ export function formatRelative(iso: string): string {
   return ms >= 0 ? `in ${d}d` : `${d}d ago`;
 }
 
+// Absolute day label — "5 Sep 2026". For facts you want to be able to
+// quote back (when a place was added, when it was claimed) where
+// formatRelative's "3d ago" is friendlier but useless as a record.
+// en-GB gives day-before-month without a comma; the console is English.
+export function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 // First letter of a name/label, upper-cased, for avatar chips. Trims so
 // leading whitespace never becomes the "initial", and falls back to a
 // neutral glyph when the source is empty/blank. Single source so every

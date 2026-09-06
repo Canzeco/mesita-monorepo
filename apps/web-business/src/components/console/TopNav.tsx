@@ -1,13 +1,22 @@
 "use client";
 
-// The whole navigation: one slim bar, four screens, and the organization
+// The whole navigation: one slim bar, five screens, and the organization
 // switcher. Client because active state needs usePathname and every href
 // carries the active organization.
+//
+// Four of the five are always there. Place is the fifth and it needs an
+// id, so it appears only while you have one open — and it takes the
+// active state off Org Places, which `/places/<id>` would otherwise steal
+// by prefix.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import {
+  SHELL_ROUTES,
+  placeIdFromPathname,
+  withOrg,
+} from "@/lib/console-routes";
 import type { Organization } from "@/lib/api/organizations";
 
 const LINKS = [
@@ -36,8 +45,9 @@ export function TopNav({
       ? requested
       : organizations[0]?.id) ?? null;
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  // Exact, not prefix: /places/<id> is Place, not Org Places.
+  const openPlaceId = placeIdFromPathname(pathname);
+  const isActive = (href: string) => pathname === href;
 
   // Switching organization keeps you on the screen you are looking at —
   // the same list, a different portfolio.
@@ -72,6 +82,14 @@ export function TopNav({
               {l.label}
             </Link>
           ))}
+          {openPlaceId && (
+            <span
+              aria-current="page"
+              className="bg-foreground text-background shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold"
+            >
+              Place
+            </span>
+          )}
         </nav>
 
         {organizations.length > 1 && (

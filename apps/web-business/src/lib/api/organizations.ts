@@ -4,6 +4,7 @@
 //   Organization  the legal person; one account may be in many
 //   Org Places    what an organization holds
 //   Public Places the pool: places in no organization, claimable by any
+//   Place         one address, from either list
 //
 // Every call is a business-web EF, so an ordinary business account works
 // here — nothing on this path needs super-admin.
@@ -86,6 +87,60 @@ export async function apiListConsolePlaces(
     "Couldn't load places.",
   );
   return places ?? [];
+}
+
+/** One place, plus who holds it. The holder is null when the place is in
+ *  the public pool — nobody holds it, so there is no role to report. */
+export type PlaceHolder = {
+  organizationId: string;
+  organizationName: string;
+  claimedAt: string | null;
+  myRole: OrgRole;
+};
+
+/** The Place screen's payload. `listed` / `enriched` / `verified` arrive
+ *  DERIVED from the EF rather than computed here: the same three facts are
+ *  read by admin surfaces off the same helpers, and a state that disagrees
+ *  with itself across two screens is worse than no state at all. */
+export type ConsolePlaceDetail = {
+  id: string;
+  name: string;
+  address: string | null;
+  zone: string | null;
+  city: string | null;
+  category: string | null;
+  categoryLabel: string | null;
+  phone: string | null;
+  timezone: string | null;
+  currency: string;
+  /** Raw `projects.state`. `listed` is the fact the console gates on; this
+   *  is the reason behind a false one, and the screen shows it only then. */
+  state: string;
+  contentState: string;
+  enrichedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  listed: boolean;
+  enriched: boolean;
+  verified: boolean;
+};
+
+export type ConsolePlaceView = {
+  place: ConsolePlaceDetail;
+  holder: PlaceHolder | null;
+  claimable: boolean;
+};
+
+export async function apiGetConsolePlace(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<ConsolePlaceView> {
+  return invokeEF<ConsolePlaceView>(
+    client,
+    "business-web-get-place",
+    { placeId },
+    "Couldn't load that place.",
+  );
 }
 
 export async function apiClaimPlace(
