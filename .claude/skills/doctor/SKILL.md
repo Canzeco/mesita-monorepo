@@ -257,15 +257,15 @@ reads to an operator as a control that does something.
     `apps/web-<app>`, "skip unaffected" on, last production deploy green. A wrong Git
     connection produces a *silent no-deploy*, which is why this is checked daily.
 6.6 **Build/runtime errors.** Latest deploy build logs + runtime errors per project.
-6.7 **Git surface.** Local branches and worktrees, open PRs older than 7 days, branches
-    whose issue is already closed. Sweep `git worktree list` (fleet lives in
-    `.claude/worktrees/`). Landedness = `git merge-tree --write-tree origin/main <branch>`
-    equal to `origin/main^{tree}` (ASDM §A.5) — report proven-landed as *sweepable*;
-    the doctor **never deletes**. An unlanded tip belongs to its claim.
-6.8 **CI budget.** Actions minutes headroom, red workflows on main.
-    `main-protection` should require `deno lint · test` · `deno check` ·
-    `pgTAP · schema invariants` · `instruction files in sync` · `brand assets in sync`
-    when they report (MESITA-1296; path-filtered skips do not block).
+6.7 **Git surface.** Open PRs older than 7 days, branches whose issue is already closed,
+    and the fleet: run `deno task worktree sweep` (dry-run) from the shared checkout and
+    report its table and its *sweepable* rows; the doctor **never deletes**. A one-entry
+    `git worktree list` is no fleet on this host: `SKIPPED`, never OK.
+6.8 **CI budget.** Actions minutes headroom, red workflows on main. `main-protection`
+    requires `closes.yml`; the five gates (`deno lint · test` · `deno check` ·
+    `pgTAP · schema invariants` · `instruction files in sync` · `brand assets in sync`)
+    become required only once they run unfiltered — a skipped required check blocks
+    as Expected.
 
 ## Scope 7 — Runtime observability (last 24h) · P2
 
@@ -284,10 +284,13 @@ reads to an operator as a control that does something.
 
 ## Scope 8 — Ledger hygiene (Linear/ASDM) · P3
 
-8.1 Stale `claimed:` markers (> 24h with no branch activity); claims whose declared
-    branch does not exist; and the parallel-isolation invariant (ASDM §A): live claims,
-    branches and worktrees map 1:1 — no branch on two claims, no worktree holding two
-    live claims, the shared checkout on `main` with no own commits.
+8.1 The workspace invariants (ASDM I-3, I-4, I-6, I-10), from the 6.7 sweep table: one
+    claim line and one workspace per In Progress code issue; no workspace with two live
+    claims; no lane hosting a second issue branch; the shared checkout holding no work
+    of its own (HEAD, index and working tree all at origin/main); claims stale after 24h
+    without activity; claims whose branch or worktree is gone. Six counts every run,
+    trended: landed-but-present workspaces, empty lanes, two-issue lanes, PRs merged
+    without `Closes`, shared checkout failing I-4, stale branches with no PR.
 8.2 Merged PRs whose `Closes MESITA-…` issue is not in a terminal status.
 8.3 Branches/PRs with no issue · issues with no project.
 8.4 Issues whose premise is already false — closed-by-reality work still open.
