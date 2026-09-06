@@ -1,29 +1,26 @@
-// Organization — the legal person. Identity, team size, and what it holds.
+// Organization — the legal person. Five boxes and a Places row, funnel-first:
+// the Stripe account (state + CTA + legal identity), the members, what it
+// holds, then the three money products as honest Soon strips. Composition
+// and order live in OrgScreenSections; this file authenticates, fetches, and
+// degrades.
 //
-// State is Not connected / Connected: an organization's own state is
-// about money, not about places. Listed and Verified describe one address
-// and live on the place, never here.
-//
-// Read-mostly on purpose. Everything here is typed once and looked at
-// often, so the default is four rows and a count — the forms live behind
-// the affordance that opens them.
-import Link from "next/link";
+// State is Not connected / Connected: an organization's own state is about
+// money, not about places. Listed and Verified describe one address and live
+// on the place, never here.
 import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
-import { DataRow, OrgStateBadge } from "@/components/console/badges";
-import { AddOrganizationDisclosure } from "@/components/console/AddOrganizationDisclosure";
+import { OrgStateBadge } from "@/components/console/badges";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
-import { OrgIdentityCard } from "@/components/console/OrgIdentityCard";
+import { OrgScreenSections } from "@/components/console/OrgScreenSections";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiGetPaymentAccount,
   apiListOrganizations,
+  apiListOrgMembers,
+  type OrgMember,
   type PaymentAccount,
 } from "@/lib/api/organizations";
-import { PaymentsCard } from "@/components/console/PaymentsCard";
 import { resolveActiveOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
-import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 import { PageErrorState } from "@/components/business/PageErrorState";
 
@@ -77,16 +74,35 @@ export default async function OrganizationPage({
     );
   }
 
-  // The merchant of record is the organization (MESITA-1545). Refresh-through
-  // read: while the webhook endpoint is missing (MESITA-1531), this load IS
-  // the moment the mirror syncs with Stripe. A failure degrades to "none" and
-  // the card's own actions report their errors.
+  // Two independent reads, two independent degrades. The account read is the
+  // Stripe sync moment while the webhook endpoint is missing (MESITA-1531);
+  // its failure renders "none" and the card's actions report their own
+  // errors. The members read NEVER degrades to an empty list — zero members
+  // is impossible (the creator is owner), so an empty render would be a lie.
   let account: PaymentAccount | null = null;
   let orphaned = false;
-  try {
-    ({ account, orphaned } = await apiGetPaymentAccount(supabase, org.id));
-  } catch (e) {
-    console.error("[organization] business-web-get-payment-account:", e);
+  let members: OrgMember[] = [];
+  let membersError: string | null = null;
+  const [accountRes, membersRes] = await Promise.allSettled([
+    apiGetPaymentAccount(supabase, org.id),
+    apiListOrgMembers(supabase, org.id),
+  ]);
+  if (accountRes.status === "fulfilled") {
+    ({ account, orphaned } = accountRes.value);
+  } else {
+    console.error(
+      "[organization] business-web-get-payment-account:",
+      accountRes.reason,
+    );
+  }
+  if (membersRes.status === "fulfilled") {
+    members = membersRes.value;
+  } else {
+    membersError = "Couldn't load members.";
+    console.error(
+      "[organization] business-web-list-org-members:",
+      membersRes.reason,
+    );
   }
 
   return (
@@ -100,61 +116,14 @@ export default async function OrganizationPage({
         />
       </div>
 
-      <OrgIdentityCard
-        orgId={org.id}
-        legalName={org.legalName}
-        rfc={org.rfc}
-        currency={org.currency}
-        myRole={org.myRole}
+      <OrgScreenSections
+        org={org}
+        myManagerId={user.id}
+        account={account}
+        orphaned={orphaned}
+        members={members}
+        membersError={membersError}
       />
-
-      <Section
-        title="Payments"
-        description="The Stripe account this organization gets paid through."
-      >
-        <PaymentsCard
-          orgId={org.id}
-          account={account}
-          orphaned={orphaned}
-          isOwner={org.myRole === "owner"}
-        />
-      </Section>
-
-      <Section
-        title="Places"
-        description="What this organization holds."
-        right={
-          org.placeCount > 0 ? (
-            <Link
-              href={withOrg(SHELL_ROUTES.places, org.id)}
-              className={GHOST_PILL_BUTTON_CLASS}
-            >
-              Manage
-            </Link>
-          ) : undefined
-        }
-      >
-        {org.placeCount === 0 ? (
-          // Zero is not a data point worth a row. It is a next step.
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted-foreground text-sm">
-              None yet. Every place starts in the public pool.
-            </p>
-            <Link
-              href={withOrg(SHELL_ROUTES.pool, org.id)}
-              className={PILL_BUTTON_CLASS}
-            >
-              Claim from the pool
-            </Link>
-          </div>
-        ) : (
-          <div>
-            <DataRow label="Held">{org.placeCount}</DataRow>
-          </div>
-        )}
-      </Section>
-
-      <AddOrganizationDisclosure />
     </>
   );
 }

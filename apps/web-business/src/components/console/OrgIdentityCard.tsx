@@ -1,19 +1,20 @@
 "use client";
 
-// Identity — read first, edit on request.
+// Legal identity — read first, edit on request. Lives INSIDE the Stripe
+// Account box now (the five-box recomposition): legal name and RFC are
+// merchant identity, so they sit with the account they prefill. The group
+// keeps the toggle grammar this file established — read rows, a ghost
+// button, form on request, closed by a successful save.
 //
-// The legal name and the RFC are typed once, ever, and only matter the day
-// this organization partners a place or gets paid. Mounting their inputs
-// permanently made a read-mostly screen look like a form: two empty boxes
-// the width of the page and a black slab under them, for four facts that
-// fit in four rows. So the card shows the four rows, and the owner opens
-// the form when there is something to change.
+// One caption, never two: before an account exists it says what the fields
+// are FOR (prefill + facturación); once an account exists Stripe's verified
+// KYC record is the master and the caption says exactly that instead.
 //
-// Non-owners never see the toggle: the same four rows, no affordance.
+// "Your role" left this group for the Members box (a people fact, shown
+// there as the "You" tag).
 
 import { useActionState, useState } from "react";
 import { Field } from "@/components/shared/Field";
-import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
 import {
   updateOrganizationAction,
@@ -25,6 +26,7 @@ import {
   GHOST_PILL_BUTTON_CLASS,
   INPUT_CLASS,
   PILL_BUTTON_CLASS,
+  TINY_LABEL_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -37,13 +39,15 @@ export function OrgIdentityCard({
   legalName,
   rfc,
   currency,
-  myRole,
+  isOwner,
+  hasAccount,
 }: {
   orgId: string;
   legalName: string | null;
   rfc: string | null;
   currency: string;
-  myRole: string;
+  isOwner: boolean;
+  hasAccount: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction, pending] = useActionState(
@@ -61,14 +65,11 @@ export function OrgIdentityCard({
     if (state.saved) setEditing(false);
   }
 
-  const isOwner = myRole === "owner";
-
   return (
-    <Section
-      title="Identity"
-      description="One legal person, one RFC — needed only to partner places and get paid."
-      right={
-        isOwner ? (
+    <div className="border-border border-t pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className={TINY_LABEL_CLASS}>Legal identity</p>
+        {isOwner && (
           <button
             type="button"
             onClick={() => setEditing((v) => !v)}
@@ -76,11 +77,11 @@ export function OrgIdentityCard({
           >
             {editing ? "Cancel" : legalName || rfc ? "Edit" : "Add details"}
           </button>
-        ) : undefined
-      }
-    >
+        )}
+      </div>
+
       {editing ? (
-        <form action={formAction} className={FORM_COLUMN_CLASS}>
+        <form action={formAction} className={cn(FORM_COLUMN_CLASS, "mt-3")}>
           <input type="hidden" name="orgId" value={orgId} />
           <Field label="Legal name">
             <input
@@ -113,17 +114,20 @@ export function OrgIdentityCard({
           </button>
         </form>
       ) : (
-        <div>
+        <div className="mt-1">
           <DataRow label="Legal name">{legalName ?? NOT_SET}</DataRow>
           <DataRow label="RFC">
             {rfc ? <span className="font-mono">{rfc}</span> : NOT_SET}
           </DataRow>
           <DataRow label="Currency">{currency}</DataRow>
-          <DataRow label="Your role">
-            <span className="capitalize">{myRole}</span>
-          </DataRow>
         </div>
       )}
-    </Section>
+
+      <p className="text-muted-foreground mt-2 text-[12px]">
+        {hasAccount
+          ? "Stripe's verified record is the master for legal identity; these fields prefill and serve facturación."
+          : "Prefills Stripe onboarding; saved for facturación."}
+      </p>
+    </div>
   );
 }

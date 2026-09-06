@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
+  apiAddOrgMember,
   apiCreateOrganization,
   apiGetPaymentDashboardLink,
   apiStartPaymentOnboarding,
@@ -108,4 +109,42 @@ export async function openPaymentsDashboardAction(
   }
   if (url) redirect(url);
   return { error: null, note: "This account has no Stripe dashboard (mock)." };
+}
+
+export type AddMemberState = {
+  error: string | null;
+  /** The typed email, echoed back so an error never eats the input. */
+  email: string;
+  added: boolean;
+};
+
+const ADD_MEMBER_COPY: Record<string, string> = {
+  not_owner: "Only owners can add members.",
+  unknown_manager:
+    "Ask them to sign in at business.mesita.ai first — email invites land later.",
+  already_member: "Already a member.",
+};
+
+export async function addOrgMemberAction(
+  _prev: AddMemberState,
+  formData: FormData,
+): Promise<AddMemberState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const roleRaw = String(formData.get("role") ?? "editor");
+  const role = roleRaw === "viewer" ? "viewer" : "editor";
+  if (!orgId) return { error: "Missing organization.", email, added: false };
+  if (!email) return { error: "An email is required.", email, added: false };
+
+  const supabase = await createServerSupabase();
+  try {
+    await apiAddOrgMember(supabase, { orgId, email, role });
+  } catch (e) {
+    const code = (e as { code?: string | null })?.code ?? null;
+    const copy = (code && ADD_MEMBER_COPY[code]) ??
+      errMsg(e, "Couldn't add that member.");
+    return { error: copy, email, added: false };
+  }
+  revalidatePath("/", "layout");
+  return { error: null, email: "", added: true };
 }

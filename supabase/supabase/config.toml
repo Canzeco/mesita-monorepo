@@ -498,6 +498,15 @@ verify_jwt = true
 [functions.business-web-update-organization]
 verify_jwt = true
 
+# Members box (MESITA five-box org screen). Any-member read; owner-only
+# direct add of an EXISTING account (editor/viewer — owner grants wait for
+# the invite lifecycle + remove ceremony). Machine-coded errors.
+[functions.business-web-list-org-members]
+verify_jwt = true
+
+[functions.business-web-add-org-member]
+verify_jwt = true
+
 [functions.business-web-list-places]
 verify_jwt = true
 

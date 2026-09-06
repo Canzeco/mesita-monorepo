@@ -1,10 +1,18 @@
 // Account — the signed-in human, and the organizations they belong to.
-// One account may be in many; this is where that is visible.
+// One account may be in many; this is where that is visible, and — since
+// the five-box recomposition — where a new one is created: creation
+// belongs beside the list, as a disclosure, never a permanently mounted
+// form (the read-first law).
+//
+// An organizations fetch failure is an ERROR, not "None yet": with a
+// create disclosure on this page, rendering the empty state on a transient
+// failure would invite creating a duplicate organization.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { AddOrganizationDisclosure } from "@/components/console/AddOrganizationDisclosure";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
@@ -18,7 +26,14 @@ export default async function AccountPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/signin?next=/account");
 
-  const orgs = await apiListOrganizations(supabase).catch(() => []);
+  let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
+  let orgsError = false;
+  try {
+    orgs = await apiListOrganizations(supabase);
+  } catch (e) {
+    orgsError = true;
+    console.error("[account] business-web-list-organizations:", e);
+  }
 
   return (
     <>
@@ -29,7 +44,9 @@ export default async function AccountPage() {
       <Section title="You" right={<SignOutButton redirectTo="/signin" />}>
         <div>
           <DataRow label="Email">{user.email ?? "—"}</DataRow>
-          <DataRow label="Organizations">{orgs.length}</DataRow>
+          <DataRow label="Organizations">
+            {orgsError ? "—" : orgs.length}
+          </DataRow>
         </div>
       </Section>
 
@@ -37,7 +54,11 @@ export default async function AccountPage() {
         title="Your organizations"
         description="An account can belong to several. Switching one changes every screen."
       >
-        {orgs.length === 0 ? (
+        {orgsError ? (
+          <p className="text-muted-foreground text-sm">
+            Couldn&apos;t load your organizations. Reload to try again.
+          </p>
+        ) : orgs.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             None yet.{" "}
             <Link href={SHELL_ROUTES.organization} className="underline">
@@ -64,6 +85,8 @@ export default async function AccountPage() {
           </div>
         )}
       </Section>
+
+      {!orgsError && orgs.length > 0 && <AddOrganizationDisclosure />}
     </>
   );
 }
