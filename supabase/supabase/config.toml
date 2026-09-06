@@ -678,14 +678,27 @@ verify_jwt = true
 [functions.stripe-webhook-handle-event]
 verify_jwt = false
 
-# Stripe Connect PLATFORM account layer (skeleton — no charges). Owner-only
-# onboarding starter: creates the place's typeless-Standard connected account
-# + returns the Stripe-hosted Account Link.
+# Stripe Connect PLATFORM account layer (no charges). The merchant of record
+# is the ORGANIZATION (MESITA-1545). Org-owner-only onboarding starter:
+# creates the organization's connected account + returns the Stripe-hosted
+# Account Link.
 [functions.business-web-start-payment-onboarding]
 verify_jwt = true
 
-# Super-admin read of a place's Connect mirror + the pay-readiness AND chain
-# (intent bit ∧ payCard rail ∧ Stripe capability); refresh-on-read.
+# Any-member read of the organization's Connect mirror; refresh-through from
+# Stripe by default while the webhook endpoint is missing (MESITA-1531).
+[functions.business-web-get-payment-account]
+verify_jwt = true
+
+# Org-owner-only single-use Express dashboard login link. Was shipped in
+# MESITA-1532 but never declared here, so it never auto-deployed — fixed
+# alongside the org re-key.
+[functions.business-web-get-payment-dashboard-link]
+verify_jwt = true
+
+# Super-admin read of a place's Connect mirror (resolved through its
+# organization) + the pay-readiness AND chain (intent bit ∧ payCard rail ∧
+# Stripe capability); refresh-on-read.
 [functions.admin-web-get-place-payment-account]
 verify_jwt = true
 

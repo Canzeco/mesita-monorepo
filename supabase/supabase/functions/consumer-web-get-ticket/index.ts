@@ -113,22 +113,33 @@ async function cardRailReady(
   placeId: string | null,
 ): Promise<boolean> {
   if (!payCard || !placeId) return false;
-  const [place, account] = await Promise.all([
+  // The merchant is the ORGANIZATION (MESITA-1545): capability lives on the
+  // place's org account; a pooled place (no organization) can never charge.
+  const [place, org] = await Promise.all([
     admin
       .from("places")
       .select("mesita_pay_enabled")
       .eq("id", placeId)
       .maybeSingle(),
     admin
-      .from("place_payment_accounts")
-      .select("charges_enabled, details_submitted")
-      .eq("place_id", placeId)
+      .from("projects")
+      .select("organization_id")
+      .eq("id", placeId)
       .maybeSingle(),
   ]);
   const intent = (place.data as { mesita_pay_enabled?: boolean } | null)
     ?.mesita_pay_enabled ===
     true;
   if (!intent) return false;
+  const orgId =
+    (org.data as { organization_id?: string | null } | null)
+      ?.organization_id ?? null;
+  if (!orgId) return false;
+  const account = await admin
+    .from("organization_payment_accounts")
+    .select("charges_enabled, details_submitted")
+    .eq("organization_id", orgId)
+    .maybeSingle();
   return isConnectChargeReady(
     account.data as
       | { charges_enabled: boolean; details_submitted: boolean }

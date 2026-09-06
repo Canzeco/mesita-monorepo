@@ -1,5 +1,5 @@
-// The placePaymentAccounts aggregate — the Stripe Connect mirror for a place
-// (PLATFORM posture: see stripe-connect.ts for the law). One row per place
+// The organizationPaymentAccounts aggregate — the Stripe Connect mirror for an ORGANIZATION — the merchant of record (MESITA-1545)
+// (PLATFORM posture: see stripe-connect.ts for the law). One row per organization
 // (gate 2026-08-29: 1:1, `stripe_account_id` unique; relaxing to shared
 // accounts later means dropping the unique — the reversible direction).
 //
@@ -20,10 +20,10 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export type PaymentAccountRow = {
-  place_id: string;
+  organization_id: string;
   created_at: string;
   updated_at: string;
-  /** "acct_…" (real) or "mock_acct_<place_id>" (mock). Unique. */
+  /** "acct_…" (real) or "mock_acct_<organization_id>" (mock). Unique. */
   stripe_account_id: string;
   /** Which Stripe universe created it — from the key prefix or event.livemode,
    *  NEVER from the Account object (no such field on stripe@17). */
@@ -53,11 +53,11 @@ export const PAYMENT_ACCOUNT_PATCH_KEYS = [
   "country",
 ] as const satisfies readonly (keyof Omit<
   PaymentAccountRow,
-  "place_id" | "created_at" | "updated_at"
+  "organization_id" | "created_at" | "updated_at"
 >)[];
 
 type _MissingFromPaymentAccountPatchKeys = Exclude<
-  keyof Omit<PaymentAccountRow, "place_id" | "created_at" | "updated_at">,
+  keyof Omit<PaymentAccountRow, "organization_id" | "created_at" | "updated_at">,
   typeof PAYMENT_ACCOUNT_PATCH_KEYS[number]
 >;
 const _assertNoMissingPaymentAccountKeys:
@@ -131,14 +131,14 @@ export function validatePaymentAccountPatch(
 export type PaymentAccountWriteArgs =
   | {
     mode: "insert";
-    placeId: string;
+    organizationId: string;
     /** Full initial state; stripe_account_id required. */
     row: PaymentAccountPatch & { stripe_account_id: string };
   }
   | {
     mode: "update";
-    /** The webhook keys by stripe_account_id; EFs key by place_id. */
-    by: "place_id" | "stripe_account_id";
+    /** The webhook keys by stripe_account_id; EFs key by organization_id. */
+    by: "organization_id" | "stripe_account_id";
     id: string;
     patch: PaymentAccountPatch;
   };
@@ -161,8 +161,8 @@ export async function writePaymentAccount(
     const validated = validatePaymentAccountPatch(args.row);
     if (!validated.ok) return validated;
     const { data, error } = await admin
-      .from("place_payment_accounts")
-      .insert({ place_id: args.placeId, ...validated.patch })
+      .from("organization_payment_accounts")
+      .insert({ organization_id: args.organizationId, ...validated.patch })
       .select()
       .maybeSingle();
     if (error) return { ok: false, error: error.message };
@@ -173,7 +173,7 @@ export async function writePaymentAccount(
   // updated_at is also stamped by the table trigger; setting it here keeps
   // the mirror honest even if a future environment lacks the trigger.
   const { data, error } = await admin
-    .from("place_payment_accounts")
+    .from("organization_payment_accounts")
     .update({ ...validated.patch, updated_at: new Date().toISOString() })
     .eq(args.by, args.id)
     .select()

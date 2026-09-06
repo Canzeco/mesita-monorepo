@@ -55,9 +55,11 @@ Deno.test("validate: accepts a full snapshot patch", () => {
 });
 
 Deno.test("validate: rejects unknown and malformed fields loudly", () => {
-  const unknown = validatePaymentAccountPatch({ place_id: "p1" });
+  // The row key itself is not patchable — and the RETIRED place key stays
+  // rejected too, so a stale caller fails loudly instead of silently.
+  const unknown = validatePaymentAccountPatch({ organization_id: "o1" });
   assert(!unknown.ok);
-  assertEquals(unknown.error, "unknown payment account field: place_id");
+  assertEquals(unknown.error, "unknown payment account field: organization_id");
 
   const badBool = validatePaymentAccountPatch({ charges_enabled: "yes" });
   assert(!badBool.ok);
@@ -104,13 +106,13 @@ Deno.test("door: zero-row update is a DETECTED no-op (ok, row null), never a sil
 Deno.test("door: db errors and invalid patches fail loudly", async () => {
   const dbErr = await writePaymentAccount(
     fakeAdmin({ data: null, error: { message: "boom" } }),
-    { mode: "update", by: "place_id", id: "p1", patch: { livemode: true } },
+    { mode: "update", by: "organization_id", id: "p1", patch: { livemode: true } },
   );
   assert(!dbErr.ok);
 
   const badPatch = await writePaymentAccount(
     fakeAdmin({ data: null, error: null }),
-    { mode: "update", by: "place_id", id: "p1", patch: { nope: 1 } as never },
+    { mode: "update", by: "organization_id", id: "p1", patch: { nope: 1 } as never },
   );
   assert(!badPatch.ok);
 });

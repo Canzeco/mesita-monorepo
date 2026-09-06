@@ -7,12 +7,10 @@
 // into an organization of their own — a hostile transfer with no owner
 // involved.
 //
-// REFUSES while the place carries a live connected account. Whether the
-// merchant of record is the place or the organization is unsettled
-// (place_payment_accounts is keyed by place today; the product decided the
-// organization is the merchant on 2026-09-05). Until that lands, moving a
-// place mid-settlement is the one irreversible thing here, so it is
-// blocked rather than warned about.
+// The merchant of record is the ORGANIZATION (MESITA-1545), so releasing a
+// place touches no money: the organization keeps its Stripe account, and
+// the place never had one. The old refuse-while-charges_enabled guard died
+// with the place-keyed table.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
@@ -53,22 +51,6 @@ Deno.serve(async (req) => {
 
   const roleRes = await requireOrgRole(admin, authRes.user, holdingOrg, ["owner"]);
   if (!roleRes.ok) return roleRes.response;
-
-  const { data: pay } = await admin
-    .from("place_payment_accounts")
-    .select("charges_enabled")
-    .eq("place_id", placeId)
-    .maybeSingle();
-  if ((pay as { charges_enabled?: boolean } | null)?.charges_enabled) {
-    return json(
-      {
-        ok: false,
-        error: "This place takes payments. Disconnect payments before releasing it.",
-        code: "payments_live",
-      },
-      409,
-    );
-  }
 
   // Through the projects write door, guarded on the organization that
   // held it a moment ago — so a concurrent release/claim cannot make this

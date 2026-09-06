@@ -1,9 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiCreateOrganization,
+  apiGetPaymentDashboardLink,
+  apiStartPaymentOnboarding,
   apiUpdateOrganization,
 } from "@/lib/api/organizations";
 import { errMsg } from "@/lib/utils";
@@ -51,4 +54,58 @@ export async function updateOrganizationAction(
   }
   revalidatePath("/", "layout");
   return { error: null, saved: true };
+}
+
+export type PaymentsActionState = { error: string | null; note: string | null };
+
+/** Starts (or resumes) Stripe Connect onboarding for the organization and
+ *  sends the owner to the Stripe-hosted flow. Mock mode (no Stripe key in
+ *  the environment) creates the mirror row and says so instead of leaving. */
+export async function connectPaymentsAction(
+  _prev: PaymentsActionState,
+  formData: FormData,
+): Promise<PaymentsActionState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  const country = String(formData.get("country") ?? "MX").trim().toUpperCase();
+  if (!orgId) return { error: "Missing organization.", note: null };
+
+  const supabase = await createServerSupabase();
+  let url: string | null = null;
+  let mock = false;
+  try {
+    ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
+      orgId,
+      country,
+    }));
+  } catch (e) {
+    return { error: errMsg(e, "Couldn't start payment onboarding."), note: null };
+  }
+  if (url) redirect(url);
+  revalidatePath("/", "layout");
+  return {
+    error: null,
+    note: mock
+      ? "Mock account created — Stripe isn't configured in this environment."
+      : "Account ready.",
+  };
+}
+
+/** Mints the single-use Express dashboard login link and sends the owner
+ *  there. Never cached, never stored — straight redirect. */
+export async function openPaymentsDashboardAction(
+  _prev: PaymentsActionState,
+  formData: FormData,
+): Promise<PaymentsActionState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  if (!orgId) return { error: "Missing organization.", note: null };
+
+  const supabase = await createServerSupabase();
+  let url: string | null = null;
+  try {
+    url = await apiGetPaymentDashboardLink(supabase, orgId);
+  } catch (e) {
+    return { error: errMsg(e, "Couldn't open the payments dashboard."), note: null };
+  }
+  if (url) redirect(url);
+  return { error: null, note: "This account has no Stripe dashboard (mock)." };
 }
