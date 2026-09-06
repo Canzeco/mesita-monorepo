@@ -5,17 +5,16 @@
 // at and above it, three cards below). A skeleton whose blocks are the wrong
 // size causes the very layout shift it exists to prevent — so if the gallery
 // or the cards change height, this changes with them.
+//
+// The name/subtitle blocks are GONE (MESITA-1558): that content moved into
+// PlaceBar, which the layout renders above this boundary and which therefore
+// paints before the skeleton does. Reserving space for it here would have
+// double-counted it and produced the jump this file exists to avoid.
 export default function PlaceLoading() {
   return (
     <>
       <span className="sr-only">Loading place</span>
       <div aria-hidden="true" className="flex flex-col gap-4">
-        {/* back link + name + subtitle */}
-        <div className="flex flex-col gap-3">
-          <div className="bg-muted h-4 w-24 animate-pulse rounded" />
-          <div className="bg-muted h-8 w-64 animate-pulse rounded" />
-          <div className="bg-muted h-4 w-40 animate-pulse rounded" />
-        </div>
         {/* the photo band */}
         <div className="bg-muted h-[260px] animate-pulse rounded-2xl md:h-[300px]" />
         {/* Identity · State · Holding */}

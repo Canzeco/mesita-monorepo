@@ -9,7 +9,7 @@ import {
   placeIdFromPathname,
   withOrg,
 } from "./console-routes";
-import { PLACE_TABS, placeTabHref } from "./place-view";
+import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 

@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { TopNav } from "@/components/console/TopNav";
+import { SHELL_GUTTER } from "@/lib/ui-classes";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 
@@ -46,7 +47,15 @@ export default async function ShellLayout({
           organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
         />
       </Suspense>
-      <main className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-8">
+      {/* FLUID: no max-width (MESITA-1558). Two things depend on that and
+          neither is cosmetic — a full-bleed child cancels SHELL_GUTTER with
+          SHELL_BLEED and only reaches the window edge if nothing caps it, and
+          the place sections only earn a third column when the width exists to
+          hold one. Readability is protected per-element (FORM_COLUMN_CLASS),
+          not by squeezing the whole console. */}
+      <main
+        className={`flex w-full flex-col gap-4 py-4 sm:py-8 ${SHELL_GUTTER}`}
+      >
         {children}
       </main>
     </div>

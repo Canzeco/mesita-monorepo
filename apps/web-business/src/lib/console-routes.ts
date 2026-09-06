@@ -8,8 +8,9 @@
 //
 // Place is the only screen that needs an id, so it is the only one absent
 // from SHELL_ROUTES: `placeHref()` builds it. It nests UNDER Org Places
-// (`/places/<id>`) because that is where you arrive from, and because the
-// old `(console)` tree still squats on `/place/<id>` — see MESITA-1534.
+// (`/places/<id>`) because that is where you arrive from. The old `(console)`
+// tree that used to squat on `/place/<id>` is deleted (MESITA-1564); that path
+// is now a permanent redirect here — see `next.config.ts`.
 
 export const SHELL_ROUTES = {
   account: "/account",

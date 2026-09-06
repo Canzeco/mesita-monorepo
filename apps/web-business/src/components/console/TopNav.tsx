@@ -14,9 +14,11 @@ import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import {
   SHELL_ROUTES,
+  placeHref,
   placeIdFromPathname,
   withOrg,
 } from "@/lib/console-routes";
+import { SHELL_GUTTER } from "@/lib/ui-classes";
 import type { Organization } from "@/lib/api/organizations";
 
 const LINKS = [
@@ -58,8 +60,13 @@ export function TopNav({
   };
 
   return (
-    <header className="border-border bg-background sticky top-0 z-30 border-b">
-      <div className="mx-auto flex h-14 max-w-4xl items-center gap-4 px-4">
+    // STATIC below `sm`, sticky above it. Two stacked sticky bars cost 104px
+    // of a ~635px phone viewport before any content, on the one screen whose
+    // job is a form taller than the viewport. What an operator needs pinned
+    // while scrolling that form is the place's tab rail, not the wordmark —
+    // so row 2 sticks at every size and row 1 yields on phones.
+    <header className="border-border bg-background static z-30 border-b sm:sticky sm:top-0">
+      <div className={`flex h-14 w-full items-center gap-4 ${SHELL_GUTTER}`}>
         <Link href={withOrg("/", activeOrgId)} aria-label="Organization">
           <MesitaLogo variant="horizontal" className="h-6 w-auto shrink-0" />
         </Link>
@@ -83,12 +90,20 @@ export function TopNav({
             </Link>
           ))}
           {openPlaceId && (
-            <span
+            // A LINK, not a span. This was the only nav item you could not
+            // click, and it is the sixth of six. It stays the short word
+            // "Place": row 1 is the ALWAYS header, and an entry whose width
+            // changes per route destabilises it — a Google-sourced name like
+            // "Restaurante El Rincon de la Abuela - Sucursal Polanco II"
+            // would push the org switcher off screen and truncate to mush.
+            // Row 2 carries the real name, next to that place's own menu.
+            <Link
+              href={withOrg(placeHref(openPlaceId), activeOrgId)}
               aria-current="page"
               className="bg-foreground text-background shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold"
             >
               Place
-            </span>
+            </Link>
           )}
         </nav>
 
