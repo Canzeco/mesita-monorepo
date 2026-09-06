@@ -5,9 +5,9 @@
 // LEVEL_LISTED 0.04 / LEVEL_PARTNER 0.2 / LEVEL_PROMOTING 1, so the
 // promoting-over-listed ratio is 25^w:
 //
-//   w = 1   25x        the value MESITA-1408's merge shipped and preserved
-//   w = 2   625x
-//   w = 4   390,625x   the uniform WEIGHT_MAX
+//   w = 1   25x
+//   w = 2   625x        the ceiling (Pato, MESITA-1410)
+//   w = 4   390,625x    the uniform WEIGHT_MAX
 //
 // Every other signal is bounded in (0, 1] and abstains at 1, so at w = 4 no
 // combination of relevance outranks money — Level stops being a signal and
@@ -27,13 +27,13 @@ import {
 } from "./discovery-config.ts";
 import { LEVEL_LISTED, LEVEL_PROMOTING, SIGNAL_KEYS } from "./discovery-signals.ts";
 
-Deno.test("Level's ceiling is the value the merge shipped, so nothing re-ranks", () => {
-  // The whole point of capping HERE rather than at some rounder number: w = 1
-  // is the only exponent anyone has evaluated, because MESITA-1408 was
-  // deliberately value-preserving at it. Adopting a live gate at its current
-  // value is the only cap that changes nothing on landing.
-  assertEquals(weightMaxFor("mesita_level"), 1);
-  assertEquals(weightMaxFor("mesita_level"), DISCOVERY_DEFAULTS.weights.mesita_level);
+Deno.test("Level's ceiling is 2, distinct from its default weight of 1", () => {
+  // The default weight (1, MESITA-1408's value-preserving merge) and the
+  // ceiling (2, Pato's MESITA-1410 decision) are two different numbers on
+  // purpose: the default changes nothing on landing, and the ceiling is how
+  // far an operator may turn the dial from the console afterward.
+  assertEquals(weightMaxFor("mesita_level"), 2);
+  assertNotEquals(weightMaxFor("mesita_level"), DISCOVERY_DEFAULTS.weights.mesita_level);
 });
 
 Deno.test("only Level is capped — the other seven keep the uniform ceiling", () => {
@@ -50,18 +50,18 @@ Deno.test("a console write above Level's ceiling is clamped, not accepted", () =
     weights: { mesita_level: 4, proximity: 4 },
   });
   // The bought axis is held at its ceiling...
-  assertEquals(cfg.weights.mesita_level, 1);
+  assertEquals(cfg.weights.mesita_level, 2);
   // ...while an earned one is still free to reach the uniform max, so this is
   // a targeted guard and not a global de-tuning.
   assertEquals(cfg.weights.proximity, 4);
 });
 
-Deno.test("the ceiling keeps the bought span inside one order of magnitude", () => {
+Deno.test("the ceiling keeps the bought span two orders of magnitude below the uniform max", () => {
   // The arithmetic the ceiling exists for. At the cap, promoting beats listed
-  // by 25x — large, deliberately so, but a span the other seven signals can
-  // still argue with. One rung higher and they cannot.
+  // by 625x — large, deliberately so, but a span the other seven signals can
+  // still argue with. At the uniform max (390,625x) nothing could.
   const span = (w: number) => (LEVEL_PROMOTING / LEVEL_LISTED) ** w;
-  assertEquals(span(weightMaxFor("mesita_level")), 25);
+  assertEquals(span(weightMaxFor("mesita_level")), 625);
   assertEquals(span(WEIGHT_MAX), 390_625);
 });
 

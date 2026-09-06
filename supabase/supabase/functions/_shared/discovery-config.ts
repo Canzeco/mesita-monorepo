@@ -265,9 +265,9 @@ export const WEIGHT_MAX = 4;
  * floors at LEVEL_LISTED = 0.04, so the same exponent means something else
  * entirely: the promoting-over-listed ratio is (1 / 0.04)^w = 25^w.
  *
- *   w = 1   25x        the value the merge shipped and preserved
- *   w = 2   625x
- *   w = 4   390,625x
+ *   w = 1   25x
+ *   w = 2   625x        the ceiling (Pato, MESITA-1410)
+ *   w = 4   390,625x    the uniform WEIGHT_MAX
  *
  * Every other signal is bounded in (0, 1] and abstains at 1, so at w = 4 there
  * is no combination of relevance that can outrank money — Level stops being a
@@ -275,18 +275,19 @@ export const WEIGHT_MAX = 4;
  * that the signal is not important, it is a filter"), Level is filter-shaped at
  * a far lower exponent than the other seven.
  *
- * WHY 1, AND WHY NOT A ROUNDER-SOUNDING NUMBER (MESITA-1410). Level is today
- * entirely bought: `plan` is money and `promoting` is only true if the place
- * pays. How far money may move the deck is a product decision nobody has made
- * yet — MESITA-1408 merged the two old money exponents into this one and was
- * deliberately value-preserving at w = 1, which makes 1 the only exponent
- * anyone has actually evaluated. Capping at the shipped default changes nothing
- * on landing and stops the console from silently going past it, which is the
- * same reasoning `requireReady` ships ON by. Raise it in one place once the
- * question in MESITA-1410 is answered.
+ * WHY 2 (Pato, MESITA-1410). Level is entirely bought: `plan` is money and
+ * `promoting` is only true if the place pays, so turning its weight up is
+ * turning money up. At the uniform ceiling of 4 the floor rung becomes
+ * 0.04^4 ≈ 0.0000026 — a ~390,000x demotion that mathematically erases a
+ * non-paying place from ranking regardless of its other signals, a pay-to-win
+ * filter rather than a tunable importance weight. 2 (0.04^2 = 0.0016, a 625x
+ * demotion) keeps Level tunable and meaningful without letting it fully
+ * override the rest of the blend. The rungs themselves (LEVEL_LISTED /
+ * LEVEL_PARTNER / LEVEL_PROMOTING) are unchanged — this caps the exponent
+ * only.
  */
 export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
-  mesita_level: 1,
+  mesita_level: 2,
 };
 
 /** The ceiling that actually applies to one signal's exponent. */
