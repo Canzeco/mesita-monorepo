@@ -14,7 +14,7 @@
 
 **The invariants** (ASDM §B).
 - I-1 Every repo or cloud write has an issue, in a project.
-- I-2 `main` only by squash PR; every PR passes all six required checks.
+- I-2 `main` only by squash PR; every PR passes all seven required checks.
 - I-3 One code issue = one branch = one worktree = one PR; a second issue, a second workspace.
 - I-4 The shared checkout holds no work of its own; `repair-lobby` fixes it.
 - I-5 The backend is a singleton: cloud == repo, same session.
