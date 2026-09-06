@@ -18,11 +18,15 @@ const API = "https://api.notion.com/v1";
 type RichText = { plain_text: string }[];
 type Block = { id: string; type: string; has_children?: boolean; [k: string]: unknown };
 
-/** Words only: no markdown marks, no URLs, no case, no punctuation glued to words. */
+/**
+ * Words only: no markdown marks, no URLs, no case, no punctuation glued to words. Marks vanish
+ * rather than split, so `I-1`…`I-10` in the repo file and I-1…I-10 as Notion plain text are the
+ * same single word; a space is the only word boundary on both sides.
+ */
 export function normalize(text: string): string[] {
   return text
     .replace(/https?:\/\/\S+/g, " ")
-    .replace(/[`*_~\[\]()<>#\\|]/g, " ")
+    .replace(/[`*_~\[\]()<>#\\|]/g, "")
     .replace(/[“”"’']/g, "")
     .toLowerCase()
     .split(/\s+/)
