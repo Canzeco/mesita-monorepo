@@ -7,11 +7,11 @@
 
 **The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; **Linear documents and Claude Artifacts are prohibited**. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
 
-**The model.** Issue = intent. Claim = In Progress + one claim line, the only lock. Workspace = a checkout a live claim names (worktree + branch, or a cloud clone): one per code issue, none for a non-code issue. PR = one per workspace, joined by `Closes`. Session = a visit (many issues per session, many sessions per issue). Lobby = a checkout with no live claim: the shared `main` checkout, or your launch worktree before its first claim.
+**The model.** Issue = intent. Claim = In Progress + one claim line, the only lock. Workspace = a checkout a live claim names (worktree + branch, or a cloud clone): one per code issue, none for a non-code issue. PR = one per workspace, joined by `Closes`. Session = a visit (many issues per session, many sessions per issue). Lobby = a checkout with no live claim: the shared `main` checkout, or your launch worktree between claims.
 
-**Boot card.** Needs `deno` and `gh auth`. `deno task boot` → pick → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for your launch worktree) → EnterWorktree the printed path, In Progress, paste the printed claim line → work → `deno task worktree pr` · `gh pr ready` · `gh pr merge --squash` → `deno task worktree remove MESITA-<id>` from a lobby → terminal status, Docs mirrored.
+**Boot card.** Needs `deno` and `gh auth`. `deno task boot` → pick → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for your launch worktree) → EnterWorktree the printed path, In Progress, paste the printed claim line → work → `deno task worktree pr` · `gh pr ready` · `gh pr merge --squash` → `deno task worktree remove MESITA-<id>` from a lobby (`leave` keeps your launch worktree) → terminal status, Docs mirrored.
 
-**The invariants** (full text: ASDM §B).
+**The invariants** (ASDM §B).
 - I-1 Every repo or cloud write has an issue, in a project.
 - I-2 `main` only by squash PR; every PR passes `closes.yml`.
 - I-3 One code issue = one branch = one worktree = one PR; a second issue, a second workspace.

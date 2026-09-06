@@ -4,6 +4,7 @@
 //   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor] [--footprint <paths>] [--adopt <path>]
 //   deno task worktree pr                            adopt or open the PR for this workspace; the body carries Closes MESITA-<id>
 //   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
+//   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, keep the checkout and branch
 //   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces
 //   deno task worktree repair-lobby                  the shared checkout holds no work of its own (I-4), idempotent
 //
@@ -526,11 +527,32 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
       throw new WtError("NOT ADOPTABLE", args.adopt, `only a registered worktree under ${FLEET_DIR}/ can be adopted`, "run deno task worktree add without --adopt to create one", "I-3");
     }
     const existing = await worktreeConfig(env, target, "mesita.issue");
-    if (existing) throw new WtError("NOT A LOBBY", `${relative(main, target)} is claimed by ${existing}`, "one live claim per workspace", "add a new workspace for the second issue", "I-3");
+    if (existing && existing !== id) {
+      // A claim whose PR merged and whose tree is clean is a lobby nobody cleared (MESITA-1577): clear it and go on. A tip still on main is a live claim with no work yet, never adopted over.
+      const { landed } = await classifyLanded(env, main, row.head, row.branch);
+      const merged = isLanded(landed) && landed!.kind !== "on-main";
+      if (!merged || !(await isClean(env, target))) {
+        throw new WtError("NOT A LOBBY", `${relative(main, target)} is claimed by ${existing} (${describeLanded(landed)})`, "one live claim per workspace", "add a new workspace for the second issue; a merged PR for the old claim is what lets adopt clear it, or leave it yourself", "I-3");
+      }
+      if (row.locked) await git(env, main, "worktree", "unlock", target);
+      await clearClaim(env, target);
+      out.push(`cleared ${existing}: its work landed (${describeLanded(landed)})`);
+    }
+    // closes.yml reads the issue id off the branch name, so a harness-named branch is renamed in place.
+    let branch = row.branch;
+    if (branch && !branch.includes(id)) {
+      const tail = branch.split("/").pop() ?? "work";
+      const slug = validateSlug(args.slug ?? (SLUG_RE.test(tail) && tail.length <= 40 ? tail : "work"));
+      const renamed = `${prefix}/${id}-${slug}`;
+      const mv = await git(env, target, "branch", "-m", renamed);
+      if (mv.code !== 0) throw new WtError("GIT FAILED", "git branch -m", mv.stderr.trim(), "rename the branch by hand, then rerun", "I-3");
+      out.push(`renamed branch ${branch} → ${renamed} (closes.yml wants the id in the branch name)`);
+      branch = renamed;
+    }
     const seed = await seedFrom(env, main, target);
     if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
     await claimWorkspace(env, main, target, id, platform);
-    out.push(composeClaim({ platform, host: env.host, branch: row.branch ?? "none", worktree: relative(main, target), footprint: args.footprint ?? "" }));
+    out.push(composeClaim({ platform, host: env.host, branch: branch ?? "none", worktree: relative(main, target), footprint: args.footprint ?? "" }));
     return out;
   }
   const slug = validateSlug(args.slug ?? "work");
@@ -664,6 +686,33 @@ export async function remove(env: Env, id: string): Promise<string[]> {
   return out;
 }
 
+// ── leave (LEAVE for a launch worktree: clear the claim, keep the checkout) ─────
+
+async function clearClaim(env: Env, path: string): Promise<void> {
+  for (const key of ["mesita.issue", "mesita.platform", "mesita.claimedAt", "mesita.host"]) await git(env, path, "config", "--worktree", "--unset", key);
+}
+
+/** A landed, clean workspace gives its claim and lock back and stays on disk as a lobby (I-9); idempotent. */
+export async function leave(env: Env, id: string): Promise<string[]> {
+  validateId(id);
+  const { main, rows } = await mainWorktree(env);
+  const matches: Row[] = [];
+  for (const r of rows) {
+    if (r.path === main || r.prunable || r.bare) continue;
+    const issue = await worktreeConfig(env, r.path, "mesita.issue") ?? issueFromBranch(r.branch);
+    if (issue === id) matches.push(r);
+  }
+  if (matches.length === 0) throw new WtError("NO ISSUE", id, "no workspace carries this claim", "check deno task boot for the fleet", "I-3");
+  if (matches.length > 1) throw new WtError("AMBIGUOUS", matches.map((m) => relative(main, m.path)).join(", "), "two workspaces carry one claim", "remove the wrong one first", "I-3");
+  const row = matches[0];
+  const { landed } = await classifyLanded(env, main, row.head, row.branch);
+  if (!isLanded(landed)) throw new WtError("UNLANDED", `${row.branch ?? row.head.slice(0, 9)} is ${describeLanded(landed)}`, "a claim is cleared only after its work landed", "ship it, or file a handoff: comment and keep the claim", "I-10");
+  if (!(await isClean(env, row.path))) throw new WtError("UNCLEAN", relative(main, row.path), "the workspace has edits or an operation in progress", "commit, stash or abort, then rerun", "I-10");
+  if (row.locked) await git(env, main, "worktree", "unlock", row.path);
+  await clearClaim(env, row.path);
+  return [`left ${relative(main, row.path)}: a lobby again on ${row.branch ?? "(detached)"} (${describeLanded(landed)}); the checkout and branch stay`];
+}
+
 // ── sweep ───────────────────────────────────────────────────────────────────
 
 export async function sweep(env: Env, opts: { apply: boolean }): Promise<{ lines: string[]; fleet: Fleet[]; json: string; loose: { branch: string; tip: string; landed: Landed }[] }> {
@@ -762,8 +811,10 @@ export async function boot(env: Env): Promise<string[]> {
   // The fleet lives inside the shared checkout, so the shared row prefix-matches every worktree: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
   const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
+  const hereLanded = here && here.path !== main && hereIssue ? isLanded((await classifyLanded(env, main, here.head, here.branch)).landed) : false;
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
+  else if (hereIssue && hereLanded) lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"}: ${hereIssue} landed, a lobby once its claim is cleared: deno task worktree leave ${hereIssue}, or deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)} for the next issue`);
   else if (hereIssue) lines.push(`where: workspace ${relative(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
   else lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
@@ -840,6 +891,9 @@ export async function main(argv: string[], env: Env): Promise<number> {
       case "remove":
         for (const l of await remove(env, rest[0] ?? "")) env.log(l);
         return 0;
+      case "leave":
+        for (const l of await leave(env, rest[0] ?? "")) env.log(l);
+        return 0;
       case "sweep": {
         const r = await sweep(env, { apply: rest.includes("--apply") });
         for (const l of r.lines) env.log(l);
@@ -852,7 +906,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         return 0;
       }
       default:
-        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | pr | remove MESITA-<id> | sweep [--apply] | repair-lobby");
+        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | pr | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
         return 2;
     }
   } catch (e) {

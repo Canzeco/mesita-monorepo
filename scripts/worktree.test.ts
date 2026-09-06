@@ -4,6 +4,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
 import {
+  leave,
   hostHash,
   boot,
   add,
@@ -224,7 +225,8 @@ Deno.test("add anchors on the main worktree even when run from a linked worktree
   assert(rows.some((r) => r.path.endsWith(join(FLEET_DIR, "MESITA-9-nine"))));
   assert(!rows.some((r) => r.path.includes("lane/.claude")));
   const adopted = await add(env, { id: "MESITA-10", adopt: w.path });
-  assertStringIncludes(adopted.join("\n"), "branch=claude/lane worktree=.claude/worktrees/lane");
+  assertStringIncludes(adopted.join("\n"), "renamed branch claude/lane → claude/MESITA-10-lane");
+  assertStringIncludes(adopted.join("\n"), "branch=claude/MESITA-10-lane worktree=.claude/worktrees/lane");
   assertEquals(await git(w.path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-10");
   await assertRejects(() => add(env, { id: "MESITA-11", adopt: w.path }), WtError, "NOT A LOBBY");
   await assertRejects(() => add(env, { id: "MESITA-11", adopt: f.main }), WtError, "NOT ADOPTABLE");
@@ -496,4 +498,30 @@ Deno.test("hostHash is pinned in the home directory and survives a hostname chan
   const c = await hostHash({ home, hostname: () => "beta.lan" });
   assert(/^[0-9a-f]{4}$/.test(c), "a corrupt pin is recomputed");
   assertEquals((await Deno.readTextFile(join(home, ".config", "mesita", "host-id"))).trim(), c);
+});
+
+Deno.test("leave clears a landed claim and keeps the checkout; adopt over a landed claim clears it and renames the branch", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-1", slug: "one" });
+  const path = await Deno.realPath(join(f.main, FLEET_DIR, "MESITA-1-one"));
+  const tip = await commitFile(path, "a.txt", "a\n", "work");
+  await assertRejects(() => leave(env, "MESITA-1"), WtError, "UNLANDED");
+  await assertRejects(() => add(env, { id: "MESITA-2", slug: "two", adopt: path }), WtError, "NOT A LOBBY");
+  f.prsByOid.set(tip, [{ number: 1, merged: true, headRefOid: tip }]);
+  const where = (await boot(makeEnv(f, { cwd: path }))).join("\n");
+  assertStringIncludes(where, "MESITA-1 landed, a lobby once its claim is cleared");
+  const left = (await leave(env, "MESITA-1")).join("\n");
+  assertStringIncludes(left, "left .claude/worktrees/MESITA-1-one");
+  assertEquals((await git(path, "config", "--worktree", "--get", "mesita.issue").catch(() => "")).trim(), "");
+  assert(!(await git(f.main, "worktree", "list", "--porcelain")).includes("locked"), "leave unlocks");
+  const adopted = (await add(env, { id: "MESITA-2", slug: "two", adopt: path })).join("\n");
+  assertStringIncludes(adopted, "renamed branch claude/MESITA-1-one → claude/MESITA-2-two");
+  assertStringIncludes(adopted, "branch=claude/MESITA-2-two");
+  assertEquals((await git(path, "branch", "--show-current")).trim(), "claude/MESITA-2-two");
+  const tip2 = await commitFile(path, "b.txt", "b\n", "more");
+  f.prsByOid.set(tip2, [{ number: 2, merged: true, headRefOid: tip2 }]);
+  const again = (await add(env, { id: "MESITA-3", slug: "three", adopt: path })).join("\n");
+  assertStringIncludes(again, "cleared MESITA-2: its work landed");
+  assertStringIncludes(again, "renamed branch claude/MESITA-2-two → claude/MESITA-3-three");
 });
