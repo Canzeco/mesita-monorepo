@@ -19,6 +19,7 @@ import {
   apiListOrgMembers,
   type OrgMember,
   type PaymentAccount,
+  type PendingOrgInvite,
 } from "@/lib/api/organizations";
 import { resolveActiveOrg } from "@/lib/active-organization";
 import { errMsg } from "@/lib/utils";
@@ -82,6 +83,7 @@ export default async function OrganizationPage({
   let account: PaymentAccount | null = null;
   let orphaned = false;
   let members: OrgMember[] = [];
+  let pendingInvites: PendingOrgInvite[] = [];
   let membersError: string | null = null;
   const [accountRes, membersRes] = await Promise.allSettled([
     apiGetPaymentAccount(supabase, org.id),
@@ -96,7 +98,7 @@ export default async function OrganizationPage({
     );
   }
   if (membersRes.status === "fulfilled") {
-    members = membersRes.value;
+    ({ members, pendingInvites } = membersRes.value);
   } else {
     membersError = "Couldn't load members.";
     console.error(
@@ -122,6 +124,7 @@ export default async function OrganizationPage({
         account={account}
         orphaned={orphaned}
         members={members}
+        pendingInvites={pendingInvites}
         membersError={membersError}
       />
     </>

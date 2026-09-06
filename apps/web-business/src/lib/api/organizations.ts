@@ -116,30 +116,90 @@ export type OrgMember = {
   role: OrgRole;
 };
 
+/** One pending email invite (MESITA-1550) — mirrors PendingEditorInvite. */
+export type PendingOrgInvite = {
+  id: string;
+  email: string;
+  role: OrgRole;
+  createdAt: string;
+  expiresAt: string;
+};
+
 export async function apiListOrgMembers(
   client: SupabaseClient,
   orgId: string,
-): Promise<OrgMember[]> {
-  const { members } = await invokeEF<{ members: OrgMember[] }>(
+): Promise<{ members: OrgMember[]; pendingInvites: PendingOrgInvite[] }> {
+  const { members, pendingInvites } = await invokeEF<{
+    members: OrgMember[];
+    pendingInvites: PendingOrgInvite[];
+  }>(
     client,
     "business-web-list-org-members",
     { orgId },
     "Couldn't load members.",
   );
-  return members ?? [];
+  return { members: members ?? [], pendingInvites: pendingInvites ?? [] };
 }
+
+type AddOrgMemberResult =
+  | { mode: "linked"; member: OrgMember }
+  | {
+      mode: "invited";
+      inviteId: string;
+      token: string;
+      expiresAt: string;
+      email: string;
+      role: OrgRole;
+      emailSent: boolean;
+      emailError: string | null;
+    };
 
 export async function apiAddOrgMember(
   client: SupabaseClient,
-  input: { orgId: string; email: string; role: "editor" | "viewer" },
-): Promise<OrgMember> {
-  const { member } = await invokeEF<{ member: OrgMember }>(
+  input: { orgId: string; email: string; role: OrgRole; redirectBase?: string },
+): Promise<AddOrgMemberResult> {
+  return await invokeEF<AddOrgMemberResult>(
     client,
     "business-web-add-org-member",
     input,
     "Couldn't add that member.",
   );
-  return member;
+}
+
+export async function apiRemoveOrgMember(
+  client: SupabaseClient,
+  input: { orgId: string; id: string; kind: "member" | "invite" },
+): Promise<{ id: string; kind: "member" | "invite" }> {
+  return await invokeEF<{ id: string; kind: "member" | "invite" }>(
+    client,
+    "business-web-remove-org-member",
+    input,
+    "Couldn't remove that member.",
+  );
+}
+
+export async function apiUpdateOrgMemberRole(
+  client: SupabaseClient,
+  input: { orgId: string; memberId: string; role: OrgRole },
+): Promise<{ memberId: string; role: OrgRole }> {
+  return await invokeEF<{ memberId: string; role: OrgRole }>(
+    client,
+    "business-web-update-org-member-role",
+    input,
+    "Couldn't update that member's role.",
+  );
+}
+
+export async function apiAcceptOrgInvite(
+  client: SupabaseClient,
+  token: string,
+): Promise<{ organizationId: string; role: OrgRole }> {
+  return await invokeEF<{ organizationId: string; role: OrgRole }>(
+    client,
+    "business-web-accept-org-invite",
+    { token },
+    "Couldn't accept the invite.",
+  );
 }
 
 /** The organization's Stripe Connect mirror row (MESITA-1545: the merchant

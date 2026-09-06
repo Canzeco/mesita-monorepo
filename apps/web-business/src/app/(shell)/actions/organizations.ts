@@ -2,13 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiAddOrgMember,
   apiCreateOrganization,
   apiGetPaymentDashboardLink,
+  apiRemoveOrgMember,
   apiStartPaymentOnboarding,
   apiUpdateOrganization,
+  apiUpdateOrgMemberRole,
+  type OrgRole,
 } from "@/lib/api/organizations";
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
@@ -132,14 +136,19 @@ export type AddMemberState = {
   /** The typed email, echoed back so an error never eats the input. */
   email: string;
   added: boolean;
+  /** Which path fired, so the disclosure can say "Invited" vs "Added". */
+  mode: "linked" | "invited" | null;
 };
 
 const ADD_MEMBER_COPY: Record<string, string> = {
   not_owner: "Only owners can add members.",
-  unknown_manager:
-    "Ask them to sign in at business.mesita.ai first — email invites land later.",
   already_member: "Already a member.",
+  invite_pending: "An invite for that email is already pending.",
 };
+
+function isOrgRole(value: string): value is OrgRole {
+  return value === "owner" || value === "editor" || value === "viewer";
+}
 
 export async function addOrgMemberAction(
   _prev: AddMemberState,
@@ -148,19 +157,90 @@ export async function addOrgMemberAction(
   const orgId = String(formData.get("orgId") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const roleRaw = String(formData.get("role") ?? "editor");
-  const role = roleRaw === "viewer" ? "viewer" : "editor";
-  if (!orgId) return { error: "Missing organization.", email, added: false };
-  if (!email) return { error: "An email is required.", email, added: false };
+  const role: OrgRole = isOrgRole(roleRaw) ? roleRaw : "editor";
+  if (!orgId) return { error: "Missing organization.", email, added: false, mode: null };
+  if (!email) {
+    return { error: "An email is required.", email, added: false, mode: null };
+  }
 
   const supabase = await createServerSupabase();
+  // The invite email's redirect link needs an absolute origin — resolved
+  // server-side from the request's own headers (Vercel sets x-forwarded-*
+  // in front of the Node runtime) rather than a client-supplied field, so
+  // there's nothing here that a spoofed form value could redirect off-site.
+  const hdrs = await headers();
+  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
+  const origin = host ? `${proto}://${host}` : undefined;
+  let mode: "linked" | "invited";
   try {
-    await apiAddOrgMember(supabase, { orgId, email, role });
+    const res = await apiAddOrgMember(supabase, {
+      orgId,
+      email,
+      role,
+      ...(origin ? { redirectBase: origin } : {}),
+    });
+    mode = res.mode;
   } catch (e) {
     const code = (e as { code?: string | null })?.code ?? null;
     const copy = (code && ADD_MEMBER_COPY[code]) ??
       errMsg(e, "Couldn't add that member.");
-    return { error: copy, email, added: false };
+    return { error: copy, email, added: false, mode: null };
   }
   revalidatePath("/", "layout");
-  return { error: null, email: "", added: true };
+  return { error: null, email: "", added: true, mode };
+}
+
+export type MemberRowActionState = { error: string | null };
+
+const MEMBER_ACTION_COPY: Record<string, string> = {
+  last_owner: "The organization must keep at least one owner.",
+};
+
+export async function removeOrgMemberAction(
+  _prev: MemberRowActionState,
+  formData: FormData,
+): Promise<MemberRowActionState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  const id = String(formData.get("id") ?? "").trim();
+  const kindRaw = String(formData.get("kind") ?? "member");
+  const kind = kindRaw === "invite" ? "invite" : "member";
+  if (!orgId || !id) return { error: "Missing member." };
+
+  const supabase = await createServerSupabase();
+  try {
+    await apiRemoveOrgMember(supabase, { orgId, id, kind });
+  } catch (e) {
+    const code = (e as { code?: string | null })?.code ?? null;
+    return {
+      error: (code && MEMBER_ACTION_COPY[code]) ??
+        errMsg(e, "Couldn't remove that member."),
+    };
+  }
+  revalidatePath("/", "layout");
+  return { error: null };
+}
+
+export async function updateOrgMemberRoleAction(
+  _prev: MemberRowActionState,
+  formData: FormData,
+): Promise<MemberRowActionState> {
+  const orgId = String(formData.get("orgId") ?? "").trim();
+  const memberId = String(formData.get("memberId") ?? "").trim();
+  const roleRaw = String(formData.get("role") ?? "");
+  if (!orgId || !memberId) return { error: "Missing member." };
+  if (!isOrgRole(roleRaw)) return { error: "Invalid role." };
+
+  const supabase = await createServerSupabase();
+  try {
+    await apiUpdateOrgMemberRole(supabase, { orgId, memberId, role: roleRaw });
+  } catch (e) {
+    const code = (e as { code?: string | null })?.code ?? null;
+    return {
+      error: (code && MEMBER_ACTION_COPY[code]) ??
+        errMsg(e, "Couldn't update that member's role."),
+    };
+  }
+  revalidatePath("/", "layout");
+  return { error: null };
 }

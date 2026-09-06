@@ -22,6 +22,7 @@ import type {
   Organization,
   OrgMember,
   PaymentAccount,
+  PendingOrgInvite,
 } from "@/lib/api/organizations";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -60,6 +61,7 @@ export function OrgScreenSections({
   account,
   orphaned,
   members,
+  pendingInvites,
   membersError,
 }: {
   org: Organization;
@@ -67,6 +69,7 @@ export function OrgScreenSections({
   account: PaymentAccount | null;
   orphaned: boolean;
   members: OrgMember[];
+  pendingInvites: PendingOrgInvite[];
   membersError: string | null;
 }) {
   const isOwner = org.myRole === "owner";
@@ -98,6 +101,7 @@ export function OrgScreenSections({
       <MembersCard
         orgId={org.id}
         members={members}
+        pendingInvites={pendingInvites}
         myManagerId={myManagerId}
         isOwner={isOwner}
         loadError={membersError}
