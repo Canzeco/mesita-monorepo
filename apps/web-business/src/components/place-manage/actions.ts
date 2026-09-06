@@ -517,18 +517,21 @@ export async function setPlaceRails(
 
 // ── Stripe Connect mirror (read-only) ────────────────────────────────────
 //
-// The place's connected-account state, plus the full pay-readiness verdict.
-// Mesita is a PLATFORM, not a marketplace: direct charges on the place's own
-// account, the place is merchant of record, Mesita never holds funds. The law
-// is supabase/functions/_shared/stripe-connect.ts and it is frozen by tests.
+// The connected-account state for the place's holding organization, plus the
+// full pay-readiness verdict for the place. Mesita is a PLATFORM, not a
+// marketplace: direct charges on the ORGANIZATION's own account — the
+// organization is merchant of record (MESITA-1545), Mesita never holds funds.
+// The law is supabase/functions/_shared/stripe-connect.ts and it is frozen by
+// tests.
 //
 // `refresh: true` re-reads the account from Stripe and re-upserts the mirror.
 // The Connect webhook is an optimization whose dashboard setup is a human
 // step, never a dependency — so the admin read self-heals rather than trusting
 // that every account.updated arrived.
 
-/** places_payment_accounts mirror row. Absent = never onboarded. */
-export type PlacePaymentAccount = {
+/** `organization_payment_accounts` mirror row, one per org. Absent = the
+ *  place's holding organization has never onboarded. */
+export type OrgPaymentAccount = {
   /** "acct_…" real, or "mock_acct_<place_id>" when MOCK_CONNECT is on. */
   stripe_account_id: string;
   /** Which Stripe universe created it, from the key prefix or event.livemode. */
@@ -545,7 +548,7 @@ export type PlacePaymentAccount = {
 /** The three-way AND that gates a card charge. All three must hold; the UI
  *  must never imply Mesita Pay is live on `intent` alone. */
 export type PlacePayReadiness = {
-  account: PlacePaymentAccount | null;
+  account: OrgPaymentAccount | null;
   /** The mirror points at an account this Stripe key cannot see. */
   orphaned: boolean;
   /** charges_enabled ∧ details_submitted. */
@@ -562,7 +565,7 @@ export type PaymentOnboardingStart = {
   mock: boolean;
   /** Stripe-hosted Account Link. null in mock mode — there is nothing to visit. */
   url: string | null;
-  account: PlacePaymentAccount | null;
+  account: OrgPaymentAccount | null;
   /** The place already has an account in a DIFFERENT country than the one
    *  requested. The link is still valid (for the EXISTING account) — country
    *  is per-account permanent, so it was not and cannot be changed. */
@@ -571,10 +574,16 @@ export type PaymentOnboardingStart = {
 };
 
 /**
- * Create (if missing) the place's connected account and get a Stripe-hosted
- * onboarding link. Super-admins pass the EF's `requireOwner` gate
- * (`_shared/auth-membership.ts` exempts `isSuperAdmin`), which is what makes
- * staff-assisted onboarding work at all: production places have no owners.
+ * Create (if missing) the place's holding organization's connected account
+ * and get a Stripe-hosted onboarding link. This sends `placeId`, not
+ * `orgId`: the place console doesn't carry the org id, so the EF resolves
+ * the place's holding organization server-side (MESITA-1563) and 400s with
+ * `place_has_no_organization` when the place sits in the public pool.
+ *
+ * The caller must hold `owner` on that organization (`org-membership.ts
+ * requireOrgRole`) — deliberately no super-admin exemption post org-as-
+ * merchant (MESITA-1545): organization membership is a business fact, and an
+ * operator acting on an org should join it.
  *
  * `returnUrl` / `refreshUrl` are REQUIRED here. The EF defaults to the
  * business console's `/unit/<id>/promos`, so an admin-initiated onboarding
@@ -586,12 +595,20 @@ export type PaymentOnboardingStart = {
  */
 export async function startPlacePaymentOnboarding(
   placeId: string,
-  urls: { returnUrl: string; refreshUrl: string; country: MesitaConnectCountry },
+  urls: {
+    returnUrl: string;
+    refreshUrl: string;
+    country: MesitaConnectCountry;
+    /** The pre-onboarding gate (MESITA-1560), mirrored here: only meaningful
+     *  on a create — a resume mints a link for an account that already
+     *  carries its answer. */
+    entityType?: string;
+  },
 ): Promise<Result<PaymentOnboardingStart>> {
   const r = await efInvoke<{
     mock?: boolean;
     url?: string | null;
-    account?: PlacePaymentAccount | null;
+    account?: OrgPaymentAccount | null;
     country_mismatch?: boolean;
     account_country?: string | null;
   }>("business-web-start-payment-onboarding", {
@@ -599,6 +616,7 @@ export async function startPlacePaymentOnboarding(
     returnUrl: urls.returnUrl,
     refreshUrl: urls.refreshUrl,
     country: urls.country,
+    ...(urls.entityType ? { entityType: urls.entityType } : {}),
   });
   // `code` rides along: "stripe_live_blocked" is an environment fact, not a
   // failed attempt, and the row renders it differently for that reason.
@@ -616,14 +634,15 @@ export async function startPlacePaymentOnboarding(
 }
 
 /**
- * Mint a single-use Express Dashboard link for the place's connected account.
+ * Mint a single-use Express Dashboard link for the account connected to the
+ * place's holding organization. Sends `placeId`; the EF resolves the org the
+ * same way `startPlacePaymentOnboarding` does (MESITA-1563) and requires
+ * `owner` on it — no super-admin exemption (see that function's doc for why).
  *
  * Under the old Standard controller this had no reason to exist — the place
  * logged into stripe.com. Under Express (MESITA-1532) a platform-minted link
  * is the ONLY entrance, so this is how anyone reaches the account's balance,
- * payout bank account or disputes. Staff-assisted for now: super-admins are
- * exempt from the EF's owner gate, which is what makes it usable while
- * production places have no owners.
+ * payout bank account or disputes.
  *
  * The URL grants access to the account holder's Stripe data, so it is never
  * stored — it is opened and forgotten.
@@ -647,7 +666,7 @@ export async function getPlacePaymentAccount(
   opts: { refresh?: boolean } = {},
 ): Promise<Result<PlacePayReadiness>> {
   const r = await efInvoke<{
-    account: PlacePaymentAccount | null;
+    account: OrgPaymentAccount | null;
     orphaned?: boolean;
     ready?: boolean;
     pay_ready?: {

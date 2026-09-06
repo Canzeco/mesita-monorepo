@@ -336,6 +336,10 @@ export function connectStartFailure(
   if (code === STRIPE_LIVE_BLOCKED) {
     return "Stripe onboarding is off: Mesita is on live keys with real charges disabled, so connecting would open a live account. Flipping that is a human step (MESITA-37) \u2014 retrying won't change it.";
   }
+  // The EF resolves the org from placeId (MESITA-1563) and refuses here when
+  // the place has none \u2014 a fact, not a transient failure, so its own message
+  // (already written for an operator) is worth showing verbatim.
+  if (code === "place_has_no_organization" && message) return message;
   // Stripe named the problem; say what it said. Everything this endpoint can
   // fail on is configuration ("you can only create new accounts if you've
   // signed up for Connect", "this looks like the ID of an API key"), so a
