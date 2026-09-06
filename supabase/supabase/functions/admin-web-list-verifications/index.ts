@@ -73,11 +73,13 @@ Deno.serve(async (req) => {
   if (projectId) {
     query = query.eq("place_id", projectId);
   } else {
-    // Method gate (queue surface only): video always shows; ai_call only
-    // shows once the operator has confirmed the OTP (codeVerifiedAt stamped
-    // by business-web-verify-phone-otp when auto_verify_ai_call was off).
+    // Method gate (queue surface only): video and manual_contact always
+    // show — neither has an auto-verify path (MESITA-1596). ai_call and
+    // ai_email share the same redeemOtpVerification helper (_shared/otp.ts)
+    // and only show once the operator has confirmed the OTP (codeVerifiedAt
+    // stamped when their respective auto-verify flag was off).
     query = query.or(
-      "method.eq.video,and(method.eq.ai_call,payload->>codeVerifiedAt.not.is.null)",
+      "method.eq.video,method.eq.manual_contact,and(method.eq.ai_call,payload->>codeVerifiedAt.not.is.null),and(method.eq.ai_email,payload->>codeVerifiedAt.not.is.null)",
     );
   }
 
