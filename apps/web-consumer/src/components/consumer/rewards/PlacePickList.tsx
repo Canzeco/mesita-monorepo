@@ -246,6 +246,10 @@ export function PlacePickList({
           <PlaceRow
             row={row}
             busy={busyPlaceId === row.seed?.id}
+            // EVERY row goes inert while ANY create is in flight (MESITA-1597).
+            // `busy` is per-row and cannot do this job: the second tap of a
+            // double-tap lands on a DIFFERENT row, which is not the busy one.
+            anyBusy={busyPlaceId !== null}
             onPick={onPick}
           />
         </li>
@@ -257,10 +261,13 @@ export function PlacePickList({
 function PlaceRow({
   row,
   busy = false,
+  anyBusy = false,
   onPick,
 }: {
   row: PayListRow;
   busy?: boolean;
+  /** A create is running for SOME row — this one included or not. */
+  anyBusy?: boolean;
   onPick: (place: SeedPlace) => void;
 }) {
   const payable = row.canStart && !!row.seed;
@@ -268,6 +275,11 @@ function PlaceRow({
   return (
     <button
       type="button"
+      // The hook holds the authoritative latch; this is the honest UI half, so
+      // a second tap cannot even dispatch. Deliberately no dimming: a create
+      // resolves in a few hundred ms and greying the whole list for that long
+      // reads as breakage. The spinner on the active row is the signal.
+      disabled={anyBusy}
       onClick={() => {
         if (row.seed) {
           onPick(row.seed);
