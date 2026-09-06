@@ -56,22 +56,22 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       discoverDefault: "/discover/search",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
-      // Pay is ONE surface again — Wallet became its own tab 2026-09-05, and
-      // a container with one section is not a container.
+      // Pay is a container again: New (bare) + Wallet. Wallet spent 2026-09-05
+      // to 09-06 as a top-level tab and came back — /wallet is a redirect
+      // source now, not a key.
       newVisit: {
         root: "/new-visit",
+        new: "/new-visit",
+        wallet: "/new-visit/wallet",
       },
       newVisitDefault: "/new-visit",
-      // Wallet is top-level now, segment matching label.
-      wallet: "/wallet",
       visit: { prefix: "/visit/" },
       // Four sections, and the ORDER is load-bearing: Visits · Orders ·
       // Reservations · Notifications runs from what you're doing right now
       // out to the passive feed. Object key order is asserted separately
       // below, since toEqual ignores it.
-      // FOUR sections. Wallet left for Pay on 2026-09-01 (a wallet holds
-      // instruments, Activity holds events) and became its own tab on 09-05;
-      // Alerts leads the row.
+      // FOUR sections. Wallet left for Pay (a wallet holds instruments,
+      // Activity holds events) and Alerts leads the row now.
       inbox: {
         root: "/inbox",
         notifications: "/inbox/notifications",
@@ -96,8 +96,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meClass: "/me/class",
         meSettings: "/me/settings",
         mePlan: "/me/plan",
-        // Wallet's address while it was Pay's second section (09-01 -> 09-05).
-        newVisitWallet: "/new-visit/wallet",
+        // Wallet's address for the day it was a top-level tab (09-05 -> 09-06).
+        wallet: "/wallet",
         notifications: "/notifications",
         inboxMine: "/inbox/my-activity",
         inboxGlobal: "/inbox/global-activity",
@@ -127,7 +127,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       newVisit: "/new-visit",
       visit: "/visit",
       inbox: "/inbox",
-      wallet: "/wallet",
       me: "/me",
       saved: "/saved",
     });
@@ -170,18 +169,24 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
     );
   });
 
-  // Pay has no sections at all now, so its default IS its root. The pin
-  // survives the collapse to catch a future re-split that forgets the default.
-  it("lands the Pay tab on its own root", () => {
-    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.root);
+  // Pay's first section and its default AGREE, unlike Activity's. You open
+  // this tab standing in a place, and that is also the leftmost pill.
+  it("lands the Pay tab on New, which is also its first section", () => {
+    expect(CONSUMER_ROUTES.newVisitDefault).toBe(CONSUMER_ROUTES.newVisit.new);
+    expect(CONSUMER_ROUTES.newVisit.new).toBe(CONSUMER_ROUTES.newVisit.root);
   });
 
-  // Wallet is a TAB, not a child of Pay or Activity. A future "tidy" that
-  // nests it back under either container has to delete this line to do it.
-  it("keeps Wallet top-level, under nobody's container", () => {
-    expect(CONSUMER_ROUTES.wallet).toBe("/wallet");
-    expect(CONSUMER_ROUTES.wallet.startsWith("/new-visit")).toBe(false);
-    expect(CONSUMER_ROUTES.wallet.startsWith("/inbox")).toBe(false);
+  // Wallet is a SECTION of Pay, not a tab and not a section of Activity. Both
+  // halves have been tried: /inbox/credits (wrong container — a wallet holds
+  // instruments, Activity holds events) and /wallet (right idea, one tab too
+  // many). A change that moves it again has to delete this line to do it.
+  it("keeps Wallet inside Pay, and nowhere else", () => {
+    expect(CONSUMER_ROUTES.newVisit.wallet).toBe("/new-visit/wallet");
+    expect(
+      CONSUMER_ROUTES.newVisit.wallet.startsWith(CONSUMER_ROUTES.newVisit.root),
+    ).toBe(true);
+    expect(CONSUMER_ROUTES).not.toHaveProperty("wallet");
+    expect(CONSUMER_ROUTES.inbox).not.toHaveProperty("credits");
   });
 });
 
@@ -306,21 +311,17 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/invite", destination: "/share", permanent: true },
-      // Wallet's three former addresses, each pointing STRAIGHT at /wallet —
-      // never at one another, which would be the 3-hop chain T4 refuses.
-      // route-structure T7 asserts these separately, because T4 can only
-      // validate a destination, never an absence.
-      { source: "/credits", destination: "/wallet", permanent: true },
+      // Wallet's three former addresses, each pointing STRAIGHT at
+      // /new-visit/wallet — never at one another, which would be the 3-hop
+      // chain T4 refuses. route-structure T7 asserts these separately, because
+      // T4 can only validate a destination, never an absence.
+      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
       {
         source: "/inbox/credits",
-        destination: "/wallet",
+        destination: "/new-visit/wallet",
         permanent: true,
       },
-      {
-        source: "/new-visit/wallet",
-        destination: "/wallet",
-        permanent: true,
-      },
+      { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {
         source: "/notifications",

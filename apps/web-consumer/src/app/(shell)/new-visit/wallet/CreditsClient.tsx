@@ -20,7 +20,7 @@ import {
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 
-// The Wallet tab, at /wallet.
+// The Pay tab's second section, at /new-visit/wallet.
 //
 // THE SECTION IS A CONTAINER, NOT A CURRENCY (Pato, 2026-08-31). It was called
 // Credits while per-place prepaid balances were the only thing on it. It now

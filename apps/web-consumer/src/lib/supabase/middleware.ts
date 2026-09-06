@@ -41,7 +41,6 @@ const PROTECTED_PREFIXES = [
   "/reservations",
   "/reservation",
   "/inbox",
-  "/wallet",
 ];
 
 // Routes where a signed-in visitor should be bounced through post-signin.

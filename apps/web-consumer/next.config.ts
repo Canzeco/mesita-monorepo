@@ -102,16 +102,16 @@ const nextConfig: NextConfig = {
       { source: "/discover/feed", destination: "/discover/catalog", permanent: true },
       { source: "/discover/home", destination: "/discover/catalog", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
-      // Wallet's THREE former addresses, all live in production at some point
+      // Wallet's THREE former addresses, each live in production at some point
       // so all three sets of bookmarks are real: standalone /credits (#1429),
-      // the Activity section /inbox/credits, and Pay's second section
-      // /new-visit/wallet (2026-09-01 -> 09-05). Each points STRAIGHT at
-      // /wallet — chaining them would be 3 hops and route-structure T4 caps a
-      // chain at 2. T7 asserts these entries still exist: T4 can only validate
-      // a redirect's DESTINATION, never its absence.
-      { source: "/credits", destination: "/wallet", permanent: true },
-      { source: "/inbox/credits", destination: "/wallet", permanent: true },
-      { source: "/new-visit/wallet", destination: "/wallet", permanent: true },
+      // the Activity section /inbox/credits, and the top-level tab /wallet
+      // (#1492, 2026-09-05 -> 09-06). Each points STRAIGHT at /new-visit/wallet
+      // — chaining them would be 3 hops and route-structure T4 caps a chain at
+      // 2. T7 asserts these entries still exist: T4 can only validate a
+      // redirect's DESTINATION, never its absence.
+      { source: "/credits", destination: "/new-visit/wallet", permanent: true },
+      { source: "/inbox/credits", destination: "/new-visit/wallet", permanent: true },
+      { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
       {
         source: "/notifications",
