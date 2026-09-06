@@ -77,7 +77,7 @@ export function MesitaSourceCards() {
         <ConfigSoon
           Icon={Sparkles}
           title="Mesita Social Flexible Search is coming soon"
-          body="The same events under an arbitrary set of predicates, for when Chat is asked what is on tonight. Never merged into one list with places: an event and a venue are different answers."
+          body="The same events under an arbitrary set of predicates, for when Chat is asked what is on tonight. Never merged into one list with places: an event and a place are different answers."
           doc="Notion Docs › Discovery"
         />
       </div>
