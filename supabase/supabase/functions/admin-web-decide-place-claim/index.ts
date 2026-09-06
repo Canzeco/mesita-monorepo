@@ -68,12 +68,20 @@ Deno.serve(async (req) => {
   }
 
   if (decision === "clear") {
-    const { error } = await admin
-      .from("projects")
-      .update({ claim_reviewed_at: new Date().toISOString(), claim_reviewed_by: adminUserId })
-      .eq("id", placeId)
-      .is("claim_reviewed_at", null);
-    if (error) return json({ ok: false, error: `claim_clear: ${error.message}` }, 500);
+    const { data: clearData, error: clearError } = await admin.rpc(
+      "mark_place_claim_reviewed",
+      { p_place_id: placeId, p_admin: adminUserId },
+    );
+    if (clearError) {
+      return json({ ok: false, error: `claim_clear: ${clearError.message}` }, 500);
+    }
+    const clearResult = clearData as { ok: boolean; code?: string };
+    if (!clearResult.ok) {
+      return json(
+        { ok: false, error: "That claim changed underneath this request", code: "race_lost" },
+        409,
+      );
+    }
     return json({ ok: true, decision: "clear" });
   }
 
