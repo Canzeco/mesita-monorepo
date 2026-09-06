@@ -16,9 +16,11 @@ import type { Database } from "./database.types";
 // pick a place, you manage it.
 
 export const PROTECTED_PREFIXES = [
-  "/place",
   "/add",
-  "/settings",
+  // `/place` and `/settings` are NOT here any more (MESITA-1564): those routes
+  // are deleted, and next.config.ts redirects them before a request ever
+  // reaches this proxy. Gating a path that cannot resolve implies a screen
+  // that no longer exists.
   // Every console screen reads real data through business-web EFs now, so
   // all four are behind the signed-out wall. Nothing in the shell is mock
   // any more.

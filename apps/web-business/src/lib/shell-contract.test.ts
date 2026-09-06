@@ -18,7 +18,6 @@ describe("middleware contract", () => {
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.pool)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
-    expect(shouldGate("/place/abc")).toBe(true);
     // Place — the fifth screen. It reads one org's holdings, so it sits
     // behind the same wall the list does.
     expect(shouldGate("/places/abc")).toBe(true);
@@ -26,6 +25,10 @@ describe("middleware contract", () => {
   it("does not gate routes that no longer exist", () => {
     expect(shouldGate("/central")).toBe(false);
     expect(shouldGate("/onboard")).toBe(false);
+    // MESITA-1564 deleted the legacy console. next.config.ts redirects these
+    // before the proxy sees them, so gating them would guard a dead path.
+    expect(shouldGate("/place/abc")).toBe(false);
+    expect(shouldGate("/settings")).toBe(false);
   });
 });
 
@@ -58,8 +61,9 @@ describe("client components never import the server data layer", () => {
 // `project_members` alone, so it cannot load an org-claimed place — that is
 // the whole reason the shell has its own `business-web-get-place`. Anything
 // that reaches back into `lib/api/places` (the overview's `MyPlace` type) or
-// into `components/business/place/**` (the unlinked (console) tree that
-// MESITA-1534 deletes) re-couples the live shell to the broken read.
+// re-couples the live shell to the broken read. (The second rule below used
+// to also forbid `components/business/place/**`; MESITA-1564 deleted that tree
+// outright, so there is nothing left to forbid.)
 //
 // It walks BOTH roots and does NOT filter on "use client": the edge that
 // actually matters is a SERVER component under app/(shell) importing the
@@ -68,10 +72,6 @@ const FORBIDDEN_IMPORTS: { pattern: RegExp; why: string }[] = [
   {
     pattern: /from\s+["']@\/lib\/api\/places["']/,
     why: "lib/api/places is the business-web-get-overview shape; the shell reads business-web-get-place",
-  },
-  {
-    pattern: /from\s+["']@\/components\/business\/place\//,
-    why: "components/business/place/** belongs to the unlinked (console) tree (MESITA-1534)",
   },
 ];
 

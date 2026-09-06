@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiAcceptEditorInvite } from "@/lib/api/team";
-import { placePath } from "@/lib/business-route-contract";
+import { placeHref } from "@/lib/console-routes";
 import { errMsg } from "@/lib/utils";
 
 // Business-side accept page — the only invite flow there is. The staff
@@ -55,7 +55,7 @@ export function AcceptInviteClient() {
         setPlaceId(res.projectId);
         setState("success");
         window.setTimeout(() => {
-          router.replace(placePath(res.projectId));
+          router.replace(placeHref(res.projectId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -106,7 +106,7 @@ export function AcceptInviteClient() {
         </p>
         {projectId && (
           <Link
-            href={placePath(projectId)}
+            href={placeHref(projectId)}
             className="text-secondary text-xs font-semibold"
           >
             Open now
