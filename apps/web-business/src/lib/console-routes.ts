@@ -28,8 +28,9 @@ export function placeHref(placeId: string): string {
  *  Places instead of Place. */
 export function placeIdFromPathname(pathname: string): string | null {
   // One OPTIONAL tab segment (MESITA-1537): /places/<id> and
-  // /places/<id>/{profile,partnership,performance,settings} are all the
-  // Place screen, so the nav must light Place on every one of them.
+  // /places/<id>/{capabilities,activity,admin} are all the Place screen,
+  // so the nav must light Place on every one of them. Profile has no
+  // segment of its own — it IS /places/<id>.
   const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
 }
