@@ -32,6 +32,7 @@ export type Database = {
       app_config: {
         Row: {
           agents_config: Json
+          controls_config: Json
           discovery_config: Json
           enrichment_config: Json
           enrichment_triggers: Json | null
@@ -42,7 +43,6 @@ export type Database = {
           orders_config: Json | null
           promos_config: Json
           reservations_config: Json
-          sourcing_config: Json
           updated_at: string
           updated_by: string | null
           verification_config: Json
@@ -50,6 +50,7 @@ export type Database = {
         }
         Insert: {
           agents_config?: Json
+          controls_config?: Json
           discovery_config?: Json
           enrichment_config?: Json
           enrichment_triggers?: Json | null
@@ -60,7 +61,6 @@ export type Database = {
           orders_config?: Json | null
           promos_config?: Json
           reservations_config?: Json
-          sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
           verification_config?: Json
@@ -68,6 +68,7 @@ export type Database = {
         }
         Update: {
           agents_config?: Json
+          controls_config?: Json
           discovery_config?: Json
           enrichment_config?: Json
           enrichment_triggers?: Json | null
@@ -78,7 +79,6 @@ export type Database = {
           orders_config?: Json | null
           promos_config?: Json
           reservations_config?: Json
-          sourcing_config?: Json
           updated_at?: string
           updated_by?: string | null
           verification_config?: Json
@@ -94,7 +94,6 @@ export type Database = {
           label: string
           monthly_reservation_limit: number | null
           rank: number
-          recommendation_weight: number
         }
         Insert: {
           created_at?: string
@@ -103,7 +102,6 @@ export type Database = {
           label: string
           monthly_reservation_limit?: number | null
           rank: number
-          recommendation_weight?: number
         }
         Update: {
           created_at?: string
@@ -112,7 +110,6 @@ export type Database = {
           label?: string
           monthly_reservation_limit?: number | null
           rank?: number
-          recommendation_weight?: number
         }
         Relationships: []
       }
@@ -298,19 +295,19 @@ export type Database = {
         Row: {
           consumer_id: string
           created_at: string
-          project_id: string
+          place_id: string
           ticket_id: string | null
         }
         Insert: {
           consumer_id: string
           created_at?: string
-          project_id: string
+          place_id: string
           ticket_id?: string | null
         }
         Update: {
           consumer_id?: string
           created_at?: string
-          project_id?: string
+          place_id?: string
           ticket_id?: string | null
         }
         Relationships: [
@@ -322,8 +319,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "consumer_review_claims_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "consumer_review_claims_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -408,11 +405,13 @@ export type Database = {
           invitation_granted_at: string | null
           last_name: string | null
           phone: string | null
+          plan: string
           privacy_public: boolean
           privacy_show_saves: boolean
           privacy_show_stories: boolean
           privacy_show_visits: boolean
           sex: string | null
+          stripe_customer_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -434,11 +433,13 @@ export type Database = {
           invitation_granted_at?: string | null
           last_name?: string | null
           phone?: string | null
+          plan?: string
           privacy_public?: boolean
           privacy_show_saves?: boolean
           privacy_show_stories?: boolean
           privacy_show_visits?: boolean
           sex?: string | null
+          stripe_customer_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -460,23 +461,25 @@ export type Database = {
           invitation_granted_at?: string | null
           last_name?: string | null
           phone?: string | null
+          plan?: string
           privacy_public?: boolean
           privacy_show_saves?: boolean
           privacy_show_stories?: boolean
           privacy_show_visits?: boolean
           sex?: string | null
+          stripe_customer_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "consumers_invitation_class_key_fkey"
-            columns: ["invitation_class_key"]
+            foreignKeyName: "consumers_class_key_fkey"
+            columns: ["class_key"]
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["key"]
           },
           {
-            foreignKeyName: "consumers_tier_key_fkey"
-            columns: ["class_key"]
+            foreignKeyName: "consumers_invitation_class_key_fkey"
+            columns: ["invitation_class_key"]
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["key"]
@@ -488,19 +491,19 @@ export type Database = {
           consumer_id: string
           created_at: string
           id: string
-          project_id: string
+          place_id: string
         }
         Insert: {
           consumer_id: string
           created_at?: string
           id?: string
-          project_id: string
+          place_id: string
         }
         Update: {
           consumer_id?: string
           created_at?: string
           id?: string
-          project_id?: string
+          place_id?: string
         }
         Relationships: [
           {
@@ -511,68 +514,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "favorites_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "favorites_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      guest_make_goods: {
-        Row: {
-          consumer_id: string
-          created_at: string
-          fulfilled_at: string | null
-          fulfilled_by: string | null
-          id: string
-          notes: string | null
-          project_id: string
-          state: string
-          ticket_report_id: string
-        }
-        Insert: {
-          consumer_id: string
-          created_at?: string
-          fulfilled_at?: string | null
-          fulfilled_by?: string | null
-          id?: string
-          notes?: string | null
-          project_id: string
-          state?: string
-          ticket_report_id: string
-        }
-        Update: {
-          consumer_id?: string
-          created_at?: string
-          fulfilled_at?: string | null
-          fulfilled_by?: string | null
-          id?: string
-          notes?: string | null
-          project_id?: string
-          state?: string
-          ticket_report_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "guest_make_goods_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "guest_make_goods_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "guest_make_goods_ticket_report_id_fkey"
-            columns: ["ticket_report_id"]
-            isOneToOne: false
-            referencedRelation: "ticket_reports"
             referencedColumns: ["id"]
           },
         ]
@@ -607,6 +552,143 @@ export type Database = {
         }
         Relationships: []
       }
+      nearby_google_attempts: {
+        Row: {
+          created_at: string
+          id: number
+          ip_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          ip_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          ip_hash?: string
+        }
+        Relationships: []
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          manager_id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["member_role"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_id: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_payment_accounts: {
+        Row: {
+          charges_enabled: boolean
+          country: string | null
+          created_at: string
+          details_submitted: boolean
+          disabled_reason: string | null
+          livemode: boolean
+          organization_id: string
+          payouts_enabled: boolean
+          requirements_due: Json
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          livemode?: boolean
+          organization_id: string
+          payouts_enabled?: boolean
+          requirements_due?: Json
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          country?: string | null
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          livemode?: boolean
+          organization_id?: string
+          payouts_enabled?: boolean
+          requirements_due?: Json
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_payment_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          legal_name: string | null
+          name: string
+          rfc: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          legal_name?: string | null
+          name: string
+          rfc?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          legal_name?: string | null
+          name?: string
+          rfc?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       place_categories: {
         Row: {
           created_at: string
@@ -614,6 +696,7 @@ export type Database = {
           section: string
           slug: string
           sort_order: number
+          super_category_slugs: string[]
         }
         Insert: {
           created_at?: string
@@ -621,6 +704,7 @@ export type Database = {
           section: string
           slug: string
           sort_order: number
+          super_category_slugs?: string[]
         }
         Update: {
           created_at?: string
@@ -628,6 +712,7 @@ export type Database = {
           section?: string
           slug?: string
           sort_order?: number
+          super_category_slugs?: string[]
         }
         Relationships: []
       }
@@ -696,14 +781,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "place_enrichment_events_project_id_fkey"
+            foreignKeyName: "place_enrichment_events_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "place_enrichment_events_project_id_fkey"
+            foreignKeyName: "place_enrichment_events_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -852,6 +937,79 @@ export type Database = {
           },
         ]
       }
+      place_name_history: {
+        Row: {
+          google_name: string
+          place_id: string
+          retired_at: string
+        }
+        Insert: {
+          google_name: string
+          place_id: string
+          retired_at?: string
+        }
+        Update: {
+          google_name?: string
+          place_id?: string
+          retired_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_name_history_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_name_history_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_requests: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          place_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          place_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_requests_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_research: {
         Row: {
           analysis: Json | null
@@ -900,20 +1058,44 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "place_research_project_id_fkey"
+            foreignKeyName: "place_research_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: true
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "place_research_project_id_fkey"
+            foreignKeyName: "place_research_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
+      }
+      place_super_categories: {
+        Row: {
+          created_at: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          label?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       place_tags: {
         Row: {
@@ -956,6 +1138,8 @@ export type Database = {
           closes_at: string | null
           country: string | null
           created_at: string
+          credits_enabled: boolean
+          delivery_orders_enabled: boolean
           description: string | null
           description_es: string | null
           details: Json | null
@@ -976,6 +1160,7 @@ export type Database = {
           facebook_followers: number | null
           facebook_rating: number | null
           facebook_url: string | null
+          family_keys: string[] | null
           google_business_url: string | null
           google_maps_url: string | null
           google_name: string | null
@@ -995,6 +1180,7 @@ export type Database = {
           menu_pdf_url: string | null
           menus: Json | null
           mesita_name: string | null
+          mesita_pay_enabled: boolean
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
           mesita_stars_food: number | null
@@ -1003,25 +1189,29 @@ export type Database = {
           mesita_stars_value: number | null
           mesita_visitor_count: number | null
           name: string
+          name_embedding: string | null
+          name_embedding_hash: string | null
           opentable_url: string | null
           order_channel: string | null
           order_target: string | null
+          orders_enabled: boolean
           phone: string | null
           photos: string[]
+          pickup_orders_enabled: boolean
           pitch: string | null
           popular_times: Json | null
           price_level: number | null
           products: Json | null
           reddit_url: string | null
+          request_count: number
           reservation_channel: string | null
           reservation_target: string | null
+          reservations_enabled: boolean
           resy_url: string | null
           story: string | null
           tags: string[]
           threads_url: string | null
-          tiktok_url: string | null
           timezone: string | null
-          tripadvisor_url: string | null
           uber_eats_url: string | null
           updated_at: string
           vibe: string | null
@@ -1029,7 +1219,6 @@ export type Database = {
           whatsapp_pr_urls: string[]
           whatsapp_url: string | null
           x_url: string | null
-          yelp_url: string | null
           zone: string | null
         }
         Insert: {
@@ -1042,6 +1231,8 @@ export type Database = {
           closes_at?: string | null
           country?: string | null
           created_at?: string
+          credits_enabled?: boolean
+          delivery_orders_enabled?: boolean
           description?: string | null
           description_es?: string | null
           details?: Json | null
@@ -1062,6 +1253,7 @@ export type Database = {
           facebook_followers?: number | null
           facebook_rating?: number | null
           facebook_url?: string | null
+          family_keys?: string[] | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_name?: string | null
@@ -1081,6 +1273,7 @@ export type Database = {
           menu_pdf_url?: string | null
           menus?: Json | null
           mesita_name?: string | null
+          mesita_pay_enabled?: boolean
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
@@ -1089,25 +1282,29 @@ export type Database = {
           mesita_stars_value?: number | null
           mesita_visitor_count?: number | null
           name?: string
+          name_embedding?: string | null
+          name_embedding_hash?: string | null
           opentable_url?: string | null
           order_channel?: string | null
           order_target?: string | null
+          orders_enabled?: boolean
           phone?: string | null
           photos?: string[]
+          pickup_orders_enabled?: boolean
           pitch?: string | null
           popular_times?: Json | null
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          request_count?: number
           reservation_channel?: string | null
           reservation_target?: string | null
+          reservations_enabled?: boolean
           resy_url?: string | null
           story?: string | null
           tags?: string[]
           threads_url?: string | null
-          tiktok_url?: string | null
           timezone?: string | null
-          tripadvisor_url?: string | null
           uber_eats_url?: string | null
           updated_at?: string
           vibe?: string | null
@@ -1115,7 +1312,6 @@ export type Database = {
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
-          yelp_url?: string | null
           zone?: string | null
         }
         Update: {
@@ -1128,6 +1324,8 @@ export type Database = {
           closes_at?: string | null
           country?: string | null
           created_at?: string
+          credits_enabled?: boolean
+          delivery_orders_enabled?: boolean
           description?: string | null
           description_es?: string | null
           details?: Json | null
@@ -1148,6 +1346,7 @@ export type Database = {
           facebook_followers?: number | null
           facebook_rating?: number | null
           facebook_url?: string | null
+          family_keys?: string[] | null
           google_business_url?: string | null
           google_maps_url?: string | null
           google_name?: string | null
@@ -1167,6 +1366,7 @@ export type Database = {
           menu_pdf_url?: string | null
           menus?: Json | null
           mesita_name?: string | null
+          mesita_pay_enabled?: boolean
           mesita_review_count?: number | null
           mesita_stars_ambience?: number | null
           mesita_stars_food?: number | null
@@ -1175,25 +1375,29 @@ export type Database = {
           mesita_stars_value?: number | null
           mesita_visitor_count?: number | null
           name?: string
+          name_embedding?: string | null
+          name_embedding_hash?: string | null
           opentable_url?: string | null
           order_channel?: string | null
           order_target?: string | null
+          orders_enabled?: boolean
           phone?: string | null
           photos?: string[]
+          pickup_orders_enabled?: boolean
           pitch?: string | null
           popular_times?: Json | null
           price_level?: number | null
           products?: Json | null
           reddit_url?: string | null
+          request_count?: number
           reservation_channel?: string | null
           reservation_target?: string | null
+          reservations_enabled?: boolean
           resy_url?: string | null
           story?: string | null
           tags?: string[]
           threads_url?: string | null
-          tiktok_url?: string | null
           timezone?: string | null
-          tripadvisor_url?: string | null
           uber_eats_url?: string | null
           updated_at?: string
           vibe?: string | null
@@ -1201,7 +1405,6 @@ export type Database = {
           whatsapp_pr_urls?: string[]
           whatsapp_url?: string | null
           x_url?: string | null
-          yelp_url?: string | null
           zone?: string | null
         }
         Relationships: []
@@ -1215,7 +1418,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
-          project_id: string
+          place_id: string
           role: Database["public"]["Enums"]["member_role"]
           token: string
         }
@@ -1227,7 +1430,7 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
-          project_id: string
+          place_id: string
           role?: Database["public"]["Enums"]["member_role"]
           token: string
         }
@@ -1239,14 +1442,14 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
-          project_id?: string
+          place_id?: string
           role?: Database["public"]["Enums"]["member_role"]
           token?: string
         }
         Relationships: [
           {
-            foreignKeyName: "project_invites_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "project_invites_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1258,21 +1461,21 @@ export type Database = {
           created_at: string
           id: string
           manager_id: string
-          project_id: string
+          place_id: string
           role: Database["public"]["Enums"]["member_role"]
         }
         Insert: {
           created_at?: string
           id?: string
           manager_id: string
-          project_id: string
+          place_id: string
           role?: Database["public"]["Enums"]["member_role"]
         }
         Update: {
           created_at?: string
           id?: string
           manager_id?: string
-          project_id?: string
+          place_id?: string
           role?: Database["public"]["Enums"]["member_role"]
         }
         Relationships: [
@@ -1284,8 +1487,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "project_members_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1325,7 +1528,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
-          project_id: string
+          place_id: string
           reason: string
           strike_number: number
           ticket_id: string | null
@@ -1335,7 +1538,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          project_id: string
+          place_id: string
           reason: string
           strike_number: number
           ticket_id?: string | null
@@ -1345,7 +1548,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          project_id?: string
+          place_id?: string
           reason?: string
           strike_number?: number
           ticket_id?: string | null
@@ -1359,8 +1562,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "project_strikes_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "project_strikes_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1381,9 +1584,9 @@ export type Database = {
           currency: string
           current_period_end: string | null
           id: string
+          place_id: string
           plan_key: string
           price_cents: number | null
-          project_id: string
           state: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -1395,9 +1598,9 @@ export type Database = {
           currency?: string
           current_period_end?: string | null
           id?: string
+          place_id: string
           plan_key: string
           price_cents?: number | null
-          project_id: string
           state: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -1409,9 +1612,9 @@ export type Database = {
           currency?: string
           current_period_end?: string | null
           id?: string
+          place_id?: string
           plan_key?: string
           price_cents?: number | null
-          project_id?: string
           state?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -1419,18 +1622,18 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "project_subscriptions_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_subscriptions_plan_key_fkey"
             columns: ["plan_key"]
             isOneToOne: false
             referencedRelation: "project_plans"
             referencedColumns: ["key"]
-          },
-          {
-            foreignKeyName: "project_subscriptions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1443,7 +1646,7 @@ export type Database = {
           id: string
           method: Database["public"]["Enums"]["verification_method"]
           payload: Json
-          project_id: string
+          place_id: string
           reject_reason: string | null
           requester_email: string
           requester_id: string
@@ -1457,7 +1660,7 @@ export type Database = {
           id?: string
           method: Database["public"]["Enums"]["verification_method"]
           payload?: Json
-          project_id: string
+          place_id: string
           reject_reason?: string | null
           requester_email: string
           requester_id: string
@@ -1471,7 +1674,7 @@ export type Database = {
           id?: string
           method?: Database["public"]["Enums"]["verification_method"]
           payload?: Json
-          project_id?: string
+          place_id?: string
           reject_reason?: string | null
           requester_email?: string
           requester_id?: string
@@ -1479,8 +1682,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_verifications_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "project_verifications_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1493,7 +1696,10 @@ export type Database = {
           cfdi_razon_social: string | null
           cfdi_rfc: string | null
           check_pin: string | null
-          check_require_bill: boolean
+          claim_reviewed_at: string | null
+          claim_reviewed_by: string | null
+          claimed_at: string | null
+          claimed_by: string | null
           content_state: Database["public"]["Enums"]["content_state"]
           created_at: string
           currency: string
@@ -1505,19 +1711,17 @@ export type Database = {
           last_strike_at: string | null
           listing_type: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap: number | null
+          organization_id: string | null
           plan: Database["public"]["Enums"]["plan"]
           plan_forfeited_at: string | null
           plan_live_at: string | null
           premium_rate: number | null
           promo_paused_until: string | null
-          require_bill: boolean
-          requires_story: boolean
           reward_lane_pending_review_at: string | null
           segmentation_advanced_enabled: boolean
           segmentation_basic_enabled: boolean
           slug: string
           staff_channel_pinged_at: string | null
-          staff_pin: string | null
           state: Database["public"]["Enums"]["project_state"]
           strike_count: number
           updated_at: string
@@ -1529,7 +1733,10 @@ export type Database = {
           cfdi_razon_social?: string | null
           cfdi_rfc?: string | null
           check_pin?: string | null
-          check_require_bill?: boolean
+          claim_reviewed_at?: string | null
+          claim_reviewed_by?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
           currency?: string
@@ -1541,19 +1748,17 @@ export type Database = {
           last_strike_at?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap?: number | null
+          organization_id?: string | null
           plan?: Database["public"]["Enums"]["plan"]
           plan_forfeited_at?: string | null
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
-          require_bill?: boolean
-          requires_story?: boolean
           reward_lane_pending_review_at?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug: string
           staff_channel_pinged_at?: string | null
-          staff_pin?: string | null
           state?: Database["public"]["Enums"]["project_state"]
           strike_count?: number
           updated_at?: string
@@ -1565,7 +1770,10 @@ export type Database = {
           cfdi_razon_social?: string | null
           cfdi_rfc?: string | null
           check_pin?: string | null
-          check_require_bill?: boolean
+          claim_reviewed_at?: string | null
+          claim_reviewed_by?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
           currency?: string
@@ -1577,19 +1785,17 @@ export type Database = {
           last_strike_at?: string | null
           listing_type?: Database["public"]["Enums"]["listing_type"]
           monthly_promo_cap?: number | null
+          organization_id?: string | null
           plan?: Database["public"]["Enums"]["plan"]
           plan_forfeited_at?: string | null
           plan_live_at?: string | null
           premium_rate?: number | null
           promo_paused_until?: string | null
-          require_bill?: boolean
-          requires_story?: boolean
           reward_lane_pending_review_at?: string | null
           segmentation_advanced_enabled?: boolean
           segmentation_basic_enabled?: boolean
           slug?: string
           staff_channel_pinged_at?: string | null
-          staff_pin?: string | null
           state?: Database["public"]["Enums"]["project_state"]
           strike_count?: number
           updated_at?: string
@@ -1597,6 +1803,20 @@ export type Database = {
           welcome_premium_rate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_place_fk"
             columns: ["id"]
@@ -1613,68 +1833,21 @@ export type Database = {
           },
         ]
       }
-      refund_requests: {
-        Row: {
-          admin_notes: string | null
-          created_at: string
-          id: string
-          project_id: string
-          reason: string | null
-          requested_by: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          state: string
-          stripe_refund_completed_at: string | null
-        }
-        Insert: {
-          admin_notes?: string | null
-          created_at?: string
-          id?: string
-          project_id: string
-          reason?: string | null
-          requested_by: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          state?: string
-          stripe_refund_completed_at?: string | null
-        }
-        Update: {
-          admin_notes?: string | null
-          created_at?: string
-          id?: string
-          project_id?: string
-          reason?: string | null
-          requested_by?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          state?: string
-          stripe_refund_completed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "refund_requests_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reservation_call_counters: {
         Row: {
           calls: number
           day: string
-          project_id: string
+          place_id: string
         }
         Insert: {
           calls?: number
           day: string
-          project_id: string
+          place_id: string
         }
         Update: {
           calls?: number
           day?: string
-          project_id?: string
+          place_id?: string
         }
         Relationships: []
       }
@@ -1717,9 +1890,13 @@ export type Database = {
           outage_retries: number
           outcome_note: string | null
           party_size: number
+          place_id: string
           place_phone: string | null
-          project_id: string
           reference_code: string | null
+          reminder_at: string | null
+          reminder_attempts: number
+          reminder_conversation_id: string | null
+          reminder_state: string
           reported_verdict: string | null
           reschedules_day: string | null
           reschedules_today: number
@@ -1766,9 +1943,13 @@ export type Database = {
           outage_retries?: number
           outcome_note?: string | null
           party_size: number
+          place_id: string
           place_phone?: string | null
-          project_id: string
           reference_code?: string | null
+          reminder_at?: string | null
+          reminder_attempts?: number
+          reminder_conversation_id?: string | null
+          reminder_state?: string
           reported_verdict?: string | null
           reschedules_day?: string | null
           reschedules_today?: number
@@ -1815,9 +1996,13 @@ export type Database = {
           outage_retries?: number
           outcome_note?: string | null
           party_size?: number
+          place_id?: string
           place_phone?: string | null
-          project_id?: string
           reference_code?: string | null
+          reminder_at?: string | null
+          reminder_attempts?: number
+          reminder_conversation_id?: string | null
+          reminder_state?: string
           reported_verdict?: string | null
           reschedules_day?: string | null
           reschedules_today?: number
@@ -1835,8 +2020,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reservation_tickets_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "reservation_tickets_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1930,7 +2115,7 @@ export type Database = {
           details: string | null
           id: string
           outcome: string | null
-          project_id: string
+          place_id: string
           reason: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1943,7 +2128,7 @@ export type Database = {
           details?: string | null
           id?: string
           outcome?: string | null
-          project_id: string
+          place_id: string
           reason: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1956,7 +2141,7 @@ export type Database = {
           details?: string | null
           id?: string
           outcome?: string | null
-          project_id?: string
+          place_id?: string
           reason?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1972,8 +2157,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ticket_reports_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "ticket_reports_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -1996,7 +2181,7 @@ export type Database = {
           food: number
           id: string
           overall: number
-          project_id: string
+          place_id: string
           service: number
           ticket_id: string
           value: number | null
@@ -2009,7 +2194,7 @@ export type Database = {
           food: number
           id?: string
           overall: number
-          project_id: string
+          place_id: string
           service: number
           ticket_id: string
           value?: number | null
@@ -2022,7 +2207,7 @@ export type Database = {
           food?: number
           id?: string
           overall?: number
-          project_id?: string
+          place_id?: string
           service?: number
           ticket_id?: string
           value?: number | null
@@ -2036,8 +2221,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ticket_reviews_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "ticket_reviews_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -2074,8 +2259,8 @@ export type Database = {
           opened_by: string
           paid_at: string | null
           paid_method: string | null
+          place_id: string
           premium_rate: number | null
-          project_id: string
           rates_snapshotted_at: string | null
           redeem_cents: number | null
           revealed_at: string | null
@@ -2102,7 +2287,6 @@ export type Database = {
           story_submitted_at: string | null
           story_verified_at: string | null
           story_verified_by: string | null
-          ticket_code: string | null
           tip_cents: number | null
           tip_pct: number | null
           total_cents: number | null
@@ -2133,8 +2317,8 @@ export type Database = {
           opened_by: string
           paid_at?: string | null
           paid_method?: string | null
+          place_id: string
           premium_rate?: number | null
-          project_id: string
           rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           revealed_at?: string | null
@@ -2161,7 +2345,6 @@ export type Database = {
           story_submitted_at?: string | null
           story_verified_at?: string | null
           story_verified_by?: string | null
-          ticket_code?: string | null
           tip_cents?: number | null
           tip_pct?: number | null
           total_cents?: number | null
@@ -2192,8 +2375,8 @@ export type Database = {
           opened_by?: string
           paid_at?: string | null
           paid_method?: string | null
+          place_id?: string
           premium_rate?: number | null
-          project_id?: string
           rates_snapshotted_at?: string | null
           redeem_cents?: number | null
           revealed_at?: string | null
@@ -2220,7 +2403,6 @@ export type Database = {
           story_submitted_at?: string | null
           story_verified_at?: string | null
           story_verified_by?: string | null
-          ticket_code?: string | null
           tip_cents?: number | null
           tip_pct?: number | null
           total_cents?: number | null
@@ -2238,8 +2420,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "visit_tickets_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "visit_tickets_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -2285,6 +2467,7 @@ export type Database = {
           facebook_followers: number | null
           facebook_rating: number | null
           facebook_url: string | null
+          family_keys: string[] | null
           first_ticket_honored_at: string | null
           fiscal_type: Database["public"]["Enums"]["project_fiscal_type"] | null
           free_rate: number | null
@@ -2318,9 +2501,12 @@ export type Database = {
           mesita_visitor_count: number | null
           monthly_promo_cap: number | null
           name: string | null
+          name_embedding: string | null
+          name_embedding_hash: string | null
           opentable_url: string | null
           order_channel: string | null
           order_target: string | null
+          orders_enabled: boolean | null
           phone: string | null
           photos: string[] | null
           pitch: string | null
@@ -2333,10 +2519,13 @@ export type Database = {
           products: Json | null
           promo_paused_until: string | null
           reddit_url: string | null
+          request_count: number | null
           requires_story: boolean | null
           reservation_channel: string | null
           reservation_target: string | null
+          reservations_enabled: boolean | null
           resy_url: string | null
+          reward_lane_pending_review_at: string | null
           segmentation_advanced_enabled: boolean | null
           segmentation_basic_enabled: boolean | null
           slug: string | null
@@ -2378,7 +2567,23 @@ export type Database = {
         }[]
       }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
+      apply_place_request: {
+        Args: { p_consumer_id: string; p_place_id: string }
+        Returns: {
+          inserted: boolean
+          request_count: number
+        }[]
+      }
+      atlas_super_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
+      claim_place_into_org: {
+        Args: {
+          p_claimer: string
+          p_organization_id: string
+          p_place_id: string
+        }
+        Returns: Json
+      }
       close_place_enrichment_run: {
         Args: {
           p_charges?: Json
@@ -2427,8 +2632,13 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
+      release_place_from_org: {
+        Args: { p_organization_id: string; p_place_id: string }
+        Returns: Json
+      }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
+      seed_place_super_categories: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
     }
@@ -2495,12 +2705,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2524,11 +2734,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2549,11 +2759,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2574,11 +2784,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2591,11 +2801,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
