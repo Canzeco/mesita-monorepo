@@ -19,6 +19,7 @@ import {
 import { ticketPath } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { errMsg } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics/track";
 
 // Starting a visit, extracted (MESITA-1065). This was NewVisitClient's private
 // `startTicket`/`onPick` pair until the place-detail action bar grew a Visit
@@ -44,11 +45,14 @@ export type StartVisitState = {
 export function useStartVisit({
   activeTickets,
   onCreated,
+  source,
 }: {
   /** Live tickets, so a place that already holds one re-opens it (D5). */
   activeTickets: readonly ConsumerTicketRow[];
   /** Called after a successful create — callers refresh their ticket list. */
   onCreated?: () => void;
+  /** MESITA-1387 ticket_created.from — which surface's tap started this. */
+  source: string;
 }): StartVisitState {
   const supabase = useBrowserSupabase();
   const router = useRouter();
@@ -78,6 +82,10 @@ export function useStartVisit({
         // Seed BEFORE navigating (S3): THE TICKET paints QR-and-all on its
         // first frame from this row; list-tickets reconciles in background.
         seedTicket(ticketRowFromCreate(res.ticket, place), quotePromise);
+        trackEvent(supabase, "ticket_created", {
+          place_id: place.id,
+          from: source,
+        });
         onCreated?.();
         router.push(ticketPath(res.ticket.id), { scroll: false });
       } catch (err) {
@@ -108,7 +116,7 @@ export function useStartVisit({
         setStartingId(null);
       }
     },
-    [supabase, router, openTicket, onCreated],
+    [supabase, router, openTicket, onCreated, source],
   );
 
   const pickPlace = useCallback(

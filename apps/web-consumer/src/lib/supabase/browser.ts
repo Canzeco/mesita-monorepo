@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
 // Reads NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
@@ -22,4 +23,20 @@ function createBrowserSupabase() {
 // dance every client form was repeating by hand.
 export function useBrowserSupabase() {
   return useMemo(() => createBrowserSupabase(), []);
+}
+
+/**
+ * Lazy variant for a component that only NEEDS a client on interaction
+ * (an onClick tracking call, not a data fetch the render depends on):
+ * construction is deferred to the first call, so a render — including a
+ * server render or a unit test's renderToStaticMarkup — never touches
+ * env vars it doesn't have. `useBrowserSupabase` stays the right choice
+ * for anything the render itself reads from Supabase.
+ */
+export function useLazyBrowserSupabase(): () => SupabaseClient<Database> {
+  const ref = useRef<SupabaseClient<Database> | null>(null);
+  return () => {
+    if (!ref.current) ref.current = createBrowserSupabase();
+    return ref.current;
+  };
 }

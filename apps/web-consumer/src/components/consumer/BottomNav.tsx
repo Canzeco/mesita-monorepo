@@ -14,6 +14,8 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
+import { trackEvent } from "@/lib/analytics/track";
+import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 // FOUR top-level surfaces, in this order (Pato, 2026-09-06: "FOUR PAGES, NOT
 // 5 — Discover, Pay, Activity, Me"):
@@ -207,6 +209,7 @@ export function BottomNav({ userId }: { userId?: string }) {
   void userId;
   const pathname = usePathname();
   const [soonItem, setSoonItem] = useState<Item | null>(null);
+  const getSupabase = useLazyBrowserSupabase();
 
   return (
     <>
@@ -232,7 +235,10 @@ export function BottomNav({ userId }: { userId?: string }) {
                 <button
                   key={href}
                   type="button"
-                  onClick={() => setSoonItem(item)}
+                  onClick={() => {
+                    trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
+                    setSoonItem(item);
+                  }}
                   aria-haspopup="dialog"
                   title={item.soonTitle ?? "Coming soon"}
                   className="text-muted-foreground hover:text-foreground type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition"
@@ -249,6 +255,7 @@ export function BottomNav({ userId }: { userId?: string }) {
               <Link
                 key={href}
                 href={href}
+                onClick={() => trackEvent(getSupabase(), "nav_tab_tap", { tab: label })}
                 className={cn(
                   "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
                   active

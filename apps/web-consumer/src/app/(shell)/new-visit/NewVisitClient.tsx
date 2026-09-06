@@ -83,6 +83,7 @@ export function NewVisitClient({ userId }: { userId: string }) {
   } = useStartVisit({
     activeTickets: tickets.active,
     onCreated: refreshTickets,
+    source: "new_visit",
   });
 
   // The paid beat (MESITA-808, 4A): a watched ticket flipping to revealed
