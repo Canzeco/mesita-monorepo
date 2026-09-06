@@ -3,8 +3,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SHELL_ROUTES, withOrg } from "./console-routes";
-import { placePath } from "./business-route-contract";
+import {
+  SHELL_ROUTES,
+  placeHref,
+  placeIdFromPathname,
+  withOrg,
+} from "./console-routes";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 
@@ -21,8 +25,8 @@ describe("SHELL_ROUTES map to route files", () => {
   }
 });
 
-describe("the four screens Pato specified", () => {
-  it("is exactly Account, Organization, Org Places, Public Places", () => {
+describe("the five screens Pato specified", () => {
+  it("SHELL_ROUTES is the four that need no id", () => {
     expect(Object.keys(SHELL_ROUTES)).toEqual([
       "account",
       "organization",
@@ -30,29 +34,30 @@ describe("the four screens Pato specified", () => {
       "pool",
     ]);
   });
+  it("Place is the fifth, and the shell owns it", () => {
+    expect(placeHref("p-x")).toBe("/places/p-x");
+    expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
+      true,
+    );
+  });
+  it("encodes the id, so a slash in one cannot forge a route", () => {
+    expect(placeHref("a/b")).toBe("/places/a%2Fb");
+  });
 });
 
-describe("place detail lives in the real console, not the shell", () => {
-  it("placePath targets the (console) route tree", () => {
-    expect(placePath("p-x")).toBe("/place/p-x/place/preview");
-    expect(
-      existsSync(
-        path.resolve(
-          __dirname,
-          "..",
-          "app",
-          "(console)",
-          "place",
-          "[id]",
-          "place",
-          "[tab]",
-          "page.tsx",
-        ),
-      ),
-    ).toBe(true);
+describe("placeIdFromPathname — the nav's Org Places / Place split", () => {
+  it("reads the id back out of a Place pathname", () => {
+    expect(placeIdFromPathname(placeHref("p-x"))).toBe("p-x");
+    expect(placeIdFromPathname("/places/p-x/")).toBe("p-x");
+    expect(placeIdFromPathname(placeHref("a/b"))).toBe("a/b");
   });
-  it("the shell owns no per-place route", () => {
-    expect(existsSync(path.join(SHELL_DIR, "places", "[id]"))).toBe(false);
+  it("is null on the list itself, which is a different screen", () => {
+    expect(placeIdFromPathname("/places")).toBeNull();
+    expect(placeIdFromPathname("/places/")).toBeNull();
+  });
+  it("is null on anything deeper — the shell owns no per-place sub-tabs", () => {
+    expect(placeIdFromPathname("/places/p-x/promos")).toBeNull();
+    expect(placeIdFromPathname("/place/p-x/place/preview")).toBeNull();
   });
 });
 

@@ -25,8 +25,10 @@ export async function claimPlaceAction(
     return { error: errMsg(e, "Couldn't claim that place.") };
   }
   // Both lists change: the place leaves the pool and joins the portfolio.
+  // So does Place itself — its Holding section is the thing that just moved.
   revalidatePath("/places");
   revalidatePath("/pool");
+  revalidatePath("/places/[id]", "page");
   return { error: null };
 }
 
@@ -45,5 +47,6 @@ export async function releasePlaceAction(
   }
   revalidatePath("/places");
   revalidatePath("/pool");
+  revalidatePath("/places/[id]", "page");
   return { error: null };
 }

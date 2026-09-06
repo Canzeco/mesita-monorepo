@@ -19,6 +19,9 @@ describe("middleware contract", () => {
     expect(shouldGate(SHELL_ROUTES.pool)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
     expect(shouldGate("/place/abc")).toBe(true);
+    // Place — the fifth screen. It reads one org's holdings, so it sits
+    // behind the same wall the list does.
+    expect(shouldGate("/places/abc")).toBe(true);
   });
   it("does not gate routes that no longer exist", () => {
     expect(shouldGate("/central")).toBe(false);
