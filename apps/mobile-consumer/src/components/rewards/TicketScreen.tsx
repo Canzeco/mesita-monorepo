@@ -173,9 +173,11 @@ export function TicketScreen({
   const classKey =
     legacyKey === "influencer"
       ? "silver"
-      : legacyKey === "aura"
-        ? "diamond"
-        : "bronze";
+      : legacyKey === "premium"
+        ? "gold"
+        : legacyKey === "aura"
+          ? "diamond"
+          : "bronze";
   const guestName =
     profile?.full_name?.trim() ||
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
