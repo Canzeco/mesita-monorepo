@@ -180,3 +180,34 @@ export function classifyExistingAccount(
   }
   return "use";
 }
+
+/**
+ * Legal entity types a Mesita connected account may be created as —
+ * Stripe's `business_type`, asked BEFORE onboarding opens (Pato directive,
+ * 2026-09-06: "ask some prev stuff before initializing onboarding — country
+ * and type of legal entity").
+ *
+ * In Mexico this is the persona física / persona moral fork, and it is the
+ * single answer that decides WHAT Stripe asks next: an individual is asked
+ * for a CURP and a personal RFC, a company for its constitutive act, its
+ * legal representative and a company RFC. Sending the person into hosted
+ * onboarding without it means Stripe opens on a chooser the owner is least
+ * equipped to answer cold — a restaurant owner who picks wrong restarts KYC.
+ *
+ * Unlike `country`, this is NOT permanent: it is a prefill, and Stripe lets
+ * the person change it inside the hosted flow. That asymmetry is deliberate
+ * and is why this list may grow cheaply while MESITA_CONNECT_COUNTRIES may
+ * not. `non_profit` and `government_entity` are Stripe-valid and deliberately
+ * absent — no Mesita merchant is either, and an allowlist that offers a
+ * branch nobody can complete is a support ticket, not a feature.
+ */
+export const MESITA_CONNECT_ENTITY_TYPES = ["individual", "company"] as const;
+
+export type MesitaConnectEntityType = typeof MESITA_CONNECT_ENTITY_TYPES[number];
+
+export function isSupportedConnectEntityType(
+  value: unknown,
+): value is MesitaConnectEntityType {
+  return typeof value === "string" &&
+    (MESITA_CONNECT_ENTITY_TYPES as readonly string[]).includes(value);
+}

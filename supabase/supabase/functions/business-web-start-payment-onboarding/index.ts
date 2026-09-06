@@ -37,13 +37,18 @@ import {
   classifyExistingAccount,
   isMockConnect,
   isSupportedConnectCountry,
+  isSupportedConnectEntityType,
   keyIsLive,
   MESITA_CONNECT_CAPABILITIES,
   MESITA_CONNECT_CONTROLLER,
   MESITA_CONNECT_COUNTRIES,
+  MESITA_CONNECT_ENTITY_TYPES,
   mockConnectAccountId,
 } from "../_shared/stripe-connect.ts";
-import { stripeSecretKey } from "../_shared/stripe-env.ts";
+import {
+  resolveStripeSecret,
+  stripeSecretKeyProblem,
+} from "../_shared/stripe-env.ts";
 import {
   type PaymentAccountRow,
   writePaymentAccount,
@@ -57,6 +62,10 @@ type Body = {
    *  MX — every organization onboarded so far is Mexican — but it is validated, not
    *  trusted, because Stripe bakes it into the account permanently. */
   country?: string;
+  /** Stripe's `business_type` — the persona física / persona moral fork,
+   *  asked before onboarding opens. Optional on the wire: the resume path
+   *  only mints a link for an account that already exists. */
+  entityType?: string;
 };
 
 // Stripe's OWN WORDS reach the operator. Every failure on this path is a
@@ -106,14 +115,52 @@ Deno.serve(async (req) => {
     }, 400);
   }
 
+  // Entity type is the OTHER answer hosted onboarding needs up front. Unlike
+  // country it is a prefill Stripe may still change, so it is optional on the
+  // wire — but never a passthrough: an unrecognised value would reach
+  // accounts.create and be rejected there, one round trip later and in
+  // Stripe's words instead of ours.
+  const entityTypeRaw = bodyRes.body.entityType;
+  const entityType =
+    typeof entityTypeRaw === "string" && entityTypeRaw.trim() !== ""
+      ? entityTypeRaw.trim()
+      : null;
+  if (entityType !== null && !isSupportedConnectEntityType(entityType)) {
+    return json({
+      ok: false,
+      error:
+        `entityType must be one of ${MESITA_CONNECT_ENTITY_TYPES.join(", ")} (got ${JSON.stringify(entityTypeRaw)}).`,
+      code: "unsupported_entity_type",
+    }, 400);
+  }
+
   const admin = adminClient(envRes.env);
 
   const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
   if (!roleRes.ok) return roleRes.response;
 
-  const stripeKey = stripeSecretKey();
-  if (stripeKey) {
-    const blocked = liveChargesBlocked(stripeKey);
+  const secret = resolveStripeSecret();
+  const stripeKey = secret?.key;
+  if (secret) {
+    // A key that is not shaped like a key is a PLATFORM misconfiguration, and
+    // the reader of this response is a restaurant owner. Refuse before Stripe
+    // does: Stripe's rejection ("Invalid API Key provided: <key, middle
+    // starred out>") names no env var and echoes the credential itself into a
+    // merchant's browser. The operator-precise sentence — which variable, what
+    // is wrong with it — goes to the EF log and to the admin health probe,
+    // which is where an operator already looks; the merchant gets a sentence
+    // that is true and actionable for THEM, which is "nothing, it is on us".
+    const problem = stripeSecretKeyProblem(secret.name, secret.key);
+    if (problem) {
+      console.error(`[start-payment-onboarding] ${problem}`);
+      return json({
+        ok: false,
+        error:
+          "Payments aren\u2019t configured on Mesita\u2019s side yet \u2014 nothing to fix on your end. We\u2019ve been notified.",
+        code: "stripe_key_malformed",
+      }, 503);
+    }
+    const blocked = liveChargesBlocked(secret.key);
     if (blocked) return json({ ok: false, error: blocked, code: "stripe_live_blocked" }, 409);
   }
   const mockMode = isMockConnect(stripeKey);
@@ -223,7 +270,12 @@ Deno.serve(async (req) => {
       controller: MESITA_CONNECT_CONTROLLER,
       capabilities: MESITA_CONNECT_CAPABILITIES,
       metadata: { organization_id: orgId },
-      ...(legalName ? { company: { name: legalName } } : {}),
+      ...(entityType ? { business_type: entityType } : {}),
+      // company.name is meaningless for an individual — Stripe ignores it —
+      // so once the fork is known, send it only where it lands.
+      ...(legalName && entityType !== "individual"
+        ? { company: { name: legalName } }
+        : {}),
     });
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);

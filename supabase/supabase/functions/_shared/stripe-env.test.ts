@@ -12,6 +12,7 @@ import {
   stripeMode,
   stripeSecretKey,
   stripeSecretKeyNames,
+  stripeSecretKeyProblem,
   stripeWebhookSecrets,
 } from "./stripe-env.ts";
 
@@ -135,4 +136,50 @@ Deno.test("stripeKeyMatchesMode: the key prefix is the universe", () => {
   assert(stripeKeyMatchesMode("sk_live_x", "live"));
   assert(!stripeKeyMatchesMode("sk_live_x", "test"));
   assert(!stripeKeyMatchesMode("sk_test_x", "live"));
+});
+
+
+Deno.test("stripeSecretKeyProblem: a well-formed secret key has no problem", () => {
+  assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY_TEST", "sk_test_51abc"), null);
+  assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY_LIVE", "sk_live_51abc"), null);
+});
+
+Deno.test("stripeSecretKeyProblem: each wrong paste is named by its prefix", () => {
+  const problem = (key: string) =>
+    stripeSecretKeyProblem("STRIPE_SECRET_KEY_TEST", key) ?? "";
+  // Every message names the variable — the whole point over Stripe's own
+  // rejection, which names none of the three candidate secrets.
+  for (const key of ["rk_test_x", "pk_test_x", "mk_test_x", "hunter2"]) {
+    assert(problem(key).includes("STRIPE_SECRET_KEY_TEST"), key);
+  }
+  assert(problem("rk_test_x").includes("restricted"));
+  assert(problem("pk_test_x").includes("publishable"));
+  assert(problem("mk_test_x").includes("API key ID"));
+  assert(problem("hunter2").includes("does not look like"));
+});
+
+Deno.test("stripeSecretKeyProblem: junk pasted IN FRONT of a real key is its own diagnosis", () => {
+  // The MESITA case, 2026-09-06: the business console's Connect button
+  // returned `Invalid API Key provided: mattsk_t****…1l0b` — a real test key
+  // with four stray characters welded to its front. "Does not look like a
+  // Stripe secret key" would have sent the operator hunting for a new key;
+  // the key was fine and only its first four characters were not.
+  const problem = stripeSecretKeyProblem(
+    "STRIPE_SECRET_KEY_TEST",
+    "mattsk_test_51RealLookingKeyMaterial1l0b",
+  );
+  assert(problem !== null);
+  assert(problem!.includes("STRIPE_SECRET_KEY_TEST"));
+  assert(problem!.includes("4 stray character(s)"), problem!);
+  assert(problem!.includes("must START with"), problem!);
+  // The value itself NEVER travels in the message — this string is rendered
+  // in a merchant's browser.
+  assert(!problem!.includes("1l0b"), problem!);
+  assert(!problem!.includes("mattsk_test_51RealLookingKeyMaterial1l0b"));
+});
+
+Deno.test("stripeSecretKeyProblem: a trailing-junk key is still caught, and not miscounted", () => {
+  // Only a LEADING prefix is the "stray characters" case; a key that starts
+  // correctly is shape-valid here (Stripe is the authority on the rest).
+  assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY", "sk_test_51abc oops"), null);
 });
