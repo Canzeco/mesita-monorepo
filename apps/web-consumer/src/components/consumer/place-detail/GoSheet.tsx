@@ -79,6 +79,7 @@ export function GoSheet({
     onCreated: () => {
       void tickets.refresh();
     },
+    source: "go_sheet",
   });
   const promoting = isPromoting(place);
   const orderEnabled = isOrderActionEnabled(place);

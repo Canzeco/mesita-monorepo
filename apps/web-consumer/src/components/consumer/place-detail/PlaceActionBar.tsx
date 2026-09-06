@@ -65,6 +65,7 @@ export function PlaceActionBar({
     onCreated: () => {
       void tickets.refresh();
     },
+    source: "place_action_bar",
   });
   const [reserveOpen, setReserveOpen] = useState(false);
 
