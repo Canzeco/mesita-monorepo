@@ -1,11 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // MESITA-1174 — the console's entity routes moved /unit/* → /place/*.
-  // Deployed sessions and old bookmarks still hold /unit URLs.
+  // ONE place console (MESITA-1564). The `(console)` tree — /place/<id> under
+  // Profile · Partnership · Performance · Settings — is deleted; `/places/<id>`
+  // under Profile · Capabilities · Activity · Admin is the whole surface now.
+  //
+  // The tab names do NOT map one to one (Partnership and Settings merged into
+  // Capabilities), so a legacy tab cannot be forwarded to a matching tab
+  // without guessing. Every one lands on the place itself, which always
+  // exists — a bookmark that opens the right restaurant on the wrong tab beats
+  // a 404, and beats a redirect that quietly picks a tab the operator did not
+  // ask for.
+  //
+  // /unit/* predates all of this (MESITA-1174) and used to forward to /place/*,
+  // which no longer exists — so it is repointed here rather than left to chain
+  // through a deleted route.
   async redirects() {
     return [
-      { source: "/unit/:path*", destination: "/place/:path*", permanent: true },
+      { source: "/unit/:id", destination: "/places/:id", permanent: true },
+      { source: "/unit/:id/:rest*", destination: "/places/:id", permanent: true },
+      { source: "/place/:id", destination: "/places/:id", permanent: true },
+      { source: "/place/:id/:rest*", destination: "/places/:id", permanent: true },
+      // Account settings moved to the shell's own screen.
+      { source: "/settings", destination: "/account", permanent: true },
     ];
   },
   images: {

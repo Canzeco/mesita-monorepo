@@ -1,8 +1,16 @@
+// Ported from the deleted legacy console (MESITA-1564).
+//
+// `effectiveStrikeCount` and `lifecycleView` moved into the live place-manage
+// tree in #1508, but their tests stayed behind in `(console)` and would have
+// died with it. effectiveStrikeCount mirrors an Edge Function's lazy strike
+// decay and lifecycleView encodes MESITA-1311's ghost-partner hold — deleting
+// the console is not a reason to stop checking either.
+//
+// `isCardCurrent` is NOT ported: that export did not survive the #1508 rewrite.
 import { describe, expect, it } from "vitest";
 import { STRATEGIES, strategyForPlace } from "@/lib/business/strategies";
 import {
   effectiveStrikeCount,
-  isCardCurrent,
   lifecycleView,
   STRIKE_DECAY_DAYS,
 } from "./promo-state";
@@ -11,25 +19,6 @@ import {
 const DAY_MS = 86_400_000;
 const NOW = Date.parse("2026-08-07T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW - d * DAY_MS).toISOString();
-
-describe("isCardCurrent — the F1 gate", () => {
-  it("unsubscribed: NEVER current, Zero included (join-onto-Zero stays open)", () => {
-    for (const cardId of ["zero", "conservative", "aggressive"] as const) {
-      // A fresh place has all-null rates → strategyForPlace seeds
-      // selectedId with "zero"; the gate must ignore it.
-      expect(isCardCurrent(false, "zero", cardId)).toBe(false);
-    }
-  });
-
-  it("subscribed member on Zero (null rates): Zero is honestly Current", () => {
-    expect(isCardCurrent(true, "zero", "zero")).toBe(true);
-    expect(isCardCurrent(true, "zero", "conservative")).toBe(false);
-  });
-
-  it("subscribed with custom rates (null selection): nothing current", () => {
-    expect(isCardCurrent(true, null, "conservative")).toBe(false);
-  });
-});
 
 describe("effectiveStrikeCount (mirrors EF lazy decay)", () => {
   it("returns 0 for no strikes", () => {

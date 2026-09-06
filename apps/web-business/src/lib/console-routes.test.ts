@@ -9,6 +9,7 @@ import {
   placeIdFromPathname,
   withOrg,
 } from "./console-routes";
+import { PLACE_TABS, placeTabHref } from "./place-view";
 
 const SHELL_DIR = path.resolve(__dirname, "..", "app", "(shell)");
 
@@ -55,14 +56,16 @@ describe("placeIdFromPathname — the nav's Org Places / Place split", () => {
     expect(placeIdFromPathname("/places")).toBeNull();
     expect(placeIdFromPathname("/places/")).toBeNull();
   });
-  it("survives ONE tab segment — the shell owns the place tabs now (MESITA-1537)", () => {
-    for (const tab of ["profile", "partnership", "performance", "settings"]) {
-      expect(placeIdFromPathname(`/places/p-x/${tab}`)).toBe("p-x");
+  // Iterate the REAL tab set, not a hardcoded list. The previous version
+  // named partnership/performance/settings — tabs #1508 replaced — and passed
+  // vacuously, because the regex accepts any single segment.
+  it("survives every real tab segment (MESITA-1537)", () => {
+    for (const tab of PLACE_TABS) {
+      expect(placeIdFromPathname(placeTabHref("p-x", tab))).toBe("p-x");
     }
   });
-  it("is still null two segments deep, and on the legacy console path", () => {
+  it("is still null two segments deep", () => {
     expect(placeIdFromPathname("/places/p-x/profile/basics")).toBeNull();
-    expect(placeIdFromPathname("/place/p-x/place/preview")).toBeNull();
   });
 });
 

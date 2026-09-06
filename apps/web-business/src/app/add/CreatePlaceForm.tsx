@@ -12,7 +12,7 @@ import {
 import { apiLookupPlace, type LookupResult } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { placePath } from "@/lib/business-route-contract";
+import { placeHref } from "@/lib/console-routes";
 import {
   ErrorCard,
   NotInMesitaCard,
@@ -155,7 +155,7 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
     supabase,
     signedInEmail,
     onApproved: (projectId) => {
-      router.push(placePath(projectId));
+      router.push(placeHref(projectId));
       router.refresh();
     },
     onAwaitingAdmin: () => {
