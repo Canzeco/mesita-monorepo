@@ -8,7 +8,7 @@ import {
   getPlaceEnrichment,
   getPlaceVerification,
   type AdminPlace,
-  type PlaceEnrichmentStatus,
+  type PlaceEnrichmentState,
   type PlaceVerificationGlance,
 } from "./actions";
 import { PLACE_VERIFICATION_CHANGED } from "./verification-events";
@@ -29,7 +29,7 @@ import {
 import { ENGINELESS_STATE_FACT_KEYS } from "@/lib/state-vocabulary";
 
 /** Ties the phone-only States toggle to the block it opens. */
-const STATE_CHIPS_ID = "place-header-statees";
+const STATE_CHIPS_ID = "place-header-states";
 
 function headerChipClass(on: boolean | "unknown"): string {
   return (
@@ -69,7 +69,7 @@ export function PlaceEditChrome({
   const [verificationError, setVerificationError] = useState<string | null>(
     null,
   );
-  const [enrichStatus, setEnrichStatus] = useState<PlaceEnrichmentStatus | null>(
+  const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(
     null,
   );
   const [enrichPollError, setEnrichPollError] = useState(false);
@@ -80,18 +80,18 @@ export function PlaceEditChrome({
   // name + states, the states are just one tap away on a phone.
   const [statesOpen, setStatesOpen] = useState(false);
   const enriching =
-    isEnriching(enrichStatus) ||
+    isEnriching(enrichState) ||
     isEnriching({
-      content_status:
-        typeof place.content_status === "string" ? place.content_status : null,
+      content_state:
+        typeof place.content_state === "string" ? place.content_state : null,
       stage: null,
-      stage_status: null,
+      stage_state: null,
       error: null,
       last_enriched_at: null,
       updated_at: null,
       serp_summary: null,
     });
-  const enrichFailed = isEnrichFailed(enrichStatus);
+  const enrichFailed = isEnrichFailed(enrichState);
   const enrichingRef = useRef(enriching);
   useEffect(() => {
     enrichingRef.current = enriching;
@@ -130,12 +130,12 @@ export function PlaceEditChrome({
       : Boolean(verification?.verifiedByEmail);
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
-  const listedFromRow = listedFromState(place.status);
+  const listedFromRow = listedFromState(place.state);
   const facts = generalHeaderFacts({
     seeded: place.seeded,
     listed: listedFromRow === "unknown" ? place.listed : listedFromRow,
     requestCount: typeof place.request_count === "number" ? place.request_count : undefined,
-    business_status: place.business_status,
+    business_state: place.business_state,
     enriching,
     enrich_pulse: place.enrich_pulse,
     enrich_pulse_total: place.enrich_pulse_total,
@@ -166,7 +166,7 @@ export function PlaceEditChrome({
     chipFacts.filter((f) => f.on === true).length +
     intakeRows.filter((r) => r.on).length;
 
-  // decision: MESITA-896 — the live enriching STATUS lives HERE, in the
+  // decision: MESITA-896 — the live enriching STATE lives HERE, in the
   // chrome, so it is visible from every tab. The TRIGGER moved to Admin →
   // Enrichment (Pato, 2026-08-20): scheduling a refresh and running one now
   // are the same decision, so they belong in the same box.
@@ -191,7 +191,7 @@ export function PlaceEditChrome({
           return;
         }
         setEnrichPollError(false);
-        setEnrichStatus(r.data.status);
+        setEnrichState(r.data.state);
       });
 
     const scheduleNext = () => {
@@ -252,7 +252,7 @@ export function PlaceEditChrome({
               Admin → Enrichment. Inter, not Fraunces — this chrome is
               identity, not a page title (Pato, Strana screenshot).
 
-              THE HEADER IS NAME + STATUSES, NOTHING ELSE (Pato,
+              THE HEADER IS NAME + STATES, NOTHING ELSE (Pato,
               2026-08-29). No category: it is an editable field, it lives
               on Profile, and an unset one printed "❓ Undefined" in the
               identity line — a placeholder wearing the same weight as
@@ -276,7 +276,7 @@ export function PlaceEditChrome({
               ) : enrichFailed ? (
                 <span
                   className="border-destructive/30 bg-destructive/5 text-destructive inline-flex items-center rounded-full border px-2 py-0.5 type-label font-medium"
-                  title={enrichStatus?.error ?? "Enrichment failed"}
+                  title={enrichState?.error ?? "Enrichment failed"}
                   aria-live="polite"
                 >
                   Enrich failed

@@ -3,12 +3,12 @@
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { placeInstagramHandleForPayload } from "./ticket-bill-payload.ts";
-import { CLOSED_TICKET_STATUS, LIVE_STATUSES } from "./ticket-status.ts";
+import { CLOSED_TICKET_STATE, LIVE_STATES } from "./ticket-state.ts";
 
 // v3 (MESITA-849): the Mesita review is a task the guest does BEFORE the scan,
 // so a live ticket is reviewable — it no longer has to reach the end of the
 // visit first. `awaiting_story` is gone with the staff verdict that resolved it.
-const REVIEW_READY_STATUSES = new Set<string>([...LIVE_STATUSES, CLOSED_TICKET_STATUS]);
+const REVIEW_READY_STATES = new Set<string>([...LIVE_STATES, CLOSED_TICKET_STATE]);
 
 /** Ensure the review inbox row exists before the consumer submits a review. */
 export async function prepareTicketForReview(
@@ -18,7 +18,7 @@ export async function prepareTicketForReview(
 ): Promise<{ ok: true; projectId: string } | { ok: false; error: string }> {
   const ticket = await admin
     .from("visit_tickets")
-    .select("id, place_id, status")
+    .select("id, place_id, state")
     .eq("id", ticketId)
     .eq("consumer_id", consumerId)
     .maybeSingle();
@@ -27,7 +27,7 @@ export async function prepareTicketForReview(
   }
 
   const row = ticket.data;
-  if (REVIEW_READY_STATUSES.has(row.status)) {
+  if (REVIEW_READY_STATES.has(row.state)) {
     await ensureConsumerReviewNotification(
       admin,
       consumerId,
@@ -78,7 +78,7 @@ export async function ensureConsumerReviewNotification(
     consumer_id: consumerId,
     ticket_id: ticketId,
     kind: "review",
-    status: "pending",
+    state: "pending",
     payload: {
       place_id: projectId,
       place_slug: v?.slug ?? null,

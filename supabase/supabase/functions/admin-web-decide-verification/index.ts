@@ -2,11 +2,11 @@
 //
 // Super-admin approves or rejects a pending ownership verification.
 //
-//   approve  → verification.status='approved' + a project_members row
+//   approve  → verification.state='approved' + a project_members row
 //              (role='owner', manager_id=requester) is inserted. The
 //              place itself is already active+web from
 //              business-web-create-project; this EF only grants membership.
-//   reject   → verification.status='rejected' with reject_reason. No
+//   reject   → verification.state='rejected' with reject_reason. No
 //              membership change. The business can submit a fresh
 //              request from /add.
 //
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   // reject double-decides.
   const { data: verification, error: lookupError } = await admin
     .from("project_verifications")
-    .select("id, place_id, requester_id, status")
+    .select("id, place_id, requester_id, state")
     .eq("id", verificationId)
     .maybeSingle();
   if (lookupError) {
@@ -81,12 +81,12 @@ Deno.serve(async (req) => {
   if (!verification) {
     return json({ ok: false, error: "Verification not found" }, 404);
   }
-  if (verification.status !== "pending") {
+  if (verification.state !== "pending") {
     return json(
       {
         ok: false,
         code: "already_decided",
-        error: `Verification is already ${verification.status}.`,
+        error: `Verification is already ${verification.state}.`,
       },
       409,
     );
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   const { error: updateError } = await admin
     .from("project_verifications")
     .update({
-      status: decision,
+      state: decision,
       decided_at: now,
       decided_by: userId,
       decided_via: "admin",
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       await admin
         .from("project_verifications")
         .update({
-          status: "pending",
+          state: "pending",
           decided_at: null,
           decided_by: null,
           decided_via: null,

@@ -39,7 +39,7 @@ import {
 //
 // Every tab shows its plain label. Me used to append the live class ("Me ·
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
-// label names a DESTINATION; the class is status, and status belongs on the Me
+// label names a DESTINATION; the class is state, and state belongs on the Me
 // page where it can be read and acted on, not stamped into the chrome of every
 // screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
 // by Product Rules §C; `route-structure.test.tsx` pins the plain labels, in

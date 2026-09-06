@@ -22,7 +22,7 @@ import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
   ChoiceField,
-  KnobStatus,
+  KnobState,
   SaveRow,
   SectionCard,
 } from "@/components/admin-ui/config";
@@ -110,8 +110,8 @@ export function MapConfigClient({
         icon={<MapIcon className="text-primary h-4 w-4" />}
         title="Map"
         subtitle="Closest N of the selected set. Listed pins then Lineup, not distance. Google stays distance."
-        status={
-          <KnobStatus
+        state={
+          <KnobState
             kind="enforced"
             reason="Places Lineup · Map reads the Map mask"
           />

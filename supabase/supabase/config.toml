@@ -209,7 +209,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Authed consumer writes / reads tied to the signed-in consumer's own data.
-# Public catalog reads. RLS enforces which place statuses are visible.
+# Public catalog reads. RLS enforces which place states are visible.
 [functions.consumer-web-list-places]
 verify_jwt = false
 
@@ -367,7 +367,7 @@ verify_jwt = true
 [functions.consumer-web-claim-instagram]
 verify_jwt = true
 
-# Ownership-verification submit + status-poll, called from /add on
+# Ownership-verification submit + state-poll, called from /add on
 # business.mesita.ai.
 [functions.business-web-get-verification]
 verify_jwt = true
@@ -431,7 +431,7 @@ verify_jwt = true
 [functions.business-web-list-categories]
 verify_jwt = true
 
-# Ownership-verification submit + status-poll, called from /add on
+# Ownership-verification submit + state-poll, called from /add on
 # business.mesita.ai.
 [functions.business-web-send-email-otp]
 verify_jwt = true

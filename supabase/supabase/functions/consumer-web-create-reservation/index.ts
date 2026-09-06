@@ -23,7 +23,7 @@ import { generateReservationCode, isUniqueViolation } from "../_shared/reservati
 import { attachPlaces } from "../_shared/reservation-places.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
-import { isPlaceProfileReady } from "../_shared/place-status.ts";
+import { isPlaceProfileReady } from "../_shared/place-state.ts";
 
 type Body = {
   project_id?: string;
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   // give the client a code it can act on.
   const { data: projectRow, error: projectErr } = await admin
     .from("projects")
-    .select("id, content_status")
+    .select("id, content_state")
     .eq("id", body.project_id)
     .maybeSingle();
   if (projectErr) return json({ ok: false, error: projectErr.message }, 500);
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
       error: "That place isn't available anymore. Refresh to get the latest list.",
     }, 404);
   }
-  if (!isPlaceProfileReady((projectRow as { content_status?: unknown }).content_status)) {
+  if (!isPlaceProfileReady((projectRow as { content_state?: unknown }).content_state)) {
     return json({
       ok: false,
       code: "profile_not_ready",
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       .eq("consumer_id", consumerId)
       .eq("is_test", false)
       .gte("created_at", monthStart.toISOString())
-      .neq("status", "cancelled");
+      .neq("state", "cancelled");
     if (countErr) return json({ ok: false, error: countErr.message }, 500);
     if ((count ?? 0) >= monthlyLimit) {
       return json(
@@ -180,10 +180,10 @@ Deno.serve(async (req) => {
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
-        status: "pending",
+        state: "pending",
       },
       select:
-        "id, reference_code, reserved_at, party_size, status, notes, consumer_notify, created_at, place_id",
+        "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id",
     });
     if (ins.ok) {
       reservation = ins.row as { id: string } & Record<string, unknown>;

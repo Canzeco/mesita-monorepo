@@ -12,7 +12,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
-import { LIVE_STATUSES, TERMINAL_STATUSES } from "../_shared/ticket-status.ts";
+import { LIVE_STATES, TERMINAL_STATES } from "../_shared/ticket-state.ts";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -49,13 +49,13 @@ Deno.serve(async (req) => {
   let query = admin
     .from("visit_tickets")
     .select(
-      "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, review_status, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, check_code, first_scanned_at, bill_subtotal_cents, tip_cents, tip_pct, total_cents, redeem_cents, discount_percent, discount_cents, bill_source, revealed_at, approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, currency, created_at, paid_at, cancelled_at, cancel_reason, place_id, updated_at",
+      "id, state, story_state, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, review_state, review_screenshot_url, review_submitted_at, review_verified_at, review_reject_reason, check_code, first_scanned_at, bill_subtotal_cents, tip_cents, tip_pct, total_cents, redeem_cents, discount_percent, discount_cents, bill_source, revealed_at, approved_at, approved_discount_cents, approved_amount_due_cents, fix_requested, fix_note, paid_method, validated_at, currency, created_at, paid_at, cancelled_at, cancel_reason, place_id, updated_at",
     )
     .eq("consumer_id", userId);
   if (scope === "active") {
-    query = query.in("status", [...LIVE_STATUSES]);
+    query = query.in("state", [...LIVE_STATES]);
   } else if (scope === "history") {
-    query = query.in("status", [...TERMINAL_STATUSES]);
+    query = query.in("state", [...TERMINAL_STATES]);
   }
   const { data, error } = await query
     .order("created_at", { ascending: false })

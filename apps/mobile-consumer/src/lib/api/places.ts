@@ -8,7 +8,7 @@ import { EFError, invokeEF } from '@/lib/ef';
 import type { PlaceDetail } from '@/lib/types/place-detail';
 
 type PlaceListingType = 'partner' | 'web';
-type PlaceStatus = 'lead' | 'active' | 'paused' | 'archived';
+type PlaceState = 'lead' | 'active' | 'paused' | 'archived';
 type FiscalType = 'formal' | 'informal';
 type PlacePlan = 'free' | 'pro' | 'ultra';
 
@@ -27,7 +27,7 @@ export type Place = {
   price_level: number | null;
   currency: string;
   listing_type: PlaceListingType;
-  status: PlaceStatus;
+  state: PlaceState;
   fiscal_type: FiscalType;
   plan: PlacePlan;
   lat: number | null;
@@ -64,7 +64,7 @@ export type Place = {
   reward_cap_mxn?: number | null;
   /**
    * True while Enricher is still building the profile
-   * (`projects.content_status` ∈ {queued, generating}). Drives the
+   * (`projects.content_state` ∈ {queued, generating}). Drives the
    * Enriching chip on swipe cards — same signal as place detail.
    */
   is_enriching?: boolean;
@@ -181,8 +181,8 @@ function stripInsecurePhotos<T extends { photos: string[] }>(v: T): T {
   return { ...v, photos: v.photos.filter((p) => p.startsWith('https://')) };
 }
 
-// Per-row status from consumer-web-suggest-places / ask-memo predictions.
-type PlacePredictionStatus =
+// Per-row state from consumer-web-suggest-places / ask-memo predictions.
+type PlacePredictionState =
   | 'not_in_mesita'
   | 'web_listed'
   | 'verified_partner_other'
@@ -192,7 +192,7 @@ export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  status: PlacePredictionStatus;
+  state: PlacePredictionState;
   partner?: boolean;
   mesitaId?: string;
   mesitaSlug?: string;

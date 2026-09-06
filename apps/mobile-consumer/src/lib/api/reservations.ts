@@ -11,7 +11,7 @@ type CreatedReservation = {
     id: string;
     reserved_at: string;
     party_size: number;
-    status: string;
+    state: string;
     notes: string | null;
   };
   /** Whether the outbound-call trigger was accepted (best-effort). */
@@ -79,7 +79,7 @@ export type EFReservationRow = {
   id: string;
   reserved_at: string;
   party_size: number;
-  status:
+  state:
     | 'pending'
     | 'confirmed'
     | 'declined'

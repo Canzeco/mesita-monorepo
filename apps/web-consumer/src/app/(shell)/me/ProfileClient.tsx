@@ -132,15 +132,15 @@ export function ProfileClient({
   }, [supabase]);
 
   // Post-checkout / Instagram-verify landing. The subscribe + verify flows
-  // redirect here with a status query; confirm it with a toast (the full page
+  // redirect here with a state query; confirm it with a toast (the full page
   // load already re-seeded the real membership upstream). Read straight off
   // the URL so the page carries no prerender-bailout requirement.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const status = params.get("subscription");
-    if (status === "success") {
+    const state = params.get("subscription");
+    if (state === "success") {
       toast.success("You're Mesita Premium — welcome in.");
-    } else if (status === "cancelled") {
+    } else if (state === "cancelled") {
       toast("Checkout cancelled — you can subscribe anytime.");
     }
     if (params.get("instagram") === "success") {

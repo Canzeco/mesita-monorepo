@@ -134,10 +134,10 @@ Deno.serve(async (req) => {
     );
   }
 
-  // advanceResearchStage reseeds (stage + status='pending' + attempts=0) without
+  // advanceResearchStage reseeds (stage + state='pending' + attempts=0) without
   // touching gathered/analysis — the poller re-claims the row at the chosen stage.
   // MESITA-453: Enriching covers the whole pipeline (research|analysis|contents),
-  // so flip content_status back to generating for light re-enrich modes too.
+  // so flip content_state back to generating for light re-enrich modes too.
   await markProjectGenerating(admin, projectId);
   // Explicit operator intent outranks the trigger matrix: clear whatever
   // subprocess set the last automatic trigger stamped, so a light re-enrich

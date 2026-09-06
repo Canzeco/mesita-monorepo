@@ -279,7 +279,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 });
 
 // MESITA-1119 — a mockup showed a sixth "Agents" tab and "Me · {class}".
-// Product Rules §C (later, Pato-owned): plain labels; class is status on /me,
+// Product Rules §C (later, Pato-owned): plain labels; class is state on /me,
 // never chrome; Activity is not named for a mechanism.
 //
 // FIVE tabs since 2026-09-05, in the order Pato gave them: Discover ·

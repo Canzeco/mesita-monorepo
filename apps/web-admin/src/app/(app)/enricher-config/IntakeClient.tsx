@@ -207,7 +207,7 @@ export function IntakeClient({
             icon={<Sparkles className="text-secondary h-4 w-4" />}
             title="Create"
             subtitle="One function. It awaits five subfunctions."
-            status={<Tag>$ · one Google call</Tag>}
+            state={<Tag>$ · one Google call</Tag>}
           >
             <FlowPanel
               facts={[
@@ -273,7 +273,7 @@ export function IntakeClient({
             icon={<RefreshCw className="text-secondary h-4 w-4" />}
             title="Enrich"
             subtitle="Ten functions. One tick each — none await a nested run."
-            status={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
+            state={<Tag>$$ · Apify · Firecrawl · Perplexity</Tag>}
           >
             <FlowPanel
               facts={[

@@ -1,6 +1,6 @@
 "use client";
 
-import { KnobStatus } from "@/components/admin-ui/config";
+import { KnobState } from "@/components/admin-ui/config";
 import { formatShortDate } from "@/lib/format";
 import { ALLOWED_CAPS } from "./promos";
 import { usePromosState } from "./PromosState";
@@ -11,7 +11,7 @@ export function DiscountCapClient() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <KnobStatus kind="fallback" reason="place cap wins" />
+        <KnobState kind="fallback" reason="place cap wins" />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {ALLOWED_CAPS.map((c) => {

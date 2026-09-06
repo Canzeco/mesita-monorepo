@@ -23,7 +23,7 @@ import { checkNotFound, isPlausibleCheckCode } from "../_shared/ticket-check.ts"
 type Body = { code?: string };
 
 type PollRow = {
-  status: string;
+  state: string;
   updated_at: string;
   fix_requested: string | null;
   fix_note: string | null;
@@ -36,14 +36,14 @@ type PollRow = {
   total_cents: number | null;
   discount_percent: number | null;
   discount_cents: number | null;
-  story_status: string | null;
-  review_status: string | null;
+  story_state: string | null;
+  review_state: string | null;
 };
 
 const POLL_COLUMNS =
-  "id, status, updated_at, fix_requested, fix_note, approved_at, validated_at, paid_method, " +
+  "id, state, updated_at, fix_requested, fix_note, approved_at, validated_at, paid_method, " +
   "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
-  "story_status, review_status";
+  "story_state, review_state";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     poll: {
-      status: t.status,
+      state: t.state,
       updated_at: t.updated_at,
       fix_requested: t.fix_requested,
       fix_note: t.fix_note,
@@ -104,8 +104,8 @@ Deno.serve(async (req) => {
           }),
         }
         : null,
-      story_state: collapse(t.story_status),
-      review_state: collapse(t.review_status),
+      story_state: collapse(t.story_state),
+      review_state: collapse(t.review_state),
     },
   });
 });

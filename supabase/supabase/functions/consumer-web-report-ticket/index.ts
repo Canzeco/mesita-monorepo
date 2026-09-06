@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, place_id, status, created_at, revealed_at, cancelled_at")
+    .select("id, consumer_id, place_id, state, created_at, revealed_at, cancelled_at")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       reason,
       details,
     })
-    .select("id, reason, details, status, created_at")
+    .select("id, reason, details, state, created_at")
     .single();
   if (inserted.error) {
     // The partial unique index (one OPEN report per ticket) is the guard

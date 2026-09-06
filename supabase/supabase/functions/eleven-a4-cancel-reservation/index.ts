@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
       error: "caller number does not match this reservation's place",
     }, 403);
   }
-  if (ticket.status === "cancelled") {
+  if (ticket.state === "cancelled") {
     return json({ ok: true, already: true, reference_code: ticket.reference_code });
   }
 

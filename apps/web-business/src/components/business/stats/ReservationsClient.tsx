@@ -6,7 +6,7 @@ import type { PlaceReservations } from "@/lib/api/reservations";
 // Read-only list. The reservation line lives on per-place Settings as
 // passive info (MESITA-897) — not re-added here when the tab folded back.
 
-const STATUS: Record<string, { label: string; chip: string }> = {
+const STATE_META: Record<string, { label: string; chip: string }> = {
   pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },
   confirmed: { label: "Confirmed", chip: "bg-emerald-500/10 text-emerald-700" },
   completed: { label: "Completed", chip: "bg-emerald-500/10 text-emerald-700" },
@@ -17,9 +17,9 @@ const STATUS: Record<string, { label: string; chip: string }> = {
   no_show: { label: "No-show", chip: "bg-rose-500/10 text-rose-700" },
 };
 
-function statusOf(s: string | null) {
+function stateOf(s: string | null) {
   return (
-    STATUS[s ?? ""] ?? {
+    STATE_META[s ?? ""] ?? {
       label: s ?? "—",
       chip: "bg-muted text-muted-foreground",
     }
@@ -58,7 +58,7 @@ export function ReservationsClient({ data }: { data: PlaceReservations }) {
         <>
           <div className="mt-4">
             {rows.map((r) => {
-              const st = statusOf(r.status);
+              const st = stateOf(r.state);
               return (
                 <div
                   key={r.id}

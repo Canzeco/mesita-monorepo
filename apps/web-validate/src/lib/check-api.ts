@@ -20,7 +20,7 @@ export type CheckActionState =
   "none" | "pending" | "submitted" | "approved" | "rejected";
 
 export type CheckPayload = {
-  status: string;
+  state: string;
   created_at: string;
   first_scanned_at: string | null;
   currency: string;
@@ -174,7 +174,7 @@ export function markPaid(code: string, pin?: string) {
 /** open → scanned. An affirmative staff write, fired once by the page —
  *  never a side effect of a read. Idempotent: already-past-open answers ok. */
 export function scanTicket(code: string, pin?: string) {
-  return callCheckEF<{ status?: string; already?: boolean }>(
+  return callCheckEF<{ state?: string; already?: boolean }>(
     "validate-web-scan-ticket",
     { code, ...(pin ? { pin } : {}) },
   );
@@ -221,7 +221,7 @@ export function validateTicket(code: string, pin?: string) {
  *  events per ip — polling through it would rate-limit the waiter out of
  *  their own approve. This endpoint writes nothing. */
 export type CheckPollPayload = {
-  status: string;
+  state: string;
   updated_at: string;
   fix_requested: string | null;
   fix_note: string | null;

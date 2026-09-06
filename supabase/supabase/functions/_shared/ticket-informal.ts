@@ -21,7 +21,7 @@ import {
   placeInstagramHandleForPayload,
 } from "./ticket-bill-payload.ts";
 import { ensureConsumerReviewNotification } from "./ticket-review-notify.ts";
-import { CLOSED_TICKET_STATUS } from "./ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "./ticket-state.ts";
 import { writeTicket } from "./ticket-doc.ts";
 
 export {
@@ -45,7 +45,7 @@ export type PlaceRateRow = {
   monthly_promo_cap: number | null;
   fiscal_type: string;
   listing_type: string;
-  status: string;
+  state: string;
 };
 
 export type ConsumerRow = {
@@ -150,21 +150,21 @@ export async function finalizeInformalTicket(
   const ticket = await admin
     .from("visit_tickets")
     .select(
-      "id, status, place_id, bill_subtotal_cents, total_cents, discount_cents, discount_percent",
+      "id, state, place_id, bill_subtotal_cents, total_cents, discount_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
   if (ticket.error || !ticket.data) {
     return { ok: false, error: ticket.error?.message ?? "ticket not found" };
   }
-  if (ticket.data.status === CLOSED_TICKET_STATUS) return { ok: true };
+  if (ticket.data.state === CLOSED_TICKET_STATE) return { ok: true };
 
   const now = new Date().toISOString();
   const update = await writeTicket(admin, {
     mode: "update",
     id: ticketId,
     patch: {
-      status: CLOSED_TICKET_STATUS,
+      state: CLOSED_TICKET_STATE,
       revealed_at: now,
       paid_at: now,
     },

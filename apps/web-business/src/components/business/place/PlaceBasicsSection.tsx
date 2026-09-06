@@ -32,7 +32,7 @@ export function PlaceBasicsSection({
   set: SetPlaceForm;
 }) {
   const name = place.name?.trim() || "—";
-  const status = humanizePlaceToken(place.status);
+  const state = humanizePlaceToken(place.state);
   const verification = resolvePlaceVerification(place);
   const tier = resolvePlaceTierLabel(place);
 
@@ -57,7 +57,7 @@ export function PlaceBasicsSection({
             googleCategorySlug={place.category}
           />
         </PlaceKvField>
-        <PlaceKvField label="Status" value={status} blocked />
+        <PlaceKvField label="State" value={state} blocked />
         <PlaceKvField
           label="Verification"
           hint="Ownership"

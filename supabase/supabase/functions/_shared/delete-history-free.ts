@@ -1,7 +1,7 @@
 // MESITA-1250 — the deletion law, encoded above the DB.
 //
 // Atlas §C: a place or consumer with transaction history is NEVER
-// hard-deleted. Deletion is a status; references stay valid forever (that is
+// hard-deleted. Deletion is a state; references stay valid forever (that is
 // what ON DELETE RESTRICT on visit/reservation tickets means). Hard-delete
 // exists only here, for history-free aggregates, and in admin_reset_database
 // which wipes history WITH the aggregates.

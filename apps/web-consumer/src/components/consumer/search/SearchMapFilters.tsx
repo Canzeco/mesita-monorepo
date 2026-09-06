@@ -17,7 +17,7 @@ import { SearchResultLimit } from "./SearchResultLimit";
 
 // Search-map Filters sheet. Super Category + Places + How many, DENSE:
 // every option is directly visible, the sheet never scrolls (Pato,
-// 2026-08-29). There is no Status chip row, Category, or Types axis.
+// 2026-08-29). There is no State chip row, Category, or Types axis.
 // Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
 // retired as a scope, kept as the yellow paint. Default is Mesita
 // Places. Picking Google Places WARNS inside the box: those rows are

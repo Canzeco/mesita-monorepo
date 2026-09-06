@@ -13,12 +13,12 @@
 //
 // TWO SIDES OF THE SAME QUESTION, ONE ANSWER:
 //   Google-only row — Google's `businessStatus` + `userRatingCount`.
-//   Mesita row      — `business_status` + `google_review_count`.
+//   Mesita row      — `business_state` + `google_review_count`.
 // Before this module, on-Mesita rows were waved through ("they're already
 // onboarded") and a place the operator had switched Active OFF still came
 // back from search. That was the bug.
 //
-// UNKNOWN DOES NOT CLEAR THE GATE. A null business_status or a null review
+// UNKNOWN DOES NOT CLEAR THE GATE. A null business_state or a null review
 // count fails whichever knob is on. Same reading as `applyDiscoveryFilters`:
 // a floor asks a place to PROVE it clears the bar, and a place with nothing
 // to show has not. It is also the only reading that makes "only active
@@ -27,7 +27,7 @@
 import type { GeneralConfig } from "./discovery-config.ts";
 import type { FilterableQuery } from "./discovery-filters.ts";
 
-/** The Status-box fact `active`. Google's own label, verbatim. */
+/** The State-box fact `active`. Google's own label, verbatim. */
 export const OPERATIONAL = "OPERATIONAL";
 
 export type GeneralGateSignals = {
@@ -37,8 +37,8 @@ export type GeneralGateSignals = {
   reviewCount?: number | null;
 };
 
-export function isOperational(status: unknown): boolean {
-  return typeof status === "string" && status.trim() === OPERATIONAL;
+export function isOperational(state: unknown): boolean {
+  return typeof state === "string" && state.trim() === OPERATIONAL;
 }
 
 /** True when either knob is doing work — callers skip the fetch when not. */
@@ -67,12 +67,12 @@ export function clearsGeneralGate(
 export function rowClearsGeneralGate(
   general: GeneralConfig,
   row: {
-    business_status?: string | null;
+    business_state?: string | null;
     google_review_count?: number | null;
   },
 ): boolean {
   return clearsGeneralGate(general, {
-    businessStatus: row.business_status ?? null,
+    businessStatus: row.business_state ?? null,
     reviewCount: row.google_review_count ?? null,
   });
 }
@@ -96,7 +96,7 @@ export function applyGeneralGateQuery<T extends FilterableQuery<T>>(
   general: GeneralConfig,
 ): T {
   let q = query;
-  if (general.requireActive) q = q.eq("business_status", OPERATIONAL);
+  if (general.requireActive) q = q.eq("business_state", OPERATIONAL);
   // `gte` excludes nulls — the intended reading, stated at the top.
   if (general.minReviews > 0) q = q.gte("google_review_count", general.minReviews);
   return q;

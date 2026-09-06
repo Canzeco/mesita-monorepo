@@ -15,7 +15,7 @@ import {
   stateBoolChip,
 } from "./state-vocabulary";
 
-describe("status vocabulary", () => {
+describe("state vocabulary", () => {
   it("is eleven general facts plus eleven Intake functions 0–10", () => {
     expect(GENERAL_STATE_COUNT).toBe(11);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);

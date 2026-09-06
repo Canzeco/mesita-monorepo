@@ -7,7 +7,7 @@
 //
 // CONSOLE CONFIRM TELLS THE GUEST (eng-review 2026-08-04): the phone path
 // always follows a venue yes with the a2 guest call; this door used to flip
-// status silently. Now a confirm SEEDS the callback (callback_state=
+// state silently. Now a confirm SEEDS the callback (callback_state=
 // 'scheduled' on the guest ladder's clock — quiet-hours aware) and the
 // minute cron fires the engine's callback_retry intent through its normal
 // CAS claim. run_id rotates so any stale engine run is orphaned.
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   let patch: ReservationPatch;
   if (decision === "confirm") {
     patch = {
-      status: "confirmed",
+      state: "confirmed",
       confirmed_at: nowIso,
       updated_at: nowIso,
       run_id: crypto.randomUUID(),
@@ -94,13 +94,13 @@ Deno.serve(async (req) => {
         patch.callback_state = "scheduled";
         patch.callback_next_attempt_at = first.at.toISOString();
         patch.callback_attempts = 0;
-        patch.last_call_status = "confirmed from the console — guest call scheduled";
+        patch.last_call_state = "confirmed from the console — guest call scheduled";
       }
     } else if (current?.consumer_notify === "app" && !current?.consumer_confirmed_at) {
       patch.callback_state = "skipped";
       patch.callback_next_attempt_at = null;
       patch.consumer_confirmed_at = nowIso;
-      patch.last_call_status =
+      patch.last_call_state =
         "confirmed from the console — guest prefers app-only; no call";
     }
     const reservedAt = current?.reserved_at ? new Date(current.reserved_at) : null;
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     Object.assign(patch, reminderParkPatch(lng, reservedAt, guestNotify));
   } else {
     patch = {
-      status: "declined",
+      state: "declined",
       updated_at: nowIso,
       run_id: crypto.randomUUID(),
       claimed_at: null,
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
   }
 
   // Routed through validateReservationPatch (not the id-only writeReservation
-  // door — this update's `.in("status", …)` filter is a shape the door
+  // door — this update's `.in("state", …)` filter is a shape the door
   // doesn't model; see reservation-doc.ts's header). Scope the update to this
   // place and to still-actionable states so a member can't flip a terminal
   // booking (declined / no_show / cancelled).
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     .update(validated.patch)
     .eq("id", reservationId)
     .eq("place_id", projectId)
-    .in("status", ["pending", "confirmed"])
+    .in("state", ["pending", "confirmed"])
     .select(RESERVATION_SELECT)
     .maybeSingle();
 

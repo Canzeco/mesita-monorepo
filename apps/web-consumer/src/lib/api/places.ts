@@ -17,7 +17,7 @@ import type { PlaceDetail } from "@/lib/mock/place";
 import type { DiscoveryPredicatesWire } from "@/lib/discovery-filters-wire";
 
 type PlaceListingType = "partner" | "web";
-type PlaceStatus = "lead" | "active" | "paused" | "archived";
+type PlaceState = "lead" | "active" | "paused" | "archived";
 type FiscalType = "formal" | "informal";
 // Place plan keys (public.membership enum): Free (default) + Mesita Partner
 // (`plan=pro`) + legacy `ultra` (folds onto Verified). Paid membership runs an
@@ -55,7 +55,7 @@ export type Place = {
   // hard-coding it.
   currency: string;
   listing_type: PlaceListingType;
-  status: PlaceStatus;
+  state: PlaceState;
   fiscal_type: FiscalType;
   plan: PlacePlan;
   lat: number | null;
@@ -114,7 +114,7 @@ export type Place = {
   reward_cap_mxn?: number | null;
   /**
    * True while Intaker is still building the profile
-   * (`projects.content_status` ∈ {queued, generating}). Drives the
+   * (`projects.content_state` ∈ {queued, generating}). Drives the
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;
@@ -141,8 +141,8 @@ export type Place = {
   enriched_at?: string | null;
   /** Per-visit promo cap in major currency units (source for `reward_cap_mxn`). */
   monthly_promo_cap?: number | null;
-  /** Intaker pipeline status (`queued` / `generating` / `ready` / …). */
-  content_status?: string | null;
+  /** Intaker pipeline state (`queued` / `generating` / `ready` / …). */
+  content_state?: string | null;
   /** Consumer Requests count. Requested on the map is count > 0 and not ready. */
   request_count?: number | null;
   google_place_id?: string | null;
@@ -325,7 +325,7 @@ export async function apiRecommendDeck(
   return { deck: data.deck.map(stripInsecurePhotos), summary: data.summary };
 }
 
-// Per-row status mirrored from atlas-suggest-places. Drives the badge
+// Per-row state mirrored from atlas-suggest-places. Drives the badge
 // in the consumer search picker:
 //   - not_in_mesita: Google has it, Mesita doesn't — show "Not on
 //     Mesita yet" + nudge users to ping us.
@@ -334,7 +334,7 @@ export async function apiRecommendDeck(
 //     basic profile.
 //   - verified_partner_other: A claimed partner row — primary CTA.
 //   - verified_partner_self: The caller owns this place.
-type PlacePredictionStatus =
+type PlacePredictionState =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -344,7 +344,7 @@ export type PlacePrediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  status: PlacePredictionStatus;
+  state: PlacePredictionState;
   /** True when the place PAYS Mesita (plan, not strategy). Google-only is false. */
   partner?: boolean;
   /** Server's answer: did we write a profile? No column fallback on this

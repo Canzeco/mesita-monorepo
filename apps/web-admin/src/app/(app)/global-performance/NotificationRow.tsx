@@ -29,7 +29,7 @@ export function NotificationRow({
       item={item}
       now={now}
       verb={verbFor(item)}
-      failed={item.meta?.status === "failed"}
+      failed={item.meta?.state === "failed"}
       pinned={pinned}
     />
   );
@@ -141,7 +141,7 @@ function ExpandableRow({
             ) : null}
           </span>
           {!group && item.type.startsWith("atlas.") ? (
-            <CompactStatusChips item={item} />
+            <CompactStateChips item={item} />
           ) : null}
         </span>
         <ChevronDown
@@ -160,7 +160,7 @@ function ExpandableRow({
                   <li key={step.id}>
                     <p className="text-foreground text-xs font-medium">
                       {verbFor(step)}
-                      {step.meta?.status === "failed" ? (
+                      {step.meta?.state === "failed" ? (
                         <span className="text-destructive ml-2">failed</span>
                       ) : null}
                     </p>
@@ -224,7 +224,7 @@ function ExpandedBody({
   );
 }
 
-function CompactStatusChips({ item }: { item: NotificationItem }) {
+function CompactStateChips({ item }: { item: NotificationItem }) {
   const general = intakeFactChips(item);
   if (general.length === 0) return null;
   return (
@@ -246,7 +246,7 @@ function CompactStatusChips({ item }: { item: NotificationItem }) {
 
 function ActorLine({ item }: { item: NotificationItem }) {
   // No owner on create is the catalog default (Created / Listed), not a
-  // missing "claim". Unclaimed is listing_type — it is not a status fact.
+  // missing "claim". Unclaimed is listing_type — it is not a state fact.
   if (!item.actor) return null;
   if (item.actor === "Intaker") return null;
 

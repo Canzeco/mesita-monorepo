@@ -102,14 +102,14 @@ export function NewVisitClient({ userId }: { userId: string }) {
   // returns to /me?cards=added and supabase/ is out of scope here.
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (tickets.status !== "ready") return;
+    if (tickets.state !== "ready") return;
     const prev = prevActiveIdsRef.current;
     const revealed = tickets.history.find(
-      (t) => t.status === "revealed" && prev.has(t.id),
+      (t) => t.state === "revealed" && prev.has(t.id),
     );
     prevActiveIdsRef.current = new Set(tickets.active.map((t) => t.id));
     if (revealed) setJustPaid(revealed);
-  }, [tickets.status, tickets.active, tickets.history]);
+  }, [tickets.state, tickets.active, tickets.history]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">

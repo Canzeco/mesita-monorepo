@@ -54,7 +54,7 @@ serveEnrichStage("analysis", async (admin, _env, row) => {
   // the list is non-empty, so the place keeps the gallery it already had.
   if (!wants(row.subprocesses, "images")) {
     // NO BEACON HERE (MESITA-1209). This used to write
-    // { step_name: "images", status: "skipped" } — and `images` is a PULSE
+    // { step_name: "images", state: "skipped" } — and `images` is a PULSE
     // piece key, so the high-water reader saw a non-completed piece mid-ladder
     // and stopped short of it. A cheap refresh that did not buy the funnel
     // therefore knocked a complete place back down, every time it ran.

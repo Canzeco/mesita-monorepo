@@ -4,7 +4,7 @@ import { completedFunctions, placeStateFacts } from "./notification-state.ts";
 
 const BASE = {
   googlePlaceId: "ChIJxxxx",
-  status: "active",
+  state: "active",
   businessStatus: "OPERATIONAL",
   plan: "free",
   highWater: 2,
@@ -27,15 +27,15 @@ Deno.test("catalog default: seeded · active · listed, not verified/partner/pro
   assertEquals(facts.promoting, false);
 });
 
-Deno.test("Requested is guest demand, not a projects.status label", () => {
-  assertEquals(placeStateFacts({ ...BASE, requestCount: 2, contentStatus: "queued" }).requested, true);
-  assertEquals(placeStateFacts({ ...BASE, requestCount: 2, contentStatus: "ready" }).requested, false);
-  assertEquals(placeStateFacts({ ...BASE, status: "pending_verification" }).requested, false);
-  assertEquals(placeStateFacts({ ...BASE, status: "pending_verification" }).listed, false);
+Deno.test("Requested is guest demand, not a projects.state label", () => {
+  assertEquals(placeStateFacts({ ...BASE, requestCount: 2, contentState: "queued" }).requested, true);
+  assertEquals(placeStateFacts({ ...BASE, requestCount: 2, contentState: "ready" }).requested, false);
+  assertEquals(placeStateFacts({ ...BASE, state: "pending_verification" }).requested, false);
+  assertEquals(placeStateFacts({ ...BASE, state: "pending_verification" }).listed, false);
 });
 
 Deno.test("listing_type is not a fact — paused is Unlisted even if unclaimed", () => {
-  const facts = placeStateFacts({ ...BASE, status: "paused" });
+  const facts = placeStateFacts({ ...BASE, state: "paused" });
   assertEquals(facts.listed, false);
 });
 
@@ -60,9 +60,9 @@ Deno.test("functions map only completed Intake keys", () => {
   const facts = placeStateFacts({
     ...BASE,
     functions: {
-      pulse: { status: "completed", at: "2026-08-25T00:00:00.000Z", detail: null },
-      details: { status: "failed", at: "2026-08-25T00:00:00.000Z", detail: "x" },
-      serp: { status: "pending", at: null, detail: null },
+      pulse: { state: "completed", at: "2026-08-25T00:00:00.000Z", detail: null },
+      details: { state: "failed", at: "2026-08-25T00:00:00.000Z", detail: "x" },
+      serp: { state: "pending", at: null, detail: null },
     },
   });
   assertEquals(facts.functions.pulse, true);
@@ -71,17 +71,17 @@ Deno.test("functions map only completed Intake keys", () => {
   assertEquals(completedFunctions(undefined), {});
 });
 
-Deno.test("Enriching is content_status generating/queued, independent of Enriched", () => {
+Deno.test("Enriching is content_state generating/queued, independent of Enriched", () => {
   const idle = placeStateFacts({ ...BASE, highWater: PULSE_TOTAL });
   assertEquals(idle.enriching, false);
   assertEquals(idle.enriched, true);
   const rerun = placeStateFacts({
     ...BASE,
-    contentStatus: "generating",
+    contentState: "generating",
     highWater: PULSE_TOTAL,
   });
   assertEquals(rerun.enriching, true);
   assertEquals(rerun.enriched, true);
-  const queued = placeStateFacts({ ...BASE, contentStatus: "queued" });
+  const queued = placeStateFacts({ ...BASE, contentState: "queued" });
   assertEquals(queued.enriching, true);
 });

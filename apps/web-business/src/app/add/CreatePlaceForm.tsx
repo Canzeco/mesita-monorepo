@@ -20,7 +20,7 @@ import {
   PendingByOtherCard,
   VerifiedPartnerCard,
   WebListedCard,
-} from "./create-place-status-cards";
+} from "./create-place-state-cards";
 import {
   PREDICTION_BADGE,
   newSessionToken,
@@ -204,7 +204,7 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
         {!selected && predictions.length > 0 && (
           <ul className="border-border bg-card shadow-elev absolute inset-x-0 z-20 mt-2.5 max-h-80 overflow-y-auto rounded-[18px] border p-1.5">
             {predictions.map((p) => {
-              const meta = PREDICTION_BADGE[p.status];
+              const meta = PREDICTION_BADGE[p.state];
               return (
                 <li key={p.placeId}>
                   <button

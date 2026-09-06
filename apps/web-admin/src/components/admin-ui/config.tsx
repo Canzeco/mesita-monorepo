@@ -10,7 +10,7 @@ import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react";
 /** Matches enricher `SynthesisQuality` — kept local so the kit does not import app routes. */
 export type SynthesisQuality = "economy" | "standard" | "high";
 
-// Per-knob enforcement status (MESITA-738). The console is the operator's model
+// Per-knob enforcement state (MESITA-738). The console is the operator's model
 // of the product, so a control that persists but changes nothing has to SAY so
 // next to itself — prose at the top of a card gets skipped, and worse, goes
 // stale silently when the backend catches up. Three honest states:
@@ -23,20 +23,20 @@ export type SynthesisQuality = "economy" | "standard" | "high";
 // the claim is checkable against the code rather than taken on faith.
 type KnobEnforcement = "enforced" | "fallback" | "not-wired";
 
-const KNOB_STATUS: Record<KnobEnforcement, { label: string; className: string }> = {
+const KNOB_STATE: Record<KnobEnforcement, { label: string; className: string }> = {
   enforced: { label: "Enforced", className: "border-border text-foreground" },
   fallback: { label: "Fallback", className: "border-border text-muted-foreground" },
   "not-wired": { label: "Not wired", className: "border-border text-muted-foreground" },
 };
 
-export function KnobStatus({
+export function KnobState({
   kind,
   reason,
 }: {
   kind: KnobEnforcement;
   reason: string;
 }) {
-  const s = KNOB_STATUS[kind];
+  const s = KNOB_STATE[kind];
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <span
@@ -49,19 +49,19 @@ export function KnobStatus({
   );
 }
 
-// Uniform config card: icon + title + one-line subtitle + optional status,
+// Uniform config card: icon + title + one-line subtitle + optional state,
 // then the controls. The single wrapper keeps every section consistent.
 export function SectionCard({
   icon,
   title,
   subtitle,
-  status,
+  state,
   children,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
-  status?: React.ReactNode;
+  state?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -80,7 +80,7 @@ export function SectionCard({
             </p>
           )}
         </div>
-        {status ? <div className="shrink-0">{status}</div> : null}
+        {state ? <div className="shrink-0">{state}</div> : null}
       </div>
       {children}
     </section>

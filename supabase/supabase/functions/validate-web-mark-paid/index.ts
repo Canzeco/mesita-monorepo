@@ -30,7 +30,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
-import { CLOSED_TICKET_STATUS, LIVE_STATUS_SET } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE, LIVE_STATE_SET } from "../_shared/ticket-state.ts";
 
 type Body = { code?: string; pin?: string };
 
@@ -71,15 +71,15 @@ Deno.serve(async (req) => {
   });
   if (!pinRes.ok) return pinRes.response;
 
-  if (ticket.status === CLOSED_TICKET_STATUS) {
+  if (ticket.state === CLOSED_TICKET_STATE) {
     return json({ ok: true, alreadyPaid: true });
   }
   // v3b: the close is unconditional — a billed ticket (awaiting_payment_
   // confirm) and an unbilled open one both close on this tap. Only a
   // cancelled (or otherwise dead) ticket refuses.
-  if (!LIVE_STATUS_SET.has(ticket.status)) {
+  if (!LIVE_STATE_SET.has(ticket.state)) {
     return json(
-      { ok: false, error: `Ticket is ${ticket.status} — nothing to close.` },
+      { ok: false, error: `Ticket is ${ticket.state} — nothing to close.` },
       409,
     );
   }

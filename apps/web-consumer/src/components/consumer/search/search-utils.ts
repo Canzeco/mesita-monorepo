@@ -85,7 +85,7 @@ export function anchorPlaceFromPrediction(
     price_level: null,
     currency: "MXN",
     listing_type: "web",
-    status: onMesita ? "active" : "lead",
+    state: onMesita ? "active" : "lead",
     fiscal_type: "informal",
     plan: "free",
     partner: prediction.partner ?? false,

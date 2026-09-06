@@ -6,7 +6,7 @@ import {
   enrichPlace,
   getPlaceEnrichment,
   type AdminPlace,
-  type PlaceEnrichmentStatus,
+  type PlaceEnrichmentState,
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
@@ -20,7 +20,7 @@ import { isEnriching } from "../place-header-state";
 // The live run STATE stays in the chrome. This box only queues.
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {
-  const [status, setStatus] = useState<PlaceEnrichmentStatus | null>(null);
+  const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const { guardIntent } = usePlaceContext();
@@ -37,7 +37,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
         setLoaded(true);
         return;
       }
-      setStatus(r.data.status);
+      setEnrichState(r.data.state);
       setLoaded(true);
     });
     return () => {
@@ -45,7 +45,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     };
   }, [place.id]);
 
-  const running = isEnriching(status);
+  const running = isEnriching(enrichState);
 
   const runFull = useCallback(() => {
     setRunError(null);
@@ -57,10 +57,10 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
         return;
       }
       setQueued(true);
-      setStatus((prev) => ({
-        content_status: "generating",
+      setEnrichState((prev) => ({
+        content_state: "generating",
         stage: "research",
-        stage_status: "queued",
+        stage_state: "queued",
         error: null,
         last_enriched_at: prev?.last_enriched_at ?? null,
         updated_at: new Date().toISOString(),
@@ -88,8 +88,8 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
           ) : (
             <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
               Last run{" "}
-              {status?.last_enriched_at
-                ? formatAbsoluteUtc(status.last_enriched_at)
+              {enrichState?.last_enriched_at
+                ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
               . This queues the full Intaker process — gather, then write.
             </p>
@@ -116,7 +116,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               </span>
             ) : running ? (
               <span className="text-muted-foreground">
-                A run is in flight. Status is in the header.
+                A run is in flight. State is in the header.
               </span>
             ) : null}
           </p>

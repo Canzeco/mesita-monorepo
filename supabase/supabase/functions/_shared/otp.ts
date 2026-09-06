@@ -44,7 +44,7 @@ export async function insertPendingOtpVerification(
     .delete()
     .eq("place_id", args.projectId)
     .eq("requester_id", args.userId)
-    .eq("status", "pending");
+    .eq("state", "pending");
 
   const { data, error } = await admin
     .from("project_verifications")
@@ -54,7 +54,7 @@ export async function insertPendingOtpVerification(
       method: args.method,
       payload: { ...args.payload, codeHash: args.codeHash },
       requester_email: args.requesterEmail,
-      status: "pending",
+      state: "pending",
     })
     .select("id")
     .single();
@@ -95,7 +95,7 @@ export async function redeemOtpVerification(
 
   const { data: verification, error: lookupError } = await admin
     .from("project_verifications")
-    .select("id, place_id, requester_id, method, payload, status")
+    .select("id, place_id, requester_id, method, payload, state")
     .eq("id", args.verificationId)
     .maybeSingle();
   if (lookupError) {
@@ -119,12 +119,12 @@ export async function redeemOtpVerification(
       400,
     );
   }
-  if (verification.status !== "pending") {
+  if (verification.state !== "pending") {
     return json(
       {
         ok: false,
         code: "already_decided",
-        error: `Verification is already ${verification.status}.`,
+        error: `Verification is already ${verification.state}.`,
       },
       409,
     );
@@ -161,7 +161,7 @@ export async function redeemOtpVerification(
 
   if (!autoVerify) {
     // Manual-review path: stamp codeVerifiedAt so the admin queue
-    // shows "verified, awaiting approval". Status stays pending.
+    // shows "verified, awaiting approval". State stays pending.
     const nextPayload = { ...payload, codeVerifiedAt: now };
     const { error: payloadError } = await admin
       .from("project_verifications")
@@ -180,7 +180,7 @@ export async function redeemOtpVerification(
   const { error: updateError } = await admin
     .from("project_verifications")
     .update({
-      status: "approved",
+      state: "approved",
       decided_at: now,
       decided_by: args.userId,
       decided_via: "auto",
@@ -205,7 +205,7 @@ export async function redeemOtpVerification(
     await admin
       .from("project_verifications")
       .update({
-        status: "pending",
+        state: "pending",
         decided_at: null,
         decided_by: null,
         decided_via: null,

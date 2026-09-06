@@ -1,10 +1,10 @@
 // Supabase Edge Function — admin-web-set-place-active
 //
-// Operator write of Status › Active (places.business_status). Pulse / enrich
+// Operator write of State › Active (places.business_state). Pulse / enrich
 // still refresh that column from Google; this door is the human override.
 //
 // Body:     { placeId | projectId, active: boolean }
-// Response: { ok: true, active, listed, business_status, place }
+// Response: { ok: true, active, listed, business_state, place }
 // Auth:     caller's JWT email must be in public.super_admins.
 //
 // Active true  → OPERATIONAL. Does not list.
@@ -28,7 +28,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { writePlace } from "../_shared/place-doc.ts";
-import { isPlaceListed } from "../_shared/place-status.ts";
+import { isPlaceListed } from "../_shared/place-state.ts";
 import { activeWritePatch } from "../_shared/place-active.ts";
 
 type Body = { placeId?: unknown; projectId?: unknown; active?: unknown };
@@ -60,19 +60,19 @@ Deno.serve(async (req) => {
 
   const { data: current, error: readCurrent } = await admin
     .from("profiles")
-    .select("status, business_status")
+    .select("state, business_state")
     .eq("id", projectId)
     .maybeSingle();
   if (readCurrent) {
-    return json({ ok: false, error: `status_read: ${readCurrent.message}` }, 500);
+    return json({ ok: false, error: `state_read: ${readCurrent.message}` }, 500);
   }
   if (!current) return json({ ok: false, error: "Place not found" }, 404);
 
-  const row = current as { status: string | null; business_status: string | null };
-  const patch = activeWritePatch(active, row.status);
-  const bizSame = row.business_status === patch.business_status;
-  const statusSame = !patch.status || patch.status === row.status;
-  if (bizSame && statusSame) {
+  const row = current as { state: string | null; business_state: string | null };
+  const patch = activeWritePatch(active, row.state);
+  const bizSame = row.business_state === patch.business_state;
+  const stateSame = !patch.state || patch.state === row.state;
+  if (bizSame && stateSame) {
     const { data: place, error: readError } = await admin
       .from("profiles")
       .select(PLACE_BUSINESS_COLUMNS)
@@ -84,9 +84,9 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       active,
-      listed: isPlaceListed(row.status),
-      business_status: row.business_status,
-      status: row.status,
+      listed: isPlaceListed(row.state),
+      business_state: row.business_state,
+      state: row.state,
       place,
     });
   }
@@ -97,9 +97,9 @@ Deno.serve(async (req) => {
     mode: "update",
     id: projectId,
     patch: {
-      business_status: patch.business_status,
-      business_status_at: now,
-      ...(patch.status ? { status: patch.status } : {}),
+      business_state: patch.business_state,
+      business_state_at: now,
+      ...(patch.state ? { state: patch.state } : {}),
     },
     select: PLACE_BUSINESS_COLUMNS,
     selectMode: "maybeSingle",
@@ -109,14 +109,14 @@ Deno.serve(async (req) => {
   }
   if (!updRes.row) return json({ ok: false, error: "Place not found" }, 404);
 
-  const nextStatus = patch.status ?? row.status;
+  const nextState = patch.state ?? row.state;
   console.log(
     JSON.stringify({
       event: "place_active_changed",
       project: projectId,
-      from: row.business_status,
-      to: patch.business_status,
-      unlisted: Boolean(patch.status),
+      from: row.business_state,
+      to: patch.business_state,
+      unlisted: Boolean(patch.state),
       actor: authRes.user.email ?? authRes.user.id,
     }),
   );
@@ -124,9 +124,9 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     active,
-    listed: isPlaceListed(nextStatus),
-    business_status: patch.business_status,
-    status: nextStatus,
+    listed: isPlaceListed(nextState),
+    business_state: patch.business_state,
+    state: nextState,
     place: updRes.row,
   });
 });

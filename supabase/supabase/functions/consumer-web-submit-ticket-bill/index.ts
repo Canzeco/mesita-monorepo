@@ -7,7 +7,7 @@
 // computed SERVER-SIDE on the raw subtotal (C4: a client-computed tip never
 // crosses the wire; only the preset percent or a custom peso AMOUNT does).
 //
-// The bill does NOT advance the status: an `open` ticket stays open (the QR
+// The bill does NOT advance the state: an `open` ticket stays open (the QR
 // comes next), a `scanned` one stays scanned (this is the fix-loop re-entry —
 // staff sent it back, the guest corrects it, their screen updates off the
 // poll, same check_code). A bill or reward fix outstanding clears in the SAME
@@ -24,7 +24,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
-import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
 
@@ -39,7 +39,7 @@ type Body = {
 // The bill is editable while the guest still owns the amount: before the
 // scan, and during the scanned handshake (that IS the fix loop). Approval
 // freezes it — §12's "the last moment anything can change the amount".
-const BILL_EDITABLE = [TICKET_STATUS.open, TICKET_STATUS.scanned];
+const BILL_EDITABLE = [TICKET_STATE.open, TICKET_STATE.scanned];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("visit_tickets")
     .select(
-      "id, consumer_id, place_id, status, story_status, review_status, fix_requested, approved_at, currency",
+      "id, consumer_id, place_id, state, story_state, review_state, fix_requested, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -109,14 +109,14 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  if (!BILL_EDITABLE.includes(ticket.status)) {
+  if (!BILL_EDITABLE.includes(ticket.state)) {
     return json(
       {
         ok: false,
         code: ticket.approved_at ? "amount_frozen" : "stale_state",
         error: ticket.approved_at
           ? "The place already approved this amount — it can't change now."
-          : `Ticket is ${ticket.status} — the bill can't be edited.`,
+          : `Ticket is ${ticket.state} — the bill can't be edited.`,
       },
       409,
     );
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
 
   // One UPDATE: the money, the source, and — when the outstanding fix is the
   // bill (or the reward, which re-resolves through this same pricing) — the
-  // fix itself. CAS on the editable statuses.
+  // fix itself. CAS on the editable states.
   const clearingFix = ticket.fix_requested === "bill" ||
     ticket.fix_requested === "reward";
   const update = await writeTicket(admin, {
@@ -157,9 +157,9 @@ Deno.serve(async (req) => {
       bill_source: "consumer",
       ...(clearingFix ? { fix_requested: null, fix_note: null } : {}),
     },
-    guard: { in: { status: BILL_EDITABLE } },
+    guard: { in: { state: BILL_EDITABLE } },
     select:
-      "id, status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, fix_requested, updated_at, currency",
+      "id, state, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, fix_requested, updated_at, currency",
   });
   if (!update.ok) {
     return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);

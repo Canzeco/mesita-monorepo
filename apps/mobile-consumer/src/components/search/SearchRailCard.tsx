@@ -7,7 +7,7 @@ import { GRADIENT_DIAGONAL, GRADIENTS, SHADOW_ELEV } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { resolvePlaceCategoryName } from '@/lib/place-category';
 import { formatPlacePriceLevelSymbols } from '@/lib/place-price';
-import { getOpeningStatusLabel } from '@/lib/place-status';
+import { getOpeningStateLabel } from '@/lib/place-state';
 import {
   firstInitial,
   formatKm,
@@ -26,7 +26,7 @@ export function RailCard({
   const photo = place.photos[0];
   const rating = formatRating(place.google_rating);
   const price = formatPlacePriceLevelSymbols(place.price_level);
-  const opening = getOpeningStatusLabel(place);
+  const opening = getOpeningStateLabel(place);
   const distance =
     place.distance_km != null && place.distance_km > 0
       ? formatKm(place.distance_km)

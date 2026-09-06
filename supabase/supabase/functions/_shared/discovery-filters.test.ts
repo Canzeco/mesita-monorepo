@@ -44,7 +44,7 @@ const NOWHERE = { lat: null, lng: null };
 
 Deno.test("defaults push exactly one predicate: the enrichment gate", () => {
   const q = applyDiscoveryFilters(new FakeQuery(), filters(), NOWHERE);
-  assertEquals(q.calls, [{ op: "eq", col: "content_status", val: "ready" }]);
+  assertEquals(q.calls, [{ op: "eq", col: "content_state", val: "ready" }]);
 });
 
 Deno.test("requireReady off pushes nothing at all", () => {
@@ -114,7 +114,7 @@ Deno.test("every filter at once still pushes every predicate", () => {
     CDMX,
   );
   assertEquals(q.calls.length, 7);
-  assert(q.calls.some((c) => c.col === "content_status"));
+  assert(q.calls.some((c) => c.col === "content_state"));
   assert(q.calls.some((c) => c.col === "google_stars_overall"));
   assert(q.calls.some((c) => c.col === "google_review_count"));
   assertEquals(q.calls.filter((c) => c.col === "lat" || c.col === "lng").length, 4);

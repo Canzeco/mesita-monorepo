@@ -41,7 +41,7 @@ type Body = {
 type ReportRow = {
   id: string;
   project_id: string;
-  status: string;
+  state: string;
 };
 
 Deno.serve(async (req) => {
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
   const reportRes = await admin
     .from("ticket_reports")
-    .select("id, project_id, status")
+    .select("id, project_id, state")
     .eq("id", reportId)
     .maybeSingle();
   if (reportRes.error) {
@@ -101,12 +101,12 @@ Deno.serve(async (req) => {
   if (!report) {
     return json({ ok: false, code: "not_found", error: "Report not found" });
   }
-  if (report.status !== "open") {
+  if (report.state !== "open") {
     // Triage happened already — say so instead of silently re-stamping.
     return json({
       ok: false,
       code: "already_reviewed",
-      error: `Report is already ${report.status}.`,
+      error: `Report is already ${report.state}.`,
     });
   }
 
@@ -127,13 +127,13 @@ Deno.serve(async (req) => {
   const mark = await admin
     .from("ticket_reports")
     .update({
-      status: action === "confirm" ? "reviewed" : "dismissed",
+      state: action === "confirm" ? "reviewed" : "dismissed",
       reviewed_at: now,
       reviewed_by: authRes.user.id,
     })
     .eq("id", reportId)
-    .eq("status", "open")
-    .select("id, status")
+    .eq("state", "open")
+    .select("id, state")
     .maybeSingle();
   if (mark.error) return json({ ok: false, error: mark.error.message });
   if (!mark.data) {
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    report: { id: reportId, status: (mark.data as ReportRow).status },
+    report: { id: reportId, state: (mark.data as ReportRow).state },
     placeId: report.project_id,
     hold: action === "confirm" ? now : null,
   });

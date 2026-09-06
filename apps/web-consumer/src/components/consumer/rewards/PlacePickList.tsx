@@ -76,7 +76,7 @@ export function PlacePickList({
 }) {
   const supabase = useBrowserSupabase();
   const [places, setPlaces] = useState<Place[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+  const [state, setState] = useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [reloadKey, setReloadKey] = useState(0);
@@ -104,10 +104,10 @@ export function PlacePickList({
         );
         if (!cancelled) {
           setPlaces(rows);
-          setStatus("ready");
+          setState("ready");
         }
       } catch {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) setState("error");
       }
     })();
     return () => {
@@ -175,11 +175,11 @@ export function PlacePickList({
     : nearbyRows;
   const showSuggestPending = nameSearch && !nameResultsReady;
 
-  if (status === "loading") {
+  if (state === "loading") {
     return <PlacePickListSkeleton />;
   }
 
-  if (status === "error") {
+  if (state === "error") {
     return (
       <div className="border-border bg-card flex items-center justify-between gap-3 rounded-2xl border px-4 py-3">
         <p className="text-muted-foreground type-body">
@@ -188,7 +188,7 @@ export function PlacePickList({
         <button
           type="button"
           onClick={() => {
-            setStatus("loading");
+            setState("loading");
             setReloadKey((k) => k + 1);
           }}
           className="text-primary type-body font-semibold"

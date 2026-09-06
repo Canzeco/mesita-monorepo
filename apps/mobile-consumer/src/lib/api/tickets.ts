@@ -26,12 +26,12 @@ type ConsumerTicketPlace = {
 
 export type ConsumerTicketRow = {
   id: string;
-  status: string;
-  story_status: string | null;
+  state: string;
+  story_state: string | null;
   story_submitted_at: string | null;
   story_verified_at: string | null;
   story_reject_reason: string | null;
-  review_status: string | null;
+  review_state: string | null;
   review_submitted_at: string | null;
   check_code: string | null;
   first_scanned_at: string | null;
@@ -63,11 +63,11 @@ export type ConsumerTicketRow = {
   place: ConsumerTicketPlace;
 };
 
-// MIRROR of LIVE_STATUSES in supabase/supabase/functions/_shared/ticket-status.ts
-// (MESITA-1085) — the one status vocabulary. Drift here strands live tickets
-// in a bucket no UI renders; web-consumer's `ticket-status-drift.test.ts`
+// MIRROR of LIVE_STATES in supabase/supabase/functions/_shared/ticket-state.ts
+// (MESITA-1085) — the one state vocabulary. Drift here strands live tickets
+// in a bucket no UI renders; web-consumer's `ticket-state-drift.test.ts`
 // pins all three copies (supabase · web · mobile) to each other.
-export const ACTIVE_TICKET_STATUSES = new Set([
+export const ACTIVE_TICKET_STATES = new Set([
   "open",
   "scanned",
   "approved",
@@ -88,7 +88,7 @@ export async function apiListConsumerTickets(
 
 type CreatedTicket = {
   id: string;
-  status: string;
+  state: string;
   check_code: string;
   place_name: string | null;
   place_slug: string | null;
@@ -223,8 +223,8 @@ export async function apiGetTicket(
 export async function apiSelectTicketPayment(
   ticketId: string,
   method: "at_place" | null,
-): Promise<{ status: string }> {
-  return await invokeEF<{ status: string }>(
+): Promise<{ state: string }> {
+  return await invokeEF<{ state: string }>(
     supabase,
     "consumer-web-select-ticket-payment",
     { ticketId, method },

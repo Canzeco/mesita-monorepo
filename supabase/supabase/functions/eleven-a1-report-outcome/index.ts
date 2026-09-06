@@ -17,7 +17,7 @@
 // wrong_number must never retry — redialling just rings a stranger again.
 //
 // Writes reported_verdict / alternatives / outcome_note onto the ticket. It
-// deliberately does NOT flip status or fire the confirmation leg — the engine
+// deliberately does NOT flip state or fire the confirmation leg — the engine
 // owns those transitions; the negotiation loop (follow-up) consumes what this
 // records. Auth: anon-key bearer + x-agent-secret (see _shared/agent-tools.ts).
 //

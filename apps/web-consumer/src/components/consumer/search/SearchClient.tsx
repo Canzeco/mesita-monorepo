@@ -143,7 +143,7 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
     placeId,
     mainText: place.name,
     secondaryText: place.address ?? "",
-    status: "not_in_mesita",
+    state: "not_in_mesita",
     partner: false,
     lat: place.lat,
     lng: place.lng,

@@ -19,7 +19,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { computeTicketBill } from "../_shared/business-ticket-billing.ts";
 import { resolveLiveTicketRate } from "../_shared/ticket-reprice.ts";
 import { toCents } from "../_shared/money.ts";
-import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { ticketId?: string; totalCents?: number };
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("visit_tickets")
     .select(
-      "id, consumer_id, place_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent",
+      "id, consumer_id, place_id, state, story_state, review_state, bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
   }
   const ticket = ticketRow.data;
 
-  if (ticket.status !== CLOSED_TICKET_STATUS) {
+  if (ticket.state !== CLOSED_TICKET_STATE) {
     return json(
       { ok: false, error: "The total can be added once the visit is closed." },
       409,
@@ -115,11 +115,11 @@ Deno.serve(async (req) => {
       bill_source: "consumer",
     },
     guard: {
-      eq: { status: CLOSED_TICKET_STATUS },
+      eq: { state: CLOSED_TICKET_STATE },
       is: { bill_source: null }, // a concurrent business record wins
     },
     select:
-      "id, status, bill_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",
+      "id, state, bill_subtotal_cents, total_cents, discount_percent, discount_cents, bill_source, currency",
     single: true,
   });
   if (!updated.ok) {

@@ -43,7 +43,7 @@ type AgentTicket = {
   time_es: string;
   reserved_at: string;
   party_size: number;
-  status: string;
+  state: string;
   notes: string | null;
   is_test: boolean;
 };
@@ -94,7 +94,7 @@ async function searchReservations(
     reference_code: string | null;
     reserved_at: string;
     party_size: number;
-    status: string;
+    state: string;
     notes: string | null;
     is_test: boolean;
     place_id: string;
@@ -105,7 +105,7 @@ async function searchReservations(
     } | null;
   };
   const SELECT =
-    "reference_code, reserved_at, party_size, status, notes, is_test, place_id, consumer:consumers(full_name, first_name, last_name)";
+    "reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer:consumers(full_name, first_name, last_name)";
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
@@ -179,7 +179,7 @@ async function searchReservations(
       time_es: esTime(r.reserved_at),
       reserved_at: r.reserved_at,
       party_size: r.party_size,
-      status: r.status,
+      state: r.state,
       notes: r.notes ?? null,
       is_test: !!r.is_test,
     };

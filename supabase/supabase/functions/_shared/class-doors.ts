@@ -145,7 +145,7 @@ export async function recomputeConsumerClass(
     .from("consumer_subscriptions")
     .select("current_period_end")
     .eq("consumer_id", consumerId)
-    .in("status", ["active", "past_due"])
+    .in("state", ["active", "past_due"])
     .order("current_period_end", { ascending: false })
     .limit(1)
     .maybeSingle();

@@ -21,7 +21,7 @@ import { SaveBar } from "@/components/admin-ui/manage";
 // The v4 machine underneath (MESITA-1086/1090/1092):
 //   open → scanned → approved → paying → revealed
 // with fix_requested (bill · proof · reward) a COLUMN at `scanned`, never a
-// status: a send-back keeps the same QR. What a visit PAYS is the Promos
+// state: a send-back keeps the same QR. What a visit PAYS is the Promos
 // grid; the tip chips, poll cadence and pay rails are Visits Config.
 const LIFECYCLE = ["Open", "Scanned", "Approved", "Paying", "Closed"];
 

@@ -32,7 +32,7 @@ import {
 // TWO ZONES, NOT THREE (MESITA-1158). There was a third row above these: the
 // Mesita wordmark beside a bordered PUBLIC pill. Both lost their argument. The
 // wordmark told a Mesita user they were inside Mesita, and the pill was drawn
-// as a control while being a read-only status — a bordered rounded-full pill
+// as a control while being a read-only state — a bordered rounded-full pill
 // is the app's own button shape. `justify-between` across two light elements
 // also left a wide dead gap over the card.
 //
@@ -284,7 +284,7 @@ export function ProfileSummaryCard({
             </div>
           </div>
 
-          {/* Status, not control. The bordered rounded-full pill this replaces
+          {/* State, not control. The bordered rounded-full pill this replaces
               wore the app's button shape while being unclickable. */}
           <span
             aria-label={`Profile is ${isPublic ? "public" : "private"}`}

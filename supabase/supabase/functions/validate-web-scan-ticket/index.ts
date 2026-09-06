@@ -8,11 +8,11 @@
 // (validate-web-get-ticket stays read-shaped and only stamps first_scanned_at).
 //
 // Idempotent by design: re-scans are a feature, so a ticket already past
-// `open` answers 200 with its current status instead of an error a waiter
+// `open` answers 200 with its current state instead of an error a waiter
 // would read as failure.
 //
 // Body:     { code: string, pin?: string }
-// Response: { ok: true, status, already?: true } | 404 | 429
+// Response: { ok: true, state, already?: true } | 404 | 429
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -26,7 +26,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
-import { LIVE_STATUS_SET, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { LIVE_STATE_SET, TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 type Body = { code?: string; pin?: string };
@@ -68,29 +68,29 @@ Deno.serve(async (req) => {
 
   // Already past open: a re-scan, a second waiter, a refresh. Fine — echo
   // where the ticket is; the page renders from its own poll anyway.
-  if (ticket.status !== TICKET_STATUS.open) {
-    if (!LIVE_STATUS_SET.has(ticket.status)) {
+  if (ticket.state !== TICKET_STATE.open) {
+    if (!LIVE_STATE_SET.has(ticket.state)) {
       return json(
-        { ok: false, code: "stale_state", status: ticket.status, error: `Ticket is ${ticket.status}.` },
+        { ok: false, code: "stale_state", state: ticket.state, error: `Ticket is ${ticket.state}.` },
         409,
       );
     }
-    return json({ ok: true, already: true, status: ticket.status });
+    return json({ ok: true, already: true, state: ticket.state });
   }
 
   // CAS: a concurrent scan loses cleanly and reads as already-scanned.
   const update = await writeTicket(admin, {
     mode: "update",
     id: ticket.id,
-    patch: { status: TICKET_STATUS.scanned },
-    guard: { eq: { status: TICKET_STATUS.open } },
-    select: "id, status",
+    patch: { state: TICKET_STATE.scanned },
+    guard: { eq: { state: TICKET_STATE.open } },
+    select: "id, state",
   });
   if (!update.ok) {
     return json({ ok: false, error: `ticket_update: ${update.error}` }, 500);
   }
   if (!update.row) {
-    return json({ ok: true, already: true, status: TICKET_STATUS.scanned });
+    return json({ ok: true, already: true, state: TICKET_STATE.scanned });
   }
 
   const { user } = await getOptionalAuthedUser(req, envRes.env);
@@ -102,5 +102,5 @@ Deno.serve(async (req) => {
     userAgent: req.headers.get("user-agent"),
   });
 
-  return json({ ok: true, status: TICKET_STATUS.scanned });
+  return json({ ok: true, state: TICKET_STATE.scanned });
 });

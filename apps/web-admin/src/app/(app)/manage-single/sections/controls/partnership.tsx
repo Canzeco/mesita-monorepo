@@ -5,7 +5,7 @@ import { STRATEGY_BY_ID, type StrategyId } from "@/lib/business/strategies";
 import { type AdminPlace } from "../../actions";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
-  describeMembershipStatus,
+  describeMembershipState,
   lifecycleView,
   type LifecycleStepState,
   type MembershipPillState,
@@ -245,8 +245,8 @@ export function PartnershipBody({
   onJoinClick: () => void;
   onDropClick: () => void;
 }) {
-  const statusNote =
-    pillState === "pending" ? null : describeMembershipStatus(place, pillState);
+  const stateNote =
+    pillState === "pending" ? null : describeMembershipState(place, pillState);
   const price = formatMoney(MEMBERSHIP_PRICE_MXN, place.currency);
   const notMember = pillState === "not_member";
   const forfeited = pillState === "forfeited";
@@ -270,18 +270,18 @@ export function PartnershipBody({
           storedStrategy={storedStrategy}
           member={member}
         />
-        {statusNote && (
+        {stateNote && (
           <p
             className={cx(
               "rounded-xl px-3 py-2 text-xs leading-snug",
-              statusNote.tone === "live" &&
+              stateNote.tone === "live" &&
                 "bg-emerald-500/10 text-emerald-800",
-              statusNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
-              statusNote.tone === "blocked" &&
+              stateNote.tone === "warn" && "bg-amber-500/10 text-amber-900",
+              stateNote.tone === "blocked" &&
                 "bg-destructive/10 text-destructive",
             )}
           >
-            {statusNote.label}
+            {stateNote.label}
           </p>
         )}
 
@@ -405,7 +405,7 @@ function StripeMark({ className }: { className?: string }) {
 
 // ─── Shared bits ────────────────────────────────────────────────────────────
 
-export function MembershipStatusPill({ state }: { state: MembershipPillState }) {
+export function MembershipStatePill({ state }: { state: MembershipPillState }) {
   const labels: Record<MembershipPillState, string> = {
     not_member: "Not a partner",
     pending: "Partner — pending",

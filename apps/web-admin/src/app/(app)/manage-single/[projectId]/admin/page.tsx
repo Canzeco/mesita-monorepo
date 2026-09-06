@@ -3,7 +3,7 @@
 import { AdminSection } from "../../sections/AdminSection";
 import { usePlaceContext } from "../../PlaceContext";
 
-// Admin — the Mesita-internal tab: Status, Intake, Enrichment,
+// Admin — the Mesita-internal tab: State, Intake, Enrichment,
 // Verification, SERP, Embedding, Metadata. Everything a business must
 // never see or set.
 export default function PlaceAdminPage() {

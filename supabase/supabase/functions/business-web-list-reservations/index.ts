@@ -29,7 +29,7 @@ const MAX_LIMIT = 200;
 
 // Privacy-safe select — no class_key / class_origin.
 const SELECT =
-  "id, reserved_at, party_size, status, is_test, " +
+  "id, reserved_at, party_size, state, is_test, " +
   "consumer:consumers(full_name, first_name, instagram_handle)";
 
 type Scope = "upcoming" | "past" | "all";
@@ -92,9 +92,9 @@ Deno.serve(async (req) => {
     .limit(limit);
 
   if (scope === "upcoming") {
-    q = q.in("status", ["pending", "confirmed"]);
+    q = q.in("state", ["pending", "confirmed"]);
   } else if (scope === "past") {
-    q = q.in("status", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
+    q = q.in("state", ["declined", "no_show", "cancelled", "unreachable", "unresolved"]);
   }
 
   const { data, error, count } = await q;
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     id: string;
     reserved_at: string | null;
     party_size: number | null;
-    status: string | null;
+    state: string | null;
     is_test: boolean | null;
     consumer: GuestShape | GuestShape[] | null;
   };
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     id: r.id,
     reservedAt: r.reserved_at,
     partySize: r.party_size,
-    status: r.status,
+    state: r.state,
     isTest: r.is_test === true,
     guest: guestName(one(r.consumer)),
   }));

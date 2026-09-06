@@ -26,7 +26,7 @@ const PASSED_GRACE_MS = 4 * 3600_000;
 
 // Everything that ended without a live booking. `passed` is NOT here: it's
 // derived (confirmed + slot behind us), never stored — no cron to keep honest.
-const TERMINAL_STATUSES = [
+const TERMINAL_STATES = [
   "declined",
   "no_show",
   "cancelled",
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       // attempts_state / call_attempts let the app separate `created` (no dial
       // yet) from `booking` (agent working it) — see the lifecycle in the
       // consumer adapter.
-      "id, reserved_at, party_size, status, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives",
+      "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, completed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface
@@ -78,17 +78,17 @@ Deno.serve(async (req) => {
     .order("reserved_at", { ascending: scope === "past" ? false : true })
     .limit(limit);
 
-  // Scope is DATE-AWARE, not status-only: a confirmed table whose slot came
+  // Scope is DATE-AWARE, not state-only: a confirmed table whose slot came
   // and went is "passed" and belongs in History — it used to sit in Upcoming
   // forever. The grace keeps tonight's booking in Upcoming while you're at it.
   const passedCutoff = new Date(Date.now() - PASSED_GRACE_MS).toISOString();
   if (scope === "upcoming") {
-    q = q.in("status", ["pending", "confirmed"]).gte("reserved_at", passedCutoff);
+    q = q.in("state", ["pending", "confirmed"]).gte("reserved_at", passedCutoff);
   } else if (scope === "past") {
     // Terminal outcomes at any date, OR a live ticket whose slot has passed.
     q = q.or(
-      `status.in.(${TERMINAL_STATUSES.join(",")}),` +
-        `and(status.in.(pending,confirmed),reserved_at.lt.${passedCutoff})`,
+      `state.in.(${TERMINAL_STATES.join(",")}),` +
+        `and(state.in.(pending,confirmed),reserved_at.lt.${passedCutoff})`,
     );
   }
 

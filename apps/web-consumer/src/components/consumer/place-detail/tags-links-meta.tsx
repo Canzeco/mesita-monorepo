@@ -78,7 +78,7 @@ function MetaPill({
 }
 
 export function VerificationBox({ place }: { place: PlaceDetail }) {
-  // decision: Tags-harmonic status pill + short support (MESITA-927).
+  // decision: Tags-harmonic state pill + short support (MESITA-927).
   // Never ShieldAlert for unverified — reads as a security vulnerability.
   // What a guest can act on is whether a reward is LIVE here — not whether
   // the place pays Mesita, which is Mesita's business and tells them nothing.

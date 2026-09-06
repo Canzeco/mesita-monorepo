@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { MethodsPicker } from "./create-place-methods";
 import {
   PlaceIdentity,
-  StatusBadge,
+  StateBadge,
   type VerificationCallbacks,
 } from "./create-place-shared";
 
@@ -35,7 +35,7 @@ export function NotInMesitaCard({
 }) {
   return (
     <section className="border-border bg-card flex flex-col gap-4 rounded-[22px] border p-6">
-      <StatusBadge tone="muted">Not on Mesita yet</StatusBadge>
+      <StateBadge tone="muted">Not on Mesita yet</StateBadge>
       <div>
         <p className="font-display text-lg font-semibold tracking-tight">
           {prediction.mainText}
@@ -90,7 +90,7 @@ export function WebListedCard({
 } & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
-      <StatusBadge tone="info">Web listed · no verified owner</StatusBadge>
+      <StateBadge tone="info">Web listed · no verified owner</StateBadge>
       <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Prove you own this place. Phone and email codes land instantly; Talk to
@@ -117,10 +117,10 @@ export function PendingByMeCard({
   if (codeVerified) {
     return (
       <section className="border-secondary/40 bg-card flex flex-col gap-5 rounded-[22px] border p-6">
-        <StatusBadge tone="secondary">
+        <StateBadge tone="secondary">
           <CheckCircle2 className="h-3 w-3" />
           Code verified · admin reviewing
-        </StatusBadge>
+        </StateBadge>
         <PlaceIdentity place={place} />
         <p className="text-muted-foreground text-sm leading-relaxed">
           We received your code and confirmed it&apos;s correct. A Mesita admin
@@ -133,10 +133,10 @@ export function PendingByMeCard({
   }
   return (
     <section className="border-secondary/30 bg-card flex flex-col gap-5 rounded-[22px] border p-6">
-      <StatusBadge tone="warn">
+      <StateBadge tone="warn">
         <Clock className="h-3 w-3" />
         Your verification is awaiting review
-      </StatusBadge>
+      </StateBadge>
       <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Re-submit below if you didn&apos;t finish the loop — the new request
@@ -157,10 +157,10 @@ export function PendingByOtherCard({
 } & VerificationCallbacks) {
   return (
     <section className="border-border bg-card flex flex-col gap-5 rounded-[22px] border p-6">
-      <StatusBadge tone="warn">
+      <StateBadge tone="warn">
         <Clock className="h-3 w-3" />
         Someone else is verifying — you can also submit
-      </StatusBadge>
+      </StateBadge>
       <PlaceIdentity place={place} />
       <p className="text-muted-foreground text-sm leading-relaxed">
         Another operator has a pending claim. Whoever proves ownership first
@@ -180,10 +180,10 @@ export function VerifiedPartnerCard({
 }) {
   return (
     <section className="border-secondary/40 bg-card flex flex-col gap-4 rounded-[22px] border p-6">
-      <StatusBadge tone="secondary">
+      <StateBadge tone="secondary">
         <CheckCircle2 className="h-3 w-3" />
         Mesita partner
-      </StatusBadge>
+      </StateBadge>
       <PlaceIdentity place={place} />
       <div className="border-border bg-background flex items-center gap-3 rounded-xl border p-3">
         <span className="bg-muted text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full">

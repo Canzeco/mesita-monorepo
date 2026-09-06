@@ -11,7 +11,7 @@ export {
 
 type CreatedProject = {
   ok: boolean;
-  place: { id: string; slug: string; name: string; status: string };
+  place: { id: string; slug: string; name: string; state: string };
 };
 
 export async function apiCreateProject(

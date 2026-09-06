@@ -316,16 +316,16 @@ export function lanesForSearchPower(
 
 /** Mesita Places on Search: enriched profile, not a Created stub. */
 export function isEnrichedListedRow(row: {
-  content_status?: string | null;
+  content_state?: string | null;
   enriched_at?: string | null;
 }): boolean {
-  return row.content_status === "ready" || Boolean(row.enriched_at);
+  return row.content_state === "ready" || Boolean(row.enriched_at);
 }
 
 /** The Mesita set at any power: partners always stay, everyone else enriched only. */
 export function keepListedForSearchPower(
   row: MesitaNearbyRow & {
-    content_status?: string | null;
+    content_state?: string | null;
     enriched_at?: string | null;
   },
 ): boolean {

@@ -68,7 +68,7 @@ export function payRowFromPrediction(
     : undefined;
   if (listed) return payRowFromPlace(listed);
 
-  const googleOnly = pred.status === "not_in_mesita" || !pred.mesitaId;
+  const googleOnly = pred.state === "not_in_mesita" || !pred.mesitaId;
   const seed: SeedPlace | null =
     googleOnly || !pred.mesitaId
       ? null

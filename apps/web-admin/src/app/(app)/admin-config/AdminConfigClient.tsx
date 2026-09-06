@@ -94,7 +94,7 @@ function AdminsCard({
       icon={<ShieldCheck className="text-muted-foreground h-4 w-4" />}
       title="Admins"
       subtitle="Everyone on the super-admin allowlist. Add or remove by email — the account doesn't need to exist yet."
-      status={
+      state={
         <span className="text-muted-foreground text-xs tabular-nums">
           {admins.length}
         </span>

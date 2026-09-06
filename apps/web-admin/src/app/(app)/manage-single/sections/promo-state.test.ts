@@ -10,7 +10,7 @@ import {
 import {
   METER_SEGMENTS,
   STRIKE_DECAY_DAYS,
-  describeMembershipStatus,
+  describeMembershipState,
   effectiveStrikeCount,
   giveLevel,
   giveWord,
@@ -116,9 +116,9 @@ describe("effectiveStrikeCount (mirrors EF lazy decay)", () => {
   });
 });
 
-describe("describeMembershipStatus", () => {
+describe("describeMembershipState", () => {
   it("paused is warn (amber), never destructive red, and names the ladder", () => {
-    const note = describeMembershipStatus(
+    const note = describeMembershipState(
       { plan: "pro", promo_paused_until: daysAgo(-10) },
       "paused",
       NOW,
@@ -128,7 +128,7 @@ describe("describeMembershipStatus", () => {
   });
 
   it("live with decayed strikes reads clean", () => {
-    const note = describeMembershipStatus(
+    const note = describeMembershipState(
       {
         plan: "pro",
         plan_live_at: daysAgo(400),
@@ -143,7 +143,7 @@ describe("describeMembershipStatus", () => {
   });
 
   it("live with an active strike warns with the effective count", () => {
-    const note = describeMembershipStatus(
+    const note = describeMembershipState(
       {
         plan: "pro",
         plan_live_at: daysAgo(60),
@@ -158,14 +158,14 @@ describe("describeMembershipStatus", () => {
   });
 
   it("forfeited is blocked; not_member has no note; pending warns", () => {
-    expect(describeMembershipStatus({}, "forfeited", NOW)?.tone).toBe(
+    expect(describeMembershipState({}, "forfeited", NOW)?.tone).toBe(
       "blocked",
     );
-    expect(describeMembershipStatus({ plan: "free" }, "not_member", NOW)).toBe(
+    expect(describeMembershipState({ plan: "free" }, "not_member", NOW)).toBe(
       null,
     );
     expect(
-      describeMembershipStatus({ plan: "pro" }, "pending", NOW)?.tone,
+      describeMembershipState({ plan: "pro" }, "pending", NOW)?.tone,
     ).toBe("warn");
   });
 });

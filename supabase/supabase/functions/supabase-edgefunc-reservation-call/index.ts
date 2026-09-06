@@ -47,9 +47,9 @@
 // caller-ID lookup. An unresolvable consumer line degrades to the business
 // line rather than dropping a reservation that may already be confirmed.
 //
-// Status transitions (reservation_status enum): pending → confirmed |
-// declined | unreachable | unresolved. Engine crashes leave status alone and
-// park attempts_state='error' with the reason in last_call_status.
+// State transitions (reservation_state enum): pending → confirmed |
+// declined | unreachable | unresolved. Engine crashes leave state alone and
+// park attempts_state='error' with the reason in last_call_state.
 //
 // Auth: verify_jwt = true + requireInternalCaller — internal callers only.
 //
@@ -342,12 +342,12 @@ async function callGuest(input: {
     await record({
       callback_state: "skipped",
       callback_next_attempt_at: null,
-      // Plain venue confirm: in-app status IS the ack. Counter-offers stay
+      // Plain venue confirm: in-app state IS the ack. Counter-offers stay
       // open for the guest to pick an alternative in the app.
       ...(input.context === "confirmation"
         ? { consumer_confirmed_at: new Date().toISOString() }
         : {}),
-      last_call_status: `${label} — guest prefers app-only; no call`,
+      last_call_state: `${label} — guest prefers app-only; no call`,
     });
     return;
   }
@@ -355,7 +355,7 @@ async function callGuest(input: {
     await record({
       callback_state: "skipped",
       callback_next_attempt_at: null,
-      last_call_status: `${label} — no guest number for the callback`,
+      last_call_state: `${label} — no guest number for the callback`,
     });
     return;
   }
@@ -372,14 +372,14 @@ async function callGuest(input: {
         callback_attempts: n,
         callback_state: "scheduled",
         callback_next_attempt_at: next.at.toISOString(),
-        last_call_status: `${label} — ${failNote} — ${next.reason}`.slice(0, 200),
+        last_call_state: `${label} — ${failNote} — ${next.reason}`.slice(0, 200),
       });
     } else {
       await record({
         callback_attempts: n,
         callback_state: state,
         callback_next_attempt_at: null,
-        last_call_status:
+        last_call_state:
           `${label} — ${failNote} — guest unreached after ${n} call${n === 1 ? "" : "s"}; in-app only`
             .slice(0, 200),
       });
@@ -394,13 +394,13 @@ async function callGuest(input: {
         outage_retries: input.outageRetries + 1,
         callback_state: "scheduled",
         callback_next_attempt_at: next.at.toISOString(),
-        last_call_status: `${label} — ${why} — ${next.reason}`.slice(0, 200),
+        last_call_state: `${label} — ${why} — ${next.reason}`.slice(0, 200),
       });
     } else {
       await record({
         callback_state: "failed",
         callback_next_attempt_at: null,
-        last_call_status: `${label} — ${why} — platform outage persisted; needs attention`
+        last_call_state: `${label} — ${why} — platform outage persisted; needs attention`
           .slice(0, 200),
       });
     }
@@ -430,7 +430,7 @@ async function callGuest(input: {
   await record({
     callback_state: "ringing",
     callback_conversation_id: call.conversationId,
-    last_call_status: `${label} — calling the guest`,
+    last_call_state: `${label} — calling the guest`,
   });
   const watch: AnswerWatch = call.conversationId
     ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
@@ -441,7 +441,7 @@ async function callGuest(input: {
       callback_state: "answered",
       callback_next_attempt_at: null,
       outage_retries: 0,
-      last_call_status: `${label} — guest notified`,
+      last_call_state: `${label} — guest notified`,
     });
     return;
   }
@@ -478,7 +478,7 @@ async function runCallbackRetry(input: {
       await guardedRecord(input.admin, input.reservationId, input.runId, {
         callback_state: "failed",
         callback_next_attempt_at: null,
-        last_call_status: `callback retry — line resolution failed: ${lines.error}`.slice(0, 200),
+        last_call_state: `callback retry — line resolution failed: ${lines.error}`.slice(0, 200),
       });
       return;
     }
@@ -514,7 +514,7 @@ async function runReminder(input: {
       await record({
         reminder_state: "skipped",
         reminder_at: null,
-        last_call_status: "reminder — guest prefers app-only; no call",
+        last_call_state: "reminder — guest prefers app-only; no call",
       });
       return;
     }
@@ -524,7 +524,7 @@ async function runReminder(input: {
       const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
       await record({
         ...reminderParkPatch(input.placeLng, reservedAt, input.guestNotify),
-        last_call_status: "reminder — operator knob off; park kept",
+        last_call_state: "reminder — operator knob off; park kept",
       });
       return;
     }
@@ -534,7 +534,7 @@ async function runReminder(input: {
       await record({
         reminder_state: "skipped",
         reminder_at: null,
-        last_call_status: "reminder skipped — past the 30 min cutoff (or no slot)",
+        last_call_state: "reminder skipped — past the 30 min cutoff (or no slot)",
       });
       return;
     }
@@ -543,7 +543,7 @@ async function runReminder(input: {
       await record({
         reminder_state: "failed",
         reminder_at: null,
-        last_call_status: `reminder — line resolution failed: ${lines.error}`.slice(0, 200),
+        last_call_state: `reminder — line resolution failed: ${lines.error}`.slice(0, 200),
       });
       return;
     }
@@ -551,7 +551,7 @@ async function runReminder(input: {
       await record({
         reminder_state: "skipped",
         reminder_at: null,
-        last_call_status: "reminder — no guest number",
+        last_call_state: "reminder — no guest number",
       });
       return;
     }
@@ -562,13 +562,13 @@ async function runReminder(input: {
           outage_retries: input.outageRetries + 1,
           reminder_state: "scheduled",
           reminder_at: next.at.toISOString(),
-          last_call_status: `reminder — ${why} — ${next.reason}`.slice(0, 200),
+          last_call_state: `reminder — ${why} — ${next.reason}`.slice(0, 200),
         });
       } else {
         await record({
           reminder_state: "failed",
           reminder_at: null,
-          last_call_status: `reminder — ${why} — platform outage persisted; needs attention`
+          last_call_state: `reminder — ${why} — platform outage persisted; needs attention`
             .slice(0, 200),
         });
       }
@@ -594,7 +594,7 @@ async function runReminder(input: {
           reminder_attempts: REMINDER_MAX_ATTEMPTS,
           reminder_state: "skipped",
           reminder_at: null,
-          last_call_status: `reminder failed: ${call.error} — app is the fallback`.slice(0, 200),
+          last_call_state: `reminder failed: ${call.error} — app is the fallback`.slice(0, 200),
         });
       }
       return;
@@ -602,7 +602,7 @@ async function runReminder(input: {
     await record({
       reminder_state: "ringing",
       reminder_conversation_id: call.conversationId,
-      last_call_status: "reminder — calling the guest",
+      last_call_state: "reminder — calling the guest",
     });
     const watch: AnswerWatch = call.conversationId
       ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
@@ -613,7 +613,7 @@ async function runReminder(input: {
         reminder_state: "answered",
         reminder_at: null,
         outage_retries: 0,
-        last_call_status: "reminder — guest reached",
+        last_call_state: "reminder — guest reached",
       });
       return;
     }
@@ -626,7 +626,7 @@ async function runReminder(input: {
       reminder_attempts: REMINDER_MAX_ATTEMPTS,
       reminder_state: "skipped",
       reminder_at: null,
-      last_call_status: "reminder — guest didn't answer; app is the fallback",
+      last_call_state: "reminder — guest didn't answer; app is the fallback",
     });
   } catch (e) {
     if (e instanceof OrphanedRunError) return;
@@ -670,7 +670,7 @@ async function runCancelNotice(input: {
     await record({
       notice_state: "skipped",
       notice_next_at: null,
-      last_call_status: "cancel notice (guest) — guest prefers app-only; no call",
+      last_call_state: "cancel notice (guest) — guest prefers app-only; no call",
     });
     return;
   }
@@ -683,14 +683,14 @@ async function runCancelNotice(input: {
         notice_attempts: n,
         notice_state: "scheduled",
         notice_next_at: next.at.toISOString(),
-        last_call_status: `cancel notice (${who}) — ${failNote} — ${next.reason}`.slice(0, 200),
+        last_call_state: `cancel notice (${who}) — ${failNote} — ${next.reason}`.slice(0, 200),
       });
     } else {
       await record({
         notice_attempts: n,
         notice_state: "failed",
         notice_next_at: null,
-        last_call_status:
+        last_call_state:
           `cancel notice (${who}) NOT delivered after ${n} call${n === 1 ? "" : "s"} — needs attention`
             .slice(0, 200),
       });
@@ -706,13 +706,13 @@ async function runCancelNotice(input: {
         outage_retries: input.outageRetries + 1,
         notice_state: "scheduled",
         notice_next_at: next.at.toISOString(),
-        last_call_status: `cancel notice (${who}) — ${why} — ${next.reason}`.slice(0, 200),
+        last_call_state: `cancel notice (${who}) — ${why} — ${next.reason}`.slice(0, 200),
       });
     } else {
       await record({
         notice_state: "failed",
         notice_next_at: null,
-        last_call_status: `cancel notice (${who}) — ${why} — outage persisted; needs attention`
+        last_call_state: `cancel notice (${who}) — ${why} — outage persisted; needs attention`
           .slice(0, 200),
       });
     }
@@ -724,7 +724,7 @@ async function runCancelNotice(input: {
         await record({
           notice_state: "scheduled",
           notice_next_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
-          last_call_status:
+          last_call_state:
             `cancel notice (venue) — daily venue-call cap (${input.venueCallCap}) reached — deferred`
               .slice(0, 200),
         });
@@ -765,7 +765,7 @@ async function runCancelNotice(input: {
     }
     await record({
       notice_conversation_id: call.conversationId,
-      last_call_status: `cancel notice (${who}) — ringing`,
+      last_call_state: `cancel notice (${who}) — ringing`,
     });
     const watch: AnswerWatch = call.conversationId
       ? await watchUntilAnswered(input.key, call.conversationId, ANSWER_BUDGET_MS)
@@ -790,7 +790,7 @@ async function runCancelNotice(input: {
               notice_state: "scheduled",
               notice_next_at: next.at.toISOString(),
               outage_retries: 0,
-              last_call_status:
+              last_call_state:
                 `cancel notice (guest) — voicemail answered; message left, retrying live — ${next.reason}`
                   .slice(0, 200),
             });
@@ -801,7 +801,7 @@ async function runCancelNotice(input: {
             notice_state: "done",
             notice_next_at: null,
             outage_retries: 0,
-            last_call_status: "cancel notice (guest) delivered — voicemail only",
+            last_call_state: "cancel notice (guest) delivered — voicemail only",
           });
           return;
         }
@@ -811,7 +811,7 @@ async function runCancelNotice(input: {
         notice_state: "done",
         notice_next_at: null,
         outage_retries: 0,
-        last_call_status: `cancel notice (${who}) delivered`,
+        last_call_state: `cancel notice (${who}) delivered`,
       });
       return;
     }
@@ -831,7 +831,7 @@ async function runCancelNotice(input: {
       patch: {
         notice_state: "failed",
         notice_next_at: null,
-        last_call_status: `cancel notice (${who}) crashed: ${
+        last_call_state: `cancel notice (${who}) crashed: ${
           e instanceof Error ? e.message : "run crashed"
         }`.slice(0, 200),
       },
@@ -931,7 +931,7 @@ async function runIntents(input: {
       await record({
         attempts_state: "error",
         callback_state: "skipped",
-        last_call_status: "no ELEVENLABS_KEY",
+        last_call_state: "no ELEVENLABS_KEY",
       });
       return;
     }
@@ -940,7 +940,7 @@ async function runIntents(input: {
       await record({
         attempts_state: "error",
         callback_state: "skipped",
-        last_call_status: `failed: ${lines.error}`.slice(0, 200),
+        last_call_state: `failed: ${lines.error}`.slice(0, 200),
       });
       return;
     }
@@ -958,7 +958,7 @@ async function runIntents(input: {
         attempts,
         call_attempts: n,
         last_called_at: entry.started_at,
-        last_call_status: `intent ${n}: dialing`,
+        last_call_state: `intent ${n}: dialing`,
       });
 
       // Per-place daily meter — booking calls and venue notices share it.
@@ -970,7 +970,7 @@ async function runIntents(input: {
           call_attempts: n - 1,
           attempts_state: "scheduled",
           next_attempt_at: new Date(Date.now() + 6 * 3600_000).toISOString(),
-          last_call_status:
+          last_call_state:
             `intent ${n}: daily venue-call cap (${input.venueCallCap}) reached — deferred`
               .slice(0, 200),
         });
@@ -1004,7 +1004,7 @@ async function runIntents(input: {
               outage_retries: input.outageRetries + 1,
               attempts_state: "scheduled",
               next_attempt_at: next.at.toISOString(),
-              last_call_status:
+              last_call_state:
                 `intent ${n}: not placed (HTTP ${call.httpStatus ?? "network"}) — ${next.reason}`
                   .slice(0, 200),
             });
@@ -1014,7 +1014,7 @@ async function runIntents(input: {
               call_attempts: n - 1,
               attempts_state: "error",
               next_attempt_at: null,
-              last_call_status:
+              last_call_state:
                 `intent ${n}: platform outage persisted — needs attention`.slice(0, 200),
             });
           }
@@ -1027,13 +1027,13 @@ async function runIntents(input: {
             attempts,
             attempts_state: "scheduled",
             next_attempt_at: next.at.toISOString(),
-            last_call_status: `intent ${n} failed: ${call.error}`.slice(0, 200),
+            last_call_state: `intent ${n} failed: ${call.error}`.slice(0, 200),
           });
           return;
         }
         await record({
           attempts,
-          last_call_status: `intent ${n} failed: ${call.error}`.slice(0, 200),
+          last_call_state: `intent ${n} failed: ${call.error}`.slice(0, 200),
         });
         continue;
       }
@@ -1043,7 +1043,7 @@ async function runIntents(input: {
       await record({
         attempts,
         last_conversation_id: call.conversationId,
-        last_call_status: `intent ${n}: ringing`,
+        last_call_state: `intent ${n}: ringing`,
       });
 
       const watch: AnswerWatch = call.conversationId
@@ -1063,7 +1063,7 @@ async function runIntents(input: {
             outage_retries: input.outageRetries + 1,
             attempts_state: "scheduled",
             next_attempt_at: next.at.toISOString(),
-            last_call_status:
+            last_call_state:
               `intent ${n}: platform killed the call (code ${watch.errorCode}) — ${next.reason}`
                 .slice(0, 200),
           });
@@ -1073,7 +1073,7 @@ async function runIntents(input: {
             call_attempts: n - 1,
             attempts_state: "error",
             next_attempt_at: null,
-            last_call_status: `intent ${n}: platform outage persisted — needs attention`
+            last_call_state: `intent ${n}: platform outage persisted — needs attention`
               .slice(0, 200),
           });
         }
@@ -1090,11 +1090,11 @@ async function runIntents(input: {
             attempts,
             attempts_state: "scheduled",
             next_attempt_at: next.at.toISOString(),
-            last_call_status: `intent ${n}: no answer — ${next.reason}`.slice(0, 200),
+            last_call_state: `intent ${n}: no answer — ${next.reason}`.slice(0, 200),
           });
           return;
         }
-        await record({ attempts, last_call_status: `intent ${n}: no answer` });
+        await record({ attempts, last_call_state: `intent ${n}: no answer` });
         continue;
       }
       if (outcome === "unknown") {
@@ -1105,10 +1105,10 @@ async function runIntents(input: {
           attempts,
           attempts_state: "exhausted",
           next_attempt_at: null,
-          status: "unresolved",
+          state: "unresolved",
           callback_state: "skipped",
           ...releaseOldHold,
-          last_call_status: `intent ${n}: outcome unknown — not retrying`,
+          last_call_state: `intent ${n}: outcome unknown — not retrying`,
         });
         return;
       }
@@ -1117,7 +1117,7 @@ async function runIntents(input: {
       entry.result = "answered";
       await record({
         attempts,
-        last_call_status: `intent ${n}: answered — awaiting verdict`,
+        last_call_state: `intent ${n}: answered — awaiting verdict`,
       });
       const analyzed = call.conversationId
         ? await watchVerdict(key, call.conversationId)
@@ -1143,9 +1143,9 @@ async function runIntents(input: {
           attempts,
           attempts_state: "exhausted",
           next_attempt_at: null,
-          status: "unresolved",
+          state: "unresolved",
           callback_state: "skipped",
-          last_call_status:
+          last_call_state:
             `intent ${n}: wrong number — the line isn't the venue${
               reported.note ? ` (${reported.note})` : ""
             }`.slice(0, 200),
@@ -1166,7 +1166,7 @@ async function runIntents(input: {
             next_attempt_at: next.at.toISOString(),
             // Clear it so the next attempt starts from a blank verdict.
             reported_verdict: null,
-            last_call_status: `intent ${n}: no one who books was reached — ${next.reason}`
+            last_call_state: `intent ${n}: no one who books was reached — ${next.reason}`
               .slice(0, 200),
           });
           return;
@@ -1175,10 +1175,10 @@ async function runIntents(input: {
           attempts,
           attempts_state: "exhausted",
           next_attempt_at: null,
-          status: "unreachable",
+          state: "unreachable",
           callback_state: "skipped",
           ...releaseOldHold,
-          last_call_status: `intent ${n}: no one who books was reached — giving up`,
+          last_call_state: `intent ${n}: no one who books was reached — giving up`,
         });
         return;
       }
@@ -1189,7 +1189,7 @@ async function runIntents(input: {
           attempts,
           attempts_state: "answered",
           next_attempt_at: null,
-          status: "confirmed",
+          state: "confirmed",
           confirmed_at: new Date().toISOString(),
           callback_state: "calling",
           callback_at: new Date().toISOString(),
@@ -1202,7 +1202,7 @@ async function runIntents(input: {
             input.reservedAtIso ? new Date(input.reservedAtIso) : null,
             input.guestNotify,
           ),
-          last_call_status: `intent ${n}: venue confirmed — calling the guest`,
+          last_call_state: `intent ${n}: venue confirmed — calling the guest`,
         });
         await guestCall(key, lines.guestLineId, "confirmation", "");
         return;
@@ -1218,7 +1218,7 @@ async function runIntents(input: {
           next_attempt_at: null,
           callback_state: "calling",
           callback_at: new Date().toISOString(),
-          last_call_status: `intent ${n}: venue counter-offer — calling the guest`,
+          last_call_state: `intent ${n}: venue counter-offer — calling the guest`,
         });
         await guestCall(key, lines.guestLineId, "counter_offer", reported.alternativesText);
         return;
@@ -1230,12 +1230,12 @@ async function runIntents(input: {
           attempts,
           attempts_state: "answered",
           next_attempt_at: null,
-          status: "declined",
+          state: "declined",
           callback_state: "skipped",
           // Modification declined: a1's brief asks the venue to drop the old
           // booking too, so the decline settles both slots — no notice owed.
           modification_of: null,
-          last_call_status: `intent ${n}: venue declined — no guest call`,
+          last_call_state: `intent ${n}: venue declined — no guest call`,
         });
         return;
       }
@@ -1243,9 +1243,9 @@ async function runIntents(input: {
       await record({
         attempts,
         attempts_state: "answered",
-        status: "unresolved",
+        state: "unresolved",
         callback_state: "skipped",
-        last_call_status: `intent ${n}: answered, verdict unknown — no guest call`,
+        last_call_state: `intent ${n}: answered, verdict unknown — no guest call`,
       });
       return;
     }
@@ -1253,10 +1253,10 @@ async function runIntents(input: {
     await record({
       attempts_state: "exhausted",
       next_attempt_at: null,
-      status: "unreachable",
+      state: "unreachable",
       callback_state: "skipped",
       ...releaseOldHold,
-      last_call_status: `no answer after ${attemptsPlanned} intent${
+      last_call_state: `no answer after ${attemptsPlanned} intent${
         attemptsPlanned === 1 ? "" : "s"
       }`,
     });
@@ -1270,7 +1270,7 @@ async function runIntents(input: {
       patch: {
         attempts_state: "error",
         callback_state: "skipped",
-        last_call_status: `failed: ${e instanceof Error ? e.message : "run crashed"}`.slice(0, 200),
+        last_call_state: `failed: ${e instanceof Error ? e.message : "run crashed"}`.slice(0, 200),
       },
       match: { run_id: input.runId },
     });
@@ -1311,7 +1311,7 @@ Deno.serve(async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, reference_code, reserved_at, party_size, notes, status, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -1322,34 +1322,34 @@ Deno.serve(async (req) => {
   const guestNotify: "call" | "app" = r.consumer_notify === "app" ? "app" : "call";
   // Per-intent gates — each errand has its own idea of a live ticket.
   if (intent === "book") {
-    if (r.status !== "pending") {
-      return json({ ok: true, skipped: `reservation is ${r.status}, not pending` });
+    if (r.state !== "pending") {
+      return json({ ok: true, skipped: `reservation is ${r.state}, not pending` });
     }
     if (r.attempts_state === "running") {
       return json({ ok: true, skipped: "intents already running" });
     }
   } else if (intent === "cancel_notice") {
-    // A notice is owed by its columns, not by one status: 'cancelled' is the
+    // A notice is owed by its columns, not by one state: 'cancelled' is the
     // normal case, and a failed MODIFICATION leaves the ticket unreachable/
     // unresolved while the venue still holds the OLD slot. A live ticket
     // never owes one.
-    if (r.status === "pending" || r.status === "confirmed") {
-      return json({ ok: true, skipped: `reservation is ${r.status} — no notice while live` });
+    if (r.state === "pending" || r.state === "confirmed") {
+      return json({ ok: true, skipped: `reservation is ${r.state} — no notice while live` });
     }
     if (r.notice_kind !== "venue_cancel" && r.notice_kind !== "guest_cancel") {
       return json({ ok: true, skipped: "no cancellation notice owed" });
     }
   } else if (intent === "reminder") {
-    if (r.status !== "confirmed") {
-      return json({ ok: true, skipped: `reservation is ${r.status}, not confirmed` });
+    if (r.state !== "confirmed") {
+      return json({ ok: true, skipped: `reservation is ${r.state}, not confirmed` });
     }
     if (r.reminder_state !== "scheduled") {
       return json({ ok: true, skipped: "reminder not scheduled" });
     }
   } else {
     // callback_retry: only a still-live verdict warrants re-ringing the guest.
-    const confirmationDue = r.status === "confirmed" && !r.consumer_confirmed_at;
-    const counterDue = r.status === "pending" &&
+    const confirmationDue = r.state === "confirmed" && !r.consumer_confirmed_at;
+    const counterDue = r.state === "pending" &&
       normalizeAlternatives(r.alternatives).length > 0;
     if (!confirmationDue && !counterDue) {
       return json({ ok: true, skipped: "callback no longer applicable" });
@@ -1382,7 +1382,7 @@ Deno.serve(async (req) => {
     await writeReservation(admin, {
       mode: "update",
       id: reservationId,
-      patch: { ...parkPatch, last_call_status: "kill switch on — all calls held" },
+      patch: { ...parkPatch, last_call_state: "kill switch on — all calls held" },
     });
     return json({ ok: true, skipped: "kill switch on — parked 30 min" });
   }
@@ -1446,7 +1446,7 @@ Deno.serve(async (req) => {
       await writeReservation(admin, {
         mode: "update",
         id: reservationId,
-        patch: { attempts_state: "error", last_call_status: `no number to dial (${via})` },
+        patch: { attempts_state: "error", last_call_state: `no number to dial (${via})` },
       });
     } else {
       await writeReservation(admin, {
@@ -1454,7 +1454,7 @@ Deno.serve(async (req) => {
         id: reservationId,
         patch: {
           notice_state: "failed",
-          last_call_status: `cancel notice — no venue number (${via})`,
+          last_call_state: `cancel notice — no venue number (${via})`,
         },
       });
     }
@@ -1491,7 +1491,7 @@ Deno.serve(async (req) => {
         id: reservationId,
         patch: {
           notice_state: "failed",
-          last_call_status: `cancel notice (${kind}) — no number to dial`,
+          last_call_state: `cancel notice (${kind}) — no number to dial`,
         },
       });
       return json({ ok: false, error: "no number to dial for the notice" }, 422);
@@ -1522,7 +1522,7 @@ Deno.serve(async (req) => {
     // A venue RELEASE after a failed modification speaks about the OLD slot —
     // the one the venue is still holding — not the ticket's new ask.
     const noticeLegVars: ReservationLegVars =
-      kind === "venue_cancel" && modificationOfIso && r.status !== "cancelled"
+      kind === "venue_cancel" && modificationOfIso && r.state !== "cancelled"
         ? { ...legVars, dateEs: esDate(modificationOfIso), timeEs: esTime(modificationOfIso) }
         : legVars;
     runInBackground(
@@ -1556,7 +1556,7 @@ Deno.serve(async (req) => {
         patch: {
           callback_state: "skipped",
           callback_next_attempt_at: null,
-          last_call_status: "callback retry — guest prefers app-only; no call",
+          last_call_state: "callback retry — guest prefers app-only; no call",
         },
       });
       return json({ ok: true, skipped: "guest prefers app-only" });
@@ -1568,7 +1568,7 @@ Deno.serve(async (req) => {
         patch: {
           callback_state: "skipped",
           callback_next_attempt_at: null,
-          last_call_status: "callback retry — no guest number",
+          last_call_state: "callback retry — no guest number",
         },
       });
       return json({ ok: true, skipped: "no guest number" });
@@ -1590,7 +1590,7 @@ Deno.serve(async (req) => {
     if (!callbackClaim.ok || !callbackClaim.row) {
       return json({ ok: true, skipped: "callback already claimed" });
     }
-    const context = r.status === "confirmed" ? "confirmation" as const : "counter_offer" as const;
+    const context = r.state === "confirmed" ? "confirmation" as const : "counter_offer" as const;
     runInBackground(
       runCallbackRetry({
         admin,
@@ -1622,7 +1622,7 @@ Deno.serve(async (req) => {
         patch: {
           reminder_state: "skipped",
           reminder_at: null,
-          last_call_status: "reminder — guest prefers app-only; no call",
+          last_call_state: "reminder — guest prefers app-only; no call",
         },
       });
       return json({ ok: true, skipped: "guest prefers app-only" });
@@ -1690,7 +1690,7 @@ Deno.serve(async (req) => {
     .from("reservation_tickets")
     .update(bookClaimValidated.patch)
     .eq("id", reservationId)
-    .eq("status", "pending")
+    .eq("state", "pending")
     .or("attempts_state.is.null,attempts_state.neq.running")
     .select("id");
   if (!bookClaim?.length) {

@@ -1,6 +1,6 @@
 // Organization state and place state are different things about different
 // entities, and the console conflated them once already: it rendered the
-// place ladder (Listed → Verified → Partner) as the ORGANIZATION's status.
+// place ladder (Listed → Verified → Partner) as the ORGANIZATION's state.
 // These tests exist so that cannot come back silently.
 import { describe, expect, it } from "vitest";
 import { organizationState } from "./format";

@@ -5,7 +5,7 @@
 // effort — the restaurant never operates anything and never handles a refund.
 //
 // The verdict binds to the TICKET, never to a task (C1): story and review
-// rows stay read-only status — the ticket-level "does this match the table in
+// rows stay read-only state — the ticket-level "does this match the table in
 // front of me" is the floor's whole job. No free-text rejection, exactly
 // three fix chips, and the proof IMAGE never renders here (that is Ojo's job,
 // MESITA-1034).
@@ -59,10 +59,10 @@ import {
 } from "@/lib/check-api";
 import { cn } from "@/lib/utils";
 
-// Exhaustive over the statuses this page can meet — `tsc` catches a missing
+// Exhaustive over the states this page can meet — `tsc` catches a missing
 // label the moment the vocabulary grows, instead of a Spanish-only surface
 // printing a raw English enum on a floor.
-type KnownStatus =
+type KnownState =
   | "open"
   | "scanned"
   | "approved"
@@ -71,8 +71,8 @@ type KnownStatus =
   | "revealed"
   | "cancelled";
 
-function statusLabel(status: KnownStatus): { label: string; tone: string } {
-  switch (status) {
+function stateLabel(state: KnownState): { label: string; tone: string } {
+  switch (state) {
     case "open":
       return {
         label: "Ticket abierto — descuento activo",
@@ -111,8 +111,8 @@ function statusLabel(status: KnownStatus): { label: string; tone: string } {
   }
 }
 
-function statusFor(raw: string): { label: string; tone: string } {
-  const known: KnownStatus[] = [
+function stateFor(raw: string): { label: string; tone: string } {
+  const known: KnownState[] = [
     "open",
     "scanned",
     "approved",
@@ -121,8 +121,8 @@ function statusFor(raw: string): { label: string; tone: string } {
     "revealed",
     "cancelled",
   ];
-  return known.includes(raw as KnownStatus)
-    ? statusLabel(raw as KnownStatus)
+  return known.includes(raw as KnownState)
+    ? stateLabel(raw as KnownState)
     : { label: "Estado desconocido", tone: "bg-muted text-muted-foreground" };
 }
 
@@ -176,13 +176,13 @@ export function CheckClient({
   // A ticket with a guest bill on record runs the v4 handshake. An unbilled
   // one has no numbers to freeze, so it skips straight to the close.
   const v4 = check.bill != null && check.updated_at != null;
-  const terminal = check.status === "revealed" || check.status === "cancelled";
+  const terminal = check.state === "revealed" || check.state === "cancelled";
   const cadence = pollCadence(check);
 
   const mergePoll = useCallback((poll: CheckPollPayload) => {
     setCheck((prev) => ({
       ...prev,
-      status: poll.status,
+      state: poll.state,
       updated_at: poll.updated_at,
       fix_requested: poll.fix_requested,
       fix_note: poll.fix_note,
@@ -289,18 +289,18 @@ export function CheckClient({
     [refreshFull],
   );
 
-  const status = statusFor(check.status);
+  const state = stateFor(check.state);
   const scannedLine = minutesAgo(check.first_scanned_at);
   // MESITA-1095: the guest bill is always required. Under v4 a missing
   // bill blocks APPROVAL (MESITA-1148) — the button has to say so rather
   // than earn a 409 bill_required.
   const billMissing = !check.bill;
-  const mustBillBeforeClose = billMissing && check.status === "open";
+  const mustBillBeforeClose = billMissing && check.state === "open";
 
   const expected = check.updated_at ?? "";
   const fixOutstanding = Boolean(check.fix_requested);
   const canVerdict =
-    v4 && check.status === "scanned" && !fixOutstanding && !stale &&
+    v4 && check.state === "scanned" && !fixOutstanding && !stale &&
     !billMissing;
 
   const tipCents = check.bill?.tip_cents ?? 0;
@@ -343,10 +343,10 @@ export function CheckClient({
           <span
             className={cn(
               "rounded-full px-2.5 py-1 text-xs font-bold",
-              status.tone,
+              state.tone,
             )}
           >
-            {status.label}
+            {state.label}
           </span>
           {scannedLine ? (
             <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs">
@@ -489,7 +489,7 @@ export function CheckClient({
 
         {/* v4 — THE VERDICT (C1): one Aprobar, one Pedir corrección with
             exactly three chips. Never a fourth, never free text. */}
-        {v4 && check.status === "scanned" ? (
+        {v4 && check.state === "scanned" ? (
           <div className="flex flex-col gap-2">
             <Button
               size="lg"
@@ -548,7 +548,7 @@ export function CheckClient({
         ) : null}
 
         {/* v4 — payment confirmation: the restaurant's second touch. */}
-        {v4 && (check.status === "approved" || check.status === "paying") ? (
+        {v4 && (check.state === "approved" || check.state === "paying") ? (
           <div className="flex flex-col gap-1.5">
             <Button
               size="lg"
@@ -566,7 +566,7 @@ export function CheckClient({
               Pago recibido — cerrar ticket
             </Button>
             <p className="text-muted-foreground text-center text-[11px] leading-snug">
-              {check.status === "paying"
+              {check.state === "paying"
                 ? "El cliente eligió pagar en el lugar."
                 : "El monto quedó congelado al aprobar."}
             </p>
@@ -575,8 +575,8 @@ export function CheckClient({
 
         {/* Legacy close — unbilled v3 tickets and staff-billed ones. */}
         {!v4 &&
-        (check.status === "awaiting_payment_confirm" ||
-          check.status === "open") ? (
+        (check.state === "awaiting_payment_confirm" ||
+          check.state === "open") ? (
           <div className="flex flex-col gap-1.5">
             <Button
               size="lg"
@@ -604,7 +604,7 @@ export function CheckClient({
 
         {/* awaiting_payment_confirm: the guest chose a rail and the place
             confirms the money arrived. */}
-        {v4 && check.status === "awaiting_payment_confirm" ? (
+        {v4 && check.state === "awaiting_payment_confirm" ? (
           <Button
             size="lg"
             className="w-full"
@@ -616,12 +616,12 @@ export function CheckClient({
           </Button>
         ) : null}
 
-        {check.status === "revealed" ? (
+        {check.state === "revealed" ? (
           <p className="rounded-xl bg-emerald-500/10 px-4 py-3 text-center text-sm font-semibold text-emerald-700">
             Ticket cerrado. ¡Gracias!
           </p>
         ) : null}
-        {check.status === "cancelled" ? (
+        {check.state === "cancelled" ? (
           <p className="bg-destructive/10 text-destructive rounded-xl px-4 py-3 text-center text-sm font-semibold">
             Este ticket fue cancelado.
           </p>

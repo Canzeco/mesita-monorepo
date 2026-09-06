@@ -36,19 +36,19 @@
 // So `ojo_config.failAction === "withhold"` can only ever mean: prevent a
 // bonus from entering the price IN THE FIRST PLACE. If the ticket has no
 // bill yet (bill_subtotal_cents is null/0) and isn't approved, Ojo can safely
-// revert the verified status before any price was ever computed — the guest
+// revert the verified state before any price was ever computed — the guest
 // never sees a number change, because there was nothing to change. Once a
 // bill exists, "withhold" silently degrades to the same behavior as "flag":
 // persist the verdict, surface it to staff, never touch money already shown.
 // This is a deliberate product-safety choice, not a shortcut — see the
 // withholdEligible() comment below.
 //
-// ── Status values reused, not invented ──────────────────────────────────
+// ── State values reused, not invented ──────────────────────────────────
 //
-// story_status / review_status is `public.story_status`, an enum that
+// story_state / review_state is `public.story_state`, an enum that
 // already carries 'ai_verified' and 'ai_rejected' from a retired
 // pre-MESITA-849 "AI + waiter fallback" design (0005_ticket_taxonomy.sql).
-// 'ai_verified' is already in VERIFIED_ACTION_STATUSES
+// 'ai_verified' is already in VERIFIED_ACTION_STATES
 // (_shared/rewards-config.ts); 'ai_rejected' already isn't. Ojo is the
 // reader those values were built for — no new enum value needed:
 //   pass    -> 'ai_verified'  (upgrades self_verified; still counts as
@@ -88,7 +88,7 @@ import { safeParseJson } from "./parse-utils.ts";
 import { loadOjoConfig, type OjoConfig } from "./ojo-config.ts";
 import { loadModelsConfig } from "./models-config.ts";
 import { rowPlaceId } from "./place-id.ts";
-import { TASKABLE_STATUS_SET } from "./ticket-status.ts";
+import { TASKABLE_STATE_SET } from "./ticket-state.ts";
 
 export type OjoKind = "story" | "review";
 export type OjoVerdict = "pass" | "unsure" | "fail";
@@ -138,13 +138,13 @@ export async function verifyProof(
 
   const verdictCol = kind === "story" ? "story_ojo_verdict" : "review_ojo_verdict";
   const attemptsCol = kind === "story" ? "story_ojo_attempts" : "review_ojo_attempts";
-  const statusCol = kind === "story" ? "story_status" : "review_status";
+  const stateCol = kind === "story" ? "story_state" : "review_state";
   const screenshotCol = kind === "story" ? "story_screenshot_url" : "review_screenshot_url";
 
   const ticketRes = await admin
     .from("visit_tickets")
     .select(
-      `id, place_id, status, ${statusCol}, ${screenshotCol}, ${attemptsCol}, ` +
+      `id, place_id, state, ${stateCol}, ${screenshotCol}, ${attemptsCol}, ` +
         "bill_subtotal_cents, approved_at",
     )
     .eq("id", ticketId)
@@ -218,7 +218,7 @@ export async function verifyProof(
     return { ran: false, reason: `persist_failed: ${annotationUpdate.error.message}` };
   }
 
-  // Everything below MUTATES ELIGIBILITY (status / fix_requested), so unlike
+  // Everything below MUTATES ELIGIBILITY (state / fix_requested), so unlike
   // the annotation it must not act on the stale in-memory `ticket` read at
   // the top of this function — a bill can be submitted, or staff can
   // approve, in the seconds the vision call was waiting on OpenAI. Each
@@ -236,14 +236,14 @@ export async function verifyProof(
     // Pre-bill, pre-approval, AND still open (RE-CHECKED at write time, not
     // assumed from the read above): nothing has been shown to the guest yet
     // and there's a live ticket for them to retry on, so reverting the
-    // status here is invisible to them — there is no number to walk back.
+    // state here is invisible to them — there is no number to walk back.
     // 'ai_rejected' already excludes from isActionVerified(), so the next
     // bill computation (whenever it happens) correctly leaves this bonus
     // out. fix_requested is the EXISTING Ticket v4 retry surface.
     await admin
       .from("visit_tickets")
       .update({
-        [statusCol]: "ai_rejected",
+        [stateCol]: "ai_rejected",
         fix_requested: "proof",
         fix_note: cfg.showGuestReason
           ? reasonForGuest(result)
@@ -252,23 +252,23 @@ export async function verifyProof(
       .eq("id", ticketId)
       .lte("bill_subtotal_cents", 0)
       .is("approved_at", null)
-      .in("status", Array.from(TASKABLE_STATUS_SET));
+      .in("state", Array.from(TASKABLE_STATE_SET));
   } else if (result.verdict === "pass") {
-    // Purely an upgrade — 'ai_verified' is ALSO in VERIFIED_ACTION_STATUSES,
+    // Purely an upgrade — 'ai_verified' is ALSO in VERIFIED_ACTION_STATES,
     // so this changes nothing about pricing eligibility. It makes Ojo's
     // confirmation machine-legible in the data instead of leaving every
     // proof looking identically "self_verified" whether or not Ojo agreed.
-    // CAS on self_verified at WRITE time: never overwrite a status that
+    // CAS on self_verified at WRITE time: never overwrite a state that
     // moved to something else (a terminal rejection, a fresh retry) while
     // this call was in flight.
     await admin
       .from("visit_tickets")
-      .update({ [statusCol]: "ai_verified" })
+      .update({ [stateCol]: "ai_verified" })
       .eq("id", ticketId)
-      .eq(statusCol, "self_verified");
+      .eq(stateCol, "self_verified");
   }
   // unsure, and fail-but-not-withholding, intentionally touch nothing but
-  // the annotation columns above: status stands, money stands, only the
+  // the annotation columns above: state stands, money stands, only the
   // record exists now for staff to see in check-web.
 
   return { ran: true, result };
@@ -277,12 +277,12 @@ export async function verifyProof(
 /**
  * "withhold" may only prevent a bonus from entering a price that has not
  * been computed yet. Once a bill exists, repriceTicketAfterAction would
- * refuse to lower it anyway (bump-only) — but reverting the status at that
+ * refuse to lower it anyway (bump-only) — but reverting the state at that
  * point is still wrong even though it's a no-op for THIS ticket's price,
- * because it would make story_status/review_status say "rejected" under a
+ * because it would make story_state/review_state say "rejected" under a
  * bill the guest already saw computed WITH the bonus, which is a confusing,
  * false-looking state for staff and any later read. Simplest correct rule:
- * withhold only touches status pre-bill, pre-approval, and while the ticket
+ * withhold only touches state pre-bill, pre-approval, and while the ticket
  * is still open enough to retry on — a closed/cancelled ticket has no guest
  * response left to prompt, so reverting it would only leave a dangling,
  * unresolvable fix_requested behind.
@@ -292,7 +292,7 @@ function withholdEligible(ticket: Record<string, unknown>): boolean {
   return (
     subtotal <= 0 &&
     ticket.approved_at == null &&
-    TASKABLE_STATUS_SET.has(ticket.status as string)
+    TASKABLE_STATE_SET.has(ticket.state as string)
   );
 }
 

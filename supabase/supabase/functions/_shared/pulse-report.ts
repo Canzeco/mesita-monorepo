@@ -68,7 +68,7 @@ import { writePlace } from "./place-doc.ts";
 export type StampablePulseStep = PulseStep;
 
 export type PieceOutcome = {
-  status: "completed" | "failed";
+  state: "completed" | "failed";
   detail: string;
   meta?: Record<string, unknown>;
 };
@@ -78,7 +78,7 @@ export function pieceDone(
   detail: string,
   meta?: Record<string, unknown>,
 ): PieceOutcome {
-  return { status: "completed", detail, meta };
+  return { state: "completed", detail, meta };
 }
 
 /** It had something to do and could not do it. NOT for absence — see rule 4. */
@@ -86,7 +86,7 @@ export function pieceFailed(
   detail: string,
   meta?: Record<string, unknown>,
 ): PieceOutcome {
-  return { status: "failed", detail, meta };
+  return { state: "failed", detail, meta };
 }
 
 /**
@@ -121,7 +121,7 @@ export async function reportPulsePieces(
       projectId,
       `S${meta.index}`,
       key,
-      outcome.status,
+      outcome.state,
       outcome.detail,
       { piece: key, index: meta.index, ...(outcome.meta ?? {}) },
     );
@@ -168,11 +168,11 @@ async function mergeEnrichmentMap(
   const now = new Date().toISOString();
   for (const [key, outcome] of Object.entries(stamped)) {
     if (!outcome) continue;
-    // outcome.status is "completed" | "failed" — already a valid
-    // FunctionState.status, no translation needed (that mapping only
-    // applies to raw historical event rows — see toFunctionStatus).
+    // outcome.state is "completed" | "failed" — already a valid
+    // FunctionState.state, no translation needed (that mapping only
+    // applies to raw historical event rows — see toFunctionState).
     functions[key as PulseStep] = {
-      status: outcome.status,
+      state: outcome.state,
       at: now,
       detail: outcome.detail,
     };

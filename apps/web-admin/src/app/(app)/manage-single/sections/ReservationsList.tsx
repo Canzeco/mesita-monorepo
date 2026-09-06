@@ -17,7 +17,7 @@ import type { PlaceActivity } from "../actions";
 // exists on the Controls tab for channel routing, and two files a letter
 // apart is how the wrong one gets imported.
 
-const STATUS: Record<string, { label: string; chip: string }> = {
+const STATE: Record<string, { label: string; chip: string }> = {
   pending: { label: "Pending", chip: "bg-amber-500/10 text-amber-700" },
   confirmed: { label: "Confirmed", chip: "bg-emerald-500/10 text-emerald-700" },
   completed: { label: "Completed", chip: "bg-emerald-500/10 text-emerald-700" },
@@ -27,8 +27,8 @@ const STATUS: Record<string, { label: string; chip: string }> = {
   unresolved: { label: "Unresolved", chip: "bg-indigo-500/10 text-indigo-700" },
 };
 
-function statusOf(s: string | null) {
-  return STATUS[s ?? ""] ?? { label: s ?? "—", chip: "bg-muted text-muted-foreground" };
+function stateOf(s: string | null) {
+  return STATE[s ?? ""] ?? { label: s ?? "—", chip: "bg-muted text-muted-foreground" };
 }
 
 function when(iso: string | null): string {
@@ -97,7 +97,7 @@ export function ReservationsList({ activity }: { activity: PlaceActivity }) {
         <>
           <div className="mt-4">
             {rows.map((r) => {
-              const st = statusOf(r.status);
+              const st = stateOf(r.state);
               return (
                 <div
                   key={r.id}

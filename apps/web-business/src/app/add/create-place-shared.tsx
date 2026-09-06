@@ -7,7 +7,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import type { PredictionStatus } from "@/lib/api/places";
+import type { PredictionState } from "@/lib/api/places";
 import type { LookupPlace } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export function ErrorBlurb({ children }: { children: ReactNode }) {
 }
 
 export const PREDICTION_BADGE: Record<
-  PredictionStatus,
+  PredictionState,
   {
     label: string;
     Icon: typeof MapPin;
@@ -91,7 +91,7 @@ export function PlaceIdentity({ place }: { place: LookupPlace }) {
   );
 }
 
-export function StatusBadge({
+export function StateBadge({
   tone,
   children,
 }: {

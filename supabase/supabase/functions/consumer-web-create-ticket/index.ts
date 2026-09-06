@@ -19,10 +19,10 @@
 // 'not_required', and clients render/gate only non-'not_required' tasks.
 // 'base' opens no task at all (QR scannable at the class base rate).
 // Legacy callers without `chosenReward` keep the old wantsStory behavior
-// byte-for-byte (review_status stays at its 'not_required' default).
+// byte-for-byte (review_state stays at its 'not_required' default).
 // Best-of billing is untouched: a guest who later completes a non-chosen
 // action anyway still gets it counted (resolveLiveTicketRate reads verified
-// statuses, not 'pending' markers).
+// states, not 'pending' markers).
 //
 // Body:     { placeId: string, wantsStory?: boolean,
 //             chosenReward?: "story" | "review" | "base" }
@@ -36,14 +36,14 @@ import {
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
 import { isPlacePromoting } from "../_shared/place-promoting.ts";
-import { isPlaceProfileReady } from "../_shared/place-status.ts";
+import { isPlaceProfileReady } from "../_shared/place-state.ts";
 import {
   loadRewardsGrid,
   offersAction,
   placeStrategy,
 } from "../_shared/rewards-config.ts";
 import { checkUrlFor, newCheckCode } from "../_shared/ticket-check.ts";
-import { CHECK_DEDUPE_STATUSES, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CHECK_DEDUPE_STATES, TICKET_STATE } from "../_shared/ticket-state.ts";
 import { snapshotRatesFromPlace } from "../_shared/ticket-rate-snapshot.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 import { rejectDeletedConsumer } from "../_shared/delete-history-free.ts";
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   const placeRow = await admin
     .from("profiles")
     .select(
-      "id, name, slug, status, content_status, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      "id, name, slug, state, content_state, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
   }
   if (!placeRow.data) return json({ ok: false, error: "Place not found" }, 404);
   const place = placeRow.data;
-  if (!isPlaceProfileReady((place as { content_status?: unknown }).content_status)) {
+  if (!isPlaceProfileReady((place as { content_state?: unknown }).content_state)) {
     return json(
       {
         ok: false,
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
       409,
     );
   }
-  if (place.status === "archived") {
+  if (place.state === "archived") {
     return json({ ok: false, error: "Place is archived" }, 409);
   }
   // The place must be PROMOTING — paying, a strategy above Zero, and an open
@@ -155,10 +155,10 @@ Deno.serve(async (req) => {
   // the partial unique index wins any race.
   const existing = await admin
     .from("visit_tickets")
-    .select("id, check_code, status")
+    .select("id, check_code, state")
     .eq("consumer_id", consumerId)
     .eq("place_id", placeId)
-    .in("status", [...CHECK_DEDUPE_STATUSES])
+    .in("state", [...CHECK_DEDUPE_STATES])
     .not("check_code", "is", null)
     .maybeSingle();
   if (existing.data) {
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
   // (`instagram_handle` set) AND the place's strategy must actually offer
   // the rung. Anything else downgrades silently — never an error, so the
   // response can't be used to probe class or Instagram state.
-  let storyStatus = "not_required";
+  let storyState = "not_required";
   if (wantsStory) {
     const consumerRow = await admin
       .from("consumers")
@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
     if (igConnected) {
       const grid = await loadRewardsGrid(admin);
       if (offersAction(placeStrategy(place), grid, "story")) {
-        storyStatus = "pending";
+        storyState = "pending";
       }
     }
   }
@@ -201,14 +201,14 @@ Deno.serve(async (req) => {
   // to the review rung (same silent-downgrade posture) so the ticket is
   // never gate-less by accident. Zero-strategy places offer no rungs — both
   // stay 'not_required' and the QR is scannable at whatever the table gives.
-  let reviewStatus = "not_required";
+  let reviewState = "not_required";
   if (
     chosen === "review" ||
-    (chosen === "story" && storyStatus === "not_required")
+    (chosen === "story" && storyState === "not_required")
   ) {
     const grid = await loadRewardsGrid(admin);
     if (offersAction(placeStrategy(place), grid, "review")) {
-      reviewStatus = "pending";
+      reviewState = "pending";
     }
   }
 
@@ -224,14 +224,14 @@ Deno.serve(async (req) => {
         project_id: placeId,
         consumer_id: consumerId,
         opened_by: consumerId, // self-opened: the v2 marker
-        status: TICKET_STATUS.open,
-        story_status: storyStatus as "not_required" | "pending",
-        review_status: reviewStatus as "not_required" | "pending",
+        state: TICKET_STATE.open,
+        story_state: storyState as "not_required" | "pending",
+        review_state: reviewState as "not_required" | "pending",
         check_code: newCheckCode(),
         ...snapshotRatesFromPlace(place as Record<string, unknown>),
       },
       select:
-        "id, status, story_status, review_status, check_code, first_scanned_at, currency, created_at",
+        "id, state, story_state, review_state, check_code, first_scanned_at, currency, created_at",
     });
     if (res.ok) {
       inserted = res.row;

@@ -10,7 +10,7 @@ import type { Href } from 'expo-router';
 //
 // MOBILE IS FROZEN (Pato, 2026-08-20). This file is one of only three mobile
 // writes the freeze still allows (the others: ticket-journey.ts byte-identical,
-// api/tickets.ts ACTIVE_TICKET_STATUSES) — kept in lockstep so it never drifts
+// api/tickets.ts ACTIVE_TICKET_STATES) — kept in lockstep so it never drifts
 // from web's own pinned test (consumer-route-contract.test.ts). The freeze
 // forbids restructuring mobile's actual screens or tab bar, so below: every
 // key a live mobile call site depends on keeps its CURRENT name and value;

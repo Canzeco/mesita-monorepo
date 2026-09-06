@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { CheckCircle2, Clock, X } from "lucide-react";
 
-export function StatusBadge({
-  status,
+export function StateBadge({
+  state,
   decidedVia,
 }: {
-  status: "pending" | "approved" | "rejected";
+  state: "pending" | "approved" | "rejected";
   decidedVia: "auto" | "admin" | null;
 }) {
-  if (status === "pending") {
+  if (state === "pending") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 type-meta font-bold tracking-wider text-amber-700 uppercase">
         <Clock className="h-3 w-3" />
@@ -16,7 +16,7 @@ export function StatusBadge({
       </span>
     );
   }
-  if (status === "approved") {
+  if (state === "approved") {
     return (
       <span className="bg-secondary/15 text-secondary inline-flex items-center gap-1 rounded-full px-2 py-0.5 type-meta font-bold tracking-wider uppercase">
         <CheckCircle2 className="h-3 w-3" />

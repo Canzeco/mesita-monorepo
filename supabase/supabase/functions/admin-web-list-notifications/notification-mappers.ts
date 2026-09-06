@@ -39,7 +39,7 @@ export type NotificationItem = {
 
 export type CreatedNotificationRow = PlaceShape & {
   listing_type: string | null;
-  status: string | null;
+  state: string | null;
   created_at: string;
   enriched_at: string | null;
 };
@@ -92,7 +92,7 @@ export function mapPlaceCreatedNotification(
     detail: null,
     meta: {
       listingType: v.listing_type,
-      status: v.status,
+      state: v.state,
       enriched: v.enriched_at != null,
       claimed: !!owner,
     },

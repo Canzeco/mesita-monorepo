@@ -3,7 +3,7 @@
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first — the quickstart; Notion holds the deep docs. Package-specific rules only below.
 
-**Status: scaffold only.** A fresh Expo SDK 57 app (React Native · Expo Router · NativeWind) wired to EAS, with a single placeholder route. The native business counterpart to `apps/web-business`; nothing is built yet. When building, port structure/patterns from [`apps/mobile-consumer`](../mobile-consumer) — its `CLAUDE.md` is the fuller reference.
+**State: scaffold only.** A fresh Expo SDK 57 app (React Native · Expo Router · NativeWind) wired to EAS, with a single placeholder route. The native business counterpart to `apps/web-business`; nothing is built yet. When building, port structure/patterns from [`apps/mobile-consumer`](../mobile-consumer) — its `CLAUDE.md` is the fuller reference.
 
 ## ALWAYS
 - Clients call **Edge Functions only** — never the DB (mirror the consumer EF client `apps/mobile-consumer/src/lib/ef.ts` when you add one).

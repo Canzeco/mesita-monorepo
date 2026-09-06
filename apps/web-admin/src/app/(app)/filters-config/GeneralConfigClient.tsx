@@ -9,7 +9,7 @@ import { Plug, SlidersHorizontal, Tags } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   NumberField,
   SaveRow,
   SectionCard,
@@ -131,8 +131,8 @@ export function GeneralConfigClient({
         icon={<SlidersHorizontal className="text-primary h-4 w-4" />}
         title="Google types"
         subtitle="Which Google Places types Autocomplete, Nearby, and Text Search may bill. One list for all three. How many of the code-defined types are available, then which of those are on."
-        status={
-          <KnobStatus
+        state={
+          <KnobState
             kind="enforced"
             reason="list-places · suggest-places · Search"
           />

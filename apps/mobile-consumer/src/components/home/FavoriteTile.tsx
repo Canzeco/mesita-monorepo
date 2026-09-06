@@ -8,7 +8,7 @@ import { PromoChip } from '@/components/swipe/PromoChip';
 import { COLORS, GRADIENTS, GRADIENT_DIAGONAL } from '@/constants/brand';
 import type { Place } from '@/lib/api/places';
 import { placePath } from '@/lib/consumer-route-contract';
-import { getOpeningStatusLabel } from '@/lib/place-status';
+import { getOpeningStateLabel } from '@/lib/place-state';
 import { firstInitial } from '@/lib/utils';
 
 // One place tile in the Favorites grid — mirror of web FavoriteTile.tsx.
@@ -41,7 +41,7 @@ export function FavoriteTile({
       ? `${place.distance_km} km`
       : null;
   const subtitle = [place.zone, distanceLabel].filter(Boolean).join(' · ');
-  const openingLabel = getOpeningStatusLabel(place);
+  const openingLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
 
   return (

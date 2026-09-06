@@ -665,17 +665,17 @@ Deno.test("search power zeros unused lanes and treats Mesita Places as enriched"
   // Garbage and overshoot clamp to the largest How many stop.
   assertEquals(lanesForSearchPower(2, 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
   assertEquals(lanesForSearchPower(1, Number.NaN).mesitaCount, 0);
-  assertEquals(isEnrichedListedRow({ content_status: "ready" }), true);
+  assertEquals(isEnrichedListedRow({ content_state: "ready" }), true);
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
-  assertEquals(isEnrichedListedRow({ content_status: "queued" }), false);
+  assertEquals(isEnrichedListedRow({ content_state: "queued" }), false);
   assertEquals(isEnrichedListedRow({}), false);
   assertEquals(keepListedForSearchPower({ id: "p", partner: true }), true);
   assertEquals(
-    keepListedForSearchPower({ id: "e", plan: "free", content_status: "ready" }),
+    keepListedForSearchPower({ id: "e", plan: "free", content_state: "ready" }),
     true,
   );
   assertEquals(
-    keepListedForSearchPower({ id: "c", plan: "free", content_status: "queued" }),
+    keepListedForSearchPower({ id: "c", plan: "free", content_state: "queued" }),
     false,
   );
   const createdGids = listedGooglePlaceIds([

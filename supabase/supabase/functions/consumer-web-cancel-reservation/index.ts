@@ -12,8 +12,8 @@
 // nothing left to call off.
 //
 // The engine may still have a run in flight; it only ever writes to a ticket
-// it already started, and the next status write loses to this one because the
-// app reads `status` as the single visible verdict.
+// it already started, and the next state write loses to this one because the
+// app reads `state` as the single visible verdict.
 //
 // Deploy: supabase functions deploy consumer-web-cancel-reservation
 
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
   const { data: row, error: readErr } = await admin
     .from("reservation_tickets")
-    .select("id, status, reserved_at, consumer_id, reference_code")
+    .select("id, state, reserved_at, consumer_id, reference_code")
     .eq("id", id)
     .maybeSingle();
   if (readErr) return json({ ok: false, error: readErr.message }, 500);
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Reservation not found" }, 404);
   }
 
-  if (row.status === "cancelled") {
-    return json({ ok: true, already: true, reservation_id: id, status: "cancelled" });
+  if (row.state === "cancelled") {
+    return json({ ok: true, already: true, reservation_id: id, state: "cancelled" });
   }
   if (new Date(row.reserved_at).getTime() < Date.now() - PASSED_GRACE_MS) {
     return json({ ok: false, error: "This reservation already happened." }, 409);
@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   // cancel or this becomes a Mesita-made no-show (Docs › Reservations §B
   // leg 5). Pending tickets owe nothing: never ring a venue to cancel what it
   // never agreed to.
-  const notice = row.status === "confirmed" ? "venue_cancel" as const : null;
+  const notice = row.state === "confirmed" ? "venue_cancel" as const : null;
   // ONE cancel write-shape for all four doors (app + a2/a3/a4 voice) —
   // cancelTicket owns it, including the run_id rotation that orphans any
   // mid-flight engine run.
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     ok: true,
     cancelled: true,
     reservation_id: id,
-    status: "cancelled",
+    state: "cancelled",
     reference_code: row.reference_code ?? null,
     venue_notified: notice !== null,
   });

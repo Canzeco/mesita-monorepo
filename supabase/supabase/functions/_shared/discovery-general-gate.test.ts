@@ -115,11 +115,11 @@ Deno.test("a Mesita row is judged on its own columns — Active off is wiped", (
   // The bug Pato saw: a place the operator switched Active OFF still came
   // back from search because on-Mesita rows were waved through.
   assert(!rowClearsGeneralGate(ACTIVE_ONLY, {
-    business_status: "CLOSED_TEMPORARILY",
+    business_state: "CLOSED_TEMPORARILY",
     google_review_count: 308,
   }));
   assert(rowClearsGeneralGate(ACTIVE_ONLY, {
-    business_status: "OPERATIONAL",
+    business_state: "OPERATIONAL",
     google_review_count: 1,
   }));
   assert(!rowClearsGeneralGate(ACTIVE_ONLY, {}));
@@ -149,7 +149,7 @@ Deno.test("the gate is the same question as a WHERE clause", () => {
 
   applyGeneralGateQuery(q, { ...OFF, requireActive: true, minReviews: 7 });
   assertEquals(calls, [
-    ["eq", "business_status", "OPERATIONAL"],
+    ["eq", "business_state", "OPERATIONAL"],
     ["gte", "google_review_count", 7],
   ]);
 });

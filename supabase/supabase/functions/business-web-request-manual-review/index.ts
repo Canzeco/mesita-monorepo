@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     .delete()
     .eq("place_id", projectId)
     .eq("requester_id", userId)
-    .eq("status", "pending");
+    .eq("state", "pending");
 
   const { data: verification, error: insertError } = await admin
     .from("project_verifications")
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       requester_email: requesterEmail,
       // manual_contact never auto-verifies; the row sits in the admin
       // queue until a human flips it via admin-web-decide-verification.
-      status: "pending",
+      state: "pending",
     })
     .select("id")
     .single();

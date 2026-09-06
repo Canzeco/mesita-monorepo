@@ -1,6 +1,6 @@
 // Organization — the legal person. Identity, team size, and what it holds.
 //
-// State is Not connected / Connected: an organization's own status is
+// State is Not connected / Connected: an organization's own state is
 // about money, not about places. Listed and Verified describe one address
 // and live on the place, never here.
 import Link from "next/link";

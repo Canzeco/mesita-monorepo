@@ -32,9 +32,9 @@ import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 
-// Statuses that still bill (or still owe us money). `canceled` / `incomplete_
+// States that still bill (or still owe us money). `canceled` / `incomplete_
 // expired` are terminal at Stripe already, so there is nothing to cancel.
-const BILLABLE_STATUSES = ["active", "trialing", "past_due", "unpaid", "incomplete"];
+const BILLABLE_STATES = ["active", "trialing", "past_due", "unpaid", "incomplete"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -56,9 +56,9 @@ Deno.serve(async (req) => {
   // billing still runs on) have no Stripe counterpart — nothing to cancel.
   const { data: subs, error: subsErr } = await admin
     .from("consumer_subscriptions")
-    .select("stripe_subscription_id, status")
+    .select("stripe_subscription_id, state")
     .eq("consumer_id", userId)
-    .in("status", BILLABLE_STATUSES);
+    .in("state", BILLABLE_STATES);
   if (subsErr) {
     return json({ ok: false, error: `subscription_read: ${subsErr.message}` }, 500);
   }

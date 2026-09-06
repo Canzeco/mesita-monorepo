@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Calendar, Users } from "lucide-react";
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
-import { statusMeta } from "@/lib/reservation-status";
+import { stateMeta } from "@/lib/reservation-state";
 import { cn, guestNoun } from "@/lib/utils";
 import { reservationPath } from "@/lib/consumer-route-contract";
 
@@ -14,7 +14,7 @@ import { reservationPath } from "@/lib/consumer-route-contract";
 // rates), never from holding a booking.
 
 export function ReservationCard({ r }: { r: ReservationItem }) {
-  const meta = statusMeta(r.status);
+  const meta = stateMeta(r.state);
   // "spent" = finished and not happening (passed / cancelled / not booked).
   const spent = meta.spent;
   // Tapping the card opens the intercepted /reservation/[id] modal on
@@ -85,16 +85,16 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
         </div>
       </div>
 
-      {r.statusNote && (
+      {r.stateNote && (
         <div
           className={cn(
             "rounded-xl px-3 py-2 text-xs leading-snug",
-            r.status === "booking"
+            r.state === "booking"
               ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
               : "bg-muted text-muted-foreground",
           )}
         >
-          {r.statusNote}
+          {r.stateNote}
         </div>
       )}
     </Link>

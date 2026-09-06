@@ -84,18 +84,18 @@ export function membershipPillState(
   return "pending";
 }
 
-type MembershipStatusNote = {
+type MembershipStateNote = {
   label: string;
   tone: "live" | "warn" | "blocked";
 };
 
 // Paused is a recoverable 30-day state → warn (amber), matching its pill.
 // Destructive red is reserved for forfeited only.
-export function describeMembershipStatus(
+export function describeMembershipState(
   snap: MembershipSnapshot,
   pillState: MembershipPillState,
   now: number = Date.now(),
-): MembershipStatusNote | null {
+): MembershipStateNote | null {
   if (pillState === "review") {
     return {
       label:

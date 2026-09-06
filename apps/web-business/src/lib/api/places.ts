@@ -11,7 +11,7 @@ import { invokeEF } from "./_invoke";
 import type { BusinessRole } from "./team";
 
 type PlaceListingType = "partner" | "web";
-type PlaceStatus =
+type PlaceState =
   | "lead"
   | "active"
   | "paused"
@@ -57,7 +57,7 @@ type Place = {
   // is denominated in this currency. Defaults to MXN on the DB side.
   currency: string;
   listing_type: PlaceListingType;
-  status: PlaceStatus;
+  state: PlaceState;
   fiscal_type: FiscalType;
   plan: PlacePlan;
   lat: number | null;
@@ -146,7 +146,7 @@ export type MyPlace = Place & {
 
 // Per-row state mirrored from the lookup EF, plus a self/other split
 // for the owned case so the picker can flag "you own this" inline.
-export type PredictionStatus =
+export type PredictionState =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -157,7 +157,7 @@ export type PlacePrediction = {
   mainText: string;
   secondaryText: string;
   // Drives the per-row badge in the picker.
-  status: PredictionStatus;
+  state: PredictionState;
 };
 
 type EnrichmentReport = {
@@ -206,7 +206,7 @@ export async function apiPlacesAutocomplete(
 }
 
 type EnrichCreatePlaceResponse = {
-  place: { id: string; slug: string; name: string; status: PlaceStatus };
+  place: { id: string; slug: string; name: string; state: PlaceState };
   enrichment: EnrichmentReport;
 };
 
@@ -234,7 +234,7 @@ export type UpdatePlaceInput = {
   // Three-letter ISO 4217 code, e.g. "MXN". Sent uppercase; the EF
   // validates the shape and rejects anything else.
   currency?: string | null;
-  status?: "active" | "paused" | "archived";
+  state?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
   // NOTE: no `plan` here — plan changes are billing and go through
   // apiChangeSubscription (business-web-change-subscription EF).

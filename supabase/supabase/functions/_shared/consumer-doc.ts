@@ -41,7 +41,7 @@
 //     consumer-web-claim-invite-code) always write both in the same patch;
 //     nothing has ever needed to move one without the other.
 //   - deleted_at, if set, is a timestamp string or null — MESITA-1250:
-//     deletion is a status. Only `_shared/delete-history-free.ts` writes it.
+//     deletion is a state. Only `_shared/delete-history-free.ts` writes it.
 //
 // birthday format, avatar_url's bucket/path shape, and the age gate are
 // deliberately NOT here — they are HTTP-input business rules that need

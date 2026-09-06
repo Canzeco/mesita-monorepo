@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     requestCount: Number(row.request_count) || 0,
     threshold: await loadRequestThreshold(admin),
     requested,
-    contentStatus: row.content_status,
+    contentState: row.content_state,
     enrichedAt: row.enriched_at,
   });
   const place = {

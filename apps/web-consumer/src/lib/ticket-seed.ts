@@ -2,7 +2,7 @@
 
 // Ticket seed cache (MESITA-1029 S3/S4). The tap that creates a ticket
 // already holds everything THE TICKET needs for its first paint: the create
-// response carries the row (id, status, check_code, task statuses), the
+// response carries the row (id, state, check_code, task states), the
 // tapped Place carries the photo, category and rate columns, and the reward
 // quote can START at create time instead of after two chained fetches on the
 // ticket screen. NewVisitClient writes here right before router.push;
@@ -86,12 +86,12 @@ export function ticketRowFromCreate(
 ): ConsumerTicketRow {
   return {
     id: t.id,
-    status: t.status,
-    story_status: t.story_status ?? null,
+    state: t.state,
+    story_state: t.story_state ?? null,
     story_submitted_at: null,
     story_verified_at: null,
     story_reject_reason: null,
-    review_status: t.review_status ?? null,
+    review_state: t.review_state ?? null,
     review_submitted_at: null,
     check_code: t.check_code,
     first_scanned_at: t.first_scanned_at ?? null,

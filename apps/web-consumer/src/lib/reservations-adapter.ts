@@ -17,7 +17,7 @@
 import type { EFReservationRow } from "@/lib/api/reservations";
 import type {
   ReservationItem,
-  ReservationStatus,
+  ReservationState,
 } from "@/lib/mock/reservations-mock";
 
 // Mexico City is UTC-6 year-round (no DST since 2022). reserved_at is stored
@@ -34,8 +34,8 @@ function slotPassed(iso: string): boolean {
 }
 
 /** The lifecycle phase for a row — the single place this is decided. */
-function reservationPhase(row: EFReservationRow): ReservationStatus {
-  switch (row.status) {
+function reservationPhase(row: EFReservationRow): ReservationState {
+  switch (row.state) {
     case "cancelled":
       return "cancelled";
     case "declined":
@@ -79,7 +79,7 @@ function formatNextAttempt(iso: string | null | undefined): string | null {
 }
 
 function noteFor(
-  phase: ReservationStatus,
+  phase: ReservationState,
   row: EFReservationRow,
 ): string | undefined {
   switch (phase) {
@@ -104,7 +104,7 @@ function noteFor(
     case "cancelled":
       return "This reservation was cancelled.";
     case "failed":
-      switch (row.status) {
+      switch (row.state) {
         case "declined":
           return "The place couldn't take this booking. Try another time.";
         case "unreachable":
@@ -169,13 +169,13 @@ function normalizeClientAlternatives(
 }
 
 export function toReservationItem(row: EFReservationRow): ReservationItem {
-  const status = reservationPhase(row);
+  const state = reservationPhase(row);
   // A ticket is still yours to move while it's live and ahead of us.
   const live =
-    status === "created" || status === "booking" || status === "confirmed";
+    state === "created" || state === "booking" || state === "confirmed";
   const alternatives = normalizeClientAlternatives(row.alternatives);
   const counterOffer =
-    row.status === "pending" && (alternatives?.length ?? 0) > 0;
+    row.state === "pending" && (alternatives?.length ?? 0) > 0;
   return {
     id: row.id,
     projectId: row.place?.id ?? "",
@@ -184,10 +184,10 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     when: formatReservationWhen(row.reserved_at),
     reservedAt: row.reserved_at,
     partySize: row.party_size,
-    status,
-    statusNote: counterOffer
+    state,
+    stateNote: counterOffer
       ? "The place offered other times — pick one below, or reschedule."
-      : noteFor(status, row),
+      : noteFor(state, row),
     // The 8-digit code the agents speak on calls — the guest's ticket handle.
     referenceCode: row.reference_code ?? undefined,
     notes: row.notes ?? undefined,

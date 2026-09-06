@@ -7,9 +7,9 @@
 // real rows:
 //   • places   — the profile (Google identity, geo, channels, signals, photos)
 //   • projects — the owned Mesita entity (shared PK with the place), landing
-//     status='active', listing_type from Verification Config
+//     state='active', listing_type from Verification Config
 //     (verification_config.createPlacesAsVerified → 'partner', else 'web'),
-//     and a caller-supplied content_status (the async create path passes
+//     and a caller-supplied content_state (the async create path passes
 //     'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
@@ -43,19 +43,19 @@ export type SavedPlace = {
   place_id: string;
   slug: string;
   name: string;
-  status: string;
+  state: string;
 };
 
 export type SavePlaceOutcome =
   | { ok: true; saved: SavedPlace }
   | { ok: false; status: number; body: Record<string, unknown> };
 
-const CONTENT_STATUSES = new Set(["queued", "generating", "ready", "failed"]);
+const CONTENT_STATES = new Set(["queued", "generating", "ready", "failed"]);
 
 export async function savePlaceData(
   admin: SupabaseClient,
   place: PlacePayload,
-  contentStatus = "ready",
+  contentState = "ready",
 ): Promise<SavePlaceOutcome> {
   const fail = (status: number, body: Record<string, unknown>): SavePlaceOutcome => ({
     ok: false,
@@ -78,12 +78,12 @@ export async function savePlaceData(
   // must never persist a place without it (fetchGoogleBasics always supplies one).
   const mapsUrl = (place.google_maps_url ?? "").toString().trim();
   if (!mapsUrl) return fail(400, { error: "place.google_maps_url is required" });
-  const status = CONTENT_STATUSES.has(contentStatus) ? contentStatus : "ready";
+  const state = CONTENT_STATES.has(contentState) ? contentState : "ready";
 
   // ── Idempotency: already onboarded? (read the joined view) ──
   const { data: existing } = await admin
     .from("profiles")
-    .select("id, slug, name, status, listing_type")
+    .select("id, slug, name, state, listing_type")
     .eq("google_place_id", googlePlaceId)
     .maybeSingle();
   if (existing) {
@@ -147,7 +147,7 @@ export async function savePlaceData(
     if (placeRes.ok === false && placeRes.code === "23505" && /google_place_id/.test(placeRes.error)) {
       const after = await admin
         .from("profiles")
-        .select("id, slug, name, status, listing_type")
+        .select("id, slug, name, state, listing_type")
         .eq("google_place_id", googlePlaceId)
         .maybeSingle();
       return fail(409, {
@@ -163,18 +163,18 @@ export async function savePlaceData(
   }
   const placeRow = placeRes.row as { id: string };
 
-  // ── 2) projects (entity, shared PK). content_status is caller-supplied. ──
+  // ── 2) projects (entity, shared PK). content_state is caller-supplied. ──
   const projectRes = await writePlace(admin, {
     table: "projects",
     mode: "insert",
     id: placeRow.id,
     patch: {
       slug,
-      status: "active",
+      state: "active",
       listing_type: listingType,
-      content_status: status as ProjectRow["content_status"],
+      content_state: state as ProjectRow["content_state"],
     },
-    select: "id, slug, status",
+    select: "id, slug, state",
   });
   if (!projectRes.ok || !projectRes.row) {
     // Compensate: drop the orphan place so a failed create leaves nothing.
@@ -192,7 +192,7 @@ export async function savePlaceData(
       code: projectRes.ok ? null : projectRes.code ?? null,
     });
   }
-  const projectRow = projectRes.row as { id: string; slug: string; status: string };
+  const projectRow = projectRes.row as { id: string; slug: string; state: string };
 
   return {
     ok: true,
@@ -201,7 +201,7 @@ export async function savePlaceData(
       place_id: placeRow.id,
       slug: projectRow.slug,
       name,
-      status: projectRow.status,
+      state: projectRow.state,
     },
   };
 }

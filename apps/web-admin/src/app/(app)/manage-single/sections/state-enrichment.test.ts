@@ -8,9 +8,9 @@ describe("intakeFunctionRows", () => {
   it("lists eleven functions 0–10 as called/not called", () => {
     const rows = intakeFunctionRows(
       {
-        pulse: { status: "completed", at: null, detail: null },
-        details: { status: "failed", at: null, detail: "no" },
-        embedding: { status: "completed", at: null, detail: null },
+        pulse: { state: "completed", at: null, detail: null },
+        details: { state: "failed", at: null, detail: "no" },
+        embedding: { state: "completed", at: null, detail: null },
       },
       true,
     );
@@ -49,7 +49,7 @@ describe("intakeFunctionRows", () => {
 
   it("folds a legacy `semantic` stamp into 10. Embedding", () => {
     const rows = intakeFunctionRows(
-      { semantic: { status: "completed", at: null, detail: null } },
+      { semantic: { state: "completed", at: null, detail: null } },
       false,
     );
     expect(rows[10]).toMatchObject({
@@ -66,31 +66,31 @@ describe("Three state boxes", () => {
   // single job. General and Partnership render from StateCard.tsx; the two
   // Intake facts moved to the Intake box with the read that feeds them.
   it("splits General · Partnership · Intake, each owning its own facts", () => {
-    const status = readFileSync(join(__dirname, "StateCard.tsx"), "utf8");
-    expect(status).toContain('title="General States"');
-    expect(status).toContain('title="Partnership States"');
-    expect(status).not.toContain('title="State"');
+    const card = readFileSync(join(__dirname, "StateCard.tsx"), "utf8");
+    expect(card).toContain('title="General States"');
+    expect(card).toContain('title="Partnership States"');
+    expect(card).not.toContain('title="State"');
     // General owns the reachability facts and both operator writes.
-    expect(status).toContain('name="Active (Google pulse)"');
-    expect(status).toContain("setPlaceActive");
-    expect(status).toContain("Mark inactive and unlist");
-    expect(status).toContain('name="Verified"');
-    expect(status).toContain("requestCountChip");
-    expect(status).not.toContain("stateBoolChip(requested)");
+    expect(card).toContain('name="Active (Google pulse)"');
+    expect(card).toContain("setPlaceActive");
+    expect(card).toContain("Mark inactive and unlist");
+    expect(card).toContain('name="Verified"');
+    expect(card).toContain("requestCountChip");
+    expect(card).not.toContain("stateBoolChip(requested)");
     // Partnership owns the commercial facts and the drift warning.
-    expect(status).toContain('name="Partnered"');
-    expect(status).toContain('name="Visit Rewards"');
-    expect(status).toContain('name="Mesita Pay"');
-    expect(status).toContain('name="Mesita Credits"');
-    expect(status).toContain("Guest surfaces disagree with Visit Rewards");
+    expect(card).toContain('name="Partnered"');
+    expect(card).toContain('name="Visit Rewards"');
+    expect(card).toContain('name="Mesita Pay"');
+    expect(card).toContain('name="Mesita Credits"');
+    expect(card).toContain("Guest surfaces disagree with Visit Rewards");
     // The Intake facts and their read LEFT this file — moved, not copied, so
     // the Admin tab still issues exactly one getPlaceEnrichment call.
-    expect(status).not.toContain('name="Enriching"');
-    expect(status).not.toContain('name="Enriched"');
-    expect(status).not.toContain("getPlaceEnrichment");
-    expect(status).not.toContain("intakeFunctionRows");
-    expect(status).not.toContain("CreateStateCard");
-    expect(status).not.toContain("chipLabel={pulse === null");
+    expect(card).not.toContain('name="Enriching"');
+    expect(card).not.toContain('name="Enriched"');
+    expect(card).not.toContain("getPlaceEnrichment");
+    expect(card).not.toContain("intakeFunctionRows");
+    expect(card).not.toContain("CreateStateCard");
+    expect(card).not.toContain("chipLabel={pulse === null");
 
     const intake = readFileSync(join(__dirname, "IntakeStateCard.tsx"), "utf8");
     expect(intake).toContain("intakeFunctionRows");
@@ -108,8 +108,9 @@ describe("Three state boxes", () => {
     expect(admin).not.toContain("Ownership verified by");
   });
 
-  // MESITA-1541: the house word is State. `status` survives only where it
-  // names a DB column (until MESITA-1542) or a payload we did not author.
+  // MESITA-1541/1542: the house word is State — in schema, payloads and
+  // prose alike. `status` survives only where it names a payload we did not
+  // author (HTTP codes, vendor fields).
   // The BOX never says it again — not in a title, not in prose.
   it("never says Statuses", () => {
     for (const file of ["StateCard.tsx", "IntakeStateCard.tsx", "AdminSection.tsx"]) {

@@ -17,7 +17,7 @@ import {
 import type { Place } from "@/lib/api/places";
 import { resolveZoneLabel } from "@/lib/adapters/place-to-detail";
 import { resolvePlaceCategoryName } from "@/lib/place-category";
-import { getOpeningStatusLabel } from "@/lib/place-status";
+import { getOpeningStateLabel } from "@/lib/place-state";
 import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
 import { Spinner } from "@/components/shared";
 import { PromoChip } from "./PromoChip";
@@ -51,7 +51,7 @@ export function SwipeCardInfo({
     place.instagram_followers_count != null
       ? formatCompactCount(place.instagram_followers_count)
       : null;
-  const statusLabel = getOpeningStatusLabel(place);
+  const stateLabel = getOpeningStateLabel(place);
   const isOpen = place.open_now === true;
   // THE CARD STATES PARTNER, NOT VERIFIED (decision: Pato).
   //
@@ -169,7 +169,7 @@ export function SwipeCardInfo({
             {zoneDisplay}
           </span>
         </MetaChip>
-        {statusLabel && (
+        {stateLabel && (
           <MetaChip compact={compact}>
             <Clock
               className={cn(
@@ -177,7 +177,7 @@ export function SwipeCardInfo({
                 isOpen ? "text-emerald-400" : "text-white/70",
               )}
             />
-            <span className="font-semibold">{statusLabel}</span>
+            <span className="font-semibold">{stateLabel}</span>
           </MetaChip>
         )}
         <PromoChip place={place} size="md" showWhenEmpty />

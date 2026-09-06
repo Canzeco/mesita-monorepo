@@ -45,8 +45,8 @@ export function isPlausibleCheckCode(code: string): boolean {
 // ── Lookup ──────────────────────────────────────────────────────────────
 
 export const CHECK_TICKET_COLUMNS =
-  "id, place_id, consumer_id, status, check_code, first_scanned_at, " +
-  "story_status, story_screenshot_url, review_status, review_screenshot_url, " +
+  "id, place_id, consumer_id, state, check_code, first_scanned_at, " +
+  "story_state, story_screenshot_url, review_state, review_screenshot_url, " +
   "bill_subtotal_cents, tip_cents, tip_pct, total_cents, discount_percent, discount_cents, " +
   "bill_source, currency, created_at, revealed_at, cancelled_at, " +
   "updated_at, approved_at, fix_requested, fix_note, paid_method, validated_at";
@@ -55,12 +55,12 @@ export type CheckTicketRow = {
   id: string;
   project_id: string;
   consumer_id: string;
-  status: string;
+  state: string;
   check_code: string;
   first_scanned_at: string | null;
-  story_status: string | null;
+  story_state: string | null;
   story_screenshot_url: string | null;
-  review_status: string | null;
+  review_state: string | null;
   review_screenshot_url: string | null;
   bill_subtotal_cents: number | null;
   tip_cents: number | null;
@@ -109,11 +109,11 @@ export async function loadTicketByCheckCode(
 // staff to rule on it. "pending"/"submitted"/"rejected" survive purely to
 // render pre-v3 tickets.
 
-function collapseActionState(status: string | null): {
+function collapseActionState(state: string | null): {
   required: boolean;
   state: "none" | "pending" | "submitted" | "approved" | "rejected";
 } {
-  switch (status) {
+  switch (state) {
     case "pending":
       return { required: true, state: "pending" };
     case "submitted":
@@ -151,11 +151,11 @@ export function shapeCheckPayload(args: {
   billRequired?: boolean;
 }): Record<string, unknown> {
   const { ticket } = args;
-  const story = collapseActionState(ticket.story_status);
-  const review = collapseActionState(ticket.review_status);
+  const story = collapseActionState(ticket.story_state);
+  const review = collapseActionState(ticket.review_state);
   const billed = (ticket.total_cents ?? 0) > 0;
   return {
-    status: ticket.status,
+    state: ticket.state,
     created_at: ticket.created_at,
     first_scanned_at: ticket.first_scanned_at,
     // v4 (MESITA-1090): the CAS token — staff mutations echo this back as

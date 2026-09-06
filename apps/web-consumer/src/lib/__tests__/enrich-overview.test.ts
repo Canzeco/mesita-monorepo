@@ -3,7 +3,7 @@ import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import type { Place } from "@/lib/api/places";
 
 // Pins the Enriching signal for swipe / catalog cards.
-// consumer-web-recommend-swipe already returns content_status via
+// consumer-web-recommend-swipe already returns content_state via
 // PLACE_PUBLIC_COLUMNS; enrichPlaceOverview must
 // map it to is_enriching so SwipeCardInfo can lead the tag row (parity with
 // place detail). Regressions here hide the chip on newly created places.
@@ -20,7 +20,7 @@ function basePlace(
     price_level: null,
     currency: "MXN",
     listing_type: "web",
-    status: "active",
+    state: "active",
     fiscal_type: "informal",
     plan: "free",
     lat: null,
@@ -50,33 +50,33 @@ function basePlace(
 }
 
 describe("enrichPlaceOverview is_enriching", () => {
-  it("is true when content_status is queued", () => {
+  it("is true when content_state is queued", () => {
     const place = enrichPlaceOverview(
-      basePlace({ content_status: "queued" }),
+      basePlace({ content_state: "queued" }),
     );
     expect(place.is_enriching).toBe(true);
   });
 
-  it("is true when content_status is generating", () => {
+  it("is true when content_state is generating", () => {
     const place = enrichPlaceOverview(
-      basePlace({ content_status: "generating" }),
+      basePlace({ content_state: "generating" }),
     );
     expect(place.is_enriching).toBe(true);
   });
 
-  it("is false when content_status is ready", () => {
-    const place = enrichPlaceOverview(basePlace({ content_status: "ready" }));
+  it("is false when content_state is ready", () => {
+    const place = enrichPlaceOverview(basePlace({ content_state: "ready" }));
     expect(place.is_enriching).toBe(false);
   });
 
-  it("is false when content_status is failed", () => {
-    const place = enrichPlaceOverview(basePlace({ content_status: "failed" }));
+  it("is false when content_state is failed", () => {
+    const place = enrichPlaceOverview(basePlace({ content_state: "failed" }));
     expect(place.is_enriching).toBe(false);
   });
 
-  it("prefers an explicit is_enriching over content_status", () => {
+  it("prefers an explicit is_enriching over content_state", () => {
     const place = enrichPlaceOverview(
-      basePlace({ is_enriching: false, content_status: "generating" }),
+      basePlace({ is_enriching: false, content_state: "generating" }),
     );
     expect(place.is_enriching).toBe(false);
   });

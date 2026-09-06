@@ -30,7 +30,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { isActionVerified } from "../_shared/rewards-config.ts";
-import { CLOSED_TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       admin
         .from("visit_tickets")
         .select(
-          "status, story_status, review_status, bill_subtotal_cents, total_cents, discount_cents",
+          "state, story_state, review_state, bill_subtotal_cents, total_cents, discount_cents",
         )
         .eq("consumer_id", userId),
       admin
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
         .select("id", { count: "exact", head: true })
         .eq("consumer_id", userId)
         .eq("is_test", false)
-        .eq("status", "confirmed"),
+        .eq("state", "confirmed"),
       admin
         .from("favorites")
         .select("id", { count: "exact", head: true })
@@ -70,14 +70,14 @@ Deno.serve(async (req) => {
     ]);
 
   const tickets = ticketsRes.data ?? [];
-  const revealed = tickets.filter((t) => t.status === CLOSED_TICKET_STATUS);
+  const revealed = tickets.filter((t) => t.state === CLOSED_TICKET_STATE);
   // Product lock (MESITA-904): a place visit IS a reward claim — same source.
   const rewardsClaimed = revealed.length;
   const googleReviews = tickets.filter((t) =>
-    isActionVerified(t.review_status)
+    isActionVerified(t.review_state)
   ).length;
   const instagramStories = tickets.filter((t) =>
-    isActionVerified(t.story_status)
+    isActionVerified(t.story_state)
   ).length;
 
   let spentCents = 0;

@@ -5,7 +5,7 @@ import {
 } from "./discovery-config.ts";
 import { enabledNearbyTypes } from "./map-engine.ts";
 
-export type PredictionStatus =
+export type PredictionState =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -15,8 +15,8 @@ export type Prediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  status: PredictionStatus;
-  // Present only on on-Mesita rows (status !== "not_in_mesita"):
+  state: PredictionState;
+  // Present only on on-Mesita rows (state !== "not_in_mesita"):
   // profiles id + slug so clients can navigate directly to the
   // place instead of fuzzy-matching by name. Google-only predictions
   // omit both.
@@ -24,7 +24,7 @@ export type Prediction = {
   mesitaSlug?: string;
   // Discovery > General inputs (discovery-general-gate.ts). Filled from the
   // Mesita row on an on-Mesita hit, from Place Details on a Google-only one.
-  // Never on the wire — `business_status` stays an operator fact.
+  // Never on the wire — `business_state` stays an operator fact.
   businessStatus?: string | null;
   reviewCount?: number | null;
 };
@@ -59,7 +59,7 @@ export function mergePredictionsByPlaceId(
       existing
         ? {
           ...p,
-          status: existing.status,
+          state: existing.state,
           mesitaId: existing.mesitaId,
           mesitaSlug: existing.mesitaSlug,
           // On Mesita now: the operator's Active is the fact that counts.
@@ -76,15 +76,15 @@ export function sortMesitaPredictionsFirst(
   predictions: Prediction[],
 ): Prediction[] {
   return [...predictions].sort((a, b) => {
-    const aIn = a.status !== "not_in_mesita";
-    const bIn = b.status !== "not_in_mesita";
+    const aIn = a.state !== "not_in_mesita";
+    const bIn = b.state !== "not_in_mesita";
     return aIn === bIn ? 0 : aIn ? -1 : 1;
   });
 }
 
 /**
  * Strip the Discovery › General inputs before the response goes out.
- * `business_status` is an OPERATOR fact — place-columns.ts keeps it out of
+ * `business_state` is an OPERATOR fact — place-columns.ts keeps it out of
  * the public payload precisely so no consumer surface gates on it, and a
  * gate input is not a licence to publish it.
  */

@@ -20,7 +20,7 @@
 //
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
-//   Listed     projects.status ∈ (active, lead)
+//   Listed     projects.state ∈ (active, lead)
 //   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
@@ -43,14 +43,13 @@
 // State, and PULSE names something else entirely: the enrichment machinery.
 // One word, one meaning.
 //
-// It used to be Status, which collided with `projects.status`
+// It used to be Status, which collided with the old `projects.status`
 // (lead/active/paused/archived) — and the collision was handled by each row's
 // detail line naming the column value rather than by renaming the box. That
 // compromise is over: the house word is STATE, and `status` survives only
-// inside a payload we did not author (HTTP, Stripe, Google). The columns
-// still say `status` until MESITA-1542 moves them, so every `place.status` /
-// `content_status` / `business_status` read below is deliberate — renaming a
-// mirror ahead of its column would manufacture the drift this fixes.
+// inside a payload we did not author (HTTP, Stripe, Google). MESITA-1542
+// renamed the columns too, so `place.state` / `content_state` /
+// `business_state` below mirror the schema exactly — one word, one meaning.
 
 import { useState } from "react";
 import { AlertTriangle, CircleCheck, Loader2, Percent } from "lucide-react";
@@ -85,14 +84,14 @@ import {
 // row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
-//   Listed     a guest can reach the place AT ALL. projects.status ∈
+//   Listed     a guest can reach the place AT ALL. projects.state ∈
 //              (active, lead) is what the consumer RLS policy
-//              projects_select_public_visible gates on — its content_status
+//              projects_select_public_visible gates on — its content_state
 //              leg is a tautology (all four labels of the enum are allowed),
-//              so status alone decides. Product Rules §B is right that Listed
+//              so state alone decides. Product Rules §B is right that Listed
 //              is not a RUNG — nothing progresses through it — but it is not a
 //              constant either: Unlist writes `paused` and every guest surface
-//              stops resolving it. Read it from `status`, never from a merged
+//              stops resolving it. Read it from `state`, never from a merged
 //              overview `listed` flag that can go stale after that write.
 //   Requested  guest request count (0…n). Independent of Listed / Enriched.
 //   Enriched   the PULSE queue finished. A yes, not a high-water.
@@ -104,7 +103,7 @@ import {
 //              (3) displays as 2.
 //
 // Created, Listed and Enriched arrive computed on the super-admin overview
-// payload (business-web-get-overview → _shared/place-status.ts and
+// payload (business-web-get-overview → _shared/place-state.ts and
 // _shared/pulse-pieces.ts), the same helpers the Single Place table uses, so
 // the box and the table can never disagree. That guarantee was only half true
 // until MESITA-1218: the chip read the 0-10 high-water while this box's prose
@@ -189,7 +188,7 @@ export function StateCard({
   // failed.
   const seeded: boolean | "unknown" =
     typeof place.seeded === "boolean" ? place.seeded : "unknown";
-  const listedFromRow = listedFromState(place.status);
+  const listedFromRow = listedFromState(place.state);
   const listed: boolean | "unknown" =
     listedFromRow !== "unknown"
       ? listedFromRow
@@ -197,7 +196,7 @@ export function StateCard({
         ? place.listed
         : "unknown";
   const requestCount = requestCountFromRow(place.request_count);
-  const placeStatus = typeof place.status === "string" ? place.status : null;
+  const placeState = typeof place.state === "string" ? place.state : null;
 
   const seededDetail =
     seeded === "unknown"
@@ -209,12 +208,12 @@ export function StateCard({
   const listedDetailBase =
     listed === "unknown"
       ? "Couldn't read the place's listing state."
-      : placeStatus === "active"
+      : placeState === "active"
         ? "active — on every consumer surface, and in the discovery pool."
-        : placeStatus === "lead"
+        : placeState === "lead"
           ? "lead — reachable by link and by search, but discovery pools active places only."
-          : placeStatus
-            ? `${placeStatus} — no guest surface resolves this place; the RLS policy stops the read.`
+          : placeState
+            ? `${placeState} — no guest surface resolves this place; the RLS policy stops the read.`
             : "No state on the row.";
   const listedDetail = listedDetailBase;
 
@@ -231,16 +230,16 @@ export function StateCard({
   // OPERATIONAL is a yes, either CLOSED_* is a no, and an absent value is
   // "unknown" rather than a false no — the same rule Created and Listed follow.
   // The chip is the bool; CLOSED_* wording stays in the detail line.
-  const bizStatus = typeof place.business_status === "string"
-    ? place.business_status
+  const bizStatus = typeof place.business_state === "string"
+    ? place.business_state
     : null;
   const operating: boolean | "unknown" = bizStatus === null
     ? "unknown"
     : bizStatus === "OPERATIONAL";
   // A liveness claim with no date reads as current however old it is, so the
   // row says when Google last told us.
-  const operatingSeen = typeof place.business_status_at === "string"
-    ? new Date(place.business_status_at).toLocaleDateString()
+  const operatingSeen = typeof place.business_state_at === "string"
+    ? new Date(place.business_state_at).toLocaleDateString()
     : null;
   const operatingDetail = bizStatus === null
     ? "Google has not reported a business status for this listing yet."
@@ -474,7 +473,7 @@ export function StateRow({
 
 
 /**
- * Active is the operator override of business_status. Off also unlists
+ * Active is the operator override of business_state. Off also unlists
  * (admin-web-set-place-active). On writes OPERATIONAL and does not list.
  * Confirm the off direction — guests disappear with the unlist.
  */
@@ -545,7 +544,7 @@ function ActiveToggle({
 }
 
 /**
- * Listed writes projects.status through admin-web-set-place-listed.
+ * Listed writes projects.state through admin-web-set-place-listed.
  * Unlisting is confirmed rather than immediate: the consumer RLS policy
  * gates every guest read on this one value.
  */
@@ -562,7 +561,7 @@ function ListedToggle({
   const [confirming, setConfirming] = useState(false);
 
   // An unknown Listed value means an older overview payload, not a "no".
-  // Offering a toggle there would let one click write a status derived from a
+  // Offering a toggle there would let one click write a state derived from a
   // fact we admit we could not read.
   if (listed === "unknown") return null;
 

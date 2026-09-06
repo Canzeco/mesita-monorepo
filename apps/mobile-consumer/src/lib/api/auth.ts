@@ -61,7 +61,7 @@ export type ConsumerClass = {
     aura: boolean;
   } | null;
   subscription?: {
-    status: string;
+    state: string;
     price_cents: number;
     currency: string;
     current_period_end: string | null;

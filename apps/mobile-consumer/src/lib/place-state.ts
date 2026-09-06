@@ -1,6 +1,6 @@
 import type { Place } from '@/lib/api/places';
 
-export function getOpeningStatusLabel(
+export function getOpeningStateLabel(
   place: Pick<Place, 'open_now' | 'opens_at' | 'closes_at'>,
 ): string | null {
   if (place.open_now === true && place.closes_at) {

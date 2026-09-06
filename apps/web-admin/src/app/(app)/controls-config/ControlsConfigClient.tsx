@@ -21,7 +21,7 @@ import { CalendarClock, CalendarX2, Gift, Hourglass, Percent, Timer } from "luci
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
-  KnobStatus,
+  KnobState,
   NumberField,
   SaveRow,
   SectionCard,
@@ -130,7 +130,7 @@ export function ControlsConfigClient({
         icon={<Hourglass className="text-secondary h-4 w-4" />}
         title="Terms"
         subtitle="How long a prepaid balance is held before a guest can spend it, what the place pays for that hold, and how long the Credits live before they expire."
-        status={
+        state={
           updatedAt ? (
             <span className="text-muted-foreground text-xs">
               Updated {formatShortDate(updatedAt)}
@@ -139,7 +139,7 @@ export function ControlsConfigClient({
         }
       >
         <div className="mt-4">
-          <KnobStatus
+          <KnobState
             kind="fallback"
             reason="consumer-web-get-controls-config — a place's own hold wins when it has set one"
           />
@@ -241,7 +241,7 @@ export function ControlsConfigClient({
         subtitle="Sending Credits to another guest."
       >
         <div className="mt-4">
-          <KnobStatus
+          <KnobState
             kind="not-wired"
             reason="no table, no Edge Function, no recipient model — knobs appear when it ships"
           />

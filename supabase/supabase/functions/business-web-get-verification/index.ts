@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   const { data, error } = await admin
     .from("project_verifications")
     .select(
-      "id, method, payload, requester_email, status, reject_reason, decided_at, decided_via, created_at",
+      "id, method, payload, requester_email, state, reject_reason, decided_at, decided_via, created_at",
     )
     .eq("place_id", projectId)
     .eq("requester_id", userId)

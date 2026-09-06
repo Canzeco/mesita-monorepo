@@ -6,7 +6,7 @@
 // The ticket lifecycle the app renders. Derived from the DB row in
 // lib/reservations-adapter.ts (reservationPhase) — never stored as-is:
 //   created → booking → confirmed → passed, with cancelled / failed as exits.
-export type ReservationStatus =
+export type ReservationState =
   | "created"
   | "booking"
   | "confirmed"
@@ -27,8 +27,8 @@ export type ReservationItem = {
   placePhoto: string | null;
   when: string;
   partySize: number;
-  status: ReservationStatus;
-  statusNote?: string;
+  state: ReservationState;
+  stateNote?: string;
   /** The 8-digit code the Reservationist speaks on calls (live rows only). */
   referenceCode?: string;
   /** Raw ISO instant — the reschedule sheet seeds its pickers from it. */

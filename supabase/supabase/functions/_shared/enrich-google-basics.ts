@@ -92,8 +92,8 @@ type GoogleDetails = {
   photos?: { name?: string; widthPx?: number; heightPx?: number }[];
 };
 
-// Flat, `places`-shaped identity spine. Project-level fields (slug, status,
-// listing_type, content_status, plan…) are intentionally absent — the save step
+// Flat, `places`-shaped identity spine. Project-level fields (slug, state,
+// listing_type, content_state, plan…) are intentionally absent — the save step
 // generates the unique slug and applies entity defaults.
 export type GoogleBasics = {
   google_place_id: string;

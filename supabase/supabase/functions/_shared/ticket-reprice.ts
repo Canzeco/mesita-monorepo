@@ -25,9 +25,9 @@ type RepriceTicketRow = {
   id: string;
   place_id: string;
   consumer_id: string;
-  status: string;
-  story_status: string | null;
-  review_status: string | null;
+  state: string;
+  story_state: string | null;
+  review_state: string | null;
   bill_subtotal_cents: number | null;
   tip_cents: number | null;
   tip_pct: number | null;
@@ -48,8 +48,8 @@ export async function resolveLiveTicketRate(
     project_id?: string;
     place_id?: string;
     consumer_id: string;
-    story_status: string | null;
-    review_status: string | null;
+    story_state: string | null;
+    review_state: string | null;
   },
 ): Promise<
   | { ok: true; ratePercent: number; capPesos: number }
@@ -108,8 +108,8 @@ export async function resolveLiveTicketRate(
       classKey: consumerRes.data.class_key,
       plan: consumerRes.data.plan as "free" | "premium" | null,
       isFirstVisit: firstVisit,
-      storyVerified: isActionVerified(ticket.story_status),
-      reviewVerified: isActionVerified(ticket.review_status),
+      storyVerified: isActionVerified(ticket.story_state),
+      reviewVerified: isActionVerified(ticket.review_state),
       mesitaReviewed,
     },
   );
@@ -134,7 +134,7 @@ export async function repriceTicketAfterAction(
   const ticketRes = await admin
     .from("visit_tickets")
     .select(
-      "id, place_id, consumer_id, status, story_status, review_status, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
+      "id, place_id, consumer_id, state, story_state, review_state, bill_subtotal_cents, tip_cents, tip_pct, discount_percent, approved_at, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -209,7 +209,7 @@ export async function repriceTicketAfterAction(
     consumer_id: ticket.consumer_id,
     ticket_id: ticket.id,
     kind: "bill",
-    status: "completed",
+    state: "completed",
     resolved_at: new Date().toISOString(),
     payload: {
       project_id: place.id,

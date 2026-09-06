@@ -7,10 +7,10 @@
 // Two lookup modes, either or both per call:
 //   • name             — fuzzy match a place the user named (the `place_facts`
 //                        tool, and the legacy pipeline's on-Mesita name sweep).
-//                        Scoped to browsable rows: status ∈ {active, lead}.
+//                        Scoped to browsable rows: state ∈ {active, lead}.
 //   • googlePlaceIds   — cross-reference Google Text Search hits against the
 //                        catalog so cards get the right on-Mesita badge and
-//                        navigable ids. Unscoped by status ON PURPOSE: this is
+//                        navigable ids. Unscoped by state ON PURPOSE: this is
 //                        an identity join on ids the caller already holds, and
 //                        badging must stay correct for every catalog row.
 //
@@ -32,7 +32,7 @@ import {
 } from "../_shared/memo-place-card.ts";
 
 // Rows a browsing consumer may see by name.
-const BROWSABLE_STATUS = ["active", "lead"];
+const BROWSABLE_STATE = ["active", "lead"];
 
 const DEFAULT_LIMIT = 4;
 const MAX_LIMIT = 10;
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         .from("profiles")
         .select(MEMO_PLACE_PUBLIC_SELECT)
         .or(`name.ilike."${pattern}",google_name.ilike."${pattern}"`)
-        .in("status", BROWSABLE_STATUS)
+        .in("state", BROWSABLE_STATE)
         .limit(limit)
       : Promise.resolve({ data: [], error: null }),
     placeIds.length > 0

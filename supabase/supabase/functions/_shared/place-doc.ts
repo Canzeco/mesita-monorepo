@@ -4,7 +4,7 @@
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
 //   • places   — the Google-observed / Intaker-owned profile
-//   • projects — the owned Mesita entity: status, billing, membership
+//   • projects — the owned Mesita entity: state, billing, membership
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two
 //     INSTEAD OF triggers (profiles_insert / profiles_update) that split a
@@ -50,7 +50,7 @@
 // THE INVARIANTS below mirror LIVE Postgres CHECK constraints (pulled via
 // `pg_get_constraintdef` against the `places` / `projects` tables, MESITA
 // project) and the two tables' native Postgres enum columns (`project_
-// status`, `listing_type`, `plan`, `project_fiscal_type`, `content_status`,
+// state`, `listing_type`, `plan`, `project_fiscal_type`, `content_state`,
 // pulled via `pg_enum`) — not invented rules. Each group below names the
 // constraint it mirrors. One invariant is only PARTIALLY checkable from a
 // patch alone (places_name_source_present, see checkPlaceNameSourceInvariant)
@@ -181,8 +181,8 @@ export type PlaceRow = {
   reservation_target: string | null;
   order_channel: ServingChannel | null;
   order_target: string | null;
-  business_status: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
-  business_status_at: string | null;
+  business_state: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | null;
+  business_state_at: string | null;
   /** Description/Actions — guest Order CTA when menu/catalog exists. */
   orders_enabled: boolean;
   /** Description/Actions — LLM: this kind of place likely takes reservations. */
@@ -288,8 +288,8 @@ export const PLACE_PATCH_KEYS = [
   "reservation_target",
   "order_channel",
   "order_target",
-  "business_status",
-  "business_status_at",
+  "business_state",
+  "business_state_at",
   "orders_enabled",
   "reservations_enabled",
   // The four acceptance intent bits, legalized for admin-web-set-place-rails
@@ -330,11 +330,11 @@ export type ProjectRow = {
   claimed_by: string | null;
   claimed_at: string | null;
   slug: string;
-  status: "lead" | "active" | "paused" | "archived" | "pending_review" | "pending_verification";
+  state: "lead" | "active" | "paused" | "archived" | "pending_review" | "pending_verification";
   listing_type: "partner" | "web" | "unclaimed";
   plan: "free" | "pro" | "ultra";
   fiscal_type: "formal" | "informal";
-  content_status: "queued" | "generating" | "ready" | "failed";
+  content_state: "queued" | "generating" | "ready" | "failed";
   currency: string;
   segmentation_basic_enabled: boolean;
   segmentation_advanced_enabled: boolean;
@@ -366,11 +366,11 @@ export const PROJECT_PATCH_KEYS = [
   "claimed_by",
   "claimed_at",
   "slug",
-  "status",
+  "state",
   "listing_type",
   "plan",
   "fiscal_type",
-  "content_status",
+  "content_state",
   "currency",
   "segmentation_basic_enabled",
   "segmentation_advanced_enabled",
@@ -463,7 +463,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "embedding_source_text", "google_name", "description_es", "mesita_name",
   "reservation_target", "order_target", "embedding", "name_embedding",
   "name_embedding_hash", "google_place_id",
-  "enriched_at", "business_status_at", "enrich_next_at",
+  "enriched_at", "business_state_at", "enrich_next_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);
 // places_{google,mesita}_stars_*_check / places_facebook_rating_check /
@@ -529,7 +529,7 @@ const PLACE_INTENT_BIT_KEYS = new Set<string>([
   "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
 ]);
-const BUSINESS_STATUS_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
+const BUSINESS_STATE_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 const ENRICH_MODE_VALUES = new Set(["full", "analysis", "contents"]);
 
 function checkPlaceField(key: string, v: unknown): string | null {
@@ -575,10 +575,10 @@ function checkPlaceField(key: string, v: unknown): string | null {
     case "enrich_mode":
       return isNonNullEnum(v, ENRICH_MODE_VALUES) ? null
         : "enrich_mode must be one of full, analysis, contents";
-    // places_business_status_check
-    case "business_status":
-      return v === null || (typeof v === "string" && BUSINESS_STATUS_VALUES.has(v)) ? null
-        : "business_status must be OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY, or null";
+    // places_business_state_check
+    case "business_state":
+      return v === null || (typeof v === "string" && BUSINESS_STATE_VALUES.has(v)) ? null
+        : "business_state must be OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY, or null";
     // places_reservation_channel_check / places_order_channel_check
     case "reservation_channel":
     case "order_channel":
@@ -651,13 +651,13 @@ const CFDI_RFC_RE = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
 const CFDI_CP_RE = /^[0-9]{5}$/;
 const SIX_DIGIT_PIN_RE = /^[0-9]{6}$/;
 
-const STATUS_VALUES = new Set([
+const STATE_VALUES = new Set([
   "lead", "active", "paused", "archived", "pending_review", "pending_verification",
 ]);
 const LISTING_TYPE_VALUES = new Set(["partner", "web", "unclaimed"]);
 const PLAN_VALUES = new Set(["free", "pro", "ultra"]);
 const FISCAL_TYPE_VALUES = new Set(["formal", "informal"]);
-const CONTENT_STATUS_VALUES = new Set(["queued", "generating", "ready", "failed"]);
+const CONTENT_STATE_VALUES = new Set(["queued", "generating", "ready", "failed"]);
 
 function checkProjectField(key: string, v: unknown): string | null {
   if (PROJECT_NOTNULL_STRING_KEYS.has(key)) {
@@ -681,9 +681,9 @@ function checkProjectField(key: string, v: unknown): string | null {
   }
   switch (key) {
     // Postgres enum columns — NOT NULL at the type level.
-    case "status":
-      return isNonNullEnum(v, STATUS_VALUES) ? null
-        : `status must be one of ${[...STATUS_VALUES].join(", ")}`;
+    case "state":
+      return isNonNullEnum(v, STATE_VALUES) ? null
+        : `state must be one of ${[...STATE_VALUES].join(", ")}`;
     case "listing_type":
       return isNonNullEnum(v, LISTING_TYPE_VALUES) ? null
         : `listing_type must be one of ${[...LISTING_TYPE_VALUES].join(", ")}`;
@@ -693,9 +693,9 @@ function checkProjectField(key: string, v: unknown): string | null {
     case "fiscal_type":
       return isNonNullEnum(v, FISCAL_TYPE_VALUES) ? null
         : `fiscal_type must be one of ${[...FISCAL_TYPE_VALUES].join(", ")}`;
-    case "content_status":
-      return isNonNullEnum(v, CONTENT_STATUS_VALUES) ? null
-        : `content_status must be one of ${[...CONTENT_STATUS_VALUES].join(", ")}`;
+    case "content_state":
+      return isNonNullEnum(v, CONTENT_STATE_VALUES) ? null
+        : `content_state must be one of ${[...CONTENT_STATE_VALUES].join(", ")}`;
     // projects_monthly_promo_cap_legal_values
     case "monthly_promo_cap":
       return isNullableLegalSet(v, PROMO_CAP_LEGAL_VALUES) ? null

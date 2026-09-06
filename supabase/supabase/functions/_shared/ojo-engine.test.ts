@@ -15,8 +15,8 @@ type Row = Record<string, unknown>;
 const BASE_TICKET: Row = {
   id: "t1",
   place_id: "p1",
-  status: "open",
-  story_status: "self_verified",
+  state: "open",
+  story_state: "self_verified",
   story_screenshot_url: "https://storage.example.com/ticket-proofs/c1/t1-story-1.jpg",
   story_ojo_attempts: 0,
   bill_subtotal_cents: 0,
@@ -198,13 +198,13 @@ Deno.test(
     restore();
     assertEquals(out.ran, true);
     assertEquals(out.result?.verdict, "pass");
-    // Two writes: the unconditional annotation, then the CAS-guarded status
+    // Two writes: the unconditional annotation, then the CAS-guarded state
     // upgrade — see the "two updates, not one" note on verifyProof.
     assertEquals(captured.length, 2);
     assertEquals(captured[0].patch.story_ojo_verdict, "pass");
     assertEquals(captured[0].patch.story_ojo_attempts, 1);
     assertEquals(captured[0].landed, true);
-    assertEquals(captured[1].patch.story_status, "ai_verified");
+    assertEquals(captured[1].patch.story_state, "ai_verified");
     assertEquals(captured[1].landed, true);
   }),
 );
@@ -214,22 +214,22 @@ Deno.test(
   withEnv(async () => {
     const restore = stubFetch({ confidence: 0.9 });
     const { admin, captured } = makeAdmin({
-      ticket: { ...BASE_TICKET, story_status: "ai_rejected" },
+      ticket: { ...BASE_TICKET, story_state: "ai_rejected" },
       ojoConfig: { enabled: true },
     });
     await verifyProof(admin, "t1", "story");
     restore();
     // The upgrade IS attempted (production code has no in-memory pre-check
     // any more — the CAS filter is the only guard), but the fake DB's
-    // .eq(statusCol, "self_verified") predicate correctly fails against the
+    // .eq(stateCol, "self_verified") predicate correctly fails against the
     // real current value 'ai_rejected', so it must not land.
-    assertEquals(captured[1].patch.story_status, "ai_verified");
+    assertEquals(captured[1].patch.story_state, "ai_verified");
     assertEquals(captured[1].landed, false);
   }),
 );
 
 Deno.test(
-  "verifyProof: unsure persists the verdict but never touches status or money",
+  "verifyProof: unsure persists the verdict but never touches state or money",
   withEnv(async () => {
     const restore = stubFetch({ confidence: 0.55, reasons: ["hard to tell if this is the right place"] });
     const { admin, captured } = makeAdmin({ ojoConfig: { enabled: true } });
@@ -238,7 +238,7 @@ Deno.test(
     assertEquals(out.result?.verdict, "unsure");
     assertEquals(captured.length, 1);
     assertEquals(captured[0].patch.story_ojo_verdict, "unsure");
-    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_status"), false);
+    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_state"), false);
     assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "fix_requested"), false);
   }),
 );
@@ -252,13 +252,13 @@ Deno.test(
     restore();
     assertEquals(captured.length, 1);
     assertEquals(captured[0].patch.story_ojo_verdict, "fail");
-    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_status"), false);
+    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_state"), false);
     assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "fix_requested"), false);
   }),
 );
 
 Deno.test(
-  "verifyProof: fail + withhold, pre-bill, retries remaining -> reverts status and requests a fix through the EXISTING v4 loop",
+  "verifyProof: fail + withhold, pre-bill, retries remaining -> reverts state and requests a fix through the EXISTING v4 loop",
   withEnv(async () => {
     const restore = stubFetch({ confidence: 0.05, reasons: ["this is a screenshot of a text message"] });
     const { admin, captured } = makeAdmin({
@@ -267,7 +267,7 @@ Deno.test(
     await verifyProof(admin, "t1", "story");
     restore();
     assertEquals(captured[1].landed, true);
-    assertEquals(captured[1].patch.story_status, "ai_rejected");
+    assertEquals(captured[1].patch.story_state, "ai_rejected");
     assertEquals(captured[1].patch.fix_requested, "proof");
     assertExists(captured[1].patch.fix_note);
   }),
@@ -333,7 +333,7 @@ Deno.test(
     // live `row` from inside the fetch stub itself, exactly where that
     // latency window sits in the real code path. Without the CAS filters
     // added for this finding, the write below would have wrongly reverted
-    // status on a ticket that is now approved and already priced.
+    // state on a ticket that is now approved and already priced.
     const { admin, captured, row } = makeAdmin({
       ticket: { ...BASE_TICKET },
       ojoConfig: { enabled: true, failAction: "withhold", maxRetries: 3 },
@@ -349,7 +349,7 @@ Deno.test(
     await verifyProof(admin, "t1", "story");
     globalThis.fetch = original;
     assertEquals(captured.length, 2, "the withhold write is attempted — the stale read still looked eligible");
-    assertEquals(captured[1].patch.story_status, "ai_rejected");
+    assertEquals(captured[1].patch.story_state, "ai_rejected");
     assertEquals(captured[1].landed, false, "the CAS filter must block a write against a ticket that moved to approved mid-flight");
   }),
 );
@@ -365,7 +365,7 @@ Deno.test(
     await verifyProof(admin, "t1", "story");
     restore();
     assertEquals(captured.length, 1);
-    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_status"), false);
+    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_state"), false);
     assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "fix_requested"), false);
     // The attempt still counts, so a further retry doesn't reset the clock.
     assertEquals(captured[0].patch.story_ojo_attempts, 4);
@@ -454,7 +454,7 @@ Deno.test(
     const { admin, captured } = makeAdmin({
       ticket: {
         ...BASE_TICKET,
-        review_status: "self_verified",
+        review_state: "self_verified",
         review_screenshot_url: "https://storage.example.com/ticket-proofs/c1/t1-review-1.jpg",
         review_ojo_attempts: 0,
         story_screenshot_url: null,
@@ -465,9 +465,9 @@ Deno.test(
     restore();
     assertEquals(captured.length, 2);
     assertExists(captured[0].patch.review_ojo_verdict);
-    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_status"), false);
-    assertEquals(captured[1].patch.review_status, "ai_verified");
+    assertEquals(Object.prototype.hasOwnProperty.call(captured[0].patch, "story_state"), false);
+    assertEquals(captured[1].patch.review_state, "ai_verified");
     assertEquals(captured[1].landed, true);
-    assertEquals(Object.prototype.hasOwnProperty.call(captured[1].patch, "story_status"), false);
+    assertEquals(Object.prototype.hasOwnProperty.call(captured[1].patch, "story_state"), false);
   }),
 );

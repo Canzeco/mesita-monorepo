@@ -22,12 +22,12 @@ function row(overrides: Partial<CheckTicketRow> = {}): CheckTicketRow {
     id: "11111111-1111-1111-1111-111111111111",
     project_id: "22222222-2222-2222-2222-222222222222",
     consumer_id: "33333333-3333-3333-3333-333333333333",
-    status: "open",
+    state: "open",
     check_code: "abcdefghijklmnopqrstuv",
     first_scanned_at: null,
-    story_status: "not_required",
+    story_state: "not_required",
     story_screenshot_url: null,
-    review_status: "not_required",
+    review_state: "not_required",
     review_screenshot_url: null,
     bill_subtotal_cents: null,
     tip_cents: null,
@@ -87,7 +87,7 @@ Deno.test("isPlausibleCheckCode: rejects consumer codes, UUIDs, junk", () => {
 
 Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", () => {
   const payload = shape({
-    status: "awaiting_payment_confirm",
+    state: "awaiting_payment_confirm",
     total_cents: 50_000, // PRE-discount (subtotal + tip)
     bill_subtotal_cents: 50_000,
     discount_percent: 20,
@@ -168,7 +168,7 @@ Deno.test("shapeCheckPayload: bill_required defaults on (MESITA-1095)", () => {
 
 Deno.test("shapeCheckPayload: amount due = subtotal minus discount (E2E regression)", () => {
   const payload = shape({
-    status: "awaiting_payment_confirm",
+    state: "awaiting_payment_confirm",
     bill_subtotal_cents: 80_000,
     total_cents: 80_000,
     discount_percent: 20,
@@ -186,7 +186,7 @@ Deno.test("shapeCheckPayload: the tip rides through amount due untouched (C4-6)"
   // exactly the tip the moment tip_cents went nonzero; this pins the shared
   // formula at the staff payload, the surface where the waiter reads it.
   const payload = shape({
-    status: "awaiting_payment_confirm",
+    state: "awaiting_payment_confirm",
     bill_subtotal_cents: 85_000,
     tip_cents: 12_800,
     tip_pct: 15,
@@ -207,25 +207,25 @@ Deno.test("shapeCheckPayload: bill is null before billing", () => {
 
 Deno.test("shapeCheckPayload: verification channel collapses to approved", () => {
   for (
-    const status of [
+    const state of [
       "self_verified",
       "ai_verified",
       "staff_verified",
       "waiter_verified",
     ]
   ) {
-    const payload = shape({ story_status: status });
+    const payload = shape({ story_state: state });
     assertEquals(
       (payload.story as Record<string, unknown>).state,
       "approved",
-      `story_status=${status} must read as plain "approved"`,
+      `story_state=${state} must read as plain "approved"`,
     );
   }
 });
 
 Deno.test("shapeCheckPayload: screenshot only visible while decidable", () => {
   const submitted = shape({
-    story_status: "submitted",
+    story_state: "submitted",
     story_screenshot_url: "https://example.com/s.png",
   });
   assertEquals(
@@ -233,7 +233,7 @@ Deno.test("shapeCheckPayload: screenshot only visible while decidable", () => {
     "https://example.com/s.png",
   );
   const approved = shape({
-    story_status: "staff_verified",
+    story_state: "staff_verified",
     story_screenshot_url: "https://example.com/s.png",
   });
   assertEquals(
@@ -242,10 +242,10 @@ Deno.test("shapeCheckPayload: screenshot only visible while decidable", () => {
   );
 });
 
-Deno.test("shapeCheckPayload: story/review required flags follow status", () => {
+Deno.test("shapeCheckPayload: story/review required flags follow state", () => {
   const none = shape();
   assertEquals((none.story as Record<string, unknown>).required, false);
-  const pending = shape({ story_status: "pending" });
+  const pending = shape({ story_state: "pending" });
   assertEquals((pending.story as Record<string, unknown>).required, true);
   assertEquals((pending.story as Record<string, unknown>).state, "pending");
 });

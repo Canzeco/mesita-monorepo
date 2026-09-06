@@ -148,7 +148,7 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, status, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -156,7 +156,7 @@ export type TicketRow = {
   reference_code: string | null;
   reserved_at: string;
   party_size: number;
-  status: string;
+  state: string;
   notes: string | null;
   is_test: boolean;
   place_id: string;
@@ -214,7 +214,7 @@ export function speakable(r: TicketRow, placeName: string) {
     time_es: esTime(r.reserved_at),
     reserved_at: r.reserved_at,
     party_size: r.party_size,
-    status: r.status,
+    state: r.state,
     notes: r.notes ?? null,
     is_test: !!r.is_test,
   };
@@ -295,7 +295,7 @@ export async function cancelTicket(
     mode: "update",
     id,
     patch: {
-      status: "cancelled",
+      state: "cancelled",
       cancelled_at: new Date().toISOString(),
       cancelled_by: by,
       outcome_note: reason ? reason.slice(0, 300) : null,

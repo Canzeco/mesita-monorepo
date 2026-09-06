@@ -6,7 +6,7 @@
 -- Do not insert into `places`/`projects` directly here — the view is the
 -- supported local-seed surface.
 
-insert into public.profiles (slug, name, category, vibe, price_level, listing_type, status, closes_at, free_rate, premium_rate)
+insert into public.profiles (slug, name, category, vibe, price_level, listing_type, state, closes_at, free_rate, premium_rate)
 select
   'casa-luminar-seed', 'Casa Luminar (seed)', 'mediterranean', 'rooftop', 3, 'partner', 'active', '02:00', 20, 50
 where not exists (

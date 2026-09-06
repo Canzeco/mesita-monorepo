@@ -38,10 +38,10 @@ const VERIFIED_STORY = new Set([
 ]);
 
 /** Visit ticket states that mean the guest actually showed up and paid. */
-export const COMPLETED_VISIT_STATUSES = ["paid", "approved", "revealed"];
+export const COMPLETED_VISIT_STATES = ["paid", "approved", "revealed"];
 
 /** Reservation states worth showing as social proof. */
-export const FEATURED_RESERVATION_STATUSES = ["confirmed"];
+export const FEATURED_RESERVATION_STATES = ["confirmed"];
 
 type ConsumerJoin = {
   first_name?: string | null;
@@ -106,7 +106,7 @@ function guestFields(consumer: ConsumerJoin): GuestFields {
 
 type StoryRow = {
   id: string;
-  story_status?: string | null;
+  story_state?: string | null;
   story_screenshot_url?: string | null;
   story_submitted_at?: string | null;
   story_verified_at?: string | null;
@@ -119,7 +119,7 @@ export function mapStoryTickets(rows: StoryRow[]): PlaceStoryCard[] {
   for (const row of rows) {
     const url = (row.story_screenshot_url ?? "").trim();
     if (!url) continue;
-    if (!VERIFIED_STORY.has((row.story_status ?? "").toLowerCase())) continue;
+    if (!VERIFIED_STORY.has((row.story_state ?? "").toLowerCase())) continue;
 
     const consumer = asConsumer(row.consumer);
     // Both gates, and the private-account gate is the stricter one: a
@@ -141,7 +141,7 @@ export function mapStoryTickets(rows: StoryRow[]): PlaceStoryCard[] {
 
 type VisitRow = {
   id: string;
-  status?: string | null;
+  state?: string | null;
   discount_percent?: number | null;
   paid_at?: string | null;
   validated_at?: string | null;
@@ -172,7 +172,7 @@ export function mapVisitTickets(
 
 type ReservationRow = {
   id: string;
-  status?: string | null;
+  state?: string | null;
   reserved_at?: string | null;
   party_size?: number | null;
   created_at?: string | null;

@@ -5,7 +5,7 @@
 // THE TICKET v4 (MESITA-1090): the send-back half of the staff verdict (C1).
 // ONE specific fix from a closed vocabulary — bill · proof · reward — never a
 // free-text rejection, never a fourth chip. The ticket STAYS at `scanned`
-// with the SAME check_code: fix_requested is a column, not a status, so
+// with the SAME check_code: fix_requested is a column, not a state, so
 // there is no new QR and no renegotiation. The guest's matching submit
 // clears it and the staff screen updates live off its poll.
 //
@@ -24,7 +24,7 @@ import {
   logCheckEvent,
   requireCheckPin,
 } from "../_shared/ticket-check.ts";
-import { TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { TICKET_STATE } from "../_shared/ticket-state.ts";
 import { writeTicket } from "../_shared/ticket-doc.ts";
 
 const FIXES = new Set(["bill", "proof", "reward"]);
@@ -95,13 +95,13 @@ Deno.serve(async (req) => {
   });
   if (!pinRes.ok) return pinRes.response;
 
-  if (ticket.status !== TICKET_STATUS.scanned) {
+  if (ticket.state !== TICKET_STATE.scanned) {
     return json(
       {
         ok: false,
         code: "stale_state",
-        status: ticket.status,
-        error: `Ticket is ${ticket.status} — a fix can only be requested on a scanned ticket.`,
+        state: ticket.state,
+        error: `Ticket is ${ticket.state} — a fix can only be requested on a scanned ticket.`,
       },
       409,
     );
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     id: ticket.id,
     patch: { fix_requested: fix as "bill" | "proof" | "reward", fix_note: note || null },
     guard: {
-      eq: { status: TICKET_STATUS.scanned, updated_at: expectedUpdatedAt },
+      eq: { state: TICKET_STATE.scanned, updated_at: expectedUpdatedAt },
       is: { approved_at: null },
     },
     select: "id, fix_requested",
@@ -125,18 +125,18 @@ Deno.serve(async (req) => {
   if (!update.row) {
     const fresh = await admin
       .from("visit_tickets")
-      .select("id, status, fix_requested")
+      .select("id, state, fix_requested")
       .eq("id", ticket.id)
       .maybeSingle();
-    const row = fresh.data as { status: string; fix_requested: string | null } | null;
+    const row = fresh.data as { state: string; fix_requested: string | null } | null;
     if (row?.fix_requested === fix) {
       // The same fix is already outstanding — a second tap is a repeat, not
       // a failure.
       return json({ ok: true, already: true });
     }
-    if (row?.status === TICKET_STATUS.approved || row?.status === TICKET_STATUS.paying) {
+    if (row?.state === TICKET_STATE.approved || row?.state === TICKET_STATE.paying) {
       return json(
-        { ok: false, code: "stale_state", status: row.status, error: "The ticket was already approved." },
+        { ok: false, code: "stale_state", state: row.state, error: "The ticket was already approved." },
         409,
       );
     }

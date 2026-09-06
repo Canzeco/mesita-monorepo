@@ -13,7 +13,7 @@ import { Pressable, Text, View } from 'react-native';
 import { reservationPath } from '@/lib/consumer-route-contract';
 import type {
   ReservationItem,
-  ReservationStatus,
+  ReservationState,
 } from '@/lib/mock/reservations-mock';
 import { guestNoun } from '@/lib/utils';
 
@@ -22,8 +22,8 @@ import { guestNoun } from '@/lib/utils';
 // visit ticket that snapshots them.
 // Web parity: apps/web-consumer/src/components/consumer/ReservationCard.tsx.
 
-const STATUS_META: Record<
-  ReservationStatus,
+const STATE_META: Record<
+  ReservationState,
   { label: string; Icon: LucideIcon; pill: string; text: string; icon: string }
 > = {
   booking: {
@@ -51,8 +51,8 @@ const STATUS_META: Record<
 
 export function ReservationCard({ r }: { r: ReservationItem }) {
   const router = useRouter();
-  const meta = STATUS_META[r.status];
-  const cancelled = r.status === 'cancelled';
+  const meta = STATE_META[r.state];
+  const cancelled = r.state === 'cancelled';
 
   return (
     <Pressable
@@ -114,18 +114,18 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
         </View>
       </View>
 
-      {r.statusNote ? (
+      {r.stateNote ? (
         <View
           className={`mt-3 rounded-xl px-3 py-2 ${
-            r.status === 'booking' ? 'bg-amber-50' : 'bg-muted'
+            r.state === 'booking' ? 'bg-amber-50' : 'bg-muted'
           }`}
         >
           <Text
             className={`text-[12px] leading-snug ${
-              r.status === 'booking' ? 'text-amber-900' : 'text-muted-foreground'
+              r.state === 'booking' ? 'text-amber-900' : 'text-muted-foreground'
             }`}
           >
-            {r.statusNote}
+            {r.stateNote}
           </Text>
         </View>
       ) : null}

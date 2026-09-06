@@ -31,7 +31,7 @@ export async function getProfileTool(
     .eq("consumer_id", consumerId)
     .eq("is_test", false)
     .gte("created_at", monthStart.toISOString())
-    .neq("status", "cancelled");
+    .neq("state", "cancelled");
   return toolText({
     ok: true,
     consumer,

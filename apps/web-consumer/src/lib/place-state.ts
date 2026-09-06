@@ -1,6 +1,6 @@
 import type { Place } from "@/lib/api/places";
 
-// Shared opening-status label for place cards and overlays.
+// Shared opening-state label for place cards and overlays.
 //
 //   open_now === true  + closes_at → "Open · until 02:00"
 //   open_now === false + opens_at  → "Closed · opens 18:00"
@@ -11,7 +11,7 @@ import type { Place } from "@/lib/api/places";
 // without making the user parse the time. Day-aware copy
 // ("opens tomorrow at 18:00") drops in once the EF returns a real
 // date instead of just an HH:MM.
-export function getOpeningStatusLabel(
+export function getOpeningStateLabel(
   place: Pick<Place, "open_now" | "opens_at" | "closes_at">,
 ): string | null {
   if (place.open_now === true && place.closes_at) {

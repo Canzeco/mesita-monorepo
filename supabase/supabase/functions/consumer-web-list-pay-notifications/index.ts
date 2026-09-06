@@ -19,8 +19,8 @@ type Body = {
 };
 
 type TicketMeta = {
-  status?: string;
-  story_status?: string;
+  state?: string;
+  story_state?: string;
   story_submitted_at?: string | null;
   first_scanned_at?: string | null;
   total_cents?: number | null;
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       .from("consumer_notifications")
       .select("id", { count: "exact", head: true })
       .eq("consumer_id", consumerId)
-      .eq("status", "pending");
+      .eq("state", "pending");
     if (error) {
       return json({ ok: false, error: error.message }, 500);
     }
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     const ticketRes = await admin
       .from("visit_tickets")
       .select(
-        "id, status, story_status, story_submitted_at, first_scanned_at, discount_percent, place_id, total_cents, created_at",
+        "id, state, story_state, story_submitted_at, first_scanned_at, discount_percent, place_id, total_cents, created_at",
       )
       .in("id", ticketIds);
 
@@ -127,8 +127,8 @@ Deno.serve(async (req) => {
 
     for (const t of ticketRes.data ?? []) {
       tickets[t.id] = {
-        status: t.status,
-        story_status: t.story_status,
+        state: t.state,
+        story_state: t.story_state,
         story_submitted_at: t.story_submitted_at,
         first_scanned_at: t.first_scanned_at,
         total_cents: t.total_cents,

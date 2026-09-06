@@ -79,14 +79,14 @@ Deno.serve(async (req) => {
   const { data: expRows } = await admin
     .from("reservation_tickets")
     .update(validated({
-      status: "unresolved",
+      state: "unresolved",
       attempts_state: "exhausted",
       next_attempt_at: null,
       callback_state: "skipped",
       callback_next_attempt_at: null,
-      last_call_status: "expired: the reserved time passed while still unconfirmed",
+      last_call_state: "expired: the reserved time passed while still unconfirmed",
     }))
-    .eq("status", "pending")
+    .eq("state", "pending")
     .lt("reserved_at", expiryFloor)
     .or("attempts_state.is.null,attempts_state.neq.running")
     .select("id");
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     .update(validated({
       notice_state: "skipped",
       notice_next_at: null,
-      last_call_status: "cancel notice skipped — the slot already passed",
+      last_call_state: "cancel notice skipped — the slot already passed",
     }))
     .in("notice_state", ["pending", "scheduled"])
     .lt("reserved_at", expiryFloor)
@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     .update(validated({
       reminder_state: "skipped",
       reminder_at: null,
-      last_call_status: "reminder skipped — the slot already passed",
+      last_call_state: "reminder skipped — the slot already passed",
     }))
     .in("reminder_state", ["scheduled", "idle"])
     .lt("reserved_at", expiryFloor)
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       .from("reservation_tickets")
       .update(validated({
         ...patch,
-        last_call_status: "run reaped — its worker died mid-flight; resuming",
+        last_call_state: "run reaped — its worker died mid-flight; resuming",
       }))
       .in(field, zombieStates)
       .not("claimed_at", "is", null)
@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
   const { data: bookRows, error: bookErr } = await admin
     .from("reservation_tickets")
     .select("id")
-    .eq("status", "pending")
+    .eq("state", "pending")
     .eq("attempts_state", "scheduled")
     .not("next_attempt_at", "is", null)
     .lte("next_attempt_at", nowIso)
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
   const { data: cbRows } = await admin
     .from("reservation_tickets")
     .select("id")
-    .in("status", ["pending", "confirmed"])
+    .in("state", ["pending", "confirmed"])
     .eq("callback_state", "scheduled")
     .not("callback_next_attempt_at", "is", null)
     .lte("callback_next_attempt_at", nowIso)
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
   const callbacks = { due: (cbRows ?? []).length, woken: 0 };
   callbacks.woken = await wake((cbRows ?? []).map((r) => r.id), "callback_retry");
 
-  // Notices ride on their own columns, not on one status: 'cancelled' is the
+  // Notices ride on their own columns, not on one state: 'cancelled' is the
   // normal owner, and a failed modification owes a release from 'unreachable'
   // / 'unresolved'. Live tickets are excluded by the engine's gate.
   const { data: ntRows } = await admin
@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     const { data: rmRows } = await admin
       .from("reservation_tickets")
       .select("id")
-      .eq("status", "confirmed")
+      .eq("state", "confirmed")
       .eq("reminder_state", "scheduled")
       .not("reminder_at", "is", null)
       .lte("reminder_at", nowIso)

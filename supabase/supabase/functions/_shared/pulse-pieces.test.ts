@@ -15,7 +15,7 @@ import {
 const at = (n: number) => `2026-08-22T10:00:${String(n).padStart(2, "0")}Z`;
 const done = (step: string, n = 0) => ({
   step_name: step,
-  status: "completed",
+  state: "completed",
   created_at: at(n),
 });
 
@@ -93,7 +93,7 @@ Deno.test("pulse: CREATE's stamps read as 2/10 — one ladder, two callers", () 
   const b = pulseBlockedAt(created);
   assertEquals(b?.key, "serp");
   assertEquals(b?.index, 3);
-  assertEquals(b?.status, "missing");
+  assertEquals(b?.state, "missing");
 });
 
 Deno.test("pulse: `embedding` is ONE function now, not two extras", () => {
@@ -116,7 +116,7 @@ Deno.test("pulse: the RENAMED `semantic` still counts as function 10", () => {
   assertEquals(
     pulseHighWater([
       ...nine,
-      { step_name: "semantic", status: "completed", created_at: at(30) },
+      { step_name: "semantic", state: "completed", created_at: at(30) },
     ]),
     10,
   );
@@ -124,7 +124,7 @@ Deno.test("pulse: the RENAMED `semantic` still counts as function 10", () => {
   assertEquals(
     pulseHighWater([
       ...nine,
-      { step_name: "name", status: "completed", created_at: at(30) },
+      { step_name: "name", state: "completed", created_at: at(30) },
     ]),
     9,
   );
@@ -154,7 +154,7 @@ Deno.test("pulse: rows from the PREVIOUS ladder still read correctly", () => {
   assertEquals(
     pulseHighWater([
       ...legacy,
-      { step_name: "name", status: "failed", created_at: at(7) },
+      { step_name: "name", state: "failed", created_at: at(7) },
     ]),
     4,
   );
@@ -193,7 +193,7 @@ Deno.test("high water: Embedding is 10 — a gap before it still reads 9", () =>
   assertEquals(
     pulseHighWater([
       ...throughDescription,
-      { step_name: "embedding", status: "failed", created_at: at(30) },
+      { step_name: "embedding", state: "failed", created_at: at(30) },
     ]),
     9,
   );
@@ -254,7 +254,7 @@ Deno.test("high water: a failed function stops the count at the one before it", 
       done("pulse", 1),
       done("details", 2),
       done("serp", 3),
-      { step_name: "links", status: "failed", created_at: at(4) },
+      { step_name: "links", state: "failed", created_at: at(4) },
       done("social", 5),
     ]),
     3,
@@ -288,7 +288,7 @@ Deno.test("high water: a re-enrich that fixes a function RAISES the number", () 
   assertEquals(
     pulseHighWater([
       done("pulse", 1),
-      { step_name: "details", status: "failed", created_at: at(2) },
+      { step_name: "details", state: "failed", created_at: at(2) },
       done("serp", 3),
       done("links", 4),
       done("details", 8), // the later, successful attempt wins
@@ -303,7 +303,7 @@ Deno.test("high water: a re-enrich that breaks a function LOWERS it", () => {
       done("pulse", 1),
       done("details", 2),
       done("serp", 3),
-      { step_name: "details", status: "failed", created_at: at(9) },
+      { step_name: "details", state: "failed", created_at: at(9) },
     ]),
     1,
   );
@@ -315,8 +315,8 @@ Deno.test("high water: legacy stage beacons are not functions", () => {
   // read a stage beacon as pipeline progress.
   assertEquals(
     pulseHighWater([
-      { step_name: "gather", status: "completed", created_at: at(1) },
-      { step_name: "publish", status: "completed", created_at: at(2) },
+      { step_name: "gather", state: "completed", created_at: at(1) },
+      { step_name: "publish", state: "completed", created_at: at(2) },
     ]),
     0,
   );
@@ -329,7 +329,7 @@ Deno.test("high water: `skipped` does not advance the queue", () => {
   assertEquals(
     pulseHighWater([
       done("pulse", 1),
-      { step_name: "details", status: "skipped", created_at: at(2) },
+      { step_name: "details", state: "skipped", created_at: at(2) },
       done("serp", 3),
     ]),
     1,
@@ -345,7 +345,7 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
 // ── the guard MESITA-1209 needed ──────────────────────────────────────────
 //
 // The bug: supabase-cron-enrich-place-analysis wrote a STAGE beacon as
-// { step_name: "images", status: "skipped" } on the "matrix did not buy the
+// { step_name: "images", state: "skipped" } on the "matrix did not buy the
 // funnel" path. `images` is a function key, so the high-water reader saw a
 // non-completed function mid-ladder and stopped short of it — a cheap refresh
 // knocked a complete place down every time it ran. (It presented as 9 -> 6
@@ -398,18 +398,18 @@ Deno.test("blocked: a fresh place is blocked at function 1, MISSING not failed",
   const b = pulseBlockedAt([]);
   assertEquals(b?.key, "pulse");
   assertEquals(b?.index, 1);
-  assertEquals(b?.status, "missing");
+  assertEquals(b?.state, "missing");
 });
 
 Deno.test("blocked: a permanently-closed place is FAILED at 1, not merely absent", () => {
   // The exact shape supabase-cron-enrich-place-research writes on
   // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because pulse
   // failed — NOT 0 because nothing ran.
-  const events = [{ step_name: "pulse", status: "failed", created_at: at(1) }];
+  const events = [{ step_name: "pulse", state: "failed", created_at: at(1) }];
   assertEquals(pulseHighWater(events), 0);
   const b = pulseBlockedAt(events);
   assertEquals(b?.key, "pulse");
-  assertEquals(b?.status, "failed");
+  assertEquals(b?.state, "failed");
 });
 
 Deno.test("blocked: it never disagrees with the high-water", () => {
@@ -422,7 +422,7 @@ Deno.test("blocked: it never disagrees with the high-water", () => {
     [
       done("pulse", 1),
       done("details", 2),
-      { step_name: "serp", status: "failed", created_at: at(3) },
+      { step_name: "serp", state: "failed", created_at: at(3) },
       done("links", 4),
     ],
     fullQueue(),
@@ -454,8 +454,8 @@ Deno.test("blocked: a legacy `skipped` counts as ran-and-did-not-deliver", () =>
   // "missing" would tell an operator it had never been attempted.
   const b = pulseBlockedAt([
     done("pulse", 1),
-    { step_name: "details", status: "skipped", created_at: at(2) },
+    { step_name: "details", state: "skipped", created_at: at(2) },
   ]);
   assertEquals(b?.key, "details");
-  assertEquals(b?.status, "failed");
+  assertEquals(b?.state, "failed");
 });

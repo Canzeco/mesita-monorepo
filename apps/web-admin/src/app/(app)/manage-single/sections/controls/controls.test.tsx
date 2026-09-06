@@ -54,7 +54,7 @@ function place(over: Partial<AdminPlace> = {}): AdminPlace {
     name: "La Docena Polanco",
     category: null,
     category_label: null,
-    status: "active",
+    state: "active",
     currency: "MXN",
     listing_type: "partner",
     price_level: null,

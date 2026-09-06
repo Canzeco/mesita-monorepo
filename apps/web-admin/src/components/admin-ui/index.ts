@@ -8,7 +8,7 @@
 // files. `manage-single/ui` is only `CrossTabLink` (needs PlaceContext).
 
 export {
-  KnobStatus,
+  KnobState,
   SectionCard,
   Collapsible,
   Switch,

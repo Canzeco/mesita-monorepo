@@ -1,16 +1,16 @@
-// Operator Active write — Status box fact `active` (business_status ===
+// Operator Active write — State box fact `active` (business_state ===
 // OPERATIONAL) plus the side effect Pato named: Active off unlists.
 //
-// Pulse / enrich still overwrite business_status from Google. That does not
+// Pulse / enrich still overwrite business_state from Google. That does not
 // re-list. Google is a flag; the operator unlist is the gate.
 
-import { isPlaceListed } from "./place-status.ts";
+import { isPlaceListed } from "./place-state.ts";
 
-export type OperatorBusinessStatus = "OPERATIONAL" | "CLOSED_PERMANENTLY";
+export type OperatorBusinessState = "OPERATIONAL" | "CLOSED_PERMANENTLY";
 
 export type ActiveWritePatch = {
-  business_status: OperatorBusinessStatus;
-  status?: "paused";
+  business_state: OperatorBusinessState;
+  state?: "paused";
 };
 
 /** Patch for admin-web-set-place-active. Active on writes OPERATIONAL only.
@@ -18,10 +18,10 @@ export type ActiveWritePatch = {
  *  paused. Already-unlisted stays unlisted. */
 export function activeWritePatch(
   active: boolean,
-  currentStatus: unknown,
+  currentState: unknown,
 ): ActiveWritePatch {
-  if (active) return { business_status: "OPERATIONAL" };
-  const patch: ActiveWritePatch = { business_status: "CLOSED_PERMANENTLY" };
-  if (isPlaceListed(currentStatus)) patch.status = "paused";
+  if (active) return { business_state: "OPERATIONAL" };
+  const patch: ActiveWritePatch = { business_state: "CLOSED_PERMANENTLY" };
+  if (isPlaceListed(currentState)) patch.state = "paused";
   return patch;
 }

@@ -7,7 +7,7 @@
 // RESEARCH half in a background task:
 //
 //   S1  Google spine re-check (fetchGoogleBasics — hard gate; failure lands
-//       terminal stage='failed' + content_status='failed')
+//       terminal stage='failed' + content_state='failed')
 //   S2  Apify Google Maps (reviews + images) fired in the BACKGROUND ‖ Perplexity
 //       SERP blurb (awaited). GMaps depends only on the place id, so it overlaps
 //       S3 + S4 and is collected after the IG/FB scrape — the Apify runs go
@@ -157,16 +157,16 @@ serveEnrichStage("research", async (admin, _env, row) => {
       mode: "update",
       id: projectId,
       patch: {
-        business_status: (businessStatus ?? null) as
+        business_state: (businessStatus ?? null) as
           | "OPERATIONAL"
           | "CLOSED_TEMPORARILY"
           | "CLOSED_PERMANENTLY"
           | null,
-        business_status_at: new Date().toISOString(),
+        business_state_at: new Date().toISOString(),
       },
     });
     if (!opRes.ok) {
-      console.error("[enrich-research] business_status write:", opRes.error);
+      console.error("[enrich-research] business_state write:", opRes.error);
     }
   }
 

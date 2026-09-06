@@ -150,8 +150,8 @@ export type GeneralConfig = {
   /** How many of the code-defined Google types Discovery may use (0–5). */
   categoryCount: number;
   /**
-   * Wipe out anything that is not Active. Active is the Status-box fact:
-   * `business_status === "OPERATIONAL"` on Mesita, Google's
+   * Wipe out anything that is not Active. Active is the State-box fact:
+   * `business_state === "OPERATIONAL"` on Mesita, Google's
    * `businessStatus` on a Google-only row. Unknown does not clear it — the
    * operator asked for only-active, and a place that cannot prove it is
    * open has not.
@@ -227,7 +227,7 @@ export const CHAT_PROMPT_MAX = 12_000;
  * WHERE clause does not belong in this box.
  */
 export type DiscoveryFilters = {
-  /** `content_status = 'ready'` — the enrichment gate MESITA-1228 hardcoded. */
+  /** `content_state = 'ready'` — the enrichment gate MESITA-1228 hardcoded. */
   requireReady: boolean;
   /** Google stars floor. 0 = off. Above 0 EXCLUDES unrated places — see below. */
   minRating: number;

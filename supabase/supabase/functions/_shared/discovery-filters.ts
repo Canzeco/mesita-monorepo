@@ -54,13 +54,13 @@ export function applyDiscoveryFilters<T extends FilterableQuery<T>>(
   let q = query;
 
   if (filters.requireReady) {
-    // The enrichment gate (MESITA-1228). `content_status` is the lifecycle
+    // The enrichment gate (MESITA-1228). `content_state` is the lifecycle
     // column and only the contents stage lands 'ready', so it answers "the
     // pipeline finished" and separates done from failed. The 0–9 pulse ordinal
     // cannot do this job: it is a read-time fold over an event log, not a
     // column, so it cannot appear in a WHERE clause until MESITA-1249
     // materializes it.
-    q = q.eq("content_status", "ready");
+    q = q.eq("content_state", "ready");
   }
 
   if (filters.minRating > 0) {

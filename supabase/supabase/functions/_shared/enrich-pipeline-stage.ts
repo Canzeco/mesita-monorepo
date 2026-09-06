@@ -19,10 +19,10 @@ export function isEnrichingStage(
 }
 
 /**
- * Flip projects.content_status → generating for the whole pipeline run.
+ * Flip projects.content_state → generating for the whole pipeline run.
  * Contents is the only stage that lands ready; research/analysis must NOT
  * clear Enriching. Re-enrich of an already-ready place MUST call this —
- * otherwise consumer is_enriching (keyed on content_status) stays false.
+ * otherwise consumer is_enriching (keyed on content_state) stays false.
  */
 export async function markProjectGenerating(
   admin: SupabaseClient,
@@ -32,7 +32,7 @@ export async function markProjectGenerating(
     table: "projects",
     mode: "update",
     id: projectId,
-    patch: { content_status: "generating" },
+    patch: { content_state: "generating" },
   });
   if (!res.ok) {
     console.error("[enrich-pipeline] markProjectGenerating:", res.error);
@@ -42,7 +42,7 @@ export async function markProjectGenerating(
 // Seed (or re-seed) the pipeline row for a project. Called by the create EFs
 // right after the minimal 'generating' place lands. Upsert: re-creating a
 // place (or manually re-enriching) resets the row to the research stage.
-// Also stamps content_status='generating' so Enriching stays on for the
+// Also stamps content_state='generating' so Enriching stays on for the
 // full research → analysis → contents run (MESITA-453).
 /**
  * Open a run, then seed the pipeline row — in that order, on purpose.
@@ -98,7 +98,7 @@ export async function seedPlaceResearch(
     place_id: projectId,
     google_place_id: googlePlaceId,
     stage: "research",
-    status: "pending",
+    state: "pending",
     attempts: 0,
     gathered: null,
     analysis: null,
@@ -203,18 +203,18 @@ export async function loadClaimedRow(
 ): Promise<{ ok: true; row: PlaceResearchRow } | { ok: false; reason: string }> {
   const { data, error } = await admin
     .from("place_research")
-    .select("place_id, google_place_id, stage, status, attempts, gathered, analysis, error, subprocesses, run_id")
+    .select("place_id, google_place_id, stage, state, attempts, gathered, analysis, error, subprocesses, run_id")
     .eq("place_id", projectId)
     .maybeSingle();
   if (error) return { ok: false, reason: `row_read: ${error.message}` };
   if (!data) return { ok: false, reason: "row_not_found" };
   const row = data as PlaceResearchRow;
   if (row.stage !== stage) return { ok: false, reason: `stage_mismatch: row is at '${row.stage}'` };
-  if (row.status !== "running") return { ok: false, reason: `not_claimed: status '${row.status}'` };
+  if (row.state !== "running") return { ok: false, reason: `not_claimed: state '${row.state}'` };
   return { ok: true, row };
 }
 
-// Advance to the next stage (attempts reset; status back to 'pending' so the
+// Advance to the next stage (attempts reset; state back to 'pending' so the
 // next poller tick picks it up) or land the terminal 'done'.
 export async function advanceResearchStage(
   admin: SupabaseClient,
@@ -230,7 +230,7 @@ export async function advanceResearchStage(
     .from("place_research")
     .update({
       stage: nextStage,
-      status: "pending",
+      state: "pending",
       attempts: 0,
       error: null,
       ...patch,
@@ -258,13 +258,13 @@ export async function releaseResearchRow(
 ): Promise<void> {
   const { error } = await admin
     .from("place_research")
-    .update({ status: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
+    .update({ state: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
     .eq("place_id", projectId);
   if (error) console.error("[enrich-pipeline] release:", error.message);
 }
 
 // Hard-fail a row (non-retryable, e.g. Google spine incomplete): terminal
-// stage 'failed' + flip the project's content_status so the place doesn't
+// stage 'failed' + flip the project's content_state so the place doesn't
 // strand at 'generating'.
 export async function failResearchRow(
   admin: SupabaseClient,
@@ -280,7 +280,7 @@ export async function failResearchRow(
 ): Promise<void> {
   const { error } = await admin
     .from("place_research")
-    .update({ stage: "failed", status: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
+    .update({ stage: "failed", state: "pending", error: errorMsg.slice(0, 500), updated_at: new Date().toISOString() })
     .eq("place_id", projectId);
   if (error) console.error("[enrich-pipeline] fail:", error.message);
   await closeEnrichmentRun(admin, run.runId, "failed", {
@@ -297,7 +297,7 @@ export async function failResearchRow(
     table: "projects",
     mode: "update",
     id: projectId,
-    patch: { content_status: "failed" },
+    patch: { content_state: "failed" },
   });
-  if (!projRes.ok) console.error("[enrich-pipeline] fail content_status:", projRes.error);
+  if (!projRes.ok) console.error("[enrich-pipeline] fail content_state:", projRes.error);
 }

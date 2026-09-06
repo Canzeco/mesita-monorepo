@@ -113,7 +113,7 @@ export type SwipeConfig = {
 export type GeneralConfig = {
   categoryCount: number;
   /**
-   * The post-Google wipe. Active is `business_status === "OPERATIONAL"` on
+   * The post-Google wipe. Active is `business_state === "OPERATIONAL"` on
    * Mesita, Google's `businessStatus` on a Google-only row. Unknown does not
    * clear it. Mirrors `_shared/discovery-general-gate.ts`.
    */
@@ -289,22 +289,22 @@ const CHAT_PROMPT_MAX = 12_000;
 export const CHAT_CONNECTIONS = [
   {
     name: "OpenAI chat completions",
-    status: "Live",
+    state: "Live",
     note: "Guest thread + Discovery prompt, every turn. models_config.memo.",
   },
   {
     name: "Google Places Text Search (New)",
-    status: "Soon",
+    state: "Soon",
     note: "Default place lookup. Not Nearby (that is Map). Not Autocomplete (that is the Search bar).",
   },
   {
     name: "Perplexity (web search)",
-    status: "Soon",
+    state: "Soon",
     note: "Perplexity Search API — ranked web results. Agent is a second connection. Neither is a Source.",
   },
   {
     name: "Internal search EFs",
-    status: "Soon",
+    state: "Soon",
     note: "Named Mesita lookups (recall / search places) — not a service-role from() from Chat.",
   },
 ] as const;
@@ -313,12 +313,12 @@ export const CHAT_CONNECTIONS = [
 export const CHAT_INDEXES = [
   {
     name: "places.name_embedding",
-    status: "Soon",
+    state: "Soon",
     note: "Name match. Same vector Deep Search already queries.",
   },
   {
     name: "places.embedding",
-    status: "Soon",
+    state: "Soon",
     note: "Summary / vibe match. Deliberately not the About field.",
   },
 ] as const;

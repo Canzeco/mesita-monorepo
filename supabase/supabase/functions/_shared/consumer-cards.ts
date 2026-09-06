@@ -165,9 +165,9 @@ export async function backsActiveSubscription(
 ): Promise<boolean> {
   const { data } = await admin
     .from("consumer_subscriptions")
-    .select("status")
+    .select("state")
     .eq("consumer_id", consumerId)
-    .in("status", ["active", "trialing", "past_due"])
+    .in("state", ["active", "trialing", "past_due"])
     .limit(1)
     .maybeSingle();
   if (!data) return false;

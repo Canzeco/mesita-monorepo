@@ -30,14 +30,14 @@ import { invokeEF } from "./_invoke";
 // rows the admin queue might still surface, but the FE only emits the
 // three live methods.
 type VerificationMethod = "ai_call" | "ai_email" | "manual_contact";
-type VerificationStatus = "pending" | "approved" | "rejected";
+type VerificationState = "pending" | "approved" | "rejected";
 
 type Verification = {
   id: string;
   method: VerificationMethod;
   payload: Record<string, unknown>;
   requester_email: string;
-  status: VerificationStatus;
+  state: VerificationState;
   reject_reason: string | null;
   decided_at: string | null;
   decided_via: "auto" | "admin" | null;
@@ -48,7 +48,7 @@ export type LookupPlace = {
   id: string;
   slug: string;
   name: string;
-  status: string;
+  state: string;
   listing_type: "web" | "partner" | "unclaimed";
   address: string | null;
   phone: string | null;

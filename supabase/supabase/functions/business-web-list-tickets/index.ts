@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       // it, shown to the same staff who already see the raw image here —
       // never to the guest (see _shared/ticket-check.ts for why the public
       // check page must never carry this).
-      "id, status, story_status, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name, birthday, sex, country)",
+      "id, state, story_state, story_screenshot_url, story_submitted_at, story_verified_at, story_reject_reason, story_ojo_verdict, story_ojo_confidence, story_ojo_reasons, bill_subtotal_cents, tip_cents, total_cents, redeem_cents, discount_percent, discount_cents, revealed_at, currency, created_at, paid_at, cancelled_at, cancel_reason, consumer:consumers(id, code, full_name, birthday, sex, country)",
     )
     .eq("place_id", projectId)
     .order("created_at", { ascending: false })

@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import type { ReservationItem } from "@/lib/mock/reservations-mock";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { RESERVATION_FLOW, statusMeta } from "@/lib/reservation-status";
+import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
 import { MetaRow } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
 import { apiConfirmReservation } from "@/lib/api/reservations";
@@ -22,8 +22,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // The happy path as a stepper: created → booking → confirmed → passed. A
 // ticket that exited the path (cancelled / failed) shows the banner instead —
 // drawing a half-lit ladder for a dead ticket reads as "still going".
-function LifecycleStepper({ status }: { status: ReservationItem["status"] }) {
-  const index = RESERVATION_FLOW.indexOf(status);
+function LifecycleStepper({ state }: { state: ReservationItem["state"] }) {
+  const index = RESERVATION_FLOW.indexOf(state);
   if (index < 0) return null;
   return (
     <section
@@ -32,7 +32,7 @@ function LifecycleStepper({ status }: { status: ReservationItem["status"] }) {
     >
       {RESERVATION_FLOW.map((step, i) => {
         const done = i <= index;
-        const meta = statusMeta(step);
+        const meta = stateMeta(step);
         return (
           <div key={step} className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span
@@ -67,15 +67,15 @@ export function ReservationDetailBody({
   r: ReservationItem;
   onChanged?: () => void;
 }) {
-  const meta = statusMeta(r.status);
-  const banner = r.statusNote ?? meta.banner;
+  const meta = stateMeta(r.state);
+  const banner = r.stateNote ?? meta.banner;
   const supabase = useBrowserSupabase();
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const offers = (r.alternatives ?? []).filter((a) => a.time);
-  const showOffers = r.status === "booking" && offers.length > 0;
+  const showOffers = r.state === "booking" && offers.length > 0;
   const showAck =
-    r.status === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
+    r.state === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
 
   async function confirm(args?: { newDate?: string; newTime?: string }) {
     setConfirmBusy(true);
@@ -95,7 +95,7 @@ export function ReservationDetailBody({
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      {/* Hero — place photo + name + status pill stacked. Larger than the
+      {/* Hero — place photo + name + state pill stacked. Larger than the
           list card so the screen reads like a ticket, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
@@ -116,7 +116,7 @@ export function ReservationDetailBody({
           <h1
             className={cn(
               "font-display text-xl leading-tight font-semibold tracking-tight",
-              r.status === "cancelled" && "line-through",
+              r.state === "cancelled" && "line-through",
             )}
           >
             {r.placeName}
@@ -136,15 +136,15 @@ export function ReservationDetailBody({
         </div>
       </section>
 
-      <LifecycleStepper status={r.status} />
+      <LifecycleStepper state={r.state} />
 
       {banner && (
         <p
           className={cn(
             "type-body rounded-2xl px-3 py-2.5 leading-snug",
-            r.status === "booking" || r.status === "created"
+            r.state === "booking" || r.state === "created"
               ? "bg-amber-50 text-amber-900 ring-1 ring-amber-400/30"
-              : r.status === "failed"
+              : r.state === "failed"
                 ? "bg-rose-50 text-rose-900 ring-1 ring-rose-400/30"
                 : "bg-muted text-muted-foreground",
           )}
@@ -164,7 +164,7 @@ export function ReservationDetailBody({
         <MetaRow
           Icon={meta.Icon}
           iconClass={meta.iconClass}
-          label="Status"
+          label="State"
           value={meta.label}
         />
         {r.referenceCode && (

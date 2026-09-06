@@ -6,7 +6,7 @@
 // (pick a place, open a ticket) and where you pay; Inbox is where you watch
 // the ones already in flight. Same data either way: this reads the very same
 // useConsumerTickets hook the Rewards wallet does, so a ticket that moves
-// status shows the same caption in both places and there is no second source
+// state shows the same caption in both places and there is no second source
 // of truth to drift.
 //
 // Live before closed, deliberately. A visit in progress is the only thing on
@@ -37,7 +37,7 @@ export function InboxVisitsClient({ userId }: { userId: string }) {
     [tickets.active, tickets.history],
   );
 
-  if (tickets.status === "loading") {
+  if (tickets.state === "loading") {
     return (
       <div className="scrollbar-hide h-full overflow-y-auto px-4 py-4">
         <div className="flex flex-col gap-2.5">
@@ -49,7 +49,7 @@ export function InboxVisitsClient({ userId }: { userId: string }) {
     );
   }
 
-  if (tickets.status === "error") {
+  if (tickets.state === "error") {
     return (
       <EmptyState
         icon={TicketX}

@@ -5,7 +5,7 @@
 import type { EFReservationRow } from '@/lib/api/reservations';
 import type {
   ReservationItem,
-  ReservationStatus,
+  ReservationState,
 } from '@/lib/mock/reservations-mock';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -16,9 +16,9 @@ const MONTHS = [
 
 // The card models three visual states. pending = still booking, confirmed =
 // booked; every terminal outcome collapses to the muted "cancelled" look.
-function toCardStatus(status: EFReservationRow['status']): ReservationStatus {
-  if (status === 'pending') return 'booking';
-  if (status === 'confirmed') return 'booked';
+function toCardState(state: EFReservationRow['state']): ReservationState {
+  if (state === 'pending') return 'booking';
+  if (state === 'confirmed') return 'booked';
   return 'cancelled';
 }
 
@@ -44,7 +44,7 @@ function noteFor(
   if (counterOffer) {
     return 'The place offered other times — pick one below, or reschedule.';
   }
-  switch (row.status) {
+  switch (row.state) {
     case 'pending':
       // MESITA-954 — honest copy while leg 1 is parked waiting for hours.
       if (row.attempts_state === 'scheduled') {
@@ -120,7 +120,7 @@ function normalizeClientAlternatives(
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const alternatives = normalizeClientAlternatives(row.alternatives);
   const counterOffer =
-    row.status === 'pending' && (alternatives?.length ?? 0) > 0;
+    row.state === 'pending' && (alternatives?.length ?? 0) > 0;
   return {
     id: row.id,
     projectId: row.place?.id ?? '',
@@ -129,11 +129,11 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     when: formatReservationWhen(row.reserved_at),
     reservedAt: row.reserved_at,
     partySize: row.party_size,
-    status: toCardStatus(row.status),
-    statusNote: noteFor(row, counterOffer),
+    state: toCardState(row.state),
+    stateNote: noteFor(row, counterOffer),
     guestNotify: row.consumer_notify === 'app' ? 'app' : 'call',
     guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,
-    dbStatus: row.status,
+    dbState: row.state,
   };
 }

@@ -35,7 +35,7 @@ export function NeedsAttentionCard({ rows }: { rows: NeedsAttentionRow[] }) {
                 #{row.reference_code ?? row.id.slice(0, 8)}
               </span>
               <span className="rounded-full bg-red-500/10 px-1.5 py-0.5 type-meta font-semibold text-red-700">
-                {row.status}
+                {row.state}
               </span>
               {row.is_test && (
                 <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 type-meta font-medium">
@@ -47,8 +47,8 @@ export function NeedsAttentionCard({ rows }: { rows: NeedsAttentionRow[] }) {
               </span>
             </div>
             <p className="text-xs font-medium text-red-700">{whyAttention(row)}</p>
-            {row.last_call_status && (
-              <p className="text-muted-foreground text-xs">{row.last_call_status}</p>
+            {row.last_call_state && (
+              <p className="text-muted-foreground text-xs">{row.last_call_state}</p>
             )}
           </li>
         ))}

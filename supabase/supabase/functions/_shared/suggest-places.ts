@@ -13,9 +13,9 @@
 //
 // Proxies Google Places (New) Autocomplete + a Mesita-side name ILIKE
 // fallback in parallel, merges the two, and returns predictions tagged
-// with per-row status (`not_in_mesita`, `web_listed`,
+// with per-row state (`not_in_mesita`, `web_listed`,
 // `verified_partner_other`, `verified_partner_self`) so the UI can render
-// the right badge. On-Mesita rows (any status other than `not_in_mesita`)
+// the right badge. On-Mesita rows (any state other than `not_in_mesita`)
 // additionally carry `mesitaId` + `mesitaSlug` (profiles id + slug)
 // so clients can navigate straight to the place row instead of
 // re-matching predictions by name; Google-only predictions omit both.
@@ -55,7 +55,7 @@ import {
   sortMesitaPredictionsFirst,
   toWirePrediction,
 } from "./suggest-places-helpers.ts";
-import { statusesForPlaces } from "./suggest-place-status.ts";
+import { statesForPlaces } from "./suggest-place-state.ts";
 import {
   mergePlaceRowsById,
   placeIdsMatchingNameHistory,
@@ -136,19 +136,19 @@ export async function suggestPlaces(
     ? mesitaResult.value
     : [];
 
-  // Merge: Mesita-side hits take precedence (status wins for matching
+  // Merge: Mesita-side hits take precedence (state wins for matching
   // placeId), then any remaining Google entries follow. Google's
   // structured text is nicer, so we keep its mainText/secondaryText but
-  // graft Mesita's status (+ mesitaId/mesitaSlug) on top when the
+  // graft Mesita's state (+ mesitaId/mesitaSlug) on top when the
   // placeId is in both sources.
   const byPlaceId = mergePredictionsByPlaceId(googlePreds, mesitaPreds);
 
-  // Backfill status for predictions Google returned but the ILIKE
+  // Backfill state for predictions Google returned but the ILIKE
   // fallback missed (e.g., "Strana San Pedro" vs the place named just
   // "Strana"). Keys off placeId directly so the substring miss doesn't
   // matter.
   const orphanPlaceIds = Array.from(byPlaceId.values())
-    .filter((p) => p.status === "not_in_mesita")
+    .filter((p) => p.state === "not_in_mesita")
     .map((p) => p.placeId);
   if (orphanPlaceIds.length > 0) {
     const mesitaByPlaceId = await enrichByPlaceIds(
@@ -247,7 +247,7 @@ async function fetchGooglePredictions(
       placeId: p.placeId,
       mainText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
       secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
-      status: "not_in_mesita",
+      state: "not_in_mesita",
     }))
     .filter((p) => p.placeId && p.mainText);
   return { predictions };
@@ -269,7 +269,7 @@ async function fetchMesitaPredictions(
   // the PostgREST or() grammar.
   const pattern = `%${escapeIlike(input)}%`;
   const cols =
-    "id, slug, google_place_id, name, google_name, address, business_status, google_review_count";
+    "id, slug, google_place_id, name, google_name, address, business_state, google_review_count";
   const [{ data, error }, historyIds] = await Promise.all([
     admin
       .from("profiles")
@@ -290,7 +290,7 @@ async function fetchMesitaPredictions(
     name: string | null;
     google_name: string | null;
     address: string | null;
-    business_status: string | null;
+    business_state: string | null;
     google_review_count: number | null;
   };
   let rows = (data ?? []) as Row[];
@@ -320,15 +320,15 @@ async function fetchMesitaPredictions(
     return 0;
   });
 
-  const statuses = await statusesForPlaces(admin, rows, callerId);
+  const states = await statesForPlaces(admin, rows, callerId);
   return rows.map<Prediction>((v) => ({
     placeId: v.google_place_id,
     mainText: String(v.name ?? ""),
     secondaryText: v.address ?? "Already on Mesita",
-    status: statuses.get(v.google_place_id) ?? "web_listed",
+    state: states.get(v.google_place_id) ?? "web_listed",
     mesitaId: v.id,
     mesitaSlug: v.slug,
-    businessStatus: v.business_status,
+    businessStatus: v.business_state,
     reviewCount: v.google_review_count,
   }));
 }
@@ -342,14 +342,14 @@ async function enrichByPlaceIds(
     string,
     Pick<
       Prediction,
-      "status" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
+      "state" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
     >
   >
 > {
   const { data, error } = await admin
     .from("profiles")
     .select(
-      "id, slug, google_place_id, business_status, google_review_count",
+      "id, slug, google_place_id, business_state, google_review_count",
     )
     .in("google_place_id", placeIds);
   if (error) {
@@ -360,24 +360,24 @@ async function enrichByPlaceIds(
     id: string;
     slug: string;
     google_place_id: string;
-    business_status: string | null;
+    business_state: string | null;
     google_review_count: number | null;
   };
   const rows = (data ?? []) as Row[];
-  const statuses = await statusesForPlaces(admin, rows, callerId);
+  const states = await statesForPlaces(admin, rows, callerId);
   const out = new Map<
     string,
     Pick<
       Prediction,
-      "status" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
+      "state" | "mesitaId" | "mesitaSlug" | "businessStatus" | "reviewCount"
     >
   >();
   for (const r of rows) {
     out.set(r.google_place_id, {
-      status: statuses.get(r.google_place_id) ?? "web_listed",
+      state: states.get(r.google_place_id) ?? "web_listed",
       mesitaId: r.id,
       mesitaSlug: r.slug,
-      businessStatus: r.business_status,
+      businessStatus: r.business_state,
       reviewCount: r.google_review_count,
     });
   }
@@ -399,7 +399,7 @@ async function filterPredictionsByMap(
   general: GeneralConfig,
   apiKey: string,
 ): Promise<Prediction[]> {
-  const googleOnly = predictions.filter((p) => p.status === "not_in_mesita");
+  const googleOnly = predictions.filter((p) => p.state === "not_in_mesita");
   if (googleOnly.length === 0) {
     return predictions.filter((p) => clearsGeneralGate(general, p));
   }
@@ -416,7 +416,7 @@ async function filterPredictionsByMap(
   );
 
   return predictions.filter((p) => {
-    if (p.status !== "not_in_mesita") return clearsGeneralGate(general, p);
+    if (p.state !== "not_in_mesita") return clearsGeneralGate(general, p);
     const sig = signalsByPlaceId.get(p.placeId);
     if (!sig) return false;
     return evaluatePlaceForMap(map, sig).eligible &&

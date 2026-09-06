@@ -517,7 +517,7 @@ function FeedRow({
     if (typeof overall === "number") tags.push(`★ ${overall}`);
   }
   if (item.type === "reservations.reservation_created") {
-    if (typeof item.meta.status === "string") tags.push(item.meta.status);
+    if (typeof item.meta.state === "string") tags.push(item.meta.state);
     if (typeof item.meta.partySize === "number") {
       tags.push(`party of ${item.meta.partySize}`);
     }

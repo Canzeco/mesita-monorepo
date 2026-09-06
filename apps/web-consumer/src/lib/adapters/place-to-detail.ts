@@ -123,13 +123,13 @@ export function placeRowToDetail(row: Row, tags?: ResolvedTag[]): PlaceDetail {
     updated_label: updatedLabel,
     last_updated_label: updatedLabel,
     // Enrichment still in flight for the WHOLE pipeline (research → analysis →
-    // contents). projects.content_status stays 'queued'/'generating' until the
+    // contents). projects.content_state stays 'queued'/'generating' until the
     // contents stage lands 'ready' — never clear Enriching after research alone
     // (MESITA-453). 'ready'/'failed' both read as done.
     is_enriching:
-      row.content_status === "queued" || row.content_status === "generating",
+      row.content_state === "queued" || row.content_state === "generating",
     is_profile_ready: row.is_profile_ready === true ||
-      row.content_status === "ready",
+      row.content_state === "ready",
     is_enriched: row.is_enriched === true ||
       (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     request_count: num(row.request_count) ?? 0,

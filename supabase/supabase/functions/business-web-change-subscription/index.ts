@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     .from("project_subscriptions")
     .select("stripe_subscription_id, stripe_customer_id, plan_key, current_period_end")
     .eq("place_id", projectId)
-    .in("status", ["active", "past_due"])
+    .in("state", ["active", "past_due"])
     .maybeSingle();
   const liveSubId = (liveSub?.stripe_subscription_id ?? "") as string;
   const liveIsMock = liveSubId.startsWith("mock_");
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     if (liveSub && liveIsMock) {
       await admin
         .from("project_subscriptions")
-        .update({ status: "canceled", cancel_at_period_end: true })
+        .update({ state: "canceled", cancel_at_period_end: true })
         .eq("stripe_subscription_id", liveSubId);
     }
     const projectRow = await loadProjectRow(admin, projectId);
@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
           plan_key: VERIFIED_PLAN,
           stripe_subscription_id: mockSubId,
           stripe_customer_id: `mock_cus_${projectId}`,
-          status: "active",
+          state: "active",
           price_cents: planRow.price_cents,
           currency: planRow.currency ?? "MXN",
           current_period_end: periodEnd,
@@ -375,7 +375,7 @@ Deno.serve(async (req) => {
       place_id: projectId,
       plan_key: VERIFIED_PLAN,
       stripe_customer_id: customerId,
-      status: "incomplete",
+      state: "incomplete",
       price_cents: resolved.priceCents,
       currency: resolved.currency,
     },

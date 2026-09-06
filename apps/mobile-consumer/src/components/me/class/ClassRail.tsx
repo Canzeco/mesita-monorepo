@@ -12,7 +12,7 @@ import { useAuth } from '@/providers/auth';
 // Premium → Aura) showing which DOORS the signed-in consumer holds open: the
 // one that currently wins the slot, the ones unlocked underneath it (a paying
 // Aura member keeps the Premium chip unlocked — the subscription runs on),
-// and the locked ones with the one-word how. Pure status: the ladder is
+// and the locked ones with the one-word how. Pure state: the ladder is
 // strictly increasing, so there is nothing to switch.
 
 const DOOR_HOW: Record<string, string> = {

@@ -106,7 +106,7 @@ Deno.test("removal guard: the card Premium draws on is protected", async () => {
   );
   assert(
     await backsActiveSubscription(
-      adminStub({ status: "active" }),
+      adminStub({ state: "active" }),
       stripe,
       "cus_mine",
       "pm_default",
@@ -122,7 +122,7 @@ Deno.test("removal guard: a second card is free to go", async () => {
   );
   assert(
     !await backsActiveSubscription(
-      adminStub({ status: "active" }),
+      adminStub({ state: "active" }),
       stripe,
       "cus_mine",
       "pm_spare",

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  ACTIVE_TICKET_STATUSES,
+  ACTIVE_TICKET_STATES,
   apiListConsumerTickets,
   type ConsumerTicketRow,
 } from "@/lib/api/tickets";
@@ -12,13 +12,13 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // Tickets v2 (MESITA-806): the ticket-driven source behind the Rewards
 // New/History tabs and the pass LiveStrip. One fetch + the shared poll
-// cadence; New/History split client-side so a status change moves a card
+// cadence; New/History split client-side so a state change moves a card
 // across tabs without a refetch.
 
 type ConsumerTicketsState = {
   active: ConsumerTicketRow[];
   history: ConsumerTicketRow[];
-  status: "loading" | "ready" | "error";
+  state: "loading" | "ready" | "error";
   refresh: () => Promise<void>;
   retry: () => void;
 };
@@ -26,7 +26,7 @@ type ConsumerTicketsState = {
 export function useConsumerTickets(userId: string): ConsumerTicketsState {
   const supabase = useBrowserSupabase();
   const [rows, setRows] = useState<ConsumerTicketRow[]>([]);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
+  const [state, setState] = useState<"loading" | "ready" | "error">(
     "loading",
   );
 
@@ -34,9 +34,9 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
     try {
       const tickets = await apiListConsumerTickets(supabase);
       setRows(tickets);
-      setStatus("ready");
+      setState("ready");
     } catch {
-      setStatus((prev) => (prev === "ready" ? prev : "error"));
+      setState((prev) => (prev === "ready" ? prev : "error"));
     }
   }, [supabase]);
 
@@ -47,11 +47,11 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
         const tickets = await apiListConsumerTickets(supabase);
         if (!cancelled) {
           setRows(tickets);
-          setStatus("ready");
+          setState("ready");
         }
       } catch {
         if (!cancelled)
-          setStatus((prev) => (prev === "ready" ? prev : "error"));
+          setState((prev) => (prev === "ready" ? prev : "error"));
       }
     })();
     return () => {
@@ -62,7 +62,7 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
   usePayNotificationPoll(refresh, Boolean(userId));
 
   const retry = useCallback(() => {
-    setStatus("loading");
+    setState("loading");
     void refresh();
   }, [refresh]);
 
@@ -73,10 +73,10 @@ export function useConsumerTickets(userId: string): ConsumerTicketsState {
       // NOTE: there is no reservation row to skip. Reservations are their own
       // table (reservation_tickets); the ticket discriminator that once
       // claimed otherwise was born dead and has since been dropped.
-      (ACTIVE_TICKET_STATUSES.has(row.status) ? active : history).push(row);
+      (ACTIVE_TICKET_STATES.has(row.state) ? active : history).push(row);
     }
     return { active, history };
   }, [rows]);
 
-  return { active, history, status, refresh, retry };
+  return { active, history, state, refresh, retry };
 }

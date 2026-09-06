@@ -5,7 +5,7 @@
 // the Prediction card. memo-google-text-search.ts re-exports these for its own
 // local importers, so nothing downstream had to change.
 
-export type PredictionStatus =
+export type PredictionState =
   | "not_in_mesita"
   | "web_listed"
   | "verified_partner_other"
@@ -18,7 +18,7 @@ export type Prediction = {
   placeId: string;
   mainText: string;
   secondaryText: string;
-  status: PredictionStatus;
+  state: PredictionState;
   mesitaId?: string;
   mesitaSlug?: string;
   // Memo extra: Google's live open/closed state, used to demote closed spots

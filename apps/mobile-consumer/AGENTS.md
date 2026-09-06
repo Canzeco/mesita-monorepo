@@ -8,7 +8,7 @@ Expo SDK 57 · React Native · Expo Router · NativeWind — the mobile port of 
 ## FROZEN — do not change this package (Pato, 2026-08-20)
 **No features, no fixes, no redesigns here.** Web-consumer is where the product is still being decided; mobile gets rebuilt by COPYING web once web is done, so anything shipped here first is work that copy overwrites. A task landing in this package stops and says so.
 
-**The only writes allowed are the three mirrors web's own tests pin** — they exist to keep WEB green, not to advance mobile: `src/lib/ticket-journey.ts` (byte-identical) · `src/lib/consumer-route-contract.ts` · `src/lib/api/tickets.ts` (`ACTIVE_TICKET_STATUSES`). Re-copy those in the same PR as the web change that moved them. Everything else web changes — tokens, `ef.ts`, screens — waits for the copy pass.
+**The only writes allowed are the three mirrors web's own tests pin** — they exist to keep WEB green, not to advance mobile: `src/lib/ticket-journey.ts` (byte-identical) · `src/lib/consumer-route-contract.ts` · `src/lib/api/tickets.ts` (`ACTIVE_TICKET_STATES`). Re-copy those in the same PR as the web change that moved them. Everything else web changes — tokens, `ef.ts`, screens — waits for the copy pass.
 
 **Parity is the target of that copy pass**, not of every PR: IA, screens, visual language, tokens and parked-vs-live all end up matching `apps/web-consumer`, whose **[`CLAUDE.md`](../web-consumer/CLAUDE.md) is this package's product law** — read it, never restate it. The rest of this file is the package as it stands.
 
@@ -19,7 +19,7 @@ Expo SDK 57 · React Native · Expo Router · NativeWind — the mobile port of 
 
 ## Hard constraints — do not re-litigate
 - Default kit = NativeWind semantic classes + targeted `@rn-primitives` (Portal/Switch/Slot); shared primitives in `src/components/ui/`. Icons **lucide-react-native only**. **`react-native-paper` is retired** — never re-add it. gluestack-ui v5 needs NativeWind v5, deferred.
-- **No Stripe, payment UI or subscribe links** (Apple review). Premium renders status only; subscribing happens on web — the one deliberate break from parity.
+- **No Stripe, payment UI or subscribe links** (Apple review). Premium renders state only; subscribing happens on web — the one deliberate break from parity.
 - **pnpm hoisted linker via `pnpm-workspace.yaml`** (`nodeLinker: hoisted`). pnpm 11 ignores `node-linker` in `.npmrc`; without hoisting Metro cannot resolve `react-native-css-interop` and the bundle fails. This is why the monorepo has no root pnpm workspace.
 - `app.config.ts`, never a static `app.json`: `web.output` stays `"single"`, `userInterfaceStyle` stays `"light"` (which requires `darkMode: 'class'`).
 - Auth = **phone OTP only** (`signInWithOtp` → `verifyOtp` → EF `consumer-web-signin-phone`); the guest flow is gone from the product, never re-add it. Session storage = `LargeSecureStore` ([src/lib/storage.ts](src/lib/storage.ts)): AES in AsyncStorage, key in SecureStore, whose ~2KB cap makes a plain adapter break sessions silently.

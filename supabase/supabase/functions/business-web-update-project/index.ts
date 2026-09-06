@@ -88,7 +88,7 @@ type UpdateBody = {
   // can switch to USD/EUR/etc. only when we extend coverage outside
   // Mexico. Kept as text so the EF doesn't hard-code an enum.
   currency?: string | null;
-  status?: "active" | "paused" | "archived";
+  state?: "active" | "paused" | "archived";
   fiscal_type?: "formal" | "informal";
   // NOTE: `plan` is deliberately NOT editable here. Plan changes are billing
   // and go through business-web-change-subscription (Stripe), so a client can't
@@ -153,7 +153,7 @@ type UpdateBody = {
   segmentation_advanced_enabled?: boolean;
 };
 
-const EDITABLE_STATUSES = new Set(["active", "paused", "archived"]);
+const EDITABLE_STATES = new Set(["active", "paused", "archived"]);
 const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
 const APIFY_KEY = Deno.env.get("APIFY_KEY");
 
@@ -242,15 +242,15 @@ Deno.serve(async (req) => {
     const c = (body.currency ?? "").toString().trim().toUpperCase();
     if (c.length === 3 && /^[A-Z]{3}$/.test(c)) update.currency = c;
   }
-  if ("status" in body) {
-    const s = body.status;
-    if (!s || !EDITABLE_STATUSES.has(s)) {
+  if ("state" in body) {
+    const s = body.state;
+    if (!s || !EDITABLE_STATES.has(s)) {
       return json(
-        { ok: false, error: "status must be active|paused|archived" },
+        { ok: false, error: "state must be active|paused|archived" },
         400,
       );
     }
-    update.status = s;
+    update.state = s;
   }
   if ("fiscal_type" in body) {
     const f = body.fiscal_type;

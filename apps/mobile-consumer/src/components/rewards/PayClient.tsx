@@ -19,7 +19,7 @@ import { SavingsReveal } from "@/components/rewards/SavingsReveal";
 import { COLORS } from "@/constants/brand";
 import type { Place } from "@/lib/api/places";
 import {
-  ACTIVE_TICKET_STATUSES,
+  ACTIVE_TICKET_STATES,
   apiCreateTicket,
   apiListConsumerTickets,
   type ConsumerTicketRow,
@@ -74,7 +74,7 @@ export function PayClient({ userId }: { userId: string }) {
               rows.find(
                 (t) =>
                   t.project_id === place.id &&
-                  ACTIVE_TICKET_STATUSES.has(t.status),
+                  ACTIVE_TICKET_STATES.has(t.state),
               )?.id ?? null;
           }
           if (id) {
@@ -97,14 +97,14 @@ export function PayClient({ userId }: { userId: string }) {
   const [justPaid, setJustPaid] = useState<ConsumerTicketRow | null>(null);
   const prevActiveIdsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (tickets.status !== "ready") return;
+    if (tickets.state !== "ready") return;
     const prev = prevActiveIdsRef.current;
     const revealed = tickets.history.find(
-      (t) => t.status === "revealed" && prev.has(t.id),
+      (t) => t.state === "revealed" && prev.has(t.id),
     );
     prevActiveIdsRef.current = new Set(tickets.active.map((t) => t.id));
     if (revealed) setJustPaid(revealed);
-  }, [tickets.status, tickets.active, tickets.history]);
+  }, [tickets.state, tickets.active, tickets.history]);
 
   return (
     <View className="flex-1">

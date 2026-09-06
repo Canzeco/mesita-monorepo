@@ -9,7 +9,7 @@
 //       inference + tag inference (closed vocabularies) + Selected Reservation
 //       Endpoint (phone → places.reservation_channel/_target; voice-only, MESITA-842)
 //   S8  persist the enriched profile onto the places row (direct UPDATE — this
-//       EF is already the DB layer; no HTTP hop) + content_status='ready'
+//       EF is already the DB layer; no HTTP hop) + content_state='ready'
 //   S9  store images via supabase-edgefunc-store-place-images (kept as an EF call
 //       on purpose: the storage mirroring runs in that worker's own wall clock)
 //
@@ -502,13 +502,13 @@ serveEnrichStage("contents", async (admin, env, row) => {
     table: "projects",
     mode: "update",
     id: projectId,
-    patch: { content_status: "ready" },
+    patch: { content_state: "ready" },
   });
   if (!projRes.ok) {
     await releaseResearchRow(
       admin,
       projectId,
-      `content_status: ${projRes.error}`,
+      `content_state: ${projRes.error}`,
     );
     return;
   }

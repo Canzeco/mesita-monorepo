@@ -17,7 +17,7 @@ import {
   requireEditor,
 } from "../_shared/auth.ts";
 import { closeTicketAndEnqueueReview } from "../_shared/ticket-informal.ts";
-import { CLOSED_TICKET_STATUS, TICKET_STATUS } from "../_shared/ticket-status.ts";
+import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
 
 type Body = { ticketId?: string };
 
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
 
   const ticketRow = await admin
     .from("visit_tickets")
-    .select("id, place_id, consumer_id, status")
+    .select("id, place_id, consumer_id, state")
     .eq("id", ticketId)
     .maybeSingle();
   if (ticketRow.error) {
@@ -56,12 +56,12 @@ Deno.serve(async (req) => {
   if (!memberRes.ok) return memberRes.response;
 
   // Idempotent: already closed.
-  if (ticket.status === CLOSED_TICKET_STATUS) {
+  if (ticket.state === CLOSED_TICKET_STATE) {
     return json({ ok: true, ticket, alreadyPaid: true });
   }
-  if (ticket.status !== TICKET_STATUS.awaitingPaymentConfirm) {
+  if (ticket.state !== TICKET_STATE.awaitingPaymentConfirm) {
     return json(
-      { ok: false, error: `Cannot mark a ${ticket.status} ticket as paid.` },
+      { ok: false, error: `Cannot mark a ${ticket.state} ticket as paid.` },
       409,
     );
   }
@@ -76,5 +76,5 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `ticket_close: ${closed.error}` }, 500);
   }
 
-  return json({ ok: true, ticketId, status: CLOSED_TICKET_STATUS });
+  return json({ ok: true, ticketId, state: CLOSED_TICKET_STATE });
 });

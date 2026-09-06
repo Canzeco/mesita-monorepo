@@ -388,15 +388,15 @@ export function placeStrategy(place: Record<string, unknown>): GridStrategy {
 // before the business is ever involved, so their own declaration IS the
 // verification. The three legacy states below are read-only history — no code
 // path writes them any more, but tickets predating v3 still carry them.
-const VERIFIED_ACTION_STATUSES = new Set([
+const VERIFIED_ACTION_STATES = new Set([
   "self_verified",
   "ai_verified",
   "staff_verified",
   "waiter_verified", // legacy value kept through the r1 enum rename
 ]);
 
-export function isActionVerified(status: string | null | undefined): boolean {
-  return status != null && VERIFIED_ACTION_STATUSES.has(status);
+export function isActionVerified(state: string | null | undefined): boolean {
+  return state != null && VERIFIED_ACTION_STATES.has(state);
 }
 
 export type RateContext = {

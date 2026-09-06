@@ -84,9 +84,9 @@ export type ReservationsConfig = {
 export type NeedsAttentionRow = {
   id: string;
   reference_code: string | null;
-  status: string;
+  state: string;
   reserved_at: string;
-  last_call_status: string | null;
+  last_call_state: string | null;
   notice_state: string | null;
   notice_kind: string | null;
   attempts_state: string | null;

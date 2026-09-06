@@ -110,7 +110,7 @@ export function feedEntryKey(entry: FeedEntry): string {
 }
 
 export function groupHasFailure(items: NotificationItem[]): boolean {
-  return items.some((item) => item.meta?.status === "failed");
+  return items.some((item) => item.meta?.state === "failed");
 }
 
 export function reportReasonLabel(meta: Record<string, unknown>): string | null {
@@ -124,8 +124,8 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
   return REPORT_REASON[meta.reason] ?? meta.reason;
 }
 
-// Status — two boxes (Pato, 2026-08-25 · acceptance bits 2026-08-29):
-//   STATUSES (11) nine bools + Requested 0…n + Promoted 0|1|2. Compact
+// State — two boxes (Pato, 2026-08-25 · acceptance bits 2026-08-29):
+//   STATES (11)   nine bools + Requested 0…n + Promoted 0|1|2. Compact
 //                 line still names the true facts; Promoted here is the
 //                 live-discount yes. Requested in this feed is count > 0.
 //                 Mesita Pay / Mesita Credits are acceptance intent bits — no
@@ -136,8 +136,8 @@ export function reportReasonLabel(meta: Record<string, unknown>): string | null 
 
 export const LISTED_STATES: readonly string[] = ["active", "lead"];
 
-function isListedStatus(status: unknown): boolean {
-  return typeof status === "string" && LISTED_STATES.includes(status);
+function isListedState(state: unknown): boolean {
+  return typeof state === "string" && LISTED_STATES.includes(state);
 }
 
 export type StateFactKey = GeneralStateKey;
@@ -170,7 +170,7 @@ export type PlaceStateFacts = {
 function readStateFacts(
   meta: Record<string, unknown> | undefined,
 ): PlaceStateFacts | null {
-  const raw = meta?.statusFacts;
+  const raw = meta?.stateFacts;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const f = raw as Record<string, unknown>;
   const bool = (v: unknown) => v === true;
@@ -180,8 +180,8 @@ function readStateFacts(
     for (const [k, v] of Object.entries(f.functions as Record<string, unknown>)) {
       if (v === true) functions[k] = true;
       else if (v && typeof v === "object" && !Array.isArray(v)) {
-        const status = (v as { status?: unknown }).status;
-        if (status === "completed" || status === "failed") functions[k] = true;
+        const state = (v as { state?: unknown }).state;
+        if (state === "completed" || state === "failed") functions[k] = true;
       }
     }
   }
@@ -198,7 +198,7 @@ function readStateFacts(
     partner: bool(f.partner),
     promoting: bool(f.promoting),
     // Acceptance bits: no stamper writes them yet — false until the engine
-    // PRs add `mesita_pay` / `credits` to the event statusFacts payloads.
+    // PRs add `mesita_pay` / `credits` to the event stateFacts payloads.
     mesita_pay: bool(f.mesita_pay),
     credits: bool(f.credits),
     functions,
@@ -242,7 +242,7 @@ export function intakeFactChips(item: NotificationItem): IntakeFactChip[] {
 }
 
 /**
- * Compact Intake verb: every TRUE general fact, Status-box order.
+ * Compact Intake verb: every TRUE general fact, State-box order.
  * Enriched is a bool — incomplete places just omit it.
  */
 export function intakeStateLine(item: NotificationItem): string | null {
@@ -262,11 +262,11 @@ export function intakeStateLine(item: NotificationItem): string | null {
     if (facts.credits) parts.push("Mesita Credits");
     return parts.join(" · ");
   }
-  // Pre-payload fallback (create events only carried status/enriched).
+  // Pre-payload fallback (create events only carried state/enriched).
   if (item.type === "atlas.place_created") {
     const parts = ["Created"];
-    if (isListedStatus(item.meta?.status)) parts.push("Listed");
-    else if (typeof item.meta?.status === "string") parts.push("Unlisted");
+    if (isListedState(item.meta?.state)) parts.push("Listed");
+    else if (typeof item.meta?.state === "string") parts.push("Unlisted");
     if (item.meta?.enriched === true) parts.push("Enriched");
     return parts.join(" · ");
   }
@@ -288,7 +288,7 @@ export function itemMatchesIntakeFilter(
   return facts[filter as StateFactKey];
 }
 
-export function statusFactCounts(
+export function stateFactCounts(
   items: NotificationItem[],
 ): Record<StateFactKey, number> {
   const counts = Object.fromEntries(
@@ -336,7 +336,7 @@ export function intakeFunctionChips(item: NotificationItem): IntakeFnChip[] {
   }));
 }
 
-/** Category is a taxonomy, not a status — keep it off Intake compact lines. */
+/** Category is a taxonomy, not a state — keep it off Intake compact lines. */
 export function showCategoryOnCompact(item: NotificationItem): boolean {
   return !item.type.startsWith("atlas.");
 }

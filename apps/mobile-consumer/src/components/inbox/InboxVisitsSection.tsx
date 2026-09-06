@@ -13,7 +13,7 @@ import { rewardsTicketPath } from '@/lib/consumer-route-contract';
 // The TRACKING view of a visit. Rewards stays where you START one and where
 // you pay; Inbox is where you watch the ones already in flight. Same data
 // either way — this reads the very same useConsumerTickets hook the Rewards
-// wallet does, so a ticket that changes status reads identically in both and
+// wallet does, so a ticket that changes state reads identically in both and
 // there is no second source of truth to drift.
 //
 // Live before closed: a visit in progress is the only thing on this surface
@@ -30,7 +30,7 @@ export function InboxVisitsSection({ userId }: { userId: string }) {
     [tickets.active, tickets.history],
   );
 
-  if (tickets.status === 'loading') {
+  if (tickets.state === 'loading') {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator color="#fb2b7b" />
@@ -38,7 +38,7 @@ export function InboxVisitsSection({ userId }: { userId: string }) {
     );
   }
 
-  if (tickets.status === 'error') {
+  if (tickets.state === 'error') {
     return (
       <EmptyState
         icon={TicketX}

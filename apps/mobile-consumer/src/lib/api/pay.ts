@@ -10,7 +10,7 @@ export type PayNotificationRow = {
   consumer_id?: string;
   ticket_id: string;
   kind: string;
-  status: string;
+  state: string;
   payload: Record<string, unknown> | null;
   created_at: string;
   resolved_at?: string | null;

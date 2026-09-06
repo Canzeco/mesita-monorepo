@@ -24,7 +24,7 @@ Deno.test("mapStoryTickets: publishes a verified story from a public guest", () 
   const cards = mapStoryTickets([
     {
       id: "t1",
-      story_status: "ai_verified",
+      story_state: "ai_verified",
       story_screenshot_url: "https://cdn.example/story.jpg",
       story_submitted_at: "2026-08-01T00:00:00Z",
       consumer: PUBLIC_GUEST,
@@ -38,23 +38,23 @@ Deno.test("mapStoryTickets: publishes a verified story from a public guest", () 
   assertEquals(cards[0].verified, true);
 });
 
-Deno.test("mapStoryTickets: every verified status publishes", () => {
-  for (const story_status of ["ai_verified", "staff_verified", "self_verified"]) {
+Deno.test("mapStoryTickets: every verified state publishes", () => {
+  for (const story_state of ["ai_verified", "staff_verified", "self_verified"]) {
     const cards = mapStoryTickets([
       {
         id: "t1",
-        story_status,
+        story_state,
         story_screenshot_url: "https://cdn.example/s.jpg",
         consumer: PUBLIC_GUEST,
       },
     ]);
-    assertEquals(cards.length, 1, `${story_status} should publish`);
+    assertEquals(cards.length, 1, `${story_state} should publish`);
   }
 });
 
 Deno.test("mapStoryTickets: unverified / rejected / pending never publish", () => {
   for (
-    const story_status of [
+    const story_state of [
       "pending",
       "submitted",
       "ai_rejected",
@@ -66,12 +66,12 @@ Deno.test("mapStoryTickets: unverified / rejected / pending never publish", () =
     const cards = mapStoryTickets([
       {
         id: "t1",
-        story_status,
+        story_state,
         story_screenshot_url: "https://cdn.example/s.jpg",
         consumer: PUBLIC_GUEST,
       },
     ]);
-    assertEquals(cards.length, 0, `${story_status} must not publish`);
+    assertEquals(cards.length, 0, `${story_state} must not publish`);
   }
 });
 
@@ -79,7 +79,7 @@ Deno.test("mapStoryTickets: drops rows with no screenshot", () => {
   const cards = mapStoryTickets([
     {
       id: "t1",
-      story_status: "ai_verified",
+      story_state: "ai_verified",
       story_screenshot_url: "   ",
       consumer: PUBLIC_GUEST,
     },
@@ -91,7 +91,7 @@ Deno.test("mapStoryTickets: privacy_show_stories=false drops the story", () => {
   const cards = mapStoryTickets([
     {
       id: "t1",
-      story_status: "ai_verified",
+      story_state: "ai_verified",
       story_screenshot_url: "https://cdn.example/s.jpg",
       consumer: { ...PUBLIC_GUEST, privacy_show_stories: false },
     },
@@ -106,7 +106,7 @@ Deno.test("mapStoryTickets: a PRIVATE account's story is dropped, not anonymized
   const cards = mapStoryTickets([
     {
       id: "t1",
-      story_status: "staff_verified",
+      story_state: "staff_verified",
       story_screenshot_url: "https://cdn.example/s.jpg",
       consumer: { ...PUBLIC_GUEST, privacy_public: false },
     },
@@ -118,7 +118,7 @@ Deno.test("mapStoryTickets: falls back through the timestamp chain", () => {
   const [card] = mapStoryTickets([
     {
       id: "t1",
-      story_status: "ai_verified",
+      story_state: "ai_verified",
       story_screenshot_url: "https://cdn.example/s.jpg",
       story_verified_at: "2026-08-02T00:00:00Z",
       created_at: "2026-07-01T00:00:00Z",
@@ -134,7 +134,7 @@ Deno.test("mapVisitTickets: anonymizes a private account but keeps the visit", (
   const [card] = mapVisitTickets([
     {
       id: "v1",
-      status: "paid",
+      state: "paid",
       discount_percent: 20,
       paid_at: "2026-08-01T00:00:00Z",
       consumer: { ...PUBLIC_GUEST, privacy_public: false },
@@ -149,7 +149,7 @@ Deno.test("mapVisitTickets: privacy_show_visits=false drops the visit", () => {
   const cards = mapVisitTickets([
     {
       id: "v1",
-      status: "paid",
+      state: "paid",
       paid_at: "2026-08-01T00:00:00Z",
       consumer: { ...PUBLIC_GUEST, privacy_show_visits: false },
     },
@@ -161,7 +161,7 @@ Deno.test("mapVisitTickets: never leaks a bill amount", () => {
   const [card] = mapVisitTickets([
     {
       id: "v1",
-      status: "paid",
+      state: "paid",
       discount_percent: 10,
       paid_at: "2026-08-01T00:00:00Z",
       consumer: PUBLIC_GUEST,
@@ -177,8 +177,8 @@ Deno.test("mapVisitTickets: never leaks a bill amount", () => {
 Deno.test("mapVisitTickets: marks visits that produced a review", () => {
   const cards = mapVisitTickets(
     [
-      { id: "v1", status: "paid", consumer: PUBLIC_GUEST },
-      { id: "v2", status: "paid", consumer: PUBLIC_GUEST },
+      { id: "v1", state: "paid", consumer: PUBLIC_GUEST },
+      { id: "v2", state: "paid", consumer: PUBLIC_GUEST },
     ],
     new Set(["v2"]),
   );
@@ -188,7 +188,7 @@ Deno.test("mapVisitTickets: marks visits that produced a review", () => {
 
 Deno.test("mapVisitTickets: missing discount reads as 0, not NaN", () => {
   const [card] = mapVisitTickets([
-    { id: "v1", status: "paid", discount_percent: null, consumer: PUBLIC_GUEST },
+    { id: "v1", state: "paid", discount_percent: null, consumer: PUBLIC_GUEST },
   ]);
   assertEquals(card.discount_percent, 0);
 });
@@ -199,7 +199,7 @@ Deno.test("mapReservationTickets: shapes a confirmed booking", () => {
   const [card] = mapReservationTickets([
     {
       id: "r1",
-      status: "confirmed",
+      state: "confirmed",
       reserved_at: "2026-09-01T02:00:00Z",
       party_size: 4,
       consumer: PUBLIC_GUEST,
@@ -214,7 +214,7 @@ Deno.test("mapReservationTickets: rides the visits privacy flag", () => {
   const cards = mapReservationTickets([
     {
       id: "r1",
-      status: "confirmed",
+      state: "confirmed",
       reserved_at: "2026-09-01T02:00:00Z",
       party_size: 2,
       consumer: { ...PUBLIC_GUEST, privacy_show_visits: false },
@@ -227,7 +227,7 @@ Deno.test("mapReservationTickets: never leaks phone or notes", () => {
   const [card] = mapReservationTickets([
     {
       id: "r1",
-      status: "confirmed",
+      state: "confirmed",
       reserved_at: "2026-09-01T02:00:00Z",
       party_size: 2,
       consumer: PUBLIC_GUEST,
@@ -248,7 +248,7 @@ Deno.test("mapReservationTickets: never leaks phone or notes", () => {
 
 Deno.test("mapReservationTickets: absent party_size reads as 0", () => {
   const [card] = mapReservationTickets([
-    { id: "r1", status: "confirmed", party_size: null, consumer: PUBLIC_GUEST },
+    { id: "r1", state: "confirmed", party_size: null, consumer: PUBLIC_GUEST },
   ]);
   assertEquals(card.party_size, 0);
 });
@@ -261,7 +261,7 @@ Deno.test("all mappers: unknown class keys fall back to bronze", () => {
     mapStoryTickets([
       {
         id: "t",
-        story_status: "ai_verified",
+        story_state: "ai_verified",
         story_screenshot_url: "https://cdn.example/s.jpg",
         consumer,
       },
@@ -269,11 +269,11 @@ Deno.test("all mappers: unknown class keys fall back to bronze", () => {
     "bronze",
   );
   assertEquals(
-    mapVisitTickets([{ id: "v", status: "paid", consumer }])[0].class_key,
+    mapVisitTickets([{ id: "v", state: "paid", consumer }])[0].class_key,
     "bronze",
   );
   assertEquals(
-    mapReservationTickets([{ id: "r", status: "confirmed", consumer }])[0]
+    mapReservationTickets([{ id: "r", state: "confirmed", consumer }])[0]
       .class_key,
     "bronze",
   );
@@ -283,13 +283,13 @@ Deno.test("all mappers: a supabase array-shaped join resolves to its first row",
   // PostgREST returns embedded rows as an array when it can't prove the
   // relationship is to-one; mapTicketReviewsToVisitors already handles this.
   const [card] = mapVisitTickets([
-    { id: "v", status: "paid", consumer: [PUBLIC_GUEST] },
+    { id: "v", state: "paid", consumer: [PUBLIC_GUEST] },
   ]);
   assertEquals(card.name, "Ada Lovelace");
 });
 
 Deno.test("all mappers: a missing consumer join degrades to anonymous", () => {
-  const [card] = mapVisitTickets([{ id: "v", status: "paid", consumer: null }]);
+  const [card] = mapVisitTickets([{ id: "v", state: "paid", consumer: null }]);
   assertEquals(card.name, ANONYMOUS_GUEST_NAME);
   assertEquals(card.class_key, "bronze");
   assertEquals(card.followers, 0);

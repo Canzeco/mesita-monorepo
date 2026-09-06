@@ -32,7 +32,7 @@ import {
   operatorFunctionStates,
   pulseBlockedAtFromMap,
   pulseHighWaterFromMap,
-  toFunctionStatus,
+  toFunctionState,
   type BillingState,
   type ChannelSet,
   type ChannelSetKey,
@@ -64,10 +64,10 @@ Deno.test("FUNCTION_STATE_KEYS carries no duplicate — the two arrays never ove
 // compile-time belt — TypeScript rejects a key outside PulseStep — actually
 // holds (MESITA-1247 guard test 2, function leg, compile-time half).
 Deno.test("FunctionStateMap rejects a key outside PulseStep at compile time", () => {
-  const map: FunctionStateMap = { pulse: { status: "pending", at: null, detail: null } };
+  const map: FunctionStateMap = { pulse: { state: "pending", at: null, detail: null } };
   // @ts-expect-error — "bogus" is not a PulseStep; FunctionStateMap must reject it
-  map.bogus = { status: "pending", at: null, detail: null };
-  assertEquals(map.pulse?.status, "pending");
+  map.bogus = { state: "pending", at: null, detail: null };
+  assertEquals(map.pulse?.state, "pending");
 });
 
 // ChannelSet is a straight alias, not a copy — assert the two types accept
@@ -136,29 +136,29 @@ Deno.test("isBillingState: rejects a wrong-typed stripe_price_id", () => {
 
 // ── FunctionState ────────────────────────────────────────────────────────
 
-Deno.test("isFunctionState: accepts all three statuses, rejects a fourth", () => {
-  const pending: FunctionState = { status: "pending", at: null, detail: null };
+Deno.test("isFunctionState: accepts all three states, rejects a fourth", () => {
+  const pending: FunctionState = { state: "pending", at: null, detail: null };
   const completed: FunctionState = {
-    status: "completed",
+    state: "completed",
     at: "2026-08-23T00:00:00Z",
     detail: "6 photos saved",
   };
   const failed: FunctionState = {
-    status: "failed",
+    state: "failed",
     at: "2026-08-23T00:00:00Z",
     detail: "timeout",
   };
   assert(isFunctionState(pending));
   assert(isFunctionState(completed));
   assert(isFunctionState(failed));
-  assert(!isFunctionState({ status: "skipped", at: null, detail: null }));
+  assert(!isFunctionState({ state: "skipped", at: null, detail: null }));
 });
 
 // ── The materialized enrichment state map (MESITA-1249) ────────────────────
 
 Deno.test("FunctionStateMapSchema: accepts a genuinely partial map — absent keys stay absent", () => {
   const r = FunctionStateMapSchema.parse({
-    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
   assert(r.ok);
   if (!r.ok) return;
@@ -173,12 +173,12 @@ Deno.test("FunctionStateMapSchema: accepts an empty map (a brand-new place)", ()
 });
 
 Deno.test("FunctionStateMapSchema: rejects a key outside the PulseSteps", () => {
-  const r = FunctionStateMapSchema.parse({ seed: { status: "completed", at: null, detail: null } });
+  const r = FunctionStateMapSchema.parse({ seed: { state: "completed", at: null, detail: null } });
   assert(!r.ok);
 });
 
 Deno.test("FunctionStateMapSchema: rejects a malformed FunctionState value", () => {
-  const r = FunctionStateMapSchema.parse({ pulse: { status: "skipped", at: null, detail: null } });
+  const r = FunctionStateMapSchema.parse({ pulse: { state: "skipped", at: null, detail: null } });
   assert(!r.ok);
 });
 
@@ -190,7 +190,7 @@ Deno.test("EnrichmentMapSchema: accepts the CREATED-floor default", () => {
 Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null", () => {
   const full: Record<string, unknown> = {};
   for (const key of FUNCTION_STATE_KEYS) {
-    full[key] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
+    full[key] = { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
   }
   const r = EnrichmentMapSchema.parse({ functions: full, highWater: 10, blockedAt: null });
   assert(r.ok);
@@ -198,14 +198,14 @@ Deno.test("EnrichmentMapSchema: accepts a fully-enriched map with blockedAt null
 
 Deno.test("EnrichmentMapSchema: accepts a blocked map with a real PulseBlock", () => {
   const r = EnrichmentMapSchema.parse({
-    functions: { pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
+    functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
     highWater: 1,
-    blockedAt: { key: "details", index: 2, status: "missing" },
+    blockedAt: { key: "details", index: 2, state: "missing" },
   });
   assert(r.ok);
 });
 
-Deno.test("EnrichmentMapSchema: rejects highWater out of 0-10 range, a non-integer, and a bad blockedAt.status", () => {
+Deno.test("EnrichmentMapSchema: rejects highWater out of 0-10 range, a non-integer, and a bad blockedAt.state", () => {
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 11, blockedAt: null }).ok, "11 is over PULSE_TOTAL");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: -1, blockedAt: null }).ok, "negative");
   assert(!EnrichmentMapSchema.parse({ functions: {}, highWater: 3.5, blockedAt: null }).ok, "non-integer");
@@ -213,9 +213,9 @@ Deno.test("EnrichmentMapSchema: rejects highWater out of 0-10 range, a non-integ
     !EnrichmentMapSchema.parse({
       functions: {},
       highWater: 0,
-      blockedAt: { key: "pulse", index: 1, status: "completed" },
+      blockedAt: { key: "pulse", index: 1, state: "completed" },
     }).ok,
-    "blockedAt.status must be failed|missing, never completed",
+    "blockedAt.state must be failed|missing, never completed",
   );
 });
 
@@ -236,7 +236,7 @@ Deno.test("EnrichmentMapSchema: rejects an unknown top-level key", () => {
 
 function stamped(...pieces: string[]): FunctionStateMap {
   const map: Record<string, FunctionState> = {};
-  for (const p of pieces) map[p] = { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
+  for (const p of pieces) map[p] = { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" };
   return map as FunctionStateMap;
 }
 
@@ -254,46 +254,46 @@ Deno.test("pulseHighWaterFromMap: a gap stops the count even if a later piece co
 Deno.test("pulseHighWaterFromMap: Embedding at 10 cannot skip a gap", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse", "details"),
-    embedding: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    embedding: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   };
   assertEquals(pulseHighWaterFromMap(map), 2, "function 10 cannot skip 3–9");
 });
 
 Deno.test("pulseBlockedAtFromMap: missing vs failed, and null when the queue finished", () => {
-  assertEquals(pulseBlockedAtFromMap({}), { key: "pulse", index: 1, status: "missing" });
+  assertEquals(pulseBlockedAtFromMap({}), { key: "pulse", index: 1, state: "missing" });
   const failedAtLinks: FunctionStateMap = {
     ...stamped("pulse", "details", "serp"),
-    links: { status: "failed", at: "2026-08-23T00:00:00Z", detail: "timeout" },
+    links: { state: "failed", at: "2026-08-23T00:00:00Z", detail: "timeout" },
   };
-  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 4, status: "failed" });
+  assertEquals(pulseBlockedAtFromMap(failedAtLinks), { key: "links", index: 4, state: "failed" });
   assertEquals(pulseBlockedAtFromMap(stamped(...PULSE_PIECES)), null);
 });
 
 Deno.test("pulseBlockedAtFromMap: a pending (in-flight) piece reads as failed, same as pulse-pieces.ts's own skipped rule", () => {
   const map: FunctionStateMap = {
     ...stamped("pulse"),
-    details: { status: "pending", at: "2026-08-23T00:00:00Z", detail: null },
+    details: { state: "pending", at: "2026-08-23T00:00:00Z", detail: null },
   };
-  assertEquals(pulseBlockedAtFromMap(map), { key: "details", index: 2, status: "failed" });
+  assertEquals(pulseBlockedAtFromMap(map), { key: "details", index: 2, state: "failed" });
 });
 
-Deno.test("toFunctionStatus: completed stays completed, started becomes pending, everything else becomes failed", () => {
-  assertEquals(toFunctionStatus("completed"), "completed");
-  assertEquals(toFunctionStatus("started"), "pending");
-  assertEquals(toFunctionStatus("failed"), "failed");
-  assertEquals(toFunctionStatus("skipped"), "failed");
-  assertEquals(toFunctionStatus("some-future-unknown-status"), "failed");
+Deno.test("toFunctionState: completed stays completed, started becomes pending, everything else becomes failed", () => {
+  assertEquals(toFunctionState("completed"), "completed");
+  assertEquals(toFunctionState("started"), "pending");
+  assertEquals(toFunctionState("failed"), "failed");
+  assertEquals(toFunctionState("skipped"), "failed");
+  assertEquals(toFunctionState("some-future-unknown-state"), "failed");
 });
 
 Deno.test("FunctionStateMapSchema: folds legacy name+summary into embedding", () => {
   const r = FunctionStateMapSchema.parse({
-    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
-    name: { status: "completed", at: "2026-08-23T00:01:00Z", detail: "name ok" },
-    summary: { status: "completed", at: "2026-08-23T00:02:00Z", detail: "summary ok" },
+    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    name: { state: "completed", at: "2026-08-23T00:01:00Z", detail: "name ok" },
+    summary: { state: "completed", at: "2026-08-23T00:02:00Z", detail: "summary ok" },
   });
   assert(r.ok);
   if (!r.ok) return;
-  assertEquals(r.value.embedding?.status, "completed");
+  assertEquals(r.value.embedding?.state, "completed");
   assertEquals("name" in r.value, false);
   assertEquals("summary" in r.value, false);
 });
@@ -303,32 +303,46 @@ Deno.test("foldFunctionStateMap: the RENAMED semantic folds into embedding", () 
   // under the old key keeps reading as function 10 — including the merge
   // path (mergeEnrichmentMap folds before recomputing the high-water).
   const folded = foldFunctionStateMap({
-    semantic: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    semantic: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
-  assertEquals(folded.embedding?.status, "completed");
+  assertEquals(folded.embedding?.state, "completed");
   assertEquals("semantic" in folded, false);
   // A real embedding stamp wins over the legacy key.
   const both = foldFunctionStateMap({
-    semantic: { status: "failed", at: "a", detail: "old" },
-    embedding: { status: "completed", at: "b", detail: "new" },
+    semantic: { state: "failed", at: "a", detail: "old" },
+    embedding: { state: "completed", at: "b", detail: "new" },
   });
-  assertEquals(both.embedding?.status, "completed");
+  assertEquals(both.embedding?.state, "completed");
+});
+
+Deno.test("foldFunctionStateMap: legacy `status`-spelled records fold to `state`", () => {
+  // MESITA-1542 renamed the identifier; stored `places.enrichment` JSONB was
+  // not rewritten, so a pre-rename map still spells the per-function field
+  // `status`. The fold absorbs it on read — the next write re-materializes.
+  const legacy = {
+    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+  } as unknown as Parameters<typeof foldFunctionStateMap>[0];
+  const folded = foldFunctionStateMap(legacy);
+  assertEquals(folded.pulse?.state, "completed");
+  const parsed = FunctionStateMapSchema.parse(legacy);
+  assert(parsed.ok);
+  if (parsed.ok) assertEquals(parsed.value.pulse?.state, "completed");
 });
 
 Deno.test("operatorFunctionStates: ten keys, Embedding pending when never run", () => {
   const out = operatorFunctionStates({
-    pulse: { status: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
+    pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" },
   });
   assertEquals(Object.keys(out).length, 10);
-  assertEquals(out.pulse.status, "completed");
-  assertEquals(out.embedding.status, "pending");
-  assertEquals(out.description.status, "pending");
+  assertEquals(out.pulse.state, "completed");
+  assertEquals(out.embedding.state, "pending");
+  assertEquals(out.description.state, "pending");
 });
 
 Deno.test("foldFunctionStateMap: either failed alias fails Embedding", () => {
   const folded = foldFunctionStateMap({
-    name: { status: "completed", at: "a", detail: "n" },
-    summary: { status: "failed", at: "b", detail: "s" },
+    name: { state: "completed", at: "a", detail: "n" },
+    summary: { state: "failed", at: "b", detail: "s" },
   });
-  assertEquals(folded.embedding?.status, "failed");
+  assertEquals(folded.embedding?.state, "failed");
 });
