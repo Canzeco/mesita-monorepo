@@ -1,9 +1,10 @@
 // MESITA-1410 — money may not buy the whole deck.
 //
-// `mesita_level` is entirely bought: `plan` is money and `promoting` is only
-// true if the place pays. The blend is a product of s^w, and Level's rungs are
-// LEVEL_LISTED 0.04 / LEVEL_PARTNER 0.2 / LEVEL_PROMOTING 1, so the
-// promoting-over-listed ratio is 25^w:
+// At decision time `mesita_level` was entirely bought: `plan` is money and
+// `promoting` is only true if the place pays. MESITA-1598 later folded in
+// Intake high-water, but this ceiling still bounds the same money RUNGS —
+// LEVEL_LISTED 0.04 / LEVEL_PARTNER 0.2 / LEVEL_PROMOTING 1 — so the
+// promoting-over-listed ratio is still 25^w at their bare values:
 //
 //   w = 1   25x
 //   w = 2   625x        the ceiling (Pato, MESITA-1410)

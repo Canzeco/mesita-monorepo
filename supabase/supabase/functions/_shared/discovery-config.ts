@@ -275,16 +275,24 @@ export const WEIGHT_MAX = 4;
  * that the signal is not important, it is a filter"), Level is filter-shaped at
  * a far lower exponent than the other seven.
  *
- * WHY 2 (Pato, MESITA-1410). Level is entirely bought: `plan` is money and
- * `promoting` is only true if the place pays, so turning its weight up is
- * turning money up. At the uniform ceiling of 4 the floor rung becomes
- * 0.04^4 ≈ 0.0000026 — a ~390,000x demotion that mathematically erases a
- * non-paying place from ranking regardless of its other signals, a pay-to-win
- * filter rather than a tunable importance weight. 2 (0.04^2 = 0.0016, a 625x
- * demotion) keeps Level tunable and meaningful without letting it fully
- * override the rest of the blend. The rungs themselves (LEVEL_LISTED /
- * LEVEL_PARTNER / LEVEL_PROMOTING) are unchanged — this caps the exponent
- * only.
+ * WHY 2 (Pato, MESITA-1410). At the time of this decision Level was entirely
+ * bought: `plan` is money and `promoting` is only true if the place pays, so
+ * turning its weight up was turning money up. At the uniform ceiling of 4 the
+ * floor rung becomes 0.04^4 ≈ 0.0000026 — a ~390,000x demotion that
+ * mathematically erases a non-paying place from ranking regardless of its
+ * other signals, a pay-to-win filter rather than a tunable importance weight.
+ * 2 (0.04^2 = 0.0016, a 625x demotion) keeps Level tunable and meaningful
+ * without letting it fully override the rest of the blend. The rungs
+ * themselves (LEVEL_LISTED / LEVEL_PARTNER / LEVEL_PROMOTING) are unchanged —
+ * this caps the exponent only.
+ *
+ * NO LONGER FULLY MONEY (MESITA-1598, item 3). Level now also reads Intake
+ * high-water — a well-enriched free place can outrank a paying place with a
+ * thin profile — on the surfaces wired to fetch it (discovery-signals.ts's
+ * `mesitaLevel`). The reasoning above still holds structurally: the money
+ * RUNGS this ceiling bounds are unchanged, only each rung's own honesty
+ * changed. Item 2 (whether LEVEL_LISTED itself should move) is separately
+ * still open.
  */
 export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
   mesita_level: 2,

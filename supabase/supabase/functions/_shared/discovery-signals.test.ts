@@ -1,4 +1,5 @@
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
+import { PULSE_TOTAL } from "./pulse-pieces.ts";
 import {
   category,
   clamp01,
@@ -9,6 +10,7 @@ import {
   PROXIMITY_MAX_KM,
   randomness,
   name,
+  LEVEL_ENRICHMENT_FLOOR,
   LEVEL_LISTED,
   LEVEL_PARTNER,
   LEVEL_PROMOTING,
@@ -381,6 +383,85 @@ Deno.test("Mesita Level reproduces the old partnership x promotion product", () 
       assertAlmostEquals(mesitaLevel(place({ plan, promoting })), legacy, 1e-12);
     }
   }
+});
+
+// ── Mesita Level: Intake high-water fold (MESITA-1598) ──────────────────────
+
+Deno.test("undefined/null intakeHighWater is UNKNOWN, not a penalty — old behavior exactly", () => {
+  // Every surface that hasn't wired the side-read yet must score identically
+  // to before this fold existed. This is the backward-compat contract.
+  for (const plan of ["free", "pro"]) {
+    for (const promoting of [false, true]) {
+      const withoutField = mesitaLevel(place({ plan, promoting }));
+      const withUndefined = mesitaLevel(
+        place({ plan, promoting, intakeHighWater: undefined }),
+      );
+      const withNull = mesitaLevel(
+        place({ plan, promoting, intakeHighWater: null }),
+      );
+      assertEquals(withUndefined, withoutField);
+      assertEquals(withNull, withoutField);
+    }
+  }
+});
+
+Deno.test("a fully-enriched place (highWater = PULSE_TOTAL) scores its bare money rung", () => {
+  assertEquals(
+    mesitaLevel(place({ plan: "free", intakeHighWater: PULSE_TOTAL })),
+    LEVEL_LISTED,
+  );
+  assertEquals(
+    mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL })),
+    LEVEL_PARTNER,
+  );
+  assertEquals(
+    mesitaLevel(place({ plan: "pro", promoting: true, intakeHighWater: PULSE_TOTAL })),
+    LEVEL_PROMOTING,
+  );
+});
+
+Deno.test("a confirmed-unenriched place (highWater = 0) is demoted below the bare rung", () => {
+  const bare = mesitaLevel(place({ plan: "pro" }));
+  const thin = mesitaLevel(place({ plan: "pro", intakeHighWater: 0 }));
+  assert(thin < bare, "an unenriched partner must score below an unknown one");
+  assertAlmostEquals(thin, LEVEL_PARTNER * LEVEL_ENRICHMENT_FLOOR, 1e-12);
+});
+
+Deno.test("MESITA-1598's own scenario: a fully-enriched free place outranks a completely unenriched partner", () => {
+  const enrichedFree = mesitaLevel(
+    place({ plan: "free", intakeHighWater: PULSE_TOTAL }),
+  );
+  const thinPartner = mesitaLevel(
+    place({ plan: "pro", intakeHighWater: 0 }),
+  );
+  assert(
+    enrichedFree > thinPartner,
+    `expected enriched free (${enrichedFree}) > thin partner (${thinPartner})`,
+  );
+  // The same shape holds a rung up: a well-enriched partner can outrank an
+  // unenriched promoting place too — the principle isn't special-cased to
+  // just the one boundary the decision named.
+  const enrichedPartner = mesitaLevel(
+    place({ plan: "pro", intakeHighWater: PULSE_TOTAL }),
+  );
+  const thinPromoting = mesitaLevel(
+    place({ plan: "pro", promoting: true, intakeHighWater: 0 }),
+  );
+  assert(enrichedPartner > thinPromoting);
+});
+
+Deno.test("Intake high-water scales linearly between the floor and full credit", () => {
+  const half = mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL / 2 }));
+  const expected = LEVEL_PARTNER *
+    (LEVEL_ENRICHMENT_FLOOR + (1 - LEVEL_ENRICHMENT_FLOOR) * 0.5);
+  assertAlmostEquals(half, expected, 1e-12);
+});
+
+Deno.test("intakeHighWater is clamped — an out-of-range or malformed value never breaks [0,1]", () => {
+  const over = mesitaLevel(place({ plan: "pro", intakeHighWater: PULSE_TOTAL * 5 }));
+  const negative = mesitaLevel(place({ plan: "pro", intakeHighWater: -3 }));
+  assertEquals(over, LEVEL_PARTNER); // clamps to the fraction=1 case
+  assertAlmostEquals(negative, LEVEL_PARTNER * LEVEL_ENRICHMENT_FLOOR, 1e-12); // clamps to 0
 });
 
 // ── Randomness ───────────────────────────────────────────────────────────────
