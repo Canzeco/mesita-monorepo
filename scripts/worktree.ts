@@ -766,6 +766,7 @@ export async function boot(env: Env): Promise<string[]> {
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
   else if (hereIssue) lines.push(`where: workspace ${relative(main, here.path)} claimed by ${hereIssue} on ${here.branch ?? "(detached)"}`);
   else lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)}`);
+  lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
   const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
   lines.push(table(main, fleet, env.now()));
@@ -786,13 +787,34 @@ export const defaultRunner: Runner = async (cmd, args, opts) => {
   return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };
 };
 
-export async function hostHash(): Promise<string> {
+/**
+ * A stable four-hex host id. Deno.hostname() follows the DHCP name on macOS and changed twice
+ * in one day (MESITA-1583), so the first value computed is pinned in $HOME/.config/mesita/host-id
+ * and every later call returns the pinned one. A missing or unwritable home still hashes the
+ * hostname, which joins consistently within one run.
+ */
+export async function hostHash(opts: { home?: string; hostname?: () => string } = {}): Promise<string> {
+  const home = opts.home ?? Deno.env.get("HOME") ?? "";
+  const dir = home ? `${home}/.config/mesita` : null;
+  if (dir) {
+    try {
+      const saved = (await Deno.readTextFile(`${dir}/host-id`)).trim();
+      if (/^[0-9a-f]{4}$/.test(saved)) return saved;
+    } catch { /* first run on this machine */ }
+  }
   let name = "unknown";
   try {
-    name = Deno.hostname();
+    name = (opts.hostname ?? Deno.hostname)();
   } catch { /* no --allow-sys; the hash of "unknown" still joins consistently on one machine */ }
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(name));
-  return Array.from(new Uint8Array(buf).slice(0, 2)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hash = Array.from(new Uint8Array(buf).slice(0, 2)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  if (dir) {
+    try {
+      await Deno.mkdir(dir, { recursive: true });
+      await Deno.writeTextFile(`${dir}/host-id`, hash + "\n");
+    } catch { /* read-only home: unpinned, same as before */ }
+  }
+  return hash;
 }
 
 function flag(args: string[], name: string): string | undefined {

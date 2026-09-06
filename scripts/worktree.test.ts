@@ -4,6 +4,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
 import {
+  hostHash,
   boot,
   add,
   classifyLanded,
@@ -483,4 +484,16 @@ Deno.test("boot names the worktree it runs from, not the shared checkout that co
   assertStringIncludes(fromSub, `where: ${join(FLEET_DIR, "launch")} on claude/launch`);
   const fromShared = (await boot(makeEnv(f))).join("\n");
   assertStringIncludes(fromShared, "where: the shared checkout (a lobby; never claimable)");
+});
+
+Deno.test("hostHash is pinned in the home directory and survives a hostname change", async () => {
+  const home = await Deno.makeTempDir({ prefix: "wt-home-" });
+  const a = await hostHash({ home, hostname: () => "alpha.local" });
+  const b = await hostHash({ home, hostname: () => "beta.lan" });
+  assertEquals(a, b);
+  assertEquals((await Deno.readTextFile(join(home, ".config", "mesita", "host-id"))).trim(), a);
+  await Deno.writeTextFile(join(home, ".config", "mesita", "host-id"), "nope\n");
+  const c = await hostHash({ home, hostname: () => "beta.lan" });
+  assert(/^[0-9a-f]{4}$/.test(c), "a corrupt pin is recomputed");
+  assertEquals((await Deno.readTextFile(join(home, ".config", "mesita", "host-id"))).trim(), c);
 });
