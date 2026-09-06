@@ -27,7 +27,7 @@ import {
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { requireOrgRole } from "../_shared/org-membership.ts";
+import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import { STRIPE_API_VERSION } from "../_shared/stripe-billing.ts";
 import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
@@ -36,7 +36,13 @@ import {
 } from "../_shared/stripe-connect.ts";
 import type { PaymentAccountRow } from "../_shared/payment-account-doc.ts";
 
-type Body = { orgId?: string };
+type Body = {
+  orgId?: string;
+  /** The place console knows its placeId, not the org that holds it — when
+   *  orgId is omitted this EF resolves it server-side. Ignored when orgId is
+   *  present. */
+  placeId?: string;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -50,10 +56,26 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const orgId = (bodyRes.body.orgId ?? "").trim();
-  if (!orgId) return json({ ok: false, error: "orgId is required" }, 400);
-
   const admin = adminClient(envRes.env);
+
+  const bodyOrgId = (bodyRes.body.orgId ?? "").trim();
+  const bodyPlaceId = (bodyRes.body.placeId ?? "").trim();
+  if (!bodyOrgId && !bodyPlaceId) {
+    return json({ ok: false, error: "orgId or placeId is required" }, 400);
+  }
+  let orgId = bodyOrgId;
+  if (!orgId) {
+    const resolved = await orgIdForPlace(admin, bodyPlaceId);
+    if (!resolved) {
+      return json({
+        ok: false,
+        error: "This place has no organization to connect Stripe under yet.",
+        code: "place_has_no_organization",
+      }, 400);
+    }
+    orgId = resolved;
+  }
+
   const roleRes = await requireOrgRole(admin, authRes.user, orgId, ["owner"]);
   if (!roleRes.ok) return roleRes.response;
 

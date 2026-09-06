@@ -5,20 +5,18 @@
 // be indistinguishable — membership checks never become an existence oracle).
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { orgRoleFor, requireOrgRole } from "./org-membership.ts";
+import { orgIdForPlace, orgRoleFor, requireOrgRole } from "./org-membership.ts";
 import type { AuthedUser } from "./auth.ts";
 
-type Row = { role?: string } | null;
-
 /** Minimal PostgREST chain stub: .from().select().eq().eq().maybeSingle(). */
-function stubAdmin(row: Row) {
+// deno-lint-ignore no-explicit-any
+function stubAdmin(row: unknown): any {
   const chain = {
     select: () => chain,
     eq: () => chain,
     maybeSingle: () => Promise.resolve({ data: row, error: null }),
   };
-  // deno-lint-ignore no-explicit-any
-  return { from: () => chain } as any;
+  return { from: () => chain };
 }
 
 const USER = { id: "00000000-0000-4000-8000-000000000001" } as AuthedUser;
@@ -61,4 +59,22 @@ Deno.test("requireOrgRole: non-member and nonexistent org answer the SAME 403 bo
     await nonMember.response.clone().text(),
     await noSuchOrg.response.clone().text(),
   );
+});
+
+Deno.test("orgIdForPlace: returns the place's holding organization", async () => {
+  assertEquals(
+    await orgIdForPlace(stubAdmin({ organization_id: ORG }), "place-1"),
+    ORG,
+  );
+});
+
+Deno.test("orgIdForPlace: null organization_id (public pool) resolves to null", async () => {
+  assertEquals(
+    await orgIdForPlace(stubAdmin({ organization_id: null }), "place-1"),
+    null,
+  );
+});
+
+Deno.test("orgIdForPlace: nonexistent place resolves to null", async () => {
+  assertEquals(await orgIdForPlace(stubAdmin(null), "no-such-place"), null);
 });

@@ -4,6 +4,10 @@ import {
   CONNECT_COUNTRIES,
   type MesitaConnectCountry,
 } from "@/lib/connect-countries";
+import {
+  CONNECT_ENTITY_TYPES,
+  isConnectEntityType,
+} from "@/lib/connect-entity-types";
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, SlidersHorizontal, TrendingUp } from "lucide-react";
 import {
@@ -128,6 +132,11 @@ export function PromosSection({
   // no fallback when the text is unexpected, and the operator should look at
   // this every time because Stripe bakes it into the account PERMANENTLY.
   const [connectCountry, setConnectCountry] = useState<MesitaConnectCountry>("MX");
+  // The other half of the pre-onboarding gate (MESITA-1560, carried here by
+  // MESITA-1563). No valid default, same reasoning as country: it decides
+  // what Stripe asks for next, and a silent "individual" sends a persona
+  // moral down the wrong branch.
+  const [connectEntityType, setConnectEntityType] = useState("");
   const [dashboardBusy, setDashboardBusy] = useState(false);
 
   // Opens the Express Dashboard. New tab, NOT a full navigation like the
@@ -158,13 +167,23 @@ export function PromosSection({
   // the mirror with refresh:true, so no explicit ?connect= handling is needed.
   const startConnect = async () => {
     if (connectBusy) return;
+    // The entity gate only applies to a fresh account — a "Finish setup"
+    // resume mints a link for one that already carries its answer (same rule
+    // as PaymentsCard.tsx's org-level flow).
+    if (byKey.stripe.state.kind === "off" && !isConnectEntityType(connectEntityType)) {
+      setConnectError(
+        "Pick the legal entity type first — Stripe asks an individual and a company for different documents.",
+      );
+      return;
+    }
     setConnectBusy(true);
     setConnectError(null);
-    const base = `${window.location.origin}/manage-single/${place.id}/promos`;
+    const base = `${window.location.origin}/places/${place.id}/capabilities`;
     const r = await startPlacePaymentOnboarding(place.id, {
       returnUrl: `${base}?connect=return`,
       refreshUrl: `${base}?connect=refresh`,
       country: connectCountry,
+      ...(byKey.stripe.state.kind === "off" ? { entityType: connectEntityType } : {}),
     });
     if (!r.ok) {
       setConnectBusy(false);
@@ -421,23 +440,39 @@ export function PromosSection({
                         permanent, so re-offering it on "Finish setup" would be
                         a control that cannot do anything. */}
                     {byKey.stripe.state.kind === "off" && (
-                      <select
-                        aria-label="Country for this Stripe account"
-                        value={connectCountry}
-                        onChange={(e) =>
-                          setConnectCountry(e.target.value as MesitaConnectCountry)}
-                        disabled={connectBusy || connectLoading || connectRefused}
-                        className="border-border bg-background h-9 shrink-0 rounded-full border px-3 text-sm disabled:opacity-50"
-                      >
-                        {CONNECT_COUNTRIES.map((c) => (
-                          <option key={c.code} value={c.code}>{c.label}</option>
-                        ))}
-                      </select>
+                      <>
+                        <select
+                          aria-label="Country for this Stripe account"
+                          value={connectCountry}
+                          onChange={(e) =>
+                            setConnectCountry(e.target.value as MesitaConnectCountry)}
+                          disabled={connectBusy || connectLoading || connectRefused}
+                          className="border-border bg-background h-9 shrink-0 rounded-full border px-3 text-sm disabled:opacity-50"
+                        >
+                          {CONNECT_COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>{c.label}</option>
+                          ))}
+                        </select>
+                        <select
+                          aria-label="Legal entity type for this Stripe account"
+                          value={connectEntityType}
+                          onChange={(e) => setConnectEntityType(e.target.value)}
+                          disabled={connectBusy || connectLoading || connectRefused}
+                          className="border-border bg-background h-9 shrink-0 rounded-full border px-3 text-sm disabled:opacity-50"
+                        >
+                          <option value="" disabled>Legal entity…</option>
+                          {CONNECT_ENTITY_TYPES.map((t) => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </>
                     )}
                     <button
                       type="button"
                       onClick={() => void startConnect()}
-                      disabled={connectBusy || connectLoading || connectRefused}
+                      disabled={connectBusy || connectLoading || connectRefused ||
+                        (byKey.stripe.state.kind === "off" &&
+                          !isConnectEntityType(connectEntityType))}
                       className="bg-foreground text-background inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition hover:opacity-90 disabled:opacity-50"
                     >
                       {connectBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
