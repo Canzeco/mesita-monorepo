@@ -23,10 +23,15 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
+  // Deterministic order matters: the console's default org is list[0]
+  // (resolveActiveOrg fallback), and the day someone else can add you to an
+  // organization, Postgres row order would otherwise silently decide which
+  // org your home screen — and its Stripe connect button — points at.
   const { data: rows, error } = await admin
     .from("organization_members")
     .select("role, organizations!inner(id, name, legal_name, rfc, currency)")
-    .eq("manager_id", authRes.user.id);
+    .eq("manager_id", authRes.user.id)
+    .order("created_at", { ascending: true });
   if (error) return json({ ok: false, error: error.message }, 500);
 
   type Row = {

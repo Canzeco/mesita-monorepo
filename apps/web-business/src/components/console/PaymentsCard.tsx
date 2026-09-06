@@ -33,11 +33,16 @@ export function PaymentsCard({
   account,
   orphaned,
   isOwner,
+  hasLegalName = true,
 }: {
   orgId: string;
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
+  /** Cashes the identity-fold promise: when false and no account exists, a
+   *  muted nudge under the connect form points at the legal-identity group.
+   *  Never blocks connecting. */
+  hasLegalName?: boolean;
 }) {
   const [connectState, connectAction, connecting] = useActionState(
     connectPaymentsAction,
@@ -86,7 +91,7 @@ export function PaymentsCard({
       {isOwner && (
         <div className="flex flex-col gap-3">
           {state === "none" || orphaned ? (
-            <form action={connectAction} className="flex items-end gap-3">
+            <form action={connectAction} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="orgId" value={orgId} />
               <label className="flex flex-1 flex-col gap-1.5">
                 <span className="text-muted-foreground text-[12px]">
@@ -107,6 +112,12 @@ export function PaymentsCard({
               >
                 {connecting ? "Opening Stripe..." : "Connect payments"}
               </button>
+              {!hasLegalName && (
+                <p className="text-muted-foreground w-full text-[12px]">
+                  Add your legal name below and Stripe onboarding comes
+                  prefilled.
+                </p>
+              )}
             </form>
           ) : (
             <div className="flex items-center gap-3">

@@ -205,6 +205,17 @@ Deno.serve(async (req) => {
   }
 
   // "create", "replace", or a 404ed "use": provision a fresh account.
+  // The organization's legal name prefills Stripe onboarding (company.name —
+  // ignored by Stripe if the person later picks individual). Null omits the
+  // field and Stripe simply asks; the create never blocks on it.
+  const { data: orgRow } = await admin
+    .from("organizations")
+    .select("legal_name")
+    .eq("id", orgId)
+    .maybeSingle();
+  const legalName =
+    ((orgRow as { legal_name?: string | null } | null)?.legal_name ?? "").trim();
+
   let account: Stripe.Account;
   try {
     account = await stripe.accounts.create({
@@ -212,6 +223,7 @@ Deno.serve(async (req) => {
       controller: MESITA_CONNECT_CONTROLLER,
       capabilities: MESITA_CONNECT_CAPABILITIES,
       metadata: { organization_id: orgId },
+      ...(legalName ? { company: { name: legalName } } : {}),
     });
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);

@@ -76,6 +76,41 @@ export async function apiUpdateOrganization(
   return organization;
 }
 
+/** One row of the Members box. `name` is null until the person fills their
+ *  profile — production has zero names today, so email is the primary line. */
+export type OrgMember = {
+  managerId: string;
+  name: string | null;
+  email: string | null;
+  role: OrgRole;
+};
+
+export async function apiListOrgMembers(
+  client: SupabaseClient,
+  orgId: string,
+): Promise<OrgMember[]> {
+  const { members } = await invokeEF<{ members: OrgMember[] }>(
+    client,
+    "business-web-list-org-members",
+    { orgId },
+    "Couldn't load members.",
+  );
+  return members ?? [];
+}
+
+export async function apiAddOrgMember(
+  client: SupabaseClient,
+  input: { orgId: string; email: string; role: "editor" | "viewer" },
+): Promise<OrgMember> {
+  const { member } = await invokeEF<{ member: OrgMember }>(
+    client,
+    "business-web-add-org-member",
+    input,
+    "Couldn't add that member.",
+  );
+  return member;
+}
+
 /** The organization's Stripe Connect mirror row (MESITA-1545: the merchant
  *  of record is the organization). Snake case — this is the EF's row shape. */
 export type PaymentAccount = {
