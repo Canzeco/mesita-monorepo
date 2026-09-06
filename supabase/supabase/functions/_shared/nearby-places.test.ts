@@ -6,12 +6,12 @@ import {
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
   NEARBY_TYPES,
-  clampSearchPower,
+  parsePlacesScope,
   dropKnownMesitaGoogleHits,
   isEnrichedListedRow,
-  keepListedForSearchPower,
+  keepListedForScope,
   listedGooglePlaceIds,
-  lanesForSearchPower,
+  lanesForPlacesScope,
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
@@ -114,9 +114,10 @@ Deno.test("mergeNearbyCatalog: drops bbox-corner rows past the 50 km circle", ()
   );
 });
 
-Deno.test("mergeNearbyCatalog: TWO sets — Mesita never filters to partners", () => {
-  // Partners are a paint, not a set (Pato, 2026-08-29): the closest Mesita
-  // rows win regardless of plan.
+Deno.test("mergeNearbyCatalog: closest-N only — the ring cut happens upstream", () => {
+  // The Places ring is applied by keepListedForScope BEFORE the merge, so
+  // this function stays a pure closest-N: the closest rows handed to it
+  // win regardless of plan.
   const mesita = [
     { id: "np-close", plan: "free", google_place_id: "np", lat: 25.67005, lng: -100.30005 },
     { id: "p-far", plan: "pro", google_place_id: "p", lat: 25.8, lng: -100.3 },
@@ -651,33 +652,101 @@ Deno.test("searchNearbyPlaces: isolate budget skip does not call beforeFanout", 
   }
 });
 
-Deno.test("search power zeros unused lanes and treats Mesita Places as enriched", () => {
-  assertEquals(clampSearchPower(undefined), 1);
-  assertEquals(clampSearchPower(1), 1);
-  // Legacy wire values fold into the two-set law: old 3 (Google) → 2.
-  assertEquals(clampSearchPower(3), 2);
-  // Lane caps are the GUEST's How many, never a console knob.
-  assertEquals(lanesForSearchPower(1, 20), { mesitaCount: 20, googleCount: 0 });
-  assertEquals(lanesForSearchPower(2, 20), { mesitaCount: 20, googleCount: 20 });
+Deno.test("places scope: three nested sets, named on the wire, widest-Mesita default", () => {
+  // The absent value is the one that matters most: mobile Search and the
+  // web Pay picker both post no scope, so it must never be the narrowest
+  // ring. "mesita" is the widest Mesita set.
+  assertEquals(parsePlacesScope(undefined), "mesita");
+  assertEquals(parsePlacesScope(null), "mesita");
+  assertEquals(parsePlacesScope(""), "mesita");
+  assertEquals(parsePlacesScope("nope"), "mesita");
+  assertEquals(parsePlacesScope({}), "mesita");
+  assertEquals(parsePlacesScope("partners"), "partners");
+  assertEquals(parsePlacesScope("MESITA"), "mesita");
+  assertEquals(parsePlacesScope(" google "), "google");
+  // Legacy ordinals keep their OLD shipped meanings, so a client deployed
+  // before this EF still gets the set it asked for during the skew window.
+  assertEquals(parsePlacesScope(1), "mesita");
+  assertEquals(parsePlacesScope(2), "google");
+  assertEquals(parsePlacesScope(3), "google");
+  assertEquals(parsePlacesScope("2"), "google");
+
+  // Lane caps are the GUEST's How many, never a console knob. Only the
+  // Google ring opens the Google lane — the two Mesita rings never do.
+  assertEquals(lanesForPlacesScope("partners", 20), { mesitaCount: 20, googleCount: 0 });
+  assertEquals(lanesForPlacesScope("mesita", 20), { mesitaCount: 20, googleCount: 0 });
+  assertEquals(lanesForPlacesScope("google", 20), { mesitaCount: 20, googleCount: 20 });
   // Google's own Nearby call tops out at 20 however large How many is.
-  assertEquals(lanesForSearchPower(2, 60), { mesitaCount: 60, googleCount: 20 });
-  assertEquals(lanesForSearchPower(1, 60).googleCount, 0);
+  assertEquals(lanesForPlacesScope("google", 60), { mesitaCount: 60, googleCount: 20 });
   // Garbage and overshoot clamp to the largest How many stop.
-  assertEquals(lanesForSearchPower(2, 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
-  assertEquals(lanesForSearchPower(1, Number.NaN).mesitaCount, 0);
+  assertEquals(lanesForPlacesScope("google", 999).mesitaCount, CATALOG_NEARBY_HARD_MAX);
+  assertEquals(lanesForPlacesScope("mesita", Number.NaN).mesitaCount, 0);
+
   assertEquals(isEnrichedListedRow({ content_state: "ready" }), true);
   assertEquals(isEnrichedListedRow({ enriched_at: "2026-08-01T00:00:00Z" }), true);
   assertEquals(isEnrichedListedRow({ content_state: "queued" }), false);
   assertEquals(isEnrichedListedRow({}), false);
-  assertEquals(keepListedForSearchPower({ id: "p", partner: true }), true);
-  assertEquals(
-    keepListedForSearchPower({ id: "e", plan: "free", content_state: "ready" }),
-    true,
-  );
-  assertEquals(
-    keepListedForSearchPower({ id: "c", plan: "free", content_state: "queued" }),
-    false,
-  );
+});
+
+// THE TEST THAT PROVES THE RINGS ARE REAL.
+//
+// Every live row is plan='pro' AND content_state='ready' (22/22, measured
+// 2026-09-05), so on production-shaped data all three rings hold the same
+// places and a green suite proves nothing. These two cells do not exist in
+// production and are exactly what separates the rings:
+//
+//   partner_not_enriched  pro  + queued  → in NO Mesita ring (gray)
+//   enriched_not_partner  free + ready   → in Enriched, NOT in Partner
+//
+// If either row cannot be constructed, the three rings are not three sets.
+Deno.test("places scope: the three rings return three DIFFERENT sets", () => {
+  const partnerAndEnriched = { id: "pe", plan: "pro", content_state: "ready" };
+  const enrichedNotPartner = { id: "ep", plan: "free", content_state: "ready" };
+  const partnerNotEnriched = { id: "pn", plan: "pro", content_state: "queued" };
+  const stub = { id: "st", plan: "free", content_state: "queued" };
+  const catalog = [partnerAndEnriched, enrichedNotPartner, partnerNotEnriched, stub];
+
+  const ring = (scope: "partners" | "mesita" | "google") =>
+    catalog.filter((row) => keepListedForScope(row, scope)).map((row) => row.id);
+
+  // Enrichment gates EVERY Mesita ring (Pato, 2026-09-05), so an
+  // unenriched partner is in neither — it reads gray until enriched.
+  assertEquals(ring("partners"), ["pe"]);
+  assertEquals(ring("mesita"), ["pe", "ep"]);
+  // A wider ring never shows FEWER Mesita places; Google rows arrive
+  // alongside these, never instead of them.
+  assertEquals(ring("google"), ["pe", "ep"]);
+
+  // Partner ⊂ Enriched — the containment the diagram draws, now enforced.
+  const partners = new Set(ring("partners"));
+  assertEquals(ring("mesita").filter((id) => partners.has(id)), ["pe"]);
+  assertEquals(partners.has("pn"), false);
+
+  // And the sets genuinely differ, which is the whole point of the control.
+  assertEquals(ring("partners").length < ring("mesita").length, true);
+});
+
+Deno.test("places scope: an absent scope returns today's set, for Pay and mobile", () => {
+  // apps/mobile-consumer/src/lib/api/places.ts and the web Pay picker
+  // (PlacePickList) post { lat, lng, limit } with no scope. Whatever the
+  // default resolves to, it must not narrow what those two callers see.
+  const rows = [
+    { id: "pe", plan: "pro", content_state: "ready" },
+    { id: "ep", plan: "free", content_state: "ready" },
+    { id: "st", plan: "free", content_state: "queued" },
+  ];
+  const absent = rows.filter((row) =>
+    keepListedForScope(row, parsePlacesScope(undefined))
+  ).map((row) => row.id);
+  const explicitMesita = rows.filter((row) => keepListedForScope(row, "mesita"))
+    .map((row) => row.id);
+  assertEquals(absent, explicitMesita);
+  assertEquals(absent, ["pe", "ep"]);
+  // The default is never the narrowest ring — that is the whole guard.
+  assertEquals(parsePlacesScope(undefined) === "partners", false);
+});
+
+Deno.test("nearby helpers: known-gid drop still works", () => {
   const createdGids = listedGooglePlaceIds([
     { google_place_id: "ChIJ-created" },
     { google_place_id: null },

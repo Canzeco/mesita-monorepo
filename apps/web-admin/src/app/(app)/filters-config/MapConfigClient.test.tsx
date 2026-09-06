@@ -34,10 +34,13 @@ describe("Map reload pairs", () => {
     expect(html).not.toContain("Mesita places");
     expect(html).not.toContain("Mesita partners");
     expect(html).toContain("How many pins is the guest");
-    // The console must say what the set IS, not just name it: an
-    // operator reading "Mesita Places" would price it at every row.
-    expect(html).toContain("Mesita Places means created AND enriched");
+    // The console must say what the sets ARE, not just name them: an
+    // operator reading "Mesita Places" would price it at every row. The
+    // chain and its gate are both stated (Pato, 2026-09-05).
+    expect(html).toContain("Three nested sets");
     expect(html).toContain("Mesita Enriched Places");
+    expect(html).toContain("Mesita Partner Places");
+    expect(html).toContain("Enrichment gates every Mesita ring");
     expect(html).toContain("never a search source");
     expect(html).toContain("Places sets");
     expect(html).toContain("Closest N of the selected set");

@@ -4,14 +4,15 @@ import { PLACE_FAMILIES } from "@/lib/place-families";
 import {
   applyMapFilters,
   clampResultLimit,
-  clampSearchPower,
+  MAP_PLACES_SCOPE_DEFAULT,
   MAP_FILTER_DEFAULTS,
   MAP_RESULT_LIMITS,
   mapFilterCount,
   mapFiltersAreActive,
   placeMapState,
-  placeSearchLane,
-  searchPowerCaption,
+  parsePlacesScope,
+  placeSearchScope,
+  placesScopeCaption,
   takeMapResultLimit,
   type MapFilters,
 } from "@/lib/map-filters-engine";
@@ -53,37 +54,76 @@ describe("placeMapState", () => {
   });
 });
 
-describe("placeSearchLane", () => {
-  it("maps Partners / enriched Places / Google; Created and Requested are out", () => {
-    expect(placeSearchLane(place({ partner: true }))).toBe("places");
-    expect(placeSearchLane(place({ promoting: true }))).toBe("places");
-    expect(placeSearchLane(place({ content_state: "ready" }))).toBe("places");
+describe("placeSearchScope", () => {
+  it("names the NARROWEST ring a place is in — enrichment gates both Mesita rings", () => {
+    // Enriched AND pays → the innermost ring.
     expect(
-      placeSearchLane(place({ enriched_at: "2026-08-01T00:00:00Z" })),
-    ).toBe("places");
-    expect(placeSearchLane(place({ googleOnly: true }))).toBe("google");
-    expect(placeSearchLane(place({ from_google: true }))).toBe("google");
-    expect(placeSearchLane(place())).toBeNull();
+      placeSearchScope(place({ partner: true, content_state: "ready" })),
+    ).toBe("partners");
+    // Enriched, does not pay → the middle ring.
+    expect(placeSearchScope(place({ content_state: "ready" }))).toBe("mesita");
     expect(
-      placeSearchLane(place({ request_count: 3, content_state: "queued" })),
+      placeSearchScope(place({ enriched_at: "2026-08-01T00:00:00Z" })),
+    ).toBe("mesita");
+    // A PARTNER THAT IS NOT ENRICHED IS IN NEITHER RING (Pato, 2026-09-05).
+    // This is the containment the rings draw, enforced rather than assumed.
+    expect(placeSearchScope(place({ partner: true }))).toBeNull();
+    expect(
+      placeSearchScope(place({ partner: true, content_state: "queued" })),
+    ).toBeNull();
+    // `promoting` is not a partner test — the server's boolean is. A
+    // promoting non-partner would otherwise be client-side partner and
+    // server-side not, and would flicker between the two cuts.
+    expect(placeSearchScope(place({ promoting: true }))).toBeNull();
+    expect(
+      placeSearchScope(place({ promoting: true, content_state: "ready" })),
+    ).toBe("mesita");
+    expect(placeSearchScope(place({ googleOnly: true }))).toBe("google");
+    expect(placeSearchScope(place({ from_google: true }))).toBe("google");
+    expect(placeSearchScope(place())).toBeNull();
+    expect(
+      placeSearchScope(place({ request_count: 3, content_state: "queued" })),
     ).toBeNull();
   });
 });
 
-describe("search power", () => {
-  it("captions the cumulative union and clamps missing values to + Places", () => {
-    expect(searchPowerCaption(1)).toBe("Mesita Places");
-    expect(searchPowerCaption(2)).toBe("Mesita Places & Google Places");
-    // Legacy persisted 3 (the old Google stop) folds to 2.
-    expect(clampSearchPower(99)).toBe(2);
-    expect(clampSearchPower(3)).toBe(2);
-    expect(clampSearchPower(0)).toBe(1);
-    expect(clampSearchPower(undefined)).toBe(1);
+describe("places scope", () => {
+  it("captions each ring and resolves anything unknown to the MIDDLE one", () => {
+    expect(placesScopeCaption("partners")).toBe("Mesita Partner Places only");
+    expect(placesScopeCaption("mesita")).toBe(
+      "Mesita Enriched Places, partners included",
+    );
+    expect(placesScopeCaption("google")).toBe(
+      "Google Places, Mesita places included",
+    );
+    // The default is the middle ring: a discovery surface never opens on
+    // "only the places that pay us".
+    expect(MAP_PLACES_SCOPE_DEFAULT).toBe("mesita");
+    expect(parsePlacesScope(undefined)).toBe("mesita");
+    expect(parsePlacesScope(null)).toBe("mesita");
+    expect(parsePlacesScope("nope")).toBe("mesita");
+    expect(parsePlacesScope("")).toBe("mesita");
+    expect(parsePlacesScope("PARTNERS")).toBe("partners");
+    // A v4 sessionStorage blob holds an ordinal under the two-set law, so
+    // the numerics keep their OLD meanings rather than being reread under
+    // the new chain. (The storage key is bumped too — this is the belt.)
+    expect(parsePlacesScope(1)).toBe("mesita");
+    expect(parsePlacesScope(2)).toBe("google");
+    expect(parsePlacesScope(3)).toBe("google");
+    expect(parsePlacesScope(99)).toBe("google");
+    // Never the narrowest ring by accident.
+    expect(parsePlacesScope(0)).toBe("mesita");
   });
 });
 
 describe("applyMapFilters", () => {
-  const partner = place({ id: "partner", partner: true });
+  // Enriched AND pays — the innermost ring. Enrichment gates yellow now,
+  // so a bare `partner: true` row is in no Mesita ring at all.
+  const partner = place({
+    id: "partner",
+    partner: true,
+    content_state: "ready",
+  });
   const enriched = place({ id: "enriched", content_state: "ready" });
   const created = place({ id: "created" });
   const requested = place({
@@ -94,8 +134,8 @@ describe("applyMapFilters", () => {
   const google = place({ id: "google", googleOnly: true });
   const deck = [partner, enriched, created, requested, google];
 
-  it("defaults to Mesita Places and still drops Created, Requested, and Google", () => {
-    expect(MAP_FILTER_DEFAULTS.searchPower).toBe(1);
+  it("defaults to Mesita Enriched Places and still drops Created, Requested, and Google", () => {
+    expect(MAP_FILTER_DEFAULTS.placesScope).toBe("mesita");
     expect(mapFiltersAreActive(filters())).toBe(false);
     expect(mapFilterCount(filters())).toBe(0);
     expect(applyMapFilters(deck, filters()).map((p) => p.id)).toEqual([
@@ -104,10 +144,13 @@ describe("applyMapFilters", () => {
     ]);
   });
 
-  it("counts leaving Mesita Places, each Super Category, or How many as one filter", () => {
-    expect(mapFilterCount(filters({ searchPower: 2 }))).toBe(1);
+  it("counts leaving the default ring, each Super Category, or How many as one filter", () => {
+    expect(mapFilterCount(filters({ placesScope: "google" }))).toBe(1);
+    expect(mapFilterCount(filters({ placesScope: "partners" }))).toBe(1);
     expect(
-      mapFilterCount(filters({ searchPower: 1, familyKeys: ["restaurants"] })),
+      mapFilterCount(
+        filters({ placesScope: "mesita", familyKeys: ["restaurants"] }),
+      ),
     ).toBe(1);
     expect(mapFilterCount(filters({ resultLimit: 20 }))).toBe(0);
     expect(mapFilterCount(filters({ resultLimit: 40 }))).toBe(1);
@@ -118,13 +161,27 @@ describe("applyMapFilters", () => {
     expect(MAP_FILTER_DEFAULTS).not.toHaveProperty("categories");
   });
 
-  it("nests Mesita Places ⊂ Google Places — partners ride the Mesita set", () => {
+  it("nests Google ⊃ Mesita Enriched ⊃ Mesita Partner, and the rings differ", () => {
     expect(
-      applyMapFilters(deck, filters({ searchPower: 1 })).map((p) => p.id),
+      applyMapFilters(deck, filters({ placesScope: "partners" })).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["partner"]);
+    expect(
+      applyMapFilters(deck, filters({ placesScope: "mesita" })).map((p) => p.id),
     ).toEqual(["partner", "enriched"]);
     expect(
-      applyMapFilters(deck, filters({ searchPower: 2 })).map((p) => p.id),
+      applyMapFilters(deck, filters({ placesScope: "google" })).map((p) => p.id),
     ).toEqual(["partner", "enriched", "google"]);
+    // An unenriched partner is in NO Mesita ring — it reads gray until it
+    // is enriched, which is what makes Partner ⊂ Enriched true.
+    const rawPartner = place({ id: "raw-partner", partner: true });
+    expect(
+      applyMapFilters([rawPartner], filters({ placesScope: "partners" })),
+    ).toEqual([]);
+    expect(
+      applyMapFilters([rawPartner], filters({ placesScope: "google" })),
+    ).toEqual([]);
   });
 
   it("cuts on Super Category only — never a concrete type slug", () => {
@@ -212,13 +269,13 @@ describe("applyMapFilters", () => {
     expect(
       applyMapFilters(
         [cafe, hotel],
-        filters({ searchPower: 2, familyKeys: ["cafes_bakeries"] }),
+        filters({ placesScope: "google", familyKeys: ["cafes_bakeries"] }),
       ).map((p) => p.id),
     ).toEqual(["g-cafe"]);
     expect(
       applyMapFilters(
         [cafe],
-        filters({ searchPower: 2, familyKeys: ["restaurants"] }),
+        filters({ placesScope: "google", familyKeys: ["restaurants"] }),
       ).map((p) => p.id),
     ).toEqual([]);
   });

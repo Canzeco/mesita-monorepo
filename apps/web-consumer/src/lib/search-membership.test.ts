@@ -29,13 +29,20 @@ import {
 } from "@/lib/search-membership";
 
 describe("search membership tones — partner > enriched > everything else", () => {
-  // THE LAW (Pato, 2026-08-29): yellow beats red beats gray, and red is
-  // EARNED by enrichment. A row existing is not enough.
+  // THE LAW (Pato, 2026-09-05): the three nested sets the Filters sheet
+  // lists — Google ⊃ Mesita Enriched ⊃ Mesita Partner. Red is EARNED by
+  // enrichment, and so is yellow: a set the guest can pick has to be the
+  // same set the colour promises.
   it("paints map rows in that order", () => {
     const ready = { content_state: "ready" };
     expect(placeMembershipTone({ partner: true, ...ready })).toBe("partner");
-    // Partner beats enriched: an unenriched partner is still yellow.
-    expect(placeMembershipTone({ partner: true })).toBe("partner");
+    // ENRICHMENT GATES YELLOW TOO. This used to be "partner", which made
+    // Partner ⊄ Enriched and left the rings drawing a containment the
+    // predicate refused. An unenriched partner is gray until it is enriched.
+    expect(placeMembershipTone({ partner: true })).toBe("unlisted");
+    expect(
+      placeMembershipTone({ partner: true, content_state: "queued" }),
+    ).toBe("unlisted");
     expect(placeMembershipTone({ partner: false, ...ready })).toBe("enriched");
     // THE FIX: a Created / Requested stub used to paint red.
     expect(placeMembershipTone({ partner: false })).toBe("unlisted");
@@ -49,8 +56,12 @@ describe("search membership tones — partner > enriched > everything else", () 
   });
 
   it("paints name-lane rows the same way, gray when the server is silent", () => {
+    // Same gate on the name lane: enriched first, then partner.
     expect(
       membershipTone({ state: "web_listed", partner: true, enriched: false }),
+    ).toBe("unlisted");
+    expect(
+      membershipTone({ state: "web_listed", partner: true, enriched: true }),
     ).toBe("partner");
     expect(
       membershipTone({ state: "web_listed", partner: false, enriched: true }),
@@ -257,6 +268,7 @@ describe("buildSearchMapPins", () => {
           mainText: "Strana",
           state: "web_listed",
           partner: true,
+          enriched: true,
           mesitaId: "m1",
           lat: 25.6,
           lng: -100.4,

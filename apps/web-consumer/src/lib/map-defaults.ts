@@ -116,16 +116,22 @@ export function mapPinIcon(fillColor: string, strokeColor: string) {
 }
 
 // Search pins — same hexes as the results-row dots. THE LAW, checked in
-// this order (Pato, 2026-08-29):
+// this order (Pato, 2026-09-05):
 //
-//   yellow  Mesita Partner Places   — the place PAYS
-//   red     Mesita ENRICHED Places  — we wrote a profile
+//   yellow  Mesita Partner Places   — enriched AND the place PAYS
+//   red     Mesita Enriched Places  — enriched, we wrote a profile
 //   gray    everything else         — Google rows AND our own stubs
+//
+// The paint IS the set law, not a second opinion about it:
+//
+//   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
 //
 // Red is EARNED by enrichment. A row existing is not enough: a Created or
 // Requested stub has nothing to show, so it promises exactly as much as a
-// raw Google row and wears the same gray. Yellow beats red beats gray, so
-// an unenriched partner is still yellow.
+// raw Google row and wears the same gray. ENRICHMENT GATES YELLOW TOO —
+// this used to read "an unenriched partner is still yellow", which made
+// Partner ⊄ Enriched and left the rings drawing a containment the
+// predicate refused. An unenriched partner is gray until it is enriched.
 //
 // Blue is the guest's current location and is never a place pin.
 export const MAP_PARTNER_PIN_COLOR = "#ffc400";

@@ -16,18 +16,25 @@
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
 //     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
 //     and cannot host GooglePlaceSheet.
-//   { google: true, lat, lng, limit?, searchPower?, familyKeys? } — web
-//     Search catalog. TWO sets (Pato, 2026-08-29): searchPower (default 1)
-//     is Places scope: 1 closest Mesita Places (partners included, painted
-//     yellow), 2 closest Google Nearby (Mesita/partner hits painted, not
-//     added). Partners are a paint, never a set. `limit` is the guest's
-//     How many — it caps BOTH lanes and the merged union, so max pins =
-//     limit, never the sum. familyKeys (guest Super
-//     pills) pick Nearby `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES
-//     so unlisted Google places match the Super. Empty = operator F&B
-//     batteries. Power 1 never calls Nearby. Google set stays distance.
-//     Listed set Lineup-reorders (Map mask). Google fill is metered per
-//     connecting IP when power is 2.
+//   { google: true, lat, lng, limit?, placesScope?, familyKeys? } — web
+//     Search catalog. THREE NESTED SETS (Pato, 2026-09-05):
+//       Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
+//       gray                   red                     yellow
+//     `placesScope` names the set — "partners" | "mesita" | "google" —
+//     and enrichment gates every Mesita ring, so a partner has to be
+//     enriched to sit inside the enriched one. Absent or unknown resolves
+//     to "mesita", the WIDEST Mesita ring: mobile Search and the web Pay
+//     picker both post no scope, so the absent value has to be safe on its
+//     own. Legacy numerics keep their old meanings (1 = Mesita,
+//     2/3 = Google). `limit` is the guest's How many — it caps BOTH lanes
+//     and the merged union, so max pins = limit, never the sum. familyKeys
+//     (guest Super pills) pick Nearby `includedPrimaryTypes` from
+//     GOOGLE_SEARCH_TYPES so unlisted Google places match the Super. Empty
+//     = operator F&B batteries. Only the Google scope calls Nearby, and
+//     every gate on that call reads `lanes.googleCount`, never the scope
+//     name — one place to change, no literal to miss. Google set stays
+//     distance. Listed set Lineup-reorders (Map mask). Google fill is
+//     metered per connecting IP.
 //   { south, west, north, east, limit? } — listed pins inside a camera
 //     rectangle (kept for callers that still send a box).
 //   { limit? } / GET — Pay / Home: global newest-first.
@@ -70,13 +77,15 @@ import {
   wantsGoogleFill,
 } from "../_shared/geo.ts";
 import {
-  clampSearchPower,
-  keepListedForSearchPower,
-  lanesForSearchPower,
+  keepListedForScope,
+  lanesForPlacesScope,
   mergeNearbyCatalog,
+  parsePlacesScope,
   peekCachedNearbyPlaces,
+  PLACES_SCOPE_DEFAULT,
   searchNearbyPlaces,
   type NearbyHit,
+  type PlacesScope,
 } from "../_shared/nearby-places.ts";
 import {
   mapLineupIntent,
@@ -165,6 +174,8 @@ type ListBody = {
   limit?: number;
   nearby?: boolean;
   google?: boolean;
+  placesScope?: unknown;
+  /** Legacy ordinal wire (pre-2026-09-05 clients). */
   searchPower?: number;
   familyKeys?: unknown;
   lat?: number;
@@ -214,7 +225,7 @@ Deno.serve(async (req) => {
   let limit = DEFAULT_LIMIT;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
-  let searchPower: 1 | 2 = 1;
+  let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
   let guestSupers: ReturnType<typeof readGuestFamilyKeys> = [];
   let bboxDecision: ReturnType<typeof decideBbox> = { mode: "none" };
   if (req.method === "POST") {
@@ -225,7 +236,9 @@ Deno.serve(async (req) => {
     nearbyDecision = decideNearby(body as Record<string, unknown>);
     clientGoogle = nearbyDecision.mode === "ok" &&
       wantsGoogleFill(body as Record<string, unknown>);
-    searchPower = clampSearchPower(body.searchPower);
+    // The named wire wins; a legacy client's ordinal is the fallback. Both
+    // land on "mesita" when absent, never on the narrowest ring.
+    placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
     guestSupers = readGuestFamilyKeys(body.familyKeys);
     if (nearbyDecision.mode === "none") {
       bboxDecision = decideBbox(body as Record<string, unknown>);
@@ -324,8 +337,9 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
+    const lanes = lanesForPlacesScope(placesScope, limit);
     let mesitaRows = scanRows.filter((row) =>
-      keepListedForSearchPower(row)
+      keepListedForScope(row, placesScope)
     );
 
     if (!googleFill) {
@@ -337,7 +351,7 @@ Deno.serve(async (req) => {
         inRadius,
         [],
         center,
-        lanesForSearchPower(searchPower, limit),
+        lanes,
       )
         .slice(0, limit)
         .flatMap((item) => item.kind === "listed" ? [item.row] : [])
@@ -355,7 +369,9 @@ Deno.serve(async (req) => {
     }
 
     let googleHits: NearbyHit[] = [];
-    const wantGoogleNearby = searchPower >= 2;
+    // Gate on the CAP, never on the scope name: the cap is one value that
+    // every branch below reuses, so there is no second literal to forget.
+    const wantGoogleNearby = lanes.googleCount > 0;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
       const cached = peekCachedNearbyPlaces(center, nearbyTypes);
@@ -402,7 +418,7 @@ Deno.serve(async (req) => {
         const seen = new Set(mesitaRows.map((row) => row.id));
         for (const row of extra.data as CardRow[]) {
           if (seen.has(row.id)) continue;
-          if (!keepListedForSearchPower(row)) continue;
+          if (!keepListedForScope(row, placesScope)) continue;
           seen.add(row.id);
           mesitaRows = [...mesitaRows, row];
         }
@@ -422,7 +438,7 @@ Deno.serve(async (req) => {
       admitted.listed,
       googleForMerge,
       center,
-      lanesForSearchPower(searchPower, limit),
+      lanes,
     );
     const lineupOpts = {
       center,
@@ -430,10 +446,10 @@ Deno.serve(async (req) => {
       params: cfg.params,
       ...mapLineupIntent(nearbyTypes),
     };
-    // Google set stays nearest-N distance. Lineup only reorders listed
-    // sets (Partners / All Mesita Places), including empty-Nearby fallback.
+    // Google set stays nearest-N distance. Lineup only reorders the Mesita
+    // rings (Partner / Enriched), including the empty-Nearby fallback.
     const merged = (
-      searchPower >= 2 && googleForMerge.length > 0
+      wantGoogleNearby && googleForMerge.length > 0
         ? catalog
         : reorderListedLanes(catalog, lineupOpts)
     ).slice(0, limit);
@@ -456,6 +472,23 @@ Deno.serve(async (req) => {
         category?: string | null;
       }>,
     );
+    // One line, because every failure mode of the Places scope is a WRONG
+    // SET rather than an error: a scope-skewed client, an operator who
+    // switched Google off, and a spent IP quota all look identical to a
+    // thin catalog from the outside. `googleFillOn` and `quotaAllowed`
+    // separate "the guest asked for Google and we chose not to" from "the
+    // guest asked for Google and there was none" three weeks after ship.
+    console.log(JSON.stringify({
+      fn: "consumer-web-list-places",
+      mode: "nearby",
+      scope: placesScope,
+      googleFillOn: googleFill,
+      quotaAllowed: wantGoogleNearby ? googleHits.length > 0 : null,
+      mesitaRows: mesitaRows.length,
+      googleHits: googleHits.length,
+      returned: places.length,
+      limit,
+    }));
     return json({
       ok: true,
       places,

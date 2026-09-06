@@ -6,6 +6,7 @@ import {
   reorderListedLanes,
 } from "./nearby-lineup.ts";
 import {
+  lanesForPlacesScope,
   mergeNearbyCatalog,
   type NearbyHit,
   type NearbyLaneCaps,
@@ -208,7 +209,17 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("embedding,"), false);
   const googleBranch = src.slice(src.indexOf("const admitted = admitMapCatalog("));
   assertEquals(googleBranch.includes("reorderListedLanes"), true);
-  assertEquals(googleBranch.includes("searchPower >= 2 && googleForMerge.length > 0"), true);
+  // Behavioural, not source-text: the old assertion pinned the literal
+  // `searchPower >= 2` and was satisfiable by whatever the file happened to
+  // say, so forgetting to update a second copy of that literal stayed green.
+  // The Google call is gated on the CAP now, and lanesForPlacesScope is the
+  // one place that decides it.
+  assertEquals(googleBranch.includes("wantGoogleNearby && googleForMerge.length > 0"), true);
+  assertEquals(src.includes("lanes.googleCount > 0"), true);
+  assertEquals(src.includes("searchPower >="), false);
+  assertEquals(lanesForPlacesScope("mesita", 60).googleCount, 0);
+  assertEquals(lanesForPlacesScope("partners", 60).googleCount, 0);
+  assertEquals(lanesForPlacesScope("google", 60).googleCount > 0, true);
   assertEquals(googleBranch.includes("dropKnownMesitaGoogleHits"), false);
   const listedOnly = src.slice(
     src.indexOf("if (!googleFill)"),
