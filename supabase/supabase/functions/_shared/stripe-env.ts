@@ -192,9 +192,13 @@ export function stripeSecretKeyProblem(
   // pasted in front of it. Say so precisely — "does not look like a key" sends
   // an operator hunting for a new key when the one they have is fine and only
   // needs the junk stripped off its front.
-  const embedded = key.indexOf("sk_test_") >= 0 || key.indexOf("sk_live_") >= 0;
-  if (embedded) {
-    return `${name} has ${key.indexOf("sk_")} stray character(s) before the key. The value must START with sk_test_… / sk_live_… — re-paste it with nothing in front.`;
+  const starts = [key.indexOf("sk_test_"), key.indexOf("sk_live_")]
+    .filter((i) => i > 0);
+  if (starts.length > 0) {
+    // Measured from the real token, not the first "sk_" — a value that
+    // happens to contain an earlier "sk_" would otherwise report a lead of
+    // zero, which reads as no problem at all.
+    return `${name} has ${Math.min(...starts)} stray character(s) before the key. The value must START with sk_test_… / sk_live_… — re-paste it with nothing in front.`;
   }
   return `${name} does not look like a Stripe secret key (expected sk_test_… or sk_live_…).`;
 }
