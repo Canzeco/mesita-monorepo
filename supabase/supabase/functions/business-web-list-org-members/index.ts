@@ -4,6 +4,12 @@
 // (viewers included — seeing your own team is not a privilege); writes stay
 // on business-web-add-org-member (owner-only).
 //
+// Also returns pendingInvites (MESITA-1550) — unclaimed, unexpired
+// organization_invites rows, mirroring business-web-list-members'
+// pendingBusinessInvites. Readable by any member for the same reason the
+// member list is: seeing who's been invited isn't a privilege, only
+// revoking is (business-web-remove-org-member, owner-only).
+//
 // A foreign or nonexistent org id answers the same opaque 403 as every org
 // surface — membership checks never become an existence oracle.
 
@@ -54,5 +60,21 @@ Deno.serve(async (req) => {
     role: r.role,
   }));
 
-  return json({ ok: true, members, myRole: roleRes.role });
+  const invitesRes = await admin
+    .from("organization_invites")
+    .select("id, email, role, created_at, expires_at")
+    .eq("organization_id", orgId)
+    .is("claimed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: true });
+  if (invitesRes.error) {
+    return json({ ok: false, error: invitesRes.error.message }, 500);
+  }
+
+  return json({
+    ok: true,
+    members,
+    pendingInvites: invitesRes.data ?? [],
+    myRole: roleRes.role,
+  });
 });

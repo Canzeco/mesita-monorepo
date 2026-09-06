@@ -14,6 +14,7 @@ import type {
   Organization,
   OrgMember,
   PaymentAccount,
+  PendingOrgInvite,
 } from "@/lib/api/organizations";
 
 const ORG: Organization = {
@@ -39,6 +40,7 @@ function render(over: Partial<Parameters<typeof OrgScreenSections>[0]> = {}) {
       account={null}
       orphaned={false}
       members={MEMBERS}
+      pendingInvites={[]}
       membersError={null}
       {...over}
     />,
@@ -91,6 +93,27 @@ describe("the five-box composition", () => {
     const html = render({ members: [], membersError: "Couldn't load members." });
     expect(html).toContain("Couldn&#x27;t load members.");
     expect(html).not.toContain("Add member");
+  });
+
+  it("lists pending invites separately, with their own eyebrow (MESITA-1550)", () => {
+    const invites: PendingOrgInvite[] = [
+      {
+        id: "inv-1",
+        email: "new@x.mx",
+        role: "editor",
+        createdAt: "2026-09-06T00:00:00.000Z",
+        expiresAt: "2026-09-20T00:00:00.000Z",
+      },
+    ];
+    const html = render({ pendingInvites: invites });
+    expect(html).toContain("Pending invites");
+    expect(html).toContain("new@x.mx");
+    expect(html).toContain("Invited, pending");
+  });
+
+  it("renders no pending-invites eyebrow when there are none", () => {
+    const html = render();
+    expect(html).not.toContain("Pending invites");
   });
 
   it("cashes the prefill promise when legal name is missing and no account exists", () => {

@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(82);
+select plan(86);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -674,6 +674,40 @@ select is_empty(
   $$select name from vault.secrets
      where name ~* '(n8n|serper|tripadvisor)'$$,
   'vault.secrets has no retired n8n / serper / tripadvisor rows'
+);
+
+-- MESITA-1550: organization_invites exists, EF-only, no client policies.
+select has_table(
+  'public', 'organization_invites',
+  'organization_invites stores pending org-member email invites'
+);
+
+select ok(
+  (select relrowsecurity from pg_class
+    where oid = 'public.organization_invites'::regclass),
+  'organization_invites has RLS enabled (EF-only; no client policies)'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.organization_invites', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.organization_invites', 'SELECT'),
+  'client roles have no SELECT on organization_invites'
+);
+
+-- MESITA-1550: the ≥1-owner backstop is a real constraint trigger, not an
+-- app-level count — this is the thing the app-level count-then-act check at
+-- the place level cannot be (project_members_one_owner_per_project is a
+-- partial unique index and enforces the OPPOSITE invariant, at-most-one).
+select ok(
+  exists (
+    select 1 from pg_trigger t
+    where t.tgname = 'organization_members_owner_backstop'
+      and t.tgrelid = 'public.organization_members'::regclass
+      and t.tgconstraint <> 0
+      and t.tgdeferrable
+      and t.tginitdeferred
+  ),
+  'organization_members_owner_backstop is a deferred constraint trigger (closes the last-owner-removal race)'
 );
 
 select * from finish();
