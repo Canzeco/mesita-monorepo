@@ -168,7 +168,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     {
       key: "partnership",
       label: "Mesita Partnership",
-      detail: "MX$1,000 per month — the first step, and the gate for everything below.",
+      detail: "Free to join — the first step, and the gate for everything below.",
       band: "money",
       state: member ? { kind: "on" } : { kind: "off" },
       points: 1,

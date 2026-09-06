@@ -13,18 +13,11 @@ import { type AdminPlace } from "../../actions";
 // lines and 20 top-level components, which is too much to restructure in
 // place. Make the change easy, then make the easy change.
 
-export const MEMBERSHIP_PRICE_MXN = 1000;
-
 /** The free, no-discount strategy — the "leaving"/"not paid" boundary. */
 export const ZERO_STRATEGY_ID: StrategyId = "zero";
 
 export const cx = (...c: (string | false | null | undefined)[]) =>
   c.filter(Boolean).join(" ");
-
-export function formatMoney(amount: number, currency: string | null): string {
-  const prefix = !currency || currency === "MXN" ? "MX$" : "$";
-  return `${prefix}${amount.toLocaleString("en-US")}`;
-}
 
 /** Zero · Conservative · Aggressive. Dominant is not a picker option. */
 export function pickerStrategies(): readonly Strategy[] {

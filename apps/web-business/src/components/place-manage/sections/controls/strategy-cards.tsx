@@ -11,12 +11,7 @@ import {
   type CardState,
   type RungWord,
 } from "../promo-state";
-import {
-  cx,
-  formatMoney,
-  MEMBERSHIP_PRICE_MXN,
-  ZERO_STRATEGY_ID,
-} from "./shared";
+import { cx, ZERO_STRATEGY_ID } from "./shared";
 
 // Strategy cards + the product modal. Moved verbatim out of PromosSection.tsx
 // on 2026-09-02 (file split, no behaviour change).
@@ -241,7 +236,6 @@ export function RungStat({
 
 export function ProductModal({
   strategy,
-  currency,
   state,
   member,
   busy,
@@ -250,7 +244,6 @@ export function ProductModal({
   onClose,
 }: {
   strategy: Strategy;
-  currency: string | null;
   state: CardState;
   member: boolean;
   busy: boolean;
@@ -279,7 +272,6 @@ export function ProductModal({
   const paid = strategy.id !== ZERO_STRATEGY_ID;
   const kind = state.cta;
   const isCurrent = kind === "current";
-  const price = formatMoney(MEMBERSHIP_PRICE_MXN, currency);
   const give = giveWord(strategy.id);
   const placement = placementWord(strategy.visibility);
 
@@ -296,7 +288,7 @@ export function ProductModal({
     kind === "current"
       ? ""
       : kind === "locked"
-        ? `The subscription is Partnership at ${price}/month. Join there, then switch strategies free.`
+        ? "Partnership is free. Join there, then switch strategies free."
         : kind === "switch_zero"
           ? "Partnership stays active; discounts pause. Promo lane closes until you pick a paid strategy again."
           : "Applies to new tickets only — open tickets keep the rates they were created with.";
@@ -365,7 +357,7 @@ export function ProductModal({
                   lifecycle rail. Never fork the wording. */}
               <ModalLabel>How it works</ModalLabel>
               <Step n={1} title="Join the partnership">
-                {price}/month — one subscription, then switch strategies free.
+                Free to join, then switch strategies anytime.
               </Step>
               <Step n={2} title="Pick a strategy">
                 Confirming makes {strategy.name} your posture — switch free
