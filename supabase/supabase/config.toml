@@ -493,6 +493,9 @@ verify_jwt = true
 [functions.business-web-create-organization]
 verify_jwt = true
 
+[functions.business-web-update-organization]
+verify_jwt = true
+
 [functions.business-web-list-places]
 verify_jwt = true
 
