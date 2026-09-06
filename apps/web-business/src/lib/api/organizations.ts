@@ -56,6 +56,24 @@ export async function apiCreateOrganization(
   return organization;
 }
 
+export async function apiUpdateOrganization(
+  client: SupabaseClient,
+  input: { orgId: string; legalName: string | null; rfc: string | null },
+): Promise<Pick<Organization, "id" | "name" | "legalName" | "rfc" | "currency">> {
+  const { organization } = await invokeEF<{
+    organization: Pick<
+      Organization,
+      "id" | "name" | "legalName" | "rfc" | "currency"
+    >;
+  }>(
+    client,
+    "business-web-update-organization",
+    input,
+    "Couldn't save the legal details.",
+  );
+  return organization;
+}
+
 /** scope "org" needs organizationId; scope "public" is the pool. */
 export async function apiListConsolePlaces(
   client: SupabaseClient,

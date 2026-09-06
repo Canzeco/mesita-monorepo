@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { Section } from "@/components/shared/Section";
 import { DataRow, OrgStateBadge } from "@/components/console/badges";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
+import { OrgLegalForm } from "@/components/console/OrgLegalForm";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { resolveActiveOrg } from "@/lib/active-organization";
@@ -55,8 +56,8 @@ export default async function OrganizationPage({
           Create your organization
         </h1>
         <p className="text-muted-foreground -mt-2 text-sm">
-          One legal person, one RFC. It holds the places you claim, and the
-          account that gets paid.
+          It holds the places you claim, and the account that gets paid. Just
+          the name to start — legal details wait until a place goes partner.
         </p>
         <Section title="New organization">
           <CreateOrganizationForm />
@@ -78,15 +79,27 @@ export default async function OrganizationPage({
 
       <Section
         title="Identity"
-        description="One legal person, one RFC, one account."
+        description="One legal person, one RFC — needed only to partner places and get paid."
       >
-        <div>
-          <DataRow label="Legal name">{org.legalName ?? "Not set"}</DataRow>
-          <DataRow label="RFC">{org.rfc ?? "Not set"}</DataRow>
-          <DataRow label="Currency">{org.currency}</DataRow>
-          <DataRow label="Your role">
-            <span className="capitalize">{org.myRole}</span>
-          </DataRow>
+        <div className="flex flex-col gap-4">
+          {org.myRole === "owner" ? (
+            <OrgLegalForm
+              orgId={org.id}
+              legalName={org.legalName}
+              rfc={org.rfc}
+            />
+          ) : (
+            <div>
+              <DataRow label="Legal name">{org.legalName ?? "Not set"}</DataRow>
+              <DataRow label="RFC">{org.rfc ?? "Not set"}</DataRow>
+            </div>
+          )}
+          <div>
+            <DataRow label="Currency">{org.currency}</DataRow>
+            <DataRow label="Your role">
+              <span className="capitalize">{org.myRole}</span>
+            </DataRow>
+          </div>
         </div>
       </Section>
 
