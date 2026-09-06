@@ -20,6 +20,88 @@ defaults:
     working-directory: apps/mobile-consumer
 
 jobs:
+  # MESITA-1599 — the freeze in apps/mobile-consumer/CLAUDE.md was prose nothing
+  # read, and it was walked through five times in one hour by two sessions
+  # (#1546, #1547). Neither originating issue mentioned it; MESITA-1389 actively
+  # instructed the opposite ("hand-mirrored drift twin … moves in the same PR").
+  #
+  # This job cannot live in rules.yml: that workflow is path-filtered to
+  # markdown, the image formats, scripts/** and deno.json, so a PR touching only
+  # apps/mobile-consumer/**/*.tsx never triggers it — exactly the case to catch.
+  #
+  # It is DIFF-based, not tree-based. The frozen files legitimately exist, so
+  # checking the tree proves nothing; only "what does this PR change" does.
+  #
+  # No job-level `if:`. #1553 established that a skipped check reports as
+  # passing, so the job always runs and decides inside the step instead.
+  freeze:
+    name: frozen package — only the three mirrors may change
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse writes outside the three mirrors
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          BANNER=apps/mobile-consumer/CLAUDE.md
+
+          if [ -z "${PR:-}" ]; then
+            echo "Not a pull request — nothing to diff. Passing."
+            exit 0
+          fi
+
+          # THE FREEZE LIVES IN THE BANNER, NOT HERE. Delete that heading and
+          # this guard stands down. Lifting the freeze therefore means editing
+          # the stated policy in the same PR, so the rule and its enforcement
+          # can never disagree — and there is no label or commit token an agent
+          # could use to wave itself through.
+          if ! grep -q '^## FROZEN' "$BANNER"; then
+            echo "No '## FROZEN' heading in $BANNER — the freeze was lifted deliberately. Nothing to enforce."
+            exit 0
+          fi
+
+          # Kept as a literal list rather than parsed out of prose: parsing
+          # would silently widen the exemption the day the wording changes.
+          MIRRORS='apps/mobile-consumer/src/lib/ticket-journey.ts
+          apps/mobile-consumer/src/lib/consumer-route-contract.ts
+          apps/mobile-consumer/src/lib/api/tickets.ts'
+          MIRRORS=$(echo "$MIRRORS" | sed 's/^[[:space:]]*//')
+
+          # ...but the list must still agree with the banner. If the banner
+          # stops naming one, fail loudly instead of enforcing a stale rule.
+          while IFS= read -r m; do
+            if ! grep -qF "${m#apps/mobile-consumer/}" "$BANNER"; then
+              echo "::error file=$BANNER::${m#apps/mobile-consumer/} is exempt in mobile-consumer.yml but is no longer named in the banner. The guard and the freeze disagree — fix one."
+              exit 1
+            fi
+          done <<< "$MIRRORS"
+
+          gh api "repos/${REPO}/pulls/${PR}/files" \
+            --paginate --jq '.[].filename' > /tmp/changed.txt
+
+          VIOLATIONS=$(grep '^apps/mobile-consumer/' /tmp/changed.txt | grep -vxF "$MIRRORS" || true)
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error file=$BANNER::apps/mobile-consumer is FROZEN (Pato, 2026-08-20) and this PR writes outside the three mirrors."
+            echo
+            sed -n '/^## FROZEN/,/^## [^F]/p' "$BANNER" | sed '$d'
+            echo "Files this PR may not touch:"
+            echo "$VIOLATIONS" | sed 's/^/  - /'
+            echo
+            echo "If the freeze is genuinely over, remove the '## FROZEN' section from $BANNER"
+            echo "in this same PR and this guard stands down. Only Pato may make that call."
+            exit 1
+          fi
+
+          echo "OK — this PR touches apps/mobile-consumer only within the three mirrors."
+
   check:
     runs-on: ubuntu-latest
     steps:
