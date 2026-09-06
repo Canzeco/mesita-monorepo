@@ -1,8 +1,8 @@
 // Atlas channel URL discovery — Steps S4 (gather) + S5 (select). New model
 // (MESITA-197): NO website-footer scraping. Link discovery gathers candidates
-// with Firecrawl Search — PER SOURCE, count-controlled — then a SINGLE Perplexity
-// Agent Y "Review & Select Links" pass reviews every candidate pool and picks the
-// one official URL per field (or null).
+// with Firecrawl Search — PER SOURCE, count-controlled — then a SINGLE Resolver
+// pass ("Review & Select Links", one Perplexity Agent call) reviews every
+// candidate pool and picks the one official URL per field (or null).
 //
 // SCOPE — CHANNELS ONLY. This pass resolves the place's OWN online channel URLs.
 // It does NOT discover phone or email: those come from Mesita input (a business
@@ -12,7 +12,7 @@
 //   Phase 0  SEED     keep anything already supplied (Google/Mesita); freeze it.
 //   S4       GATHER   one Firecrawl Search per still-missing source (per-source N
 //                     from config); shape-validate + dedup into a candidate pool.
-//   S5       SELECT   one Perplexity Agent Y pass reviews the pools + web context
+//   S5       SELECT   one Resolver pass (Perplexity Agent) reviews the pools + web context
 //                     and returns the best URL per field.
 //                     Leniency: FALSE POSITIVES > FALSE NEGATIVES — keep a
 //                     plausible official link over dropping a correct one; null
@@ -60,7 +60,7 @@ export type DiscoverCandidateCounts = Record<
 // Channels the discovery pass actively searches for. TripAdvisor / Yelp are
 // RETIRED product-wide (same posture as TikTok) — not discovered, not
 // persisted; their columns stay dormant.
-const CHANNEL_FIELDS: ChannelField[] = [
+export const CHANNEL_FIELDS: ChannelField[] = [
   "website_url",
   "instagram_url",
   "facebook_url",
@@ -77,7 +77,7 @@ const CHANNEL_SEARCH_TERM: Record<ChannelField, string> = {
   uber_eats_url: "uber eats",
 };
 
-// Human-readable field spec for the Agent Y selection prompt.
+// Human-readable field spec for the Resolver selection prompt.
 const FIELD_SPEC: Record<ChannelField, string> = {
   website_url: "website_url: the place's own official website (its homepage domain).",
   instagram_url:
@@ -130,7 +130,7 @@ function firstValidFromList(field: ChannelField, urls: string[]): string | null 
 // ── S4 — per-source candidate gather (Firecrawl Search) ──────────────────────
 // One Firecrawl Search per still-missing field, count-controlled by the per-source
 // config knob. Shape-validate + dedup into a per-field candidate pool. Website
-// candidates are name-ranked (best coverage first) so Agent Y anchors correctly.
+// candidates are name-ranked (best coverage first) so the Resolver anchors correctly.
 async function gatherCandidates(
   firecrawlKey: string,
   name: string,
@@ -176,9 +176,12 @@ async function gatherCandidates(
   return pools;
 }
 
-// ── S5 — Agent Y "Review & Select Links" (single Perplexity Agent pass) ──────
+// ── S5 — Resolver, "Review & Select Links" (single Perplexity Agent pass) ──────
 
-const AGENT_Y_INSTRUCTIONS =
+// Exported so admin Intake can RENDER it (intake-prompts.ts → the console). The
+// console shows this exact constant, so what an operator reads is what the
+// vendor receives — a second copy could drift, this cannot.
+export const RESOLVER_INSTRUCTIONS =
   "You are a meticulous reviewer that resolves a place's OWN official online " +
   "channels. You are given candidate URLs found by search plus web access. For " +
   "each requested field, review the candidates and the web, then return the single " +
@@ -205,6 +208,45 @@ export async function selectChannels(
   for (const f of fields) properties[f] = { type: ["string", "null"] };
   const schema = { type: "object", properties };
 
+  const input = buildResolverInput(place, fields, candidates, opts);
+
+  const res = await callPerplexityAgent(key, input, schema, {
+    instructions: RESOLVER_INSTRUCTIONS,
+    maxSteps: 10,
+    preset: opts.preset,
+  });
+  if (!res) return { channels: {} };
+
+  const answer = res.answer;
+  const hitUrls = res.hitUrls;
+  const channels: Partial<ChannelMap> = {};
+  for (const f of fields) {
+    const fromAnswer = typeof answer[f] === "string" ? validateFieldUrl(f, answer[f] as string) : null;
+    // FP > FN fallback: if the agent's own pick fails validation, fall back to a
+    // cited URL, then to the best candidate we gathered — keeping a plausible link
+    // beats dropping the field. All still shape-validated for the field.
+    const valid = fromAnswer ??
+      firstValidFromList(f, hitUrls) ??
+      firstValidFromList(f, candidates[f] ?? []);
+    if (valid) channels[f] = valid;
+  }
+
+  return { channels };
+}
+
+// The per-place message. Pure and exported so intake-prompts.ts can render the
+// REAL template with sentinel values — the console never re-types this prose.
+export function buildResolverInput(
+  place: { name: string; locationLine: string; category: string | null },
+  fields: readonly ChannelField[],
+  candidates: Partial<Record<ChannelField, string[]>>,
+  opts: {
+    siblings?: Partial<ChannelMap>;
+    serpContext?: string;
+    website?: string | null;
+  } = {},
+): string {
+  const want = new Set(fields);
   const candidateBlock = fields
     .map((f) => {
       const pool = (candidates[f] ?? []).slice(0, 10);
@@ -256,31 +298,10 @@ export async function selectChannels(
     `A franchise / multi-location brand's MAIN account or page IS acceptable. ` +
     `Never invent a URL.`;
 
-  const res = await callPerplexityAgent(key, input, schema, {
-    instructions: AGENT_Y_INSTRUCTIONS,
-    maxSteps: 10,
-    preset: opts.preset,
-  });
-  if (!res) return { channels: {} };
-
-  const answer = res.answer;
-  const hitUrls = res.hitUrls;
-  const channels: Partial<ChannelMap> = {};
-  for (const f of fields) {
-    const fromAnswer = typeof answer[f] === "string" ? validateFieldUrl(f, answer[f] as string) : null;
-    // FP > FN fallback: if the agent's own pick fails validation, fall back to a
-    // cited URL, then to the best candidate we gathered — keeping a plausible link
-    // beats dropping the field. All still shape-validated for the field.
-    const valid = fromAnswer ??
-      firstValidFromList(f, hitUrls) ??
-      firstValidFromList(f, candidates[f] ?? []);
-    if (valid) channels[f] = valid;
-  }
-
-  return { channels };
+  return input;
 }
 
-// ── resolveChannels — S4 gather → S5 Agent Y select entry point ──────────────
+// ── resolveChannels — S4 gather → S5 Resolver select entry point ──────────────
 export async function resolveChannels(opts: {
   firecrawlKey?: string;
   perplexityKey?: string;
@@ -338,7 +359,7 @@ export async function resolveChannels(opts: {
     pools = await gatherCandidates(firecrawlKey, name, city, [...missing()], counts);
   }
 
-  // S5 — SELECT with Agent Y (channels only). Degraded to per-field Firecrawl
+  // S5 — SELECT with the Resolver (channels only). Degraded to per-field Firecrawl
   // first-hit when no Perplexity key.
   if (perplexityKey) {
     const siblings: Partial<ChannelMap> = {
@@ -355,7 +376,7 @@ export async function resolveChannels(opts: {
     );
     for (const f of CHANNEL_FIELDS) fill(f, sel.channels[f] ?? null, "perplexity");
   } else if (firecrawlKey) {
-    // Degraded leg (no Perplexity key): no Agent Y to review, so take the first
+    // Degraded leg (no Perplexity key): no Resolver to review, so take the first
     // shape-valid candidate per field from the pools we already gathered above
     // (reuse — never re-search: Firecrawl is metered budget).
     for (const f of CHANNEL_FIELDS) fill(f, (pools[f] ?? [])[0] ?? null, "search");

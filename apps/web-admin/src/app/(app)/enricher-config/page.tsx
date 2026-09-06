@@ -65,6 +65,9 @@ export default async function IntakePage() {
       }
       settingsUpdatedAt={settings.ok ? settings.data.updatedAt : null}
       settingsLoadError={settings.ok ? null : settings.error}
+      // Read-only, straight from `_shared/intake-prompts.ts`. No fallback: a
+      // prompt the console invented would be worse than one it cannot show.
+      prompts={settings.ok ? (settings.data.intakePromptsMeta ?? []) : []}
     />
   );
 }

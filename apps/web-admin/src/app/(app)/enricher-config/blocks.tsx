@@ -8,6 +8,7 @@ import {
   money,
   type CostEstimate,
 } from "./cost-model";
+import type { IntakePrompt } from "./actions";
 
 // Intake's page-local layout kit. Structural only — controls come from
 // `@/components/admin-ui/config`. Five SectionCards own the page; these
@@ -219,6 +220,77 @@ export function KnobElsewhere({ children }: { children: React.ReactNode }) {
     <p className="text-muted-foreground m-0 max-w-2xl type-body leading-relaxed">
       {children}
     </p>
+  );
+}
+
+/**
+ * What one model is actually TOLD, rendered read-only.
+ *
+ * The text arrives on `intakePromptsMeta` from supabase `_shared/intake-prompts.ts`,
+ * which imports the same constants and builders the pipeline calls — so what an
+ * operator reads here is what the vendor receives, and there is no copy to drift.
+ *
+ * Deliberately NOT a textarea. The Images prompts on this same page ARE editable,
+ * so a read-only prompt has to look different at a glance — a control that
+ * accepts keystrokes and silently discards them is the bug this shape avoids.
+ * `<pre>` is the honest element: selectable and copyable, never focusable as a
+ * field.
+ */
+export function PromptView({
+  prompt,
+  preset,
+}: {
+  prompt: IntakePrompt;
+  /** The live Perplexity preset, shown only for the steps that spend it. */
+  preset?: string;
+}) {
+  const vendorLine = preset
+    ? `${prompt.vendor} · ${preset}`
+    : prompt.vendor;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {prompt.agent ? <Tag tone="solid">{prompt.agent}</Tag> : null}
+        <Tag>{vendorLine}</Tag>
+        <span className="text-muted-foreground type-meta">read-only</span>
+      </div>
+      <p className="text-muted-foreground m-0 max-w-2xl type-body leading-relaxed">
+        {prompt.vendorNote}
+      </p>
+      <p className="text-muted-foreground m-0 max-w-2xl type-body leading-relaxed">
+        <span className="text-foreground font-medium">Writes.</span>{" "}
+        {prompt.writes}
+      </p>
+      <PromptBlock label="Instructions — sent as the system message">
+        {prompt.instructions}
+      </PromptBlock>
+      <PromptBlock label="Message — built per place; {braces} are filled at run time">
+        {prompt.input}
+      </PromptBlock>
+    </div>
+  );
+}
+
+/**
+ * One verbatim prompt body. Scrolls rather than truncates — a prompt an operator
+ * can only read half of answers the question worse than not showing it.
+ */
+function PromptBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: string;
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground m-0 mb-1.5 type-label">{label}</p>
+      {/* text-xs, not an arbitrary px: this is a block to READ, and a frozen
+          px size ignores the operator's own browser font-size setting. */}
+      <pre className="bg-muted/40 text-foreground/90 m-0 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+        {children}
+      </pre>
+    </div>
   );
 }
 

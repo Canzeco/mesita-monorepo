@@ -235,7 +235,7 @@ export function computeEnrichmentCost({
     },
     {
       label: "SERP summary",
-      detail: "Perplexity Agent X (pro-search)",
+      detail: "Perplexity Agent · Scout (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · web search + sonar tokens",
       cost: COST_RATES.perplexityAgent,
@@ -257,7 +257,7 @@ export function computeEnrichmentCost({
     },
     {
       label: "Agent validate + contacts",
-      detail: "Perplexity Agent Y (pro-search)",
+      detail: "Perplexity Agent · Resolver (pro-search)",
       pricing: "$0.005 search + tokens",
       note: "1 agent call · selects links + phone/email",
       cost: COST_RATES.perplexityAgent,

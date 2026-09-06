@@ -28,6 +28,25 @@ type SuperSignals = {
   description?: string | null;
 };
 
+// Exported so admin Intake can RENDER them (intake-prompts.ts → the console).
+// The console shows these exact values, so what an operator reads is what the
+// vendor receives — a second copy could drift, this cannot.
+export const SUPER_CATEGORY_INSTRUCTIONS =
+  "You classify a place into ONE or TWO Super Categories from a fixed list. " +
+  'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
+  "where every slug is copied verbatim from the list. Most places get " +
+  "exactly one; return two ONLY when the place genuinely lives in both " +
+  "(a breakfast café is restaurants and cafes_bakeries; a karaoke bar is " +
+  "bars_nightlife and experiences). Only classify when confident — a " +
+  "wrong Super is worse than none. Never invent slugs. Never return " +
+  "more than two.";
+
+export function buildSuperCategoryInput(catalog: string, placeLines: string): string {
+  return `Super Categories (slug — label):\n${catalog}\n\n` +
+    `Place:\n${placeLines}\n\n` +
+    `Return {"super_categories":["<one or two slugs from the list>"]}.`;
+}
+
 export async function inferPlaceSuperCategories(
   openaiKey: string | undefined,
   supers: SuperCategoryOption[],
@@ -47,19 +66,8 @@ export async function inferPlaceSuperCategories(
     .filter(Boolean)
     .join("\n");
 
-  const systemContent =
-    "You classify a place into ONE or TWO Super Categories from a fixed list. " +
-    'Respond with a single JSON object {"super_categories":["<slug>"]} ' +
-    "where every slug is copied verbatim from the list. Most places get " +
-    "exactly one; return two ONLY when the place genuinely lives in both " +
-    "(a breakfast café is restaurants and cafes_bakeries; a karaoke bar is " +
-    "bars_nightlife and experiences). Only classify when confident — a " +
-    "wrong Super is worse than none. Never invent slugs. Never return " +
-    "more than two.";
-  const userPrompt =
-    `Super Categories (slug — label):\n${catalog}\n\n` +
-    `Place:\n${placeLines}\n\n` +
-    `Return {"super_categories":["<one or two slugs from the list>"]}.`;
+  const systemContent = SUPER_CATEGORY_INSTRUCTIONS;
+  const userPrompt = buildSuperCategoryInput(catalog, placeLines);
 
   try {
     const r = await fetch(OPENAI_URL, {

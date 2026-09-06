@@ -1,9 +1,9 @@
-// Agent Y prompt eval (MESITA-204) — scores the PRODUCTION discovery pipeline.
+// Resolver prompt eval (MESITA-204) — scores the PRODUCTION discovery pipeline.
 //
 // Unlike run.ts (which benchmarks the linklab reimplemented strategies), this
 // runner calls the SHIPPED `resolveChannels` — S4 Firecrawl-Search gather → S5
-// Perplexity Agent Y "Review & Select Links" — against the ground-truth set and
-// scores website + instagram. Use it to iterate the Agent Y (and Agent X) prompts
+// The Resolver ("Review & Select Links", Perplexity Agent) — against the ground-truth set and
+// scores website + instagram. Use it to iterate the Resolver (and Scout) prompts
 // in `_shared/enrich-channel-discovery.ts` with a scorecard instead of by feel.
 //
 //   deno run --allow-env --allow-net --allow-read --allow-write \
@@ -98,7 +98,7 @@ async function main() {
   const truth = truthAll.slice(0, LIMIT);
 
   console.log(
-    `\nAgent Y prod eval — ${truth.length} places (UN-CACHED, spends budget)\n`,
+    `\nResolver prod eval — ${truth.length} places (UN-CACHED, spends budget)\n`,
   );
   const started = performance.now();
 
@@ -112,7 +112,7 @@ async function main() {
       locationLine: [t.city, t.country].filter(Boolean).join(", "),
       category: null,
       discoverCandidates: DISCOVER_DEFAULTS,
-      // Nothing seeded — force full discovery so we score the gather + Agent Y.
+      // Nothing seeded — force full discovery so we score the gather + the Resolver.
       have: {
         instagram: null,
         facebook: null,

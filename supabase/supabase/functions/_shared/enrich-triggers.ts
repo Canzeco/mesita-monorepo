@@ -121,14 +121,14 @@ export const SUBPROCESS_META: Record<
     label: "SERP",
     functions: "3",
     cost: "low",
-    blurb: "Agent X editorial read of the open web. Soft context, never facts.",
+    blurb: "The Scout's editorial read of the open web. Soft context, never facts.",
   },
   links: {
     label: "Links",
     functions: "4",
     cost: "high",
     blurb:
-      "Firecrawl Search per source, then Agent Y picks the winning channel.",
+      "Firecrawl Search per source, then the Resolver picks the winning channel.",
   },
   social: {
     label: "Social",

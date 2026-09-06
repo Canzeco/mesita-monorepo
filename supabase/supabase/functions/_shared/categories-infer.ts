@@ -28,6 +28,22 @@ type CategorySignals = {
 //
 // The category list is passed in (the caller reads it once) so a single run
 // never hits the table twice.
+// Exported so admin Intake can RENDER them (intake-prompts.ts → the console).
+// The console shows these exact values, so what an operator reads is what the
+// vendor receives — a second copy could drift, this cannot.
+export const CATEGORY_INSTRUCTIONS =
+  "You classify a place into EXACTLY ONE category from a fixed list. " +
+  'Respond with a single JSON object {"category":"<slug>"} where <slug> is ' +
+  "copied verbatim from the list. Choose the MOST SIMILAR and most specific " +
+  "category for the place's main offering. Always return one slug from the " +
+  "list, even when uncertain.";
+
+export function buildCategoryInput(catalog: string, placeLines: string): string {
+  return `Categories (slug — label [section]):\n${catalog}\n\n` +
+    `Place:\n${placeLines}\n\n` +
+    `Return {"category":"<one slug from the list>"}.`;
+}
+
 export async function inferPlaceCategory(
   openaiKey: string | undefined,
   categories: PlaceCategory[],
@@ -60,16 +76,8 @@ export async function inferPlaceCategory(
     .filter(Boolean)
     .join("\n");
 
-  const systemContent =
-    "You classify a place into EXACTLY ONE category from a fixed list. " +
-    'Respond with a single JSON object {"category":"<slug>"} where <slug> is ' +
-    "copied verbatim from the list. Choose the MOST SIMILAR and most specific " +
-    "category for the place's main offering. Always return one slug from the " +
-    "list, even when uncertain.";
-  const userPrompt =
-    `Categories (slug — label [section]):\n${catalog}\n\n` +
-    `Place:\n${placeLines}\n\n` +
-    `Return {"category":"<one slug from the list>"}.`;
+  const systemContent = CATEGORY_INSTRUCTIONS;
+  const userPrompt = buildCategoryInput(catalog, placeLines);
 
   try {
     const r = await fetch(OPENAI_URL, {

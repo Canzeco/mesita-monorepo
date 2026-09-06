@@ -329,8 +329,8 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
   );
 }
 
-// SERP Summary — Agent X's web-grounded editorial read of the place, written at
-// step 4 of the queue. It is one of the three enrichment texts, and the only
+// SERP Summary — the Scout's web-grounded editorial read of the place, written at
+// function 3 of the queue. It is one of the three enrichment texts, and the only
 // one that never reaches a guest:
 //
 //   SERP Summary        soft context the PIPELINE reads (this box)
@@ -338,7 +338,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
 //   Semantic Summary    embedding_source_text — what the INDEX reads
 //
 // It gets its own box precisely because it is none of the other two. It grounds
-// Agent Y's link selection at step 5 and the description at step 10, and it is
+// the Resolver's link selection at function 4 and the Presentation at function 9, and it is
 // NEVER a source of facts, ratings or prices — which is worth seeing plainly
 // when a wrong fact shows up in a profile and you are hunting for its origin.
 //
@@ -392,7 +392,7 @@ function SerpSummaryCard({ place }: { place: AdminPlace }) {
         />
       </summary>
       <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField label="Agent X · last run" boxed>
+        <ReadField label="Scout · last run" boxed>
           {!loaded ? (
             <span className="text-muted-foreground text-xs italic">Loading…</span>
           ) : text ? (
