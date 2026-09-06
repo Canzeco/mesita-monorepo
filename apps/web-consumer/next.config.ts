@@ -125,6 +125,16 @@ const nextConfig: NextConfig = {
         destination: "/inbox/notifications",
         permanent: true,
       },
+      // Orders folded into Visits (MESITA-1389): no table, no Edge Function,
+      // no type behind it, so there was nothing to keep a section pointed at.
+      // An order is a visit you didn't sit down for — one hop, straight to
+      // the section it folded into, same shape as every other retired Inbox
+      // section above.
+      {
+        source: "/inbox/orders",
+        destination: "/inbox/visits",
+        permanent: true,
+      },
     ];
   },
 };

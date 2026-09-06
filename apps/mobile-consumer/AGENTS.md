@@ -27,7 +27,7 @@ Expo SDK 57 · React Native · Expo Router · NativeWind — the mobile port of 
 
 ## Where native diverges from web
 - `src/app/` — Expo Router: `index.tsx` (auth gate) · `sign-in` · `onboard` · `(tabs)/{home,search,rewards,inbox,me}` — **five tabs** vs web's four. **Pay** label applies; route stays `(tabs)/rewards`.
-- **Activity (`/inbox`) renders four sections as `SegmentNav` segments of ONE screen** (web nests routes instead) — same sections, **order now differs**: web leads with Alerts, mobile doesn't. `/inbox/*` and `/saved/reservations` redirect to the tab. `ReservationItem.reservedAt` exists here because `when` is a display string and cannot be sorted on.
+- **Activity (`/inbox`) renders three sections (Orders folded in) as `SegmentNav` segments** (web nests routes instead) — **order differs**: web leads with Alerts, mobile doesn't. `/inbox/*` and `/saved/reservations` redirect to the tab. `ReservationItem.reservedAt` exists here because `when` is a display string and cannot be sorted on.
 - **`SegmentNav` scrolls horizontally as its RESTING state** — a 375px phone cannot hold five icon+label pills, so unlike web this is not just the large-text fallback. Never shrink type below 12px to fix it; shorten a label.
 - Home-hub parked tabs are `ComingSoonModal`, not redirects; `CatalogTab`/`AskAiTab`/`SocialTab` stay in tree, each a one-flag un-park.
 - Maps: react-native-maps, Google provider on both platforms (`SearchMap.native.tsx`); the web export and a missing `EXPO_PUBLIC_GMP_KEY` both fall back to the placeholder, and suggest/rail/add still work via EFs.

@@ -167,8 +167,8 @@ export const TARGETS: Target[] = [
   { label: "apps/web-admin", dir: join(repoRoot, "apps", "web-admin"), quickstart: false },
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false },
   // Widest consumer surface, and the budget is an override of the 450 default
-  // for that reason: four tabs, SEVEN Discover modes, five Inbox sections, the
-  // wallet, the seven-step ticket journey, and two section-nav looks.
+  // for that reason: four tabs, SEVEN Discover modes, three Inbox sections,
+  // the wallet, the seven-step ticket journey, and two section-nav looks.
   //
   // 600 -> 650 -> 680, both on 2026-09-01. The first raise covered Discover
   // growing its own route tree; the second covers Pay becoming a container
