@@ -202,3 +202,27 @@ export function stripeSecretKeyProblem(
   }
   return `${name} does not look like a Stripe secret key (expected sk_test_… or sk_live_…).`;
 }
+
+/**
+ * Did Stripe reject the PLATFORM credential itself?
+ *
+ * `stripeSecretKeyProblem` above catches a key that is the wrong SHAPE, before
+ * Stripe is called. This is its runtime twin: a key can be perfectly shaped and
+ * still dead — expired, rolled, revoked, or belonging to another account — and
+ * that only surfaces as Stripe's 401 on the first real call.
+ *
+ * The distinction that matters is WHOSE fault it is. A 401 here is never the
+ * merchant's: they cannot expire our key, and they cannot fix it. Stripe's own
+ * message ("Expired API Key provided: sk_test_…8QBF1y") both blames them by
+ * implication and echoes our credential into their browser — the exact leak the
+ * shape guard exists to prevent, arriving through the door it does not cover.
+ */
+export function isStripeKeyRejection(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as { type?: unknown; rawType?: unknown; code?: unknown; statusCode?: unknown };
+  if (e.type === "StripeAuthenticationError") return true;
+  if (e.code === "api_key_expired") return true;
+  // Nothing else this function calls can 401: the platform key is the only
+  // credential in play on accounts.create.
+  return e.statusCode === 401;
+}

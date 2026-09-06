@@ -7,6 +7,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
   eventMatchesMode,
+  isStripeKeyRejection,
   resolveStripeSecret,
   stripeKeyMatchesMode,
   stripeMode,
@@ -182,4 +183,66 @@ Deno.test("stripeSecretKeyProblem: a trailing-junk key is still caught, and not 
   // Only a LEADING prefix is the "stray characters" case; a key that starts
   // correctly is shape-valid here (Stripe is the authority on the rest).
   assertEquals(stripeSecretKeyProblem("STRIPE_SECRET_KEY", "sk_test_51abc oops"), null);
+});
+
+// ── isStripeKeyRejection ────────────────────────────────────────────────────
+//
+// The shapes below are copied from real Edge Function logs on 2026-09-05/06,
+// not invented: an expired key and a stray-prefixed key both reached Stripe
+// and both came back 401, and the merchant saw Stripe's words either way.
+
+Deno.test("isStripeKeyRejection: the expired key that actually shipped", () => {
+  // Verbatim shape from the 2026-09-05T17:41 log line.
+  assert(isStripeKeyRejection({
+    type: "StripeAuthenticationError",
+    rawType: "api_error",
+    code: "api_key_expired",
+    statusCode: 401,
+    raw: { message: "Expired API Key provided: sk_test_***8QBF1y" },
+  }));
+});
+
+Deno.test("isStripeKeyRejection: the stray-prefix key that actually shipped", () => {
+  // Verbatim shape from the 2026-09-06T08:03 log line. Shape-valid guards
+  // cannot catch this one at all, because it never reaches them — it is the
+  // stored value that is wrong, and Stripe is the one that says so.
+  assert(isStripeKeyRejection({
+    type: "StripeAuthenticationError",
+    rawType: "invalid_request_error",
+    statusCode: 401,
+    raw: { message: "Invalid API Key provided: mattsk_t***1l0b" },
+  }));
+});
+
+Deno.test("isStripeKeyRejection: a bare 401 counts — accounts.create has one credential", () => {
+  assert(isStripeKeyRejection({ statusCode: 401 }));
+});
+
+Deno.test("isStripeKeyRejection: real merchant-actionable failures still travel verbatim", () => {
+  // These are the cases the surrounding comment protects: configuration facts
+  // Stripe names precisely and an operator can act on. Misclassifying any of
+  // them as a platform key problem would swallow the only useful sentence.
+  assertEquals(
+    isStripeKeyRejection({
+      type: "StripeInvalidRequestError",
+      statusCode: 400,
+      raw: { message: "Please activate Connect in your dashboard." },
+    }),
+    false,
+  );
+  assertEquals(
+    isStripeKeyRejection({
+      type: "StripePermissionError",
+      statusCode: 403,
+      raw: { message: "Your account is not permitted to create accounts." },
+    }),
+    false,
+  );
+  assertEquals(isStripeKeyRejection({ type: "StripeRateLimitError", statusCode: 429 }), false);
+});
+
+Deno.test("isStripeKeyRejection: never throws on junk", () => {
+  for (const junk of [null, undefined, "401", 401, [], {}, new Error("boom")]) {
+    assertEquals(typeof isStripeKeyRejection(junk), "boolean");
+  }
 });
