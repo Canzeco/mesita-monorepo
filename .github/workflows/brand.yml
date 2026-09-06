@@ -14,26 +14,44 @@ on:
       - "scripts/sync-brand.ts"
       - "deno.json"
       - ".github/workflows/brand.yml"
-  pull_request:
-    paths:
-      - "assets/brand/**"
-      - "apps/*/src/app/globals.css"
-      - "apps/*/src/app/icon.svg"
-      - "apps/*/src/components/brand/**"
-      - "apps/*/public/brand/**"
-      - "apps/*/src/constants/brand.ts"
-      - "apps/*/tailwind.config.js"
-      - "scripts/sync-brand.ts"
-      - "deno.json"
-      - ".github/workflows/brand.yml"
+  # Unfiltered on `pull_request` (MESITA-1576): a required check a path
+  # filter skips never reports, and branch protection blocks a PR on an
+  # "Expected" check that will never arrive. The `changes` job below decides
+  # per-PR whether there's anything to check.
+  pull_request: {}
 
 concurrency:
   group: brand-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: detect brand-scoped changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ github.event_name != 'pull_request' || steps.filter.outputs.brand == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            brand:
+              - 'assets/brand/**'
+              - 'apps/*/src/app/globals.css'
+              - 'apps/*/src/app/icon.svg'
+              - 'apps/*/src/components/brand/**'
+              - 'apps/*/public/brand/**'
+              - 'apps/*/src/constants/brand.ts'
+              - 'apps/*/tailwind.config.js'
+              - 'scripts/sync-brand.ts'
+              - 'deno.json'
+              - '.github/workflows/brand.yml'
+
   check:
     name: brand assets in sync
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
