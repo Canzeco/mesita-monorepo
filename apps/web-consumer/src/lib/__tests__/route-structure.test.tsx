@@ -472,17 +472,24 @@ describe("T6 — the Inbox section row renders as specified", () => {
     return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
   }
 
-  it("is exactly Alerts · Visits · Orders · Reservations, in that order", async () => {
+  it("is exactly Alerts · Visits · Reservations, in that order", async () => {
     expect(labels(await renderNav("/inbox/visits"))).toEqual([
       "Alerts",
       "Visits",
-      "Orders",
       "Reservations",
     ]);
   });
 
+  // Orders folded into Visits (MESITA-1389, 2026-09-06) — it never had a
+  // table, an Edge Function or a type, so it was a pill that could never
+  // render anything. An Orders pill reappearing here means someone
+  // un-folded it rather than giving it a real backing concept first.
+  it("has no Orders pill — it folded into Visits", async () => {
+    expect(labels(await renderNav("/inbox/visits"))).not.toContain("Orders");
+  });
+
   it("catches a dropped or added pill", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(4);
+    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(3);
   });
 
   // Wallet LEFT for Pay on 2026-09-01 (Activity holds events, a wallet holds
@@ -498,7 +505,6 @@ describe("T6 — the Inbox section row renders as specified", () => {
   const ACTIVE: [string, string][] = [
     ["/inbox/notifications", "Alerts"],
     ["/inbox/visits", "Visits"],
-    ["/inbox/orders", "Orders"],
     ["/inbox/reservations", "Reservations"],
   ];
 

@@ -66,17 +66,18 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       },
       newVisitDefault: "/new-visit",
       visit: { prefix: "/visit/" },
-      // Four sections, and the ORDER is load-bearing: Visits · Orders ·
-      // Reservations · Notifications runs from what you're doing right now
-      // out to the passive feed. Object key order is asserted separately
-      // below, since toEqual ignores it.
-      // FOUR sections. Wallet left for Pay (a wallet holds instruments,
-      // Activity holds events) and Alerts leads the row now.
+      // THREE sections, and the ORDER is load-bearing: Alerts · Visits ·
+      // Reservations runs from what you're doing right now out to the
+      // passive feed. Object key order is asserted separately below, since
+      // toEqual ignores it.
+      // Orders folded into Visits (MESITA-1389, 2026-09-06) — no table, no
+      // Edge Function, no type, so there was nothing left to keep a section
+      // pointed at. Wallet left for Pay (a wallet holds instruments, Activity
+      // holds events) and Alerts leads the row now.
       inbox: {
         root: "/inbox",
         notifications: "/inbox/notifications",
         visits: "/inbox/visits",
-        orders: "/inbox/orders",
         reservations: "/inbox/reservations",
       },
       inboxDefault: "/inbox/visits",
@@ -87,6 +88,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         invite: "/invite",
         homeAi: "/home/ai",
         inboxCredits: "/inbox/credits",
+        inboxOrders: "/inbox/orders",
         search: "/search",
         discoverMap: "/discover/map",
         discoverFeed: "/discover/feed",
@@ -140,16 +142,11 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
   // This pins the CONTRACT's order. It does NOT pin what renders: nothing
   // iterates this object, so the order the guest sees comes from
   // InboxSectionNav.SECTIONS. route-structure.test.tsx T6 pins that one.
-  it("pins the Activity section order: alerts → visits → orders → reservations", () => {
+  it("pins the Activity section order: alerts → visits → reservations", () => {
     const sections = Object.keys(CONSUMER_ROUTES.inbox).filter(
       (k) => k !== "root",
     );
-    expect(sections).toEqual([
-      "notifications",
-      "visits",
-      "orders",
-      "reservations",
-    ]);
+    expect(sections).toEqual(["notifications", "visits", "reservations"]);
   });
 
   // THE DEFAULT IS NO LONGER THE FIRST SECTION, and that is deliberate
@@ -331,6 +328,13 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: "/notifications",
         destination: "/inbox/notifications",
+        permanent: true,
+      },
+      // Orders folded into Visits (MESITA-1389). One hop, straight to the
+      // section it folded into — same shape as every other retired section.
+      {
+        source: "/inbox/orders",
+        destination: "/inbox/visits",
         permanent: true,
       },
     ]);

@@ -1,16 +1,21 @@
 "use client";
 
-// Inbox section nav — the sticky pill row across the five Inbox sections.
+// Inbox section nav — the sticky pill row across the Inbox sections.
 // Same vocabulary as HomeModeNav (the app has exactly one section-nav look):
 // equal-width pills in a scrollbar-hidden scroller, active = solid primary
 // + shadow-glow, real <Link> navigation between siblings under the shared
 // /inbox layout.
 //
-// ORDER IS LOAD-BEARING (Pato, 2026-09-01): Alerts · Visits · Orders ·
-// Reservations. Alerts leads because it is the only section that can carry
-// something you have not seen yet; the rest runs from what you are doing right
-// now out to what you have merely booked. Don't re-sort alphabetically or by
-// how built-out each one is.
+// ORDERS FOLDED INTO VISITS (MESITA-1389). Orders had no table, no Edge
+// Function and no type behind it — a pill that could never render anything —
+// so it is gone, not renamed. An order is a visit you didn't sit down for; it
+// reappears as rows inside Visits when it becomes real, and this row drops
+// from four pills to three: Alerts · Visits · Reservations.
+//
+// ORDER IS LOAD-BEARING (Pato, 2026-09-01): Alerts leads because it is the
+// only section that can carry something you have not seen yet; the rest runs
+// from what you are doing right now out to what you have merely booked.
+// Don't re-sort alphabetically or by how built-out each one is.
 //
 // WALLET LEFT FOR PAY. Activity holds EVENTS, a wallet holds INSTRUMENTS —
 // the category error named on 08-31, closed by moving it rather than renaming
@@ -22,25 +27,24 @@
 // pinned by consumer-route-contract.test.ts. The mismatch is the decision.
 //
 // LABELS: only `notifications` still reads differently from its route (Alerts).
-// `reservations` went back to reading Reservations on 2026-09-01, so Bookings
-// is gone and with it the widest pill this row ever carried.
+// `reservations` reads Reservations, not Bookings — that rename was tried and
+// reverted on 2026-09-01, and this pass didn't reopen it.
 //
-// WIDTH. Every pill is 25%, `grid-flow-col auto-cols-fr` on a `w-max
-// min-w-full` track — at rest min-w-full stretches the track to the frame and
-// the fr columns split it evenly; at large accessibility text w-max lets the
-// track outgrow the frame and the scroller takes over, columns still equal.
-// The scroller is the FALLBACK, not the resting state.
+// WIDTH. Every pill is a third of the track, `grid-flow-col auto-cols-fr` on a
+// `w-max min-w-full` track — at rest min-w-full stretches the track to the
+// frame and the fr columns split it evenly; at large accessibility text w-max
+// lets the track outgrow the frame and the scroller takes over, columns still
+// equal. The scroller is the FALLBACK, not the resting state.
 //
 //   frame   content   gaps   cols   each     widest pill needs        result
 //   ------  --------  -----  -----  -------  -----------------------  ---------
-//   375px   359px     12px   4      86.8px   "Reservations" ~96px     SCROLLS
-//   448px   432px     12px   4      105px    "Reservations" ~96px     fits (+9)
+//   375px   359px     8px    3      117.0px  "Reservations" ~96px     fits (+21)
+//   448px   432px     8px    3      141.3px  "Reservations" ~96px     fits (+45)
 //
-// Budget per pill = text + 14px icon + 4px gap + 8px px-1. Reservations is the
-// longest label this row has ever had, so a real 375px phone scrolls it —
-// accepted when the label reverted from Bookings. Dropping the icons would
-// free 18px per pill and fit outright; that was declined on 2026-09-01, so the
-// icons stay and the phone scrolls.
+// Budget per pill = text + 14px icon + 4px gap + 8px px-1. Dropping Orders
+// freed a whole column's worth of gap and content, so the row that used to
+// scroll at 375px (four columns, Reservations at ~86.8px vs. ~96px needed) now
+// fits outright at three — no accessibility carve-out needed to keep this true.
 //
 // EVERY PILL CARRIES A SURFACE: equal columns still read as ragged when only
 // the active pill is drawn, because the eye groups on text edges and the
@@ -49,12 +53,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Bell,
-  CalendarCheck,
-  Footprints,
-  ShoppingBag,
-} from "lucide-react";
+import { Bell, CalendarCheck, Footprints } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -87,7 +86,6 @@ type Section = { href: string; label: string; Icon: LucideIcon };
 export const SECTIONS: Section[] = [
   { href: CONSUMER_ROUTES.inbox.notifications, label: "Alerts", Icon: Bell },
   { href: CONSUMER_ROUTES.inbox.visits, label: "Visits", Icon: Footprints },
-  { href: CONSUMER_ROUTES.inbox.orders, label: "Orders", Icon: ShoppingBag },
   {
     href: CONSUMER_ROUTES.inbox.reservations,
     label: "Reservations",
