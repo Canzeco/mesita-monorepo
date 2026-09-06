@@ -31,6 +31,37 @@ export type ConsolePlace = {
   zone: string | null;
   organizationId: string | null;
   claimedAt: string | null;
+  /** The holder's NAME. Null in the public pool — a pooled place is held by
+   *  nobody, and the row says so rather than inventing a holder.
+   *
+   *  Everything below this line is OPTIONAL for the same reason
+   *  ConsolePlaceDetail's photos are: merging to main auto-deploys every EF
+   *  and triggers the Vercel build in parallel, so there is a window where a
+   *  browser runs the new row against the old EF. Optional plus a default at
+   *  the read site turns that window into a row with no chips for a minute,
+   *  instead of a server component throwing mid-render. */
+  organizationName?: string | null;
+  /** ONE url — the EF narrows places.photos to its first entry. Render it
+   *  through placeThumbUrl(); it is a full-resolution original. */
+  photoUrl?: string | null;
+  listed?: boolean;
+  /** Requested is a COUNT, never Yes/No (MESITA-1372). */
+  requestCount?: number;
+  requested?: boolean;
+  enriching?: boolean;
+  enriched?: boolean;
+  /** Google's OPERATIONAL fact. Null is silence, not "not operational" —
+   *  which is why it is a string and not a boolean. */
+  businessState?: string | null;
+  /** Intake meter: 0 is the CREATED floor, intakeTotal is a finished run. */
+  intakePulse?: number;
+  intakeTotal?: number;
+  orders?: boolean;
+  pickupOrders?: boolean;
+  deliveryOrders?: boolean;
+  reservations?: boolean;
+  mesitaPay?: boolean;
+  credits?: boolean;
 };
 
 export async function apiListOrganizations(
