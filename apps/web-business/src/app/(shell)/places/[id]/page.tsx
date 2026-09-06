@@ -18,8 +18,9 @@ import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
 import { PlaceGallery } from "@/components/console/PlaceGallery";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { getPlaceView } from "@/lib/place-view";
+import { ActivationChecklist } from "@/components/console/ActivationChecklist";
 import {
-  apiGetConsolePlace,
   apiListOrganizations,
   type ConsolePlaceView,
 } from "@/lib/api/organizations";
@@ -81,7 +82,7 @@ export default async function PlacePage({
 
   let view: ConsolePlaceView;
   try {
-    view = await apiGetConsolePlace(supabase, id);
+    view = await getPlaceView(supabase, id);
   } catch (e) {
     const message = errMsg(e, "Couldn't load that place.");
     // The EF answers 404 both for a place that does not exist and for one
@@ -139,22 +140,26 @@ export default async function PlacePage({
           {backLabel}
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            {place.name}
-          </h1>
-          {/* The ladder is Listed → Verified. A place that is neither gets
-              no badge rather than a false one; the State section says what
-              it is instead. */}
+          {/* The title lives in the layout (it owns the tab row too). Here:
+              the ladder badge — Listed → Verified. A place that is neither
+              gets no badge rather than a false one; State says what it is. */}
           {place.verified ? (
             <PlaceStateBadge state="verified" />
           ) : place.listed ? (
             <PlaceStateBadge state="listed" />
           ) : null}
+          {subtitle && (
+            <p className="text-muted-foreground text-[13px]">{subtitle}</p>
+          )}
         </div>
-        {subtitle && (
-          <p className="text-muted-foreground -mt-2 text-[13px]">{subtitle}</p>
-        )}
       </div>
+
+      {holder && (
+        <ActivationChecklist
+          placeId={place.id}
+          profileComplete={place.enriched}
+        />
+      )}
 
       <PlaceGallery
         photos={photos}

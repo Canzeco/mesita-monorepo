@@ -196,8 +196,40 @@ Deno.serve(async (req) => {
     }
     type MemberRow = { role: string; place_id: string };
     const members = (memberRows.data ?? []) as MemberRow[];
-    const ids = members.map((m) => m.place_id);
+
+    // The ORG-DERIVED path (MESITA-1537 / D1): places held by organizations
+    // the caller belongs to are visible too, with the role derived from the
+    // org membership CAPPED AT EDITOR (auth-membership's law — owner is a
+    // project_members ROW; the materialized owner comes through the direct
+    // path above and wins). Without this, every org member except the
+    // claimer sees an empty console for places one click away in Org Places.
+    const orgRows = await admin
+      .from("organization_members")
+      .select("role, organization_id")
+      .eq("manager_id", userId);
+    const orgMemberships = (orgRows.data ?? []) as {
+      role: string;
+      organization_id: string;
+    }[];
     const roleById = new Map(members.map((m) => [m.place_id, m.role]));
+    if (orgMemberships.length > 0) {
+      const orgRoleById = new Map(
+        orgMemberships.map((o) => [o.organization_id, o.role]),
+      );
+      const { data: orgPlaces } = await admin
+        .from("projects")
+        .select("id, organization_id")
+        .in("organization_id", [...orgRoleById.keys()]);
+      for (
+        const p of (orgPlaces ?? []) as { id: string; organization_id: string }[]
+      ) {
+        if (roleById.has(p.id)) continue; // direct row wins (incl. owner)
+        const orgRole = orgRoleById.get(p.organization_id) ?? "viewer";
+        roleById.set(p.id, orgRole === "owner" ? "editor" : orgRole);
+      }
+    }
+
+    const ids = [...roleById.keys()];
     if (ids.length === 0) {
       places = [];
     } else {
@@ -227,7 +259,7 @@ Deno.serve(async (req) => {
   // off projects: the column is deliberately NOT in profiles / PLACE_COLUMNS
   // so no consumer- or viewer-facing payload can ever pick it up. The bill
   // is always required (MESITA-1095); there is no per-place switch.
-  if (active && (active as { my_role?: string }).my_role === "owner") {
+  if (active) {
     const pinRow = await admin
       .from("projects")
       .select("check_pin")
@@ -235,7 +267,13 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!pinRow.error) {
       const row = pinRow.data as { check_pin: string | null } | null;
-      (active as Record<string, unknown>).check_pin = row?.check_pin ?? null;
+      // The VALUE stays owner-only; the BOOLEAN is member-visible so the
+      // activation checklist can say "Set the staff PIN" honestly
+      // (MESITA-1537 E-H4). Never widen beyond the boolean.
+      (active as Record<string, unknown>).has_pin = Boolean(row?.check_pin);
+      if ((active as { my_role?: string }).my_role === "owner") {
+        (active as Record<string, unknown>).check_pin = row?.check_pin ?? null;
+      }
     }
   }
 

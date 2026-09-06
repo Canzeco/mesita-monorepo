@@ -71,12 +71,15 @@ export function PromosClient({
   isOwner,
   checkPin,
   placeLine,
+  basePath,
 }: {
   place: MyPlace;
   rewardsConfig: unknown;
   isOwner: boolean;
   checkPin: string | null;
   placeLine: string | null;
+  /** Shell route mounting this client; Stripe returns here. */
+  basePath?: string;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -135,8 +138,8 @@ export function PromosClient({
       const result = await apiChangeSubscription(supabase, {
         projectId: place.id,
         plan: "pro",
-        successUrl: `${promosOrigin}/place/${place.id}/promos?subscription=success`,
-        cancelUrl: `${promosOrigin}/place/${place.id}/promos?subscription=cancelled`,
+        successUrl: `${promosOrigin}${basePath ?? `/place/${place.id}/promos`}?subscription=success`,
+        cancelUrl: `${promosOrigin}${basePath ?? `/place/${place.id}/promos`}?subscription=cancelled`,
       });
       if (
         result.checkout_url &&
@@ -172,8 +175,8 @@ export function PromosClient({
       const result = await apiChangeSubscription(supabase, {
         projectId: place.id,
         plan: "free",
-        successUrl: `${promosOrigin}/place/${place.id}/promos?subscription=success`,
-        cancelUrl: `${promosOrigin}/place/${place.id}/promos?subscription=cancelled`,
+        successUrl: `${promosOrigin}${basePath ?? `/place/${place.id}/promos`}?subscription=success`,
+        cancelUrl: `${promosOrigin}${basePath ?? `/place/${place.id}/promos`}?subscription=cancelled`,
       });
       if (result.checkout_url && !result.mock) {
         window.location.href = result.checkout_url;

@@ -12,15 +12,17 @@
 //      (_shared/place-claim.ts), so a place the list hides cannot be
 //      claimed by guessing its id.
 //
-// Auth: owner or editor of the TARGET organization. A viewer may read the
-// portfolio but may not enlarge it.
+// Auth: OWNER of the TARGET organization (MESITA-1537 gate C2). Claiming
+// now MINTS place ownership — the claimer's project_members owner row is
+// written atomically with the claim (claim_place_into_org RPC), which is
+// what unlocks the funnel's owner-gated features (PIN, Partnership,
+// transfer). An ownership ceremony is owner-only, same law as
+// add-org-member; editors see an explained disabled state in the console.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
-import { isPlaceClaimable } from "../_shared/place-claim.ts";
-import { writePlace } from "../_shared/place-doc.ts";
 
 type Body = { placeId?: string; projectId?: string; organizationId?: string };
 
@@ -46,44 +48,34 @@ Deno.serve(async (req) => {
 
   const roleRes = await requireOrgRole(admin, authRes.user, organizationId, [
     "owner",
-    "editor",
   ]);
   if (!roleRes.ok) return roleRes.response;
 
-  if (!(await isPlaceClaimable(admin, placeId))) {
-    return json(
-      { ok: false, error: "That place is not in the public pool", code: "not_claimable" },
-      409,
-    );
-  }
-
-  // Through the projects write door (_shared/place-doc.ts), never
-  // `.from("projects")` directly — write-surface.test.ts ratchets that.
-  //
-  // The guard IS the lock: `organization_id: null` renders as IS NULL, so
-  // whoever writes first wins and the second caller updates zero rows and
-  // is told, instead of silently overwriting the winner.
-  const res = await writePlace(admin, {
-    table: "projects",
-    mode: "update",
-    id: placeId,
-    guard: { organization_id: null },
-    patch: {
-      organization_id: organizationId,
-      claimed_by: authRes.user.id,
-      claimed_at: new Date().toISOString(),
-    },
-    select: "id, organization_id, claimed_at",
-    selectMode: "maybeSingle",
+  // ONE atomic database function does the guarded claim (organization_id
+  // IS NULL is the lock) and the owner-row upsert together — supabase-js
+  // has no transactions, and a claim without its owner row is the dead-end
+  // this whole path exists to kill. The RPC honors the pool predicate
+  // (place-claim.ts's two facts) and answers machine codes.
+  const { data, error } = await admin.rpc("claim_place_into_org", {
+    p_place_id: placeId,
+    p_organization_id: organizationId,
+    p_claimer: authRes.user.id,
   });
+  if (error) return json({ ok: false, error: error.message }, 500);
+  const result = data as { ok: boolean; code?: string };
 
-  if (!res.ok) return json({ ok: false, error: res.error }, 500);
-  if (!res.row) {
+  if (!result.ok) {
+    if (result.code === "not_claimable" || result.code === "owner_conflict") {
+      return json(
+        { ok: false, error: "That place is not in the public pool", code: "not_claimable" },
+        409,
+      );
+    }
     return json(
       { ok: false, error: "That place was just claimed by someone else", code: "race_lost" },
       409,
     );
   }
 
-  return json({ ok: true, place: res.row });
+  return json({ ok: true, place: { id: placeId, organization_id: organizationId } });
 });

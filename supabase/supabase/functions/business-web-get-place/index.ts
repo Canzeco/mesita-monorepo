@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
   let holder:
     | { organizationId: string; organizationName: string; claimedAt: string | null; myRole: string }
     | null = null;
+  let myDirectRole: string | null = null;
 
   if (row.organization_id) {
     const myRole = await orgRoleFor(admin, authRes.user, row.organization_id);
@@ -124,11 +125,23 @@ Deno.serve(async (req) => {
       claimedAt: row.claimed_at,
       myRole,
     };
-  } else if (!(await isPlaceClaimable(admin, placeId))) {
-    // In no organization, but directly owned the old way. Not the pool,
-    // and not yours — the same answer as a place that does not exist.
-    console.error(`[get-place] directly owned, not pooled: ${placeId}`);
-    return json(NOT_FOUND, 404);
+  } else {
+    // In no organization. Visible when the caller holds a DIRECT membership
+    // (the old-style owned place — MESITA-1537 E-E1: those operators keep a
+    // surface when the legacy console dies) or when the place is genuinely
+    // pooled; a stranger's directly-owned place stays a uniform 404.
+    const { data: directRow } = await admin
+      .from("project_members")
+      .select("role")
+      .eq("place_id", placeId)
+      .eq("manager_id", authRes.user.id)
+      .maybeSingle();
+    const directRole = (directRow as { role?: string } | null)?.role ?? null;
+    if (!directRole && !(await isPlaceClaimable(admin, placeId))) {
+      console.error(`[get-place] directly owned, not pooled: ${placeId}`);
+      return json(NOT_FOUND, 404);
+    }
+    if (directRole) myDirectRole = directRole;
   }
 
   // Verified is an APPROVED verification on the place, whoever requested
@@ -180,7 +193,10 @@ Deno.serve(async (req) => {
       verified: Boolean(verification),
     },
     holder,
-    // Held places are never claimable; a pool place that reached here is.
-    claimable: row.organization_id === null,
+    // Held places are never claimable; a pool place that reached here is —
+    // unless the caller's own direct membership is what made it visible
+    // (an old-style owned place is not the pool).
+    claimable: row.organization_id === null && myDirectRole === null,
+    myDirectRole,
   });
 });
