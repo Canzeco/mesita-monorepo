@@ -8,10 +8,10 @@ import {
   CLASSES,
   CLASS_MARK_ICON,
   classBadgeClass,
+  classFillClass,
   PLANS,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
-  type ClassKey,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -54,16 +54,6 @@ import {
 // The class and plan axes are NEVER merged: the class tile can't show Premium
 // and the plan tile can't show a metal. Each tile taps through to the surface
 // that owns it, which is why the card carries no separate CTA.
-
-/** Each metal's fill for the avatar ring, where nothing sits on top of it.
- *  The class TILE takes `classBadgeClass` instead — a tile carries a label,
- *  so it needs the ink that goes with the metal, not just the metal. */
-const CLASS_FILL: Record<ClassKey, string> = {
-  bronze: "bg-tier-bronze",
-  silver: "bg-tier-silver",
-  gold: "bg-tier-gold",
-  diamond: "bg-tier-diamond",
-};
 
 /**
  * One of the three passport tiles. `fill` paints it when the guest HOLDS the
@@ -246,13 +236,16 @@ export function ProfileSummaryCard({
       {/* The metal band — the class is the first thing the card says. Hidden
           from assistive tech on purpose: it is colour-only, and the Class tile
           below states the same rung in words. */}
-      <div className={cn("h-1.5 w-full", CLASS_FILL[key])} aria-hidden />
+      <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
 
       <div className="flex flex-col gap-5 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4">
             <div
-              className={cn("shrink-0 rounded-full p-[2.5px]", CLASS_FILL[key])}
+              className={cn(
+                "shrink-0 rounded-full p-[2.5px]",
+                classFillClass(key),
+              )}
               aria-hidden
             >
               <div className="bg-card rounded-full p-[2px]">
