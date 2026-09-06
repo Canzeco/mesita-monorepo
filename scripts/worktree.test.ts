@@ -4,6 +4,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
 import {
+  boot,
   add,
   classifyLanded,
   composeClaim,
@@ -467,4 +468,19 @@ Deno.test("isClean is false for edits, untracked files and an operation in progr
   const dir = await git(w.path, "rev-parse", "--absolute-git-dir");
   await write(join(dir, "MERGE_HEAD"), "abc\n");
   assertEquals(await isClean(env, w.path), false);
+});
+
+// ── boot ────────────────────────────────────────────────────────────────────
+
+Deno.test("boot names the worktree it runs from, not the shared checkout that contains the fleet", async () => {
+  const f = await makeFixture();
+  const w = await rawWorktree(f, "launch", "claude/launch");
+  const fromRoot = (await boot(makeEnv(f, { cwd: w.path }))).join("\n");
+  assertStringIncludes(fromRoot, `where: ${join(FLEET_DIR, "launch")} on claude/launch with no claim: a lobby`);
+  const sub = join(w.path, "apps", "web");
+  await Deno.mkdir(sub, { recursive: true });
+  const fromSub = (await boot(makeEnv(f, { cwd: sub }))).join("\n");
+  assertStringIncludes(fromSub, `where: ${join(FLEET_DIR, "launch")} on claude/launch`);
+  const fromShared = (await boot(makeEnv(f))).join("\n");
+  assertStringIncludes(fromShared, "where: the shared checkout (a lobby; never claimable)");
 });

@@ -759,7 +759,8 @@ export async function boot(env: Env): Promise<string[]> {
   const { main, rows } = await mainWorktree(env);
   const cwd = await realpath(env.cwd);
   const lines: string[] = [];
-  const here = rows.find((r) => cwd === r.path || cwd.startsWith(r.path + "/"));
+  // The fleet lives inside the shared checkout, so the shared row prefix-matches every worktree: the most specific path wins.
+  const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
   const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
   if (!here) lines.push(`where: ${cwd} (outside the fleet)`);
   else if (here.path === main) lines.push(`where: the shared checkout (a lobby; never claimable)`);
