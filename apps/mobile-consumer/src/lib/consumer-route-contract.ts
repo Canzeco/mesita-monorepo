@@ -107,12 +107,19 @@ export const CONSUMER_ROUTES = {
     ticketPrefix: '/rewards/ticket/',
   },
   // Activity — the container tab, routed at /inbox on both platforms. Web's
-  // four sections run, in the load-bearing product order (Pato, 2026-09-01):
-  // Alerts · Visits · Orders · Reservations, Alerts leading. Mobile's own
-  // (tabs)/inbox.tsx SECTIONS array has NOT been updated to that order — it
-  // is still Visits · Orders · Reservations · Notifications (Pato,
-  // 2026-08-16), Notifications last, not leading (MESITA-1486). Fixing the
-  // order is a screen change, which the freeze forbids here.
+  // three sections run, in the load-bearing product order (Pato, 2026-09-01,
+  // Orders folded 2026-09-06 — MESITA-1389): Alerts · Visits · Reservations,
+  // Alerts leading. Mobile's own (tabs)/inbox.tsx SECTIONS array has NOT been
+  // updated to that order — it is still Visits · Reservations ·
+  // Notifications (Pato, 2026-08-16), Notifications last, not leading
+  // (MESITA-1486). Fixing the order is a screen change, which the freeze
+  // forbids here; folding Orders is the one write the drift-guard convention
+  // allows (same-PR mirror of an already-decided web IA change).
+  //
+  // NO `orders` key any more: Orders had no table, no Edge Function and no
+  // type on either platform, so folding it into Visits on web left nothing
+  // for this key to point at. The mirrored (tabs)/inbox.tsx section is gone
+  // too.
   //
   // NO `credits` key any more: web moved Wallet out of Activity into Pay
   // (`newVisit.wallet`, 2026-09-01 — and it is back there after a one-day
@@ -128,7 +135,6 @@ export const CONSUMER_ROUTES = {
   inbox: {
     root: '/(tabs)/inbox',
     visits: '/inbox/visits',
-    orders: '/inbox/orders',
     reservations: '/inbox/reservations',
     notifications: '/inbox/notifications',
   },
@@ -180,7 +186,7 @@ function asHref(path: string): Href {
 
 /** Inbox routes exist on disk; typed-routes lag until expo export regenerates. */
 export function inboxPath(
-  section: 'visits' | 'orders' | 'reservations' | 'notifications' = 'visits',
+  section: 'visits' | 'reservations' | 'notifications' = 'visits',
 ): Href {
   return asHref(CONSUMER_ROUTES.inbox[section]);
 }
