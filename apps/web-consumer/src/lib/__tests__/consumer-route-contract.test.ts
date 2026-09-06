@@ -310,6 +310,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/discover/catalog",
         permanent: true,
       },
+      // The Saved tab and the /saved/place dual path (MESITA-1585).
+      { source: "/saved", destination: "/inbox/reservations", permanent: true },
+      { source: "/saved/reservations", destination: "/inbox/reservations", permanent: true },
+      { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
+      { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Wallet's three former addresses, each pointing STRAIGHT at
       // /new-visit/wallet — never at one another, which would be the 3-hop
