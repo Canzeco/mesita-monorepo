@@ -11,7 +11,7 @@
 //
 // Non-owners never see the toggle: the same four rows, no affordance.
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { Field } from "@/components/shared/Field";
 import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
@@ -51,11 +51,15 @@ export function OrgIdentityCard({
     INITIAL,
   );
 
-  // A successful save is the end of editing. `saved` never flips back, so
-  // this fires once per save and re-opening the form does not re-close it.
-  useEffect(() => {
+  // A successful save is the end of editing. Adjusted during render rather
+  // than in an effect (no cascading render), and keyed on the state OBJECT,
+  // not on `saved` — `saved` stays true across a second save, so comparing
+  // the boolean would close the form once and never again.
+  const [seenState, setSeenState] = useState(state);
+  if (state !== seenState) {
+    setSeenState(state);
     if (state.saved) setEditing(false);
-  }, [state.saved]);
+  }
 
   const isOwner = myRole === "owner";
 
