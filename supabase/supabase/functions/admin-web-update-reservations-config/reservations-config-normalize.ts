@@ -14,7 +14,7 @@ type ReservationsConfig = {
   /** Abuse/cost guards — every unit of abuse here is a metered phone call. */
   limits: {
     reschedulesPerTicketPerDay: number;
-    venueCallsPerPlacePerDay: number;
+    placeCallsPerPlacePerDay: number;
     killSwitch: boolean;
   };
   /** Leg 7 reminder call. Optional — older admin builds omit it → OFF. */
@@ -88,7 +88,7 @@ export function normalizeConfig(
 
   // testCall — optional. An ABSENT testCall falls back to TEST_CALL_SEED (test
   // mode ON, the test line), matching coerceReservationsCallConfig's read-path
-  // rule that a missing value must never resolve into ringing a real venue
+  // rule that a missing value must never resolve into ringing a real place
   // (MESITA-739). This used to default `enabled:false`, so a payload that simply
   // omitted the field silently disarmed test mode and pointed the agent at real
   // restaurant phone numbers — the write path undoing the read path's invariant.
@@ -143,7 +143,7 @@ export function normalizeConfig(
 
   // limits — optional (older admin builds omit it → seeds), strict when sent.
   // Mirrors LIMITS_SEED in _shared/reservations-config.ts.
-  let limits = { reschedulesPerTicketPerDay: 3, venueCallsPerPlacePerDay: 10, killSwitch: false };
+  let limits = { reschedulesPerTicketPerDay: 3, placeCallsPerPlacePerDay: 10, killSwitch: false };
   if (c.limits !== undefined) {
     if (!c.limits || typeof c.limits !== "object" || Array.isArray(c.limits)) {
       return { ok: false, error: "config.limits must be an object" };
@@ -157,14 +157,14 @@ export function normalizeConfig(
     };
     const resc = readCap(l.reschedulesPerTicketPerDay, "reschedulesPerTicketPerDay");
     if (typeof resc === "object") return { ok: false, error: resc.error };
-    const venue = readCap(l.venueCallsPerPlacePerDay, "venueCallsPerPlacePerDay");
-    if (typeof venue === "object") return { ok: false, error: venue.error };
+    const place = readCap(l.placeCallsPerPlacePerDay, "placeCallsPerPlacePerDay");
+    if (typeof place === "object") return { ok: false, error: place.error };
     if (typeof l.killSwitch !== "boolean") {
       return { ok: false, error: "config.limits.killSwitch must be a boolean" };
     }
     limits = {
       reschedulesPerTicketPerDay: resc,
-      venueCallsPerPlacePerDay: venue,
+      placeCallsPerPlacePerDay: place,
       killSwitch: l.killSwitch,
     };
   }

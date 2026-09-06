@@ -15,7 +15,7 @@ import { PROMOTION_SCORE_MAX, promotionScore } from "@/lib/business/promotion-sc
 //      the bill, exactly like today's discount — no PSP involved. So
 //      `accept_prepays` gates on PARTNER, not on Mesita Pay. Only SELLING
 //      balance needs a charge path, because that is money moving.
-//   2. Prepays and cashback are ONE instrument on ONE ledger (venue-scoped,
+//   2. Prepays and cashback are ONE instrument on ONE ledger (place-scoped,
 //      place-issued) with two funding paths — the guest buys, or the place
 //      grants. See MESITA-1380. "Credits" stays the internal accounting unit
 //      and never surfaces as a consumer balance; the operator-facing word is

@@ -66,7 +66,7 @@ export function escapeIlike(s: string): string {
 // nothing else. Fired once per PICK of a Location row in the searchbar —
 // never per keystroke — so the map anchor (MESITA-1405) knows where to land
 // and how wide the camera should open. A city has no rating, primaryType or
-// businessStatus to ask for; the venue-shaped mask below would bill a higher
+// businessStatus to ask for; the place-shaped mask below would bill a higher
 // SKU for fields that do not exist on a locality.
 export async function fetchLocationAnchor(
   placeId: string,

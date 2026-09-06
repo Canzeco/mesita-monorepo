@@ -62,6 +62,10 @@ const U = "undefined" as const;
  * Atlas category slug → 1–2 Super Categories (multi-parent). The seven
  * doubles: breakfast, brunch (R+C) · karaoke, casino, winery (N+E) ·
  * board_game_cafe (C+E) · movie_theater (A+E).
+ *
+ * `concert_venue` is Google's own Table A slug (google-type-super.ts) —
+ * `venue` is banned in our vocabulary (MESITA-1591) but this key must match
+ * Google's API literally.
  */
 export const ATLAS_CATEGORY_SUPERS: Readonly<Record<string, readonly FamilyKey[]>> =
   {

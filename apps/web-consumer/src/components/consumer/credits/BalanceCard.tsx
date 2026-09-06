@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 // rule that stood here before — "WHITE, like every other list card in this
 // app" — and the reversal is narrow, so read why before widening it. The old
 // argument was that per-issuer colour would be inventing brand identity for
-// venues that never approved it, and that every saturated token in this app
+// places that never approved it, and that every saturated token in this app
 // already means something. Both still hold. What changed is the source: a
-// venue's own `places.photos[0]` is not invented identity, it is theirs, and it
+// place's own `places.photos[0]` is not invented identity, it is theirs, and it
 // is already on every Place row this app fetches. Nothing new is generated and
-// no venue is assigned a colour it did not choose.
+// no place is assigned a colour it did not choose.
 //
 // The carve-out is THIS COMPONENT and the art layer inside it. White-on-dark
 // stops at the card edge; everything around it stays semantic tokens, exactly
@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 // thing IS did not, so neither does the name.
 //
 // THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE. A photo is
-// uncontrolled input: the venue picked it, not us, and white text over an
+// uncontrolled input: the place picked it, not us, and white text over an
 // unknown image is the "busy imagery behind text" failure. Both gradients below
 // are calculated against the WORST case (a pure-white photo) rather than tuned
 // against the fixtures, so both text bands clear WCAG AA (4.5:1) on any image

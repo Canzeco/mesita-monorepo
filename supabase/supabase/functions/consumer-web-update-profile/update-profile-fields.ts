@@ -77,7 +77,7 @@ export type ParseNameResult =
   | { ok: false; response: Response };
 
 // A consumer's name is written as a pair or not at all. Reservations are
-// placed with the venue under the guest's full name (host systems key on
+// placed with the place under the guest's full name (host systems key on
 // "last name + party size"), and full_name here is derived from first +
 // last — so a write that carries one half without the other would leave a
 // consumer who can't be booked. Patches that don't touch the name at all

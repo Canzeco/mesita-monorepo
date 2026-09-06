@@ -10,7 +10,7 @@
 //   then       NEVER again — the app is the fallback, not a fourth ring
 //
 // Two guards shape every retry:
-//   quiet hours  no guest call outside 09:00–22:00 venue-local… unless the
+//   quiet hours  no guest call outside 09:00–22:00 place-local… unless the
 //                reservation is less than 6 h away, when the news can't wait
 //                (a 23:30 "your table tomorrow moved" holds until 09:00; a
 //                23:30 "your midnight table was cancelled" does not).
@@ -19,7 +19,7 @@
 //                call that lands after the table time is worse than none.
 //
 // Pure scheduling math — no clock, no DB — so it's testable like the place
-// twin. The venue-side cancellation notice does NOT use this module: places
+// twin. The place-side cancellation notice does NOT use this module: places
 // are paced by their opening hours (nextAttemptAt), not by politeness windows.
 
 import { mexicoZone } from "./local-time.ts";
@@ -29,7 +29,7 @@ export const GUEST_CALL_LADDER_MIN = [10, 60] as const;
 /** Total guest-call attempts per errand — ladder + the immediate first call. */
 export const GUEST_CALL_MAX_ATTEMPTS = GUEST_CALL_LADDER_MIN.length + 1;
 
-const QUIET_OPENS = 9; // first callable hour, venue-local
+const QUIET_OPENS = 9; // first callable hour, place-local
 const QUIET_CLOSES = 22; // first NON-callable hour
 const URGENT_WINDOW_MS = 6 * 3600_000;
 const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;

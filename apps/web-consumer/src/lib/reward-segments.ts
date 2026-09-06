@@ -23,7 +23,7 @@ type GridStrategy = "zero" | "conservative" | "aggressive";
 // Ontology of a rung (per the canonical definitions):
 //   class  — who the guest is (Bronze / Silver / Gold / Diamond)
 //   action — a rewarded thing the guest does at the table (Story / Google Review)
-//   visit  — a state of the visit itself (Welcome = first ticket at the venue)
+//   visit  — a state of the visit itself (Welcome = first ticket at the place)
 type RewardSegmentKind = "class" | "action" | "visit";
 
 export type RewardSegmentKey =

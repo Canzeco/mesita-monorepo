@@ -361,7 +361,7 @@ export type PlacePrediction = {
    *  lane, so an older payload reads as not-enriched (gray understates). */
   enriched?: boolean;
   /**
-   * Word's second entity (MESITA-1403). Absent = "place" — a venue row
+   * Word's second entity (MESITA-1403). Absent = "place" — a place row
    * reads exactly as before. A Location is a region/city from
    * Autocomplete: no membership, no mesitaId, and no coordinates until
    * the anchor resolve on pick (apiResolveLocationAnchor).

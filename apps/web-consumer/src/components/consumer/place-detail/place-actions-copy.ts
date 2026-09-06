@@ -20,9 +20,9 @@ export const RESERVE_BLOCKED = {
 } as const;
 
 // CREDITS IS LOCKED AT EVERY PLACE, and unlike the other two that is a
-// statement about Mesita, not about the venue. The Credits engine does not
+// statement about Mesita, not about the place. The Credits engine does not
 // exist: balances are parked on a browser emulator (no table, no Edge
-// Function, no venue side), and `places.credits_enabled` is an acceptance
+// Function, no place side), and `places.credits_enabled` is an acceptance
 // INTENT bit the future engine will AND with `visits_config.payCredits` — it
 // is not a switch that can light this button today. So there is deliberately
 // no `isCreditsActionEnabled`: a gate that reads a flag which cannot mean
@@ -32,7 +32,7 @@ export const RESERVE_BLOCKED = {
 // The slot still renders, on Order's precedent — a visible locked slot says
 // "Mesita will do this here", where hiding it says "this place is missing
 // something". The copy carries the parked claim so the lock isn't read as a
-// venue failing.
+// place failing.
 export const CREDITS_BLOCKED = {
   aria: "Mesita Credits aren't live yet",
   title: "Paying with Mesita Credits is coming soon.",

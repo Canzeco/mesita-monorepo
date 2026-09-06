@@ -20,7 +20,7 @@ export type PlaceDetail = {
   partner?: boolean | null;
   /** Description/Actions — menu on file unlocks Order. */
   orders_enabled?: boolean;
-  /** Description/Actions — LLM: venue type likely takes reservations. */
+  /** Description/Actions — LLM: place type likely takes reservations. */
   reservations_enabled?: boolean;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and

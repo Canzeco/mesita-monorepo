@@ -14,7 +14,7 @@
 // business-web-record-strike path.
 //
 // Window: from creation until REPORT_WINDOW_DAYS after the ticket closed —
-// a guest usually realises they were shorted once they're outside the venue.
+// a guest usually realises they were shorted once they're outside the place.
 //
 // Body:     { ticketId: string, reason: string, details?: string }
 // Response: { ok: true, report } | 400 | 404 | 409

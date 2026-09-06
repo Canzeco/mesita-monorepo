@@ -332,7 +332,7 @@ export async function apiSelectTicketPayment(
 
 // v3c report button (MESITA-851): the guest's route when a place doesn't
 // honor the ticket. Live for the whole ticket and for a window after it
-// closes — people realise they were shorted once they're outside the venue.
+// closes — people realise they were shorted once they're outside the place.
 // A report is evidence for an operator, never an automatic strike.
 export const REPORT_REASONS = [
   {

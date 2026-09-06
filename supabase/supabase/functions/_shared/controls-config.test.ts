@@ -72,7 +72,7 @@ Deno.test("resolveHoldHours: zero is a real override, not an absent one", () => 
 
 Deno.test("guestControlsPolicy: the operator's window is not guest-facing", () => {
   // The expiry DEFAULT crosses and its FLOOR does not: a guest is owed the date
-  // their own Credits die, never the range a venue could have picked from.
+  // their own Credits die, never the range a place could have picked from.
   assertEquals(guestControlsPolicy(CONTROLS_DEFAULTS), {
     defaultHoldHours: 3,
     defaultBonusPct: 5,

@@ -64,7 +64,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // the app's one list-row look and they stop at this file.
 //
 // MIXED LIVENESS, and the page still says which is which. The Credits BALANCES
-// are PARKED on a browser emulator — no table, no Edge Function, no venue side.
+// are PARKED on a browser emulator — no table, no Edge Function, no place side.
 // The TERMS are real: the hold and the bonus come from the console's Controls
 // page through consumer-web-get-controls-config. Payment methods is fully live
 // and opens the real Stripe-backed CardsModal.

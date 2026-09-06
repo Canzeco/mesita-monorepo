@@ -30,7 +30,7 @@
 //             runs on what a Google Places query returned.
 //   ENTITIES  what a mode can answer with: Places always, Locations on Word
 //             only. Autocomplete is the one source that returns regions and
-//             cities, in the SAME call as the venues.
+//             cities, in the SAME call as the places.
 //   SOURCES   the Search Sources subpage: Google types strip (categoryCount
 //             + type batteries, one list written onto Fast / Deep / Map) ·
 //             the three Google Places searches · the four Mesita Places
@@ -676,7 +676,7 @@ export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
 };
 
 /**
- * What a mode can put IN FRONT OF THE GUEST. A Place is a venue; a Location
+ * What a mode can put IN FRONT OF THE GUEST. A Place is a place; a Location
  * is a region or a city — name, type, and the coordinates the next step
  * needs (Pato, 2026-09-02). Black square = the mode can answer with that
  * entity.

@@ -5,7 +5,7 @@
 //
 //   { reservation_id, reserved_at?: ISO, party_size?: number, notes?: string }
 //
-// New terms mean the venue has to agree again, so this resets the ticket to
+// New terms mean the place has to agree again, so this resets the ticket to
 // the start of the lifecycle (back to `booking`) and re-fires the call engine:
 // state → pending, the previous verdict/confirmation cleared, run state
 // wiped, and negotiation_rounds back to 0 — an app reschedule is a deliberate
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Reschedule cap (abuse guard, eng-review 2026-08-04) ───────────────────
-  // Every reschedule resets call_attempts — i.e. buys fresh venue calls — so
+  // Every reschedule resets call_attempts — i.e. buys fresh place calls — so
   // it is rate-limited per ticket per day. Knob lives in reservations_config.
   const { data: settings } = await admin
     .from("app_config")
@@ -125,8 +125,8 @@ Deno.serve(async (req) => {
     }, 429);
   }
 
-  // ── Back to the start of the lifecycle: the venue must agree again ────────
-  // A CONFIRMED ticket being moved is a MODIFICATION: the venue holds a live
+  // ── Back to the start of the lifecycle: the place must agree again ────────
+  // A CONFIRMED ticket being moved is a MODIFICATION: the place holds a live
   // table, so a1 asks to MOVE it (and modification_of remembers the old slot
   // so a failed re-book still releases the hold — leg 5 via this door).
   // run_id rotation orphans any engine run mid-flight on the old terms.
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     ...REMINDER_CLEAR,
     // MUST clear: if the old ticket was parked for a retry, the pg_cron poller
     // (run-reservation-retries) would still fire on that stale timestamp — a
-    // second call to the venue on top of the one this EF triggers below.
+    // second call to the place on top of the one this EF triggers below.
     next_attempt_at: null,
     last_conversation_id: null,
     last_called_at: null,
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
   const write = await writeReservation(admin, { mode: "update", id, patch });
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
 
-  // Ask the venue again. The engine acks early and runs the legs in the
+  // Ask the place again. The engine acks early and runs the legs in the
   // background, updating this row as it goes.
   const fired = await invokeInternalCaller(
     envRes.env,

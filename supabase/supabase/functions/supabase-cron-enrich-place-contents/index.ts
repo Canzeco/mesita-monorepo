@@ -260,7 +260,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       vocabulary: tagVocabulary.length,
     };
 
-    // ACTIONS (Description function 9) — Reserve: LLM inference on venue type.
+    // ACTIONS (Description function 9) — Reserve: LLM inference on place type.
     const reservationsLikely = await inferPlaceReservationsLikely(
       OPENAI_KEY,
       {
@@ -391,7 +391,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   }
 
   // Corrections (MESITA-1190) — write AROUND a pinned field, never over it.
-  // An agent that called the venue knows something Google does not, and
+  // An agent that called the place knows something Google does not, and
   // re-running the pipeline refetches the same wrong value; persisting it here
   // would revert the correction on every scheduled run. Absent keys are
   // untouched by the persist contract, so dropping the key IS the guard.

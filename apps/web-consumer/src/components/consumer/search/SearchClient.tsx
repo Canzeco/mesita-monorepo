@@ -124,7 +124,7 @@ const MIN_QUERY = 2;
 
 /**
  * A live searchbar pick (MESITA-1405). `camera` is the move the map owes
- * the guest; `place` is the chosen venue for card ONE of the carousel —
+ * the guest; `place` is the chosen place for card ONE of the carousel —
  * null for a Location, which is a camera destination, never a card.
  */
 type AnchorPick = {
@@ -639,7 +639,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // EVERY BAR PICK ANCHORS THE MAP — both entities (MESITA-1405). A Place
-  // stops opening its modal from the bar: the camera lands on the venue,
+  // stops opening its modal from the bar: the camera lands on the place,
   // the catalog reloads there, and the modal is one more tap away on the
   // card or its pin. A Google-only pick anchors too — the sheet moves to
   // the second tap, the gesture the grey pin already speaks, so the rule

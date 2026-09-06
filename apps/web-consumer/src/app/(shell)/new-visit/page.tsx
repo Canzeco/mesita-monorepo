@@ -12,7 +12,7 @@ const NewVisitClient = nextDynamic(
 export const dynamic = "force-dynamic";
 
 // New Visit — the centre tab (MESITA-811 · MESITA-820): three steps + New/Pending/History;
-// the venue pass modal carries the QR. Legacy /pay/* paths redirect here.
+// the place pass modal carries the QR. Legacy /pay/* paths redirect here.
 //
 // No profile fetch: the page needs the user id and nothing else since the
 // identity header and the member code both left (MESITA-820). Dropping it
