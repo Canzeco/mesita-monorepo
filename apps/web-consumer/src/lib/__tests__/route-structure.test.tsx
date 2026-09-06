@@ -249,15 +249,14 @@ describe("T5 — exactly one tab lights per surface", () => {
     // It lit the centre tab before only by nesting under /rewards; the rename
     // severed that nesting and this row is what holds the replacement.
     ["/visit/t1", "Activity"],
+
+    // Wallet is Pay's SECOND SECTION again (2026-09-06), so it lights Pay by
+    // nesting — no prefix of its own. /inbox/credits and /wallet are redirect
+    // SOURCES, never rendered, so neither belongs in this matrix.
+    ["/new-visit/wallet", "Pay"],
     ["/inbox/visits", "Activity"],
     ["/inbox/reservations", "Activity"],
     ["/reservation/r1", "Activity"],
-
-    // Wallet is its own tab and its own prefix (2026-09-05). It was
-    // /inbox/credits and then /new-visit/wallet; both are redirect SOURCES
-    // now, never rendered, so neither belongs in this matrix — a nested path
-    // asserted here would keep passing while lighting somebody else's tab.
-    ["/wallet", "Wallet"],
     ["/me", "Me"],
   ];
 
@@ -282,15 +281,15 @@ describe("T5 — exactly one tab lights per surface", () => {
 // Product Rules §C (later, Pato-owned): plain labels; class is state on /me,
 // never chrome; Activity is not named for a mechanism.
 //
-// FIVE tabs since 2026-09-05, in the order Pato gave them: Discover ·
-// Activity · Pay · Wallet · Me. Wallet was promoted out of Pay's section row,
-// and Activity moved ahead of Pay.
+// FOUR tabs, in the order Pato gave them on 2026-09-06 ("FOUR PAGES, NOT 5"):
+// Discover · Pay · Activity · Me. Wallet ran as a fifth tab for a day (#1492)
+// and went back to being Pay's second section; Pay went back ahead of Activity
+// with it.
 //
-// The count going back to five is NOT the 2026-09-01 merge being undone. That
-// merge was a DELETION — Home had been Soon since 2026-08-28 while Search
-// shipped the live map, so the dead tab was the leftmost one and wore the
-// brand mark — and it stands: Discover IS /search, unmoved. This fifth tab is
-// a different thing entirely, a live surface promoted out of a section row.
+// The count is NOT the 2026-09-01 merge being re-litigated. That merge folded
+// Home and Search into Discover and was a DELETION — Home had been Soon since
+// 2026-08-28 while Search shipped the live map, so the dead tab was the
+// leftmost one and wore the brand mark. Discover IS /search, unmoved.
 describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
@@ -303,14 +302,8 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Discover · Activity · Pay · Wallet · Me", async () => {
-    expect(await tabLabels()).toEqual([
-      "Discover",
-      "Activity",
-      "Pay",
-      "Wallet",
-      "Me",
-    ]);
+  it("is exactly Discover · Pay · Activity · Me", async () => {
+    expect(await tabLabels()).toEqual(["Discover", "Pay", "Activity", "Me"]);
   });
 
   // The hub is retired, not hiding. A "Home" label reappearing means someone
@@ -532,24 +525,75 @@ describe("T6 — the Inbox section row renders as specified", () => {
 // the redirect is ever dropped, this goes red instead of CI going green while
 // those links 404.
 describe("T7 — every former Wallet url still resolves after the move", () => {
-  // Wallet has moved THREE times: standalone /credits (#1429) -> Activity
-  // section (/inbox/credits) -> Pay section (/new-visit/wallet, 2026-09-01) ->
-  // its own tab (/wallet, 2026-09-05). All three old urls were live in
-  // production, so all three sets of bookmarks are real.
+  // Wallet has now moved three times and come back: standalone /credits
+  // (#1429) -> Activity section (/inbox/credits) -> Pay section
+  // (/new-visit/wallet, 2026-09-01) -> its own tab (/wallet, 09-05) -> Pay
+  // section again (09-06). ALL THREE old urls were live in production, so all
+  // three sets of bookmarks are real.
   //
-  // EACH RESOLVES IN ONE HOP, and that is the point of asserting the
-  // destination rather than just the entry: pointing /credits at
-  // /inbox/credits (or /inbox/credits at /new-visit/wallet) would still be a
-  // working redirect, and would still be a 3-hop chain that T4 refuses. T4 can
-  // validate a destination but never a redirect's ABSENCE, which is why this
-  // test exists alongside it.
-  it.each(["/credits", "/inbox/credits", "/new-visit/wallet"])(
-    "keeps %s redirecting straight to the Wallet tab",
+  // EACH RESOLVES IN ONE HOP, and that is why this asserts the destination
+  // rather than just the entry: pointing /credits at /inbox/credits, or
+  // /wallet at /inbox/credits, would still be a working redirect and would
+  // still be the 3-hop chain T4 refuses. T4 can validate a destination but
+  // never a redirect's ABSENCE, which is why this test exists alongside it.
+  it.each(["/credits", "/inbox/credits", "/wallet"])(
+    "keeps %s redirecting straight to Pay > Wallet",
     async (source) => {
       const redirects = await nextConfig.redirects!();
       const entry = redirects.find((r) => r.source === source);
       expect(entry, `${source} redirect was removed`).toBeDefined();
-      expect(entry!.destination).toBe("/wallet");
+      expect(entry!.destination).toBe("/new-visit/wallet");
     },
   );
+});
+
+// ── T8 — the Pay pill row is what the guest sees ────────────────────────────
+//
+// Same argument as T6, one tab over: CONSUMER_ROUTES.newVisit's key order is
+// inert (every consumer reads a named key), and what a guest sees is
+// PaySectionNav.SECTIONS. Wallet has now been in and out of this row inside a
+// week, so the row that renders is the thing worth pinning — a change that
+// promotes it back to a tab has to delete this test to do it, which is exactly
+// the review moment that was missing on 2026-09-05.
+describe("T8 — the Pay section row renders as specified", () => {
+  async function renderNav(pathname: string): Promise<string> {
+    vi.resetModules();
+    vi.doMock("next/navigation", () => ({
+      usePathname: () => pathname,
+    }));
+    const { PaySectionNav } = await import(
+      "@/components/consumer/pay/PaySectionNav"
+    );
+    return renderToStaticMarkup(<PaySectionNav />);
+  }
+
+  /** Pill labels in render order. */
+  function labels(html: string): string[] {
+    return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
+  }
+
+  it("is exactly New · Wallet, in that order", async () => {
+    expect(labels(await renderNav(CONSUMER_ROUTES.newVisit.new))).toEqual([
+      "New",
+      "Wallet",
+    ]);
+  });
+
+  // The failure this catches: /new-visit is a PREFIX of /new-visit/wallet, so
+  // a startsWith match here lights New on both pages. PaySectionNav compares
+  // exactly, and this is what proves it still does.
+  const ACTIVE: [string, string][] = [
+    ["/new-visit", "New"],
+    ["/new-visit/wallet", "Wallet"],
+  ];
+
+  it.each(ACTIVE)("%s lights exactly %s", async (pathname, expected) => {
+    const html = await renderNav(pathname);
+    const lit = html
+      .split("<a ")
+      .slice(1)
+      .filter((chunk) => chunk.includes("bg-primary"))
+      .map((chunk) => chunk.match(/<span>([^<]+)</)?.[1] ?? "?");
+    expect(lit).toEqual([expected]);
+  });
 });
