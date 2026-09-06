@@ -11,7 +11,7 @@
 //   • state — enrichment progress for the place: projects.content_state +
 //     the place_research stage/state/error + last_enriched_at (the moment the
 //     pipeline last reached stage='done').
-//   • serpSummary — the SERP Summary (Agent X's soft editorial read) for the
+//   • serpSummary — the SERP Summary (the Scout's soft editorial read) for the
 //     last run. Selected as a JSON PATH, never as the whole `gathered` blob:
 //     that column is tens of KB and shipping it wholesale is the regression
 //     MESITA-1198 already had to undo once.

@@ -39,7 +39,7 @@
 // into `semantic` on read.
 //
 // THE ORDER IS LOAD-BEARING. `serp` runs BEFORE `links` because that is what
-// serp is FOR: Agent Y cannot pick between five Instagram candidates on a name
+// serp is FOR: the Resolver cannot pick between five Instagram candidates on a name
 // and a city, and the editorial read is what tells it which one is really this
 // place. Function 9 grounding on the same text is a SECOND USE of something
 // bought for the first — do not reorder the queue to serve it. `social` runs

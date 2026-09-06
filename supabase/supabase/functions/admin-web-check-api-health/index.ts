@@ -594,7 +594,7 @@ const PROBES: ProbeSpec[] = [
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Intaker S5 (Agent Y link select)",
+    impact: "Memo answers + Intaker S5 (Resolver link select)",
     envKeys: ["PERPLEXITY_KEY"],
     run: async (keys) => {
       const key = firstKey(keys, ["PERPLEXITY_KEY"])!;

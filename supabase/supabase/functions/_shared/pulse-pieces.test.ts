@@ -170,7 +170,7 @@ Deno.test("pulse: social runs BEFORE images, menu after both", () => {
 });
 
 Deno.test("pulse: serp runs BEFORE links — that is what serp is FOR", () => {
-  // Agent Y cannot pick between five Instagram candidates on a name and a
+  // The Resolver cannot pick between five Instagram candidates on a name and a
   // city; the editorial read is what it recognises the place by. Function 9
   // reusing the same text is a second use, not the reason it exists.
   const i = (k: string) => (PULSE_PIECES as readonly string[]).indexOf(k);

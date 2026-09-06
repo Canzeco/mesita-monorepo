@@ -31,6 +31,7 @@ import {
   normalizeEnrichmentTriggers,
 } from "../_shared/enrich-triggers.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
+import { intakePromptsMeta } from "../_shared/intake-prompts.ts";
 import { normalizeVerificationConfig } from "../_shared/verification-config.ts";
 
 Deno.serve(async (req) => {
@@ -71,6 +72,9 @@ Deno.serve(async (req) => {
     autoVerifyAiEmail: verificationConfig.autoVerifyAiEmail,
     ...enrichmentConfig,
     enrichmentTriggersMeta: enrichmentTriggersMeta(),
+    // Read-only: the prompts the Intaker actually sends, imported from the same
+    // constants the pipeline calls. The console renders these; it keeps no copy.
+    intakePromptsMeta: intakePromptsMeta(),
     enrichmentTriggers: normalizeEnrichmentTriggers(
       (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
     ),

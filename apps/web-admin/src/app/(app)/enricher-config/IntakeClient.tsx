@@ -33,7 +33,11 @@ import {
 } from "./cost-model";
 import { ImageFunnel } from "./ImageFunnel";
 import { DISCOVERY_MAP_HREF } from "@/app/(app)/filters-config/nav";
-import { updateAtlasConfig, type PerplexityPreset } from "./actions";
+import {
+  updateAtlasConfig,
+  type IntakePrompt,
+  type PerplexityPreset,
+} from "./actions";
 import {
   Fields,
   FlowEstimate,
@@ -41,6 +45,7 @@ import {
   FunctionModule,
   KnobElsewhere,
   NoKnobs,
+  PromptView,
   Tag,
 } from "./blocks";
 import { SectionStrip } from "./SectionStrip";
@@ -68,11 +73,19 @@ export function IntakeClient({
   initialSettings,
   settingsUpdatedAt,
   settingsLoadError,
+  prompts,
 }: {
   initialSettings: IntakeSettings;
   settingsUpdatedAt: string | null;
   settingsLoadError: string | null;
+  /**
+   * What each model is TOLD, straight from the backend. Read-only, and empty
+   * when the GET failed — a prompt disclosure that invents its own text would
+   * be worse than an absent one.
+   */
+  prompts: IntakePrompt[];
 }) {
+  const promptFor = (key: string) => prompts.find((p) => p.key === key);
   const [settings, setSettings] = useState(initialSettings);
   const [savedSettings, setSavedSettings] = useState(initialSettings);
   const [settingsStamp, setSettingsStamp] = useState(settingsUpdatedAt);
@@ -354,9 +367,13 @@ export function IntakeClient({
                 knobs="in Models"
               >
                 <KnobElsewhere>
-                  The <b>Search model</b> in Models. Agent Y at Links reads the
+                  The <b>Search model</b> in Models. The Resolver at Links reads the
                   same setting.
                 </KnobElsewhere>
+                <PromptDisclosure
+                  prompt={promptFor("scout")}
+                  preset={settings.perplexityPreset}
+                />
               </FunctionModule>
 
               <FunctionModule
@@ -364,7 +381,7 @@ export function IntakeClient({
                 index="4 · $$"
                 flows={flowTagFor("links")}
                 name="Links"
-                blurb="Firecrawl candidates, Agent Y picks one or none. Seed first, discover second."
+                blurb="Firecrawl candidates, the Resolver picks one or none. Seed first, discover second."
                 knobs="5 knobs"
                 defaultOpen
               >
@@ -424,6 +441,10 @@ export function IntakeClient({
                 <p className="text-muted-foreground mt-3 text-xs">
                   0 turns a source off. Google-seeded channels skip discovery.
                 </p>
+                <PromptDisclosure
+                  prompt={promptFor("resolver")}
+                  preset={settings.perplexityPreset}
+                />
               </FunctionModule>
 
               <FunctionModule
@@ -523,6 +544,9 @@ export function IntakeClient({
                 <KnobElsewhere>
                   The <b>Text model</b> in Models. Same setting ranks images.
                 </KnobElsewhere>
+                <PromptDisclosure prompt={promptFor("presentation")} />
+                <PromptDisclosure prompt={promptFor("category")} />
+                <PromptDisclosure prompt={promptFor("super_category")} />
               </FunctionModule>
               <FunctionModule
                 id="f-embedding"
@@ -609,6 +633,32 @@ export function IntakeClient({
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * One prompt, tucked behind a disclosure on the function that sends it.
+ *
+ * Renders NOTHING when the prompt is absent — the GET failed, or the backend
+ * stopped shipping that key. An empty disclosure would promise a prompt and
+ * then fail to show one, which reads as "there is no prompt here"; silence at
+ * least stays honest, and the page already surfaces a load error above.
+ */
+function PromptDisclosure({
+  prompt,
+  preset,
+}: {
+  prompt: IntakePrompt | undefined;
+  preset?: string;
+}) {
+  if (!prompt) return null;
+  // The summary names the agent when there is one, because that is how the rest
+  // of the page and the Place screen refer to this step.
+  const who = prompt.agent ? `the ${prompt.agent}` : prompt.label;
+  return (
+    <Collapsible summary={`What ${who} is told`}>
+      <PromptView prompt={prompt} preset={preset} />
+    </Collapsible>
   );
 }
 

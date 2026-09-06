@@ -109,7 +109,73 @@ export async function synthesizeProfile(input: {
     .filter(Boolean)
     .join("\n\n");
 
-  const userPrompt =
+  const userPrompt = buildPresentationInput({
+    name,
+    locationLine,
+    category,
+    branchAnchor,
+    grounding,
+  });
+
+  const systemContent = PRESENTATION_INSTRUCTIONS;
+
+  try {
+    const r = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openaiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: systemContent },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (r.ok) {
+      const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
+      const parsed = safeParseJson(data.choices?.[0]?.message?.content ?? "") as
+        | ProfileResult
+        | null;
+      return { parsed, diag: { provider: "openai", model, ok: !!parsed } };
+    }
+    return { parsed: null, diag: { provider: "openai", model, ok: false, status: r.status } };
+  } catch {
+    return { parsed: null, diag: { provider: "openai", model, ok: false } };
+  }
+}
+
+// Exported so admin Intake can RENDER it (intake-prompts.ts → the console). The
+// console shows this exact constant, so what an operator reads is what the
+// vendor receives — a second copy could drift, this cannot.
+export const PRESENTATION_INSTRUCTIONS =
+  "You are Mesita's place-intelligence synthesis agent. Use ONLY the source " +
+  "material the user provides — do not browse or use outside knowledge. " +
+  "Mesita's core language is English: all prose fields are English. " +
+  "Output a SINGLE valid JSON object (no prose, no markdown fences) matching " +
+  "this shape, using null or [] when the sources don't support a field: " +
+  JSON.stringify(PROFILE_SCHEMA.properties) +
+  " Text fields (zone, city, executive_chef, editorial_summary, description) " +
+  "are single JSON strings — never arrays or nested objects. " +
+  "For description: separate paragraphs with blank lines " +
+  "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +
+  "quotes, prices, or a chef's name.";
+
+// The per-place message. Pure and exported so intake-prompts.ts can render the
+// REAL template with sentinel values — the console never re-types this prose.
+export function buildPresentationInput(place: {
+  name: string;
+  locationLine: string;
+  category: string | null;
+  branchAnchor: string;
+  grounding: string;
+}): string {
+  const { name, locationLine, category, branchAnchor, grounding } = place;
+  return (
     `Compile the public profile of the place "${name}"` +
     (locationLine ? ` located at ${locationLine}` : "") +
     (category ? ` (category: ${category})` : "") +
@@ -152,47 +218,6 @@ export async function synthesizeProfile(input: {
       : "") +
     (grounding
       ? `\n\n--- SOURCE MATERIAL ---\n${grounding}`
-      : "\n\n(No extra source material was gathered.)");
-
-  const systemContent =
-    "You are Mesita's place-intelligence synthesis agent. Use ONLY the source " +
-    "material the user provides — do not browse or use outside knowledge. " +
-    "Mesita's core language is English: all prose fields are English. " +
-    "Output a SINGLE valid JSON object (no prose, no markdown fences) matching " +
-    "this shape, using null or [] when the sources don't support a field: " +
-    JSON.stringify(PROFILE_SCHEMA.properties) +
-    " Text fields (zone, city, executive_chef, editorial_summary, description) " +
-    "are single JSON strings — never arrays or nested objects. " +
-    "For description: separate paragraphs with blank lines " +
-    "(\\n\\n); never one continuous block. Never invent ratings, reviewer " +
-    "quotes, prices, or a chef's name.";
-
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (r.ok) {
-      const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
-      const parsed = safeParseJson(data.choices?.[0]?.message?.content ?? "") as
-        | ProfileResult
-        | null;
-      return { parsed, diag: { provider: "openai", model, ok: !!parsed } };
-    }
-    return { parsed: null, diag: { provider: "openai", model, ok: false, status: r.status } };
-  } catch {
-    return { parsed: null, diag: { provider: "openai", model, ok: false } };
-  }
+      : "\n\n(No extra source material was gathered.)")
+  );
 }

@@ -943,7 +943,7 @@ export type PlaceEnrichmentState = {
   error: string | null;
   last_enriched_at: string | null;
   updated_at: string | null;
-  /** The SERP Summary from the last run — Agent X's soft editorial read.
+  /** The SERP Summary from the last run — the Scout's soft editorial read.
    *  Soft context only: never a source of facts, ratings or prices. */
   serp_summary: string | null;
 };

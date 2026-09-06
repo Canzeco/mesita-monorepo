@@ -13,7 +13,7 @@
 //       S3 + S4 and is collected after the IG/FB scrape — the Apify runs go
 //       concurrently instead of GMaps blocking IG/FB.
 //   S3  channel discovery (channels ONLY): per-source Firecrawl Search gather
-//       (S4) → one Perplexity Agent Y "Review & Select Links" pass (S5). No
+//       (S4) → one Resolver pass ("Review & Select Links", Perplexity Agent) at S5. No
 //       website-footer scraping. Phone + email are NOT web-searched — they come
 //       from Mesita input or the Google spine, and enrichment never clobbers a
 //       Mesita-entered contact.
@@ -265,7 +265,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     const searchCost = FIRECRAWL_KEY ? discoverySearchCost(cfg) : 0;
     const agentCost = PERPLEXITY_KEY ? COST.perplexity : 0;
     ledger.assertCanAfford(searchCost + agentCost, "discovery");
-    // S4 gather (Firecrawl Search, per-source N) → S5 Agent Y select.
+    // S4 gather (Firecrawl Search, per-source N) → S5 Resolver select.
     const found = await resolveChannels({
       firecrawlKey: FIRECRAWL_KEY,
       perplexityKey: PERPLEXITY_KEY,
@@ -417,7 +417,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // Website CONTENT is no longer gathered: enrichment builds description/tags/
   // category from the Google spine + reviews + the Perplexity SERP blurb (+ IG),
   // and never scrapes the site body. S3 discovery is Firecrawl SEARCH only (no
-  // footer scrape) → Agent Y selection.
+  // footer scrape) → the Resolver selection.
   const runSocial = wants(buys, "social");
   const runInstagram = runSocial && !!APIFY_KEY &&
     (!!igHandle || !!fbHandleCandidate || !!PERPLEXITY_KEY);
@@ -573,8 +573,8 @@ serveEnrichStage("research", async (admin, _env, row) => {
   };
 
   if (wants(buys, "serp")) {
-    // SERP (3) — the SERP Summary, Agent X's soft editorial read. It is bought
-    // FOR links: Agent Y cannot pick between five Instagram candidates on a
+    // SERP (3) — the SERP Summary, the Scout's soft editorial read. It is bought
+    // FOR links: the Resolver cannot pick between five Instagram candidates on a
     // name and a city, and this is what it recognises the place by.
     // ABSENCE IS A RESULT: the web having nothing to say about a place is an
     // answer, so the piece passes on an ok diag whether or not text came back.
@@ -583,7 +583,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       ? pieceDone(
         serpSummary
           ? `SERP Summary written — ${serpSummary.trim().split(/\s+/).length} word(s).`
-          : "Agent X ran; the web had nothing to add.",
+          : "The Scout ran; the web had nothing to add.",
       )
       : pieceFailed(
         PERPLEXITY_KEY ? "The SERP gather failed." : "No Perplexity key configured.",

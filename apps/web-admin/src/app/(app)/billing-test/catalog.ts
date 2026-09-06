@@ -61,7 +61,7 @@ export const KNOWN_PROBES: ReadonlyArray<{
   {
     id: "perplexity",
     label: "Perplexity",
-    impact: "Memo answers + Intaker S5 (Agent Y link select)",
+    impact: "Memo answers + Intaker S5 (Resolver link select)",
   },
   {
     id: "google-places",
