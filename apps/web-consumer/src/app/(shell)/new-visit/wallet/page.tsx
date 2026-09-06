@@ -3,7 +3,7 @@ import { parseCreditsDemo } from "@/lib/credits-demo";
 
 // /new-visit/wallet — Pay's second section (MESITA-1381). PARKED: it runs
 // on a browser emulator, not a backend. No table, no Edge Function, and no
-// venue-side surface behind it (MESITA-1380).
+// place-side surface behind it (MESITA-1380).
 //
 // Its third address and its second time at this one: /credits, /inbox/credits,
 // here (2026-09-01), /wallet as a tab (09-05), back here (09-06). All three of

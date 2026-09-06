@@ -20,18 +20,18 @@ describe("ORDER_BLOCKED copy", () => {
 });
 
 describe("RESERVE_BLOCKED copy", () => {
-  it("explains walk-in venues", () => {
+  it("explains walk-in places", () => {
     expect(RESERVE_BLOCKED.hint).toContain("Walk-in");
   });
 });
 
 describe("CREDITS_BLOCKED copy", () => {
-  it("blames the unbuilt engine, not the venue", () => {
+  it("blames the unbuilt engine, not the place", () => {
     expect(CREDITS_BLOCKED.title).toContain("coming soon");
     expect(CREDITS_BLOCKED.hint).toContain("Coming soon");
-    // "this place" is how ORDER_BLOCKED phrases a venue-side gap. Credits is
+    // "this place" is how ORDER_BLOCKED phrases a place-side gap. Credits is
     // parked product-wide, so borrowing that phrasing would misplace the
-    // blame on every venue in the app.
+    // blame on every place in the app.
     expect(CREDITS_BLOCKED.title).not.toContain("this place");
   });
 });

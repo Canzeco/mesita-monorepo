@@ -44,7 +44,7 @@ type ClassDoors = {
 type ConsumerClassState = {
   /** Class axis — who you are. Public; shows on the Passport. */
   key: ClassKey;
-  /** Plan axis — what you pay. Private; never shown to a venue. */
+  /** Plan axis — what you pay. Private; never shown to a place. */
   plan: PlanKey;
   /** How the CLASS was granted. "subscription" is deliberately absent: under
    *  v2 paying grants a PLAN, never a rung. */

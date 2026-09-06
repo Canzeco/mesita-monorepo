@@ -1270,7 +1270,7 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     );
     expect(debounce).not.toContain("apiResolveLocationAnchor");
     // The camera side: a bounds anchor FITS (city wide, neighbourhood
-    // close); a venue anchor pans.
+    // close); a place anchor pans.
     const map = read("SearchMap.tsx");
     expect(map).toContain("function AnchorCamera");
     expect(map).toContain("map.fitBounds(anchor.bounds)");
@@ -1282,7 +1282,7 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     const map = read("SearchMap.tsx");
     // railSelectedId (ring + zIndex) and panTargetId (camera) are split:
     // defaultRailSelection's fallback would otherwise snap the view to the
-    // closest venue after every reload — fatal right after a Location
+    // closest place after every reload — fatal right after a Location
     // anchor fits a whole city.
     expect(client).toContain("panTargetId={selectedId}");
     expect(map).toMatch(/<PanTo lat=\{panLat\} lng=\{panLng\}/);
@@ -1325,7 +1325,7 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
     },
   ];
 
-  it("marks the Location row with the icon and keeps the venue dot untouched", () => {
+  it("marks the Location row with the icon and keeps the place dot untouched", () => {
     const html = renderToStaticMarkup(
       <SearchResultsPanel
         query="ciudad"
@@ -1340,7 +1340,7 @@ describe("a Location wears the location icon, never a membership colour (MESITA-
     expect(html).toContain("lucide-map-pin");
     // The spoken half of the mark names the ENTITY, not a missing profile.
     expect(html).toContain("Ciudad de México, CDMX, Mexico, City");
-    // The venue row keeps its gray dot and its venue answer.
+    // The place row keeps its gray dot and its place answer.
     expect(html).toContain("No profile yet");
     // Exactly ONE membership dot renders — the city carries none, so the
     // two semantics never share a mark (no fourth colour, no shared gray).

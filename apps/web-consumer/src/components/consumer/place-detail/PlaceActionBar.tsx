@@ -39,7 +39,7 @@ import {
 //
 // CREDITS LEADS AND IS LOCKED EVERYWHERE. It is the money you bring, so it
 // reads before the money you spend — but its engine is unbuilt, which is a
-// fact about Mesita and not about this venue, so the copy says so rather than
+// fact about Mesita and not about this place, so the copy says so rather than
 // letting the lock imply the place fell short (place-actions-copy.ts).
 //
 // THE CELLS STACK — icon over label, not beside it. MEASURED, not chosen: at

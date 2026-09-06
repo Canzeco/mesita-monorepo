@@ -78,7 +78,7 @@ const MEMBERSHIP_COLORS: Record<MembershipTone, string> = {
 
 /**
  * A Location row's accessible label names the ENTITY — "City", "State" —
- * never the absence of a profile: "No profile yet" is a venue answer, and
+ * never the absence of a profile: "No profile yet" is a place answer, and
  * a Location was never asked the membership question (MESITA-1404). The
  * visible mark is the location icon; this is its spoken half.
  */

@@ -166,7 +166,7 @@ export function anchorSurvivesReload(
 /**
  * A Location's Details viewport → the bounds the camera should fit: a
  * city opens wide, a neighbourhood close — `fitBounds` derives the zoom
- * from the entity's own extent instead of a fixed venue zoom. Null when
+ * from the entity's own extent instead of a fixed place zoom. Null when
  * the viewport is missing; the caller falls back to a plain pan.
  */
 export function anchorViewportBounds(

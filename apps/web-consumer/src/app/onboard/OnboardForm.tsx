@@ -20,7 +20,7 @@ import {
 // birthday.
 //
 // Last name is REQUIRED, not cosmetic: reservations are placed with the
-// venue under the guest's full name (the host system keys on "last name +
+// place under the guest's full name (the host system keys on "last name +
 // party size"), and the reservation agent reads consumers.full_name, which
 // this EF derives from first + last. A first-name-only profile books a
 // table nobody can find.

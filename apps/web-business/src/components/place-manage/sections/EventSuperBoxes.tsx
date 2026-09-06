@@ -254,7 +254,7 @@ export function EventSuperBoxes({
   place: AdminPlace;
   stats: PlaceStats;
   /** Ghost-partner triage (Confirm / Dismiss) is MESITA's call, never the
-   *  venue's — a place that can dismiss reports about itself neutralises the
+   *  place's — a place that can dismiss reports about itself neutralises the
    *  strike ladder. Off unless the viewer is an operator. */
   allowTriage?: boolean;
 }) {

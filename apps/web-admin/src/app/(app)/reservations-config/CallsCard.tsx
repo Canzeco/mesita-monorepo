@@ -56,10 +56,10 @@ export function CallsCard({
           <Cap
             label="Calls per place, daily"
             help="Bookings and cancel notices share the meter."
-            value={cfg.limits.venueCallsPerPlacePerDay}
+            value={cfg.limits.placeCallsPerPlacePerDay}
             pending={pending}
             onChange={(v) =>
-              patch({ limits: { ...cfg.limits, venueCallsPerPlacePerDay: v } })
+              patch({ limits: { ...cfg.limits, placeCallsPerPlacePerDay: v } })
             }
           />
         </div>

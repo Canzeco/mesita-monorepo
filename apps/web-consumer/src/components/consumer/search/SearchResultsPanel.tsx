@@ -6,7 +6,7 @@
 // Places, red = Mesita Places, yellow = Mesita Partners — and a Location
 // (a city, a region) wears a location icon instead. The two semantics
 // never share a mark: a colour that means membership cannot also mean
-// "this is not a venue". Every row pick anchors the map (MESITA-1405).
+// "this is not a place". Every row pick anchors the map (MESITA-1405).
 
 import { MapPin, RotateCw, SearchX } from "lucide-react";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
@@ -136,7 +136,7 @@ function SuggestionLine({
 }) {
   // Branch on `kind` BEFORE tone is ever computed: membershipTone answers
   // a membership question, and a Location has no membership to answer for
-  // — asking would silently paint a city as a gray Google venue. The
+  // — asking would silently paint a city as a gray Google place. The
   // accessible label is the mark's spoken half: it names the ENTITY
   // ("City"), never the absence of a profile.
   if (prediction.kind === "location") {

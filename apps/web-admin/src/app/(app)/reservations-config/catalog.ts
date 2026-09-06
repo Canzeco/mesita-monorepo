@@ -70,7 +70,7 @@ export type ReservationsConfig = {
    */
   limits: {
     reschedulesPerTicketPerDay: number;
-    venueCallsPerPlacePerDay: number;
+    placeCallsPerPlacePerDay: number;
     killSwitch: boolean;
   };
   /**
@@ -98,7 +98,7 @@ export type NeedsAttentionRow = {
 
 const LIMITS_SEED = {
   reschedulesPerTicketPerDay: 3,
-  venueCallsPerPlacePerDay: 10,
+  placeCallsPerPlacePerDay: 10,
   killSwitch: false,
 };
 
@@ -222,9 +222,9 @@ function coerceLimits(raw: unknown): ReservationsConfig["limits"] {
       l.reschedulesPerTicketPerDay,
       LIMITS_SEED.reschedulesPerTicketPerDay,
     ),
-    venueCallsPerPlacePerDay: posInt(
-      l.venueCallsPerPlacePerDay,
-      LIMITS_SEED.venueCallsPerPlacePerDay,
+    placeCallsPerPlacePerDay: posInt(
+      l.placeCallsPerPlacePerDay,
+      LIMITS_SEED.placeCallsPerPlacePerDay,
     ),
     killSwitch: l.killSwitch === true,
   };

@@ -1,7 +1,7 @@
 // SPIKE FIXTURE — the seed data behind the /credits emulator.
 //
 // NOTHING HERE IS LIVE. There is no table, no Edge Function and no type for a
-// prepaid balance, and the VENUE side does not exist at all: a place today
+// prepaid balance, and the PLACE side does not exist at all: a place today
 // cannot set a bonus, cannot set a lock window, and cannot see what it owes.
 // This exists so the surface can be exercised before any of that is built
 // (MESITA-1380).
@@ -32,7 +32,7 @@
 //   · what happens to the REMAINDER when a balance expires — forfeited to the
 //     place, or the paid half returned. Expiry stops the money being spendable
 //     without answering that, and nothing here should be read as answering it
-//   · the cross-venue balance, gated to Capital-debt venues, which has no book
+//   · the cross-place balance, gated to Capital-debt places, which has no book
 //     behind it yet
 
 export type CreditActivity = {
