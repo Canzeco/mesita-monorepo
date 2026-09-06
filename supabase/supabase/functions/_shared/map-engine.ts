@@ -2,8 +2,9 @@
 //
 // Search allowlist for guest map, admin Google Search, Create, and Name
 // Google (Fast Autocomplete + Deep Text Search) via Map floors. Nearby
-// catalog is closest N of the selected Places set (Partners ⊂ Mesita ⊂
-// Google). Inner membership paints; it does not add pins. Type batteries
+// catalog is closest N of the selected Places set — three nested sets
+// (Pato, 2026-09-05): Google Places ⊃ Mesita Enriched Places ⊃ Mesita
+// Partner Places. Inner membership paints; it does not add pins. Type batteries
 // ride the Google call only. Floors exclude. Name Google categories live
 // on discovery_config.name. googleFill AND googleCount > 0 gate Nearby.
 //

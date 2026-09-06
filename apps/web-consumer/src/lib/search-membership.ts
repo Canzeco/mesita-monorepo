@@ -1,9 +1,15 @@
 // Membership is the colored point, on the results rows AND the map pins.
-// THE LAW, checked in this order (Pato, 2026-08-29):
+// THE LAW, checked in this order (Pato, 2026-09-05):
 //
-//   partner   yellow   the place PAYS
-//   enriched  red      we wrote a profile
+//   partner   yellow   enriched AND the place PAYS
+//   enriched  red      enriched, we wrote a profile
 //   unlisted  gray     everything else — Google rows AND our own stubs
+//
+// These are the three nested sets the Filters sheet lists, not a separate
+// palette: Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places.
+// Enrichment gates yellow as well as red — an unenriched partner is gray
+// until it is enriched, because a set the guest can pick has to be the
+// same set the colour promises.
 //
 // Red is EARNED. "listed" used to name the red bucket and that word is
 // exactly how it drifted: listed means "we have a row", which a Created
@@ -108,8 +114,10 @@ export function membershipTone(item: {
   mesitaSlug?: string | null;
 }): MembershipTone {
   if (!predictionOnMesita(item)) return "unlisted";
-  if (item.partner) return "partner";
-  return item.enriched === true ? "enriched" : "unlisted";
+  // Enrichment first: yellow is inside red, so a partner that has not been
+  // enriched has not entered either ring yet.
+  if (item.enriched !== true) return "unlisted";
+  return item.partner ? "partner" : "enriched";
 }
 
 export function membershipColor(tone: MembershipTone): string {
@@ -176,8 +184,8 @@ export function placeMembershipTone(place: {
   enriched_at?: string | null;
 }): MembershipTone {
   if (place.googleOnly || place.from_google) return "unlisted";
-  if (place.partner === true) return "partner";
-  return isEnrichedPlace(place) ? "enriched" : "unlisted";
+  if (!isEnrichedPlace(place)) return "unlisted";
+  return place.partner === true ? "partner" : "enriched";
 }
 
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row
@@ -188,6 +196,9 @@ export type SearchPinPrediction = {
   mainText: string;
   state?: string | null;
   partner?: boolean | null;
+  /** The server's `enriched`. Required for the pin to reach red or yellow:
+   *  enrichment gates both rings, so a prediction without it stays gray. */
+  enriched?: boolean | null;
   /** Word's second entity — a Location is a camera destination, never a pin. */
   kind?: "place" | "location";
   mesitaId?: string | null;

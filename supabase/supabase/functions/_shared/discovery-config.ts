@@ -99,9 +99,13 @@ export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
  * Map pool policy. Closest N of the selected Places set, then paint.
- * Partners ⊂ Mesita Places ⊂ Google Places. Caps are per scope, not
- * concatenated. Type batteries ride the Google Nearby call only.
- * Floors still exclude; 0 = off.
+ * THREE NESTED SETS (Pato, 2026-09-05):
+ *   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
+ * Enrichment gates every Mesita ring, so a partner has to be enriched to
+ * sit inside the enriched one. N is the GUEST's How many on the Filters
+ * sheet, never a console knob — this config carries no per-set count.
+ * Type batteries ride the Google Nearby call only. Floors still exclude;
+ * 0 = off.
  */
 export type MapConfig = {
   minRating: number;

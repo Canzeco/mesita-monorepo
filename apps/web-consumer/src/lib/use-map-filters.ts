@@ -6,15 +6,20 @@
 import { useSyncExternalStore } from "react";
 import {
   clampResultLimit,
-  clampSearchPower,
   MAP_FILTER_DEFAULTS,
   type MapFilters,
+  type MapPlacesScope,
   type MapResultLimit,
-  type MapSearchPower,
+  parsePlacesScope,
 } from "@/lib/map-filters-engine";
 import { PLACE_FAMILIES, type FamilyKey } from "@/lib/place-families";
 
-const STORAGE_KEY = "mesita_map_filters_v4";
+// v5, because v4 holds `searchPower` as an ordinal under the two-set law
+// and `1` meant "Mesita Places" there. Widening the parser instead of
+// bumping the key would re-read that stored 1 under the new chain — the
+// session would silently land on a narrower ring than the guest chose.
+// sessionStorage, so the cost of the bump is one forgotten sheet state.
+const STORAGE_KEY = "mesita_map_filters_v5";
 const KNOWN_FAMILY_KEYS = new Set<string>(PLACE_FAMILIES.map((f) => f.key));
 
 function readPersisted(): MapFilters {
@@ -26,7 +31,7 @@ function readPersisted(): MapFilters {
       Record<keyof MapFilters, unknown>
     >;
     return {
-      searchPower: clampSearchPower(parsed.searchPower),
+      placesScope: parsePlacesScope(parsed.placesScope),
       familyKeys: Array.isArray(parsed.familyKeys)
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
@@ -75,8 +80,8 @@ export function resetMapFilters() {
   emit();
 }
 
-export function setMapSearchPower(power: MapSearchPower) {
-  patchMapFilters({ searchPower: clampSearchPower(power) });
+export function setMapPlacesScope(scope: MapPlacesScope) {
+  patchMapFilters({ placesScope: parsePlacesScope(scope) });
 }
 
 export function setMapResultLimit(limit: MapResultLimit) {

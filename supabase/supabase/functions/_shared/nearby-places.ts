@@ -1,15 +1,19 @@
 // Map catalog = closest N of the selected Places set, then paint.
-// TWO nested sets (Pato, 2026-08-29): Mesita Places ⊂ Google Places.
-// Partners are not a set — they are Mesita Places painted yellow.
-//   1 Mesita Places — the closest N listed Mesita (partners + enriched).
-//     No Google Nearby. A partner in that N is painted yellow.
-//   2 Google Places — the closest N Nearby hits too. A hit that is
-//     Mesita / partner is painted, not added as a second pin. Max pins
-//     = N, never the sum of the lanes.
+// THREE NESTED SETS (Pato, 2026-09-05):
+//   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
+//   partners  the closest N Mesita rows that are enriched AND pay.
+//   mesita    the closest N enriched Mesita rows, partners among them.
+//             No Google Nearby.
+//   google    the closest N Nearby hits too. A hit that is Mesita is
+//             painted, not added as a second pin. Max pins = N, never
+//             the sum of the lanes.
+// ENRICHMENT GATES EVERY MESITA RING, which is what makes the chain a
+// containment rather than a drawing: a partner that is not enriched is in
+// neither Mesita ring and reads gray until it is.
 // N is the GUEST's How many (Pato, 2026-08-29) — the max number is asked
 // once, on the consumer Filters sheet, never again in the console.
-// Empty Nearby (quota skip) falls back to the Mesita set. Power 1
-// never fires Google Nearby. Mesita Places is enriched only. Google
+// Empty Nearby (quota skip) falls back to the Mesita set. Only the Google
+// ring fires Nearby, and callers gate that on the lane cap. Google
 // maxes a Nearby call at 20; type batteries ride that one call.
 
 import {
@@ -283,25 +287,58 @@ export type NearbyMerged<T> =
   | { kind: "google"; hit: NearbyHit };
 
 /**
- * Search power: 1 Mesita Places set · 2 Google Places set. A legacy wire
- * 3 (the old Google set) clamps to 2; the retired Partners power (old 1)
- * reads as Mesita Places — a superset of what it showed.
+ * THREE NESTED SETS (Pato, 2026-09-05):
+ *
+ *   Google Places  ⊃  Mesita Enriched Places  ⊃  Mesita Partner Places
+ *      gray                    red                     yellow
+ *
+ * The wire carries the set by NAME, never by an ordinal. Two clients post
+ * no scope at all — mobile Search and the web Pay picker — so the absent
+ * value has to be safe on its own, and an ordinal whose meaning moved
+ * would have narrowed both of them silently. Unknown and absent alike
+ * resolve to `mesita`: the widest Mesita ring, never the narrowest.
+ *
+ * Legacy numerics keep their OLD shipped meanings (1 = Mesita, 2 = Google,
+ * 3 = Google) so a client deployed before this EF still gets the set it
+ * asked for. Vercel and the Edge Functions deploy on separate paths, so
+ * that skew window is real, not hypothetical.
  */
-export function clampSearchPower(value: unknown): 1 | 2 {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return 1;
-  return n >= 2 ? 2 : 1;
+export type PlacesScope = "partners" | "mesita" | "google";
+
+export const PLACES_SCOPE_DEFAULT: PlacesScope = "mesita";
+
+const PLACES_SCOPES: readonly PlacesScope[] = ["partners", "mesita", "google"];
+
+export function parsePlacesScope(value: unknown): PlacesScope {
+  if (typeof value === "string") {
+    const key = value.trim().toLowerCase();
+    if ((PLACES_SCOPES as readonly string[]).includes(key)) {
+      return key as PlacesScope;
+    }
+    // A legacy numeric arriving as a string reads the same as the number.
+    const legacy = Number(key);
+    if (Number.isFinite(legacy) && key.length > 0) {
+      return legacy >= 2 ? "google" : PLACES_SCOPE_DEFAULT;
+    }
+    return PLACES_SCOPE_DEFAULT;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value >= 2 ? "google" : PLACES_SCOPE_DEFAULT;
+  }
+  return PLACES_SCOPE_DEFAULT;
 }
 
 /**
  * Lane caps come from the GUEST's How many, not from a console knob
  * (Pato, 2026-08-29): the max number is asked once, on the consumer
- * Filters sheet. Power 1 never fires Google. Google's own Nearby call
- * tops out at GOOGLE_NEARBY_MAX however large N is, and the caller
- * slices the merged union back to N, so max pins = N, never the sum.
+ * Filters sheet. Only the Google scope fires Nearby — and callers gate
+ * that call on `googleCount > 0`, never on the scope name, so there is one
+ * place to change and no literal to miss. Google's own Nearby call tops
+ * out at GOOGLE_NEARBY_MAX however large N is, and the caller slices the
+ * merged union back to N, so max pins = N, never the sum.
  */
-export function lanesForSearchPower(
-  power: 1 | 2,
+export function lanesForPlacesScope(
+  scope: PlacesScope,
   limit: number,
 ): NearbyLaneCaps {
   const n = Math.max(
@@ -310,7 +347,7 @@ export function lanesForSearchPower(
   );
   return {
     mesitaCount: n,
-    googleCount: power >= 2 ? Math.min(n, GOOGLE_NEARBY_MAX) : 0,
+    googleCount: scope === "google" ? Math.min(n, GOOGLE_NEARBY_MAX) : 0,
   };
 }
 
@@ -322,15 +359,26 @@ export function isEnrichedListedRow(row: {
   return row.content_state === "ready" || Boolean(row.enriched_at);
 }
 
-/** The Mesita set at any power: partners always stay, everyone else enriched only. */
-export function keepListedForSearchPower(
+/**
+ * ENRICHMENT GATES EVERY MESITA RING (Pato, 2026-09-05). The sets are
+ * strictly nested, so a partner has to clear the enriched ring before it
+ * can sit inside it — this used to keep any partner regardless, which made
+ * `Partner ⊂ Enriched` false and left the diagram asserting a containment
+ * the predicate refused. An unenriched partner now reads gray until it is
+ * enriched, which is what "Red is EARNED by enrichment" already said.
+ *
+ * The Google scope keeps the same Mesita rows: a wider ring never shows
+ * FEWER Mesita places, it only adds Google ones alongside them.
+ */
+export function keepListedForScope(
   row: MesitaNearbyRow & {
     content_state?: string | null;
     enriched_at?: string | null;
   },
+  scope: PlacesScope = PLACES_SCOPE_DEFAULT,
 ): boolean {
-  if (isMesitaPartnerRow(row)) return true;
-  return isEnrichedListedRow(row);
+  if (!isEnrichedListedRow(row)) return false;
+  return scope === "partners" ? isMesitaPartnerRow(row) : true;
 }
 
 /** Place IDs already on a listed row — paint helpers, not a second query. */
@@ -362,7 +410,7 @@ export function mergeNearbyCatalog<T extends MesitaNearbyRow>(
   mesita: T[],
   google: NearbyHit[],
   center: { lat: number; lng: number },
-  lanes: NearbyLaneCaps = lanesForSearchPower(2, CATALOG_NEARBY_HARD_MAX),
+  lanes: NearbyLaneCaps = lanesForPlacesScope("google", CATALOG_NEARBY_HARD_MAX),
 ): Array<NearbyMerged<T>> {
   const inCircle = (lat: number | null, lng: number | null) =>
     haversineKm(center.lat, center.lng, lat, lng) <= NEARBY_RADIUS_KM;

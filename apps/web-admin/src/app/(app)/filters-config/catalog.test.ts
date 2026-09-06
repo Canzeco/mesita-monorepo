@@ -175,9 +175,12 @@ describe("Discovery function APIs", () => {
     expect(map?.state).toBe("LIVE");
     expect(map?.apis).toEqual(["Google Places Nearby Search"]);
     expect(map?.input).toMatch(/guest pin/i);
-    expect(map?.process).toMatch(/Partners/);
-    expect(map?.process).toMatch(/Mesita/);
-    expect(map?.process).toMatch(/Google/);
+    // The three rings, and the gate that makes the chain a containment
+    // rather than a drawing (Pato, 2026-09-05).
+    expect(map?.process).toMatch(/Mesita Partner Places/);
+    expect(map?.process).toMatch(/Mesita Enriched Places/);
+    expect(map?.process).toMatch(/Google Places/);
+    expect(map?.process).toMatch(/ENRICHMENT GATES EVERY MESITA RING/);
     expect(map?.process).toMatch(/paints/);
     expect(map?.process).toMatch(/reload pair/);
     expect(map?.process).not.toMatch(/Concat/);
@@ -485,7 +488,8 @@ describe("Discovery page box order", () => {
     expect(map).not.toContain("MAP_SET_COUNT_MAX");
     expect(map).not.toContain("MAP_GOOGLE_COUNT_MAX");
     expect(map).toContain("THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER");
-    expect(map).toContain("Mesita Places means created AND enriched");
+    expect(map).toContain("Three nested sets");
+    expect(map).toContain("Enrichment gates every Mesita ring");
     expect(map).not.toContain("LaneMergeFunnel");
     expect(map).not.toContain("cascadeLaneCounts");
     expect(map).toContain("Closest N of the selected set");

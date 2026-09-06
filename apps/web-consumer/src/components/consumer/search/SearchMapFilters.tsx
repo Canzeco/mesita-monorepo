@@ -3,11 +3,14 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
-import { mapFiltersAreActive } from "@/lib/map-filters-engine";
+import {
+  mapFiltersAreActive,
+  type MapPlacesScope,
+} from "@/lib/map-filters-engine";
 import {
   resetMapFilters,
+  setMapPlacesScope,
   setMapResultLimit,
-  setMapSearchPower,
   toggleMapFamily,
   useMapFilters,
 } from "@/lib/use-map-filters";
@@ -16,27 +19,41 @@ import { SearchPlacesScope } from "./SearchPlacesScope";
 import { SearchResultLimit } from "./SearchResultLimit";
 
 // Search-map Filters sheet. Super Category + Places + How many, DENSE:
-// every option is directly visible, the sheet never scrolls (Pato,
-// 2026-08-29). There is no State chip row, Category, or Types axis.
-// Places is TWO nested sets: Mesita Places ⊂ Google Places — Partners
-// retired as a scope, kept as the yellow paint. Default is Mesita
-// Places. Picking Google Places WARNS inside the box: those rows are
-// uncurated, and a guest reaching for more places deserves to know what
-// the extra ones cost in quality. Super Category offers the SEVEN real
-// supers — ❓ Undefined is not an appetite and never a pill here. How
-// many is 20, 40, or 60 — closest N, nothing in between — and it is the
-// CAP the Nearby fetch itself obeys, asked ONCE, here and nowhere in
-// the console. It opens at 20, and its line states the cap AND the
-// count the button is about to show, so the two can never disagree.
-// (All five: Pato, 2026-08-29.)
-// Distance and time are not map knobs.
+// every option is directly visible and the sheet is built not to scroll
+// (Pato, 2026-08-29). There is no State chip row, Category, or Types axis.
+//
+// Places is THREE NESTED SETS (Pato, 2026-09-05):
+//   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
+// Default is the middle ring — a discovery surface never opens on "only
+// the places that pay us". Picking Google Places WARNS inside the box:
+// those rows are uncurated, and a guest reaching for more places deserves
+// to know what the extra ones cost in quality.
+//
+// THE BODY SCROLLS AS A FLOOR, not as a design. "Never scrolls" was
+// enforced by having no scroller at all — but the panel is `overflow-
+// hidden` and this footer has no background, so an overrun did not show a
+// scrollbar, it painted the How many radios UNDERNEATH the CTA and took a
+// control away with no cue. Measured: the body budget is 0.80×vh − 129,
+// and two shipped states exceed it (375×667, and 390×844 once the Google
+// caveat is showing). Fitting is still the goal; `overflow-y-auto` is what
+// makes failing to fit visible instead of silent.
+//
+// Super Category offers the SEVEN real supers — ❓ Undefined is not an
+// appetite and never a pill here. How many is 20, 40, or 60 — closest N,
+// nothing in between — and it is the CAP the Nearby fetch itself obeys,
+// asked ONCE, here and nowhere in the console. It opens at 20, and its
+// line states the cap AND the count the button is about to show, so the
+// two can never disagree. Distance and time are not map knobs.
 
 export function SearchMapFilters({
   onClose,
   count,
+  scopeCounts,
 }: {
   onClose: () => void;
   count: number | null;
+  /** Places each Places ring would show, from the catalog already in hand. */
+  scopeCounts?: Partial<Record<MapPlacesScope, number>>;
 }) {
   const filters = useMapFilters();
   const hasPredicates = mapFiltersAreActive(filters);
@@ -71,7 +88,7 @@ export function SearchMapFilters({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 px-4 pb-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-3">
         <div className="flex flex-col gap-2">
           <FilterModule label="Super Category" dense>
             <div className="flex flex-wrap gap-1">
@@ -90,8 +107,9 @@ export function SearchMapFilters({
 
           <FilterModule label="Places" dense>
             <SearchPlacesScope
-              power={filters.searchPower}
-              onPower={setMapSearchPower}
+              scope={filters.placesScope}
+              onScope={setMapPlacesScope}
+              counts={scopeCounts}
             />
           </FilterModule>
 

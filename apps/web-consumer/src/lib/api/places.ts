@@ -178,6 +178,9 @@ export async function apiFetchPublicPlaces(
   return places.map(stripInsecurePhotos);
 }
 
+/** The wire word for a Places ring. Mirrors `_shared/nearby-places.ts`. */
+export type PlacesScopeWire = "partners" | "mesita" | "google";
+
 const LIST_PLACES_MAX = 200;
 export const CATALOG_NEARBY_MAX = 60;
 const SEARCH_NEARBY_LIMIT = CATALOG_NEARBY_MAX;
@@ -201,7 +204,7 @@ export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
   limit = CATALOG_NEARBY_MAX,
-  searchPower = 1,
+  placesScope: PlacesScopeWire = "mesita",
   familyKeys: readonly string[] = [],
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
@@ -212,7 +215,7 @@ export async function apiFetchNearbyCatalog(
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
-    searchPower,
+    placesScope,
     familyKeys: [...familyKeys],
     lat: center.lat,
     lng: center.lng,
@@ -233,7 +236,14 @@ export async function apiFetchNearbyCatalog(
   };
 }
 
-/** Listed nearby only — no Google stubs. Mobile Search uses this shape. */
+/**
+ * Listed nearby only — no Google stubs. The Pay place picker
+ * (`PlacePickList`) is the caller here, and it wants EVERY Mesita place a
+ * guest could start a ticket at, never just the ones that pay us. It sends
+ * the scope explicitly rather than leaning on the EF default: the default
+ * is safe today, but a silent narrowing of this call is a guest who cannot
+ * open a ticket, and that should not depend on a default staying put.
+ */
 export async function apiFetchNearbyPlaces(
   client: SupabaseClient,
   origin: { lat: number; lng: number },
@@ -242,7 +252,7 @@ export async function apiFetchNearbyPlaces(
   const { places } = await invokeEF<{ places: Place[] }>(
     client,
     "consumer-web-list-places",
-    { lat: origin.lat, lng: origin.lng, limit },
+    { lat: origin.lat, lng: origin.lng, limit, placesScope: "mesita" },
   );
   return (places ?? []).map(stripInsecurePhotos);
 }

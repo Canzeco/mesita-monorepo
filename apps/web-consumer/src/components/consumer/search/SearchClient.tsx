@@ -84,6 +84,7 @@ import { SearchBar } from "./SearchBar";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   applyMapFilters,
+  placeSearchScope,
   mapFilterCount,
   mapFiltersAreActive,
   takeMapResultLimit,
@@ -235,6 +236,25 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   }, [nearby, filters, anchor, distanceCenter]);
   const filtersCutCatalog =
     nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
+  // What each ring would show, from the rows already fetched. Today all
+  // three numbers are equal (every visible place is both a partner and
+  // enriched), and showing them is how that reads as a fact about the
+  // catalog rather than a broken control. The Google ring can only count
+  // what this fetch returned — at a narrower scope the EF never called
+  // Nearby, so its number is the Mesita count until the guest widens.
+  const scopeCounts = useMemo(() => {
+    let partners = 0;
+    let mesita = 0;
+    let google = 0;
+    for (const place of nearby) {
+      const scope = placeSearchScope(place);
+      if (!scope) continue;
+      if (scope === "partners") partners += 1;
+      if (scope === "partners" || scope === "mesita") mesita += 1;
+      google += 1;
+    }
+    return { partners, mesita, google };
+  }, [nearby]);
 
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
@@ -401,7 +421,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           supabase,
           nextCenter,
           filters.resultLimit,
-          filters.searchPower,
+          filters.placesScope,
           filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
@@ -427,7 +447,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.searchPower, filters.familyKeys, filters.resultLimit, supabase],
+    [filters.placesScope, filters.familyKeys, filters.resultLimit, supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -512,7 +532,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
     clearPendingReload();
     void loadViewport(lastBoxRef.current);
-  }, [clearPendingReload, filters.searchPower, loadViewport]);
+  }, [clearPendingReload, filters.placesScope, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -958,6 +978,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         <SearchMapFilters
           onClose={() => setFiltersOpen(false)}
           count={catalog.length}
+          scopeCounts={scopeCounts}
         />
       </LocalSheet>
 

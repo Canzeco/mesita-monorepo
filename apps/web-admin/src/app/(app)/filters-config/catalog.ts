@@ -18,9 +18,10 @@
 //             concatenates Autocomplete, Text Search, Mesita Places, and
 //             Mesita Partners (Name on Mesita `places.name`, never
 //             `google_name`). Word never calls Nearby Search. Map loads
-//             closest N of the selected Places set (Partners ⊂ Mesita ⊂
-//             Google); inner membership paints, it does not add pins. Caps
-//             are per scope, not a sum. Chat calls Text Search, Nearby, and
+//             closest N of the selected Places set — THREE NESTED SETS
+//             (Pato, 2026-09-05): Google Places ⊃ Mesita Enriched Places ⊃
+//             Mesita Partner Places; inner membership paints, it does not
+//             add pins. N is the GUEST's How many, not a console knob. Chat calls Text Search, Nearby, and
 //             the two Flexible sources. Favorites calls no source and gates
 //             on no pool — bookmarks may include Mesita Listed Create stubs
 //             (not enriched). Google category knobs live on Search
@@ -508,7 +509,7 @@ export const ENGINES: {
     label: "Map",
     fn: "map()",
     input: "Ready pool + guest pin / Monterrey.",
-    process: "Places scope picks one of TWO nested sets — Mesita Places ⊂ Google Places; Partners are not a set, a partner is a Mesita Place painted yellow. Mesita Places means created AND enriched (honest name: Mesita Enriched Places) — a Created or Requested stub is never a search source, and partners always ride along. Closest N of that set; a smaller membership paints, it does not add a pin. Partners and Mesita never call Nearby. Google is one Nearby Search among enabled categories, nearest N. Max pins = that N, never the sum. N is the guest's How many on the Filters sheet — the console never asks for a count. Listed pins then Lineup, not distance. Google set stays distance. Pins, checked in that order: yellow = Mesita Partner Places (the place PAYS), red = Mesita ENRICHED Places (we wrote a profile), gray = everything else — Google rows AND our own Created/Requested stubs, which have nothing to show. Red is earned by enrichment, never by a row existing. Blue is the guest's current location, never a place. Empty Nearby falls back to the Mesita set. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
+    process: "Places scope picks one of THREE NESTED SETS (Pato, 2026-09-05) — Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places. ENRICHMENT GATES EVERY MESITA RING: a partner has to be enriched to sit inside the enriched one, so an unenriched partner is in neither ring and reads gray until it is enriched. A Created or Requested stub is never a search source. The guest picks the set by NAME on the wire (partners / mesita / google), never by an ordinal — mobile Search and the Pay place picker post no scope at all, so the absent value resolves to Mesita Enriched Places, the widest Mesita ring, never the narrowest. Closest N of the chosen set; a smaller membership paints, it does not add a pin. The two Mesita rings never call Nearby. Google is one Nearby Search among enabled categories, nearest N, and every gate on that call reads the lane cap, never the scope name. Max pins = that N, never the sum. N is the guest's How many on the Filters sheet — the console never asks for a count. Listed pins then Lineup, not distance. Google set stays distance. Pins, checked in that order: yellow = Mesita Partner Places (enriched AND the place PAYS), red = Mesita Enriched Places (we wrote a profile), gray = everything else — Google rows AND our own Created/Requested stubs, which have nothing to show. Red is earned by enrichment, and so is yellow. Blue is the guest's current location, never a place. Empty Nearby falls back to the Mesita set. Search auto-refetches after a reload pair (km AND sec). Rail or pin selection does not refetch.",
     output: "Pins and catalog rail.",
     state: "LIVE",
     wired: null,

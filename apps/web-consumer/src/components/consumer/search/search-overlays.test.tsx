@@ -168,12 +168,12 @@ describe("SearchFilterRow", () => {
 });
 
 describe("SearchMapFilters", () => {
-  it("shows Super Category, the two Places sets, then How many — dense, no scroll", () => {
+  it("shows Super Category, the three Places sets, then How many — dense", () => {
     const html = renderToStaticMarkup(
       <SearchMapFilters onClose={() => {}} count={4} />,
     );
     expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
-    expect(html.indexOf("Mesita Places")).toBeLessThan(
+    expect(html.indexOf("Mesita Enriched Places")).toBeLessThan(
       html.indexOf("How many"),
     );
     expect(html).toContain("How many");
@@ -182,29 +182,46 @@ describe("SearchMapFilters", () => {
     expect(html).toContain("Showing 4 of up to 20 closest.");
     expect(html).not.toContain("Closest 20 places.");
     expect(html).toContain('role="radiogroup"');
-    // TWO sets only — Partners is a paint, never a scope.
-    expect(html).toContain("Mesita Places");
+    // THREE nested sets, narrowest first (Pato, 2026-09-05).
+    expect(html).toContain("Mesita Partner Places");
+    expect(html).toContain("Mesita Enriched Places");
     expect(html).toContain("Google Places");
-    expect(html).not.toContain("Mesita Partners");
+    // Order off the aria-labels, not the visible names: the group's
+    // screen-reader sentence names all three rings too, and it renders
+    // before them.
+    const order = ["Mesita Partner Places only", "Mesita Enriched Places, partners included", "Google Places, Mesita places included"]
+      .map((label) => html.indexOf(`aria-label="${label}"`));
+    expect(order.every((at) => at > -1)).toBe(true);
+    expect(order[0]).toBeLessThan(order[1]!);
+    expect(order[1]).toBeLessThan(order[2]!);
     expect(html).not.toContain("All Mesita Places");
     expect(html).not.toContain("All Google Places");
-    // The dots wear the pin colours: Mesita red, Google gray.
+    // The dots wear the pin colours: partner yellow, Mesita red, Google gray.
+    expect(html).toContain("background-color:#ffc400");
     expect(html).toContain("background-color:#ff2357");
     expect(html).toContain("background-color:#9ca3af");
     expect(html).toContain(">20<");
     expect(html).toContain(">40<");
     expect(html).toContain(">60<");
-    // The Venn is gone — dense sheet, every option directly visible.
+    // The rings are a 28px glyph beside the legend, never the retired 104px
+    // centred figure — measured, that one does not fit a 390pt phone.
     expect(html).not.toContain('viewBox="0 0 104 104"');
-    expect(html).not.toContain("overflow-y-auto");
+    expect(html).toContain('viewBox="0 0 28 28"');
+    // The body scrolls as a FLOOR: fitting is still the goal, but the panel
+    // is overflow-hidden and this footer has no background, so an overrun
+    // used to paint the How many radios underneath the CTA.
+    expect(html).toContain("overflow-y-auto");
+    // The sheet opens on the MIDDLE ring — a discovery surface never
+    // opens on "only the places that pay us".
     expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Places only"',
+      'aria-checked="true" aria-label="Mesita Enriched Places, partners included"',
     );
     expect(html).toContain(
       'aria-checked="true" aria-label="Closest 20 places"',
     );
-    expect(html.match(/role="radio"/g)?.length).toBe(5);
-    // Mesita Places is the default scope — nothing to warn about yet.
+    // 3 Places rings + 3 How many stops.
+    expect(html.match(/role="radio"/g)?.length).toBe(6);
+    // A curated ring is the default scope — nothing to warn about yet.
     expect(html).not.toContain("not curated by Mesita");
     expect(html).not.toContain('type="range"');
     expect(html).toContain("Super Category");
@@ -214,12 +231,17 @@ describe("SearchMapFilters", () => {
     // SEVEN pills — ❓ Undefined is a bookkeeping bucket, not an appetite.
     expect(html).not.toContain("Undefined");
     expect(html).toContain("Show 4 places");
+    // No State chip row. "Enriched" survives only inside the Places ring
+    // name — the atlas STATES (Created / Requested / Partnered / Promoted)
+    // are still not a filter axis on this sheet.
     expect(html).not.toContain("Not on Mesita");
     expect(html).not.toContain("Created");
     expect(html).not.toContain("Requested");
-    expect(html).not.toContain("Enriched");
     expect(html).not.toContain("Partnered");
     expect(html).not.toContain("Promoted");
+    expect(html.match(/Enriched/g)?.length).toBe(
+      html.match(/Mesita Enriched Places/g)?.length,
+    );
     expect(html).not.toContain(">Category<");
     expect(html).not.toContain("Types");
     expect(html).not.toContain("Nightclub");
@@ -232,42 +254,76 @@ describe("SearchMapFilters", () => {
 });
 
 describe("SearchPlacesScope", () => {
-  it("is two radio pills wearing the pin colours — no Venn, no Partners scope", () => {
+  // This block used to assert the OPPOSITE — no Venn, no Partners scope,
+  // "Partners is a paint, never a scope". That was a guard test for the
+  // two-set law (356331ca, 2026-08-29), and Pato overturned it on
+  // 2026-09-05 with `Google Places > Mesita Enriched Places > Mesita
+  // Partner Places`. The guard is gone deliberately, not by accident, and
+  // is replaced with the assertions the new law deserves.
+  it("is three stacked radios wearing the pin colours, narrowest first", () => {
     const src = read("SearchPlacesScope.tsx");
-    expect(src).not.toContain("annulusPath");
-    expect(src).not.toContain("VENN_LAYERS");
-    expect(src).toContain("Partners is a paint, never a scope");
-    // Selected is a FILL — two white pills are not a selection.
+    // Selection is a FILL, not a coloured hairline (Pato, 2026-08-29 —
+    // still law). The membership colour lives on the dot and the rings.
     expect(src).toContain("bg-foreground text-background");
-    expect(src).not.toContain("bg-transparent");
+    // 44px touch floor, the same one every other filter control keeps.
+    expect(src).toContain("min-h-11");
+    // The figure reads its fills from map-defaults, never a literal, so it
+    // cannot drift away from the pins it is explaining.
+    expect(src).toContain("MAP_PARTNER_PIN_COLOR");
+    expect(src).toContain("MAP_ENRICHED_PIN_COLOR");
+    expect(src).toContain("MAP_GOOGLE_PIN_COLOR");
+    expect(src).not.toContain("#ff2357");
 
     const html = renderToStaticMarkup(
-      <SearchPlacesScope power={1} onPower={() => {}} />,
+      <SearchPlacesScope scope="mesita" onScope={() => {}} />,
     );
-    expect(html.match(/role="radio"/g)?.length).toBe(2);
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Places only"',
-    );
-    expect(html).toContain(
-      'aria-checked="false" aria-label="Mesita Places and Google Places"',
-    );
-    expect(html).toContain("background-color:#ff2357");
-    expect(html).toContain("background-color:#9ca3af");
-    // The retired partner scope colour never renders here — yellow lives on
-    // the map pins.
-    expect(html).not.toContain("#ffc400");
-    // Mesita Places is curated, so the scope that IS curated says nothing.
+    expect(html.match(/role="radio"/g)?.length).toBe(3);
+    expect(html).toContain('aria-checked="true" aria-label="Mesita Enriched Places, partners included"');
+    expect(html).toContain('aria-label="Mesita Partner Places only"');
+    expect(html).toContain('aria-label="Google Places, Mesita places included"');
+    // All three pin colours render — yellow is a set the guest can pick now.
+    expect(html).toContain("#ffc400");
+    expect(html).toContain("#ff2357");
+    expect(html).toContain("#9ca3af");
+    // The nesting the glyph draws is spoken too — an aria-hidden svg tells
+    // a screen reader nothing.
+    expect(html).toContain("Three nested sets");
+    // The curated rings say nothing; only leaving them warns.
     expect(html).not.toContain("not curated by Mesita");
+
+    const partners = renderToStaticMarkup(
+      <SearchPlacesScope scope="partners" onScope={() => {}} />,
+    );
+    expect(partners).toContain('aria-checked="true" aria-label="Mesita Partner Places only"');
+    expect(partners).not.toContain("not curated by Mesita");
+
     const google = renderToStaticMarkup(
-      <SearchPlacesScope power={2} onPower={() => {}} />,
+      <SearchPlacesScope scope="google" onScope={() => {}} />,
     );
     // Leaving the curated set warns, in the box, every time.
     expect(google).toContain("Google Places are not curated by Mesita");
     expect(google).toContain("quality varies");
     expect(google).toContain('role="note"');
-    expect(google).toContain(
-      'aria-checked="true" aria-label="Mesita Places and Google Places"',
+  });
+
+  it("shows each ring's count, so three equal numbers read as a fact", () => {
+    // Every visible place today is both a partner and enriched, so all
+    // three rings hold the same places. Without the counts the control
+    // looks broken; with them the coincidence is legible.
+    const html = renderToStaticMarkup(
+      <SearchPlacesScope
+        scope="mesita"
+        onScope={() => {}}
+        counts={{ partners: 22, mesita: 22, google: 61 }}
+      />,
     );
+    expect(html).toContain(">22<");
+    expect(html).toContain(">61<");
+    // Counts are optional — the sheet renders before the catalog lands.
+    const bare = renderToStaticMarkup(
+      <SearchPlacesScope scope="mesita" onScope={() => {}} />,
+    );
+    expect(bare).not.toContain("tabular-nums");
   });
 });
 
@@ -394,7 +450,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
-    expect(read("../../../lib/api/places.ts")).toContain("searchPower");
+    expect(read("../../../lib/api/places.ts")).toContain("placesScope");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
 
@@ -493,18 +549,18 @@ describe("Search map's top row is the query bar ALONE, and Filters sits below", 
       "Google Places",
     );
     expect(read("../../../lib/map-filters-engine.ts")).toContain(
-      "placeSearchLane",
+      "placeSearchScope",
     );
-    expect(read("SearchClient.tsx")).toContain("filters.searchPower");
+    expect(read("SearchClient.tsx")).toContain("filters.placesScope");
     expect(read("SearchClient.tsx")).toMatch(
-      /filters\.searchPower[\s\S]*clearPendingReload\(\)[\s\S]*loadViewport\(lastBoxRef\.current\)/,
+      /filters\.placesScope[\s\S]*clearPendingReload\(\)[\s\S]*loadViewport\(lastBoxRef\.current\)/,
     );
     expect(read("SearchClient.tsx")).toContain("distance_km");
     expect(read("SearchClient.tsx")).not.toMatch(
       /applyMapFilters\(\s*predictions/,
     );
     expect(read("../../../lib/api/places.ts")).not.toMatch(
-      /consumer-web-suggest-places[\s\S]*searchPower/,
+      /consumer-web-suggest-places[\s\S]*placesScope/,
     );
     expect(read("../../../lib/api/places.ts")).not.toMatch(
       /consumer-web-suggest-places[\s\S]*familyKeys/,
