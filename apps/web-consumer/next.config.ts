@@ -101,6 +101,13 @@ const nextConfig: NextConfig = {
       // chain and T4 caps it at exactly 2.
       { source: "/discover/feed", destination: "/discover/catalog", permanent: true },
       { source: "/discover/home", destination: "/discover/catalog", permanent: true },
+      // The Saved tab (reservations, favorites) and the /saved/place dual path.
+      // The contract still lists these legacy sources; without entries they 404ed
+      // (MESITA-1585). One hop each, straight to the canonical surface.
+      { source: "/saved", destination: "/inbox/reservations", permanent: true },
+      { source: "/saved/reservations", destination: "/inbox/reservations", permanent: true },
+      { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
+      { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
       // Wallet's THREE former addresses, each live in production at some point
       // so all three sets of bookmarks are real: standalone /credits (#1429),

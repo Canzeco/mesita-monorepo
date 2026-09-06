@@ -536,6 +536,18 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
   // /wallet at /inbox/credits, would still be a working redirect and would
   // still be the 3-hop chain T4 refuses. T4 can validate a destination but
   // never a redirect's ABSENCE, which is why this test exists alongside it.
+  it.each([
+    ["/saved", "/inbox/reservations"],
+    ["/saved/reservations", "/inbox/reservations"],
+    ["/saved/reservation/:id", "/reservation/:id"],
+    ["/saved/place/:id", "/place/:id"],
+  ])("keeps the Saved-era redirect %s → %s (MESITA-1585)", async (source, destination) => {
+    const redirects = await nextConfig.redirects!();
+    const entry = redirects.find((r) => r.source === source);
+    expect(entry, `${source} redirect was removed`).toBeDefined();
+    expect(entry!.destination).toBe(destination);
+  });
+
   it.each(["/credits", "/inbox/credits", "/wallet"])(
     "keeps %s redirecting straight to Pay > Wallet",
     async (source) => {
