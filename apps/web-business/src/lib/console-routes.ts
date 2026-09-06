@@ -27,7 +27,10 @@ export function placeHref(placeId: string): string {
  *  `/places/<id>` starts with `/places` and would otherwise light up Org
  *  Places instead of Place. */
 export function placeIdFromPathname(pathname: string): string | null {
-  const match = pathname.match(/^\/places\/([^/]+)\/?$/);
+  // One OPTIONAL tab segment (MESITA-1537): /places/<id> and
+  // /places/<id>/{profile,partnership,performance,settings} are all the
+  // Place screen, so the nav must light Place on every one of them.
+  const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 

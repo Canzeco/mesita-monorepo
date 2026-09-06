@@ -55,8 +55,13 @@ describe("placeIdFromPathname — the nav's Org Places / Place split", () => {
     expect(placeIdFromPathname("/places")).toBeNull();
     expect(placeIdFromPathname("/places/")).toBeNull();
   });
-  it("is null on anything deeper — the shell owns no per-place sub-tabs", () => {
-    expect(placeIdFromPathname("/places/p-x/promos")).toBeNull();
+  it("survives ONE tab segment — the shell owns the place tabs now (MESITA-1537)", () => {
+    for (const tab of ["profile", "partnership", "performance", "settings"]) {
+      expect(placeIdFromPathname(`/places/p-x/${tab}`)).toBe("p-x");
+    }
+  });
+  it("is still null two segments deep, and on the legacy console path", () => {
+    expect(placeIdFromPathname("/places/p-x/profile/basics")).toBeNull();
     expect(placeIdFromPathname("/place/p-x/place/preview")).toBeNull();
   });
 });

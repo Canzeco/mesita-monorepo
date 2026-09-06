@@ -247,6 +247,9 @@ export type ConsolePlaceView = {
   place: ConsolePlaceDetail;
   holder: PlaceHolder | null;
   claimable: boolean;
+  /** Set when the place is in no organization but the caller holds a direct
+   *  project_members row — the old-style owned place (MESITA-1537 E-E1). */
+  myDirectRole?: string | null;
 };
 
 export async function apiGetConsolePlace(

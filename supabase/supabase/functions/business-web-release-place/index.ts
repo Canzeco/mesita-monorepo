@@ -7,16 +7,18 @@
 // into an organization of their own — a hostile transfer with no owner
 // involved.
 //
-// The merchant of record is the ORGANIZATION (MESITA-1545), so releasing a
-// place touches no money: the organization keeps its Stripe account, and
-// the place never had one. The old refuse-while-charges_enabled guard died
-// with the place-keyed table.
+// Release is a CONFIRMED, atomic act (release_place_from_org RPC):
+// blocked while a Partnership subscription is genuinely live (active or
+// past_due and not winding down — "Cancel Partnership first"), resets the
+// plan to free so the next claimer inherits nothing paid, and deletes only
+// TENURE-ERA membership rows (created at-or-after this claim; rows that
+// predate the claim survive). The org keeps its Stripe account
+// (MESITA-1545) — releasing still touches no Connect money.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
-import { writePlace } from "../_shared/place-doc.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
@@ -52,21 +54,26 @@ Deno.serve(async (req) => {
   const roleRes = await requireOrgRole(admin, authRes.user, holdingOrg, ["owner"]);
   if (!roleRes.ok) return roleRes.response;
 
-  // Through the projects write door, guarded on the organization that
-  // held it a moment ago — so a concurrent release/claim cannot make this
-  // one release a place out of somebody else's portfolio.
-  const res = await writePlace(admin, {
-    table: "projects",
-    mode: "update",
-    id: placeId,
-    guard: { organization_id: holdingOrg },
-    patch: { organization_id: null, claimed_by: null, claimed_at: null },
-    select: "id, organization_id",
-    selectMode: "maybeSingle",
+  const { data, error } = await admin.rpc("release_place_from_org", {
+    p_place_id: placeId,
+    p_organization_id: holdingOrg,
   });
+  if (error) return json({ ok: false, error: error.message }, 500);
+  const result = data as { ok: boolean; code?: string };
 
-  if (!res.ok) return json({ ok: false, error: res.error }, 500);
-  if (!res.row) return json({ ok: false, error: "Release failed", code: "race_lost" }, 409);
+  if (!result.ok) {
+    if (result.code === "subscription_live") {
+      return json(
+        {
+          ok: false,
+          error: "Cancel Partnership first — release is blocked while a subscription is live.",
+          code: "subscription_live",
+        },
+        409,
+      );
+    }
+    return json({ ok: false, error: "Release failed", code: "race_lost" }, 409);
+  }
 
-  return json({ ok: true, place: res.row });
+  return json({ ok: true, place: { id: placeId, organization_id: null } });
 });

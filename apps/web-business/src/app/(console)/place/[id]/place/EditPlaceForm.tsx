@@ -46,15 +46,24 @@ const PLACE_REFRESH_SIMULATED_MS = 950;
 export function EditPlaceForm({
   place,
   tab,
+  basePath,
 }: {
   place: MyPlace;
   tab: PlaceSubTab;
+  /** Shell route mounting this form; sub-tabs become ?tab= under it. */
+  basePath?: string;
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
 
   const setTab = (next: PlaceSubTab) => {
-    router.replace(placePath(place.id, next), { scroll: false });
+    // basePath is the shell route that mounts this form; its sub-tabs ride
+    // ?tab= so the place route keeps ONE optional path segment. Without it
+    // the legacy console path is used (and 308s back through the shell).
+    router.replace(
+      basePath ? `${basePath}?tab=${next}` : placePath(place.id, next),
+      { scroll: false },
+    );
   };
 
   const [v, setV] = useState<PlaceFormState>(() => placeToFormState(place));
