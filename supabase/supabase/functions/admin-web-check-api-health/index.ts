@@ -36,6 +36,7 @@ import {
   STRIPE_SECRET_KEY_NAMES,
   stripeMode,
   stripeSecretKeyNames,
+  stripeSecretKeyProblem,
 } from "../_shared/stripe-env.ts";
 
 // How long any single probe may take before we call it dead. Vendors that are
@@ -543,21 +544,14 @@ const PROBES: ProbeSpec[] = [
         };
       }
       // Restricted keys (rk_…) can't hit /v1/balance; secret keys are sk_*.
-      // Catch the wrong kind before Stripe's opaque "Invalid API Key".
-      if (!/^sk_(live|test)_/.test(key)) {
+      // Catch the wrong kind before Stripe's opaque "Invalid API Key" — the
+      // shape law is shared with the Connect path (_shared/stripe-env.ts), so
+      // the probe and the merchant-facing EF agree on what a bad key is.
+      const problem = stripeSecretKeyProblem(name!, key);
+      if (problem) {
         return {
           res: new Response(
-            JSON.stringify({
-              error: {
-                message: key.startsWith("rk_")
-                  ? `${name} holds a restricted key (rk_…). Billing Test needs the secret key (sk_live_… / sk_test_…).`
-                  : key.startsWith("pk_")
-                  ? `${name} holds a publishable key (pk_…). Paste the secret key (sk_live_… / sk_test_…).`
-                  : key.startsWith("mk_")
-                  ? `${name} holds an API key ID (mk_…), not the key. The dashboard shows both — copy the token that starts sk_test_… / sk_live_…, not the identifier beside it.`
-                  : `${name} does not look like a Stripe secret key (expected sk_live_… or sk_test_…).`,
-              },
-            }),
+            JSON.stringify({ error: { message: problem } }),
             { status: 401 },
           ),
           detail: (b) => errorLine(b, ""),

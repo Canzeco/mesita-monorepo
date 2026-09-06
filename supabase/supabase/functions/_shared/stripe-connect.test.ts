@@ -10,10 +10,12 @@ import {
   classifyExistingAccount,
   isMockConnectAccountId,
   isSupportedConnectCountry,
+  isSupportedConnectEntityType,
   keyIsLive,
   MESITA_CONNECT_CAPABILITIES,
   MESITA_CONNECT_CONTROLLER,
   MESITA_CONNECT_COUNTRIES,
+  MESITA_CONNECT_ENTITY_TYPES,
   mockConnectAccountId,
 } from "./stripe-connect.ts";
 
@@ -186,4 +188,39 @@ Deno.test("transition law: mock never overwrites real; real replaces mock; unive
   // Universe mismatch (rotated sandbox / live cutover): replaceable.
   assertEquals(classifyExistingAccount(testRow, { mockMode: false, keyLive: true }), "replace");
   assertEquals(classifyExistingAccount(liveRow, { mockMode: false, keyLive: false }), "replace");
+});
+
+
+Deno.test("entity allowlist: individual and company, and never a free-text passthrough", () => {
+  assertEquals([...MESITA_CONNECT_ENTITY_TYPES], ["individual", "company"]);
+  assert(isSupportedConnectEntityType("individual"));
+  assert(isSupportedConnectEntityType("company"));
+  // Stripe-valid but deliberately not offered: no Mesita merchant is either,
+  // and a branch nobody can finish is a support ticket, not a feature.
+  assert(!isSupportedConnectEntityType("non_profit"));
+  assert(!isSupportedConnectEntityType("government_entity"));
+  // Near-misses and the shapes a form can actually send.
+  assert(!isSupportedConnectEntityType("Individual"));
+  assert(!isSupportedConnectEntityType("persona_fisica"));
+  assert(!isSupportedConnectEntityType(""));
+  assert(!isSupportedConnectEntityType(undefined));
+  assert(!isSupportedConnectEntityType(null));
+  assert(!isSupportedConnectEntityType(42));
+});
+
+Deno.test("entity type is a PREFILL, country is PERMANENT — the asymmetry is the law", () => {
+  // Country is baked into the account and can only be changed by deleting it
+  // at Stripe, which is why classifyExistingAccount refuses to re-mint on a
+  // country mismatch. Entity type has no such clause anywhere: Stripe lets
+  // the person change it inside hosted onboarding, so nothing here may start
+  // treating a changed entity type as a reason to replace an account.
+  const row = { stripe_account_id: "acct_1", livemode: false, country: "MX" };
+  assertEquals(
+    classifyExistingAccount(row, { mockMode: false, keyLive: false, country: "MX" }),
+    "use",
+  );
+  assertEquals(
+    classifyExistingAccount(row, { mockMode: false, keyLive: false, country: "US" }),
+    "use_country_mismatch",
+  );
 });

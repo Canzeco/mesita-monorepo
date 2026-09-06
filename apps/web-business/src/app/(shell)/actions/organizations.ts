@@ -10,6 +10,7 @@ import {
   apiStartPaymentOnboarding,
   apiUpdateOrganization,
 } from "@/lib/api/organizations";
+import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
 export type CreateOrgState = { error: string | null };
@@ -68,7 +69,21 @@ export async function connectPaymentsAction(
 ): Promise<PaymentsActionState> {
   const orgId = String(formData.get("orgId") ?? "").trim();
   const country = String(formData.get("country") ?? "MX").trim().toUpperCase();
+  const entityType = String(formData.get("entityType") ?? "").trim();
   if (!orgId) return { error: "Missing organization.", note: null };
+  // The pre-onboarding gate, enforced server-side too: `required` on the
+  // select is a courtesy the browser can skip. Only on create — resume mints
+  // a link for an account that already carries its answer.
+  if (
+    String(formData.get("intent") ?? "create") === "create" &&
+    !isConnectEntityType(entityType)
+  ) {
+    return {
+      error:
+        "Pick the legal entity type first — Stripe asks an individual and a company for different documents.",
+      note: null,
+    };
+  }
 
   const supabase = await createServerSupabase();
   let url: string | null = null;
@@ -77,6 +92,7 @@ export async function connectPaymentsAction(
     ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
       orgId,
       country,
+      ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {
     return { error: errMsg(e, "Couldn't start payment onboarding."), note: null };

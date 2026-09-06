@@ -1,6 +1,7 @@
 "use client";
 
 import { CONNECT_COUNTRIES } from "@/lib/connect-countries";
+import { CONNECT_ENTITY_TYPES } from "@/lib/connect-entity-types";
 import { useActionState } from "react";
 import { StatePill, DataRow } from "@/components/console/badges";
 import {
@@ -33,9 +34,9 @@ export function PaymentsCard({
   account: PaymentAccount | null;
   orphaned: boolean;
   isOwner: boolean;
-  /** Cashes the identity-fold promise: when false and no account exists, a
-   *  muted nudge under the connect form points at the legal-identity group.
-   *  Never blocks connecting. */
+  /** Cashes the identity-fold promise: when false and no account exists, the
+   *  muted line under the connect form adds a nudge toward the legal-identity
+   *  group. Never blocks connecting — the only gate is country + entity. */
   hasLegalName?: boolean;
 }) {
   const [connectState, connectAction, connecting] = useActionState(
@@ -87,7 +88,8 @@ export function PaymentsCard({
           {state === "none" || orphaned ? (
             <form action={connectAction} className="flex flex-wrap items-end gap-3">
               <input type="hidden" name="orgId" value={orgId} />
-              <label className="flex flex-1 flex-col gap-1.5">
+              <input type="hidden" name="intent" value="create" />
+              <label className="flex flex-1 basis-40 flex-col gap-1.5">
                 <span className="text-muted-foreground text-[12px]">
                   Country — permanent on the Stripe account
                 </span>
@@ -99,6 +101,30 @@ export function PaymentsCard({
                   ))}
                 </select>
               </label>
+              {/* The second half of the pre-onboarding gate. No valid default:
+                  this answer decides which documents Stripe asks for next, and
+                  a silent "individual" sends a persona moral down the wrong
+                  branch — which costs a restart, not a correction. */}
+              <label className="flex flex-1 basis-40 flex-col gap-1.5">
+                <span className="text-muted-foreground text-[12px]">
+                  Legal entity — decides what Stripe asks for
+                </span>
+                <select
+                  name="entityType"
+                  defaultValue=""
+                  required
+                  className={INPUT_CLASS}
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {CONNECT_ENTITY_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="submit"
                 disabled={connecting}
@@ -106,18 +132,22 @@ export function PaymentsCard({
               >
                 {connecting ? "Opening Stripe..." : "Connect payments"}
               </button>
-              {!hasLegalName && (
-                <p className="text-muted-foreground w-full text-[12px]">
-                  Add your legal name below and Stripe onboarding comes
-                  prefilled.
-                </p>
-              )}
+              <p className="text-muted-foreground w-full text-[12px]">
+                Stripe asks for the rest — RFC, address, bank account — in its
+                own onboarding.
+                {!hasLegalName &&
+                  " Add your legal name below and it comes prefilled."}
+              </p>
             </form>
           ) : (
             <div className="flex items-center gap-3">
               {!account?.details_submitted && (
                 <form action={connectAction}>
                   <input type="hidden" name="orgId" value={orgId} />
+                  {/* Resume mints a link for an account that already exists,
+                      so the entity gate does not apply — the account was
+                      created with its answer, and Stripe owns it from here. */}
+                  <input type="hidden" name="intent" value="resume" />
                   <input
                     type="hidden"
                     name="country"

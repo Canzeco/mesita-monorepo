@@ -95,7 +95,30 @@ describe("the five-box composition", () => {
 
   it("cashes the prefill promise when legal name is missing and no account exists", () => {
     const html = render();
-    expect(html).toContain("Stripe onboarding comes prefilled");
+    expect(html).toContain("comes prefilled");
+    // …and drops the nudge once the org HAS a legal name: the line still
+    // names what Stripe collects, but stops pointing at a filled-in field.
+    const named = render({ org: { ...ORG, legalName: "Tacos SA de CV" } });
+    expect(named).toContain("RFC, address, bank account");
+    expect(named).not.toContain("comes prefilled");
+  });
+
+  it("gates connect on country AND legal entity, and sends the rest to Stripe", () => {
+    // Pato, 2026-09-06: ask country + entity type BEFORE onboarding opens;
+    // the RFC and everything after it belong to Stripe's hosted flow.
+    const html = render();
+    expect(html).toContain('name="country"');
+    expect(html).toContain('name="entityType"');
+    expect(html).toContain('value="individual"');
+    expect(html).toContain('value="company"');
+    // No valid default on the entity select — a silent "individual" sends a
+    // persona moral down a branch that costs a restart, not a correction.
+    expect(html).toMatch(/name="entityType"[^>]*required/);
+    expect(html).toContain('<option value="" disabled="" selected="">');
+    // The console asks two questions and names Stripe as the owner of the rest.
+    expect(html).toContain("RFC, address, bank account");
+    // Resume carries no entity gate — that account already has its answer.
+    expect(html).toContain('name="intent" value="create"');
   });
 
   it("keeps the pre-connect caption and swaps it once an account exists", () => {

@@ -156,7 +156,7 @@ export async function apiGetPaymentAccount(
 
 export async function apiStartPaymentOnboarding(
   client: SupabaseClient,
-  input: { orgId: string; country: string },
+  input: { orgId: string; country: string; entityType?: string },
 ): Promise<{ url: string | null; mock: boolean }> {
   const { url, mock } = await invokeEF<{ url: string | null; mock: boolean }>(
     client,
