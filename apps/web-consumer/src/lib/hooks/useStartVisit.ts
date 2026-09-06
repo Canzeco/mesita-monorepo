@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { EFError } from "@/lib/api/_invoke";
@@ -59,6 +59,15 @@ export function useStartVisit({
   const [startingId, setStartingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The in-flight latch is a REF, not `startingId` (MESITA-1597). Two taps
+  // arrive in two separate event handlers, and a state write is not visible to
+  // the second one until React re-renders — on a real double-tap that render
+  // has not happened yet, so a `startingId !== null` guard still reads null and
+  // BOTH taps dispatch. This is written synchronously below, before
+  // startTicket's first await, so the second tap sees it whenever it lands.
+  // `startingId` stays exactly as it was: it is what rows paint a spinner from.
+  const inFlight = useRef(false);
+
   const openTicket = useCallback(
     (id: string) => {
       router.push(ticketPath(id), { scroll: false });
@@ -68,6 +77,7 @@ export function useStartVisit({
 
   const startTicket = useCallback(
     async (place: SeedPlace) => {
+      inFlight.current = true;
       setStartingId(place.id);
       setError(null);
       // The quote starts NOW, in parallel with the create (MESITA-1029 S4),
@@ -113,6 +123,7 @@ export function useStartVisit({
         }
         setError(errMsg(err, "Couldn't start your ticket."));
       } finally {
+        inFlight.current = false;
         setStartingId(null);
       }
     },
@@ -121,6 +132,15 @@ export function useStartVisit({
 
   const pickPlace = useCallback(
     (place: SeedPlace) => {
+      // A create is already running — drop this tap entirely (MESITA-1597).
+      // Nothing downstream stops it: the server's `already_open` guard is
+      // PER-PLACE, so tapping a DIFFERENT place sails through it and makes a
+      // second real ticket, and `activeTickets` cannot hold the in-flight one
+      // because it only refreshes via onCreated, after the create returns.
+      // This sits ahead of the existing-ticket branch on purpose: that branch
+      // navigates, and a second router.push racing the create's own push is
+      // the other half of the same bug.
+      if (inFlight.current) return;
       const existing = activeTickets.find((t) => t.project_id === place.id);
       if (existing) {
         // Live ticket → open it rather than making a second one (D5).

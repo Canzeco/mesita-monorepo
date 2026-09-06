@@ -152,6 +152,10 @@ export function PlacePickList({
             place={p}
             hasOpen={activePlaceIds.has(p.id)}
             busy={busyPlaceId === p.id}
+            // EVERY row goes inert while ANY create is in flight (MESITA-1597).
+            // `busy` is per-row and cannot do this job: the second tap of a
+            // double-tap lands on a DIFFERENT row, which is not the busy one.
+            anyBusy={busyPlaceId !== null}
             onPick={onPick}
             first={i === 0}
           />
@@ -174,12 +178,15 @@ function PlaceRow({
   place,
   hasOpen,
   busy = false,
+  anyBusy = false,
   onPick,
   first,
 }: {
   place: Place;
   hasOpen: boolean;
   busy?: boolean;
+  /** A create is running for SOME row — this one included or not. */
+  anyBusy?: boolean;
   onPick: (place: Place) => void;
   first: boolean;
 }) {
@@ -292,6 +299,11 @@ function PlaceRow({
   return (
     <Pressable
       onPress={() => onPick(place)}
+      // The hook holds the authoritative latch; this is the honest UI half, so
+      // a second tap cannot even dispatch. Deliberately no dimming: a create
+      // resolves in a few hundred ms and greying the whole list for that long
+      // reads as breakage. The spinner on the active row is the signal.
+      disabled={anyBusy}
       accessibilityRole="button"
       className={`${rowClass} active:bg-muted/50`}
     >
