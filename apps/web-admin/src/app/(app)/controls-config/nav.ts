@@ -11,11 +11,6 @@ import { Coins } from "lucide-react";
 // is the bug the frozen-directory rule exists to prevent. `FILTERS_PARENT`
 // labelled "Discovery" is the same shape one row up; do not "fix" either.
 //
-// NOT the Single Place tab also called Controls (`/promos`, four tabs: Profile ·
-// Controls · Activity · Admin). That one configures ONE place and keeps its
-// name; this one is platform policy. Two rows, two scopes, and only this one
-// moved.
-//
 // "CREDITS" NAMES THE DOMAIN, NOT A CONTAINER. Vocabulary bans Credits as a
 // container name — that is why the consumer section is Wallet, which holds
 // Credits AND saved cards AND gifting, three unlike things. This page is not

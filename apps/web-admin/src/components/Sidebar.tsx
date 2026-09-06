@@ -24,25 +24,8 @@ import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
-import {
-  parsePlaceId,
-  TOOL_ROUTES,
-} from "@/app/(app)/manage-single/nav";
 
-function isNavActive(
-  pathname: string,
-  href: string,
-  projectId: string | null,
-): boolean {
-  if (href === "/manage-single/select") {
-    // One nav item covers the whole single-place surface (select + create redirects + editors).
-    return (
-      pathname === href ||
-      pathname === "/manage-single" ||
-      pathname.startsWith("/manage-single/") ||
-      projectId !== null
-    );
-  }
+function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -75,14 +58,16 @@ const ALERTS_NAV: NavItem[] = [
 // Manage — the records of real things, widest scope first: the backend itself,
 // then the places Mesita lists, then the one guest-side record an operator
 // writes by hand. Not Configurations; nothing here is a policy blob. Places
-// keep the Multiple/Single qualifier because there are two surfaces to tell
-// apart. Invitations is last because it is the narrowest: not consumers at
-// large — every other class is earned — but the single INVITATION DOOR, which
-// by definition only opens by hand (MESITA-972, MESITA-1160).
+// is plain "Places" now: the per-place editor left the admin console with
+// MESITA-1588 (it lives in the business console, ported with MESITA-1537), so
+// there is no second surface for a Multiple/Single qualifier to tell it apart
+// from. Invitations
+// is last because it is the narrowest: not consumers at large — every other
+// class is earned — but the single INVITATION DOOR, which by definition only
+// opens by hand (MESITA-972, MESITA-1160).
 const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
-  { href: "/manage-multiple", label: "Multiple Places", Icon: Building2 },
-  ...TOOL_ROUTES,
+  { href: "/manage-multiple", label: "Places", Icon: Building2 },
   INVITATIONS_PARENT,
 ];
 
@@ -248,7 +233,6 @@ function SidebarNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const projectId = parsePlaceId(pathname);
 
   return (
     <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain">
@@ -265,7 +249,7 @@ function SidebarNav({
                 href={href}
                 label={label}
                 Icon={Icon}
-                active={isNavActive(pathname, href, projectId)}
+                active={isNavActive(pathname, href)}
                 collapsed={collapsed}
                 onNavigate={onNavigate}
               />

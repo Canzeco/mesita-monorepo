@@ -1,6 +1,6 @@
 "use client";
 
-// Manage Multiple Places — three boxes. Create, Enrich, Update, and
+// Manage Places — three boxes. Create, Enrich, Update, and
 // Create + Enrich live in one Mesita Intake box. Sticky rail so none
 // scroll away. Spend estimates live on Intake Config.
 
