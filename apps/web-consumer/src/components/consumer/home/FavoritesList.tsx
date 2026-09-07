@@ -12,6 +12,11 @@ import {
 } from "@/lib/saved-places";
 import { toast } from "@/lib/toast";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import {
+  PLACE_GRID_CLASS,
+  PLACE_GRID_PAGE_CLASS,
+  PLACE_TILE_SKELETON_CLASS,
+} from "@/lib/ui-classes";
 import { EmptyState, Skeleton } from "@/components/shared";
 import { FavoriteTile } from "./FavoriteTile";
 import { RemoveConfirmDialog } from "./RemoveConfirmDialog";
@@ -25,6 +30,14 @@ import { RemoveConfirmDialog } from "./RemoveConfirmDialog";
 // Layout: a two-column photo grid of saved places only — count header plus
 // filled-heart tiles. This tab is the bookmark list, not a second discovery
 // surface: no similar-places rail.
+//
+// THE GRID IS FEED'S GRID (Pato, MESITA-1624: "saved places must look the
+// same"), read from `PLACE_GRID_CLASS` / `PLACE_GRID_PAGE_CLASS` rather than
+// spelled out here. This screen used to carry px-4 / gap-2.5 /
+// `grid-cols-1 min-[360px]:grid-cols-2` — the same FavoriteTile rendering
+// ~9px narrower than on Feed one pill over, and falling to a SINGLE column
+// below 360px while Feed stayed at two. Both differences were invisible to
+// tsc and to every test, which is why the numbers now live in one place.
 
 /** Saves past this count earn a sort control; below it, it's chrome. */
 const SORT_CONTROL_MIN = 4;
@@ -125,7 +138,9 @@ export function FavoritesList({
           }}
         />
       ) : (
-        <div className="px-4 pt-4 pb-6">
+        <div className={PLACE_GRID_PAGE_CLASS}>
+          {/* px-1 keeps the header a hair inside the tiles, the same
+              relationship it had at the old padding. */}
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
             <p
               className="text-muted-foreground text-xs font-semibold"
@@ -162,11 +177,7 @@ export function FavoritesList({
             </p>
           )}
 
-          <ul
-            role="list"
-            aria-label="Saved places"
-            className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2"
-          >
+          <ul role="list" aria-label="Saved places" className={PLACE_GRID_CLASS}>
             {ordered.map((place) => (
               <FavoriteTile
                 key={place.id}
@@ -188,17 +199,18 @@ export function FavoritesList({
   );
 }
 
-// Matches the grid's shape (one wide tile + two square) so the screen arrives
-// rather than blinking through a blank frame.
+// Matches the grid's shape so the screen arrives rather than blinking through
+// a blank frame — same constants as the real grid, or the tiles jump one
+// gutter width the moment the saves hydrate.
 function SavedGridSkeleton() {
   return (
-    <div className="px-4 pt-4 pb-6">
+    <div className={PLACE_GRID_PAGE_CLASS}>
       <Skeleton className="mb-3 ml-1 h-3.5 w-24" />
-      <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2">
-        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
-        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
-        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
-        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+      <div className={PLACE_GRID_CLASS}>
+        <Skeleton className={PLACE_TILE_SKELETON_CLASS} />
+        <Skeleton className={PLACE_TILE_SKELETON_CLASS} />
+        <Skeleton className={PLACE_TILE_SKELETON_CLASS} />
+        <Skeleton className={PLACE_TILE_SKELETON_CLASS} />
       </div>
     </div>
   );

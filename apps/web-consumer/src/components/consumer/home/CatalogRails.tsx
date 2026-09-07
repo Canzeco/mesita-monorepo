@@ -73,7 +73,10 @@ export function CatalogRails() {
               {Array.from({ length: 4 }, (_, j) => (
                 <Skeleton
                   key={j}
-                  className="h-52 w-[148px] shrink-0 rounded-2xl"
+                  // The tile grew to 2:3 with MESITA-1624's 4:3 + 4:3 body,
+                  // so a 148px rail card is 222px tall, not the 208px this
+                  // used to guess.
+                  className="h-[222px] w-[148px] shrink-0 rounded-2xl"
                 />
               ))}
             </div>
