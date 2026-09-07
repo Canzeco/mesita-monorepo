@@ -29,46 +29,62 @@
 alter table public.places rename to place_profiles;
 
 -- ── 2 · constraints (renaming a constraint renames the index it owns) ───────
-alter table public.place_profiles rename constraint places_pkey                            to place_profiles_pkey;
-alter table public.place_profiles rename constraint places_google_place_id_key             to place_profiles_google_place_id_key;
-alter table public.place_profiles rename constraint places_business_state_check            to place_profiles_business_state_check;
-alter table public.place_profiles rename constraint places_enrich_every_days_range         to place_profiles_enrich_every_days_range;
-alter table public.place_profiles rename constraint places_enrich_mode_kind                to place_profiles_enrich_mode_kind;
-alter table public.place_profiles rename constraint places_facebook_followers_check        to place_profiles_facebook_followers_check;
-alter table public.place_profiles rename constraint places_facebook_rating_check           to place_profiles_facebook_rating_check;
-alter table public.place_profiles rename constraint places_family_keys_valid               to place_profiles_family_keys_valid;
-alter table public.place_profiles rename constraint places_google_review_count_check       to place_profiles_google_review_count_check;
-alter table public.place_profiles rename constraint places_google_stars_overall_check      to place_profiles_google_stars_overall_check;
-alter table public.place_profiles rename constraint places_google_visitor_count_check      to place_profiles_google_visitor_count_check;
-alter table public.place_profiles rename constraint places_instagram_followers_count_check to place_profiles_instagram_followers_count_check;
-alter table public.place_profiles rename constraint places_mesita_review_count_check       to place_profiles_mesita_review_count_check;
-alter table public.place_profiles rename constraint places_mesita_stars_ambience_check     to place_profiles_mesita_stars_ambience_check;
-alter table public.place_profiles rename constraint places_mesita_stars_food_check         to place_profiles_mesita_stars_food_check;
-alter table public.place_profiles rename constraint places_mesita_stars_overall_check      to place_profiles_mesita_stars_overall_check;
-alter table public.place_profiles rename constraint places_mesita_stars_service_check      to place_profiles_mesita_stars_service_check;
-alter table public.place_profiles rename constraint places_mesita_stars_value_check        to place_profiles_mesita_stars_value_check;
-alter table public.place_profiles rename constraint places_mesita_visitor_count_check      to place_profiles_mesita_visitor_count_check;
-alter table public.place_profiles rename constraint places_name_source_present             to place_profiles_name_source_present;
-alter table public.place_profiles rename constraint places_order_channel_check             to place_profiles_order_channel_check;
-alter table public.place_profiles rename constraint places_price_level_check               to place_profiles_price_level_check;
-alter table public.place_profiles rename constraint places_request_count_nonneg            to place_profiles_request_count_nonneg;
-alter table public.place_profiles rename constraint places_reservation_channel_check       to place_profiles_reservation_channel_check;
+-- A loop, not the hardcoded list this shipped with originally: CI's
+-- from-scratch replay proved `places_business_state_check` exists on the
+-- live catalog with no migration that ever created it under that name (drift
+-- predating this issue, same species as MESITA-1594 — a constraint applied
+-- ad-hoc and never mirrored). A hardcoded RENAME hard-fails a fresh replay
+-- the moment history and the live catalog disagree on what exists. Renaming
+-- whatever the live/replayed catalog actually carries makes this self-healing
+-- against that drift instead of a second victim of it.
+do $$
+declare r record;
+begin
+  for r in
+    select conname, replace(conname, 'places_', 'place_profiles_') as newname
+      from pg_constraint
+     where conrelid = 'public.place_profiles'::regclass
+       and conname like 'places\_%' escape '\'
+  loop
+    execute format('alter table public.place_profiles rename constraint %I to %I', r.conname, r.newname);
+  end loop;
+end $$;
 
 -- ── 3 · the standalone indexes (the two constraint-owned ones moved above) ──
-alter index public.places_country_idx        rename to place_profiles_country_idx;
-alter index public.places_embedding_hnsw     rename to place_profiles_embedding_hnsw;
-alter index public.places_enrich_due_idx     rename to place_profiles_enrich_due_idx;
-alter index public.places_lat_lng_idx        rename to place_profiles_lat_lng_idx;
-alter index public.places_name_embedding_hnsw rename to place_profiles_name_embedding_hnsw;
+-- IF EXISTS for the same reason as the constraint loop above.
+alter index if exists public.places_country_idx        rename to place_profiles_country_idx;
+alter index if exists public.places_embedding_hnsw     rename to place_profiles_embedding_hnsw;
+alter index if exists public.places_enrich_due_idx     rename to place_profiles_enrich_due_idx;
+alter index if exists public.places_lat_lng_idx        rename to place_profiles_lat_lng_idx;
+alter index if exists public.places_name_embedding_hnsw rename to place_profiles_name_embedding_hnsw;
 
 -- ── 4 · triggers and the policy ────────────────────────────────────────────
 -- place_name_history_capture_trg keeps its name: it is named for what it
--- captures, not for the table it hangs on.
-alter trigger places_set_updated_at      on public.place_profiles rename to place_profiles_set_updated_at;
-alter trigger places_sync_category_label on public.place_profiles rename to place_profiles_sync_category_label;
-
-alter policy places_select_public_visible on public.place_profiles
-  rename to place_profiles_select_public_visible;
+-- captures, not for the table it hangs on. Guarded existence checks, same
+-- drift rationale as section 2 — neither ALTER TRIGGER nor ALTER POLICY
+-- supports IF EXISTS on a rename.
+do $$
+begin
+  if exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.place_profiles'::regclass and tgname = 'places_set_updated_at'
+  ) then
+    alter trigger places_set_updated_at on public.place_profiles rename to place_profiles_set_updated_at;
+  end if;
+  if exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.place_profiles'::regclass and tgname = 'places_sync_category_label'
+  ) then
+    alter trigger places_sync_category_label on public.place_profiles rename to place_profiles_sync_category_label;
+  end if;
+  if exists (
+    select 1 from pg_policies
+     where schemaname = 'public' and tablename = 'place_profiles' and policyname = 'places_select_public_visible'
+  ) then
+    alter policy places_select_public_visible on public.place_profiles
+      rename to place_profiles_select_public_visible;
+  end if;
+end $$;
 
 -- ── 5 · the five PL/pgSQL bodies ───────────────────────────────────────────
 -- Each is its live definition with `places` -> `place_profiles` and nothing
