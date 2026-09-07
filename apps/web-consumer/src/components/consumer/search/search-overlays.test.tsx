@@ -135,26 +135,37 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  // A DISC AGAIN (Pato, 2026-09-06), and this time it is not camouflage: the
-  // 2026-09-01 label existed because the old translucent circle had only a soft
-  // shadow separating it from a pale basemap. It now wears SearchBar's chrome
-  // — same 44px, border, shadow-elev and blur — so it is as visible as the
-  // field beside it while spending none of the field's width.
-  it("shows a bar-height disc, and goes primary-filled when filters are on", () => {
+  // A THIRD OF THE ROW, LABELLED (Pato, MESITA-1627: "make the filter button
+  // larger. maybe one third"), reversing the 2026-09-06 disc. That disc's own
+  // argument — a labelled button beside a full-width field competes with it
+  // for the same glance — is the thing being conceded: on a map with an empty
+  // catalog, Filters is the other half of the question, not chrome beside it.
+  //
+  // It still wears SearchBar's chrome (44px, border, shadow-elev, blur), which
+  // is what the PRE-disc pill got wrong and is not what this change reverses.
+  //
+  // MEASURED, not asserted from reading: rendered into a harness page against
+  // the real compiled CSS at a 375px frame, the row is 349px and the control
+  // is 116px — 33% — in all three states (at rest, long query with the clear
+  // button showing, and two filters applied). The app is OTP-gated, so a
+  // layout claim cannot be checked on the deployed preview.
+  it("takes a third of the row, labelled, and goes primary-filled when on", () => {
     const rest = renderToStaticMarkup(
       <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
     expect(rest).toContain("lucide-sliders-horizontal");
     expect(rest).toContain("Filter places");
-    // Icon-only: no word on the canvas, and a square 44px target.
-    expect(rest).not.toMatch(/>\s*Filters\s*</);
-    expect(rest).toContain("h-11 w-11");
+    // THE WORD IS BACK on the canvas, and the width is a THIRD of the track.
+    expect(rest).toMatch(/>\s*Filters\s*</);
+    expect(rest).toContain("basis-1/3");
+    expect(rest).not.toContain("h-11 w-11");
+    expect(rest).toContain("h-11");
     expect(rest).toContain("rounded-full");
     // The bar's own chrome, not the old disc's bare blur.
     expect(rest).toContain("border-border");
     expect(rest).toContain("bg-card/95");
     expect(rest).toContain("shadow-elev");
-    expect(rest).not.toContain("bg-primary");
+    expect(rest).not.toContain("bg-primary ");
     // The sheet still owns every actual filter — none of them leak onto canvas.
     expect(rest).not.toContain("Restaurants");
     expect(rest).not.toContain("Bars");
@@ -170,6 +181,35 @@ describe("SearchFilterRow", () => {
     expect(on).toContain(">3<");
     expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
     expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
+  });
+
+  // THE ANTI-DISAPPEARING PAIR (Pato, MESITA-1627: "when clicking searchbar,
+  // it expands and covers filter and filter disapears").
+  //
+  // Flex resolves an overflowing row by shrinking whichever child CAN shrink.
+  // Drop `shrink-0` here and a bar whose content outgrows the track — a long
+  // query plus the clear button, say — squeezes this control toward zero width
+  // while it is still in the DOM and still focusable. That is exactly what
+  // "the filter disappears" looks like, and neither tsc nor the build sees it.
+  // Drop `min-w-0` on the bar's wrapper in SearchClient and the bar refuses to
+  // shrink at all, overflowing the row instead: same symptom, other direction.
+  //
+  // The harness could not reproduce a disappearance on the current markup —
+  // 116px, visible, in every state — so these two lines are what KEEPS it
+  // true, not a repair. They are the reason the bigger control is safe.
+  it("cannot be squeezed out by the bar beside it", () => {
+    const rest = renderToStaticMarkup(
+      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
+    );
+    expect(rest).toContain("shrink-0");
+
+    const src = read("SearchClient.tsx");
+    // The bar's wrapper: flex-1 to take the remainder, min-w-0 so it may
+    // shrink to it rather than overflowing its sibling.
+    expect(src).toContain('<div className="min-w-0 flex-1">');
+    // …and the row itself is a min-w-0 flex, not a block that would let a
+    // wide child spill past the frame.
+    expect(src).toContain('<div className="flex min-w-0 items-center gap-2">');
   });
 });
 
@@ -508,7 +548,7 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar and the Filters disc", () => {
+describe("Search map's top row is the query bar and the Filters control", () => {
   it("keeps Filters ON the bar's row, top right, and OFF the bottom overlay", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");

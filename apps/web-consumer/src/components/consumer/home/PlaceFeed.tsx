@@ -39,7 +39,7 @@ import { FavoriteTile } from "./FavoriteTile";
 // TILES ARE `FavoriteTile`, the same reuse CatalogRails makes. A place tile
 // is a photo, a name, a distance, an opening state and a heart on every
 // browse surface in this app; a Feed-only card would be a fourth copy of
-// that, drifting on its own schedule. The 3:4 ratio comes with it.
+// that, drifting on its own schedule. Its 4:3 + 4:3 shape comes with it.
 //
 // NO EMPTY STATE, and no error state either (Pato, MESITA-1621: "use mock
 // data for the moment for the feed view"). The catalog is empty in every
