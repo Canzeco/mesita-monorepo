@@ -535,10 +535,10 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(gridTitles(ME)).toEqual([
       "Wallet",
       "Plan",
-      "Alerts",
+      "Notifications",
       "Visits",
       "Orders",
-      "Bookings",
+      "Reservations",
       "Share",
       "Gift",
       "Settings",

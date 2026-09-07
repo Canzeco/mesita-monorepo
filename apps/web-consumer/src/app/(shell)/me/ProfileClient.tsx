@@ -47,19 +47,21 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — the passport, then a RHYTHM of rows (MESITA-1636):
+// The Me surface — the passport, then five pairs and a tail:
 //
-//   passport       one box, full width. Nothing inside it is clickable
+//   passport       identity + four doors (MESITA-1640), full width
 //   2              Wallet · Plan
-//   2              Alerts · Visits
-//   2              Orders · Bookings
+//   2              Notifications · Visits
+//   2              Orders · Reservations
 //   2              Share · Gift
 //   2              Settings · Help
 //   1              Connector, full width
 //
-// WHY THE ROWS VARY. Twelve equal cells in six identical pairs read as one
-// long undifferentiated column, and the passport stopped leading. Changing
-// the row width is what gives the page a shape and puts identity back on top.
+// WHY EVERY ROW BELOW IS A PAIR. MESITA-1636 varied the widths so the column
+// would not read as undifferentiated, and paid for it with a four-up whose
+// cells were too narrow to carry a summary. The passport leads by being a
+// different OBJECT — a document, with a photo, twice the height of a cell —
+// not by the rows underneath it changing shape (MESITA-1639).
 //
 // THE PASSPORT IS ONE BUTTON and nothing inside it is interactive. The three
 // doors that used to be sub-cells — Profile, Instagram, Class — are rows in
@@ -203,10 +205,17 @@ export function ProfileClient({
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
+          {/* The four doors live ON the card again (MESITA-1640). Instagram
+              is the only reach door and the Class ladder is the only entrance
+              for an invite PIN, so these are not conveniences — without them
+              those surfaces are unreachable. */}
           <ProfileSummaryCard
             profile={profile}
             loading={loading}
             onOpenPassport={() => setPassportOpen(true)}
+            onOpenProfile={() => profile && setEditOpen(true)}
+            onOpenInstagram={() => setVerifyOpen(true)}
+            onOpenClass={() => setClassOpen(true)}
           />
 
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
@@ -249,7 +258,7 @@ export function ProfileClient({
           <DestGrid>
             <DestTile
               Icon={Bell}
-              title="Alerts"
+              title="Notifications"
               summary="Visits and bookings"
               onClick={() => setAlertsOpen(true)}
             />
@@ -264,9 +273,12 @@ export function ProfileClient({
           <DestGrid>
             {/* Parked, so the Soon pill takes the summary slot. */}
             <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
+            {/* THE RENAME STOPS AT THE LABEL (Pato, MESITA-1640), the rule
+                CLAUDE.md already states for Pay. `bookingsOpen`,
+                `BookingsModal` and /reservation/[id] are untouched. */}
             <DestTile
               Icon={CalendarCheck}
-              title="Bookings"
+              title="Reservations"
               summary="Upcoming and past"
               onClick={() => setBookingsOpen(true)}
             />
@@ -403,13 +415,6 @@ export function ProfileClient({
           setPassportOpen(false);
           setSettingsOpen(true);
         }}
-        // The three doors the card gave up when it became one button
-        // (MESITA-1636). Instagram is the only reach door and the Class
-        // ladder is the only entrance for an invite PIN, so these are not
-        // conveniences — without them those surfaces are unreachable.
-        onOpenProfile={() => profile && setEditOpen(true)}
-        onOpenInstagram={() => setVerifyOpen(true)}
-        onOpenClass={() => setClassOpen(true)}
       />
     </div>
   );

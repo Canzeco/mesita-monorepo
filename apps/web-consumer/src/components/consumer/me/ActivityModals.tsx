@@ -81,7 +81,7 @@ export function AlertsModal({
     <ActivitySheet
       open={open}
       onClose={onClose}
-      title="Alerts"
+      title="Notifications"
       blurb="Notifications and updates"
     >
       {userId ? (
@@ -140,7 +140,7 @@ export function BookingsModal({
     <ActivitySheet
       open={open}
       onClose={onClose}
-      title="Bookings"
+      title="Reservations"
       blurb="Upcoming first, then past"
     >
       {/* ONE feed, no Upcoming/History control (Pato, 2026-08-17). The list

@@ -207,9 +207,14 @@ export function DestTile({
       )}
     >
       <span className="min-w-0">
-        {/* The gutter is reserved on the TEXT, not by shrinking the cell, so
-            the glyph can sit in the corner without overlapping a word. */}
-        <span className="block truncate pr-9 text-sm font-bold tracking-tight">
+        {/* The gutter is reserved on the SUMMARY only. The corner glyph is
+            `bottom-2 h-10`, so in a 92px cell it occupies y 44-84 while the
+            title sits at y 14-34 — they never touch, and a gutter on the
+            title was 36px of width spent on nothing. Measured: at 320px it
+            clipped "Notifications" (83.7px into 74px) and "Reservations"
+            (85.7px); without it both fit with 24px to spare. The title is
+            `truncate`, so it can never wrap down into the glyph. */}
+        <span className="block truncate text-sm font-bold tracking-tight">
           {title}
         </span>
         {soon ? (
