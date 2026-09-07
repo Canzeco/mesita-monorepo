@@ -51,7 +51,7 @@ export function IntakeTab({
   const [results, setResults] = useState<Record<string, Row>>({});
   const [running, setRunning] = useState<Running | null>(null);
   const [lastRun, setLastRun] = useState<Running | null>(null);
-  const [fact, setFact] = useState<EditFact>("listed");
+  const [fact, setFact] = useState<EditFact>("active");
   const [values, setValues] = useState<EditValues>(DEFAULT_EDIT_VALUES);
   const busy = running !== null;
 
@@ -98,7 +98,7 @@ export function IntakeTab({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Create runs every ID at once. Enrich is queued. Update writes Listed · Active · Verified · Partnered · Visit Rewards. Create + Enrich is create then enrich.
+          Create runs every ID at once. Enrich is queued. Update writes Active · Listed · Verified · Partnered · Visit Rewards. Create + Enrich is create then enrich.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
@@ -115,7 +115,7 @@ export function IntakeTab({
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("enrich")}
           />
-          {/* Listed · Active · Verified · Partnered · Visit Rewards — the
+          {/* Active · Listed · Verified · Partnered · Visit Rewards — the
               state facts, plus the value they'd write — read as ONE control
               with Update, so the dividers keep them out of the run-a-pipeline
               row either side. */}
