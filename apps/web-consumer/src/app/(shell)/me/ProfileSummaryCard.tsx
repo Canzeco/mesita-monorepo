@@ -18,7 +18,8 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 //
 //   identity    photo ringed in the class metal · name on its own line ·
 //               age·sex·country beside the privacy state
-//   sub-grid    PROFILE · INSTAGRAM · CLASS, three cells, only CLASS in metal
+//   sub-grid    2×2 — PROFILE across the top, then INSTAGRAM · CLASS.
+//               Four slots, three cells, only CLASS in metal
 //
 // NO PLAN CELL (decision: Pato, MESITA-1619). The Passport prints what is
 // EARNED and PUBLIC. Class is earned and never purchasable; the plan is what
@@ -32,14 +33,18 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 // identity button ever stops opening the document, the number becomes
 // unreachable — that is the thing to protect, not the row.
 //
-// THE SUB-CELL STATES A STATUS, NOT A HANDLE, and the width is why. Measured
-// in the browser at 375px: the cell is 94px with a 74px text box, and
-// "@patocanz" needs 76px — it clips at NINE characters, and most handles are
-// longer. The old 2-up tile could afford the handle at 147px; three across
-// cannot. So Instagram says "Connected"/"Connect" and the handle lives one
-// tap away in the Instagram sheet and on the passport document. At 320px the
-// cells fall to ~80px and the uppercase label itself truncates — accepted,
-// the glyph carries the identity there.
+// THE HANDLE IS BACK, BECAUSE THE WIDTH CAME BACK. MESITA-1633 made this cell
+// say "Connected" instead of "@handle", and that was the right call on the
+// measurement it had: three across put the cell at 94px with a 74px text box,
+// and "@patocanz" needs 76px — it clipped at NINE characters. The 2×2 puts
+// Instagram and Class back at 147.5px, the width the old two-tile passport
+// used, where the handle always fit. So the constraint moved and the decision
+// moves with it; "Connected" survives only as the fallback for an account
+// connected without a handle on the row. If this ever goes back to three
+// across, re-measure before re-adding the handle — do not assume.
+//
+// PROFILE SPANS BOTH COLUMNS, so it carries what it opens ("Name, phone,
+// birthday") rather than a verb. At 303px there is room to say the thing.
 //
 // ONLY CLASS WEARS METAL. Three filled cells would make the card a colour
 // block and undo the one rule this page has (Docs › Design §D: colour means
@@ -69,6 +74,7 @@ function SubTile({
   value,
   fill,
   onClick,
+  full = false,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -77,6 +83,8 @@ function SubTile({
    *  measures under 2:1 on them (MESITA-1142), so a cell never assumes it. */
   fill: string;
   onClick: () => void;
+  /** Spans both columns — Profile sits across the top of the 2×2. */
+  full?: boolean;
 }) {
   return (
     <button
@@ -85,6 +93,7 @@ function SubTile({
       aria-label={`${label}: ${value}`}
       className={cn(
         "shadow-rest flex min-h-[76px] min-w-0 flex-col justify-between rounded-2xl p-2.5 text-left transition active:scale-[0.98]",
+        full && "col-span-2",
         fill,
       )}
     >
@@ -137,11 +146,16 @@ export function ProfileSummaryCard({
               <div className="bg-muted h-4 w-44 animate-pulse rounded" />
             </div>
           </div>
-          <div className="grid grid-cols-3 items-stretch gap-2">
+          {/* Mirrors the DESTINATION exactly, span included: one full-width
+              block over two halves. */}
+          <div className="grid grid-cols-2 items-stretch gap-2">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-muted h-[76px] animate-pulse rounded-2xl"
+                className={cn(
+                  "bg-muted h-[76px] animate-pulse rounded-2xl",
+                  i === 0 && "col-span-2",
+                )}
               />
             ))}
           </div>
@@ -173,10 +187,15 @@ export function ProfileSummaryCard({
   const ClassIcon = CLASS_MARK_ICON;
 
   // Prefer the context handle so the Instagram preview state wins over a
-  // stale profile row. The handle itself is NOT printed here — see the width
-  // note at the top of the file; this cell says whether the door is open.
+  // stale profile row. The handle IS printed here again — see the width note
+  // at the top of the file.
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
+  const igValue = igConnected
+    ? handle
+      ? `@${handle}`
+      : "Connected"
+    : "Connect";
 
   return (
     <section
@@ -241,13 +260,14 @@ export function ProfileSummaryCard({
           </span>
         </button>
 
-        <div className="grid grid-cols-3 items-stretch gap-2">
+        <div className="grid grid-cols-2 items-stretch gap-2">
           <SubTile
             label="Profile"
             icon={<UserRound className="h-4 w-4 shrink-0 opacity-70" />}
-            value="Edit"
+            value="Name, phone, birthday"
             fill="bg-muted text-foreground"
             onClick={onOpenProfile}
+            full
           />
           <SubTile
             label="Instagram"
@@ -262,7 +282,7 @@ export function ProfileSummaryCard({
                 <Instagram className="h-2.5 w-2.5" />
               </span>
             }
-            value={igConnected ? "Connected" : "Connect"}
+            value={igValue}
             fill="bg-muted text-foreground"
             onClick={onOpenInstagram}
           />
