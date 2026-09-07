@@ -10,7 +10,7 @@ import {
   Footprints,
   Gift,
   IdCard,
-  Info,
+  Instagram,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -29,8 +29,6 @@ import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
-import { AboutModal } from "@/components/consumer/me/AboutModal";
-import { APP_VERSION } from "@/lib/app-version";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
 import {
   AlertsModal,
@@ -46,7 +44,12 @@ import {
   apiFetchConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
-import { PREMIUM_PLAN_ICON, PREMIUM_PLAN_PRICE_MXN } from "@/lib/consumer-data";
+import {
+  CLASSES,
+  CLASS_MARK_ICON,
+  PREMIUM_PLAN_ICON,
+  PREMIUM_PLAN_PRICE_MXN,
+} from "@/lib/consumer-data";
 import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -57,13 +60,13 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //
 //   passport       identity + the two axes, DISPLAY ONLY (MESITA-1646)
 //   2              Passport · Profile
+//   2              Instagram · Class
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
 //   2              Share · Gift
 //   2              Settings · Help
-//   2              Connector · Friends
-//   1              About, full width
+//   2              Integrations · Friends
 //
 // WHY EVERY ROW BELOW IS A PAIR. MESITA-1636 varied the widths so the column
 // would not read as undifferentiated, and paid for it with a four-up whose
@@ -109,7 +112,12 @@ export function ProfileClient({
   // The passport owns the whole identity read now (MESITA-1633) — class,
   // Instagram and profile are its three sub-cells. All this page still needs
   // is which plan, for the Plan cell's summary.
-  const { plan } = useConsumerClass();
+  const {
+    plan,
+    key: classKey,
+    origin,
+    handle: classHandle,
+  } = useConsumerClass();
 
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
@@ -122,11 +130,22 @@ export function ProfileClient({
   // setState-in-effect.
   const [shareOpen, setShareOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [invitePinOpen, setInvitePinOpen] = useState(false);
+
+  // The two axis cells state their own values. Prefer the CONTEXT handle so a
+  // fresh Instagram connect wins over a stale profile row — the same
+  // precedence the passport card used before the axes moved down here.
+  const classLabel = CLASSES.find((c) => c.id === classKey)?.label ?? "Bronze";
+  const igHandle = classHandle ?? profile?.instagram_handle ?? null;
+  const igSummary =
+    origin === "instagram" || igHandle
+      ? igHandle
+        ? `@${igHandle}`
+        : "Connected"
+      : "Connect it";
   const [settingsOpen, setSettingsOpen] = useState(openSettings);
   const [contactOpen, setContactOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
@@ -242,6 +261,28 @@ export function ProfileClient({
             />
           </DestGrid>
 
+          {/* THE TWO AXES, AS DESTINATIONS (Pato, MESITA-1650). They were rows
+              inside the passport sheet, which put the ONLY entrance to a
+              10-digit invite PIN four taps from this page — Passport, sheet,
+              Class row, Class sheet, Join with Invitation. Three now. The
+              card above no longer prints them, so nothing is stated twice.
+              Plain cells on purpose: colour means class and lives on the
+              passport (MESITA-1132), so no metal fill down here. */}
+          <DestGrid>
+            <DestTile
+              Icon={Instagram}
+              title="Instagram"
+              summary={igSummary}
+              onClick={() => setVerifyOpen(true)}
+            />
+            <DestTile
+              Icon={CLASS_MARK_ICON}
+              title="Class"
+              summary={classLabel}
+              onClick={() => setClassOpen(true)}
+            />
+          </DestGrid>
+
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
               drawer, all the same `DestTile`. The header bell, the count band
               and the "Everything else" heading are gone: the page used to
@@ -344,7 +385,7 @@ export function ProfileClient({
           <DestGrid>
             <DestTile
               Icon={Bot}
-              title="Connector"
+              title="Integrations"
               summary=""
               soon
               onClick={() => setAiOpen(true)}
@@ -354,21 +395,6 @@ export function ProfileClient({
                 and inert beats a cell that opens nothing. */}
             <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
-
-          {/* About closes the page, full width. It holds what nothing else
-              does: the version, and the Legal group that MOVED out of
-              Settings (MESITA-1641) — a copy there would have been a second
-              door to terms and privacy. The `Mesita · v2.4.1` footer line
-              this replaces is gone; `APP_VERSION` is the one source. */}
-          <DestGrid>
-            <DestTile
-              Icon={Info}
-              title="About"
-              summary={`Mesita · ${APP_VERSION}`}
-              full
-              onClick={() => setAboutOpen(true)}
-            />
-          </DestGrid>
         </div>
       </div>
 
@@ -377,7 +403,6 @@ export function ProfileClient({
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
       <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
       <AiConnectModal open={aiOpen} onClose={() => setAiOpen(false)} />
-      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ClassModal
         open={classOpen}
         onClose={() => setClassOpen(false)}
