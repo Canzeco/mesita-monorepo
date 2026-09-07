@@ -109,6 +109,24 @@ describe("the Passport card is ONE box that displays, never controls", () => {
     expect(handlers).toEqual(["onOpenPassport"]);
   });
 
+  it("says its own name, above the identity row", () => {
+    // MESITA-1638: it is the only card on Me that is itself a button, and it
+    // was the only one that did not say what it opens. The eyebrow must sit
+    // ABOVE the identity, or it reads as a caption on the name.
+    const card = read(CARD);
+    const eyebrow = card.indexOf(">\n            Passport\n          <");
+    expect(eyebrow, "the PASSPORT eyebrow is gone").toBeGreaterThan(-1);
+    expect(card.indexOf("{name}")).toBeGreaterThan(eyebrow);
+  });
+
+  it("states privacy exactly once, and never as a control", () => {
+    // Two spellings of one flag is how two surfaces start disagreeing about
+    // what public means. The sheet owns the sentence; the card owns the word.
+    expect([...card.matchAll(/\{isPublic \? "Public" : "Private"\}/g)]).toHaveLength(
+      1,
+    );
+  });
+
   it("displays both axes, Instagram then Class", () => {
     expect(infoLabels(card)).toEqual(["Instagram", "Class"]);
   });
