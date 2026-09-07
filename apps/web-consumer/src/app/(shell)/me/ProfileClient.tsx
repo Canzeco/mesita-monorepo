@@ -8,13 +8,12 @@ import {
   CalendarCheck,
   CircleHelp,
   CreditCard,
+  Bot,
   Footprints,
-  Instagram,
   MessageSquare,
   MoreHorizontal,
   Settings as SettingsIcon,
   ShoppingBag,
-  UserRound,
   Wallet as WalletIcon,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -50,41 +49,40 @@ import { PREMIUM_PLAN_ICON, PREMIUM_PLAN_PRICE_MXN } from "@/lib/consumer-data";
 import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { DestGrid, DestTile, StatBand, StatTile } from "./profile-sections";
+import { DestGrid, DestTile } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — THREE ZONES (MESITA-1622), replacing the flat box list
-// MESITA-1123 started and MESITA-1609/-1619 kept rebalancing:
+// The Me surface — ONE CELL SHAPE, REPEATED (MESITA-1633):
 //
-//   the passport   who you are. Class and Instagram as tiles, and the member
-//                  number as the door to the document behind it
-//   the band       Visits · Orders · Bookings. Everything here has a COUNT
-//   the list       Wallet · Plan · Alerts · Profile · Settings · More.
-//                  Everything here is a DESTINATION
+//   the passport   who you are, with a 3-up sub-grid inside it:
+//                  Profile · Instagram · Class, only Class in metal
+//   six pairs      Wallet·Plan · Alerts·Visits · Orders·Bookings ·
+//                  Connector·Cards · Metrics·Contact · Settings·Help
+//   More           full width, carrying the parked tail (Gift, Share)
 //
-// THE PAGE TEACHES ITS OWN RULE. Nothing labels the split between the band
-// and the list; it is legible because they are different MATERIAL — a
-// `bg-muted` fill with no border against a white card. That is also why
-// Wallet and Plan are rows and not tiles: they carry no number, and as tiles
-// they made the rule unlearnable. Counting boxes is no longer how this page
-// is described, which is why the running seven-eight-nine tally that lived
-// here through three PRs is gone.
+// WHY IT LOOKS LIKE THIS. The page it replaces stacked FOUR cell shapes and
+// three fills — passport tiles, a white pair, a muted count band, then a grid
+// — and two of those were 2-up white cards that looked identical while
+// belonging to different groups, with the band between them reading as a
+// stripe rather than a section. One shape, repeated, is the whole fix.
 //
-// ALERTS IS A ROW, NOT A TILE, for the same reason: there is no read/unread
-// tracking anywhere in this codebase (checked again here — no column, no EF,
-// no client state), so it has no count to carry. Wiring one is honest backend
-// work, not a UI relabel, and until it exists a fabricated badge would be
-// worse than none.
+// A COUNT IS A SUMMARY LINE, NOT A MATERIAL. Visits and Bookings read
+// "12 visits" / "None yet" where every other cell reads its own summary, so
+// the band had nothing left to be and `StatBand`/`StatTile` went with it.
+// Zero and unknown say the same words on purpose: a failed metrics read is
+// not a guest with no visits, and a hard 0 would state a fact we lack.
 //
-// NO CLASS ROW AND NO PASSPORT ROW. Both are reachable from the passport
-// itself now — the Class tile and the number footer — so a row for either
-// would be the redundant second door Wallet's promotion (MESITA-1609)
-// established this page does not keep.
+// ALERTS IS A CELL AND THERE IS NO BELL. Having both was two doors to one
+// sheet, the drift Wallet, Plan and Passport each cost us to remove. It still
+// carries no count — there is no read/unread tracking anywhere in this
+// codebase (checked again here: no column, no EF, no client state) — so it
+// says what it is, never how many.
 //
-// Every summary still reads live wherever the page already holds the data.
-// `apiFetchConsumerMetrics` returns `places_visited` and
-// `reservations_booked` in the one read the page already makes, so the band
-// costs nothing extra.
+// NOTHING HERE DUPLICATES THE PASSPORT. Profile, Instagram and Class are its
+// sub-cells, so none of them gets a pair cell too.
+//
+// Every summary reads live wherever the page already holds the data:
+// `apiFetchConsumerMetrics` returns both counts in the one read on mount.
 //
 // Flat page at /me; `openSettings` opens Settings on arrival for the legacy
 // /me/settings deep link.
@@ -100,11 +98,10 @@ export function ProfileClient({
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
-  // The passport card reads the class axis itself (MESITA-1622), and the long
-  // summaries that needed followers and the renewal date are gone with the
-  // rows that printed them (MESITA-1628). What is left is what the two grid
-  // cells actually say: which plan, and whether Instagram is connected.
-  const { plan, origin, handle: classHandle } = useConsumerClass();
+  // The passport owns the whole identity read now (MESITA-1633) — class,
+  // Instagram and profile are its three sub-cells. All this page still needs
+  // is which plan, for the Plan cell's summary.
+  const { plan } = useConsumerClass();
 
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
@@ -197,8 +194,6 @@ export function ProfileClient({
     setVerifyOpen(true);
   }
 
-  const handle = classHandle ?? profile?.instagram_handle ?? null;
-  const igConnected = origin === "instagram" || Boolean(handle);
   // The long-form summaries that lived here are gone with the rows that read
   // them (MESITA-1628). A grid cell has ~90px of text width at 320px, so the
   // page needs SHORT copy, not a different formatting of the long copy — and
@@ -210,11 +205,14 @@ export function ProfileClient({
   // sheets, which have the whole width to spend.
   const planTile =
     plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
-  const igTile = igConnected
-    ? handle
-      ? `@${handle}`
-      : "Connected"
-    : "Not connected";
+  // A COUNT IS A SUMMARY LINE (MESITA-1633) — the band that printed numerals
+  // is gone, so these read like every other cell's summary. Zero and unknown
+  // say the same thing: a failed metrics read is not a guest with no visits,
+  // and printing a hard 0 for it would state a fact we do not have.
+  const visitsTile = !visits ? "None yet" : `${visits} visit${visits === 1 ? "" : "s"}`;
+  const bookingsTile = !reservationsBooked
+    ? "None yet"
+    : `${reservationsBooked} booked`;
 
   // The ONE door to the plan sheet (MESITA-1619). Instrumented because the
   // Passport tile it replaces carried no event at all: without this the
@@ -231,40 +229,30 @@ export function ProfileClient({
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* The bell owns notifications, and it is the ONLY door to them
-              (MESITA-1628): Alerts sat in the grid AND up here in the brief,
-              and two doors to one sheet is the drift Wallet, Plan and
-              Passport each cost us to remove.
-
-              NO UNREAD DOT. There is no read/unread tracking anywhere in this
-              codebase — no column, no EF, no client state — so a badge here
-              would be decoration shaped like data. It ships with the backend
-              that backs it, or not at all.
-
-              No title either: the bottom nav says "Me" directly below this
-              row, and the passport under it is the anchor. */}
-          <div className="flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => setAlertsOpen(true)}
-              aria-label="Notifications"
-              className="border-border bg-card shadow-rest flex h-10 w-10 items-center justify-center rounded-full border transition active:scale-[0.97]"
-            >
-              <Bell className="text-foreground/75 h-5 w-5" />
-            </button>
-          </div>
-
           <ProfileSummaryCard
             profile={profile}
             loading={loading}
             onOpenClass={() => setClassOpen(true)}
             onOpenInstagram={() => setVerifyOpen(true)}
             onOpenPassport={() => setPassportOpen(true)}
+            onOpenProfile={() => profile && setEditOpen(true)}
           />
 
-          {/* Destinations, so a white card like the grid below — not the
-              band's muted fill. Up here because money is what a guest checks
-              first. */}
+          {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
+              drawer, all the same `DestTile`. The header bell, the count band
+              and the "Everything else" heading are gone: the page used to
+              stack four cell shapes and three fills, and two of those were
+              2-up white cards that looked identical while belonging to
+              different groups.
+
+              A COUNT IS A SUMMARY LINE NOW, not its own material. Visits and
+              Bookings read "12 visits" / "None yet" where every other cell
+              reads its own short summary, so the band had nothing left to be.
+
+              ALERTS IS A CELL AND THERE IS NO BELL. Having both was two doors
+              to one sheet, the drift Wallet, Plan and Passport each cost us
+              to remove. It still carries no unread count — none exists in
+              this codebase — so it says what it is, not how many. */}
           <DestGrid>
             <DestTile
               Icon={WalletIcon}
@@ -278,53 +266,40 @@ export function ProfileClient({
               summary={loading ? "…" : planTile}
               onClick={openPlan}
             />
-          </DestGrid>
 
-          {/* Everything here carries a COUNT — that is the whole rule, and the
-              muted fill is what says so. Both numbers come off the
-              `apiFetchConsumerMetrics` read the page already makes. */}
-          <StatBand>
-            <StatTile
+            <DestTile
+              Icon={Bell}
+              title="Alerts"
+              summary="Notifications"
+              onClick={() => setAlertsOpen(true)}
+            />
+            <DestTile
               Icon={Footprints}
-              label="Visits"
-              count={visits}
-              loading={loading}
+              title="Visits"
+              summary={loading ? "…" : visitsTile}
               onClick={() => setVisitsOpen(true)}
             />
-            {/* PARKED, and honest about it. There is no orders table or EF,
-                `/inbox/orders` 308s away, and the concierge answers the
-                delivery question with a flat no. Un-park = drop `soon`. */}
-            <StatTile Icon={ShoppingBag} label="Orders" soon />
-            <StatTile
+
+            {/* PARKED. No orders table, no EF, `/inbox/orders` 308s away, and
+                the concierge answers delivery with a flat no. */}
+            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
+            <DestTile
               Icon={CalendarCheck}
-              label="Bookings"
-              count={reservationsBooked}
-              loading={loading}
+              title="Bookings"
+              summary={loading ? "…" : bookingsTile}
               onClick={() => setBookingsOpen(true)}
             />
-          </StatBand>
 
-          {/* The long tail, as a grid (MESITA-1628). LIVE CELLS ONLY: Gift,
-              Share and AI Connector are `soon` with nothing behind them, and
-              three greyed cells out of eleven is a quarter of the block — in
-              a grid a dead cell reads as broken, in a list it reads as a
-              roadmap. They stay behind More, which is what a More is for. */}
-          <p className="text-muted-foreground type-label px-0.5 pt-1 font-bold tracking-[0.12em] uppercase">
-            Everything else
-          </p>
-          <DestGrid>
+            {/* PARKED — out of More and onto the page as an honest Soon cell,
+                because the brief named it. Gift and Share stay in More. */}
             <DestTile
-              Icon={UserRound}
-              title="Profile"
-              summary="Name and phone"
-              onClick={() => profile && setEditOpen(true)}
-              disabled={!profile}
-            />
-            <DestTile
-              Icon={SettingsIcon}
-              title="Settings"
-              summary="Privacy, language"
-              onClick={() => setSettingsOpen(true)}
+              Icon={Bot}
+              title="Connector"
+              summary=""
+              soon
+              // Handler stays wired while parked so un-parking is a `soon`
+              // removal alone — the sheet it opens already works.
+              onClick={() => setAiOpen(true)}
             />
             <DestTile
               Icon={CreditCard}
@@ -332,12 +307,7 @@ export function ProfileClient({
               summary="Saved cards"
               onClick={() => setCardsOpen(true)}
             />
-            <DestTile
-              Icon={Instagram}
-              title="Instagram"
-              summary={loading ? "…" : igTile}
-              onClick={() => setVerifyOpen(true)}
-            />
+
             <DestTile
               Icon={BarChart3}
               title="Metrics"
@@ -345,22 +315,33 @@ export function ProfileClient({
               onClick={() => setMetricsOpen(true)}
             />
             <DestTile
-              Icon={CircleHelp}
-              title="Help"
-              summary="How rewards work"
-              onClick={() => setHelpOpen(true)}
-            />
-            <DestTile
               Icon={MessageSquare}
               title="Contact"
               summary="Talk to us"
               onClick={() => setContactOpen(true)}
             />
+
+            <DestTile
+              Icon={SettingsIcon}
+              title="Settings"
+              summary="Privacy, language"
+              onClick={() => setSettingsOpen(true)}
+            />
+            <DestTile
+              Icon={CircleHelp}
+              title="Help"
+              summary="How rewards work"
+              onClick={() => setHelpOpen(true)}
+            />
+
+            {/* Odd one out, so it spans — a half-empty last row would read as
+                a mistake rather than as the drawer it is. */}
             <DestTile
               Icon={MoreHorizontal}
               title="More"
-              summary="Gift, Share, AI"
+              summary="Gift and Share"
               onClick={() => setMoreOpen(true)}
+              full
             />
           </DestGrid>
 
@@ -459,7 +440,6 @@ export function ProfileClient({
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         onOpenShare={() => setShareOpen(true)}
-        onOpenAiConnect={() => setAiOpen(true)}
       />
     </div>
   );

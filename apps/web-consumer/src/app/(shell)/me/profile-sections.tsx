@@ -126,99 +126,6 @@ export function BoxGroup({ children }: { children: ReactNode }) {
   );
 }
 
-// ─── The status band (MESITA-1622) ─────────────────────────────────────────
-//
-// THE PAGE TEACHES ITS OWN RULE, AND THIS IS HALF OF IT. The band holds things
-// that carry a COUNT; the BoxRow list below holds DESTINATIONS. Nothing labels
-// that split — it is legible because the two zones are different MATERIAL: the
-// band is a `bg-muted` fill with no border, the list is a white card. Wallet
-// and Plan were drawn as tiles in the first sketch and moved to the list for
-// exactly this reason: they have no number, so as tiles they made the rule
-// unlearnable.
-//
-// MATERIAL, NOT MORE CHROME. The band's first build gave every tile the list's
-// own `bg-card` + border treatment, which made the whole screen one
-// undifferentiated mosaic of cards — a stack of cards standing in for a
-// layout. Two materials, two meanings, no extra ink.
-//
-// THE COUNT DOES NOT SHOUT. It sits at `text-lg` under a bold label, not above
-// it in a display numeral. At 26px the visit count outweighed the guest's own
-// name and their class on their own identity screen — and with the catalog
-// empty, the number it was shouting was zero.
-
-/** One band cell. Parked cells use the same `soon` contract as `BoxShell`. */
-export function StatTile({
-  Icon,
-  label,
-  count,
-  loading = false,
-  soon = false,
-  onClick,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  /** `null` and `0` both read as the empty state — see the note below. */
-  count?: number | null;
-  loading?: boolean;
-  /** Parked: visible, inert, honest. Un-park = drop the flag. */
-  soon?: boolean;
-  onClick?: () => void;
-}) {
-  // ZERO AND UNKNOWN READ THE SAME, ON PURPOSE. A metrics read that failed and
-  // an account with no visits are both "nothing to show yet", and the honest
-  // copy for both is the same words. Printing a hard `0` for a failed read
-  // would state a fact we do not have.
-  const empty = count == null || count === 0;
-  const value = loading ? "…" : empty ? "None yet" : String(count);
-  return (
-    <button
-      type="button"
-      onClick={soon ? undefined : onClick}
-      disabled={soon}
-      aria-disabled={soon}
-      title={soon ? "Coming soon" : undefined}
-      // Value THEN label: a screen reader announcing "Visits" alone tells the
-      // guest nothing they could not see from the label.
-      aria-label={soon ? `${label}: coming soon` : `${label}: ${value}`}
-      className={cn(
-        "bg-muted flex min-h-[84px] w-full flex-col items-start justify-between rounded-2xl p-3 text-left transition",
-        soon ? "opacity-55" : "hover:bg-muted/70 active:scale-[0.98]",
-      )}
-    >
-      <Icon className="text-foreground/55 h-[18px] w-[18px] shrink-0" />
-      <span className="w-full min-w-0">
-        {soon ? (
-          <span className="border-border text-muted-foreground type-meta inline-block rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
-            Soon
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "block truncate",
-              empty || loading
-                ? "text-muted-foreground text-sm font-semibold"
-                : "font-display text-lg leading-none font-semibold tracking-tight",
-            )}
-          >
-            {value}
-          </span>
-        )}
-        {/* `truncate` and not a wrap: at 320px the cell is 80px wide and
-            "Bookings" needs ~62px, so it clears with a glyph to spare. A wrap
-            here would make one cell taller than its siblings. */}
-        <span className="mt-[3px] block truncate text-xs font-bold tracking-tight">
-          {label}
-        </span>
-      </span>
-    </button>
-  );
-}
-
-/** Three cells, equal width, equal height. */
-export function StatBand({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-3 items-stretch gap-2">{children}</div>;
-}
-
 // ─── The destination grid (MESITA-1628) ────────────────────────────────────
 //
 // DiDi's "More Services" geometry, Mesita's ink. Two up, a title, a subtitle
@@ -248,6 +155,13 @@ export function DestGrid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 items-stretch gap-2">{children}</div>;
 }
 
+// ONE SHAPE, REPEATED (MESITA-1633). The page used to stack four cell shapes
+// and three fills — passport tiles, a white pair, a muted count band, then
+// this grid — and two of them were 2-up white cards that looked identical
+// while belonging to different groups. The band is gone and everything below
+// the passport is a `DestTile` now. `StatBand`/`StatTile` went with it; a
+// count is a SUMMARY LINE on the cell, not a separate material.
+
 /** One grid cell. A DESTINATION — it has no count; things with counts are
  *  `StatTile`s in the muted band above. */
 export function DestTile({
@@ -256,23 +170,33 @@ export function DestTile({
   summary,
   onClick,
   disabled,
+  soon = false,
+  full = false,
 }: {
   Icon: LucideIcon;
   title: string;
   /** THREE WORDS OR FEWER — see the note above. */
   summary: string;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
+  /** Parked: visible, inert, honest. Same contract the band used to carry. */
+  soon?: boolean;
+  /** Spans both columns — for a cell with no partner, so the last row is a
+   *  deliberate full-width block rather than a half-empty one. */
+  full?: boolean;
 }) {
+  const inert = disabled || soon;
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-disabled={disabled}
+      onClick={soon ? undefined : onClick}
+      disabled={inert}
+      aria-disabled={inert}
+      title={soon ? "Coming soon" : undefined}
       className={cn(
         "border-border bg-card shadow-rest relative flex min-h-[92px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition",
-        disabled ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
+        full && "col-span-2",
+        inert ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
       )}
     >
       <span className="min-w-0">
@@ -281,9 +205,15 @@ export function DestTile({
         <span className="block truncate pr-9 text-sm font-bold tracking-tight">
           {title}
         </span>
-        <span className="text-muted-foreground mt-0.5 block pr-9 text-xs leading-snug">
-          {summary}
-        </span>
+        {soon ? (
+          <span className="border-border text-muted-foreground type-meta mt-1 inline-block rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
+            Soon
+          </span>
+        ) : (
+          <span className="text-muted-foreground mt-0.5 block pr-9 text-xs leading-snug">
+            {summary}
+          </span>
+        )}
       </span>
       {/* Decorative. The title and summary already say everything, so this is
           hidden rather than described. */}
