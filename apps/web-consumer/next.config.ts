@@ -28,13 +28,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Explore era (pre-Home). Repointed straight at the Discover default —
-      // Catalog again as of MESITA-1609, was Search before it — when /home
-      // was retired; chaining them through /home would have made these
-      // two-hop, which route-structure T4 caps at exactly 2 with no margin.
-      { source: "/explore", destination: "/discover/catalog", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/catalog", permanent: true },
-      { source: "/explore/map", destination: "/discover/catalog", permanent: true },
-      { source: "/explore/add", destination: "/discover/catalog", permanent: true },
+      // Swipe again as of MESITA-1615, was Catalog for one day, Search before
+      // that — when /home was retired; chaining them through /home would
+      // have made these two-hop, which route-structure T4 caps at exactly 2.
+      { source: "/explore", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/map", destination: "/discover/swipe", permanent: true },
+      { source: "/explore/add", destination: "/discover/swipe", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -69,36 +69,46 @@ const nextConfig: NextConfig = {
       },
       { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
       // The retired Home hub (2026-09-01). Every leaf 308s straight to
-      // Discover's default — Catalog again as of MESITA-1609 (was Search,
-      // 2026-09-01 to today; see consumer-route-contract.ts's discoverDefault
-      // comment for the full reasoning). /home/ai points here rather than
-      // chaining through /home/chat — that page is deleted, so the old chain
-      // would both dangle and cost a second hop against T4's cap of 2.
+      // Discover's default — Swipe again as of MESITA-1615 (was Catalog for
+      // one day, Search before that; see consumer-route-contract.ts's
+      // discoverDefault comment for the full reasoning). /home/ai points here
+      // rather than chaining through /home/chat — that page is deleted, so
+      // the old chain would both dangle and cost a second hop against T4's
+      // cap of 2.
       //
-      // NOTHING HERE MAY CHAIN THROUGH /discover/map. That segment is itself a
-      // 308 now (below), so a chained /home would cost two hops and leave zero
-      // margin under T4. The destination is the canonical mode, always.
+      // NOTHING HERE MAY CHAIN THROUGH /discover/map OR /discover/search.
+      // Both segments are themselves 308s now (below), so a chained /home
+      // would cost two hops and leave zero margin under T4. The destination
+      // is the canonical mode, always.
       //
       // /home/favorites goes with them: FavoritesList exists under components/
       // but nothing rendered it and it needs the parked shared-deck fetch, so
       // there was no live surface to promote.
-      { source: "/home", destination: "/discover/catalog", permanent: true },
-      { source: "/home/swipe", destination: "/discover/catalog", permanent: true },
-      { source: "/home/catalog", destination: "/discover/catalog", permanent: true },
-      { source: "/home/chat", destination: "/discover/catalog", permanent: true },
-      { source: "/home/ai", destination: "/discover/catalog", permanent: true },
-      { source: "/home/social", destination: "/discover/catalog", permanent: true },
-      { source: "/home/favorites", destination: "/discover/catalog", permanent: true },
+      { source: "/home", destination: "/discover/swipe", permanent: true },
+      { source: "/home/swipe", destination: "/discover/swipe", permanent: true },
+      { source: "/home/catalog", destination: "/discover/swipe", permanent: true },
+      { source: "/home/chat", destination: "/discover/swipe", permanent: true },
+      { source: "/home/ai", destination: "/discover/swipe", permanent: true },
+      { source: "/home/social", destination: "/discover/swipe", permanent: true },
+      { source: "/home/favorites", destination: "/discover/swipe", permanent: true },
       // Explicit search intent, unlike the /home* leaves above — this one
-      // stays pointed at Search regardless of what the Discover DEFAULT is,
-      // the same way /discover/map (below) does.
-      { source: "/search", destination: "/discover/search", permanent: true },
+      // stays pointed at Search's canonical route regardless of what the
+      // Discover DEFAULT is, the same way /discover/map (below) does. /search
+      // IS that canonical route now (MESITA-1616), not a legacy source —
+      // dropped from this table; see /discover/search below for the entry
+      // that replaced it.
+      // The just-shipped Search route (MESITA-1609, six days, -> MESITA-1616).
+      // Straight to the new canonical /search — never chained through
+      // /discover/map, which points here too and would make that a 2-hop
+      // path. T7 pins this entry.
+      { source: "/discover/search", destination: "/search", permanent: true },
       // The map's own segment, for the ~26 hours it was the live url and the
       // Discover default (#1438 → this change). Search IS the map now, so the
-      // word moved off the list mode and onto the map itself; /discover/map is
-      // the forwarding address. T7 pins this entry — T4 can validate a
-      // redirect's destination but never its absence.
-      { source: "/discover/map", destination: "/discover/search", permanent: true },
+      // word moved off the list mode and onto the map itself; /search is the
+      // forwarding address — direct, not through /discover/search, which is
+      // itself a redirect source above. T7 pins this entry — T4 can validate
+      // a redirect's destination but never its absence.
+      { source: "/discover/map", destination: "/search", permanent: true },
       // The browse mode shipped as "Feed" for about an hour (#1447 -> #1448)
       // and as "Home" for a day (#1448 -> 2026-09-02). Both were live urls that
       // production deployed, so both forward like the rest — and both go

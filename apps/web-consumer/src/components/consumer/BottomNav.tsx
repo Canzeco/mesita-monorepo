@@ -45,6 +45,13 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 // (inside Pay, not its own tab, not Activity's) is a separate, still-closed
 // decision (MESITA-1581) and this PR does not reopen it.
 //
+// SEARCH'S ROUTE MOVED (MESITA-1616), a day after MESITA-1609 promoted the
+// TAB. The tab move alone left the URL at /discover/search, still nested
+// under discover/layout.tsx — so Home's mode rail kept rendering on top of
+// the map, a bug, not a design choice. Search now lives at its own /search,
+// no shared layout with Home. HOME'S RAIL ALSO REORDERS the same PR
+// (MESITA-1615): Swipe leads and is the default now, not Catalog.
+//
 // At four items each column is ~94px at 375px, which is why the active
 // underline is w-6 rather than w-5 — a 20px rule under a 94px column reads
 // thin. Unchanged by this PR: the column count is still four.
@@ -89,9 +96,8 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Home IS the mode rail's landing (Catalog, per discoverDefault) — no
-    // extra redirect hop, the href is the live surface itself, same shape
-    // Discover used before it (MESITA-1609).
+    // Home IS the mode rail's landing (Swipe, per discoverDefault — MESITA-
+    // 1615) — no extra redirect hop, the href is the live surface itself.
     href: CONSUMER_ROUTES.discoverDefault,
     // The brand mark, back where it started before the 2026-09-01 merge gave
     // it to the magnifier. See the file-top comment for why that swap is
@@ -100,11 +106,10 @@ const ITEMS: Item[] = [
     label: "Home",
     // FOUR EXPLICIT SEGMENTS, not a blanket "/discover" prefix — that prefix
     // is gone from the route contract (MESITA-1609) precisely because it can
-    // no longer answer "which tab lights" on its own: /discover/search now
-    // needs to light Search, not Home, so Home can only claim the segments
-    // that are actually its modes. /place rides here exactly as it rode
-    // Discover before — drop it and place detail lights NOTHING, which
-    // route-structure T5's cardinality assertion is what catches.
+    // no longer answer "which tab lights" on its own. /place rides here
+    // exactly as it rode Discover before — drop it and place detail lights
+    // NOTHING, which route-structure T5's cardinality assertion is what
+    // catches.
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.place,
       CONSUMER_ROUTES.discoverTabs.catalog,
@@ -114,16 +119,17 @@ const ITEMS: Item[] = [
     ],
   },
   {
-    // Its own tab now (MESITA-1609) — the same screen (map + the one search
-    // bar), promoted out of DiscoverModeNav's rail rather than rebuilt.
-    href: CONSUMER_ROUTES.discoverTabs.search,
+    // Its own top-level route now (MESITA-1616), not nested under Home's
+    // discover/layout.tsx — that nesting was a bug: it kept rendering Home's
+    // mode rail above the map on the Search tab. Same screen (map + the one
+    // search bar), independent route.
+    href: CONSUMER_ROUTES.search,
     // The magnifier, handed back from Home — see the file-top comment.
     Icon: Search,
     label: "Search",
-    // ONE EXACT SEGMENT. Not a shared "/discover" prefix with Home — the two
-    // tabs now split that namespace, and Search only ever needs to match its
-    // own single route.
-    matchPrefixes: [CONSUMER_ROUTES.discoverTabs.search],
+    // ONE EXACT SEGMENT — Search has no siblings to disambiguate from any
+    // more, unlike Home's four-segment list above.
+    matchPrefixes: [CONSUMER_ROUTES.search],
   },
   {
     href: CONSUMER_ROUTES.newVisit.root,

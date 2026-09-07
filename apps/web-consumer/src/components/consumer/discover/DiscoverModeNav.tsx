@@ -1,16 +1,16 @@
 "use client";
 
-// Home's mode rail — the topbar menu across Home's four remaining modes.
+// Home's mode rail — the topbar menu across Home's four modes.
 //
-// SEARCH LEFT THIS RAIL FOR ITS OWN TAB (Pato, MESITA-1609). It was one of
-// five modes here from 2026-09-01 to today; the route (/discover/search) and
-// the screen (map + the one search bar) are both untouched, only its address
-// in the bottom bar changed. This rail now belongs to Home alone: Catalog,
-// Swipe, Chat, Favs.
+// SEARCH LEFT THIS RAIL FOR ITS OWN TAB (Pato, MESITA-1609), then its own
+// ROUTE (MESITA-1616) — the tab move alone left Search's screen nested under
+// this same layout, which kept this rail rendering above the map. Both
+// concerns are gone now: Search shares neither this component nor its route
+// with Home.
 //
-// EVERY PILL IS 25% now (was 20% at five modes), the same rule InboxSectionNav
-// follows at three pills and PaySectionNav at two: `grid-flow-col auto-cols-fr`
-// on a `w-max min-w-full` track. At rest min-w-full stretches the track to the
+// EVERY PILL IS 25% (four modes), the same rule InboxSectionNav follows at
+// three pills and PaySectionNav at two: `grid-flow-col auto-cols-fr` on a
+// `w-max min-w-full` track. At rest min-w-full stretches the track to the
 // frame and the fr columns split it evenly; at large accessibility text
 // w-max lets the track outgrow the frame and the scroller takes over, columns
 // still equal.
@@ -23,12 +23,12 @@
 // margin back. `auto-cols-fr` sizes EVERY column to the widest pill, so the
 // track is 4 x widest + 16px of gaps and it must fit 359px. At `type-label`
 // (11px), reusing the per-label widths measured for the five-mode row (no
-// mode's own width changes when a sibling leaves):
+// mode's own width changes when a sibling leaves or the row reorders):
 //
 //   label    text   + 26px chrome   track (4w+16)   vs 359px
 //   -------  -----  --------------  --------------  -----------
-//   Catalog  40.3   66.3            281.2           fits (+78)
 //   Swipe    31.8   57.8            247.2           fits (+112)
+//   Catalog  40.3   66.3            281.2           fits (+78)
 //   Chat     24.5   50.5            218.0           fits (+141)
 //   Favs     25.1   51.1            220.4           fits (+139)
 //
@@ -39,9 +39,8 @@
 // deliberate call this PR does not make.
 //
 // Chrome per pill = 14px icon + 4px gap-1 + 8px px-1. A FIFTH mode back in
-// this rail (Search or otherwise), or any label wider than "Catalog", is the
-// next time to re-measure — there is real margin now, but it is not
-// unlimited.
+// this rail, or any label wider than "Catalog", is the next time to
+// re-measure — there is real margin now, but it is not unlimited.
 //
 
 import { useEffect, useRef, useState } from "react";
@@ -58,7 +57,6 @@ import { cn } from "@/lib/utils";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { useDiscoverChrome } from "@/components/consumer/discover/discover-chrome";
 
 type Mode = {
   href: string;
@@ -69,41 +67,34 @@ type Mode = {
   blurb?: string;
 };
 
-// FOUR ARE LIVE HERE, one moved (MESITA-1609). Search left for its own tab;
-// nothing else in this row is parked — the `soon` branch below is kept for
-// the next mode that lands unfinished, not because anything uses it today.
+// ALL FOUR ARE LIVE; nothing here is parked — the `soon` branch below is kept
+// for the next mode that lands unfinished, not because anything uses it
+// today.
+//
+// SWIPE LEADS AND IS THE DEFAULT (Pato, MESITA-1615, live instruction),
+// reversing MESITA-1609's Catalog call from earlier the same day. See
+// consumer-route-contract.ts's discoverDefault comment for the
+// first-pill-is-default reasoning, which is unaffected by which mode
+// actually leads — it just carries over to Swipe now.
 //
 // CATALOG is the catalog rails with no search bar on it — the reason two
 // typed inputs one pill apart was ever a redundancy left with Search, so
-// that argument is now historical, not load-bearing. See
-// consumer-route-contract.ts for Search's own reasoning.
-//
-// CATALOG LEADS AND IS NOW THE DEFAULT (MESITA-1609, see `discoverDefault`).
-// The "first pill is not the landing screen" trap this row used to hold
-// (Catalog visually first, Search the hidden default) is resolved by Search
-// leaving entirely, not by anyone forgetting the trap existed — see
-// consumer-route-contract.ts's discoverDefault comment for the full
-// reasoning. Do not re-derive "default off the leading pill" as a rule for
-// THIS row from Activity's still-live version of it (inboxDefault) — the two
-// no longer share the same justification.
+// that argument is now historical, not load-bearing.
 //
 // LayoutGrid, not House. #1449 swapped the grid for a house because the grid
 // "read as four boxes next to the word Home" — correct then, and the same
-// reasoning returns it now: rails of category tiles ARE a grid, and a house
+// reasoning still holds: rails of category tiles ARE a grid, and a house
 // next to the word Catalog would be the mismatch that commit was fixing.
-//
-// ORDER runs from the least to the most committed way to browse: rails you
-// scan, a deck you flick, a question you ask, a list you already curated.
 export const MODES: Mode[] = [
-  {
-    href: CONSUMER_ROUTES.discoverTabs.catalog,
-    label: "Catalog",
-    Icon: LayoutGrid,
-  },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
     label: "Swipe",
     Icon: Flame,
+  },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.catalog,
+    label: "Catalog",
+    Icon: LayoutGrid,
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.chat,
@@ -121,8 +112,6 @@ export function DiscoverModeNav() {
   const pathname = usePathname();
   const [soonMode, setSoonMode] = useState<Mode | null>(null);
   const activeRef = useRef<HTMLAnchorElement | null>(null);
-  // False on every mode but Search, and false there until the bar is live.
-  const { barFocused } = useDiscoverChrome();
 
   // Only bites when large accessibility text pushes the track past the frame
   // and the scroller takes over. `nearest` makes it a no-op at rest, which is
@@ -140,24 +129,7 @@ export function DiscoverModeNav() {
   const active = "bg-primary text-primary-foreground shadow-glow";
 
   return (
-    <div
-      className={cn(
-        "border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl",
-        // THE RAIL STEPS ASIDE WHILE THE GUEST IS SEARCHING. On a phone the
-        // keyboard takes a little over half the frame, and these 44px were
-        // being spent on four modes the guest has just demonstrated they do
-        // not want. Height, not `hidden`: the row animates out instead of the
-        // map jumping up under the guest's thumb, and `inert` below keeps the
-        // links out of the tab order and off the screen reader while it is
-        // closed — a collapsed row is not a row you can reach.
-        "overflow-hidden transition-[max-height,opacity] duration-200 ease-out",
-        barFocused ? "max-h-0 opacity-0" : "max-h-16 opacity-100",
-      )}
-      // The border would still paint as a 1px line across the frame at
-      // max-h-0, which reads as a seam rather than an absence.
-      style={barFocused ? { borderBottomWidth: 0 } : undefined}
-      inert={barFocused}
-    >
+    <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">
         <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
           {MODES.map((mode) => {
