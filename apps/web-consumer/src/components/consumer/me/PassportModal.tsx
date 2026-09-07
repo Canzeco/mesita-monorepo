@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Copy, IdCard, Lock, Unlock } from "lucide-react";
+import { ChevronRight, Copy, IdCard, Lock, Unlock } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
@@ -43,28 +43,41 @@ import { toast } from "@/lib/toast";
 // wording is copied from there verbatim; a second control for one flag is how
 // two surfaces start disagreeing about what "public" means.
 
-// NO ROW HERE IS A DOOR (MESITA-1640). For one release, MESITA-1636, three
-// rows here were buttons — Profile, Instagram and Class — because the card
-// above had been reduced to a single tap target and could not hold doors.
-// The card holds all four again, so these went back to being fields: Wallet's
-// precedent (MESITA-1609), "removed, not demoted". A second door to a surface
-// one tap above is redundant with the promotion that put it there.
+// TWO ROWS HERE ARE DOORS, AND THEY ARE THE ONLY ONES (MESITA-1646). The
+// card above is display-only now, so Class and Instagram are reachable from
+// nowhere else in the app: Instagram is the only reach door, and the Class
+// ladder carries "Join with Invitation", which Docs › Passport §C calls the
+// ONLY entrance for a 10-digit invite PIN. Do not make either inert without
+// giving its surface another way in FIRST.
 //
-// If you are about to make a row here tappable, the question to answer first
-// is what is missing from the CARD, not what is missing from this sheet.
+// PROFILE IS NOT A DOOR HERE. It is a cell on Me, one tap away, and a second
+// door to a promoted surface is what MESITA-1609 established as removed, not
+// demoted. It stays a display field.
 function Field({
   label,
   value,
   note,
   trailing,
+  onClick,
 }: {
   label: string;
   value: string;
   note?: string | null;
   trailing?: React.ReactNode;
+  /** Turns the row into a button with a chevron. Hands off at the SAME
+   *  z-layer, so the caller closes this sheet before opening the next —
+   *  two LocalSheets must never stack. */
+  onClick?: () => void;
 }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className="border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left first:border-t-0">
+    <Tag
+      {...(onClick ? { type: "button" as const, onClick } : {})}
+      className={cn(
+        "border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left first:border-t-0",
+        onClick && "hover:bg-muted/50 transition",
+      )}
+    >
       <span className="text-muted-foreground type-meta w-24 shrink-0 font-bold tracking-[0.12em] uppercase">
         {label}
       </span>
@@ -79,7 +92,10 @@ function Field({
         )}
       </span>
       {trailing}
-    </div>
+      {onClick && (
+        <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      )}
+    </Tag>
   );
 }
 
@@ -88,12 +104,22 @@ export function PassportModal({
   onClose,
   profile,
   onOpenSettings,
+  onOpenInstagram,
+  onOpenClass,
 }: {
   open: boolean;
   onClose: () => void;
   profile: ConsumerProfile | null;
   onOpenSettings: () => void;
+  /** The two doors the card gave up (MESITA-1646). Each closes this sheet
+   *  first — one LocalSheet layer. */
+  onOpenInstagram: () => void;
+  onOpenClass: () => void;
 }) {
+  function handOff(run: () => void) {
+    onClose();
+    run();
+  }
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
 
   const name =
@@ -225,6 +251,7 @@ export function PassportModal({
               label="Class"
               value={classLabel}
               note={cls?.reward ?? null}
+              onClick={() => handOff(onOpenClass)}
             />
             <Field
               label="Instagram"
@@ -240,6 +267,7 @@ export function PassportModal({
                   ? `${formatCompactCount(followers)} followers`
                   : "Connect it to climb a class"
               }
+              onClick={() => handOff(onOpenInstagram)}
             />
           </div>
         </section>
