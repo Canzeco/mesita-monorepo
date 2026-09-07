@@ -99,7 +99,7 @@ const planShaped = (names: string[]) =>
 const codeOnly = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("the Passport card is a document with four doors", () => {
+describe("the Passport card is a document with three doors", () => {
   const card = read(CARD);
 
   it("the identity block and the doors are SIBLINGS, never nested", () => {
@@ -118,7 +118,7 @@ describe("the Passport card is a document with four doors", () => {
     ).toBeGreaterThan(closes);
   });
 
-  it("every live door is wired, and exactly one is parked", () => {
+  it("every door is wired — none is parked", () => {
     // Two of these are the ONLY entrance to something in the whole app:
     // Instagram is the only reach door, and the Class ladder carries "Join
     // with Invitation", which Docs › Passport §C calls the only entrance for
@@ -127,14 +127,15 @@ describe("the Passport card is a document with four doors", () => {
     const wired = doorCells(card)
       .filter((c) => /onClick=\{/.test(c))
       .map((c) => c.match(/onClick=\{(\w+)\}/)?.[1]);
-    expect(wired).toEqual(["onOpenProfile", "onOpenClass", "onOpenInstagram"]);
-    // Friends has no surface in this codebase — the nearest thing is a
-    // Contacts toggle in Settings. Parked is honest; a live cell that opens
-    // nothing is not.
+    expect(wired).toEqual(["onOpenProfile", "onOpenInstagram", "onOpenClass"]);
+    // EVERY door on the card is live now — Friends moved down to the grid
+    // (MESITA-1641), where it is parked beside Connector. A parked cell in
+    // here would be a dead cell inside the one card that is meant to be the
+    // page's most alive object.
     const parked = doorCells(card)
       .filter((c) => /^\s*soon$/m.test(c))
       .map((c) => c.match(/label="([^"]+)"/)?.[1]);
-    expect(parked).toEqual(["Friends"]);
+    expect(parked).toEqual([]);
   });
 
   it("says its own name, above the identity row", () => {
@@ -155,13 +156,17 @@ describe("the Passport card is a document with four doors", () => {
     );
   });
 
-  it("carries four doors: Profile · Friends / Class · Instagram", () => {
-    expect(doorLabels(card)).toEqual([
-      "Profile",
-      "Friends",
-      "Class",
-      "Instagram",
-    ]);
+  it("carries three doors: Profile spanning, then Instagram | Class", () => {
+    expect(doorLabels(card)).toEqual(["Profile", "Instagram", "Class"]);
+    // Profile SPANS, and that is a measurement (MESITA-1641). Three columns
+    // give each cell a 67px text box; `@patocanz` needs 75 and the word
+    // "INSTAGRAM" needs 69.6, so at three-up the LABEL truncates too. Two
+    // columns give 118px. Exactly one door spans, and it is the one whose
+    // value is the short word.
+    const spans = doorCells(card)
+      .filter((c) => /^\s*full$/m.test(c))
+      .map((c) => c.match(/label="([^"]+)"/)?.[1]);
+    expect(spans).toEqual(["Profile"]);
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {

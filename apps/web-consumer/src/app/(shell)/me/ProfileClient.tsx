@@ -9,9 +9,11 @@ import {
   Bot,
   Footprints,
   Gift,
+  Info,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
+  Users,
   Wallet as WalletIcon,
 } from "lucide-react";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
@@ -25,6 +27,8 @@ import { ContactModal } from "@/components/consumer/me/ContactModal";
 import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
+import { AboutModal } from "@/components/consumer/me/AboutModal";
+import { APP_VERSION } from "@/lib/app-version";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
 import {
   AlertsModal,
@@ -49,13 +53,14 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — the passport, then five pairs and a tail:
 //
-//   passport       identity + four doors (MESITA-1640), full width
+//   passport       identity + three doors (MESITA-1640, -1641), full width
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
 //   2              Share · Gift
+//   2              Connector · Friends
 //   2              Settings · Help
-//   1              Connector, full width
+//   1              About, full width
 //
 // WHY EVERY ROW BELOW IS A PAIR. MESITA-1636 varied the widths so the column
 // would not read as undifferentiated, and paid for it with a four-up whose
@@ -114,6 +119,7 @@ export function ProfileClient({
   // setState-in-effect.
   const [shareOpen, setShareOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [classOpen, setClassOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -297,6 +303,24 @@ export function ProfileClient({
             <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
 
+          {/* Both parked, so this is a dead ROW — flagged to Pato and
+              accepted (MESITA-1641). It sits above Settings/Help on purpose:
+              the two most-reached cells in the tail must not be pushed under
+              a pair that opens nothing. */}
+          <DestGrid>
+            <DestTile
+              Icon={Bot}
+              title="Connector"
+              summary=""
+              soon
+              onClick={() => setAiOpen(true)}
+            />
+            {/* No friends surface exists — the nearest thing is a Contacts
+                toggle in Settings ("Find friends already on Mesita"). Visible
+                and inert beats a cell that opens nothing. */}
+            <DestTile Icon={Users} title="Friends" summary="" soon />
+          </DestGrid>
+
           <DestGrid>
             <DestTile
               Icon={SettingsIcon}
@@ -312,23 +336,20 @@ export function ProfileClient({
             />
           </DestGrid>
 
-          {/* Last, full width, parked. It was going to be cut entirely; a box
-              here keeps `AiConnectModal` reachable rather than dead code, and
-              the handler stays wired so un-parking is a flag removal. */}
+          {/* About closes the page, full width. It holds what nothing else
+              does: the version, and the Legal group that MOVED out of
+              Settings (MESITA-1641) — a copy there would have been a second
+              door to terms and privacy. The `Mesita · v2.4.1` footer line
+              this replaces is gone; `APP_VERSION` is the one source. */}
           <DestGrid>
             <DestTile
-              Icon={Bot}
-              title="Connector"
-              summary=""
-              soon
+              Icon={Info}
+              title="About"
+              summary={`Mesita · ${APP_VERSION}`}
               full
-              onClick={() => setAiOpen(true)}
+              onClick={() => setAboutOpen(true)}
             />
           </DestGrid>
-
-          <p className="text-muted-foreground type-label -mt-1 text-center">
-            Mesita · v2.4.1
-          </p>
         </div>
       </div>
 
@@ -337,6 +358,7 @@ export function ProfileClient({
       <ShareModal open={shareOpen} onClose={() => setShareOpen(false)} />
       <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
       <AiConnectModal open={aiOpen} onClose={() => setAiOpen(false)} />
+      <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
       <ClassModal
         open={classOpen}
         onClose={() => setClassOpen(false)}

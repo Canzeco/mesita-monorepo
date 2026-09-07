@@ -7,12 +7,10 @@ import {
   Download,
   MessageSquare,
   EyeOff,
-  FileText,
   Globe,
   Images,
   Languages,
   MapPin,
-  ScrollText,
   Settings as SettingsIcon,
   Trash2,
   Users,
@@ -20,8 +18,6 @@ import {
 import { useState } from "react";
 import {
   MESITA_PRIVACY_EMAIL,
-  MESITA_PRIVACY_URL,
-  MESITA_TERMS_URL,
 } from "@/lib/mesita-contact";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -285,26 +281,6 @@ export function SettingsModal({
                 onClose();
                 onOpenContact();
               }}
-            />
-          </SettingsGroup>
-
-          <SettingsGroup title="Legal">
-            <SettingsLinkRow
-              Icon={ScrollText}
-              tint="muted"
-              href={MESITA_TERMS_URL}
-              label="Terms of use"
-              sub="mesita.ai/terms"
-              external
-            />
-            <RowDivider />
-            <SettingsLinkRow
-              Icon={FileText}
-              tint="muted"
-              href={MESITA_PRIVACY_URL}
-              label="Privacy policy"
-              sub="mesita.ai/privacy"
-              external
             />
           </SettingsGroup>
 

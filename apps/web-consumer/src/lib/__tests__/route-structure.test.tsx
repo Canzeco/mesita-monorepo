@@ -521,7 +521,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders eleven cells in a 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
+  it("renders thirteen cells in a 2 · 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
     // Five pairs and a full-width tail (MESITA-1639). MESITA-1636 broke the
     // rhythm with a four-up so the column would not read as undifferentiated,
     // and paid for it in the only four cells on the page with no summary. The
@@ -541,17 +541,31 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Reservations",
       "Share",
       "Gift",
+      "Connector",
+      "Friends",
       "Settings",
       "Help",
-      "Connector",
+      "About",
     ]);
+  });
+
+  it("the fully-parked row sits ABOVE Settings and Help", () => {
+    // Connector and Friends are both `soon`, so that row opens nothing at
+    // all (MESITA-1641). Settings and Help are the most-reached cells in the
+    // tail; pushing them under a dead pair is the ordering mistake this pins
+    // against. About closes the page because it is the version and legal
+    // cell — a footer, and the least-reached thing here.
+    const order = gridTitles(ME);
+    expect(order.indexOf("Connector")).toBeLessThan(order.indexOf("Settings"));
+    expect(order.indexOf("Help")).toBeLessThan(order.indexOf("About"));
+    expect(order.at(-1)).toBe("About");
   });
 
   it("every row is a pair, and the last is a deliberate full-width cell", () => {
     // Five `DestGrid`s of two plus one of one, spanned. Counting grids and
     // spans SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
     // four-up too, and would go on being true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(6);
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(7);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
@@ -618,14 +632,51 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
 
   it("every parked cell is marked `soon`, and only those four are", () => {
     // Nothing is hidden a tap deeper any more, so the page carries its own
-    // roadmap: four cells wear the pill. A fifth live-looking cell pointing
-    // at nothing — or one of these four quietly losing the flag — is the
-    // regression this catches.
+    // roadmap: five cells wear the pill. A sixth live-looking cell pointing
+    // at nothing — or one of these five quietly losing the flag — is the
+    // regression this catches. Five of thirteen is a lot; T8's own opening
+    // note says a dead cell in a grid reads as broken rather than upcoming,
+    // so treat this list growing as a signal, not a formality.
     const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
       .map((m) => m[0])
       .filter((c) => /\bsoon\b/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual(["Orders", "Share", "Gift", "Connector"]);
+    expect(parkedCells).toEqual([
+      "Orders",
+      "Share",
+      "Gift",
+      "Connector",
+      "Friends",
+    ]);
+  });
+
+  it("About is the only door to terms and privacy", () => {
+    // The Legal group MOVED out of Settings (MESITA-1641); a copy left behind
+    // would be a second door, which is what MESITA-1609 established as the
+    // thing to remove rather than demote. Reading the URL constants, not the
+    // words "terms"/"privacy" — Settings still has a Privacy GROUP about the
+    // account's visibility, which has nothing to do with the policy.
+    const dir = join(__dirname, "..", "..", "components", "consumer", "me");
+    const settings = readFileSync(join(dir, "SettingsModal.tsx"), "utf8");
+    const about = readFileSync(join(dir, "AboutModal.tsx"), "utf8");
+    for (const url of ["MESITA_TERMS_URL", "MESITA_PRIVACY_URL"]) {
+      expect(settings).not.toContain(url);
+      expect(about).toContain(url);
+    }
+  });
+
+  it("the version has ONE source, and it is not a literal on the page", () => {
+    // It was a hardcoded string in a <p> at the bottom of Me. It now renders
+    // twice — the About cell's summary and the About sheet — and two typed
+    // copies of a number that changes every release drift on release one.
+    //
+    // Comments STRIPPED first. The note explaining why the footer is gone
+    // necessarily quotes it, so a raw scan fires on its own rationale and
+    // the cheapest way to green it would be deleting the rationale — the
+    // failure mode passport-axes.test.ts documents at length.
+    const code = ME.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    expect(code).toContain("APP_VERSION");
+    expect(code).not.toMatch(/v\d+\.\d+\.\d+/);
   });
 });
 
