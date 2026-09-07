@@ -21,9 +21,9 @@ type PlaceState =
 
 type FiscalType = "formal" | "informal";
 // Place plan keys (public.membership enum): Free + Verified (`pro`,
-// MX$1,000/year Promos v4 membership) + legacy `ultra`. Billing goes through
-// business-web-change-subscription — see lib/business/plans.ts and
-// lib/api/subscription.ts.
+// MX$1,000/year Promos v4 membership) + legacy `ultra`. Plan changes are
+// billing, not profile: the admin grants it through admin-web-set-plan (see
+// setPlacePlan in place-manage/actions.ts) — never through this file.
 export type PlacePlan = "free" | "pro" | "ultra";
 
 // Weekly opening hours — JSONB column on places. Lowercase English day keys,
@@ -192,7 +192,7 @@ export type UpdatePlaceInput = {
   state?: "active" | "paused" | "archived";
   fiscal_type?: FiscalType;
   // NOTE: no `plan` here — plan changes are billing and go through
-  // apiChangeSubscription (business-web-change-subscription EF).
+  // setPlacePlan (admin-web-set-plan EF) instead.
   address?: string | null;
   closes_at?: string | null;
   hours?: PlaceHours | null;
