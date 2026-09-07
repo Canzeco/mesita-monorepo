@@ -4,11 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  apiEnrichCreatePlace,
-  apiPlacesAutocomplete,
-  type PlacePrediction,
-} from "@/lib/api/places";
+import { apiPlacesAutocomplete, type PlacePrediction } from "@/lib/api/places";
 import { apiLookupPlace, type LookupResult } from "@/lib/api/verifications";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -29,16 +25,6 @@ import {
 
 const SEARCH_DEBOUNCE_MS = 220;
 
-// Rolling status messages cycled into the Generate button while
-// business-web-create-place is running.
-const GENERATE_STAGE_MS = 6000;
-const GENERATE_STAGES = [
-  "Fetching Google profile…",
-  "Scanning the place's website…",
-  "Cross-checking social signals…",
-  "Synthesising the catalog entry…",
-];
-
 export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -55,11 +41,6 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
   const [lookupPending, startLookup] = useTransition();
   const [lookup, setLookup] = useState<LookupResult | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
-
-  // Generate-profile state (business-web-create-place).
-  const [generatePending, startGenerate] = useTransition();
-  const [generateStage, setGenerateStage] = useState<string | null>(null);
-  const [generateError, setGenerateError] = useState<string | null>(null);
 
   // Debounced autocomplete.
   useEffect(() => {
@@ -96,7 +77,6 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
     setPredictions([]);
     setLookup(null);
     setLookupError(null);
-    setGenerateError(null);
     startLookup(async () => {
       try {
         const r = await apiLookupPlace(supabase, prediction.placeId);
@@ -113,7 +93,6 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
     setPredictions([]);
     setLookup(null);
     setLookupError(null);
-    setGenerateError(null);
     sessionTokenRef.current = newSessionToken();
   };
 
@@ -125,30 +104,6 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
     } catch (err) {
       setLookupError(errMsg(err, "Could not refresh lookup."));
     }
-  };
-
-  const onGenerate = () => {
-    if (!selected || generatePending) return;
-    setGenerateError(null);
-    setGenerateStage(GENERATE_STAGES[0]);
-    let stageStep = 0;
-    const stageInterval = window.setInterval(() => {
-      stageStep = Math.min(stageStep + 1, GENERATE_STAGES.length - 1);
-      setGenerateStage(GENERATE_STAGES[stageStep]);
-    }, GENERATE_STAGE_MS);
-
-    startGenerate(async () => {
-      try {
-        await apiEnrichCreatePlace(supabase, selected.placeId);
-        setGenerateStage("Done");
-        await refreshLookup();
-      } catch (err) {
-        setGenerateError(errMsg(err, "Could not create place."));
-        setGenerateStage(null);
-      } finally {
-        window.clearInterval(stageInterval);
-      }
-    });
   };
 
   const verificationCallbacks: VerificationCallbacks = {
@@ -272,13 +227,7 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
       {selected && lookup && (
         <>
           {lookup.state === "not_in_mesita" && (
-            <NotInMesitaCard
-              prediction={selected}
-              pending={generatePending}
-              stage={generateStage}
-              error={generateError}
-              onGenerate={onGenerate}
-            />
+            <NotInMesitaCard prediction={selected} />
           )}
 
           {lookup.state === "web_listed_unclaimed" && (
