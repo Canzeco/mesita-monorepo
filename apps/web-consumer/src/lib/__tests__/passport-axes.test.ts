@@ -78,6 +78,10 @@ function selfClosingTag(source: string, component: string): string {
 const fieldLabels = (source: string) =>
   [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
 
+/** `<Tile eyebrow="X">` values, in render order. */
+const tileEyebrows = (source: string) =>
+  [...source.matchAll(/eyebrow="([^"]+)"/g)].map((m) => m[1]);
+
 const planShaped = (names: string[]) =>
   names.filter((n) => /plan/i.test(n)).sort();
 
@@ -106,38 +110,60 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     expect(bound).not.toContain("renewsAt");
   });
 
+  it("renders exactly the two earned-and-public tiles", () => {
+    expect(tileEyebrows(card)).toEqual(["Class", "Instagram"]);
+  });
+
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {
     // The metal band and the avatar ring are both `aria-hidden` on the stated
-    // ground that something else says the rung in words. That used to be the
-    // Class tile; it is the chip now. If the chip goes without a replacement,
-    // two aria-hidden elements become screen-reader regressions in silence.
+    // ground that something else says the rung in words. That is the CLASS
+    // TILE. If it goes without a replacement, two aria-hidden elements become
+    // screen-reader regressions in silence.
     expect(card).toContain("aria-hidden");
     expect(card).toContain("classBadgeClass(key)");
-    expect(card).toContain("{classLabel}");
+    expect(card).toContain("value={classLabel}");
     expect(card).toContain("onClick={onOpenClass}");
-    // The label announces the account's STATE, never the slogan: "Earned, not
-    // bought" is identical on every account at every rung, forever.
-    expect(card).toMatch(/aria-label=\{`Class: \$\{classLabel\}/);
+    // The note carries the rung's REWARD, never the slogan: "Earned, not
+    // bought" was identical on every account at every rung, forever, and a
+    // screen reader announced it as if it were state.
     expect(card).toMatch(/cls\?\.reward/);
-    // The slogan must not be RENDERED. The comment above the chip quotes it
+    // The slogan must not be RENDERED. The comment above the tile quotes it
     // to say why it is gone, which is why this reads code, not the file.
     expect(codeOnly(card)).not.toContain("Earned, not bought");
   });
 
-  it("the skeleton mirrors the DESTINATION by sharing its shell", () => {
-    // MESITA-1158's rule, pinned as a SHARED CONSTANT rather than as two
-    // matching literals. The way it broke before was a hand-tuned `h-[92px]`
-    // measured against a layout that had since moved — two numbers guessed
-    // independently, drifting apart in silence.
-    const loading = card.indexOf("if (loading)");
-    const live = card.indexOf("const name =");
-    expect(loading).toBeGreaterThan(-1);
-    expect(live).toBeGreaterThan(loading);
+  it("never paints the Instagram tile with the badge gradient", () => {
+    // White on that gradient's #feda75 stop measures 1.36:1 — the MESITA-1142
+    // fill/ink failure, missed here for a year because Instagram is not a
+    // metal. The brand colour belongs on a glyph that carries no text.
+    const named = importedFrom(card, "@/lib/ui-classes");
+    expect(named).toEqual(["INSTAGRAM_ICON_GRADIENT_CLASS"]);
+  });
 
-    const skeletonBranch = card.slice(loading, live);
-    const liveBranch = card.slice(live);
-    expect(skeletonBranch).toContain("PASSPORT_ROW_CLASS");
-    expect(liveBranch).toContain("PASSPORT_ROW_CLASS");
+  it("the skeleton mirrors the DESTINATION — same tile count, same grid", () => {
+    // MESITA-1158's rule, pinned as a RELATION and not as a literal: the card
+    // may be relaid out, but a skeleton resolving to a different shape is
+    // always the bug. It broke before as a hand-tuned `h-[92px]` measured
+    // against a layout that had since moved — two numbers guessed twice.
+    const tiles = [...card.matchAll(/<Tile\b/g)].length;
+    expect(tiles).toBeGreaterThan(0);
+
+    const blocks = card.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
+    expect(blocks, "the skeleton no longer maps a fixed-length array").not.toBeNull();
+    expect(Number(blocks![1])).toBe(tiles);
+
+    const cols = [...card.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
+    expect(cols.length).toBe(2); // the live grid and the skeleton's
+    expect(new Set(cols)).toEqual(new Set([tiles]));
+  });
+
+  it("opens the document without nesting a button inside a button", () => {
+    // The identity zone and the number footer both open the passport sheet;
+    // the two tiles open their own surfaces. All four are SIBLINGS — wrapping
+    // the card to make "tap anywhere" work would nest the tiles inside it,
+    // which is invalid and breaks both.
+    expect(card).toContain("onOpenPassport");
+    expect(codeOnly(card)).not.toMatch(/<section[^>]*onClick/);
   });
 });
 
@@ -177,14 +203,15 @@ describe("the plan keeps one door, and only one", () => {
     expect(client).toMatch(/<PlanModal\b/);
   });
 
-  it("More does NOT carry a second door to it", () => {
+  it("More carries no second door to the plan or the passport", () => {
     // Wallet's precedent (MESITA-1609): a box promoted to primary loses its
     // More row, "removed, not demoted", because a second door is redundant
     // with the one the promotion exists to shorten.
-    expect(selfClosingTag(client, "MoreModal")).not.toContain("onOpenPlan");
-    expect(read("components/consumer/me/MoreModal.tsx")).not.toContain(
-      "onOpenPlan",
-    );
+    const more = read("components/consumer/me/MoreModal.tsx");
+    for (const door of ["onOpenPlan", "onOpenPassport"]) {
+      expect(selfClosingTag(client, "MoreModal")).not.toContain(door);
+      expect(more).not.toContain(door);
+    }
   });
 });
 

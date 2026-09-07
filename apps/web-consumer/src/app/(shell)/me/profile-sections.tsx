@@ -125,3 +125,96 @@ export function BoxGroup({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+// ─── The status band (MESITA-1622) ─────────────────────────────────────────
+//
+// THE PAGE TEACHES ITS OWN RULE, AND THIS IS HALF OF IT. The band holds things
+// that carry a COUNT; the BoxRow list below holds DESTINATIONS. Nothing labels
+// that split — it is legible because the two zones are different MATERIAL: the
+// band is a `bg-muted` fill with no border, the list is a white card. Wallet
+// and Plan were drawn as tiles in the first sketch and moved to the list for
+// exactly this reason: they have no number, so as tiles they made the rule
+// unlearnable.
+//
+// MATERIAL, NOT MORE CHROME. The band's first build gave every tile the list's
+// own `bg-card` + border treatment, which made the whole screen one
+// undifferentiated mosaic of cards — a stack of cards standing in for a
+// layout. Two materials, two meanings, no extra ink.
+//
+// THE COUNT DOES NOT SHOUT. It sits at `text-lg` under a bold label, not above
+// it in a display numeral. At 26px the visit count outweighed the guest's own
+// name and their class on their own identity screen — and with the catalog
+// empty, the number it was shouting was zero.
+
+/** One band cell. Parked cells use the same `soon` contract as `BoxShell`. */
+export function StatTile({
+  Icon,
+  label,
+  count,
+  loading = false,
+  soon = false,
+  onClick,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  /** `null` and `0` both read as the empty state — see the note below. */
+  count?: number | null;
+  loading?: boolean;
+  /** Parked: visible, inert, honest. Un-park = drop the flag. */
+  soon?: boolean;
+  onClick?: () => void;
+}) {
+  // ZERO AND UNKNOWN READ THE SAME, ON PURPOSE. A metrics read that failed and
+  // an account with no visits are both "nothing to show yet", and the honest
+  // copy for both is the same words. Printing a hard `0` for a failed read
+  // would state a fact we do not have.
+  const empty = count == null || count === 0;
+  const value = loading ? "…" : empty ? "None yet" : String(count);
+  return (
+    <button
+      type="button"
+      onClick={soon ? undefined : onClick}
+      disabled={soon}
+      aria-disabled={soon}
+      title={soon ? "Coming soon" : undefined}
+      // Value THEN label: a screen reader announcing "Visits" alone tells the
+      // guest nothing they could not see from the label.
+      aria-label={soon ? `${label}: coming soon` : `${label}: ${value}`}
+      className={cn(
+        "bg-muted flex min-h-[84px] w-full flex-col items-start justify-between rounded-2xl p-3 text-left transition",
+        soon ? "opacity-55" : "hover:bg-muted/70 active:scale-[0.98]",
+      )}
+    >
+      <Icon className="text-foreground/55 h-[18px] w-[18px] shrink-0" />
+      <span className="w-full min-w-0">
+        {soon ? (
+          <span className="border-border text-muted-foreground type-meta inline-block rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
+            Soon
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "block truncate",
+              empty || loading
+                ? "text-muted-foreground text-sm font-semibold"
+                : "font-display text-lg leading-none font-semibold tracking-tight",
+            )}
+          >
+            {value}
+          </span>
+        )}
+        {/* `truncate` and not a wrap: at 320px the cell is 80px wide and
+            "Bookings" needs ~62px, so it clears with a glyph to spare. A wrap
+            here would make one cell taller than its siblings. */}
+        <span className="mt-[3px] block truncate text-xs font-bold tracking-tight">
+          {label}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Three cells, equal width, equal height. */
+export function StatBand({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-3 items-stretch gap-2">{children}</div>;
+}

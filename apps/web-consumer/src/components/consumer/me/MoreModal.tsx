@@ -7,7 +7,6 @@ import {
   CreditCard,
   Gift,
   HelpCircle,
-  IdCard,
   Instagram,
   Mail,
   MoreHorizontal,
@@ -38,9 +37,11 @@ import { cn } from "@/lib/utils";
 // The tile was the only thing making a subscription two taps deep survivable,
 // so Plan went back to primary and Instagram took the passport's full width.
 //
-// Neither Wallet nor Plan has a row here any more (MESITA-1609 and -1619,
-// removed, not demoted). Both are PRIMARY boxes on Me, so a second door here
-// would be redundant with the one that promotion exists to shorten.
+// Wallet, Plan and Passport have no row here any more (MESITA-1609, -1619,
+// -1622: removed, not demoted). Each is reachable from the Me page itself —
+// Wallet and Plan as list rows, the Passport as the card at the top and its
+// member-number footer — so a second door here would be redundant with the
+// one that promotion exists to shorten.
 //
 // Neutral chips, like the boxes that lead Me itself (MESITA-1132): colour on
 // this surface belongs to the passport alone.
@@ -61,8 +62,6 @@ export function MoreModal({
   onOpenCards,
   onOpenInstagram,
   igSummary,
-  onOpenPassport,
-  passportSummary,
   onOpenAiConnect,
   onOpenShare,
   onOpenMetrics,
@@ -75,8 +74,6 @@ export function MoreModal({
   onOpenCards: () => void;
   onOpenInstagram: () => void;
   igSummary: string;
-  onOpenPassport: () => void;
-  passportSummary: string;
   onOpenAiConnect: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
@@ -105,13 +102,6 @@ export function MoreModal({
       title: "Instagram",
       summary: igSummary,
       onClick: onOpenInstagram,
-    },
-    {
-      key: "passport",
-      Icon: IdCard,
-      title: "Passport",
-      summary: passportSummary,
-      onClick: onOpenPassport,
     },
     {
       key: "gift",
