@@ -218,3 +218,79 @@ export function StatTile({
 export function StatBand({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-3 items-stretch gap-2">{children}</div>;
 }
+
+// ─── The destination grid (MESITA-1628) ────────────────────────────────────
+//
+// DiDi's "More Services" geometry, Mesita's ink. Two up, a title, a subtitle
+// of two or three words, and a line glyph in the bottom-right corner.
+//
+// NEUTRAL, AND THAT IS THE WHOLE POINT OF THE PORT. What makes the DiDi screen
+// feel good is eleven colourful illustrations, and this page deleted exactly
+// that (MESITA-1132, see the note at the top of this file): tinted per-box
+// chips gave equal emphasis to seven things, so nothing led, and they competed
+// with the passport. DiDi can spend that colour budget because its identity is
+// one grey header line. Mesita's identity is a metal-banded card whose entire
+// job is that colour means class, sitting directly above this grid. So the
+// shape transfers and the colour does not — the glyph is `text-foreground` at
+// 22%, loud enough to read as intentional, quiet enough to leave the band
+// leading. Do not tint these one cell at a time; that is how the chips came
+// back last time.
+//
+// COPY IS THE LAYOUT CONSTRAINT, NOT THE CSS. DiDi's subtitles are two or
+// three words ("See More", "Fast and safe", "Up to 6%") and that is why its
+// grid never goes ragged. At 375px a cell is ~167px and the glyph gutter takes
+// 38px; at 320px the whole cell is ~140px. The first build reserved that
+// gutter and truncated, which clipped five of eight subtitles into ellipses —
+// worse than wrapping. Keep every `summary` to three words or fewer and the
+// question never comes up. `min-h` holds the rows even when one title wraps.
+
+export function DestGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 items-stretch gap-2">{children}</div>;
+}
+
+/** One grid cell. A DESTINATION — it has no count; things with counts are
+ *  `StatTile`s in the muted band above. */
+export function DestTile({
+  Icon,
+  title,
+  summary,
+  onClick,
+  disabled,
+}: {
+  Icon: LucideIcon;
+  title: string;
+  /** THREE WORDS OR FEWER — see the note above. */
+  summary: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-disabled={disabled}
+      className={cn(
+        "border-border bg-card shadow-rest relative flex min-h-[92px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition",
+        disabled ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
+      )}
+    >
+      <span className="min-w-0">
+        {/* The gutter is reserved on the TEXT, not by shrinking the cell, so
+            the glyph can sit in the corner without ever overlapping a word. */}
+        <span className="block truncate pr-9 text-sm font-bold tracking-tight">
+          {title}
+        </span>
+        <span className="text-muted-foreground mt-0.5 block pr-9 text-xs leading-snug">
+          {summary}
+        </span>
+      </span>
+      {/* Decorative. The title and summary already say everything, so this is
+          hidden rather than described. */}
+      <Icon
+        className="text-foreground pointer-events-none absolute right-2.5 bottom-2 h-10 w-10 opacity-[0.22]"
+        aria-hidden
+      />
+    </button>
+  );
+}

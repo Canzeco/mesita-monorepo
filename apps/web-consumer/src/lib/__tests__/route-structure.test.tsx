@@ -499,6 +499,68 @@ describe("T6 — Activity's three sections are sheets on Me", () => {
   });
 });
 
+// ── T8 — the destination grid holds only things that work ──────────────────
+//
+// MESITA-1628 moved Me's long tail onto the page as a 2-up grid and left the
+// PARKED tail behind More. That split is the whole product decision: three
+// greyed cells out of eleven is a quarter of the block, and in a grid a dead
+// cell reads as broken rather than upcoming.
+//
+// The regression this catches is a parked feature drifting up into the grid
+// because it "looks ready" — the grid cell has no `soon` prop at all, so it
+// would ship as a live tile pointing at nothing.
+describe("T8 — Me's grid is live cells, More is the parked tail", () => {
+  const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
+  const MORE = readFileSync(
+    join(__dirname, "..", "..", "components", "consumer", "me", "MoreModal.tsx"),
+    "utf8",
+  );
+
+  /** `<DestTile … title="X">` values, in render order. */
+  const gridTitles = (source: string) => {
+    const cells = [...source.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map(
+      (m) => m[0],
+    );
+    return cells
+      .map((c) => c.match(/title="([^"]+)"/)?.[1])
+      .filter((t): t is string => Boolean(t));
+  };
+
+  const PARKED = ["Gift", "Share", "AI Connector"];
+
+  it("renders the Wallet/Plan pair and then the eight-cell grid", () => {
+    expect(gridTitles(ME)).toEqual([
+      "Wallet",
+      "Plan",
+      "Profile",
+      "Settings",
+      "Cards",
+      "Instagram",
+      "Metrics",
+      "Help",
+      "Contact",
+      "More",
+    ]);
+  });
+
+  it("no parked feature has drifted into the grid", () => {
+    // A DestTile has no `soon` prop, so a parked cell here would render as a
+    // live tile pointing at nothing.
+    for (const parked of PARKED) {
+      expect(gridTitles(ME)).not.toContain(parked);
+    }
+  });
+
+  it("More still holds all three, and every one of them is parked", () => {
+    for (const parked of PARKED) {
+      expect(MORE).toContain(`title: "${parked}"`);
+    }
+    // Three rows, three `soon: true`. If a row un-parks it belongs in the
+    // grid, not left here reading as a coming-soon item that already works.
+    expect([...MORE.matchAll(/soon: true/g)]).toHaveLength(PARKED.length);
+  });
+});
+
 // ── T7 — a MOVED route keeps its redirect ───────────────────────────────────
 //
 // T4 walks nextConfig.redirects() and proves every destination resolves. It
