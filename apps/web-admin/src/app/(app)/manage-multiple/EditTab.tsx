@@ -15,7 +15,7 @@ import {
 } from "@/lib/business/strategies";
 import type { BatchRowState } from "./StateIcon";
 
-export type EditFact = "listed" | "active" | "verified" | "partner" | "promoting";
+export type EditFact = "active" | "listed" | "verified" | "partner" | "promoting";
 
 export type EditValues = {
   listedOn: boolean;
@@ -51,7 +51,9 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 const SELECT_CLASS =
   "bg-transparent h-10 max-w-full min-w-0 rounded-lg px-2 text-sm outline-none";
 
-// State + value, grouped with Update by the caller. Listed · Active · Verified · Partnered · Promoted.
+// State + value, grouped with Update by the caller. Active · Listed · Verified ·
+// Partnered · Visit Rewards — the settable subset of GENERAL_STATE_FACTS
+// (shared/state-vocabulary.ts, MESITA-1608), in that vocabulary's own order.
 export function UpdateFields({
   fact,
   onFact,
@@ -78,24 +80,12 @@ export function UpdateFields({
         onChange={(e) => onFact(e.target.value as EditFact)}
         className={SELECT_CLASS}
       >
-        <option value="listed">Listed</option>
         <option value="active">Active</option>
+        <option value="listed">Listed</option>
         <option value="verified">Verified</option>
         <option value="partner">Partnered</option>
         <option value="promoting">Visit Rewards</option>
       </select>
-      {fact === "listed" ? (
-        <ValueSelect
-          ariaLabel="Value"
-          disabled={disabled}
-          value={values.listedOn ? "on" : "off"}
-          onChange={(v) => onValues({ ...values, listedOn: v === "on" })}
-          options={[
-            { value: "on", label: "On" },
-            { value: "off", label: "Off" },
-          ]}
-        />
-      ) : null}
       {fact === "active" ? (
         <ValueSelect
           ariaLabel="Value"
@@ -105,6 +95,18 @@ export function UpdateFields({
           options={[
             { value: "on", label: "On" },
             { value: "off", label: "Off · also unlists" },
+          ]}
+        />
+      ) : null}
+      {fact === "listed" ? (
+        <ValueSelect
+          ariaLabel="Value"
+          disabled={disabled}
+          value={values.listedOn ? "on" : "off"}
+          onChange={(v) => onValues({ ...values, listedOn: v === "on" })}
+          options={[
+            { value: "on", label: "On" },
+            { value: "off", label: "Off" },
           ]}
         />
       ) : null}
@@ -181,15 +183,6 @@ export async function applyOne(
   if (!hit) return { state: "error", error: "Not on Mesita" };
   const name = hit.google_name || hit.name;
 
-  if (fact === "listed") {
-    const r = await setPlaceListed(hit.id, values.listedOn);
-    if (!r.ok) return { state: "error", name, error: r.error };
-    return {
-      state: "ok",
-      name,
-      detail: values.listedOn ? "Listed on" : "Listed off",
-    };
-  }
   if (fact === "active") {
     const r = await setPlaceActive(hit.id, values.activeOn);
     if (!r.ok) return { state: "error", name, error: r.error };
@@ -197,6 +190,15 @@ export async function applyOne(
       state: "ok",
       name,
       detail: values.activeOn ? "Active on" : "Active off · unlisted",
+    };
+  }
+  if (fact === "listed") {
+    const r = await setPlaceListed(hit.id, values.listedOn);
+    if (!r.ok) return { state: "error", name, error: r.error };
+    return {
+      state: "ok",
+      name,
+      detail: values.listedOn ? "Listed on" : "Listed off",
     };
   }
   if (fact === "verified") {
