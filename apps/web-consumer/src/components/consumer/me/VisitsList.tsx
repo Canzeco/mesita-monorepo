@@ -1,10 +1,10 @@
 "use client";
 
-// Inbox › Visits — every ticket you hold, live ones first.
+// Me › Visits — every ticket you hold, live ones first.
 //
-// This is the TRACKING view of a visit. Rewards stays the place you START one
-// (pick a place, open a ticket) and where you pay; Inbox is where you watch
-// the ones already in flight. Same data either way: this reads the very same
+// This is the TRACKING view of a visit. Pay stays the place you START one
+// (pick a place, open a ticket) and where you pay; this is where you watch the
+// ones already in flight. Same data either way: this reads the very same
 // useConsumerTickets hook the Rewards wallet does, so a ticket that moves
 // state shows the same caption in both places and there is no second source
 // of truth to drift.
@@ -23,7 +23,7 @@ import { EmptyState } from "@/components/shared";
 import { useConsumerTickets } from "@/lib/hooks/useConsumerTickets";
 import { CONSUMER_ROUTES, ticketPath } from "@/lib/consumer-route-contract";
 
-export function InboxVisitsClient({ userId }: { userId: string }) {
+export function VisitsList({ userId }: { userId: string }) {
   const router = useRouter();
   const tickets = useConsumerTickets(userId);
 

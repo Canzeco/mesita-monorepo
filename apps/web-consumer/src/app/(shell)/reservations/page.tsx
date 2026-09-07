@@ -5,5 +5,5 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // Kept as a page (not a next.config redirect) so it sits beside the other
 // legacy surface redirects and stays greppable from the route tree.
 export default function ReservationsLegacyPage() {
-  redirect(CONSUMER_ROUTES.inbox.reservations);
+  redirect(CONSUMER_ROUTES.me);
 }

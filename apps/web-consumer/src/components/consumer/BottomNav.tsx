@@ -179,7 +179,6 @@ const ITEMS: Item[] = [
     // instead of Activity.
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.me,
-      CONSUMER_ROUTE_PREFIX.inbox,
       CONSUMER_ROUTE_PREFIX.visit,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
     ],

@@ -111,7 +111,9 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
   });
 
   it("renders exactly the two earned-and-public tiles", () => {
-    expect(tileEyebrows(card)).toEqual(["Class", "Instagram"]);
+    // Instagram LEFT, Class RIGHT (decision: Pato, MESITA-1626) — the door
+    // that changes your class reads before the class it changes.
+    expect(tileEyebrows(card)).toEqual(["Instagram", "Class"]);
   });
 
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {

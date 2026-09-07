@@ -26,6 +26,11 @@ import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
 import { MoreModal } from "@/components/consumer/me/MoreModal";
+import {
+  AlertsModal,
+  BookingsModal,
+  VisitsModal,
+} from "@/components/consumer/me/ActivityModals";
 import { PassportModal } from "@/components/consumer/me/PassportModal";
 import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
@@ -129,6 +134,11 @@ export function ProfileClient({
   const [cardsOpen, setCardsOpen] = useState(openCards);
   const [planOpen, setPlanOpen] = useState(false);
   const [passportOpen, setPassportOpen] = useState(false);
+  // Activity's three sections, one sheet each (MESITA-1626) — the `/inbox`
+  // container they used to share is gone.
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [visitsOpen, setVisitsOpen] = useState(false);
+  const [bookingsOpen, setBookingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -257,7 +267,7 @@ export function ProfileClient({
               label="Visits"
               count={visits}
               loading={loading}
-              onClick={() => router.push(CONSUMER_ROUTES.inbox.visits)}
+              onClick={() => setVisitsOpen(true)}
             />
             {/* PARKED, and honest about it (MESITA-1622). `/inbox/orders`
                 308s to Visits, there is no orders table or EF, and the
@@ -270,7 +280,7 @@ export function ProfileClient({
               label="Bookings"
               count={reservationsBooked}
               loading={loading}
-              onClick={() => router.push(CONSUMER_ROUTES.inbox.reservations)}
+              onClick={() => setBookingsOpen(true)}
             />
           </StatBand>
 
@@ -306,7 +316,7 @@ export function ProfileClient({
               Icon={Bell}
               title="Alerts"
               summary="Notifications and updates"
-              onClick={() => router.push(CONSUMER_ROUTES.inbox.notifications)}
+              onClick={() => setAlertsOpen(true)}
             />
             <BoxRow
               bare
@@ -392,6 +402,24 @@ export function ProfileClient({
         onClose={() => setDeleteOpen(false)}
       />
       <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
+      {/* One sheet per box. `userId` is the consumers row id — both bodies
+          treat it as an on/off flag and read the session inside their EF, so
+          the sheets render an honest zero state until the profile lands
+          rather than firing a request they cannot attribute. */}
+      <AlertsModal
+        open={alertsOpen}
+        onClose={() => setAlertsOpen(false)}
+        userId={profile?.id ?? ""}
+      />
+      <VisitsModal
+        open={visitsOpen}
+        onClose={() => setVisitsOpen(false)}
+        userId={profile?.id ?? ""}
+      />
+      <BookingsModal
+        open={bookingsOpen}
+        onClose={() => setBookingsOpen(false)}
+      />
       <PassportModal
         open={passportOpen}
         onClose={() => setPassportOpen(false)}
