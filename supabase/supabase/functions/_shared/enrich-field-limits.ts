@@ -79,6 +79,6 @@ export const ENRICH_FIELD_LIMITS = {
     min: 1,
     max: 4,
     unit: "range",
-    note: "places_price_level_check (DB CHECK) — Google Places only; the EF rejects manual writes.",
+    note: "place_profiles_price_level_check (DB CHECK) — Google Places only; the EF rejects manual writes.",
   },
 } as const;

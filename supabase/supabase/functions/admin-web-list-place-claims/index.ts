@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   let query = admin
     .from("projects")
     .select(
-      "id, claimed_by, claimed_at, claim_reviewed_at, claim_reviewed_by, organization:organizations(id, name), claimer:managers!claimed_by(full_name, email), place:places(name, address, google_place_id)",
+      "id, claimed_by, claimed_at, claim_reviewed_at, claim_reviewed_by, organization:organizations(id, name), claimer:managers!claimed_by(full_name, email), place:place_profiles(name, address, google_place_id)",
     )
     .not("organization_id", "is", null)
     .not("claimed_by", "is", null)

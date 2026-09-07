@@ -69,7 +69,7 @@ export const FORBIDDEN_COLUMNS: readonly string[] = [
 ];
 
 export const GET_PLACE_SELECT =
-  `${PROJECT_COLUMNS.join(", ")}, places!inner(${PLACE_COLUMNS.join(", ")})`;
+  `${PROJECT_COLUMNS.join(", ")}, place_profiles!inner(${PLACE_COLUMNS.join(", ")})`;
 
 /** Photos are capped for the wire, not for the truth: `totalPhotos` still
  *  reports the real count so the screen can say "10 of 13".

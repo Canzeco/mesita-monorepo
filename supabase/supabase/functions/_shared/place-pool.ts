@@ -28,7 +28,7 @@ export {
 // carry died with the Lineup engine (MESITA-1048):
 //   • manual_priority           — the MP subscore's input. The column itself is
 //                                 now GONE (MESITA-1055 dropped it from
-//                                 public.places and from the profiles view).
+//                                 public.place_profiles and from the profiles view).
 //   • embedding_source_hash     — only the lazy-embed writeback needed these,
 //   • embedding_source_text       and nothing on this path writes.
 // `embedding` is stripped by stripInternal before a row crosses back over the

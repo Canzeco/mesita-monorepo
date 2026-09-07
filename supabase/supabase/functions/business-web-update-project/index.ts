@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
   }
   if ("address" in body) {
     // Address is native — seeded from Google Places and refined by the
-    // Intaker, which writes public.places directly. Reject so stale clients
+    // Intaker, which writes public.place_profiles directly. Reject so stale clients
     // learn the contract — same posture as `price_level` and `plan`.
     return json(
       {

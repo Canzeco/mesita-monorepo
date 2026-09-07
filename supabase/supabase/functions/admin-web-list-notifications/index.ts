@@ -9,7 +9,7 @@
 // *derived* (we read the timestamps the product already writes); the fourth
 // reads the dedicated per-step events table the Intaker pipeline appends to:
 //
-//   atlas.place_created      a new row in public.places
+//   atlas.place_created      a new row in public.place_profiles
 //   atlas.place_enriched     a place whose Intaker pass completed
 //                            (enriched_at stamped) — carries the textual
 //                            summary the enricher synthesised
@@ -117,7 +117,7 @@ const ALL_CATEGORIES: Category[] = ["atlas", "consumer", "rewards", "reservation
 // places) — same hop-through-projects embed the claims source uses, plus the
 // consumer for the actor line.
 const PROJECT_EMBED =
-  "project:projects(id, slug, place:places(name, address, category_label, google_place_id))";
+  "project:projects(id, slug, place:place_profiles(name, address, category_label, google_place_id))";
 const CONSUMER_EMBED =
   "consumer:consumers(full_name, first_name, last_name, instagram_handle)";
 
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
         let qb = admin
           .from("place_enrichment_events")
           .select(
-            "id, place_id, step, step_name, state, detail, meta, created_at, place:places(id, name, address, category_label, google_place_id)",
+            "id, place_id, step, step_name, state, detail, meta, created_at, place:place_profiles(id, name, address, category_label, google_place_id)",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
             // project_verifications has no FK to places — it references the
             // projects entity (shared PK with places). Hop through projects to
             // reach the profile; slug lives on projects, the rest on places.
-            "id, place_id, method, requester_email, state, created_at, project:projects(id, slug, place:places(name, address, category_label, google_place_id))",
+            "id, place_id, method, requester_email, state, created_at, project:projects(id, slug, place:place_profiles(name, address, category_label, google_place_id))",
           )
           .order("created_at", { ascending: false })
           .limit(limit);

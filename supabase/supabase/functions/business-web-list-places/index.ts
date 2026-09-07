@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     .from("projects")
     .select(
       `id, state, content_state, organization_id, claimed_at, ` +
-        `places!inner(${PLACE_EMBED}), organizations(name)`,
+        `place_profiles!inner(${PLACE_EMBED}), organizations(name)`,
     )
     .limit(limit);
 
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
     q = q.is("organization_id", null);
   }
 
-  if (search) q = q.ilike("places.name", `%${search}%`);
+  if (search) q = q.ilike("place_profiles.name", `%${search}%`);
 
   const { data, error } = await q;
   if (error) return json({ ok: false, error: error.message }, 500);
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     content_state: string | null;
     organization_id: string | null;
     claimed_at: string | null;
-    places: {
+    place_profiles: {
       name: string;
       address: string | null;
       zone: string | null;
@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     ok: true,
     scope,
     places: rows.map((r) => {
-      const p = r.places;
+      const p = r.place_profiles;
       return {
         id: r.id,
         name: p.name,

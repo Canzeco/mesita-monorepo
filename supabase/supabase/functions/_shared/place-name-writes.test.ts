@@ -1,10 +1,10 @@
-// Source guard: nothing may write `places.name`.
+// Source guard: nothing may write `place_profiles.name`.
 //
-// `places.name` is a GENERATED column (coalesce(mesita_name, google_name)).
+// `place_profiles.name` is a GENERATED column (coalesce(mesita_name, google_name)).
 // Postgres rejects writes to it, so a straggler write is a hard 428C9 at
 // runtime rather than a silent clobber — but `deno test` has no database
 // attached, and `supabase gen types` does NOT mark generated columns read-only
-// (places.Insert still carries `name?: string`), so TypeScript will not catch
+// (place_profiles.Insert still carries `name?: string`), so TypeScript will not catch
 // it either. This scan is the only check that runs before deploy.
 //
 // It also pins the two rules that replaced the old sticky-sync design:
@@ -76,10 +76,10 @@ const BARE_NAME_KEY = /(?<![\w$])name\s*:/;
 /** `something.name = ...` assignment building a write payload. */
 const BARE_NAME_ASSIGN = /(?<![\w$])update\.name\s*=|(?<![\w$])nameUpdate\.name\s*=/;
 
-const PLACE_TABLE = /\.from\(\s*["'](places|profiles)["']\s*\)/g;
+const PLACE_TABLE = /\.from\(\s*["'](place_profiles|profiles)["']\s*\)/g;
 const WRITE_CALL = /\.(insert|update|upsert)\s*\(/;
 
-Deno.test("no Edge Function writes places.name (it is a generated column)", async () => {
+Deno.test("no Edge Function writes place_profiles.name (it is a generated column)", async () => {
   const offenders: string[] = [];
   for (const { path, text } of await tsSources()) {
     const src = stripLineComments(text);
@@ -93,13 +93,13 @@ Deno.test("no Edge Function writes places.name (it is a generated column)", asyn
       }
     }
     if (BARE_NAME_ASSIGN.test(src)) {
-      offenders.push(`${path} — assigns \`name\` into a places update payload`);
+      offenders.push(`${path} — assigns \`name\` into a place_profiles update payload`);
     }
   }
   assertEquals(
     offenders,
     [],
-    `places.name is generated and rejects writes. Write mesita_name (operator ` +
+    `place_profiles.name is generated and rejects writes. Write mesita_name (operator ` +
       `override) or google_name (Intaker observation) instead.\n` +
       offenders.join("\n"),
   );
@@ -211,7 +211,7 @@ Deno.test("place-display-name.ts stays deleted", async () => {
   assertEquals(
     exists,
     false,
-    "Display resolution lives in the generated `places.name` column. A second " +
+    "Display resolution lives in the generated `place_profiles.name` column. A second " +
       "resolver in TypeScript can drift from it.",
   );
 

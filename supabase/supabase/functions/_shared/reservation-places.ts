@@ -1,13 +1,13 @@
 // Attaching the place summary to reservation rows.
 //
-// WHY THIS EXISTS: a PostgREST embed `place:places(...)` from `reservations`
+// WHY THIS EXISTS: a PostgREST embed `place:place_profiles(...)` from `reservations`
 // is IMPOSSIBLE — the FK chain is two hops,
 //
-//   reservations.project_id → projects.id → places.id  (units_place_fk)
+//   reservations.project_id → projects.id → place_profiles.id  (units_place_fk)
 //
 // so the embed fails at runtime with "Could not find a relationship between
-// 'reservations' and 'places' in the schema cache" (hit live 2026-07-27 the
-// moment the consumer Reservations tab was ungated). `slug` isn't on `places`
+// 'reservations' and 'place_profiles' in the schema cache" (hit live 2026-07-27 the
+// moment the consumer Reservations tab was ungated). `slug` isn't on `place_profiles`
 // either — it lives on `projects`. Both facts make the one-query embed a trap;
 // this helper does the explicit lookup instead, exactly like the call engine
 // (supabase-edgefunc-reservation-call) already does for a single row.
@@ -21,7 +21,7 @@
 // projects, so they use this helper too. The summary is a SUPERSET of what
 // those callers need (extra keys are harmless); note which side each column
 // lives on, because the old embeds got that wrong as well:
-//   places   → name, category, photos, address, price_level, lat, lng
+//   place_profiles   → name, category, photos, address, price_level, lat, lng
 //   projects → slug, listing_type, fiscal_type, the four promo rate columns
 //
 // The rate columns ride along (MESITA-869) so a consumer surface can quote
@@ -43,7 +43,7 @@ export type PlaceSummary = {
   welcome_premium_rate: number | null;
   free_rate: number | null;
   premium_rate: number | null;
-  /** From places. */
+  /** From place_profiles. */
   name: string | null;
   category: string | null;
   photos: string[] | null;
@@ -74,14 +74,14 @@ export async function attachPlaces<T extends RowWithProject>(
   const byId = new Map<string, PlaceSummary>();
 
   if (ids.length > 0) {
-    // projects.id → places.id is a real FK, so THIS embed resolves. slug comes
-    // from projects; the rest from places.
+    // projects.id → place_profiles.id is a real FK, so THIS embed resolves. slug comes
+    // from projects; the rest from place_profiles.
     const { data } = await admin
       .from("projects")
       .select(
         "id, slug, listing_type, fiscal_type, " +
           "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +
-          "place:places(id, name, google_name, category, photos, address, price_level, lat, lng)",
+          "place:place_profiles(id, name, google_name, category, photos, address, price_level, lat, lng)",
       )
       .in("id", ids);
     type Row = {

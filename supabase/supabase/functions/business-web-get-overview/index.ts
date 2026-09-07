@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
         .eq("id", requestedPlaceId)
         .maybeSingle(),
       admin
-        .from("places")
+        .from("place_profiles")
         .select(
           "enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
         )

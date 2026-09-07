@@ -11,8 +11,8 @@
 //       improving its own guesses as signals get richer.
 //   An operator-chosen name matches none of those and is NEVER overwritten.
 //
-// Provenance lives in places.enrichment_sources.mesita_name_inferred (the
-// diagnostics blob the enricher inspector already renders). places.name
+// Provenance lives in place_profiles.enrichment_sources.mesita_name_inferred (the
+// diagnostics blob the enricher inspector already renders). place_profiles.name
 // stays GENERATED — nothing here writes `name`.
 //
 // place-name-writes.test.ts scans enrich-path files for raw `mesita_name:`
@@ -40,7 +40,7 @@ export async function applyInferredMesitaName(
   if (!candidate) return { wrote: false, reason: "empty" };
 
   const { data, error } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("mesita_name, google_name, enrichment_sources")
     .eq("id", placeId)
     .maybeSingle();
@@ -59,7 +59,7 @@ export async function applyInferredMesitaName(
     // reclassify this machine value as an operator's.
     if (lastInferred !== candidate) {
       await writePlace(admin, {
-        table: "places",
+        table: "place_profiles",
         mode: "update",
         id: placeId,
         patch: {
@@ -71,7 +71,7 @@ export async function applyInferredMesitaName(
   }
 
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: placeId,
     patch: {

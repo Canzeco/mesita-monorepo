@@ -101,7 +101,7 @@ export function isBillingState(v: unknown): v is BillingState {
 // still lives, and is still maintained, in channels.ts.
 //
 // KNOWN DIVERGENCE (MESITA-1247 survey, a pure technical decision, not a
-// product one): `places` still carries three dead columns from before they
+// product one): `place_profiles` still carries three dead columns from before they
 // were retired from the channel set — tiktok_url, tripadvisor_url,
 // yelp_url (added 0003_venue_links.sql / 0007_venue_links_more.sql /
 // 20260625140000_venue_yelp_url.sql, never dropped). rappi_url and
@@ -174,7 +174,7 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
 });
 
 /**
- * A `FunctionStateMap` is a PARTIAL record — most places have not run every
+ * A `FunctionStateMap` is a PARTIAL record — most place_profiles have not run every
  * one of the 10 steps yet, and an absent key means exactly that, not
  * `{state:"pending",...}`. `object()` iterates every key of its shape
  * regardless of presence, which is the right behavior for a fixed-shape
@@ -219,7 +219,7 @@ function foldSemanticPair(
 
 /**
  * Pre-MESITA-1542 maps spell the per-function field `status`. The identifier
- * rename did not rewrite stored `places.enrichment` JSONB, so the fold
+ * rename did not rewrite stored `place_profiles.enrichment` JSONB, so the fold
  * absorbs the old spelling on read — the same read-side absorption
  * PULSE_RENAMES gives a renamed KEY. The next successful write
  * re-materializes the map in the new spelling.
@@ -302,8 +302,8 @@ const PulseBlockSchema: Schema<PulseBlock> = object({
 
 // ── The materialized enrichment state map (MESITA-1249) ────────────────────
 //
-// `places.enrichment`: the ONE-READ replacement for "RPC + fold over
-// place_enrichment_events on every request" (admin-web-search-places,
+// `place_profiles.enrichment`: the ONE-READ replacement for "RPC + fold over
+// place_enrichment_events on every request" (admin-web-search-place_profiles,
 // business-web-get-overview). `functions`/`highWater`/`blockedAt` are the
 // exact three values `pulseHighWater`/`pulseBlockedAt` already compute from
 // the event log — this materializes their OUTPUT, kept current by
@@ -312,7 +312,7 @@ const PulseBlockSchema: Schema<PulseBlock> = object({
 //
 // DELIBERATELY NOT in this shape: `everyDays`/`mode`/`nextAt`/`lastRunAt`
 // (the schedule). The issue that named this map asked for those too, but
-// `places.enrich_every_days`/`enrich_mode`/`enrich_next_at` are read AND
+// `place_profiles.enrich_every_days`/`enrich_mode`/`enrich_next_at` are read AND
 // WRITTEN directly by `queue_due_place_enrichments`, a live PL/pgSQL cron
 // function — the exact class of change (a rename/restructure a stored
 // function body doesn't auto-follow) that caused this repo's own documented

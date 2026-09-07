@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
   // ── Places — base fields + rates (projects shares the id) ────────────
   const { data: placeRows, error: pErr } = await admin
-    .from("places")
+    .from("place_profiles")
     .select(
       "id, name, category, tags, zone, city, description, lat, lng, timezone, hours, google_stars_overall, google_review_count",
     )
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     const tasteMeta = new Map<string, { category: string | null; tags: string[] }>();
     if (refIds.length > 0) {
       const { data: refPlaces, error: fErr } = await admin
-        .from("places")
+        .from("place_profiles")
         .select("id, category, tags")
         .in("id", refIds);
       if (fErr) return jsonError(`taste_failed: ${fErr.message}`, 500);

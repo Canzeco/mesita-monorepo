@@ -1403,7 +1403,7 @@ Deno.serve(async (req) => {
   const confirmerAgentId = fleet?.a2?.id?.trim() || reservationAgentId();
 
   const { data: placeRow } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("name, phone, reservation_channel, reservation_target, hours, lng")
     .eq("id", placeId)
     .maybeSingle();

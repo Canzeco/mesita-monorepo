@@ -30,7 +30,7 @@ export async function resolveChargeableOrganizationAccount(
   if (!payCard || !placeId) return null;
   const [place, org] = await Promise.all([
     admin
-      .from("places")
+      .from("place_profiles")
       .select("mesita_pay_enabled")
       .eq("id", placeId)
       .maybeSingle(),

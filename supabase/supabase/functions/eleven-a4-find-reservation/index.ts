@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
   if (!query) return json({ ok: false, error: "guest_name required" }, 400);
 
   const { data: candidates } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, name, phone, reservation_target")
     .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);

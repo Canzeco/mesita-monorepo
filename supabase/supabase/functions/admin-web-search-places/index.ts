@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
       // (the view is SELECT-granted to the anon key, so a view column is
       // publicly enumerable — and rebuilding it + its INSTEAD OF triggers
       // is the documented pain this side-read exists to avoid).
-      admin.from("places").select(
+      admin.from("place_profiles").select(
         "id, enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
       ).in(
         "id",

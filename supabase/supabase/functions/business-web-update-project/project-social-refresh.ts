@@ -23,7 +23,7 @@ export async function loadPreviousSocialUrlsForRefresh(
   if (!apifyKey || !updatesSocialUrl(update)) return null;
 
   const { data: prev } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("instagram_url, facebook_url")
     .eq("id", projectId)
     .maybeSingle();

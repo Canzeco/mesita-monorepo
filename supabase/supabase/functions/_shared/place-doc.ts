@@ -3,7 +3,7 @@
 // 2026-08-23 21:58 comment for the per-aggregate write-surface count this
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
-//   • places   — the Google-observed / Intaker-owned profile
+//   • place_profiles   — the Google-observed / Intaker-owned profile
 //   • projects — the owned Mesita entity: state, billing, membership
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two
@@ -13,7 +13,7 @@
 //     cross-table atomicity. This door therefore never re-derives that
 //     split itself: `table: "profiles"` forwards the validated patch to
 //     `.from("profiles")`, exactly like every existing call site that used
-//     the view already does. `table: "places"` / `table: "projects"` write
+//     the view already does. `table: "place_profiles"` / `table: "projects"` write
 //     the base table directly, exactly like every existing call site that
 //     already targeted one table alone. Nothing about WHICH surface a call
 //     site writes through changes here — only that every patch now passes
@@ -31,7 +31,7 @@
 //
 // LANDMINES CARRIED IN FROM REPO LAW (MESITA-1279's issue body), enforced
 // here rather than rediscovered:
-//   • `places.name` is a GENERATED column (coalesce(mesita_name,
+//   • `place_profiles.name` is a GENERATED column (coalesce(mesita_name,
 //     google_name)) — Postgres rejects a write to it (428C9) and
 //     `_shared/place-name-writes.test.ts` source-scans for one. `name` is
 //     simply never a member of PLACE_PATCH_KEYS, so any patch carrying it
@@ -43,17 +43,17 @@
 //     mode: "insert"); no update call site in the codebase sets it — one
 //     (business-web-update-project) explicitly REJECTS a client that tries,
 //     upstream of this file. writePlace() enforces the same rule at the
-//     door: `google_place_id` in an UPDATE patch against "places" or
+//     door: `google_place_id` in an UPDATE patch against "place_profiles" or
 //     "profiles" is refused before validation even runs.
 //   • `profiles` is a view, not a base table — see the header above.
 //
 // THE INVARIANTS below mirror LIVE Postgres CHECK constraints (pulled via
-// `pg_get_constraintdef` against the `places` / `projects` tables, MESITA
+// `pg_get_constraintdef` against the `place_profiles` / `projects` tables, MESITA
 // project) and the two tables' native Postgres enum columns (`project_
 // state`, `listing_type`, `plan`, `project_fiscal_type`, `content_state`,
 // pulled via `pg_enum`) — not invented rules. Each group below names the
 // constraint it mirrors. One invariant is only PARTIALLY checkable from a
-// patch alone (places_name_source_present, see checkPlaceNameSourceInvariant)
+// patch alone (place_profiles_name_source_present, see checkPlaceNameSourceInvariant)
 // — Postgres, which sees the whole row, is the final authority there.
 //
 // Deliberately NOT here: URL shape (`isUrl`), hours structure
@@ -74,7 +74,7 @@ import {
 } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
 
-// ── PlaceRow — the full `places` row shape ──────────────────────────────────
+// ── PlaceRow — the full `place_profiles` row shape ──────────────────────────────────
 
 /** How a guest reaches the place on Reservations or Orders (Pato 2026-08-25). */
 export type ServingChannel = "phone" | "whatsapp" | "instagram" | "web" | "none";
@@ -204,7 +204,7 @@ export type PlaceRow = {
    *  score): the operator's pickup / delivery offering toggles. Distinct from
    *  content-derived `orders_enabled` (the guest Order CTA, menu-driven) —
    *  these say what the place WANTS to offer once the order rail ships. Same
-   *  places-only write rule as the settlement bits above. */
+   *  place_profiles-only write rule as the settlement bits above. */
   pickup_orders_enabled: boolean;
   delivery_orders_enabled: boolean;
 };
@@ -450,7 +450,7 @@ function isNonNullEnum<T extends string>(v: unknown, legal: ReadonlySet<T>): v i
   return typeof v === "string" && legal.has(v as T);
 }
 
-// ── places_* field groups (mirrors the live CHECK constraints named) ───────
+// ── place_profiles_* field groups (mirrors the live CHECK constraints named) ───────
 
 const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "category", "vibe", "address", "timezone", "closes_at", "phone", "pitch",
@@ -466,15 +466,15 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "enriched_at", "business_state_at", "enrich_next_at",
 ]);
 const PLACE_UNRANGED_NUMBER_KEYS = new Set<string>(["lat", "lng", "established_year"]);
-// places_{google,mesita}_stars_*_check / places_facebook_rating_check /
-// places_mesita_stars_value_check — 0..5 inclusive, null allowed.
+// place_profiles_{google,mesita}_stars_*_check / place_profiles_facebook_rating_check /
+// place_profiles_mesita_stars_value_check — 0..5 inclusive, null allowed.
 const PLACE_STAR_RATING_KEYS = new Set<string>([
   "google_stars_overall", "mesita_stars_overall", "mesita_stars_food",
   "mesita_stars_service", "mesita_stars_ambience", "facebook_rating",
   "mesita_stars_value",
 ]);
-// places_{google,mesita}_*_count_check / places_instagram_followers_count_check
-// / places_facebook_followers_check — >= 0, null allowed (a raw `col >= 0`
+// place_profiles_{google,mesita}_*_count_check / place_profiles_instagram_followers_count_check
+// / place_profiles_facebook_followers_check — >= 0, null allowed (a raw `col >= 0`
 // CHECK still passes NULL under Postgres 3-valued logic).
 const PLACE_NONNEG_INT_KEYS = new Set<string>([
   "google_review_count", "google_visitor_count", "mesita_review_count",
@@ -502,7 +502,7 @@ const PLACE_SCHEMA_JSON_KEYS: Record<string, { parse(v: unknown): { ok: boolean;
   details: nullable(PlaceDetailsSchema),
   google_reviews: nullable(GoogleReviewsSchema),
   popular_times: nullable(PopularTimesSchema),
-  // NOT nullable — places.enrichment is NOT NULL with a default (MESITA-1249).
+  // NOT nullable — place_profiles.enrichment is NOT NULL with a default (MESITA-1249).
   enrichment: EnrichmentMapSchema,
 };
 const PLACE_STRING_ARRAY_KEYS = new Set<string>([
@@ -524,7 +524,7 @@ const PLACE_BOOLEAN_KEYS = new Set<string>([
 // trigger (profiles_update) enumerates its SET list and predates these
 // columns, so a profiles-routed patch would silently drop them — the door
 // refuses loudly instead. Their one writer (admin-web-set-place-rails)
-// targets `table: "places"`.
+// targets `table: "place_profiles"`.
 const PLACE_INTENT_BIT_KEYS = new Set<string>([
   "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
@@ -564,22 +564,22 @@ function checkPlaceField(key: string, v: unknown): string | null {
       : "family_keys must be an array of strings or null";
   }
   switch (key) {
-    // places_price_level_check
+    // place_profiles_price_level_check
     case "price_level":
       return isNullableRange(v, 1, 4) ? null : "price_level must be between 1 and 4, or null";
-    // places_enrich_every_days_range
+    // place_profiles_enrich_every_days_range
     case "enrich_every_days":
       return isNullableRange(v, 1, 365) ? null
         : "enrich_every_days must be between 1 and 365, or null";
-    // places_enrich_mode_kind — NOT NULL
+    // place_profiles_enrich_mode_kind — NOT NULL
     case "enrich_mode":
       return isNonNullEnum(v, ENRICH_MODE_VALUES) ? null
         : "enrich_mode must be one of full, analysis, contents";
-    // places_business_state_check
+    // place_profiles_business_state_check
     case "business_state":
       return v === null || (typeof v === "string" && BUSINESS_STATE_VALUES.has(v)) ? null
         : "business_state must be OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY, or null";
-    // places_reservation_channel_check / places_order_channel_check
+    // place_profiles_reservation_channel_check / place_profiles_order_channel_check
     case "reservation_channel":
     case "order_channel":
       return v === null || isServingChannel(v) ? null
@@ -590,7 +590,7 @@ function checkPlaceField(key: string, v: unknown): string | null {
 }
 
 /**
- * places_name_source_present: COALESCE(NULLIF(btrim(mesita_name),''),
+ * place_profiles_name_source_present: COALESCE(NULLIF(btrim(mesita_name),''),
  * NULLIF(btrim(google_name),'')) IS NOT NULL. A PARTIAL mirror — Postgres
  * checks the whole row, but this door only ever sees one patch. The one case
  * fully knowable from a patch alone: both fields present in the SAME patch,
@@ -602,7 +602,7 @@ function checkPlaceNameSourceInvariant(patch: Record<string, unknown>): string |
   const g = typeof patch.google_name === "string" ? patch.google_name.trim() : "";
   if (!m && !g) {
     return "mesita_name and google_name cannot both be empty in the same patch " +
-      "(places_name_source_present — places.name would have nothing to generate from)";
+      "(place_profiles_name_source_present — place_profiles.name would have nothing to generate from)";
   }
   return null;
 }
@@ -753,7 +753,7 @@ export type ProfilePatchValidation =
 
 /**
  * Validates a patch against the `profiles` view's combined writable surface
- * — places fields and projects fields in the SAME patch, exactly what every
+ * — place_profiles fields and projects fields in the SAME patch, exactly what every
  * existing caller writing through that view already sends (the view's
  * INSTEAD OF trigger splits it across both tables in one statement; see the
  * file header). PLACE_PATCH_KEYS and PROJECT_PATCH_KEYS are disjoint —
@@ -772,7 +772,7 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
     if (PLACE_INTENT_BIT_KEYS.has(key)) {
       return {
         ok: false,
-        error: `${key} writes through table "places" only — ` +
+        error: `${key} writes through table "place_profiles" only — ` +
           `the profiles trigger would silently drop it`,
       };
     }
@@ -799,16 +799,16 @@ export type PlaceWriteResult =
 type SelectMode = "single" | "maybeSingle";
 
 export type PlaceWriteArgs =
-  | { table: "places"; mode: "insert"; patch: PlacePatch; select?: string; selectMode?: SelectMode }
+  | { table: "place_profiles"; mode: "insert"; patch: PlacePatch; select?: string; selectMode?: SelectMode }
   | {
-    table: "places";
+    table: "place_profiles";
     mode: "update";
     id: string;
     patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
   }
-  | { table: "places"; mode: "delete"; id: string }
+  | { table: "place_profiles"; mode: "delete"; id: string }
   | {
     table: "projects";
     mode: "insert";
@@ -845,7 +845,7 @@ export type PlaceWriteArgs =
 
 /**
  * THE place aggregate's write door. Every insert/update/delete against
- * public.places, public.projects, or the public.profiles view in the
+ * public.place_profiles, public.projects, or the public.profiles view in the
  * codebase goes through this — it is the only place a patch is checked
  * against the aggregate's shape, closed key set, and cross-field invariants
  * before Postgres ever sees it. `select`, when given, re-reads exactly those
@@ -867,7 +867,7 @@ export async function writePlace(
   // google_place_id is the immutable identity spine once set (see header) —
   // only mode: "insert" may write it.
   if (
-    args.mode === "update" && (args.table === "places" || args.table === "profiles") &&
+    args.mode === "update" && (args.table === "place_profiles" || args.table === "profiles") &&
     "google_place_id" in (args.patch as Record<string, unknown>)
   ) {
     return {
@@ -876,7 +876,7 @@ export async function writePlace(
     };
   }
 
-  const validated = args.table === "places"
+  const validated = args.table === "place_profiles"
     ? validatePlacePatch(args.patch)
     : args.table === "projects"
     ? validateProjectPatch(args.patch)

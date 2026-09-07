@@ -26,7 +26,7 @@
 // state accumulates across create and every later run under one rule.
 //
 // queueEnrich (MESITA-1364): consumer and admin Create mint the ugly
-// profile and do NOT seed Intaker. Enriched is `places.enriched_at`, not
+// profile and do NOT seed Intaker. Enriched is `place_profiles.enriched_at`, not
 // content_state. Guests vote on the Enrich tab; the Intake threshold
 // seeds the queue. Business create still queues. Admin Enrich /
 // Create+Enrich is a second call.
@@ -110,7 +110,7 @@ export async function createMinimalPlace(opts: {
   }
 
   // ── Early dedupe (idempotency on google_place_id): reject already-onboarded
-  // places BEFORE spending any budget. savePlaceData dedupes again as a race
+  // place_profiles BEFORE spending any budget. savePlaceData dedupes again as a race
   // guard; gating here keeps a duplicate click cheap. ──
   const { data: existing } = await admin
     .from("profiles")
@@ -224,7 +224,7 @@ export async function createMinimalPlace(opts: {
 
   // ── CREATE Details — first Google photo into storage ────────────────────
   // Enrich Images (function 6) later ranks and replaces the gallery. Created
-  // but not-yet-Enriched places still need ONE thumb in the app. Awaited so
+  // but not-yet-Enriched place_profiles still need ONE thumb in the app. Awaited so
   // the row the caller just got already has a public URL. Mirror failure
   // keeps the Google URI on the row and never fails the create.
   const firstPhoto = Array.isArray(place.photos) ? place.photos[0] : null;
@@ -292,7 +292,7 @@ export async function createMinimalPlace(opts: {
             patch.embedding_source_text = door.semanticSummary;
           }
           const doorWrite = await writePlace(admin, {
-            table: "places",
+            table: "place_profiles",
             mode: "update",
             id: saved.project_id,
             patch,

@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-set-place-enrichment (product caller / admin)
 //
 // WHEN a place re-enriches, as opposed to admin-web-enrich-place's "now"
-// (MESITA-1148). Writes the three schedule columns on public.places and
+// (MESITA-1148). Writes the three schedule columns on public.place_profiles and
 // derives the next due date; the pg_cron enqueuer
 // (queue_due_place_enrichments, every 15 min) is what honours them, and
 // run_place_enrichment_stages remains the only dispatcher.
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
   // research stage re-checks first — the same 422 admin-web-enrich-place
   // answers, refused here rather than queued and failed later.
   const { data: place, error: placeErr } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, google_place_id, enriched_at")
     .eq("id", projectId)
     .maybeSingle();
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
   }
 
   const updRes = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: projectId,
     patch: { enrich_every_days: everyDays, enrich_mode: mode, enrich_next_at: nextAt },

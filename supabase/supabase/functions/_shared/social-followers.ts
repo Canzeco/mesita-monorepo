@@ -48,7 +48,7 @@ export async function refreshSocialFollowers(opts: SocialFollowersRefresh): Prom
   }
   if (Object.keys(update).length === 0) return;
 
-  const res = await writePlace(admin, { table: "places", mode: "update", id: placeId, patch: update });
+  const res = await writePlace(admin, { table: "place_profiles", mode: "update", id: placeId, patch: update });
   if (!res.ok) console.error("[social-followers] update:", res.error);
 }
 

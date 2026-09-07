@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
 
   const { data: placeRow } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, phone, reservation_target")
     .eq("id", ticket.project_id)
     .maybeSingle();

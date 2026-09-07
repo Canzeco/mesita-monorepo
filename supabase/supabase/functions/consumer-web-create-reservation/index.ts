@@ -165,9 +165,9 @@ Deno.serve(async (req) => {
   let reservation: { id: string } & Record<string, unknown> | null = null;
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
-    // NO `place:places(...)` embed here — reservations→places is a two-hop FK
-    // (reservations.project_id → projects.id → places.id), so PostgREST fails
-    // with "Could not find a relationship between 'reservations' and 'places'
+    // NO `place:place_profiles(...)` embed here — reservations→place_profiles is a two-hop FK
+    // (reservations.project_id → projects.id → place_profiles.id), so PostgREST fails
+    // with "Could not find a relationship between 'reservations' and 'place_profiles'
     // in the schema cache". Select project_id and stitch via attachPlaces,
     // exactly like the list EFs (#518/#523).
     const ins = await writeReservation(admin, {

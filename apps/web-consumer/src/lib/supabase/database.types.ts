@@ -113,6 +113,30 @@ export type Database = {
         }
         Relationships: []
       }
+      consumer_analytics_events: {
+        Row: {
+          consumer_id: string | null
+          created_at: string
+          event: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          consumer_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          consumer_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       consumer_code_counter: {
         Row: {
           id: number
@@ -570,6 +594,42 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_guest_customers: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          organization_id: string
+          stripe_customer_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          organization_id: string
+          stripe_customer_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          organization_id?: string
+          stripe_customer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_guest_customers_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_guest_customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           created_at: string
@@ -784,7 +844,7 @@ export type Database = {
             foreignKeyName: "place_enrichment_events_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "places"
+            referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -853,7 +913,7 @@ export type Database = {
             foreignKeyName: "place_enrichment_runs_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "places"
+            referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -925,7 +985,7 @@ export type Database = {
             foreignKeyName: "place_media_assets_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "places"
+            referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -958,7 +1018,7 @@ export type Database = {
             foreignKeyName: "place_name_history_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "places"
+            referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -970,164 +1030,7 @@ export type Database = {
           },
         ]
       }
-      place_requests: {
-        Row: {
-          consumer_id: string
-          created_at: string
-          place_id: string
-        }
-        Insert: {
-          consumer_id: string
-          created_at?: string
-          place_id: string
-        }
-        Update: {
-          consumer_id?: string
-          created_at?: string
-          place_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_requests_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_requests_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_requests_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      place_research: {
-        Row: {
-          analysis: Json | null
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          gathered: Json | null
-          google_place_id: string
-          place_id: string
-          run_id: string | null
-          stage: string
-          state: string
-          subprocesses: Json | null
-          updated_at: string
-        }
-        Insert: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id: string
-          place_id: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id?: string
-          place_id?: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      place_super_categories: {
-        Row: {
-          created_at: string
-          emoji: string
-          label: string
-          slug: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          emoji: string
-          label: string
-          slug: string
-          sort_order: number
-        }
-        Update: {
-          created_at?: string
-          emoji?: string
-          label?: string
-          slug?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      place_tags: {
-        Row: {
-          created_at: string
-          facet: string
-          label_en: string
-          label_es: string
-          section: string
-          slug: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          facet: string
-          label_en: string
-          label_es: string
-          section: string
-          slug: string
-          sort_order: number
-        }
-        Update: {
-          created_at?: string
-          facet?: string
-          label_en?: string
-          label_es?: string
-          section?: string
-          slug?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
-      places: {
+      place_profiles: {
         Row: {
           address: string | null
           business_state: string | null
@@ -1406,6 +1309,163 @@ export type Database = {
           whatsapp_url?: string | null
           x_url?: string | null
           zone?: string | null
+        }
+        Relationships: []
+      }
+      place_requests: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          place_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          place_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_requests_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "place_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_research: {
+        Row: {
+          analysis: Json | null
+          attempts: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          gathered: Json | null
+          google_place_id: string
+          place_id: string
+          run_id: string | null
+          stage: string
+          state: string
+          subprocesses: Json | null
+          updated_at: string
+        }
+        Insert: {
+          analysis?: Json | null
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gathered?: Json | null
+          google_place_id: string
+          place_id: string
+          run_id?: string | null
+          stage?: string
+          state?: string
+          subprocesses?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          analysis?: Json | null
+          attempts?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          gathered?: Json | null
+          google_place_id?: string
+          place_id?: string
+          run_id?: string | null
+          stage?: string
+          state?: string
+          subprocesses?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_research_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "place_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_research_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_super_categories: {
+        Row: {
+          created_at: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          label: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          label?: string
+          slug?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      place_tags: {
+        Row: {
+          created_at: string
+          facet: string
+          label_en: string
+          label_es: string
+          section: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          facet: string
+          label_en: string
+          label_es: string
+          section: string
+          slug: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          facet?: string
+          label_en?: string
+          label_es?: string
+          section?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -1821,7 +1881,7 @@ export type Database = {
             foreignKeyName: "projects_place_fk"
             columns: ["id"]
             isOneToOne: true
-            referencedRelation: "places"
+            referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -2601,6 +2661,10 @@ export type Database = {
       generate_consumer_code: { Args: never; Returns: string }
       is_project_member: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      mark_place_claim_reviewed: {
+        Args: { p_admin: string; p_place_id: string }
+        Returns: Json
+      }
       open_place_enrichment_run: {
         Args: {
           p_actor_user_id?: string

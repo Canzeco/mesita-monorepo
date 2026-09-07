@@ -29,7 +29,7 @@ Deno.test("state facts come from the shared helpers, never re-implemented", () =
 });
 
 Deno.test("the intake meter is the enrichment COLUMN, not an events join", () => {
-  assert(SRC.includes("enrichment"), "must select places.enrichment");
+  assert(SRC.includes("enrichment"), "must select place_profiles.enrichment");
   assert(SRC.includes("PULSE_TOTAL"), "total must come from the shared constant");
   // Only the number is forwarded — the functions map stays server-side.
   assert(!SRC.includes("functions:"), "must not forward the functions map");

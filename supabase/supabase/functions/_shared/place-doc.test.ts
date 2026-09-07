@@ -11,7 +11,7 @@
 //      exactly the insert/update/delete shape each caller needs.
 //   3. Structural guards: PLACE_PATCH_KEYS / PROJECT_PATCH_KEYS never
 //      collide, and `name` / `google_place_id` are refused the way repo
-//      law requires (places.name generated column, google_place_id
+//      law requires (place_profiles.name generated column, google_place_id
 //      immutable spine).
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
@@ -67,12 +67,12 @@ Deno.test("validatePlacePatch: rejects a non-boolean intent bit", () => {
   assertEquals(res.error, "mesita_pay_enabled must be a boolean");
 });
 
-Deno.test("validateProfilePatch: refuses intent bits — places-only keys", () => {
+Deno.test("validateProfilePatch: refuses intent bits — place_profiles-only keys", () => {
   const pay = validateProfilePatch({ mesita_pay_enabled: true });
   assert(!pay.ok);
   assertEquals(
     pay.error,
-    'mesita_pay_enabled writes through table "places" only — ' +
+    'mesita_pay_enabled writes through table "place_profiles" only — ' +
       "the profiles trigger would silently drop it",
   );
   const pickup = validateProfilePatch({ pickup_orders_enabled: true });
@@ -198,12 +198,12 @@ Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field i
   assert(!badPopular.ok, "a popular_times entry missing range must be rejected");
 });
 
-// MESITA-1249: places.enrichment (the materialized progress meter) — NOT
+// MESITA-1249: place_profiles.enrichment (the materialized progress meter) — NOT
 // nullable, unlike details/google_reviews/popular_times above, since the
 // column carries a NOT NULL default. Full accept/reject coverage lives in
 // schema-catalog.test.ts next to EnrichmentMapSchema itself; these two just
 // prove the door actually wires that schema in for the "enrichment" key.
-Deno.test("validatePlacePatch: accepts a real places.enrichment patch", () => {
+Deno.test("validatePlacePatch: accepts a real place_profiles.enrichment patch", () => {
   const res = validatePlacePatch({
     enrichment: {
       functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
@@ -214,7 +214,7 @@ Deno.test("validatePlacePatch: accepts a real places.enrichment patch", () => {
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: rejects places.enrichment = null (the column is NOT NULL, unlike the other jsonb fields)", () => {
+Deno.test("validatePlacePatch: rejects place_profiles.enrichment = null (the column is NOT NULL, unlike the other jsonb fields)", () => {
   assert(!validatePlacePatch({ enrichment: null }).ok);
 });
 
@@ -290,13 +290,13 @@ Deno.test("validatePlacePatch: rejects a scalar where jsonb is required", () => 
   assert(!validatePlacePatch({ hours: "always open" }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects mesita_name and google_name both empty in the same patch (places_name_source_present)", () => {
+Deno.test("validatePlacePatch: rejects mesita_name and google_name both empty in the same patch (place_profiles_name_source_present)", () => {
   const res = validatePlacePatch({ mesita_name: null, google_name: "" });
   assert(!res.ok);
   assertEquals(
     res.error,
     "mesita_name and google_name cannot both be empty in the same patch " +
-      "(places_name_source_present — places.name would have nothing to generate from)",
+      "(place_profiles_name_source_present — place_profiles.name would have nothing to generate from)",
   );
 });
 
@@ -398,7 +398,7 @@ Deno.test("validateProjectPatch: rejects null on a NOT NULL boolean/enum", () =>
 
 // ── validateProfilePatch ────────────────────────────────────────────────────
 
-Deno.test("validateProfilePatch: accepts a patch mixing places and projects fields, like the view's real callers send", () => {
+Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and projects fields, like the view's real callers send", () => {
   const res = validateProfilePatch({
     mesita_name: "El Nuevo Nombre",
     category: "cafe",
@@ -410,7 +410,7 @@ Deno.test("validateProfilePatch: accepts a patch mixing places and projects fiel
 
 Deno.test("validateProfilePatch: still enforces each field's own rule regardless of which table it belongs to", () => {
   assert(!validateProfilePatch({ state: "deleted" }).ok, "bad projects field");
-  assert(!validateProfilePatch({ price_level: 9 }).ok, "bad places field");
+  assert(!validateProfilePatch({ price_level: 9 }).ok, "bad place_profiles field");
 });
 
 // ── writePlace: the write door itself ───────────────────────────────────────
@@ -425,13 +425,13 @@ function unreachableAdmin(): SupabaseClient {
   } as unknown as SupabaseClient;
 }
 
-Deno.test("writePlace: an invalid places patch never reaches the DB", async () => {
+Deno.test("writePlace: an invalid place_profiles patch never reaches the DB", async () => {
   const admin = unreachableAdmin();
   // Simulates the same Belt 1 bypass consumer-doc.test.ts documents: a real
   // caller decodes HTTP JSON as `unknown` and casts before calling the door.
   const invalidPatch = { price_level: 9 } as unknown as PlacePatch;
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: "11111111-1111-1111-1111-111111111111",
     patch: invalidPatch,
@@ -456,7 +456,7 @@ Deno.test("writePlace: an invalid projects patch never reaches the DB", async ()
 Deno.test("writePlace: refuses to update google_place_id, before validation even runs", async () => {
   const admin = unreachableAdmin();
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: "place-1",
     patch: { google_place_id: "ChIJ-new-value" },
@@ -509,23 +509,23 @@ function fakePlaceAdmin(opts: { row?: Record<string, unknown>; errorCode?: strin
   return { admin, calls };
 }
 
-Deno.test("writePlace: places update writes exactly the validated patch, no select", async () => {
+Deno.test("writePlace: place_profiles update writes exactly the validated patch, no select", async () => {
   const { admin, calls } = fakePlaceAdmin();
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: "place-1",
     patch: { instagram_followers_count: 3000 },
   });
   assert(res.ok);
   assertEquals(res.row, null);
-  assertEquals(calls, [{ table: "places", op: "update", value: { instagram_followers_count: 3000 } }]);
+  assertEquals(calls, [{ table: "place_profiles", op: "update", value: { instagram_followers_count: 3000 } }]);
 });
 
-Deno.test("writePlace: places insert with select returns the re-read row", async () => {
+Deno.test("writePlace: place_profiles insert with select returns the re-read row", async () => {
   const { admin } = fakePlaceAdmin({ row: { id: "place-1" } });
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "insert",
     patch: { google_place_id: "ChIJ123", category: "cafe" },
     select: "id",
@@ -552,11 +552,11 @@ Deno.test("writePlace: projects insert carries the shared id alongside the patch
   });
 });
 
-Deno.test("writePlace: places delete goes through .eq(id), not a bare table scan", async () => {
+Deno.test("writePlace: place_profiles delete goes through .eq(id), not a bare table scan", async () => {
   const { admin, calls } = fakePlaceAdmin();
-  const res = await writePlace(admin, { table: "places", mode: "delete", id: "place-1" });
+  const res = await writePlace(admin, { table: "place_profiles", mode: "delete", id: "place-1" });
   assert(res.ok);
-  assertEquals(calls, [{ table: "places", op: "delete" }]);
+  assertEquals(calls, [{ table: "place_profiles", op: "delete" }]);
 });
 
 Deno.test("writePlace: profiles update accepts a patch mixing both tables' fields", async () => {
@@ -578,7 +578,7 @@ Deno.test("writePlace: profiles update accepts a patch mixing both tables' field
 Deno.test("writePlace: surfaces the Postgres error code for a unique-violation retry", async () => {
   const { admin } = fakePlaceAdmin({ errorCode: "23505" });
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "insert",
     patch: { google_place_id: "ChIJ123" },
     select: "id",
