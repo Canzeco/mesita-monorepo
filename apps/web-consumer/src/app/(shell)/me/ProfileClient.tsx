@@ -6,7 +6,6 @@ import {
   Bell,
   CalendarCheck,
   CircleHelp,
-  CreditCard,
   Bot,
   Footprints,
   Gift,
@@ -37,11 +36,7 @@ import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  apiFetchConsumerMetrics,
-  apiFetchConsumerProfile,
-  type ConsumerProfile,
-} from "@/lib/api/profile";
+import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
 import { PREMIUM_PLAN_ICON, PREMIUM_PLAN_PRICE_MXN } from "@/lib/consumer-data";
 import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
@@ -49,48 +44,39 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — ONE CELL SHAPE, REPEATED (MESITA-1633):
+// The Me surface — the passport, then a RHYTHM of rows (MESITA-1636):
 //
-//   the passport   who you are, with a 2×2 sub-grid inside it: Profile
-//                  across the top, then Instagram · Class. Only Class in
-//                  metal (MESITA-1634)
-//   six pairs      Wallet·Plan · Alerts·Visits · Orders·Bookings ·
-//                  Connector·Cards · Gift·Share · Settings·Help
+//   passport       one box, full width. Nothing inside it is clickable
+//   2              Wallet · Plan
+//   4              Alerts · Visits · Orders · Bookings, compact
+//   2              Share · Gift
+//   2              Settings · Help
+//   1              Connector, full width
 //
-// NO MORE DRAWER (MESITA-1635). Gift and Share were the last two rows in it,
-// so with them on the page it held nothing. Everything this account has is on
-// one screen now; four cells are `soon`, which is honest about the roadmap
-// rather than hiding it a tap deeper.
+// WHY THE ROWS VARY. Twelve equal cells in six identical pairs read as one
+// long undifferentiated column, and the passport stopped leading. Changing
+// the row width is what gives the page a shape and puts identity back on top.
 //
-// WHY IT LOOKS LIKE THIS. The page it replaces stacked FOUR cell shapes and
-// three fills — passport tiles, a white pair, a muted count band, then a grid
-// — and two of those were 2-up white cards that looked identical while
-// belonging to different groups, with the band between them reading as a
-// stripe rather than a section. One shape, repeated, is the whole fix.
+// THE PASSPORT IS ONE BUTTON and nothing inside it is interactive. The three
+// doors that used to be sub-cells — Profile, Instagram, Class — are rows in
+// `PassportModal` now. That is not a convenience: Instagram is the only reach
+// door, and the Class ladder carries the ONLY entrance for a 10-digit invite
+// PIN (Docs › Passport §C). Never make one of those rows inert without giving
+// its surface another way in first.
 //
-// A COUNT IS A SUMMARY LINE, NOT A MATERIAL. Visits and Bookings read
-// "12 visits" / "None yet" where every other cell reads its own summary, so
-// the band had nothing left to be and `StatBand`/`StatTile` went with it.
-// Zero and unknown say the same words on purpose: a failed metrics read is
-// not a guest with no visits, and a hard 0 would state a fact we lack.
+// NOTHING ON THIS PAGE PRINTS A NUMBER any more, which is why the mount does
+// ONE EF read. The four-up carries no summary line, so the metrics call that
+// used to ride along for Visits and Bookings was fetching data nobody
+// displayed; MetricsModal fetches its own when it opens.
 //
-// ALERTS IS A CELL AND THERE IS NO BELL. Having both was two doors to one
-// sheet, the drift Wallet, Plan and Passport each cost us to remove. It still
-// carries no count — there is no read/unread tracking anywhere in this
-// codebase (checked again here: no column, no EF, no client state) — so it
-// says what it is, never how many.
+// ALERTS CARRIES NO COUNT for a different reason: there is no read/unread
+// tracking anywhere in this codebase (checked again here — no column, no EF,
+// no client state), so a badge would be invented rather than merely absent.
 //
-// NOTHING HERE DUPLICATES THE PASSPORT. Profile, Instagram and Class are its
-// sub-cells, so none of them gets a pair cell too.
-//
-// METRICS, CONTACT AND SIGN OUT LIVE IN SETTINGS (MESITA-1634). Sign out was
-// a button in the page body and is now a row where the rest of the account
-// controls are. Contact came off the grid on instruction, but it is NOT
-// deleted: HelpModal carries no contact or support reference of any kind, so
-// ContactModal is the only door to a human in the product.
-//
-// Every summary reads live wherever the page already holds the data:
-// `apiFetchConsumerMetrics` returns both counts in the one read on mount.
+// NO CARDS CELL. `new-visit/wallet/CreditsClient` opens the SAME `CardsModal`
+// this page does, and Wallet is a cell here whose summary is already "Credits
+// and cards" — a second door is what this page keeps removing. `CardsModal`
+// stays mounted regardless: `/me?cards=` is Stripe's return URL.
 //
 // Flat page at /me; `openSettings` opens Settings on arrival for the legacy
 // /me/settings deep link.
@@ -114,13 +100,6 @@ export function ProfileClient({
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [visits, setVisits] = useState<number | null>(null);
-  // Lifetime confirmed reservations, same EF read as visits/saved (MESITA-1609
-  // — reused, not a new fetch). "Booked," not "upcoming": the EF counts all
-  // time, so the summary doesn't claim a distinction the data can't back.
-  const [reservationsBooked, setReservationsBooked] = useState<number | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
@@ -151,21 +130,14 @@ export function ProfileClient({
     let cancelled = false;
     (async () => {
       try {
-        const [{ consumer, stats }, metrics] = await Promise.all([
-          apiFetchConsumerProfile(supabase),
-          apiFetchConsumerMetrics(supabase).catch(() => null),
-        ]);
+        // ONE EF read on mount. `apiFetchConsumerMetrics` used to ride along
+        // for the Visits and Bookings counts; the four-up carries no summary
+        // line (MESITA-1636), so nothing on this page prints a number any
+        // more and the second round trip was pure waste. MetricsModal fetches
+        // its own when it opens, which is the only place those numbers show.
+        const { consumer } = await apiFetchConsumerProfile(supabase);
         if (cancelled) return;
         setProfile(consumer);
-        // Metrics EF wins (visits · saved); profile stats.visits is the
-        // fallback when it fails.
-        setVisits(metrics?.places_visited ?? stats.visits);
-        // `saved_cents` comes back on the same read and nothing prints it
-        // any more — Metrics owns that number inside its own sheet.
-        // No stats.reservations fallback exists — the metrics EF is the only
-        // source, so a failed fetch just leaves this null (zero-state copy
-        // handles it, same as a slow load).
-        setReservationsBooked(metrics?.reservations_booked ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
       } finally {
@@ -212,15 +184,6 @@ export function ProfileClient({
   // sheets, which have the whole width to spend.
   const planTile =
     plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
-  // A COUNT IS A SUMMARY LINE (MESITA-1633) — the band that printed numerals
-  // is gone, so these read like every other cell's summary. Zero and unknown
-  // say the same thing: a failed metrics read is not a guest with no visits,
-  // and printing a hard 0 for it would state a fact we do not have.
-  const visitsTile = !visits ? "None yet" : `${visits} visit${visits === 1 ? "" : "s"}`;
-  const bookingsTile = !reservationsBooked
-    ? "None yet"
-    : `${reservationsBooked} booked`;
-
   // The ONE door to the plan sheet (MESITA-1619). Instrumented because the
   // Passport tile it replaces carried no event at all: without this the
   // change is unmeasurable in both directions, and "conversion moved" would
@@ -239,10 +202,7 @@ export function ProfileClient({
           <ProfileSummaryCard
             profile={profile}
             loading={loading}
-            onOpenClass={() => setClassOpen(true)}
-            onOpenInstagram={() => setVerifyOpen(true)}
             onOpenPassport={() => setPassportOpen(true)}
-            onOpenProfile={() => profile && setEditOpen(true)}
           />
 
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
@@ -273,53 +233,41 @@ export function ProfileClient({
               summary={loading ? "…" : planTile}
               onClick={openPlan}
             />
+          </DestGrid>
 
+          {/* Activity, four across and COMPACT — icon over name, no summary.
+              At 375px these cells are 80px with ~64px of text, which is why
+              they carry no second line: there is no room, and the 10px floor
+              means shrinking the type is not an option. At 320px the label
+              itself truncates and the icon carries identity. */}
+          <DestGrid cols={4}>
             <DestTile
               Icon={Bell}
               title="Alerts"
-              summary="Notifications"
+              summary=""
+              compact
               onClick={() => setAlertsOpen(true)}
             />
             <DestTile
               Icon={Footprints}
               title="Visits"
-              summary={loading ? "…" : visitsTile}
+              summary=""
+              compact
               onClick={() => setVisitsOpen(true)}
             />
-
-            {/* PARKED. No orders table, no EF, `/inbox/orders` 308s away, and
-                the concierge answers delivery with a flat no. */}
-            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
+            <DestTile Icon={ShoppingBag} title="Orders" summary="" compact soon />
             <DestTile
               Icon={CalendarCheck}
               title="Bookings"
-              summary={loading ? "…" : bookingsTile}
+              summary=""
+              compact
               onClick={() => setBookingsOpen(true)}
             />
+          </DestGrid>
 
-            {/* PARKED — out of More and onto the page as an honest Soon cell,
-                because the brief named it. Gift and Share stay in More. */}
-            <DestTile
-              Icon={Bot}
-              title="Connector"
-              summary=""
-              soon
-              // Handler stays wired while parked so un-parking is a `soon`
-              // removal alone — the sheet it opens already works.
-              onClick={() => setAiOpen(true)}
-            />
-            <DestTile
-              Icon={CreditCard}
-              title="Cards"
-              summary="Saved cards"
-              onClick={() => setCardsOpen(true)}
-            />
-
-            {/* PARKED, both. Gift has no sheet at all yet; Share's exists
-                and stays wired so un-parking is a `soon` removal alone. These
-                were the last two rows in More, so More held nothing and is
-                deleted (MESITA-1635) — an empty drawer is worse than none. */}
-            <DestTile Icon={Gift} title="Gift" summary="" soon />
+          <DestGrid>
+            {/* PARKED. Share's sheet exists and stays wired so un-parking is
+                a `soon` removal alone; Gift has no sheet at all yet. */}
             <DestTile
               Icon={Share2}
               title="Share"
@@ -327,7 +275,10 @@ export function ProfileClient({
               soon
               onClick={() => setShareOpen(true)}
             />
+            <DestTile Icon={Gift} title="Gift" summary="" soon />
+          </DestGrid>
 
+          <DestGrid>
             <DestTile
               Icon={SettingsIcon}
               title="Settings"
@@ -340,7 +291,20 @@ export function ProfileClient({
               summary="How rewards work"
               onClick={() => setHelpOpen(true)}
             />
+          </DestGrid>
 
+          {/* Last, full width, parked. It was going to be cut entirely; a box
+              here keeps `AiConnectModal` reachable rather than dead code, and
+              the handler stays wired so un-parking is a flag removal. */}
+          <DestGrid>
+            <DestTile
+              Icon={Bot}
+              title="Connector"
+              summary=""
+              soon
+              full
+              onClick={() => setAiOpen(true)}
+            />
           </DestGrid>
 
           <p className="text-muted-foreground type-label -mt-1 text-center">
@@ -432,6 +396,13 @@ export function ProfileClient({
           setPassportOpen(false);
           setSettingsOpen(true);
         }}
+        // The three doors the card gave up when it became one button
+        // (MESITA-1636). Instagram is the only reach door and the Class
+        // ladder is the only entrance for an invite PIN, so these are not
+        // conveniences — without them those surfaces are unreachable.
+        onOpenProfile={() => profile && setEditOpen(true)}
+        onOpenInstagram={() => setVerifyOpen(true)}
+        onOpenClass={() => setClassOpen(true)}
       />
     </div>
   );

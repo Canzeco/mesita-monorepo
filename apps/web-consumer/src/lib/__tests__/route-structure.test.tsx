@@ -521,12 +521,15 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders twelve cells, six pairs, no drawer", () => {
-    // ONE shape repeated (MESITA-1633). Instagram and Class live in the
-    // passport's sub-grid and Metrics/Contact moved into Settings
-    // (MESITA-1634) — a cell for any of them would be the second door this
-    // page keeps removing. Gift and Share came UP from More (MESITA-1635),
-    // which emptied it, so there is no drawer left to have a cell.
+  it("renders eleven cells in a 2 · 4 · 2 · 2 · 1 rhythm", () => {
+    // Row widths VARY on purpose (MESITA-1636): twelve equal cells in six
+    // identical pairs read as one undifferentiated column and the passport
+    // stopped leading.
+    //
+    // Absent by design, each for its own reason: Instagram and Class are
+    // displayed ON the passport (and opened from its sheet); Metrics and
+    // Contact moved into Settings; Cards is the same `CardsModal` Pay's
+    // Wallet already opens, and Wallet is a cell right here.
     expect(gridTitles(ME)).toEqual([
       "Wallet",
       "Plan",
@@ -534,13 +537,33 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Visits",
       "Orders",
       "Bookings",
-      "Connector",
-      "Cards",
-      "Gift",
       "Share",
+      "Gift",
       "Settings",
       "Help",
+      "Connector",
     ]);
+  });
+
+  it("Activity is the compact four-up, and only Activity", () => {
+    // `compact` is icon-over-name with no summary, which only works because
+    // those four cells are 80px wide at 375px. A non-compact cell in that row
+    // would overflow; a compact one anywhere else would drop a summary that
+    // has room to exist.
+    const compact = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
+      .map((m) => m[0])
+      .filter((c) => /\bcompact\b/.test(c))
+      .map((c) => c.match(/title="([^"]+)"/)?.[1]);
+    expect(compact).toEqual(["Alerts", "Visits", "Orders", "Bookings"]);
+    expect([...ME.matchAll(/cols=\{4\}/g)]).toHaveLength(1);
+  });
+
+  it("no Cards cell — Wallet already opens that exact sheet", () => {
+    // `new-visit/wallet/CreditsClient` imports the SAME CardsModal, and
+    // Wallet is a cell here whose summary is already "Credits and cards".
+    // The modal STAYS mounted on Me though: `/me?cards=` is Stripe's return.
+    expect(gridTitles(ME)).not.toContain("Cards");
+    expect(ME).toContain("<CardsModal");
   });
 
   it("the More drawer is gone from the codebase", () => {
@@ -576,7 +599,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .map((m) => m[0])
       .filter((c) => /\bsoon\b/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual(["Orders", "Connector", "Gift", "Share"]);
+    expect(parkedCells).toEqual(["Orders", "Share", "Gift", "Connector"]);
   });
 });
 
