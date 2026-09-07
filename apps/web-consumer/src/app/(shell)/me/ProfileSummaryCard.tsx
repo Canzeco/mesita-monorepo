@@ -14,7 +14,11 @@ import { useConsumerClass } from "@/lib/class-context";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 
-// ─── The Passport (MESITA-1079 v2 · -1619 · -1622 · -1633 · -1636) ────────
+// ─── The Passport (MESITA-1079 v2 · -1619 · -1622 · -1633 · -1636 · -1638) ─
+//
+// Anatomy, top to bottom: the metal band · a PASSPORT eyebrow with the privacy
+// state on its right · the identity row (photo ringed in the class metal, name,
+// age·sex·country) · the two display boxes, Instagram then Class.
 //
 // ONE BOX. NOTHING INSIDE IT IS CLICKABLE (decision: Pato, MESITA-1636). The
 // card DISPLAYS an identity — photo, name, age·sex·country, privacy, the
@@ -111,6 +115,10 @@ export function ProfileSummaryCard({
             the real avatar (60 + the 2.5px ring + the 2px inset, both sides),
             25px the real name, 16px the real meta line. */}
         <div className="flex flex-col gap-5 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="bg-muted h-3 w-[70px] animate-pulse rounded" />
+            <div className="bg-muted h-3 w-14 animate-pulse rounded" />
+          </div>
           <div className="flex items-center gap-4">
             <div className="bg-muted h-[69px] w-[69px] animate-pulse rounded-full" />
             <div className="flex flex-col gap-1.5">
@@ -182,6 +190,30 @@ export function ProfileSummaryCard({
         aria-label="Open your passport"
         className="flex w-full flex-col gap-5 p-5 text-left transition active:scale-[0.99]"
       >
+        {/* THE CARD SAYS ITS OWN NAME (decision: Pato, MESITA-1638). Every
+            other cell on Me is labelled top-left, and this one — the only
+            card that is ITSELF a button — was the one thing on the page that
+            never said what it opens. The eyebrow is the same treatment the
+            Instagram and Class boxes below already use, so the card reads as
+            one family and not as a header bolted on. */}
+        <span className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
+            Passport
+          </span>
+          {/* State, not control — Settings › Privacy owns the switch. It rides
+              this row rather than the age·sex·country line, which gets its
+              full width back: the row was empty, so the label costs no
+              vertical space it did not already spend. */}
+          <span className="text-muted-foreground type-meta inline-flex shrink-0 items-center gap-1 font-bold tracking-[0.12em] uppercase">
+            {isPublic ? (
+              <Unlock className="h-2.5 w-2.5" />
+            ) : (
+              <Lock className="h-2.5 w-2.5" />
+            )}
+            {isPublic ? "Public" : "Private"}
+          </span>
+        </span>
+
         <span className="flex min-w-0 items-center gap-4">
           <span
             className={cn(
@@ -211,19 +243,8 @@ export function ProfileSummaryCard({
             <span className="font-display block truncate text-xl leading-tight font-semibold tracking-tight">
               {name}
             </span>
-            <span className="flex min-w-0 items-center justify-between gap-2">
-              <span className="text-muted-foreground truncate text-xs">
-                {detailLine}
-              </span>
-              {/* State, not control — Settings › Privacy owns the switch. */}
-              <span className="text-muted-foreground type-meta inline-flex shrink-0 items-center gap-1 font-bold tracking-[0.12em] uppercase">
-                {isPublic ? (
-                  <Unlock className="h-2.5 w-2.5" />
-                ) : (
-                  <Lock className="h-2.5 w-2.5" />
-                )}
-                {isPublic ? "Public" : "Private"}
-              </span>
+            <span className="text-muted-foreground block truncate text-xs">
+              {detailLine}
             </span>
           </span>
         </span>
