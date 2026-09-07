@@ -27,13 +27,14 @@ const nextConfig: NextConfig = {
   // src/lib/__tests__/consumer-route-contract.test.ts.
   async redirects() {
     return [
-      // Explore era (pre-Home). Repointed straight at /search when /home was
-      // retired — chaining them through /home would have made these two-hop,
-      // which route-structure T4 caps at exactly 2 with no margin.
-      { source: "/explore", destination: "/discover/search", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/search", permanent: true },
-      { source: "/explore/map", destination: "/discover/search", permanent: true },
-      { source: "/explore/add", destination: "/discover/search", permanent: true },
+      // Explore era (pre-Home). Repointed straight at the Discover default —
+      // Catalog again as of MESITA-1609, was Search before it — when /home
+      // was retired; chaining them through /home would have made these
+      // two-hop, which route-structure T4 caps at exactly 2 with no margin.
+      { source: "/explore", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/map", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/add", destination: "/discover/catalog", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -68,9 +69,11 @@ const nextConfig: NextConfig = {
       },
       { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
       // The retired Home hub (2026-09-01). Every leaf 308s straight to
-      // Discover's default. /home/ai points here rather than chaining through
-      // /home/chat — that page is deleted, so the old chain would both dangle
-      // and cost a second hop against T4's cap of 2.
+      // Discover's default — Catalog again as of MESITA-1609 (was Search,
+      // 2026-09-01 to today; see consumer-route-contract.ts's discoverDefault
+      // comment for the full reasoning). /home/ai points here rather than
+      // chaining through /home/chat — that page is deleted, so the old chain
+      // would both dangle and cost a second hop against T4's cap of 2.
       //
       // NOTHING HERE MAY CHAIN THROUGH /discover/map. That segment is itself a
       // 308 now (below), so a chained /home would cost two hops and leave zero
@@ -79,13 +82,16 @@ const nextConfig: NextConfig = {
       // /home/favorites goes with them: FavoritesList exists under components/
       // but nothing rendered it and it needs the parked shared-deck fetch, so
       // there was no live surface to promote.
-      { source: "/home", destination: "/discover/search", permanent: true },
-      { source: "/home/swipe", destination: "/discover/search", permanent: true },
-      { source: "/home/catalog", destination: "/discover/search", permanent: true },
-      { source: "/home/chat", destination: "/discover/search", permanent: true },
-      { source: "/home/ai", destination: "/discover/search", permanent: true },
-      { source: "/home/social", destination: "/discover/search", permanent: true },
-      { source: "/home/favorites", destination: "/discover/search", permanent: true },
+      { source: "/home", destination: "/discover/catalog", permanent: true },
+      { source: "/home/swipe", destination: "/discover/catalog", permanent: true },
+      { source: "/home/catalog", destination: "/discover/catalog", permanent: true },
+      { source: "/home/chat", destination: "/discover/catalog", permanent: true },
+      { source: "/home/ai", destination: "/discover/catalog", permanent: true },
+      { source: "/home/social", destination: "/discover/catalog", permanent: true },
+      { source: "/home/favorites", destination: "/discover/catalog", permanent: true },
+      // Explicit search intent, unlike the /home* leaves above — this one
+      // stays pointed at Search regardless of what the Discover DEFAULT is,
+      // the same way /discover/map (below) does.
       { source: "/search", destination: "/discover/search", permanent: true },
       // The map's own segment, for the ~26 hours it was the live url and the
       // Discover default (#1438 → this change). Search IS the map now, so the

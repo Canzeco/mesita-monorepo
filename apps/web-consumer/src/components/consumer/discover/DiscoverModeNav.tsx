@@ -1,51 +1,47 @@
 "use client";
 
-// Discover mode rail — the topbar menu across Discover's five modes.
+// Home's mode rail — the topbar menu across Home's four remaining modes.
 //
-// EVERY PILL IS 20% (Pato, 2026-09-01), the same rule InboxSectionNav follows
-// at 25% and HomeModeNav followed at 20% before it. The two section rows are
-// one control and they size the same way, so this file is back in line with
-// them: `grid-flow-col auto-cols-fr` on a `w-max min-w-full` track. At rest
-// min-w-full stretches the track to the frame and the fr columns split it into
-// exact fifths; at large accessibility text w-max lets the track outgrow the
-// frame and the scroller takes over, columns still equal.
+// SEARCH LEFT THIS RAIL FOR ITS OWN TAB (Pato, MESITA-1609). It was one of
+// five modes here from 2026-09-01 to today; the route (/discover/search) and
+// the screen (map + the one search bar) are both untouched, only its address
+// in the bottom bar changed. This rail now belongs to Home alone: Catalog,
+// Swipe, Chat, Favs.
+//
+// EVERY PILL IS 25% now (was 20% at five modes), the same rule InboxSectionNav
+// follows at three pills and PaySectionNav at two: `grid-flow-col auto-cols-fr`
+// on a `w-max min-w-full` track. At rest min-w-full stretches the track to the
+// frame and the fr columns split it evenly; at large accessibility text
+// w-max lets the track outgrow the frame and the scroller takes over, columns
+// still equal.
 //
 // THE SCROLLER IS THE FALLBACK, NOT THE RESTING STATE. A row that scrolls at
 // rest clips a label mid-word and reads as a broken render rather than an
 // affordance.
 //
-// THE MEASUREMENT, and it is tight. `auto-cols-fr` sizes EVERY column to the
-// widest pill, so the track is 5 x widest + 16px of gaps and it must fit 359px.
-// At the old 12px (`text-xs`), measured with real Inter 600:
+// THE MEASUREMENT, and it is no longer tight — dropping Search bought real
+// margin back. `auto-cols-fr` sizes EVERY column to the widest pill, so the
+// track is 4 x widest + 16px of gaps and it must fit 359px. At `type-label`
+// (11px), reusing the per-label widths measured for the five-mode row (no
+// mode's own width changes when a sibling leaves):
 //
-//   label      text    + 26px chrome   track (5w+16)   vs 359px
-//   ---------  ------  --------------  --------------  ----------
-//   Search     40.0    66.0            346.0           fits (+13)
-//   Catalog    44.0    70.0            366.0           SCROLLS (-7)
-//   Favorites  59.4    85.4            443.0           SCROLLS (-84)
+//   label    text   + 26px chrome   track (4w+16)   vs 359px
+//   -------  -----  --------------  --------------  -----------
+//   Catalog  40.3   66.3            281.2           fits (+78)
+//   Swipe    31.8   57.8            247.2           fits (+112)
+//   Chat     24.5   50.5            218.0           fits (+141)
+//   Favs     25.1   51.1            220.4           fits (+139)
 //
-// THE WIDEST LABEL IS "CATALOG" NOW, and it is why this row runs at
-// `type-label` (11px) instead of `text-xs` (12px) — the escape the previous
-// revision of this comment named as the sanctioned one. At 11/12 the type
-// scales to 40.3px, so the track is 5 x 66.3 + 16 = 347.7: fits, +11px.
+// CATALOG IS STILL THE WIDEST, so `type-label` stays the type token even
+// though the 7px squeeze that originally forced it (see consumer-route-
+// contract.ts's discoverDefault comment for that history) no longer applies
+// at four columns — reverting to `text-xs` here would be a separate,
+// deliberate call this PR does not make.
 //
-// That 7px was the ENTIRE case for calling the mode "Home" (2026-09-01), and
-// on 2026-09-02 Pato reversed it: the mode is Catalog everywhere else in the
-// stack — the `catalog` mode key, CatalogRails, `consumer-web-list-catalog`,
-// the Catalog column in the admin Discovery matrix, Docs > Discovery's mode
-// list — and Home named a screen that is not the default landing screen. A
-// label does not get to be wrong to save 7 pixels when a type token buys them.
-//
-// Chrome per pill = 14px icon + 4px gap-1 + 8px px-1. The same arithmetic is
-// still why "Favorites" is "Favs" (443px, hopeless at either size) and why the
-// row went from seven modes to five — at seven the columns are 47.9px and
-// nothing with an icon fits.
-//
-// A SIXTH mode, or any label wider than "Catalog", puts it back over budget —
-// and the type escape is now SPENT, so the next widening pays in a real
-// redesign. Re-measure at 375px before adding either. Never reach for a
-// `text-[11px]` arbitrary value: eslint's off-scale-font-size rule bans those
-// and names the role tokens as the way down.
+// Chrome per pill = 14px icon + 4px gap-1 + 8px px-1. A FIFTH mode back in
+// this rail (Search or otherwise), or any label wider than "Catalog", is the
+// next time to re-measure — there is real margin now, but it is not
+// unlimited.
 //
 
 import { useEffect, useRef, useState } from "react";
@@ -55,7 +51,6 @@ import {
   Flame,
   Heart,
   LayoutGrid,
-  Search,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -74,22 +69,23 @@ type Mode = {
   blurb?: string;
 };
 
-// ALL FIVE ARE LIVE (Pato, 2026-09-01). Nothing here is parked any more, so
-// the row is five real destinations rather than a preview ladder: the `soon`
-// branch below is kept for the next mode that lands unfinished, not because
-// anything uses it today.
+// FOUR ARE LIVE HERE, one moved (MESITA-1609). Search left for its own tab;
+// nothing else in this row is parked — the `soon` branch below is kept for
+// the next mode that lands unfinished, not because anything uses it today.
 //
-// SEARCH IS THE MAP, and it carries the search bar. A found place needs
-// somewhere to land, and on a list it lands nowhere — so the typed control sits
-// on the pins. CATALOG is the catalog rails with that bar removed: browsing and
-// typing are different jobs, and two inputs one pill apart was the redundancy
-// this row is fixing.
+// CATALOG is the catalog rails with no search bar on it — the reason two
+// typed inputs one pill apart was ever a redundancy left with Search, so
+// that argument is now historical, not load-bearing. See
+// consumer-route-contract.ts for Search's own reasoning.
 //
-// CATALOG LEADS BUT SEARCH IS THE DEFAULT (see `discoverDefault`), so the first
-// pill is not the landing screen. That reads like a bug until you know it is a
-// call, which is why route-structure pins it. It also stopped being a TRAP once
-// the word changed: a pill named "Home" that is not where you land was reading
-// as one thing and doing another.
+// CATALOG LEADS AND IS NOW THE DEFAULT (MESITA-1609, see `discoverDefault`).
+// The "first pill is not the landing screen" trap this row used to hold
+// (Catalog visually first, Search the hidden default) is resolved by Search
+// leaving entirely, not by anyone forgetting the trap existed — see
+// consumer-route-contract.ts's discoverDefault comment for the full
+// reasoning. Do not re-derive "default off the leading pill" as a rule for
+// THIS row from Activity's still-live version of it (inboxDefault) — the two
+// no longer share the same justification.
 //
 // LayoutGrid, not House. #1449 swapped the grid for a house because the grid
 // "read as four boxes next to the word Home" — correct then, and the same
@@ -97,15 +93,13 @@ type Mode = {
 // next to the word Catalog would be the mismatch that commit was fixing.
 //
 // ORDER runs from the least to the most committed way to browse: rails you
-// scan, a name you type, a deck you flick, a question you ask, a list you
-// already curated.
+// scan, a deck you flick, a question you ask, a list you already curated.
 export const MODES: Mode[] = [
   {
     href: CONSUMER_ROUTES.discoverTabs.catalog,
     label: "Catalog",
     Icon: LayoutGrid,
   },
-  { href: CONSUMER_ROUTES.discoverTabs.search, label: "Search", Icon: Search },
   {
     href: CONSUMER_ROUTES.discoverTabs.swipe,
     label: "Swipe",
