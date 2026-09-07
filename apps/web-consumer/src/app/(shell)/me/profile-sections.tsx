@@ -120,7 +120,7 @@ export function BoxRow({
 // adjacency in the JSX.
 export function BoxGroup({ children }: { children: ReactNode }) {
   return (
-    <div className="border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y">
+    <div className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border">
       {children}
     </div>
   );
@@ -151,27 +151,15 @@ export function BoxGroup({ children }: { children: ReactNode }) {
 // worse than wrapping. Keep every `summary` to three words or fewer and the
 // question never comes up. `min-h` holds the rows even when one title wraps.
 
-export function DestGrid({
-  children,
-  cols = 2,
-}: {
-  children: ReactNode;
-  /** 2 by default; 4 for the compact Activity row. Written as whole class
-   *  strings, never `grid-cols-${cols}` — Tailwind scans source text, so an
-   *  interpolated class is not in the build and the grid silently collapses
-   *  to one column. */
-  cols?: 2 | 4;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid items-stretch gap-2",
-        cols === 4 ? "grid-cols-4" : "grid-cols-2",
-      )}
-    >
-      {children}
-    </div>
-  );
+// ALWAYS TWO COLUMNS (MESITA-1639). There was a `cols` prop and a four-up
+// Activity row; four cells at 375px are 80px wide, which is why those four
+// carried no summary. The row is two pairs now and the prop had no second
+// call site, so it is gone rather than parked. If a four-up is ever wanted
+// again, write the class as a whole string — Tailwind scans source TEXT, so
+// `grid-cols-${cols}` never enters the build and the grid silently collapses
+// to one column.
+export function DestGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 items-stretch gap-2">{children}</div>;
 }
 
 // ONE SHAPE, REPEATED (MESITA-1633). The page used to stack four cell shapes
@@ -191,7 +179,6 @@ export function DestTile({
   disabled,
   soon = false,
   full = false,
-  compact = false,
 }: {
   Icon: LucideIcon;
   title: string;
@@ -204,11 +191,6 @@ export function DestTile({
   /** Spans both columns — for a cell with no partner, so the last row is a
    *  deliberate full-width block rather than a half-empty one. */
   full?: boolean;
-  /** Icon over name, no summary — the four-up Activity row. At 375px those
-   *  cells are 80px wide with ~64px of text, which is why they carry no
-   *  second line: there is no room for one, and shrinking the type is not an
-   *  option (10px is the floor). */
-  compact?: boolean;
 }) {
   const inert = disabled || soon;
   return (
@@ -219,53 +201,33 @@ export function DestTile({
       aria-disabled={inert}
       title={soon ? "Coming soon" : undefined}
       className={cn(
-        "border-border bg-card shadow-rest relative flex w-full overflow-hidden rounded-2xl border transition",
-        compact
-          ? "min-h-[76px] flex-col items-center justify-center p-2"
-          : "min-h-[92px] flex-col justify-between p-3.5 text-left",
+        "border-border bg-card shadow-rest relative flex min-h-[92px] w-full flex-col justify-between overflow-hidden rounded-2xl border p-3.5 text-left transition",
         full && "col-span-2",
         inert ? "opacity-60" : "hover:bg-muted/40 active:scale-[0.98]",
       )}
     >
-      {compact ? (
-        <span className="flex w-full min-w-0 flex-col items-center gap-1.5 py-0.5">
-          <Icon className="text-foreground/70 h-5 w-5 shrink-0" aria-hidden />
-          <span className="w-full truncate text-center text-xs font-bold tracking-tight">
-            {title}
-          </span>
-          {soon && (
-            <span className="border-border text-muted-foreground type-meta rounded-full border px-1 font-semibold tracking-[0.1em] uppercase">
-              Soon
-            </span>
-          )}
+      <span className="min-w-0">
+        {/* The gutter is reserved on the TEXT, not by shrinking the cell, so
+            the glyph can sit in the corner without overlapping a word. */}
+        <span className="block truncate pr-9 text-sm font-bold tracking-tight">
+          {title}
         </span>
-      ) : (
-        <>
-          <span className="min-w-0">
-            {/* The gutter is reserved on the TEXT, not by shrinking the cell,
-                so the glyph can sit in the corner without overlapping a
-                word. */}
-            <span className="block truncate pr-9 text-sm font-bold tracking-tight">
-              {title}
-            </span>
-            {soon ? (
-              <span className="border-border text-muted-foreground type-meta mt-1 inline-block rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
-                Soon
-              </span>
-            ) : (
-              <span className="text-muted-foreground mt-0.5 block pr-9 text-xs leading-snug">
-                {summary}
-              </span>
-            )}
+        {soon ? (
+          <span className="border-border text-muted-foreground type-meta mt-1 inline-block rounded-full border px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase">
+            Soon
           </span>
-          {/* Decorative. The title and summary already say everything, so
-              this is hidden rather than described. */}
-          <Icon
-            className="text-foreground pointer-events-none absolute right-2.5 bottom-2 h-10 w-10 opacity-[0.22]"
-            aria-hidden
-          />
-        </>
-      )}
+        ) : (
+          <span className="text-muted-foreground mt-0.5 block pr-9 text-xs leading-snug">
+            {summary}
+          </span>
+        )}
+      </span>
+      {/* Decorative. The title and summary already say everything, so
+          this is hidden rather than described. */}
+      <Icon
+        className="text-foreground pointer-events-none absolute right-2.5 bottom-2 h-10 w-10 opacity-[0.22]"
+        aria-hidden
+      />
     </button>
   );
 }

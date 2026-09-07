@@ -521,10 +521,12 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders eleven cells in a 2 · 4 · 2 · 2 · 1 rhythm", () => {
-    // Row widths VARY on purpose (MESITA-1636): twelve equal cells in six
-    // identical pairs read as one undifferentiated column and the passport
-    // stopped leading.
+  it("renders eleven cells in a 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
+    // Five pairs and a full-width tail (MESITA-1639). MESITA-1636 broke the
+    // rhythm with a four-up so the column would not read as undifferentiated,
+    // and paid for it in the only four cells on the page with no summary. The
+    // passport leads by being a different OBJECT — a document with a photo,
+    // twice the height of a cell — not by the pairs below it varying.
     //
     // Absent by design, each for its own reason: Instagram and Class are
     // displayed ON the passport (and opened from its sheet); Metrics and
@@ -545,17 +547,41 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     ]);
   });
 
-  it("Activity is the compact four-up, and only Activity", () => {
-    // `compact` is icon-over-name with no summary, which only works because
-    // those four cells are 80px wide at 375px. A non-compact cell in that row
-    // would overflow; a compact one anywhere else would drop a summary that
-    // has room to exist.
-    const compact = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
-      .map((m) => m[0])
-      .filter((c) => /\bcompact\b/.test(c))
+  it("every row is a pair, and the last is a deliberate full-width cell", () => {
+    // Five `DestGrid`s of two plus one of one, spanned. Counting grids and
+    // spans SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
+    // four-up too, and would go on being true of any row width.
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(6);
+    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
+    expect(ME).not.toMatch(/<DestGrid cols=/);
+  });
+
+  it("no cell is compact — every live cell says what it holds", () => {
+    // The four-up bought its width by dropping the summary line, which left
+    // Activity as the only cells on Me that named a destination without
+    // saying what was in it. The prop is gone from `DestTile` entirely; this
+    // pins the page so a "make it fit" change cannot reintroduce the idea by
+    // hand. Parked cells are the exception — the Soon pill takes that slot.
+    const cells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map((m) => m[0]);
+    expect(cells.filter((c) => /\bcompact\b/.test(c))).toEqual([]);
+    const silent = cells
+      .filter((c) => !/\bsoon\b/.test(c))
+      .filter((c) => /summary=""/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(compact).toEqual(["Alerts", "Visits", "Orders", "Bookings"]);
-    expect([...ME.matchAll(/cols=\{4\}/g)]).toHaveLength(1);
+    expect(silent).toEqual([]);
+  });
+
+  it("DestTile is ONE shape, with no second branch to drift", () => {
+    const src = readFileSync(
+      join(SHELL, "me", "profile-sections.tsx"),
+      "utf8",
+    );
+    // MESITA-1633's rule, now structural rather than a convention: there is
+    // no `compact` prop and no `cols` prop, so there is no second layout for
+    // a cell or a row to be rendered in.
+    expect(src).not.toMatch(/compact\??:/);
+    expect(src).not.toMatch(/cols\??:/);
+    expect(src).not.toContain("grid-cols-4");
   });
 
   it("no Cards cell — Wallet already opens that exact sheet", () => {
