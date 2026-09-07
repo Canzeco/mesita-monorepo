@@ -3,7 +3,12 @@
 import { CONNECT_COUNTRIES } from "@/lib/connect-countries";
 import { CONNECT_ENTITY_TYPES } from "@/lib/connect-entity-types";
 import { useActionState } from "react";
-import { StatePill, DataRow, READY_CAPTION } from "@/components/console/badges";
+import {
+  StatePill,
+  DataRow,
+  READY_CAPTION,
+  disabledReasonCopy,
+} from "@/components/console/badges";
 import {
   connectPaymentsAction,
   openPaymentsDashboardAction,
@@ -13,6 +18,7 @@ import {
   paymentAccountState,
   type PaymentAccount,
 } from "@/lib/api/organizations";
+import { cn } from "@/lib/utils";
 import {
   CTA_BUTTON_CLASS,
   ERROR_BOX_CLASS,
@@ -21,6 +27,29 @@ import {
 } from "@/lib/ui-classes";
 
 const INITIAL: PaymentsActionState = { error: null, note: null };
+
+/**
+ * One failure, said once, where the eye already is.
+ *
+ * The card used to coalesce both actions' errors into a single 12px line
+ * BELOW both forms (MESITA-1645). Three problems in one slot: a
+ * failed Connect and a failed dashboard-open were indistinguishable, the page
+ * did not move on submit so the honest read was "the button did nothing", and
+ * it sat under the control that failed. Now each form owns its own, above its
+ * own button, with a title and a live region so a screen reader announces it.
+ */
+function ErrorBox({ title, message }: { title: string; message: string | null }) {
+  if (!message) return null;
+  return (
+    <div
+      role="alert"
+      className={cn(ERROR_BOX_CLASS, "w-full text-sm leading-relaxed")}
+    >
+      <span className="block font-semibold">{title}</span>
+      <span className="block">{message}</span>
+    </div>
+  );
+}
 
 
 export function PaymentsCard({
@@ -49,7 +78,6 @@ export function PaymentsCard({
   );
 
   const state = paymentAccountState(account, orphaned);
-  const error = connectState.error ?? dashState.error;
   const note = connectState.note ?? dashState.note;
 
   return (
@@ -66,6 +94,12 @@ export function PaymentsCard({
             {READY_CAPTION}
           </p>
         )}
+        {state === "in_review" && (
+          <p className="text-muted-foreground mt-1 mb-2 text-[12px] leading-relaxed">
+            Stripe has everything it asked for and is checking it. Nothing to do
+            right now — we&apos;ll email you when it&apos;s done.
+          </p>
+        )}
         {account?.country && (
           <DataRow label="Country">{account.country}</DataRow>
         )}
@@ -78,10 +112,10 @@ export function PaymentsCard({
           <DataRow label="Why">
             {orphaned
               ? "The Stripe account no longer exists — connect again."
-              : (account?.disabled_reason ?? "Stripe restricted the account.")}
+              : disabledReasonCopy(account?.disabled_reason)}
           </DataRow>
         )}
-        {state === "pending" && account !== null &&
+        {state === "unfinished" && account !== null &&
           account.requirements_due.length > 0 && (
           <DataRow label="Stripe still needs">
             {`${account.requirements_due.length} item${
@@ -95,6 +129,10 @@ export function PaymentsCard({
         <div className="flex flex-col gap-3">
           {state === "none" || orphaned ? (
             <form action={connectAction} className="flex flex-wrap items-end gap-3">
+              <ErrorBox
+                title="Couldn't connect payments"
+                message={connectState.error}
+              />
               <input type="hidden" name="orgId" value={orgId} />
               <input type="hidden" name="intent" value="create" />
               <label className="flex flex-1 basis-40 flex-col gap-1.5">
@@ -148,8 +186,14 @@ export function PaymentsCard({
               </p>
             </form>
           ) : (
-            <div className="flex items-center gap-3">
-              {!account?.details_submitted && (
+            <div className="flex flex-col gap-3">
+              <ErrorBox title="Couldn't connect payments" message={connectState.error} />
+              <div className="flex items-center gap-3">
+              {/* Resume follows the STATE. It used to key off
+                  !details_submitted, which meant an account waiting on Stripe
+                  still offered a button that reopened a finished form
+                  (MESITA-1645). */}
+              {state === "unfinished" && (
                 <form action={connectAction}>
                   <input type="hidden" name="orgId" value={orgId} />
                   {/* Resume mints a link for an account that already exists,
@@ -180,10 +224,11 @@ export function PaymentsCard({
                   {opening ? "Opening..." : "Open Stripe dashboard"}
                 </button>
               </form>
+              </div>
+              <ErrorBox title="Couldn't open the Stripe dashboard" message={dashState.error} />
             </div>
           )}
-          {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-          {note && !error && (
+          {note && !connectState.error && !dashState.error && (
             <p className="text-muted-foreground text-[12px]">{note}</p>
           )}
         </div>

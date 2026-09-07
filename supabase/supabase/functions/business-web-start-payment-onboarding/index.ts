@@ -55,6 +55,10 @@ import {
   type PaymentAccountRow,
   writePaymentAccount,
 } from "../_shared/payment-account-doc.ts";
+import {
+  classifyOnboardingFailure,
+  stripeMessageOf,
+} from "./failure-copy.ts";
 
 type Body = {
   orgId?: string;
@@ -74,47 +78,40 @@ type Body = {
   entityType?: string;
 };
 
-// Stripe's OWN WORDS reach the operator. Every failure on this path is a
-// configuration fact a retry cannot change — Connect not signed up for, a key
-// that is actually a key id, branding missing — and Stripe names each one
-// precisely. Swallowing that into "try again" sends the operator to the logs
-// (or to an agent) to learn something the API already said. The Controls row
-// renders `blocked` as "Stripe: <reason>", so this lands in an idiom that
-// already exists.
+// Stripe's own words go to the LOG. What the owner reads is decided by
+// classifyOnboardingFailure in failure-copy.ts (MESITA-1645) — an allowlist,
+// not a deny-list, because the owner supplied exactly two fields and almost
+// nothing Stripe can reject here is theirs to fix. The verbatim default is
+// what put "stripe_dashboard[type]=express" in a restaurant's browser.
 //
-// ONE exception, and it is the reason this function exists rather than a bare
-// `json(err.message)`: a 401. The reader here is a RESTAURANT OWNER, not a
-// Mesita operator. "Expired API Key provided: sk_test_…8QBF1y" tells them
-// nothing they can act on, implies the failure is theirs, and echoes our
-// platform credential into their browser — the very leak the shape guard on
-// the key was added to prevent, arriving through the one door it cannot cover
-// (an expired or revoked key is perfectly SHAPED, so it passes that guard and
-// only dies on the first real call). Every other Stripe rejection still
-// travels verbatim.
+// The log line is unconditional. A message the merchant does not see and
+// nobody records is how a platform misconfiguration stays invisible for two
+// days, which is exactly what happened.
 function stripeFailure(err: unknown): Response {
-  const raw = (err as { raw?: { message?: unknown } }).raw?.message;
-  const top = (err as { message?: unknown }).message;
-  const message = typeof raw === "string"
-    ? raw
-    : typeof top === "string"
-    ? top
-    : "Stripe rejected the request.";
-  if (isStripeKeyRejection(err)) {
+  const keyRejected = isStripeKeyRejection(err);
+  const detail = stripeMessageOf(err);
+  const verdict = classifyOnboardingFailure(err, { keyRejected });
+
+  if (keyRejected) {
     const secret = resolveStripeSecret();
     console.error(
       `[start-payment-onboarding] Stripe REJECTED the platform key` +
-        `${secret ? ` in ${secret.name}` : ""}: ${message}. ` +
+        `${secret ? ` in ${secret.name}` : ""}: ${detail}. ` +
         `The key is shaped correctly but is not usable — expired, rolled, ` +
         `revoked, or issued for a different Stripe account. Rotate it.`,
     );
-    return json({
-      ok: false,
-      error:
-        "Payments aren\u2019t configured on Mesita\u2019s side yet \u2014 nothing to fix on your end. We\u2019ve been notified.",
-      code: "stripe_key_rejected",
-    }, 503);
+  } else if (!verdict.passthrough) {
+    console.error(
+      `[start-payment-onboarding] Stripe rejected the request and the reason ` +
+        `is OURS, not the merchant's — they were shown a generic sentence. ` +
+        `Stripe said: ${detail}`,
+    );
   }
-  return json({ ok: false, error: message, code: "stripe_error" }, 400);
+
+  return json(
+    { ok: false, error: verdict.error, code: verdict.code },
+    verdict.status,
+  );
 }
 
 Deno.serve(async (req) => {

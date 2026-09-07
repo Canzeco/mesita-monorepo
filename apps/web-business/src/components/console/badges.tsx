@@ -87,7 +87,10 @@ export const CARD_PAYMENTS_LIVE = false;
 
 const STATE_LABEL: Record<PaymentAccountState, string> = {
   none: "No account",
-  pending: "Pending",
+  // "Not finished" says whose move it is. "Pending" did not, and it was also
+  // the word for the opposite situation (MESITA-1645).
+  unfinished: "Not finished",
+  in_review: "Stripe is checking",
   charges_only: "Charges only",
   live: CARD_PAYMENTS_LIVE ? "Live" : "Ready",
   restricted: "Restricted",
@@ -101,7 +104,11 @@ export const READY_CAPTION = CARD_PAYMENTS_LIVE
 
 const STATE_CLASS: Record<PaymentAccountState, string> = {
   none: "bg-muted text-muted-foreground",
-  pending: "bg-amber-500/15 text-amber-700",
+  // Amber is "you have something to do". Waiting on Stripe is not a debt the
+  // owner can settle, so it is neutral — the same reason the intake matrix
+  // refuses rose for a function that simply has not run.
+  unfinished: "bg-amber-500/15 text-amber-700",
+  in_review: "bg-muted text-muted-foreground",
   charges_only: "bg-amber-500/15 text-amber-700",
   // Blue, not emerald, while CARD_PAYMENTS_LIVE is false: green reads as
   // "money is flowing", and it is not.
@@ -110,6 +117,38 @@ const STATE_CLASS: Record<PaymentAccountState, string> = {
     : "bg-sky-500/15 text-sky-700",
   restricted: "bg-destructive/10 text-destructive",
 };
+
+/**
+ * Stripe's `disabled_reason` is an ENUM, and the card printed it raw
+ * (MESITA-1645). "rejected.fraud" is an accusation in a data row with no
+ * explanation; "requirements.past_due" is not a sentence. Same rule as the
+ * Edge Function's failure copy: say what it means for the restaurant, and
+ * never make them read our vendor's vocabulary.
+ *
+ * The `rejected.*` family deliberately does NOT state the reason. Those are
+ * decisions with consequences a support conversation should carry, not a
+ * badge.
+ */
+const DISABLED_REASON_COPY: Record<string, string> = {
+  "requirements.past_due": "Stripe needs a few more details before this account can take payments.",
+  "requirements.pending_verification": "Stripe is verifying what you sent. Nothing to do right now.",
+  "listed": "Stripe is reviewing this account. Nothing to do right now.",
+  "under_review": "Stripe is reviewing this account. Nothing to do right now.",
+  "platform_paused": "Payments are paused on this account. Write to us and we'll sort it out.",
+  "rejected.fraud": "Stripe closed this account. Write to us and we'll help you from here.",
+  "rejected.terms_of_service": "Stripe closed this account. Write to us and we'll help you from here.",
+  "rejected.listed": "Stripe closed this account. Write to us and we'll help you from here.",
+  "rejected.other": "Stripe closed this account. Write to us and we'll help you from here.",
+};
+
+export function disabledReasonCopy(reason: string | null | undefined): string {
+  if (!reason) return "Stripe has paused this account.";
+  const known = DISABLED_REASON_COPY[reason];
+  if (known) return known;
+  // An unmapped reason is still OURS to explain, not Stripe's to announce.
+  // Default-safe, same posture as the EF's allowlist.
+  return "Stripe has paused this account. Write to us and we'll sort it out.";
+}
 
 export function StatePill({ state }: { state: PaymentAccountState }) {
   return (
