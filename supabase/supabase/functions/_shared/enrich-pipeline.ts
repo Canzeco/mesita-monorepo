@@ -10,7 +10,7 @@
 //
 // The SQL poller (run_place_enrichment_stages, pg_cron) claims pending rows
 // per stage and fires ONE net.http_post per row at the matching EF with
-// { project_id }. Each EF acks 200 immediately, does its stage's work in an
+// { place_id }. Each EF acks 200 immediately, does its stage's work in an
 // EdgeRuntime.waitUntil background task, and finishes by advancing the row
 // (advanceResearchStage) or failing it (failResearchRow). A crashed stage
 // leaves the row 'running'; the poller's reaper flips it back to 'pending'
@@ -182,7 +182,7 @@ const STAGE_CRASH_STEP: Partial<Record<ResearchStage, `S${number}`>> = {
 };
 
 // The boilerplate every stage EF shares: guards → internal-caller gate →
-// parse { project_id } → verify the row is claimed at this stage → ack 202 →
+// parse { place_id } → verify the row is claimed at this stage → ack 202 →
 // run the stage's work in the background. The runner owns
 // advance/release/fail; a thrown error releases the row for a retry.
 export function serveEnrichStage(
@@ -203,10 +203,10 @@ export function serveEnrichStage(
     const callerRes = requireInternalCaller(req, envRes.env);
     if (!callerRes.ok) return callerRes.response;
 
-    const bodyRes = await readJson<{ project_id?: string }>(req);
+    const bodyRes = await readJson<{ place_id?: string }>(req);
     if (!bodyRes.ok) return bodyRes.response;
-    const projectId = (bodyRes.body.project_id ?? "").toString().trim();
-    if (!projectId) return json({ ok: false, error: "project_id is required" }, 400);
+    const projectId = (bodyRes.body.place_id ?? "").toString().trim();
+    if (!projectId) return json({ ok: false, error: "place_id is required" }, 400);
 
     const admin = adminClient(envRes.env);
     const rowRes = await loadClaimedRow(admin, projectId, stage);
@@ -245,6 +245,6 @@ export function serveEnrichStage(
         await releaseResearchRow(admin, projectId, `${stage}_crash: ${msg}`);
       }),
     );
-    return json({ ok: true, accepted: true, stage, project_id: projectId }, 202);
+    return json({ ok: true, accepted: true, stage, place_id: projectId }, 202);
   });
 }

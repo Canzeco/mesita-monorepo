@@ -3,7 +3,7 @@
 // Stage 1 of the Intaker pipeline (the Intaker is a PROCESS — a cron-driven
 // pipeline of three EFs — not an agent). The pg_cron poller
 // (run_place_enrichment_stages) claims place_research rows at stage='research'
-// and fires this EF with { project_id }. It acks 202 immediately and runs the
+// and fires this EF with { place_id }. It acks 202 immediately and runs the
 // RESEARCH half in a background task:
 //
 //   S1  Google spine re-check (fetchGoogleBasics — hard gate; failure lands
