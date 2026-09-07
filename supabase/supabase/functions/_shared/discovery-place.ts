@@ -138,7 +138,7 @@ export async function attachIntakeHighWater<
   if (ids.length === 0) return rows;
 
   const { data, error } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, enrichment")
     .in("id", ids);
   if (error) {
