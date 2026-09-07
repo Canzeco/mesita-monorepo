@@ -8,11 +8,21 @@
 // ?mode=signup deep-links to the create variant.
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { AuthCard, AuthShell } from "@/components/auth/AuthShell";
+import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
 import { AuthTabs } from "@/components/auth/AuthTabs";
 import { authSignInWithEmail, authSignUpWithEmail } from "@/app/auth/actions";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 export const dynamic = "force-dynamic";
+
+// Mirrors web-admin's page.tsx ERROR_COPY pattern. auth/callback/route.ts
+// redirects a failed Google sign-in straight here (not through `/`, which
+// would drop the query string via the (shell) layout's unauthenticated
+// redirect) so this is read reliably.
+const ERROR_COPY: Record<string, string> = {
+  oauth_failed:
+    "Google sign-in failed. Try again, or use email/password instead.",
+};
 
 export default async function SignInPage({
   searchParams,
@@ -32,20 +42,27 @@ export default async function SignInPage({
       ? nextRaw
       : "/places";
   const mode = sp.mode === "signup" ? "signup" : "signin";
+  const errorParam = typeof sp.error === "string" ? sp.error : null;
+  const errorMessage = errorParam ? ERROR_COPY[errorParam] : null;
 
   return (
-    <AuthShell>
-      <AuthCard
-        title="Mesita for business"
-        subtitle="Sign in to manage a place."
-      >
-        <AuthTabs
-          next={next}
-          initialMode={mode}
-          signInAction={authSignInWithEmail.bind(null, next)}
-          signUpAction={authSignUpWithEmail.bind(null, next)}
-        />
-      </AuthCard>
-    </AuthShell>
+    <EnterpriseAuthLayout
+      title="Mesita for business"
+      subtitle="Sign in to manage a place."
+      chip={
+        errorMessage ? (
+          <p className={`${ERROR_BOX_CLASS} mt-3 leading-relaxed`}>
+            {errorMessage}
+          </p>
+        ) : null
+      }
+    >
+      <AuthTabs
+        next={next}
+        initialMode={mode}
+        signInAction={authSignInWithEmail.bind(null, next)}
+        signUpAction={authSignUpWithEmail.bind(null, next)}
+      />
+    </EnterpriseAuthLayout>
   );
 }
