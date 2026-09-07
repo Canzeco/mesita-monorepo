@@ -1,0 +1,205 @@
+#!/usr/bin/env -S deno run --allow-read --allow-write
+// sync-shared.ts — propagate the modules web-admin and web-business BOTH own
+// from ONE canonical source (shared/) into each app.
+//
+// CONTRACT (MESITA-1614):
+//   shared/**            = SOURCE OF TRUTH. Hand-edited.
+//   apps/web-*/src/**    = FULLY GENERATED copies, one per target below.
+//
+// WHY GENERATE INSTEAD OF SHARING A PACKAGE. The monorepo has NO root pnpm
+// workspace on purpose (mobile needs nodeLinker: hoisted, the web apps use the
+// default isolated linker), so there is no import path every app can reach —
+// and each Vercel project builds from its own Root Directory, so a sibling
+// directory is not even in the build context. Generation is how this repo
+// already keeps CLAUDE.md/AGENTS.md and the whole brand system in lockstep;
+// see scripts/sync-rules.ts and scripts/sync-brand.ts. Same idiom, same
+// --check gate in CI.
+//
+// WHAT BELONGS HERE. Modules that are byte-identical in both apps AND are
+// POLICY rather than plumbing: a vocabulary, a formatter, a scoring rule, a
+// feed shape. They may import per-app adapters through the `@/` alias —
+// `supabase-ef.ts` reaches `@/lib/supabase/server`, `manage.tsx` reaches
+// `@/components/ErrorNote`, the notification trio reaches a sibling
+// `./actions` — and those adapters legitimately DIFFER per app. The shared
+// file is the policy; the alias is the seam. That is why a canonical file here
+// is not independently type-checkable: each app's own `tsc` is what proves it,
+// which is exactly the check that already runs.
+//
+// WHAT DOES NOT BELONG HERE. Anything sync-brand already generates
+// (components/brand/*, brand-data.ts) — two owners for one file is a fight,
+// not a guarantee.
+//
+// HOW TO DIVERGE. Delete the entry from TARGETS. That is a deliberate act with
+// a diff and a reviewer, which is the whole point: this script does not stop
+// two apps from differing, it stops them from differing BY ACCIDENT.
+//
+// Run from the repo root:
+//     deno task sync-shared
+// Pass --check to verify without writing (STRICT: any drift exits 1).
+//
+// Worktree conflicts on generated files: regenerate, never hand-merge.
+
+import { dirname, fromFileUrl, join } from "@std/path";
+
+const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
+const check = Deno.args.includes("--check");
+
+const RUN = "deno task sync-shared";
+
+/** One canonical source, and where each app keeps its copy.
+ *
+ *  The notification trio lands on DIFFERENT paths per app — admin files it
+ *  under the Global Performance screen, business under the place's
+ *  notifications section — which is precisely why a plain "same path in both"
+ *  rule would not have caught it. They were identical and invisible to any
+ *  same-path diff. */
+const TARGETS: { source: string; apps: Record<string, string> }[] = [
+  {
+    source: "state-vocabulary.ts",
+    apps: {
+      "web-admin": "src/lib/state-vocabulary.ts",
+      "web-business": "src/lib/state-vocabulary.ts",
+    },
+  },
+  {
+    source: "format.ts",
+    apps: {
+      "web-admin": "src/lib/format.ts",
+      "web-business": "src/lib/format.ts",
+    },
+  },
+  {
+    source: "phone-countries.ts",
+    apps: {
+      "web-admin": "src/lib/phone-countries.ts",
+      "web-business": "src/lib/phone-countries.ts",
+    },
+  },
+  {
+    source: "supabase-ef.ts",
+    apps: {
+      "web-admin": "src/lib/supabase-ef.ts",
+      "web-business": "src/lib/supabase-ef.ts",
+    },
+  },
+  {
+    source: "promotion-score.ts",
+    apps: {
+      "web-admin": "src/lib/business/promotion-score.ts",
+      "web-business": "src/lib/business/promotion-score.ts",
+    },
+  },
+  {
+    source: "proxy.ts",
+    apps: { "web-admin": "src/proxy.ts", "web-business": "src/proxy.ts" },
+  },
+  {
+    source: "manage.tsx",
+    apps: {
+      "web-admin": "src/components/admin-ui/manage.tsx",
+      "web-business": "src/components/admin-ui/manage.tsx",
+    },
+  },
+  {
+    source: "notifications/notification-feed.ts",
+    apps: {
+      "web-admin": "src/app/(app)/global-performance/notification-feed.ts",
+      "web-business":
+        "src/components/place-manage/notifications/notification-feed.ts",
+    },
+  },
+  {
+    source: "notifications/notification-config.ts",
+    apps: {
+      "web-admin": "src/app/(app)/global-performance/notification-config.ts",
+      "web-business":
+        "src/components/place-manage/notifications/notification-config.ts",
+    },
+  },
+  {
+    source: "notifications/notification-enricher-phase.ts",
+    apps: {
+      "web-admin":
+        "src/app/(app)/global-performance/notification-enricher-phase.ts",
+      "web-business":
+        "src/components/place-manage/notifications/notification-enricher-phase.ts",
+    },
+  },
+];
+
+/** The notice every generated copy carries, naming its source so the fix is
+ *  obvious from the file you are wrongly editing. */
+function notice(source: string): string {
+  return [
+    `// GENERATED by scripts/sync-shared.ts from shared/${source} — do not`,
+    `// hand-edit. Edit the source and run: ${RUN}`,
+    "",
+  ].join("\n");
+}
+
+let drift = 0;
+let written = 0;
+const missing: string[] = [];
+
+for (const target of TARGETS) {
+  const sourcePath = join(repoRoot, "shared", target.source);
+  let body: string;
+  try {
+    body = await Deno.readTextFile(sourcePath);
+  } catch {
+    missing.push(`shared/${target.source}`);
+    continue;
+  }
+  // A canonical source must never carry the notice itself: it would be copied
+  // into the output and the next run would prepend a second one.
+  if (body.startsWith("// GENERATED by scripts/sync-shared.ts")) {
+    console.error(
+      `sync-shared: shared/${target.source} carries the generated notice — ` +
+        `the source is hand-edited and must not.`,
+    );
+    Deno.exit(1);
+  }
+  const out = notice(target.source) + body;
+
+  for (const [app, rel] of Object.entries(target.apps)) {
+    const dest = join(repoRoot, "apps", app, rel);
+    let current: string | null = null;
+    try {
+      current = await Deno.readTextFile(dest);
+    } catch {
+      current = null;
+    }
+    if (current === out) continue;
+    if (check) {
+      drift++;
+      console.error(
+        `sync-shared: DRIFT  apps/${app}/${rel}  (source: shared/${target.source})`,
+      );
+      continue;
+    }
+    await Deno.mkdir(dirname(dest), { recursive: true });
+    await Deno.writeTextFile(dest, out);
+    written++;
+  }
+}
+
+if (missing.length > 0) {
+  console.error(`sync-shared: missing source(s): ${missing.join(", ")}`);
+  Deno.exit(1);
+}
+
+if (check) {
+  if (drift > 0) {
+    console.error(
+      `\nsync-shared: ${drift} generated file(s) drifted. Run \`${RUN}\`.`,
+    );
+    Deno.exit(1);
+  }
+  console.log(
+    `sync-shared: ${TARGETS.length} sources in sync across every target.`,
+  );
+} else {
+  console.log(
+    `sync-shared: ${TARGETS.length} sources, ${written} file(s) written.`,
+  );
+}

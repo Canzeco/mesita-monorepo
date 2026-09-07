@@ -104,6 +104,13 @@ describe("state vocabulary", () => {
   });
 });
 
+// A SECOND gate, deliberately.
+//
+// `deno task sync-shared:check` in rules.yml is the first: shared/ is the
+// source and both copies are generated from it (MESITA-1614). This runs in
+// each app's OWN path-filtered CI, so it still fires on a change that the
+// repo-wide workflow's filter somehow misses — and it fails on the same
+// mistake from the other direction, which is worth the four lines.
 describe("the two app copies must not drift", () => {
   // apps/web-admin and apps/web-business each carry a byte-identical copy of
   // this file. There is no root pnpm workspace to share it from — packages are
