@@ -511,11 +511,6 @@ describe("T6 — Activity's three sections are sheets on Me", () => {
 // would ship as a live tile pointing at nothing.
 describe("T8 — Me's grid is live cells, More is the parked tail", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
-  const MORE = readFileSync(
-    join(__dirname, "..", "..", "components", "consumer", "me", "MoreModal.tsx"),
-    "utf8",
-  );
-
   /** `<DestTile … title="X">` values, in render order. */
   const gridTitles = (source: string) => {
     const cells = [...source.matchAll(/<DestTile\b[\s\S]*?\/>/g)].map(
@@ -526,13 +521,12 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  const PARKED = ["Gift", "Share"];
-
-  it("renders eleven cells: five pairs then a full-width drawer", () => {
-    // ONE shape repeated (MESITA-1633). Profile, Instagram and Class live in
-    // the passport's sub-grid, and Metrics and Contact moved into Settings
+  it("renders twelve cells, six pairs, no drawer", () => {
+    // ONE shape repeated (MESITA-1633). Instagram and Class live in the
+    // passport's sub-grid and Metrics/Contact moved into Settings
     // (MESITA-1634) — a cell for any of them would be the second door this
-    // page keeps removing.
+    // page keeps removing. Gift and Share came UP from More (MESITA-1635),
+    // which emptied it, so there is no drawer left to have a cell.
     expect(gridTitles(ME)).toEqual([
       "Wallet",
       "Plan",
@@ -542,10 +536,22 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Bookings",
       "Connector",
       "Cards",
+      "Gift",
+      "Share",
       "Settings",
       "Help",
-      "More",
     ]);
+  });
+
+  it("the More drawer is gone from the codebase", () => {
+    // It held exactly Gift and Share; with both on the page it held nothing,
+    // and an empty drawer is worse than none.
+    expect(ME).not.toContain("MoreModal");
+    expect(
+      existsSync(
+        join(__dirname, "..", "..", "components", "consumer", "me", "MoreModal.tsx"),
+      ),
+    ).toBe(false);
   });
 
   it("sign out is in Settings, not in the page body", () => {
@@ -561,25 +567,16 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     ).toContain("SignOutButton");
   });
 
-  it("every parked cell on the page is marked `soon`", () => {
-    // `DestTile` grew a `soon` prop in MESITA-1633, so a parked feature may
-    // now live in the grid — but only wearing the pill. Orders and Connector
-    // are the two; a third live-looking cell pointing at nothing is the
+  it("every parked cell is marked `soon`, and only those four are", () => {
+    // Nothing is hidden a tap deeper any more, so the page carries its own
+    // roadmap: four cells wear the pill. A fifth live-looking cell pointing
+    // at nothing — or one of these four quietly losing the flag — is the
     // regression this catches.
     const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
       .map((m) => m[0])
       .filter((c) => /\bsoon\b/.test(c))
       .map((c) => c.match(/title="([^"]+)"/)?.[1]);
-    expect(parkedCells).toEqual(["Orders", "Connector"]);
-  });
-
-  it("More holds the rest of the parked tail, all of it parked", () => {
-    for (const parked of PARKED) {
-      expect(MORE).toContain(`title: "${parked}"`);
-    }
-    // Two rows, two `soon: true`. A row that un-parks belongs on the page,
-    // not left here reading as coming-soon while it already works.
-    expect([...MORE.matchAll(/soon: true/g)]).toHaveLength(PARKED.length);
+    expect(parkedCells).toEqual(["Orders", "Connector", "Gift", "Share"]);
   });
 });
 

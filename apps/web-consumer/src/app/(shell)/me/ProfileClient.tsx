@@ -9,8 +9,9 @@ import {
   CreditCard,
   Bot,
   Footprints,
-  MoreHorizontal,
+  Gift,
   Settings as SettingsIcon,
+  Share2,
   ShoppingBag,
   Wallet as WalletIcon,
 } from "lucide-react";
@@ -26,7 +27,6 @@ import { HelpModal } from "@/components/consumer/me/HelpModal";
 import { MetricsModal } from "@/components/consumer/me/MetricsModal";
 import { AiConnectModal } from "@/components/consumer/me/AiConnectModal";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
-import { MoreModal } from "@/components/consumer/me/MoreModal";
 import {
   AlertsModal,
   BookingsModal,
@@ -54,9 +54,13 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //   the passport   who you are, with a 2×2 sub-grid inside it: Profile
 //                  across the top, then Instagram · Class. Only Class in
 //                  metal (MESITA-1634)
-//   five pairs     Wallet·Plan · Alerts·Visits · Orders·Bookings ·
-//                  Connector·Cards · Settings·Help
-//   More           full width, carrying the parked tail (Gift, Share)
+//   six pairs      Wallet·Plan · Alerts·Visits · Orders·Bookings ·
+//                  Connector·Cards · Gift·Share · Settings·Help
+//
+// NO MORE DRAWER (MESITA-1635). Gift and Share were the last two rows in it,
+// so with them on the page it held nothing. Everything this account has is on
+// one screen now; four cells are `soon`, which is honest about the roadmap
+// rather than hiding it a tap deeper.
 //
 // WHY IT LOOKS LIKE THIS. The page it replaces stacked FOUR cell shapes and
 // three fills — passport tiles, a white pair, a muted count band, then a grid
@@ -134,7 +138,6 @@ export function ProfileClient({
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [cardsOpen, setCardsOpen] = useState(openCards);
   const [planOpen, setPlanOpen] = useState(false);
   const [passportOpen, setPassportOpen] = useState(false);
@@ -312,6 +315,19 @@ export function ProfileClient({
               onClick={() => setCardsOpen(true)}
             />
 
+            {/* PARKED, both. Gift has no sheet at all yet; Share's exists
+                and stays wired so un-parking is a `soon` removal alone. These
+                were the last two rows in More, so More held nothing and is
+                deleted (MESITA-1635) — an empty drawer is worse than none. */}
+            <DestTile Icon={Gift} title="Gift" summary="" soon />
+            <DestTile
+              Icon={Share2}
+              title="Share"
+              summary=""
+              soon
+              onClick={() => setShareOpen(true)}
+            />
+
             <DestTile
               Icon={SettingsIcon}
               title="Settings"
@@ -325,15 +341,6 @@ export function ProfileClient({
               onClick={() => setHelpOpen(true)}
             />
 
-            {/* Odd one out, so it spans — a half-empty last row would read as
-                a mistake rather than as the drawer it is. */}
-            <DestTile
-              Icon={MoreHorizontal}
-              title="More"
-              summary="Gift and Share"
-              onClick={() => setMoreOpen(true)}
-              full
-            />
           </DestGrid>
 
           <p className="text-muted-foreground type-label -mt-1 text-center">
@@ -425,13 +432,6 @@ export function ProfileClient({
           setPassportOpen(false);
           setSettingsOpen(true);
         }}
-      />
-      {/* More is the PARKED TAIL now (MESITA-1628) — Gift, Share, AI
-          Connector. Everything live moved onto the page as a grid cell. */}
-      <MoreModal
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        onOpenShare={() => setShareOpen(true)}
       />
     </div>
   );

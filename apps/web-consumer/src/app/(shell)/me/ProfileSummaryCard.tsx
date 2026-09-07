@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram, Lock, Unlock, UserRound } from "lucide-react";
+import { Instagram, Lock, Unlock } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
@@ -18,8 +18,7 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 //
 //   identity    photo ringed in the class metal · name on its own line ·
 //               age·sex·country beside the privacy state
-//   sub-grid    2×2 — PROFILE across the top, then INSTAGRAM · CLASS.
-//               Four slots, three cells, only CLASS in metal
+//   two cells   INSTAGRAM · CLASS, only CLASS in metal
 //
 // NO PLAN CELL (decision: Pato, MESITA-1619). The Passport prints what is
 // EARNED and PUBLIC. Class is earned and never purchasable; the plan is what
@@ -43,8 +42,14 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 // connected without a handle on the row. If this ever goes back to three
 // across, re-measure before re-adding the handle — do not assume.
 //
-// PROFILE SPANS BOTH COLUMNS, so it carries what it opens ("Name, phone,
-// birthday") rather than a verb. At 303px there is room to say the thing.
+// THE PHOTO OPENS PROFILE; THE NAME OPENS THE DOCUMENT (decision: Pato,
+// MESITA-1635). There was a Profile sub-cell reading "Name, phone, birthday"
+// directly under a row already printing the name, the age, the sex and the
+// country — it restated its neighbour, so it went. Its door did not: the
+// avatar is now the Profile button and the name block is the passport
+// button, which is why they are two SIBLING buttons in one row rather than
+// one wrapping both. Tap your face to edit your face; tap your name to show
+// your card.
 //
 // ONLY CLASS WEARS METAL. Three filled cells would make the card a colour
 // block and undo the one rule this page has (Docs › Design §D: colour means
@@ -74,7 +79,6 @@ function SubTile({
   value,
   fill,
   onClick,
-  full = false,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -83,8 +87,6 @@ function SubTile({
    *  measures under 2:1 on them (MESITA-1142), so a cell never assumes it. */
   fill: string;
   onClick: () => void;
-  /** Spans both columns — Profile sits across the top of the 2×2. */
-  full?: boolean;
 }) {
   return (
     <button
@@ -93,7 +95,6 @@ function SubTile({
       aria-label={`${label}: ${value}`}
       className={cn(
         "shadow-rest flex min-h-[76px] min-w-0 flex-col justify-between rounded-2xl p-2.5 text-left transition active:scale-[0.98]",
-        full && "col-span-2",
         fill,
       )}
     >
@@ -146,16 +147,11 @@ export function ProfileSummaryCard({
               <div className="bg-muted h-4 w-44 animate-pulse rounded" />
             </div>
           </div>
-          {/* Mirrors the DESTINATION exactly, span included: one full-width
-              block over two halves. */}
           <div className="grid grid-cols-2 items-stretch gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
               <div
                 key={i}
-                className={cn(
-                  "bg-muted h-[76px] animate-pulse rounded-2xl",
-                  i === 0 && "col-span-2",
-                )}
+                className="bg-muted h-[76px] animate-pulse rounded-2xl"
               />
             ))}
           </div>
@@ -208,37 +204,51 @@ export function ProfileSummaryCard({
       <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
 
       <div className="flex flex-col gap-5 p-5">
-        <button
-          type="button"
-          onClick={onOpenPassport}
-          aria-label="Open your passport"
-          className="-m-1 flex min-w-0 items-center gap-4 rounded-2xl p-1 text-left transition active:scale-[0.99]"
-        >
-          <span
-            className={cn(
-              "shrink-0 rounded-full p-[2.5px]",
-              classFillClass(key),
-            )}
-            aria-hidden
+        {/* TWO SIBLING BUTTONS IN ONE ROW. The photo opens Profile, the name
+            block opens the passport document. They look like one element and
+            are not, which is deliberate: the Profile sub-cell that used to
+            carry that door restated the very row it sat under, and the
+            document has no other door anywhere in the app. Never wrap these
+            in a shared button to make the whole row tappable — one of the two
+            destinations would have to go, and both are load-bearing. */}
+        <div className="flex min-w-0 items-center gap-4">
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            aria-label="Edit your profile"
+            className="shrink-0 rounded-full transition active:scale-[0.97]"
           >
-            <span className="bg-card block rounded-full p-[2px]">
-              <span className="bg-muted relative block h-[60px] w-[60px] overflow-hidden rounded-full">
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt=""
-                    fill
-                    sizes="60px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <DefaultAvatar className="h-full w-full" />
-                )}
+            <span
+              className={cn(
+                "block rounded-full p-[2.5px]",
+                classFillClass(key),
+              )}
+              aria-hidden
+            >
+              <span className="bg-card block rounded-full p-[2px]">
+                <span className="bg-muted relative block h-[60px] w-[60px] overflow-hidden rounded-full">
+                  {avatarUrl ? (
+                    <Image
+                      src={avatarUrl}
+                      alt=""
+                      fill
+                      sizes="60px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <DefaultAvatar className="h-full w-full" />
+                  )}
+                </span>
               </span>
             </span>
-          </span>
+          </button>
 
-          <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={onOpenPassport}
+            aria-label="Open your passport"
+            className="-m-1 flex min-w-0 flex-1 flex-col gap-1.5 rounded-2xl p-1 text-left transition active:scale-[0.99]"
+          >
             <span className="font-display block truncate text-xl leading-tight font-semibold tracking-tight">
               {name}
             </span>
@@ -257,18 +267,10 @@ export function ProfileSummaryCard({
                 {isPublic ? "Public" : "Private"}
               </span>
             </span>
-          </span>
-        </button>
+          </button>
+        </div>
 
         <div className="grid grid-cols-2 items-stretch gap-2">
-          <SubTile
-            label="Profile"
-            icon={<UserRound className="h-4 w-4 shrink-0 opacity-70" />}
-            value="Name, phone, birthday"
-            fill="bg-muted text-foreground"
-            onClick={onOpenProfile}
-            full
-          />
           <SubTile
             label="Instagram"
             icon={
