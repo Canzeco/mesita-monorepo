@@ -1,7 +1,7 @@
 // Supabase Edge Function — supabase-cron-enrich-place-contents (internal / cron)
 //
 // Stage 3 (final) of the Intaker pipeline. The pg_cron poller claims
-// place_research rows at stage='contents' and fires this EF with { project_id }.
+// place_research rows at stage='contents' and fires this EF with { place_id }.
 // It acks 202 immediately and runs the WRITE half in a background task:
 //
 //   S7  synthesis (About/details, grounded ONLY in gathered material — Google
