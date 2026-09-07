@@ -80,7 +80,7 @@ function InfoBox({
   return (
     <span
       className={cn(
-        "shadow-rest flex min-h-[84px] min-w-0 flex-col justify-between rounded-2xl p-3",
+        "shadow-rest flex min-h-[72px] min-w-0 flex-col justify-between rounded-2xl p-2.5",
         fill,
       )}
     >
@@ -114,17 +114,17 @@ export function ProfileSummaryCard({
         className="border-border bg-card shadow-rest w-full overflow-hidden rounded-2xl border"
       >
         <div className="bg-muted h-1.5 w-full" />
-        {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 69px is
-            the real avatar (60 + the 2.5px ring + the 2px inset, both sides),
+        {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 61px is
+            the real avatar (52 + the 2.5px ring + the 2px inset, both sides),
             25px the real name, 16px the real meta line, and the grid below is
-            the real boxes at their real 84px. */}
-        <div className="flex flex-col gap-6 px-6 py-10">
+            the real boxes at their real 72px. */}
+        <div className="flex flex-col gap-4 px-6 py-6">
           <div className="flex items-center justify-between gap-3">
             <div className="bg-muted h-3 w-[70px] animate-pulse rounded" />
             <div className="bg-muted h-3 w-14 animate-pulse rounded" />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-muted h-[69px] w-[69px] animate-pulse rounded-full" />
+          <div className="flex items-center gap-3.5">
+            <div className="bg-muted h-[61px] w-[61px] animate-pulse rounded-full" />
             <div className="flex flex-col gap-1.5">
               <div className="bg-muted h-[25px] w-40 animate-pulse rounded" />
               <div className="bg-muted h-4 w-44 animate-pulse rounded" />
@@ -134,7 +134,7 @@ export function ProfileSummaryCard({
             {Array.from({ length: 2 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-muted h-[84px] animate-pulse rounded-2xl"
+                className="bg-muted h-[72px] animate-pulse rounded-2xl"
               />
             ))}
           </div>
@@ -185,10 +185,15 @@ export function ProfileSummaryCard({
           box below states the same rung in words. */}
       <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
 
-      {/* 2x THE VERTICAL MARGIN (Pato, MESITA-1640: "must be 2xplus margin
-          height"). py-10 is exactly twice the p-5 this card carried; the
-          horizontal stays at 24 so the two axis boxes keep their width. */}
-      <div className="flex flex-col gap-6 px-6 py-10">
+      {/* SMALLER (Pato, MESITA-1649). MESITA-1640 set py-10 on "2xplus margin
+          height" while the card still carried four doors; MESITA-1646 took
+          every door out and left three elements inside 40px of padding.
+          Measured: 303px → 235px, against a 92px grid cell, so the card is
+          2.5x a cell rather than 3.3x — still the page's hero object, no
+          longer a field of padding. px-6 is UNCHANGED: it is what gives the
+          axis boxes their width, and @patocanz needs 75px of the 122 it
+          gets. Re-measure before touching the horizontal. */}
+      <div className="flex flex-col gap-4 px-6 py-6">
         {/* THE CARD SAYS ITS OWN NAME (MESITA-1638). Every other cell on Me
             is labelled top-left, and a card that names nothing is just a
             photo. It says what it IS — it no longer opens anything. */}
@@ -209,7 +214,7 @@ export function ProfileSummaryCard({
 
         {/* Identity. Not a button — the `Passport` cell in the grid below is
             what opens the document now (MESITA-1646). */}
-        <div className="flex min-w-0 items-center gap-4">
+        <div className="flex min-w-0 items-center gap-3.5">
           <span
             className={cn(
               "shrink-0 rounded-full p-[2.5px]",
@@ -218,13 +223,13 @@ export function ProfileSummaryCard({
             aria-hidden
           >
             <span className="bg-card block rounded-full p-[2px]">
-              <span className="bg-muted relative block h-[60px] w-[60px] overflow-hidden rounded-full">
+              <span className="bg-muted relative block h-[52px] w-[52px] overflow-hidden rounded-full">
                 {avatarUrl ? (
                   <Image
                     src={avatarUrl}
                     alt=""
                     fill
-                    sizes="60px"
+                    sizes="52px"
                     className="object-cover"
                   />
                 ) : (
