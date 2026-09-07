@@ -528,10 +528,11 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
 
   const PARKED = ["Gift", "Share"];
 
-  it("renders thirteen cells: six pairs then a full-width drawer", () => {
-    // ONE shape repeated (MESITA-1633). Profile, Instagram and Class left for
-    // the passport's sub-grid, so none of them appears here — a cell for one
-    // would be the second door this page keeps removing.
+  it("renders eleven cells: five pairs then a full-width drawer", () => {
+    // ONE shape repeated (MESITA-1633). Profile, Instagram and Class live in
+    // the passport's sub-grid, and Metrics and Contact moved into Settings
+    // (MESITA-1634) — a cell for any of them would be the second door this
+    // page keeps removing.
     expect(gridTitles(ME)).toEqual([
       "Wallet",
       "Plan",
@@ -541,12 +542,23 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Bookings",
       "Connector",
       "Cards",
-      "Metrics",
-      "Contact",
       "Settings",
       "Help",
       "More",
     ]);
+  });
+
+  it("sign out is in Settings, not in the page body", () => {
+    // It was a button under the last card until MESITA-1634. Settings is
+    // where the rest of the account controls are, and a stray sign-out on the
+    // page is the kind of thing that quietly comes back in a refactor.
+    expect(ME).not.toContain("SignOutButton");
+    expect(
+      readFileSync(
+        join(__dirname, "..", "..", "components", "consumer", "me", "SettingsModal.tsx"),
+        "utf8",
+      ),
+    ).toContain("SignOutButton");
   });
 
   it("every parked cell on the page is marked `soon`", () => {

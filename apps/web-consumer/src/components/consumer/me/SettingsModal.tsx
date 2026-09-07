@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  BarChart3,
   Bell,
   Contact,
   Download,
+  MessageSquare,
   EyeOff,
   FileText,
   Globe,
@@ -23,6 +25,7 @@ import {
 } from "@/lib/mesita-contact";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   RowDivider,
   SettingsActionRow,
@@ -81,12 +84,18 @@ export function SettingsModal({
   open,
   onClose,
   onDeleteAccount,
+  onOpenMetrics,
+  onOpenContact,
   profile,
   onProfileChange,
 }: {
   open: boolean;
   onClose: () => void;
   onDeleteAccount: () => void;
+  /** Both hand off to a sheet at the SAME z-layer, so Settings closes first —
+   *  two LocalSheets stacked would put a scrim over the one in front. */
+  onOpenMetrics: () => void;
+  onOpenContact: () => void;
   profile: ConsumerProfile | null;
   onProfileChange: (next: ConsumerProfile) => void;
 }) {
@@ -250,6 +259,35 @@ export function SettingsModal({
             />
           </SettingsGroup>
 
+          {/* Off the page and in here (MESITA-1634). Metrics was a grid cell
+              and is a number you check occasionally, not one you navigate by.
+              Contact came off the grid on instruction and is kept rather than
+              deleted: HelpModal has no contact or support reference of any
+              kind, so this is the only door to a human in the product. */}
+          <SettingsGroup title="Your account">
+            <SettingsActionRow
+              Icon={BarChart3}
+              tint="muted"
+              label="Metrics"
+              sub="Saved, visits, reviews"
+              onClick={() => {
+                onClose();
+                onOpenMetrics();
+              }}
+            />
+            <RowDivider />
+            <SettingsActionRow
+              Icon={MessageSquare}
+              tint="muted"
+              label="Contact"
+              sub="Talk to us"
+              onClick={() => {
+                onClose();
+                onOpenContact();
+              }}
+            />
+          </SettingsGroup>
+
           <SettingsGroup title="Legal">
             <SettingsLinkRow
               Icon={ScrollText}
@@ -291,6 +329,16 @@ export function SettingsModal({
                 onClose();
                 onDeleteAccount();
               }}
+            />
+          </SettingsGroup>
+
+          {/* Sign out left the page body for here (MESITA-1634) — it is an
+              account control and the rest of them are in this sheet. Last
+              group on purpose: nothing below it but the version. */}
+          <SettingsGroup title="Session">
+            <SignOutButton
+              redirectTo="/"
+              className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition"
             />
           </SettingsGroup>
 

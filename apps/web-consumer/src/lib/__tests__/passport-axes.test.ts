@@ -145,21 +145,46 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     expect(named).toEqual(["INSTAGRAM_ICON_GRADIENT_CLASS"]);
   });
 
-  it("the skeleton mirrors the DESTINATION — same tile count, same grid", () => {
+  it("the skeleton mirrors the DESTINATION — same grid, count and spans", () => {
     // MESITA-1158's rule, pinned as a RELATION and not as a literal: the card
     // may be relaid out, but a skeleton resolving to a different shape is
     // always the bug. It broke before as a hand-tuned `h-[92px]` measured
-    // against a layout that had since moved — two numbers guessed twice.
-    const tiles = [...card.matchAll(/<SubTile\b/g)].length;
-    expect(tiles).toBeGreaterThan(0);
+    // against a layout that had since moved.
+    //
+    // This used to assert columns === cell count, which was only true while
+    // every cell was one column wide. MESITA-1634 gave Profile a span, so the
+    // pin is now the three things that actually have to agree: the column
+    // count, the number of blocks, and how many of them span.
+    const loading = card.indexOf("if (loading)");
+    const live = card.indexOf("const name =");
+    expect(loading).toBeGreaterThan(-1);
+    expect(live).toBeGreaterThan(loading);
 
-    const blocks = card.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
-    expect(blocks, "the skeleton no longer maps a fixed-length array").not.toBeNull();
-    expect(Number(blocks![1])).toBe(tiles);
+    const skeleton = card.slice(loading, live);
+    const rendered = card.slice(live);
 
-    const cols = [...card.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
-    expect(cols.length).toBe(2); // the live grid and the skeleton's
-    expect(new Set(cols)).toEqual(new Set([tiles]));
+    const cols = (src: string) =>
+      [...src.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
+    expect(cols(skeleton)).toEqual(cols(rendered));
+    expect(cols(rendered)).not.toEqual([]);
+
+    const cells = [...rendered.matchAll(/<SubTile\b[\s\S]*?\/>/g)].map(
+      (m) => m[0],
+    );
+    expect(cells.length).toBeGreaterThan(0);
+
+    // The skeleton maps a fixed-length array; it must be as long as the card.
+    const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
+    expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
+    expect(Number(len![1])).toBe(cells.length);
+
+    // And span for span: one `full` prop, one `col-span-2` block. Counted on
+    // the WHOLE branch, not per cell — the `<SubTile …/>` slice above stops at
+    // the `/>` of the nested icon element, so a prop written after `icon`
+    // falls outside it. Anchored to its own line so `w-full` cannot match.
+    expect([...rendered.matchAll(/^\s*full$/gm)]).toHaveLength(
+      [...skeleton.matchAll(/col-span-2/g)].length,
+    );
   });
 
   it("opens the document without nesting a button inside a button", () => {

@@ -3,20 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BarChart3,
   Bell,
   CalendarCheck,
   CircleHelp,
   CreditCard,
   Bot,
   Footprints,
-  MessageSquare,
   MoreHorizontal,
   Settings as SettingsIcon,
   ShoppingBag,
   Wallet as WalletIcon,
 } from "lucide-react";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
 import { EditProfileSheet } from "@/components/consumer/EditProfileSheet";
 import { InvitePinModal } from "@/components/consumer/me/InvitePinModal";
@@ -54,10 +51,11 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — ONE CELL SHAPE, REPEATED (MESITA-1633):
 //
-//   the passport   who you are, with a 3-up sub-grid inside it:
-//                  Profile · Instagram · Class, only Class in metal
-//   six pairs      Wallet·Plan · Alerts·Visits · Orders·Bookings ·
-//                  Connector·Cards · Metrics·Contact · Settings·Help
+//   the passport   who you are, with a 2×2 sub-grid inside it: Profile
+//                  across the top, then Instagram · Class. Only Class in
+//                  metal (MESITA-1634)
+//   five pairs     Wallet·Plan · Alerts·Visits · Orders·Bookings ·
+//                  Connector·Cards · Settings·Help
 //   More           full width, carrying the parked tail (Gift, Share)
 //
 // WHY IT LOOKS LIKE THIS. The page it replaces stacked FOUR cell shapes and
@@ -80,6 +78,12 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //
 // NOTHING HERE DUPLICATES THE PASSPORT. Profile, Instagram and Class are its
 // sub-cells, so none of them gets a pair cell too.
+//
+// METRICS, CONTACT AND SIGN OUT LIVE IN SETTINGS (MESITA-1634). Sign out was
+// a button in the page body and is now a row where the rest of the account
+// controls are. Contact came off the grid on instruction, but it is NOT
+// deleted: HelpModal carries no contact or support reference of any kind, so
+// ContactModal is the only door to a human in the product.
 //
 // Every summary reads live wherever the page already holds the data:
 // `apiFetchConsumerMetrics` returns both counts in the one read on mount.
@@ -309,19 +313,6 @@ export function ProfileClient({
             />
 
             <DestTile
-              Icon={BarChart3}
-              title="Metrics"
-              summary="Your numbers"
-              onClick={() => setMetricsOpen(true)}
-            />
-            <DestTile
-              Icon={MessageSquare}
-              title="Contact"
-              summary="Talk to us"
-              onClick={() => setContactOpen(true)}
-            />
-
-            <DestTile
               Icon={SettingsIcon}
               title="Settings"
               summary="Privacy, language"
@@ -345,10 +336,6 @@ export function ProfileClient({
             />
           </DestGrid>
 
-          <SignOutButton
-            redirectTo="/"
-            className="border-border bg-card hover:bg-muted mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition"
-          />
           <p className="text-muted-foreground type-label -mt-1 text-center">
             Mesita · v2.4.1
           </p>
@@ -390,10 +377,15 @@ export function ProfileClient({
           onSaved={(updated) => setProfile(updated)}
         />
       )}
+      {/* Settings absorbed Metrics, Contact and Sign out (MESITA-1634). Each
+          hands off to a sheet at the SAME z-layer, so Settings closes first —
+          two LocalSheets must never stack. */}
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onDeleteAccount={() => setDeleteOpen(true)}
+        onOpenMetrics={() => setMetricsOpen(true)}
+        onOpenContact={() => setContactOpen(true)}
         profile={profile}
         onProfileChange={setProfile}
       />
