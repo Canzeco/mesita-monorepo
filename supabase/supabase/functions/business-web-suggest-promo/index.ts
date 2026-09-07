@@ -83,7 +83,7 @@ type Body = {
   query?: string;
 };
 
-type PlaceRow = {
+type PlaceProfileRow = {
   id: string;
   name: string | null;
   category: string | null;
@@ -210,7 +210,7 @@ async function loadPerfContext(
     .eq("id", projectId)
     .maybeSingle();
   if (placeRes.error) return { ok: false, error: placeRes.error.message };
-  const place = placeRes.data as PlaceRow | null;
+  const place = placeRes.data as PlaceProfileRow | null;
   if (!place) return { ok: false, error: "Place not found" };
 
   const attested = [

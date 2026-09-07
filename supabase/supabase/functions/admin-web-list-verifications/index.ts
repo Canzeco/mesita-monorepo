@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   // Flatten project+place back into the single `place` object the admin
   // web renders. id/slug/state come from the project, the rest from the
   // place — the shape the client sees is unchanged.
-  type PlaceRow = {
+  type PlaceProfileRow = {
     name: string | null;
     address: string | null;
     phone: string | null;
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     id: string;
     slug: string | null;
     state: string | null;
-    place: PlaceRow | PlaceRow[] | null;
+    place: PlaceProfileRow | PlaceProfileRow[] | null;
   };
   const one = <T,>(v: T | T[] | null): T | null =>
     Array.isArray(v) ? (v[0] ?? null) : v;

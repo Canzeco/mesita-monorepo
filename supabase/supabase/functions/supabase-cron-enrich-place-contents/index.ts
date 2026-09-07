@@ -70,7 +70,7 @@ import {
 } from "../_shared/enrich-reservation-endpoint.ts";
 import { humanizeCategorySlug } from "../_shared/parse-utils.ts";
 import { persistGoogleReviews } from "../_shared/enrich-google-review-snippets.ts";
-import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
+import { type PlaceProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import {
   advanceResearchStage,
   buildMediaAssets,
@@ -477,7 +477,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     table: "place_profiles",
     mode: "update",
     id: projectId,
-    patch: placeUpdate as PlacePatch,
+    patch: placeUpdate as PlaceProfilePatch,
   });
   if (!placeRes.ok) {
     // Persist failed — the run is aborted here, so this failed beacon IS the

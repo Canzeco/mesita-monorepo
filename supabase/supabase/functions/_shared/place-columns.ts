@@ -1,7 +1,7 @@
 // Single source of truth for the columns we SELECT off public.place_profiles.
 //
 // Before this file existed, every EF that read place_profiles maintained its own
-// hand-typed PLACE_COLUMNS string and they drifted: consumer EFs were missing
+// hand-typed PLACE_PROFILE_COLUMNS string and they drifted: consumer EFs were missing
 // the columns added by the Place redesign (timezone, hours, description,
 // menu_pdf_url, tags, the signal
 // fields, etc.), so consumers literally couldn't see what businesses had just

@@ -21,10 +21,10 @@
 //
 // THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; see
 // consumer-doc.ts for the fuller writeup):
-//   Belt 1 — TypeScript. PlaceWriteArgs.patch is typed PlacePatch /
+//   Belt 1 — TypeScript. PlaceWriteArgs.patch is typed PlaceProfilePatch /
 //     ProjectPatch / ProfilePatch (closed key sets), not
 //     Record<string, unknown>.
-//   Belt 2 — runtime. validatePlacePatch / validateProjectPatch /
+//   Belt 2 — runtime. validatePlaceProfilePatch / validateProjectPatch /
 //     validateProfilePatch re-check the same closed key sets (HTTP JSON has
 //     no compiler) plus the shape and range invariants below. A malformed
 //     patch never reaches Postgres.
@@ -34,7 +34,7 @@
 //   • `place_profiles.name` is a GENERATED column (coalesce(mesita_name,
 //     google_name)) — Postgres rejects a write to it (428C9) and
 //     `_shared/place-name-writes.test.ts` source-scans for one. `name` is
-//     simply never a member of PLACE_PATCH_KEYS, so any patch carrying it
+//     simply never a member of PLACE_PROFILE_PATCH_KEYS, so any patch carrying it
 //     is rejected by the closed-key-set check below with
 //     "unknown place field: name" — belt 2 cannot contradict a guard it was
 //     never given the key to violate.
@@ -74,7 +74,7 @@ import {
 } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
 
-// ── PlaceRow — the full `place_profiles` row shape ──────────────────────────────────
+// ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
 
 /** How a guest reaches the place on Reservations or Orders (Pato 2026-08-25). */
 export type ServingChannel = "phone" | "whatsapp" | "instagram" | "web" | "none";
@@ -92,7 +92,7 @@ export function isServingChannel(value: unknown): value is ServingChannel {
     (SERVING_CHANNELS as readonly string[]).includes(value);
 }
 
-export type PlaceRow = {
+export type PlaceProfileRow = {
   id: string;
   created_at: string;
   updated_at: string;
@@ -209,7 +209,7 @@ export type PlaceRow = {
   delivery_orders_enabled: boolean;
 };
 
-export const PLACE_PATCH_KEYS = [
+export const PLACE_PROFILE_PATCH_KEYS = [
   "google_place_id",
   "category",
   "family_keys",
@@ -300,22 +300,22 @@ export const PLACE_PATCH_KEYS = [
   "pickup_orders_enabled",
   "delivery_orders_enabled",
 ] as const satisfies readonly (keyof Omit<
-  PlaceRow,
+  PlaceProfileRow,
   "id" | "created_at" | "updated_at" | "name"
 >)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
 // CONSUMER_PATCH_KEYS uses (borrowed from PULSE_PIECE_META, MESITA-1222): a
-// field added to PlaceRow and forgotten here fails the build, not a review.
-type _MissingFromPlacePatchKeys = Exclude<
-  keyof Omit<PlaceRow, "id" | "created_at" | "updated_at" | "name">,
-  typeof PLACE_PATCH_KEYS[number]
+// field added to PlaceProfileRow and forgotten here fails the build, not a review.
+type _MissingFromPlaceProfilePatchKeys = Exclude<
+  keyof Omit<PlaceProfileRow, "id" | "created_at" | "updated_at" | "name">,
+  typeof PLACE_PROFILE_PATCH_KEYS[number]
 >;
-const _assertNoMissingPlaceKeys: _MissingFromPlacePatchKeys extends never ? true
-  : ["PLACE_PATCH_KEYS is missing a field from PlaceRow", _MissingFromPlacePatchKeys] = true;
-void _assertNoMissingPlaceKeys;
+const _assertNoMissingPlaceProfileKeys: _MissingFromPlaceProfilePatchKeys extends never ? true
+  : ["PLACE_PROFILE_PATCH_KEYS is missing a field from PlaceProfileRow", _MissingFromPlaceProfilePatchKeys] = true;
+void _assertNoMissingPlaceProfileKeys;
 
-export type PlacePatch = Partial<Pick<PlaceRow, typeof PLACE_PATCH_KEYS[number]>>;
+export type PlaceProfilePatch = Partial<Pick<PlaceProfileRow, typeof PLACE_PROFILE_PATCH_KEYS[number]>>;
 
 // ── ProjectRow — the full `projects` row shape ──────────────────────────────
 
@@ -405,7 +405,7 @@ void _assertNoMissingProjectKeys;
 export type ProjectPatch = Partial<Pick<ProjectRow, typeof PROJECT_PATCH_KEYS[number]>>;
 
 /** The `profiles` view's writable surface — both tables' patch keys at once. */
-export type ProfilePatch = PlacePatch & ProjectPatch;
+export type ProfilePatch = PlaceProfilePatch & ProjectPatch;
 
 // ── shape primitives ─────────────────────────────────────────────────────
 
@@ -509,13 +509,13 @@ const PLACE_STRING_ARRAY_KEYS = new Set<string>([
   "photos", "tags", "whatsapp_pr_urls", "instagram_pr_urls",
 ]);
 // NOT NULL boolean columns, default false. orders_enabled /
-// reservations_enabled joined PLACE_PATCH_KEYS in #1395 but never got a
-// checkPlaceField branch — every patch carrying them fell through to
+// reservations_enabled joined PLACE_PROFILE_PATCH_KEYS in #1395 but never got a
+// checkPlaceProfileField branch — every patch carrying them fell through to
 // "unknown place field" and the WHOLE patch was rejected (latent until the
 // 2026-08-29 EF redeploy sweep put the door in front of the live contents
 // publish; caught and fixed the same day). The four intent bits ride the
 // same branch.
-const PLACE_BOOLEAN_KEYS = new Set<string>([
+const PLACE_PROFILE_BOOLEAN_KEYS = new Set<string>([
   "orders_enabled", "reservations_enabled",
   "mesita_pay_enabled", "credits_enabled",
   "pickup_orders_enabled", "delivery_orders_enabled",
@@ -532,8 +532,8 @@ const PLACE_INTENT_BIT_KEYS = new Set<string>([
 const BUSINESS_STATE_VALUES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 const ENRICH_MODE_VALUES = new Set(["full", "analysis", "contents"]);
 
-function checkPlaceField(key: string, v: unknown): string | null {
-  if (PLACE_BOOLEAN_KEYS.has(key)) {
+function checkPlaceProfileField(key: string, v: unknown): string | null {
+  if (PLACE_PROFILE_BOOLEAN_KEYS.has(key)) {
     return isBoolean(v) ? null : `${key} must be a boolean`;
   }
   if (PLACE_PLAIN_STRING_KEYS.has(key)) {
@@ -607,27 +607,27 @@ function checkPlaceNameSourceInvariant(patch: Record<string, unknown>): string |
   return null;
 }
 
-export type PlacePatchValidation =
-  | { ok: true; patch: PlacePatch }
+export type PlaceProfilePatchValidation =
+  | { ok: true; patch: PlaceProfilePatch }
   | { ok: false; error: string };
 
-export function validatePlacePatch(input: unknown): PlacePatchValidation {
+export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchValidation {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return { ok: false, error: "place patch must be an object" };
   }
   const raw = input as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
-    if (!(PLACE_PATCH_KEYS as readonly string[]).includes(key)) {
+    if (!(PLACE_PROFILE_PATCH_KEYS as readonly string[]).includes(key)) {
       return { ok: false, error: `unknown place field: ${key}` };
     }
-    const err = checkPlaceField(key, raw[key]);
+    const err = checkPlaceProfileField(key, raw[key]);
     if (err) return { ok: false, error: err };
     patch[key] = raw[key];
   }
   const nameErr = checkPlaceNameSourceInvariant(patch);
   if (nameErr) return { ok: false, error: nameErr };
-  return { ok: true, patch: patch as PlacePatch };
+  return { ok: true, patch: patch as PlaceProfilePatch };
 }
 
 // ── projects_* field groups (mirrors the live CHECK constraints named) ─────
@@ -756,9 +756,9 @@ export type ProfilePatchValidation =
  * — place_profiles fields and projects fields in the SAME patch, exactly what every
  * existing caller writing through that view already sends (the view's
  * INSTEAD OF trigger splits it across both tables in one statement; see the
- * file header). PLACE_PATCH_KEYS and PROJECT_PATCH_KEYS are disjoint —
+ * file header). PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS are disjoint —
  * checked directly by
- * "place-doc.test.ts: PLACE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide".
+ * "place-doc.test.ts: PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide".
  */
 export function validateProfilePatch(input: unknown): ProfilePatchValidation {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -776,12 +776,12 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
           `the profiles trigger would silently drop it`,
       };
     }
-    const isPlaceKey = (PLACE_PATCH_KEYS as readonly string[]).includes(key);
+    const isPlaceProfileKey = (PLACE_PROFILE_PATCH_KEYS as readonly string[]).includes(key);
     const isProjectKey = (PROJECT_PATCH_KEYS as readonly string[]).includes(key);
-    if (!isPlaceKey && !isProjectKey) {
+    if (!isPlaceProfileKey && !isProjectKey) {
       return { ok: false, error: `unknown profile field: ${key}` };
     }
-    const err = isPlaceKey ? checkPlaceField(key, raw[key]) : checkProjectField(key, raw[key]);
+    const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkProjectField(key, raw[key]);
     if (err) return { ok: false, error: err };
     patch[key] = raw[key];
   }
@@ -799,12 +799,12 @@ export type PlaceWriteResult =
 type SelectMode = "single" | "maybeSingle";
 
 export type PlaceWriteArgs =
-  | { table: "place_profiles"; mode: "insert"; patch: PlacePatch; select?: string; selectMode?: SelectMode }
+  | { table: "place_profiles"; mode: "insert"; patch: PlaceProfilePatch; select?: string; selectMode?: SelectMode }
   | {
     table: "place_profiles";
     mode: "update";
     id: string;
-    patch: PlacePatch;
+    patch: PlaceProfilePatch;
     select?: string;
     selectMode?: SelectMode;
   }
@@ -877,7 +877,7 @@ export async function writePlace(
   }
 
   const validated = args.table === "place_profiles"
-    ? validatePlacePatch(args.patch)
+    ? validatePlaceProfilePatch(args.patch)
     : args.table === "projects"
     ? validateProjectPatch(args.patch)
     : validateProfilePatch(args.patch);

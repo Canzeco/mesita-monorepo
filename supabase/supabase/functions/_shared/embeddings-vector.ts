@@ -1,7 +1,7 @@
 // Pure embedding + ranking helpers (no HTTP / DB).
 // Orchestration and OpenAI calls stay in embeddings.ts / place-embeddings.ts.
 
-// Structural type satisfied by every EF's PlaceRow definition. Only the
+// Structural type satisfied by every EF's PlaceProfileRow definition. Only the
 // fields used for source-text + persistence are required; readers may carry
 // arbitrary extra columns.
 //

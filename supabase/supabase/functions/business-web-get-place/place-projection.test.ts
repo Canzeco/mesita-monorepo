@@ -10,13 +10,13 @@ import {
   FORBIDDEN_COLUMNS,
   GET_PLACE_SELECT,
   MAX_PHOTOS,
-  PLACE_COLUMNS,
+  PLACE_PROFILE_COLUMNS,
   PROJECT_COLUMNS,
   totalPhotos,
 } from "./place-projection.ts";
 
 Deno.test("AUDIENCE: the projection lists no operator-only column", () => {
-  const selected = new Set([...PROJECT_COLUMNS, ...PLACE_COLUMNS]);
+  const selected = new Set([...PROJECT_COLUMNS, ...PLACE_PROFILE_COLUMNS]);
   const leaked = FORBIDDEN_COLUMNS.filter((c) => selected.has(c));
   assertEquals(leaked, [], `business payload must not carry: ${leaked.join(", ")}`);
 });

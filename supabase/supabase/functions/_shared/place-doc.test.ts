@@ -3,13 +3,13 @@
 // Run: deno test supabase/functions/_shared/place-doc.test.ts
 //
 // Three groups:
-//   1. validatePlacePatch / validateProjectPatch / validateProfilePatch
+//   1. validatePlaceProfilePatch / validateProjectPatch / validateProfilePatch
 //      accept/reject — belt 2, exercised against the invariants documented
 //      in place-doc.ts (each traced to a live CHECK constraint or enum).
 //   2. writePlace — proves the write door actually GATES: an invalid patch
 //      never reaches the mock DB, and a valid patch reaches it through
 //      exactly the insert/update/delete shape each caller needs.
-//   3. Structural guards: PLACE_PATCH_KEYS / PROJECT_PATCH_KEYS never
+//   3. Structural guards: PLACE_PROFILE_PATCH_KEYS / PROJECT_PATCH_KEYS never
 //      collide, and `name` / `google_place_id` are refused the way repo
 //      law requires (place_profiles.name generated column, google_place_id
 //      immutable spine).
@@ -17,11 +17,11 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  PLACE_PATCH_KEYS,
-  type PlacePatch,
+  PLACE_PROFILE_PATCH_KEYS,
+  type PlaceProfilePatch,
   PROJECT_PATCH_KEYS,
   type ProjectPatch,
-  validatePlacePatch,
+  validatePlaceProfilePatch,
   validateProfilePatch,
   validateProjectPatch,
   writePlace,
@@ -29,14 +29,14 @@ import {
 
 // ── structural guards ───────────────────────────────────────────────────────
 
-Deno.test("PLACE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide", () => {
-  const places = new Set(PLACE_PATCH_KEYS as readonly string[]);
+Deno.test("PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide", () => {
+  const places = new Set(PLACE_PROFILE_PATCH_KEYS as readonly string[]);
   const overlap = (PROJECT_PATCH_KEYS as readonly string[]).filter((k) => places.has(k));
   assertEquals(overlap, [], "a key claimed by both tables would be ambiguous for validateProfilePatch");
 });
 
-Deno.test("validatePlacePatch: rejects `name` — it is a GENERATED column, never a patch key", () => {
-  const res = validatePlacePatch({ name: "Café Central" });
+Deno.test("validatePlaceProfilePatch: rejects `name` — it is a GENERATED column, never a patch key", () => {
+  const res = validatePlaceProfilePatch({ name: "Café Central" });
   assert(!res.ok);
   assertEquals(res.error, "unknown place field: name");
 });
@@ -51,8 +51,8 @@ Deno.test("validateProfilePatch: rejects `name` too", () => {
 // Partner tab toggles are their writer, the Promotion score their reader).
 // They stay PLACES-ONLY: the profiles_update trigger predates the columns
 // and would silently drop them, so the profiles door refuses loudly.
-Deno.test("validatePlacePatch: accepts the four acceptance intent bits as booleans", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts the four acceptance intent bits as booleans", () => {
+  const res = validatePlaceProfilePatch({
     mesita_pay_enabled: true,
     credits_enabled: false,
     pickup_orders_enabled: true,
@@ -61,8 +61,8 @@ Deno.test("validatePlacePatch: accepts the four acceptance intent bits as boolea
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: rejects a non-boolean intent bit", () => {
-  const res = validatePlacePatch({ mesita_pay_enabled: "yes" });
+Deno.test("validatePlaceProfilePatch: rejects a non-boolean intent bit", () => {
+  const res = validatePlaceProfilePatch({ mesita_pay_enabled: "yes" });
   assert(!res.ok);
   assertEquals(res.error, "mesita_pay_enabled must be a boolean");
 });
@@ -79,22 +79,22 @@ Deno.test("validateProfilePatch: refuses intent bits — place_profiles-only key
   assert(!pickup.ok);
 });
 
-// #1395 added these two to PLACE_PATCH_KEYS without a checkPlaceField branch
+// #1395 added these two to PLACE_PROFILE_PATCH_KEYS without a checkPlaceProfileField branch
 // — the door rejected every patch carrying them ("unknown place field"),
 // which would have aborted the contents publish and the create door-write
 // after the 2026-08-29 redeploy sweep. This pins the repair.
-Deno.test("validatePlacePatch: accepts orders_enabled / reservations_enabled (the #1395 regression)", () => {
-  const res = validatePlacePatch({ orders_enabled: true, reservations_enabled: false });
+Deno.test("validatePlaceProfilePatch: accepts orders_enabled / reservations_enabled (the #1395 regression)", () => {
+  const res = validatePlaceProfilePatch({ orders_enabled: true, reservations_enabled: false });
   assert(res.ok);
-  const bad = validatePlacePatch({ orders_enabled: 1 });
+  const bad = validatePlaceProfilePatch({ orders_enabled: 1 });
   assert(!bad.ok);
   assertEquals(bad.error, "orders_enabled must be a boolean");
 });
 
-// ── validatePlacePatch: accept ──────────────────────────────────────────────
+// ── validatePlaceProfilePatch: accept ──────────────────────────────────────────────
 
-Deno.test("validatePlacePatch: accepts a narrow enrichment-schedule patch", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts a narrow enrichment-schedule patch", () => {
+  const res = validatePlaceProfilePatch({
     enrich_every_days: 30,
     enrich_mode: "full",
     enrich_next_at: "2026-09-22T00:00:00Z",
@@ -102,30 +102,30 @@ Deno.test("validatePlacePatch: accepts a narrow enrichment-schedule patch", () =
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: accepts null enrich_every_days (schedule cleared)", () => {
-  assert(validatePlacePatch({ enrich_every_days: null }).ok);
+Deno.test("validatePlaceProfilePatch: accepts null enrich_every_days (schedule cleared)", () => {
+  assert(validatePlaceProfilePatch({ enrich_every_days: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts business_state + business_state_at together", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts business_state + business_state_at together", () => {
+  const res = validatePlaceProfilePatch({
     business_state: "CLOSED_TEMPORARILY",
     business_state_at: "2026-08-23T00:00:00Z",
   });
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: accepts business_state = null (Google was silent)", () => {
-  assert(validatePlacePatch({ business_state: null }).ok);
+Deno.test("validatePlaceProfilePatch: accepts business_state = null (Google was silent)", () => {
+  assert(validatePlaceProfilePatch({ business_state: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts star ratings at the boundaries (0 and 5) and null", () => {
-  assert(validatePlacePatch({ mesita_stars_overall: 0 }).ok);
-  assert(validatePlacePatch({ mesita_stars_overall: 5 }).ok);
-  assert(validatePlacePatch({ google_stars_overall: null }).ok);
+Deno.test("validatePlaceProfilePatch: accepts star ratings at the boundaries (0 and 5) and null", () => {
+  assert(validatePlaceProfilePatch({ mesita_stars_overall: 0 }).ok);
+  assert(validatePlaceProfilePatch({ mesita_stars_overall: 5 }).ok);
+  assert(validatePlaceProfilePatch({ google_stars_overall: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts non-negative counts", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts non-negative counts", () => {
+  const res = validatePlaceProfilePatch({
     google_review_count: 0,
     instagram_followers_count: 12_500,
     facebook_followers: null,
@@ -133,44 +133,44 @@ Deno.test("validatePlacePatch: accepts non-negative counts", () => {
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: accepts price_level 1..4", () => {
-  assert(validatePlacePatch({ price_level: 1 }).ok);
-  assert(validatePlacePatch({ price_level: 4 }).ok);
-  assert(validatePlacePatch({ price_level: null }).ok);
+Deno.test("validatePlaceProfilePatch: accepts price_level 1..4", () => {
+  assert(validatePlaceProfilePatch({ price_level: 1 }).ok);
+  assert(validatePlaceProfilePatch({ price_level: 4 }).ok);
+  assert(validatePlaceProfilePatch({ price_level: null }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts every serving channel or null", () => {
-  assert(validatePlacePatch({ reservation_channel: "phone", reservation_target: "+525512345678" }).ok);
-  assert(validatePlacePatch({ reservation_channel: "whatsapp" }).ok);
-  assert(validatePlacePatch({ reservation_channel: "instagram" }).ok);
-  assert(validatePlacePatch({ reservation_channel: "web" }).ok);
-  assert(validatePlacePatch({ reservation_channel: "none" }).ok);
-  assert(validatePlacePatch({ order_channel: null, order_target: null }).ok);
-  assert(validatePlacePatch({ order_channel: "web", order_target: "https://example.com" }).ok);
+Deno.test("validatePlaceProfilePatch: accepts every serving channel or null", () => {
+  assert(validatePlaceProfilePatch({ reservation_channel: "phone", reservation_target: "+525512345678" }).ok);
+  assert(validatePlaceProfilePatch({ reservation_channel: "whatsapp" }).ok);
+  assert(validatePlaceProfilePatch({ reservation_channel: "instagram" }).ok);
+  assert(validatePlaceProfilePatch({ reservation_channel: "web" }).ok);
+  assert(validatePlaceProfilePatch({ reservation_channel: "none" }).ok);
+  assert(validatePlaceProfilePatch({ order_channel: null, order_target: null }).ok);
+  assert(validatePlaceProfilePatch({ order_channel: "web", order_target: "https://example.com" }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts string-array fields", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts string-array fields", () => {
+  const res = validatePlaceProfilePatch({
     photos: ["https://cdn.example.com/a.jpg"],
     tags: ["brunch", "rooftop"],
   });
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: family_keys is nullable until enrichment", () => {
-  assert(validatePlacePatch({ family_keys: null }).ok);
-  assert(validatePlacePatch({ family_keys: ["restaurants", "cafes_bakeries"] }).ok);
-  assert(!validatePlacePatch({ family_keys: "restaurants" }).ok);
+Deno.test("validatePlaceProfilePatch: family_keys is nullable until enrichment", () => {
+  assert(validatePlaceProfilePatch({ family_keys: null }).ok);
+  assert(validatePlaceProfilePatch({ family_keys: ["restaurants", "cafes_bakeries"] }).ok);
+  assert(!validatePlaceProfilePatch({ family_keys: "restaurants" }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts jsonb fields as object, array, or null", () => {
-  assert(validatePlacePatch({ hours: { mon: [{ open: "09:00", close: "18:00" }] } }).ok);
+Deno.test("validatePlaceProfilePatch: accepts jsonb fields as object, array, or null", () => {
+  assert(validatePlaceProfilePatch({ hours: { mon: [{ open: "09:00", close: "18:00" }] } }).ok);
   assert(
-    validatePlacePatch({
+    validatePlaceProfilePatch({
       google_reviews: [{ author: "Ana", rating: 5, quote: "great", date: "2026-01-01" }],
     }).ok,
   );
-  assert(validatePlacePatch({ products: null }).ok);
+  assert(validatePlaceProfilePatch({ products: null }).ok);
 });
 
 // MESITA-1247 reconciliation: details/google_reviews/popular_times are no
@@ -178,23 +178,23 @@ Deno.test("validatePlacePatch: accepts jsonb fields as object, array, or null", 
 // into this door so EVERY caller of writePlace gets the same content
 // validation the enrich-synthesis-profile.ts/enrich-google-basics.ts call
 // sites already had inline, not just those two.
-Deno.test("validatePlacePatch: details/google_reviews/popular_times accept null (clearing the column)", () => {
-  assert(validatePlacePatch({ details: null }).ok);
-  assert(validatePlacePatch({ google_reviews: null }).ok);
-  assert(validatePlacePatch({ popular_times: null }).ok);
+Deno.test("validatePlaceProfilePatch: details/google_reviews/popular_times accept null (clearing the column)", () => {
+  assert(validatePlaceProfilePatch({ details: null }).ok);
+  assert(validatePlaceProfilePatch({ google_reviews: null }).ok);
+  assert(validatePlaceProfilePatch({ popular_times: null }).ok);
 });
 
-Deno.test("validatePlacePatch: details/google_reviews/popular_times accept a real partial shape", () => {
-  assert(validatePlacePatch({ details: { dress_code: "casual" } }).ok);
-  assert(validatePlacePatch({ popular_times: [{ day: "Mon", range: "12-3pm" }] }).ok);
+Deno.test("validatePlaceProfilePatch: details/google_reviews/popular_times accept a real partial shape", () => {
+  assert(validatePlaceProfilePatch({ details: { dress_code: "casual" } }).ok);
+  assert(validatePlaceProfilePatch({ popular_times: [{ day: "Mon", range: "12-3pm" }] }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field inside the jsonb blobs", () => {
-  const badDetails = validatePlacePatch({ details: { dress_code: "casual", vibe: "cozy" } });
+Deno.test("validatePlaceProfilePatch: rejects a hallucinated key or wrong-typed field inside the jsonb blobs", () => {
+  const badDetails = validatePlaceProfilePatch({ details: { dress_code: "casual", vibe: "cozy" } });
   assert(!badDetails.ok);
-  const badReview = validatePlacePatch({ google_reviews: [{ text: "great" }] });
+  const badReview = validatePlaceProfilePatch({ google_reviews: [{ text: "great" }] });
   assert(!badReview.ok, "a review missing author/rating/quote/date must be rejected, not passed through opaque");
-  const badPopular = validatePlacePatch({ popular_times: [{ day: "Mon" }] });
+  const badPopular = validatePlaceProfilePatch({ popular_times: [{ day: "Mon" }] });
   assert(!badPopular.ok, "a popular_times entry missing range must be rejected");
 });
 
@@ -203,8 +203,8 @@ Deno.test("validatePlacePatch: rejects a hallucinated key or wrong-typed field i
 // column carries a NOT NULL default. Full accept/reject coverage lives in
 // schema-catalog.test.ts next to EnrichmentMapSchema itself; these two just
 // prove the door actually wires that schema in for the "enrichment" key.
-Deno.test("validatePlacePatch: accepts a real place_profiles.enrichment patch", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: accepts a real place_profiles.enrichment patch", () => {
+  const res = validatePlaceProfilePatch({
     enrichment: {
       functions: { pulse: { state: "completed", at: "2026-08-23T00:00:00Z", detail: "ok" } },
       highWater: 1,
@@ -214,84 +214,84 @@ Deno.test("validatePlacePatch: accepts a real place_profiles.enrichment patch", 
   assert(res.ok);
 });
 
-Deno.test("validatePlacePatch: rejects place_profiles.enrichment = null (the column is NOT NULL, unlike the other jsonb fields)", () => {
-  assert(!validatePlacePatch({ enrichment: null }).ok);
+Deno.test("validatePlaceProfilePatch: rejects place_profiles.enrichment = null (the column is NOT NULL, unlike the other jsonb fields)", () => {
+  assert(!validatePlaceProfilePatch({ enrichment: null }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects an enrichment patch smuggling the deliberately-not-folded schedule keys", () => {
-  const res = validatePlacePatch({
+Deno.test("validatePlaceProfilePatch: rejects an enrichment patch smuggling the deliberately-not-folded schedule keys", () => {
+  const res = validatePlaceProfilePatch({
     enrichment: { functions: {}, highWater: 0, blockedAt: null, everyDays: 30 },
   });
   assert(!res.ok);
 });
 
-Deno.test("validatePlacePatch: accepts a mesita_name override alone (google_name untouched)", () => {
-  assert(validatePlacePatch({ mesita_name: "El Nuevo Nombre" }).ok);
+Deno.test("validatePlaceProfilePatch: accepts a mesita_name override alone (google_name untouched)", () => {
+  assert(validatePlaceProfilePatch({ mesita_name: "El Nuevo Nombre" }).ok);
 });
 
-Deno.test("validatePlacePatch: accepts mesita_name and google_name together when one is non-empty", () => {
-  assert(validatePlacePatch({ mesita_name: null, google_name: "Google's Label" }).ok);
-  assert(validatePlacePatch({ mesita_name: "Override", google_name: "" }).ok);
+Deno.test("validatePlaceProfilePatch: accepts mesita_name and google_name together when one is non-empty", () => {
+  assert(validatePlaceProfilePatch({ mesita_name: null, google_name: "Google's Label" }).ok);
+  assert(validatePlaceProfilePatch({ mesita_name: "Override", google_name: "" }).ok);
 });
 
-// ── validatePlacePatch: reject ──────────────────────────────────────────────
+// ── validatePlaceProfilePatch: reject ──────────────────────────────────────────────
 
-Deno.test("validatePlacePatch: rejects a non-object input", () => {
-  assert(!validatePlacePatch(null).ok);
-  assert(!validatePlacePatch("nope").ok);
-  assert(!validatePlacePatch([1, 2, 3]).ok);
+Deno.test("validatePlaceProfilePatch: rejects a non-object input", () => {
+  assert(!validatePlaceProfilePatch(null).ok);
+  assert(!validatePlaceProfilePatch("nope").ok);
+  assert(!validatePlaceProfilePatch([1, 2, 3]).ok);
 });
 
-Deno.test("validatePlacePatch: rejects an unknown field (closed key set)", () => {
-  const res = validatePlacePatch({ is_admin: true });
+Deno.test("validatePlaceProfilePatch: rejects an unknown field (closed key set)", () => {
+  const res = validatePlaceProfilePatch({ is_admin: true });
   assert(!res.ok);
   assertEquals(res.error, "unknown place field: is_admin");
 });
 
-Deno.test("validatePlacePatch: rejects enrich_every_days outside 1..365", () => {
-  assert(!validatePlacePatch({ enrich_every_days: 0 }).ok);
-  assert(!validatePlacePatch({ enrich_every_days: 366 }).ok);
+Deno.test("validatePlaceProfilePatch: rejects enrich_every_days outside 1..365", () => {
+  assert(!validatePlaceProfilePatch({ enrich_every_days: 0 }).ok);
+  assert(!validatePlaceProfilePatch({ enrich_every_days: 366 }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects an enrich_mode outside the closed set, and null", () => {
-  assert(!validatePlacePatch({ enrich_mode: "partial" }).ok);
-  assert(!validatePlacePatch({ enrich_mode: null }).ok);
+Deno.test("validatePlaceProfilePatch: rejects an enrich_mode outside the closed set, and null", () => {
+  assert(!validatePlaceProfilePatch({ enrich_mode: "partial" }).ok);
+  assert(!validatePlaceProfilePatch({ enrich_mode: null }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a business_state outside the closed set", () => {
-  assert(!validatePlacePatch({ business_state: "TEMPORARILY_CLOSED" }).ok);
+Deno.test("validatePlaceProfilePatch: rejects a business_state outside the closed set", () => {
+  assert(!validatePlaceProfilePatch({ business_state: "TEMPORARILY_CLOSED" }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a star rating outside 0..5", () => {
-  assert(!validatePlacePatch({ mesita_stars_food: -0.1 }).ok);
-  assert(!validatePlacePatch({ facebook_rating: 5.1 }).ok);
+Deno.test("validatePlaceProfilePatch: rejects a star rating outside 0..5", () => {
+  assert(!validatePlaceProfilePatch({ mesita_stars_food: -0.1 }).ok);
+  assert(!validatePlaceProfilePatch({ facebook_rating: 5.1 }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects a negative count", () => {
-  assert(!validatePlacePatch({ google_review_count: -1 }).ok);
+Deno.test("validatePlaceProfilePatch: rejects a negative count", () => {
+  assert(!validatePlaceProfilePatch({ google_review_count: -1 }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects price_level outside 1..4", () => {
-  assert(!validatePlacePatch({ price_level: 0 }).ok);
-  assert(!validatePlacePatch({ price_level: 5 }).ok);
+Deno.test("validatePlaceProfilePatch: rejects price_level outside 1..4", () => {
+  assert(!validatePlaceProfilePatch({ price_level: 0 }).ok);
+  assert(!validatePlaceProfilePatch({ price_level: 5 }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects an unknown routing channel", () => {
-  const res = validatePlacePatch({ reservation_channel: "email" });
+Deno.test("validatePlaceProfilePatch: rejects an unknown routing channel", () => {
+  const res = validatePlaceProfilePatch({ reservation_channel: "email" });
   assert(!res.ok);
 });
 
-Deno.test("validatePlacePatch: rejects a string where an array is required", () => {
-  assert(!validatePlacePatch({ tags: "brunch" }).ok);
-  assert(!validatePlacePatch({ photos: null }).ok, "photos is NOT NULL — no null patch value");
+Deno.test("validatePlaceProfilePatch: rejects a string where an array is required", () => {
+  assert(!validatePlaceProfilePatch({ tags: "brunch" }).ok);
+  assert(!validatePlaceProfilePatch({ photos: null }).ok, "photos is NOT NULL — no null patch value");
 });
 
-Deno.test("validatePlacePatch: rejects a scalar where jsonb is required", () => {
-  assert(!validatePlacePatch({ hours: "always open" }).ok);
+Deno.test("validatePlaceProfilePatch: rejects a scalar where jsonb is required", () => {
+  assert(!validatePlaceProfilePatch({ hours: "always open" }).ok);
 });
 
-Deno.test("validatePlacePatch: rejects mesita_name and google_name both empty in the same patch (place_profiles_name_source_present)", () => {
-  const res = validatePlacePatch({ mesita_name: null, google_name: "" });
+Deno.test("validatePlaceProfilePatch: rejects mesita_name and google_name both empty in the same patch (place_profiles_name_source_present)", () => {
+  const res = validatePlaceProfilePatch({ mesita_name: null, google_name: "" });
   assert(!res.ok);
   assertEquals(
     res.error,
@@ -300,8 +300,8 @@ Deno.test("validatePlacePatch: rejects mesita_name and google_name both empty in
   );
 });
 
-Deno.test("validatePlacePatch: rejects google_place_id of the wrong type", () => {
-  assert(!validatePlacePatch({ google_place_id: 12345 }).ok);
+Deno.test("validatePlaceProfilePatch: rejects google_place_id of the wrong type", () => {
+  assert(!validatePlaceProfilePatch({ google_place_id: 12345 }).ok);
 });
 
 // ── validateProjectPatch: accept ────────────────────────────────────────────
@@ -429,7 +429,7 @@ Deno.test("writePlace: an invalid place_profiles patch never reaches the DB", as
   const admin = unreachableAdmin();
   // Simulates the same Belt 1 bypass consumer-doc.test.ts documents: a real
   // caller decodes HTTP JSON as `unknown` and casts before calling the door.
-  const invalidPatch = { price_level: 9 } as unknown as PlacePatch;
+  const invalidPatch = { price_level: 9 } as unknown as PlaceProfilePatch;
   const res = await writePlace(admin, {
     table: "place_profiles",
     mode: "update",

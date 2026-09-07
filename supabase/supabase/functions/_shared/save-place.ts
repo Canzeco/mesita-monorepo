@@ -23,7 +23,7 @@
 // not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type PlacePatch, type ProjectRow, writePlace } from "./place-doc.ts";
+import { type PlaceProfilePatch, type ProjectRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 import { normalizeVerificationConfig } from "./verification-config.ts";
 
@@ -135,7 +135,7 @@ export async function savePlaceData(
     ...placeRest,
     google_name: googleName,
     mesita_name: googleName,
-  } as PlacePatch;
+  } as PlaceProfilePatch;
   const placeRes = await writePlace(admin, {
     table: "place_profiles",
     mode: "insert",

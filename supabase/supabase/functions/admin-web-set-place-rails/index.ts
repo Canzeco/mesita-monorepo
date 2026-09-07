@@ -28,7 +28,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
+import { type PlaceProfilePatch, writePlace } from "../_shared/place-doc.ts";
 
 // Body key → place_profiles column. The closed set IS the contract: anything else in
 // the body is ignored, and an empty intersection is a 400.
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     table: "place_profiles",
     mode: "update",
     id: placeId,
-    patch: patch as PlacePatch,
+    patch: patch as PlaceProfilePatch,
     select:
       "mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
     selectMode: "maybeSingle",

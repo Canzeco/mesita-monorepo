@@ -19,7 +19,7 @@ import { haversineKm, radiusBoundingBox } from "./geo.ts";
 export {
   clampPositive,
   type ConsumerProfile,
-  type PlaceRow,
+  type PlaceProfileRow,
   stripInternal,
 } from "./place-pool-shape.ts";
 
@@ -47,7 +47,7 @@ type CandidatePoolResult<T> =
   | { ok: false; error: string };
 
 // Returns the rows trimmed to radius (when location is supplied) and capped
-// at poolSize. Callers cast the result to their local PlaceRow type so they
+// at poolSize. Callers cast the result to their local PlaceProfileRow type so they
 // can keep stricter typing.
 export async function fetchCandidatePool<T extends { lat: number | null; lng: number | null }>(
   admin: SupabaseClient,

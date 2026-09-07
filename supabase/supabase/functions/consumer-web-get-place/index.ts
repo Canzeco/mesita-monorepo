@@ -20,7 +20,7 @@ import {
   getOptionalAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { PLACE_PUBLIC_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { mapTicketReviewsToVisitors } from "../_shared/mesita-review-visitors.ts";
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select(PLACE_COLUMNS)
+    .select(PLACE_PROFILE_COLUMNS)
     .eq(column, idOrSlug)
     .maybeSingle();
 

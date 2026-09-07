@@ -9,7 +9,7 @@ import { withFamilyKeys } from "./place-family-keys.ts";
 // Shape of a candidate place row: the public place projection plus the one
 // internal column the pool still carries, `embedding`. stripInternal drops it
 // before the row crosses back over the wire to a client.
-export type PlaceRow = {
+export type PlaceProfileRow = {
   id: string;
   slug: string;
   name: string;
@@ -66,8 +66,8 @@ export function clampPositive(v: unknown, def: number, max: number): number {
 // `name` is already the resolved display label (generated column, MESITA-925),
 // so cleared Mesita overrides fall back to google_name with no work here.
 export function stripInternal(
-  v: PlaceRow,
-): Omit<PlaceRow, "embedding"> & { family_keys: string[] } {
+  v: PlaceProfileRow,
+): Omit<PlaceProfileRow, "embedding"> & { family_keys: string[] } {
   const { embedding: _e, ...rest } = v;
   return withFamilyKeys(rest);
 }

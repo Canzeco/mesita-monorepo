@@ -17,7 +17,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { PLACE_BUSINESS_COLUMNS as PLACE_COLUMNS } from "../_shared/place-columns.ts";
+import { PLACE_BUSINESS_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
 import type { EnrichmentMap, FunctionState } from "../_shared/schema-catalog.ts";
@@ -72,8 +72,8 @@ Deno.serve(async (req) => {
   // (legacy body keys projectId/activeUnitId still accepted via
   // readPlaceIdAlias; the link generator always supplies one) and return
   // a single-row list.
-  type PlaceRow = Record<string, unknown> & { id: string };
-  let places: PlaceRow[];
+  type PlaceProfileRow = Record<string, unknown> & { id: string };
+  let places: PlaceProfileRow[];
   if (isSuperAdmin) {
     if (!requestedPlaceId) {
       return json(
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       admin
         .from("profiles")
         .select(
-          PLACE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_STATE_COLUMNS,
+          PLACE_PROFILE_COLUMNS + PLACE_ADMIN_EMBEDDING_COLUMNS + PLACE_ADMIN_STATE_COLUMNS,
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
         ...(typeof acceptanceRow?.delivery_orders_enabled === "boolean"
           ? { delivery_orders_enabled: acceptanceRow.delivery_orders_enabled }
           : {}),
-      } as unknown as PlaceRow,
+      } as unknown as PlaceProfileRow,
     ];
   } else {
     // Pull every place the caller is a member of, with the role on each row.
@@ -235,15 +235,15 @@ Deno.serve(async (req) => {
     } else {
       const placeRows = await admin
         .from("profiles")
-        .select(PLACE_COLUMNS)
+        .select(PLACE_PROFILE_COLUMNS)
         .in("id", ids);
       if (placeRows.error) {
         return json({ ok: false, error: placeRows.error.message }, 500);
       }
-      places = ((placeRows.data ?? []) as unknown as PlaceRow[]).map((p) => ({
+      places = ((placeRows.data ?? []) as unknown as PlaceProfileRow[]).map((p) => ({
         ...p,
         my_role: roleById.get(p.id) ?? "viewer",
-      } as unknown as PlaceRow));
+      } as unknown as PlaceProfileRow));
     }
   }
 
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
 
   // Staff Check PIN (MESITA-823) — attached to the ACTIVE place only, and
   // only for owners (super-admin path tags my_role=owner). Read straight
-  // off projects: the column is deliberately NOT in profiles / PLACE_COLUMNS
+  // off projects: the column is deliberately NOT in profiles / PLACE_PROFILE_COLUMNS
   // so no consumer- or viewer-facing payload can ever pick it up. The bill
   // is always required (MESITA-1095); there is no per-place switch.
   if (active) {

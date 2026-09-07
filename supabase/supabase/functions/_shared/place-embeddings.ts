@@ -35,7 +35,7 @@ import {
 import { OPENAI_URL } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
-import { writePlace, type PlacePatch } from "./place-doc.ts";
+import { writePlace, type PlaceProfilePatch } from "./place-doc.ts";
 import { pieceDone, reportPulsePieces } from "./pulse-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
@@ -221,7 +221,7 @@ async function computeAndPersistPlaceEmbedding(
 
   const models = await loadModelsConfig(admin);
   const model = models.embeddingModel || DEFAULT_EMBEDDING_MODEL;
-  const patch: PlacePatch = {};
+  const patch: PlaceProfilePatch = {};
   let vector: number[] = [];
   let text = place.embedding_source_text?.trim() ?? "";
   let wroteSummary = false;

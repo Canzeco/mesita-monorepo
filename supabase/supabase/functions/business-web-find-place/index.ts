@@ -37,7 +37,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { methodsFor, type PlaceRow } from "./find-place-methods.ts";
+import { methodsFor, type PlaceProfileRow } from "./find-place-methods.ts";
 
 // `googlePlaceId` is the canonical key (Google Place ID). Legacy `placeId`
 // is accepted as a fallback until every client sends the new key — it was
@@ -45,7 +45,7 @@ import { methodsFor, type PlaceRow } from "./find-place-methods.ts";
 // readPlaceIdAlias endpoints), so the new slug disambiguates.
 type Body = { googlePlaceId?: string; placeId?: string };
 
-const PLACE_COLUMNS =
+const PLACE_PROFILE_COLUMNS =
   "id, slug, name, state, listing_type, address, phone, email, website_url, photos, category, vibe, created_at, updated_at";
 
 Deno.serve(async (req) => {
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
   // 1. Place row by Place ID.
   const { data: place, error: placeError } = await admin
     .from("profiles")
-    .select(PLACE_COLUMNS)
+    .select(PLACE_PROFILE_COLUMNS)
     .eq("google_place_id", placeId)
     .maybeSingle();
   if (placeError) {
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
   // From here on the place is claim-able. Compute the methods block
   // once so all three pending/unclaimed branches return it identically.
-  const methods = methodsFor(place as PlaceRow);
+  const methods = methodsFor(place as PlaceProfileRow);
 
   // 3. Pending claim by this caller.
   const { data: pendingForMe } = await admin
