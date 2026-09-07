@@ -9,6 +9,9 @@
     "test:rules": "deno test --allow-read scripts/sync-rules.test.ts",
     "sync-brand": "deno run --allow-read --allow-write scripts/sync-brand.ts",
     "sync-brand:check": "deno run --allow-read scripts/sync-brand.ts --check",
+    "sync-shared": "deno run --allow-read --allow-write scripts/sync-shared.ts",
+    "sync-shared:check": "deno run --allow-read scripts/sync-shared.ts --check",
+    "test:shared": "deno test --allow-read scripts/sync-shared.test.ts",
     "boot": "deno run --allow-read --allow-write --allow-run=git,gh --allow-env=HOME --allow-sys=hostname scripts/worktree.ts boot",
     "worktree": "deno run --allow-read --allow-write --allow-run=git,gh --allow-env=HOME --allow-sys=hostname scripts/worktree.ts",
     "test:worktree": "deno test --allow-read --allow-write --allow-run=git --allow-env=HOME,TMPDIR --allow-sys=hostname scripts/worktree.test.ts"

@@ -44,13 +44,29 @@ function walk(dir: string): string[] {
   });
 }
 
+/** Is this a client component?
+ *
+ *  NOT `startsWith('"use client"')` any more. Generated files carry a notice
+ *  comment above the directive (scripts/sync-shared.ts, MESITA-1614), which is
+ *  legal — comments may precede a directive — but a naive prefix test reads
+ *  such a file as a SERVER component and silently stops guarding it. A guard
+ *  that quietly skips its subject is worse than no guard. */
+function isClientComponent(src: string): boolean {
+  for (const line of src.split("\n")) {
+    const t = line.trim();
+    if (t === "" || t.startsWith("//")) continue;
+    return t.startsWith('"use client"') || t.startsWith("'use client'");
+  }
+  return false;
+}
+
 describe("client components never import the server data layer", () => {
   it('no "use client" file under components/console imports lib/supabase', () => {
     const root = path.resolve(__dirname, "..", "components", "console");
     const offenders: string[] = [];
     for (const file of walk(root)) {
       const src = readFileSync(file, "utf8");
-      if (!src.startsWith('"use client"')) continue;
+      if (!isClientComponent(src)) continue;
       if (/from\s+["']@\/lib\/supabase/.test(src)) offenders.push(file);
     }
     expect(offenders).toEqual([]);
@@ -105,7 +121,7 @@ describe("the shell never re-couples to the overview EF", () => {
     const shell = path.resolve(__dirname, "..", "app", "(shell)");
     const serverFiles = walk(shell).filter(
       (f) =>
-        /\.tsx$/.test(f) && !readFileSync(f, "utf8").startsWith('"use client"'),
+        /\.tsx$/.test(f) && !isClientComponent(readFileSync(f, "utf8")),
     );
     expect(serverFiles.length).toBeGreaterThan(0);
   });
