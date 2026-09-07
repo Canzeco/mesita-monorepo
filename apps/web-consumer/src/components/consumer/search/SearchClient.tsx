@@ -65,7 +65,6 @@ import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { useSearchScope } from "@/lib/use-search-scope";
-import { useDiscoverChrome } from "@/components/consumer/discover/discover-chrome";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
 import {
   buildSearchMapPins,
@@ -276,13 +275,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // THE CHROME REACTS TO THE KEYBOARD, not to the query length. `querying`
   // starts at two characters, which is the wrong moment twice over: the
   // keyboard is already up at zero, and it is still up while the guest deletes
-  // back down to one. The mode rail above reads the same flag through
-  // DiscoverChromeProvider and collapses with the rail below.
+  // back down to one.
+  //
+  // LOCAL STATE, not a shared context (MESITA-1616, was DiscoverChromeProvider
+  // until Search moved to its own route). That context existed only to let
+  // Home's mode rail — a SIBLING under the old shared discover/layout.tsx —
+  // collapse in sync with this flag. Search has no siblings to coordinate
+  // with any more, so the flag only ever needs to answer to this component.
   //
   // A LIVE QUERY KEEPS IT OPEN AFTER BLUR. Picking a result blurs the field,
-  // and a rail that springs back in the same frame as the camera move reads as
-  // a flicker — so the rail returns only once the query is really gone.
-  const { barFocused, setBarFocused } = useDiscoverChrome();
+  // and camera-move-triggered UI that snaps back in the same frame reads as
+  // a flicker — so this stays true until the query is really gone.
+  const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
 
   // Search biases to the CAMERA, not the device: on a map you have panned to

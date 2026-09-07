@@ -12,9 +12,19 @@ export const CONSUMER_ROUTES = {
   // The referral page is named Share — /share is canonical. /invite is the
   // legacy path (redirects here).
   share: "/share",
-  // DISCOVER — the shared route namespace under both Home and Search
-  // (MESITA-1609). Five segments still live here; only four sit in the mode
-  // rail now.
+  // SEARCH — its own top-level route (MESITA-1616), not nested under
+  // /discover any more. MESITA-1609 promoted Search to its own bottom tab
+  // but left the URL at /discover/search, still wrapped by
+  // discover/layout.tsx — which meant Home's mode rail kept rendering above
+  // the map on the Search tab. That was a bug, not a design choice; this is
+  // the real fix, a route move, not a CSS hide. Same screen (map + the one
+  // search bar), new address. `/discover/search` is now a redirect SOURCE
+  // (see next.config.ts) for the bookmarks #1567 shipped, briefly.
+  search: "/search",
+  // DISCOVER — Home's mode-rail namespace, and ONLY Home's now that Search
+  // has moved out (MESITA-1616). Four segments, matching DiscoverModeNav's
+  // four columns exactly — no more "one route the rail deliberately
+  // excludes."
   //
   // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
   // than the rule (Activity routes at /inbox, Pay at /new-visit, Wallet at
@@ -22,55 +32,38 @@ export const CONSUMER_ROUTES = {
   // ROUTE rename: renaming a pill without moving its segment breaks the rule
   // silently.
   //
-  // SEARCH LEFT THE RAIL FOR ITS OWN TAB (Pato, MESITA-1609). It spent
-  // 2026-09-01 through today merged into Discover, because Home had nothing
-  // live behind it; that reasoning doesn't survive Home getting a real body
-  // again (Catalog · Swipe · Chat · Favs). The route is untouched —
-  // /discover/search is still the map + the one search bar — only its
-  // address in the bottom bar changes, from a mode pill to a top-level tab.
-  //
-  // CATALOG, SWIPE, CHAT, FAVS now live under the HOME tab's mode rail
-  // (DiscoverModeNav, four columns). CatalogRails carries no search bar — two
-  // typed inputs one pill apart was the redundancy Search's original merge
-  // was fixing, and that redundancy risk doesn't return: Search isn't in
-  // this rail to collide with anything.
+  // CATALOG, SWIPE, CHAT, FAVS live under the HOME tab's mode rail
+  // (DiscoverModeNav, four columns). CatalogRails carries no search bar —
+  // Search never shared this namespace's rail to begin with, once moved.
   //
   // CATALOG, NOT HOME, is still the mode's own name (Pato, 2026-09-02 call,
-  // untouched by MESITA-1609): the `catalog` mode key, CatalogRails,
+  // untouched by MESITA-1609/1616): the `catalog` mode key, CatalogRails,
   // `consumer-web-list-catalog`, the Catalog column in the admin Discovery
   // matrix, and Docs > Discovery's mode list all still say Catalog. The TAB
   // wrapping it is named Home; the MODE inside it is still named Catalog —
   // the same two-name shape Activity/Inbox already lives with.
   //
   // Bare `/home` and every `/home/*` leaf are the retired hub's redirects and
-  // 308 to the Discover default — which is Catalog again as of MESITA-1609,
-  // reversing the 2026-09-01 call that pointed it at Search. Read the
-  // redirect table in next.config.ts before touching either.
+  // 308 to the Discover default. Read the redirect table in next.config.ts
+  // before touching either.
   //
-  // All five are live. CatalogRails is Catalog's whole body; SocialFeed stays
+  // All four are live. CatalogRails is Catalog's whole body; SocialFeed stays
   // on disk and mounts INTO Catalog when it un-parks, not as its own route.
   discover: "/discover",
   discoverTabs: {
-    catalog: "/discover/catalog",
-    search: "/discover/search",
     swipe: "/discover/swipe",
+    catalog: "/discover/catalog",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
-  // DEFAULT IS BACK ON THE LEADING PILL (Pato, MESITA-1609), reversing the
-  // "default is not first" call this same object made from 2026-09-01 to
-  // today. That call existed because Search — the urgent, no-typing-needed
-  // mode — sat buried behind Catalog's width win, so the pill you land on
-  // and the pill that leads visually had to disagree on purpose. Once Search
-  // left the rail entirely for its own tab, that disagreement has nothing
-  // left to resolve: none of Home's remaining four modes (Catalog, Swipe,
-  // Chat, Favs) carries Search's urgency, and Catalog is the calmest,
-  // most reasonable entry among them. First-pill-is-default is not a relapse
-  // here — it is the tension resolving because its cause left, not because
-  // anyone forgot it existed. Activity's Alerts-leads/Visits-lands split is
-  // UNCHANGED and is not this same argument — it stays off its lead for a
-  // different, still-live reason (see inboxDefault below).
-  discoverDefault: "/discover/catalog",
+  // SWIPE LEADS AND IS THE DEFAULT (Pato, MESITA-1615, live instruction),
+  // reversing MESITA-1609's Catalog call from earlier today. First-pill-is-
+  // default still holds as the property to preserve — Search left the rail
+  // specifically so nothing here has to disagree with what's visually first
+  // — it's just Swipe now, not Catalog. Activity's Alerts-leads/Visits-lands
+  // split is UNCHANGED and is not this same argument — it stays off its lead
+  // for a different, still-live reason (see inboxDefault below).
+  discoverDefault: "/discover/swipe",
   // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
   // redirect to the hub's Soon state — `FavoritesList` exists under
   // components/ but nothing rendered it, and it needs `deckPlaces` from the
@@ -199,13 +192,17 @@ export const CONSUMER_ROUTES = {
     // other two, and like them it 308s STRAIGHT to /new-visit/wallet — never
     // through /inbox/credits, which would be the 3-hop chain T4 refuses.
     wallet: "/wallet",
-    // The bare /search tab, from before Discover existed. It forwards to
-    // /discover/search, which is once again a map with a search bar on it — the
-    // path is legacy, the destination is not a coincidence.
-    search: "/search",
-    // The map's segment while the rail called it Map. Search carries the map
-    // now, so this is the forwarding address. It was the Discover default and
-    // every /home* and /explore* pointed at it, so the bookmarks are real.
+    // /discover/search's address for the six days it lived there (MESITA-1609,
+    // 2026-09-06, -> MESITA-1616, 2026-09-07). Shipped to production, so the
+    // bookmarks are real; forwards STRAIGHT to the new canonical `search`
+    // route — never through /discover/map, which would be the 2-hop chain
+    // this file's other entries already avoid.
+    discoverSearch: "/discover/search",
+    // The map's segment while the rail called it Map, and while Search still
+    // lived under /discover (2026-09-01 -> MESITA-1616). Forwards straight to
+    // the canonical `search` route now, not through /discover/search — that
+    // segment is itself a redirect source above, and chaining through it
+    // would cost a second hop.
     discoverMap: "/discover/map",
     // Catalog's segment for the hour it shipped as Feed (#1447 -> #1448).
     discoverFeed: "/discover/feed",
@@ -247,12 +244,12 @@ export const CONSUMER_ROUTES = {
 } as const;
 
 export const CONSUMER_ROUTE_PREFIX = {
-  // NO `discover` KEY (MESITA-1609, removed). One prefix stopped being
-  // correct the moment Search left the mode rail for its own tab: Home and
-  // Search now need to light DIFFERENT bottom tabs from the same /discover
-  // namespace, so BottomNav matches each discoverTabs segment individually
-  // instead of the whole prefix. Keeping this key around unused would have
-  // been a stale, misleading shortcut back to the old one-tab assumption.
+  // NO `discover` KEY (MESITA-1609, removed) — BottomNav matches each
+  // discoverTabs segment individually for Home instead of one shared prefix.
+  // NO `search` KEY either: Search moved to its own top-level route
+  // (MESITA-1616) with no siblings to disambiguate from, so BottomNav
+  // matches `CONSUMER_ROUTES.search` directly, an exact segment, not a
+  // shared prefix.
   place: "/place",
   reservations: "/reservations",
   newVisit: "/new-visit",

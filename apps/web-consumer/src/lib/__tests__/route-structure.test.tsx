@@ -243,9 +243,10 @@ describe("T5 — exactly one tab lights per surface", () => {
     // matchPrefixes, place detail lights NOTHING and this row is what says so.
     ["/place/abc", "Home"],
 
-    // Search is its own tab now (MESITA-1609) — the same screen, promoted out
-    // of Home's mode rail.
-    ["/discover/search", "Search"],
+    // Search is its own tab AND its own route now (MESITA-1609, MESITA-1616)
+    // — the same screen, promoted out of Home's mode rail and out from under
+    // discover/layout.tsx.
+    ["/search", "Search"],
 
     ["/new-visit", "Pay"],
     // Wallet is Pay's SECOND SECTION (MESITA-1581), so it lights Pay by
@@ -295,7 +296,7 @@ describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
-      usePathname: () => "/discover/search",
+      usePathname: () => "/search",
       useRouter: () => ({ push: () => {}, back: () => {} }),
     }));
     const { BottomNav } = await import("@/components/consumer/BottomNav");
@@ -337,15 +338,16 @@ describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
 // any other test notices — the row just quietly loses its selected state.
 //
 // It also pins ORDER and COUNT. Search left this rail for its own tab
-// (MESITA-1609); four modes remain.
+// (MESITA-1609) and then its own route (MESITA-1616); four modes remain,
+// Swipe leading now (MESITA-1615).
 describe("T5b — Home's mode rail", () => {
-  it("is exactly Catalog · Swipe · Chat · Favs", async () => {
+  it("is exactly Swipe · Catalog · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
-      "Catalog",
       "Swipe",
+      "Catalog",
       "Chat",
       "Favs",
     ]);
@@ -379,8 +381,8 @@ describe("T5b — Home's mode rail", () => {
     expect(navSrc).toContain('"type-label flex items-center');
     expect(navSrc).not.toContain("py-2 text-xs font-semibold");
     const TEXT_PX: Record<string, number> = {
-      Catalog: 40.3,
       Swipe: 31.8,
+      Catalog: 40.3,
       Chat: 24.5,
       Favs: 25.1,
     };
@@ -405,13 +407,11 @@ describe("T5b — Home's mode rail", () => {
     expect(MODES.filter((m) => m.soon)).toEqual([]);
   });
 
-  // Search left this rail for its own tab (MESITA-1609) — it's still a real,
-  // live route in the contract (discoverTabs.search), just deliberately NOT
-  // one of the modes this rail renders. So this checks MODES is a SUBSET of
-  // the contract's routes, not an exact match — the old exact-length version
-  // of this test would fail the moment a route existed that the rail
-  // legitimately doesn't carry.
-  it("every mode href is a real /discover route in the contract", async () => {
+  // Search has its own route now (MESITA-1616), fully out of the
+  // discoverTabs namespace — so this rail's routes and the contract's
+  // discoverTabs are an EXACT match again, the simple form this test held
+  // before Search ever needed a "deliberately excluded" carve-out.
+  it("every mode href is a real /discover route in the contract, one each", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
@@ -419,31 +419,30 @@ describe("T5b — Home's mode rail", () => {
     for (const m of MODES) {
       expect(contract, m.label).toContain(m.href);
     }
-    expect(MODES).toHaveLength(contract.length - 1);
-    expect(MODES.map((m) => m.href)).not.toContain(
-      CONSUMER_ROUTES.discoverTabs.search,
-    );
+    expect(MODES).toHaveLength(contract.length);
   });
 
-  // DEFAULT IS BACK ON THE LEADING PILL (MESITA-1609), reversing the "default
-  // is not first" guard this row held from 2026-09-01 to today. That guard
-  // existed because Search — buried behind Catalog's width win — was the
-  // urgent mode nobody landed on by looking; once Search left the rail
-  // entirely, there is no more urgent mode among the remaining four to bury,
-  // so first-pill-is-default stops being a trap and starts being the obvious
-  // choice. See consumer-route-contract.ts's discoverDefault comment for the
-  // full reasoning. Do NOT re-derive this from Activity's still-live
+  // DEFAULT IS BACK ON THE LEADING PILL (MESITA-1609/1615), reversing the
+  // "default is not first" guard this row held from 2026-09-01 through
+  // MESITA-1609. That guard existed because Search — buried behind Catalog's
+  // width win — was the urgent mode nobody landed on by looking; once Search
+  // left the rail entirely, there was no more urgent mode among the
+  // remaining four to bury, so first-pill-is-default stopped being a trap.
+  // Swipe leading now (MESITA-1615, live instruction) doesn't reopen that —
+  // it just carries the same property to a different mode. See
+  // consumer-route-contract.ts's discoverDefault comment for the full
+  // reasoning. Do NOT re-derive this from Activity's still-live
   // Alerts-leads/Visits-lands split (inboxDefault) — the two rows no longer
   // share a justification.
-  it("lands Home on Catalog — its own leading pill", async () => {
+  it("lands Home on Swipe — its own leading pill", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.catalog,
+      CONSUMER_ROUTES.discoverTabs.swipe,
     );
     expect(MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Catalog");
+    expect(MODES[0].label).toBe("Swipe");
     // The guard that makes "the first tab lands on nothing" impossible to
     // reintroduce: whatever the default points at must be a LIVE mode.
     const landed = MODES.find(
