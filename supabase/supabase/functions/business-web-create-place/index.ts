@@ -1,4 +1,4 @@
-// Supabase Edge Function — business-web-create-project (LIVE business create path)
+// Supabase Edge Function — business-web-create-place (LIVE business create path)
 //
 // The signed-in business passes a Google Places `googlePlaceId`. ASYNC create —
 // a MINIMAL 'generating' place is returned immediately and deep enrichment runs
@@ -11,8 +11,8 @@
 // admin-web-decide-verification approves the ownership claim; until then the place
 // is publicly listed but unowned.
 //
-// Local:  supabase functions serve business-web-create-project
-// Deploy: supabase functions deploy business-web-create-project
+// Local:  supabase functions serve business-web-create-place
+// Deploy: supabase functions deploy business-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
   const created = await createMinimalPlace({
     admin,
-    callerName: "business-web-create-project",
+    callerName: "business-web-create-place",
     googlePlaceId,
     dedupeError:
       "This place is already on Mesita. If you manage it, contact support to claim ownership.",

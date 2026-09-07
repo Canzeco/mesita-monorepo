@@ -16,7 +16,7 @@
 //     of the current text landed).
 //   · mode "synth" — the on-update path (profile edits): Description's
 //     synthesis helper then the embed, composed in one call.
-// Called after enrich-contents publish and after business-web-update-project
+// Called after enrich-contents publish and after business-web-update-place
 // when embedding-relevant fields change.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";

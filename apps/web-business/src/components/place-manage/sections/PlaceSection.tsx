@@ -146,7 +146,7 @@ function PriceDisplay({
 
 type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Intaker-sourced) and
-// business-web-update-project rejects manual writes — Location renders read-only.
+// business-web-update-place rejects manual writes — Location renders read-only.
 type Form = {
   /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
   mesitaName: string;

@@ -41,7 +41,7 @@
 //   • `google_place_id` is the immutable external identity spine once set.
 //     The one caller that ever WRITES it is the create path (save-place.ts,
 //     mode: "insert"); no update call site in the codebase sets it — one
-//     (business-web-update-project) explicitly REJECTS a client that tries,
+//     (business-web-update-place) explicitly REJECTS a client that tries,
 //     upstream of this file. writePlace() enforces the same rule at the
 //     door: `google_place_id` in an UPDATE patch against "place_profiles" or
 //     "profiles" is refused before validation even runs.

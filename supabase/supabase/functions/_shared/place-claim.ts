@@ -3,7 +3,7 @@
 //
 // A place is claimable when it is in no organization AND nobody holds it
 // directly through project_members. `organization_id is null` alone is not
-// enough: a place claimed the old way (business-web-create-project ->
+// enough: a place claimed the old way (business-web-create-place ->
 // admin-web-decide-verification inserts the owner row) has a real operator
 // and no organization, so it would sit in the pool looking free.
 //

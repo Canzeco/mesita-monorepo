@@ -2,7 +2,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 // Shared create-place helper. Both the single-place console and the bulk
 // creator run each Google Place ID through the SAME create pipeline:
-// admin-web-create-project fetches Google data and persists the ugly
+// admin-web-create-place fetches Google data and persists the ugly
 // profile (ready, not Enriched). Intaker is not queued — Enrich /
 // Create+Enrich is a second call. The admin operator's session authorises
 // the call (admin allowlist). Callers invoke this once per Place ID.
@@ -58,7 +58,7 @@ export async function createPlaceFromGooglePlaceId(
   const id = (placeId ?? "").toString().trim();
   if (!id) return { ok: false, error: "Empty Place ID" };
 
-  const r = await efInvoke<CreatePlaceResponse>("admin-web-create-project", {
+  const r = await efInvoke<CreatePlaceResponse>("admin-web-create-place", {
     placeId: id,
   });
   if (!r.ok) {

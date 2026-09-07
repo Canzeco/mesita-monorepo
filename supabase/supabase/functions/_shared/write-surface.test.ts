@@ -130,7 +130,7 @@ const PLACE_UPDATE_ALLOWLIST = [
   "admin-web-set-plan/index.ts",
   "business-web-confirm-reservation/index.ts",
   "business-web-request-manual-review/index.ts",
-  "business-web-update-project/index.ts",
+  "business-web-update-place/index.ts",
   "validate-web-get-ticket/index.ts",
   "consumer-web-submit-review/index.ts",
   "consumer-web-submit-story/index.ts",

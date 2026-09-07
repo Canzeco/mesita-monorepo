@@ -48,7 +48,7 @@
 // filter applied after the merge (the per-source window is already capped).
 //
 // "Who called it" for a creation: places don't persist the caller at insert
-// time (business-web-create-project deliberately leaves the place unowned until an
+// time (business-web-create-place deliberately leaves the place unowned until an
 // ownership claim is approved), so the closest honest signal is the place's
 // current owner — resolved here via project_members(role=owner) → managers.
 // Unclaimed places report actor = null and meta.claimed = false. The exact

@@ -9,7 +9,7 @@ import type { PlanKey } from "@/lib/business/plans";
 // business-* edge functions. The operator's JWT email is in super_admins, so
 // _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
 // access regardless of project_members. Two things need admin-specific EFs:
-// the place search below, and setting `plan` (business-web-update-project
+// the place search below, and setting `plan` (business-web-update-place
 // rejects it — it's the paid door's field, so admin gets its own).
 // ════════════════════════════════════════════════════════════════════════
 
@@ -439,12 +439,12 @@ export async function getPlaceAndRole(
 export async function updatePlace(
   patch: Record<string, unknown> & { id: string },
 ): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace }>("business-web-update-project", patch);
+  const r = await efInvoke<{ place: AdminPlace }>("business-web-update-place", patch);
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.place };
 }
 
-// Plan is billing, not profile: business-web-update-project rejects any body
+// Plan is billing, not profile: business-web-update-place rejects any body
 // carrying a `plan` key. The admin grants it through its own door instead —
 // no Stripe, no money (admin-web-set-plan).
 //
@@ -698,7 +698,7 @@ export async function getPlacePaymentAccount(
  *  projects.state, which is what the consumer RLS policy
  *  projects_select_public_visible gates every guest read on. Unlisting removes
  *  the place from browse, search, the swipe deck and any shared link at once.
- *  business-web-update-project does not accept `state`, so this is its own
+ *  business-web-update-place does not accept `state`, so this is its own
  *  admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,

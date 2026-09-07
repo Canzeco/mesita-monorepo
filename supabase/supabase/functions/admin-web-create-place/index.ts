@@ -1,24 +1,24 @@
-// Supabase Edge Function — admin-web-create-project (admin caller / LIVE admin create path)
+// Supabase Edge Function — admin-web-create-place (admin caller / LIVE admin create path)
 //
-// The admin-app equivalent of business-web-create-project: an admin operator
+// The admin-app equivalent of business-web-create-place: an admin operator
 // passes a Google Places `placeId` and gets back the ugly profile (Create
 // 1–4, content_state ready, enriched_at null). Intaker is NOT queued —
 // Enrich / Create+Enrich is a second call; guests vote on the Enrich tab.
 // Core: createMinimalPlace (_shared/create-place.ts) with queueEnrich:false.
 //
 // Roles are simple now: admins create from the admin app via THIS function;
-// businesses create from the business app via business-web-create-project.
+// businesses create from the business app via business-web-create-place.
 //
 // Gating: operator JWT → the admin allowlist (requireSuperAdmin checks the
 // public.super_admins table — that table IS the admin allowlist; this is the
 // same gate every other admin-* EF uses).
 //
-// Difference vs business-web-create-project: NO managers upsert — an admin creates an
+// Difference vs business-web-create-place: NO managers upsert — an admin creates an
 // UNOWNED listing (listing_type='web'); ownership only ever lands when a business
 // claims it and admin-web-decide-verification approves.
 //
-// Local:  supabase functions serve admin-web-create-project
-// Deploy: supabase functions deploy admin-web-create-project
+// Local:  supabase functions serve admin-web-create-place
+// Deploy: supabase functions deploy admin-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
   const created = await createMinimalPlace({
     admin,
-    callerName: "admin-web-create-project",
+    callerName: "admin-web-create-place",
     googlePlaceId: placeId,
     queueEnrich: false,
   });

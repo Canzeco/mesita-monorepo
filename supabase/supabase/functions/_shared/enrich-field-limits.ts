@@ -1,4 +1,4 @@
-// Shared Intaker place field limits — mirrored in business-web-update-project and
+// Shared Intaker place field limits — mirrored in business-web-update-place and
 // the business Place editor. Surfaced read-only in admin-web-get-atlas-fields.
 //
 // `unit` drives the admin card's format: "chars" → "N chars", "words" → "N
@@ -13,7 +13,7 @@ export const ENRICH_FIELD_LIMITS = {
   description: {
     max: 2000,
     unit: "chars",
-    note: "Presentation overwrite via the business Place editor (business-web-update-project). A freshly-enriched place can exceed this — see \"Description (Intaker synthesis)\".",
+    note: "Presentation overwrite via the business Place editor (business-web-update-place). A freshly-enriched place can exceed this — see \"Description (Intaker synthesis)\".",
   },
   // The Intaker's own synthesis ceiling (enrich-synthesis-profile.ts) —
   // ENRICH_DESCRIPTION_MAX = 1,000-word target × 7. Not the same limit as the
@@ -64,16 +64,16 @@ export const ENRICH_FIELD_LIMITS = {
   phone: {
     max: 40,
     unit: "chars",
-    note: "Business Place editor / business-web-update-project — must start with a country code (E.164-shaped, e.g. +52…).",
+    note: "Business Place editor / business-web-update-place — must start with a country code (E.164-shaped, e.g. +52…).",
   },
   email: {
     max: 254,
     unit: "chars",
-    note: "Business Place editor / business-web-update-project — standard email-shape check.",
+    note: "Business Place editor / business-web-update-place — standard email-shape check.",
   },
   // DB CHECK, not just an EF-layer validation — the strongest enforcement of
   // any field on this page. Google native: the Intaker writes it from Google
-  // Places' own 1–4 price level; business-web-update-project rejects manual
+  // Places' own 1–4 price level; business-web-update-place rejects manual
   // writes outright.
   priceLevel: {
     min: 1,

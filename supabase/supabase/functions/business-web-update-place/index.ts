@@ -1,12 +1,12 @@
-// Supabase Edge Function — business-web-update-project
+// Supabase Edge Function — business-web-update-place
 //
 // Authenticated. Updates editable fields on a place the caller owns or
 // manages. Self-contained: verifies the JWT, checks project_members membership
 // itself, validates input, writes via service role. Does NOT call any other
 // Edge Function.
 //
-// Local:  supabase functions serve business-web-update-project
-// Deploy: supabase functions deploy business-web-update-project
+// Local:  supabase functions serve business-web-update-place
+// Deploy: supabase functions deploy business-web-update-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -616,7 +616,7 @@ Deno.serve(async (req) => {
       admin,
       placeId: projectId,
       apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
-      logPrefix: "business-web-update-project/on-update",
+      logPrefix: "business-web-update-place/on-update",
       via: "update",
     });
   }
