@@ -23,6 +23,9 @@ const nextConfig: NextConfig = {
       { source: "/place/:id/:rest*", destination: "/places/:id", permanent: true },
       // Account settings moved to the shell's own screen.
       { source: "/settings", destination: "/account", permanent: true },
+      // Org Places and Public Places merged into one list (MESITA-1614).
+      // Owned is a column now, not a screen.
+      { source: "/pool", destination: "/places", permanent: true },
     ];
   },
   images: {

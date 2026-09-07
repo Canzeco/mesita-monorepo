@@ -295,10 +295,21 @@ export async function apiGetPaymentDashboardLink(
   return url ?? null;
 }
 
-/** scope "org" needs organizationId; scope "public" is the pool. */
+/** scope "all" and "org" both need organizationId and are membership reads;
+ *  "public" is the open pool.
+ *
+ *  "all" is what the console list uses (MESITA-1614): this organization's
+ *  places PLUS the claimable ones, so Owned can vary down the column. It is
+ *  also the only scope that ships every fact for every row — the pool scope
+ *  withholds Partner, Verified and the intake map because any Mesita account
+ *  can reach it, and "all" is behind requireOrgRole. */
 export async function apiListConsolePlaces(
   client: SupabaseClient,
-  args: { scope: "org" | "public"; organizationId?: string; query?: string },
+  args: {
+    scope: "all" | "org" | "public";
+    organizationId?: string;
+    query?: string;
+  },
 ): Promise<ConsolePlace[]> {
   const { places } = await invokeEF<{ places: ConsolePlace[] }>(
     client,

@@ -1,12 +1,12 @@
 "use client";
 
-// The whole navigation: one slim bar, five screens, and the organization
+// The whole navigation: one slim bar, four screens, and the organization
 // switcher. Client because active state needs usePathname and every href
 // carries the active organization.
 //
-// Four of the five are always there. Place is the fifth and it needs an
+// Three of the four are always there. Place is the fourth and it needs an
 // id, so it appears only while you have one open — and it takes the
-// active state off Org Places, which `/places/<id>` would otherwise steal
+// active state off Places, which `/places/<id>` would otherwise steal
 // by prefix.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -24,8 +24,9 @@ import type { Organization } from "@/lib/api/organizations";
 const LINKS = [
   { label: "Account", href: SHELL_ROUTES.account },
   { label: "Organization", href: SHELL_ROUTES.organization },
-  { label: "Org Places", href: SHELL_ROUTES.places },
-  { label: "Public Places", href: SHELL_ROUTES.pool },
+  // One list since MESITA-1614: what this org holds and what it can claim,
+  // told apart by the Owned column rather than by two screens.
+  { label: "Places", href: SHELL_ROUTES.places },
 ];
 
 export function TopNav({

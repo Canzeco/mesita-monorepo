@@ -163,6 +163,51 @@ describe("intake", () => {
   });
 });
 
+// MESITA-1614 merged Org Places and Public Places. The whole point was that
+// Owned stops being constant, so these pin the two things that only become
+// true once one list holds both kinds of row.
+describe("one list, both kinds of row", () => {
+  it("renders held and claimable places side by side, and Owned varies", () => {
+    const html = render({
+      places: [
+        place({ id: "mine", name: "Held Bar", owned: true }),
+        place({ id: "free", name: "Free Bar", owned: false, organizationId: null }),
+      ],
+    });
+    expect(html).toContain("Held Bar");
+    expect(html).toContain("Free Bar");
+    expect(html).toContain('aria-label="Owned: yes"');
+    expect(html).toContain('aria-label="Owned: no"');
+  });
+
+  // The action follows the FACT, not the screen. This is what used to be two
+  // pages with a hardcoded verb each.
+  it("gives a held place Release and a claimable one Claim", () => {
+    const html = render({
+      places: [
+        place({ id: "mine", name: "Held Bar", owned: true }),
+        place({ id: "free", name: "Free Bar", owned: false }),
+      ],
+      renderAction: (p) => (
+        <button type="button">{p.owned ? "Release" : "Claim"}</button>
+      ),
+    });
+    expect(html).toContain(">Release<");
+    expect(html).toContain(">Claim<");
+  });
+
+  // Every row comes from one membership-scoped read, so no column is
+  // withheld any more — the "?" columns the pool used to force are gone.
+  it("answers Partner and Verified on a claimable row too", () => {
+    const html = render({
+      places: [place({ id: "free", owned: false, partner: false, verified: false })],
+    });
+    expect(html).toContain('aria-label="Partnered: no"');
+    expect(html).toContain('aria-label="Verified: no"');
+    expect(html).not.toContain('aria-label="Verified: unknown"');
+  });
+});
+
 describe("actions", () => {
   it("renders the injected action cell", () => {
     const html = render({

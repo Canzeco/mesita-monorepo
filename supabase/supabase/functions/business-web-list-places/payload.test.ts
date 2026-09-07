@@ -85,6 +85,52 @@ Deno.test("the map is guarded at the call site, because the fold is not", () => 
   );
 });
 
+Deno.test("scope=all is a MEMBERSHIP read, and it withholds nothing", () => {
+  // MESITA-1614: one console list, so Owned has to vary — which it cannot do
+  // while each scope pre-filters the very column the matrix is showing.
+  assert(SRC.includes('body.scope === "all"'), "scope=all must be parsed");
+  assert(
+    SRC.includes("const memberScope"),
+    "org and all share one clearance predicate; two copies would drift",
+  );
+  // The gate is the CALLER's clearance, not whether a row is held. Keying it
+  // off the row would blank half the matrix on the one screen built to
+  // compare held places against claimable ones.
+  assert(
+    !/scope === "org" \? isPaidPlan/.test(SRC),
+    "the fact gate must read memberScope, not scope === org",
+  );
+  assert(
+    SRC.includes("requireOrgRole("),
+    "a membership scope must prove membership",
+  );
+  // organizationId is what membership is checked AGAINST — no id, no read.
+  assert(
+    /organizationId is required for scope=\$\{scope\}/.test(SRC),
+    "both membership scopes require an organizationId",
+  );
+});
+
+Deno.test("scope=all is this org's places OR the unheld ones", () => {
+  assert(
+    SRC.includes("organization_id.eq.${organizationId},organization_id.is.null"),
+    "all = held by this org, or held by nobody",
+  );
+  // `eq.null` is not a null test in PostgREST and would match nothing.
+  assert(!SRC.includes("organization_id.eq.null"), "null needs is.null");
+});
+
+Deno.test("the direct-owner filter spares rows this org holds", () => {
+  // placeIdsWithDirectOwner is the shared claim predicate: a place with a
+  // project_members owner is not claimable even with organization_id null.
+  // On scope=all it must not strip this organization's OWN rows, which are
+  // held by definition and would otherwise vanish from its own list.
+  assert(
+    SRC.includes("r.organization_id !== null || !owned.has(r.id)"),
+    "held rows survive the pool predicate",
+  );
+});
+
 Deno.test("pool rows withhold the facts a guest has no claim to", () => {
   // getAuthedUser accepts ANY valid bearer token and the backend is a
   // singleton, so every consumer account can call scope=public. Ownership
@@ -94,7 +140,7 @@ Deno.test("pool rows withhold the facts a guest has no claim to", () => {
     const m = SRC.match(new RegExp(`${fact}:[^,]*`));
     assert(m, `${fact} must be on the payload`);
     assert(
-      m![0].includes("scope === \"org\"") || m![0].includes("verified ?"),
+      m![0].includes("memberScope") || m![0].includes("verified ?"),
       `${fact} must be withheld on the pool`,
     );
   }

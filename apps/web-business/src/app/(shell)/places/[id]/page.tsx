@@ -38,9 +38,13 @@ export default async function PlaceProfilePage({
   const activeOrg = resolveActiveOrg(orgs, sp.org);
   const { place, holder, claimable } = view;
 
-  const backHref = holder
-    ? withOrg(SHELL_ROUTES.places, holder.organizationId)
-    : withOrg(SHELL_ROUTES.pool, activeOrg?.id ?? null);
+  // One list since MESITA-1614, so held and unheld places go back to the
+  // same screen. A held place carries its holder's org so Back lands on the
+  // portfolio you came from rather than on whichever org happened to be active.
+  const backHref = withOrg(
+    SHELL_ROUTES.places,
+    holder?.organizationId ?? activeOrg?.id ?? null,
+  );
 
   return (
     <>

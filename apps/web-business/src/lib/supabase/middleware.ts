@@ -25,7 +25,6 @@ export const PROTECTED_PREFIXES = [
   // all four are behind the signed-out wall. Nothing in the shell is mock
   // any more.
   "/places",
-  "/pool",
   "/account",
 ];
 
