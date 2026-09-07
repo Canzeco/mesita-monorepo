@@ -142,7 +142,7 @@ async function emitOnReservationFailed(
     if (subprocesses.length === 0) return; // trigger disabled in the matrix
 
     const { data: place } = await admin
-      .from("places")
+      .from("place_profiles")
       .select("google_place_id")
       .eq("id", projectId)
       .maybeSingle();

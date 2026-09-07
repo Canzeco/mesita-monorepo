@@ -30,8 +30,8 @@ Deno.test("AUDIENCE: the rendered select string mentions no forbidden column", (
   assertEquals(leaked, []);
 });
 
-Deno.test("the select embeds places with an inner join", () => {
-  assertEquals(GET_PLACE_SELECT.includes("places!inner("), true);
+Deno.test("the select embeds place_profiles with an inner join", () => {
+  assertEquals(GET_PLACE_SELECT.includes("place_profiles!inner("), true);
   assertEquals(GET_PLACE_SELECT.startsWith("id, state"), true);
 });
 

@@ -3,7 +3,7 @@
 // reportPulsePieces's event-log half is exercised end-to-end by every
 // caller's own tests (enrich-pipeline.ts's reportEnrichmentStep is a thin,
 // already-covered insert). These tests cover the NEW half (MESITA-1249):
-// reportPulsePieces also merges the same outcomes into places.enrichment,
+// reportPulsePieces also merges the same outcomes into place_profiles.enrichment,
 // read-merge-write, so admin-web-search-places/business-web-get-overview
 // can read a live meter instead of re-deriving it from the event log.
 
@@ -15,7 +15,7 @@ import type { EnrichmentMap } from "./schema-catalog.ts";
 /**
  * Mocks exactly the two tables reportPulsePieces's full call stack touches:
  * `place_enrichment_events` (the insert reportEnrichmentStep does, one per
- * stamped piece) and `places` (the read-merge-write mergeEnrichmentMap does,
+ * stamped piece) and `place_profiles` (the read-merge-write mergeEnrichmentMap does,
  * once per call — through writePlace, which awaits `.update().eq()`
  * directly with no `.select()`, matching how mergeEnrichmentMap calls it).
  */
@@ -38,7 +38,7 @@ function fakeAdmin(initialEnrichment: EnrichmentMap | null): {
           },
         };
       }
-      if (table === "places") {
+      if (table === "place_profiles") {
         return {
           select: () => ({
             eq: () => ({
@@ -137,7 +137,7 @@ Deno.test("reportPulsePieces: Embedding at 10 cannot skip a gap", async () => {
 });
 
 Deno.test("mergeEnrichmentMap folds a legacy `semantic` 10 — no degrade on the next stamp", async () => {
-  // §8.4 v3 regression guard: all pre-rename places hold functions.semantic
+  // §8.4 v3 regression guard: all pre-rename place_profiles hold functions.semantic
   // with highWater 10. Any later stamp (here: a pulse refresh) must keep
   // them at 10 under the new `embedding` key, never rewrite blocked-at-10.
   const nine = ["pulse","details","serp","links","social","images","menu","reviews","description"] as const;

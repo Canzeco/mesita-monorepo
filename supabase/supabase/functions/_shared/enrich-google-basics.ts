@@ -4,7 +4,7 @@
 // can build the identity spine in-memory without a
 // DB seed. Fetches Google Places BASICS ONLY (name, address, geo, category,
 // phone, hours, first photos, Google ratings/reviews, identity links) and
-// returns them as a flat `places`-shaped object. NO Firecrawl/Perplexity/
+// returns them as a flat `place_profiles`-shaped object. NO Firecrawl/Perplexity/
 // OpenAI/CSE/Instagram — that heavy work is the enrichment pipeline's job.
 //
 // Returns { ok:true, basics } or { ok:false, code, error, status } so callers
@@ -92,14 +92,14 @@ type GoogleDetails = {
   photos?: { name?: string; widthPx?: number; heightPx?: number }[];
 };
 
-// Flat, `places`-shaped identity spine. Project-level fields (slug, state,
+// Flat, `place_profiles`-shaped identity spine. Project-level fields (slug, state,
 // listing_type, content_state, plan…) are intentionally absent — the save step
 // generates the unique slug and applies entity defaults.
 export type GoogleBasics = {
   google_place_id: string;
   /**
    * Google Places displayName — a cached observation, not an identity spine
-   * (google_place_id is). There is deliberately no `name` here: `places.name`
+   * (google_place_id is). There is deliberately no `name` here: `place_profiles.name`
    * is a generated column and `mesita_name` belongs to the operator, so the
    * Intaker has nothing to say about either.
    */
@@ -146,7 +146,7 @@ export type GoogleBasicsResult =
   //
   // `businessStatus` rides alongside for the SAME reason, and the reason is
   // load-bearing rather than stylistic: the research stage does
-  // `place = { ...basics }` and hands that object to a `places` UPDATE, so a
+  // `place = { ...basics }` and hands that object to a `place_profiles` UPDATE, so a
   // key in `basics` with no matching column fails the persist. It is Google's
   // verbatim UPPERCASE value — OPERATIONAL, CLOSED_TEMPORARILY,
   // CLOSED_PERMANENTLY — or null when Google does not say.

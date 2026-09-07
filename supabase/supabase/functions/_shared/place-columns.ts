@@ -1,13 +1,13 @@
-// Single source of truth for the columns we SELECT off public.places.
+// Single source of truth for the columns we SELECT off public.place_profiles.
 //
-// Before this file existed, every EF that read places maintained its own
+// Before this file existed, every EF that read place_profiles maintained its own
 // hand-typed PLACE_COLUMNS string and they drifted: consumer EFs were missing
 // the columns added by the Place redesign (timezone, hours, description,
 // menu_pdf_url, tags, the signal
 // fields, etc.), so consumers literally couldn't see what businesses had just
 // edited. Importing from here keeps every read in lock-step.
 //
-// If you add a column to places, update this file once and every reader
+// If you add a column to place_profiles, update this file once and every reader
 // gets it.
 
 const COLUMNS: readonly string[] = [
@@ -90,7 +90,7 @@ const COLUMNS: readonly string[] = [
   "google_business_url",
   // Read-only signal columns — populated by enrichment, never by the
   // business. Shown on the Place page's Signals section and on consumer
-  // surfaces that compare places.
+  // surfaces that compare place_profiles.
   "google_stars_overall",
   "google_review_count",
   "google_visitor_count",
@@ -137,7 +137,7 @@ const COLUMNS: readonly string[] = [
   "email",
   "created_at",
   // Promos v4 membership / strikes (MESITA-542) — projects columns exposed via
-  // profiles. Readers that hit `places` directly simply won't see them.
+  // profiles. Readers that hit `place_profiles` directly simply won't see them.
   "first_ticket_honored_at",
   "plan_live_at",
   "strike_count",
@@ -153,7 +153,7 @@ const COLUMNS: readonly string[] = [
 // because consumers don't need to see when the business last touched a row.
 export const PLACE_PUBLIC_COLUMNS = COLUMNS.join(", ");
 
-// The five enrichment-filled jsonb columns a LIST of places never needs —
+// The five enrichment-filled jsonb columns a LIST of place_profiles never needs —
 // each is priced for one place read (a detail page), not N per request.
 // place-card.ts (MESITA-1247 guard test 7 / MESITA-1283) proves a row
 // stripped of these stays under the 50KB card budget even worst-case-stuffed.
@@ -180,7 +180,7 @@ export const PLACE_CARD_COLUMNS = PLACE_CARD_COLUMNS_ARRAY.join(", ");
 // (MESITA-1208; typed columns since routing left the products jsonb).
 // BUSINESS-ONLY on purpose: a consumer never dials the place itself, so the
 // selected endpoint stays out of the public payload even though it is usually
-// just a copy of the already-public places.phone.
+// just a copy of the already-public place_profiles.phone.
 const ROUTING_COLUMNS: readonly string[] = [
   "reservation_channel",
   "reservation_target",

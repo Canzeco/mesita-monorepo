@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const offered = normalizeAlternatives(ticket.alternatives);
   if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
     const { data: placeRow } = await admin
-      .from("places")
+      .from("place_profiles")
       .select("lng")
       .eq("id", ticket.project_id)
       .maybeSingle();

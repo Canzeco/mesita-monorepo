@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
   if (!projectId) return json({ ok: false, error: "Missing placeId" }, 400);
 
   const { data: place, error: placeErr } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id")
     .eq("id", projectId)
     .maybeSingle();

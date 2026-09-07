@@ -158,7 +158,7 @@ async function searchReservations(
   // place names separately (same workaround as the engine).
   const placeIds = [...new Set(rows.map((r) => r.place_id))];
   const { data: places } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, name")
     .in("id", placeIds);
   const placeName = new Map<string, string>(

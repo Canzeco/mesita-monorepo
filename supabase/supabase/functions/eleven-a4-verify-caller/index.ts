@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: candidates } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, name, phone, reservation_target")
     .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);

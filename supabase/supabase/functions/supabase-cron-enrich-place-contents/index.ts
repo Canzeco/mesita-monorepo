@@ -124,7 +124,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // (coalesce(mesita_name, google_name)) instead, so an operator's Mesita name
   // is what the Intaker reasons about.
   const { data: nameRow } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("name")
     .eq("id", projectId)
     .maybeSingle();
@@ -348,7 +348,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   );
 
   const { data: liveContacts } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("phone, reservation_channel, enrichment_sources")
     .eq("id", projectId)
     .maybeSingle();
@@ -474,7 +474,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     placeUpdate.google_reviews = persistGoogleReviews(placeUpdate.google_reviews);
   }
   const placeRes = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: projectId,
     patch: placeUpdate as PlacePatch,

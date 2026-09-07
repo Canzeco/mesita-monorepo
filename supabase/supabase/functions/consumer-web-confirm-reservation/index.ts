@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: placeRow } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("lng")
     .eq("id", ticket.place_id)
     .maybeSingle();

@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-set-place-rails
 //
 // The one writer for the four acceptance INTENT BITS (Pato gates
-// 2026-08-29): places.mesita_pay_enabled · credits_enabled ·
+// 2026-08-29): place_profiles.mesita_pay_enabled · credits_enabled ·
 // pickup_orders_enabled · delivery_orders_enabled. These are the Partner
 // tab's rail toggles — the operator's "this place offers X", summed by the
 // Promotion score (their reader). Each rail's ENGINE still gates the rail
@@ -9,7 +9,7 @@
 // Credits with visits_config.payCredits, orders with the (unbuilt) order rail — a
 // toggle here never turns an engine on.
 //
-// Writes `table: "places"` through the place-doc door, NEVER profiles: the
+// Writes `table: "place_profiles"` through the place-doc door, NEVER profiles: the
 // profiles_update trigger predates these columns and silently drops them
 // (validateProfilePatch refuses them for the same reason).
 //
@@ -30,7 +30,7 @@ import {
 } from "../_shared/auth.ts";
 import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 
-// Body key → places column. The closed set IS the contract: anything else in
+// Body key → place_profiles column. The closed set IS the contract: anything else in
 // the body is ignored, and an empty intersection is a 400.
 const RAIL_COLUMNS = {
   mesita_pay: "mesita_pay_enabled",
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
   }
 
   const write = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: placeId,
     patch: patch as PlacePatch,

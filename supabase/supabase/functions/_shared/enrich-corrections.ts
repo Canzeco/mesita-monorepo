@@ -19,7 +19,7 @@
 //
 // ━━━ WHAT IS BUILT (MESITA-1190) ━━━
 // The PIN HALF is live. `readFieldPins` / `carryFieldPins` / `stripPinnedColumns`
-// are wired into the two EFs that persist enriched facts onto `places`:
+// are wired into the two EFs that persist enriched facts onto `place_profiles`:
 // supabase-cron-enrich-place-research (phone) and
 // supabase-cron-enrich-place-contents (everything else). A pin that exists is
 // obeyed today.
@@ -65,7 +65,7 @@ export type CorrectableField =
   | "closes_at";
 
 /**
- * Correctable field → the `places` columns a pin on it must protect. One field
+ * Correctable field → the `place_profiles` columns a pin on it must protect. One field
  * can own more than one column: the reservation endpoint is a {channel, value}
  * pair written together by `reservationTargetPatch`, so pinning one half and
  * leaving the other writable would produce a channel pointing at a stale value.
@@ -126,7 +126,7 @@ export function autoApplies(p: FieldProposal): boolean {
 
 // ━━━ Pin storage ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-// Pins live at `places.enrichment_sources.pins`. That column is jsonb and
+// Pins live at `place_profiles.enrichment_sources.pins`. That column is jsonb and
 // already on the row, so no migration is needed — but it is NOT free real
 // estate, and the issue's plan missed this: `enrichment_sources` is the
 // contents stage's per-run DIAGNOSTICS bag (synthesis diag, category, tags,
@@ -138,7 +138,7 @@ export function autoApplies(p: FieldProposal): boolean {
 // that carry, and `enrich-corrections.test.ts` is the gate that goes red if
 // someone "tidies" the blob assignment back into a plain overwrite.
 //
-// The alternative is a dedicated `places.field_pins` column, which is cleaner
+// The alternative is a dedicated `place_profiles.field_pins` column, which is cleaner
 // and costs a migration. If that ever lands, `readFieldPins` and
 // `carryFieldPins` are the only two functions that move.
 
@@ -230,7 +230,7 @@ export function carryFieldPins(
 }
 
 /**
- * Drop every column an active pin owns from a `places` update payload, so the
+ * Drop every column an active pin owns from a `place_profiles` update payload, so the
  * Intaker writes around the correction instead of over it. Returns the payload
  * to send plus the fields it withheld, which the caller reports — a pin that
  * silently eats a write is as confusing as one that does not hold.

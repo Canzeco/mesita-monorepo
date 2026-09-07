@@ -5,7 +5,7 @@
 //
 // Takes the `place` JSON produced by fetchGoogleBasics and writes it as the
 // real rows:
-//   • places   — the profile (Google identity, geo, channels, signals, photos)
+//   • place_profiles   — the profile (Google identity, geo, channels, signals, photos)
 //   • projects — the owned Mesita entity (shared PK with the place), landing
 //     state='active', listing_type from Verification Config
 //     (verification_config.createPlacesAsVerified → 'partner', else 'web'),
@@ -13,7 +13,7 @@
 //     'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
-// against the live catalog. Inserts are sequenced places→projects (shared id);
+// against the live catalog. Inserts are sequenced place_profiles→projects (shared id);
 // a projects failure compensates by deleting the just-written place so we
 // never leave an orphan profile. Media is NOT handled here.
 //
@@ -27,10 +27,10 @@ import { type PlacePatch, type ProjectRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 import { normalizeVerificationConfig } from "./verification-config.ts";
 
-// The places-shaped profile from fetchGoogleBasics. Required spine:
+// The place_profiles-shaped profile from fetchGoogleBasics. Required spine:
 // google_place_id + google_name (the same fields fetchGoogleBasics guarantees).
 // `name` is accepted only as a legacy alias for the Google label — it is a
-// GENERATED column on places, so no caller can meaningfully supply it.
+// GENERATED column on place_profiles, so no caller can meaningfully supply it.
 export type PlacePayload = Record<string, unknown> & {
   google_place_id?: string;
   google_name?: string;
@@ -64,7 +64,7 @@ export async function savePlaceData(
   });
 
   const googlePlaceId = (place.google_place_id ?? "").toString().trim();
-  // `places.name` is GENERATED (coalesce(mesita_name, google_name)), so callers
+  // `place_profiles.name` is GENERATED (coalesce(mesita_name, google_name)), so callers
   // send the Google observation, not the display label — fetchGoogleBasics
   // deliberately omits `name` (MESITA-1011). Guarding on `name` here rejected
   // every create for 11 days; guard the key that is actually supplied, keeping
@@ -100,7 +100,7 @@ export async function savePlaceData(
   // ── Verification Config: create as Mesita Partner? ──
   // decision: Pato (live, 2026-08-05) — admin Verification Config toggle
   // createPlacesAsVerified (verification_config jsonb, MESITA-1248 fold of
-  // the old create_places_as_verified column). When on, new places land as
+  // the old create_places_as_verified column). When on, new place_profiles land as
   // listing_type='partner' (consumer "Mesita Partner" badge) even without
   // phone OTP ownership proof. Default off → 'web' / "Not Verified". Does
   // not grant plan, ownership, or promo strategy (those stay on their own
@@ -117,7 +117,7 @@ export async function savePlaceData(
       ? "partner"
       : "web";
 
-  // ── 1) places (profile). Strip caller-supplied id/timestamps so the DB owns
+  // ── 1) place_profiles (profile). Strip caller-supplied id/timestamps so the DB owns
   // them; the category-label trigger fills category_label from category. ──
   // Names: `name` is GENERATED (coalesce(mesita_name, google_name)) — never
   // insert it. Create seeds BOTH: google_name is the cached Google observation
@@ -137,7 +137,7 @@ export async function savePlaceData(
     mesita_name: googleName,
   } as PlacePatch;
   const placeRes = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "insert",
     patch: placeInsert,
     select: "id",
@@ -178,7 +178,7 @@ export async function savePlaceData(
   });
   if (!projectRes.ok || !projectRes.row) {
     // Compensate: drop the orphan place so a failed create leaves nothing.
-    await writePlace(admin, { table: "places", mode: "delete", id: placeRow.id });
+    await writePlace(admin, { table: "place_profiles", mode: "delete", id: placeRow.id });
     if (
       projectRes.ok === false && projectRes.code === "23505" && /\bslug\b/.test(projectRes.error)
     ) {

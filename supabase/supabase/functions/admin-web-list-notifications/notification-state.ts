@@ -116,7 +116,7 @@ export async function attachPlaceStateFacts(
       .select("place_id")
       .eq("state", "approved")
       .in("place_id", ids),
-    admin.from("places").select("id, enrichment").in("id", ids),
+    admin.from("place_profiles").select("id, enrichment").in("id", ids),
   ]);
 
   if (profileRes.error) {
@@ -130,7 +130,7 @@ export async function attachPlaceStateFacts(
     );
   }
   if (enrichmentRes.error) {
-    console.error("[list-notifications] places.enrichment:", enrichmentRes.error.message);
+    console.error("[list-notifications] place_profiles.enrichment:", enrichmentRes.error.message);
   }
 
   const verified = new Set<string>();

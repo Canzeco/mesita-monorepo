@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   // == the editor's projectId); the projects table has no such column. Without
   // it the research stage can't run, so reject early.
   const { data: place, error: placeErr } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("id, google_place_id")
     .eq("id", projectId)
     .maybeSingle();

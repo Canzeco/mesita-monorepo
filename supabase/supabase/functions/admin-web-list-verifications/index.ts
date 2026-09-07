@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   let query = admin
     .from("project_verifications")
     .select(
-      "id, place_id, requester_id, method, payload, requester_email, state, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, state, place:places(name, address, phone, google_place_id))",
+      "id, place_id, requester_id, method, payload, requester_email, state, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, state, place:place_profiles(name, address, phone, google_place_id))",
     )
     .order("created_at", { ascending: false })
     .limit(limit);

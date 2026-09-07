@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   // The project row carries the commercial facts and the holder; the
-  // embedded places row carries what the address IS. One round trip, the
+  // embedded place_profiles row carries what the address IS. One round trip, the
   // same join business-web-list-places uses.
   //
   // The column list lives in place-projection.ts so a test can assert the
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     claimed_at: string | null;
     created_at: string | null;
     updated_at: string | null;
-    places: {
+    place_profiles: {
       name: string;
       address: string | null;
       zone: string | null;
@@ -160,14 +160,14 @@ Deno.serve(async (req) => {
     ok: true,
     place: {
       id: row.id,
-      name: row.places.name,
-      address: row.places.address,
-      zone: row.places.zone,
-      city: row.places.city,
-      category: row.places.category,
-      categoryLabel: row.places.category_label,
-      phone: row.places.phone,
-      timezone: row.places.timezone,
+      name: row.place_profiles.name,
+      address: row.place_profiles.address,
+      zone: row.place_profiles.zone,
+      city: row.place_profiles.city,
+      category: row.place_profiles.category,
+      categoryLabel: row.place_profiles.category_label,
+      phone: row.place_profiles.phone,
+      timezone: row.place_profiles.timezone,
       currency: row.currency,
       // The raw projects.state. `listed` is what the console gates on; this
       // is the REASON when listed is false, and the screen shows it only
@@ -175,21 +175,21 @@ Deno.serve(async (req) => {
       // answer, not a bare No.
       state: row.state,
       contentState: row.content_state,
-      enrichedAt: row.places.enriched_at,
+      enrichedAt: row.place_profiles.enriched_at,
       // Capped for the wire; `totalPhotos` keeps the truth so the screen can
       // honestly say "10 of 13". See place-projection.ts for why the cap
       // cannot live in the select.
-      photos: capPhotos(row.places.photos),
-      totalPhotos: totalPhotos(row.places.photos),
-      googleStars: row.places.google_stars_overall,
-      googleReviewCount: row.places.google_review_count,
+      photos: capPhotos(row.place_profiles.photos),
+      totalPhotos: totalPhotos(row.place_profiles.photos),
+      googleStars: row.place_profiles.google_stars_overall,
+      googleReviewCount: row.place_profiles.google_review_count,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       // Derived, never stored — the same helpers every other surface reads,
       // so the Place screen cannot disagree with the admin table about
       // whether a guest can reach this address.
       listed: isPlaceListed(row.state),
-      enriched: isPlaceEnriched(row.places.enriched_at),
+      enriched: isPlaceEnriched(row.place_profiles.enriched_at),
       verified: Boolean(verification),
     },
     holder,

@@ -133,7 +133,7 @@ export async function reportPulsePieces(
 }
 
 /**
- * MESITA-1249: keep `places.enrichment` current alongside the event log this
+ * MESITA-1249: keep `place_profiles.enrichment` current alongside the event log this
  * function already writes. Read-merge-write rather than a blind overwrite —
  * `stamped` only carries the pieces THIS stage bought (rule 3 above: a piece
  * a run didn't buy writes nothing), so the merge must preserve every other
@@ -151,7 +151,7 @@ async function mergeEnrichmentMap(
   stamped: Partial<Record<StampablePulseStep, PieceOutcome>>,
 ): Promise<void> {
   const { data, error: readError } = await admin
-    .from("places")
+    .from("place_profiles")
     .select("enrichment")
     .eq("id", projectId)
     .maybeSingle();
@@ -183,7 +183,7 @@ async function mergeEnrichmentMap(
     blockedAt: pulseBlockedAtFromMap(functions),
   };
   const res = await writePlace(admin, {
-    table: "places",
+    table: "place_profiles",
     mode: "update",
     id: projectId,
     patch: { enrichment: next },

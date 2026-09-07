@@ -29,7 +29,7 @@ select plan(86);
 
 select has_view(
   'public', 'profiles',
-  'public.profiles exists (projects ⋈ places; every client read lands here)'
+  'public.profiles exists (projects ⋈ place_profiles; every client read lands here)'
 );
 
 -- MESITA-599. A SECURITY DEFINER view runs RLS as its owner (postgres), so
@@ -83,54 +83,54 @@ select ok(
   'profiles_update_trg is still bound (writes through the view are no-ops without it)'
 );
 
--- ━━━ places.name — GENERATED, not a convention ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ place_profiles.name — GENERATED, not a convention ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select ok(
   (select attgenerated from pg_attribute
-    where attrelid = 'public.places'::regclass and attname = 'name') = 's',
-  'places.name is a STORED GENERATED column (a plain column lets writers diverge again)'
+    where attrelid = 'public.place_profiles'::regclass and attname = 'name') = 's',
+  'place_profiles.name is a STORED GENERATED column (a plain column lets writers diverge again)'
 );
 
 select col_not_null(
-  'public', 'places', 'name',
-  'places.name is NOT NULL (every place resolves a label)'
+  'public', 'place_profiles', 'name',
+  'place_profiles.name is NOT NULL (every place resolves a label)'
 );
 
 select ok(
   exists (
     select 1 from pg_constraint
-     where conrelid = 'public.places'::regclass
-       and conname = 'places_name_source_present'
+     where conrelid = 'public.place_profiles'::regclass
+       and conname = 'place_profiles_name_source_present'
   ),
-  'places_name_source_present survives (names the failure as a data problem)'
+  'place_profiles_name_source_present survives (names the failure as a data problem)'
 );
 
 -- Behaviour, not just catalog shape: the resolution order is the product law.
 savepoint before_name_probe;
 
-insert into public.places (id, google_name)
+insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000f0f0f', '  Tacos Martin  ');
 
 select is(
-  (select name from public.places where id = '00000000-0000-4000-8000-0000000f0f0f'),
+  (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Tacos Martin'::text,
-  'no override ⇒ places.name follows google_name, trimmed'
+  'no override ⇒ place_profiles.name follows google_name, trimmed'
 );
 
-update public.places set mesita_name = 'Los Tacos Martin'
+update public.place_profiles set mesita_name = 'Los Tacos Martin'
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
-  (select name from public.places where id = '00000000-0000-4000-8000-0000000f0f0f'),
+  (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Los Tacos Martin'::text,
   'mesita_name overrides google_name'
 );
 
-update public.places set mesita_name = '   '
+update public.place_profiles set mesita_name = '   '
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
-  (select name from public.places where id = '00000000-0000-4000-8000-0000000f0f0f'),
+  (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Tacos Martin'::text,
   'a whitespace-only override is not an override'
 );
@@ -138,16 +138,16 @@ select is(
 -- 428C9 = ERRCODE_GENERATED_ALWAYS. Pinned, because "it threw something" would
 -- also pass if the column had merely gone away.
 select throws_ok(
-  $$update public.places set name = 'direct write'
+  $$update public.place_profiles set name = 'direct write'
      where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
   '428C9'::char(5), null::text,
-  'places.name rejects a direct write'
+  'place_profiles.name rejects a direct write'
 );
 
 -- Deliberately unpinned: the row violates the NOT NULL and the named CHECK at
 -- once and Postgres does not promise which it reports.
 select throws_ok(
-  $$update public.places set google_name = null, mesita_name = null
+  $$update public.place_profiles set google_name = null, mesita_name = null
      where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
   null::char(5), null::text,
   'a place with neither mesita_name nor google_name is rejected'
@@ -195,8 +195,8 @@ select ok(
 );
 
 select ok(
-  has_table_privilege('anon', 'public.places', 'SELECT'),
-  'anon keeps table SELECT on public.places (Approach D is unimplementable)'
+  has_table_privilege('anon', 'public.place_profiles', 'SELECT'),
+  'anon keeps table SELECT on public.place_profiles (Approach D is unimplementable)'
 );
 
 select ok(
@@ -333,7 +333,7 @@ select has_column(
 
 select is_empty(
   $$select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'places'
+     where table_schema = 'public' and table_name = 'place_profiles'
        and column_name in ('tiktok_url', 'tripadvisor_url', 'yelp_url')$$,
   'dead place URL columns are gone'
 );
@@ -421,9 +421,9 @@ select ok(
 select ok(
   exists (
     select 1 from pg_class
-     where relname = 'places_embedding_hnsw' and relkind = 'i'
+     where relname = 'place_profiles_embedding_hnsw' and relkind = 'i'
   ),
-  'places_embedding_hnsw exists'
+  'place_profiles_embedding_hnsw exists'
 );
 
 -- MESITA-1248: leftover atlas_* / memo_* scalars folded into jsonb.
@@ -490,8 +490,8 @@ select ok(
 );
 
 select has_column(
-  'public', 'places', 'request_count',
-  'places.request_count is the numeric Requests progress'
+  'public', 'place_profiles', 'request_count',
+  'place_profiles.request_count is the numeric Requests progress'
 );
 
 select has_table(
@@ -602,7 +602,7 @@ select is(
 );
 
 select is_empty(
-  $$select p.id from public.places p
+  $$select p.id from public.place_profiles p
      where p.family_keys is not null
        and exists (
          select 1 from unnest(p.family_keys) k
@@ -614,14 +614,14 @@ select is_empty(
 select ok(
   exists (
     select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'places'
+     where table_schema = 'public' and table_name = 'place_profiles'
        and column_name = 'family_keys'
   ) and exists (
     select 1 from information_schema.columns
      where table_schema = 'public' and table_name = 'profiles'
        and column_name = 'family_keys'
   ),
-  'places.family_keys is stored and exposed on public.profiles'
+  'place_profiles.family_keys is stored and exposed on public.profiles'
 );
 
 -- ━━━ admin_reset_database — the survivor registry ━━━━━━━━━━━━━━━━━━━━━━━━━━

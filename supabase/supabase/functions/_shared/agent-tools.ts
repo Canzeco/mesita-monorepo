@@ -188,7 +188,7 @@ export async function placeNames(
   ids: string[],
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
-  const { data } = await admin.from("places").select("id, name").in("id", ids);
+  const { data } = await admin.from("place_profiles").select("id, name").in("id", ids);
   return new Map<string, string>(
     ((data ?? []) as { id: string; name: string | null }[]).map(
       (p) => [p.id, p.name ?? "(sin nombre)"],

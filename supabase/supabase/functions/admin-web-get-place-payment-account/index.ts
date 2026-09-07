@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
 
   // The pay-readiness chain — the AND the intent-bit comments promise.
   const placeRes = await admin
-    .from("places")
+    .from("place_profiles")
     .select("mesita_pay_enabled")
     .eq("id", placeId)
     .maybeSingle();

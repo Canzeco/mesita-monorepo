@@ -153,7 +153,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // column.
   {
     const opRes = await writePlace(admin, {
-      table: "places",
+      table: "place_profiles",
       mode: "update",
       id: projectId,
       patch: {
@@ -325,7 +325,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
   // which this stage never writes, so a plain read is enough here.
   if (basics.phone) {
     const { data: pinRow } = await admin
-      .from("places")
+      .from("place_profiles")
       .select("enrichment_sources")
       .eq("id", projectId)
       .maybeSingle();
@@ -342,7 +342,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
       };
     } else {
       const phoneRes = await writePlace(admin, {
-        table: "places",
+        table: "place_profiles",
         mode: "update",
         id: projectId,
         patch: { phone: basics.phone },
@@ -384,7 +384,7 @@ serveEnrichStage("research", async (admin, _env, row) => {
     if (googleName) {
       const next = googleName.slice(0, ENRICH_FIELD_LIMITS.placeName.max);
       const nameRes = await writePlace(admin, {
-        table: "places",
+        table: "place_profiles",
         mode: "update",
         id: projectId,
         patch: { google_name: next },

@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       .eq("place_id", projectId)
       .maybeSingle(),
     admin
-      .from("places")
+      .from("place_profiles")
       .select("enrich_every_days, enrich_mode, enrich_next_at, enriched_at")
       .eq("id", projectId)
       .maybeSingle(),

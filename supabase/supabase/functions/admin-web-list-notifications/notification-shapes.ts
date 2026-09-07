@@ -16,7 +16,7 @@ export type PlaceRef = {
 
 export type PlaceShape = {
   id: string;
-  // `slug` is a projects-only column — the base public.places table has none.
+  // `slug` is a projects-only column — the base public.place_profiles table has none.
   // Sources embedded via the places FK (steps) can't select it, so it's
   // optional here and defaults to null in placeRef. The claims source hops
   // through projects and DOES carry it (see projectPlaceRef).

@@ -112,11 +112,11 @@ async function findWriters(table: string, verbs: RegExp): Promise<string[]> {
 const WRITE_VERBS = /\.(insert|update|upsert)\s*\(/;
 const DELETE_VERB = /\.delete\s*\(/;
 
-// ── PLACE (places, profiles) — bootstrapped from a real findWriters() run ──
+// ── PLACE (place_profiles, profiles) — bootstrapped from a real findWriters() run ──
 const PLACE_UPDATE_ALLOWLIST = [
   "_shared/embeddings.ts",
   "_shared/ojo-engine.ts", // windowing false positive — its .from("profiles") is read-only (.select); the write-verb match in the 2000-char window is the unrelated visit_tickets .update() a few lines later
-  "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("places")), listed for a future reader's clarity
+  "_shared/place-doc.ts", // THE place door (writePlace, MESITA-1279/#1164) — not actually caught by this scan (table is a parameterized arg, not a literal .from("place_profiles")), listed for a future reader's clarity
   "_shared/place-embeddings.ts",
   "_shared/save-place.ts",
   "_shared/social-followers.ts",
@@ -126,7 +126,7 @@ const PLACE_UPDATE_ALLOWLIST = [
   "admin-web-set-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-place-active/index.ts",
-  "admin-web-set-place-verified/index.ts", // windowing false positive — .from("places") is a select; the insert writes project_verifications
+  "admin-web-set-place-verified/index.ts", // windowing false positive — .from("place_profiles") is a select; the insert writes project_verifications
   "admin-web-set-plan/index.ts",
   "business-web-confirm-reservation/index.ts",
   "business-web-request-manual-review/index.ts",
@@ -139,10 +139,10 @@ const PLACE_UPDATE_ALLOWLIST = [
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
-Deno.test("PLACE: no new writer of places/profiles outside the allowlist", async () => {
-  const found = new Set([...await findWriters("places", WRITE_VERBS), ...await findWriters("profiles", WRITE_VERBS)]);
+Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist", async () => {
+  const found = new Set([...await findWriters("place_profiles", WRITE_VERBS), ...await findWriters("profiles", WRITE_VERBS)]);
   const extra = [...found].filter((f) => !PLACE_UPDATE_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of places/profiles: ${extra.join(", ")}`);
+  assertEquals(extra, [], `new direct writer(s) of place_profiles/profiles: ${extra.join(", ")}`);
 });
 
 // ── PROJECT (projects) — MESITA-1284: this table was missing from every
@@ -279,7 +279,7 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 
 // ── Guard test 4, refusal half ──────────────────────────────────────────
 //
-// Scope: hard DELETE on one of the six aggregates' OWN row — places,
+// Scope: hard DELETE on one of the six aggregates' OWN row — place_profiles,
 // profiles, consumers, visit_tickets, reservation_tickets, projects
 // (MESITA-1284 — this table was missing from both ratchets below). Deliberately NOT
 // in scope: satellite/audit tables (place_creation_attempts,
@@ -291,7 +291,7 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // Two of the four entries below are windowing false positives, VERIFIED by
 // reading the actual source rather than trusting the scan (per this PR's
 // own instructions not to trust an unverified claim): the window's 2000-char
-// forward reach from a `places`/`profiles`/`visit_tickets` .from() match
+// forward reach from a `place_profiles`/`profiles`/`visit_tickets` .from() match
 // catches a genuinely unrelated .delete() a few lines later that targets a
 // satellite table, not the aggregate row itself. Left in the allowlist
 // (rather than "fixing" the scan to be chain-precise, which the spec this
@@ -299,14 +299,14 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // target, so a future reader is not misled and the scan technique can be
 // tightened later without this file silently going stale.
 const HARD_DELETE_ALLOWLIST = [
-  "_shared/save-place.ts", // real: deletes the places row it just inserted, on a failed downstream step (compensating-write pattern)
+  "_shared/save-place.ts", // real: deletes the place_profiles row it just inserted, on a failed downstream step (compensating-write pattern)
   "_shared/ticket-doc.ts", // writeTicket still exposes mode: "delete"; account close must not call it (MESITA-1250 — tickets stay)
   "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets project_verifications (dedup-before-insert), not profiles
   "consumer-web-submit-review/index.ts", // windowing false positive — real delete() targets consumer_review_claims (claim rollback on a failed write), not profiles or visit_tickets
 ];
 
 Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/ticket/reservation row", async () => {
-  const tables = ["places", "profiles", "consumers", "visit_tickets", "reservation_tickets", "projects"];
+  const tables = ["place_profiles", "profiles", "consumers", "visit_tickets", "reservation_tickets", "projects"];
   const found = new Set<string>();
   for (const t of tables) for (const f of await findWriters(t, DELETE_VERB)) found.add(f);
   const extra = [...found].filter((f) => !HARD_DELETE_ALLOWLIST.includes(f));

@@ -25,7 +25,7 @@ function fakeAdmin(fx: Fixture): SupabaseClient {
       return this;
     },
     maybeSingle: () => {
-      if (chain._table === "places") {
+      if (chain._table === "place_profiles") {
         return Promise.resolve({ data: fx.place ?? null, error: null });
       }
       if (chain._table === "projects") {
