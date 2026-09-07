@@ -78,9 +78,9 @@ function selfClosingTag(source: string, component: string): string {
 const fieldLabels = (source: string) =>
   [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
 
-/** `<SubTile … label="X">` values, in render order. */
-const subLabels = (source: string) =>
-  [...source.matchAll(/<SubTile\b[\s\S]*?\/>/g)]
+/** `<InfoBox … label="X">` values, in render order. */
+const infoLabels = (source: string) =>
+  [...source.matchAll(/<InfoBox\b[\s\S]*?\/>/g)]
     .map((m) => m[0].match(/label="([^"]+)"/)?.[1])
     .filter((l): l is string => Boolean(l));
 
@@ -94,13 +94,27 @@ const planShaped = (names: string[]) =>
 const codeOnly = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("the Passport card carries the class and Instagram, never the plan", () => {
+describe("the Passport card is ONE box that displays, never controls", () => {
   const card = read(CARD);
+
+  it("is exactly one button, with nothing clickable inside it", () => {
+    // THE invariant (Pato, MESITA-1636): the card displays an identity and
+    // the whole thing opens the document. A second control inside would be
+    // invalid HTML nested in the card's own button AND would swallow its
+    // press — and it is how the sub-cells crept back last time.
+    expect([...card.matchAll(/<button\b/g)]).toHaveLength(1);
+    const handlers = [...card.matchAll(/onClick=\{([^}]+)\}/g)].map(
+      (m) => m[1],
+    );
+    expect(handlers).toEqual(["onOpenPassport"]);
+  });
+
+  it("displays both axes, Instagram then Class", () => {
+    expect(infoLabels(card)).toEqual(["Instagram", "Class"]);
+  });
 
   it("imports nothing plan-shaped from consumer-data", () => {
     const named = importedFrom(card, "@/lib/consumer-data");
-    // Guards the parser itself: an extraction bug returning [] would make the
-    // assertion below vacuously green (ticket-state-drift's precedent).
     expect(named).toContain("CLASSES");
     expect(planShaped(named)).toEqual([]);
   });
@@ -112,59 +126,27 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("renders exactly the two sub-cells, in order", () => {
-    // Profile's cell went in MESITA-1635: it restated the identity row it sat
-    // under. Its DOOR moved to the photo, which is pinned below.
-    // Instagram before Class (Pato, MESITA-1626): the door that changes your
-    // class reads before the class it changes.
-    expect(subLabels(card)).toEqual(["Instagram", "Class"]);
-  });
-
-  it("keeps both identity doors, as siblings", () => {
-    // The photo opens Profile, the name block opens the passport document.
-    // Wrapping the row in one button would force a choice between them, and
-    // the document has no other door anywhere in the app.
-    expect(card).toContain("onClick={onOpenProfile}");
-    expect(card).toContain("onClick={onOpenPassport}");
-    expect(card).toContain('aria-label="Edit your profile"');
-    expect(card).toContain('aria-label="Open your passport"');
-  });
-
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {
-    // The metal band and the avatar ring are both `aria-hidden` on the stated
+    // The metal band and the avatar ring are `aria-hidden` on the stated
     // ground that something else says the rung in words. That is the CLASS
-    // TILE. If it goes without a replacement, two aria-hidden elements become
-    // screen-reader regressions in silence.
+    // box. If it goes, both become screen-reader regressions in silence.
     expect(card).toContain("aria-hidden");
     expect(card).toContain("classBadgeClass(key)");
     expect(card).toContain("value={classLabel}");
-    expect(card).toContain("onClick={onOpenClass}");
-    // The note carries the rung's REWARD, never the slogan: "Earned, not
-    // bought" was identical on every account at every rung, forever, and a
-    // screen reader announced it as if it were state.
-    // The slogan must not be RENDERED. The comment above the tile quotes it
-    // to say why it is gone, which is why this reads code, not the file.
+    // The slogan must not be RENDERED; the comment may quote it.
     expect(codeOnly(card)).not.toContain("Earned, not bought");
   });
 
-  it("never paints the Instagram tile with the badge gradient", () => {
+  it("never paints the Instagram box with the badge gradient", () => {
     // White on that gradient's #feda75 stop measures 1.36:1 — the MESITA-1142
-    // fill/ink failure, missed here for a year because Instagram is not a
-    // metal. The brand colour belongs on a glyph that carries no text.
+    // fill/ink failure, missed for a year because Instagram is not a metal.
     const named = importedFrom(card, "@/lib/ui-classes");
     expect(named).toEqual(["INSTAGRAM_ICON_GRADIENT_CLASS"]);
   });
 
-  it("the skeleton mirrors the DESTINATION — same grid, count and spans", () => {
-    // MESITA-1158's rule, pinned as a RELATION and not as a literal: the card
-    // may be relaid out, but a skeleton resolving to a different shape is
-    // always the bug. It broke before as a hand-tuned `h-[92px]` measured
-    // against a layout that had since moved.
-    //
-    // This used to assert columns === cell count, which was only true while
-    // every cell was one column wide. MESITA-1634 gave Profile a span, so the
-    // pin is now the three things that actually have to agree: the column
-    // count, the number of blocks, and how many of them span.
+  it("the skeleton mirrors the DESTINATION — same grid, same count", () => {
+    // MESITA-1158's rule as a RELATION, not a literal: the card may be
+    // relaid out, but a skeleton resolving to a different shape is the bug.
     const loading = card.indexOf("if (loading)");
     const live = card.indexOf("const name =");
     expect(loading).toBeGreaterThan(-1);
@@ -172,38 +154,16 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
 
     const skeleton = card.slice(loading, live);
     const rendered = card.slice(live);
-
     const cols = (src: string) =>
       [...src.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
     expect(cols(skeleton)).toEqual(cols(rendered));
     expect(cols(rendered)).not.toEqual([]);
 
-    const cells = [...rendered.matchAll(/<SubTile\b[\s\S]*?\/>/g)].map(
-      (m) => m[0],
-    );
-    expect(cells.length).toBeGreaterThan(0);
-
-    // The skeleton maps a fixed-length array; it must be as long as the card.
+    const boxes = [...rendered.matchAll(/<InfoBox\b/g)].length;
+    expect(boxes).toBeGreaterThan(0);
     const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
     expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
-    expect(Number(len![1])).toBe(cells.length);
-
-    // And span for span: one `full` prop, one `col-span-2` block. Counted on
-    // the WHOLE branch, not per cell — the `<SubTile …/>` slice above stops at
-    // the `/>` of the nested icon element, so a prop written after `icon`
-    // falls outside it. Anchored to its own line so `w-full` cannot match.
-    expect([...rendered.matchAll(/^\s*full$/gm)]).toHaveLength(
-      [...skeleton.matchAll(/col-span-2/g)].length,
-    );
-  });
-
-  it("opens the document without nesting a button inside a button", () => {
-    // The identity zone and the number footer both open the passport sheet;
-    // the two tiles open their own surfaces. All four are SIBLINGS — wrapping
-    // the card to make "tap anywhere" work would nest the tiles inside it,
-    // which is invalid and breaks both.
-    expect(card).toContain("onOpenPassport");
-    expect(codeOnly(card)).not.toMatch(/<section[^>]*onClick/);
+    expect(Number(len![1])).toBe(boxes);
   });
 });
 
@@ -223,8 +183,25 @@ describe("the Passport sheet is the same document as the card", () => {
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("lists Number · Class · Instagram, in that order", () => {
-    expect(fieldLabels(sheet)).toEqual(["Number", "Class", "Instagram"]);
+  it("lists Number · Profile · Class · Instagram, in that order", () => {
+    expect(fieldLabels(sheet)).toEqual([
+      "Number",
+      "Profile",
+      "Class",
+      "Instagram",
+    ]);
+  });
+
+  it("carries the three doors the card gave up", () => {
+    // The card became one button in MESITA-1636, so these rows are the only
+    // way in. Two of them are the ONLY way in anywhere: Instagram is the only
+    // reach door, and the Class ladder holds "Join with Invitation", which
+    // Docs › Passport §C calls the only entrance for a 10-digit PIN.
+    for (const door of ["onOpenProfile", "onOpenInstagram", "onOpenClass"]) {
+      expect(sheet).toContain(door);
+    }
+    // Each hands off rather than stacking — one LocalSheet layer (z-130).
+    expect(sheet).toContain("function handOff");
   });
 });
 
@@ -278,11 +255,10 @@ describe("no comment still teaches the rule the code dropped", () => {
     // consumer-data.ts already uses for the `perk` field that must not come
     // back — the only item on the rot list that stops a re-add.
     const card = read(CARD);
-    expect(card).toContain("NO PLAN CELL");
-    // The member-number ROW went in MESITA-1633; the DOOR did not. The
-    // identity zone opens the same sheet and `consumers.code` prints on no
-    // other surface in the app, so this note is what stops the next agent
-    // deleting that button as "redundant with the sub-cells".
-    expect(card).toContain("NO MEMBER-NUMBER ROW");
+    // The negative space that has to survive a refactor: no plan on the
+    // passport, and no clickable child inside a card that is itself one
+    // button. The second is the one a "make this tappable" change breaks.
+    expect(card).toContain("NO PLAN");
+    expect(card).toContain("NOTHING INSIDE IT IS CLICKABLE");
   });
 });

@@ -14,87 +14,64 @@ import { useConsumerClass } from "@/lib/class-context";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 
-// ─── The Passport (MESITA-1079 v2 · -1619 · -1622 · -1633) ────────────────
+// ─── The Passport (MESITA-1079 v2 · -1619 · -1622 · -1633 · -1636) ────────
 //
-//   identity    photo ringed in the class metal · name on its own line ·
-//               age·sex·country beside the privacy state
-//   two cells   INSTAGRAM · CLASS, only CLASS in metal
+// ONE BOX. NOTHING INSIDE IT IS CLICKABLE (decision: Pato, MESITA-1636). The
+// card DISPLAYS an identity — photo, name, age·sex·country, privacy, the
+// Instagram handle and the class — and the whole card is a single button onto
+// the passport document, where the actions live. Tap the box, then stuff
+// shows.
 //
-// NO PLAN CELL (decision: Pato, MESITA-1619). The Passport prints what is
-// EARNED and PUBLIC. Class is earned and never purchasable; the plan is what
-// you PAY, and money on an identity card is the retired v1 merge coming back
-// in a new shape — Docs › Passport §B: "It never prints on the Passport."
-// Plan is a cell in the grid below. Do not re-add it here.
+// THE DOORS DID NOT DISAPPEAR, THEY MOVED INTO THE SHEET, and that is the part
+// to protect. Three surfaces used to be reachable only from sub-cells here:
+// Profile (edit), Instagram (the connect flow — the ONLY reach door) and Class
+// (whose ladder carries "Join with Invitation", which Docs › Passport §C calls
+// the ONLY entrance for a 10-digit invite PIN). Making the card one button
+// without rehoming them would have stranded invite redemption outright. They
+// are tappable rows in `PassportModal` now. If this card ever grows an
+// interactive child again, check those three still have a door before you
+// move one.
 //
-// NO MEMBER-NUMBER ROW (decision: Pato, MESITA-1633). The door survives: the
-// IDENTITY ZONE is a button onto the same sheet, and `consumers.code` is
-// printed there. Nothing else in the app prints that number, so if the
-// identity button ever stops opening the document, the number becomes
-// unreachable — that is the thing to protect, not the row.
+// NO PLAN (decision: Pato, MESITA-1619). The Passport prints what is EARNED
+// and PUBLIC. Class is earned and never purchasable; the plan is what you PAY
+// — Docs › Passport §B: "It never prints on the Passport." Plan is a cell in
+// the grid below.
 //
-// THE HANDLE IS BACK, BECAUSE THE WIDTH CAME BACK. MESITA-1633 made this cell
-// say "Connected" instead of "@handle", and that was the right call on the
-// measurement it had: three across put the cell at 94px with a 74px text box,
-// and "@patocanz" needs 76px — it clipped at NINE characters. The 2×2 puts
-// Instagram and Class back at 147.5px, the width the old two-tile passport
-// used, where the handle always fit. So the constraint moved and the decision
-// moves with it; "Connected" survives only as the fallback for an account
-// connected without a handle on the row. If this ever goes back to three
-// across, re-measure before re-adding the handle — do not assume.
-//
-// THE PHOTO OPENS PROFILE; THE NAME OPENS THE DOCUMENT (decision: Pato,
-// MESITA-1635). There was a Profile sub-cell reading "Name, phone, birthday"
-// directly under a row already printing the name, the age, the sex and the
-// country — it restated its neighbour, so it went. Its door did not: the
-// avatar is now the Profile button and the name block is the passport
-// button, which is why they are two SIBLING buttons in one row rather than
-// one wrapping both. Tap your face to edit your face; tap your name to show
-// your card.
-//
-// ONLY CLASS WEARS METAL. Three filled cells would make the card a colour
-// block and undo the one rule this page has (Docs › Design §D: colour means
-// class). Profile and Instagram are `bg-muted`; the Instagram brand gradient
-// is confined to a 16px glyph, because white on that gradient's #feda75 stop
-// measures 1.36:1 — the MESITA-1142 fill/ink failure, missed for a year here
-// because Instagram is not a metal.
+// ONLY CLASS WEARS METAL. Two filled boxes would make the card a colour block
+// and undo the one rule this page has (Docs › Design §D: colour means class).
+// The Instagram brand gradient is confined to a 16px glyph, because white on
+// that gradient's #feda75 stop measures 1.36:1 — the MESITA-1142 fill/ink
+// failure, missed for a year here because Instagram is not a metal.
 //
 // THE BAND AND THE RING ARE `aria-hidden` — they are colour-only, and the
-// CLASS CELL is what states the rung in words. Anything that moves that cell
-// has to keep the rung stated somewhere.
-//
-// SIBLING BUTTONS, NEVER NESTED. The identity zone and the three sub-cells
-// are siblings — wrapping the card to make "tap anywhere" work would nest
-// the cells inside a button and break both.
+// class BOX states the rung in words. Anything that moves that box has to
+// keep the rung stated somewhere.
 //
 // Country is INFERRED from the phone's dial code (`consumers` has no country
 // column) and rendered with its flag — the number itself is not shown.
 
 /**
- * One sub-grid cell. Label on its own LINE above the value — side by side at
- * 94px they collide, which is what "PROFILEEdit" looked like in the mockup.
+ * One display box inside the card. A `<span>`, never a button: the card owns
+ * the only tap target, so a nested control here would be invalid HTML and
+ * would swallow the card's own press.
  */
-function SubTile({
+function InfoBox({
   label,
   icon,
   value,
   fill,
-  onClick,
 }: {
   label: string;
   icon: React.ReactNode;
   value: string;
   /** Carries its own ink — three of the four metals are LIGHT fills and white
-   *  measures under 2:1 on them (MESITA-1142), so a cell never assumes it. */
+   *  measures under 2:1 on them (MESITA-1142), so a box never assumes it. */
   fill: string;
-  onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`${label}: ${value}`}
+    <span
       className={cn(
-        "shadow-rest flex min-h-[76px] min-w-0 flex-col justify-between rounded-2xl p-2.5 text-left transition active:scale-[0.98]",
+        "shadow-rest flex min-h-[76px] min-w-0 flex-col justify-between rounded-2xl p-2.5",
         fill,
       )}
     >
@@ -107,24 +84,18 @@ function SubTile({
           {value}
         </span>
       </span>
-    </button>
+    </span>
   );
 }
 
 export function ProfileSummaryCard({
   profile,
   loading,
-  onOpenClass,
-  onOpenInstagram,
   onOpenPassport,
-  onOpenProfile,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  onOpenClass: () => void;
-  onOpenInstagram: () => void;
   onOpenPassport: () => void;
-  onOpenProfile: () => void;
 }) {
   const { key, origin, handle: classHandle } = useConsumerClass();
 
@@ -203,61 +174,48 @@ export function ProfileSummaryCard({
           below states the same rung in words. */}
       <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
 
-      <div className="flex flex-col gap-5 p-5">
-        {/* TWO SIBLING BUTTONS IN ONE ROW. The photo opens Profile, the name
-            block opens the passport document. They look like one element and
-            are not, which is deliberate: the Profile sub-cell that used to
-            carry that door restated the very row it sat under, and the
-            document has no other door anywhere in the app. Never wrap these
-            in a shared button to make the whole row tappable — one of the two
-            destinations would have to go, and both are load-bearing. */}
-        <div className="flex min-w-0 items-center gap-4">
-          <button
-            type="button"
-            onClick={onOpenProfile}
-            aria-label="Edit your profile"
-            className="shrink-0 rounded-full transition active:scale-[0.97]"
+      {/* THE WHOLE CARD IS THE BUTTON. Everything below is a <span>, so
+          there is nothing to nest and nothing to swallow this press. */}
+      <button
+        type="button"
+        onClick={onOpenPassport}
+        aria-label="Open your passport"
+        className="flex w-full flex-col gap-5 p-5 text-left transition active:scale-[0.99]"
+      >
+        <span className="flex min-w-0 items-center gap-4">
+          <span
+            className={cn(
+              "shrink-0 rounded-full p-[2.5px]",
+              classFillClass(key),
+            )}
+            aria-hidden
           >
-            <span
-              className={cn(
-                "block rounded-full p-[2.5px]",
-                classFillClass(key),
-              )}
-              aria-hidden
-            >
-              <span className="bg-card block rounded-full p-[2px]">
-                <span className="bg-muted relative block h-[60px] w-[60px] overflow-hidden rounded-full">
-                  {avatarUrl ? (
-                    <Image
-                      src={avatarUrl}
-                      alt=""
-                      fill
-                      sizes="60px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <DefaultAvatar className="h-full w-full" />
-                  )}
-                </span>
+            <span className="bg-card block rounded-full p-[2px]">
+              <span className="bg-muted relative block h-[60px] w-[60px] overflow-hidden rounded-full">
+                {avatarUrl ? (
+                  <Image
+                    src={avatarUrl}
+                    alt=""
+                    fill
+                    sizes="60px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <DefaultAvatar className="h-full w-full" />
+                )}
               </span>
             </span>
-          </button>
+          </span>
 
-          <button
-            type="button"
-            onClick={onOpenPassport}
-            aria-label="Open your passport"
-            className="-m-1 flex min-w-0 flex-1 flex-col gap-1.5 rounded-2xl p-1 text-left transition active:scale-[0.99]"
-          >
+          <span className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="font-display block truncate text-xl leading-tight font-semibold tracking-tight">
               {name}
             </span>
-            {/* The privacy state rides the short line, not the name's. State,
-                not control — Settings › Privacy owns the switch. */}
             <span className="flex min-w-0 items-center justify-between gap-2">
               <span className="text-muted-foreground truncate text-xs">
                 {detailLine}
               </span>
+              {/* State, not control — Settings › Privacy owns the switch. */}
               <span className="text-muted-foreground type-meta inline-flex shrink-0 items-center gap-1 font-bold tracking-[0.12em] uppercase">
                 {isPublic ? (
                   <Unlock className="h-2.5 w-2.5" />
@@ -267,11 +225,11 @@ export function ProfileSummaryCard({
                 {isPublic ? "Public" : "Private"}
               </span>
             </span>
-          </button>
-        </div>
+          </span>
+        </span>
 
-        <div className="grid grid-cols-2 items-stretch gap-2">
-          <SubTile
+        <span className="grid grid-cols-2 items-stretch gap-2">
+          <InfoBox
             label="Instagram"
             icon={
               <span
@@ -286,17 +244,15 @@ export function ProfileSummaryCard({
             }
             value={igValue}
             fill="bg-muted text-foreground"
-            onClick={onOpenInstagram}
           />
-          <SubTile
+          <InfoBox
             label="Class"
             icon={<ClassIcon className="h-4 w-4 shrink-0 opacity-70" />}
             value={classLabel}
             fill={classBadgeClass(key)}
-            onClick={onOpenClass}
           />
-        </div>
-      </div>
+        </span>
+      </button>
     </section>
   );
 }

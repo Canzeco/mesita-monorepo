@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Copy, IdCard, Lock, Unlock } from "lucide-react";
+import { ChevronRight, Copy, IdCard, Lock, Unlock } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
@@ -43,19 +43,38 @@ import { toast } from "@/lib/toast";
 // wording is copied from there verbatim; a second control for one flag is how
 // two surfaces start disagreeing about what "public" means.
 
+// THE SHEET IS WHERE THE ACTIONS LIVE (MESITA-1636). The card above is one
+// button and nothing inside it is clickable, so the three doors that used to
+// be sub-cells are rows here: Profile, Instagram and Class. Two of them are
+// the only entrance to something — Instagram is the only reach door, and the
+// Class ladder carries "Join with Invitation", which Docs › Passport §C calls
+// the ONLY entrance for a 10-digit PIN. Do not make a row here inert without
+// first giving its surface another way in.
 function Field({
   label,
   value,
   note,
   trailing,
+  onClick,
 }: {
   label: string;
   value: string;
   note?: string | null;
   trailing?: React.ReactNode;
+  /** Turns the row into a button with a chevron. Hands off at the SAME
+   *  z-layer, so the caller closes this sheet before opening the next —
+   *  two LocalSheets must never stack. */
+  onClick?: () => void;
 }) {
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className="border-border/60 flex items-center gap-3 border-t px-4 py-3 first:border-t-0">
+    <Tag
+      {...(onClick ? { type: "button" as const, onClick } : {})}
+      className={cn(
+        "border-border/60 flex w-full items-center gap-3 border-t px-4 py-3 text-left first:border-t-0",
+        onClick && "hover:bg-muted/50 transition",
+      )}
+    >
       <span className="text-muted-foreground type-meta w-24 shrink-0 font-bold tracking-[0.12em] uppercase">
         {label}
       </span>
@@ -70,7 +89,10 @@ function Field({
         )}
       </span>
       {trailing}
-    </div>
+      {onClick && (
+        <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+      )}
+    </Tag>
   );
 }
 
@@ -79,12 +101,24 @@ export function PassportModal({
   onClose,
   profile,
   onOpenSettings,
+  onOpenProfile,
+  onOpenInstagram,
+  onOpenClass,
 }: {
   open: boolean;
   onClose: () => void;
   profile: ConsumerProfile | null;
   onOpenSettings: () => void;
+  /** The three doors the card gave up when it became one button
+   *  (MESITA-1636). Each closes this sheet first — one LocalSheet layer. */
+  onOpenProfile: () => void;
+  onOpenInstagram: () => void;
+  onOpenClass: () => void;
 }) {
+  function handOff(run: () => void) {
+    onClose();
+    run();
+  }
   const { key, origin, followers, handle: classHandle } = useConsumerClass();
 
   const name =
@@ -208,9 +242,16 @@ export function PassportModal({
               }
             />
             <Field
+              label="Profile"
+              value={name}
+              note="Name, phone, birthday, photo"
+              onClick={() => handOff(onOpenProfile)}
+            />
+            <Field
               label="Class"
               value={classLabel}
               note={cls?.reward ?? null}
+              onClick={() => handOff(onOpenClass)}
             />
             <Field
               label="Instagram"
@@ -226,6 +267,7 @@ export function PassportModal({
                   ? `${formatCompactCount(followers)} followers`
                   : "Connect it to climb a class"
               }
+              onClick={() => handOff(onOpenInstagram)}
             />
           </div>
         </section>
