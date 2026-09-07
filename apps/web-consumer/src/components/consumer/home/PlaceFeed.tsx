@@ -4,7 +4,13 @@ import type { Place } from "@/lib/api/places";
 import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { upsertSavedPlacePreview, useSavedPlaces } from "@/lib/saved-places";
+import { cn } from "@/lib/utils";
 import { FEED_MOCK_PLACES } from "@/lib/mock/feed-places";
+import {
+  PLACE_GRID_CLASS,
+  PLACE_GRID_PAGE_CLASS,
+  PLACE_TILE_SKELETON_CLASS,
+} from "@/lib/ui-classes";
 import { Skeleton } from "@/components/shared";
 import { FavoriteTile } from "./FavoriteTile";
 
@@ -24,11 +30,11 @@ import { FavoriteTile } from "./FavoriteTile";
 // other candidate for this route and stays parked on disk; the instruction
 // named places.
 //
-// px-2 + gap-2, NOT Favorites' px-4/gap-2.5. The grid spans 359 of the 375px
-// frame (~96%) and a tile lands at ~176px against Favorites' ~167px. The
-// gutter is what carries "almost 100%" — going to px-0 would bleed the cards
-// off both edges, and a 2xl corner radius with no margin beside it reads as a
-// clipped render rather than a full-bleed one.
+// THE GEOMETRY IS SHARED, not this file's own — `PLACE_GRID_CLASS` and
+// `PLACE_GRID_PAGE_CLASS` in lib/ui-classes.ts, which carry the measurement
+// and the reasoning. Favs renders the same grid (Pato, MESITA-1624: "saved
+// places must look the same"), so the numbers had to stop living in one
+// component. Do not inline them back.
 //
 // TILES ARE `FavoriteTile`, the same reuse CatalogRails makes. A place tile
 // is a photo, a name, a distance, an opening state and a heart on every
@@ -69,7 +75,12 @@ export function PlaceFeed({
   };
 
   return (
-    <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-2 pt-2 pb-6">
+    <div
+      className={cn(
+        "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain",
+        PLACE_GRID_PAGE_CLASS,
+      )}
+    >
       {/* The mock must never pass for live data. FavoritesList uses this same
           strip to explain a thinner screen; here it explains a fuller one. */}
       {usingMock && (
@@ -87,11 +98,7 @@ export function PlaceFeed({
       {!hydrated ? (
         <FeedGridSkeleton />
       ) : (
-        <ul
-          role="list"
-          aria-label="Places"
-          className="grid grid-cols-2 gap-2"
-        >
+        <ul role="list" aria-label="Places" className={PLACE_GRID_CLASS}>
           {rows.map((place) => {
             const located = withUserDistance(place, coords);
             const saved = savedIds.has(place.id);
@@ -115,9 +122,9 @@ export function PlaceFeed({
 // shifts when the hearts arrive.
 function FeedGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className={PLACE_GRID_CLASS}>
       {Array.from({ length: 4 }, (_, i) => (
-        <Skeleton key={i} className="aspect-[3/4] w-full rounded-2xl" />
+        <Skeleton key={i} className={PLACE_TILE_SKELETON_CLASS} />
       ))}
     </div>
   );
