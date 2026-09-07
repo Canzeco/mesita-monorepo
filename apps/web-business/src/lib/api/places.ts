@@ -163,35 +163,6 @@ export type PlacePrediction = {
   state: PredictionState;
 };
 
-type EnrichmentReport = {
-  google: boolean;
-  /** Number of photos actually persisted on the place after the
-   *  gpt-4o-mini vision rank. The EF sources up to MAX_PHOTOS (20)
-   *  candidates and keeps only the top MAX_PHOTOS_TO_KEEP (10) after
-   *  scoring for Mesita-fit (vibe / sharpness / evergreen). The
-   *  dropped candidates are discarded — never written. */
-  photoCount: number;
-  /** Raw candidate-pool size before the vision rank. Lets the admin
-   *  UI tell the difference between "we only found 3 photos for this
-   *  place" and "we found 20 and the ranker kept the best 10". */
-  photoCandidates?: number;
-  /** True when gpt-4o-mini vision successfully scored the candidate
-   *  pool. False = ranking fell back to source-priority order (CSE >
-   *  Firecrawl > Places) and still capped at MAX_PHOTOS_TO_KEEP. */
-  photoRanked?: boolean;
-  /** Short reason when photoRanked is false: no_openai_key,
-   *  openai_http_<status>, parse:<msg>, exception:<msg>. Useful for
-   *  ops triage; never surfaced to operators. */
-  photoRankError?: string | null;
-  firecrawl: boolean;
-  perplexity: boolean;
-  openai: boolean;
-  openaiError?: string | null;
-  /** Number of channel columns (URLs + email) auto-classified from the
-   *  enrichment pass. Lets the UI brag "We pulled 9 of your channels". */
-  channelCount?: number;
-};
-
 export async function apiPlacesAutocomplete(
   client: SupabaseClient,
   input: string,
@@ -206,25 +177,6 @@ export async function apiPlacesAutocomplete(
     "Couldn't search places right now.",
   );
   return predictions;
-}
-
-type EnrichCreatePlaceResponse = {
-  place: { id: string; slug: string; name: string; state: PlaceState };
-  enrichment: EnrichmentReport;
-};
-
-export async function apiEnrichCreatePlace(
-  client: SupabaseClient,
-  googlePlaceId: string,
-): Promise<EnrichCreatePlaceResponse> {
-  return invokeEF<EnrichCreatePlaceResponse>(
-    client,
-    "business-web-create-place",
-    // Canonical Google Place ID key (MESITA-53 Addendum 9). The EF still
-    // accepts legacy `placeId` server-side, but new callers send googlePlaceId.
-    { googlePlaceId },
-    "Couldn't create that place.",
-  );
 }
 
 export type UpdatePlaceInput = {

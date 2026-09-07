@@ -1,4 +1,11 @@
-// Supabase Edge Function — business-web-create-place (LIVE business create path)
+// Supabase Edge Function — business-web-create-place
+//
+// ORPHANED as of MESITA-1632 (decision: Pato) — a business account must not
+// mint a place; new places come from admin's Manage Multiple Intake
+// (admin-web-create-place) or a guest vote. web-business's /add used to call
+// this via apiEnrichCreatePlace; that call is gone, and nothing else in the
+// repo invokes this function. Left deployed rather than deleted blind —
+// retiring it is its own decision (ACL, deploy config, this comment).
 //
 // The signed-in business passes a Google Places `googlePlaceId`. ASYNC create —
 // a MINIMAL 'generating' place is returned immediately and deep enrichment runs

@@ -1,15 +1,7 @@
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Mail,
-  Sparkles,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Mail } from "lucide-react";
 import type { PlacePrediction } from "@/lib/api/places";
 import type { LookupMethods, LookupPlace } from "@/lib/api/verifications";
-import { CTA_BUTTON_CLASS, ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { MethodsPicker } from "./create-place-methods";
 import {
@@ -20,19 +12,12 @@ import {
 
 // ── State-specific cards ──────────────────────────────────────────────
 
-export function NotInMesitaCard({
-  prediction,
-  pending,
-  stage,
-  error,
-  onGenerate,
-}: {
-  prediction: PlacePrediction;
-  pending: boolean;
-  stage: string | null;
-  error: string | null;
-  onGenerate: () => void;
-}) {
+/** No create door here (MESITA-1632, decision: Pato) — a business account
+ *  cannot mint a place. New places only come from admin's Manage Multiple
+ *  Intake (admin-web-create-place) or a guest voting it in. This card is
+ *  informational only: it tells the operator their place isn't in the
+ *  catalog yet and stops there. */
+export function NotInMesitaCard({ prediction }: { prediction: PlacePrediction }) {
   return (
     <section className="border-border bg-card flex flex-col gap-4 rounded-[22px] border p-6">
       <StateBadge tone="muted">Not on Mesita yet</StateBadge>
@@ -47,34 +32,8 @@ export function NotInMesitaCard({
         )}
       </div>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        We&apos;ll generate the Mesita profile from Google + the place&apos;s
-        own channels and list it as a web listing. After that you can claim
-        ownership in the same step.
-      </p>
-      {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
-      <button
-        type="button"
-        onClick={onGenerate}
-        disabled={pending}
-        className={cn(
-          "flex h-12 items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-50",
-          "bg-pink-gradient shadow-glow text-white",
-        )}
-      >
-        {pending ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {stage ?? "Generating profile…"}
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4" />
-            Generate profile
-          </>
-        )}
-      </button>
-      <p className="text-muted-foreground text-center text-[11px]">
-        Takes up to 60 seconds.
+        Mesita hasn&apos;t catalogued this place yet. Once it&apos;s listed,
+        come back here to claim and verify it.
       </p>
     </section>
   );
