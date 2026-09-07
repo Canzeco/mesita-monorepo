@@ -5,8 +5,9 @@
 //
 //   Lane 1 · EARNED    blend() — the product of `s^w` across the eight
 //                      signals in discovery-signals.ts. It cannot read a rate
-//                      or strategy. Mesita Level may read `plan` and the
-//                      computed `promoting` boolean; nothing else may.
+//                      or strategy. Mesita Level may read `plan`, the
+//                      computed `promoting` boolean, and (MESITA-1598)
+//                      Intake high-water; nothing else may.
 //   Lane 2 · BOUGHT    slotPromoted() — a pass over the ALREADY-RANKED list
 //                      that moves promoting places forward into fixed slot
 //                      positions. It cannot read a score, because it does not

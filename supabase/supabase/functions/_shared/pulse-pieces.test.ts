@@ -9,6 +9,7 @@ import {
   completedPulsePieces,
   pulseBlockedAt,
   pulseHighWater,
+  pulseOf,
   type PulseEvent,
 } from "./pulse-pieces.ts";
 
@@ -458,4 +459,20 @@ Deno.test("blocked: a legacy `skipped` counts as ran-and-did-not-deliver", () =>
   ]);
   assertEquals(b?.key, "details");
   assertEquals(b?.state, "failed");
+});
+
+Deno.test("pulseOf: the shared reader off places.enrichment (MESITA-1598)", () => {
+  assertEquals(pulseOf({ highWater: 7 }), 7);
+  assertEquals(pulseOf({ highWater: 0 }), 0);
+  // Malformed or absent reads the CREATED floor, never throws.
+  assertEquals(pulseOf(null), 0);
+  assertEquals(pulseOf(undefined), 0);
+  assertEquals(pulseOf("not an object"), 0);
+  assertEquals(pulseOf({}), 0);
+  assertEquals(pulseOf({ highWater: "nope" }), 0);
+  assertEquals(pulseOf({ highWater: -3 }), 0);
+  // Clamped at PULSE_TOTAL and truncated — never a fractional or out-of-range
+  // rung, whatever a stray write puts in the jsonb.
+  assertEquals(pulseOf({ highWater: PULSE_TOTAL + 5 }), PULSE_TOTAL);
+  assertEquals(pulseOf({ highWater: 3.9 }), 3);
 });

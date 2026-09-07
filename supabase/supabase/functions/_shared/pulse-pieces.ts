@@ -296,3 +296,20 @@ export function completedPulsePieces(
   const latest = latestByPiece(events);
   return PULSE_PIECES.filter((p) => latest.get(p)?.state === "completed");
 }
+
+/**
+ * The high-water mark straight off a `places.enrichment` jsonb value — the
+ * materialized column (MESITA-1249), not a fold over the event log. THE
+ * shared reader: business-web-list-places and admin-web-search-places (and,
+ * for ranking, discovery-place.ts's Intake-high-water fold, MESITA-1598)
+ * all read the same column and must never each parse it slightly
+ * differently. Anything malformed reads 0 — the CREATED floor — rather than
+ * throwing.
+ */
+export function pulseOf(enrichment: unknown): number {
+  if (!enrichment || typeof enrichment !== "object") return 0;
+  const raw = (enrichment as { highWater?: unknown }).highWater;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(Math.trunc(n), PULSE_TOTAL);
+}
