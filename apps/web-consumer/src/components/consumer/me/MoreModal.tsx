@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bot,
   ChevronRight,
   Gift,
   MoreHorizontal,
@@ -20,9 +19,9 @@ import { cn } from "@/lib/utils";
 // took Profile, Settings, Cards, Instagram, Metrics, Help and Contact into
 // the destination grid on the page itself.
 //
-// What is left is exactly the three things that do not work yet: Gift, Share
-// and AI Connector, all `soon`, none with a table or an Edge Function behind
-// them. That is a better job than "the overflow drawer" — a guest opening
+// What is left is Gift and Share, both `soon`, neither with a table or an
+// Edge Function behind them. AI Connector left for a cell of its own on the
+// page (MESITA-1633) — still parked, just parked in the open. That is a better job than "the overflow drawer" — a guest opening
 // More now learns what is coming, rather than hunting for a setting that
 // could have been on the page.
 //
@@ -48,14 +47,12 @@ export function MoreModal({
   open,
   onClose,
   onOpenShare,
-  onOpenAiConnect,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Wired while parked so un-parking is a `soon` removal alone — the sheets
-   *  these open already work. */
+  /** Wired while parked so un-parking is a `soon` removal alone — the sheet
+   *  it opens already works. */
   onOpenShare: () => void;
-  onOpenAiConnect: () => void;
 }) {
   const rows: MoreRow[] = [
     {
@@ -72,14 +69,6 @@ export function MoreModal({
       summary: "Invite a friend, both get Credits",
       soon: true,
       onClick: onOpenShare,
-    },
-    {
-      key: "aiconnect",
-      Icon: Bot,
-      title: "AI Connector",
-      summary: "Use Mesita from ChatGPT or Claude (MCP)",
-      soon: true,
-      onClick: onOpenAiConnect,
     },
   ];
 

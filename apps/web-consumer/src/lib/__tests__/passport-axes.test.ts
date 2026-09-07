@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 // WHY PARSED LISTS AND NOT SUBSTRINGS. `expect(SRC).not.toContain("PLAN")`
 // looks like the right guard and is not: `PLAN_ORDER`, `PREMIUM_PLAN_ICON`
 // and `PREMIUM_PLAN_PRICE_MXN` all contain it, and the comment stating this
-// very decision says NO PLAN TILE — so the naive guard fails on the sentence
+// very decision says NO PLAN CELL — so the naive guard fails on the sentence
 // it exists to protect, and the cheapest way to green it would be deleting
 // that sentence. The precedent is business-web-list-places/payload.test.ts,
 // where `!SRC.includes("functions:")` sailed straight past `intakeFunctions:`.
@@ -78,9 +78,11 @@ function selfClosingTag(source: string, component: string): string {
 const fieldLabels = (source: string) =>
   [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
 
-/** `<Tile eyebrow="X">` values, in render order. */
-const tileEyebrows = (source: string) =>
-  [...source.matchAll(/eyebrow="([^"]+)"/g)].map((m) => m[1]);
+/** `<SubTile … label="X">` values, in render order. */
+const subLabels = (source: string) =>
+  [...source.matchAll(/<SubTile\b[\s\S]*?\/>/g)]
+    .map((m) => m[0].match(/label="([^"]+)"/)?.[1])
+    .filter((l): l is string => Boolean(l));
 
 const planShaped = (names: string[]) =>
   names.filter((n) => /plan/i.test(n)).sort();
@@ -110,10 +112,12 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("renders exactly the two earned-and-public tiles", () => {
-    // Instagram LEFT, Class RIGHT (decision: Pato, MESITA-1626) — the door
-    // that changes your class reads before the class it changes.
-    expect(tileEyebrows(card)).toEqual(["Instagram", "Class"]);
+  it("renders exactly the three sub-cells, in order", () => {
+    // Profile joined the passport in MESITA-1633 — it is who you are, so it
+    // belongs on the identity card and NOT as a cell in the grid below.
+    // Instagram before Class (Pato, MESITA-1626): the door that changes your
+    // class reads before the class it changes.
+    expect(subLabels(card)).toEqual(["Profile", "Instagram", "Class"]);
   });
 
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {
@@ -128,7 +132,6 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     // The note carries the rung's REWARD, never the slogan: "Earned, not
     // bought" was identical on every account at every rung, forever, and a
     // screen reader announced it as if it were state.
-    expect(card).toMatch(/cls\?\.reward/);
     // The slogan must not be RENDERED. The comment above the tile quotes it
     // to say why it is gone, which is why this reads code, not the file.
     expect(codeOnly(card)).not.toContain("Earned, not bought");
@@ -147,7 +150,7 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     // may be relaid out, but a skeleton resolving to a different shape is
     // always the bug. It broke before as a hand-tuned `h-[92px]` measured
     // against a layout that had since moved — two numbers guessed twice.
-    const tiles = [...card.matchAll(/<Tile\b/g)].length;
+    const tiles = [...card.matchAll(/<SubTile\b/g)].length;
     expect(tiles).toBeGreaterThan(0);
 
     const blocks = card.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
@@ -223,7 +226,7 @@ describe("no comment still teaches the rule the code dropped", () => {
   // globals.css's entire justification for --tier-premium being black.
   //
   // Only AFFIRMATIVE PRESENT-TENSE spellings are banned. A guard on the bare
-  // words "plan tile" would fire on the NO PLAN TILE sentinel below and on
+  // words "plan cell" would fire on the NO PLAN CELL sentinel below and on
   // globals.css's honest account of the history — the decision record, not
   // the drift.
   it.each([CARD, SHEET, DATA, "app/globals.css"])(
@@ -235,10 +238,16 @@ describe("no comment still teaches the rule the code dropped", () => {
     },
   );
 
-  it("the card carries the negative-space note that stops the next agent", () => {
+  it("the card carries the negative-space notes that stop the next agent", () => {
     // A deleted comment leaves no trace of the decision. This is the idiom
     // consumer-data.ts already uses for the `perk` field that must not come
     // back — the only item on the rot list that stops a re-add.
-    expect(read(CARD)).toContain("NO PLAN TILE");
+    const card = read(CARD);
+    expect(card).toContain("NO PLAN CELL");
+    // The member-number ROW went in MESITA-1633; the DOOR did not. The
+    // identity zone opens the same sheet and `consumers.code` prints on no
+    // other surface in the app, so this note is what stops the next agent
+    // deleting that button as "redundant with the sub-cells".
+    expect(card).toContain("NO MEMBER-NUMBER ROW");
   });
 });

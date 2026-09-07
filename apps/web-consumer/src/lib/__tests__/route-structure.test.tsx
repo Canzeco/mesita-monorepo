@@ -526,37 +526,47 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  const PARKED = ["Gift", "Share", "AI Connector"];
+  const PARKED = ["Gift", "Share"];
 
-  it("renders the Wallet/Plan pair and then the eight-cell grid", () => {
+  it("renders thirteen cells: six pairs then a full-width drawer", () => {
+    // ONE shape repeated (MESITA-1633). Profile, Instagram and Class left for
+    // the passport's sub-grid, so none of them appears here — a cell for one
+    // would be the second door this page keeps removing.
     expect(gridTitles(ME)).toEqual([
       "Wallet",
       "Plan",
-      "Profile",
-      "Settings",
+      "Alerts",
+      "Visits",
+      "Orders",
+      "Bookings",
+      "Connector",
       "Cards",
-      "Instagram",
       "Metrics",
-      "Help",
       "Contact",
+      "Settings",
+      "Help",
       "More",
     ]);
   });
 
-  it("no parked feature has drifted into the grid", () => {
-    // A DestTile has no `soon` prop, so a parked cell here would render as a
-    // live tile pointing at nothing.
-    for (const parked of PARKED) {
-      expect(gridTitles(ME)).not.toContain(parked);
-    }
+  it("every parked cell on the page is marked `soon`", () => {
+    // `DestTile` grew a `soon` prop in MESITA-1633, so a parked feature may
+    // now live in the grid — but only wearing the pill. Orders and Connector
+    // are the two; a third live-looking cell pointing at nothing is the
+    // regression this catches.
+    const parkedCells = [...ME.matchAll(/<DestTile\b[\s\S]*?\/>/g)]
+      .map((m) => m[0])
+      .filter((c) => /\bsoon\b/.test(c))
+      .map((c) => c.match(/title="([^"]+)"/)?.[1]);
+    expect(parkedCells).toEqual(["Orders", "Connector"]);
   });
 
-  it("More still holds all three, and every one of them is parked", () => {
+  it("More holds the rest of the parked tail, all of it parked", () => {
     for (const parked of PARKED) {
       expect(MORE).toContain(`title: "${parked}"`);
     }
-    // Three rows, three `soon: true`. If a row un-parks it belongs in the
-    // grid, not left here reading as a coming-soon item that already works.
+    // Two rows, two `soon: true`. A row that un-parks belongs on the page,
+    // not left here reading as coming-soon while it already works.
     expect([...MORE.matchAll(/soon: true/g)]).toHaveLength(PARKED.length);
   });
 });
