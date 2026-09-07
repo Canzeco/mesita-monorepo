@@ -12,6 +12,12 @@ import {
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
   keyIsLive,
+  CONNECT_API_VERSION,
+  connectAccountCreateParams,
+  connectAccountIdempotencyKey,
+  connectPairingHolds,
+  EXPRESS_STRIPE_LOSSES_MIN_VERSION,
+  isAbsoluteHttpsUrl,
   MESITA_CONNECT_CAPABILITIES,
   MESITA_CONNECT_CONTROLLER,
   MESITA_CONNECT_COUNTRIES,
@@ -30,20 +36,143 @@ Deno.test("PLATFORM law: the controller literal is the Express-dashboard configu
 
 Deno.test("PLATFORM law: the IFPE posture survives Express — Stripe eats losses, the place pays fees", () => {
   // This is the whole reason the Express pivot was allowed (MESITA-1532).
-  // Stripe's 2026-06-24 Dahlia changelog made fees.payer=account legal on
-  // Express and requires losses.payments=stripe alongside it. If a future
-  // edit sets fees.payer to "application", Stripe forces platform loss
-  // liability and Mesita enters the funds flow — the exact thing the
-  // 2026-08-29 gate exists to prevent. Assert the PAIR, not just the values.
+  // If a future edit sets fees.payer to "application", Stripe forces platform
+  // loss liability and Mesita enters the funds flow — the exact thing the
+  // 2026-08-29 gate exists to prevent.
   assertEquals(MESITA_CONNECT_CONTROLLER.fees.payer, "account");
   assertEquals(MESITA_CONNECT_CONTROLLER.losses.payments, "stripe");
-  assert(
-    MESITA_CONNECT_CONTROLLER.fees.payer !== "account" ||
-      MESITA_CONNECT_CONTROLLER.losses.payments === "stripe",
-    "fees.payer=account REQUIRES losses.payments=stripe",
-  );
   // Stripe collects KYC: the hosted flow is what keeps us out of PII storage.
   assertEquals(MESITA_CONNECT_CONTROLLER.requirement_collection, "stripe");
+});
+
+// ── THE PAIRING (MESITA-1643) ────────────────────────────────────────────
+//
+// The assertion that used to sit in the test above read:
+//
+//   assert(fees.payer !== "account" || losses.payments === "stripe")
+//
+// placed AFTER assertEquals pinned both values. That is `false || true`. It
+// could not fail, and its comment said "Assert the PAIR, not just the values."
+// It was green through the entire MESITA-1623 outage.
+//
+// The real invariant spans two facts, and the old test file imported only one
+// of them. The version now lives beside the controller, so this test can see
+// both — and it is the test that would have failed on MESITA-1532's PR.
+
+Deno.test("the controller and the API version are ONE fact, and they agree", () => {
+  assert(
+    connectPairingHolds(MESITA_CONNECT_CONTROLLER, CONNECT_API_VERSION),
+    `controller ${JSON.stringify(MESITA_CONNECT_CONTROLLER)} is not accepted at ` +
+      `API version ${CONNECT_API_VERSION} — Express + fees.payer=account + ` +
+      `losses.payments=stripe needs ${EXPRESS_STRIPE_LOSSES_MIN_VERSION} or later`,
+  );
+});
+
+Deno.test("connectPairingHolds actually fails on the combination Stripe rejected", () => {
+  // The exact 400 of 2026-09-07: today's controller on the GA version the
+  // platform pins everywhere else.
+  assertEquals(
+    connectPairingHolds(
+      {
+        stripe_dashboard: { type: "express" },
+        fees: { payer: "account" },
+        losses: { payments: "stripe" },
+      },
+      "2025-03-31.basil",
+    ),
+    false,
+  );
+});
+
+Deno.test("the pairing rule is VACUOUS for a non-Express dashboard", () => {
+  // Deliberate: if the controller ever returns to `full`, the Standard mapping
+  // is GA on any version and this rule must stop constraining anything rather
+  // than start lying. That is what makes the guard survive the open decision.
+  for (const dashboard of ["full", "none"]) {
+    assertEquals(
+      connectPairingHolds(
+        {
+          stripe_dashboard: { type: dashboard },
+          fees: { payer: "account" },
+          losses: { payments: "stripe" },
+        },
+        "2025-03-31.basil",
+      ),
+      true,
+    );
+  }
+});
+
+// ── THE PARAMS STRIPE ACTUALLY RECEIVES ──────────────────────────────────
+//
+// These were an inline literal inside the EF, so nothing could assert them
+// without a network call — and the params are exactly where the outage lived.
+
+Deno.test("accounts.create params carry the frozen controller and capabilities", () => {
+  const params = connectAccountCreateParams({
+    orgId: "org-1",
+    country: "MX",
+    entityType: "company",
+    legalName: "Cabaret Social Room SA de CV",
+  });
+  assertEquals(params.country, "MX");
+  assertEquals(params.controller, MESITA_CONNECT_CONTROLLER);
+  assertEquals(params.capabilities, MESITA_CONNECT_CAPABILITIES);
+  assertEquals(params.metadata, { organization_id: "org-1" });
+  assertEquals(params.business_type, "company");
+  assertEquals(params.company?.name, "Cabaret Social Room SA de CV");
+  // NEVER the legacy `type` key: it forces fees.payer=application_express and
+  // platform loss liability, the one thing this configuration exists to avoid.
+  assertEquals((params as Record<string, unknown>).type, undefined);
+});
+
+Deno.test("an individual gets no company.name — Stripe ignores it there", () => {
+  const params = connectAccountCreateParams({
+    orgId: "org-1",
+    country: "MX",
+    entityType: "individual",
+    legalName: "Someone",
+  });
+  assertEquals(params.company, undefined);
+  assertEquals(params.business_type, "individual");
+});
+
+Deno.test("a resume with no entity type sends neither key", () => {
+  const params = connectAccountCreateParams({
+    orgId: "org-1",
+    country: "US",
+    entityType: null,
+    legalName: "",
+  });
+  assertEquals(params.business_type, undefined);
+  assertEquals(params.company, undefined);
+});
+
+Deno.test("the idempotency key is stable per org+country, and varies by both", () => {
+  // A lost response must not mint a second permanent account on retry.
+  assertEquals(
+    connectAccountIdempotencyKey("org-1", "MX"),
+    connectAccountIdempotencyKey("org-1", "MX"),
+  );
+  assert(
+    connectAccountIdempotencyKey("org-1", "MX") !==
+      connectAccountIdempotencyKey("org-1", "US"),
+  );
+  assert(
+    connectAccountIdempotencyKey("org-1", "MX") !==
+      connectAccountIdempotencyKey("org-2", "MX"),
+  );
+});
+
+Deno.test("Account Link urls must be absolute — a relative path is the bug", () => {
+  // What `${origin}/?org=...` produced when origin was "" because the caller
+  // is a server action with no Origin header.
+  assertEquals(isAbsoluteHttpsUrl("/?org=abc&connect=return"), false);
+  assertEquals(isAbsoluteHttpsUrl(""), false);
+  assertEquals(isAbsoluteHttpsUrl(undefined), false);
+  assertEquals(isAbsoluteHttpsUrl("business.mesita.ai/?org=abc"), false);
+  assert(isAbsoluteHttpsUrl("https://business.mesita.ai/?org=abc&connect=return"));
+  assert(isAbsoluteHttpsUrl("http://localhost:3002/?connect=return"));
 });
 
 Deno.test("country allowlist: only MX and US, and never a free-text passthrough", () => {

@@ -55,6 +55,55 @@ export const MESITA_CONNECT_CONTROLLER = {
   requirement_collection: "stripe",
 } as const satisfies Stripe.AccountCreateParams.Controller;
 
+/**
+ * The API version the controller above REQUIRES.
+ *
+ * THIS CONSTANT EXISTS BECAUSE THE PAIRING IS ONE FACT (MESITA-1643). The
+ * controller and the API version were two facts in two files, and MESITA-1532
+ * moved one of them. Stripe's 2026-06-24 Dahlia changelog files the Express +
+ * `fees.payer=account` + `losses.payments=stripe` combination under its PUBLIC
+ * PREVIEW channel, not GA, and says so on the account-create page: "Use the
+ * current preview version string in your Stripe SDK configuration when you
+ * create connected accounts." The platform-wide `STRIPE_API_VERSION` is GA, so
+ * `accounts.create` answered:
+ *
+ *   "When stripe_dashboard[type]=express, your platform must collect fees and
+ *    be liable for negative balances or refunds and chargebacks."
+ *
+ * Every existing test passed, because the controller test asserted the literal
+ * against itself and never imported the version. Now they live together and
+ * `connectPairingHolds` below is what a test can actually fail.
+ */
+export const CONNECT_API_VERSION = "2026-06-24.preview";
+
+/** The version at or past which Express tolerates Stripe-owned pricing and
+ *  loss liability. Same string today; separate name because one is "what we
+ *  send" and the other is "what Stripe requires", and they drift for different
+ *  reasons. */
+export const EXPRESS_STRIPE_LOSSES_MIN_VERSION = "2026-06-24.preview";
+
+/**
+ * Does the controller/version pair Stripe will actually accept?
+ *
+ * The implication, stated once: Express dashboard AND the place paying fees AND
+ * Stripe eating losses REQUIRES a version at or past the preview that unblocked
+ * it. Vacuously true for any other dashboard type — which is the point, because
+ * it keeps holding if the controller ever goes back to `full`.
+ *
+ * Dates sort lexicographically in `YYYY-MM-DD.channel` form, which is why this
+ * is a string compare and not a parse.
+ */
+export function connectPairingHolds(
+  controller: { stripe_dashboard: { type: string }; fees: { payer: string }; losses: { payments: string } },
+  apiVersion: string,
+): boolean {
+  const needsPreview = controller.stripe_dashboard.type === "express" &&
+    controller.fees.payer === "account" &&
+    controller.losses.payments === "stripe";
+  if (!needsPreview) return true;
+  return apiVersion >= EXPRESS_STRIPE_LOSSES_MIN_VERSION;
+}
+
 /** Typeless creation requests NOTHING implicitly — without these, hosted
  *  onboarding has nothing to collect toward charging and charges_enabled
  *  never flips. Frozen by stripe-connect.test.ts. */
@@ -129,6 +178,83 @@ export type ConnectAccountSnapshot = {
 /** Mirror-row patch from a Stripe Account object. `livemode` is passed
  *  explicitly (see keyIsLive). `requirements` is optional and its
  *  currently_due is nullable on the v17 types — both default safe. */
+/**
+ * The `accounts.create` argument object, assembled in ONE place.
+ *
+ * It used to be an inline literal in business-web-start-payment-onboarding, so
+ * nothing could test it without a network call — and the params are exactly
+ * where the MESITA-1623 outage lived. Building them here means
+ * `stripe-connect.test.ts` can assert the shape Stripe will actually receive,
+ * offline, on every CI run.
+ */
+export type ConnectAccountCreateInput = {
+  orgId: string;
+  country: string;
+  /** null when the caller is resuming an account that already carries it. */
+  entityType: MesitaConnectEntityType | null;
+  /** The organization's legal name, for company prefill. Empty string = none. */
+  legalName: string;
+};
+
+export function connectAccountCreateParams(
+  input: ConnectAccountCreateInput,
+): Stripe.AccountCreateParams {
+  const { orgId, country, entityType, legalName } = input;
+  return {
+    country,
+    controller: MESITA_CONNECT_CONTROLLER,
+    capabilities: MESITA_CONNECT_CAPABILITIES,
+    metadata: { organization_id: orgId },
+    ...(entityType ? { business_type: entityType } : {}),
+    // company.name is meaningless for an individual — Stripe ignores it — so
+    // once the fork is known, send it only where it lands.
+    ...(legalName && entityType !== "individual"
+      ? { company: { name: legalName } }
+      : {}),
+  };
+}
+
+/**
+ * Idempotency key for `accounts.create`.
+ *
+ * A lost response — timeout, EF cold-start kill — means Stripe created an
+ * account this function never saw. Without a key the owner's next press mints a
+ * SECOND permanent connected account, the first orphaned with no mirror row and
+ * no cleanup path; controller properties are per-account permanent, so every
+ * orphan is forever. Keyed on the two things that identify the intended
+ * account. Stripe scopes idempotency per API version, so this key moves with
+ * CONNECT_API_VERSION by construction.
+ */
+export function connectAccountIdempotencyKey(
+  orgId: string,
+  country: string,
+): string {
+  return `connect-acct-${orgId}-${country}`;
+}
+
+/**
+ * Account Link URLs must be ABSOLUTE (MESITA-1643).
+ *
+ * The EF used to build them from `req.headers.get("origin") ?? ""`, but its
+ * caller is a Next server action invoking through supabase-js, where no browser
+ * Origin header exists — so the fallback produced the RELATIVE string
+ * "/?org=<id>&connect=return" and `accountLinks.create` rejected it. That was
+ * the next failure waiting behind the controller bug, in the same rose box.
+ *
+ * Refusing here, by name, beats letting Stripe refuse in its own words.
+ */
+export function isAbsoluteHttpsUrl(value: unknown): boolean {
+  if (typeof value !== "string" || value === "") return false;
+  try {
+    const u = new URL(value);
+    // http is allowed for local development; Stripe itself requires https in
+    // live mode and rejects anything relative in both modes.
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export function accountSnapshotFromStripe(
   account: Stripe.Account,
   livemode: boolean,

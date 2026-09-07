@@ -264,7 +264,15 @@ export async function apiGetPaymentAccount(
 
 export async function apiStartPaymentOnboarding(
   client: SupabaseClient,
-  input: { orgId: string; country: string; entityType?: string },
+  input: {
+    orgId: string;
+    country: string;
+    entityType?: string;
+    /** Absolute, both of them. The EF refuses a relative path by name —
+     *  Stripe Account Links reject one (MESITA-1643). */
+    returnUrl: string;
+    refreshUrl: string;
+  },
 ): Promise<{ url: string | null; mock: boolean }> {
   const { url, mock } = await invokeEF<{ url: string | null; mock: boolean }>(
     client,
