@@ -1,13 +1,3 @@
-import { Mail, MessageSquare, Phone, Video } from "lucide-react";
-
-export const METHOD_ICON = {
-  ai_call: Phone,
-  ai_email: Mail,
-  video: Video,
-  postcard: Mail,
-  manual_contact: MessageSquare,
-} as const;
-
 export const METHOD_LABEL = {
   ai_call: "AI phone call",
   ai_email: "AI email",
