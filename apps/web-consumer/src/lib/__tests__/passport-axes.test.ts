@@ -78,14 +78,14 @@ function selfClosingTag(source: string, component: string): string {
 const fieldLabels = (source: string) =>
   [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
 
-/** Whole `<DoorCell … />` elements, in render order. Anchored on the closing
+/** Whole `<InfoBox … />` elements, in render order. Anchored on the closing
  *  indent, not a bare `/>`, because the nested `icon={<Foo />}` closes first
  *  and a lazy match stops there — the same trap `full` fell into once. */
-const doorCells = (source: string) =>
-  [...source.matchAll(/<DoorCell\b[\s\S]*?\n {10}\/>/g)].map((m) => m[0]);
+const infoBoxes = (source: string) =>
+  [...source.matchAll(/<InfoBox\b[\s\S]*?\n {10}\/>/g)].map((m) => m[0]);
 
-const doorLabels = (source: string) =>
-  doorCells(source)
+const infoLabels = (source: string) =>
+  infoBoxes(source)
     .map((c) => c.match(/label="([^"]+)"/)?.[1])
     .filter((l): l is string => Boolean(l));
 
@@ -99,43 +99,41 @@ const planShaped = (names: string[]) =>
 const codeOnly = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("the Passport card is a document with three doors", () => {
+describe("the Passport card is JUST VISIBLE", () => {
   const card = read(CARD);
 
-  it("the identity block and the doors are SIBLINGS, never nested", () => {
-    // THE invariant (Pato, MESITA-1640). MESITA-1636 solved nesting by
-    // allowing the card exactly one button; the doors are back, so the rule
-    // has to be stated structurally instead. A <button> inside a <button> is
-    // invalid HTML and the browser swallows the inner press — the cell just
-    // stops working, with no error anywhere to find it by.
-    const identity = card.indexOf("onClick={onOpenPassport}");
-    expect(identity).toBeGreaterThan(-1);
-    const closes = card.indexOf("</button>", identity);
-    expect(card.slice(identity, closes)).not.toContain("<button");
-    // ...and the grid of doors opens only after that button has closed.
-    expect(
-      card.indexOf('className="grid grid-cols-2', identity),
-    ).toBeGreaterThan(closes);
+  it("contains no tap target of any kind", () => {
+    // THE invariant (Pato, MESITA-1646). This card is a document: it displays
+    // and does nothing. It went display-only in MESITA-1636, grew doors again
+    // in MESITA-1640, and lost them here — every round the same argument, the
+    // card being asked to be a document AND a control panel. Navigation lives
+    // in the grid now: `Profile` and `Passport` are the first pair of cells
+    // on Me. One button here restarts that argument.
+    expect([...card.matchAll(/<button\b/g)]).toHaveLength(0);
+    expect(card).not.toContain("onClick");
+    // ...and it accepts no handler, so the page cannot hand it one by
+    // mistake and quietly reintroduce a tap target.
+    for (const prop of [
+      "onOpenPassport",
+      "onOpenProfile",
+      "onOpenInstagram",
+      "onOpenClass",
+    ]) {
+      expect(card).not.toContain(prop);
+    }
   });
 
-  it("every door is wired — none is parked", () => {
+  it("nothing here is parked either", () => {
     // Two of these are the ONLY entrance to something in the whole app:
     // Instagram is the only reach door, and the Class ladder carries "Join
     // with Invitation", which Docs › Passport §C calls the only entrance for
     // a 10-digit invite PIN. A door quietly losing its handler is how invite
     // redemption nearly shipped unreachable once already.
-    const wired = doorCells(card)
-      .filter((c) => /onClick=\{/.test(c))
-      .map((c) => c.match(/onClick=\{(\w+)\}/)?.[1]);
-    expect(wired).toEqual(["onOpenProfile", "onOpenInstagram", "onOpenClass"]);
-    // EVERY door on the card is live now — Friends moved down to the grid
-    // (MESITA-1641), where it is parked beside Connector. A parked cell in
-    // here would be a dead cell inside the one card that is meant to be the
-    // page's most alive object.
-    const parked = doorCells(card)
-      .filter((c) => /^\s*soon$/m.test(c))
-      .map((c) => c.match(/label="([^"]+)"/)?.[1]);
-    expect(parked).toEqual([]);
+    // A `soon` box would be a dead cell inside the one card meant to be the
+    // page's most alive object, and a live one would be a button — which the
+    // test above forbids. So the card carries neither state.
+    expect(infoBoxes(card).filter((c) => /^\s*soon$/m.test(c))).toEqual([]);
+    expect(card).not.toContain("aria-disabled");
   });
 
   it("says its own name, above the identity row", () => {
@@ -156,17 +154,14 @@ describe("the Passport card is a document with three doors", () => {
     );
   });
 
-  it("carries three doors: Profile spanning, then Instagram | Class", () => {
-    expect(doorLabels(card)).toEqual(["Profile", "Instagram", "Class"]);
-    // Profile SPANS, and that is a measurement (MESITA-1641). Three columns
-    // give each cell a 67px text box; `@patocanz` needs 75 and the word
-    // "INSTAGRAM" needs 69.6, so at three-up the LABEL truncates too. Two
-    // columns give 118px. Exactly one door spans, and it is the one whose
-    // value is the short word.
-    const spans = doorCells(card)
-      .filter((c) => /^\s*full$/m.test(c))
-      .map((c) => c.match(/label="([^"]+)"/)?.[1]);
-    expect(spans).toEqual(["Profile"]);
+  it("displays both axes, Instagram then Class", () => {
+    expect(infoLabels(card)).toEqual(["Instagram", "Class"]);
+    // TWO COLUMNS, and that is a measurement (MESITA-1641). Three give each
+    // box a 67px text box; `@patocanz` needs 75 and the word "INSTAGRAM"
+    // needs 69.6, so at three-up the LABEL truncates too, not just the value.
+    // Two give 118px. Re-measure before trying three; it has been tried twice.
+    expect(card).toContain("grid-cols-2");
+    expect(card).not.toContain("col-span-2");
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -215,7 +210,7 @@ describe("the Passport card is a document with three doors", () => {
     expect(cols(skeleton)).toEqual(cols(rendered));
     expect(cols(rendered)).not.toEqual([]);
 
-    const boxes = [...rendered.matchAll(/<DoorCell\b/g)].length;
+    const boxes = [...rendered.matchAll(/<InfoBox\b/g)].length;
     expect(boxes).toBeGreaterThan(0);
     const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
     expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
@@ -248,20 +243,19 @@ describe("the Passport sheet is the same document as the card", () => {
     ]);
   });
 
-  it("owns nothing — no Field here is a door", () => {
-    // The rows were buttons for exactly one release (MESITA-1636), because
-    // the card could not hold doors then. It holds four now, so a row here
-    // would be a second door to a surface one tap above — Wallet's precedent
-    // (MESITA-1609), "removed, not demoted".
-    for (const door of ["onOpenProfile", "onOpenInstagram", "onOpenClass"]) {
-      expect(sheet).not.toContain(door);
+  it("carries the two doors the card gave up, and only those two", () => {
+    // The card is display-only (MESITA-1646), so these rows are the ONLY way
+    // in anywhere in the app: Instagram is the only reach door, and the Class
+    // ladder holds "Join with Invitation", which Docs › Passport §C calls the
+    // only entrance for a 10-digit PIN. Making one inert strands its surface.
+    for (const door of ["onOpenInstagram", "onOpenClass"]) {
+      expect(sheet).toContain(door);
     }
-    expect(sheet).not.toContain("handOff");
-    // The two handlers that remain are the copy affordance and the one
-    // handoff this sheet legitimately owns: Settings, which holds the privacy
-    // switch this sheet only states.
-    const handlers = [...sheet.matchAll(/onClick=\{(\w+)\}/g)].map((m) => m[1]);
-    expect(handlers.sort()).toEqual(["copyCode", "onOpenSettings"]);
+    // Profile is NOT a door here — it is a cell on Me, one tap away, and a
+    // second door to a promoted surface is MESITA-1609's removed-not-demoted.
+    expect(sheet).not.toContain("onOpenProfile");
+    // Each hands off rather than stacking — one LocalSheet layer (z-130).
+    expect(sheet).toContain("function handOff");
   });
 });
 
@@ -288,7 +282,9 @@ describe("the plan keeps one door, and only one", () => {
     // deleted, so the invariant is now simply ONE door each, page-wide.
     expect(client).not.toContain("MoreModal");
     expect([...client.matchAll(/onClick=\{openPlan\}/g)]).toHaveLength(1);
-    expect([...client.matchAll(/onOpenPassport=/g)]).toHaveLength(1);
+    // The card takes no handler at all now; the Passport CELL is the door.
+    expect(client).not.toContain("onOpenPassport");
+    expect([...client.matchAll(/setPassportOpen\(true\)/g)]).toHaveLength(1);
   });
 });
 
@@ -320,6 +316,6 @@ describe("no comment still teaches the rule the code dropped", () => {
     // note that stops the next agent from making one inert and stranding
     // invite redemption, which nearly shipped that way once.
     expect(card).toContain("NO PLAN");
-    expect(card).toContain("EVERY DOOR HERE IS THE ONLY ONE");
+    expect(card).toContain("THE DOORS MOVED, THEY DID NOT DISAPPEAR");
   });
 });

@@ -521,7 +521,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders thirteen cells in a 2 · 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
+  it("renders fifteen cells in a 2 · 2 · 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
     // Five pairs and a full-width tail (MESITA-1639). MESITA-1636 broke the
     // rhythm with a four-up so the column would not read as undifferentiated,
     // and paid for it in the only four cells on the page with no summary. The
@@ -533,6 +533,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // Contact moved into Settings; Cards is the same `CardsModal` Pay's
     // Wallet already opens, and Wallet is a cell right here.
     expect(gridTitles(ME)).toEqual([
+      "Profile",
+      "Passport",
       "Wallet",
       "Plan",
       "Notifications",
@@ -566,7 +568,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // Five `DestGrid`s of two plus one of one, spanned. Counting grids and
     // spans SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
     // four-up too, and would go on being true of any row width.
-    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(7);
+    expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
     expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });

@@ -9,10 +9,12 @@ import {
   Bot,
   Footprints,
   Gift,
+  IdCard,
   Info,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
+  UserRound,
   Users,
   Wallet as WalletIcon,
 } from "lucide-react";
@@ -53,7 +55,8 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — the passport, then five pairs and a tail:
 //
-//   passport       identity + three doors (MESITA-1640, -1641), full width
+//   passport       identity + the two axes, DISPLAY ONLY (MESITA-1646)
+//   2              Profile · Passport
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -211,18 +214,28 @@ export function ProfileClient({
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* The four doors live ON the card again (MESITA-1640). Instagram
-              is the only reach door and the Class ladder is the only entrance
-              for an invite PIN, so these are not conveniences — without them
-              those surfaces are unreachable. */}
-          <ProfileSummaryCard
-            profile={profile}
-            loading={loading}
-            onOpenPassport={() => setPassportOpen(true)}
-            onOpenProfile={() => profile && setEditOpen(true)}
-            onOpenInstagram={() => setVerifyOpen(true)}
-            onOpenClass={() => setClassOpen(true)}
-          />
+          {/* JUST VISIBLE (Pato, MESITA-1646). The card displays; the grid
+              navigates. It takes no handlers at all. */}
+          <ProfileSummaryCard profile={profile} loading={loading} />
+
+          {/* The pair that replaces the card's doors. `Passport` is the only
+              way into the document now, and its sheet carries the Instagram
+              and Class rows — the only entrances to the connect flow and to
+              the ladder's "Join with Invitation" (Docs › Passport §C). */}
+          <DestGrid>
+            <DestTile
+              Icon={UserRound}
+              title="Profile"
+              summary="Name, photo, birthday"
+              onClick={() => profile && setEditOpen(true)}
+            />
+            <DestTile
+              Icon={IdCard}
+              title="Passport"
+              summary="Class and Instagram"
+              onClick={() => setPassportOpen(true)}
+            />
+          </DestGrid>
 
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
               drawer, all the same `DestTile`. The header bell, the count band
@@ -438,6 +451,13 @@ export function ProfileClient({
           setPassportOpen(false);
           setSettingsOpen(true);
         }}
+        // The two doors the card gave up (MESITA-1646). Instagram is the only
+        // reach door and the Class ladder is the only entrance for an invite
+        // PIN, so these are not conveniences — without them those surfaces
+        // are unreachable. Profile is NOT here: it is a grid cell now, and a
+        // second door to a surface one tap away is MESITA-1609's rule.
+        onOpenInstagram={() => setVerifyOpen(true)}
+        onOpenClass={() => setClassOpen(true)}
       />
     </div>
   );
