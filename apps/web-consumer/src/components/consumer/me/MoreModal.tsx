@@ -1,50 +1,38 @@
 "use client";
 
 import {
-  BarChart3,
   Bot,
   ChevronRight,
-  CreditCard,
   Gift,
-  HelpCircle,
-  Instagram,
-  Mail,
   MoreHorizontal,
   Share2,
   type LucideIcon,
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
-import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { cn } from "@/lib/utils";
 
-// Me › More. The Me page keeps EIGHT primary boxes (MESITA-1609, same count
-// MESITA-1123 set, different composition — see ProfileClient.tsx's file-top
-// comment for the full history, including the "seven" this comment itself
-// used to say even after Passport made it eight). Everything else lives one
-// tap deeper, here.
+// Me › More — THE PARKED TAIL, and nothing else (MESITA-1628).
 //
-// The split is by FREQUENCY, not importance — unchanged principle, reapplied
-// to a bigger inventory now that Alerts/Visits/Reservations/Wallet joined
-// Me's primary boxes and something had to make room. Instagram, Passport and
-// AI Connector moved here from primary for that reason, not because any of
-// them got less important.
+// This sheet has been shrinking for three PRs and it has finally arrived
+// somewhere principled. MESITA-1609 filled it with everything Me's primary
+// boxes could not hold; -1619 took Plan back out; -1622 took Passport; -1628
+// took Profile, Settings, Cards, Instagram, Metrics, Help and Contact into
+// the destination grid on the page itself.
 //
-// THE PLAN TRADEOFF THIS COMMENT FLAGGED IS RESOLVED (MESITA-1619). It read:
-// "Plan is your subscription and Instagram is a growth surface, which is a
-// real product tradeoff flagged for confirmation outside this PR, not decided
-// by this file." The answer came when the Passport stopped printing the plan.
-// The tile was the only thing making a subscription two taps deep survivable,
-// so Plan went back to primary and Instagram took the passport's full width.
+// What is left is exactly the three things that do not work yet: Gift, Share
+// and AI Connector, all `soon`, none with a table or an Edge Function behind
+// them. That is a better job than "the overflow drawer" — a guest opening
+// More now learns what is coming, rather than hunting for a setting that
+// could have been on the page.
 //
-// Wallet, Plan and Passport have no row here any more (MESITA-1609, -1619,
-// -1622: removed, not demoted). Each is reachable from the Me page itself —
-// Wallet and Plan as list rows, the Passport as the card at the top and its
-// member-number footer — so a second door here would be redundant with the
-// one that promotion exists to shorten.
+// WHY THEY ARE NOT IN THE GRID. Three greyed cells out of eleven is a quarter
+// of the block, and in a grid a dead cell reads as broken rather than
+// upcoming; in a list it reads as a roadmap. Un-parking one is dropping its
+// `soon` and moving it up to the grid, in that order.
 //
-// Neutral chips, like the boxes that lead Me itself (MESITA-1132): colour on
-// this surface belongs to the passport alone.
+// Neutral chips, like the grid on the page (MESITA-1132): colour on this
+// surface belongs to the passport alone.
 
 type MoreRow = {
   key: string;
@@ -59,50 +47,17 @@ type MoreRow = {
 export function MoreModal({
   open,
   onClose,
-  onOpenCards,
-  onOpenInstagram,
-  igSummary,
-  onOpenAiConnect,
   onOpenShare,
-  onOpenMetrics,
-  onOpenHelp,
-  onOpenContact,
-  metricsSummary,
+  onOpenAiConnect,
 }: {
   open: boolean;
   onClose: () => void;
-  onOpenCards: () => void;
-  onOpenInstagram: () => void;
-  igSummary: string;
-  onOpenAiConnect: () => void;
+  /** Wired while parked so un-parking is a `soon` removal alone — the sheets
+   *  these open already work. */
   onOpenShare: () => void;
-  onOpenMetrics: () => void;
-  onOpenHelp: () => void;
-  onOpenContact: () => void;
-  /** Live "MX$X saved · N visits" when the page has it; falls back to the
-   *  field list while loading or if the metrics EF failed. */
-  metricsSummary: string;
+  onOpenAiConnect: () => void;
 }) {
   const rows: MoreRow[] = [
-    {
-      key: "cards",
-      Icon: CreditCard,
-      title: "Cards",
-      // Static on purpose: Me's law is that a summary reads live wherever the
-      // page ALREADY holds the data, and ProfileClient holds profile and
-      // metrics, not cards. A live count would cost a third EF read on every
-      // Me mount to serve a row most guests never tap; the count lives inside
-      // the sheet, where the fetch already happens.
-      summary: "Saved cards for Premium and Mesita Pay",
-      onClick: onOpenCards,
-    },
-    {
-      key: "instagram",
-      Icon: Instagram,
-      title: "Instagram",
-      summary: igSummary,
-      onClick: onOpenInstagram,
-    },
     {
       key: "gift",
       Icon: Gift,
@@ -116,8 +71,6 @@ export function MoreModal({
       title: "Share",
       summary: "Invite a friend, both get Credits",
       soon: true,
-      // Handler stays wired while parked so un-parking is `soon` removal
-      // alone — the sheet it opens already works.
       onClick: onOpenShare,
     },
     {
@@ -127,27 +80,6 @@ export function MoreModal({
       summary: "Use Mesita from ChatGPT or Claude (MCP)",
       soon: true,
       onClick: onOpenAiConnect,
-    },
-    {
-      key: "metrics",
-      Icon: BarChart3,
-      title: "Metrics",
-      summary: metricsSummary,
-      onClick: onOpenMetrics,
-    },
-    {
-      key: "help",
-      Icon: HelpCircle,
-      title: "Help",
-      summary: "How the discount works",
-      onClick: onOpenHelp,
-    },
-    {
-      key: "contact",
-      Icon: Mail,
-      title: "Contact",
-      summary: MESITA_SUPPORT_EMAIL,
-      onClick: onOpenContact,
     },
   ];
 
@@ -168,7 +100,7 @@ export function MoreModal({
           <div>
             <h2 className={SHEET_TITLE_CLASS}>More</h2>
             <p className="text-muted-foreground text-xs">
-              Everything else on your account
+              Coming soon to your account
             </p>
           </div>
         </div>

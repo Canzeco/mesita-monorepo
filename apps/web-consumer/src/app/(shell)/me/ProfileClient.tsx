@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BarChart3,
   Bell,
   CalendarCheck,
+  CircleHelp,
+  CreditCard,
   Footprints,
+  Instagram,
+  MessageSquare,
   MoreHorizontal,
   Settings as SettingsIcon,
   ShoppingBag,
@@ -33,20 +38,19 @@ import {
 } from "@/components/consumer/me/ActivityModals";
 import { PassportModal } from "@/components/consumer/me/PassportModal";
 import { PlanModal } from "@/components/consumer/me/PlanModal";
-import { errMsg, formatCompactCount, formatPhoneDisplay } from "@/lib/utils";
+import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiFetchConsumerMetrics,
   apiFetchConsumerProfile,
-  formatCurrency,
   type ConsumerProfile,
 } from "@/lib/api/profile";
 import { PREMIUM_PLAN_ICON, PREMIUM_PLAN_PRICE_MXN } from "@/lib/consumer-data";
 import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { BoxGroup, BoxRow, StatBand, StatTile } from "./profile-sections";
+import { DestGrid, DestTile, StatBand, StatTile } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
 // The Me surface — THREE ZONES (MESITA-1622), replacing the flat box list
@@ -96,17 +100,16 @@ export function ProfileClient({
 }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
-  // The class axis is read by the passport card itself now (MESITA-1622), so
-  // this page only keeps what its own summaries need: the plan for Me's Plan
-  // row, and the Instagram facts for the More sheet's summary line.
-  const { plan, origin, renewsAt, followers, handle: classHandle } =
-    useConsumerClass();
+  // The passport card reads the class axis itself (MESITA-1622), and the long
+  // summaries that needed followers and the renewal date are gone with the
+  // rows that printed them (MESITA-1628). What is left is what the two grid
+  // cells actually say: which plan, and whether Instagram is connected.
+  const { plan, origin, handle: classHandle } = useConsumerClass();
 
   // One consumer-web-get-profile read per visit; the (shell) layout already
   // guarantees the row is complete (onboarding gate).
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [visits, setVisits] = useState<number | null>(null);
-  const [savedCents, setSavedCents] = useState<number | null>(null);
   // Lifetime confirmed reservations, same EF read as visits/saved (MESITA-1609
   // — reused, not a new fetch). "Booked," not "upcoming": the EF counts all
   // time, so the summary doesn't claim a distinction the data can't back.
@@ -153,7 +156,8 @@ export function ProfileClient({
         // Metrics EF wins (visits · saved); profile stats.visits is the
         // fallback when it fails.
         setVisits(metrics?.places_visited ?? stats.visits);
-        setSavedCents(metrics?.saved_cents ?? null);
+        // `saved_cents` comes back on the same read and nothing prints it
+        // any more — Metrics owns that number inside its own sheet.
         // No stats.reservations fallback exists — the metrics EF is the only
         // source, so a failed fetch just leaves this null (zero-state copy
         // handles it, same as a slow load).
@@ -195,45 +199,22 @@ export function ProfileClient({
 
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
-  const igSummary = igConnected
-    ? [handle ? `@${handle}` : "Connected", formatCompactCount(followers)]
-        .filter(Boolean)
-        .join(" · ")
-    : "Instagram not connected";
+  // The long-form summaries that lived here are gone with the rows that read
+  // them (MESITA-1628). A grid cell has ~90px of text width at 320px, so the
+  // page needs SHORT copy, not a different formatting of the long copy — and
+  // the sheets each compute their own from the same context. `formatCurrency`
+  // and `formatPhoneDisplay` left with them.
 
-  const renewalDate = renewsAt ? new Date(renewsAt) : null;
-  const renewalValid =
-    renewalDate != null && !Number.isNaN(renewalDate.valueOf());
-  const planSummary =
-    plan === "premium"
-      ? [
-          `Premium · MX$${PREMIUM_PLAN_PRICE_MXN}/month`,
-          renewalValid
-            ? `renews ${renewalDate.toLocaleDateString("en-US", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/month unlocks Premium`;
-
-  const name =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
-    profile?.full_name ||
-    null;
-  const profileSummary =
-    [name, formatPhoneDisplay(profile?.phone)].filter(Boolean).join(" · ") ||
-    "Name, phone, birthday, photo";
-
-  const metricsSummary = [
-    savedCents == null ? null : `${formatCurrency(savedCents)} saved`,
-    visits == null ? null : `${visits} visits`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // GRID COPY IS ≤3 WORDS (MESITA-1628). A 2-up cell is ~167px at 375px and
+  // the glyph gutter takes 38px of it; the long-form summaries above are for
+  // sheets, which have the whole width to spend.
+  const planTile =
+    plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
+  const igTile = igConnected
+    ? handle
+      ? `@${handle}`
+      : "Connected"
+    : "Not connected";
 
   // The ONE door to the plan sheet (MESITA-1619). Instrumented because the
   // Passport tile it replaces carried no event at all: without this the
@@ -250,6 +231,29 @@ export function ProfileClient({
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
+          {/* The bell owns notifications, and it is the ONLY door to them
+              (MESITA-1628): Alerts sat in the grid AND up here in the brief,
+              and two doors to one sheet is the drift Wallet, Plan and
+              Passport each cost us to remove.
+
+              NO UNREAD DOT. There is no read/unread tracking anywhere in this
+              codebase — no column, no EF, no client state — so a badge here
+              would be decoration shaped like data. It ships with the backend
+              that backs it, or not at all.
+
+              No title either: the bottom nav says "Me" directly below this
+              row, and the passport under it is the anchor. */}
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setAlertsOpen(true)}
+              aria-label="Notifications"
+              className="border-border bg-card shadow-rest flex h-10 w-10 items-center justify-center rounded-full border transition active:scale-[0.97]"
+            >
+              <Bell className="text-foreground/75 h-5 w-5" />
+            </button>
+          </div>
+
           <ProfileSummaryCard
             profile={profile}
             loading={loading}
@@ -258,9 +262,27 @@ export function ProfileClient({
             onOpenPassport={() => setPassportOpen(true)}
           />
 
-          {/* ZONE 2 — everything here carries a COUNT. Both numbers come off
-              the `apiFetchConsumerMetrics` read the page already makes, so
-              the band costs no extra fetch. */}
+          {/* Destinations, so a white card like the grid below — not the
+              band's muted fill. Up here because money is what a guest checks
+              first. */}
+          <DestGrid>
+            <DestTile
+              Icon={WalletIcon}
+              title="Wallet"
+              summary="Credits and cards"
+              onClick={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
+            />
+            <DestTile
+              Icon={PREMIUM_PLAN_ICON}
+              title="Plan"
+              summary={loading ? "…" : planTile}
+              onClick={openPlan}
+            />
+          </DestGrid>
+
+          {/* Everything here carries a COUNT — that is the whole rule, and the
+              muted fill is what says so. Both numbers come off the
+              `apiFetchConsumerMetrics` read the page already makes. */}
           <StatBand>
             <StatTile
               Icon={Footprints}
@@ -269,11 +291,9 @@ export function ProfileClient({
               loading={loading}
               onClick={() => setVisitsOpen(true)}
             />
-            {/* PARKED, and honest about it (MESITA-1622). `/inbox/orders`
-                308s to Visits, there is no orders table or EF, and the
-                concierge answers the delivery question with a flat no. The
-                slot is held because orders are a real domain, not because
-                anything is behind this tile today. Un-park = drop `soon`. */}
+            {/* PARKED, and honest about it. There is no orders table or EF,
+                `/inbox/orders` 308s away, and the concierge answers the
+                delivery question with a flat no. Un-park = drop `soon`. */}
             <StatTile Icon={ShoppingBag} label="Orders" soon />
             <StatTile
               Icon={CalendarCheck}
@@ -284,63 +304,65 @@ export function ProfileClient({
             />
           </StatBand>
 
-          {/* ZONE 3 — everything here is a DESTINATION, in ONE container so
-              the split from the band above reads as two materials rather than
-              two piles of cards.
-
-              NO CLASS ROW. The class is a passport tile now and it opens the
-              same sheet; a row here would be the second door Wallet's
-              promotion (MESITA-1609) established we do not keep.
-
-              ALERTS HAS NO LIVE COUNT — there is no read/unread tracking
-              anywhere in this codebase, so it carries honest static copy
-              rather than a fabricated number, and that is also why it is a
-              row and not a band tile. */}
-          <BoxGroup>
-            <BoxRow
-              bare
-              Icon={WalletIcon}
-              title="Wallet"
-              summary="Credits, gifting and your saved cards"
-              onClick={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
-            />
-            <BoxRow
-              bare
-              Icon={PREMIUM_PLAN_ICON}
-              title="Plan"
-              summary={loading ? "…" : planSummary}
-              onClick={openPlan}
-            />
-            <BoxRow
-              bare
-              Icon={Bell}
-              title="Alerts"
-              summary="Notifications and updates"
-              onClick={() => setAlertsOpen(true)}
-            />
-            <BoxRow
-              bare
+          {/* The long tail, as a grid (MESITA-1628). LIVE CELLS ONLY: Gift,
+              Share and AI Connector are `soon` with nothing behind them, and
+              three greyed cells out of eleven is a quarter of the block — in
+              a grid a dead cell reads as broken, in a list it reads as a
+              roadmap. They stay behind More, which is what a More is for. */}
+          <p className="text-muted-foreground type-label px-0.5 pt-1 font-bold tracking-[0.12em] uppercase">
+            Everything else
+          </p>
+          <DestGrid>
+            <DestTile
               Icon={UserRound}
               title="Profile"
-              summary={loading ? "…" : profileSummary}
+              summary="Name and phone"
               onClick={() => profile && setEditOpen(true)}
               disabled={!profile}
             />
-            <BoxRow
-              bare
+            <DestTile
               Icon={SettingsIcon}
               title="Settings"
-              summary="Notifications, privacy, language"
+              summary="Privacy, language"
               onClick={() => setSettingsOpen(true)}
             />
-            <BoxRow
-              bare
+            <DestTile
+              Icon={CreditCard}
+              title="Cards"
+              summary="Saved cards"
+              onClick={() => setCardsOpen(true)}
+            />
+            <DestTile
+              Icon={Instagram}
+              title="Instagram"
+              summary={loading ? "…" : igTile}
+              onClick={() => setVerifyOpen(true)}
+            />
+            <DestTile
+              Icon={BarChart3}
+              title="Metrics"
+              summary="Your numbers"
+              onClick={() => setMetricsOpen(true)}
+            />
+            <DestTile
+              Icon={CircleHelp}
+              title="Help"
+              summary="How rewards work"
+              onClick={() => setHelpOpen(true)}
+            />
+            <DestTile
+              Icon={MessageSquare}
+              title="Contact"
+              summary="Talk to us"
+              onClick={() => setContactOpen(true)}
+            />
+            <DestTile
               Icon={MoreHorizontal}
               title="More"
-              summary="Instagram, Cards, Gift and more"
+              summary="Gift, Share, AI"
               onClick={() => setMoreOpen(true)}
             />
-          </BoxGroup>
+          </DestGrid>
 
           <SignOutButton
             redirectTo="/"
@@ -431,27 +453,13 @@ export function ProfileClient({
           setSettingsOpen(true);
         }}
       />
+      {/* More is the PARKED TAIL now (MESITA-1628) — Gift, Share, AI
+          Connector. Everything live moved onto the page as a grid cell. */}
       <MoreModal
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
-        onOpenCards={() => setCardsOpen(true)}
-        // Instagram and AI Connector moved here from Me's primary boxes
-        // (MESITA-1609) — same modals, same state, new door. Plan left again
-        // in MESITA-1619 and Passport in -1622: both are reachable from the
-        // page itself now, and a row here would be the redundant second door
-        // Wallet's promotion already established we do not keep.
-        onOpenInstagram={() => setVerifyOpen(true)}
-        igSummary={loading ? "…" : igSummary}
-        onOpenAiConnect={() => setAiOpen(true)}
         onOpenShare={() => setShareOpen(true)}
-        onOpenMetrics={() => setMetricsOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
-        onOpenContact={() => setContactOpen(true)}
-        metricsSummary={
-          loading
-            ? "…"
-            : metricsSummary || "Visits, places, reviews — your numbers"
-        }
+        onOpenAiConnect={() => setAiOpen(true)}
       />
     </div>
   );
