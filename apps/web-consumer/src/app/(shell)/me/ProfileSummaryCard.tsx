@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram, Lock, Unlock, UserRound, Users } from "lucide-react";
+import { Instagram, Lock, Unlock, UserRound } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
@@ -22,7 +22,7 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 //   band        the class metal, 6px, colour-only
 //   header      PASSPORT · the privacy state
 //   identity    photo ringed in the metal · name · age·sex·country
-//   doors       Profile · Friends / Class · Instagram
+//   doors       Profile, spanning · then Instagram | Class
 //
 // THIS REVERSES MESITA-1636 ON PURPOSE. That issue made the card one button
 // with nothing clickable inside it and moved the three doors into the sheet.
@@ -35,6 +35,14 @@ import { ageFromBirthday, cn, formatSex, phoneCountry } from "@/lib/utils";
 // THE IDENTITY BLOCK IS THE SHEET'S DOOR. It is one button; the four cells
 // below are four more. Nothing is nested — they are siblings in a flex
 // column, so no press is swallowed and no button lands inside another.
+//
+// PROFILE SPANS, AND THAT IS A MEASUREMENT, NOT A PREFERENCE (MESITA-1641).
+// Pato asked for three doors across. At this card's geometry three columns
+// give each cell a 67px text box, and `@patocanz` needs 75px while the WORD
+// "INSTAGRAM" needs 69.6 — the label truncates, not just the value. Two
+// columns give 118px and everything fits with 43px to spare. So the three
+// doors are one spanning cell over a pair. Re-measure before making it three
+// again; this is the second time this exact row has been tried (MESITA-1634).
 //
 // EVERY DOOR HERE IS THE ONLY ONE. `PassportModal`'s Profile/Class/Instagram
 // rows were added in MESITA-1636 only because the card could not hold doors;
@@ -75,6 +83,7 @@ function DoorCell({
   fill,
   onClick,
   soon = false,
+  full = false,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -85,6 +94,8 @@ function DoorCell({
   onClick?: () => void;
   /** Parked: visible, inert, honest. The same contract `DestTile` carries. */
   soon?: boolean;
+  /** Spans both columns — same prop, same reason, as `DestTile`'s. */
+  full?: boolean;
 }) {
   return (
     <button
@@ -96,6 +107,7 @@ function DoorCell({
       className={cn(
         "shadow-rest flex min-h-[84px] min-w-0 flex-col justify-between rounded-2xl p-3 text-left transition",
         fill,
+        full && "col-span-2",
         soon ? "opacity-60" : "active:scale-[0.98]",
       )}
     >
@@ -148,7 +160,7 @@ export function ProfileSummaryCard({
         {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 69px is
             the real avatar (60 + the 2.5px ring + the 2px inset, both sides),
             25px the real name, 16px the real meta line, and the grid below is
-            the real 2×2 at its real 84px. */}
+            the real doors at their real 84px, Profile spanning. */}
         <div className="flex flex-col gap-6 px-6 py-10">
           <div className="flex items-center justify-between gap-3">
             <div className="bg-muted h-3 w-[70px] animate-pulse rounded" />
@@ -162,10 +174,13 @@ export function ProfileSummaryCard({
             </div>
           </div>
           <div className="grid grid-cols-2 items-stretch gap-2.5">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-muted h-[84px] animate-pulse rounded-2xl"
+                className={cn(
+                  "bg-muted h-[84px] animate-pulse rounded-2xl",
+                  i === 0 && "col-span-2",
+                )}
               />
             ))}
           </div>
@@ -287,25 +302,8 @@ export function ProfileSummaryCard({
             icon={<UserRound className="h-4 w-4 shrink-0 opacity-70" />}
             value="Edit"
             fill="bg-muted text-foreground"
+            full
             onClick={onOpenProfile}
-          />
-          {/* PARKED. There is no friends surface in this codebase — the
-              nearest thing is a Contacts toggle in Settings ("Find friends
-              already on Mesita"). Visible, inert and honest beats a cell that
-              opens nothing; un-parking is a `soon` removal plus a handler. */}
-          <DoorCell
-            label="Friends"
-            icon={<Users className="h-4 w-4 shrink-0 opacity-70" />}
-            value=""
-            fill="bg-muted text-foreground"
-            soon
-          />
-          <DoorCell
-            label="Class"
-            icon={<ClassIcon className="h-4 w-4 shrink-0 opacity-70" />}
-            value={classLabel}
-            fill={classBadgeClass(key)}
-            onClick={onOpenClass}
           />
           <DoorCell
             label="Instagram"
@@ -323,6 +321,13 @@ export function ProfileSummaryCard({
             value={igValue}
             fill="bg-muted text-foreground"
             onClick={onOpenInstagram}
+          />
+          <DoorCell
+            label="Class"
+            icon={<ClassIcon className="h-4 w-4 shrink-0 opacity-70" />}
+            value={classLabel}
+            fill={classBadgeClass(key)}
+            onClick={onOpenClass}
           />
         </div>
       </div>
