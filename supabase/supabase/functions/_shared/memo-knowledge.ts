@@ -75,7 +75,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "The Mesita Passport",
     terms: ["passport", "pasaporte"],
     fact:
-      "The Passport is the guest's identity card on Mesita. It carries three tiles: Instagram, class and plan. Class and plan are two independent axes and never merge — a class tile can never read Premium and a plan tile can never read a metal.",
+      "The Passport is the guest's identity card on Mesita. It shows two things and no more: the class, and the Instagram handle. What the Passport prints is what the guest EARNED. The plan is deliberately absent from it — what you pay is private, and you read it under Me › Plan. Class and plan remain two independent axes that never merge: no class is purchasable, and no plan is a metal.",
   },
   {
     id: "class",
@@ -109,7 +109,7 @@ export const MESITA_KNOWLEDGE: KnowledgeEntry[] = [
     topic: "Plan (Free · Premium)",
     terms: ["plan", "premium", "free", "gratis", "suscripcion", "subscription", "membresia"],
     fact:
-      "Plan is what you pay, and it is private. Free gives the whole product — catalog, discovery, reservations, Passport, rewards. Premium is MX$50/month and resolves a better rate than Free at the same class, everywhere you transact. Your plan never prints on the Passport and never reaches the floor: the place sees a better percent, never the reason.",
+      "Plan is what you pay, and it is private. Free gives the whole product — catalog, discovery, reservations, Passport, rewards. Premium is MX$50/month and resolves a better rate than Free at the same class, everywhere you transact. You subscribe and manage it under Me › Plan. It never prints on the Passport and never reaches the floor: the place sees a better percent, never the reason.",
   },
   {
     id: "discount",

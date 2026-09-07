@@ -1,14 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "@/lib/api/_invoke";
 
-// MESITA-1387 — the four starting events. Add here (and to the EF's
-// allowlist) before a call site ships a new one; nothing enforces this
-// pairing at compile time.
+// MESITA-1387 — the starting four, plus `plan_open` (MESITA-1619). Add here
+// AND to consumer-web-track-event's allowlist before a call site ships a new
+// one; nothing enforces this pairing at compile time, so
+// `analytics-events-paired.test.ts` reads both files and asserts it.
 export type AnalyticsEvent =
   | "nav_tab_tap"
   | "wallet_open"
   | "balance_card_tap"
-  | "ticket_created";
+  | "ticket_created"
+  | "plan_open";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a

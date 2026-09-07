@@ -99,10 +99,13 @@
         language of "unavailable". Hue 250 -> 15 at unchanged chroma costs
         0.02 of ink contrast and buys the rung back. `--tier-premium` is
         BLACK on purpose (decision: Pato, 2026-08-22): it used to be a cool
-        violet, which read as a fifth metal, and on the Me card the plan tile
-        wore the brand pink — the same family as the Instagram tile beside
-        it, so the two axes read as one. Ink-black is the one colour no rung
-        or connector owns, so the PLAN axis can't be mistaken for either.
+        violet, which read as a fifth metal. The original case also rested on
+        the Me card, where the plan wore the brand pink next to Instagram so
+        the two axes read as one family; that adjacency is gone (MESITA-1619
+        — the Passport prints no plan), and the half of the argument that
+        outlived it is the load-bearing half. Ink-black is the one colour no
+        rung and no connector owns, so wherever the PLAN axis does render it
+        cannot be mistaken for either.
      2. THE SOLIDS ARE TEXT, THE GRADIENTS ARE FILL. Nothing paints a
         background from a `--tier-*` solid, so those are tuned only to clear
         4.5:1 as ink on card. The gradients are tuned so their LIGHT stop —

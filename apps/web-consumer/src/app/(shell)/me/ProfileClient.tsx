@@ -39,15 +39,17 @@ import {
 import {
   CLASSES,
   CLASS_MARK_ICON,
+  PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
+import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { BoxGroup, BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — EIGHT boxes, same count MESITA-1123 set, entirely
-// different composition (MESITA-1609):
+// The Me surface — NINE boxes (MESITA-1609 set the composition, MESITA-1619
+// added the ninth):
 //
 //   Alerts · Visits · Reservations   Activity's three sections, folded in —
 //                                    one visual cluster (BoxGroup), not three
@@ -55,19 +57,25 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //                                    them as the container they were yesterday
 //   Wallet                          promoted out of the buried More sheet —
 //                                    one tap from Me instead of three
-//   Class · Profile · Settings      your account, unchanged from before
-//   More                            Instagram, Plan, Passport, AI Connector
-//                                    and the rest of the long tail
+//   Class · Plan                    the two identity axes, side by side
+//   Profile · Settings              your account, unchanged from before
+//   More                            Instagram, Passport, AI Connector and the
+//                                    rest of the long tail
 //
-// EIGHT IS DELIBERATE, NOT A DEFAULT. MESITA-1123 set seven, and MoreModal.tsx
-// carried that number in its own comment even after Passport made it eight —
-// a documentation drift this PR corrects rather than perpetuates. Going to
-// eight from *this* eight (not from the stale "seven" anyone reading only
-// MoreModal.tsx would have assumed) meant four boxes moved to More to make
-// room for Alerts/Visits/Reservations/Wallet: Instagram, Plan, Passport and
-// AI Connector, chosen the same way the ORIGINAL split was — by FREQUENCY,
-// not importance. AI Connector is also still `soon`, which made it the
-// easiest of the four to justify moving on its own.
+// THE COUNT IS DELIBERATE, NOT A DEFAULT, AND IT HAS MOVED TWICE. MESITA-1123
+// set seven; Passport made it eight while MoreModal.tsx still said seven — a
+// drift MESITA-1609 corrected rather than perpetuated. That PR held eight by
+// moving four boxes to More to make room for Alerts/Visits/Reservations/
+// Wallet: Instagram, Plan, Passport and AI Connector, chosen the same way the
+// ORIGINAL split was — by FREQUENCY, not importance.
+//
+// Plan came back (MESITA-1619) and the count is nine. Not a reversal of that
+// frequency logic: the Passport card carried a Plan tile throughout, so Plan
+// still had a first-screen impression while it sat in More. The Passport now
+// prints only what is earned and public, so the impression went with it, and
+// a subscription reachable ONLY two taps deep behind a truncated summary is a
+// different product than the one MESITA-1609 shipped. Its More row was
+// REMOVED, not left as a second door — Wallet's own precedent from that PR.
 //
 // Every summary reads live wherever the page already holds the data. Visits
 // and Reservations both do — `apiFetchConsumerMetrics` already returns
@@ -248,6 +256,17 @@ export function ProfileClient({
   // something" rather than "this is your class" (decision: Pato).
   const ClassIcon = CLASS_MARK_ICON;
 
+  // The ONE door to the plan sheet (MESITA-1619). Instrumented because the
+  // Passport tile it replaces carried no event at all: without this the
+  // change is unmeasurable in both directions, and "conversion moved" would
+  // be unattributable to the surface that moved it. `plan_open` is paired by
+  // hand into consumer-web-track-event's allowlist — nothing enforces that at
+  // compile time, so `analytics-events-paired.test.ts` does.
+  function openPlan() {
+    trackEvent(supabase, "plan_open");
+    setPlanOpen(true);
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
@@ -256,7 +275,6 @@ export function ProfileClient({
             profile={profile}
             loading={loading}
             onOpenClass={() => setClassOpen(true)}
-            onOpenPlan={() => setPlanOpen(true)}
             onOpenInstagram={() => setVerifyOpen(true)}
           />
 
@@ -319,6 +337,22 @@ export function ProfileClient({
             onClick={() => setClassOpen(true)}
           />
 
+          {/* The other axis, back on primary (MESITA-1619). It sits beside
+              Class because the two are one identity read as two axes, and it
+              is here at all because the Passport stopped printing the plan:
+              the tile was Premium's only unconditional impression in the app
+              (`reward-matrix`'s PlanRow and the ticket's Premium label are
+              both display-only), so without this row the plan would have gone
+              to zero impressions behind a truncated More summary. That is the
+              tradeoff MoreModal.tsx flagged "for confirmation outside this
+              PR" — confirmed here, in Wallet's direction. */}
+          <BoxRow
+            Icon={PREMIUM_PLAN_ICON}
+            title="Plan"
+            summary={loading ? "…" : planSummary}
+            onClick={openPlan}
+          />
+
           {/* Your account. */}
           <BoxRow
             Icon={UserRound}
@@ -335,16 +369,17 @@ export function ProfileClient({
             onClick={() => setSettingsOpen(true)}
           />
 
-          {/* The long tail: Cards · Instagram · Plan · Passport · Gift ·
-              Share · AI Connector · Metrics · Help · Contact. Instagram,
-              Plan, Passport and AI Connector moved here from primary
-              (MESITA-1609) to make room for Alerts/Visits/Reservations/
-              Wallet — same frequency-based split MESITA-1123 used
-              originally, reapplied. */}
+          {/* The long tail: Cards · Instagram · Passport · Gift · Share ·
+              AI Connector · Metrics · Help · Contact. Instagram, Passport and
+              AI Connector moved here from primary (MESITA-1609) to make room
+              for Alerts/Visits/Reservations/Wallet — same frequency-based
+              split MESITA-1123 used originally. Plan came back out
+              (MESITA-1619) and, like Wallet before it, was REMOVED from this
+              sheet rather than left as a second door. */}
           <BoxRow
             Icon={MoreHorizontal}
             title="More"
-            summary="Instagram, Plan, Passport, Cards and more"
+            summary="Instagram, Passport, Cards and more"
             onClick={() => setMoreOpen(true)}
           />
 
@@ -423,12 +458,13 @@ export function ProfileClient({
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         onOpenCards={() => setCardsOpen(true)}
-        // Instagram, Plan, Passport and AI Connector moved here from Me's
-        // primary boxes (MESITA-1609) — same modals, same state, new door.
+        // Instagram, Passport and AI Connector moved here from Me's primary
+        // boxes (MESITA-1609) — same modals, same state, new door. Plan is
+        // NOT among them any more (MESITA-1619): it is primary again, and a
+        // row here would be the redundant second door Wallet's promotion
+        // already established we do not keep.
         onOpenInstagram={() => setVerifyOpen(true)}
         igSummary={loading ? "…" : igSummary}
-        onOpenPlan={() => setPlanOpen(true)}
-        planSummary={loading ? "…" : planSummary}
         onOpenPassport={() => setPassportOpen(true)}
         passportSummary={loading ? "…" : passportSummary}
         onOpenAiConnect={() => setAiOpen(true)}

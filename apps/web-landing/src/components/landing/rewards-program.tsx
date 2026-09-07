@@ -173,18 +173,18 @@ function RewardsProgram() {
                   Gold
                 </span>
               </div>
+              {/* The Passport prints what is EARNED: class and Instagram,
+                  nothing else (MESITA-1619). The plan used to sit in this row
+                  behind a blur, as a way of saying "private" — but the card
+                  does not carry it at all now, and a blurred row still claims
+                  it is on the card. The privacy claim moves to the copy
+                  below, where it can be stated instead of mimed. */}
               <div className="border-border mt-4 flex items-center justify-between border-t pt-4">
                 <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                  <Lock className="h-3.5 w-3.5" aria-hidden />
-                  Plan
+                  <Instagram className="h-3.5 w-3.5" aria-hidden />
+                  Instagram
                 </span>
-                <span
-                  className="text-muted-foreground/70 rounded text-sm font-semibold blur-[5px] select-none"
-                  aria-hidden
-                >
-                  Premium
-                </span>
-                <span className="sr-only">private</span>
+                <span className="text-sm font-semibold">@ana.r</span>
               </div>
               <div className="mt-4 flex items-center gap-3">
                 <QrCode className="text-foreground h-9 w-9" aria-hidden />
@@ -209,18 +209,19 @@ function RewardsProgram() {
               ))}
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Class and Plan are read off one card. The{" "}
-              <span className="text-foreground font-medium">class</span> is
-              public, climbed through Instagram reach or an invitation, and{" "}
+              The card carries what you{" "}
+              <span className="text-foreground font-medium">earned</span> — your{" "}
+              <span className="text-foreground font-medium">class</span>,
+              climbed through Instagram reach or an invitation, and{" "}
               <span className="text-foreground font-medium">
                 never for sale
               </span>
-              . The <span className="text-foreground font-medium">plan</span> is
-              private: it raises your rewards everywhere, and{" "}
+              . Your <span className="text-foreground font-medium">plan</span>{" "}
+              is private: it raises your rewards everywhere, it{" "}
               <span className="text-foreground font-medium">
-                no place ever learns who pays
+                never prints on the Passport
               </span>
-              .
+              , and no place ever learns who pays.
             </p>
           </div>
 

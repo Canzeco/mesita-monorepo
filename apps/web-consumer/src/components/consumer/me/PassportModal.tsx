@@ -6,12 +6,7 @@ import { Copy, IdCard, Lock, Unlock } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { useConsumerClass } from "@/lib/class-context";
-import {
-  CLASSES,
-  classFillClass,
-  PLANS,
-  PREMIUM_PLAN_PRICE_MXN,
-} from "@/lib/consumer-data";
+import { CLASSES, classFillClass } from "@/lib/consumer-data";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import {
@@ -26,13 +21,19 @@ import { toast } from "@/lib/toast";
 // The passport, as the DOCUMENT it is named after (decision: Pato, this
 // session) — the Me card is the cover, this is the data page.
 //
-// The card at the top of Me shows three tiles because three is what fits on a
-// glance; each tile taps into the surface that OWNS its axis. This sheet owns
-// nothing. It restates the same identity as fields, in one column, and adds
-// the one fact the guest cannot see anywhere else in the app: their member
-// number. `consumers.code` is fetched on every profile read and, until now,
-// was rendered on no consumer surface at all — it is the number support and
-// staff have when the guest has only a phone in their hand.
+// The card at the top of Me states the same identity at a glance and taps
+// into the surfaces that OWN each axis. This sheet owns nothing. It restates
+// that identity as fields, in one column, and adds the one fact the guest
+// cannot see anywhere else in the app: their member number. `consumers.code`
+// is fetched on every profile read and, until now, was rendered on no
+// consumer surface at all — it is the number support and staff have when the
+// guest has only a phone in their hand.
+//
+// NO PLAN FIELD (decision: Pato, MESITA-1619). The card and the document are
+// one Passport and print one thing: what is earned and public. The plan is
+// what you pay — Docs › Passport §B, "It never prints on the Passport" — and
+// it keeps its own primary box on Me. A sheet that still listed it would have
+// preserved MESITA-1464's contradiction one layer down.
 //
 // EVERY FIELD HERE IS ALREADY IN HAND. The sheet takes the profile the page
 // fetched and the class context the shell seeded, so opening it costs no EF
@@ -84,14 +85,7 @@ export function PassportModal({
   profile: ConsumerProfile | null;
   onOpenSettings: () => void;
 }) {
-  const {
-    key,
-    plan,
-    origin,
-    renewsAt,
-    followers,
-    handle: classHandle,
-  } = useConsumerClass();
+  const { key, origin, followers, handle: classHandle } = useConsumerClass();
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -113,20 +107,6 @@ export function PassportModal({
 
   const cls = CLASSES.find((c) => c.id === key);
   const classLabel = cls?.label ?? "Bronze";
-
-  const isPremium = plan === "premium";
-  const planLabel = PLANS.find((p) => p.id === plan)?.label ?? "Free";
-  const renewalDate = renewsAt ? new Date(renewsAt) : null;
-  const renewalValid =
-    renewalDate != null && !Number.isNaN(renewalDate.valueOf());
-  const planNote =
-    isPremium && renewalValid
-      ? `Renews ${renewalDate.toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })}`
-      : `MX$${PREMIUM_PLAN_PRICE_MXN}/month`;
 
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
@@ -232,7 +212,6 @@ export function PassportModal({
               value={classLabel}
               note={cls?.reward ?? null}
             />
-            <Field label="Plan" value={planLabel} note={planNote} />
             <Field
               label="Instagram"
               value={
