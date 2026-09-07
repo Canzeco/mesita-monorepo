@@ -56,6 +56,7 @@ import {
 } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
 import { applyDiscoveryFilters } from "../_shared/discovery-filters.ts";
+import { attachIntakeHighWater } from "../_shared/discovery-place.ts";
 import {
   applyGeneralGateQuery,
   clearsGeneralGate,
@@ -434,8 +435,20 @@ Deno.serve(async (req) => {
       cfg.params.popularity,
     );
     const googleForMerge = wantGoogleNearby ? admitted.google : [];
+    // reorderListedLanes runs Places Lineup, which scores mesita_level —
+    // Intake high-water (MESITA-1598) needs `intake_high_water` on the row,
+    // and `profiles` doesn't carry it. One batched side-read merges it in
+    // before ranking, same pattern as consumer-web-recommend-swipe. Skipped
+    // when the Google-fill branch below keeps distance order instead.
+    const willReorder = !(wantGoogleNearby && googleForMerge.length > 0);
+    const listedForCatalog = willReorder && efEnv.ok
+      ? await attachIntakeHighWater(
+        adminClient(efEnv.env),
+        admitted.listed as unknown as Record<string, unknown>[],
+      ) as unknown as typeof admitted.listed
+      : admitted.listed;
     const catalog = mergeNearbyCatalog(
-      admitted.listed,
+      listedForCatalog,
       googleForMerge,
       center,
       lanes,

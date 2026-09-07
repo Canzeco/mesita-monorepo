@@ -132,6 +132,46 @@ Deno.test("a cafe never jumps a partner after Lineup", () => {
   );
 });
 
+Deno.test("reorderListedLanes: intake_high_water (MESITA-1601) reorders when Level is weighted", () => {
+  // Two partners (same plan, so moneyRung ties) at the same point — only
+  // Intake high-water differs. This is the wiring consumer-web-list-places
+  // provides via `attachIntakeHighWater` before calling `mergeNearbyCatalog`:
+  // `reorderListedLanes` itself stays synchronous and unaware of the query.
+  const hi = {
+    id: "hi",
+    plan: "pro",
+    google_place_id: "ChIJ-hi",
+    lat: 25.6701,
+    lng: -100.3001,
+    intake_high_water: 10,
+  };
+  const lo = {
+    id: "lo",
+    plan: "pro",
+    google_place_id: "ChIJ-lo",
+    lat: 25.6701,
+    lng: -100.3001,
+    intake_high_water: 0,
+  };
+  const merged = mergeNearbyCatalog([lo, hi], [], CENTER, LANES);
+  const levelOnly = { ...mapLineupWeights(DISCOVERY_DEFAULTS.weights) };
+  for (const key of Object.keys(levelOnly) as (keyof typeof levelOnly)[]) {
+    levelOnly[key] = 0;
+  }
+  levelOnly.mesita_level = 4;
+  const out = reorderListedLanes(merged, {
+    center: CENTER,
+    weights: levelOnly,
+    params: DISCOVERY_DEFAULTS.params,
+  });
+  assertEquals(
+    out.filter((x) => x.kind === "listed").map((x) =>
+      x.kind === "listed" ? x.row.id : ""
+    ),
+    ["hi", "lo"],
+  );
+});
+
 Deno.test("Google lane stays distance order", () => {
   const google = [
     hit({ placeId: "g-near", name: "Near", lat: 25.6701, lng: -100.3001 }),
@@ -209,6 +249,10 @@ Deno.test("list-places googleFill reorders; lat/lng-only does not", async () => 
   assertEquals(src.includes("embedding,"), false);
   const googleBranch = src.slice(src.indexOf("const admitted = admitMapCatalog("));
   assertEquals(googleBranch.includes("reorderListedLanes"), true);
+  // MESITA-1601: Lineup scores mesita_level, which needs the Intake
+  // high-water side-read merged onto the row before ranking — the branch
+  // that actually calls `reorderListedLanes` must also call this.
+  assertEquals(googleBranch.includes("attachIntakeHighWater"), true);
   // Behavioural, not source-text: the old assertion pinned the literal
   // `searchPower >= 2` and was satisfiable by whatever the file happened to
   // say, so forgetting to update a second copy of that literal stayed green.

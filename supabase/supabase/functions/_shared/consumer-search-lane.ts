@@ -70,7 +70,7 @@ import {
   type SignalWeights,
 } from "./discovery-blend.ts";
 import { weightsForMode } from "./discovery-matrix.ts";
-import { toLineupPlace } from "./discovery-place.ts";
+import { attachIntakeHighWater, toLineupPlace } from "./discovery-place.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
@@ -868,7 +868,14 @@ async function fetchEmbedPool(
     console.error("[consumer-search-lane] embed pool:", error.message);
     return [];
   }
-  return (data ?? []) as unknown as ListedRow[];
+  // Deep Lineup scores mesita_level (MESITA-1598) — Intake high-water needs
+  // `intake_high_water` on the row, and `profiles` doesn't carry it. One
+  // batched side-read merges it in here, the single choke point both
+  // `runDeepSearch` and `runMesitaNameSearch` rank through.
+  return await attachIntakeHighWater(
+    admin,
+    (data ?? []) as unknown as Record<string, unknown>[],
+  ) as unknown as ListedRow[];
 }
 
 async function fetchAutocomplete(
