@@ -112,12 +112,22 @@ describe("the Passport card carries the class and Instagram, never the plan", ()
     expect(bound).not.toContain("renewsAt");
   });
 
-  it("renders exactly the three sub-cells, in order", () => {
-    // Profile joined the passport in MESITA-1633 — it is who you are, so it
-    // belongs on the identity card and NOT as a cell in the grid below.
+  it("renders exactly the two sub-cells, in order", () => {
+    // Profile's cell went in MESITA-1635: it restated the identity row it sat
+    // under. Its DOOR moved to the photo, which is pinned below.
     // Instagram before Class (Pato, MESITA-1626): the door that changes your
     // class reads before the class it changes.
-    expect(subLabels(card)).toEqual(["Profile", "Instagram", "Class"]);
+    expect(subLabels(card)).toEqual(["Instagram", "Class"]);
+  });
+
+  it("keeps both identity doors, as siblings", () => {
+    // The photo opens Profile, the name block opens the passport document.
+    // Wrapping the row in one button would force a choice between them, and
+    // the document has no other door anywhere in the app.
+    expect(card).toContain("onClick={onOpenProfile}");
+    expect(card).toContain("onClick={onOpenPassport}");
+    expect(card).toContain('aria-label="Edit your profile"');
+    expect(card).toContain('aria-label="Open your passport"');
   });
 
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {
@@ -233,15 +243,15 @@ describe("the plan keeps one door, and only one", () => {
     expect(client).toMatch(/<PlanModal\b/);
   });
 
-  it("More carries no second door to the plan or the passport", () => {
+  it("nothing carries a second door to the plan or the passport", () => {
     // Wallet's precedent (MESITA-1609): a box promoted to primary loses its
     // More row, "removed, not demoted", because a second door is redundant
-    // with the one the promotion exists to shorten.
-    const more = read("components/consumer/me/MoreModal.tsx");
-    for (const door of ["onOpenPlan", "onOpenPassport"]) {
-      expect(selfClosingTag(client, "MoreModal")).not.toContain(door);
-      expect(more).not.toContain(door);
-    }
+    // with the one the promotion exists to shorten. That rule outlived the
+    // drawer itself — More held only Gift and Share by MESITA-1635 and was
+    // deleted, so the invariant is now simply ONE door each, page-wide.
+    expect(client).not.toContain("MoreModal");
+    expect([...client.matchAll(/onClick=\{openPlan\}/g)]).toHaveLength(1);
+    expect([...client.matchAll(/onOpenPassport=/g)]).toHaveLength(1);
   });
 });
 
