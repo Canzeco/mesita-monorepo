@@ -39,7 +39,7 @@ import {
   isPlaceListed,
   isPlaceRequested,
 } from "../_shared/place-state.ts";
-import { PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
+import { PULSE_TOTAL, pulseOf } from "../_shared/pulse-pieces.ts";
 
 type Body = {
   scope?: "org" | "public";
@@ -56,16 +56,6 @@ const PLACE_EMBED =
   "name, address, zone, photos, enriched_at, request_count, business_state, " +
   "enrichment, orders_enabled, pickup_orders_enabled, delivery_orders_enabled, " +
   "reservations_enabled, mesita_pay_enabled, credits_enabled";
-
-/** The enrich meter's high-water mark, 0..PULSE_TOTAL. Anything malformed
- *  reads 0 — the CREATED floor — rather than throwing inside the map. */
-function pulseOf(enrichment: unknown): number {
-  if (!enrichment || typeof enrichment !== "object") return 0;
-  const raw = (enrichment as { highWater?: unknown }).highWater;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.min(Math.trunc(n), PULSE_TOTAL);
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

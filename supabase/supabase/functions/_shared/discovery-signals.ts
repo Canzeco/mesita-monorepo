@@ -16,9 +16,16 @@
 // continuous axis for where a place sits on the Mesita spectrum, from
 // catalog row to actively promoting. They were never independent — a place
 // only promotes if it pays — so two exponents over one underlying fact let
-// an operator double-count money by accident. Level reads `plan` and the
-// public `promoting` boolean, and nothing else: never rates, strategy, or
-// pause columns.
+// an operator double-count money by accident. Level reads `plan`, the
+// public `promoting` boolean, and (MESITA-1598) Intake high-water — never
+// rates, strategy, or pause columns.
+//
+// LEVEL IS NO LONGER ENTIRELY BOUGHT (MESITA-1598, item 3). A well-enriched
+// free place can outrank a paying place with a thin profile: the money rung
+// sets a base and Intake high-water modulates it, so quality moves the same
+// axis money does instead of being a second, independent question. Item 2
+// (whether LEVEL_LISTED itself is still the right floor) is a separate,
+// still-open decision.
 //
 // The key is `mesita_level`, never bare `level`. `places.price_level` is
 // Google's field and create-door-profile.ts already writes "Price level:"
@@ -56,6 +63,7 @@ import { haversineKm } from "./geo.ts";
 import { isOpenAt } from "./local-time-open.ts";
 import { localClock } from "./local-time.ts";
 import { cosineSim, parseVector } from "./embeddings-vector.ts";
+import { PULSE_TOTAL } from "./pulse-pieces.ts";
 
 /**
  * The eight earned signals, in Notion Docs > Discovery section 8.3 order:
@@ -107,7 +115,8 @@ function pnum(params: SignalParamBag | undefined, key: string, fallback: number)
  * The facts a signal is allowed to see. This is a projection of `places`, not
  * the row — narrowing it here is what stops a signal from quietly reaching for
  * rates. Partnership may read `plan`. Promotion may read the computed
- * `promoting` boolean. Still absent: strategy, pause columns, and rates.
+ * `promoting` boolean. Mesita Level may also read `intakeHighWater`
+ * (MESITA-1598). Still absent: strategy, pause columns, and rates.
  */
 export type SignalPlace = {
   lat: number | null;
@@ -125,6 +134,15 @@ export type SignalPlace = {
   plan?: string | null;
   /** Live discount right now. Mesita Level reads this; nothing else may. */
   promoting?: boolean;
+  /**
+   * How far the Intake queue got, 0..PULSE_TOTAL (`pulseOf`,
+   * pulse-pieces.ts). Mesita Level reads this; nothing else may (MESITA-1598
+   * item 3). `undefined` means the caller hasn't wired the side-read for
+   * this surface yet — an honest "unknown", scored as full credit, never a
+   * silent 0 that would look like a genuinely unenriched place. `null`
+   * behaves the same as `undefined`.
+   */
+  intakeHighWater?: number | null;
 };
 
 /** What the CALLER wants. Every field is optional; an absent one abstains. */
@@ -416,23 +434,37 @@ export function summary(
  * promoting. The merge of the old Partnership and Promotion signals
  * (MESITA-1408).
  *
- * Two facts, read and nothing else: a paid `plan`, and the public
- * `promoting` boolean — `toLineupPlace` has already collapsed rates,
- * strategy and pause columns into that one flag. Fine rungs (conservative /
- * aggressive / dominant) are Promoting's business, not this signal's.
+ * Three facts, read and nothing else: a paid `plan`, the public `promoting`
+ * boolean — `toLineupPlace` has already collapsed rates, strategy and pause
+ * columns into that one flag — and (MESITA-1598) Intake high-water, how far
+ * the enrich queue got. Fine rungs (conservative / aggressive / dominant)
+ * are Promoting's business, not this signal's.
  *
  * THREE RUNGS, GEOMETRICALLY SPACED. Each step up is the same ratio (×5), so
  * under `s^w` every rung is the same distance from its neighbour in log
  * space — which is the only spacing that stays even once the blend raises
  * the score to a power.
  *
- * The rungs are deliberately the old product: Level is exactly the value
- * `partnership(place) * promotion(place)` used to contribute at the default
- * weights of 1 and 1, for all four input combinations. Landing the merge
- * therefore changes what the axis is CALLED and how an operator tunes it,
- * not the order any guest sees. A place that somehow reads `promoting` on a
- * free plan lands on the middle rung rather than the floor — it is doing
+ * The rungs are deliberately the old product: before MESITA-1598, Level was
+ * exactly `partnership(place) * promotion(place)` at the default weights of
+ * 1 and 1, for all four input combinations. Landing the MESITA-1408 merge
+ * changed what the axis is CALLED and how an operator tunes it, not the
+ * order any guest sees. A place that somehow reads `promoting` on a free
+ * plan lands on the middle rung rather than the floor — it is doing
  * something — which is what the old product did too.
+ *
+ * NOT ENTIRELY BOUGHT ANY MORE (MESITA-1598, item 3). The money rung sets a
+ * BASE; Intake high-water then MODULATES it — the same axis, not a second
+ * independent question, so a well-enriched free place can outrank a paying
+ * place with a thin profile. `intakeHighWater === undefined` (a surface that
+ * hasn't wired the side-read yet, discovery-place.ts) reads as full credit —
+ * an honest "unknown", never a silent penalty a caller didn't ask for.
+ * `LEVEL_ENRICHMENT_FLOOR` is chosen so a FULLY enriched listed place
+ * (0.04 × 1) narrowly outranks a COMPLETELY unenriched partner
+ * (0.2 × 0.15 = 0.03) — the exact scenario the decision names — with real
+ * but not enormous margin; the same ratio holds at the partner/promoting
+ * boundary too. LEVEL_LISTED itself (item 2) is untouched — that is a
+ * separate, still-open decision.
  *
  * LEVEL IS DERIVED, NEVER STORED. There is no `places.level` column and
  * there must not be one: every fact it reads already has an owner, and a
@@ -441,6 +473,14 @@ export function summary(
 export const LEVEL_LISTED = 0.04;
 export const LEVEL_PARTNER = 0.2;
 export const LEVEL_PROMOTING = 1;
+/** Full credit for a place no wired surface has fetched high-water for yet —
+ *  an abstention, not a penalty (MESITA-1598). */
+export const LEVEL_ENRICHMENT_UNKNOWN = 1;
+/** The floor a CONFIRMED-unenriched place's money rung is multiplied by.
+ *  Must sit below LEVEL_LISTED / LEVEL_PARTNER (0.2) for a fully-enriched
+ *  free place to ever outrank a thin partner; 0.15 leaves real margin
+ *  without re-deciding item 2. */
+export const LEVEL_ENRICHMENT_FLOOR = 0.15;
 
 export function mesitaLevel(
   place: SignalPlace,
@@ -450,9 +490,20 @@ export function mesitaLevel(
   const plan = (place.plan ?? "free").toLowerCase();
   const partnered = plan !== "" && plan !== "free";
   const promoting = place.promoting === true;
-  if (partnered && promoting) return LEVEL_PROMOTING;
-  if (partnered || promoting) return LEVEL_PARTNER;
-  return LEVEL_LISTED;
+  const moneyRung = partnered && promoting
+    ? LEVEL_PROMOTING
+    : partnered || promoting
+    ? LEVEL_PARTNER
+    : LEVEL_LISTED;
+
+  const highWater = place.intakeHighWater;
+  if (highWater === null || highWater === undefined) {
+    return clamp01(moneyRung * LEVEL_ENRICHMENT_UNKNOWN);
+  }
+  const fraction = clamp01(highWater / PULSE_TOTAL);
+  const enrichmentTerm = LEVEL_ENRICHMENT_FLOOR +
+    (1 - LEVEL_ENRICHMENT_FLOOR) * fraction;
+  return clamp01(moneyRung * enrichmentTerm);
 }
 
 // ── 8. Randomness ────────────────────────────────────────────────────────────

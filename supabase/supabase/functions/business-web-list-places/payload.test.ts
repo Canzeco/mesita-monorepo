@@ -30,7 +30,10 @@ Deno.test("state facts come from the shared helpers, never re-implemented", () =
 
 Deno.test("the intake meter is the enrichment COLUMN, not an events join", () => {
   assert(SRC.includes("enrichment"), "must select place_profiles.enrichment");
-  assert(SRC.includes("PULSE_TOTAL"), "total must come from the shared constant");
+  // pulseOf is the ONE shared reader (MESITA-1598) — business-web-list-places
+  // and discovery-place.ts's ranking fold must parse the same column the
+  // same way, never each with their own copy.
+  assert(SRC.includes("pulseOf("), "must use the shared pulse reader");
   // Only the number is forwarded — the functions map stays server-side.
   assert(!SRC.includes("functions:"), "must not forward the functions map");
 });

@@ -214,11 +214,13 @@ export const WEIGHT_MAX = 4;
 /**
  * Mirrors SIGNAL_WEIGHT_MAX / weightMaxFor in _shared/discovery-config.ts.
  *
- * Level's exponent is capped at 2, not the uniform 4, because Level is
- * entirely bought and 0.04^w means money annihilates relevance long before
- * the uniform ceiling: 625x at 2 vs ~390,000x at 4 (Pato, MESITA-1410). The
- * EF clamps this server-side either way — the mirror is here so the
- * console's dial cannot offer a number the backend will silently refuse.
+ * Level's exponent is capped at 2, not the uniform 4, because 0.04^w means
+ * money annihilates relevance long before the uniform ceiling: 625x at 2 vs
+ * ~390,000x at 4 (Pato, MESITA-1410). Level is no longer entirely bought
+ * (MESITA-1598 folded in Intake high-water) but this ceiling still bounds
+ * the same money rungs the ratio above is computed from. The EF clamps this
+ * server-side either way — the mirror is here so the console's dial cannot
+ * offer a number the backend will silently refuse.
  */
 export const SIGNAL_WEIGHT_MAX: Partial<Record<SignalKey, number>> = {
   mesita_level: 2,

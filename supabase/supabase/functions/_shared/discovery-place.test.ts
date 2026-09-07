@@ -1,5 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
+  attachIntakeHighWater,
   BOUGHT_LANE_COLUMNS,
   DISCOVERY_EXTRA_COLUMNS,
   EARNED_LANE_COLUMNS,
@@ -122,4 +124,57 @@ Deno.test("junk numbers degrade to null rather than poisoning a score", () => {
   assertEquals(p.lat, null);
   assertEquals(p.rating, null);
   assertEquals(p.user_ratings_total, null);
+});
+
+// ── Intake high-water fold (MESITA-1598) ────────────────────────────────────
+
+Deno.test("toLineupPlace reads intake_high_water like any other column; absent is null, not 0", () => {
+  assertEquals(toLineupPlace(ROW).intakeHighWater, null);
+  assertEquals(toLineupPlace({ ...ROW, intake_high_water: 7 }).intakeHighWater, 7);
+  assertEquals(toLineupPlace({ ...ROW, intake_high_water: "nope" }).intakeHighWater, null);
+});
+
+function fakePlacesAdmin(
+  rows: { id: string; enrichment: unknown }[],
+  err: { message: string } | null = null,
+): SupabaseClient {
+  const chain = {
+    select: () => chain,
+    in: () => Promise.resolve({ data: err ? null : rows, error: err }),
+  };
+  return { from: () => chain } as unknown as SupabaseClient;
+}
+
+Deno.test("attachIntakeHighWater: merges the pulse per row, absent id reads a real 0", async () => {
+  const admin = fakePlacesAdmin([
+    { id: "p1", enrichment: { highWater: 6 } },
+    // "p2" is absent from the result — confirmed not found, not un-fetched.
+  ]);
+  const out = await attachIntakeHighWater(admin, [{ id: "p1" }, { id: "p2" }]);
+  assertEquals(out[0].intake_high_water, 6);
+  assertEquals(out[1].intake_high_water, 0);
+});
+
+Deno.test("attachIntakeHighWater: a query error leaves rows UNTOUCHED, never a confirmed 0", async () => {
+  const admin = fakePlacesAdmin([], { message: "boom" });
+  const rows = [{ id: "p1" }, { id: "p2" }];
+  const out = await attachIntakeHighWater(admin, rows);
+  // Same objects back, no `intake_high_water` key added — mesitaLevel reads
+  // that absence as UNKNOWN (full credit), never as "everyone is at 0".
+  assertEquals(out, rows);
+  assert(!("intake_high_water" in out[0]));
+});
+
+Deno.test("attachIntakeHighWater: an empty pool or an id-less row set is a no-op, not a query", async () => {
+  let queried = false;
+  const admin = {
+    from() {
+      queried = true;
+      throw new Error("should not query for nothing to look up");
+    },
+  } as unknown as SupabaseClient;
+  assertEquals(await attachIntakeHighWater(admin, []), []);
+  const noIds = [{ name: "no id field" }];
+  assertEquals(await attachIntakeHighWater(admin, noIds), noIds);
+  assertEquals(queried, false);
 });
