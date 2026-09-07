@@ -106,8 +106,8 @@ export function generalHeaderFacts(input: {
       on: requestedOn,
       chip: requestCountChip(input.requestCount),
     },
-    { key: "enriched", label: "Enriched", on: enriched, chip: stateBoolChip(enriched) },
     { key: "enriching", label: "Enriching", on: enriching, chip: stateBoolChip(enriching) },
+    { key: "enriched", label: "Enriched", on: enriched, chip: stateBoolChip(enriched) },
     {
       key: "verified",
       label: "Verified",

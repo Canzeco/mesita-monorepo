@@ -2,7 +2,7 @@
 // hand-edit. Edit the source and run: deno task sync-shared
 // State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATES (12)   Created · Active · Listed · Enriched · Enriching ·
+//   STATES (12)   Created · Active · Listed · Enriching · Enriched ·
 //                 Verified · Owned · Partnered · Mesita Pay · Mesita Credits
 //                 are bools (`true` / `false`). Requested is the guest request
 //                 count, 0…n — not a Yes/No. Visit Rewards (wire key
@@ -95,8 +95,8 @@ export const GENERAL_STATE_FACTS = [
   { key: "active", label: "Active" },
   { key: "listed", label: "Listed" },
   { key: "requested", label: "Requested" },
-  { key: "enriched", label: "Enriched" },
   { key: "enriching", label: "Enriching" },
+  { key: "enriched", label: "Enriched" },
   { key: "verified", label: "Verified" },
   { key: "owned", label: "Owned" },
   { key: "partner", label: "Partnered" },

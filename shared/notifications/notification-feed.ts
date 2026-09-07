@@ -259,8 +259,8 @@ export function intakeStateLine(item: NotificationItem): string | null {
     if (facts.active) parts.push("Active");
     if (facts.listed) parts.push("Listed");
     if (facts.requested) parts.push("Requested");
-    if (facts.enriched) parts.push("Enriched");
     if (facts.enriching) parts.push("Enriching");
+    if (facts.enriched) parts.push("Enriched");
     if (facts.verified) parts.push("Verified");
     if (facts.partner) parts.push("Partnered");
     if (facts.promoting) parts.push("Visit Rewards");

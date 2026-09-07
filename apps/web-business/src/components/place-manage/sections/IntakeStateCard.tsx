@@ -18,7 +18,7 @@ import {
 
 /**
  * Intake States — the whole pipeline picture in one box (Pato, 2026-08-30):
- * the two SUMMARY facts (Enriched, Enriching) over the eleven functions,
+ * the two SUMMARY facts (Enriching, Enriched) over the eleven functions,
  * 0. Seed … 10. Embedding, each a bool (called / not). Create 1–5 /
  * Enrich 1–10 stay Config sequences, not a third ladder.
  *
@@ -94,18 +94,18 @@ export function IntakeStateCard({ place }: { place: AdminPlace }) {
     >
       <div className="mt-5 flex flex-col">
         <StateRow
-          name="Enriched"
-          on={enriched === true}
-          chip={stateBoolChip(enriched)}
-          tint="violet"
-          detail={enrichedDetail}
-        />
-        <StateRow
           name="Enriching"
           on={enriching}
           chip={stateBoolChip(enriching)}
           tint="violet"
           detail={enrichingDetail}
+        />
+        <StateRow
+          name="Enriched"
+          on={enriched === true}
+          chip={stateBoolChip(enriched)}
+          tint="violet"
+          detail={enrichedDetail}
         />
       </div>
 
