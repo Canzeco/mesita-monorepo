@@ -36,7 +36,10 @@ import { PlanModal } from "@/components/consumer/me/PlanModal";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
+import {
+  apiFetchConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
 import { PREMIUM_PLAN_ICON, PREMIUM_PLAN_PRICE_MXN } from "@/lib/consumer-data";
 import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
@@ -48,7 +51,8 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //
 //   passport       one box, full width. Nothing inside it is clickable
 //   2              Wallet · Plan
-//   4              Alerts · Visits · Orders · Bookings, compact
+//   2              Alerts · Visits
+//   2              Orders · Bookings
 //   2              Share · Gift
 //   2              Settings · Help
 //   1              Connector, full width
@@ -235,32 +239,35 @@ export function ProfileClient({
             />
           </DestGrid>
 
-          {/* Activity, four across and COMPACT — icon over name, no summary.
-              At 375px these cells are 80px with ~64px of text, which is why
-              they carry no second line: there is no room, and the 10px floor
-              means shrinking the type is not an option. At 320px the label
-              itself truncates and the icon carries identity. */}
-          <DestGrid cols={4}>
+          {/* Activity, TWO PAIRS AND FULL SIZE (decision: Pato, MESITA-1639).
+              It was one four-across `compact` row, and four cells at 375px are
+              80px wide — no room for a second line, so these were the only
+              four cells on Me that never said what they hold. The row a guest
+              most needs to read was the row that explained nothing, and it
+              read as a different material from everything around it. Two
+              ordinary pairs cost one row of height and buy four summaries. */}
+          <DestGrid>
             <DestTile
               Icon={Bell}
               title="Alerts"
-              summary=""
-              compact
+              summary="Visits and bookings"
               onClick={() => setAlertsOpen(true)}
             />
             <DestTile
               Icon={Footprints}
               title="Visits"
-              summary=""
-              compact
+              summary="Tickets and QRs"
               onClick={() => setVisitsOpen(true)}
             />
-            <DestTile Icon={ShoppingBag} title="Orders" summary="" compact soon />
+          </DestGrid>
+
+          <DestGrid>
+            {/* Parked, so the Soon pill takes the summary slot. */}
+            <DestTile Icon={ShoppingBag} title="Orders" summary="" soon />
             <DestTile
               Icon={CalendarCheck}
               title="Bookings"
-              summary=""
-              compact
+              summary="Upcoming and past"
               onClick={() => setBookingsOpen(true)}
             />
           </DestGrid>
