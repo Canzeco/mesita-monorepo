@@ -34,8 +34,114 @@ Deno.test("the intake meter is the enrichment COLUMN, not an events join", () =>
   // and discovery-place.ts's ranking fold must parse the same column the
   // same way, never each with their own copy.
   assert(SRC.includes("pulseOf("), "must use the shared pulse reader");
-  // Only the number is forwarded — the functions map stays server-side.
-  assert(!SRC.includes("functions:"), "must not forward the functions map");
+});
+
+// ── The functions map (MESITA-1608) ──────────────────────────────────────
+//
+// This block REPLACES an assertion that read:
+//
+//     assert(!SRC.includes("functions:"), "must not forward the functions map")
+//
+// That was the right law while the console row showed `Intake 3/10`. It is
+// the wrong law for a states matrix with one column per intake function,
+// because the high-water CANNOT answer per-function: `pulseHighWater` stops
+// at the first gap by design, so a run that fixed function 7 after function 4
+// failed reads as "7 never happened". The map is the only honest source.
+//
+// The guard is not deleted, it is INVERTED — and the wire key matters. The
+// obvious spelling, `intakeFunctions:`, does not contain the lowercase
+// substring `functions:`, so it would have sailed past the old assertion
+// while reversing the decision that assertion existed to make visible.
+// `enrich_functions` is the key business-web-get-overview already ships,
+// through the same fold, so the two business payloads speak one language and
+// any future substring guard sees it.
+
+Deno.test("the functions map ships, folded, under the shared wire key", () => {
+  assert(
+    SRC.includes("enrich_functions:"),
+    "the matrix needs per-function state, not just the high-water",
+  );
+  assert(
+    SRC.includes("operatorFunctionStates("),
+    "the map must go through the shared fold, never a local walk",
+  );
+  // The meter did not go away — the two facts ship side by side because they
+  // answer different questions.
+  assert(SRC.includes("intakePulse:"), "the high-water still ships");
+});
+
+Deno.test("the map is guarded at the call site, because the fold is not", () => {
+  // foldFunctionStateMap walks Object.entries(map), which THROWS on null or
+  // undefined. The column carries a not-null default, but the value arrives
+  // typed `unknown` off PostgREST, so nothing in the type system stops a
+  // malformed blob from reaching the fold.
+  assert(
+    SRC.includes("function enrichFunctionsOf("),
+    "the map must be narrowed before folding",
+  );
+  assert(
+    /typeof\s+map\s*===\s*"object"/.test(SRC),
+    "the narrow must check the functions field itself, not just the wrapper",
+  );
+});
+
+Deno.test("pool rows withhold the facts a guest has no claim to", () => {
+  // getAuthedUser accepts ANY valid bearer token and the backend is a
+  // singleton, so every consumer account can call scope=public. Ownership
+  // proof, plan, and how far our pipeline got on a place nobody holds are
+  // withheld there — as `undefined`, which renders "?", never a false "no".
+  for (const fact of ["partner", "verified", "enrich_functions"]) {
+    const m = SRC.match(new RegExp(`${fact}:[^,]*`));
+    assert(m, `${fact} must be on the payload`);
+    assert(
+      m![0].includes("scope === \"org\"") || m![0].includes("verified ?"),
+      `${fact} must be withheld on the pool`,
+    );
+  }
+});
+
+Deno.test("an empty catalog issues ZERO verification queries", () => {
+  // rows is empty on every request today (0 places in production), so this
+  // is the live path, not an edge case. chunked([]) yields no chunks, so the
+  // loop never runs — the guard is structural, not a conditional someone can
+  // forget to write.
+  assert(SRC.includes("chunked("), "the batch must be chunked");
+  assert(
+    /for\s*\(const idPart of chunked\(/.test(SRC),
+    "the query must live inside the chunk loop",
+  );
+  assert(
+    !/\.in\("place_id", ids\)/.test(SRC),
+    "never pass the whole id list straight to .in()",
+  );
+});
+
+Deno.test("a failed verification read degrades to UNKNOWN, never to false", () => {
+  // An empty Set would state "nobody here is verified" — a claim we did not
+  // read. null says "we could not find out" and the console renders "?".
+  assert(
+    SRC.includes("verified = null;"),
+    "a read error must clear the set, not leave it empty",
+  );
+  assert(
+    SRC.includes("[list-places] project_verifications:"),
+    "the swallowed failure must be logged, or it cannot be diagnosed later",
+  );
+});
+
+Deno.test("Created and Partner come from the shared helpers too", () => {
+  assert(SRC.includes("isPlaceSeeded("), "Created is the identity spine");
+  assert(SRC.includes("isPaidPlan("), "Partner is plan !== free");
+});
+
+Deno.test("the search escapes LIKE wildcards", () => {
+  // Raw interpolation leaves `_` and `%` live, so "cafe_" silently matches
+  // "cafes" here and not in admin-web-search-places. Two search boxes, one
+  // behaviour.
+  assert(
+    /replace\(\/\[%_\\\\\]\/g/.test(SRC),
+    "escape %, _ and backslash before building the pattern",
+  );
 });
 
 Deno.test("the holder's name rides the row, and the pool has none", () => {

@@ -56,6 +56,30 @@ export type ConsolePlace = {
   /** Intake meter: 0 is the CREATED floor, intakeTotal is a finished run. */
   intakePulse?: number;
   intakeTotal?: number;
+  /** Created — google_place_id present, the identity spine. */
+  seeded?: boolean;
+  /** An organization holds this place. Constant per list scope today; the
+   *  states matrix renders it anyway so both screens share one column set. */
+  owned?: boolean;
+  /** plan !== "free". UNDEFINED on the pool, where it is withheld — what an
+   *  unheld place pays is not a guest's business. Undefined renders "?". */
+  partner?: boolean;
+  /** An approved project_verifications row. UNDEFINED both when withheld (the
+   *  pool) and when the lookup FAILED — either way we did not read it, and a
+   *  false here would state something we never learned. */
+  verified?: boolean;
+  /** Per-function intake, keyed by PULSE step, folded server-side through
+   *  `operatorFunctionStates`. Undefined on the pool.
+   *
+   *  This is NOT derivable from `intakePulse`: the high-water stops at the
+   *  first gap, so a function that completed after an earlier one failed is
+   *  invisible to it. The matrix needs the map; the meter stays for the
+   *  summary. Snake case because it is the EF's own key, shared verbatim with
+   *  business-web-get-overview. */
+  enrich_functions?: Record<
+    string,
+    { state: "pending" | "completed" | "failed"; at: string | null; detail: string | null }
+  >;
   orders?: boolean;
   pickupOrders?: boolean;
   deliveryOrders?: boolean;

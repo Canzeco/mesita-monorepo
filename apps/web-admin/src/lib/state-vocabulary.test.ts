@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ENGINELESS_STATE_FACT_KEYS,
@@ -16,8 +18,10 @@ import {
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is eleven general facts plus eleven Intake functions 0–10", () => {
-    expect(GENERAL_STATE_COUNT).toBe(11);
+  it("is twelve general facts plus eleven Intake functions 0–10", () => {
+    // Owned joined with MESITA-1608 — an organization holds this place, which
+    // is not the same claim as Verified (having PROVED you hold it).
+    expect(GENERAL_STATE_COUNT).toBe(12);
     expect(INTAKE_FUNCTION_COUNT).toBe(11);
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
@@ -27,6 +31,7 @@ describe("state vocabulary", () => {
       "Enriched",
       "Enriching",
       "Verified",
+      "Owned",
       "Partnered",
       "Visit Rewards",
       "Mesita Pay",
@@ -54,6 +59,10 @@ describe("state vocabulary", () => {
     expect(STATE_FACT_FALSE_TONE.partner).toBe("neutral");
     expect(STATE_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
     expect(STATE_FACT_FALSE_TONE.credits).toBe("neutral");
+    // Unclaimed is the pool's normal condition, not a debt.
+    expect(STATE_FACT_FALSE_TONE.owned).toBe("neutral");
+    // Verified stays ROSE: on a place you hold, unproven ownership is a debt
+    // you can settle. The pool withholds the fact instead of restyling it.
     expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
     expect([...ENGINELESS_STATE_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
   });
@@ -92,5 +101,23 @@ describe("state vocabulary", () => {
     expect(requestCountChip(0)).toBe("0");
     expect(requestCountChip(4)).toBe("4");
     expect(requestCountChip(undefined)).toBe("?");
+  });
+});
+
+describe("the two app copies must not drift", () => {
+  // apps/web-admin and apps/web-business each carry a byte-identical copy of
+  // this file. There is no root pnpm workspace to share it from — packages are
+  // independent install roots because mobile needs nodeLinker: hoisted — so
+  // the only thing that can hold them together is a test.
+  //
+  // It lives in BOTH packages on purpose. CI is path-filtered per package, so
+  // a guard only in web-business would never run on a web-admin-only edit,
+  // which is exactly the change that would break it.
+  it("is byte-identical to the other app copy", () => {
+    const here = readFileSync(path.join(__dirname, "./state-vocabulary.ts"), "utf8");
+    const other = path.join(__dirname, "../../../web-business/src/lib/state-vocabulary.ts");
+    // Fail loudly if the file MOVED, rather than passing vacuously.
+    expect(existsSync(other), `${other} not found — did the file move?`).toBe(true);
+    expect(readFileSync(other, "utf8")).toBe(here);
   });
 });
