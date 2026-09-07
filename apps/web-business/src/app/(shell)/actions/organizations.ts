@@ -17,6 +17,23 @@ import {
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
+/**
+ * Where this console is, from the request's own headers.
+ *
+ * Vercel sets `x-forwarded-*` in front of the Node runtime, so this is the
+ * deployment's real origin — preview URLs included — and it is NOT a
+ * client-supplied field, so a spoofed form value cannot redirect anyone
+ * off-site. Returns null when there is no host to read, which callers must
+ * treat as "cannot build an absolute URL" rather than falling back to a
+ * relative one (MESITA-1643).
+ */
+async function consoleOrigin(): Promise<string | null> {
+  const hdrs = await headers();
+  const proto = hdrs.get("x-forwarded-proto") ?? "https";
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
+  return host ? `${proto}://${host}` : null;
+}
+
 export type CreateOrgState = { error: string | null };
 export type UpdateOrgState = { error: string | null; saved: boolean };
 
@@ -89,6 +106,19 @@ export async function connectPaymentsAction(
     };
   }
 
+  // ABSOLUTE, AND FROM HERE (MESITA-1643). The EF used to synthesise these
+  // from its own `Origin` header, but this is a SERVER action calling through
+  // supabase-js — no browser sets an Origin on that hop, so the EF built a
+  // relative "/?org=..." and Stripe's accountLinks.create rejected it. The
+  // console is the only party that knows where the owner should land.
+  const origin = await consoleOrigin();
+  if (!origin) {
+    return {
+      error: "Couldn't work out where to send you back to. Reload and try again.",
+      note: null,
+    };
+  }
+
   const supabase = await createServerSupabase();
   let url: string | null = null;
   let mock = false;
@@ -96,6 +126,8 @@ export async function connectPaymentsAction(
     ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
       orgId,
       country,
+      returnUrl: `${origin}/?org=${orgId}&connect=return`,
+      refreshUrl: `${origin}/?org=${orgId}&connect=refresh`,
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {
@@ -168,10 +200,7 @@ export async function addOrgMemberAction(
   // server-side from the request's own headers (Vercel sets x-forwarded-*
   // in front of the Node runtime) rather than a client-supplied field, so
   // there's nothing here that a spoofed form value could redirect off-site.
-  const hdrs = await headers();
-  const proto = hdrs.get("x-forwarded-proto") ?? "https";
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const origin = host ? `${proto}://${host}` : undefined;
+  const origin = (await consoleOrigin()) ?? undefined;
   let mode: "linked" | "invited";
   try {
     const res = await apiAddOrgMember(supabase, {

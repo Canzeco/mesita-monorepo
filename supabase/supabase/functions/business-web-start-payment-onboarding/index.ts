@@ -39,11 +39,12 @@ import {
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
   keyIsLive,
-  MESITA_CONNECT_CAPABILITIES,
-  MESITA_CONNECT_CONTROLLER,
   MESITA_CONNECT_COUNTRIES,
   MESITA_CONNECT_ENTITY_TYPES,
   mockConnectAccountId,
+  connectAccountCreateParams,
+  connectAccountIdempotencyKey,
+  isAbsoluteHttpsUrl,
 } from "../_shared/stripe-connect.ts";
 import {
   isStripeKeyRejection,
@@ -251,11 +252,25 @@ Deno.serve(async (req) => {
   // ── Real mode (test universe until the MESITA-37 ritual). ─────────────────
   const stripe = new Stripe(stripeKey!, { apiVersion: STRIPE_API_VERSION });
   const livemode = keyIsLive(stripeKey!);
-  const origin = req.headers.get("origin") ?? "";
-  const returnUrl = bodyRes.body.returnUrl ??
-    `${origin}/?org=${orgId}&connect=return`;
-  const refreshUrl = bodyRes.body.refreshUrl ??
-    `${origin}/?org=${orgId}&connect=refresh`;
+  // ABSOLUTE OR NOTHING (MESITA-1643). This used to fall back to
+  // `${req.headers.get("origin") ?? ""}/?org=...`, and the caller that matters
+  // is a Next SERVER action invoking through supabase-js — no browser Origin
+  // header, so the fallback produced a RELATIVE url and accountLinks.create
+  // rejected it. Every retry then took the "use" branch below and rethrew into
+  // a bare 500. A caller that cannot say where to come back to gets told so
+  // here, by name, instead of learning it from Stripe two calls later.
+  const returnUrl = bodyRes.body.returnUrl ?? "";
+  const refreshUrl = bodyRes.body.refreshUrl ?? "";
+  for (const [label, value] of [["returnUrl", returnUrl], ["refreshUrl", refreshUrl]]) {
+    if (!isAbsoluteHttpsUrl(value)) {
+      return json({
+        ok: false,
+        error:
+          `${label} must be an absolute URL — Stripe Account Links reject relative paths.`,
+        code: "onboarding_url_not_absolute",
+      }, 400);
+    }
+  }
 
   const linkFor = async (accountId: string) => {
     const link = await stripe.accountLinks.create({
@@ -292,7 +307,15 @@ Deno.serve(async (req) => {
       // The account no longer exists in this universe (deleted, or a rotated
       // sandbox) — self-heal by falling through to the replace path.
       const code = (err as { code?: string }).code ?? "";
-      if (code !== "resource_missing" && code !== "account_invalid") throw err;
+      if (code !== "resource_missing" && code !== "account_invalid") {
+        // ANYTHING ELSE IS STILL A RESPONSE, not a throw (MESITA-1643). This
+        // rethrew, and Deno.serve turns an uncaught throw into a bare 500 with
+        // no `ok:false` and no CORS headers. It is also the branch every RETRY
+        // takes once the account exists, so a single bad link request became a
+        // permanent 500 the owner could not get out of.
+        console.error("[start-payment-onboarding] link for existing account:", err);
+        return stripeFailure(err);
+      }
     }
   }
 
@@ -310,18 +333,14 @@ Deno.serve(async (req) => {
 
   let account: Stripe.Account;
   try {
-    account = await stripe.accounts.create({
-      country,
-      controller: MESITA_CONNECT_CONTROLLER,
-      capabilities: MESITA_CONNECT_CAPABILITIES,
-      metadata: { organization_id: orgId },
-      ...(entityType ? { business_type: entityType } : {}),
-      // company.name is meaningless for an individual — Stripe ignores it —
-      // so once the fork is known, send it only where it lands.
-      ...(legalName && entityType !== "individual"
-        ? { company: { name: legalName } }
-        : {}),
-    });
+    // The params come from _shared/stripe-connect.ts so a test can assert the
+    // exact object Stripe receives without a network call. The idempotency key
+    // is what stops a lost response from minting a SECOND permanent connected
+    // account on the owner's next press.
+    account = await stripe.accounts.create(
+      connectAccountCreateParams({ orgId, country, entityType, legalName }),
+      { idempotencyKey: connectAccountIdempotencyKey(orgId, country) },
+    );
   } catch (err) {
     console.error("[start-payment-onboarding] accounts.create failed:", err);
     return stripeFailure(err);

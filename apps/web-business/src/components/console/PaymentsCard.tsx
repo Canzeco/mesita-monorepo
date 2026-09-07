@@ -3,7 +3,7 @@
 import { CONNECT_COUNTRIES } from "@/lib/connect-countries";
 import { CONNECT_ENTITY_TYPES } from "@/lib/connect-entity-types";
 import { useActionState } from "react";
-import { StatePill, DataRow } from "@/components/console/badges";
+import { StatePill, DataRow, READY_CAPTION } from "@/components/console/badges";
 import {
   connectPaymentsAction,
   openPaymentsDashboardAction,
@@ -58,6 +58,14 @@ export function PaymentsCard({
         <DataRow label="Account">
           <StatePill state={state} />
         </DataRow>
+        {/* The pill says "Ready", and this says what Ready costs the owner in
+            waiting. Without it "Ready" is just a quieter version of the same
+            unanswered question (MESITA-1643). */}
+        {state === "live" && READY_CAPTION && (
+          <p className="text-muted-foreground mt-1 mb-2 text-[12px] leading-relaxed">
+            {READY_CAPTION}
+          </p>
+        )}
         {account?.country && (
           <DataRow label="Country">{account.country}</DataRow>
         )}
