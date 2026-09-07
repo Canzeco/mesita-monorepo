@@ -53,6 +53,41 @@ describe("row 2 parks exactly on row 1", () => {
   });
 });
 
+// MESITA-1637. The console is driven in a chromeless desktop window, so the
+// address bar is not on screen and nothing else in the product says which
+// route you are on. Row 1 says it — under the constraint row 1 has always had.
+describe("row 1 names the route", () => {
+  const nav = () => read("components/console/TopNav.tsx");
+
+  it("renders pathname AND query — ?org= is half the answer", () => {
+    // A bare /places is ambiguous the moment an account holds two orgs, which
+    // is exactly when a person needs to be told where they are.
+    expect(nav()).toContain("const route = q ? `${pathname}?${q}` : pathname");
+  });
+
+  it("is an anchor, so the browser's own copy-link works on it", () => {
+    // A <span> would be a readout you cannot do anything with, and doing
+    // something with it is most of the point.
+    expect(nav()).toMatch(/<Link\s+href=\{route\}/);
+  });
+
+  it("cannot grow the header — a place route carries a uuid", () => {
+    // Row 1 is the ALWAYS header. The Place pill stays the short word "Place"
+    // for this same reason; an entry that widens per route destabilises it.
+    const el = nav().slice(nav().indexOf("<Link\n          href={route}"));
+    const cls = el.slice(el.indexOf("className="), el.indexOf(">\n          {route}"));
+    expect(cls).toContain("truncate");
+    expect(cls).toMatch(/max-w-\[/);
+    expect(cls).toContain("shrink-0");
+  });
+
+  it("takes the ml-auto, and the switcher no longer holds one", () => {
+    // Two ml-autos in one flex row is one too many: the second is inert and
+    // the layout silently depends on source order.
+    expect((nav().match(/ml-auto/g) ?? []).length).toBe(1);
+  });
+});
+
 describe("the container stays uncapped", () => {
   it("<main> has no max-width, or the full-bleed bar cannot reach the window", () => {
     const layout = read("app/(shell)/layout.tsx");

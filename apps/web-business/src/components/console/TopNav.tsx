@@ -8,6 +8,11 @@
 // id, so it appears only while you have one open — and it takes the
 // active state off Places, which `/places/<id>` would otherwise steal
 // by prefix.
+//
+// The bar also NAMES THE ROUTE. The console is driven in a chromeless
+// desktop window, so the address bar — the one thing every browser gives
+// you for free — is not on screen, and "which page is this, with which
+// org?" had no answer anywhere in the product.
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -51,6 +56,11 @@ export function TopNav({
   // Exact, not prefix: /places/<id> is Place, not Org Places.
   const openPlaceId = placeIdFromPathname(pathname);
   const isActive = (href: string) => pathname === href;
+
+  // What the address bar would have said. The query rides along because
+  // ?org= is the half that says WHOSE screen this is — a bare /places is
+  // ambiguous the moment an account holds two organizations.
+  const route = q ? `${pathname}?${q}` : pathname;
 
   // Switching organization keeps you on the screen you are looking at —
   // the same list, a different portfolio.
@@ -108,6 +118,26 @@ export function TopNav({
           )}
         </nav>
 
+        {/* WHERE YOU ARE. A Link, not a span: an anchor is what makes the
+            browser's own "copy link address" work, which is most of the point
+            of seeing a route at all. It targets the current route, so
+            following it is a no-op rather than a navigation.
+
+            WIDTH-STABLE BY CONSTRUCTION. Row 1 is the ALWAYS header and an
+            entry whose width changes per route destabilises it — the same
+            rule that keeps the Place pill the short word "Place". A place
+            route carries a uuid and runs past 50 characters, so this truncates
+            inside a fixed max-width and hands the whole string to `title`.
+            Hidden below `sm`, where a real address bar exists. */}
+        <Link
+          href={route}
+          title={route}
+          aria-label={`Current route: ${route}`}
+          className="text-muted-foreground/80 hover:text-foreground ml-auto hidden max-w-[20rem] shrink-0 truncate font-mono text-[11px] transition select-all sm:block"
+        >
+          {route}
+        </Link>
+
         {organizations.length > 1 && (
           <select
             aria-label="Switch organization"
@@ -115,7 +145,7 @@ export function TopNav({
             onChange={(e) => {
               window.location.href = switchHref(e.target.value);
             }}
-            className="border-border bg-card ml-auto hidden max-w-[12rem] shrink-0 truncate rounded-full border px-3 py-1.5 text-[12px] sm:block"
+            className="border-border bg-card hidden max-w-[12rem] shrink-0 truncate rounded-full border px-3 py-1.5 text-[12px] sm:block"
           >
             {organizations.map((o) => (
               <option key={o.id} value={o.id}>

@@ -37,40 +37,38 @@
 //      cannot slice a text[] in select=, so the array arrives whole and is
 //      narrowed HERE — a 7-URL average across 100 rows never reaches the
 //      browser (MESITA-1553).
-//   2. The intake pulse is `place_profiles.enrichment`, a jsonb COLUMN — not a
-//      join over enrich events; admin reads the same column. The high-water
-//      still ships as `intakePulse` via the shared `pulseOf`.
+//   2. NOTHING FROM INTAKE SHIPS, and MESITA-1637 is why. This payload used to
+//      carry the high-water meter, and MESITA-1608 added the per-function map
+//      beside it so the console could render one column per intake function.
+//      Pato, 2026-09-07: "the intake states are internal." Those columns are
+//      gone from the business matrix, and hiding a fact in the client while
+//      still handing it to every business browser is not the same thing as it
+//      being internal — so both left the wire.
 //
-//      MESITA-1608 OVERTURNS THE OLD LAW HERE. This function used to forward
-//      the number and nothing else, and `payload.test.ts` asserted it. The
-//      console list is now a states MATRIX with one column per intake
-//      function, and a high-water cannot answer per-function: it stops at the
-//      first gap by design, so a run that fixed function 7 after function 4
-//      failed reads as "7 never happened". The map is the only honest source.
-//
-//      The wire key is `enrich_functions` — the SAME key
-//      business-web-get-overview has always shipped, through the same
-//      `operatorFunctionStates` fold. Two business payloads, one vocabulary.
-//      (It is also why the key is not `intakeFunctions`: that spelling does
-//      not contain the lowercase substring `functions:`, so it would have
-//      slipped past the very guard that exists to make this decision visible.)
+//      Enriching and Enriched SURVIVE as general columns, and neither needs
+//      intake: `enriching` is `isPlaceEnriching` and `enriched` is
+//      `isPlaceEnriched(enriched_at)`, both straight off the row. Enriching
+//      and Enriched are facts about the PLACE; the eleven functions and the
+//      meter are facts about our machinery. The map still ships from
+//      business-web-get-overview, which feeds the super-admin-only Admin tab.
 //
 //   3. Every state fact is DERIVED BY THE SHARED HELPERS, never re-implemented
 //      here. Listed / Requested / Enriching / Enriched disagreeing between
 //      this list and the Place screen is worse than not showing them. Created
-//      is `isPlaceSeeded`, Partner is `isPaidPlan`, and the per-function
-//      intake map is `operatorFunctionStates` — the same readers the Place
-//      screen and the admin catalog use.
+//      is `isPlaceSeeded` and Partner is `isPaidPlan` — the same readers the
+//      Place screen and the admin catalog use.
 //
 //   4. THE POOL IS NOT A BUSINESS-ONLY AUDIENCE. `getAuthedUser` accepts any
 //      valid bearer token, and the backend is a singleton (one Supabase
 //      project behind consumer, business, admin and landing), so EVERY
 //      consumer account can call this endpoint with scope=public. Facts about
 //      a place nobody holds — whether someone proved ownership, what plan it
-//      is on, how far our pipeline got — are therefore withheld on THAT scope
-//      and ship as `undefined`, which the console renders as "?" rather than
-//      as a false "no". A manager-existence check is the complete fix and has
-//      its own issue (MESITA-1612); this is the safe direction until it lands.
+//      is on — are therefore withheld on THAT scope and ship as `undefined`,
+//      which the console renders as "?" rather than as a false "no". The
+//      complete fix is a ROLE check (`app_metadata.role`), not the
+//      manager-row check MESITA-1612 assumed: that row is minted lazily for
+//      any signed-in account and gates nobody (MESITA-1623). Until it lands,
+//      withholding is the safe direction.
 //
 //      The withholding keys off the CALLER's clearance, not off whether the
 //      place is held — which is why "all" ships everything even for pool rows.
@@ -89,12 +87,6 @@ import {
   isPlaceRequested,
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
-import { PULSE_TOTAL, pulseOf } from "../_shared/pulse-pieces.ts";
-import {
-  type EnrichmentMap,
-  type FunctionState,
-  operatorFunctionStates,
-} from "../_shared/schema-catalog.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 
 type Body = {
@@ -117,28 +109,11 @@ function chunked<T>(xs: T[], size: number): T[][] {
   return out;
 }
 
-/** The functions map, defended at the CALL SITE.
- *
- *  `foldFunctionStateMap` walks `Object.entries(map)`, which THROWS on null or
- *  undefined — it is not a defensive reader. The column carries a not-null
- *  default, but this value arrives typed `unknown` off PostgREST, so nothing
- *  in the type system stops a malformed blob from reaching the fold. Anything
- *  unusable reads as "no function has run", which under-claims: the safe
- *  direction for a state a person will act on. */
-function enrichFunctionsOf(enrichment: unknown): Record<string, FunctionState> {
-  const map = enrichment && typeof enrichment === "object"
-    ? (enrichment as EnrichmentMap).functions
-    : null;
-  return operatorFunctionStates(
-    map && typeof map === "object" ? map : {},
-  );
-}
-
 /** The place half of the row. Kept to columns that already exist on
  *  `places` — this endpoint adds no schema and computes no new fact. */
 const PLACE_PROFILE_EMBED =
   "name, address, zone, photos, enriched_at, request_count, business_state, " +
-  "google_place_id, enrichment, orders_enabled, pickup_orders_enabled, " +
+  "google_place_id, orders_enabled, pickup_orders_enabled, " +
   "delivery_orders_enabled, reservations_enabled, mesita_pay_enabled, " +
   "credits_enabled";
 
@@ -227,7 +202,6 @@ Deno.serve(async (req) => {
       request_count: number | null;
       business_state: string | null;
       google_place_id: string | null;
-      enrichment: unknown;
       orders_enabled: boolean | null;
       pickup_orders_enabled: boolean | null;
       delivery_orders_enabled: boolean | null;
@@ -326,15 +300,13 @@ Deno.serve(async (req) => {
         // Verified — approved ownership proof. `undefined` when withheld OR
         // when the lookup failed, so the console says "?" instead of "no".
         verified: verified ? verified.has(r.id) : undefined,
-        // Intake, as a meter AND as the per-function map. They answer
-        // different questions and the meter cannot replace the map: the
-        // high-water stops at the first gap, so a function that completed
-        // after an earlier one failed is invisible to it.
-        intakePulse: pulseOf(p.enrichment),
-        intakeTotal: PULSE_TOTAL,
-        enrich_functions: memberScope
-          ? enrichFunctionsOf(p.enrichment)
-          : undefined,
+        // NO INTAKE. The per-function map and the high-water meter both used
+        // to ship here for the console's Intake columns. Those columns are
+        // gone (MESITA-1637) — how far our pipeline got is internal, and
+        // hiding it in the client while still handing it to every business
+        // browser is not the same thing. Enriching and Enriched survive as
+        // GENERAL columns and neither reads intake: `enriching` is its own
+        // boolean above and `enriched` is `isPlaceEnriched(enriched_at)`.
         // The commercial rails, exactly the columns that exist.
         orders: p.orders_enabled === true,
         pickupOrders: p.pickup_orders_enabled === true,

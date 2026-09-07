@@ -149,7 +149,6 @@ export default async function PlacesPage({
         <PlaceStatesTable
           places={places}
           organizationId={org.id}
-          showIntake
           renderAction={(place) => (
             <span className="inline-flex items-center gap-2">
               <Link

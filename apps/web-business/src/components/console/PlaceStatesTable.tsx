@@ -28,18 +28,32 @@
 // have been a fourth mapper for one question, and its trailing `return false`
 // means a fact nobody wired renders "no" forever, with total confidence.
 //
-// TWO SCREENS, TWO COLUMN SETS. Org Places shows everything: you hold those
-// addresses. Public Places drops the intake block and reads "?" for Partner
-// and Verified, because `getAuthedUser` accepts ANY bearer token and the
-// backend is a singleton — every consumer account can read that scope. The
-// EF withholds those facts; this component just renders what it is given.
+// INTAKE IS NOT ON THIS TABLE (Pato, 2026-09-07: "the intake states are
+// internal"). MESITA-1608 put the eleven Intake function columns here beside
+// the general ones; this reverses that half of it. How far our pipeline got on
+// a place is operator knowledge — it answers a question the business never
+// asked and cannot act on, and it already has a home on the super-admin-only
+// Admin tab of the Place screen. The EF stopped shipping `enrich_functions`
+// with it, because "internal" is a reason not to put the map in a business
+// browser at all, not merely a reason to hide it.
+//
+// What SURVIVES from intake is the general pair, Enriching and Enriched, and
+// they stay: those are facts about the PLACE, not about our machinery. Neither
+// needs the meter — Enriching is its own boolean and Enriched is the EF's
+// `isPlaceEnriched(enriched_at)` answer, read straight off the row below. The
+// meter used to be fed to `generalHeaderFacts` here and then thrown away by
+// `cellValue`; it left the payload with the map.
+//
+// ONE COLUMN SET NOW. Partner and Verified still read "?" on a pool row —
+// `getAuthedUser` accepts ANY bearer token and the backend is a singleton, so
+// every consumer account can read that scope and the EF withholds those facts.
+// This component just renders what it is given.
 import Link from "next/link";
 
 import { CountCell, StateCell } from "@/components/console/StateCell";
 import { placeHref, withOrg } from "@/lib/console-routes";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { generalHeaderFacts } from "@/components/place-manage/place-header-state";
-import { intakeFunctionRows } from "@/components/place-manage/sections/state-enrichment";
 import {
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
@@ -141,13 +155,12 @@ function factsFor(place: ConsolePlace) {
       business_state: place.businessState,
       enriching: place.enriching,
       requestCount: place.requestCount,
-      // generalHeaderFacts computes Enriched from the meter. The list ships
-      // the EF's own `isPlaceEnriched(enriched_at)` answer, and the row links
-      // to the Place screen — so the list must agree with its DESTINATION,
-      // not with a third definition. Feed the meter so the shape matches,
-      // then override below.
-      enrich_pulse: place.intakePulse,
-      enrich_pulse_total: place.intakeTotal,
+      // NO meter. generalHeaderFacts would compute Enriched from it, but the
+      // list ships the EF's own `isPlaceEnriched(enriched_at)` answer and
+      // `cellValue` overrides with that — the row links to the Place screen,
+      // so the list must agree with its DESTINATION, not with a third
+      // definition. Feeding a value that is always discarded is what kept the
+      // meter on the wire after MESITA-1637 took the columns away.
       partner: place.partner ?? false,
       verified: place.verified ?? "unknown",
     }).map((f) => [f.key, f]),
@@ -158,14 +171,10 @@ function factsFor(place: ConsolePlace) {
 export function PlaceStatesTable({
   places,
   organizationId,
-  showIntake,
   renderAction,
 }: {
   places: ConsolePlace[];
   organizationId: string;
-  /** Org Places only. The pool's payload carries no intake map, and rendering
-   *  eleven "?" columns there would spend ~450px saying nothing. */
-  showIntake: boolean;
   /** The action cell, INJECTED rather than imported.
    *
    *  PlaceHoldButton is a client component that imports a "use server" module,
@@ -176,9 +185,6 @@ export function PlaceStatesTable({
    *  with no claim/release rights renders. */
   renderAction?: (place: ConsolePlace) => React.ReactNode;
 }) {
-  const intakeColumns = showIntake
-    ? intakeFunctionRows(null, "unknown").map((r) => ({ n: r.n, label: r.label, key: r.key }))
-    : [];
   const showActions = Boolean(renderAction);
 
   return (
@@ -222,15 +228,6 @@ export function PlaceStatesTable({
               <th scope="colgroup" colSpan={GENERAL_COLUMNS.length} className="px-3 py-2 text-center">
                 General States
               </th>
-              {showIntake ? (
-                <th
-                  scope="colgroup"
-                  colSpan={intakeColumns.length}
-                  className="border-border border-l-2 px-3 py-2 text-center"
-                >
-                  Intake States
-                </th>
-              ) : null}
               {showActions ? (
                 <th scope="col" className={cn("px-4 py-2 text-right", STATES_ACTION_HEAD)}>
                   <span className="sr-only">Actions</span>
@@ -246,21 +243,6 @@ export function PlaceStatesTable({
                   {c.label}
                 </th>
               ))}
-              {intakeColumns.map((c, i) => (
-                <th
-                  key={c.key}
-                  scope="col"
-                  title={c.label}
-                  aria-label={c.label}
-                  className={cn(
-                    "px-3 pb-3 text-center font-semibold",
-                    i === 0 && "border-border border-l-2",
-                  )}
-                >
-                  <span className="lg:hidden">{c.n}</span>
-                  <span className="hidden lg:inline">{c.label}</span>
-                </th>
-              ))}
               {showActions ? (
                 <th scope="col" className={cn("px-4 pb-3", STATES_ACTION_HEAD)}>
                   <span className="sr-only">Actions</span>
@@ -274,7 +256,6 @@ export function PlaceStatesTable({
                 key={place.id}
                 place={place}
                 organizationId={organizationId}
-                showIntake={showIntake}
                 showActions={showActions}
                 action={renderAction?.(place)}
               />
@@ -289,21 +270,16 @@ export function PlaceStatesTable({
 function PlaceStatesRow({
   place,
   organizationId,
-  showIntake,
   showActions,
   action,
 }: {
   place: ConsolePlace;
   organizationId: string;
-  showIntake: boolean;
   showActions: boolean;
   action: React.ReactNode;
 }) {
   const href = withOrg(placeHref(place.id), organizationId);
   const facts = factsFor(place);
-  const intake = showIntake
-    ? intakeFunctionRows(place.enrich_functions ?? null, place.seeded ?? "unknown")
-    : [];
 
   return (
     <tr className="[&>td]:border-border/60 hover:bg-muted/40 [&>td]:border-t">
@@ -344,23 +320,6 @@ function PlaceStatesRow({
               falseTone={STATE_FACT_FALSE_TONE[c.key] ?? "pending"}
             />
           )}
-        </td>
-      ))}
-
-      {intake.map((row, i) => (
-        <td
-          key={row.key}
-          className={cn("px-3 py-3 text-center", i === 0 && "border-border border-l-2")}
-        >
-          <StateCell
-            label={row.label}
-            value={row.on}
-            // A function that has not run yet is not a debt the operator owes.
-            // Rose across eleven columns on every fresh place is the exact
-            // "wall of red" a matrix invites, and this is where it is refused.
-            falseTone="neutral"
-            note={row.failed ? "it ran and could not finish" : undefined}
-          />
         </td>
       ))}
 
