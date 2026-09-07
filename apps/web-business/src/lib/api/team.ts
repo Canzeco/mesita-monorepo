@@ -4,7 +4,7 @@
 // one Edge Function per call, errors unwrapped by invokeEF.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { invokeEF, withPlaceId } from "./_invoke";
+import { invokeEF } from "./_invoke";
 
 // project_members.role DB enum — per-place tier (distinct from the
 // platform-level "business" app role). Migration 0025 renamed
@@ -37,80 +37,6 @@ export type TeamSnapshot = {
   members: TeamEditor[];
   pendingBusinessInvites: PendingEditorInvite[];
 };
-
-export async function apiListTeam(
-  client: SupabaseClient,
-  projectId: string,
-): Promise<TeamSnapshot> {
-  return await invokeEF<TeamSnapshot>(
-    client,
-    "business-web-list-members",
-    // Canonical payload key is `placeId` (MESITA-26); local naming unchanged.
-    { placeId: projectId },
-    "Couldn't load your team.",
-  );
-}
-
-type InviteEditorResult =
-  | {
-      mode: "linked";
-      memberId: string;
-      email: string;
-      role: BusinessRole;
-    }
-  | {
-      mode: "invited";
-      inviteId: string;
-      token: string;
-      expiresAt: string;
-      email: string;
-      role: BusinessRole;
-      emailSent: boolean;
-      emailError: string | null;
-    };
-
-export async function apiInviteEditor(
-  client: SupabaseClient,
-  input: {
-    projectId: string;
-    email: string;
-    role: BusinessRole;
-    redirectBase?: string;
-  },
-): Promise<InviteEditorResult> {
-  return await invokeEF<InviteEditorResult>(
-    client,
-    "business-web-invite-member",
-    withPlaceId(input),
-    "Couldn't send the invite.",
-  );
-}
-
-export async function apiUpdateMemberRole(
-  client: SupabaseClient,
-  input: { memberId: string; role: BusinessRole },
-): Promise<{ memberId: string; role: BusinessRole }> {
-  return await invokeEF<{ memberId: string; role: BusinessRole }>(
-    client,
-    "business-web-update-member-role",
-    input,
-    "Couldn't update that member's role.",
-  );
-}
-
-export type RemoveKind = "editor" | "editorInvite";
-
-export async function apiRemoveMember(
-  client: SupabaseClient,
-  input: { id: string; kind: RemoveKind },
-): Promise<{ id: string; kind: RemoveKind }> {
-  return await invokeEF<{ id: string; kind: RemoveKind }>(
-    client,
-    "business-web-remove-member",
-    input,
-    "Couldn't remove that member.",
-  );
-}
 
 export async function apiAcceptEditorInvite(
   client: SupabaseClient,

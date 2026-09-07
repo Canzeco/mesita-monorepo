@@ -1,13 +1,12 @@
 // Small server-safe display atoms for the (shell) console: state badges,
-// payment-state pill, stat tile, data row. Rows not cards —
-// these are calm utility chrome, not decoration.
+// payment-state pill, data row. Rows not cards — these are calm utility
+// chrome, not decoration.
 //
 // Two ladders, deliberately kept apart: an ORGANIZATION is Not connected
 // or Connected (does money land), a PLACE is Listed or Verified (can a
 // guest reach it, did someone prove they run it). Neither describes the
 // other, so neither badge is reusable for the other.
 import { cn } from "@/lib/utils";
-import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import type {
   OrganizationState,
   PaymentAccountState,
@@ -160,28 +159,6 @@ export function StatePill({ state }: { state: PaymentAccountState }) {
     >
       {STATE_LABEL[state]}
     </span>
-  );
-}
-
-export function StatTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="border-border bg-card flex min-w-0 flex-col gap-1 rounded-2xl border p-4">
-      <span className={TINY_LABEL_CLASS}>{label}</span>
-      <span className="font-display text-2xl font-semibold tracking-tight">
-        {value}
-      </span>
-      {hint && (
-        <span className="text-muted-foreground text-[12px]">{hint}</span>
-      )}
-    </div>
   );
 }
 

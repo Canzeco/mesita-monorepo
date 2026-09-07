@@ -38,15 +38,3 @@ export async function apiGetPaymentDashboardLink(
     "Couldn't open the payments dashboard.",
   );
 }
-
-/**
- * The EF's machine-readable code off a thrown invoke error.
- *
- * `not_onboarded` is a NORMAL state (the place has never set up payments), not
- * a fault — the EF returns it as a code precisely so the console can branch
- * instead of pattern-matching an English string that copy edits would break.
- */
-export function paymentsErrorCode(err: unknown): string | null {
-  const code = (err as { code?: unknown })?.code;
-  return typeof code === "string" ? code : null;
-}

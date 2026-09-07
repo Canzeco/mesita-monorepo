@@ -18,6 +18,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlaceProvider } from "@/components/place-manage/PlaceContext";
+import { PlaceUIProvider } from "@/components/place-manage/PlaceUIContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
 import type { AdminPlace } from "@/components/place-manage/actions";
 
@@ -44,7 +45,7 @@ export function PlaceManageShell({
       reload={reload}
     >
       {header}
-      {children}
+      <PlaceUIProvider>{children}</PlaceUIProvider>
       <PlaceSaveBar />
     </PlaceProvider>
   );

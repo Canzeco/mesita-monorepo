@@ -19,10 +19,6 @@ export function isEnriching(state: PlaceEnrichmentState | null): boolean {
   return contentState === "generating" || contentState === "queued";
 }
 
-export function isEnrichFailed(state: PlaceEnrichmentState | null): boolean {
-  return state?.stage === "failed";
-}
-
 export type HeaderFact = {
   key: string;
   label: string;
