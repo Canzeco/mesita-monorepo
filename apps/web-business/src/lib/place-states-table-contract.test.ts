@@ -99,8 +99,25 @@ describe("vocabulary contract", () => {
   // wired renders "no" forever.
   it("reads facts through the shared readers, not a fourth mapper", () => {
     expect(TABLE).toContain("generalHeaderFacts");
-    expect(TABLE).toContain("intakeFunctionRows");
     expect(TABLE_CODE).not.toContain("factOn");
+  });
+
+  // MESITA-1637. Pato: "the intake states are internal." The block came off
+  // this table AND off the payload, so the guard is a source guard: an import
+  // is what a re-add would start with, and the meter is what a re-add would
+  // reach for first if the map were only hidden.
+  it("holds no intake at all — not the map, not the meter", () => {
+    expect(TABLE_CODE).not.toContain("intakeFunctionRows");
+    expect(TABLE_CODE).not.toContain("enrich_functions");
+    expect(TABLE_CODE).not.toContain("intakePulse");
+    expect(TABLE_CODE).not.toContain("enrich_pulse");
+  });
+
+  // The two general columns intake used to sit beside. Removing the block is
+  // right; taking these with it would be the overshoot.
+  it("keeps Enriching and Enriched as general columns", () => {
+    expect(TABLE_CODE).toContain('"enriching"');
+    expect(TABLE_CODE).toContain('"enriched"');
   });
 });
 

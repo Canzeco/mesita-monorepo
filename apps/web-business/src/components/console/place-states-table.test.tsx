@@ -33,24 +33,15 @@ function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
     owned: true,
     partner: false,
     verified: true,
-    intakePulse: 10,
-    intakeTotal: 10,
     ...over,
   };
 }
-
-const fn = (state: "completed" | "failed" | "pending") => ({
-  state,
-  at: null,
-  detail: null,
-});
 
 function render(over: Partial<Parameters<typeof PlaceStatesTable>[0]> = {}) {
   return renderToStaticMarkup(
     <PlaceStatesTable
       places={[place()]}
       organizationId="org-1"
-      showIntake
       {...over}
     />,
   );
@@ -66,10 +57,13 @@ describe("rows and columns", () => {
     expect((html.match(/<tr/g) ?? []).length).toBe(4); // 2 header rows + 2 places
   });
 
-  it("carries both header tiers so the two boxes stay legible", () => {
+  it("carries the group header, and it names ONE box", () => {
+    // Two tiers survive MESITA-1637 even with one group: the second tier is
+    // the column labels, and General States is what the group says the nine
+    // of them are. Intake was the other box and it is gone from this screen.
     const html = render();
     expect(html).toContain("General States");
-    expect(html).toContain("Intake States");
+    expect(html).not.toContain("Intake States");
   });
 
   it("the identity cell holds the image and the name and nothing else", () => {
@@ -106,11 +100,11 @@ describe("cell values", () => {
       claimedAt: null,
     };
     const html = renderToStaticMarkup(
-      <PlaceStatesTable places={[bare]} organizationId="org-1" showIntake />,
+      <PlaceStatesTable places={[bare]} organizationId="org-1" />,
     );
     expect(html).toContain("Old Payload");
-    // Nine general + eleven intake, none of them answerable.
-    expect((html.match(/>\?</g) ?? []).length).toBeGreaterThanOrEqual(19);
+    // Nine general columns, none of them answerable.
+    expect((html.match(/>\?</g) ?? []).length).toBeGreaterThanOrEqual(8);
     expect(html).not.toContain("undefined");
   });
 
@@ -122,44 +116,36 @@ describe("cell values", () => {
   });
 
   it("reports a withheld fact as unknown, never as no", () => {
-    const html = render({ places: [place({ verified: undefined })], showIntake: false });
+    const html = render({ places: [place({ verified: undefined })] });
     expect(html).toContain('aria-label="Verified: unknown"');
     expect(html).not.toContain('aria-label="Verified: no"');
   });
 });
 
-describe("intake", () => {
-  // THE HOSTILE FIXTURE. The high-water stops at the first gap, so it reports
-  // 3 here. The map says Menu (7) landed. If Menu reads "no", the table has
-  // reimplemented the prefix approximation instead of reading the map.
-  it("shows a function that completed after an earlier one failed", () => {
-    const html = render({
-      places: [
-        place({
-          intakePulse: 3,
-          enrich_functions: {
-            pulse: fn("completed"),
-            details: fn("completed"),
-            serp: fn("completed"),
-            links: fn("failed"),
-            social: fn("completed"),
-            menu: fn("completed"),
-          },
-        }),
-      ],
-    });
-    expect(html).toContain('aria-label="7. Menu: yes"');
-    expect(html).toContain('aria-label="5. Social: yes"');
-    // A failed function was still CALLED, and the cell says why.
-    expect(html).toContain("4. Links: yes, it ran and could not finish");
-    // Untouched rungs report not-called, not unknown.
-    expect(html).toContain('aria-label="8. Reviews: no"');
+// MESITA-1637. Pato: "the intake states are internal." The block that used to
+// live here proved the matrix read the per-function MAP rather than the
+// high-water — the right proof while those columns existed. They do not, so
+// the proof inverts: nothing about our pipeline may reach this table.
+//
+// The two general columns that came from intake are NOT intake and must
+// survive, so this asserts both directions in one place. Deleting the block
+// and asserting nothing is how a rule quietly stops being enforced.
+describe("intake is internal and off this table", () => {
+  it("renders no Intake group, no function columns, no rung labels", () => {
+    const html = render();
+    expect(html).not.toContain("Intake States");
+    for (const label of ["Seed", "Serp", "Embedding", "Description", "Reviews"]) {
+      expect(html).not.toContain(label);
+    }
   });
 
-  it("drops the whole intake block when the payload withholds it", () => {
-    const html = render({ showIntake: false });
-    expect(html).not.toContain("Intake States");
-    expect(html).not.toContain("Embedding");
+  it("still renders Enriching and Enriched — those are facts about the PLACE", () => {
+    // Neither reads intake: Enriching is its own boolean on the row and
+    // Enriched is the EF's answer. Losing them with the machinery would be
+    // the overshoot this test exists to catch.
+    const html = render({ places: [place({ enriching: true, enriched: false })] });
+    expect(html).toContain('aria-label="Enriching: yes"');
+    expect(html).toContain('aria-label="Enriched: no"');
   });
 });
 

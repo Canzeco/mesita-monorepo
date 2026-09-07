@@ -53,9 +53,6 @@ export type ConsolePlace = {
   /** Google's OPERATIONAL fact. Null is silence, not "not operational" —
    *  which is why it is a string and not a boolean. */
   businessState?: string | null;
-  /** Intake meter: 0 is the CREATED floor, intakeTotal is a finished run. */
-  intakePulse?: number;
-  intakeTotal?: number;
   /** Created — google_place_id present, the identity spine. */
   seeded?: boolean;
   /** An organization holds this place. Constant per list scope today; the
@@ -68,18 +65,14 @@ export type ConsolePlace = {
    *  pool) and when the lookup FAILED — either way we did not read it, and a
    *  false here would state something we never learned. */
   verified?: boolean;
-  /** Per-function intake, keyed by PULSE step, folded server-side through
-   *  `operatorFunctionStates`. Undefined on the pool.
-   *
-   *  This is NOT derivable from `intakePulse`: the high-water stops at the
-   *  first gap, so a function that completed after an earlier one failed is
-   *  invisible to it. The matrix needs the map; the meter stays for the
-   *  summary. Snake case because it is the EF's own key, shared verbatim with
-   *  business-web-get-overview. */
-  enrich_functions?: Record<
-    string,
-    { state: "pending" | "completed" | "failed"; at: string | null; detail: string | null }
-  >;
+  /* NO INTAKE HERE, deliberately (MESITA-1637). This type carried the
+     per-function map (`enrich_functions`) and the meter (`intakePulse` /
+     `intakeTotal`) for the states matrix. Intake is internal: the columns are
+     gone and the EF stopped shipping both. Enriching and Enriched survive as
+     general columns and neither needs them — `enriching` is its own boolean
+     and `enriched` is the EF's answer. The map still exists on the Place
+     screen's own payload (business-web-get-overview), behind the super-admin
+     Admin tab, which is where operator knowledge belongs. */
   orders?: boolean;
   pickupOrders?: boolean;
   deliveryOrders?: boolean;
