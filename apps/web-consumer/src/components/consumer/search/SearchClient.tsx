@@ -80,6 +80,7 @@ import {
 } from "./SearchMap";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
+import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   applyMapFilters,
@@ -192,10 +193,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  // THE FILTERS CONTROL MOVED, IT DID NOT LEAVE (Pato, 2026-09-02). It came off
-  // the top row earlier the same day for competing with the search bar, and the
-  // next question was "where are the filters???" — so it lives in the BOTTOM
-  // overlay now, beside the count it changes. SearchRailOverlay owns the pill.
+  // THE FILTERS CONTROL IS BACK ON THE TOP ROW (Pato, 2026-09-06), a disc in
+  // the corner beside the bar. The bottom overlay held it for four days and
+  // read fine with a rail under it — but with an empty viewport the pill was
+  // riding the "No places to show here yet" card, so the way out of an empty
+  // map was buried in the empty map's own footnote. SearchFilterRow owns it.
   //
   // The store read comes back WITH it, and that pairing is the rule: while the
   // control was gone this read `MAP_FILTER_DEFAULTS`, because `useMapFilters`
@@ -881,18 +883,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — the search bar, and nothing beside it.
+      {/* Floating top overlay — the query bar, and Filters in the corner.
 
-          ONE ROW, and now ONE CONTROL (Pato, 2026-09-02). This mode is the
-          app's landing surface, so every pixel it spends on chrome is map a
-          guest does not see: the mode rail is already above and the catalog
-          rail is already below.
+          ONE ROW, TWO CONTROLS (Pato, 2026-09-06). This mode is the app's
+          landing surface, so every pixel it spends on chrome is map a guest
+          does not see — but the map's own knobs belong on the map's own row,
+          and the bottom overlay was carrying them on the rail's card. On an
+          empty viewport that card is a 200px "nothing here yet" note at the
+          bottom of the screen, i.e. Filters was hiding inside the very state
+          it exists to get out of.
 
-          Filters used to sit here, and the escalation is the tell — it went
-          icon-only, then took its label, then went primary-filled to be
-          seen. A control that has to keep shouting next to the one thing the
-          guest actually came to use is competing with it, not supporting it.
-          The bar now takes the full width. */}
+          It comes back as a DISC, not the labelled pill that kept escalating
+          here: the corner costs the query no width, and SearchFilterRow wears
+          this bar's exact chrome — same 44px, border, shadow and blur — so the
+          two read as one row instead of a field and a shouting button. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <div className="min-w-0 flex-1">
@@ -906,6 +910,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               placeholder="Search places by name…"
             />
           </div>
+          <SearchFilterRow
+            count={mapFilterCount(filters)}
+            onOpenFilters={() => setFiltersOpen(true)}
+          />
         </div>
 
         {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
@@ -966,8 +974,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}
           onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
-          filterCount={mapFilterCount(filters)}
-          onOpenFilters={() => setFiltersOpen(true)}
           setRailCardRef={(placeId, el) => {
             railRefs.current.set(placeId, el);
           }}

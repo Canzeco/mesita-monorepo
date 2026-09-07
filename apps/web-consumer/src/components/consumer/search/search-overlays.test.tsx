@@ -135,19 +135,25 @@ describe("SearchBar scope affordance", () => {
 });
 
 describe("SearchFilterRow", () => {
-  // IT CARRIES ITS LABEL NOW (Pato, 2026-09-01: "filters button must be more
-  // visible"), reversing the icon-only rule this suite used to pin. A 48px
-  // translucent disc on a mostly-white basemap was camouflage, and the count
-  // badge — the only thing that made it pop — appears only once a filter is
-  // already on, i.e. least visible exactly when it has not been found yet.
-  it("shows a labelled pill, and goes primary-filled when filters are on", () => {
+  // A DISC AGAIN (Pato, 2026-09-06), and this time it is not camouflage: the
+  // 2026-09-01 label existed because the old translucent circle had only a soft
+  // shadow separating it from a pale basemap. It now wears SearchBar's chrome
+  // — same 44px, border, shadow-elev and blur — so it is as visible as the
+  // field beside it while spending none of the field's width.
+  it("shows a bar-height disc, and goes primary-filled when filters are on", () => {
     const rest = renderToStaticMarkup(
       <SearchFilterRow count={0} onOpenFilters={() => {}} />,
     );
     expect(rest).toContain("lucide-sliders-horizontal");
     expect(rest).toContain("Filter places");
-    expect(rest).toMatch(/>\s*Filters\s*</);
-    expect(rest).toContain("bg-card");
+    // Icon-only: no word on the canvas, and a square 44px target.
+    expect(rest).not.toMatch(/>\s*Filters\s*</);
+    expect(rest).toContain("h-11 w-11");
+    expect(rest).toContain("rounded-full");
+    // The bar's own chrome, not the old disc's bare blur.
+    expect(rest).toContain("border-border");
+    expect(rest).toContain("bg-card/95");
+    expect(rest).toContain("shadow-elev");
     expect(rest).not.toContain("bg-primary");
     // The sheet still owns every actual filter — none of them leak onto canvas.
     expect(rest).not.toContain("Restaurants");
@@ -189,8 +195,11 @@ describe("SearchMapFilters", () => {
     // Order off the aria-labels, not the visible names: the group's
     // screen-reader sentence names all three rings too, and it renders
     // before them.
-    const order = ["Mesita Partner Places only", "Mesita Enriched Places, partners included", "Google Places, Mesita places included"]
-      .map((label) => html.indexOf(`aria-label="${label}"`));
+    const order = [
+      "Mesita Partner Places only",
+      "Mesita Enriched Places, partners included",
+      "Google Places, Mesita places included",
+    ].map((label) => html.indexOf(`aria-label="${label}"`));
     expect(order.every((at) => at > -1)).toBe(true);
     expect(order[0]).toBeLessThan(order[1]!);
     expect(order[1]).toBeLessThan(order[2]!);
@@ -278,9 +287,13 @@ describe("SearchPlacesScope", () => {
       <SearchPlacesScope scope="mesita" onScope={() => {}} />,
     );
     expect(html.match(/role="radio"/g)?.length).toBe(3);
-    expect(html).toContain('aria-checked="true" aria-label="Mesita Enriched Places, partners included"');
+    expect(html).toContain(
+      'aria-checked="true" aria-label="Mesita Enriched Places, partners included"',
+    );
     expect(html).toContain('aria-label="Mesita Partner Places only"');
-    expect(html).toContain('aria-label="Google Places, Mesita places included"');
+    expect(html).toContain(
+      'aria-label="Google Places, Mesita places included"',
+    );
     // All three pin colours render — yellow is a set the guest can pick now.
     expect(html).toContain("#ffc400");
     expect(html).toContain("#ff2357");
@@ -294,7 +307,9 @@ describe("SearchPlacesScope", () => {
     const partners = renderToStaticMarkup(
       <SearchPlacesScope scope="partners" onScope={() => {}} />,
     );
-    expect(partners).toContain('aria-checked="true" aria-label="Mesita Partner Places only"');
+    expect(partners).toContain(
+      'aria-checked="true" aria-label="Mesita Partner Places only"',
+    );
     expect(partners).not.toContain("not curated by Mesita");
 
     const google = renderToStaticMarkup(
@@ -493,20 +508,26 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar ALONE, and Filters sits below", () => {
-  it("keeps the Filters control OFF the bar's row and ON the bottom overlay", () => {
+describe("Search map's top row is the query bar and the Filters disc", () => {
+  it("keeps Filters ON the bar's row, top right, and OFF the bottom overlay", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    // OFF THE TOP ROW. It escalated three times trying to be seen next to the
-    // bar (icon-only -> label -> primary-filled) before coming off entirely.
-    expect(src).not.toContain("SearchFilterRow");
-    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    // ON THE BOTTOM OVERLAY, next to the count it changes.
+    // ON THE TOP ROW, last in the flex so it takes the right corner, and
+    // wearing the bar's chrome instead of shouting beside it.
+    expect(src).toContain("<SearchFilterRow");
+    expect(src).toMatch(/<SearchBar[\s\S]*<SearchFilterRow/);
     expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
-    expect(src).toContain("filterCount={mapFilterCount(filters)}");
-    expect(overlays).toContain("SlidersHorizontal");
-    expect(overlays).toContain("filtersPill");
-    // The sheet is still the body behind the pill.
+    expect(src).toContain("count={mapFilterCount(filters)}");
+    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
+    // OFF THE BOTTOM OVERLAY: the pill rode the rail's card, which on an empty
+    // viewport is the "nothing here yet" note itself.
+    expect(overlays).not.toContain("SlidersHorizontal");
+    expect(overlays).not.toContain("filtersPill");
+    expect(overlays).not.toContain("filterCount");
+    expect(src).not.toContain("filterCount={mapFilterCount(filters)}");
+    // Reset filters is the empty state's own way out and stays.
+    expect(overlays).toContain("Reset filters");
+    // The sheet is still the body behind the disc.
     expect(src).toContain("SearchMapFilters");
     // THE STORE READ AND THE CONTROL SHIP TOGETHER, always. While the control
     // was gone this file read MAP_FILTER_DEFAULTS, because useMapFilters
@@ -594,12 +615,12 @@ describe("Search map's top row is the query bar ALONE, and Filters sits below", 
     expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(
-      read("../../../app/(shell)/search/loading.tsx"),
-    ).not.toContain("flex gap-1.5 overflow-hidden");
-    expect(
-      read("../../../app/(shell)/search/loading.tsx"),
-    ).not.toContain("mt-2 flex gap-1.5");
+    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+      "flex gap-1.5 overflow-hidden",
+    );
+    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
+      "mt-2 flex gap-1.5",
+    );
     expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
   });
 
