@@ -767,7 +767,11 @@ export async function setPlaceVerified(
 }
 
 /** Rates-only strategy switch — no plan write (MESITA-912).
- *  Plan-less body on admin-web-set-plan (one-caller ACL; never business-web). */
+ *  Plan-less body on admin-web-set-plan. This call site is a tracked,
+ *  known exception to the EF-name-is-the-ACL convention (MESITA-1600,
+ *  ef-caller-acl.test.ts's GRANDFATHERED_VIOLATIONS) — the name still says
+ *  admin-only, but the auth guard (super_admins) is what actually enforces
+ *  it, so a stray call from here is gated, not a hole. */
 export async function setPlaceStrategy(
   placeId: string,
   rates: Record<string, number | null>,
