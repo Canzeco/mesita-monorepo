@@ -14,7 +14,10 @@ describe("organizationState", () => {
   it("is Not connected for every state short of live", () => {
     const shortOfLive: PaymentAccountState[] = [
       "none",
-      "pending",
+      // `pending` split into these two (MESITA-1645): one is the owner's move,
+      // one is Stripe's. Neither is connected.
+      "unfinished",
+      "in_review",
       "charges_only",
       "restricted",
     ];

@@ -233,17 +233,34 @@ export type PaymentAccount = {
   country: string | null;
 };
 
-/** One derivation, shared by the badge and the pill — never re-derived. */
+/**
+ * One derivation, shared by the badge and the pill — never re-derived.
+ *
+ * Charge capability is read FIRST because it is the strongest fact Stripe
+ * gives us. Below it, the split that matters (MESITA-1645): an owner with
+ * outstanding requirements — whether they never finished or Stripe came back
+ * asking — has work to do and gets Resume. An owner with nothing outstanding
+ * and still no charges is waiting on Stripe, and Resume would only reopen a
+ * form they already completed.
+ *
+ * KNOWN LIMIT, stated rather than papered over: a permanently restricted
+ * account that submitted everything and has nothing due is indistinguishable
+ * from one under review, because the mirror carries no submitted-at timestamp.
+ * Both read "Stripe is checking", which is true of one and merely quiet about
+ * the other. Telling them apart needs a timestamp we do not store yet.
+ */
 export function paymentAccountState(
   account: PaymentAccount | null,
   orphaned: boolean,
 ): PaymentAccountState {
   if (!account) return "none";
   if (orphaned || account.disabled_reason) return "restricted";
-  if (!account.details_submitted) return "pending";
   if (account.charges_enabled && account.payouts_enabled) return "live";
   if (account.charges_enabled) return "charges_only";
-  return "pending";
+  if (!account.details_submitted || account.requirements_due.length > 0) {
+    return "unfinished";
+  }
+  return "in_review";
 }
 
 export async function apiGetPaymentAccount(

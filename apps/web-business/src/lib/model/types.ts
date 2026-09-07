@@ -24,10 +24,18 @@ export type PlaceState = "listed" | "verified";
 export type OrganizationState = "not_connected" | "connected";
 
 /** Stripe Connect account lifecycle — not a boolean. `charges_only` means
- *  money can land but not pay out: cash-in must stay blocked there. */
+ *  money can land but not pay out: cash-in must stay blocked there.
+ *
+ *  `pending` USED TO MEAN TWO OPPOSITE THINGS (MESITA-1645): "you never
+ *  finished" and "you finished, Stripe is checking". Same amber pill, same
+ *  word, and only one of them is work the owner can do. They are split now:
+ *  `unfinished` offers Resume, `in_review` deliberately does not — offering it
+ *  reopened a form the owner had already completed, which is a loop, not a
+ *  next step. */
 export type PaymentAccountState =
   | "none"
-  | "pending"
+  | "unfinished"
+  | "in_review"
   | "charges_only"
   | "live"
   | "restricted";

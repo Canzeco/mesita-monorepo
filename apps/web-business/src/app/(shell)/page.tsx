@@ -12,6 +12,7 @@ import { Section } from "@/components/shared/Section";
 import { OrgStateBadge } from "@/components/console/badges";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
 import { OrgScreenSections } from "@/components/console/OrgScreenSections";
+import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
   apiGetPaymentAccount,
@@ -118,6 +119,11 @@ export default async function OrganizationPage({
         />
       </div>
 
+      {/* Above everything: the answer to "did that work?" comes before the
+          screen it is about (MESITA-1645). */}
+      <ConnectReturnNotice
+        connect={typeof sp.connect === "string" ? sp.connect : undefined}
+      />
       <OrgScreenSections
         org={org}
         myManagerId={user.id}
