@@ -56,7 +56,7 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 // The Me surface — the passport, then five pairs and a tail:
 //
 //   passport       identity + the two axes, DISPLAY ONLY (MESITA-1646)
-//   2              Profile · Passport
+//   2              Passport · Profile
 //   2              Wallet · Plan
 //   2              Notifications · Visits
 //   2              Orders · Reservations
@@ -221,19 +221,24 @@ export function ProfileClient({
           {/* The pair that replaces the card's doors. `Passport` is the only
               way into the document now, and its sheet carries the Instagram
               and Class rows — the only entrances to the connect flow and to
-              the ladder's "Join with Invitation" (Docs › Passport §C). */}
+              the ladder's "Join with Invitation" (Docs › Passport §C).
+
+              PASSPORT LEADS (Pato, MESITA-1648). It sits directly under the
+              card, so naming it first continues what the card just said
+              rather than interrupting it — and the passport is the object,
+              where Profile is a door to editing one part of it. */}
           <DestGrid>
-            <DestTile
-              Icon={UserRound}
-              title="Profile"
-              summary="Name, photo, birthday"
-              onClick={() => profile && setEditOpen(true)}
-            />
             <DestTile
               Icon={IdCard}
               title="Passport"
               summary="Class and Instagram"
               onClick={() => setPassportOpen(true)}
+            />
+            <DestTile
+              Icon={UserRound}
+              title="Profile"
+              summary="Name, photo, birthday"
+              onClick={() => profile && setEditOpen(true)}
             />
           </DestGrid>
 
