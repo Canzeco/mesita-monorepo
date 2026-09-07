@@ -1,14 +1,22 @@
 // State — two boxes (Pato, 2026-08-25 · 2026-08-29).
 //
-//   STATES (11)   Created · Active · Listed · Enriched · Enriching ·
-//                 Verified · Partnered · Mesita Pay · Mesita Credits are bools
-//                 (`true` / `false`). Requested is the guest request count,
-//                 0…n — not a Yes/No. Visit Rewards (wire key `promoting`,
-//                 formerly labeled Promoted) is 0 | 1 | 2. Never a
+//   STATES (12)   Created · Active · Listed · Enriched · Enriching ·
+//                 Verified · Owned · Partnered · Mesita Pay · Mesita Credits
+//                 are bools (`true` / `false`). Requested is the guest request
+//                 count, 0…n — not a Yes/No. Visit Rewards (wire key
+//                 `promoting`, formerly labeled Promoted) is 0 | 1 | 2. Never a
 //                 projects.state. Mesita Pay / Mesita Credits are per-place
 //                 acceptance intent bits (places.mesita_pay_enabled /
 //                 places.credits_enabled) — operator toggles on the Partner tab
 //                 (admin-web-set-place-rails); engines still gate each rail.
+//
+//                 OWNED joined the box with MESITA-1608: an organization holds
+//                 this place. It is CONSTANT on either console list — Org
+//                 Places filters on it and the pool filters on its absence —
+//                 and Pato kept it anyway, so both screens render one column
+//                 set and the fact goes live the day an unfiltered list
+//                 exists. It is not Verified: holding an address and having
+//                 PROVED you hold it are different claims.
 //   INTAKE (11)   own box: 0. Seed … 10. Embedding, each a bool: called or not
 //
 // Repeating the row name on the chip is redundant. Enriching is the live run;
@@ -88,6 +96,7 @@ export const GENERAL_STATE_FACTS = [
   { key: "enriched", label: "Enriched" },
   { key: "enriching", label: "Enriching" },
   { key: "verified", label: "Verified" },
+  { key: "owned", label: "Owned" },
   { key: "partner", label: "Partnered" },
   { key: "promoting", label: "Visit Rewards" },
   { key: "mesita_pay", label: "Mesita Pay" },
@@ -103,6 +112,17 @@ export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> 
   partner: "neutral",
   mesita_pay: "neutral",
   credits: "neutral",
+  // Unclaimed is the pool's normal condition, not a debt anyone owes, so
+  // Owned joins the neutral set the day it joins the box (MESITA-1608).
+  //
+  // Verified deliberately stays ROSE. On the console list that once looked
+  // wrong — a wall of red across places nobody holds — but the fix is that
+  // the pool withholds Verified entirely and renders "?", not that the tone
+  // changes. On Org Places you hold the address, so unproven ownership IS a
+  // debt you can settle, which is the tone's whole meaning and the existing
+  // decision the State box rests on. Same for Enriching: leaving it here
+  // would restyle the single-place box for a list-only concern.
+  owned: "neutral",
 };
 
 /** Acceptance bits with NO engine yet (decision: Pato gate 2026-08-29).
@@ -115,6 +135,32 @@ export const ENGINELESS_STATE_FACT_KEYS: readonly GeneralStateKey[] = [
   "mesita_pay",
   "credits",
 ];
+
+/**
+ * Facts the NOTIFICATION stamper does not write (MESITA-1608).
+ *
+ * `admin-web-list-notifications` puts a `stateFacts` blob on each item, and
+ * the feed reads facts straight out of it. Owned is not in that blob: it is a
+ * join fact (`projects.organization_id`), not something an enrichment event
+ * observes, and nothing stamps it.
+ *
+ * Which is why this list exists rather than a `?? false` at the read site.
+ * Defaulting an unwritten fact to false would have made every notification in
+ * the feed claim "no organization holds this place" — a statement nobody
+ * checked, on a surface whose whole job is reporting what happened. The key
+ * leaves the feed's type instead, so indexing it is a compile error rather
+ * than a plausible-looking lie.
+ *
+ * Different question from ENGINELESS above: those facts ARE stamped and
+ * merely have no engine driving them yet.
+ */
+export const UNSTAMPED_STATE_FACT_KEYS = ["owned"] as const;
+
+/** A general fact the notification payload actually carries. */
+export type StampedStateFactKey = Exclude<
+  GeneralStateKey,
+  (typeof UNSTAMPED_STATE_FACT_KEYS)[number]
+>;
 
 export const INTAKE_FUNCTIONS = [
   { key: "seed", label: "Seed", n: 0 },

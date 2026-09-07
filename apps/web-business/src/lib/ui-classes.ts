@@ -95,3 +95,45 @@ export const PLACEBAR_STICKY_CLASS = "sticky top-0 sm:top-[57px]";
 // their container, and a 900px-wide box for a 13-character RFC reads as a
 // mistake — cap the form, not the card.
 export const FORM_COLUMN_CLASS = "flex w-full max-w-md flex-col gap-3";
+
+// ── The wide-record table (MESITA-1608) ────────────────────────────────────
+//
+// The identity column of a states matrix, pinned to the left edge while the
+// state columns scroll past it. Twenty-one columns have no anchor otherwise.
+//
+// NO `sm:` RESET, and that is the whole difference from web-admin's twins.
+// Admin's constants end in `sm:static sm:bg-transparent` because its catalog
+// is `min-w-[1040px]` and genuinely fits its column from `sm` — its own
+// comment says "Static again from sm, where the table fits its column." This
+// table is ~1540px. Copying admin verbatim would pin the identity column on
+// phones and UNPIN it on every laptop, which is precisely backwards: the
+// laptop is where an operator actually reads this, and it is where the
+// horizontal travel is longest.
+//
+// The opaque backgrounds are load-bearing at every width for the same reason
+// they are on a phone: a sticky cell slides OVER its neighbours, so a
+// translucent tint lets them read through it. Body cells sit on the card, so
+// `bg-card` is exact; the header's `bg-muted/30` has to be flattened against
+// the card to get an opaque twin of the same colour.
+export const STATES_COL_HEAD =
+  "sticky left-0 z-20 bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
+
+export const STATES_COL_CELL = "sticky left-0 z-10 bg-card";
+
+// The action column, pinned to the RIGHT — but only from `sm`.
+//
+// On a 390pt phone the content width is 358px (SHELL_GUTTER is px-4 and the
+// table bleeds past it). A pinned identity cell plus a pinned action cell
+// holding Open and Claim is roughly 234 + 140 = 374px, which leaves NEGATIVE
+// room for the states between them. Below `sm` the actions scroll with the
+// table and the identity column keeps the anchor to itself.
+export const STATES_ACTION_HEAD =
+  "sm:sticky sm:right-0 sm:z-20 sm:bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
+
+export const STATES_ACTION_CELL = "sm:sticky sm:right-0 sm:z-10 sm:bg-card";
+
+// The header row, pinned under the console nav so a hundred rows of pills
+// never lose their labels. Row 1 is `static` below `sm` (see
+// TOPNAV_OCCUPIED_PX), and PlaceBar does NOT render on the list screens — so
+// there is no second bar to clear here, unlike on a place route.
+export const STATES_HEAD_STICKY = "sticky top-0 z-30 sm:top-[57px]";

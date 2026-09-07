@@ -27,9 +27,25 @@ type Row = { key: string; googleId: string | null; hit: PlaceHit | null };
 /** Which button is mid-flight — both share the table below. */
 type Run = "ids" | "all";
 
-function factOn(hit: PlaceHit, key: (typeof GENERAL_STATE_FACTS)[number]["key"]): boolean {
+// A fact this payload cannot answer is "unknown", NEVER false.
+//
+// The trailing branch used to `return false`, which meant a fact added to
+// GENERAL_STATE_FACTS compiled, rendered "no" on every row, and said so with
+// total confidence — a silent wrong answer with nothing to catch it. Owned
+// (MESITA-1608) is exactly that case here: admin-web-search-places reads the
+// `profiles` view, which carries no organization_id, so this table genuinely
+// does not know. It says so.
+function factOn(
+  hit: PlaceHit,
+  key: (typeof GENERAL_STATE_FACTS)[number]["key"],
+): boolean | "unknown" {
   if (key === "seeded") return hit.seeded;
-  if (key === "active") return hit.business_state === "OPERATIONAL";
+  if (key === "active") {
+    // Google's silence is a third state. Flattening null to false asserts the
+    // business is closed, which is a claim we never read (MESITA-1239).
+    if (hit.business_state == null || hit.business_state === "") return "unknown";
+    return hit.business_state === "OPERATIONAL";
+  }
   if (key === "listed") return hit.listed;
   if (key === "requested") return hit.request_count > 0;
   if (key === "enriched") {
@@ -41,7 +57,7 @@ function factOn(hit: PlaceHit, key: (typeof GENERAL_STATE_FACTS)[number]["key"])
   if (key === "promoting") return hit.promoting;
   if (key === "mesita_pay") return hit.mesita_pay;
   if (key === "credits") return hit.credits;
-  return false;
+  return "unknown";
 }
 
 export function MesitaSearchTab({
@@ -334,9 +350,21 @@ function StatePill({
   on,
   falseTone = "pending",
 }: {
-  on: boolean;
+  on: boolean | "unknown";
   falseTone?: "pending" | "neutral";
 }) {
+  // "?" is its own rendering, not a shade of no: the row is saying it does not
+  // know, and a grey "no" would read as an answer.
+  if (on === "unknown") {
+    return (
+      <span
+        title="This payload does not carry that fact"
+        className="text-muted-foreground bg-muted inline-flex items-center justify-center rounded-full px-2 py-0.5 type-label font-semibold"
+      >
+        ?
+      </span>
+    );
+  }
   return (
     <span
       className={

@@ -1,9 +1,10 @@
 import {
   ENGINELESS_STATE_FACT_KEYS,
+  UNSTAMPED_STATE_FACT_KEYS,
   GENERAL_STATE_FACTS,
   INTAKE_FUNCTIONS,
   intakeFunctionLabel,
-  type GeneralStateKey,
+  type StampedStateFactKey,
   type IntakeFunctionKey,
 } from "@/lib/state-vocabulary";
 import type { NotificationItem, NotificationType } from "./actions";
@@ -140,8 +141,13 @@ function isListedState(state: unknown): boolean {
   return typeof state === "string" && LISTED_STATES.includes(state);
 }
 
-export type StateFactKey = GeneralStateKey;
-export const STATE_FACTS = GENERAL_STATE_FACTS;
+// Owned is in the State vocabulary but NOT in the notification payload, so it
+// is not a key this feed can index — see UNSTAMPED_STATE_FACT_KEYS.
+export type StateFactKey = StampedStateFactKey;
+export const STATE_FACTS: readonly { key: StateFactKey; label: string }[] =
+  GENERAL_STATE_FACTS.filter(
+    (f) => !(UNSTAMPED_STATE_FACT_KEYS as readonly string[]).includes(f.key),
+  ) as readonly { key: StateFactKey; label: string }[];
 export { INTAKE_FUNCTIONS };
 export type { IntakeFunctionKey };
 

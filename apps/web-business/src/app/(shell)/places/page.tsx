@@ -5,7 +5,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
-import { PlaceRow } from "@/components/console/PlaceRow";
+import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
+import { PlaceStatesTable } from "@/components/console/PlaceStatesTable";
 import { NoOrganization } from "@/components/console/NoOrganization";
 import { createServerSupabase } from "@/lib/supabase/server";
 import {
@@ -14,8 +15,8 @@ import {
   type ConsolePlace,
 } from "@/lib/api/organizations";
 import { canRelease, resolveActiveOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
-import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
+import { SHELL_ROUTES, placeHref, withOrg } from "@/lib/console-routes";
+import { CTA_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -96,17 +97,30 @@ export default async function OrgPlacesPage({
           }
         />
       ) : (
-        <div className="border-border bg-card rounded-2xl border px-4">
-          {places.map((p) => (
-            <PlaceRow
-              key={p.id}
-              place={p}
-              action="release"
-              organizationId={org.id}
-              allowed={canRelease(org.myRole)}
-            />
-          ))}
-        </div>
+        /* Intake shows HERE and not on the pool: this organization holds
+           these addresses, so how far our pipeline got with them is its
+           business. The pool is readable by any Mesita account. */
+        <PlaceStatesTable
+          places={places}
+          organizationId={org.id}
+          showIntake
+          renderAction={(place) => (
+            <span className="inline-flex items-center gap-2">
+              <Link
+                href={withOrg(placeHref(place.id), org.id)}
+                className={PILL_BUTTON_CLASS}
+              >
+                Open
+              </Link>
+              <PlaceHoldButton
+                action="release"
+                placeId={place.id}
+                organizationId={org.id}
+                allowed={canRelease(org.myRole)}
+              />
+            </span>
+          )}
+        />
       )}
     </>
   );

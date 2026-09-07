@@ -1,0 +1,180 @@
+// The states matrix, RENDERED. Not a source read — the actual HTML.
+//
+// web-business is email-OTP gated and the production catalogue is empty, so
+// nobody — no agent, no preview, no screenshot — can look at this screen.
+// renderToStaticMarkup against fixtures is the strongest proof available, and
+// org-screen-sections.test.tsx already proves the pattern works here with no
+// DOM and no server mocks.
+//
+// The action cell is INJECTED, which is why this file can exist at all:
+// PlaceHoldButton is a client component importing a "use server" module, so a
+// table that imported it would drag next/headers into this environment.
+import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { PlaceStatesTable } from "./PlaceStatesTable";
+import type { ConsolePlace } from "@/lib/api/organizations";
+
+function place(over: Partial<ConsolePlace> = {}): ConsolePlace {
+  return {
+    id: "p1",
+    name: "Cabaret Social Room",
+    address: null,
+    zone: null,
+    organizationId: "org-1",
+    claimedAt: null,
+    organizationName: "Canzeco",
+    photoUrl: null,
+    listed: true,
+    requestCount: 3,
+    enriching: false,
+    enriched: true,
+    businessState: "OPERATIONAL",
+    seeded: true,
+    owned: true,
+    partner: false,
+    verified: true,
+    intakePulse: 10,
+    intakeTotal: 10,
+    ...over,
+  };
+}
+
+const fn = (state: "completed" | "failed" | "pending") => ({
+  state,
+  at: null,
+  detail: null,
+});
+
+function render(over: Partial<Parameters<typeof PlaceStatesTable>[0]> = {}) {
+  return renderToStaticMarkup(
+    <PlaceStatesTable
+      places={[place()]}
+      organizationId="org-1"
+      showIntake
+      {...over}
+    />,
+  );
+}
+
+describe("rows and columns", () => {
+  it("renders one row per place", () => {
+    const html = render({
+      places: [place({ id: "a", name: "Alpha" }), place({ id: "b", name: "Beta" })],
+    });
+    expect(html).toContain("Alpha");
+    expect(html).toContain("Beta");
+    expect((html.match(/<tr/g) ?? []).length).toBe(4); // 2 header rows + 2 places
+  });
+
+  it("carries both header tiers so the two boxes stay legible", () => {
+    const html = render();
+    expect(html).toContain("General States");
+    expect(html).toContain("Intake States");
+  });
+
+  it("the identity cell holds the image and the name and nothing else", () => {
+    const html = render({
+      places: [place({ organizationName: "Canzeco", address: "Av. Nuevo León 4" })],
+    });
+    // Both facts are still ON the payload; the cell must not render them.
+    expect(html).not.toContain("Canzeco");
+    expect(html).not.toContain("Av. Nuevo León 4");
+    expect(html).toContain("Cabaret Social Room");
+  });
+});
+
+describe("cell values", () => {
+  it("says yes, no and ? in words", () => {
+    const html = render({
+      places: [place({ listed: true, partner: false, verified: undefined })],
+    });
+    expect(html).toContain(">yes<");
+    expect(html).toContain(">no<");
+    expect(html).toContain(">?<");
+  });
+
+  // The deploy window: merging to main auto-deploys the EF and triggers the
+  // Vercel build in parallel, so this component briefly runs against a payload
+  // that predates it. It must not throw, and it must not invent answers.
+  it("renders a payload with every new field absent, without throwing", () => {
+    const bare: ConsolePlace = {
+      id: "p9",
+      name: "Old Payload",
+      address: null,
+      zone: null,
+      organizationId: null,
+      claimedAt: null,
+    };
+    const html = renderToStaticMarkup(
+      <PlaceStatesTable places={[bare]} organizationId="org-1" showIntake />,
+    );
+    expect(html).toContain("Old Payload");
+    // Nine general + eleven intake, none of them answerable.
+    expect((html.match(/>\?</g) ?? []).length).toBeGreaterThanOrEqual(19);
+    expect(html).not.toContain("undefined");
+  });
+
+  // Google's silence is a third state. Flattening null to false would assert
+  // the business is closed — a claim nobody read (MESITA-1239).
+  it("never asserts closed when Google is silent", () => {
+    const html = render({ places: [place({ businessState: null })] });
+    expect(html).toContain('aria-label="Active: unknown"');
+  });
+
+  it("reports a withheld fact as unknown, never as no", () => {
+    const html = render({ places: [place({ verified: undefined })], showIntake: false });
+    expect(html).toContain('aria-label="Verified: unknown"');
+    expect(html).not.toContain('aria-label="Verified: no"');
+  });
+});
+
+describe("intake", () => {
+  // THE HOSTILE FIXTURE. The high-water stops at the first gap, so it reports
+  // 3 here. The map says Menu (7) landed. If Menu reads "no", the table has
+  // reimplemented the prefix approximation instead of reading the map.
+  it("shows a function that completed after an earlier one failed", () => {
+    const html = render({
+      places: [
+        place({
+          intakePulse: 3,
+          enrich_functions: {
+            pulse: fn("completed"),
+            details: fn("completed"),
+            serp: fn("completed"),
+            links: fn("failed"),
+            social: fn("completed"),
+            menu: fn("completed"),
+          },
+        }),
+      ],
+    });
+    expect(html).toContain('aria-label="7. Menu: yes"');
+    expect(html).toContain('aria-label="5. Social: yes"');
+    // A failed function was still CALLED, and the cell says why.
+    expect(html).toContain("4. Links: yes, it ran and could not finish");
+    // Untouched rungs report not-called, not unknown.
+    expect(html).toContain('aria-label="8. Reviews: no"');
+  });
+
+  it("drops the whole intake block when the payload withholds it", () => {
+    const html = render({ showIntake: false });
+    expect(html).not.toContain("Intake States");
+    expect(html).not.toContain("Embedding");
+  });
+});
+
+describe("actions", () => {
+  it("renders the injected action cell", () => {
+    const html = render({
+      renderAction: (p) => <button type="button">Claim {p.name}</button>,
+    });
+    expect(html).toContain("Claim Cabaret Social Room");
+  });
+
+  // PlaceHoldButton returns null for a viewer. In a flex row that collapsed
+  // cleanly; in a table it would leave a headed, permanently empty column.
+  it("collapses the action column when there is no action", () => {
+    const html = render({ renderAction: undefined });
+    expect(html).not.toContain("Actions");
+  });
+});
