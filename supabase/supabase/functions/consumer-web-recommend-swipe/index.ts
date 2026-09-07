@@ -32,7 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
-import type { PlaceRow } from "../_shared/place-pool-shape.ts";
+import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import {
   applyGeneralCategoryCap,
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 502);
   }
 
-  const admitted = (data ?? []) as unknown as PlaceRow[];
+  const admitted = (data ?? []) as unknown as PlaceProfileRow[];
   const pool = trimToRadius(
     admitted,
     (r) => (r as unknown as Record<string, unknown>).lat as number | null,
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     geo.lat !== null && geo.lng !== null
       ? { lat: geo.lat, lng: geo.lng }
       : null,
-  ) as unknown as PlaceRow[];
+  ) as unknown as PlaceProfileRow[];
 
   const guestGeo = geo.lat !== null && geo.lng !== null
     ? { lat: geo.lat, lng: geo.lng }
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
         categories: predicates.categories,
         families: predicates.familyKeys,
       },
-    ) as PlaceRow[]
+    ) as PlaceProfileRow[]
     : rows;
 
   const deck = ordered.slice(0, limit).map((r) => stripInternal(r));

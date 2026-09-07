@@ -23,7 +23,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { fetchCandidatePool, type PlaceRow } from "../_shared/place-pool.ts";
+import { fetchCandidatePool, type PlaceProfileRow } from "../_shared/place-pool.ts";
 import { embedSingle, rankByCosine } from "../_shared/embeddings.ts";
 import { rowToMemoPlaceCard } from "../_shared/memo-place-card.ts";
 
@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     : DEFAULT_LIMIT;
 
   const admin = adminClient(envRes.env);
-  const pool = await fetchCandidatePool<PlaceRow>(admin, {
+  const pool = await fetchCandidatePool<PlaceProfileRow>(admin, {
     lat,
     lng,
     radiusKm: RECALL_RADIUS_KM,

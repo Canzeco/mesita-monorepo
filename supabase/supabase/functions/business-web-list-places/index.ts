@@ -52,7 +52,7 @@ const MAX_LIMIT = 100;
 
 /** The place half of the row. Kept to columns that already exist on
  *  `places` — this endpoint adds no schema and computes no new fact. */
-const PLACE_EMBED =
+const PLACE_PROFILE_EMBED =
   "name, address, zone, photos, enriched_at, request_count, business_state, " +
   "enrichment, orders_enabled, pickup_orders_enabled, delivery_orders_enabled, " +
   "reservations_enabled, mesita_pay_enabled, credits_enabled";
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     .from("projects")
     .select(
       `id, state, content_state, organization_id, claimed_at, ` +
-        `place_profiles!inner(${PLACE_EMBED}), organizations(name)`,
+        `place_profiles!inner(${PLACE_PROFILE_EMBED}), organizations(name)`,
     )
     .limit(limit);
 

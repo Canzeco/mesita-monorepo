@@ -1,6 +1,6 @@
 import { isOnDomain } from "../_shared/onboarding.ts";
 
-export type PlaceRow = {
+export type PlaceProfileRow = {
   id: string;
   phone: string | null;
   email: string | null;
@@ -12,7 +12,7 @@ export type MethodsBlock = {
   email: { available: boolean; displayEmail: string | null };
 };
 
-export function methodsFor(place: PlaceRow): MethodsBlock {
+export function methodsFor(place: PlaceProfileRow): MethodsBlock {
   const phoneOk = !!place.phone;
   const emailOk =
     !!place.email &&

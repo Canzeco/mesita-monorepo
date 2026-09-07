@@ -178,7 +178,7 @@ export const FunctionStateSchema: Schema<FunctionState> = object({
  * one of the 10 steps yet, and an absent key means exactly that, not
  * `{state:"pending",...}`. `object()` iterates every key of its shape
  * regardless of presence, which is the right behavior for a fixed-shape
- * document (place-doc.ts's own PlacePatch keys) but wrong here: a place
+ * document (place-doc.ts's own PlaceProfilePatch keys) but wrong here: a place
  * that has only run `pulse` must round-trip as `{pulse: {...}}`, not as
  * all 10 keys with 9 fabricated `pending` entries. Bespoke, small, and
  * kept local rather than promoted into doc-schema.ts's core until a SECOND

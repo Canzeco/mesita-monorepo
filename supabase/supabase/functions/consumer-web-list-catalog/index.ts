@@ -13,7 +13,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { stripInternal } from "../_shared/place-pool-shape.ts";
-import type { PlaceRow } from "../_shared/place-pool-shape.ts";
+import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
@@ -35,7 +35,7 @@ type Body = {
   lng?: number;
 };
 
-function wirePlaces(rows: PlaceRow[]) {
+function wirePlaces(rows: PlaceProfileRow[]) {
   return rows.map((r) => {
     const out = stripInternal(r);
     return { ...out, photos: Array.isArray(out.photos) ? out.photos : [] };
@@ -43,11 +43,11 @@ function wirePlaces(rows: PlaceRow[]) {
 }
 
 function fillGenerated(
-  pool: PlaceRow[],
+  pool: PlaceProfileRow[],
   query: string,
   queryVec: number[] | undefined,
   limit: number,
-): PlaceRow[] {
+): PlaceProfileRow[] {
   if (queryVec) {
     const ranked = rankByCosine(pool, queryVec).filter((r) => r.embedding != null);
     if (ranked.length > 0) return ranked.slice(0, limit);
@@ -85,14 +85,14 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: error.message }, 502);
   }
 
-  const admitted = (data ?? []) as unknown as PlaceRow[];
+  const admitted = (data ?? []) as unknown as PlaceProfileRow[];
   const pool = trimToRadius(
     admitted,
     (r) => (r as unknown as Record<string, unknown>).lat as number | null,
     (r) => (r as unknown as Record<string, unknown>).lng as number | null,
     cfg.filters.maxDistanceKm,
     geo,
-  ) as PlaceRow[];
+  ) as PlaceProfileRow[];
 
   const occupied = occupiedFromRows(pool, cfg.catalog.minSeedPlaces);
   const plan = planCatalogRails(cfg.catalog, occupied, CATALOG_VIBE_QUERIES);
