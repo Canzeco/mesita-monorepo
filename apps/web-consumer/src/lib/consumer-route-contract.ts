@@ -22,8 +22,8 @@ export const CONSUMER_ROUTES = {
   // (see next.config.ts) for the bookmarks #1567 shipped, briefly.
   search: "/search",
   // DISCOVER — Home's mode-rail namespace, and ONLY Home's now that Search
-  // has moved out (MESITA-1616). Four segments, matching DiscoverModeNav's
-  // four columns exactly — no more "one route the rail deliberately
+  // has moved out (MESITA-1616). Five segments, matching DiscoverModeNav's
+  // five columns exactly — no more "one route the rail deliberately
   // excludes."
   //
   // SEGMENTS MATCH LABELS HERE, which is the exception in this codebase rather
@@ -32,8 +32,8 @@ export const CONSUMER_ROUTES = {
   // ROUTE rename: renaming a pill without moving its segment breaks the rule
   // silently.
   //
-  // CATALOG, SWIPE, CHAT, FAVS live under the HOME tab's mode rail
-  // (DiscoverModeNav, four columns). CatalogRails carries no search bar —
+  // SWIPE, FEED, CATALOG, CHAT, FAVS live under the HOME tab's mode rail
+  // (DiscoverModeNav, five columns). CatalogRails carries no search bar —
   // Search never shared this namespace's rail to begin with, once moved.
   //
   // CATALOG, NOT HOME, is still the mode's own name (Pato, 2026-09-02 call,
@@ -47,11 +47,29 @@ export const CONSUMER_ROUTES = {
   // 308 to the Discover default. Read the redirect table in next.config.ts
   // before touching either.
   //
-  // All four are live. CatalogRails is Catalog's whole body; SocialFeed stays
-  // on disk and mounts INTO Catalog when it un-parks, not as its own route.
+  // All five are live. CatalogRails is Catalog's whole body.
+  //
+  // FEED IS A MODE AGAIN (Pato, MESITA-1621, live instruction: "add a new
+  // subpage called feed — swipe, feed, catalog, chat, favs"). This file used
+  // to say SocialFeed "mounts INTO Catalog when it un-parks, not as its own
+  // route" — that is the line this change overturns, deliberately: the
+  // component sat on disk with no surface at all from the hub's retirement
+  // (2026-09-01) to now, and folding a people-feed into a grid of category
+  // rails was always the awkward half of that plan. It gets the route.
+  //
+  // `/discover/feed` WAS A REDIRECT SOURCE and is not any more. It 308'd to
+  // /discover/catalog for the hour the BROWSE mode shipped under the name
+  // Feed (#1447 -> #1448). A next.config redirect shadows a real route
+  // entirely, so that entry had to be deleted for this page to be reachable
+  // — see the removal in next.config.ts, and note `legacy.discoverFeed` is
+  // gone from the legacy block below for the same reason. The name is being
+  // REUSED for a different mode, not restored to the old one, so those
+  // hour-old bookmarks now land somewhere new. That is the accepted cost;
+  // one hour of production traffic is not worth reserving the word forever.
   discover: "/discover",
   discoverTabs: {
     swipe: "/discover/swipe",
+    feed: "/discover/feed",
     catalog: "/discover/catalog",
     chat: "/discover/chat",
     favs: "/discover/favs",
@@ -204,12 +222,16 @@ export const CONSUMER_ROUTES = {
     // segment is itself a redirect source above, and chaining through it
     // would cost a second hop.
     discoverMap: "/discover/map",
-    // Catalog's segment for the hour it shipped as Feed (#1447 -> #1448).
-    discoverFeed: "/discover/feed",
-    // And for the day it shipped as Home (#1448 -> 2026-09-02). Live in
-    // production both times, so both bookmarks are real and both forward
-    // STRAIGHT to /discover/catalog — never Feed through Home through Catalog,
-    // which would be the 3-hop chain T4 refuses.
+    // NO `discoverFeed` KEY any more (MESITA-1621). /discover/feed spent an
+    // hour as Catalog's segment (#1447 -> #1448) and 308'd here ever since;
+    // it is a REAL ROUTE now — Home's Feed mode — and a redirect would
+    // shadow it. The hour-old bookmarks land on the new mode instead of
+    // Catalog. Deliberate: see discoverTabs above.
+    //
+    // Catalog's segment for the day it shipped as Home (#1448 -> 2026-09-02).
+    // Live in production, so the bookmarks are real, and it forwards STRAIGHT
+    // to /discover/catalog — never through /discover/feed, which is a live
+    // page now and would make this a hop into the wrong mode entirely.
     discoverHome: "/discover/home",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.

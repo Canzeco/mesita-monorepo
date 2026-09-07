@@ -1,6 +1,6 @@
 "use client";
 
-// Home's mode rail — the topbar menu across Home's four modes.
+// Home's mode rail — the topbar menu across Home's five modes.
 //
 // SEARCH LEFT THIS RAIL FOR ITS OWN TAB (Pato, MESITA-1609), then its own
 // ROUTE (MESITA-1616) — the tab move alone left Search's screen nested under
@@ -8,39 +8,46 @@
 // concerns are gone now: Search shares neither this component nor its route
 // with Home.
 //
-// EVERY PILL IS 25% (four modes), the same rule InboxSectionNav follows at
-// three pills and PaySectionNav at two: `grid-flow-col auto-cols-fr` on a
-// `w-max min-w-full` track. At rest min-w-full stretches the track to the
-// frame and the fr columns split it evenly; at large accessibility text
-// w-max lets the track outgrow the frame and the scroller takes over, columns
-// still equal.
+// EVERY PILL IS 20% (five modes, Feed joined at MESITA-1621), the same rule
+// InboxSectionNav follows at three pills and PaySectionNav at two:
+// `grid-flow-col auto-cols-fr` on a `w-max min-w-full` track. At rest
+// min-w-full stretches the track to the frame and the fr columns split it
+// evenly; at large accessibility text w-max lets the track outgrow the frame
+// and the scroller takes over, columns still equal.
 //
 // THE SCROLLER IS THE FALLBACK, NOT THE RESTING STATE. A row that scrolls at
 // rest clips a label mid-word and reads as a broken render rather than an
 // affordance.
 //
-// THE MEASUREMENT, and it is no longer tight — dropping Search bought real
-// margin back. `auto-cols-fr` sizes EVERY column to the widest pill, so the
-// track is 4 x widest + 16px of gaps and it must fit 359px. At `type-label`
-// (11px), reusing the per-label widths measured for the five-mode row (no
-// mode's own width changes when a sibling leaves or the row reorders):
+// THE MEASUREMENT, re-run for five columns (MESITA-1621) — the previous
+// version of this block ended "a FIFTH mode back in this rail is the next
+// time to re-measure", and this is that re-measure. `auto-cols-fr` sizes
+// EVERY column to the widest pill, so the track is 5 x widest + 16px of gaps
+// and it must fit 359px. At `type-label` (11px):
 //
-//   label    text   + 26px chrome   track (4w+16)   vs 359px
+//   label    text   + 26px chrome   track (5w+16)   vs 359px
 //   -------  -----  --------------  --------------  -----------
-//   Swipe    31.8   57.8            247.2           fits (+112)
-//   Catalog  40.3   66.3            281.2           fits (+78)
-//   Chat     24.5   50.5            218.0           fits (+141)
-//   Favs     25.1   51.1            220.4           fits (+139)
+//   Swipe    31.8   57.8            305.0           fits (+54)
+//   Feed     25.4   51.4            273.0           fits (+86)
+//   Catalog  40.3   66.3            347.5           fits (+11.5)
+//   Chat     24.5   50.5            268.5           fits (+90.5)
+//   Favs     25.1   51.1            271.5           fits (+87.5)
 //
-// CATALOG IS STILL THE WIDEST, so `type-label` stays the type token even
-// though the 7px squeeze that originally forced it (see consumer-route-
-// contract.ts's discoverDefault comment for that history) no longer applies
-// at four columns — reverting to `text-xs` here would be a separate,
-// deliberate call this PR does not make.
+// FEED'S 25.4 IS THE CONSERVATIVE TOP OF ITS BAND, not a fresh measurement in
+// this table's units. Measured against its own neighbours in Inter 600 at
+// 11px, "Feed" lands between "Favs" and "Chat"; it is entered at a hair above
+// the wider of the two so a rounding error can only ever over-reserve. It is
+// nowhere near the widest label, so the budget does not turn on it.
 //
-// Chrome per pill = 14px icon + 4px gap-1 + 8px px-1. A FIFTH mode back in
-// this rail, or any label wider than "Catalog", is the next time to
-// re-measure — there is real margin now, but it is not unlimited.
+// CATALOG IS STILL THE WIDEST and it is now the binding constraint: 347.5 of
+// 359px, ~11px of margin. `type-label` is no longer a preference — at
+// `text-xs` (12px) Catalog's column alone would push the track past the
+// frame, so the swap back that the four-column note called "a separate
+// deliberate call" is off the table until a label gets shorter.
+//
+// Chrome per pill = 14px icon + 4px gap-1 + 8px px-1. A SIXTH mode, or any
+// label wider than "Catalog", does NOT fit — 6 x 66.3 + 20 = 417.8. The next
+// addition has to shorten a label, drop a mode, or give up the icons.
 //
 
 import { useEffect, useRef, useState } from "react";
@@ -50,6 +57,7 @@ import {
   Flame,
   Heart,
   LayoutGrid,
+  Rows3,
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
@@ -67,7 +75,7 @@ type Mode = {
   blurb?: string;
 };
 
-// ALL FOUR ARE LIVE; nothing here is parked — the `soon` branch below is kept
+// ALL FIVE ARE LIVE; nothing here is parked — the `soon` branch below is kept
 // for the next mode that lands unfinished, not because anything uses it
 // today.
 //
@@ -77,9 +85,21 @@ type Mode = {
 // first-pill-is-default reasoning, which is unaffected by which mode
 // actually leads — it just carries over to Swipe now.
 //
+// FEED SITS SECOND, between Swipe and Catalog (Pato, MESITA-1621, live
+// instruction). It is the deck as one two-column grid — the same places
+// Swipe deals you one at a time, all at once — so it belongs beside Swipe,
+// on the deck's side of the rail, not out past Catalog with Chat and Favs.
+// Swipe still leads and is still the default; nothing about first-pill-is-
+// default changes here.
+//
 // CATALOG is the catalog rails with no search bar on it — the reason two
 // typed inputs one pill apart was ever a redundancy left with Search, so
 // that argument is now historical, not load-bearing.
+//
+// Rows3 for Feed, against LayoutGrid for Catalog: both modes are grids of
+// places, and the glyphs have to say which. Rows3's stacked full-width bars
+// read as one column running down the screen (Feed pours the whole deck into
+// one grid); LayoutGrid's four boxes read as sections (Catalog's rails).
 //
 // LayoutGrid, not House. #1449 swapped the grid for a house because the grid
 // "read as four boxes next to the word Home" — correct then, and the same
@@ -90,6 +110,11 @@ export const MODES: Mode[] = [
     href: CONSUMER_ROUTES.discoverTabs.swipe,
     label: "Swipe",
     Icon: Flame,
+  },
+  {
+    href: CONSUMER_ROUTES.discoverTabs.feed,
+    label: "Feed",
+    Icon: Rows3,
   },
   {
     href: CONSUMER_ROUTES.discoverTabs.catalog,
@@ -120,8 +145,9 @@ export function DiscoverModeNav() {
     activeRef.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
   }, [pathname]);
 
-  // `type-label` (11px), not `text-xs` (12px): "Catalog" is the widest label
-  // and 12px puts the fr track 7px over the 359px frame. See THE MEASUREMENT.
+  // `type-label` (11px), not `text-xs` (12px): "Catalog" is the widest label,
+  // every column is sized to it, and at five columns 12px puts the fr track
+  // well past the 359px frame. See THE MEASUREMENT.
   const base =
     "type-label flex items-center justify-center gap-1 rounded-full px-1 py-2 font-semibold whitespace-nowrap transition active:scale-[0.98]";
   const resting =

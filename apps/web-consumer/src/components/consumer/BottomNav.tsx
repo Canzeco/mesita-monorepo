@@ -28,9 +28,9 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 //   HOME AND SEARCH SPLIT BACK APART. Discover merged them 2026-09-01
 //   because Home had nothing live behind it — five modes that all opened
 //   coming-soon dialogs, so the dead tab happened to be the leftmost one.
-//   That reasoning is retired now that Home has a real body again: Catalog,
-//   Swipe, Chat and Favs, the four modes DiscoverModeNav still carries (see
-//   that file). Search keeps its own screen exactly as it was — the map, the
+//   That reasoning is retired now that Home has a real body again: Swipe,
+//   Feed, Catalog, Chat and Favs, the five modes DiscoverModeNav carries
+//   today (see that file — Feed joined at MESITA-1621). Search keeps its own screen exactly as it was — the map, the
 //   one search bar — only its address changes, from a mode pill to a tab of
 //   its own. This is NOT the 2026-09-01 merge being re-litigated; it is the
 //   merge's own stated reason (Home is dead weight) no longer being true.
@@ -104,16 +104,21 @@ const ITEMS: Item[] = [
     // reversed now rather than kept.
     Icon: MesitaMark,
     label: "Home",
-    // FOUR EXPLICIT SEGMENTS, not a blanket "/discover" prefix — that prefix
-    // is gone from the route contract (MESITA-1609) precisely because it can
-    // no longer answer "which tab lights" on its own. /place rides here
-    // exactly as it rode Discover before — drop it and place detail lights
-    // NOTHING, which route-structure T5's cardinality assertion is what
-    // catches.
+    // FIVE EXPLICIT SEGMENTS (Feed joined at MESITA-1621), not a blanket
+    // "/discover" prefix — that prefix is gone from the route contract
+    // (MESITA-1609) precisely because it can no longer answer "which tab
+    // lights" on its own. /place rides here exactly as it rode Discover
+    // before — drop it and place detail lights NOTHING, which route-structure
+    // T5's cardinality assertion is what catches.
+    //
+    // EVERY MODE NEEDS ITS OWN LINE. A mode added to DiscoverModeNav and
+    // missed here renders its screen with the bottom bar showing NO tab lit —
+    // tsc cannot see it, and only T5's matrix does.
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.place,
       CONSUMER_ROUTES.discoverTabs.catalog,
       CONSUMER_ROUTES.discoverTabs.swipe,
+      CONSUMER_ROUTES.discoverTabs.feed,
       CONSUMER_ROUTES.discoverTabs.chat,
       CONSUMER_ROUTES.discoverTabs.favs,
     ],

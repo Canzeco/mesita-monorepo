@@ -234,9 +234,13 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    // Home's four modes (MESITA-1609 — was "Discover" before Search split out).
+    // Home's modes (MESITA-1609 — was "Discover" before Search split out).
+    // Feed is here because it is the newest (MESITA-1621) and a mode added to
+    // the rail but missed in BottomNav's matchPrefixes renders with NO tab
+    // lit — nothing else catches that.
     ["/discover/catalog", "Home"],
     ["/discover/swipe", "Home"],
+    ["/discover/feed", "Home"],
     ["/discover/favs", "Home"],
     // /place rode the Home entry until the hub was retired (2026-09-01) and
     // has no other consumer. If it is ever dropped from Home's
@@ -338,15 +342,16 @@ describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
 // any other test notices — the row just quietly loses its selected state.
 //
 // It also pins ORDER and COUNT. Search left this rail for its own tab
-// (MESITA-1609) and then its own route (MESITA-1616); four modes remain,
-// Swipe leading now (MESITA-1615).
+// (MESITA-1609) and then its own route (MESITA-1616); Feed joined at
+// MESITA-1621, second, so five modes now, Swipe still leading (MESITA-1615).
 describe("T5b — Home's mode rail", () => {
-  it("is exactly Swipe · Catalog · Chat · Favs", async () => {
+  it("is exactly Swipe · Feed · Catalog · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
       "Swipe",
+      "Feed",
       "Catalog",
       "Chat",
       "Favs",
@@ -354,15 +359,22 @@ describe("T5b — Home's mode rail", () => {
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill, so the track is 4 x widest + 16px
+  // sizes every column to the WIDEST pill, so the track is N x widest + 16px
   // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
   // 26px: a 14px icon, gap-1, and px-1 either side.
   //
-  // MEASURED AT 11px (`type-label`), reusing the per-label widths measured
-  // for the five-mode row — no mode's own width changes when Search leaves.
-  // Dropping a column only ever loosens this budget; the assertion stays so a
-  // FUTURE addition (a sixth mode, Search rejoining) re-tightens it and gets
-  // caught here first.
+  // THIS IS THE ASSERTION THAT JUST DID ITS JOB. It was written when Search
+  // left the rail, explicitly so "a FUTURE addition re-tightens it and gets
+  // caught here first" — Feed is that addition (MESITA-1621), and at five
+  // columns the budget lands at 347.5 of 359px. ~11px of margin: a SIXTH mode
+  // does not fit (6 x 66.3 + 20 = 417.8), and neither does any label wider
+  // than "Catalog". Do not add either without shortening a label first.
+  //
+  // MEASURED AT 11px (`type-label`). Feed's 25.4 is the conservative top of
+  // its band rather than a fresh measurement in these units — in Inter 600 at
+  // 11px it sits between Favs and Chat, and it is entered just above the
+  // wider of the two so the error can only over-reserve. Catalog is the
+  // widest by 15px, so nothing here turns on Feed's exact number.
   it("keeps every label inside the 359px track", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
@@ -382,6 +394,7 @@ describe("T5b — Home's mode rail", () => {
     expect(navSrc).not.toContain("py-2 text-xs font-semibold");
     const TEXT_PX: Record<string, number> = {
       Swipe: 31.8,
+      Feed: 25.4,
       Catalog: 40.3,
       Chat: 24.5,
       Favs: 25.1,
@@ -397,13 +410,14 @@ describe("T5b — Home's mode rail", () => {
     expect(widest * MODES.length + 16).toBeLessThanOrEqual(359);
   });
 
-  it("has no parked modes — all four are real destinations", async () => {
+  it("has no parked modes — all five are real destinations", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
-    // Swipe, Chat and Favs un-parked 2026-09-01. A `soon` flag reappearing
-    // means a mode shipped unfinished; that is allowed, but it should be a
-    // deliberate edit to this assertion rather than a silent regression.
+    // Swipe, Chat and Favs un-parked 2026-09-01; Feed landed live at
+    // MESITA-1621. A `soon` flag reappearing means a mode shipped unfinished;
+    // that is allowed, but it should be a deliberate edit to this assertion
+    // rather than a silent regression.
     expect(MODES.filter((m) => m.soon)).toEqual([]);
   });
 
