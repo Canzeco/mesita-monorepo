@@ -125,13 +125,13 @@ export function OrgScreenSections({
           // Zero is not a data point worth a row. It is a next step.
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-muted-foreground text-sm">
-              None yet. Every place starts in the public pool.
+              None yet. Claim one from the list and it becomes yours.
             </p>
             <Link
-              href={withOrg(SHELL_ROUTES.pool, org.id)}
+              href={withOrg(SHELL_ROUTES.places, org.id)}
               className={PILL_BUTTON_CLASS}
             >
-              Claim from the pool
+              Browse places
             </Link>
           </div>
         ) : (

@@ -1,6 +1,6 @@
 // The 2am-Friday test: every href the console can emit maps to a real
 // route file on disk, so a rename can never ship a dead nav link.
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -26,16 +26,18 @@ describe("SHELL_ROUTES map to route files", () => {
   }
 });
 
-describe("the five screens Pato specified", () => {
-  it("SHELL_ROUTES is the four that need no id", () => {
+describe("the four screens Pato specified", () => {
+  // Was five until MESITA-1614. Org Places and Public Places merged: the
+  // split was a filter wearing the costume of a screen, and the fact it
+  // filtered on — Owned — is a column now.
+  it("SHELL_ROUTES is the three that need no id", () => {
     expect(Object.keys(SHELL_ROUTES)).toEqual([
       "account",
       "organization",
       "places",
-      "pool",
     ]);
   });
-  it("Place is the fifth, and the shell owns it", () => {
+  it("Place is the fourth, and the shell owns it", () => {
     expect(placeHref("p-x")).toBe("/places/p-x");
     expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
       true,
@@ -46,7 +48,7 @@ describe("the five screens Pato specified", () => {
   });
 });
 
-describe("placeIdFromPathname — the nav's Org Places / Place split", () => {
+describe("placeIdFromPathname — the nav's Places / Place split", () => {
   it("reads the id back out of a Place pathname", () => {
     expect(placeIdFromPathname(placeHref("p-x"))).toBe("p-x");
     expect(placeIdFromPathname("/places/p-x/")).toBe("p-x");
@@ -75,9 +77,26 @@ describe("withOrg", () => {
   });
   it("carries the organization through", () => {
     expect(withOrg("/places", "org-1")).toBe("/places?org=org-1");
-    expect(withOrg("/pool?q=taco", "org-1")).toBe("/pool?q=taco&org=org-1");
+    expect(withOrg("/places?q=taco", "org-1")).toBe("/places?q=taco&org=org-1");
   });
   it("encodes the id", () => {
     expect(withOrg("/places", "a b")).toBe("/places?org=a%20b");
+  });
+});
+
+describe("the merged list (MESITA-1614)", () => {
+  it("has no pool route file left on disk", () => {
+    expect(existsSync(path.join(SHELL_DIR, "pool", "page.tsx"))).toBe(false);
+  });
+
+  // A deleted route with no redirect is a 404 on every bookmark and every
+  // link in a shipped email. next.config.ts owns the forward.
+  it("forwards /pool to the merged list", () => {
+    const cfg = readFileSync(
+      path.resolve(__dirname, "..", "..", "next.config.ts"),
+      "utf8",
+    );
+    expect(cfg).toMatch(/source:\s*"\/pool"/);
+    expect(cfg).toMatch(/destination:\s*"\/places"/);
   });
 });

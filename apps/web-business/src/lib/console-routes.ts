@@ -1,10 +1,17 @@
 // Route contract for the (shell) console — every href comes from here, and
 // a test asserts each entry maps to a route file on disk.
 //
-// FIVE SCREENS (Pato, 2026-09-05): Account · Organization · Org Places ·
-// Public Places · Place. Ascending scope, then the split that matters —
-// the places this organization holds, and the pool it can claim from —
-// and then the one address itself.
+// FOUR SCREENS (Pato, 2026-09-07 — was five, 2026-09-05): Account ·
+// Organization · Places · Place. Ascending scope, then the one address.
+//
+// Org Places and Public Places MERGED (MESITA-1614). The split was a filter
+// wearing the costume of a screen: both listed places, both used the same row,
+// and the only difference was whether `organization_id` was yours or null —
+// which is Owned, a STATE. Pre-filtering it meant the states matrix could
+// never show it varying, so the column was constant on both halves. One list
+// with an Owned column says the same thing and lets you compare.
+//
+// `/pool` is a permanent redirect here — see next.config.ts.
 //
 // Place is the only screen that needs an id, so it is the only one absent
 // from SHELL_ROUTES: `placeHref()` builds it. It nests UNDER Org Places
@@ -16,17 +23,16 @@ export const SHELL_ROUTES = {
   account: "/account",
   organization: "/",
   places: "/places",
-  pool: "/pool",
 } as const;
 
-/** Place — the fifth screen. Reached from either list. */
+/** Place — the fourth screen. Reached from the list. */
 export function placeHref(placeId: string): string {
   return `${SHELL_ROUTES.places}/${encodeURIComponent(placeId)}`;
 }
 
 /** Is this pathname a Place screen? The nav needs to know, because
- *  `/places/<id>` starts with `/places` and would otherwise light up Org
- *  Places instead of Place. */
+ *  `/places/<id>` starts with `/places` and would otherwise light up Places
+ *  instead of Place. */
 export function placeIdFromPathname(pathname: string): string | null {
   // One OPTIONAL tab segment (MESITA-1537): /places/<id> and
   // /places/<id>/{capabilities,activity,admin} are all the Place screen,

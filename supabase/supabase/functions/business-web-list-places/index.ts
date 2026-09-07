@@ -1,8 +1,24 @@
 // Supabase Edge Function — business-web-list-places
 //
-// Two scopes, one endpoint:
+// Three scopes, one endpoint:
+//   scope: "all"    — THE CONSOLE'S LIST (MESITA-1614): everything an
+//                     organization can act on — what it holds AND what it
+//                     could claim, in one page. Requires organizationId and
+//                     org membership, exactly like "org".
 //   scope: "org"    — the places an organization holds (caller must be in it)
 //   scope: "public" — the PUBLIC POOL, claimable by any organization
+//
+// "all" EXISTS BECAUSE OWNED IS A STATE. The console used to be two screens,
+// and each pre-filtered the fact its own matrix was trying to show: Owned is
+// always true where the query is `.eq(organization_id, org)` and always false
+// where it is `.is(organization_id, null)`. A column that cannot vary is not a
+// column. One list makes Owned — and Partner, and Verified — answer per row.
+//
+// It is also the scope that can afford to tell the truth. `getAuthedUser`
+// accepts ANY bearer token and the backend is a singleton, so scope=public is
+// reachable by every consumer account and withholds Partner / Verified / the
+// intake map for that reason. "all" runs behind `requireOrgRole`, so the
+// caller is a verified business member and every fact ships for every row.
 //
 // This is the business-side replacement for reading the catalogue through
 // admin-web-search-places, which is super-admin-only: an ordinary business
@@ -51,10 +67,15 @@
 //      project behind consumer, business, admin and landing), so EVERY
 //      consumer account can call this endpoint with scope=public. Facts about
 //      a place nobody holds — whether someone proved ownership, what plan it
-//      is on, how far our pipeline got — are therefore withheld on that scope
+//      is on, how far our pipeline got — are therefore withheld on THAT scope
 //      and ship as `undefined`, which the console renders as "?" rather than
 //      as a false "no". A manager-existence check is the complete fix and has
-//      its own issue; this is the safe direction until it lands.
+//      its own issue (MESITA-1612); this is the safe direction until it lands.
+//
+//      The withholding keys off the CALLER's clearance, not off whether the
+//      place is held — which is why "all" ships everything even for pool rows.
+//      Getting that backwards would blank half the matrix on the one screen
+//      built to compare the two.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
@@ -77,7 +98,7 @@ import {
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 
 type Body = {
-  scope?: "org" | "public";
+  scope?: "all" | "org" | "public";
   organizationId?: string;
   query?: string;
   limit?: number;
@@ -132,7 +153,12 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<Body>(req, {});
-  const scope = body.scope === "org" ? "org" : "public";
+  const scope = body.scope === "org" || body.scope === "all"
+    ? body.scope
+    : "public";
+  // Everything but the open pool is a MEMBERSHIP read, and both membership
+  // scopes ship the full fact set.
+  const memberScope = scope === "org" || scope === "all";
   const limit = Math.min(Math.max(body.limit ?? 50, 1), MAX_LIMIT);
   const search = (body.query ?? "").trim();
 
@@ -148,10 +174,13 @@ Deno.serve(async (req) => {
     )
     .limit(limit);
 
-  if (scope === "org") {
+  if (memberScope) {
     const organizationId = body.organizationId;
     if (!organizationId) {
-      return json({ ok: false, error: "organizationId is required for scope=org" }, 400);
+      return json(
+        { ok: false, error: `organizationId is required for scope=${scope}` },
+        400,
+      );
     }
     // Reading an organization's portfolio is a membership fact: any role.
     const roleRes = await requireOrgRole(admin, authRes.user, organizationId, [
@@ -160,7 +189,13 @@ Deno.serve(async (req) => {
       "viewer",
     ]);
     if (!roleRes.ok) return roleRes.response;
-    q = q.eq("organization_id", organizationId);
+    if (scope === "org") {
+      q = q.eq("organization_id", organizationId);
+    } else {
+      // "all" — held by THIS organization, or held by nobody. PostgREST `or`
+      // takes one string; `is.null` is the null test, not `eq.null`.
+      q = q.or(`organization_id.eq.${organizationId},organization_id.is.null`);
+    }
   } else {
     q = q.is("organization_id", null);
   }
@@ -207,9 +242,13 @@ Deno.serve(async (req) => {
   // A place with a direct project_members owner is NOT in the pool, even
   // with organization_id null — it has a real operator who claimed it the
   // old way. Zero such rows today; the guard is what keeps that true.
-  if (scope === "public") {
+  // The pool predicate, wherever unheld rows appear. A place with a direct
+  // project_members owner is NOT claimable even with organization_id null —
+  // it has a real operator who claimed it the old way. On "all" the filter
+  // must spare this organization's OWN rows, which are held by definition.
+  if (scope === "public" || scope === "all") {
     const owned = await placeIdsWithDirectOwner(admin);
-    rows = rows.filter((r) => !owned.has(r.id));
+    rows = rows.filter((r) => r.organization_id !== null || !owned.has(r.id));
   }
 
   // VERIFIED is ownership PROOF — an approved project_verifications row, the
@@ -222,7 +261,7 @@ Deno.serve(async (req) => {
   // `null` says "we could not find out", and the console renders "?". The
   // logged line is what tells those two apart three weeks from now.
   let verified: Set<string> | null = null;
-  if (scope === "org") {
+  if (memberScope) {
     verified = new Set<string>();
     const ids = rows.map((r) => r.id).filter(Boolean);
     for (const idPart of chunked(ids, ID_CHUNK)) {
@@ -283,7 +322,7 @@ Deno.serve(async (req) => {
         owned: r.organization_id !== null,
         // Partner — plan !== free. Withheld on the pool: what an unheld place
         // pays is not a guest's business.
-        partner: scope === "org" ? isPaidPlan(r.plan) : undefined,
+        partner: memberScope ? isPaidPlan(r.plan) : undefined,
         // Verified — approved ownership proof. `undefined` when withheld OR
         // when the lookup failed, so the console says "?" instead of "no".
         verified: verified ? verified.has(r.id) : undefined,
@@ -293,7 +332,7 @@ Deno.serve(async (req) => {
         // after an earlier one failed is invisible to it.
         intakePulse: pulseOf(p.enrichment),
         intakeTotal: PULSE_TOTAL,
-        enrich_functions: scope === "org"
+        enrich_functions: memberScope
           ? enrichFunctionsOf(p.enrichment)
           : undefined,
         // The commercial rails, exactly the columns that exist.

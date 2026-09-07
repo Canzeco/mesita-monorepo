@@ -1,7 +1,7 @@
-// The list screens render a states matrix, and this route now issues a second
-// query on the critical path (the verification batch). Neither route had a
-// loading file, so a slow response showed the console chrome over a blank
-// body — the shell's own Suspense fallback only reserves the nav.
+// The list renders a states matrix and issues a second query on the critical
+// path (the verification batch), so a slow response must not show console
+// chrome over a blank body — the shell's own Suspense fallback only reserves
+// the nav.
 //
 // The skeleton is the TABLE's shape, not a generic spinner: same card, same
 // bleed, same row height, so nothing jumps when the real rows land.

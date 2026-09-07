@@ -16,9 +16,8 @@ describe("middleware contract", () => {
   });
   it("gates every console screen that reads real data", () => {
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
-    expect(shouldGate(SHELL_ROUTES.pool)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
-    // Place — the fifth screen. It reads one org's holdings, so it sits
+    // Place — the fourth screen. It reads one org's holdings, so it sits
     // behind the same wall the list does.
     expect(shouldGate("/places/abc")).toBe(true);
   });
@@ -29,6 +28,9 @@ describe("middleware contract", () => {
     // before the proxy sees them, so gating them would guard a dead path.
     expect(shouldGate("/place/abc")).toBe(false);
     expect(shouldGate("/settings")).toBe(false);
+    // MESITA-1614 merged the two lists; /pool is a redirect now, resolved
+    // before the proxy sees it, so gating it would guard a dead path.
+    expect(shouldGate("/pool")).toBe(false);
   });
 });
 
