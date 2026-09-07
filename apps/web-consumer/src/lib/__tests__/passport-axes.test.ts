@@ -84,11 +84,6 @@ const fieldLabels = (source: string) =>
 const infoBoxes = (source: string) =>
   [...source.matchAll(/<InfoBox\b[\s\S]*?\n {10}\/>/g)].map((m) => m[0]);
 
-const infoLabels = (source: string) =>
-  infoBoxes(source)
-    .map((c) => c.match(/label="([^"]+)"/)?.[1])
-    .filter((l): l is string => Boolean(l));
-
 const planShaped = (names: string[]) =>
   names.filter((n) => /plan/i.test(n)).sort();
 
@@ -154,14 +149,15 @@ describe("the Passport card is JUST VISIBLE", () => {
     );
   });
 
-  it("displays both axes, Instagram then Class", () => {
-    expect(infoLabels(card)).toEqual(["Instagram", "Class"]);
-    // TWO COLUMNS, and that is a measurement (MESITA-1641). Three give each
-    // box a 67px text box; `@patocanz` needs 75 and the word "INSTAGRAM"
-    // needs 69.6, so at three-up the LABEL truncates too, not just the value.
-    // Two give 118px. Re-measure before trying three; it has been tried twice.
-    expect(card).toContain("grid-cols-2");
-    expect(card).not.toContain("col-span-2");
+  it("prints NO axis — Instagram and Class are cells now", () => {
+    // MESITA-1650: they were boxes here AND the card sits ~150px above the
+    // cells, so keeping both printed the same two facts twice. The card is
+    // identity only; the cell is the one you can tap.
+    expect(infoBoxes(card)).toEqual([]);
+    expect(card).not.toContain("grid-cols-2");
+    const named = importedFrom(card, "@/lib/consumer-data");
+    expect(named).not.toContain("classBadgeClass");
+    expect(named).not.toContain("CLASS_MARK_ICON");
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -182,17 +178,24 @@ describe("the Passport card is JUST VISIBLE", () => {
     // ground that something else says the rung in words. That is the CLASS
     // box. If it goes, both become screen-reader regressions in silence.
     expect(card).toContain("aria-hidden");
-    expect(card).toContain("classBadgeClass(key)");
-    expect(card).toContain("value={classLabel}");
+    // The Class BOX used to be what said it. It is a cell further down the
+    // page now, outside this card's subtree, so the rung rides the section's
+    // own aria-label (MESITA-1650) — a screen reader on the card still hears
+    // it. Losing this line silently makes the band and ring undescribed.
+    expect(card).toContain("${classLabel} class");
+    expect(card).toContain("classFillClass(key)");
     // The slogan must not be RENDERED; the comment may quote it.
     expect(codeOnly(card)).not.toContain("Earned, not bought");
   });
 
-  it("never paints the Instagram box with the badge gradient", () => {
-    // White on that gradient's #feda75 stop measures 1.36:1 — the MESITA-1142
-    // fill/ink failure, missed for a year because Instagram is not a metal.
-    const named = importedFrom(card, "@/lib/ui-classes");
-    expect(named).toEqual(["INSTAGRAM_ICON_GRADIENT_CLASS"]);
+  it("wears no fill but the metal, and the metal is band and ring only", () => {
+    // Colour means class and lives on the passport, nowhere else on this page
+    // (MESITA-1132). With the axes gone the card renders exactly two metal
+    // surfaces, both `aria-hidden` and both colour-only. The Instagram brand
+    // gradient is not here at all any more — the grid cell uses a plain
+    // lucide glyph, so the MESITA-1142 fill/ink trap has nothing to catch.
+    expect([...card.matchAll(/classFillClass\(key\)/g)]).toHaveLength(2);
+    expect(card).not.toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
   });
 
   it("the skeleton mirrors the DESTINATION — same grid, same count", () => {
@@ -205,16 +208,18 @@ describe("the Passport card is JUST VISIBLE", () => {
 
     const skeleton = card.slice(loading, live);
     const rendered = card.slice(live);
+    // Grids on BOTH sides or neither. The card has none now (MESITA-1650), and
+    // a skeleton keeping one would resolve to a shape the card never reaches.
     const cols = (src: string) =>
       [...src.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
     expect(cols(skeleton)).toEqual(cols(rendered));
-    expect(cols(rendered)).not.toEqual([]);
-
-    const boxes = [...rendered.matchAll(/<InfoBox\b/g)].length;
-    expect(boxes).toBeGreaterThan(0);
-    const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
-    expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
-    expect(Number(len![1])).toBe(boxes);
+    // The avatar is the one measured block left, and the two must agree: 52
+    // plus the 2.5px ring and 2px inset on both sides is 61.
+    const px = (src: string, re: RegExp) => src.match(re)?.[1];
+    expect(px(rendered, /h-\[(\d+)px\] w-\[\d+px\] overflow-hidden/)).toBe("52");
+    expect(px(skeleton, /h-\[(\d+)px\] w-\[\d+px\] animate-pulse rounded-full/)).toBe(
+      "61",
+    );
   });
 });
 

@@ -11,9 +11,11 @@
 import type { LucideIcon } from "lucide-react";
 import {
   DoorOpen,
+  FileText,
   Info,
   Instagram,
   Percent,
+  ScrollText,
   Sparkles,
   Star,
   Store,
@@ -32,6 +34,9 @@ import {
   type PlanKey,
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/app-version";
+import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
+import { RowDivider, SettingsGroup, SettingsLinkRow } from "./settings-rows";
 
 type HelpRung = {
   key: string;
@@ -230,14 +235,46 @@ export function HelpModal({
             <span className="text-foreground font-semibold">
               Actions add on.
             </span>{" "}
-            Welcome, Instagram Story, Google Review, and Mesita Review stack
-            on your class and plan — not pick-one. The bill clamps at 100% and
+            Welcome, Instagram Story, Google Review, and Mesita Review stack on
+            your class and plan — not pick-one. The bill clamps at 100% and
             applies to the first cap-pesos. Live percents sit on each
             place&apos;s Rewards tab.
           </p>
         </div>
 
         <HelpRungList classKey={classKey} plan={plan} />
+
+        {/* ABOUT LIVES HERE (Pato, MESITA-1650: "Remove the about box at the
+            bottom, that must go in help"). The About cell is gone from Me, so
+            this sheet inherited what it held: the Legal group — which
+            MESITA-1641 had already moved OUT of Settings — and the app
+            version. Legal has never had two doors and still does not; it just
+            moved one more time. `SettingsLinkRow` on purpose: a second
+            link-row implementation is how two surfaces start rendering
+            external links differently. */}
+        <SettingsGroup title="Legal">
+          <SettingsLinkRow
+            Icon={ScrollText}
+            tint="muted"
+            href={MESITA_TERMS_URL}
+            label="Terms of use"
+            sub="mesita.ai/terms"
+            external
+          />
+          <RowDivider />
+          <SettingsLinkRow
+            Icon={FileText}
+            tint="muted"
+            href={MESITA_PRIVACY_URL}
+            label="Privacy policy"
+            sub="mesita.ai/privacy"
+            external
+          />
+        </SettingsGroup>
+
+        <p className="text-muted-foreground type-label text-center">
+          Mesita · {APP_VERSION}
+        </p>
       </div>
     </LocalSheet>
   );

@@ -521,7 +521,7 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       .filter((t): t is string => Boolean(t));
   };
 
-  it("renders fifteen cells in a 2 · 2 · 2 · 2 · 2 · 2 · 2 · 1 rhythm", () => {
+  it("renders sixteen cells as eight pairs, no tail", () => {
     // Five pairs and a full-width tail (MESITA-1639). MESITA-1636 broke the
     // rhythm with a four-up so the column would not read as undifferentiated,
     // and paid for it in the only four cells on the page with no summary. The
@@ -535,6 +535,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     expect(gridTitles(ME)).toEqual([
       "Passport",
       "Profile",
+      "Instagram",
+      "Class",
       "Wallet",
       "Plan",
       "Notifications",
@@ -545,9 +547,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Gift",
       "Settings",
       "Help",
-      "Connector",
+      "Integrations",
       "Friends",
-      "About",
     ]);
   });
 
@@ -559,9 +560,11 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // commented (MESITA-1642). About stays last: it is the version and legal
     // footer, the least-reached cell on the page.
     const order = gridTitles(ME);
-    expect(order.indexOf("Settings")).toBeLessThan(order.indexOf("Connector"));
+    expect(order.indexOf("Settings")).toBeLessThan(
+      order.indexOf("Integrations"),
+    );
     expect(order.indexOf("Help")).toBeLessThan(order.indexOf("Friends"));
-    expect(order.at(-1)).toBe("About");
+    expect(order.at(-1)).toBe("Friends");
   });
 
   it("every row is a pair, and the last is a deliberate full-width cell", () => {
@@ -569,7 +572,9 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // spans SEPARATELY on purpose: "cells ÷ grids === 2" was true of the old
     // four-up too, and would go on being true of any row width.
     expect([...ME.matchAll(/<DestGrid>/g)]).toHaveLength(8);
-    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(1);
+    // About was the only spanning cell and it folded into Help (MESITA-1650),
+    // so every row is now a pair and nothing spans.
+    expect([...ME.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(ME).not.toMatch(/<DestGrid cols=/);
   });
 
@@ -648,24 +653,25 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Orders",
       "Share",
       "Gift",
-      "Connector",
+      "Integrations",
       "Friends",
     ]);
   });
 
-  it("About is the only door to terms and privacy", () => {
-    // The Legal group MOVED out of Settings (MESITA-1641); a copy left behind
-    // would be a second door, which is what MESITA-1609 established as the
-    // thing to remove rather than demote. Reading the URL constants, not the
-    // words "terms"/"privacy" — Settings still has a Privacy GROUP about the
+  it("Help is the only door to terms and privacy", () => {
+    // Legal has moved twice — out of Settings (MESITA-1641) into About, then
+    // into Help when the About cell was cut (MESITA-1650). It has never had
+    // two doors and must not gain one. Reading the URL CONSTANTS, not the
+    // words "terms"/"privacy": Settings still has a Privacy GROUP about the
     // account's visibility, which has nothing to do with the policy.
     const dir = join(__dirname, "..", "..", "components", "consumer", "me");
     const settings = readFileSync(join(dir, "SettingsModal.tsx"), "utf8");
-    const about = readFileSync(join(dir, "AboutModal.tsx"), "utf8");
+    const help = readFileSync(join(dir, "HelpModal.tsx"), "utf8");
     for (const url of ["MESITA_TERMS_URL", "MESITA_PRIVACY_URL"]) {
       expect(settings).not.toContain(url);
-      expect(about).toContain(url);
+      expect(help).toContain(url);
     }
+    expect(existsSync(join(dir, "AboutModal.tsx"))).toBe(false);
   });
 
   it("the version has ONE source, and it is not a literal on the page", () => {
@@ -677,9 +683,16 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // necessarily quotes it, so a raw scan fires on its own rationale and
     // the cheapest way to green it would be deleting the rationale — the
     // failure mode passport-axes.test.ts documents at length.
-    const code = ME.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
-    expect(code).toContain("APP_VERSION");
-    expect(code).not.toMatch(/v\d+\.\d+\.\d+/);
+    const help = readFileSync(
+      join(__dirname, "..", "..", "components", "consumer", "me", "HelpModal.tsx"),
+      "utf8",
+    );
+    const code = (src: string) =>
+      src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+    // It renders in Help now, not on the page (MESITA-1650).
+    expect(code(help)).toContain("APP_VERSION");
+    expect(code(help)).not.toMatch(/v\d+\.\d+\.\d+/);
+    expect(code(ME)).not.toMatch(/v\d+\.\d+\.\d+/);
   });
 });
 
