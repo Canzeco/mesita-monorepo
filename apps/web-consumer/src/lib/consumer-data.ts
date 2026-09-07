@@ -17,10 +17,12 @@ import {
 //           operator-configured) or a direct invitation. Class is public —
 //           it shows on the Passport.
 //   plan  — WHAT YOU PAY. Free or Premium (MX$50/mo). Private from the
-//           BUSINESS side: a place never learns it. It DOES show to the guest
-//           on their own Passport, in a Plan tile beside Class — the two axes
-//           render side by side and never MERGE (a class tile can never say
-//           Premium, a plan tile can never say a metal).
+//           BUSINESS side: a place never learns it. Private from the guest's
+//           own Passport too (MESITA-1619) — the identity card prints what is
+//           EARNED, so the plan reads in its own box on Me and nowhere on the
+//           passport. The two axes never MERGE: no class is purchasable and
+//           no plan is a metal, which is the whole reason `plan` is a
+//           separate type rather than a fifth class.
 //
 // The retired v1 ladder was standard < influencer < premium < aura, which put
 // the paid subscription INSIDE the class ladder — "Premium" ranked above
@@ -219,8 +221,9 @@ export const CLASSES: {
 ];
 
 // The OTHER axis. Premium is a subscription, not a rung: it never appears in
-// CLASSES and stays invisible to places. It DOES render on the guest's own
-// Passport, in its own Plan tile — separate from Class, never merged into it.
+// CLASSES and stays invisible to places — and, since MESITA-1619, it does not
+// print on the guest's own Passport either. It renders in Me › Plan, separate
+// from Class and never merged into it.
 export const PLANS: {
   id: PlanKey;
   label: string;

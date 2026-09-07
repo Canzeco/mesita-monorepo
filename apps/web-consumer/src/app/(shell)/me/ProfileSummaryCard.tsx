@@ -1,20 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram, Lock, Unlock } from "lucide-react";
+import { ChevronRight, Instagram, Lock, Unlock } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import {
   CLASSES,
-  CLASS_MARK_ICON,
   classBadgeClass,
   classFillClass,
-  PLANS,
-  PREMIUM_PLAN_ICON,
-  PREMIUM_PLAN_PRICE_MXN,
+  REACH_ENTRY_CLASS,
+  REACH_ENTRY_FOLLOWERS,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { INSTAGRAM_BADGE_GRADIENT_CLASS } from "@/lib/ui-classes";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   ageFromBirthday,
   cn,
@@ -23,130 +21,85 @@ import {
   phoneCountry,
 } from "@/lib/utils";
 
-// ─── The Passport (MESITA-1079 v2) ─────────────────────────────────────────
+// ─── The Passport (MESITA-1079 v2 · MESITA-1619) ───────────────────────────
 //
-//   identity    photo ringed in the class metal · name · age·sex·country,
-//               with the privacy state as a quiet marker on the right
-//   three tiles INSTAGRAM · CLASS · PLAN — the three things a guest holds
+//   identity    photo ringed in the class metal · name beside the CLASS CHIP ·
+//               age·sex·country, with the privacy state as a quiet marker
+//   one row     INSTAGRAM — the one door on this card the guest can still open
+//
+// NO PLAN TILE (decision: Pato, MESITA-1619). The Passport prints what is
+// EARNED and PUBLIC. Class is earned and never purchasable; the plan is what
+// you PAY, and money on an identity card is the retired v1 merge coming back
+// in a new shape — Docs › Passport §B: "It never prints on the Passport."
+// Plan keeps its own surface, a primary box on Me. Do not re-add it here; a
+// second axis on this card is a product decision, not a layout one.
+//
+// WHY THE CLASS IS A CHIP AND NOT A TILE. It used to be one of three equal
+// tiles, which meant the card said the class FIVE times — the metal band, the
+// avatar ring, the tile fill, the word inside it, and Me's own Class box
+// underneath, which says strictly more ("Diamond · Highest discount"). The
+// tile was 83% of all the colour on a card whose one rule is that colour means
+// class. As a chip the rung is still stated in words and still taps into the
+// Class sheet, at a size proportionate to a fact the band already carries.
+//
+// THE BAND AND THE RING ARE `aria-hidden` — they are colour-only, and THE CHIP
+// is what states the rung in words. Anything that moves the chip has to keep
+// that true or both become screen-reader regressions.
+//
+// WHY INSTAGRAM IS A FULL ROW. It is the growth lever — the one door on this
+// card that changes the guest's class — and at a third of the width it could
+// not say so: the eyebrow itself truncated to "INSTAGR…" on a 375px phone, and
+// the unconnected state was a bordered box the eye read as empty. A full row
+// fits the whole invitation on one line, and it names the bar it derives from
+// (`REACH_ENTRY_CLASS`) rather than a number typed into copy.
+//
+// COLOUR ON THE ROW IS THE GLYPH, NOT THE FILL. The row body is `bg-muted`.
+// A full-width brand-pink field would out-colour the class band on a card
+// whose whole rule is that colour means class, and the old tile paired the
+// gradient with `text-white` — white measures 1.36:1 on its `#feda75` stop,
+// the MESITA-1142 fill/ink failure never audited here because Instagram is not
+// a metal. The gradient now lives on a 44px chip that carries no small text.
 //
 // TWO ZONES, NOT THREE (MESITA-1158). There was a third row above these: the
 // Mesita wordmark beside a bordered PUBLIC pill. Both lost their argument. The
 // wordmark told a Mesita user they were inside Mesita, and the pill was drawn
-// as a control while being a read-only state — a bordered rounded-full pill
-// is the app's own button shape. `justify-between` across two light elements
-// also left a wide dead gap over the card.
+// as a control while being a read-only state.
 //
-// The PHONE line is gone too. It was the third of three grey lines, the most
-// private thing on the most glanceable surface, and the Profile BoxRow below
-// this card already summarises as `name · phone` — so it is one tap away in
-// the place that owns editing it. Age, sex and country stay: unlike the phone
-// they appear nowhere else, and they collapse to ONE line, which is what fixes
-// the block. The bug was never that the facts existed; it was three lines of
-// identical 12px muted type stacked 2px apart, so nothing led.
+// The PHONE line is gone too — the most private thing on the most glanceable
+// surface, and the Profile box below already summarises as `name · phone`.
+// Age, sex and country stay: they appear nowhere else, and they collapse to
+// ONE line, which is what fixes the block.
 //
 // Gaps encode grouping rather than being uniform: 4px inside the name stack,
-// 16px photo-to-name, 20px between the identity zone and the tiles. The card
-// runs on one 4px scale (4·8·12·16·20); it previously mixed 2, 2.5, 6 and 14.
+// 16px photo-to-name, 20px between the identity zone and the row.
 //
 // Country is INFERRED from the phone's dial code (`consumers` has no country
 // column) and rendered with its flag — the number itself is not shown.
-//
-// The class and plan axes are NEVER merged: the class tile can't show Premium
-// and the plan tile can't show a metal. Each tile taps through to the surface
-// that owns it, which is why the card carries no separate CTA.
 
 /**
- * One of the three passport tiles. `fill` paints it when the guest HOLDS the
- * thing; the empty state stays a bordered card so the card never reads as
- * three equally-earned badges.
+ * The Instagram row's shell, shared by the live row and its skeleton.
  *
- * THE NOTE WRAPS, IT DOES NOT TRUNCATE. Three tiles across a 375px phone leaves
- * roughly 80px of text width each (343 content − 32 card padding − 12 gutters,
- * ÷ 3, − 20 tile padding), which fits about 13 characters at 10px. Every note
- * longer than that — "Earned, not bought", "Connect to climb" — is WIDER than
- * the tile can ever be, so `truncate` here clipped copy on every render rather
- * than in an edge case. Wrapping costs nothing: the grid row stretches and all
- * three tiles keep equal height. The VALUE still truncates, because a long
- * Instagram handle has no good second line.
+ * A CONSTANT, NOT TWO MATCHING LITERALS. The skeleton mirrors the
+ * DESTINATION (Docs › Design §D), and the way that rule broke before was a
+ * hand-tuned `h-[92px]` measured against a layout that had since changed —
+ * two numbers guessed independently, drifting apart in silence. There is
+ * nothing to keep in sync now: both branches render the same shell.
  */
-function Tile({
-  eyebrow,
-  Icon,
-  value,
-  note,
-  fill,
-  held,
-  onClick,
-}: {
-  eyebrow: string;
-  Icon: React.ComponentType<{ className?: string }>;
-  value: string;
-  note: string;
-  fill: string;
-  held: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`${eyebrow}: ${value}. ${note}`}
-      className={cn(
-        "shadow-rest flex min-w-0 flex-col items-start rounded-2xl p-3 text-left transition active:scale-[0.98]",
-        // `fill` carries its own ink — three of the four metals are LIGHT
-        // fills and white on them measures under 2:1 (MESITA-1142), so the
-        // tile cannot assume a colour here. Sub-text dims the inherited ink
-        // instead of hardcoding a white wash.
-        held ? fill : "border-border bg-card border",
-      )}
-    >
-      <span
-        className={cn(
-          // 10px, not 9px: Docs › Design §D puts eyebrow/meta at
-          // type-meta–xs, and 9px at this tracking was under its own floor.
-          "type-meta flex max-w-full items-center gap-1 font-bold tracking-[0.12em] uppercase",
-          held ? "opacity-85" : "text-muted-foreground",
-        )}
-      >
-        <Icon className="h-2.5 w-2.5 shrink-0" />
-        <span className="truncate">{eyebrow}</span>
-      </span>
-      <span className="font-display mt-1.5 w-full truncate text-lg leading-tight font-semibold tracking-tight">
-        {value}
-      </span>
-      <span
-        className={cn(
-          "type-meta mt-1 w-full leading-snug",
-          held ? "opacity-85" : "text-muted-foreground",
-        )}
-      >
-        {note}
-      </span>
-    </button>
-  );
-}
+const PASSPORT_ROW_CLASS =
+  "flex min-h-[76px] w-full items-center gap-3.5 rounded-2xl p-3";
 
 export function ProfileSummaryCard({
   profile,
   loading,
   onOpenClass,
-  onOpenPlan,
   onOpenInstagram,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
   onOpenClass: () => void;
-  onOpenPlan: () => void;
   onOpenInstagram: () => void;
 }) {
-  const {
-    key,
-    plan,
-    origin,
-    renewsAt,
-    followers,
-    handle: classHandle,
-  } = useConsumerClass();
+  const { key, origin, followers, handle: classHandle } = useConsumerClass();
 
   if (loading) {
     return (
@@ -156,28 +109,23 @@ export function ProfileSummaryCard({
         className="border-border bg-card shadow-rest w-full overflow-hidden rounded-2xl border"
       >
         <div className="bg-muted h-1.5 w-full" />
-        {/* The skeleton mirrors the DESTINATION (Docs › Design §D). It used
-            to draw the old anatomy — a wordmark block and a three-line text
-            stack — so the card visibly reshaped on every load. */}
         <div className="flex flex-col gap-5 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-4">
-              <div className="bg-muted h-[65px] w-[65px] animate-pulse rounded-full" />
+              {/* 69px, not 65: the real avatar is 60 + the 2.5px metal ring
+                  + the 2px card inset, on both sides. */}
+              <div className="bg-muted h-[69px] w-[69px] animate-pulse rounded-full" />
               <div className="flex flex-col gap-1">
-                <div className="bg-muted h-5 w-40 animate-pulse rounded" />
-                <div className="bg-muted h-3 w-32 animate-pulse rounded" />
+                <div className="flex items-center gap-2">
+                  <div className="bg-muted h-[25px] w-36 animate-pulse rounded" />
+                  <div className="bg-muted h-5 w-16 animate-pulse rounded-full" />
+                </div>
+                <div className="bg-muted h-4 w-32 animate-pulse rounded" />
               </div>
             </div>
-            <div className="bg-muted h-2.5 w-14 animate-pulse rounded" />
+            <div className="bg-muted mt-1 h-3.5 w-16 animate-pulse rounded" />
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="bg-muted h-[92px] animate-pulse rounded-2xl"
-              />
-            ))}
-          </div>
+          <div className={cn(PASSPORT_ROW_CLASS, "bg-muted animate-pulse")} />
         </div>
       </section>
     );
@@ -205,28 +153,21 @@ export function ProfileSummaryCard({
 
   const cls = CLASSES.find((c) => c.id === key);
   const classLabel = cls?.label ?? "Bronze";
-  const ClassIcon = CLASS_MARK_ICON;
-
-  const isPremium = plan === "premium";
-  const planLabel = PLANS.find((p) => p.id === plan)?.label ?? "Free";
-  // Renewal beats the flat price when we know it: "renews 1 Sep" answers the
-  // question a paying guest actually has. Free states the price of the door.
-  const renewalDate = renewsAt ? new Date(renewsAt) : null;
-  const renewalValid =
-    renewalDate != null && !Number.isNaN(renewalDate.valueOf());
-  const planNote = isPremium
-    ? renewalValid
-      ? `Renews ${renewalDate.toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "short",
-        })}`
-      : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo`
-    : `MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
 
   // Prefer the context handle so the Instagram preview state wins over a
   // stale profile row.
   const handle = classHandle ?? profile?.instagram_handle ?? null;
   const igConnected = origin === "instagram" || Boolean(handle);
+  const igValue = igConnected
+    ? handle
+      ? `@${handle}`
+      : "Connected"
+    : // The sheet's own wording (MESITA-1619). "None" answered a question
+      // nobody asked, and read badly aloud: "Instagram: None."
+      "Not connected";
+  const igNote = igConnected
+    ? `${formatCompactCount(followers)} followers`
+    : `Connect to climb — ${REACH_ENTRY_CLASS.label} at ${REACH_ENTRY_FOLLOWERS.toLocaleString()} followers`;
 
   return (
     <section
@@ -234,7 +175,7 @@ export function ProfileSummaryCard({
       className="border-border bg-card shadow-rest w-full overflow-hidden rounded-2xl border"
     >
       {/* The metal band — the class is the first thing the card says. Hidden
-          from assistive tech on purpose: it is colour-only, and the Class tile
+          from assistive tech on purpose: it is colour-only, and the class chip
           below states the same rung in words. */}
       <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
 
@@ -266,9 +207,29 @@ export function ProfileSummaryCard({
             </div>
 
             <div className="flex min-w-0 flex-col gap-1">
-              <h2 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
-                {name}
-              </h2>
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="font-display truncate text-xl leading-tight font-semibold tracking-tight">
+                  {name}
+                </h2>
+                {/* The rung, in words, tapping into the surface that owns it.
+                    `cls?.reward` and not "Earned, not bought": the label has
+                    to announce the account's STATE, and the slogan is the
+                    same on every account at every rung, forever. It is also
+                    what the Class box and the passport sheet already say. */}
+                <button
+                  type="button"
+                  onClick={onOpenClass}
+                  aria-label={`Class: ${classLabel}${
+                    cls?.reward ? `. ${cls.reward}` : ""
+                  }`}
+                  className={cn(
+                    "type-label shrink-0 rounded-full px-2 py-0.5 font-bold tracking-tight transition active:scale-[0.97]",
+                    classBadgeClass(key),
+                  )}
+                >
+                  {classLabel}
+                </button>
+              </div>
               {detailLine && (
                 <p className="text-muted-foreground truncate text-xs">
                   {detailLine}
@@ -292,45 +253,42 @@ export function ProfileSummaryCard({
           </span>
         </div>
 
-        {/* The three things a guest holds. Each taps into the surface that
-            owns it — Instagram verify, the Class sheet, Stripe. */}
-        <div className="grid grid-cols-3 items-stretch gap-2">
-          <Tile
-            eyebrow="Instagram"
-            Icon={Instagram}
-            value={igConnected ? (handle ? `@${handle}` : "Connected") : "None"}
-            note={
-              igConnected
-                ? `${formatCompactCount(followers)} followers`
-                : "Connect to climb"
-            }
-            fill={cn(INSTAGRAM_BADGE_GRADIENT_CLASS, "text-white")}
-            held={igConnected}
-            onClick={onOpenInstagram}
-          />
-          <Tile
-            eyebrow="Class"
-            Icon={ClassIcon}
-            value={classLabel}
-            note="Earned, not bought"
-            fill={classBadgeClass(key)}
-            held
-            onClick={onOpenClass}
-          />
-          <Tile
-            eyebrow="Plan"
-            Icon={PREMIUM_PLAN_ICON}
-            value={planLabel}
-            note={planNote}
-            // The plan wears its OWN token, and that token is black
-            // (decision: Pato, 2026-08-22). This was `bg-pink-gradient`,
-            // which sat two tiles from Instagram's pink gradient — the two
-            // axes read as one family, and pink here means Instagram.
-            fill="bg-tier-premium text-white"
-            held={isPremium}
-            onClick={onOpenPlan}
-          />
-        </div>
+        {/* The one door. THE NOTE WRAPS, IT DOES NOT TRUNCATE: it is a
+            sentence, and a clipped sentence is worse than a taller row. The
+            unconnected copy is the longest string here and it still has to
+            survive 320px and a 200% text zoom, both of which `type-meta`
+            follows because it is defined in rem. */}
+        <button
+          type="button"
+          onClick={onOpenInstagram}
+          aria-label={`Instagram: ${igValue}. ${igNote}`}
+          className={cn(
+            PASSPORT_ROW_CLASS,
+            "bg-muted shadow-rest text-left transition active:scale-[0.99]",
+          )}
+        >
+          <span
+            className={cn(
+              INSTAGRAM_ICON_GRADIENT_CLASS,
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white",
+            )}
+            aria-hidden
+          >
+            <Instagram className="h-[22px] w-[22px]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="text-muted-foreground type-meta block font-bold tracking-[0.12em] uppercase">
+              Instagram
+            </span>
+            <span className="font-display mt-0.5 block truncate text-lg leading-tight font-semibold tracking-tight">
+              {igValue}
+            </span>
+            <span className="text-muted-foreground type-meta mt-1 block leading-snug">
+              {igNote}
+            </span>
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+        </button>
       </div>
     </section>
   );

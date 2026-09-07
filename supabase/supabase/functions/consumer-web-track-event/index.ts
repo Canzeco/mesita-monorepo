@@ -26,6 +26,9 @@ const ALLOWED_EVENTS = new Set([
   "wallet_open",
   "balance_card_tap",
   "ticket_created",
+  // MESITA-1619 — Me's Plan box, the one door to the plan sheet now that the
+  // Passport prints no plan. Mirrored in web-consumer's AnalyticsEvent union.
+  "plan_open",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

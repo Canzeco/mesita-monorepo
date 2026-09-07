@@ -118,3 +118,53 @@ Deno.test("knowledge: a lookup returns at most three rows", () => {
   );
   assert(hits.length <= 3, `returned ${hits.length}`);
 });
+
+// ── Coherence between rows that CO-RETURN (MESITA-1619) ──────────────────
+//
+// Every test above stays green no matter how wrong the prose gets: the
+// MESITA-1201 test asserts membership BY ID, and the audience gate reads the
+// `audience` field, never the fact. That is how the `passport` row spent
+// weeks telling the model "three tiles: Instagram, class and plan" two
+// entries away from `plan`'s "never prints on the Passport", with a full
+// suite green over it.
+//
+// It is not a latent contradiction either. MAX_HITS is 3, so the single most
+// natural question about this pulls both rows into ONE grounding block:
+//   lookupMesitaKnowledge("does my plan show on my passport?") -> [passport, plan]
+//
+// These are narrow claim assertions, never full-string pins — the delivery
+// row above sets that precedent. A full pin fails on every wording pass and
+// tells you nothing about truth; these fail exactly when the claim changes,
+// which is exactly when a human should look.
+
+Deno.test("knowledge: the passport row lists no plan among what it shows", () => {
+  const passport = MESITA_KNOWLEDGE.find((e) => e.id === "passport")!;
+  // Scoped to a SHOWS-claim on purpose. A bare `/plan/i` ban would fire on
+  // the sentence that carries the decision — "The plan is deliberately absent
+  // from it" — and the cheapest way to green it would be deleting the words
+  // that make the row correct.
+  assert(
+    !/\b(shows?|carries|prints?|tiles?)\b[^.]*\bplan\b/i.test(passport.fact),
+    `the passport row still lists the plan among what it shows: ${passport.fact}`,
+  );
+});
+
+Deno.test("knowledge: passport and plan cannot contradict inside one block", () => {
+  const block = knowledgeBlock("does my plan show on my passport?", "guest");
+  const passport = MESITA_KNOWLEDGE.find((e) => e.id === "passport")!;
+  const plan = MESITA_KNOWLEDGE.find((e) => e.id === "plan")!;
+  // Both really are grounded together. If that ever stops being true this
+  // test proves nothing, so it is asserted rather than assumed.
+  assert(block.includes(passport.fact), "the passport row no longer co-returns");
+  assert(block.includes(plan.fact), "the plan row no longer co-returns");
+  assert(plan.fact.includes("never prints on the Passport"));
+});
+
+Deno.test("knowledge: the plan row names where Premium is bought", () => {
+  // With the Passport tile gone, the concierge is the last surface that can
+  // route a guest to checkout, and until MESITA-1619 no row in this file
+  // named a location for it. `class-doors` already set the idiom for the FREE
+  // door ("Me › Class › Join with Invitation").
+  const plan = MESITA_KNOWLEDGE.find((e) => e.id === "plan")!;
+  assert(/Me\s*›\s*Plan/.test(plan.fact), plan.fact);
+});

@@ -17,7 +17,6 @@ import {
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
-import { PREMIUM_PLAN_ICON } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
 // Me › More. The Me page keeps EIGHT primary boxes (MESITA-1609, same count
@@ -28,16 +27,20 @@ import { cn } from "@/lib/utils";
 //
 // The split is by FREQUENCY, not importance — unchanged principle, reapplied
 // to a bigger inventory now that Alerts/Visits/Reservations/Wallet joined
-// Me's primary boxes and something had to make room. Instagram, Plan,
-// Passport and AI Connector moved here from primary for that reason, not
-// because any of them got less important — Plan is your subscription and
-// Instagram is a growth surface, which is a real product tradeoff flagged
-// for confirmation outside this PR, not decided by this file.
+// Me's primary boxes and something had to make room. Instagram, Passport and
+// AI Connector moved here from primary for that reason, not because any of
+// them got less important.
 //
-// Wallet does NOT have a row here any more (MESITA-1609, removed, not
-// demoted). It used to be the one live "second doorway" row in this sheet —
-// now it is a PRIMARY box on Me, so a second door to it here would be
-// redundant with the one that promotion exists to shorten.
+// THE PLAN TRADEOFF THIS COMMENT FLAGGED IS RESOLVED (MESITA-1619). It read:
+// "Plan is your subscription and Instagram is a growth surface, which is a
+// real product tradeoff flagged for confirmation outside this PR, not decided
+// by this file." The answer came when the Passport stopped printing the plan.
+// The tile was the only thing making a subscription two taps deep survivable,
+// so Plan went back to primary and Instagram took the passport's full width.
+//
+// Neither Wallet nor Plan has a row here any more (MESITA-1609 and -1619,
+// removed, not demoted). Both are PRIMARY boxes on Me, so a second door here
+// would be redundant with the one that promotion exists to shorten.
 //
 // Neutral chips, like the boxes that lead Me itself (MESITA-1132): colour on
 // this surface belongs to the passport alone.
@@ -58,8 +61,6 @@ export function MoreModal({
   onOpenCards,
   onOpenInstagram,
   igSummary,
-  onOpenPlan,
-  planSummary,
   onOpenPassport,
   passportSummary,
   onOpenAiConnect,
@@ -74,8 +75,6 @@ export function MoreModal({
   onOpenCards: () => void;
   onOpenInstagram: () => void;
   igSummary: string;
-  onOpenPlan: () => void;
-  planSummary: string;
   onOpenPassport: () => void;
   passportSummary: string;
   onOpenAiConnect: () => void;
@@ -106,13 +105,6 @@ export function MoreModal({
       title: "Instagram",
       summary: igSummary,
       onClick: onOpenInstagram,
-    },
-    {
-      key: "plan",
-      Icon: PREMIUM_PLAN_ICON,
-      title: "Plan",
-      summary: planSummary,
-      onClick: onOpenPlan,
     },
     {
       key: "passport",
