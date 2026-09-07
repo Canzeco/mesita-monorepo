@@ -533,8 +533,8 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
     // Contact moved into Settings; Cards is the same `CardsModal` Pay's
     // Wallet already opens, and Wallet is a cell right here.
     expect(gridTitles(ME)).toEqual([
-      "Profile",
       "Passport",
+      "Profile",
       "Wallet",
       "Plan",
       "Notifications",
