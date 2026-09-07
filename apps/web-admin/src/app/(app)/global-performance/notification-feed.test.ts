@@ -123,7 +123,7 @@ describe("intakeStateLine", () => {
     );
   });
 
-  it("names Requested after Listed, then Enriched before Enriching", () => {
+  it("names Requested after Listed, then Enriching before Enriched", () => {
     const created = item({
       id: "c",
       type: "atlas.place_created",
@@ -137,7 +137,7 @@ describe("intakeStateLine", () => {
       },
     });
     expect(intakeStateLine(created)).toBe(
-      "Created · Active · Listed · Requested · Enriched · Enriching",
+      "Created · Active · Listed · Requested · Enriching · Enriched",
     );
   });
 

@@ -7,8 +7,8 @@
 //   active     Google business_state === OPERATIONAL
 //   listed     projects.state ∈ (active, lead)
 //   requested  request_count > 0 and content_state is not ready
-//   enriched   PULSE high-water complete. Independent of enriching.
 //   enriching  content_state generating/queued (live run)
+//   enriched   PULSE high-water complete. Independent of enriching.
 //   verified   an approved project_verifications row
 //   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)

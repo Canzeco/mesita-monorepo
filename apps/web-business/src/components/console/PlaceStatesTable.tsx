@@ -66,10 +66,13 @@ const THUMB_PX = 44;
  * are we working on it, did we finish, is ownership proven, does an org hold
  * it, does it pay.
  *
- * That is NOT `GENERAL_STATE_FACTS`' order, which puts Enriched before
- * Enriching and predates Owned. The labels still come from the constant so
- * the two apps cannot drift on wording; only the sequence is local, and it is
- * named here rather than inlined so a test can see it is a decision.
+ * `GENERAL_STATE_FACTS` carries this same order now (MESITA-1630 fixed the
+ * source array to match Notion Main §11.1 — it used to put Enriched before
+ * Enriching). This stays a separate, named list anyway: it's a 9-of-12
+ * SUBSET (no Visit Rewards, Mesita Pay or Mesita Credits columns here), and
+ * the labels still come from the constant so the two apps cannot drift on
+ * wording; only the subsetting is local, and it is named here rather than
+ * inlined so a test can see it is a decision.
  */
 const GENERAL_COLUMN_ORDER = [
   "seeded",
