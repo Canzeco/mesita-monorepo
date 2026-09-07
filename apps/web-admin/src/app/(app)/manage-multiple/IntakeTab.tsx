@@ -103,31 +103,41 @@ export function IntakeTab({
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
             label="Create"
+            variant="primary"
             busy={running === "create"}
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("create")}
           />
           <ActionButton
             label="Enrich"
+            variant="secondary"
             busy={running === "enrich"}
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("enrich")}
           />
-          <UpdateFields
-            fact={fact}
-            onFact={setFact}
-            values={values}
-            onValues={setValues}
-            disabled={busy}
-          />
-          <ActionButton
-            label="Update"
-            busy={running === "update"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("update")}
-          />
+          {/* Listed · Active · Verified · Partnered · Visit Rewards — the
+              state facts, plus the value they'd write — read as ONE control
+              with Update, so the dividers keep them out of the run-a-pipeline
+              row either side. */}
+          <div className="border-border/60 flex items-center gap-2 border-l border-r px-2">
+            <UpdateFields
+              fact={fact}
+              onFact={setFact}
+              values={values}
+              onValues={setValues}
+              disabled={busy}
+            />
+            <ActionButton
+              label="Update"
+              variant="secondary"
+              busy={running === "update"}
+              disabled={busy || placeIds.length === 0}
+              onClick={() => void run("update")}
+            />
+          </div>
           <ActionButton
             label="Create + Enrich"
+            variant="secondary"
             busy={running === "create_then_enrich"}
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("create_then_enrich")}
@@ -196,13 +206,20 @@ function ResultList({
   );
 }
 
+// Primary = the one action that starts from nothing (matches the "Look up on
+// Mesita" filled pill in MesitaSearchTab). Everything else here assumes a
+// place already exists, so it takes the same outline secondary pill as that
+// tab's "All places" — four identical black buttons read as four equally
+// important actions when only one is.
 function ActionButton({
   label,
+  variant,
   busy,
   disabled,
   onClick,
 }: {
   label: string;
+  variant: "primary" | "secondary";
   busy: boolean;
   disabled: boolean;
   onClick: () => void;
@@ -212,7 +229,11 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+      className={
+        variant === "primary"
+          ? "bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+          : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
+      }
     >
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -45,11 +45,13 @@ function strategyRates(id: StrategyId): Record<string, number | null> {
 }
 
 // max-w-full: a <select> sizes to its widest option, and "Off · also unlists"
-// is wider than the card is on a phone.
+// is wider than the card is on a phone. Borderless — IntakeTab wraps this
+// pair (and the Update button) in one bordered group, so a border here would
+// double up.
 const SELECT_CLASS =
-  "border-border bg-background h-10 max-w-full min-w-0 rounded-xl border px-3 text-sm outline-none";
+  "bg-transparent h-10 max-w-full min-w-0 rounded-lg px-2 text-sm outline-none";
 
-// State + value next to Update. Listed · Active · Verified · Partnered · Promoted.
+// State + value, grouped with Update by the caller. Listed · Active · Verified · Partnered · Promoted.
 export function UpdateFields({
   fact,
   onFact,
