@@ -68,6 +68,12 @@ export const CONSUMER_ROUTES = {
     catalog: '/(tabs)/home',
     search: '/(tabs)/search',
     swipe: '/(tabs)/home',
+    // Web gained a Feed mode at MESITA-1621 (its own /discover/feed route, a
+    // two-column grid of the deck). Mirrored here for shape parity only —
+    // mobile's Home screen has no feed state to point at, so it collapses
+    // onto the tab like every other mode. Building the screen is copy-pass
+    // work, which the freeze holds.
+    feed: '/(tabs)/home',
     chat: '/(tabs)/home',
     favs: '/(tabs)/home',
   },

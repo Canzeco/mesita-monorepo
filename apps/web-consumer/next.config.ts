@@ -109,13 +109,17 @@ const nextConfig: NextConfig = {
       // itself a redirect source above. T7 pins this entry — T4 can validate
       // a redirect's destination but never its absence.
       { source: "/discover/map", destination: "/search", permanent: true },
-      // The browse mode shipped as "Feed" for about an hour (#1447 -> #1448)
-      // and as "Home" for a day (#1448 -> 2026-09-02). Both were live urls that
-      // production deployed, so both forward like the rest — and both go
-      // STRAIGHT to /discover/catalog. Feed must NOT be re-pointed at
-      // /discover/home now that Home is itself a 308: that would be a 3-hop
-      // chain and T4 caps it at exactly 2.
-      { source: "/discover/feed", destination: "/discover/catalog", permanent: true },
+      // The browse mode shipped as "Home" for a day (#1448 -> 2026-09-02). It
+      // was a live url that production deployed, so it forwards like the rest,
+      // STRAIGHT to /discover/catalog.
+      //
+      // ITS SIBLING /discover/feed IS GONE FROM THIS TABLE (MESITA-1621).
+      // Catalog also shipped as "Feed" for about an hour (#1447 -> #1448) and
+      // 308'd here alongside Home ever since — but /discover/feed is a REAL
+      // PAGE now, Home's Feed mode, and a redirect listed here shadows the
+      // route entirely: the page would never render. So the entry is deleted,
+      // not repointed, and Home must NOT be re-pointed through it either —
+      // that would land Catalog's bookmarks on a different mode.
       { source: "/discover/home", destination: "/discover/catalog", permanent: true },
       // The Saved tab (reservations, favorites) and the /saved/place dual path.
       // The contract still lists these legacy sources; without entries they 404ed

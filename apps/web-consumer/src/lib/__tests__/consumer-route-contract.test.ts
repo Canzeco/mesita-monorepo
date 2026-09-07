@@ -44,12 +44,20 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // moved to /discover precisely so each typed mode could be a real
       // segment.
       discover: "/discover",
-      // FOUR modes, all under Home now that Search has its own route
+      // FIVE modes, all under Home now that Search has its own route
       // (MESITA-1616). CATALOG is the catalog rails with no search bar at
-      // all. SocialFeed mounts INTO Catalog when it un-parks rather than
-      // getting a route back.
+      // all; FEED (MESITA-1621) is the same deck Swipe deals, poured into one
+      // two-column grid.
+      //
+      // `/discover/feed` IS A ROUTE AGAIN and is therefore NOT in the legacy
+      // block below any more — it 308'd to /discover/catalog for the hour the
+      // browse mode shipped under that name. A redirect shadows a real page
+      // entirely, so the two cannot both exist; the redirect lost. If this
+      // key and a `legacy.discoverFeed` ever appear together, the page is
+      // dead and only this pairing shows it.
       discoverTabs: {
         swipe: "/discover/swipe",
+        feed: "/discover/feed",
         catalog: "/discover/catalog",
         chat: "/discover/chat",
         favs: "/discover/favs",
@@ -98,7 +106,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         inboxOrders: "/inbox/orders",
         discoverSearch: "/discover/search",
         discoverMap: "/discover/map",
-        discoverFeed: "/discover/feed",
+        // NO `discoverFeed` — /discover/feed is Home's Feed mode now
+        // (MESITA-1621), a live page, not a forwarding address.
         discoverHome: "/discover/home",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
@@ -305,16 +314,15 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/search",
         permanent: true,
       },
-      // The browse mode shipped as "Feed" for about an hour and as "Home" for
-      // a day. Both were live in production, so both forward like any other
-      // retired url — and both land STRAIGHT on /discover/catalog. Feed must
-      // never be re-pointed through /discover/home: that is a 3-hop chain and
-      // route-structure T4 caps it at exactly 2.
-      {
-        source: "/discover/feed",
-        destination: "/discover/catalog",
-        permanent: true,
-      },
+      // The browse mode shipped as "Home" for a day — live in production, so
+      // it forwards like any other retired url, straight to /discover/catalog.
+      //
+      // ITS SIBLING /discover/feed IS DELIBERATELY ABSENT (MESITA-1621).
+      // Catalog also spent an hour as "Feed" and 308'd here alongside Home;
+      // that segment is a real page now, and a redirect would shadow it into
+      // never rendering. This table is exhaustive — `toEqual` on the whole
+      // array — so re-adding the entry fails HERE, which is the point: the
+      // page it would break is otherwise silent.
       {
         source: "/discover/home",
         destination: "/discover/catalog",
