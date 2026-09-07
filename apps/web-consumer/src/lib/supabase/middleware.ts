@@ -35,12 +35,15 @@ import type { Database } from "./database.types";
 // destination BEFORE middleware runs, and the destination is walled here.
 
 const PROTECTED_PREFIXES = [
+  // Still gated although it only 308s to /me (MESITA-1626): middleware runs
+  // before the redirect, so gating here keeps a logged-out visitor's `next`
+  // param pointing at what they asked for instead of at Me.
+  "/inbox",
   "/me",
   "/new-visit",
   "/visit",
   "/reservations",
   "/reservation",
-  "/inbox",
 ];
 
 // Routes where a signed-in visitor should be bounced through post-signin.

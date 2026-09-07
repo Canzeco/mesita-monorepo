@@ -89,13 +89,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // Edge Function, no type, so there was nothing left to keep a section
       // pointed at. Wallet left for Pay (a wallet holds instruments, Activity
       // holds events) and Alerts leads the row now.
-      inbox: {
-        root: "/inbox",
-        notifications: "/inbox/notifications",
-        visits: "/inbox/visits",
-        reservations: "/inbox/reservations",
-      },
-      inboxDefault: "/inbox/visits",
       me: "/me",
       legacy: {
         profile: "/profile",
@@ -144,42 +137,52 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       reservations: "/reservations",
       newVisit: "/new-visit",
       visit: "/visit",
-      inbox: "/inbox",
+      // NO `inbox` key (MESITA-1626, removed): the container is gone and every
+      // /inbox address 308s to /me, so the middleware never sees one.
       me: "/me",
       saved: "/saved",
     });
     expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
   });
 
-  // toEqual compares keys as a set, so the section ORDER — the product
-  // decision (Pato, 2026-08-16; Credits added first 2026-09-01) — needs its
-  // own assertion or a well-meaning alphabetical re-sort would pass CI.
+  // ACTIVITY HAS NO ROUTES LEFT (MESITA-1626). Its three sections are sheets
+  // on Me, and a sheet has no URL, so the `inbox` object and `inboxDefault`
+  // are gone rather than kept as dead keys pointing at deleted pages.
   //
-  // This pins the CONTRACT's order. It does NOT pin what renders: nothing
-  // iterates this object, so the order the guest sees comes from
-  // InboxSectionNav.SECTIONS. route-structure.test.tsx T6 pins that one.
-  it("pins the Activity section order: alerts → visits → reservations", () => {
-    const sections = Object.keys(CONSUMER_ROUTES.inbox).filter(
-      (k) => k !== "root",
-    );
-    expect(sections).toEqual(["notifications", "visits", "reservations"]);
+  // What used to live here: a pin on the section ORDER, and a pin that bare
+  // /inbox landed on Visits rather than the first section (a visit in
+  // progress is time-critical, a notification never is). The order survives
+  // as a product fact — Alerts · Visits · Bookings — and route-structure T6
+  // pins it where it is now observable, in what Me renders.
+  it("keeps no route keys for a container that no longer exists", () => {
+    expect(CONSUMER_ROUTES).not.toHaveProperty("inbox");
+    expect(CONSUMER_ROUTES).not.toHaveProperty("inboxDefault");
+    expect(CONSUMER_ROUTE_PREFIX).not.toHaveProperty("inbox");
   });
 
-  // THE DEFAULT IS NO LONGER THE FIRST SECTION, and that is deliberate
-  // (Pato, 2026-09-01). Credits leads the pill row because money is what a
-  // guest checks first, but bare /inbox must keep landing on Visits: a visit
-  // in progress is time-critical — you are standing at a table with staff
-  // waiting — and a balance never is. Both inbox/page.tsx and
-  // inbox/[tab]/page.tsx redirect here, so this one line decides what the
-  // Inbox TAB opens to.
-  //
-  // If you are "fixing" this to match the row order, read the paragraph above
-  // first. The mismatch is the decision, not a bug.
-  it("lands the Activity tab on Visits, NOT on the first section", () => {
-    expect(CONSUMER_ROUTES.inboxDefault).toBe(CONSUMER_ROUTES.inbox.visits);
-    expect(CONSUMER_ROUTES.inboxDefault).not.toBe(
-      CONSUMER_ROUTES.inbox.notifications,
-    );
+  // Every /inbox address a guest could still hold has to land somewhere real
+  // in ONE hop. The legacy SOURCES stay in the contract on purpose — they are
+  // what a bookmark or an old push notification carries — but nothing may
+  // point AT the container any more.
+  it("sends every /inbox address to Me in one hop, and nothing points back", async () => {
+    const table = await nextConfig.redirects!();
+    const inbox = table.filter((r) => r.source.startsWith("/inbox"));
+
+    // /inbox/credits is the one exception and it predates the container's
+    // death: Credits is an INSTRUMENT, not an event, so it went to Pay's
+    // Wallet on 2026-09-01. It must stay ABOVE the catch-all — Next takes the
+    // first match, so a catch-all listed first would swallow it and land a
+    // wallet bookmark on Me.
+    expect(inbox.map((r) => [r.source, r.destination])).toEqual([
+      ["/inbox/credits", "/new-visit/wallet"],
+      ["/inbox", "/me"],
+      ["/inbox/:path*", "/me"],
+    ]);
+
+    // A destination pointing back into the container is a guaranteed 404 now.
+    expect(
+      table.filter((r) => r.destination.startsWith("/inbox")),
+    ).toEqual([]);
   });
 
   // Pay's first section and its default AGREE, unlike Activity's. You open
@@ -199,7 +202,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       CONSUMER_ROUTES.newVisit.wallet.startsWith(CONSUMER_ROUTES.newVisit.root),
     ).toBe(true);
     expect(CONSUMER_ROUTES).not.toHaveProperty("wallet");
-    expect(CONSUMER_ROUTES.inbox).not.toHaveProperty("credits");
   });
 });
 
@@ -329,8 +331,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       // The Saved tab and the /saved/place dual path (MESITA-1585).
-      { source: "/saved", destination: "/inbox/reservations", permanent: true },
-      { source: "/saved/reservations", destination: "/inbox/reservations", permanent: true },
+      { source: "/saved", destination: "/me", permanent: true },
+      { source: "/saved/reservations", destination: "/me", permanent: true },
       { source: "/saved/reservation/:id", destination: "/reservation/:id", permanent: true },
       { source: "/saved/place/:id", destination: "/place/:id", permanent: true },
       { source: "/invite", destination: "/share", permanent: true },
@@ -346,18 +348,14 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/wallet", destination: "/new-visit/wallet", permanent: true },
       { source: "/profile", destination: "/me", permanent: true },
-      {
-        source: "/notifications",
-        destination: "/inbox/notifications",
-        permanent: true,
-      },
-      // Orders folded into Visits (MESITA-1389). One hop, straight to the
-      // section it folded into — same shape as every other retired section.
-      {
-        source: "/inbox/orders",
-        destination: "/inbox/visits",
-        permanent: true,
-      },
+      { source: "/notifications", destination: "/me", permanent: true },
+      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626) — its sections are
+      // sheets on Me and a sheet has no URL, so every remaining /inbox
+      // address lands on Me in ONE hop. These sit BELOW /inbox/credits on
+      // purpose: Next takes the first match, and Credits still belongs to
+      // Pay's Wallet.
+      { source: "/inbox", destination: "/me", permanent: true },
+      { source: "/inbox/:path*", destination: "/me", permanent: true },
     ]);
   });
 

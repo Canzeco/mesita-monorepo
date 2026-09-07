@@ -258,13 +258,12 @@ describe("T5 — exactly one tab lights per surface", () => {
     // SOURCES, never rendered, so neither belongs in this matrix.
     ["/new-visit/wallet", "Pay"],
 
-    // Activity retired as a bottom tab (MESITA-1609). Its routes now light Me
-    // — the same requirement T5 has always held, just against a different
-    // tab: a visit/inbox/reservation detail that stops nesting under Me's
+    // Activity retired as a bottom tab (MESITA-1609) and then as a container
+    // (MESITA-1626) — its sections are sheets on Me, and a sheet has no path
+    // to light anything with. The DETAIL routes are what still has to nest
+    // under Me: a visit or reservation detail that stops matching Me's
     // matchPrefixes lights NOTHING, and this is what would catch it.
     ["/visit/t1", "Me"],
-    ["/inbox/visits", "Me"],
-    ["/inbox/reservations", "Me"],
     ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
@@ -466,85 +465,37 @@ describe("T5b — Home's mode rail", () => {
   });
 });
 
-// ── T6 — the Inbox pill row is what the guest sees ──────────────────────────
+// ── T6 — Activity is three sheets on Me, not a container ───────────────────
 //
-// consumer-route-contract.test.ts pins the ORDER OF THE CONTRACT's keys and
-// calls it the product decision. It isn't, quite: nothing iterates
-// CONSUMER_ROUTES.inbox at runtime — every consumer reads a named key — so
-// that object's key order has no effect on anything a guest experiences. The
-// order they actually see is InboxSectionNav.SECTIONS, a separate hand-listed
-// array, and mobile keeps a third copy.
+// This used to pin InboxSectionNav.SECTIONS, the hand-listed pill row a guest
+// actually saw, because the contract's key order pinned nothing at runtime.
+// MESITA-1626 deleted the row and the container under it: the three Me boxes
+// each deep-linked past that nav into one section, so its only job was asking
+// the guest to re-choose what they had just chosen.
 //
-// So the contract pin would stay green with the money section first in the
-// object and third on screen. This is the test that would go red.
-//
-// UNAFFECTED BY MESITA-1609 — the /inbox pages and their own pill row are
-// unchanged; only the top-level bottom-tab entry that used to lead here
-// (Activity) moved. A guest reaches this exact row whether they tapped an old
-// Activity tab or one of Me's new Alerts/Visits/Reservations boxes.
-describe("T6 — the Inbox section row renders as specified", () => {
-  async function renderNav(pathname: string): Promise<string> {
-    vi.resetModules();
-    vi.doMock("next/navigation", () => ({
-      usePathname: () => pathname,
-      useRouter: () => ({ push: () => {}, back: () => {} }),
-    }));
-    const { InboxSectionNav } = await import(
-      "@/components/consumer/inbox/InboxSectionNav"
-    );
-    return renderToStaticMarkup(<InboxSectionNav />);
-  }
+// The same class of bug still exists one layer over — a box wired to the wrong
+// sheet, or a sheet dropped in a refactor — so the pin moves rather than dies.
+describe("T6 — Activity's three sections are sheets on Me", () => {
+  const ME = readFileSync(
+    join(SHELL, "me", "ProfileClient.tsx"),
+    "utf8",
+  );
 
-  /** Pill labels in render order. */
-  function labels(html: string): string[] {
-    return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
-  }
-
-  it("is exactly Alerts · Visits · Reservations, in that order", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).toEqual([
-      "Alerts",
-      "Visits",
-      "Reservations",
-    ]);
+  it("renders one sheet per box: Alerts · Visits · Bookings", () => {
+    const rendered = [
+      ...ME.matchAll(/<(AlertsModal|VisitsModal|BookingsModal)\b/g),
+    ].map((m) => m[1]);
+    expect(rendered).toEqual(["AlertsModal", "VisitsModal", "BookingsModal"]);
   });
 
-  // Orders folded into Visits (MESITA-1389, 2026-09-06) — it never had a
-  // table, an Edge Function or a type, so it was a pill that could never
-  // render anything. An Orders pill reappearing here means someone
-  // un-folded it rather than giving it a real backing concept first.
-  it("has no Orders pill — it folded into Visits", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).not.toContain("Orders");
+  it("no box routes into a container any more", () => {
+    // The three boxes used to `router.push` into /inbox/*. If one comes back,
+    // the guest leaves Me for a page whose section nav no longer exists.
+    expect(ME).not.toContain("CONSUMER_ROUTES.inbox");
   });
 
-  it("catches a dropped or added pill", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).toHaveLength(3);
-  });
-
-  // Wallet LEFT for Pay on 2026-09-01 (Activity holds events, a wallet holds
-  // instruments). A Wallet pill reappearing here means someone moved it back
-  // rather than adding a new section.
-  it("has no Wallet pill — that section lives on Pay now", async () => {
-    expect(labels(await renderNav("/inbox/visits"))).not.toContain("Wallet");
-  });
-
-  // The failure this catches: a section whose href stops matching its own
-  // pathname lights NOTHING, and the row silently loses its active state.
-  // Same shape as T5, one level down.
-  const ACTIVE: [string, string][] = [
-    ["/inbox/notifications", "Alerts"],
-    ["/inbox/visits", "Visits"],
-    ["/inbox/reservations", "Reservations"],
-  ];
-
-  it.each(ACTIVE)("%s lights exactly %s", async (pathname, expected) => {
-    const html = await renderNav(pathname);
-    // The active pill is the only one carrying the solid primary fill.
-    const lit = html
-      .split("<a ")
-      .slice(1)
-      .filter((chunk) => chunk.includes("bg-primary"))
-      .map((chunk) => chunk.match(/<span>([^<]+)</)?.[1] ?? "?");
-    expect(lit).toEqual([expected]);
+  it("the /inbox route tree is gone from the app", () => {
+    expect(existsSync(join(SHELL, "inbox"))).toBe(false);
   });
 });
 
@@ -571,8 +522,10 @@ describe("T7 — every former Wallet url still resolves after the move", () => {
   // still be the 3-hop chain T4 refuses. T4 can validate a destination but
   // never a redirect's ABSENCE, which is why this test exists alongside it.
   it.each([
-    ["/saved", "/inbox/reservations"],
-    ["/saved/reservations", "/inbox/reservations"],
+    // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
+    // container; Bookings is a sheet on Me now, so Me is where they go.
+    ["/saved", "/me"],
+    ["/saved/reservations", "/me"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])("keeps the Saved-era redirect %s → %s (MESITA-1585)", async (source, destination) => {

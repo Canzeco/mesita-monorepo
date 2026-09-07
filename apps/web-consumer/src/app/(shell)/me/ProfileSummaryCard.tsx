@@ -26,8 +26,8 @@ import {
 //
 //   identity    photo ringed in the class metal · name on its own line ·
 //               age·sex·country beside the privacy state
-//   two tiles   CLASS · INSTAGRAM — what you are, and the one door that
-//               changes it
+//   two tiles   INSTAGRAM · CLASS — the door that changes your class, and
+//               the class itself (decision: Pato, MESITA-1626)
 //   the number  a footer row that opens the passport DOCUMENT
 //
 // NO PLAN TILE (decision: Pato, MESITA-1619). The Passport prints what is
@@ -274,17 +274,6 @@ export function ProfileSummaryCard({
 
         <div className="grid grid-cols-2 items-stretch gap-2">
           <Tile
-            eyebrow="Class"
-            icon={<ClassIcon className="h-2.5 w-2.5 shrink-0" />}
-            value={classLabel}
-            // The rung's REWARD, not a slogan: "Earned, not bought" was
-            // identical on every account at every rung, forever, and it is
-            // what a screen reader announced as if it were state.
-            note={cls?.reward ?? "Base discount"}
-            fill={classBadgeClass(key)}
-            onClick={onOpenClass}
-          />
-          <Tile
             eyebrow="Instagram"
             icon={
               <span
@@ -301,6 +290,17 @@ export function ProfileSummaryCard({
             note={igNote}
             fill="bg-muted text-foreground"
             onClick={onOpenInstagram}
+          />
+          <Tile
+            eyebrow="Class"
+            icon={<ClassIcon className="h-2.5 w-2.5 shrink-0" />}
+            value={classLabel}
+            // The rung's REWARD, not a slogan: "Earned, not bought" was
+            // identical on every account at every rung, forever, and it is
+            // what a screen reader announced as if it were state.
+            note={cls?.reward ?? "Base discount"}
+            fill={classBadgeClass(key)}
+            onClick={onOpenClass}
           />
         </div>
       </div>

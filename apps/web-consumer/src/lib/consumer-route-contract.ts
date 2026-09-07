@@ -146,45 +146,24 @@ export const CONSUMER_ROUTES = {
   visit: {
     prefix: "/visit/",
   },
-  // ACTIVITY — not a bottom tab any more (MESITA-1609). Still routed at
-  // /inbox, still holds three sections named for none of them (naming it for
-  // the mechanism, "Agent," would break the day places integrate directly) —
-  // but the DOOR into it is now three separate boxes on Me (Alerts, Visits,
-  // Reservations), not a dedicated tab of its own. The container concept and
-  // its three sections are unchanged; only the top-level chrome around it is.
-  inbox: {
-    root: "/inbox",
-    // THREE sections, and the ORDER is the product decision (Pato, 2026-09-01,
-    // Orders folded 2026-09-06 — MESITA-1389):
-    //
-    //   Alerts · Visits · Reservations
-    //
-    // Orders folded into Visits: it had no table, no Edge Function and no
-    // type, so it was a pill that could never render anything. An order is a
-    // visit you didn't sit down for, and it reappears as rows inside Visits
-    // when it becomes real. /inbox/orders 308s to /inbox/visits.
-    //
-    // Wallet LEFT for Pay — Activity holds events, a wallet holds instruments,
-    // and keeping it here was the category error named on 08-31. Alerts leads
-    // now: it is the only section that can carry something you have not seen.
-    //
-    // `notifications` reads Alerts on screen. That is the last label/route
-    // divergence in this object — `reservations` went back to reading
-    // Reservations, so Bookings is gone.
-    //
-    // NOTE: this key order has NO runtime effect. Nothing iterates this object;
-    // what the guest sees is InboxSectionNav.SECTIONS, and route-structure pins
-    // THAT. Sections are real nested routes so each is linkable.
-    notifications: "/inbox/notifications",
-    visits: "/inbox/visits",
-    reservations: "/inbox/reservations",
-  },
-  inboxDefault: "/inbox/visits",
+  // ACTIVITY IS NOT A SURFACE ANY MORE (MESITA-1626). MESITA-1609 took it off
+  // the bottom bar and left a container with no tab, reachable only from three
+  // Me boxes that each deep-linked straight past its own section nav — so the
+  // first thing the guest saw after choosing a section was a row asking them
+  // to choose again. Its three sections are sheets on Me now, and a sheet has
+  // no URL, so there are no keys here to point at: every /inbox address 308s
+  // to /me in next.config.ts.
+  //
+  // The CONCEPT survives unchanged — Alerts · Visits · Bookings, in that
+  // order, Alerts leading because it is the only one that can carry something
+  // you have not seen. What died is the routing, not the idea. If Activity
+  // ever needs linkable URLs again (a push notification deep-linking to one
+  // alert, say), it comes back as @modal-intercepted routes off /me rather
+  // than as a container of its own.
   // The Me tab is a single flat page — identity hero + modular boxes that open
-  // as modals (Class, Settings, …) or route out (Wallet, and now Alerts,
-  // Visits, Reservations — MESITA-1609). There are NO nested tab routes for
-  // /me itself; the surface stays flat, it just has more doors leading off
-  // it now. Legacy /me/class, /me/settings and /me/plan redirect here.
+  // as modals — everything except Wallet, which routes out to Pay's own
+  // Wallet section rather than growing a second copy of it (MESITA-1626).
+  // There are NO nested tab routes for /me itself; the surface stays flat. Legacy /me/class, /me/settings and /me/plan redirect here.
   // Promoting those to real @modal-intercepted routes is the next stage.
   me: "/me",
   legacy: {
@@ -276,7 +255,6 @@ export const CONSUMER_ROUTE_PREFIX = {
   reservations: "/reservations",
   newVisit: "/new-visit",
   visit: "/visit",
-  inbox: "/inbox",
   me: "/me",
   saved: "/saved",
 } as const;
