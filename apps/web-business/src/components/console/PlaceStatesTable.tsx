@@ -51,6 +51,7 @@ import {
   STATES_ACTION_HEAD,
   STATES_COL_CELL,
   STATES_COL_HEAD,
+  STATES_HEAD_BG,
   STATES_HEAD_STICKY,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -214,7 +215,7 @@ export function PlaceStatesTable({
                 2026-08-25) and the single-place State box already splits the
                 same way; without the group row twenty pills read as one
                 undifferentiated smear. */}
-            <tr className="text-muted-foreground bg-muted/30 type-label text-left font-semibold tracking-[0.12em] uppercase">
+            <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
               <th scope="col" className={cn("px-4 py-2", STATES_COL_HEAD)}>
                 Place
               </th>
@@ -236,7 +237,7 @@ export function PlaceStatesTable({
                 </th>
               ) : null}
             </tr>
-            <tr className="text-muted-foreground bg-muted/30 type-label text-left font-semibold tracking-[0.12em] uppercase">
+            <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
               <th scope="col" className={cn("px-4 pb-3", STATES_COL_HEAD)}>
                 <span className="sr-only">Place</span>
               </th>

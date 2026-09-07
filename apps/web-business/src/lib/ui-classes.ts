@@ -137,3 +137,14 @@ export const STATES_ACTION_CELL = "sm:sticky sm:right-0 sm:z-10 sm:bg-card";
 // TOPNAV_OCCUPIED_PX), and PlaceBar does NOT render on the list screens — so
 // there is no second bar to clear here, unlike on a place route.
 export const STATES_HEAD_STICKY = "sticky top-0 z-30 sm:top-[57px]";
+
+// The header ROWS' own background — same load-bearing opacity rule as
+// STATES_COL_HEAD above, just missed the first time (MESITA-1631): the whole
+// `<thead>` is sticky, so both its `<tr>`s float over the scrolling `<tbody>`
+// exactly like the pinned identity column floats over the scrolling states.
+// `bg-muted/30` on the header rows let the first data row's chips show
+// straight through — garbled, overlapping text once anything sat under the
+// header. Same flattened `color-mix` as the pinned column/action cells, so
+// the two opaque backgrounds actually match instead of drifting apart.
+export const STATES_HEAD_BG =
+  "bg-[color-mix(in_oklab,var(--color-muted)_30%,var(--color-card))]";
