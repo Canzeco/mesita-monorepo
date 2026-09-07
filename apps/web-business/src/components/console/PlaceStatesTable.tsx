@@ -211,40 +211,40 @@ export function PlaceStatesTable({
         role="region"
         aria-label="Places and their states"
       >
-        <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm lg:min-w-[1560px]">
+        {/* 1180px carries identity + nine state columns + the action cell. The
+              lg:min-w-[1560px] that used to sit here was sized for TWENTY
+              columns — nine general plus eleven Intake functions — and after
+              MESITA-1637 it spent 380px spreading nine yes/no cells apart,
+              which is most of why the header read as adrift (MESITA-1651). */}
+          <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
           <caption className="sr-only">
             One row per place. The left column is the place; every other column
             is a state, reading yes, no, or ? when the fact was not available.
           </caption>
           <thead className={STATES_HEAD_STICKY}>
-            {/* Two tiers. The vocabulary is TWO BOXES by decision (Pato,
-                2026-08-25) and the single-place State box already splits the
-                same way; without the group row twenty pills read as one
-                undifferentiated smear. */}
+            {/* ONE TIER (MESITA-1651). There were two, and the second one's
+                comment gave its own reason away: "the vocabulary is TWO BOXES
+                by decision" — General States and Intake States. MESITA-1637
+                took Intake off this table and the group row outlived its
+                reason, leaving a label that spanned every column and named
+                nothing the column heads do not already say. A heading that
+                labels everything labels nothing, and on a wide screen it read
+                as a stray word floating over empty space.
+
+                If a second group ever returns, the group row returns with it —
+                as a row that appears BECAUSE there are two groups, not as
+                permanent chrome. */}
             <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
-              <th scope="col" className={cn("px-4 py-2", STATES_COL_HEAD)}>
+              <th scope="col" className={cn("px-4 py-3", STATES_COL_HEAD)}>
                 Place
               </th>
-              <th scope="colgroup" colSpan={GENERAL_COLUMNS.length} className="px-3 py-2 text-center">
-                General States
-              </th>
-              {showActions ? (
-                <th scope="col" className={cn("px-4 py-2 text-right", STATES_ACTION_HEAD)}>
-                  <span className="sr-only">Actions</span>
-                </th>
-              ) : null}
-            </tr>
-            <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
-              <th scope="col" className={cn("px-4 pb-3", STATES_COL_HEAD)}>
-                <span className="sr-only">Place</span>
-              </th>
               {GENERAL_COLUMNS.map((c) => (
-                <th key={c.key} scope="col" className="px-3 pb-3 text-center font-semibold">
+                <th key={c.key} scope="col" className="px-3 py-3 text-center font-semibold">
                   {c.label}
                 </th>
               ))}
               {showActions ? (
-                <th scope="col" className={cn("px-4 pb-3", STATES_ACTION_HEAD)}>
+                <th scope="col" className={cn("px-4 py-3 text-right", STATES_ACTION_HEAD)}>
                   <span className="sr-only">Actions</span>
                 </th>
               ) : null}

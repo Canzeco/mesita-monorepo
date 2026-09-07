@@ -54,16 +54,44 @@ describe("rows and columns", () => {
     });
     expect(html).toContain("Alpha");
     expect(html).toContain("Beta");
-    expect((html.match(/<tr/g) ?? []).length).toBe(4); // 2 header rows + 2 places
+    expect((html.match(/<tr/g) ?? []).length).toBe(3); // 1 header row + 2 places
   });
 
-  it("carries the group header, and it names ONE box", () => {
-    // Two tiers survive MESITA-1637 even with one group: the second tier is
-    // the column labels, and General States is what the group says the nine
-    // of them are. Intake was the other box and it is gone from this screen.
+  it("has ONE header row, and no group label over a group of one", () => {
+    // MESITA-1651 reverses the line above it. The group row existed because
+    // the vocabulary was TWO boxes; MESITA-1637 removed Intake and left a
+    // heading that spanned every column and named nothing the column heads
+    // already said. Pato, seeing it: "THIS LOOKS LIKE SHIT."
     const html = render();
-    expect(html).toContain("General States");
+    expect(html).not.toContain("General States");
     expect(html).not.toContain("Intake States");
+    expect(html).not.toContain('scope="colgroup"');
+    // Two <tr> in the whole table: one header row, one place.
+    expect((html.match(/<tr/g) ?? []).length).toBe(2);
+  });
+
+  it("still names all nine states, in Pato's order", () => {
+    const html = render();
+    const heads = [...html.matchAll(/<th[^>]*>([^<]+)</g)].map((m) => m[1].trim());
+    expect(heads).toEqual([
+      "Place",
+      "Created",
+      "Active",
+      "Listed",
+      "Requested",
+      "Enriching",
+      "Enriched",
+      "Verified",
+      "Owned",
+      "Partnered",
+    ]);
+  });
+
+  it("does not spend 1560px spreading nine yes/no cells apart", () => {
+    // That width was sized for twenty columns. Nine remain.
+    const html = render();
+    expect(html).not.toContain("lg:min-w-[1560px]");
+    expect(html).toContain("min-w-[1180px]");
   });
 
   it("the identity cell holds the image and the name and nothing else", () => {
