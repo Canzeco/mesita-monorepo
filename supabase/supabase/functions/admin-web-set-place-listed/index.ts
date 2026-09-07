@@ -6,7 +6,7 @@
 // reach this place on Mesita at all" — and until now it was the only one
 // nothing in the product could change. The column was enforced (the consumer
 // RLS policy projects_select_public_visible gates SELECT on it) and
-// unreachable: business-web-update-project does not accept `state`, and no
+// unreachable: business-web-update-place does not accept `state`, and no
 // admin EF wrote it. Every row read 'active' purely because nothing had ever
 // written anything else. Pato, 2026-08-22: "maybe we want to activate or not
 // the place in Mesita."
@@ -23,7 +23,7 @@
 //
 // Body:     { placeId | projectId, listed: boolean }
 // Response: { ok: true, listed, state, place }
-//           `place` is the same AdminPlace shape business-web-update-project
+//           `place` is the same AdminPlace shape business-web-update-place
 //           returns, so the console reconciles from one call.
 // Auth:     caller's JWT email must be in public.super_admins.
 //

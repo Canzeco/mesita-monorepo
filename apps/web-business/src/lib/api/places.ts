@@ -219,7 +219,7 @@ export async function apiEnrichCreatePlace(
 ): Promise<EnrichCreatePlaceResponse> {
   return invokeEF<EnrichCreatePlaceResponse>(
     client,
-    "business-web-create-project",
+    "business-web-create-place",
     // Canonical Google Place ID key (MESITA-53 Addendum 9). The EF still
     // accepts legacy `placeId` server-side, but new callers send googlePlaceId.
     { googlePlaceId },
@@ -233,7 +233,7 @@ export type UpdatePlaceInput = {
   category?: string | null;
   vibe?: string | null;
   // price_level is enrich-only (Google Places) — not accepted by
-  // business-web-update-project.
+  // business-web-update-place.
   // Three-letter ISO 4217 code, e.g. "MXN". Sent uppercase; the EF
   // validates the shape and rejects anything else.
   currency?: string | null;
@@ -293,7 +293,7 @@ export async function apiUpdatePlace(
 ): Promise<UpdatedPlace> {
   const { place } = await invokeEF<{ place: UpdatedPlace }>(
     client,
-    "business-web-update-project",
+    "business-web-update-place",
     input,
   );
   return place;

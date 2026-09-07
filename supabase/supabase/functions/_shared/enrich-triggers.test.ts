@@ -89,7 +89,7 @@ Deno.test("TRIGGER_META: exactly the rows some code reads are marked live", () =
   //                 and hard-skips the first run when the row buys nothing.
   //   on_schedule — queue_due_place_enrichments() resolves it in SQL every
   //                 15 minutes and queues zero rows when it is disabled.
-  //   on_update   — business-web-update-project resolves it and skips the
+  //   on_update   — business-web-update-place resolves it and skips the
   //                 follower refresh / the re-embed (MESITA-1188). It is the
   //                 one reader that WITHHOLDS work instead of scheduling it,
   //                 which is why it is live without being an emitter.
@@ -153,7 +153,7 @@ Deno.test("on_update: the seven locked cells stay false even when stored true", 
 });
 
 Deno.test("on_update: what the update path is allowed to buy is exactly social + embedding", () => {
-  // business-web-update-project gates on `.includes("social")` and
+  // business-web-update-place gates on `.includes("social")` and
   // `.includes("embedding")`. If this list ever grows, that EF starts
   // re-deriving a field a human just typed.
   const buys = subprocessesFor(ENRICHMENT_TRIGGERS_DEFAULTS, "on_update").sort();

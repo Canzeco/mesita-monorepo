@@ -7,7 +7,7 @@
 //
 // Grants or revokes a membership directly. No Stripe, no money, no
 // project_subscriptions row — entitlement only. The admin console needs it
-// because business-web-update-project deliberately rejects `plan` (it is
+// because business-web-update-place deliberately rejects `plan` (it is
 // billing, not profile), and business-web-change-subscription is the paid
 // door: owner-scoped and, once live-mode ships, it would open a real Stripe
 // Checkout against someone else's place.
@@ -30,7 +30,7 @@
 //     plan untouched; logs strategy_switch.
 //
 // Response: { ok: true, plan, place }  — `place` is the same AdminPlace
-//           shape business-web-update-project returns, so the console can
+//           shape business-web-update-place returns, so the console can
 //           reconcile its optimistic state from one call.
 //
 // Auth: caller's JWT email must be in public.super_admins.

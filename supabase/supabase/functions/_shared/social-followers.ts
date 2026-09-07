@@ -2,7 +2,7 @@
 //
 // Follower counts are only INDIRECTLY editable: nobody types a number — an
 // admin/business picks the Instagram/Facebook account, and the counts follow
-// the account. When business-web-update-project lands a changed
+// the account. When business-web-update-place lands a changed
 // instagram_url / facebook_url, this module scrapes the newly chosen account
 // via Apify and rewrites the signal columns; clearing the account clears
 // them (the old account's numbers would be stale lies).

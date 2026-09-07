@@ -9,7 +9,7 @@ export type PlanKey = "free" | "pro" | "ultra";
 
 /**
  * The plan a strategy grants. Goes to admin-web-set-plan, NOT into a
- * business-web-update-project patch — that EF rejects any body carrying a
+ * business-web-update-place patch — that EF rejects any body carrying a
  * `plan` key (plan is billing, not profile).
  */
 export function planForSubscription(sub: SubscriptionId): PlanKey {

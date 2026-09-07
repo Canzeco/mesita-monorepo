@@ -44,7 +44,7 @@ type GuardedIntent = {
  * All-or-nothing was his call over per-box partial success, and the code makes
  * that honest rather than aspirational: PlaceSection, MenusSection, OrdersCard
  * and ReservationsCard all write through the SAME Edge Function
- * (`updatePlace` → business-web-update-project) with a patch keyed by `id`, and
+ * (`updatePlace` → business-web-update-place) with a patch keyed by `id`, and
  * their patch fragments touch disjoint columns. So the whole page's edits merge
  * into ONE object and go over ONE call — one row write, which either lands or
  * does not. There is no compensating-write fiction here and no window where

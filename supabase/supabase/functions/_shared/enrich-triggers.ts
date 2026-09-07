@@ -180,7 +180,7 @@ export const TRIGGER_META: Record<
     blurb:
       "Someone edited the profile. A human just stated the truth, so nothing re-scrapes.",
     // LIVE (MESITA-1188), and the only row honoured by WITHHOLDING work rather
-    // than scheduling it. business-web-update-project resolves
+    // than scheduling it. business-web-update-place resolves
     // subprocessesFor(triggers, "on_update") and skips the follower refresh
     // when `social` is off, the re-embed when `embedding` is off. It seeds no
     // run and re-derives nothing: an edit is ground truth, so the update path

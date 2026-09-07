@@ -228,7 +228,7 @@ export async function listAllPlaces(): Promise<
 /** Listed is the guest-visibility gate: projects.state, which is what the
  *  consumer RLS policy projects_select_public_visible gates every guest read
  *  on. Unlisting removes the place from browse, search, the swipe deck and
- *  any shared link at once. business-web-update-project does not accept
+ *  any shared link at once. business-web-update-place does not accept
  *  `state`, so this is its own admin door (admin-web-set-place-listed). */
 export async function setPlaceListed(
   placeId: string,
@@ -274,7 +274,7 @@ export async function setPlaceVerified(
   };
 }
 
-// business-web-update-project refuses a body carrying a `plan` key — it is
+// business-web-update-place refuses a body carrying a `plan` key — it is
 // the paid door's field, and the paid door is Stripe. The admin grants it
 // through its own door instead: no Stripe, no money (admin-web-set-plan).
 //

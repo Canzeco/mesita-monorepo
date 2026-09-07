@@ -3,7 +3,7 @@
 // Profile — admin's Single Place profile editor, verbatim: PlaceSection
 // (basics · location · hours · channels · photos) wrapping MenusSection,
 // with the completeness meter above it. Saves ride the one-save bar through
-// business-web-update-project, which is what admin already used.
+// business-web-update-place, which is what admin already used.
 
 import { PlaceSection } from "@/components/place-manage/sections/PlaceSection";
 import { MenusSection } from "@/components/place-manage/sections/MenusSection";

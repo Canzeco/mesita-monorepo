@@ -31,8 +31,8 @@
 // seeds the queue. Business create still queues. Admin Enrich /
 // Create+Enrich is a second call.
 //
-// Callers: admin-web-create-project, business-web-create-project,
-// consumer-web-create-place (+ its consumer-web-schedule-project-creation
+// Callers: admin-web-create-place, business-web-create-place,
+// consumer-web-create-place (+ its consumer-web-schedule-place-creation
 // compat alias). All create IMMEDIATELY (MESITA-127/128 dropped the staggered
 // queue); only auth, dedupe copy, and response shaping differ per EF.
 

@@ -110,7 +110,7 @@ s3_access_key = "env(S3_ACCESS_KEY)"
 s3_secret_key = "env(S3_SECRET_KEY)"
 
 # Per-function overrides. Naming rule: <caller>-<verb>-<noun> (e.g.
-# business-web-create-project, consumer-list-tickets). All functions verify the
+# business-web-create-place, consumer-list-tickets). All functions verify the
 # JWT except the truly public catalog reads, which rely on RLS to gate
 # visibility instead.
 
@@ -205,7 +205,7 @@ verify_jwt = true
 # LIVE admin create path — seeds the minimal 'generating' place in-process
 # (_shared/save-place.ts) and queues deep enrichment (place_research →
 # supabase-cron-enrich-place-*). Operator JWT + super_admins allowlist.
-[functions.admin-web-create-project]
+[functions.admin-web-create-place]
 verify_jwt = true
 
 # Authed consumer writes / reads tied to the signed-in consumer's own data.
@@ -249,7 +249,7 @@ verify_jwt = true
 
 # COMPAT ALIAS for the deployed consumer app (also creates inline, keeps the old
 # response keys). Delete once the app is verified on consumer-web-create-place.
-[functions.consumer-web-schedule-project-creation]
+[functions.consumer-web-schedule-place-creation]
 verify_jwt = true
 
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for
@@ -419,10 +419,10 @@ verify_jwt = true
 verify_jwt = true
 
 # Unit (place) lifecycle
-[functions.business-web-create-project]
+[functions.business-web-create-place]
 verify_jwt = true
 
-[functions.business-web-update-project]
+[functions.business-web-update-place]
 verify_jwt = true
 
 [functions.business-web-list-tags]

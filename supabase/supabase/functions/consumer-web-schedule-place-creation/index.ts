@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-schedule-project-creation (consumer caller)
+// Supabase Edge Function — consumer-web-schedule-place-creation (consumer caller)
 //
 // COMPATIBILITY ALIAS of consumer-web-create-place (MESITA-128) — the slug the
 // previously-deployed consumer app still calls. Places are created IMMEDIATELY
@@ -15,8 +15,8 @@
 // New clients call consumer-web-create-place instead. Delete this alias once
 // every deployed client has flipped.
 //
-// Local:  supabase functions serve consumer-web-schedule-project-creation
-// Deploy: supabase functions deploy consumer-web-schedule-project-creation
+// Local:  supabase functions serve consumer-web-schedule-place-creation
+// Deploy: supabase functions deploy consumer-web-schedule-place-creation
 
 // MESITA-941: thin alias of consumer-web-create-place — zero apps/ callers; keep until mobile binaries drop any residual invoke.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -56,13 +56,13 @@ Deno.serve(async (req) => {
     admin,
     authRes.user.id,
     googlePlaceId,
-    "consumer-web-schedule-project-creation",
+    "consumer-web-schedule-place-creation",
   );
   if (!quota.ok) return quota.response;
 
   const created = await createMinimalPlace({
     admin,
-    callerName: "consumer-web-schedule-project-creation",
+    callerName: "consumer-web-schedule-place-creation",
     googlePlaceId,
     dedupeError: "This place is already on Mesita.",
     queueEnrich: false,

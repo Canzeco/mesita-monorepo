@@ -55,7 +55,7 @@ export function subscriptionForPlace(p: PlacePlan): SubscriptionId {
 
 // Ported with MESITA-1537 (the Place screen mounts admin's Single Place
 // components). `plan` is billing, not profile: it reaches the DB through the
-// paid door only — business-web-update-project rejects any body carrying it.
+// paid door only — business-web-update-place rejects any body carrying it.
 /** The LEGACY strategy ids the ported Controls components still speak.
  *  Distinct from this file's own SubscriptionId (free | partner), which is
  *  the live catalog. */
