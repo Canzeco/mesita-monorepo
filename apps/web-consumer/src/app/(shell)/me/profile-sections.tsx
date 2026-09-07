@@ -26,6 +26,7 @@ function BoxShell({
   onClick,
   disabled,
   soon = false,
+  bare = false,
 }: {
   icon: ReactNode;
   title: string;
@@ -34,6 +35,10 @@ function BoxShell({
   onClick: () => void;
   disabled?: boolean;
   soon?: boolean;
+  /** Renders without its own border/rounding/background — for a row that
+   *  sits inside a `BoxGroup`, which supplies all three on the wrapper
+   *  instead (MESITA-1609). */
+  bare?: boolean;
 }) {
   // Parked (soon) rows are BLOCKED, not removed: kept visible so the surface
   // reads as intentional, but non-interactive with a Soon pill. Un-park =
@@ -47,7 +52,8 @@ function BoxShell({
       aria-disabled={inert}
       title={soon ? "Coming soon" : undefined}
       className={cn(
-        "border-border bg-card flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition active:scale-[0.99]",
+        "flex w-full items-center gap-3.5 p-4 text-left transition active:scale-[0.99]",
+        bare ? "bg-transparent" : "border-border bg-card rounded-2xl border",
         inert ? "opacity-60" : "hover:bg-muted/50",
       )}
     >
@@ -82,6 +88,7 @@ export function BoxRow({
   onClick,
   disabled,
   soon,
+  bare,
 }: {
   Icon: LucideIcon;
   title: string;
@@ -89,6 +96,7 @@ export function BoxRow({
   onClick: () => void;
   disabled?: boolean;
   soon?: boolean;
+  bare?: boolean;
 }) {
   return (
     <BoxShell
@@ -98,6 +106,22 @@ export function BoxRow({
       onClick={onClick}
       disabled={disabled}
       soon={soon}
+      bare={bare}
     />
+  );
+}
+
+// Groups sibling BoxRows (`bare`) under ONE border/rounding/background, with
+// a hairline divider between — MESITA-1609's Alerts/Visits/Reservations
+// cluster, which reads as the one container they were yesterday (Activity)
+// rather than three unrelated rows. A flat, evenly-gapped list of ordinary
+// BoxRows does NOT read as related — verified against a wireframe during
+// design review — so the grouping needs this explicit wrapper, not just
+// adjacency in the JSX.
+export function BoxGroup({ children }: { children: ReactNode }) {
+  return (
+    <div className="border-border bg-card divide-border overflow-hidden rounded-2xl border divide-y">
+      {children}
+    </div>
   );
 }

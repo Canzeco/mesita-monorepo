@@ -234,29 +234,33 @@ describe("T5 — exactly one tab lights per surface", () => {
   }
 
   const MATRIX: [string, string][] = [
-    // Every Discover mode lights one tab.
-    ["/discover/catalog", "Discover"],
-    ["/discover/search", "Discover"],
-    ["/discover/swipe", "Discover"],
-    ["/discover/favs", "Discover"],
+    // Home's four modes (MESITA-1609 — was "Discover" before Search split out).
+    ["/discover/catalog", "Home"],
+    ["/discover/swipe", "Home"],
+    ["/discover/favs", "Home"],
     // /place rode the Home entry until the hub was retired (2026-09-01) and
-    // has no other consumer. If it is ever dropped from Discover's
+    // has no other consumer. If it is ever dropped from Home's
     // matchPrefixes, place detail lights NOTHING and this row is what says so.
-    ["/place/abc", "Discover"],
-    ["/new-visit", "Pay"],
-    // THE requirement from the routing v2 design review: the visit detail
-    // lights ACTIVITY, not the centre tab, because that is where the list lives.
-    // It lit the centre tab before only by nesting under /rewards; the rename
-    // severed that nesting and this row is what holds the replacement.
-    ["/visit/t1", "Activity"],
+    ["/place/abc", "Home"],
 
-    // Wallet is Pay's SECOND SECTION again (2026-09-06), so it lights Pay by
+    // Search is its own tab now (MESITA-1609) — the same screen, promoted out
+    // of Home's mode rail.
+    ["/discover/search", "Search"],
+
+    ["/new-visit", "Pay"],
+    // Wallet is Pay's SECOND SECTION (MESITA-1581), so it lights Pay by
     // nesting — no prefix of its own. /inbox/credits and /wallet are redirect
     // SOURCES, never rendered, so neither belongs in this matrix.
     ["/new-visit/wallet", "Pay"],
-    ["/inbox/visits", "Activity"],
-    ["/inbox/reservations", "Activity"],
-    ["/reservation/r1", "Activity"],
+
+    // Activity retired as a bottom tab (MESITA-1609). Its routes now light Me
+    // — the same requirement T5 has always held, just against a different
+    // tab: a visit/inbox/reservation detail that stops nesting under Me's
+    // matchPrefixes lights NOTHING, and this is what would catch it.
+    ["/visit/t1", "Me"],
+    ["/inbox/visits", "Me"],
+    ["/inbox/reservations", "Me"],
+    ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
 
@@ -277,20 +281,17 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// MESITA-1119 — a mockup showed a sixth "Agents" tab and "Me · {class}".
-// Product Rules §C (later, Pato-owned): plain labels; class is state on /me,
-// never chrome; Activity is not named for a mechanism.
-//
-// FOUR tabs, in the order Pato gave them on 2026-09-06 ("FOUR PAGES, NOT 5"):
-// Discover · Pay · Activity · Me. Wallet ran as a fifth tab for a day (#1492)
-// and went back to being Pay's second section; Pay went back ahead of Activity
-// with it.
-//
-// The count is NOT the 2026-09-01 merge being re-litigated. That merge folded
-// Home and Search into Discover and was a DELETION — Home had been Soon since
-// 2026-08-28 while Search shipped the live map, so the dead tab was the
-// leftmost one and wore the brand mark. Discover IS /search, unmoved.
-describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () => {
+// MESITA-1609 — Home and Search split back apart, and Activity retires as a
+// tab (its sections move to Me). This directly REVERSES the guard
+// MESITA-1119 wrote below: that guard existed because a rejected mockup
+// tried to add an Agents tab and a class-suffixed Me label alongside a
+// Home/Search restoration nobody had reasoned through. This change is not
+// that mockup — it is a reviewed, reasoned IA change (design + eng review,
+// this same session), and the two tests MESITA-1119 actually cared about
+// (no class stamped into Me, no Agents tab) are UNCHANGED below. Only the
+// tab count and the specific "no Home or Search" assertion — the part of
+// that guard this PR deliberately overturns — are rewritten.
+describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
   async function tabLabels(): Promise<string[]> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -302,18 +303,26 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Discover · Pay · Activity · Me", async () => {
-    expect(await tabLabels()).toEqual(["Discover", "Pay", "Activity", "Me"]);
+  it("is exactly Home · Search · Pay · Me", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
-  // The hub is retired, not hiding. A "Home" label reappearing means someone
-  // restored the tab rather than un-parking a mode inside Discover.
-  it("has no Home or Search tab", async () => {
+  // The MESITA-1119 guard this replaces asserted `.not.toContain("Home")` and
+  // `.not.toContain("Search")` — the literal opposite of this row. That guard
+  // is not being silently bypassed: it is being deliberately overturned, with
+  // review, and this test is the record of that. A regression back to FIVE
+  // tabs (Home, Search AND Discover all at once, say) would still be caught —
+  // the count assertion above pins exactly four.
+  it("has Home and Search back, on purpose (MESITA-1609)", async () => {
     const labels = await tabLabels();
-    expect(labels).not.toContain("Home");
-    expect(labels).not.toContain("Search");
+    expect(labels).toContain("Home");
+    expect(labels).toContain("Search");
+    expect(labels).not.toContain("Discover");
   });
 
+  // Unaffected by this PR — Product Rules §C still holds, MESITA-1119's other
+  // finding (a class-suffixed Me label, an Agents tab) is not what this PR
+  // touches.
   it("does not stamp class into Me and does not add an Agents tab", async () => {
     const labels = await tabLabels();
     expect(labels.some((l) => l.includes("·"))).toBe(false);
@@ -322,23 +331,20 @@ describe("MESITA-1119 — chrome matches Product Rules §C, not the mockup", () 
   });
 });
 
-// ── T5b — the Discover mode rail ────────────────────────────────────────────
+// ── T5b — Home's mode rail ──────────────────────────────────────────────────
 // Same job T6 does for the Inbox row, one level down. A rail whose href stops
 // matching its own pathname lights NOTHING, and neither tsc nor the build nor
 // any other test notices — the row just quietly loses its selected state.
 //
-// It also pins ORDER and COUNT. At five modes the ~292px track fits the 359px
-// screen, so nothing is off-screen — but that was NOT true at seven, where the
-// last two pills never rendered at rest. A sixth mode brings that back, and
-// this count assertion is what makes anyone adding one re-measure first.
-describe("T5b — Discover's mode rail", () => {
-  it("is exactly Catalog · Search · Swipe · Chat · Favs", async () => {
+// It also pins ORDER and COUNT. Search left this rail for its own tab
+// (MESITA-1609); four modes remain.
+describe("T5b — Home's mode rail", () => {
+  it("is exactly Catalog · Swipe · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
       "Catalog",
-      "Search",
       "Swipe",
       "Chat",
       "Favs",
@@ -346,19 +352,15 @@ describe("T5b — Discover's mode rail", () => {
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill, so the track is 5 x widest + 16px
+  // sizes every column to the WIDEST pill, so the track is 4 x widest + 16px
   // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
   // 26px: a 14px icon, gap-1, and px-1 either side.
   //
-  // MEASURED AT 11px (`type-label`), not 12px (`text-xs`). "Catalog" is 44.0px
-  // at 12px, which put the track at 366px — the 7px of scroll that was the
-  // whole case for calling the mode "Home" until 2026-09-02. The rail dropped
-  // one type step to buy it back, so these numbers are the 12px measurements
-  // scaled by 11/12 and the widest is Catalog at 40.3.
-  //
-  // The size assertion below is load-bearing: if the rail ever goes back to
-  // `text-xs`, this arithmetic silently starts describing a track 8% narrower
-  // than the one that renders, and Favs clips mid-word again.
+  // MEASURED AT 11px (`type-label`), reusing the per-label widths measured
+  // for the five-mode row — no mode's own width changes when Search leaves.
+  // Dropping a column only ever loosens this budget; the assertion stays so a
+  // FUTURE addition (a sixth mode, Search rejoining) re-tightens it and gets
+  // caught here first.
   it("keeps every label inside the 359px track", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
@@ -378,7 +380,6 @@ describe("T5b — Discover's mode rail", () => {
     expect(navSrc).not.toContain("py-2 text-xs font-semibold");
     const TEXT_PX: Record<string, number> = {
       Catalog: 40.3,
-      Search: 36.7,
       Swipe: 31.8,
       Chat: 24.5,
       Favs: 25.1,
@@ -394,7 +395,7 @@ describe("T5b — Discover's mode rail", () => {
     expect(widest * MODES.length + 16).toBeLessThanOrEqual(359);
   });
 
-  it("has no parked modes — all five are real destinations", async () => {
+  it("has no parked modes — all four are real destinations", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
@@ -404,6 +405,12 @@ describe("T5b — Discover's mode rail", () => {
     expect(MODES.filter((m) => m.soon)).toEqual([]);
   });
 
+  // Search left this rail for its own tab (MESITA-1609) — it's still a real,
+  // live route in the contract (discoverTabs.search), just deliberately NOT
+  // one of the modes this rail renders. So this checks MODES is a SUBSET of
+  // the contract's routes, not an exact match — the old exact-length version
+  // of this test would fail the moment a route existed that the rail
+  // legitimately doesn't carry.
   it("every mode href is a real /discover route in the contract", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
@@ -412,34 +419,37 @@ describe("T5b — Discover's mode rail", () => {
     for (const m of MODES) {
       expect(contract, m.label).toContain(m.href);
     }
-    expect(MODES).toHaveLength(contract.length);
+    expect(MODES).toHaveLength(contract.length - 1);
+    expect(MODES.map((m) => m.href)).not.toContain(
+      CONSUMER_ROUTES.discoverTabs.search,
+    );
   });
 
-  it("lands Discover on Search, and the default is never a parked mode", async () => {
+  // DEFAULT IS BACK ON THE LEADING PILL (MESITA-1609), reversing the "default
+  // is not first" guard this row held from 2026-09-01 to today. That guard
+  // existed because Search — buried behind Catalog's width win — was the
+  // urgent mode nobody landed on by looking; once Search left the rail
+  // entirely, there is no more urgent mode among the remaining four to bury,
+  // so first-pill-is-default stops being a trap and starts being the obvious
+  // choice. See consumer-route-contract.ts's discoverDefault comment for the
+  // full reasoning. Do NOT re-derive this from Activity's still-live
+  // Alerts-leads/Visits-lands split (inboxDefault) — the two rows no longer
+  // share a justification.
+  it("lands Home on Catalog — its own leading pill", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.search,
+      CONSUMER_ROUTES.discoverTabs.catalog,
     );
+    expect(MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
+    expect(MODES[0].label).toBe("Catalog");
     // The guard that makes "the first tab lands on nothing" impossible to
     // reintroduce: whatever the default points at must be a LIVE mode.
     const landed = MODES.find(
       (m) => m.href === CONSUMER_ROUTES.discoverDefault,
     );
     expect(landed?.soon ?? false).toBe(false);
-  });
-
-  // DEFAULT IS NOT FIRST, and that is the product decision — the same one
-  // Activity makes with bare /inbox landing on Visits while Alerts leads.
-  // Pinned because it reads like a bug to anyone who meets it cold, and the
-  // cheap "fix" is to quietly repoint the default at the first pill.
-  it("keeps the default OFF the leading pill", async () => {
-    const { MODES } = await import(
-      "@/components/consumer/discover/DiscoverModeNav"
-    );
-    expect(MODES[0].href).not.toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Catalog");
   });
 });
 
@@ -454,6 +464,11 @@ describe("T5b — Discover's mode rail", () => {
 //
 // So the contract pin would stay green with the money section first in the
 // object and third on screen. This is the test that would go red.
+//
+// UNAFFECTED BY MESITA-1609 — the /inbox pages and their own pill row are
+// unchanged; only the top-level bottom-tab entry that used to lead here
+// (Activity) moved. A guest reaches this exact row whether they tapped an old
+// Activity tab or one of Me's new Alerts/Visits/Reservations boxes.
 describe("T6 — the Inbox section row renders as specified", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();

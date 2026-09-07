@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Bot,
-  IdCard,
-  Instagram,
+  Bell,
+  CalendarCheck,
+  Footprints,
   MoreHorizontal,
   Settings as SettingsIcon,
   UserRound,
+  Wallet as WalletIcon,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { DeleteAccountSheet } from "@/components/consumer/DeleteAccountSheet";
@@ -38,32 +39,44 @@ import {
 import {
   CLASSES,
   CLASS_MARK_ICON,
-  PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { BoxRow } from "./profile-sections";
+import { BoxGroup, BoxRow } from "./profile-sections";
 import { ProfileSummaryCard } from "./ProfileSummaryCard";
 
-// The Me surface — Passport + EIGHT boxes (decision: Pato, MESITA-1123):
+// The Me surface — EIGHT boxes, same count MESITA-1123 set, entirely
+// different composition (MESITA-1609):
 //
-//   Instagram · Class · Plan     who you are and what you pay
-//   Passport                     the document those three add up to
-//   Profile · Settings           your account
-//   AI Connector · More          the tool that isn't live yet, then the tail
+//   Alerts · Visits · Reservations   Activity's three sections, folded in —
+//                                    one visual cluster (BoxGroup), not three
+//                                    unrelated rows, so the guest still reads
+//                                    them as the container they were yesterday
+//   Wallet                          promoted out of the buried More sheet —
+//                                    one tap from Me instead of three
+//   Class · Profile · Settings      your account, unchanged from before
+//   More                            Instagram, Plan, Passport, AI Connector
+//                                    and the rest of the long tail
 //
-// PASSPORT SITS UNDER PLAN (decision: Pato, this session) because it is the
-// SUM of the three rows above it, not a fourth axis: the card at the top is
-// its cover, and the row opens the data page — the same identity as fields,
-// plus the member number, which no other consumer surface renders.
+// EIGHT IS DELIBERATE, NOT A DEFAULT. MESITA-1123 set seven, and MoreModal.tsx
+// carried that number in its own comment even after Passport made it eight —
+// a documentation drift this PR corrects rather than perpetuates. Going to
+// eight from *this* eight (not from the stale "seven" anyone reading only
+// MoreModal.tsx would have assumed) meant four boxes moved to More to make
+// room for Alerts/Visits/Reservations/Wallet: Instagram, Plan, Passport and
+// AI Connector, chosen the same way the ORIGINAL split was — by FREQUENCY,
+// not importance. AI Connector is also still `soon`, which made it the
+// easiest of the four to justify moving on its own.
 //
-// Twelve boxes made this a wall to scroll, with parked rows (Credits, Gift,
-// Share) sitting between live ones so the page read as mostly-unfinished.
-// The long tail moved into MoreModal; the split is by FREQUENCY, not
-// importance. Every summary reads live wherever the page already holds the
-// data — a box that states a fact the guest can check beats one that lists
-// its own fields.
+// Every summary reads live wherever the page already holds the data. Visits
+// and Reservations both do — `apiFetchConsumerMetrics` already returns
+// `places_visited` and `reservations_booked`, fetched on mount for the old
+// Metrics row, reused here for free. Alerts does NOT: there is no read/unread
+// tracking anywhere in this codebase today (checked before writing this — no
+// column, no EF, no client state), so its row carries a static summary
+// rather than a fabricated count. Wiring a real one is a separate, honest
+// piece of backend work, not a UI relabel.
 //
 // Flat page at /me; `openSettings` opens Settings on arrival for the legacy
 // /me/settings deep link.
@@ -93,6 +106,12 @@ export function ProfileClient({
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
   const [visits, setVisits] = useState<number | null>(null);
   const [savedCents, setSavedCents] = useState<number | null>(null);
+  // Lifetime confirmed reservations, same EF read as visits/saved (MESITA-1609
+  // — reused, not a new fetch). "Booked," not "upcoming": the EF counts all
+  // time, so the summary doesn't claim a distinction the data can't back.
+  const [reservationsBooked, setReservationsBooked] = useState<number | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   // Modal state. Only one is meaningfully open at a time; each is a LocalSheet
@@ -129,6 +148,10 @@ export function ProfileClient({
         // fallback when it fails.
         setVisits(metrics?.places_visited ?? stats.visits);
         setSavedCents(metrics?.saved_cents ?? null);
+        // No stats.reservations fallback exists — the metrics EF is the only
+        // source, so a failed fetch just leaves this null (zero-state copy
+        // handles it, same as a slow load).
+        setReservationsBooked(metrics?.reservations_booked ?? null);
       } catch (e) {
         if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
       } finally {
@@ -237,12 +260,56 @@ export function ProfileClient({
             onOpenInstagram={() => setVerifyOpen(true)}
           />
 
-          {/* Identity — the door you came through, then the rung. */}
+          {/* Activity's three sections, folded in (MESITA-1609) — one visual
+              cluster, not three flat rows, so they still read as the
+              container they were on the old Activity tab. Alerts has no
+              live count: no read/unread tracking exists in this codebase
+              today, so its summary is honest static copy, not a fabricated
+              number. */}
+          <BoxGroup>
+            <BoxRow
+              bare
+              Icon={Bell}
+              title="Alerts"
+              summary="Notifications and updates"
+              onClick={() => router.push(CONSUMER_ROUTES.inbox.notifications)}
+            />
+            <BoxRow
+              bare
+              Icon={Footprints}
+              title="Visits"
+              summary={
+                loading
+                  ? "…"
+                  : !visits
+                    ? "Your visits will show up here"
+                    : `${visits} visit${visits === 1 ? "" : "s"}`
+              }
+              onClick={() => router.push(CONSUMER_ROUTES.inbox.visits)}
+            />
+            <BoxRow
+              bare
+              Icon={CalendarCheck}
+              title="Reservations"
+              summary={
+                loading
+                  ? "…"
+                  : !reservationsBooked
+                    ? "Nothing booked yet"
+                    : `${reservationsBooked} booked`
+              }
+              onClick={() => router.push(CONSUMER_ROUTES.inbox.reservations)}
+            />
+          </BoxGroup>
+
+          {/* Promoted out of the buried More sheet (MESITA-1609) — one tap
+              from Me instead of three. Pay keeps its own primary Wallet
+              door; this is the second one, same destination. */}
           <BoxRow
-            Icon={Instagram}
-            title="Instagram"
-            summary={loading ? "…" : igSummary}
-            onClick={() => setVerifyOpen(true)}
+            Icon={WalletIcon}
+            title="Wallet"
+            summary="Credits, gifting and your saved cards"
+            onClick={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
           />
 
           <BoxRow
@@ -250,24 +317,6 @@ export function ProfileClient({
             title="Class"
             summary={loading ? "…" : classSummary}
             onClick={() => setClassOpen(true)}
-          />
-
-          {/* Money — the plan axis lives on its own surface (Stripe checkout
-              + manage), never inside the Class sheet. */}
-          <BoxRow
-            Icon={PREMIUM_PLAN_ICON}
-            title="Plan"
-            summary={loading ? "…" : planSummary}
-            onClick={() => setPlanOpen(true)}
-          />
-
-          {/* The document the three rows above add up to — read-only, and the
-              only place the member number is shown. */}
-          <BoxRow
-            Icon={IdCard}
-            title="Passport"
-            summary={loading ? "…" : passportSummary}
-            onClick={() => setPassportOpen(true)}
           />
 
           {/* Your account. */}
@@ -286,21 +335,16 @@ export function ProfileClient({
             onClick={() => setSettingsOpen(true)}
           />
 
-          {/* Parked, so it sits under the live account rows (decision: Pato). */}
-          {/* decision: Pato — Consumer MCP connect (MESITA-265), not a tip */}
-          <BoxRow
-            Icon={Bot}
-            title="AI Connector"
-            summary="Use Mesita from ChatGPT or Claude (MCP)"
-            onClick={() => setAiOpen(true)}
-            soon
-          />
-
-          {/* The long tail: Cards · Credits · Gift · Share · Metrics · Help · Contact. */}
+          {/* The long tail: Cards · Instagram · Plan · Passport · Gift ·
+              Share · AI Connector · Metrics · Help · Contact. Instagram,
+              Plan, Passport and AI Connector moved here from primary
+              (MESITA-1609) to make room for Alerts/Visits/Reservations/
+              Wallet — same frequency-based split MESITA-1123 used
+              originally, reapplied. */}
           <BoxRow
             Icon={MoreHorizontal}
             title="More"
-            summary="Cards, Credits, Gift, Share, Metrics, Help, Contact"
+            summary="Instagram, Plan, Passport, Cards and more"
             onClick={() => setMoreOpen(true)}
           />
 
@@ -379,10 +423,15 @@ export function ProfileClient({
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
         onOpenCards={() => setCardsOpen(true)}
-        // Credits is a ROUTE, not a sheet — the stack needs the whole card.
-        // It lives as the first Inbox section now, so this is the second
-        // doorway into it, not the only one.
-        onOpenCredits={() => router.push(CONSUMER_ROUTES.newVisit.wallet)}
+        // Instagram, Plan, Passport and AI Connector moved here from Me's
+        // primary boxes (MESITA-1609) — same modals, same state, new door.
+        onOpenInstagram={() => setVerifyOpen(true)}
+        igSummary={loading ? "…" : igSummary}
+        onOpenPlan={() => setPlanOpen(true)}
+        planSummary={loading ? "…" : planSummary}
+        onOpenPassport={() => setPassportOpen(true)}
+        passportSummary={loading ? "…" : passportSummary}
+        onOpenAiConnect={() => setAiOpen(true)}
         onOpenShare={() => setShareOpen(true)}
         onOpenMetrics={() => setMetricsOpen(true)}
         onOpenHelp={() => setHelpOpen(true)}

@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ComponentType } from "react";
-import { QrCode, Inbox, User } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
 import { cn } from "@/lib/utils";
@@ -17,50 +17,54 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-// FOUR top-level surfaces, in this order (Pato, 2026-09-06: "FOUR PAGES, NOT
-// 5 — Discover, Pay, Activity, Me"):
+// FOUR top-level surfaces, in this order (Pato, MESITA-1609):
 //
-//   Discover · Pay · Activity · Me
+//   Home · Search · Pay · Me
 //
-// FOUR IS THE CEILING, and the fifth tab is what proved it. Wallet ran as its
-// own tab for a day (#1492, 2026-09-05 -> 09-06) and folds back into Pay as a
-// section. The tab was argued from what a wallet IS — a destination, not a
-// subsection — and the count is the counter-argument: a balance is something
-// you CHECK, and a bar of destinations should be things you DO. Pay is where
-// the balance is spent, so Pay is where it is kept. See newVisit in the route
-// contract; the "instruments, not events" rule is untouched and still keeps
-// Wallet out of Activity.
+// FOUR IS STILL THE CEILING — this reorders and relabels the same four-tab
+// bar the 2026-09-06 call locked (Discover · Pay · Activity · Me), it does
+// not widen it. Two things moved:
 //
-// PAY SITS SECOND, ahead of Activity — restoring the order that held until
-// 09-05. The two middle tabs are the ones that trade places, and the tie goes
-// to the one you open standing in a place: paying is the thing you came to do,
-// Activity is where you go back to look at what you did.
+//   HOME AND SEARCH SPLIT BACK APART. Discover merged them 2026-09-01
+//   because Home had nothing live behind it — five modes that all opened
+//   coming-soon dialogs, so the dead tab happened to be the leftmost one.
+//   That reasoning is retired now that Home has a real body again: Catalog,
+//   Swipe, Chat and Favs, the four modes DiscoverModeNav still carries (see
+//   that file). Search keeps its own screen exactly as it was — the map, the
+//   one search bar — only its address changes, from a mode pill to a tab of
+//   its own. This is NOT the 2026-09-01 merge being re-litigated; it is the
+//   merge's own stated reason (Home is dead weight) no longer being true.
 //
-// Home and Search merged into Discover on 2026-09-01, and the merge was a
-// DELETION: Home had been Soon since 2026-08-28 — all five of its modes opened
-// coming-soon dialogs — while Search shipped the live map, filters, catalog
-// rail and deep search. So the dead tab was the leftmost one, it wore the brand
-// mark, and it was the most probable first tap a new guest ever made. Discover
-// is Search, unmoved, under a name that survives the parked modes shipping
-// later. That merge is not what this change undoes, and a count of four is not
-// a restoration of anything: it is the same four surfaces, minus the day Wallet
-// spent outside Pay.
+//   ACTIVITY RETIRED AS A TAB. Its three sections (Alerts, Visits,
+//   Reservations) did not go anywhere — /inbox and its own pill row are
+//   unchanged — but the DOOR into them moved to three boxes on Me instead of
+//   a dedicated fourth-of-four tab. See profile-sections.tsx / ProfileClient
+//   for where they live now.
 //
-// At four items each column is ~94px at 375px (was ~75px at five), which is why
-// the active underline is w-6 rather than w-5 — a 20px rule under a 94px column
-// reads thin.
+// PAY STAYS PUT, third of four, unaffected by either move — Wallet's home
+// (inside Pay, not its own tab, not Activity's) is a separate, still-closed
+// decision (MESITA-1581) and this PR does not reopen it.
+//
+// At four items each column is ~94px at 375px, which is why the active
+// underline is w-6 rather than w-5 — a 20px rule under a 94px column reads
+// thin. Unchanged by this PR: the column count is still four.
 //
 // Every tab shows its plain label. Me used to append the live class ("Me ·
 // Standard") — dropped 2026-08-16 (Pato: "only write me, its cleaner"). A tab
 // label names a DESTINATION; the class is state, and state belongs on the Me
 // page where it can be read and acted on, not stamped into the chrome of every
 // screen. MESITA-1119's mockup (Agents tab + class-suffixed Me) is superseded
-// by Product Rules §C; `route-structure.test.tsx` pins the plain labels, in
-// order, and their count.
+// by Product Rules §C — still true, unaffected by the Home/Search/Activity
+// moves above. `route-structure.test.tsx` pins the plain labels, in order,
+// and their count.
 
-// Every icon is a lucide glyph now (the brand mark left with the Home tab).
-// The signature stays wider than LucideIcon so a future non-lucide glyph does
-// not force a type change at every call site.
+// Every icon is a lucide glyph except Home's, which carries the brand mark —
+// back where it started before the 2026-09-01 merge swapped it for a
+// magnifier. That swap existed because Discover, as one tab, would otherwise
+// lose its only recognisable affordance; the argument doesn't survive Search
+// becoming its own tab; the magnifier returns there instead, and Home gets
+// the mark back for free. The signature stays wider than LucideIcon so a
+// future non-lucide glyph does not force a type change at every call site.
 type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -85,24 +89,41 @@ type Item = {
 
 const ITEMS: Item[] = [
   {
-    // Discover IS the map. No sub-route, no mode row, no redirect hop — the
-    // href is the live surface itself (2026-09-01, retiring /home).
+    // Home IS the mode rail's landing (Catalog, per discoverDefault) — no
+    // extra redirect hop, the href is the live surface itself, same shape
+    // Discover used before it (MESITA-1609).
     href: CONSUMER_ROUTES.discoverDefault,
-    // The brand mark (Pato, 2026-09-01), reversing the magnifier this tab
-    // shipped with hours earlier. The magnifier was chosen because Discover
-    // WAS the map and would otherwise lose its only recognisable affordance —
-    // that argument expired the moment Discover grew a seven-mode rail whose
-    // first two pills carry their own pin and magnifier glyphs. The tab names
-    // a place to go, and the mark is what says which product you are in.
+    // The brand mark, back where it started before the 2026-09-01 merge gave
+    // it to the magnifier. See the file-top comment for why that swap is
+    // reversed now rather than kept.
     Icon: MesitaMark,
-    label: "Discover",
-    // /place rode the Home entry before the retirement and has no other
-    // consumer, so it moves here. Drop it and place detail lights NOTHING —
-    // route-structure T5's cardinality assertion is what catches that.
+    label: "Home",
+    // FOUR EXPLICIT SEGMENTS, not a blanket "/discover" prefix — that prefix
+    // is gone from the route contract (MESITA-1609) precisely because it can
+    // no longer answer "which tab lights" on its own: /discover/search now
+    // needs to light Search, not Home, so Home can only claim the segments
+    // that are actually its modes. /place rides here exactly as it rode
+    // Discover before — drop it and place detail lights NOTHING, which
+    // route-structure T5's cardinality assertion is what catches.
     matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.discover,
       CONSUMER_ROUTE_PREFIX.place,
+      CONSUMER_ROUTES.discoverTabs.catalog,
+      CONSUMER_ROUTES.discoverTabs.swipe,
+      CONSUMER_ROUTES.discoverTabs.chat,
+      CONSUMER_ROUTES.discoverTabs.favs,
     ],
+  },
+  {
+    // Its own tab now (MESITA-1609) — the same screen (map + the one search
+    // bar), promoted out of DiscoverModeNav's rail rather than rebuilt.
+    href: CONSUMER_ROUTES.discoverTabs.search,
+    // The magnifier, handed back from Home — see the file-top comment.
+    Icon: Search,
+    label: "Search",
+    // ONE EXACT SEGMENT. Not a shared "/discover" prefix with Home — the two
+    // tabs now split that namespace, and Search only ever needs to match its
+    // own single route.
+    matchPrefixes: [CONSUMER_ROUTES.discoverTabs.search],
   },
   {
     href: CONSUMER_ROUTES.newVisit.root,
@@ -123,82 +144,34 @@ const ITEMS: Item[] = [
     // "Continue to checkout" (PlanModal). Paying a BILL and checking out of a
     // SUBSCRIPTION stay two different words.
     label: "Pay",
-    // ONE PREFIX COVERS BOTH SECTIONS. Wallet is back inside this tab
-    // (2026-09-06) at /new-visit/wallet, so it nests under /new-visit and
-    // lights Pay for free — which is the whole point of a section living in
-    // its container's namespace, and what the /wallet tab had to give up.
+    // ONE PREFIX COVERS BOTH SECTIONS. Wallet lives inside this tab at
+    // /new-visit/wallet (MESITA-1581, untouched by this PR), so it nests
+    // under /new-visit and lights Pay for free — which is the whole point of
+    // a section living in its container's namespace.
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.newVisit],
     // LIVE — the pass (QR + code + what you can claim + live visit) and the
     // ticket stack are built; the tab opens the real page.
   },
   {
-    href: CONSUMER_ROUTES.inboxDefault,
-    // The tray, restored (Pato, 2026-09-01, third pass — "maybe inbox icon or
-    // something"). Fourth glyph, and the tab has now been all the way around:
-    // tray -> ListChecks -> Activity pulse -> tray.
-    //
-    // THE TRAY WAS RIGHT THE FIRST TIME. Two replacements failed for two
-    // different reasons, and the round trip is the finding:
-    //
-    //   ListChecks — semantically said "things you owe" when nothing here is a
-    //   task, and visually collided with the tab NEXT DOOR: it and Pay's
-    //   QrCode are both a dense field of small marks at 24px, so the two
-    //   middle tabs read as one class.
-    //
-    //   Activity (the pulse) — cleared every silhouette test and still failed,
-    //   because a lone spiking line in the active pill reads as a vitals
-    //   monitor. THIS FILE PREDICTED THAT ("a heartbeat line that reads as
-    //   analytics") and the prediction was overridden on geometry. Silhouette
-    //   analysis measures whether you can TELL two glyphs apart; it says
-    //   nothing about what either one MEANS. Do not re-derive the pulse from a
-    //   distinctness argument — the objection was never distinctness.
-    //
-    // What retired the tray originally was the claim that it "names a place
-    // things ARRIVE at — never true of a reservation you made or a visit you
-    // started". That was too clever. The guest did not deposit the reservation
-    // into a box, but it DOES land in this list, which is all the tray ever
-    // meant; Gmail, Linear and GitHub all name a mixed activity feed this way
-    // and nobody stumbles. A metaphor only has to survive the glance it gets.
-    //
-    // Mechanically it also clears what the other two could not: a wide notched
-    // container is not a dense grid (Pay), not a circle (Me's head), not
-    // organic (Discover's flame), and it is no section's icon —
-    // Bell/Footprints/ShoppingBag/CalendarCheck are spoken for, one each.
-    Icon: Inbox,
-    // "Activity" is the container, not the function (Pato, 2026-08-15; renamed
-    // from Inbox 2026-08-31): it holds Alerts · Visits · Orders · Reservations,
-    // so it can't be named after any one of them, and naming it for the
-    // mechanism ("Agent") would break the day places integrate directly.
-    //
-    // The LABEL stays Activity even though the glyph went back to a tray. The
-    // word had to go because "Inbox" is a claim about DIRECTION that a reader
-    // checks against four section names — and Reservations plainly is not
-    // something that arrived. The picture makes no such claim: it is a
-    // container, and a glance reads it as "your stuff", not as a proposition.
-    // A word gets parsed; an icon gets recognised. (The money section that
-    // used to sharpen this argument is gone — Wallet left for Pay on
-    // 2026-09-01 — but the reasoning holds without it.)
-    //
-    // ROUTE UNCHANGED — /inbox, the same rule Reservations and Alerts follow.
-    // The LABEL and the GLYPH are decoupled and always have been: the tab says
-    // Activity, wears a tray, and routes to /inbox. All three are correct.
-    label: "Activity",
-    // /inbox for the sections, plus the two DETAIL routes that deliberately
-    // live outside the tab's namespace because you reach each from two places.
-    // Both lists live under Activity, so both details light Activity:
-    //   /visit/{id}       reached from the centre tab AND Activity > Visits
-    //   /reservation/{id} reached from a place AND Activity > Reservations
+    href: CONSUMER_ROUTES.me,
+    Icon: User,
+    label: "Me",
+    // ABSORBS ACTIVITY'S OLD PREFIXES (MESITA-1609). Activity retired as its
+    // own tab, but /inbox, /visit and /reservation did not move — they are
+    // reached now from three boxes on Me instead of a fourth tab, so the
+    // ROUTES that used to light Activity now light Me:
+    //   /inbox/*          the Alerts/Visits/Reservations sections
+    //   /visit/{id}       reached from the centre tab AND Me > Visits
+    //   /reservation/{id} reached from a place AND Me > Reservations
+    // Drop any of these three and that surface lights NOTHING — the same
+    // failure route-structure T5 exists to catch, just against Me now
+    // instead of Activity.
     matchPrefixes: [
+      CONSUMER_ROUTE_PREFIX.me,
       CONSUMER_ROUTE_PREFIX.inbox,
       CONSUMER_ROUTE_PREFIX.visit,
       CONSUMER_RESERVATION_SURFACE_PREFIX,
     ],
-  },
-  {
-    href: CONSUMER_ROUTES.me,
-    Icon: User,
-    label: "Me",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.me],
   },
 ];
 

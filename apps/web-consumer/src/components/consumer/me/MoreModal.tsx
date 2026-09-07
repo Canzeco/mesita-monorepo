@@ -2,41 +2,45 @@
 
 import {
   BarChart3,
+  Bot,
   ChevronRight,
   CreditCard,
   Gift,
   HelpCircle,
+  IdCard,
+  Instagram,
   Mail,
   MoreHorizontal,
   Share2,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { SHEET_TITLE_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
+import { PREMIUM_PLAN_ICON } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 
-// Me › More (decision: Pato, MESITA-1123). The Me page keeps SEVEN boxes —
-// Instagram · Class · Plan · Profile · Settings · AI Connector · More — and
-// everything else lives one tap deeper.
+// Me › More. The Me page keeps EIGHT primary boxes (MESITA-1609, same count
+// MESITA-1123 set, different composition — see ProfileClient.tsx's file-top
+// comment for the full history, including the "seven" this comment itself
+// used to say even after Passport made it eight). Everything else lives one
+// tap deeper, here.
 //
-// The split is by FREQUENCY, not importance. The seven are what a guest opens
-// repeatedly or must reach in a hurry; these seven are the long tail: one you
-// set once and forget (Cards), one that opens a half-parked surface
-// (Wallet), one that doesn't exist yet (Gift), one parked (Share), and three
-// you consult once and rarely again (Metrics, Help,
-// Contact). Twelve boxes made the surface a wall to scroll — the parked ones
-// sat between live ones, so the page read as mostly-unfinished. Behind More,
-// the unfinished work stops being the first thing you see.
+// The split is by FREQUENCY, not importance — unchanged principle, reapplied
+// to a bigger inventory now that Alerts/Visits/Reservations/Wallet joined
+// Me's primary boxes and something had to make room. Instagram, Plan,
+// Passport and AI Connector moved here from primary for that reason, not
+// because any of them got less important — Plan is your subscription and
+// Instagram is a growth surface, which is a real product tradeoff flagged
+// for confirmation outside this PR, not decided by this file.
 //
-// Cards leads because it is the one LIVE row here. It used to sit next to
-// Credits under a "two wallets, two names" rule (Pato, 2026-08-29); that rule
-// is retired — the Wallet section now holds BOTH, and both rows here are
-// second doorways into it rather than rival containers.
+// Wallet does NOT have a row here any more (MESITA-1609, removed, not
+// demoted). It used to be the one live "second doorway" row in this sheet —
+// now it is a PRIMARY box on Me, so a second door to it here would be
+// redundant with the one that promotion exists to shorten.
 //
-// Neutral chips, like the boxes that lead here (MESITA-1132): colour on this
-// surface belongs to the passport alone.
+// Neutral chips, like the boxes that lead Me itself (MESITA-1132): colour on
+// this surface belongs to the passport alone.
 
 type MoreRow = {
   key: string;
@@ -52,7 +56,13 @@ export function MoreModal({
   open,
   onClose,
   onOpenCards,
-  onOpenCredits,
+  onOpenInstagram,
+  igSummary,
+  onOpenPlan,
+  planSummary,
+  onOpenPassport,
+  passportSummary,
+  onOpenAiConnect,
   onOpenShare,
   onOpenMetrics,
   onOpenHelp,
@@ -62,8 +72,13 @@ export function MoreModal({
   open: boolean;
   onClose: () => void;
   onOpenCards: () => void;
-  /** Navigates to the Wallet section of Activity — a route, not a sheet. */
-  onOpenCredits: () => void;
+  onOpenInstagram: () => void;
+  igSummary: string;
+  onOpenPlan: () => void;
+  planSummary: string;
+  onOpenPassport: () => void;
+  passportSummary: string;
+  onOpenAiConnect: () => void;
   onOpenShare: () => void;
   onOpenMetrics: () => void;
   onOpenHelp: () => void;
@@ -86,22 +101,25 @@ export function MoreModal({
       onClick: onOpenCards,
     },
     {
-      key: "credits",
-      Icon: Wallet,
-      title: "Wallet",
-      summary: "Credits, gifting and your saved cards",
-      // Un-parked as `soon: false` PLUS a page body, which is what un-parking
-      // means here. It could not stay `soon` and still be a door: a parked row
-      // is `disabled` below, so its handler never fires — which is why the
-      // parked Share row cannot reach /share either, live route and all.
-      //
-      // The Wallet is the FIRST Activity section (MESITA-1381). This row
-      // survives as the second doorway, the way Share does: removing it would
-      // take away a path guests already have, and Me stays seven boxes either
-      // way because this is More, not Me. The surface it opens marks its own
-      // parked half — hero pill, Gift chip and the demo bar — while the cards
-      // row inside it is live.
-      onClick: onOpenCredits,
+      key: "instagram",
+      Icon: Instagram,
+      title: "Instagram",
+      summary: igSummary,
+      onClick: onOpenInstagram,
+    },
+    {
+      key: "plan",
+      Icon: PREMIUM_PLAN_ICON,
+      title: "Plan",
+      summary: planSummary,
+      onClick: onOpenPlan,
+    },
+    {
+      key: "passport",
+      Icon: IdCard,
+      title: "Passport",
+      summary: passportSummary,
+      onClick: onOpenPassport,
     },
     {
       key: "gift",
@@ -119,6 +137,14 @@ export function MoreModal({
       // Handler stays wired while parked so un-parking is `soon` removal
       // alone — the sheet it opens already works.
       onClick: onOpenShare,
+    },
+    {
+      key: "aiconnect",
+      Icon: Bot,
+      title: "AI Connector",
+      summary: "Use Mesita from ChatGPT or Claude (MCP)",
+      soon: true,
+      onClick: onOpenAiConnect,
     },
     {
       key: "metrics",

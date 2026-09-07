@@ -51,9 +51,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
-      // Default is NOT the first pill, deliberately — same call bare /inbox
-      // makes landing on Visits while Alerts leads.
-      discoverDefault: "/discover/search",
+      // Default IS the first pill now (MESITA-1609) — Search left this rail
+      // for its own tab, so the reason the default sat off the lead (Search's
+      // urgency, buried behind Catalog's width win) left with it. Activity's
+      // still-live version of this pattern (Alerts leads, bare /inbox lands
+      // on Visits) is a SEPARATE, unaffected decision.
+      discoverDefault: "/discover/catalog",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // Pay is a container again: New (bare) + Wallet. Wallet spent 2026-09-05
@@ -121,9 +124,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
 
   it("pins the middleware prefix map", () => {
     expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      // One prefix covers all five Discover modes. /search is a redirect
-      // source now, not a surface, so it has no prefix.
-      discover: "/discover",
+      // NO `discover` key (MESITA-1609, removed) — Home and Search now split
+      // that namespace and need to light DIFFERENT bottom tabs, so BottomNav
+      // matches each discoverTabs segment individually instead.
       place: "/place",
       reservations: "/reservations",
       newVisit: "/new-visit",
@@ -236,12 +239,13 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
   it("pins the full redirect table", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toEqual([
-      // Explore era (pre-Home). Repointed at /search when /home was retired —
-      // chaining through /home would make these two-hop, and T4 caps at 2.
-      { source: "/explore", destination: "/discover/search", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/search", permanent: true },
-      { source: "/explore/map", destination: "/discover/search", permanent: true },
-      { source: "/explore/add", destination: "/discover/search", permanent: true },
+      // Explore era (pre-Home). Repointed at the Discover default when /home
+      // was retired — chaining through /home would make these two-hop, and
+      // T4 caps at 2. Default is Catalog again as of MESITA-1609.
+      { source: "/explore", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/map", destination: "/discover/catalog", permanent: true },
+      { source: "/explore/add", destination: "/discover/catalog", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -270,18 +274,20 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/ticket/:id", destination: "/visit/:id", permanent: true },
-      // The retired Home hub (2026-09-01). Every leaf 308s to Discover, which
-      // IS /search. /home/ai points straight here rather than chaining through
-      // /home/chat — that page is deleted, so the old chain would dangle AND
-      // cost a second hop against T4's cap of 2.
-      { source: "/home", destination: "/discover/search", permanent: true },
-      { source: "/home/swipe", destination: "/discover/search", permanent: true },
-      { source: "/home/catalog", destination: "/discover/search", permanent: true },
-      { source: "/home/chat", destination: "/discover/search", permanent: true },
-      { source: "/home/ai", destination: "/discover/search", permanent: true },
-      { source: "/home/social", destination: "/discover/search", permanent: true },
-      { source: "/home/favorites", destination: "/discover/search", permanent: true },
-      // Renamed surfaces.
+      // The retired Home hub (2026-09-01). Every leaf 308s to the Discover
+      // default, Catalog again as of MESITA-1609. /home/ai points straight
+      // here rather than chaining through /home/chat — that page is deleted,
+      // so the old chain would dangle AND cost a second hop against T4's cap
+      // of 2.
+      { source: "/home", destination: "/discover/catalog", permanent: true },
+      { source: "/home/swipe", destination: "/discover/catalog", permanent: true },
+      { source: "/home/catalog", destination: "/discover/catalog", permanent: true },
+      { source: "/home/chat", destination: "/discover/catalog", permanent: true },
+      { source: "/home/ai", destination: "/discover/catalog", permanent: true },
+      { source: "/home/social", destination: "/discover/catalog", permanent: true },
+      { source: "/home/favorites", destination: "/discover/catalog", permanent: true },
+      // Renamed surfaces. Explicit search intent — stays at Search regardless
+      // of what the Discover default is.
       { source: "/search", destination: "/discover/search", permanent: true },
       // The map's segment while the rail called it Map. Search carries the map
       // now, so this forwards. Nothing above may CHAIN through it — every
