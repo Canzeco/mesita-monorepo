@@ -392,6 +392,21 @@ Deno.test("orderDeepLineup: Name 0 vs on reorders an unsorted pool", () => {
   ]);
 });
 
+Deno.test("orderDeepLineup: intake_high_water (MESITA-1601) reorders when Level is weighted", () => {
+  // Same name-embedding, same plan (moneyRung ties) — only Intake high-water
+  // differs, so a Level-only weight isolates the enrichment term. This is
+  // the wiring `fetchEmbedPool` provides via `attachIntakeHighWater`: absent
+  // in the query itself, merged onto the row before it ever reaches here.
+  const hi = { ...listed("hi", "Hi", QUERY, "pro"), intake_high_water: 10 };
+  const lo = { ...listed("lo", "Lo", QUERY, "pro"), intake_high_water: 0 };
+  const levelOnly = weights(0);
+  levelOnly.mesita_level = 4;
+  assertEquals(
+    orderDeepLineup([lo, hi], QUERY, levelOnly).map((r) => r.id),
+    ["hi", "lo"],
+  );
+});
+
 Deno.test("Word mask never calls randomness · proximity · timing", () => {
   const deep = weightsForMode("word", DISCOVERY_DEFAULTS.weights);
   assertEquals(deep.name > 0, true);
