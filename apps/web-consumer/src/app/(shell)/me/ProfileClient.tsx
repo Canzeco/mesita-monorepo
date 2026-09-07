@@ -58,8 +58,8 @@ import { ProfileSummaryCard } from "./ProfileSummaryCard";
 //   2              Notifications · Visits
 //   2              Orders · Reservations
 //   2              Share · Gift
-//   2              Connector · Friends
 //   2              Settings · Help
+//   2              Connector · Friends
 //   1              About, full width
 //
 // WHY EVERY ROW BELOW IS A PAIR. MESITA-1636 varied the widths so the column
@@ -303,24 +303,6 @@ export function ProfileClient({
             <DestTile Icon={Gift} title="Gift" summary="" soon />
           </DestGrid>
 
-          {/* Both parked, so this is a dead ROW — flagged to Pato and
-              accepted (MESITA-1641). It sits above Settings/Help on purpose:
-              the two most-reached cells in the tail must not be pushed under
-              a pair that opens nothing. */}
-          <DestGrid>
-            <DestTile
-              Icon={Bot}
-              title="Connector"
-              summary=""
-              soon
-              onClick={() => setAiOpen(true)}
-            />
-            {/* No friends surface exists — the nearest thing is a Contacts
-                toggle in Settings ("Find friends already on Mesita"). Visible
-                and inert beats a cell that opens nothing. */}
-            <DestTile Icon={Users} title="Friends" summary="" soon />
-          </DestGrid>
-
           <DestGrid>
             <DestTile
               Icon={SettingsIcon}
@@ -334,6 +316,25 @@ export function ProfileClient({
               summary="How rewards work"
               onClick={() => setHelpOpen(true)}
             />
+          </DestGrid>
+
+          {/* Both parked, so this is a dead ROW (MESITA-1641), and it sits
+              BELOW Settings and Help (MESITA-1642). That was the argument for
+              the ordering all along — the two most-reached cells in the tail
+              must not be pushed under a pair that opens nothing — and for one
+              release this row was above them anyway. */}
+          <DestGrid>
+            <DestTile
+              Icon={Bot}
+              title="Connector"
+              summary=""
+              soon
+              onClick={() => setAiOpen(true)}
+            />
+            {/* No friends surface exists — the nearest thing is a Contacts
+                toggle in Settings ("Find friends already on Mesita"). Visible
+                and inert beats a cell that opens nothing. */}
+            <DestTile Icon={Users} title="Friends" summary="" soon />
           </DestGrid>
 
           {/* About closes the page, full width. It holds what nothing else

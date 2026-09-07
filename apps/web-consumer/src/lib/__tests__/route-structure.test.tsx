@@ -541,23 +541,24 @@ describe("T8 — Me's grid is live cells, More is the parked tail", () => {
       "Reservations",
       "Share",
       "Gift",
-      "Connector",
-      "Friends",
       "Settings",
       "Help",
+      "Connector",
+      "Friends",
       "About",
     ]);
   });
 
-  it("the fully-parked row sits ABOVE Settings and Help", () => {
+  it("the fully-parked row sits BELOW Settings and Help", () => {
     // Connector and Friends are both `soon`, so that row opens nothing at
-    // all (MESITA-1641). Settings and Help are the most-reached cells in the
-    // tail; pushing them under a dead pair is the ordering mistake this pins
-    // against. About closes the page because it is the version and legal
-    // cell — a footer, and the least-reached thing here.
+    // all. Settings and Help are the most-reached cells in the tail, so they
+    // come first — MESITA-1641 made exactly this argument and then shipped
+    // the inverse, which is why the ordering is pinned rather than merely
+    // commented (MESITA-1642). About stays last: it is the version and legal
+    // footer, the least-reached cell on the page.
     const order = gridTitles(ME);
-    expect(order.indexOf("Connector")).toBeLessThan(order.indexOf("Settings"));
-    expect(order.indexOf("Help")).toBeLessThan(order.indexOf("About"));
+    expect(order.indexOf("Settings")).toBeLessThan(order.indexOf("Connector"));
+    expect(order.indexOf("Help")).toBeLessThan(order.indexOf("Friends"));
     expect(order.at(-1)).toBe("About");
   });
 
