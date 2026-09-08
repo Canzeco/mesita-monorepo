@@ -4,7 +4,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ComingSoonModal } from "./ComingSoonModal";
@@ -185,6 +185,46 @@ const ITEMS: Item[] = [
   },
 ];
 
+const SEARCH_COACHMARK_STORAGE_KEY = "mesita:search-tab-coachmark-seen";
+const SEARCH_COACHMARK_AUTO_DISMISS_MS = 5500;
+
+/** Same one-shot shape as SwipeDeck's tutorial flag (readTutorialSeen) — a
+ * new key, no legacy value to migrate. */
+function readSearchCoachmarkSeen(): boolean {
+  try {
+    return window.localStorage.getItem(SEARCH_COACHMARK_STORAGE_KEY) != null;
+  } catch {
+    /* private mode / blocked storage */
+  }
+  return false;
+}
+
+function writeSearchCoachmarkSeen(): void {
+  try {
+    window.localStorage.setItem(SEARCH_COACHMARK_STORAGE_KEY, "1");
+  } catch {
+    /* best-effort */
+  }
+}
+
+// Points at the Search tab for guests whose muscle memory taps the old
+// leftmost-tab-opens-the-map position — Home lives there now (MESITA-1609,
+// fast-follow MESITA-1610). `pointer-events-none` on purpose: dismissal comes
+// from the REAL fix (tapping Search, same as SwipeTutorialOverlay dismisses
+// on a real swipe) or the auto-timer, never from tapping the hint itself —
+// the bubble can visually spill into a neighboring tab's column and must
+// never steal that tap.
+function SearchTabCoachmark() {
+  return (
+    <div className="animate-in fade-in zoom-in-95 pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 duration-300">
+      <div className="bg-primary text-primary-foreground shadow-glow-sm type-label relative rounded-xl px-3 py-2 font-semibold whitespace-nowrap">
+        The map moved here
+        <span className="bg-primary absolute -bottom-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 rounded-[2px]" />
+      </div>
+    </div>
+  );
+}
+
 export function BottomNav({ userId }: { userId?: string }) {
   // The inbox tab (and its pending-notification badge) left the tab bar when
   // Home/Search took over discovery; the prop stays so the shell layout call
@@ -192,7 +232,33 @@ export function BottomNav({ userId }: { userId?: string }) {
   void userId;
   const pathname = usePathname();
   const [soonItem, setSoonItem] = useState<Item | null>(null);
+  const [showSearchCoachmark, setShowSearchCoachmark] = useState(false);
   const getSupabase = useLazyBrowserSupabase();
+
+  // First-launch hint, one shot per browser — identical shape to SwipeDeck's
+  // tutorial overlay effect: schedule the show on a frame so hydration stays
+  // clean, auto-dismiss on a timer, and write the flag either way it closes.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (readSearchCoachmarkSeen()) return;
+    const raf = requestAnimationFrame(() => {
+      setShowSearchCoachmark(true);
+    });
+    const t = window.setTimeout(() => {
+      setShowSearchCoachmark(false);
+      writeSearchCoachmarkSeen();
+    }, SEARCH_COACHMARK_AUTO_DISMISS_MS);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
+  }, []);
+
+  const dismissSearchCoachmark = () => {
+    if (!showSearchCoachmark) return;
+    setShowSearchCoachmark(false);
+    writeSearchCoachmarkSeen();
+  };
 
   return (
     <>
@@ -212,6 +278,7 @@ export function BottomNav({ userId }: { userId?: string }) {
           {ITEMS.map((item) => {
             const { href, Icon, label, matchPrefixes, soon } = item;
             const active = matchPrefixes.some((p) => pathname.startsWith(p));
+            const isSearchTab = href === CONSUMER_ROUTES.search;
             // Parked surfaces stay tappable — open ComingSoonModal (no Soon pill).
             if (soon) {
               return (
@@ -238,9 +305,10 @@ export function BottomNav({ userId }: { userId?: string }) {
               <Link
                 key={href}
                 href={href}
-                onClick={() =>
-                  trackEvent(getSupabase(), "nav_tab_tap", { tab: label })
-                }
+                onClick={() => {
+                  trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
+                  if (isSearchTab) dismissSearchCoachmark();
+                }}
                 className={cn(
                   "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
                   active
@@ -251,6 +319,7 @@ export function BottomNav({ userId }: { userId?: string }) {
                 {active && (
                   <span className="bg-primary absolute -top-2 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full" />
                 )}
+                {isSearchTab && showSearchCoachmark && <SearchTabCoachmark />}
 
                 <span
                   className={cn(
