@@ -286,7 +286,7 @@ function PlaceRow({
           return;
         }
         // The one place this is ever explained, said once, when it matters.
-        toast(`${row.name} isn't on Mesita Pay yet.`);
+        toast(`${row.name} isn't a Mesita partner yet.`);
       }}
       className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
     >
