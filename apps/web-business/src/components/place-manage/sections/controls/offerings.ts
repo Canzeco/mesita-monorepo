@@ -25,10 +25,22 @@ import { PROMOTION_SCORE_MAX, promotionScore } from "@/lib/business/promotion-sc
 // This module is PURE so it can be tested under vitest's node environment —
 // web-admin has no jsdom, and `renderToStaticMarkup` never runs effects, so
 // anything that matters has to be decidable without React.
+//
+// STRIPE IS ORG STATE, READ HERE (Pato, 2026-09-08: "org has own states,
+// places has own states"). `organizationPaymentAccounts` is one row per
+// ORGANIZATION (MESITA-1545, `organization_id` unique) — every place that
+// org holds shares the same account, which is also why the Organization
+// screen's own Stripe Account section exists. This ladder's `stripe` rung
+// only READS that shared state to gate what a specific place can do next;
+// its copy used to claim "the place owns the account", which was simply
+// wrong. Onboarding still runs from here for convenience (a manager
+// shouldn't have to leave the place they're looking at), but the account it
+// creates is the org's, same as if they'd started it from the org page.
 
-/** What Stripe says about this place's connected account, reduced to the
- *  four states the ladder can act on. `none` also covers "payload predates
- *  the mirror" — absent is not the same as refused, but both mean not ready. */
+/** What Stripe says about the organization's connected account (shared by
+ *  every place it holds), reduced to the four states the ladder can act on.
+ *  `none` also covers "payload predates the mirror" — absent is not the
+ *  same as refused, but both mean not ready. */
 export type ConnectState =
   | { kind: "none" }
   | { kind: "incomplete"; requirementsDue: string[] }
@@ -180,7 +192,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       detail:
         connect.kind === "incomplete" && connect.requirementsDue.length > 0
           ? `Stripe still needs ${connect.requirementsDue.length} detail${connect.requirementsDue.length === 1 ? "" : "s"} before this place can be paid.`
-          : "Where guest payments land. The place owns the account and the Stripe dashboard.",
+          : "Where guest payments land. Your organization owns the account and the Stripe dashboard — every place it holds shares it.",
       band: "money",
       state: stripeState,
       points: null,
