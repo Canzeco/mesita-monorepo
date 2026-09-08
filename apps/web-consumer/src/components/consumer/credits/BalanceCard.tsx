@@ -3,88 +3,45 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/api/profile";
+import type { CreditOrgBalance } from "@/lib/api/credits";
 import {
   daysUntilExpiry,
+  formatActivation,
   formatExpiry,
-  isExpired,
-  type CreditBalance,
-} from "@/lib/mock/credits-mock";
+  headlineCents,
+  hoursUntilActivation,
+  orgBalanceState,
+} from "@/lib/credits";
 import { cn } from "@/lib/utils";
 
-// One place's Credits balance, as a card in the deck.
+// One organization's Credits balance, as a card (MESITA-1674: reads
+// consumer-web-list-credit-balances now, not a per-place browser emulator).
 //
-// THE PLACE'S OWN PHOTO IS THE CARD ART (Pato, 2026-09-01). This reverses the
-// rule that stood here before — "WHITE, like every other list card in this
-// app" — and the reversal is narrow, so read why before widening it. The old
-// argument was that per-issuer colour would be inventing brand identity for
-// places that never approved it, and that every saturated token in this app
-// already means something. Both still hold. What changed is the source: a
-// place's own `places.photos[0]` is not invented identity, it is theirs, and it
-// is already on every Place row this app fetches. Nothing new is generated and
-// no place is assigned a colour it did not choose.
+// ORG-SCOPED, NOT PLACE-SCOPED (MESITA-1671/1674). This card used to render
+// one PLACE's balance with that place's own `photos[0]` as its art — the
+// carve-out survived review specifically because the photo was the place's
+// own, not invented identity. An organization has no photo of its own yet
+// (`photoUrl` is always null today, on every card), so every balance renders
+// the ink fallback face. The field stays typed rather than removed: an org
+// picking up a logo later is a data change, not a component rewrite.
 //
-// The carve-out is THIS COMPONENT and the art layer inside it. White-on-dark
-// stops at the card edge; everything around it stays semantic tokens, exactly
-// as `TicketHero`/`bg-pink-gradient` and `GiftCardDeck` are bounded today.
+// THREE STATES, NOT TWO. Credits used to open Available or Expired only,
+// because the buy path never applied the hold it still carries in the schema.
+// This read surfaces PENDING lots — any other writer of credit_lots can
+// still produce one — so a card can now also open "on its way", with the
+// soonest activation time it holds.
 //
-// STILL `BalanceCard`. The money files may not name an instrument after its
-// container (`credits-mock.test.ts` > naming, which greps this file): the
-// section HOLDS these, Credits is what they are. The face changed; what the
-// thing IS did not, so neither does the name.
+// THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE — unchanged from
+// the per-place card. Both gradients are computed against a pure-white worst
+// case so white text clears AA on any photo that can exist, which matters
+// again the day an organization's own art lands here.
 //
-// THE SCRIM IS NOT DECORATION, IT IS THE CONTRAST GUARANTEE. A photo is
-// uncontrolled input: the place picked it, not us, and white text over an
-// unknown image is the "busy imagery behind text" failure. Both gradients below
-// are calculated against the WORST case (a pure-white photo) rather than tuned
-// against the fixtures, so both text bands clear WCAG AA (4.5:1) on any image
-// that can exist. There is nothing to sample and no canvas to taint.
-//
-//   FULL (the open card)            COVERED (a card with one on top of it)
-//   top    .62 → ~6.4:1  the strip  top    .62 → ~6.4:1  the strip
-//   62px   .42                      bottom .30           no text lives here
-//   44%    .30
-//   bottom .86 → ~13.7:1 the face
-//
-// A COVERED CARD IS A STRIP, NOT A CROPPED CARD (2026-09-02 design review). It
-// used to be a full-height card with most of itself hidden under the next one,
-// which is why its geometry had to be known in advance and why a wrong constant
-// could slice a balance in half. Now it renders only what is on screen and
-// sizes to its own content, so nothing can be cut off and nothing has to be
-// measured: at 200% text the name takes two taller lines and the strip simply
-// grows. `PEEK_PX` and `CARD_PX` are MINIMUMS, not heights.
-//
-// THE AMOUNT HAS ONE HOME AT A TIME. The strip's copy exists for the COVERED
-// state — it is the only line of a card lying under another. The open card
-// states its balance once, on the face, in the size that makes it a card
-// instead of a row, which also hands the whole strip to the place's name.
-//
-// FRAUNCES ON THE BALANCE, and only there. `brand.json` assigns the display
-// face to "numerals in hero positions" and a card balance is the definitive one
-// in this product; Inter here was also the "gave up on typography" signal.
-// `tabular-nums` stays, or the digits jitter every time a spend lands.
-//
-// NO PHOTO, OR A PHOTO THAT FAILS TO LOAD, RENDERS THE INK FACE — the same
-// card with the art layer swapped for a gradient. It is a fallback, not a
-// second design.
-//
-// AN EXPIRED CARD IS DORMANT ART — the same photo, greyscale and dimmed. Colour
-// used to carry state on this surface and the photo took that job away; with a
-// full-bleed face, the balance you CANNOT spend was the most vivid thing on the
-// screen. The dimming sits UNDER the scrim, so it only ever improves contrast.
-// Not a red card and not a hidden one: red is this app's destructive-action
-// colour and would read as something the guest can still do something about,
-// and hiding it would delete the only record a guest has that the money existed.
-//
-// THERE IS NO LOCKED FACE ANY MORE (Pato, 2026-09-08). Credits are active the
-// moment they are bought, so the third state this card used to paint — a
-// desaturated photo under an "unlocks in 3h" chip — has nothing left to
-// describe. Bought is spendable; the only thing that stops it is expiry.
+// A COVERED CARD IS A STRIP, NOT A CROPPED CARD — also unchanged; `covered`
+// stays part of the contract even though nothing passes `true` today (the
+// deck it served is gone), because the strip-only render is still correct
+// shrink-to-content behaviour a future compact list could reuse.
 
-/**
- * How close expiry has to be before the card says so. Two weeks is a visit or
- * two away — long enough that a guest can still act on it, short enough that
- * the warning is not permanent furniture.
- */
+/** How close expiry/activation has to be before the card says so. */
 const EXPIRY_NOTICE_DAYS = 14;
 
 /** Minimum height of a covered card: the strip, and nothing else. */
@@ -99,9 +56,6 @@ const SCRIM_FULL =
   "rgba(20,6,11,0.30) 44%," +
   "rgba(20,6,11,0.86) 100%)";
 
-// No text lives below the strip on a covered card, so the dark bottom band the
-// face needs would be shading nothing. It stops at the same .62 the strip's
-// contrast is computed from.
 const SCRIM_PEEK =
   "linear-gradient(180deg," +
   "rgba(20,6,11,0.62) 0px," +
@@ -120,7 +74,7 @@ export function BalanceCard({
   className,
   style,
 }: {
-  balance: CreditBalance;
+  balance: CreditOrgBalance;
   nowMs: number;
   /** Another card lies on top of this one, so only the strip is on screen. */
   covered: boolean;
@@ -129,22 +83,31 @@ export function BalanceCard({
   style?: React.CSSProperties;
 }) {
   const [artFailed, setArtFailed] = useState(false);
-  const expired = isExpired(balance, nowMs);
-  const bonusCents = balance.balanceCents - balance.paidCents;
-  const daysLeft = daysUntilExpiry(balance, nowMs);
-  // A spendable balance with three months to run is a balance with nothing to
-  // report, and a countdown on it would turn the deck into a nag.
-  const expiringSoon = !expired && daysLeft <= EXPIRY_NOTICE_DAYS;
-  const showArt = !!balance.photoUrl && !artFailed;
+  const photoUrl: string | null = null; // No organization art source exists yet — see header note.
+  const state = orgBalanceState(balance);
+  const headline = headlineCents(balance);
+  const daysLeft = balance.nearestExpiryAt
+    ? daysUntilExpiry(Date.parse(balance.nearestExpiryAt), nowMs)
+    : null;
+  const hoursLeft = balance.nearestActivationAt
+    ? hoursUntilActivation(Date.parse(balance.nearestActivationAt), nowMs)
+    : null;
+  const expiringSoon = state === "spendable" && daysLeft !== null &&
+    daysLeft <= EXPIRY_NOTICE_DAYS;
+  const showArt = !!photoUrl && !artFailed;
 
-  // The peek chip reads "6d" — enough for a glance, not enough for a screen
-  // reader, which gets the whole sentence instead. It says the same thing
-  // whether the amount is painted small, big, or not at all.
-  const label = expired
-    ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, expired`
-    : expiringSoon
-      ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend, expires in ${formatExpiry(daysLeft)}`
-      : `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend`;
+  const stateWord = state === "expired"
+    ? "expired"
+    : state === "pending"
+    ? "on its way"
+    : "ready to spend";
+  const label =
+    `${balance.organizationName}, ${formatCurrency(headline)}, ${stateWord}` +
+    (expiringSoon && daysLeft !== null
+      ? `, expires in ${formatExpiry(daysLeft)}`
+      : state === "pending" && hoursLeft !== null
+      ? `, activates in ${formatActivation(hoursLeft)}`
+      : "");
 
   return (
     <button
@@ -160,22 +123,15 @@ export function BalanceCard({
         className,
       )}
     >
-      {/* Art layer. Decorative: identity is carried by the text above it, so a
-          screen reader is told the place's name, never "photo of a bar". */}
+      {/* Art layer. Decorative: identity is carried by the text above it. */}
       <span aria-hidden className="absolute inset-0" style={{ background: INK }}>
         {showArt ? (
           <Image
-            src={balance.photoUrl as string}
+            src={photoUrl as string}
             alt=""
             fill
             sizes="(max-width: 480px) 100vw, 420px"
-            className={cn(
-              "object-cover",
-              // On-scale utilities, not tuned values: the scrim above already
-              // owns contrast, so this only has to read as "gone". It sits
-              // UNDER the scrim, so it only improves it.
-              expired && "brightness-50 grayscale",
-            )}
+            className={cn("object-cover", state === "expired" && "brightness-50 grayscale")}
             onError={() => setArtFailed(true)}
           />
         ) : null}
@@ -185,14 +141,8 @@ export function BalanceCard({
         />
       </span>
 
-      {/* The strip. On a covered card this is the whole card, so it carries
-          identity on the left and money on the right. On the open one the money
-          moves to the face and the name gets the full width. */}
+      {/* The strip. */}
       <span
-        // NOT `grow`. If the strip absorbed the card's free space, the name
-        // would centre at a different height on the open card than on the
-        // covered ones and the deck would lose its rhythm. It stays PEEK_PX
-        // tall on every card; `mt-auto` on the face takes the slack.
         className="relative flex shrink-0 items-center gap-3 px-4 py-4"
         style={{ minHeight: PEEK_PX }}
       >
@@ -200,29 +150,27 @@ export function BalanceCard({
           className="line-clamp-2 min-w-0 flex-1 text-sm leading-tight font-bold tracking-tight"
           style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
         >
-          {balance.placeName}
+          {balance.organizationName}
         </span>
-        {!covered ? null : expired || expiringSoon ? (
-          // An expired balance keeps its amount rather than reading "MX$0": it
-          // is what the guest had, and zeroing it would be the card lying about
-          // history rather than about the future. The chip carries the state.
+        {!covered ? null : (
           <span className="flex shrink-0 items-center gap-1.5">
             <span
               className="text-sm font-bold text-white/75 tabular-nums"
               style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
             >
-              {formatCurrency(balance.balanceCents)}
+              {formatCurrency(headline)}
             </span>
-            <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase tabular-nums backdrop-blur-sm">
-              {expired ? "Expired" : formatExpiry(daysLeft)}
-            </span>
-          </span>
-        ) : (
-          <span
-            className="shrink-0 text-sm font-bold tabular-nums"
-            style={{ textShadow: "0 1px 6px rgba(0,0,0,.45)" }}
-          >
-            {formatCurrency(balance.balanceCents)}
+            {state !== "spendable" || expiringSoon ? (
+              <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase tabular-nums backdrop-blur-sm">
+                {state === "expired"
+                  ? "Expired"
+                  : state === "pending" && hoursLeft !== null
+                  ? formatActivation(hoursLeft)
+                  : daysLeft !== null
+                  ? formatExpiry(daysLeft)
+                  : null}
+              </span>
+            ) : null}
           </span>
         )}
       </span>
@@ -234,14 +182,21 @@ export function BalanceCard({
             className="font-display block text-4xl leading-none font-bold tracking-tight tabular-nums"
             style={{ textShadow: "0 2px 10px rgba(0,0,0,.5)" }}
           >
-            {formatCurrency(balance.balanceCents)}
+            {formatCurrency(headline)}
           </span>
           <span className="mt-1.5 block truncate text-xs text-white/85">
-            {expired
+            {state === "expired"
               ? "Expired · these Credits can no longer be spent"
-              : expiringSoon
-                ? `Expires in ${formatExpiry(daysLeft)} · +${formatCurrency(bonusCents)} bonus`
-                : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
+              : state === "pending"
+              ? hoursLeft !== null
+                ? `Activates in ${formatActivation(hoursLeft)}`
+                : "On its way"
+              : expiringSoon && daysLeft !== null
+              ? `Expires in ${formatExpiry(daysLeft)}`
+              : `You paid ${formatCurrency(balance.paidCents)}`}
+            {balance.pendingCents > 0 && state === "spendable"
+              ? ` · +${formatCurrency(balance.pendingCents)} on its way`
+              : ""}
           </span>
         </span>
       )}

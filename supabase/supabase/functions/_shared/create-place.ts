@@ -50,7 +50,7 @@ import { synthesizeDoorProfile } from "./create-door-profile.ts";
 import { applyInferredMesitaName } from "./mesita-name-door.ts";
 import { writePlace } from "./place-doc.ts";
 import { pieceDone, pieceFailed, reportPulsePieces } from "./pulse-report.ts";
-import { applyGeneralCategoryCap, loadDiscoveryConfig } from "./discovery-config.ts";
+import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 
 const CHANNEL_KEYS = [
@@ -177,7 +177,7 @@ export async function createMinimalPlace(opts: {
   // rating/review/popularity floors. After Google, before persist. One ID, one 422
   // — a batch of creates never aborts as a unit. Config-read failure falls
   // back to discovery defaults rather than failing open.
-  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
+  const map = (await loadDiscoveryConfig(admin)).map;
   const verdict = evaluatePlaceForMap(map, {
     primaryType: basicsRes.primaryType,
     rating: basicsRes.basics.google_stars_overall,

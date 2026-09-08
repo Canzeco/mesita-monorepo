@@ -1,12 +1,13 @@
-// Frontend API surface for the REAL Buy + Gift Credits paths
-// (MESITA-1676, MESITA-1677).
-//
-// Balances still run on the browser emulator (src/lib/mock/*, MESITA-1674).
-// Buy, Gift, Redeem and the sent-gifts list are real. Every helper here
-// resolves money terms server-side — nothing in this file computes a bonus
-// or an expiry that will actually be charged; the numbers in each response
-// are for DISPLAY, echoed back from what the server already decided and
-// wrote.
+// Frontend API surface for the real Credits paths: Buy (MESITA-1676), the
+// Wallet's balance read (MESITA-1674), and Gift/Redeem/cancel/list
+// (MESITA-1677). consumer-web-buy-credits and consumer-web-gift-credits both
+// resolve every money term server-side, so nothing here computes a bonus or
+// an expiry that will actually be charged — bonusCents/expiresAt/expiryDays
+// in their outcomes are for DISPLAY, echoed back from what the server
+// already decided and wrote. The balance read below is the same posture the
+// other direction: every cents figure and every timestamp in a
+// CreditOrgBalance is exactly what credit_ledger already agrees to, nothing
+// recomputed on the client.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -60,6 +61,61 @@ export async function apiBuyCredits(
     args,
     "Couldn't complete that purchase.",
   );
+}
+
+// ── The Wallet's real balance read (MESITA-1674) ───────────────────────────
+// Mirrors supabase/functions/_shared/credits-balances.ts's shapes field for
+// field — this is the wire contract, not a second definition of it.
+
+export type CreditLot = {
+  lotId: string;
+  paidCents: number;
+  bonusCents: number;
+  spentCents: number;
+  remainingCents: number;
+  activatesAt: string;
+  expiresAt: string;
+  createdAt: string;
+  pending: boolean;
+  expired: boolean;
+};
+
+export type CreditOrgBalance = {
+  organizationId: string;
+  organizationName: string;
+  currency: string;
+  totalCents: number;
+  spendableCents: number;
+  pendingCents: number;
+  paidCents: number;
+  nearestExpiryAt: string | null;
+  nearestActivationAt: string | null;
+  acceptsMoreCredits: boolean;
+  lots: CreditLot[];
+};
+
+export type ListCreditBalancesResult = {
+  organizations: CreditOrgBalance[];
+  nextCursor: string | null;
+  /** The clock every pending/expired split in this response was computed against — anchor countdowns to this, never to the guest's own device time. */
+  serverNowMs: number;
+};
+
+export async function apiListCreditBalances(
+  client: SupabaseClient,
+  args: { cursor?: string | null; limit?: number } = {},
+): Promise<ListCreditBalancesResult> {
+  const res = await invokeEF<ListCreditBalancesResult>(
+    client,
+    "consumer-web-list-credit-balances",
+    { cursor: args.cursor ?? undefined, limit: args.limit },
+    "Couldn't load your Credits.",
+  );
+  return {
+    organizations: res.organizations ?? [],
+    nextCursor: res.nextCursor ?? null,
+    serverNowMs: res.serverNowMs,
+  };
 }
 
 // ─── Gift (MESITA-1677) — issuance only, never a transfer ──────────────────

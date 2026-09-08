@@ -31,7 +31,7 @@ Deno.test("requireActive is ON by default — a closed place is not a result", (
   assertEquals(DISCOVERY_DEFAULTS.general.requireActive, true);
   assertEquals(DISCOVERY_DEFAULTS.general.minReviews, 0);
   // The live blob predates both keys; normalize has to supply the default.
-  const legacy = normalizeDiscoveryConfig({ general: { categoryCount: 5 } });
+  const legacy = normalizeDiscoveryConfig({ general: {} });
   assertEquals(legacy.general.requireActive, true);
   assertEquals(legacy.general.minReviews, 0);
 });

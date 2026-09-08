@@ -1,22 +1,22 @@
-import { GeneralConfigClient } from "../GeneralConfigClient";
+import { SuperCategoriesClient } from "../SuperCategoriesClient";
 import { GoogleSourceCards } from "../GoogleSourceCards";
 import { MesitaSourceCards } from "../MesitaSourceCards";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
 // Search Sources — the nine searches: three Google Places, four Mesita
-// Places, two Mesita Social, after the shared Google types strip.
+// Places, two Mesita Social, after the shared Super Categories strip.
 // NINE BOXES AND NOTHING ELSE (Pato, 2026-09-08). Every quality floor now
 // lives INSIDE the source it cuts, so the standalone floor cards are gone.
 // One box owns each key and the rest mirror it read-only — see SourceFloor.
-// The Google types strip stays a header above the three Google boxes: it is
-// a shared battery, not a source, so it does not spend one of the nine.
+// The Super Categories strip stays a header above the three Google boxes: it
+// is a shared battery, not a source, so it does not spend one of the nine.
 //
 // Signals moved to the Matrix subpage (MESITA-1675): they rank what a
 // source returns, which is not the same question as which sources exist.
-// The Google types strip is not a Source either — its
-// `GeneralConfigClient` shares a name with the General box on Modes, which
-// is the post-Google wipe and a different thing entirely.
+// The Super Categories strip is not a Source either. It used to be called
+// `GeneralConfigClient`, which shared a name with the General box on Modes —
+// the post-Google wipe, a different thing entirely (MESITA-1695).
 //
 // THE PAGE IS SEARCH SOURCES (Pato, 2026-09-02). Every one of the nine is a
 // search, which is what the matrix band already called this set.
@@ -32,7 +32,7 @@ export default async function SearchSourcesPage() {
   const seed = { initialConfig, initialUpdatedAt, loadError };
   return (
     <div className="flex flex-col gap-10">
-      <GeneralConfigClient
+      <SuperCategoriesClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}

@@ -35,7 +35,6 @@ import { clampPositive, stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import {
-  applyGeneralCategoryCap,
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
 import {
@@ -84,7 +83,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
-  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
+  const cfg = await loadDiscoveryConfig(admin);
   const geo = {
     lat: typeof body.lat === "number" ? body.lat : null,
     lng: typeof body.lng === "number" ? body.lng : null,

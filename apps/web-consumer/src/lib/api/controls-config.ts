@@ -8,13 +8,13 @@
 // knob nothing reads is the "unenforced config = bug" failure root CLAUDE.md
 // names, and this file is the reader.
 //
-// The Credits BALANCES are still emulated (no table, no engine). The POLICY is
-// real, which is the honest split: the shape of the instrument is a guess, the
-// terms the operator set are not.
+// The Credits BALANCES read from consumer-web-list-credit-balances now
+// (MESITA-1674). The POLICY has been real since before that: the shape of the
+// instrument was a guess, the terms the operator set were not.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
-import type { ControlsPolicy } from "@/lib/mock/credits-mock";
+import type { ControlsPolicy } from "@/lib/credits";
 
 export async function apiGetControlsPolicy(
   client: SupabaseClient,

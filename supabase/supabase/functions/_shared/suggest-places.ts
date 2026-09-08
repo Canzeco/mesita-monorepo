@@ -40,7 +40,6 @@ import {
 } from "./google-places.ts";
 import { applyPlacesCallerRegion } from "./sourcing.ts";
 import {
-  applyGeneralCategoryCap,
   type GeneralConfig,
   loadDiscoveryConfig,
   type MapConfig,
@@ -94,7 +93,7 @@ export async function suggestPlaces(
   if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
 
   const admin = adminClient(env);
-  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
+  const cfg = await loadDiscoveryConfig(admin);
   const map = cfg.map;
   // Do NOT pre-filter Google Autocomplete by broad primary types. Google
   // matches includedPrimaryTypes exactly (`bar` ≠ `night_club`) and caps

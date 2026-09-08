@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,7 @@ import {
   TermsPreview,
 } from "@/components/consumer/credits/PickCredits";
 import { formatCurrency } from "@/lib/api/profile";
-import {
-  CONTROLS_FALLBACK,
-  type ControlsPolicy,
-  type CreditPlace,
-} from "@/lib/mock/credits-mock";
+import { CONTROLS_FALLBACK, type ControlsPolicy } from "@/lib/credits";
 import { apiGetControlsPolicy } from "@/lib/api/controls-config";
 import {
   apiCancelGift,
@@ -34,10 +30,11 @@ import { EFError } from "@/lib/api/_invoke";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Gift Credits — the real path (MESITA-1677). Was fully mock-backed
-// (src/lib/mock/use-credits.ts) until now; this screen is wired to
-// consumer-web-gift-credits (the charge) and consumer-web-list-credit-gifts
-// + consumer-web-cancel-credit-gift (the "Gifts you sent" list below).
+// Gift Credits — the real path (MESITA-1677). Ran on the browser emulator
+// until MESITA-1674 deleted it and parked this screen behind a "coming soon"
+// placeholder; this rewires it for real, to consumer-web-gift-credits (the
+// charge) and consumer-web-list-credit-gifts + consumer-web-cancel-credit-gift
+// (the "Gifts you sent" list below).
 //
 // ISSUANCE, NOT TRANSFER (MESITA-1677, restating MESITA-1380). Buying a gift
 // charges the SENDER's own card, exactly like Buy — nothing leaves a balance
@@ -57,15 +54,16 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 //
 // "GIFTS YOU SENT" LIVES HERE, NOT ON A SEPARATE "ORG SHEET." The issue text
 // describes an org-specific sheet with its own Gift button and its own sent-
-// gifts list; no such component exists anywhere in this codebase yet for
-// Credits (checked directly — PlaceActionBar's Credits slot is locked
-// pending the spend engine, MESITA-1678, a different capability; the
-// balance detail page is still emulator-only, MESITA-1674). Building a new
-// org-scoped surface was out of scope next to the money-path work the issue
-// itself calls "the hard part" (schema, landing page, redeem, cancel-
-// refund), so the sent-gifts list ships on the ONE screen that already is
-// the Gift flow's home — same component, same state machine the issue asks
-// for, just not a second surface. Flagged as a judgment call in the PR.
+// gifts list; no such component exists anywhere in this codebase for Credits
+// (checked directly — PlaceActionBar's Credits slot is locked pending the
+// spend engine, MESITA-1678, a different capability; the balance detail page
+// (BalanceClient.tsx, real as of MESITA-1674) shows one org's own lots, not
+// gifts sent to other people). Building a new org-scoped surface was out of
+// scope next to the money-path work the issue itself calls "the hard part"
+// (schema, landing page, redeem, cancel-refund), so the sent-gifts list ships
+// on the ONE screen that already is the Gift flow's home — same component,
+// same state machine the issue asks for, just not a second surface. Flagged
+// as a judgment call in the PR.
 //
 // NO SHARE SHEET, NO SEND. Copy is the whole handoff: sending would mean a
 // public landing route for a stranger with no account, which now exists
@@ -287,17 +285,10 @@ export function GiftClient() {
     };
   }, [supabase]);
 
-  const pickerPlaces: CreditPlace[] = useMemo(
-    () =>
-      (places ?? []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        bonusPct: null,
-        expiryDays: null,
-        photoUrl: null,
-      })),
-    [places],
-  );
+  // No per-place bonus/expiry override exists in the schema yet — PlacePicker
+  // reads policy.defaultBonusPct/defaultExpiryDays uniformly, same
+  // simplification BuyClient.tsx made.
+  const pickerPlaces = places ?? [];
   const place = placeId ? pickerPlaces.find((p) => p.id === placeId) ?? null : null;
   const bonus = Math.round((paidCents * policy.defaultBonusPct) / 100);
 

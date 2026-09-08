@@ -14,12 +14,12 @@ import {
   DISCOVERY_MODE_SOURCES,
   DISCOVERY_SOURCES,
   ENGINES,
-  GENERAL_CATEGORY_COUNT_MAX,
+  GOOGLE_PULL_STOPS,
   LIBRARY_SIGNALS,
   modeCallsSource,
   modeRequiresPool,
   modeSignalState,
-  NEARBY_TYPE_FIELDS,
+  SUPER_FIELDS,
   SIGNAL_KEYS,
   SIGNALS,
   snapMapReloadPair,
@@ -226,13 +226,17 @@ describe("Discovery function APIs", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).map).toEqual(DEFAULT_MAP);
     expect(
       coerceConfig({
-        map: { minRating: 9, minPopularity: 4, types: { restaurant: false } },
+        map: {
+          minRating: 9,
+          minPopularity: 4,
+          supers: { restaurants: false },
+        },
       }).map,
     ).toEqual({
       ...DEFAULT_MAP,
       minRating: 5,
       minPopularity: 1,
-      types: { ...DEFAULT_MAP.types, restaurant: false },
+      supers: { ...DEFAULT_MAP.supers, restaurants: false },
     });
     expect(
       coerceConfig({ map: { reloadMinKm: 99, reloadMinSec: 40 } }).map,
@@ -319,29 +323,80 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
-  it("coerceConfig defaults general.categoryCount to every type and clamps 0–22", () => {
-    // The count means "how many of the code-defined types are available", so
-    // the default has always been the whole list. The list grew from 5 to 22
-    // when the strip caught up with the seven-Super law (MESITA-1683); the
-    // live blob stores 5, so nothing on production moved, and the seventeen
-    // new types default OFF regardless of the count.
-    expect(GENERAL_CATEGORY_COUNT_MAX).toBe(22);
+  it("the category param is seven Supers, and categoryCount is gone", () => {
+    // MESITA-1695: the operator's noun is the Super, not Google's slug, and
+    // the ordered "first N" cap that hid four whole Supers is deleted. A
+    // stored blob carrying it must not resurrect it.
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(DEFAULT_GENERAL.categoryCount).toBe(GENERAL_CATEGORY_COUNT_MAX);
-    expect(coerceConfig({ general: { categoryCount: 99 } }).general.categoryCount).toBe(22);
-    expect(coerceConfig({ general: { categoryCount: -1 } }).general.categoryCount).toBe(0);
-    expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
-    // A stored 5 stays 5: the cap keeps the first five, which are the same
-    // five Google types the strip billed before it grew.
-    expect(coerceConfig({ general: { categoryCount: 5 } }).general.categoryCount).toBe(5);
-    expect(new Set(NEARBY_TYPE_FIELDS.slice(0, 5).map((f) => f.key))).toEqual(
-      new Set(["restaurant", "bar", "cafe", "night_club", "bakery"]),
+    expect("categoryCount" in DEFAULT_GENERAL).toBe(false);
+    expect(
+      "categoryCount" in coerceConfig({ general: { categoryCount: 5 } }).general,
+    ).toBe(false);
+    expect(SUPER_FIELDS.length).toBe(7);
+    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(7);
+    // Every Super names the Google battery it bills, so the box can say what
+    // it spends without asking anyone to toggle Google's vocabulary.
+    for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
+    // The three the strip has always billed are on; the four it could not see
+    // until MESITA-1683 stay off until an operator opts in.
+    const on = SUPER_FIELDS.filter((f) => DEFAULT_MAP.supers[f.key]).map((f) => f.key);
+    expect(new Set(on)).toEqual(
+      new Set(["restaurants", "cafes_bakeries", "bars_nightlife"]),
     );
-    // All seven Supers are represented now, not the three it knew.
-    expect(new Set(NEARBY_TYPE_FIELDS.map((f) => f.superLabel)).size).toBe(7);
-    for (const f of NEARBY_TYPE_FIELDS.slice(5)) {
-      expect(DEFAULT_MAP.types[f.key], f.key).toBe(false);
-    }
+    // Their union is the five slugs the pre-1695 blob had true.
+    expect(
+      new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).flatMap((f) => f.battery)),
+    ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
+  });
+
+  it("coerceConfig folds a pre-1695 Google-slug blob up into Supers", () => {
+    // THE LIVE BLOB: five slugs true, nothing else stored. It has to land on
+    // exactly the three F&B Supers or the console shows a different answer
+    // than the Edge Functions read.
+    const folded = coerceConfig({
+      map: {
+        types: {
+          restaurant: true,
+          bar: true,
+          night_club: true,
+          cafe: true,
+          bakery: true,
+        },
+      },
+    }).map.supers;
+    expect(folded).toEqual({
+      restaurants: true,
+      cafes_bakeries: true,
+      bars_nightlife: true,
+      experiences: false,
+      culture_arts: false,
+      sports_fitness: false,
+      wellness_beauty: false,
+    });
+    // An ABSENT slug keeps its pre-1695 default rather than reading false.
+    expect(coerceConfig({ map: { types: { museum: true } } }).map.supers).toMatchObject({
+      restaurants: true,
+      culture_arts: true,
+      sports_fitness: false,
+    });
+    // The new key wins whenever it is present.
+    expect(
+      coerceConfig({
+        map: { supers: { restaurants: false }, types: { restaurant: true } },
+      }).map.supers.restaurants,
+    ).toBe(false);
+  });
+
+  it("googlePull snaps to a stop — 40 and 60 are billed calls, not a slider", () => {
+    expect(GOOGLE_PULL_STOPS).toEqual([20, 40, 60]);
+    expect(DEFAULT_MAP.googlePull).toBe(20);
+    const pull = (raw: unknown) => coerceConfig({ map: { googlePull: raw } }).map.googlePull;
+    expect(pull(40)).toBe(40);
+    expect(pull(60)).toBe(60);
+    expect(pull(37)).toBe(40);
+    expect(pull(9_000)).toBe(60);
+    expect(pull(-1)).toBe(20);
+    expect(pull("lots")).toBe(20);
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3+3", () => {
@@ -414,7 +469,7 @@ describe("Discovery page box order", () => {
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
-    const general = readFileSync(join(__dirname, "GeneralConfigClient.tsx"), "utf8");
+    const supersStrip = readFileSync(join(__dirname, "SuperCategoriesClient.tsx"), "utf8");
     const catalog = readFileSync(join(__dirname, "CatalogConfigClient.tsx"), "utf8");
     const chat = readFileSync(join(__dirname, "DiscoveryConfigClient.tsx"), "utf8");
     const map = readFileSync(join(__dirname, "MapConfigClient.tsx"), "utf8");
@@ -446,7 +501,7 @@ describe("Discovery page box order", () => {
     expect(chrome).toContain("DISCOVERY_TABS");
     expect(chrome).toContain("tab?.label");
     expect(page).toContain("redirect(DISCOVERY_MATRIX_HREF)");
-    expect(page).not.toContain("GeneralConfigClient");
+    expect(page).not.toContain("SuperCategoriesClient");
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');
     expect(nextConfig).not.toContain('destination: "/filters-config",');
@@ -454,8 +509,13 @@ describe("Discovery page box order", () => {
     expect(nextConfig).toContain('source: "/filters-config/modules"');
     expect(nextConfig).toContain('destination: "/filters-config/sources"');
 
-    expect(general).toContain('title="Google types"');
-    expect(general).toContain("NEARBY_TYPE_FIELDS");
+    // The param is the Super (MESITA-1695). Google's slugs are printed under
+    // each switch as the battery it bills, never as twenty-two switches.
+    expect(supersStrip).toContain('title="Super Categories"');
+    expect(supersStrip).toContain("SUPER_FIELDS");
+    expect(supersStrip).not.toContain("NEARBY_TYPE_FIELDS");
+    expect(supersStrip).not.toContain("Categories available");
+    expect(supersStrip).not.toContain("categoryCount");
 
     // The floor lives INSIDE the source it cuts (Pato, 2026-09-08). One box
     // owns each key; the rest mirror it read-only, so no two inputs move one
@@ -463,25 +523,35 @@ describe("Discovery page box order", () => {
     // Mesita Nearby owns `filters`.
     const floor = readFileSync(join(__dirname, "SourceFloor.tsx"), "utf8");
     expect(floor).toContain("Only active places");
-    expect(floor).toContain("Minimum Google reviews");
+    // Reviewers, not stars: the floor counts PEOPLE (Pato, 2026-09-08).
+    expect(floor).toContain("Minimum Google reviewers");
+    expect(floor).toContain("Minimum rating (stars)");
+    expect(floor).not.toContain('label="Minimum reviews"');
     expect(floor).toContain('"general",');
     expect(floor).toContain('"mapFloors",');
+    expect(floor).toContain('"mapPull",');
     expect(floor).toContain('"filters",');
     // A Soon source states the fact; it never gets a field to type in.
     expect(floor).toContain("FloorSoonNote");
     expect(floor).not.toContain("categoryCount");
     expect(googleSources).toContain("GeneralFloorOwner");
     expect(googleSources).toContain("MapFloorOwner");
+    // The Google pull is a property of the SOURCE, so it lives on the Nearby
+    // box, never on the Map mode box whose number is the guest's How many.
+    expect(googleSources).toContain("NearbyPullOwner");
+    expect(map).not.toContain("googlePull");
     expect(googleSources).toContain("FloorMirror");
     expect(mesitaSources).toContain("FiltersFloorOwner");
     expect(mesitaSources).toContain("FloorMirror");
     expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(4);
-    // Two boxes write `map` on this one page now, so neither may save the
-    // whole slice from its own seed or the second Save wipes the first.
-    expect(general).toContain('["general", "nameFast", "nameDeep", "mapTypes"]');
+    // THREE boxes write `map` on this one page now, so none may save the
+    // whole slice from its own seed or the last Save wipes the others.
+    expect(supersStrip).toContain('["nameFast", "nameDeep", "mapSupers"]');
     const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
-    expect(acts).toContain('"mapTypes"');
+    expect(acts).toContain('"mapSupers"');
     expect(acts).toContain('"mapFloors"');
+    expect(acts).toContain('"mapPull"');
+    expect(acts).not.toContain('"mapTypes"');
     // Word is ONE mode with two passes. The blob slices keep their names.
     expect(name).toContain('title="Word (Fast Search)"');
     expect(name).toContain('title="Word (Deep Search)"');
@@ -627,17 +697,17 @@ describe("Discovery page box order", () => {
       last = idx;
     }
     expect(modesJsx).not.toContain("SocialConfigClient");
-    // Google types stay on Sources; the wipe stays on Modes. Two boxes,
+    // Super Categories stay on Sources; the wipe stays on Modes. Two boxes,
     // two questions — never fold one into the other.
-    expect(modesJsx).not.toContain("GeneralConfigClient");
+    expect(modesJsx).not.toContain("SuperCategoriesClient");
     expect(modesJsx).not.toContain("GeneralGateConfigClient");
     expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    // NINE BOXES AND NOTHING ELSE. The types strip is a shared battery above
-    // them, not a source, so it does not spend one of the nine.
-    const sourceOrder = ["GeneralConfigClient", "GoogleSourceCards", "MesitaSourceCards"];
+    // NINE BOXES AND NOTHING ELSE. The Super Categories strip is a shared
+    // battery above them, not a source, so it does not spend one of the nine.
+    const sourceOrder = ["SuperCategoriesClient", "GoogleSourceCards", "MesitaSourceCards"];
     expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
     expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
     expect(sourcesJsx).not.toContain("SignalsConfigClient");

@@ -739,6 +739,11 @@ verify_jwt = true
 [functions.consumer-web-list-credit-gifts]
 verify_jwt = true
 
+# The Wallet's real balance read (MESITA-1674): the calling consumer's own
+# credit_lots, grouped by organization and paginated.
+[functions.consumer-web-list-credit-balances]
+verify_jwt = true
+
 # Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
 [functions.business-web-change-subscription]
 verify_jwt = true

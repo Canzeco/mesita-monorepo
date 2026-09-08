@@ -31,8 +31,8 @@
 //   ENTITIES  what a mode can answer with: Places always, Locations on Word
 //             only. Autocomplete is the one source that returns regions and
 //             cities, in the SAME call as the places.
-//   SOURCES   the Search Sources subpage: Google types strip (categoryCount
-//             + type batteries, one list written onto Fast / Deep / Map) ·
+//   SOURCES   the Search Sources subpage: Super Categories strip (seven
+//             params, one list written onto Fast / Deep / Map) ·
 //             the three Google Places searches · the four Mesita Places
 //             searches (Name · Nearby · Browse · Flexible) · the two Mesita
 //             Social searches (Browse · Flexible). Mesita Places Name and
@@ -69,7 +69,7 @@ export type NameFastConfig = {
   /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameDeepConfig = {
@@ -81,7 +81,7 @@ export type NameDeepConfig = {
   googleCount: number;
   /** Legacy blob field. Queries concat; the union is not sliced. */
   count: number;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameConfig = {
@@ -112,7 +112,6 @@ export type SwipeConfig = {
 };
 
 export type GeneralConfig = {
-  categoryCount: number;
   /**
    * The post-Google wipe. Active is `business_state === "OPERATIONAL"` on
    * Mesita, Google's `businessStatus` on a Google-only row. Unknown does not
@@ -153,41 +152,27 @@ export type SocialConfig = {
   horizonDays: number;
 };
 
-// Mirrors NEARBY_TYPE_KEYS in _shared/discovery-config.ts, which is itself
-// pinned to GOOGLE_SEARCH_TYPES by google-type-super.test.ts. All SEVEN Super
-// Categories, not the three this knew while it was five keys long
-// (MESITA-1683). Order is load-bearing: `categoryCount` keeps the first N.
-const NEARBY_TYPE_KEYS = [
-  "restaurant",
-  "bar",
-  "night_club",
-  "cafe",
-  "bakery",
-  "gym",
-  "fitness_center",
-  "yoga_studio",
-  "sports_club",
-  "spa",
-  "beauty_salon",
-  "hair_salon",
-  "massage",
-  "tourist_attraction",
-  "amusement_park",
-  "bowling_alley",
-  "park",
-  "movie_theater",
-  "museum",
-  "art_gallery",
-  "performing_arts_theater",
-  "concert_hall",
+// Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
+// the taxonomy by google-type-super.test.ts. The operator's category param is
+// the SUPER, not Google's slug (MESITA-1695): twenty-two switches in Google's
+// vocabulary, capped by an ordered "first N", is what let four whole Supers
+// sit invisibly off. Order is the guest's — SUPER_CATEGORIES sort_order.
+export const SUPER_PARAM_KEYS = [
+  "restaurants",
+  "cafes_bakeries",
+  "bars_nightlife",
+  "experiences",
+  "culture_arts",
+  "sports_fitness",
+  "wellness_beauty",
 ] as const;
+export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
-/** Discovery-wide cap on how many of `NEARBY_TYPE_KEYS` any engine may use. */
-const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
-export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
-/** Same ceiling as filters.minReviews — one review floor reads like another. */
+/** Mirrors GOOGLE_PULL_STOPS in _shared/discovery-config.ts. */
+export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
+export const GOOGLE_PULL_DEFAULT = 20;
+/** Same ceiling as filters.minReviews — one reviewer floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
-export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 export type MapConfig = {
   minRating: number;
@@ -198,42 +183,66 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
+  /** 20 / 40 / 60 — how many Google rows one Nearby pull buys. */
+  googlePull: number;
 };
 
 /**
- * Each Google type under the Super Category whose battery it belongs to.
- * The operator's noun is the Super; the blob stays keyed by Google type, so
- * this grouping is presentation and needs no migration. Super labels are
- * verbatim from SUPER_CATEGORIES in _shared/place-taxonomy.ts.
+ * The seven params the operator actually sees. `label` and `emoji` are
+ * verbatim from SUPER_CATEGORIES in _shared/place-taxonomy.ts; `battery` is
+ * the Google slugs that Super sends, shown read-only so the box says what it
+ * bills without asking anyone to toggle Google's vocabulary.
  */
-export const NEARBY_TYPE_FIELDS: {
-  key: NearbyTypeKey;
+export const SUPER_FIELDS: {
+  key: SuperParamKey;
   label: string;
-  superLabel: string;
+  emoji: string;
+  battery: readonly string[];
 }[] = [
-  { key: "restaurant", label: "Restaurants", superLabel: "Restaurants" },
-  { key: "bar", label: "Bars", superLabel: "Bars & Nightlife" },
-  { key: "night_club", label: "Night clubs", superLabel: "Bars & Nightlife" },
-  { key: "cafe", label: "Cafés", superLabel: "Cafés & Desserts" },
-  { key: "bakery", label: "Bakeries", superLabel: "Cafés & Desserts" },
-  { key: "gym", label: "Gyms", superLabel: "Sports & Fitness" },
-  { key: "fitness_center", label: "Fitness centres", superLabel: "Sports & Fitness" },
-  { key: "yoga_studio", label: "Yoga studios", superLabel: "Sports & Fitness" },
-  { key: "sports_club", label: "Sports clubs", superLabel: "Sports & Fitness" },
-  { key: "spa", label: "Spas", superLabel: "Wellness & Beauty" },
-  { key: "beauty_salon", label: "Beauty salons", superLabel: "Wellness & Beauty" },
-  { key: "hair_salon", label: "Hair salons", superLabel: "Wellness & Beauty" },
-  { key: "massage", label: "Massage", superLabel: "Wellness & Beauty" },
-  { key: "tourist_attraction", label: "Attractions", superLabel: "Experiences" },
-  { key: "amusement_park", label: "Amusement parks", superLabel: "Experiences" },
-  { key: "bowling_alley", label: "Bowling alleys", superLabel: "Experiences" },
-  { key: "park", label: "Parks", superLabel: "Experiences" },
-  { key: "movie_theater", label: "Cinemas", superLabel: "Experiences" },
-  { key: "museum", label: "Museums", superLabel: "Culture & Arts" },
-  { key: "art_gallery", label: "Art galleries", superLabel: "Culture & Arts" },
-  { key: "performing_arts_theater", label: "Theatres", superLabel: "Culture & Arts" },
-  { key: "concert_hall", label: "Concert halls", superLabel: "Culture & Arts" },
+  { key: "restaurants", label: "Restaurants", emoji: "\u{1F37D}\uFE0F", battery: ["restaurant"] },
+  {
+    key: "cafes_bakeries",
+    label: "Caf\u00e9s & Desserts",
+    emoji: "\u2615",
+    battery: ["cafe", "bakery"],
+  },
+  {
+    key: "bars_nightlife",
+    label: "Bars & Nightlife",
+    emoji: "\u{1F378}",
+    battery: ["bar", "night_club"],
+  },
+  {
+    key: "experiences",
+    label: "Experiences",
+    emoji: "\u{1F39F}\uFE0F",
+    battery: [
+      "tourist_attraction",
+      "amusement_park",
+      "bowling_alley",
+      "park",
+      "movie_theater",
+    ],
+  },
+  {
+    key: "culture_arts",
+    label: "Culture & Arts",
+    emoji: "\u{1F3AD}",
+    battery: ["museum", "art_gallery", "performing_arts_theater", "concert_hall"],
+  },
+  {
+    key: "sports_fitness",
+    label: "Sports & Fitness",
+    emoji: "\u26BD",
+    battery: ["gym", "fitness_center", "yoga_studio", "sports_club"],
+  },
+  {
+    key: "wellness_beauty",
+    label: "Wellness & Beauty",
+    emoji: "\u{1F486}",
+    battery: ["spa", "beauty_salon", "hair_salon", "massage"],
+  },
 ];
 
 export type ParamField = {
@@ -435,29 +444,14 @@ export const DEFAULT_SOCIAL: SocialConfig = {
 // see default OFF. Not a cost choice: one Nearby request carries every enabled
 // type, so types are free (MESITA-1685). Off because it keeps the returned pool
 // unchanged until an operator widens it deliberately.
-const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
-  restaurant: true,
-  bar: true,
-  night_club: true,
-  cafe: true,
-  bakery: true,
-  gym: false,
-  fitness_center: false,
-  yoga_studio: false,
-  sports_club: false,
-  spa: false,
-  beauty_salon: false,
-  hair_salon: false,
-  massage: false,
-  tourist_attraction: false,
-  amusement_park: false,
-  bowling_alley: false,
-  park: false,
-  movie_theater: false,
-  museum: false,
-  art_gallery: false,
-  performing_arts_theater: false,
-  concert_hall: false,
+const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
+  restaurants: true,
+  cafes_bakeries: true,
+  bars_nightlife: true,
+  experiences: false,
+  culture_arts: false,
+  sports_fitness: false,
+  wellness_beauty: false,
 };
 
 export const DEFAULT_MAP: MapConfig = {
@@ -467,13 +461,14 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
+  googlePull: GOOGLE_PULL_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
 };
 
 const DEFAULT_NAME_DEEP: NameDeepConfig = {
@@ -482,7 +477,7 @@ const DEFAULT_NAME_DEEP: NameDeepConfig = {
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   count: NAME_DEEP_COUNT_DEFAULT,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
 };
 
 export const DEFAULT_NAME: NameConfig = {
@@ -491,7 +486,6 @@ export const DEFAULT_NAME: NameConfig = {
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
-  categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
   requireActive: true,
   minReviews: 0,
 };
@@ -1261,28 +1255,63 @@ function coerceSocial(raw: unknown): SocialConfig {
   };
 }
 
-function coerceTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
-  const rawTypes = (raw ?? {}) as Record<string, unknown>;
-  const types = {} as Record<NearbyTypeKey, boolean>;
-  for (const key of NEARBY_TYPE_KEYS) {
-    types[key] = typeof rawTypes[key] === "boolean"
-      ? rawTypes[key]
-      : DEFAULT_MAP_TYPES[key];
+// The five Google slugs the pre-1695 strip defaulted ON. A tombstone: read
+// only when folding a stored blob that still keys by Google type.
+const LEGACY_TYPE_DEFAULTS = new Set<string>([
+  "restaurant",
+  "bar",
+  "night_club",
+  "cafe",
+  "bakery",
+]);
+const LEGACY_SUPER_BATTERY: Record<SuperParamKey, readonly string[]> =
+  Object.fromEntries(
+    SUPER_FIELDS.map((f) => [f.key, f.battery]),
+  ) as Record<SuperParamKey, readonly string[]>;
+
+/** Mirrors `normalizeSuperParams` in _shared/discovery-config.ts. */
+function coerceSuperParams(
+  raw: unknown,
+  legacyTypes?: unknown,
+): Record<SuperParamKey, boolean> {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const out = {} as Record<SuperParamKey, boolean>;
+  if (SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
+    for (const key of SUPER_PARAM_KEYS) {
+      out[key] = typeof r[key] === "boolean"
+        ? (r[key] as boolean)
+        : DEFAULT_MAP_SUPERS[key];
+    }
+    return out;
   }
-  return types;
+  const legacy = (legacyTypes ?? {}) as Record<string, unknown>;
+  const hasLegacy = Object.values(LEGACY_SUPER_BATTERY)
+    .flat()
+    .some((slug) => typeof legacy[slug] === "boolean");
+  if (!hasLegacy) return { ...DEFAULT_MAP_SUPERS };
+  for (const key of SUPER_PARAM_KEYS) {
+    out[key] = LEGACY_SUPER_BATTERY[key].some((slug) =>
+      typeof legacy[slug] === "boolean"
+        ? (legacy[slug] as boolean)
+        : LEGACY_TYPE_DEFAULTS.has(slug)
+    );
+  }
+  return out;
+}
+
+/** 20 / 40 / 60, snapped. Never a free number: 40 and 60 are billed calls. */
+function coerceGooglePull(raw: unknown): number {
+  const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
+  let best: number = GOOGLE_PULL_DEFAULT;
+  for (const stop of GOOGLE_PULL_STOPS) {
+    if (Math.abs(stop - n) < Math.abs(best - n)) best = stop;
+  }
+  return best;
 }
 
 function coerceGeneral(raw: unknown): GeneralConfig {
   const g = (raw ?? {}) as Record<string, unknown>;
   return {
-    categoryCount: Math.round(
-      num(
-        g.categoryCount,
-        DEFAULT_GENERAL.categoryCount,
-        0,
-        GENERAL_CATEGORY_COUNT_MAX,
-      ),
-    ),
     requireActive:
       typeof g.requireActive === "boolean"
         ? g.requireActive
@@ -1306,7 +1335,7 @@ function coerceName(raw: unknown): NameConfig {
         num(fast.googleCount ?? fast.count, fastCount, 0, NAME_LANE_COUNT_MAX),
       ),
       count: fastCount,
-      types: coerceTypeBatteries(fast.types),
+      supers: coerceSuperParams(fast.supers, fast.types),
     },
     deep: {
       partnerCount: Math.round(
@@ -1324,14 +1353,14 @@ function coerceName(raw: unknown): NameConfig {
       count: Math.round(
         num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
       ),
-      types: coerceTypeBatteries(deep.types),
+      supers: coerceSuperParams(deep.supers, deep.types),
     },
   };
 }
 
 function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
-  const types = coerceTypeBatteries(m.types);
+  const supers = coerceSuperParams(m.supers, m.types);
   const reload = snapMapReloadPair(m.reloadMinKm, m.reloadMinSec);
   return {
     minRating: Math.round(
@@ -1344,7 +1373,8 @@ function coerceMap(raw: unknown): MapConfig {
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
-    types,
+    supers,
+    googlePull: coerceGooglePull(m.googlePull),
   };
 }
 

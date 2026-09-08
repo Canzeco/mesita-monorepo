@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,7 @@ import {
   TermsPreview,
 } from "@/components/consumer/credits/PickCredits";
 import { formatCurrency } from "@/lib/api/profile";
-import {
-  CONTROLS_FALLBACK,
-  type ControlsPolicy,
-  type CreditPlace,
-} from "@/lib/mock/credits-mock";
+import { CONTROLS_FALLBACK, type ControlsPolicy } from "@/lib/credits";
 import { apiGetControlsPolicy } from "@/lib/api/controls-config";
 import {
   apiBuyCredits,
@@ -90,18 +86,9 @@ export function BuyClient() {
   }, [supabase]);
 
   // Every real place inherits the console default — no per-place override
-  // exists in the schema yet — so bonusPct/expiryDays are always null here.
-  const pickerPlaces: CreditPlace[] = useMemo(
-    () =>
-      (places ?? []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        bonusPct: null,
-        expiryDays: null,
-        photoUrl: null,
-      })),
-    [places],
-  );
+  // exists in the schema yet — so PlacePicker reads policy.defaultBonusPct/
+  // defaultExpiryDays uniformly rather than a rate the place itself set.
+  const pickerPlaces = places ?? [];
   const place = placeId ? pickerPlaces.find((p) => p.id === placeId) ?? null : null;
   const bonus = Math.round((paidCents * policy.defaultBonusPct) / 100);
 

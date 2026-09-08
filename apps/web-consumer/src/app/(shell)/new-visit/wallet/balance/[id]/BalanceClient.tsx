@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -10,214 +9,186 @@ import {
   WalletScreen,
 } from "@/components/consumer/wallet/WalletScreen";
 import { formatCurrency } from "@/lib/api/profile";
+import type { CreditLot, CreditOrgBalance } from "@/lib/api/credits";
 import {
+  formatActivation,
   formatExpiry,
   formatWhen,
-  daysUntilExpiry,
-  isExpired,
-  type CreditBalance,
-} from "@/lib/mock/credits-mock";
-import type { Seed } from "@/lib/mock/credits-emulator";
-import { errorMessage, useCredits } from "@/lib/mock/use-credits";
+  headlineCents,
+  orgBalanceState,
+} from "@/lib/credits";
+import { useCreditBalances } from "@/lib/use-credit-balances";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { cn } from "@/lib/utils";
 
-// One balance, opened.
+// One organization's Credits, opened (MESITA-1674: real balances now).
 //
-// THE EXPIRY DATE IS ALWAYS HERE, even at 89 days out. The card only mentions
-// it when it is near, because a list is a glance; this is where a guest comes to
-// read the terms of one balance, and a term you have to ask for is a term that
-// surprises someone later. It is a `dl` row like the bonus and the place, not a
-// warning — until it has passed, when the state block says so.
+// THE ID IN THE URL IS AN ORGANIZATION ID, not a per-lot id — a balance IS
+// an organization's aggregate (credit_lots is org-scoped, MESITA-1671), the
+// same unit the list screen renders one card per. `walletBalancePath` did
+// not change; what it addresses did.
 //
-// IT IS ALSO THE ONLY TERM LEFT THAT CAN CLOSE THE SPEND CONTROLS. A balance
-// used to open as "Maturing", with the buttons disabled and the CTA counting
-// down a hold; Credits are active the moment they are bought now (Pato,
-// 2026-09-08), so the two states are Available and Expired.
+// IT IS ALSO THE ONLY TERM LEFT THAT CAN CLOSE THE SPEND CONTROLS — this line
+// survives from the pre-1674 file almost verbatim, and the state it describes
+// grew a middle: a balance used to open Available or Expired, because the buy
+// path never applies the hold it still carries in the schema. This read
+// surfaces PENDING lots (any other writer of credit_lots can still produce
+// one), so a balance can now open on its way to spendable too.
+//
+// NO SPEND HERE. The old emulator let a guest draw a balance down from this
+// screen; spend-at-the-table (MESITA-1678) has no real engine yet — it is
+// blocked on who funds the bonus — so there is nothing this screen could
+// wire a Spend button to without lying about what pressing it does. The
+// activity list below is real: every row is a credit_ledger entry, read
+// straight off the lot.
 
-const SPENDS = [10_000, 25_000, 50_000];
+function LotRow({ lot }: { lot: CreditLot }) {
+  const state = lot.expired ? "expired" : lot.pending ? "pending" : "active";
+  return (
+    <li className="border-border flex items-center justify-between gap-3 border-b pb-2 last:border-b-0">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold">
+          {state === "pending"
+            ? `Activates ${formatWhen(Date.parse(lot.activatesAt))}`
+            : "Bought Credits"}
+        </span>
+        <span className="text-muted-foreground text-xs">
+          {formatWhen(Date.parse(lot.createdAt))}
+          {state === "expired" ? " · expired" : ""}
+        </span>
+      </span>
+      <span className="shrink-0 text-sm font-semibold tabular-nums">
+        {formatCurrency(lot.remainingCents)}
+      </span>
+    </li>
+  );
+}
 
-function BalanceBody({
-  balance,
-  nowMs,
-  busy,
-  onSpend,
-}: {
-  balance: CreditBalance;
-  nowMs: number;
-  busy: boolean;
-  onSpend: (balanceId: string, amountCents: number) => Promise<boolean>;
-}) {
-  const [amount, setAmount] = useState<number>(SPENDS[0]);
-  const expired = isExpired(balance, nowMs);
-  const bonusCents = balance.balanceCents - balance.paidCents;
+function BalanceBody({ balance, nowMs }: { balance: CreditOrgBalance; nowMs: number }) {
+  const state = orgBalanceState(balance);
+  const headline = headlineCents(balance);
+  const daysLeft = balance.nearestExpiryAt
+    ? (Date.parse(balance.nearestExpiryAt) - nowMs) / 86_400_000
+    : null;
+  const hoursLeft = balance.nearestActivationAt
+    ? (Date.parse(balance.nearestActivationAt) - nowMs) / 3_600_000
+    : null;
+  const bonusCents = Math.max(
+    0,
+    balance.spendableCents + balance.pendingCents - balance.paidCents,
+  );
 
   return (
     <div className="flex flex-col gap-5">
       <div className="border-border bg-card rounded-2xl border p-4">
         <div className="type-eyebrow text-muted-foreground">
-          {expired ? "Expired" : "Available"}
+          {state === "expired" ? "Expired" : state === "pending" ? "Pending" : "Available"}
         </div>
         <div className="mt-1 text-3xl font-bold tracking-tight tabular-nums">
-          {formatCurrency(balance.balanceCents)}
+          {formatCurrency(headline)}
         </div>
         <div className="text-muted-foreground mt-1 text-xs">
-          {expired
-            ? `Expired on ${formatWhen(balance.expiresAtMs)}`
-            : "Spendable at this place"}
+          {state === "expired"
+            ? "These Credits can no longer be spent"
+            : state === "pending" && hoursLeft !== null
+              ? `Activates in ${formatActivation(hoursLeft)}`
+              : "Spendable at any of this organization's places"}
         </div>
       </div>
 
-      <dl className="flex flex-col gap-2.5">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground text-xs">You paid</dt>
-          <dd className="text-sm font-semibold tabular-nums">
-            {formatCurrency(balance.paidCents)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground text-xs">
-            Bonus from this place
-          </dt>
-          <dd className="text-sm font-semibold tabular-nums">
-            +{formatCurrency(bonusCents)} ({balance.bonusPct}%)
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground text-xs">Spendable at</dt>
-          <dd className="text-sm font-semibold">{balance.placeName} only</dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-muted-foreground text-xs">
-            {expired ? "Expired" : "Expires"}
-          </dt>
-          <dd className="text-sm font-semibold tabular-nums">
-            {formatWhen(balance.expiresAtMs)}
-            {expired
-              ? null
-              : ` (${formatExpiry(daysUntilExpiry(balance, nowMs))})`}
-          </dd>
-        </div>
-      </dl>
-
-      {/* Spending is the half of the instrument a list cannot show: a balance
-          you cannot draw down is a receipt, not money. */}
-      <div>
-        <div className="type-eyebrow text-muted-foreground mb-2">
-          Pay a bill
-        </div>
-        <div className="mb-2 flex gap-2">
-          {SPENDS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setAmount(s)}
-              aria-pressed={s === amount}
-              disabled={expired}
-              className={cn(
-                "flex-1 rounded-2xl border py-2.5 text-sm font-bold tabular-nums transition",
-                s === amount
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card hover:bg-muted/50",
-                expired && "opacity-60",
-              )}
-            >
-              {formatCurrency(s)}
-            </button>
-          ))}
-        </div>
-        <Button
-          onClick={() => onSpend(balance.id, amount)}
-          disabled={expired || busy || amount > balance.balanceCents}
-          className="w-full"
-        >
-          {expired
-            ? "Expired"
-            : amount > balance.balanceCents
-              ? "Not enough Credits"
-              : busy
-                ? "Working…"
-                : `Spend ${formatCurrency(amount)}`}
-        </Button>
-      </div>
+      {state !== "expired" && (
+        <dl className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground text-xs">You paid</dt>
+            <dd className="text-sm font-semibold tabular-nums">
+              {formatCurrency(balance.paidCents)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground text-xs">Bonus</dt>
+            <dd className="text-sm font-semibold tabular-nums">
+              +{formatCurrency(bonusCents)}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground text-xs">Spendable at</dt>
+            <dd className="text-sm font-semibold">
+              {balance.organizationName} — any of its places
+            </dd>
+          </div>
+          {daysLeft !== null && (
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground text-xs">Expires</dt>
+              <dd className="text-sm font-semibold tabular-nums">
+                {formatWhen(Date.parse(balance.nearestExpiryAt as string))} (
+                {formatExpiry(daysLeft)})
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       <div>
-        <div className="type-eyebrow text-muted-foreground mb-2">Activity</div>
+        <div className="type-eyebrow text-muted-foreground mb-2">Purchases</div>
         <ul className="flex flex-col gap-2">
-          {balance.activity.map((a) => (
-            <li
-              key={a.id}
-              className="border-border flex items-center justify-between gap-3 border-b pb-2 last:border-b-0"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
-                  {a.label}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {formatWhen(a.atMs)}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm font-semibold tabular-nums">
-                {a.amountCents < 0 ? "−" : "+"}
-                {formatCurrency(Math.abs(a.amountCents))}
-              </span>
-            </li>
+          {balance.lots.map((lot) => (
+            <LotRow key={lot.lotId} lot={lot} />
           ))}
         </ul>
       </div>
 
       <WalletParkedNote>
-        Emulated. Prepaid Credits are not live yet — nothing here is money, and
-        the terms above are not final.
+        Paying at the table with Credits is coming soon — this balance is
+        real, but spending it here isn&rsquo;t wired up yet.
       </WalletParkedNote>
     </div>
   );
 }
 
-export function BalanceClient({
-  balanceId,
-  seed,
-}: {
-  balanceId: string;
-  seed: Seed;
-}) {
-  const credits = useCredits(seed);
+export function BalanceClient({ organizationId }: { organizationId: string }) {
+  const credits = useCreditBalances();
   const balance =
-    credits.state?.balances.find((b) => b.id === balanceId) ?? null;
+    credits.organizations.find((o) => o.organizationId === organizationId) ??
+    null;
 
-  // The title cannot be known until the balance loads, and a header that
-  // changes its own words mid-load is worse than one that waits.
-  const title = balance ? balance.placeName : "Balance";
+  // The requested org may sit past the first page (a deep link, a reload with
+  // more than DEFAULT_PAGE_SIZE organizations already bought). Page through
+  // automatically until it turns up or the list runs out, rather than making
+  // the guest scroll the list first to "warm" this screen.
+  useEffect(() => {
+    if (!credits.loading && !balance && credits.hasMore && !credits.loadingMore) {
+      void credits.loadMore();
+    }
+  }, [credits, balance]);
+
+  const stillSearching = !balance && (credits.loading || credits.hasMore || credits.loadingMore);
+  const title = balance ? balance.organizationName : "Balance";
 
   return (
     <WalletScreen title={title}>
-      {credits.loading ? (
+      {stillSearching ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-28 w-full rounded-2xl" />
           <Skeleton className="h-32 w-full rounded-2xl" />
         </div>
       ) : balance ? (
         <>
-          <BalanceBody
-            balance={balance}
-            nowMs={credits.nowMs}
-            busy={credits.busy}
-            onSpend={credits.spend}
-          />
+          {/* 0, not Date.now() — see CreditsClient.tsx's identical note; this
+              branch only renders once `balance` resolves, by which point
+              useCreditBalances has already set a real nowMs alongside it. */}
+          <BalanceBody balance={balance} nowMs={credits.nowMs ?? 0} />
           {credits.error && (
             <p role="alert" className="text-destructive mt-3 text-center text-xs">
-              {errorMessage(credits.error)}
+              {credits.error}
             </p>
           )}
         </>
       ) : (
-        // A dead id: a bookmark to a balance that was spent to nothing and
-        // re-seeded, or a hand-typed URL. Say so and offer the way back rather
-        // than rendering an empty statement.
+        // Ran out of pages without finding it: a bookmark to a balance that
+        // no longer exists, or a hand-typed URL.
         <EmptyState
           icon={Wallet}
           title="That balance isn't here"
-          description="It may have been spent, or this wallet was reset. Your other balances are still in the wallet."
+          description="Your other balances are still in the wallet."
           action={{
             label: "Back to Wallet",
             href: CONSUMER_ROUTES.newVisit.wallet,

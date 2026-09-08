@@ -35,13 +35,14 @@ export type DiscoverySlice =
   | "social"
   | "chat"
   | "map"
-  // Narrow map slices (MESITA-1681). Search Sources now holds TWO boxes that
-  // write `map`: the Google types strip and Google Nearby's floor. Whole-slice
-  // saves from two seeds on one page mean the second Save wipes the first, so
-  // each writes only its own fields. `map` stays for the Map mode box, which
-  // owns the rest of the slice.
-  | "mapTypes"
+  // Narrow map slices (MESITA-1681, widened by MESITA-1695). Search Sources
+  // holds THREE boxes that write `map`: the Super Categories strip, Google
+  // Nearby's floor, and Google Nearby's pull. Whole-slice saves from three
+  // seeds on one page mean the last Save wipes the others, so each writes only
+  // its own fields. `map` stays for the Map mode box, which owns the rest.
+  | "mapSupers"
   | "mapFloors"
+  | "mapPull"
   | "nameFast"
   | "nameDeep"
   | "swipe"
@@ -79,10 +80,11 @@ export async function updateDiscoveryConfig(
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
     map: {
       ...(keys.has("map") ? config.map : live.config.map),
-      ...(keys.has("mapTypes") ? { types: config.map.types } : null),
+      ...(keys.has("mapSupers") ? { supers: config.map.supers } : null),
       ...(keys.has("mapFloors")
         ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
         : null),
+      ...(keys.has("mapPull") ? { googlePull: config.map.googlePull } : null),
     },
     name: {
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,

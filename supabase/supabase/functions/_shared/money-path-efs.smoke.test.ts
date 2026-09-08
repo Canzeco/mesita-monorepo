@@ -135,6 +135,12 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
     path: "../consumer-web-list-credit-places/index.ts",
     accepts: ["POST"],
   },
+  // The Wallet's real balance read (MESITA-1674): reads the guest's own money.
+  {
+    name: "consumer-web-list-credit-balances",
+    path: "../consumer-web-list-credit-balances/index.ts",
+    accepts: ["POST"],
+  },
   // Gift Credits (MESITA-1677): issuance-only — the sender's own card is
   // charged, same as Buy. Redeem/cancel/list all require an account; the
   // PUBLIC half is gift-web-preview-code, in PUBLIC_CHECK_EFS below.

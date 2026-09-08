@@ -33,7 +33,6 @@ import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import { parseCldrRegionCode } from "../_shared/sourcing.ts";
 import {
-  applyGeneralCategoryCap,
   loadDiscoveryConfig,
   type MapConfig,
 } from "../_shared/discovery-config.ts";
@@ -87,7 +86,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(env);
 
-  const map = applyGeneralCategoryCap(await loadDiscoveryConfig(admin)).map;
+  const map = (await loadDiscoveryConfig(admin)).map;
 
   const bodyRes = await readJson<RequestBody>(req);
   if (!bodyRes.ok) return bodyRes.response;

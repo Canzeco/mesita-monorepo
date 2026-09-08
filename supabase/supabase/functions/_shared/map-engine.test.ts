@@ -1,12 +1,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { DISCOVERY_DEFAULTS, NEARBY_TYPE_KEYS } from "./discovery-config.ts";
-import type { NearbyTypeKey } from "./discovery-config.ts";
+import { DISCOVERY_DEFAULTS, SUPER_PARAM_KEYS } from "./discovery-config.ts";
+import type { SuperParamKey } from "./discovery-config.ts";
 
-// Built from the key list so the fixture cannot rot when the strip grows;
-// it went 5 -> 22 in MESITA-1683 and hardcoded records broke.
-const typesAllOff = (): Record<NearbyTypeKey, boolean> =>
-  Object.fromEntries(NEARBY_TYPE_KEYS.map((k) => [k, false])) as Record<
-    NearbyTypeKey,
+// Built from the param list so the fixture cannot rot when a Super is added.
+const supersAllOff = (): Record<SuperParamKey, boolean> =>
+  Object.fromEntries(SUPER_PARAM_KEYS.map((k) => [k, false])) as Record<
+    SuperParamKey,
     boolean
   >;
 import {
@@ -43,13 +42,14 @@ Deno.test("defaults admit everything and fire the three billed Supers", () => {
   // Not every type any more: the strip covers all seven Super Categories
   // since MESITA-1683, and the four it could not see before default OFF, so
   // growing the list bills nothing new until an operator opts in.
-  assertEquals(enabledNearbyTypes(MAP), [
+  // Battery order follows the Super param order, not the old slug list.
+  assertEquals(new Set(enabledNearbyTypes(MAP)), new Set([
     "restaurant",
-    "bar",
-    "night_club",
     "cafe",
     "bakery",
-  ]);
+    "bar",
+    "night_club",
+  ]));
   assertEquals(mapShouldFillGoogle(true, MAP), true);
   assertEquals(mapShouldFillGoogle(false, MAP), false);
   assertEquals(googleHitClearsMapFloors(hit({ rating: null }), MAP), true);
@@ -65,23 +65,25 @@ Deno.test("how many is not an operator gate — only googleFill and types are", 
   // decides how many come back (Pato, 2026-08-29).
   assertEquals(mapShouldFillGoogle(true, { ...MAP }), true);
   assertEquals("googleCount" in MAP, false);
+  // How many Google rows we BUY is the operator's, and it is a stop, not free.
+  assertEquals(MAP.googlePull, 20);
 });
 
-Deno.test("googleFill off or all types off skips Nearby even if the client opts in", () => {
+Deno.test("googleFill off or every Super off skips Nearby even if the client opts in", () => {
   assertEquals(mapShouldFillGoogle(true, { ...MAP, googleFill: false }), false);
   assertEquals(
     mapShouldFillGoogle(true, {
       ...MAP,
-      types: typesAllOff(),
+      supers: supersAllOff(),
     }),
     false,
   );
   assertEquals(
-    enabledNearbyTypes({
+    new Set(enabledNearbyTypes({
       ...MAP,
-      types: { ...MAP.types, bakery: false, night_club: false },
-    }),
-    ["restaurant", "bar", "cafe"],
+      supers: { ...MAP.supers, cafes_bakeries: false },
+    })),
+    new Set(["restaurant", "bar", "night_club"]),
   );
 });
 
@@ -156,10 +158,10 @@ Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
   assertEquals(hotel.eligible, false);
 });
 
-Deno.test("evaluatePlaceForMap respects type batteries and floors", () => {
+Deno.test("evaluatePlaceForMap respects the Super params and floors", () => {
   const barsOnly = {
     ...MAP,
-    types: { ...typesAllOff(), bar: true },
+    supers: { ...supersAllOff(), bars_nightlife: true },
   };
   assertEquals(
     evaluatePlaceForMap(barsOnly, {
@@ -199,10 +201,10 @@ Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Goog
   assertEquals(got.map((r) => r.id), ["rest", "bar", "spa", "unk"]);
 });
 
-Deno.test("admitSwipeCatalog honors Map type batteries", () => {
+Deno.test("admitSwipeCatalog honors the Map Super params", () => {
   const barsOnly = {
     ...MAP,
-    types: { ...typesAllOff(), bar: true },
+    supers: { ...supersAllOff(), bars_nightlife: true },
   };
   const listed = [
     { id: "rest", category: "restaurant" },

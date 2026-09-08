@@ -165,14 +165,24 @@ export function __resetNearbyGoogleCacheForTests(): void {
 export function peekCachedNearbyPlaces(
   center: { lat: number; lng: number },
   types?: readonly string[],
+  pull?: number,
 ): NearbyHit[] | null {
-  const hit = nearbyCache.get(nearbyCellKey(center, resolveNearbyTypes(types)));
+  const hit = nearbyCache.get(
+    nearbyCellKey(center, resolveNearbyTypes(types), pull ?? GOOGLE_NEARBY_MAX),
+  );
   if (hit && Date.now() - hit.at < NEARBY_CACHE_MS) return hit.hits;
   return null;
 }
 
 export type SearchNearbyOpts = {
   radiusM?: number;
+  /**
+   * How many places to pull: 20, 40 or 60 (`discovery_config.map.googlePull`).
+   * Google caps ONE Nearby Search (New) at 20 and offers no page token, so 40
+   * and 60 are 2 and 3 BILLED requests over disjoint slices of the battery,
+   * deduped by placeId. Omit = 20 = one call, today's behaviour.
+   */
+  pull?: number;
   /** Nearby primary types. Omit = the five F&B batteries. Empty = no
    *  Google call. Super-driven search may send GOOGLE_SEARCH_TYPES
    *  (spa, museum, park, …) beyond the five. */
@@ -190,8 +200,35 @@ function nearbyTypesKey(types: readonly string[]): string {
 function nearbyCellKey(
   center: { lat: number; lng: number },
   types: readonly string[] = NEARBY_TYPES,
+  pull: number = GOOGLE_NEARBY_MAX,
 ): string {
-  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${nearbyTypesKey(types)}`;
+  return `${center.lat.toFixed(2)},${center.lng.toFixed(2)}:${
+    nearbyTypesKey(types)
+  }:p${pull}`;
+}
+
+/** Requests one pull costs. 20 → 1, 40 → 2, 60 → 3; never more than 3. */
+export function nearbyCallCount(pull: number | undefined): number {
+  const n = Math.ceil((Number(pull) || GOOGLE_NEARBY_MAX) / GOOGLE_NEARBY_MAX);
+  return Math.min(3, Math.max(1, n));
+}
+
+/**
+ * Split the battery into `calls` disjoint slices, round-robin so each slice
+ * spans Supers rather than taking the first N types. A battery with fewer
+ * types than calls yields fewer slices — one type cannot be searched twice for
+ * two different answers, so a single-Super pull is 20 no matter what the
+ * operator picked. The console says so on the box.
+ */
+export function sliceNearbyTypes(
+  types: readonly string[],
+  calls: number,
+): string[][] {
+  const groups = Math.min(Math.max(1, calls), types.length);
+  if (groups <= 1) return [[...types]];
+  const out: string[][] = Array.from({ length: groups }, () => []);
+  types.forEach((t, i) => out[i % groups].push(t));
+  return out;
 }
 
 const SUPER_SEARCH_TYPE_SET = new Set<string>(
@@ -222,7 +259,8 @@ export async function searchNearbyPlaces(
   const beforeFanout = parsed.beforeFanout;
   const types = resolveNearbyTypes(parsed.types);
   if (types.length === 0) return [];
-  const key = nearbyCellKey(center, types);
+  const calls = nearbyCallCount(parsed.pull);
+  const key = nearbyCellKey(center, types, parsed.pull ?? GOOGLE_NEARBY_MAX);
   const hit = nearbyCache.get(key);
   const now = Date.now();
   if (hit && now - hit.at < NEARBY_CACHE_MS) return hit.hits;
@@ -252,10 +290,31 @@ export async function searchNearbyPlaces(
       resolveRun([]);
       return [];
     }
-    googleFanoutAt.push(Date.now());
-    const batch = await searchNearbyOnce(apiKey, center, radius, [...types]);
-    const hits = batch.ok ? batch.hits : [];
-    if (batch.ok) nearbyCache.set(key, { at: Date.now(), hits });
+    const slices = sliceNearbyTypes(types, calls);
+    const seen = new Set<string>();
+    const hits: NearbyHit[] = [];
+    let anyOk = false;
+    for (const [i, slice] of slices.entries()) {
+      if (i > 0) {
+        pruneGoogleFanout(Date.now());
+        if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
+          console.warn("[nearby] isolate Google fan-out budget exhausted mid-pull");
+          break;
+        }
+      }
+      googleFanoutAt.push(Date.now());
+      const batch = await searchNearbyOnce(apiKey, center, radius, slice);
+      if (!batch.ok) continue;
+      anyOk = true;
+      for (const hit of batch.hits) {
+        if (seen.has(hit.placeId)) continue;
+        seen.add(hit.placeId);
+        hits.push(hit);
+      }
+    }
+    // Only a clean pull is cached; a slice that failed would freeze a short
+    // list into the cell for 15s and hide places the retry would have found.
+    if (anyOk) nearbyCache.set(key, { at: Date.now(), hits });
     resolveRun(hits);
     return hits;
   } catch (err) {
@@ -331,13 +390,15 @@ export function parsePlacesScope(value: unknown): PlacesScope {
  * (Pato, 2026-08-29): the max number is asked once, on the consumer
  * Filters sheet. Only the Google scope fires Nearby — and callers gate
  * that call on `googleCount > 0`, never on the scope name, so there is one
- * place to change and no literal to miss. Google's own Nearby call tops
- * out at GOOGLE_NEARBY_MAX however large N is, and the caller slices the
- * merged union back to N, so max pins = N, never the sum.
+ * place to change and no literal to miss. The Google lane also cannot exceed
+ * the OPERATOR's pull (`discovery_config.map.googlePull`, 20/40/60 — how many
+ * Google rows we are willing to pay for), and the caller slices the merged
+ * union back to N, so max pins = N, never the sum.
  */
 export function lanesForPlacesScope(
   scope: PlacesScope,
   limit: number,
+  pull: number = GOOGLE_NEARBY_MAX,
 ): NearbyLaneCaps {
   const n = Math.max(
     0,
@@ -345,7 +406,9 @@ export function lanesForPlacesScope(
   );
   return {
     mesitaCount: n,
-    googleCount: scope === "google" ? Math.min(n, GOOGLE_NEARBY_MAX) : 0,
+    googleCount: scope === "google"
+      ? Math.min(n, Math.max(GOOGLE_NEARBY_MAX, Math.round(Number(pull) || 0)))
+      : 0,
   };
 }
 

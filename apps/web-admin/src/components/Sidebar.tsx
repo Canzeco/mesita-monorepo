@@ -24,6 +24,7 @@ import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { VISITS_PARENT } from "@/app/(app)/visits-config/nav";
 import { REWARDS_PARENT } from "@/app/(app)/rewards-config/nav";
 import { CONTROLS_PARENT } from "@/app/(app)/controls-config/nav";
+import { CREDIT_LIABILITY_PARENT } from "@/app/(app)/credit-liability/nav";
 
 function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -53,6 +54,7 @@ const PRIMARY_NAV: NavItem[] = [
 const ALERTS_NAV: NavItem[] = [
   { href: "/global-performance", label: "Global Monitor", Icon: Radar },
   { href: "/verifications", label: "Verification Queue", Icon: BadgeCheck },
+  CREDIT_LIABILITY_PARENT,
 ];
 
 // Manage — the records of real things, widest scope first: the backend itself,
