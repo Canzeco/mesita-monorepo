@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_reset_preserve: {
@@ -532,6 +507,97 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["key"]
+          },
+        ]
+      }
+      credit_gift_redeem_events: {
+        Row: {
+          consumer_id: string | null
+          created_at: string
+          event: string
+          id: string
+          ip_hash: string | null
+        }
+        Insert: {
+          consumer_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          ip_hash?: string | null
+        }
+        Update: {
+          consumer_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          ip_hash?: string | null
+        }
+        Relationships: []
+      }
+      credit_gifts: {
+        Row: {
+          cancelled_at: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          code_hash: string
+          created_at: string
+          expires_at: string
+          expiry_days: number
+          id: string
+          lot_id: string
+          note: string | null
+          sender_id: string
+          state: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          expiry_days: number
+          id?: string
+          lot_id: string
+          note?: string | null
+          sender_id: string
+          state?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          expiry_days?: number
+          id?: string
+          lot_id?: string
+          note?: string | null
+          sender_id?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_gifts_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_gifts_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "credit_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_gifts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2807,6 +2873,10 @@ export type Database = {
       }
       atlas_super_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
+      cancel_credit_gift: {
+        Args: { p_gift_id: string; p_sender_id: string }
+        Returns: Json
+      }
       claim_place_into_org: {
         Args: {
           p_claimer: string
@@ -2828,6 +2898,21 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
+      create_credit_gift: {
+        Args: {
+          p_bonus_cents: number
+          p_claim_expires_at: string
+          p_code_hash: string
+          p_currency: string
+          p_expiry_days: number
+          p_note: string
+          p_organization_id: string
+          p_paid_cents: number
+          p_sender_id: string
+          p_stripe_payment_intent_id: string
+        }
+        Returns: Json
+      }
       create_credit_lot: {
         Args: {
           p_activates_at: string
@@ -2877,6 +2962,10 @@ export type Database = {
         }[]
       }
       queue_due_place_enrichments: { Args: never; Returns: number }
+      redeem_credit_gift: {
+        Args: { p_claimer_id: string; p_code_hash: string }
+        Returns: Json
+      }
       refresh_place_mesita_reviews: {
         Args: { p_project_id: string }
         Returns: undefined
@@ -3087,9 +3176,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       content_state: ["queued", "generating", "ready", "failed"],

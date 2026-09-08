@@ -1,15 +1,13 @@
-// Frontend API surface for the real Credits paths: Buy (MESITA-1676) and now
-// the Wallet's balance read (MESITA-1674). Gift and Redeem have no real
-// backend yet (MESITA-1677) and are parked on their own screens rather than
-// wired here — see GiftClient.tsx/RedeemClient.tsx.
-//
-// consumer-web-buy-credits resolves every money term server-side, so nothing
-// here computes a bonus or an expiry that will actually be charged —
-// bonusCents/activatesAt/expiresAt in BuyCreditsOutcome are for DISPLAY,
-// echoed back from what the server already decided and wrote. The balance
-// read below is the same posture the other direction: every cents figure and
-// every timestamp in a CreditOrgBalance is exactly what credit_ledger already
-// agrees to, nothing recomputed on the client.
+// Frontend API surface for the real Credits paths: Buy (MESITA-1676), the
+// Wallet's balance read (MESITA-1674), and Gift/Redeem/cancel/list
+// (MESITA-1677). consumer-web-buy-credits and consumer-web-gift-credits both
+// resolve every money term server-side, so nothing here computes a bonus or
+// an expiry that will actually be charged — bonusCents/expiresAt/expiryDays
+// in their outcomes are for DISPLAY, echoed back from what the server
+// already decided and wrote. The balance read below is the same posture the
+// other direction: every cents figure and every timestamp in a
+// CreditOrgBalance is exactly what credit_ledger already agrees to, nothing
+// recomputed on the client.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -118,4 +116,100 @@ export async function apiListCreditBalances(
     nextCursor: res.nextCursor ?? null,
     serverNowMs: res.serverNowMs,
   };
+}
+
+// ─── Gift (MESITA-1677) — issuance only, never a transfer ──────────────────
+
+export type GiftCreditsOutcome =
+  | {
+    state: "purchased";
+    giftId?: string;
+    /** Shown to the sender exactly once — this response is the only place
+     *  it is ever available in plaintext. See consumer-web-gift-credits'
+     *  own header for why a dropped response means the code is gone
+     *  (cancel the gift to get the lot back; nothing is lost but the code). */
+    code: string;
+    mock?: boolean;
+    expiresAt: string;
+    expiryDays: number;
+    bonusCents: number;
+  }
+  | {
+    state: "requires_action";
+    requiresAction: TicketPaymentAction;
+  };
+
+/** Same `requestId` retry-safety contract as `apiBuyCredits`. */
+export async function apiGiftCredits(
+  client: SupabaseClient,
+  args: { placeId: string; paidCents: number; note: string | null; requestId: string },
+): Promise<GiftCreditsOutcome> {
+  return invokeEF<GiftCreditsOutcome>(
+    client,
+    "consumer-web-gift-credits",
+    args,
+    "Couldn't send that gift.",
+  );
+}
+
+export type RedeemGiftOutcome = {
+  lotId: string;
+  organizationId?: string;
+  organizationName: string;
+  paidCents?: number;
+  bonusCents?: number;
+  creditedCents: number;
+  note: string | null;
+  expiresAt?: string;
+};
+
+export async function apiRedeemGift(
+  client: SupabaseClient,
+  code: string,
+): Promise<RedeemGiftOutcome> {
+  return invokeEF<RedeemGiftOutcome>(
+    client,
+    "consumer-web-redeem-credit-gift",
+    { code },
+    "That code didn't work.",
+  );
+}
+
+export async function apiCancelGift(
+  client: SupabaseClient,
+  giftId: string,
+): Promise<{ lotId: string }> {
+  return invokeEF<{ lotId: string }>(
+    client,
+    "consumer-web-cancel-credit-gift",
+    { giftId },
+    "Couldn't cancel that gift.",
+  );
+}
+
+export type SentGift = {
+  id: string;
+  organizationName: string;
+  paidCents: number;
+  bonusCents: number;
+  creditedCents: number;
+  state: "unclaimed" | "claimed" | "cancelled";
+  note: string | null;
+  createdAt: string;
+  claimedAt: string | null;
+  cancelledAt: string | null;
+  /** The CLAIM deadline — a still-"unclaimed" row past this is effectively
+   *  dead even though the DB never stamps a fourth state (credit_gifts'
+   *  own design: "expired" is derived at read time, not a persisted row). */
+  expiresAt: string;
+};
+
+export async function apiListSentGifts(client: SupabaseClient): Promise<SentGift[]> {
+  const res = await invokeEF<{ gifts: SentGift[] }>(
+    client,
+    "consumer-web-list-credit-gifts",
+    {},
+    "Couldn't load your sent gifts.",
+  );
+  return res.gifts ?? [];
 }

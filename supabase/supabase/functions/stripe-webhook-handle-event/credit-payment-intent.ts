@@ -25,6 +25,15 @@
 // payment_intent event here only when intent.metadata.mesita_kind ===
 // "credit_purchase" — anything else (a restaurant's own traffic, or a Mesita
 // Pay ticket charge) goes to ticket-payment-intent.ts instead.
+//
+// GIFT CREDITS RIDE THE SAME EVENT (MESITA-1677), DISAMBIGUATED BY ONE
+// EXTRA FIELD. chargeGiftCreditsWithMesitaPay (_shared/mesita-pay-charge.ts)
+// stamps `gift: "1"` alongside the usual pinned terms rather than a second
+// mesita_kind value — the routing predicate above (isCreditPurchaseIntentEvent)
+// stays a single source of truth; only this file's own handler needs to know
+// gifting exists. `succeeded` calls create_credit_gift instead of
+// create_credit_lot; `failed` is unchanged — no state was ever mutated before
+// either kind of charge.
 
 import type Stripe from "npm:stripe@17";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -74,6 +83,30 @@ function pinnedTerms(intent: Stripe.PaymentIntent): {
   };
 }
 
+/** The extra fields chargeGiftCreditsWithMesitaPay stamps. Null when this
+ *  intent is an ordinary (non-gift) Credits purchase. */
+function pinnedGiftTerms(intent: Stripe.PaymentIntent): {
+  codeHash: string;
+  claimExpiresAt: string;
+  expiryDays: number;
+  note: string | null;
+} | null {
+  const m = intent.metadata ?? {};
+  if (m.gift !== "1") return null;
+  const codeHash = m.gift_code_hash;
+  const claimExpiresAt = m.gift_claim_expires_at;
+  const expiryDays = Number(m.gift_expiry_days);
+  if (!codeHash || !claimExpiresAt || !Number.isFinite(expiryDays)) {
+    return null;
+  }
+  return {
+    codeHash,
+    claimExpiresAt,
+    expiryDays,
+    note: m.gift_note && m.gift_note.trim() ? m.gift_note : null,
+  };
+}
+
 export async function handleCreditPurchaseIntentSucceeded(
   admin: SupabaseClient,
   event: Stripe.Event,
@@ -89,6 +122,44 @@ export async function handleCreditPurchaseIntentSucceeded(
     );
     return;
   }
+
+  const gift = pinnedGiftTerms(intent);
+  if (gift) {
+    // GIFT BACKSTOP: the same reliability role create_credit_lot's webhook
+    // call plays for an ordinary purchase, but writing the owner-less
+    // lot + gift row instead. `terms.consumerId` here is the SENDER
+    // (chargeGiftCreditsWithMesitaPay's own metadata convention).
+    const created = await admin.rpc("create_credit_gift", {
+      p_organization_id: terms.organizationId,
+      p_sender_id: terms.consumerId,
+      p_paid_cents: terms.paidCents,
+      p_bonus_cents: terms.bonusCents,
+      p_currency: terms.currency,
+      p_code_hash: gift.codeHash,
+      p_claim_expires_at: gift.claimExpiresAt,
+      p_expiry_days: gift.expiryDays,
+      p_note: gift.note,
+      p_stripe_payment_intent_id: intent.id,
+    });
+    if (created.error) {
+      throw new Error(`credit_gift_webhook: ${created.error.message}`);
+    }
+    const result = created.data as { ok: boolean; code?: string } | null;
+    if (
+      result && result.ok === false && result.code === "gift_code_collision"
+    ) {
+      // The synchronous confirm reader already drew a fresh code and retried
+      // successfully in-request (consumer-web-gift-credits owns that retry
+      // loop) — by the time this backstop runs, a second attempt at the SAME
+      // code_hash from THIS event is simply stale. Logged, not thrown: there
+      // is no better code_hash for this handler to retry with on its own.
+      console.error(
+        `[credit-payment-intent] gift ${intent.id} code_hash collision on webhook replay — the synchronous path should already have converged`,
+      );
+    }
+    return;
+  }
+
   const lot = await admin.rpc("create_credit_lot", {
     p_organization_id: terms.organizationId,
     p_consumer_id: terms.consumerId,

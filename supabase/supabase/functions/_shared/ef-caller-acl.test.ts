@@ -40,6 +40,11 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
   business: ["web-business", "mobile-business"],
   consumer: ["web-consumer", "mobile-consumer"],
   validate: ["web-validate", "web-check"],
+  // The public gift-landing page (MESITA-1677) — a stranger with a code, no
+  // account, lives as a top-level route in web-consumer (outside its own
+  // (shell) auth wall), not a separate app the way web-validate is. Same
+  // actor-per-prefix rule, one owner.
+  gift: ["web-consumer"],
 };
 
 /**
@@ -102,7 +107,10 @@ async function* walkSourceFiles(dir: URL): AsyncGenerator<string> {
     return;
   }
   for await (const entry of entries) {
-    const child = new URL(entry.isDirectory ? `${entry.name}/` : entry.name, dir);
+    const child = new URL(
+      entry.isDirectory ? `${entry.name}/` : entry.name,
+      dir,
+    );
     if (entry.isDirectory) {
       if (entry.name === "node_modules" || entry.name === ".next") continue;
       yield* walkSourceFiles(child);
@@ -151,7 +159,9 @@ Deno.test("EF-NAME-IS-THE-ACL: an <actor>-web-* function is referenced only from
   const appSources = new Map<string, string[]>();
   for (const app of allApps) {
     const files: string[] = [];
-    for await (const text of walkSourceFiles(new URL(`apps/${app}/src/`, REPO_ROOT))) {
+    for await (
+      const text of walkSourceFiles(new URL(`apps/${app}/src/`, REPO_ROOT))
+    ) {
       files.push(text);
     }
     appSources.set(app, files);
@@ -171,7 +181,9 @@ Deno.test("EF-NAME-IS-THE-ACL: an <actor>-web-* function is referenced only from
         continue;
       }
       newViolations.push(
-        `${efName} (actor "${actor}", allowed: ${[...allowed].join(", ")}) is also referenced from: ${app}`,
+        `${efName} (actor "${actor}", allowed: ${
+          [...allowed].join(", ")
+        }) is also referenced from: ${app}`,
       );
     }
   }
@@ -182,7 +194,7 @@ Deno.test("EF-NAME-IS-THE-ACL: an <actor>-web-* function is referenced only from
         newViolations.map((v) => `  - ${v}`).join("\n") +
         "\n\nEither the caller is wrong (route through the owning app's console " +
         "instead) or the EF's actor prefix no longer matches reality and the " +
-        "function needs renaming (root CLAUDE.md: \"The EF name is the ACL\"). " +
+        'function needs renaming (root CLAUDE.md: "The EF name is the ACL"). ' +
         "If this is an intentional, reviewed exception, add it to " +
         "GRANDFATHERED_VIOLATIONS with a reason — don't let the list grow silently.",
     );
@@ -194,10 +206,14 @@ Deno.test("EF-NAME-IS-THE-ACL: an <actor>-web-* function is referenced only from
   // count really is to zero) or the app's source moved and the scan missed
   // it — worth a human glance either way, so this fails loudly rather than
   // quietly staying green forever.
-  const stale = [...GRANDFATHERED_VIOLATIONS].filter((k) => !seenGrandfathered.has(k));
+  const stale = [...GRANDFATHERED_VIOLATIONS].filter((k) =>
+    !seenGrandfathered.has(k)
+  );
   if (stale.length > 0) {
     throw new Error(
-      `GRANDFATHERED_VIOLATIONS lists ${stale.length} entr${stale.length === 1 ? "y" : "ies"} ` +
+      `GRANDFATHERED_VIOLATIONS lists ${stale.length} entr${
+        stale.length === 1 ? "y" : "ies"
+      } ` +
         `no longer found — remove from the allowlist if fixed, or re-check the scan:\n` +
         stale.map((v) => `  - ${v}`).join("\n"),
     );
@@ -215,10 +231,14 @@ Deno.test("ACTOR_APPS covers every actor this repo actually has *-web-* function
     if (match) seen.add(match[1]);
   }
   const known = new Set(Object.keys(ACTOR_APPS));
-  const unknown = [...seen].filter((a) => !known.has(a) && !NON_APP_ACTORS.has(a));
+  const unknown = [...seen].filter((a) =>
+    !known.has(a) && !NON_APP_ACTORS.has(a)
+  );
   if (unknown.length > 0) {
     throw new Error(
-      `New *-web-* actor prefix(es) with no ACTOR_APPS entry: ${unknown.join(", ")}. ` +
+      `New *-web-* actor prefix(es) with no ACTOR_APPS entry: ${
+        unknown.join(", ")
+      }. ` +
         `Add them to ef-caller-acl.test.ts's ACTOR_APPS (if app-callable) or ` +
         `NON_APP_ACTORS (if not) before this can verify their callers.`,
     );

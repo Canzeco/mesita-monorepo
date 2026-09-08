@@ -4,12 +4,12 @@ import { formatCurrency } from "@/lib/api/profile";
 import type { ControlsPolicy } from "@/lib/credits";
 import { cn } from "@/lib/utils";
 
-// The two choices Buy starts with: where, and how much. Gift asked the same
-// two questions while it ran on the browser emulator (gifting is issuance,
-// MESITA-1677 — a purchase whose balance lands in someone else's wallet); it
-// is parked until its own real backend exists (GiftClient.tsx), so this file
-// only serves Buy today. The shape stays reusable for the same reason it was
-// shared before: nothing here is Buy-specific.
+// The two choices Buy and Gift both start with: where, and how much.
+// SHARED BECAUSE GIFTING IS ISSUANCE (MESITA-1677): a gift is a purchase
+// whose balance lands in someone else's wallet — same place, same amounts,
+// same terms resolved the same way — so the two screens genuinely ask the
+// same two questions. Real as of MESITA-1677 for both callers; nothing here
+// is Buy-specific.
 //
 // Preset amounts rather than a free field: a numeric keypad on a phone would
 // be three taps of friction for a ladder this short. Mirrors

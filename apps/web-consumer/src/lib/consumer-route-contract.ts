@@ -182,6 +182,16 @@ export const CONSUMER_ROUTES = {
   visit: {
     prefix: "/visit/",
   },
+  // THE PUBLIC HALF OF GIFTING (MESITA-1677) — the one route this issue adds
+  // outside (shell). A stranger with a gift code and no account lands here;
+  // route-structure.test.tsx T1 carries the fourth exemption for it.
+  // Top-level, sibling of /place, /reservation and /visit, for the same
+  // reason those are: it is reached from an OUTSIDE link (shared, not
+  // navigated to from inside the app), never nested under a segment that
+  // assumes a signed-in guest.
+  giftClaim: {
+    prefix: "/gift/",
+  },
   // ACTIVITY IS NOT A SURFACE ANY MORE (MESITA-1626). MESITA-1609 took it off
   // the bottom bar and left a container with no tab, reachable only from three
   // Me boxes that each deep-linked straight past its own section nav — so the
@@ -314,6 +324,11 @@ export function visitPath(id: string): string {
 /** One balance in the wallet — a full page, not a sheet. See newVisit.walletBalance. */
 export function walletBalancePath(balanceId: string): string {
   return `${CONSUMER_ROUTES.newVisit.walletBalance.prefix}${balanceId}`;
+}
+
+/** The public gift landing link (MESITA-1677) — what a sender actually shares. */
+export function giftClaimPath(code: string): string {
+  return `${CONSUMER_ROUTES.giftClaim.prefix}${code}`;
 }
 
 /**
