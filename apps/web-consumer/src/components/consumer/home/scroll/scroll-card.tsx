@@ -52,11 +52,19 @@ export function ScrollCard({
   onGo: () => void;
 }) {
   return (
+    // `h-full` RESOLVES because the scroller is `absolute inset-0` — see the
+    // note on the <ul> in ScrollDeck. It did not, once, and every card in the
+    // feed collapsed to its action row with no photo at all.
+    //
+    // NO `content-visibility` HERE ANY MORE. It was carried in from the review
+    // as a guard against 50 cards each mounting a carousel and a hidden sizing
+    // clone — a real cost, but a premature one while the catalog holds a
+    // single place, and one more variable in a render that was already broken.
+    // It comes back when the deck is 50 DISTINCT places and the profiler says
+    // so, not before.
     <li
       className={cn(
-        "flex snap-start snap-always shrink-0 flex-col gap-2",
-        // See ScrollDeck's note — this is what makes 50 rows scroll.
-        "[content-visibility:auto] [contain-intrinsic-size:auto_70vh]",
+        "flex w-full snap-start snap-always shrink-0 flex-col gap-2 px-3 py-2",
         peek ? "h-[88%]" : "h-full",
       )}
     >

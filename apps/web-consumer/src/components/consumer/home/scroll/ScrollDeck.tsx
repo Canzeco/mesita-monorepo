@@ -8,7 +8,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useUserLocation } from "@/lib/use-user-location";
 import { withUserDistance } from "@/lib/place-distance";
 import { enrichPlaceOverview } from "@/lib/mock/enrich-overview";
-import { FEED_MOCK_PLACES } from "@/lib/mock/feed-places";
 import { isPromoting } from "@/lib/promo-rates";
 import { errMsg } from "@/lib/utils";
 import { EmptyState } from "@/components/shared";
@@ -51,6 +50,9 @@ import {
 // and paint for off-screen rows is what makes the list scroll at all, and it
 // is a CSS platform feature rather than a virtualization dependency.
 // `contain-intrinsic-size` keeps the scrollbar honest while rows are skipped.
+/** Cards in a full deck. Cycled from the real rows until the catalog can fill it. */
+const DECK_SIZE = 50;
+
 export function ScrollDeck({
   places,
   fetchError = null,
@@ -119,18 +121,28 @@ export function ScrollDeck({
       .map((p) => withUserDistance(p, center));
   }, [geoDeck, places, center]);
 
-  // ALL-REAL OR ALL-MOCK, never a mixture — the rule PlaceFeed established
-  // when it faced the same empty catalog (MESITA-1621). A "scroll" of one real
-  // place cannot perform the gesture it is named for, and three real cards
-  // padded with invented ones would be indistinguishable on a full-bleed card.
-  const usingMock = rows.length < 2;
-  const deck = useMemo(
-    () =>
-      usingMock
-        ? FEED_MOCK_PLACES.map((p) => withUserDistance(p, center))
-        : rows,
-    [usingMock, rows, center],
-  );
+  // THE DECK IS ALWAYS 50, CYCLED FROM WHATEVER IS REAL (Pato, live: "the deck
+  // must be 50 items. then it repeats. if n is one, fill the 50 items deck with
+  // the same place. for the moment").
+  //
+  // NO MOCK DATA. This replaced a fallback that swapped in eight invented
+  // places whenever the catalog held fewer than two — Pato killed it on sight
+  // ("don't put shitty mock data"), and he is right that it was the wrong
+  // trade: a feed of plausible-looking places that cannot be visited teaches
+  // the reviewer nothing and quietly becomes the thing everyone demos.
+  // Repeating the ONE real place is honest by construction — you can tap it,
+  // save it, and start a visit at it.
+  //
+  // TEMPORARY, and the instruction said so. When the catalog holds 50+ this
+  // slice is a plain `rows.slice(0, DECK_SIZE)` and the modulo goes away;
+  // until then it is what makes the gesture reviewable at all.
+  const deck = useMemo(() => {
+    if (rows.length === 0) return [];
+    return Array.from(
+      { length: DECK_SIZE },
+      (_, i) => rows[i % rows.length] as Place,
+    );
+  }, [rows]);
 
   const toggleSave = (place: Place) => {
     const next = !savedIds.has(place.id);
@@ -166,37 +178,51 @@ export function ScrollDeck({
     };
   }, []);
 
+  // TWO DIFFERENT FAILURES, TWO DIFFERENT SCREENS. A deck that came back empty
+  // means the catalog is still filling; a deck that FAILED means we could not
+  // ask. Telling a guest the catalog is empty when the request 502'd sends them
+  // away from a screen that a retry would have fixed — and it is the exact
+  // conflation the mock strip used to paper over.
   if (deck.length === 0) {
-    return (
+    return fetchError ? (
+      <EmptyState
+        icon={Compass}
+        title="Couldn't load tonight's places"
+        description="The request didn't come back. Pull the tab again in a moment."
+      />
+    ) : (
       <EmptyState
         icon={Compass}
         title="No places yet"
-        description="Tonight's places didn't come back. Pull the tab again in a moment."
+        description="The catalog is still filling up. Check back soon."
       />
     );
   }
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      {usingMock && (
-        // The mock must never pass for live data. Pinned OVER the first card
-        // rather than stacked above the list: a strip above a full-bleed card
-        // is a header, and this mode does not have one.
-        <p className="bg-foreground/85 text-background pointer-events-none absolute inset-x-3 top-2 z-10 rounded-lg px-3 py-1.5 text-center text-xs leading-snug backdrop-blur-sm">
-          {fetchError
-            ? "Tonight's places didn't load — showing samples."
-            : "Sample places while the catalog fills up."}
-        </p>
-      )}
+      {/* ABSOLUTE, NOT `flex-1`, AND THAT IS THE WHOLE FIX. Each card asks for
+          `height: 100%`, and a percentage only resolves against a parent with a
+          DEFINITE height. As a flex child (`min-h-0 flex-1`) this list had none,
+          so every card fell back to content height — and the card face paints
+          its photo `absolute inset-0`, which contributes zero. The result was a
+          feed of bare action rows with no images at all. `absolute inset-0`
+          inside the relative parent gives a definite box, so 100% means the
+          scrollport.
 
+          NO `gap` EITHER: with full-height snap items a gap is a strip you can
+          come to rest on, showing two half cards. The spacing lives inside the
+          card instead. */}
       <ul
         ref={scrollerRef}
         aria-label="Places"
-        className="scrollbar-hide flex min-h-0 flex-1 snap-y snap-mandatory flex-col gap-3 overflow-y-auto overscroll-y-contain px-3 pt-2 pb-3"
+        className="scrollbar-hide absolute inset-0 snap-y snap-mandatory overflow-y-auto overscroll-y-contain"
       >
         {deck.map((place, i) => (
           <ScrollCard
-            key={place.id}
+            // The same place can legitimately appear many times while the
+            // catalog is small, so the id alone is not unique.
+            key={`${place.id}-${i}`}
             place={place}
             priority={i === 0}
             saved={hydrated && savedIds.has(place.id)}
@@ -222,7 +248,7 @@ export function ScrollDeck({
         {/* The list needs a terminal snap point, not a route-level empty
             screen — scrolling past the last card into blank space is the
             failure the stack deck answered with ExhaustedDeck. */}
-        <li className="flex snap-start snap-always shrink-0 items-center justify-center py-16">
+        <li className="flex snap-start snap-always shrink-0 items-center justify-center px-3 py-16">
           <div className="text-center">
             <p className="text-foreground font-display text-base font-semibold tracking-tight">
               That&apos;s everywhere for now

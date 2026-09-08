@@ -137,62 +137,38 @@ describe("Scroll rides the shared deck", () => {
   });
 });
 
-// The mock is a scaffold with a removal date (Pato, MESITA-1621: "use mock
-// data for the moment"). Two properties keep it from quietly becoming the
-// product: real rows always win, and the guest is told when they are looking
-// at invented ones. Both are one-line edits away from being lost.
-describe("Scroll's mock places are a fallback, and say so", () => {
-  const feed = read("components/consumer/home/scroll/ScrollDeck.tsx");
-  const mock = read("lib/mock/feed-places.ts");
+// NO MOCK DATA ANYWHERE IN DISCOVERY (Pato, live, 2026-09-08: "don't put
+// shitty mock data"). `lib/mock/feed-places.ts` is deleted, not parked — it
+// was the last caller's only consumer, and a plausible-looking place you
+// cannot visit teaches a reviewer nothing while quietly becoming the thing
+// everyone demos.
+//
+// Scroll fills its 50-card deck by CYCLING the real rows instead. With one
+// place in the catalog that is the same place fifty times, which is honest by
+// construction: every card is tappable, savable, and can start a real visit.
+describe("Discovery invents no places", () => {
+  const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
+  const favs = read("components/consumer/home/FavoritesList.tsx");
 
-  // The row count is the whole gate. Anything else — a flag, an env check, an
-  // unconditional mock — either shows invented places over real ones or
-  // strands the surface empty again once the catalog fills.
-  //
-  // SCROLL'S THRESHOLD IS `< 2`, NOT `=== 0`, and the difference is the shape
-  // rather than an off-by-one. The grid this replaced read honestly at one
-  // place: one tile among empty space is a short list. A vertical feed cannot
-  // perform the gesture it is named for with a single card — you open Home,
-  // see one place, flick up and nothing moves — so one real row is still a
-  // broken screen and still takes the sample deck.
-  it("falls back when the real deck cannot fill a scroll", () => {
-    expect(feed).toContain("const usingMock = rows.length < 2;");
-    expect(feed).toContain("? FEED_MOCK_PLACES");
+  it.each([
+    ["Scroll", "components/consumer/home/scroll/ScrollDeck.tsx"],
+    ["Favs", "components/consumer/home/FavoritesList.tsx"],
+  ])("%s ships no mock deck", (_label, rel) => {
+    const src = read(rel);
+    expect(src).not.toContain("FEED_MOCK_PLACES");
+    expect(src).not.toContain("mock/feed-places");
   });
 
-  // All-real or all-mock. A concatenation here would render a grid where the
-  // notice strip is true of some tiles and false of others.
-  it("never mixes real rows with mock rows", () => {
-    expect(feed).not.toContain("...FEED_MOCK_PLACES");
-    expect(feed).not.toContain("rows.concat");
+  // The deck is a fixed 50 cycled from whatever is real — never padded with
+  // invented rows, and never left at length 1 where the gesture cannot happen.
+  it("Scroll cycles the real rows to a full deck", () => {
+    expect(scroll).toContain("const DECK_SIZE = 50;");
+    expect(scroll).toContain("rows[i % rows.length]");
   });
 
-  // Unlabelled mock data is the failure that outlives the mock: someone
-  // reviews Feed, sees eight places, and reports the catalog as populated.
-  it("labels the mock on screen whenever it is showing", () => {
-    expect(feed).toContain("{usingMock && (");
-    expect(feed).toContain("Sample places while the catalog fills up.");
-  });
-
-  // A fetch failure still reaches the guest — it changes the strip's wording
-  // rather than being swallowed by the fallback.
-  it("still says so when the deck FAILED rather than came back empty", () => {
-    expect(feed).toContain("Tonight's places didn't load");
-  });
-
-  // FAVS DOES NOT BORROW THE MOCK. An empty saved list is a real, meaningful
-  // state — you have saved nothing — and filling it with invented places
-  // would be a lie the notice strip could not fix.
-  it("stays out of Favs, whose empty state is real", () => {
-    const favs = read("components/consumer/home/FavoritesList.tsx");
-    expect(favs).not.toContain("FEED_MOCK_PLACES");
+  // An empty saved list is a real, meaningful state — you have saved nothing.
+  it("Favs keeps its real empty state", () => {
     expect(favs).toContain("Nothing saved yet");
-  });
-
-  // The marker future greps will find. Every other parked dataset in this app
-  // carries one (social-feed-data.ts, credits-mock.ts).
-  it("carries the TODO(EF) marker parked datasets are found by", () => {
-    expect(mock).toContain("TODO(EF): Feed");
   });
 });
 
