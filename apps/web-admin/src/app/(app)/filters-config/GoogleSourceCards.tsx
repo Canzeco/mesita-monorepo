@@ -4,14 +4,21 @@ import {
   FloorMirror,
   GeneralFloorOwner,
   MapFloorOwner,
+  NearbyPullOwner,
   type FloorSeed,
 } from "./SourceFloor";
 import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 
 // The three Google Places sources, in taxonomy order: Autocomplete Search ·
-// Text Search · Nearby Search. Category knobs live on the shared Google
-// types strip — these cards name who calls them and carry the floor that
+// Text Search · Nearby Search. Category knobs live on the shared Super
+// Categories strip — these cards name who calls them and carry the floor that
 // cuts them (MESITA-1681).
+//
+// Nearby also owns the PULL (MESITA-1695): 20 / 40 / 60, how many rows one map
+// load buys from Google. It sits here and not on the Map mode box because it
+// is a property of the SOURCE — Google's own 20-per-request cap is what makes
+// 40 and 60 cost two and three calls — and because the Map box's number is the
+// guest's How many, which is a different question with a different owner.
 //
 // Autocomplete owns `general`, the post-Google wipe. Text Search mirrors it.
 // Nearby mirrors it AND owns the Map floors, which are the only rating floor
@@ -25,7 +32,7 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
   const g = seed.initialConfig.general;
   const generalRows = [
     { label: "Only active places", value: g.requireActive ? "On" : "Off" },
-    { label: "Minimum Google reviews", value: floorNumber(g.minReviews) },
+    { label: "Minimum Google reviewers", value: floorNumber(g.minReviews) },
   ];
   return (
     <div className="flex flex-col gap-4">
@@ -37,7 +44,8 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           state={<KnobState kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Word. Types come from the Google types strip on this page.
+            Used by Word. Categories come from the Super Categories strip on
+            this page.
           </p>
           <GeneralFloorOwner seed={seed} />
         </SectionCard>
@@ -50,8 +58,8 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           state={<KnobState kind="enforced" reason="suggest-places · Search" />}
         >
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            Used by Word and Chat. Types come from the Google types strip on
-            this page. Merge is after resolve, not a fourth source.
+            Used by Word and Chat. Categories come from the Super Categories
+            strip on this page. Merge is after resolve, not a fourth source.
           </p>
           <FloorMirror rows={generalRows} ownedBy={GENERAL_FLOOR_OWNER} />
         </SectionCard>
@@ -66,7 +74,7 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             Used by Map and Chat. Word stays red on the matrix — the guest pin
             biases Autocomplete and Text Search, and a bias is not a call.
-            Types come from the Google types strip on this page.
+            Categories come from the Super Categories strip on this page.
           </p>
           <FloorMirror
             label="Quality floor · the General wipe"
@@ -74,6 +82,7 @@ export function GoogleSourceCards({ seed }: { seed: FloorSeed }) {
             ownedBy={GENERAL_FLOOR_OWNER}
           />
           <MapFloorOwner seed={seed} label="Quality floor · Nearby's own" />
+          <NearbyPullOwner seed={seed} />
         </SectionCard>
       </div>
     </div>

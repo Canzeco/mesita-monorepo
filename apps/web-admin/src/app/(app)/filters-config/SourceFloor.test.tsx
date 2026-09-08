@@ -31,7 +31,7 @@ describe("The quality floor inside a source box", () => {
   it("Autocomplete owns the General wipe — switch and count, both editable", () => {
     const html = renderToStaticMarkup(<GeneralFloorOwner seed={seed} />);
     expect(html).toContain("Only active places");
-    expect(html).toContain("Minimum Google reviews");
+    expect(html).toContain("Minimum Google reviewers");
     expect(html).toContain("unknown is not active");
     // It owns a Mesita source too: the name-embedding pool rides the same wipe.
     expect(html).toContain("Mesita Places Name Search");
@@ -41,11 +41,11 @@ describe("The quality floor inside a source box", () => {
   it("a mirror shows the number and names its owner, with no input", () => {
     const html = renderToStaticMarkup(
       <FloorMirror
-        rows={[{ label: "Minimum Google reviews", value: floorNumber(0) }]}
+        rows={[{ label: "Minimum Google reviewers", value: floorNumber(0) }]}
         ownedBy={GENERAL_FLOOR_OWNER}
       />,
     );
-    expect(html).toContain("Minimum Google reviews");
+    expect(html).toContain("Minimum Google reviewers");
     expect(html).toContain("0 — off");
     expect(html).toContain(GENERAL_FLOOR_OWNER);
     // The whole point of owner/mirror: redundancy is repetition, never a
@@ -63,7 +63,9 @@ describe("The quality floor inside a source box", () => {
 
   it("the two owned pool floors say what else they cut", () => {
     const map = renderToStaticMarkup(<MapFloorOwner seed={seed} />);
-    expect(map).toContain("Minimum rating");
+    expect(map).toContain("Minimum rating (stars)");
+    // Reviewers is a head count, rating is the stars — the labels say so.
+    expect(map).toContain("Minimum reviewers");
     expect(map).toContain("maxed with the listed-pool floor");
 
     const filters = renderToStaticMarkup(<FiltersFloorOwner seed={seed} />);

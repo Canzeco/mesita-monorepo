@@ -14,7 +14,13 @@
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, DiscoveryFilters } from "./discovery-config.ts";
-import { NEARBY_TYPE_KEYS, type NearbyTypeKey } from "./discovery-config.ts";
+import {
+  NEARBY_TYPE_KEYS,
+  SUPER_PARAM_KEYS,
+  type NearbyTypeKey,
+  type SuperParamKey,
+} from "./discovery-config.ts";
+import { nearbyTypesForSupers } from "./google-type-super.ts";
 import {
   popularity,
   type SignalParamBag,
@@ -63,8 +69,14 @@ export function listedMapFilters(
   };
 }
 
+/** The Supers the operator left on, in param order. */
+export function enabledMapSupers(map: MapConfig): SuperParamKey[] {
+  return SUPER_PARAM_KEYS.filter((key) => map.supers[key]);
+}
+
+/** Their Google batteries, flattened — what one Nearby call asks for. */
 export function enabledNearbyTypes(map: MapConfig): NearbyTypeKey[] {
-  return NEARBY_TYPE_KEYS.filter((key) => map.types[key]);
+  return nearbyTypesForSupers(enabledMapSupers(map)) as NearbyTypeKey[];
 }
 
 /**
@@ -156,25 +168,26 @@ export function admitSwipeCatalog<T extends SwipeListedRow>(
   return admitMapCatalog(typed, [], map, params).listed;
 }
 
-// Search + Add share this allowlist. A Nearby type battery expands to
-// the Google Table A types in that Super (`mexican_restaurant` rides
-// `restaurant`). F&B supers use the five operator batteries. Wellness /
-// experiences / culture have no operator battery — Super membership is
-// the gate (spa, museum, park are Mesita kinds; hotel is `other`).
+// Search + Add share this allowlist. A Super param expands to the Google
+// Table A types in that Super (`mexican_restaurant` rides `restaurant`).
+//
+// ONLY THE THREE F&B SUPERS GATE BY PARAM. Sports, wellness, experiences and
+// culture admit whatever the operator has toggled, because that is what they
+// did before the param existed: the strip only knew five F&B slugs until
+// MESITA-1683, so a listed spa, museum or park has never been gated here.
+// Turning the other four into real gates would newly EXCLUDE listed places
+// from Search and Add, which is a product decision, not a rename — so the
+// carve-out stays explicit until Pato takes it (MESITA-1695).
+//
 // Guest Super pills send `GOOGLE_SEARCH_TYPES` on Nearby. googleFill is
-// Nearby-only and is not a Search/Add gate. Super `undefined` has no
-// battery — listed leftover places still admit (same as wellness).
+// Nearby-only and is not a Search/Add gate. Super `undefined` has no battery,
+// so listed leftover places still admit.
 
-const FAMILY_NEARBY_TYPES: Record<FamilyKey, readonly NearbyTypeKey[]> = {
-  restaurants: ["restaurant"],
-  bars_nightlife: ["bar", "night_club"],
-  cafes_bakeries: ["cafe", "bakery"],
-  sports_fitness: [],
-  wellness_beauty: [],
-  experiences: [],
-  culture_arts: [],
-  undefined: [],
-};
+const PARAM_GATED_FAMILIES = new Set<FamilyKey>([
+  "restaurants",
+  "bars_nightlife",
+  "cafes_bakeries",
+]);
 
 export type MapPlaceSignals = {
   primaryType: string | null;
@@ -202,10 +215,9 @@ export function primaryTypeClearsMapTypes(
   })();
   if (families.length === 0) return false;
   return families.some((family) => {
-    const batteries = FAMILY_NEARBY_TYPES[family];
-    if (batteries.length === 0) return true;
+    if (!PARAM_GATED_FAMILIES.has(family)) return true;
     if (enabled.size === 0) return false;
-    return batteries.some((key) => enabled.has(key));
+    return map.supers[family as SuperParamKey] === true;
   });
 }
 

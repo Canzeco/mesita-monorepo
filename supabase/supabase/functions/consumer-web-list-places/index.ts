@@ -51,7 +51,6 @@ import { familiesForGoogleType } from "../_shared/sourcing.ts";
 import { nearbyTypesForSupers } from "../_shared/google-type-super.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import {
-  applyGeneralCategoryCap,
   loadDiscoveryConfig,
 } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
@@ -271,16 +270,17 @@ Deno.serve(async (req) => {
   // (`discovery_config.map`). Swipe's maxDistanceKm is never applied here —
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET and bbox callers keep global filters only. Google
-  // fill is client opt-in AND operator googleFill AND at least one type
-  // battery on — HOW MANY is the guest's `limit`, never a console knob.
+  // fill is client opt-in AND operator googleFill AND at least one Super on.
+  // HOW MANY PINS is the guest's `limit`; HOW MANY GOOGLE ROWS WE BUY is the
+  // operator's `map.googlePull` (MESITA-1695). Two questions, two owners.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
-    ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
+    ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
   // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
   // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,
-  // so `cfg.map.types` and the `categoryCount` cap both sit this branch out.
+  // so `cfg.map.supers` sits this branch out entirely.
   // Do not "fix" this by intersecting the two: types are free (one request
   // carries the whole array), so an intersection saves nothing and, with the
   // catalog this thin, empties the four Supers the operator has not enabled.
@@ -345,7 +345,7 @@ Deno.serve(async (req) => {
     const { lat, lng } = nearbyDecision;
     const center = { lat, lng };
     const scanRows = (data ?? []) as unknown as CardRow[];
-    const lanes = lanesForPlacesScope(placesScope, limit);
+    const lanes = lanesForPlacesScope(placesScope, limit, cfg.map.googlePull);
     let mesitaRows = scanRows.filter((row) =>
       keepListedForScope(row, placesScope)
     );
@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
     const wantGoogleNearby = lanes.googleCount > 0;
     const gmp = readGooglePlacesKey();
     if (wantGoogleNearby && gmp.ok) {
-      const cached = peekCachedNearbyPlaces(center, nearbyTypes);
+      const cached = peekCachedNearbyPlaces(center, nearbyTypes, cfg.map.googlePull);
       if (cached) {
         googleHits = cached;
       } else if (efEnv.ok) {
@@ -393,6 +393,8 @@ Deno.serve(async (req) => {
         const ipHash = await hashConnectingIp(req, efEnv.env.serviceKey);
         googleHits = await searchNearbyPlaces(gmp.key, center, {
           types: nearbyTypes,
+          // 20 is one request; 40 and 60 are 2 and 3, split by battery.
+          pull: cfg.map.googlePull,
           beforeFanout: () =>
             consumeNearbyGoogleQuota(adminClient(efEnv.env), ipHash).then(
               (quota) => quota.allow,

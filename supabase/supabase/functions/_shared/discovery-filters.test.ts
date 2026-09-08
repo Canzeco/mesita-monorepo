@@ -6,10 +6,9 @@ import {
   type FilterableQuery,
 } from "./discovery-filters.ts";
 import {
-  DEFAULT_MAP_TYPES,
+  DEFAULT_MAP_SUPERS,
   DISCOVERY_DEFAULTS,
-  applyGeneralCategoryCap,
-  NEARBY_TYPE_KEYS,
+  SUPER_PARAM_KEYS,
   normalizeDiscoveryConfig,
   WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
@@ -333,8 +332,8 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals(legacyReload.map.reloadMinKm, 0.5);
   assertEquals(legacyReload.map.reloadMinSec, 2);
   assertEquals(clamped.map.googleFill, true);
-  assertEquals(clamped.map.types.restaurant, false);
-  assertEquals(clamped.map.types.bakery, true);
+  assertEquals(clamped.map.supers.restaurants, false);
+  assertEquals(clamped.map.supers.cafes_bakeries, true);
 });
 
 Deno.test("the console never asks how many — every set cap is dropped on read", () => {
@@ -349,48 +348,89 @@ Deno.test("the console never asks how many — every set cap is dropped on read"
   }
 });
 
-Deno.test("general.categoryCount defaults to the whole list and clamps to it", () => {
-  // The count means "how many of the code-defined types are available", so
-  // its default has always been the list length. The list is 22 since the
-  // strip caught up with the seven-Super law; the live blob stores 5, so
-  // nothing on production moved.
-  const all = NEARBY_TYPE_KEYS.length;
-  assertEquals(all, 22);
+Deno.test("the category param is seven Supers, and the ordered cap is gone", () => {
+  // MESITA-1695 retired `general.categoryCount`. It was an index cap over an
+  // ordered Google-slug list, so a stored 5 silently forced four whole Supers
+  // off. A legacy blob carrying it must not resurrect it.
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.general.categoryCount, all);
-  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 99 } }).general.categoryCount, all);
-  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 5 } }).general.categoryCount, 5);
-  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: -2 } }).general.categoryCount, 0);
-  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 3.6 } }).general.categoryCount, 4);
-});
-
-Deno.test("applyGeneralCategoryCap turns off types past the General count", () => {
-  const capped = applyGeneralCategoryCap({
-    ...DISCOVERY_DEFAULTS,
-    general: { ...DISCOVERY_DEFAULTS.general, categoryCount: 3 },
-  });
-  // Assert the RULE, not a snapshot of the list: the first `categoryCount`
-  // keys keep their default, everything past it is forced off. The list grew
-  // 5 -> 22 in MESITA-1683 and a literal here would have to be rewritten every
-  // time a Super Category gains a battery entry.
-  for (const [i, key] of NEARBY_TYPE_KEYS.entries()) {
-    assertEquals(capped.map.types[key], i < 3 && DEFAULT_MAP_TYPES[key], key);
+  assertEquals(SUPER_PARAM_KEYS.length, 7);
+  assertEquals("categoryCount" in missing.general, false);
+  const legacy = normalizeDiscoveryConfig({ general: { categoryCount: 5 } });
+  assertEquals("categoryCount" in legacy.general, false);
+  for (const key of SUPER_PARAM_KEYS) {
+    assertEquals(missing.map.supers[key], DEFAULT_MAP_SUPERS[key], key);
   }
-  assertEquals(capped.name.fast.types.cafe, false);
-  assertEquals(capped.name.deep.types.bakery, false);
-  assertEquals(capped.name.fast.types.restaurant, true);
 });
 
-Deno.test("normalize does not persist the General cap onto engine types", () => {
-  const cfg = normalizeDiscoveryConfig({
-    general: { categoryCount: 2 },
-    map: { types: { bakery: true, restaurant: true } },
-    name: { fast: { types: { bakery: true } }, deep: { types: { night_club: true } } },
+Deno.test("a pre-1695 blob folds Google slugs up into Supers", () => {
+  // THE LIVE BLOB: five slugs true, everything else absent. The fold has to
+  // land on exactly the three F&B Supers, or production Nearby calls change
+  // shape on the first read after deploy.
+  const folded = normalizeDiscoveryConfig({
+    map: {
+      types: {
+        restaurant: true,
+        bar: true,
+        night_club: true,
+        cafe: true,
+        bakery: true,
+      },
+    },
+    name: {
+      // Everything the pre-1695 strip defaulted ON, turned off except bakery.
+      fast: {
+        types: {
+          restaurant: false,
+          bar: false,
+          night_club: false,
+          cafe: false,
+          bakery: true,
+        },
+      },
+      deep: { types: { museum: true } },
+    },
   });
-  assertEquals(cfg.general.categoryCount, 2);
-  assertEquals(cfg.map.types.bakery, true);
-  assertEquals(cfg.name.fast.types.bakery, true);
-  assertEquals(cfg.name.deep.types.night_club, true);
+  assertEquals(folded.map.supers, {
+    restaurants: true,
+    cafes_bakeries: true,
+    bars_nightlife: true,
+    experiences: false,
+    culture_arts: false,
+    sports_fitness: false,
+    wellness_beauty: false,
+  });
+  // One slug on is enough for its Super: no console could ever turn `cafe` on
+  // and `bakery` off, so half a Super was never reachable.
+  assertEquals(folded.name.fast.supers.cafes_bakeries, true);
+  assertEquals(folded.name.fast.supers.restaurants, false);
+  assertEquals(folded.name.fast.supers.bars_nightlife, false);
+  // An ABSENT slug keeps its pre-1695 default rather than reading false —
+  // `deep` here stored only `museum`, so the three F&B Supers stay on exactly
+  // as they were, and culture_arts joins them.
+  assertEquals(folded.name.deep.supers.culture_arts, true);
+  assertEquals(folded.name.deep.supers.restaurants, true);
+  assertEquals(folded.name.deep.supers.bars_nightlife, true);
+  assertEquals(folded.name.deep.supers.sports_fitness, false);
+  // The new key wins whenever it is present, legacy or not.
+  const both = normalizeDiscoveryConfig({
+    map: { supers: { restaurants: false }, types: { restaurant: true } },
+  });
+  assertEquals(both.map.supers.restaurants, false);
+});
+
+Deno.test("googlePull snaps to 20 / 40 / 60 and defaults to one request", () => {
+  // 20 is one Google call. 40 and 60 are 2 and 3 BILLED calls, so a free
+  // number here would be a spend leak — the blob only ever holds a stop.
+  const pull = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { googlePull: raw } }).map.googlePull;
+  assertEquals(normalizeDiscoveryConfig({}).map.googlePull, 20);
+  assertEquals(pull(20), 20);
+  assertEquals(pull(40), 40);
+  assertEquals(pull(60), 60);
+  assertEquals(pull(37), 40);
+  assertEquals(pull(1000), 60);
+  assertEquals(pull(-5), 20);
+  assertEquals(pull("nonsense"), 20);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp", () => {
@@ -404,17 +444,17 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3+3 on an old blob and clamp",
     autoCount: 3,
     googleCount: 3,
     count: 9,
-    types: DISCOVERY_DEFAULTS.map.types,
+    supers: DISCOVERY_DEFAULTS.map.supers,
   });
   const clamped = normalizeDiscoveryConfig({
     name: {
-      fast: { count: 99, types: { restaurant: false } },
+      fast: { count: 99, supers: { restaurants: false } },
       deep: { partnerCount: -2, mesitaCount: 7.2, googleCount: 40, autoCount: 0 },
     },
   });
   assertEquals(clamped.name.fast.count, 20);
-  assertEquals(clamped.name.fast.types.restaurant, false);
-  assertEquals(clamped.name.fast.types.bakery, true);
+  assertEquals(clamped.name.fast.supers.restaurants, false);
+  assertEquals(clamped.name.fast.supers.cafes_bakeries, true);
   assertEquals(clamped.name.deep.partnerCount, 0);
   assertEquals(clamped.name.deep.mesitaCount, 7);
   assertEquals(clamped.name.deep.googleCount, 20);

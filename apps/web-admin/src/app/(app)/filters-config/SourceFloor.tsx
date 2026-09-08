@@ -21,7 +21,7 @@
 // Search" would silently move the Home rails. It prints the state instead.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { MessageSquare, Star } from "lucide-react";
+import { Layers, Star, Users } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import { NumberField, SaveRow, Switch } from "@/components/admin-ui/config";
@@ -32,6 +32,7 @@ import {
 } from "./actions";
 import {
   GENERAL_MIN_REVIEWS_MAX,
+  GOOGLE_PULL_STOPS,
   MIN_RATING_MAX,
   type DiscoveryConfig,
 } from "./catalog";
@@ -229,8 +230,8 @@ export function GeneralFloorOwner({ seed }: { seed: FloorSeed }) {
       </div>
       <div className="mt-3">
         <NumberField
-          icon={<MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />}
-          label="Minimum Google reviews"
+          icon={<Users className="mt-0.5 h-4 w-4 shrink-0" />}
+          label="Minimum Google reviewers"
           value={g.minReviews}
           min={0}
           max={GENERAL_MIN_REVIEWS_MAX}
@@ -240,7 +241,7 @@ export function GeneralFloorOwner({ seed }: { seed: FloorSeed }) {
       </div>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="This box owns the wipe for every lane that queries Google, plus Mesita Places Name Search. 0 is off; any number drops a place with no review count too."
+        note="How many PEOPLE reviewed the place on Google — the count, never the stars. A 4.9 with two reviewers fails a floor of 10; a 3.1 with 400 passes it. This box owns the wipe for every lane that queries Google, plus Mesita Places Name Search. 0 is off; any number drops a place with no review count too."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}
@@ -275,8 +276,8 @@ export function MapFloorOwner({
       {ed.error ? <ErrorNote message={ed.error} /> : null}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <NumberField
-          icon={<MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />}
-          label="Minimum reviews"
+          icon={<Users className="mt-0.5 h-4 w-4 shrink-0" />}
+          label="Minimum reviewers"
           value={m.minReviews}
           min={0}
           max={GENERAL_MIN_REVIEWS_MAX}
@@ -285,7 +286,7 @@ export function MapFloorOwner({
         />
         <NumberField
           icon={<Star className="mt-0.5 h-4 w-4 shrink-0" />}
-          label="Minimum rating"
+          label="Minimum rating (stars)"
           value={m.minRating}
           min={0}
           max={MIN_RATING_MAX}
@@ -296,7 +297,80 @@ export function MapFloorOwner({
       </div>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="Applied EF-side after the Nearby fetch, and maxed with the listed-pool floor on the Mesita Nearby lane. The General wipe above runs as well."
+        note="Reviewers is a HEAD COUNT, rating is the stars — two different cuts. Applied EF-side after the Nearby fetch, and maxed with the listed-pool floor on the Mesita Nearby lane. The General wipe above runs as well."
+        pending={ed.pending}
+        dirty={ed.dirty}
+        ok={ed.ok}
+        onClick={ed.save}
+        loadError={ed.loadBlocked ? ed.error : null}
+      />
+    </FloorFrame>
+  );
+}
+
+/**
+ * Google Nearby owns the PULL — how many rows one map load buys from Google.
+ *
+ * This is the only knob on Search Sources that costs money by itself. Google
+ * caps ONE Nearby Search (New) at 20 with no page token, so 40 and 60 are 2
+ * and 3 billed requests over disjoint slices of the battery. The box says so
+ * rather than presenting three equal-looking stops.
+ *
+ * It is NOT the guest's How many. That one caps the pins painted on the map
+ * and stays on the Filters sheet; this one caps what we are willing to pay
+ * Google for before any of that happens.
+ */
+export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
+  const ed = useFloorEditor(
+    seed,
+    "mapPull",
+    (a, b) => a.map.googlePull !== b.map.googlePull,
+  );
+  const pull = ed.cfg.map.googlePull;
+  const patch = (googlePull: number) => {
+    ed.setOk(false);
+    ed.setCfg((c) => ({ ...c, map: { ...c.map, googlePull } }));
+  };
+  const calls = Math.max(1, Math.round(pull / GOOGLE_PULL_STOPS[0]));
+  return (
+    <FloorFrame label="How many Google pulls">
+      {ed.error ? <ErrorNote message={ed.error} /> : null}
+      <p className="text-muted-foreground mt-3 type-meta">
+        How many places one map load buys from Google. Google caps a single
+        Nearby Search at {GOOGLE_PULL_STOPS[0]} and offers no next page, so 40
+        and 60 are 2 and 3 <span className="text-foreground font-semibold">billed</span>{" "}
+        requests over disjoint slices of the battery, deduped by place id.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {GOOGLE_PULL_STOPS.map((stop) => {
+          const active = pull === stop;
+          return (
+            <button
+              key={stop}
+              type="button"
+              disabled={ed.busy}
+              onClick={() => patch(stop)}
+              aria-pressed={active}
+              className={
+                active
+                  ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
+              }
+            >
+              {stop}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-muted-foreground mt-3 type-meta">
+        <Layers className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+        {calls === 1
+          ? "One Nearby request per cache-miss cell — today's spend."
+          : `${calls} Nearby requests per cache-miss cell — ${calls}x today's spend on this lane.`}
+      </p>
+      <FloorTail
+        updatedAt={ed.updatedAt}
+        note="A pull can only split as far as the battery allows: with one Super on there is nothing to slice, so it stays 20 whatever is picked here. The guest's How many still caps the pins."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}
@@ -326,8 +400,8 @@ export function FiltersFloorOwner({ seed }: { seed: FloorSeed }) {
       {ed.error ? <ErrorNote message={ed.error} /> : null}
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <NumberField
-          icon={<MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />}
-          label="Minimum reviews"
+          icon={<Users className="mt-0.5 h-4 w-4 shrink-0" />}
+          label="Minimum reviewers"
           value={f.minReviews}
           min={0}
           max={GENERAL_MIN_REVIEWS_MAX}
@@ -336,7 +410,7 @@ export function FiltersFloorOwner({ seed }: { seed: FloorSeed }) {
         />
         <NumberField
           icon={<Star className="mt-0.5 h-4 w-4 shrink-0" />}
-          label="Minimum rating"
+          label="Minimum rating (stars)"
           value={f.minRating}
           min={0}
           max={MIN_RATING_MAX}

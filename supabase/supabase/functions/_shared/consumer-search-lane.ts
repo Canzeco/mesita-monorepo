@@ -44,7 +44,7 @@ import {
   readGooglePlacesKey,
 } from "./google-places.ts";
 import {
-  googleTypeFilterForTypes,
+  googleTypeFilterForSupers,
   type PredictionState,
 } from "./suggest-places-helpers.ts";
 import {
@@ -52,12 +52,11 @@ import {
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
 import {
-  applyGeneralCategoryCap,
   type GeneralConfig,
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
-  type NearbyTypeKey,
+  type SuperParamKey,
 } from "./discovery-config.ts";
 import {
   applyGeneralGateQuery,
@@ -432,11 +431,11 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
   return "fast";
 }
 
-function mapWithTypes(
+function mapWithSupers(
   map: MapConfig,
-  types: Record<NearbyTypeKey, boolean>,
+  supers: Record<SuperParamKey, boolean>,
 ): MapConfig {
-  return { ...map, types };
+  return { ...map, supers };
 }
 
 export async function runConsumerSearchLane(
@@ -455,7 +454,7 @@ export async function runConsumerSearchLane(
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
-  const cfg = applyGeneralCategoryCap(await loadDiscoveryConfig(admin));
+  const cfg = await loadDiscoveryConfig(admin);
   const mode = resolveMode(args.mode);
   const locations = args.locations === true;
 
@@ -520,10 +519,10 @@ async function runFastSearch(
   locations: boolean,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const cap = Math.min(name.fast.count, name.fast.googleCount);
-  if (cap <= 0 || googleTypeFilterForTypes(name.fast.types) === "skip") {
+  if (cap <= 0 || googleTypeFilterForSupers(name.fast.supers) === "skip") {
     return [];
   }
-  const gate = mapWithTypes(map, name.fast.types);
+  const gate = mapWithSupers(map, name.fast.supers);
   const googleAuto = await fetchAutocomplete(
     input,
     sessionToken,
@@ -649,8 +648,8 @@ async function runDeepSearch(
   locations: boolean,
 ): Promise<LaneItem[]> {
   const deep = name.deep;
-  const gate = mapWithTypes(map, deep.types);
-  const typesOn = googleTypeFilterForTypes(deep.types) !== "skip";
+  const gate = mapWithSupers(map, deep.supers);
+  const typesOn = googleTypeFilterForSupers(deep.supers) !== "skip";
   const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
   const { wantAuto, wantText, wantMesita } = deepModuleFlags({
     autoCount: deep.autoCount,

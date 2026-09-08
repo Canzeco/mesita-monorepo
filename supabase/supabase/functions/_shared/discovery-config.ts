@@ -16,10 +16,10 @@
 //              DEMOTES, a FILTER EXCLUDES. A signal can only ever reorder
 //              places a filter already admitted.
 //   engines    which surfaces read any of the above.
-//   general    Discovery-wide. categoryCount — first N of NEARBY_TYPE_KEYS any
-//              engine may use. requireActive + minReviews — the post-Google
+//   general    Discovery-wide. requireActive + minReviews — the post-Google
 //              wipe every mode runs on what a Google Places query returned
-//              (discovery-general-gate.ts).
+//              (discovery-general-gate.ts). The category param is NOT here:
+//              it is `supers` on each Google-calling engine (MESITA-1695).
 //   chat       Concierge system prompt. Blank → in-code persona (memo-prompt.ts).
 //
 // FILTERS ARE NOT THE TORN-DOWN FILTER SURFACE. MESITA-1183 deleted a
@@ -41,6 +41,7 @@
 // remainder ordered). The teardown migration says as much in its own comment.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
 import {
   CATEGORY_EXACT,
   CATEGORY_FAMILY,
@@ -99,10 +100,9 @@ export type SocialConfig = {
  * when it was five keys long (MESITA-1683). `google-type-super.test.ts` pins
  * this list to that map: the taxonomy is the law, this is its value today.
  *
- * ORDER IS LOAD-BEARING. `typesWithinGeneral` keeps the first
- * `general.categoryCount` entries and forces the rest off, so the five that
- * were here before must stay inside the first five — they do: the flatten
- * order opens restaurant · bar · night_club · cafe · bakery.
+ * THIS IS THE WIRE LIST, NOT THE PARAM. Since MESITA-1695 the operator toggles
+ * SUPERS (`SUPER_PARAM_KEYS`) and the battery is derived by
+ * `nearbyTypesForSupers`. Nothing reads this list positionally any more.
  */
 export const NEARBY_TYPE_KEYS = [
   // restaurants
@@ -138,6 +138,31 @@ export const NEARBY_TYPE_KEYS = [
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
 /**
+ * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the seven
+ * guest Super Categories, in `SUPER_CATEGORIES` sort order — the same seven,
+ * in the same order, the guest sees as pills on the Filters sheet.
+ *
+ * Google's own type slugs are not a param. Twenty-two switches asked the
+ * operator to think in Google's vocabulary, and the ordered "first N" cap on
+ * top of them (`general.categoryCount`, now deleted) silently forced four
+ * whole Supers off. One Super on = its whole `GOOGLE_SEARCH_TYPES` battery on.
+ *
+ * Super `undefined` is NOT here: its battery is empty, so a toggle for it
+ * could never change a Google call. `google-type-super.test.ts` pins this list
+ * to the taxonomy.
+ */
+export const SUPER_PARAM_KEYS = [
+  "restaurants",
+  "cafes_bakeries",
+  "bars_nightlife",
+  "experiences",
+  "culture_arts",
+  "sports_fitness",
+  "wellness_beauty",
+] as const;
+export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
+
+/**
  * Map pool policy. Closest N of the selected Places set, then paint.
  * THREE NESTED SETS (Pato, 2026-09-05):
  *   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
@@ -156,7 +181,15 @@ export type MapConfig = {
   /** Wait at least this long (seconds) after a fetch before Search refetches. */
   reloadMinSec: number;
   googleFill: boolean;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
+  /**
+   * How many places ONE Nearby pull asks Google for: 20, 40 or 60
+   * (`GOOGLE_PULL_STOPS`). Google caps a single Nearby Search (New) request at
+   * 20 with no page token, so 40 and 60 are 2 and 3 BILLED requests, split by
+   * Super battery and deduped by placeId. This is the operator's spend knob;
+   * the guest's How many still caps the pins that get painted.
+   */
+  googlePull: number;
 };
 
 /**
@@ -169,7 +202,7 @@ export type NameFastConfig = {
   /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameDeepConfig = {
@@ -181,7 +214,7 @@ export type NameDeepConfig = {
   googleCount: number;
   /** Legacy blob field. Queries concat; the union is not sliced. */
   count: number;
-  types: Record<NearbyTypeKey, boolean>;
+  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameConfig = {
@@ -191,8 +224,6 @@ export type NameConfig = {
 
 /** Discovery-wide knobs. Only values that apply across engines belong here. */
 export type GeneralConfig = {
-  /** How many of the code-defined Google types Discovery may use (0–5). */
-  categoryCount: number;
   /**
    * Wipe out anything that is not Active. Active is the State-box fact:
    * `business_state === "OPERATIONAL"` on Mesita, Google's
@@ -404,8 +435,14 @@ export const NAME_PARTNER_COUNT_DEFAULT = 3;
 export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 export const NAME_DEEP_COUNT_DEFAULT = 9;
-export const GENERAL_CATEGORY_COUNT_DEFAULT = NEARBY_TYPE_KEYS.length;
-export const GENERAL_CATEGORY_COUNT_MAX = NEARBY_TYPE_KEYS.length;
+/**
+ * The three stops the Nearby box offers. 20 is one Google request; 40 and 60
+ * are 2 and 3, because Nearby Search (New) caps `maxResultCount` at 20 and
+ * has no page token (`GOOGLE_NEARBY_MAX` in nearby-places.ts). Picking 60
+ * therefore triples that lane's Nearby bill.
+ */
+export const GOOGLE_PULL_STOPS = [20, 40, 60] as const;
+export const GOOGLE_PULL_DEFAULT = 20;
 /** Same ceiling as filters.minReviews — one review floor reads like another. */
 export const GENERAL_MIN_REVIEWS_MAX = 100_000;
 
@@ -433,34 +470,19 @@ export const SWIPE_PARTNER_LEVELS = [
  * The three supers the strip has always asked for stay on; the four it could
  * not see until MESITA-1683 default OFF.
  *
- * NOT for cost: there are no "seventeen new calls" — one request carries the
- * whole array (MESITA-1685 corrects that claim). Off by default because it
+ * NOT for cost: there are no "four new calls" — one request carries the whole
+ * battery array (MESITA-1685 corrects that claim). Off by default because it
  * keeps the returned pool exactly as it was; widening what a Nearby call
  * admits is an operator's decision, not a side effect of the list growing.
  */
-export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
-  restaurant: true,
-  bar: true,
-  night_club: true,
-  cafe: true,
-  bakery: true,
-  gym: false,
-  fitness_center: false,
-  yoga_studio: false,
-  sports_club: false,
-  spa: false,
-  beauty_salon: false,
-  hair_salon: false,
-  massage: false,
-  tourist_attraction: false,
-  amusement_park: false,
-  bowling_alley: false,
-  park: false,
-  movie_theater: false,
-  museum: false,
-  art_gallery: false,
-  performing_arts_theater: false,
-  concert_hall: false,
+export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
+  restaurants: true,
+  cafes_bakeries: true,
+  bars_nightlife: true,
+  experiences: false,
+  culture_arts: false,
+  sports_fitness: false,
+  wellness_beauty: false,
 };
 
 /** How many pins is the GUEST's question (How many, on the Filters sheet),
@@ -472,7 +494,8 @@ export const DEFAULT_MAP: MapConfig = {
   reloadMinKm: 0.5,
   reloadMinSec: 2,
   googleFill: true,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
+  googlePull: GOOGLE_PULL_DEFAULT,
 };
 
 export const DEFAULT_CATALOG: CatalogConfig = {
@@ -493,7 +516,7 @@ export const DEFAULT_SOCIAL: SocialConfig = {
 export const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
 };
 
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
@@ -502,7 +525,7 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   count: NAME_DEEP_COUNT_DEFAULT,
-  types: DEFAULT_MAP_TYPES,
+  supers: DEFAULT_MAP_SUPERS,
 };
 
 export const DEFAULT_NAME: NameConfig = {
@@ -511,47 +534,12 @@ export const DEFAULT_NAME: NameConfig = {
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
-  categoryCount: GENERAL_CATEGORY_COUNT_DEFAULT,
   // ON by default (Pato, 2026-08-29). A closed place is not a search
   // result, and the live blob predates the key — so the default is what
   // every surface reads until the operator says otherwise.
   requireActive: true,
   minReviews: 0,
 };
-
-/** First N code-defined Google types. 0 = none available. */
-export function availableNearbyTypeKeys(categoryCount: number): NearbyTypeKey[] {
-  const n = Math.round(
-    num(categoryCount, GENERAL_CATEGORY_COUNT_DEFAULT, 0, GENERAL_CATEGORY_COUNT_MAX),
-  );
-  return NEARBY_TYPE_KEYS.slice(0, n);
-}
-
-/** Engine type toggles with types beyond General.categoryCount forced off. */
-export function typesWithinGeneral(
-  types: Record<NearbyTypeKey, boolean>,
-  categoryCount: number,
-): Record<NearbyTypeKey, boolean> {
-  const allow = new Set(availableNearbyTypeKeys(categoryCount));
-  const next = { ...types };
-  for (const key of NEARBY_TYPE_KEYS) {
-    if (!allow.has(key)) next[key] = false;
-  }
-  return next;
-}
-
-/** Cap Map + Name type batteries for engine reads. Admin normalize does not. */
-export function applyGeneralCategoryCap(cfg: DiscoveryConfig): DiscoveryConfig {
-  const n = cfg.general.categoryCount;
-  return {
-    ...cfg,
-    map: { ...cfg.map, types: typesWithinGeneral(cfg.map.types, n) },
-    name: {
-      fast: { ...cfg.name.fast, types: typesWithinGeneral(cfg.name.fast.types, n) },
-      deep: { ...cfg.name.deep, types: typesWithinGeneral(cfg.name.deep.types, n) },
-    },
-  };
-}
 
 export const DEFAULT_SWIPE_PARTNER_BIAS: SwipePartnerBias = {
   none: 1,
@@ -784,26 +772,72 @@ export function normalizeChatPrompt(raw: unknown): string {
   return raw.slice(0, CHAT_PROMPT_MAX);
 }
 
-export function normalizeTypeBatteries(raw: unknown): Record<NearbyTypeKey, boolean> {
-  const rawTypes = (raw ?? {}) as Record<string, unknown>;
-  const types = {} as Record<NearbyTypeKey, boolean>;
-  for (const key of NEARBY_TYPE_KEYS) {
-    types[key] = bool(rawTypes[key], DEFAULT_MAP_TYPES[key]);
+/**
+ * The five Google slugs the strip defaulted ON before MESITA-1683 grew the
+ * list and MESITA-1695 replaced it. A tombstone, read only when folding a
+ * stored blob that predates the Super params.
+ */
+const LEGACY_TYPE_DEFAULTS = new Set<string>([
+  "restaurant",
+  "bar",
+  "night_club",
+  "cafe",
+  "bakery",
+]);
+
+/**
+ * The seven Super params, with the pre-MESITA-1695 blob folded in.
+ *
+ * A stored blob written before the rename carries `types`, keyed by Google
+ * slug. A Super is on iff ANY slug in its battery was on, which reproduces the
+ * live blob exactly: it held `restaurant, bar, night_club, cafe, bakery` true
+ * and `categoryCount: 5`, which forced every other key off anyway. The blob is
+ * jsonb normalized on every read, so there is no migration to run.
+ *
+ * Half a Super was never reachable: no console ever shipped a control that
+ * could turn `cafe` on and `bakery` off, so ANY is the honest fold.
+ */
+export function normalizeSuperParams(
+  raw: unknown,
+  legacyTypes?: unknown,
+): Record<SuperParamKey, boolean> {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const out = {} as Record<SuperParamKey, boolean>;
+  if (SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
+    for (const key of SUPER_PARAM_KEYS) {
+      out[key] = bool(r[key], DEFAULT_MAP_SUPERS[key]);
+    }
+    return out;
   }
-  return types;
+  const legacy = (legacyTypes ?? {}) as Record<string, unknown>;
+  if (!NEARBY_TYPE_KEYS.some((key) => typeof legacy[key] === "boolean")) {
+    return { ...DEFAULT_MAP_SUPERS };
+  }
+  // An absent slug takes the PRE-1695 default, not `false`: a blob that stored
+  // only `{ restaurant: true }` still ran with bar, night_club, cafe and
+  // bakery on, and folding it to restaurants-only would silently narrow live
+  // Nearby calls on the first read after deploy.
+  for (const key of SUPER_PARAM_KEYS) {
+    out[key] = GOOGLE_SEARCH_TYPES[key].some((type) =>
+      bool(legacy[type], LEGACY_TYPE_DEFAULTS.has(type))
+    );
+  }
+  return out;
+}
+
+/** 20, 40 or 60 — snapped to the nearest stop, never a free number. */
+export function normalizeGooglePull(raw: unknown): number {
+  const n = num(raw, GOOGLE_PULL_DEFAULT, GOOGLE_PULL_STOPS[0], GOOGLE_PULL_STOPS[2]);
+  let best: number = GOOGLE_PULL_DEFAULT;
+  for (const stop of GOOGLE_PULL_STOPS) {
+    if (Math.abs(stop - n) < Math.abs(best - n)) best = stop;
+  }
+  return best;
 }
 
 export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
-    categoryCount: Math.round(
-      num(
-        r.categoryCount,
-        DEFAULT_GENERAL.categoryCount,
-        0,
-        GENERAL_CATEGORY_COUNT_MAX,
-      ),
-    ),
     requireActive: bool(r.requireActive, DEFAULT_GENERAL.requireActive),
     minReviews: Math.round(
       num(r.minReviews, DEFAULT_GENERAL.minReviews, 0, GENERAL_MIN_REVIEWS_MAX),
@@ -829,7 +863,7 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
         ),
       ),
       count: fastCount,
-      types: normalizeTypeBatteries(fast.types),
+      supers: normalizeSuperParams(fast.supers, fast.types),
     },
     deep: {
       partnerCount: Math.round(
@@ -847,7 +881,7 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       count: Math.round(
         num(deep.count, DEFAULT_NAME_DEEP.count, 0, NAME_LANE_COUNT_MAX),
       ),
-      types: normalizeTypeBatteries(deep.types),
+      supers: normalizeSuperParams(deep.supers, deep.types),
     },
   };
 }
@@ -916,7 +950,7 @@ export function normalizeSwipeConfig(raw: unknown): SwipeConfig {
 
 export function normalizeMapConfig(raw: unknown): MapConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const types = normalizeTypeBatteries(r.types);
+  const supers = normalizeSuperParams(r.supers, r.types);
   const reload = snapMapReloadPair(r.reloadMinKm, r.reloadMinSec);
   return {
     minRating: Math.round(
@@ -929,7 +963,8 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     reloadMinKm: reload.km,
     reloadMinSec: reload.sec,
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
-    types,
+    supers,
+    googlePull: normalizeGooglePull(r.googlePull),
   };
 }
 
