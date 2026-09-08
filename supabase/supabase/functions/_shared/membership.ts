@@ -29,9 +29,29 @@ export type TierConfig = {
 
 // Promos v5 (MESITA-723): the promo rate resolver moved to the grid-authoritative
 // engine in ./rewards-config.ts (resolveTicketRate over the app_config
-// promos_config grid × the place's strategy — v11 additive, with best-of as
+// promos_config grid × the place's strategy — v12 additive, with best-of as
 // the no-config fallback). selectprojectRate (v4, per-place columns) is
 // retired; the helpers below feed the new resolver's rate context.
+
+// PLAN STILL EXISTS HERE, AND ONLY HERE (MESITA-1705). v12 removed the plan
+// from PRICING — a reward is base + welcome + class + actions and the
+// subscription does not move it — but Premium is still sold and still carries
+// PERKS: the monthly reservation cap, better recommendations. So the plan
+// resolves locally now instead of riding on identityForClassKey, which is a
+// pricing helper and no longer returns one.
+//
+// The rule is unchanged from v11: an explicit `consumers.plan` wins, and a
+// leftover `class_key = 'premium'` still implies the plan, because that key
+// was the subscription wearing a class costume before the two were split.
+type PlanKey = "free" | "premium";
+
+function planFor(
+  classKey: string | null | undefined,
+  plan?: string | null,
+): PlanKey {
+  if (plan === "premium" || plan === "free") return plan;
+  return classKey === "premium" ? "premium" : "free";
+}
 
 // Consumer-class perk gate: which classes clear the "better than the base
 // class" bar. Every elevated class passes; the base class / null / unknown do
@@ -41,11 +61,8 @@ export function isElevatedClass(
   classKey: string | null | undefined,
   plan?: string | null,
 ): boolean {
-  const id = identityForClassKey(
-    classKey,
-    plan === "premium" || plan === "free" ? plan : null,
-  );
-  return id.cls !== "bronze" || id.plan === "premium";
+  const { cls } = identityForClassKey(classKey);
+  return cls !== "bronze" || planFor(classKey, plan) === "premium";
 }
 
 /** True when the guest pays Premium — leftover `premium` class_key still counts. */
@@ -53,10 +70,7 @@ export function isPremiumPlan(
   classKey: string | null | undefined,
   plan?: string | null,
 ): boolean {
-  return identityForClassKey(
-    classKey,
-    plan === "premium" || plan === "free" ? plan : null,
-  ).plan === "premium";
+  return planFor(classKey, plan) === "premium";
 }
 
 /**
@@ -68,12 +82,9 @@ export function perkClassKey(
   classKey: string | null | undefined,
   plan?: string | null,
 ): string {
-  const id = identityForClassKey(
-    classKey,
-    plan === "premium" || plan === "free" ? plan : null,
-  );
-  if (id.plan === "premium" && id.cls === "bronze") return "silver";
-  return id.cls;
+  const { cls } = identityForClassKey(classKey);
+  if (planFor(classKey, plan) === "premium" && cls === "bronze") return "silver";
+  return cls;
 }
 
 // Loads a tier's config row. Returns null if the key isn't in the lookup.

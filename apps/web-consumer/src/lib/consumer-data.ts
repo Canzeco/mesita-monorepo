@@ -42,7 +42,12 @@ export type ClassIdentity = { cls: ClassKey; plan: PlanKey };
 // Leftover-key bridge. The DB stores metals on consumers.class_key and
 // free|premium on consumers.plan. Frozen mobile and older payloads still
 // speak standard/influencer/premium/aura; this map (mirrored in
-// promos-v11-normalize.ts) is the one definition both sides read.
+// promos-normalize.ts) is the one definition both sides read.
+//
+// NOTE the asymmetry since MESITA-1705: the EF's copy resolves the CLASS only,
+// because the plan stopped pricing rewards. This one still carries `plan`,
+// because the consumer app reads it for PERKS (reservation caps, better
+// recommendations) — which Premium still buys.
 export const LEGACY_CLASS_KEYS = [
   "standard",
   "influencer",

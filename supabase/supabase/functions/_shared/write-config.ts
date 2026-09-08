@@ -3,7 +3,7 @@
 // Thin generic CONFIG write door. app_config's 13 writers repeat the same
 // `update({[column]: value}).eq("id", 1)` statement against 8 jsonb columns
 // that already have working normalizers (reservations-config-normalize.ts,
-// promos-v11-normalize.ts, rewards-config-normalize.ts, etc.) — this is a
+// promos-normalize.ts, rewards-config-normalize.ts, etc.) — this is a
 // wrapper, not a rewrite of those normalizers. Migrating the 13 existing
 // callers onto this door is optional/P2 (MESITA-1248 is about to restructure
 // app_config anyway); this PR ships the door + the CI ratchet only.

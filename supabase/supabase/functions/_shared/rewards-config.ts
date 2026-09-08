@@ -1,22 +1,25 @@
-// Promos bill engine — v11 additive (MESITA-1069) over the legacy v6/v13
+// Promos bill engine — v12 additive (MESITA-1705) over the legacy v6/v13
 // best-of grid (MESITA-723).
 //
-// Source of truth when present: app_config.promos_config.v11
-//   { version: 11, visits, orders, cap }
-// A bill pays visits base (strategy × class × plan) + welcome (first verified
-// ticket at the place, D3-A) + each earned action bonus (mesita / story /
-// google), applied to the first cap-pesos.
+// Source of truth when present: app_config.promos_config.v12
+//   { version: 12, visits, orders, cap }
+// A bill pays visits base (strategy × class) + welcome (first verified ticket
+// at the place, D3-A) + each earned action bonus (mesita / story / google),
+// applied to the first cap-pesos.
 //
 // CONTEXT: only the `visits` ladder is ever read. `orders` is parked — no
 // ticket carries a remote context yet — so a remote bill cannot be priced and
 // nothing here looks at those rates.
 //
-// IDENTITY: v11 prices two axes, class (bronze/silver/gold/diamond) and plan
-// (free/premium). `consumers.plan` is live; identityForClassKey still maps
-// leftover legacy class_key values on the way in.
+// IDENTITY: v12 prices ONE axis, class (bronze/silver/gold/diamond). The plan
+// axis died with MESITA-1705 (Pato, 2026-09-08) — Premium is still sold, it
+// just no longer moves a rate. identityForClassKey still maps leftover legacy
+// class_key values on the way in, and `premium` among them resolves to bronze,
+// which is what it always was under the subscription costume.
 //
-// A stored v10 blob is migrated forward on read, so the engine keeps pricing
-// correctly between the config-shape deploy and the operator's first save.
+// A stored v10 or v11 blob is migrated forward on read, so the engine keeps
+// pricing correctly between the config-shape deploy and the operator's first
+// save.
 //
 // Fallback (no v10 blob yet): the legacy v13 grid blob, priced BEST-OF.
 // Cap is a SEPARATE per-place param (monthly_promo_cap); the config `cap`
@@ -40,12 +43,12 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ratesFromPlace, strategyForRates } from "./promo-strategy.ts";
 import {
   identityForClassKey,
-  legacyRulesFromV11,
-  normalizePromosV11,
-  type PromosConfigV11,
-} from "../admin-web-update-rewards-config/promos-v11-normalize.ts";
+  legacyRulesFromV12,
+  normalizePromos,
+  type PromosConfigV12,
+} from "../admin-web-update-rewards-config/promos-normalize.ts";
 
-export type { PromosConfigV11 };
+export type { PromosConfigV12 };
 export { identityForClassKey };
 
 // Class segments in rank order (mirrors public.classes: rank 0..3 —
@@ -100,8 +103,8 @@ export type RewardsGrid = {
   grid: Record<ClassSegment, SegmentRates>;
   actions: ActionMatrix;
   cap: number;
-  /** When set, resolveTicketRate uses additive v11 math (MESITA-1069). */
-  promos?: PromosConfigV11;
+  /** When set, resolveTicketRate uses additive v12 math (MESITA-1705). */
+  promos?: PromosConfigV12;
 };
 
 // The defaults (v9, MESITA-877) — the LAST-RESORT fallback, used only when
@@ -260,7 +263,7 @@ export function coerceRewardsGrid(raw: unknown): RewardsGrid {
 
 // One (strategy, class, action) rule row — the v8 normalized shape
 // (MESITA-873). The rules TABLE is gone; the shape survives as the in-memory
-// bridge v11 derives its best-of grid through. "standing" is the None
+// bridge v12 derives its best-of grid through. "standing" is the None
 // column: v13's `grid` and `actions` were two shapes for the same thing.
 export type RewardRuleRow = {
   strategy: string;
@@ -329,7 +332,7 @@ export function gridFromRuleRows(
  * Loads the reward grid from `app_config.promos_config` — the one store.
  *
  * Two fallbacks, both deliberate — a ticket must never fail to price: a blob
- * with no readable v11/v10 config falls back to the legacy v13 grid keys the
+ * with no readable v12/v11/v10 config falls back to the legacy v13 grid keys the
  * same blob still carries, and a missing blob falls back to the locked
  * defaults.
  */
@@ -348,16 +351,17 @@ export async function loadRewardsGrid(
       ? (blob as Record<string, unknown>)
       : {};
 
-  // v11 additive SoT (MESITA-1069) — the only store now that the reward_rules
-  // mirror is dropped. A leftover v10 blob is migrated on read
-  // (normalizePromosV11 accepts both shapes), so pricing survives the gap
-  // between this deploy and the operator's first v11 save.
-  const stored = raw.v11 ?? raw.v10;
+  // v12 additive SoT (MESITA-1705) — the only store now that the reward_rules
+  // mirror is dropped. A leftover v10 or v11 blob is migrated on read
+  // (normalizePromos accepts all three shapes), so pricing survives the gap
+  // between this deploy and the operator's first v12 save. Newest key wins:
+  // a blob mid-cutover can carry more than one.
+  const stored = raw.v12 ?? raw.v11 ?? raw.v10;
   if (stored && typeof stored === "object" && !Array.isArray(stored)) {
-    const norm = normalizePromosV11(stored);
+    const norm = normalizePromos(stored);
     if (norm.ok) {
       const legacy = gridFromRuleRows(
-        legacyRulesFromV11(norm.value),
+        legacyRulesFromV12(norm.value),
         norm.value.cap,
       );
       return { ...legacy, promos: norm.value };
@@ -401,8 +405,6 @@ export function isActionVerified(state: string | null | undefined): boolean {
 
 export type RateContext = {
   classKey: string | null | undefined;
-  /** consumers.plan when known. Leftover class_key values still imply a plan. */
-  plan?: "free" | "premium" | null;
   isFirstVisit: boolean;
   storyVerified?: boolean;
   reviewVerified?: boolean;
@@ -421,9 +423,9 @@ function clampPercent(n: number): number {
 }
 
 /**
- * v11 additive resolution (MESITA-1069, carrying D1-A / D3-A forward).
- * total = visits base(strategy × class × plan) + welcome(first ticket) + each
- * earned bonus. Only the visits ladder resolves — orders is parked.
+ * v12 additive resolution (MESITA-1705, carrying D1-A / D3-A forward).
+ * total = visits base(strategy × class) + welcome(first ticket) + each earned
+ * bonus. Only the visits ladder resolves — orders is parked.
  *
  * The per-class Instagram story override is GONE: it keyed on the retired
  * `influencer` class, and Classes v2 prices no per-class bonus. Class is paid
@@ -431,14 +433,14 @@ function clampPercent(n: number): number {
  */
 function resolveAdditiveRate(
   strategy: Exclude<GridStrategy, "zero">,
-  cfg: PromosConfigV11,
+  cfg: PromosConfigV12,
   ctx: RateContext,
 ): number {
-  const { cls, plan } = identityForClassKey(ctx.classKey, ctx.plan);
+  const { cls } = identityForClassKey(ctx.classKey);
   // Bonuses are per strategy: Aggressive out-pays Conservative on the actions
   // exactly as it does on standing.
   const b = cfg.visits.bonuses[strategy];
-  let total = cfg.visits.base[strategy][cls][plan];
+  let total = cfg.visits.base[strategy][cls];
   // D3-A: Welcome grants on the first verified ticket at the place — not
   // gated on a Google review (that was the v9 coupling).
   if (ctx.isFirstVisit) total += b.welcome;
@@ -457,7 +459,7 @@ function resolveBestOfRate(
   grid: RewardsGrid,
   ctx: RateContext,
 ): number {
-  const { cls } = identityForClassKey(ctx.classKey, ctx.plan);
+  const { cls } = identityForClassKey(ctx.classKey);
   const segment: ClassSegment = isClassSegment(cls) ? cls : "bronze";
   const a = grid.actions;
   const qualifying: number[] = [
@@ -475,7 +477,7 @@ function resolveBestOfRate(
 }
 
 // Resolve a ticket's discount percent — and ONLY that (blended-rate privacy).
-// Prefers v11 additive when loadRewardsGrid attached an additive blob.
+// Prefers v12 additive when loadRewardsGrid attached an additive blob.
 export function resolveTicketRate(
   strategy: GridStrategy,
   grid: RewardsGrid,

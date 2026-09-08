@@ -1,19 +1,21 @@
-// Promos catalog — the v11 CONTEXT × IDENTITY model (MESITA-1069).
+// Promos catalog — the v12 CONTEXT × CLASS model (MESITA-1705).
 //
-// v10 priced base(strategy × class) over standard/influencer/premium/aura.
-// Notion Main §2.7–2.8 (Classes v2, 2026-08-15) retired that shape on two
-// counts: `premium` was the paid SUBSCRIPTION wearing a class costume, and
-// every rate was quoted as if a delivery order and a body in the room were
-// the same purchase. v11 splits both axes apart:
+// v12 DELETES THE PLAN AXIS (Pato, 2026-09-08). A reward is three priced
+// groups and nothing else:
+//
+//   rate = base + welcome + class step + every earned action bonus
 //
 //   CONTEXT cuts first — visits (local) or orders (remote).
-//     · visits prices the full identity grid: class × plan (8 rows/strategy).
+//     · visits prices class: bronze < silver < gold < diamond, one row each.
 //       Presence is what class buys, so class only resolves here.
 //     · orders drops class entirely — a Diamond guest ordering to their
-//       apartment fills no room — and prices plan alone (2 rows/strategy).
-//   CLASS is who you are: bronze < silver < gold < diamond. Never purchasable.
-//   PLAN is what you pay: free | premium. Private — it never reaches the
-//     floor, and the place only ever sees the resolved percent.
+//       apartment fills no room — and is one scalar per strategy.
+//   CLASS is who you are. Never purchasable.
+//
+// Premium is still SOLD (MX$50/mo) and still carries perks — reservations,
+// recommendations, subscriber terms on Credits — it just no longer moves a
+// rate. It priced zero bills when this landed: the cutover probe found 0 rows
+// on plan='premium' and 0 on the legacy class_key='premium'.
 //
 // ONE strategy per place governs BOTH ladders: picking Conservative or
 // Aggressive writes the visits ladder and the orders ladder together, with no
@@ -25,7 +27,7 @@
 //
 // Pure module on purpose — vitest can't import server-action chains (see
 // promo-state.ts precedent), and the EF normalizer mirrors this file
-// (admin-web-update-rewards-config/promos-v11-normalize.ts) — keep them in
+// (admin-web-update-rewards-config/promos-normalize.ts) — keep them in
 // lock-step.
 
 import {
@@ -37,8 +39,6 @@ import {
 export type StrategyKey = "conservative" | "aggressive" | "dominant";
 /** Who you are. Never purchasable, always public (it prints on the Passport). */
 export type ClassKey = "bronze" | "silver" | "gold" | "diamond";
-/** What you pay. Private — never printed, never leaves the server. */
-export type PlanKey = "free" | "premium";
 /** Context cuts before anything else: a visit, or a remote order. */
 export type ContextKey = "visits" | "orders";
 export type BonusKey = "welcome" | "mesita" | "story" | "google";
@@ -51,13 +51,11 @@ export type ActionKey =
 
 export type ContextBonuses = Record<BonusKey, number>;
 
-/** visits: the full identity grid — one rate per (strategy × class × plan). */
-export type VisitsBase = Record<
-  StrategyKey,
-  Record<ClassKey, Record<PlanKey, number>>
->;
-/** orders: class does not resolve remotely, so plan alone prices the row. */
-export type OrdersBase = Record<StrategyKey, Record<PlanKey, number>>;
+/** visits: one rate per (strategy × class). */
+export type VisitsBase = Record<StrategyKey, Record<ClassKey, number>>;
+/** orders: class does not resolve remotely and plan prices nothing, so a
+ *  remote row is a single scalar per strategy. Parked either way. */
+export type OrdersBase = Record<StrategyKey, number>;
 
 /**
  * Bonuses are per STRATEGY as well as per context: a place on Aggressive pays
@@ -68,7 +66,7 @@ export type OrdersBase = Record<StrategyKey, Record<PlanKey, number>>;
 export type StrategyBonuses = Record<StrategyKey, ContextBonuses>;
 
 export type PromosConfig = {
-  version: 11;
+  version: 12;
   visits: { base: VisitsBase; bonuses: StrategyBonuses };
   orders: {
     base: OrdersBase;
@@ -93,7 +91,6 @@ export const CLASS_KEYS: readonly ClassKey[] = [
   "gold",
   "diamond",
 ];
-export const PLAN_KEYS: readonly PlanKey[] = ["free", "premium"];
 export const CONTEXT_KEYS: readonly ContextKey[] = ["visits", "orders"];
 export const BONUS_KEYS: readonly BonusKey[] = [
   "welcome",
@@ -173,22 +170,6 @@ export const CLASS_META: Record<
   },
 };
 
-export const PLAN_META: Record<
-  PlanKey,
-  { name: string; emoji: string; blurb: string }
-> = {
-  free: {
-    name: "Free",
-    emoji: "○",
-    blurb: "MX$0 — the whole product, genuinely usable without paying.",
-  },
-  premium: {
-    name: "Premium",
-    emoji: "◆",
-    blurb: "MX$50/mo — the consumer revenue lever. Never shown to the place.",
-  },
-};
-
 // Shared action vocabulary. "standing" is the base/None column.
 export const ACTION_META: Record<ActionKey, { name: string; emoji: string }> = {
   standing: { name: "None (Standing)", emoji: "🎫" },
@@ -245,48 +226,29 @@ export const ALLOWED_RATES: readonly number[] = [
 export const ALLOWED_CAPS: readonly number[] = DISCOUNT_CAPS_MXN;
 const CAP_DEFAULT = DEFAULT_DISCOUNT_CAP_MXN;
 
-// ── The v11 defaults ─────────────────────────────────────────────────────
-// Visits carry forward the v10 launch numbers exactly on the Free plan
-// (bronze 10/20 · silver 15/30 · diamond 25/50), with Gold interpolated into
-// the gap Classes v2 opened and the Premium plan taking the uplift the old
-// `premium` CLASS row used to encode (+10 conservative / +20 aggressive).
+// ── The v12 defaults ─────────────────────────────────────────────────────
+// These are v11's FREE column exactly. The premium column is what v12 drops,
+// so a place that never tuned its rates keeps billing, to the percent, what
+// it billed the day before the cutover.
 //
 // Orders is deliberately a flatter, lower band: remote buys volume, not
 // presence, and it is funded out of the 25–30% a delivery app would have
 // taken from the same order. These are placeholders until the remote bill
 // path exists — nothing reads them (`soon`).
 export const DEFAULT_PROMOS: PromosConfig = {
-  version: 11,
+  version: 12,
   visits: {
     base: {
-      conservative: {
-        bronze: { free: 10, premium: 20 },
-        silver: { free: 15, premium: 25 },
-        gold: { free: 20, premium: 30 },
-        diamond: { free: 25, premium: 35 },
-      },
-      aggressive: {
-        bronze: { free: 20, premium: 40 },
-        silver: { free: 30, premium: 50 },
-        gold: { free: 40, premium: 60 },
-        diamond: { free: 50, premium: 70 },
-      },
-      // Dominant lifts the FLOOR, because it cannot lift the ceiling:
-      // Aggressive already pays 70 at diamond·premium, and RATE_MAX is 70.
-      // So the strategy is not "pay your best guests more" — they are already
-      // capped — it is "pay everyone close to the top". A Bronze Free guest
-      // goes 20 → 40; the whole ladder compresses upward into a narrow band.
+      conservative: { bronze: 10, silver: 15, gold: 20, diamond: 25 },
+      aggressive: { bronze: 20, silver: 30, gold: 40, diamond: 50 },
+      // Dominant lifts the FLOOR. It is not "pay your best guests more" —
+      // it is "pay everyone close to the top": a Bronze guest goes 20 → 40
+      // and the whole ladder compresses upward into a narrow band.
       //
       // Additive by construction (additivityError blocks Save otherwise):
-      // floor 40, class steps 0/5/10/15, one plan step of 15 for every class.
-      // Strictly above Aggressive in seven of eight cells; the eighth is the
-      // system's maximum, where nothing can be above anything.
-      dominant: {
-        bronze: { free: 40, premium: 55 },
-        silver: { free: 45, premium: 60 },
-        gold: { free: 50, premium: 65 },
-        diamond: { free: 55, premium: 70 },
-      },
+      // floor 40, class steps 0/5/10/15. Strictly above Aggressive at every
+      // class.
+      dominant: { bronze: 40, silver: 45, gold: 50, diamond: 55 },
     },
     bonuses: {
       conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
@@ -301,11 +263,7 @@ export const DEFAULT_PROMOS: PromosConfig = {
     },
   },
   orders: {
-    base: {
-      conservative: { free: 5, premium: 10 },
-      aggressive: { free: 10, premium: 15 },
-      dominant: { free: 15, premium: 20 },
-    },
+    base: { conservative: 5, aggressive: 10, dominant: 15 },
     bonuses: {
       conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
       aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
@@ -328,8 +286,6 @@ const isStrategy = (v: unknown): v is StrategyKey =>
   (STRATEGY_KEYS as readonly unknown[]).includes(v);
 const isClass = (v: unknown): v is ClassKey =>
   (CLASS_KEYS as readonly unknown[]).includes(v);
-const isPlan = (v: unknown): v is PlanKey =>
-  (PLAN_KEYS as readonly unknown[]).includes(v);
 
 function coerceOneBonusSet(raw: unknown, d: ContextBonuses): ContextBonuses {
   const b = (raw ?? {}) as Record<string, unknown>;
@@ -358,11 +314,11 @@ function coerceBonuses(raw: unknown, d: StrategyBonuses): StrategyBonuses {
 }
 
 /**
- * Coerce whatever came off the wire into a complete v11 config. Lenient by
+ * Coerce whatever came off the wire into a complete v12 config. Lenient by
  * design (the MESITA-804 lesson): unknown keys drop, gaps fall back to the
- * defaults, every rate snaps to the grid. A stored v10 blob is migrated
- * rather than discarded, so the first load after deploy shows the operator's
- * real numbers instead of the launch defaults.
+ * defaults, every rate snaps to the grid. A stored v10 or v11 blob is
+ * migrated rather than discarded, so the first load after deploy shows the
+ * operator's real numbers instead of the launch defaults.
  */
 export function coercePromosConfig(raw: unknown): PromosConfig {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -373,6 +329,12 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
   // A v10 blob (or anything still carrying a v10-shaped `base`) migrates.
   if (r.version === 10 || (r.base != null && r.visits == null)) {
     return migrateV10(r);
+  }
+  // A v11 blob is recognised by its version, or by a class row that is an
+  // object (the plan level) rather than a number — a hand-edited app_config
+  // row can lose `version`.
+  if (r.version === 11 || hasPlanLevel(r)) {
+    return migrateV11(r);
   }
 
   const d = DEFAULT_PROMOS;
@@ -386,14 +348,9 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
       rawVisitsBase as Record<string, unknown>,
     )) {
       if (!isStrategy(s) || !byClass || typeof byClass !== "object") continue;
-      for (const [c, byPlan] of Object.entries(
-        byClass as Record<string, unknown>,
-      )) {
-        if (!isClass(c) || !byPlan || typeof byPlan !== "object") continue;
-        for (const [p, v] of Object.entries(byPlan as Record<string, unknown>)) {
-          if (!isPlan(p)) continue;
-          visitsBase[s][c][p] = snapRate(v, d.visits.base[s][c][p]);
-        }
+      for (const [c, v] of Object.entries(byClass as Record<string, unknown>)) {
+        if (!isClass(c)) continue;
+        visitsBase[s][c] = snapRate(v, d.visits.base[s][c]);
       }
     }
   }
@@ -401,19 +358,16 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
   const ordersBase = structuredClone(d.orders.base);
   const rawOrdersBase = ordersRaw.base;
   if (rawOrdersBase && typeof rawOrdersBase === "object") {
-    for (const [s, byPlan] of Object.entries(
+    for (const [s, v] of Object.entries(
       rawOrdersBase as Record<string, unknown>,
     )) {
-      if (!isStrategy(s) || !byPlan || typeof byPlan !== "object") continue;
-      for (const [p, v] of Object.entries(byPlan as Record<string, unknown>)) {
-        if (!isPlan(p)) continue;
-        ordersBase[s][p] = snapRate(v, d.orders.base[s][p]);
-      }
+      if (!isStrategy(s)) continue;
+      ordersBase[s] = snapRate(v, d.orders.base[s]);
     }
   }
 
   return {
-    version: 11,
+    version: 12,
     visits: {
       base: visitsBase,
       bonuses: coerceBonuses(visitsRaw.bonuses, d.visits.bonuses),
@@ -429,24 +383,85 @@ export function coercePromosConfig(raw: unknown): PromosConfig {
   };
 }
 
-// ── v10 → v11 migration ──────────────────────────────────────────────────
+// ── Migrations into v12 ──────────────────────────────────────────────────
 //
-// The old four-class row set carried BOTH axes at once. Splitting them:
+// v11 → v12 keeps the FREE cell of every (strategy, class) and drops every
+// premium cell: free is what every guest was actually paying, so nothing
+// moves. Orders, which priced plan alone, keeps its free rate as the one
+// scalar.
 //
-//   standard   → bronze  · free       influencer → silver  · free
-//   premium    → bronze  · premium    aura       → diamond · free
+// v10 → v12 maps the old four-class row set onto classes:
 //
-// so the Premium PLAN uplift is exactly what the old `premium` class row
-// paid over `standard`, and it carries across every class. Gold — a class
-// with no v10 ancestor — interpolates between silver and diamond. The
-// Influencer story override is DROPPED: it keyed on a class that no longer
-// exists, and v2 prices no per-class bonus.
+//   standard → bronze    influencer → silver    aura → diamond
+//
+// and DROPS `premium` outright. That row was the subscription wearing a class
+// costume, and v12 does not price the plan, so folding it in as an uplift
+// would smuggle the deleted axis back. Gold — a class with no v10 ancestor —
+// interpolates between silver and diamond. The Influencer story override is
+// dropped too: it keyed on a class that no longer exists.
 
 type LegacyClassKey = "standard" | "influencer" | "premium" | "aura";
 
 /** Snap to the 5% grid without the [5,70] floor/ceiling clamp of snapRate. */
 function midpoint(a: number, b: number): number {
   return Math.round((a + b) / 2 / RATE_STEP) * RATE_STEP;
+}
+
+function hasPlanLevel(r: Record<string, unknown>): boolean {
+  const visits = r.visits;
+  if (!visits || typeof visits !== "object") return false;
+  const base = (visits as Record<string, unknown>).base;
+  if (!base || typeof base !== "object") return false;
+  for (const byClass of Object.values(base as Record<string, unknown>)) {
+    if (!byClass || typeof byClass !== "object") continue;
+    for (const cell of Object.values(byClass as Record<string, unknown>)) {
+      if (cell && typeof cell === "object") return true;
+    }
+  }
+  return false;
+}
+
+function migrateV11(r: Record<string, unknown>): PromosConfig {
+  const d = DEFAULT_PROMOS;
+  const visitsRaw = (r.visits ?? {}) as Record<string, unknown>;
+  const ordersRaw = (r.orders ?? {}) as Record<string, unknown>;
+
+  const freeCell = (raw: unknown, s: StrategyKey, c: ClassKey): number => {
+    const byClass = ((raw ?? {}) as Record<string, unknown>)[s];
+    if (!byClass || typeof byClass !== "object") return d.visits.base[s][c];
+    const byPlan = (byClass as Record<string, unknown>)[c];
+    if (!byPlan || typeof byPlan !== "object") return d.visits.base[s][c];
+    return snapRate(
+      (byPlan as Record<string, unknown>).free,
+      d.visits.base[s][c],
+    );
+  };
+
+  const visitsBase = structuredClone(d.visits.base);
+  const ordersBase = structuredClone(d.orders.base);
+  for (const s of STRATEGY_KEYS) {
+    for (const cls of CLASS_KEYS) {
+      visitsBase[s][cls] = freeCell(visitsRaw.base, s, cls);
+    }
+    const row = ((ordersRaw.base ?? {}) as Record<string, unknown>)[s];
+    ordersBase[s] = row && typeof row === "object"
+      ? snapRate((row as Record<string, unknown>).free, d.orders.base[s])
+      : d.orders.base[s];
+  }
+
+  return {
+    version: 12,
+    visits: {
+      base: visitsBase,
+      bonuses: coerceBonuses(visitsRaw.bonuses, d.visits.bonuses),
+    },
+    orders: {
+      base: ordersBase,
+      bonuses: coerceBonuses(ordersRaw.bonuses, d.orders.bonuses),
+      soon: true,
+    },
+    cap: snapDiscountCap(r.cap),
+  };
 }
 
 function migrateV10(r: Record<string, unknown>): PromosConfig {
@@ -461,33 +476,16 @@ function migrateV10(r: Record<string, unknown>): PromosConfig {
 
   const visitsBase = structuredClone(d.visits.base);
   for (const s of STRATEGY_KEYS) {
-    const bronzeFree = snapRate(legacyAt(s, "standard"), d.visits.base[s].bronze.free);
-    const bronzePremium = snapRate(
-      legacyAt(s, "premium"),
-      d.visits.base[s].bronze.premium,
-    );
-    const silverFree = snapRate(
-      legacyAt(s, "influencer"),
-      d.visits.base[s].silver.free,
-    );
-    const diamondFree = snapRate(legacyAt(s, "aura"), d.visits.base[s].diamond.free);
+    const bronze = snapRate(legacyAt(s, "standard"), d.visits.base[s].bronze);
+    const silver = snapRate(legacyAt(s, "influencer"), d.visits.base[s].silver);
+    const diamond = snapRate(legacyAt(s, "aura"), d.visits.base[s].diamond);
     // Gold has no v10 ancestor — split the silver→diamond gap.
-    const goldFree = midpoint(silverFree, diamondFree);
-    // The Premium PLAN uplift is what `premium` used to pay over `standard`.
-    const uplift = Math.max(0, bronzePremium - bronzeFree);
-    const withUplift = (free: number) => Math.min(RATE_MAX, free + uplift);
-
-    visitsBase[s] = {
-      bronze: { free: bronzeFree, premium: bronzePremium },
-      silver: { free: silverFree, premium: withUplift(silverFree) },
-      gold: { free: goldFree, premium: withUplift(goldFree) },
-      diamond: { free: diamondFree, premium: withUplift(diamondFree) },
-    };
+    visitsBase[s] = { bronze, silver, gold: midpoint(silver, diamond), diamond };
   }
 
   const b = (r.bonuses ?? {}) as Record<string, unknown>;
   return {
-    version: 11,
+    version: 12,
     visits: {
       base: visitsBase,
       // story_influencer is deliberately not carried across.
@@ -500,14 +498,13 @@ function migrateV10(r: Record<string, unknown>): PromosConfig {
 
 // ── Derived reads ────────────────────────────────────────────────────────
 
-/** The standing rate a (class, plan) pays on a visit under this strategy. */
+/** The standing rate a class pays on a visit under this strategy. */
 export function visitsBaseFor(
   cfg: PromosConfig,
   strategy: StrategyKey,
   cls: ClassKey,
-  plan: PlanKey,
 ): number {
-  return cfg.visits.base[strategy][cls][plan];
+  return cfg.visits.base[strategy][cls];
 }
 
 /** The bonus an action adds in a context (standing adds nothing). */
@@ -530,8 +527,8 @@ function bonusForAction(
 }
 
 /**
- * The additive total a (class, plan) guest earns for this single action on a
- * VISIT under this strategy — base + that action's bonus. A real bill stacks
+ * The additive total a class of guest earns for this single action on a VISIT
+ * under this strategy — base + that action's bonus. A real bill stacks
  * several bonuses on one base; this per-action figure is what the preview
  * table shows and what the legacy best-of mirror cell stores.
  */
@@ -539,53 +536,51 @@ export function totalFor(
   cfg: PromosConfig,
   strategy: StrategyKey,
   cls: ClassKey,
-  plan: PlanKey,
   action: ActionKey,
 ): number {
   return (
-    visitsBaseFor(cfg, strategy, cls, plan) +
+    visitsBaseFor(cfg, strategy, cls) +
     bonusForAction(cfg.visits.bonuses[strategy], action)
   );
 }
 
-// ── Components: the five-box editor's view of the stored grid ────────────
+// ── Components: the editor's view of the stored grid ─────────────────────
 //
-// The page edits COMPONENTS; storage keeps the GRID. The two are isomorphic
-// as long as the grid is additive:
+// The page edits COMPONENTS; storage keeps the GRID:
 //
-//   grid[s][class][plan] = base[s] + classStep[s][class] + planStep[s][plan]
+//   grid[s][class] = base[s] + classStep[s][class]
 //
-// `bronze` and `free` are the zero rungs by definition, so a component set
-// has 1 + 3 + 1 = 5 real knobs per strategy instead of 8 grid cells.
+// `bronze` is the zero rung by definition, so a component set has 1 + 3 = 4
+// real knobs per strategy for 4 grid cells. With the plan axis gone the two
+// representations are trivially isomorphic — see additivityError.
 //
-// STORAGE IS NOT CHANGING (D12). Deriving on read and expanding on write is
-// only safe because exactly one writer exists and it validates: see
-// additivityError below and its mirror in promos-v11-normalize.ts. An
-// off-ladder grid is unstorable, so the editor can never mis-derive.
+// Deriving on read and expanding on write is only safe because exactly one
+// writer exists and it validates: see additivityError below and its mirror in
+// promos-normalize.ts. An inverted ladder is unstorable, so the editor can
+// never mis-derive.
+//
+// ORDERS HAS NO COMPONENTS ANY MORE. It was `base + planStep`; with plan gone
+// a remote row is one number, so the derive/expand pair for it was deleted
+// rather than kept as an identity function.
 
 export type VisitsComponents = Record<
   StrategyKey,
-  { base: number; class: Record<ClassKey, number>; plan: Record<PlanKey, number> }
->;
-export type OrdersComponents = Record<
-  StrategyKey,
-  { base: number; plan: Record<PlanKey, number> }
+  { base: number; class: Record<ClassKey, number> }
 >;
 
-/** Grid → components. Exact when the grid is additive; the guard makes it so. */
+/** Grid → components. Exact for any on-grid value. */
 export function deriveVisits(base: VisitsBase): VisitsComponents {
   const out = {} as VisitsComponents;
   for (const s of STRATEGY_KEYS) {
-    const floor = base[s].bronze.free;
+    const floor = base[s].bronze;
     out[s] = {
       base: floor,
       class: {
         bronze: 0,
-        silver: base[s].silver.free - floor,
-        gold: base[s].gold.free - floor,
-        diamond: base[s].diamond.free - floor,
+        silver: base[s].silver - floor,
+        gold: base[s].gold - floor,
+        diamond: base[s].diamond - floor,
       },
-      plan: { free: 0, premium: base[s].bronze.premium - floor },
     };
   }
   return out;
@@ -598,75 +593,34 @@ export function expandVisits(components: VisitsComponents): VisitsBase {
     const c = components[s];
     out[s] = {} as VisitsBase[StrategyKey];
     for (const cls of CLASS_KEYS) {
-      out[s][cls] = {} as Record<PlanKey, number>;
-      for (const p of PLAN_KEYS) {
-        out[s][cls][p] = Math.max(
-          0,
-          Math.min(RATE_MAX, c.base + c.class[cls] + c.plan[p]),
-        );
-      }
+      out[s][cls] = Math.max(0, Math.min(RATE_MAX, c.base + c.class[cls]));
     }
-  }
-  return out;
-}
-
-export function deriveOrders(base: OrdersBase): OrdersComponents {
-  const out = {} as OrdersComponents;
-  for (const s of STRATEGY_KEYS) {
-    out[s] = {
-      base: base[s].free,
-      plan: { free: 0, premium: base[s].premium - base[s].free },
-    };
-  }
-  return out;
-}
-
-export function expandOrders(components: OrdersComponents): OrdersBase {
-  const out = {} as OrdersBase;
-  for (const s of STRATEGY_KEYS) {
-    const c = components[s];
-    out[s] = {
-      free: Math.max(0, Math.min(RATE_MAX, c.base + c.plan.free)),
-      premium: Math.max(0, Math.min(RATE_MAX, c.base + c.plan.premium)),
-    };
   }
   return out;
 }
 
 /**
- * THE GUARD. Returns null when `base` is a legal component grid, else the
- * reason it is not. Two conditions, and the second is the subtle one:
+ * THE GUARD. Returns null when `base` is a legal ladder, else the reason it
+ * is not.
  *
- *  1. ADDITIVE — expand(derive(g)) must reproduce g exactly. A cell that
- *     sits off the ladder cannot be represented by components, so storing it
- *     would make the five-box editor render something that is not the truth.
+ * v11 checked TWO things: that expand(derive(g)) reproduced g exactly, and
+ * that the ladder did not invert. The first check DIED WITH THE PLAN AXIS
+ * (MESITA-1705) and is deliberately not carried forward — with one axis the
+ * class offset is derived from the cell itself, so `base + (cell - base)`
+ * reproduces every value snapRate can emit. Keeping it would have been a
+ * check that cannot fail.
  *
- *  2. MONOTONIC — class steps are OFFSETS FROM BASE, not rung-to-rung
- *     deltas, so "every step >= 0" does NOT prevent inversion: silver +15
- *     with gold +5 are both non-negative and still invert the ladder. The
- *     real invariant is that the offsets never decrease as the class climbs,
- *     and that the premium plan never pays less than free.
+ * MONOTONICITY is what was always doing the work. Class steps are OFFSETS
+ * FROM BASE, not rung-to-rung deltas, so "every step >= 0" does NOT prevent
+ * inversion: silver +15 with gold +5 are both non-negative and still invert
+ * the ladder. The invariant is that offsets never decrease as the class
+ * climbs — a guest must never lose money by moving up.
  *
- * This is what lets the class-order and plan-uplift modelWarnings retire:
- * behind the guard those states are unstorable rather than merely reported.
+ * The name stays `additivityError` because it is what PromosState and the EF
+ * normalizer both call; the twin in promos-normalize.ts carries the same
+ * shape.
  */
 export function additivityError(base: VisitsBase): string | null {
-  const rebuilt = expandVisits(deriveVisits(base));
-  for (const s of STRATEGY_KEYS) {
-    for (const cls of CLASS_KEYS) {
-      for (const p of PLAN_KEYS) {
-        if (rebuilt[s][cls][p] !== base[s][cls][p]) {
-          return (
-            `${STRATEGY_META[s].name} · ${CLASS_META[cls].name} · ${PLAN_META[p].name} ` +
-            `is ${base[s][cls][p]}%, but base + class + plan resolves to ` +
-            `${rebuilt[s][cls][p]}%. Rates are built from components; a cell ` +
-            `cannot be set on its own.`
-          );
-        }
-      }
-    }
-  }
-
   const components = deriveVisits(base);
   for (const s of STRATEGY_KEYS) {
     const c = components[s];
@@ -681,12 +635,6 @@ export function additivityError(base: VisitsBase): string | null {
         );
       }
     }
-    if (c.plan.premium < 0) {
-      return (
-        `${STRATEGY_META[s].name}: Premium adds ${c.plan.premium}% — ` +
-        `the subscription would cost the guest money.`
-      );
-    }
   }
   return null;
 }
@@ -696,9 +644,9 @@ export function additivityError(base: VisitsBase): string | null {
 // The page REPORTS invariant breaks instead of silently repairing them:
 // these are money, and the operator decides.
 //
-// Only ONE check survives. Class monotonicity and the plan uplift used to
-// live here as warnings; behind additivityError they are UNSTORABLE, so
-// warning about them would be theatre. Google-vs-Story is different: it is a
+// Only ONE check survives. Class monotonicity used to live here as a warning;
+// behind additivityError it is UNSTORABLE, so warning about it would be
+// theatre. Google-vs-Story is different: it is a
 // policy the operator can legitimately break (Notion §2.8.4 says the one-shot
 // rung must out-pay the repeatable one), so it is reported, never enforced.
 

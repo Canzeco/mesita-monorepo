@@ -16,7 +16,7 @@ import { currencyPrefix } from "@/lib/place-price";
 // The rate is the ENGINE's (MESITA-1019). It used to be resolved here from
 // the place's four v4 rate columns (welcome_/default_ × free/premium), which
 // stopped being prices when v10 additive shipped: those columns carry
-// strategy IDENTITY and the price moved into `promos_config.v11`. The
+// strategy IDENTITY and the price moved into `promos_config.v12`. The
 // mismatch was visible on one screen — an aggressive place quoted a
 // bronze·free guest "Up to 30%" in this chip and "Up to 60%" in the Rewards
 // box below it, and 30 was neither the guaranteed base (20) nor the ceiling

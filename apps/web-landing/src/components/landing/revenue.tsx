@@ -9,8 +9,8 @@ const STREAMS: {
 }[] = [
   {
     title: "Consumer Subscription",
-    body: "Premium, monthly, recurring. Free is complete — discovery, agents and rewards; Premium raises the rewards everywhere.",
-    never: "Your plan is private — a place never learns who pays.",
+    body: "Premium, monthly, recurring. Free is complete — discovery, agents and the full reward rate; Premium adds reservations, better recommendations and subscriber terms on Credits.",
+    never: "Rewards are never gated behind it — the discount a place pays is the same whether you subscribe or not.",
     Icon: BadgeCheck,
   },
   {

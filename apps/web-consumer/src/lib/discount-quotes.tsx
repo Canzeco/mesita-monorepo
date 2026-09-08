@@ -19,7 +19,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // The promo chip renders on four surfaces — swipe card, favorites tile,
 // catalog tile, place-detail header — and each one used to resolve its own
 // percentage from the place's four v4 rate columns. Those columns carry
-// strategy IDENTITY, not price; the price lives in `promos_config.v11`, which
+// strategy IDENTITY, not price; the price lives in `promos_config.v12`, which
 // only the server reads. So the number has to come from
 // `consumer-web-get-discount-quote`, and the chip can't be the thing that
 // calls it once per card.

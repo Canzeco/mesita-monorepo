@@ -128,7 +128,7 @@ export async function apiCreateTicket(
 }
 
 // The guest's REAL reward breakdown for one place, resolved by the live engine
-// config (MESITA-992 v10 additive). `reward-segments.ts` is the PROGRAM ladder
+// config (MESITA-1705 v12 additive). `reward-segments.ts` is the PROGRAM ladder
 // — education about the shape of the program — and its static numbers stopped
 // matching the bill when v10 shipped. Anything that quotes a guest a rate for a
 // SPECIFIC place must use this, never the static table.
@@ -146,7 +146,7 @@ export type RewardQuote = {
    * public shape, from the same live config that prices the bill, so the
    * Rewards tab never reconstructs it from the static CLASS_STEP ladder.
    *
-   * KEYED BY THE FOUR LEGACY SEGMENTS for the best-of fallback. v11 quotes
+   * KEYED BY THE FOUR LEGACY SEGMENTS for the best-of fallback. v12 quotes
    * carry `breakdown.classes` instead — Bronze · Silver · Gold · Diamond
    * standing rates, so Gold is a priced rung, not a star.
    *
@@ -157,18 +157,18 @@ export type RewardQuote = {
   ladder?: Partial<Record<LegacyClassKey, number>>;
   /**
    * THE TICKET v4's Reward lanes (MESITA-1089): the base decomposed on the
-   * SAME v11 grid the bill pays — automatic = the bronze·free floor, each
-   * class chip = that class's free-plan rate over the floor, planUplift =
-   * the caller's own premium delta. automatic + classes[cls] + (plan ===
-   * "premium" ? planUplift : 0) === base, by construction. Absent on legacy
-   * best-of configs and on stale EFs — render the flat receipt then.
+   * SAME v12 grid the bill pays — automatic = the bronze floor, each class
+   * chip = that class's rate over the floor. automatic + classes[cls] ===
+   * base, by construction. Absent on legacy best-of configs and on stale
+   * EFs — render the flat receipt then.
+   *
+   * `plan` and `planUplift` were here until MESITA-1705. The plan no longer
+   * prices anything, so there is no lane to render.
    */
   breakdown?: {
     automatic: number;
     classes: { bronze: number; silver: number; gold: number; diamond: number };
     cls: "bronze" | "silver" | "gold" | "diamond";
-    plan: "free" | "premium";
-    planUplift: number;
   };
   storyEligible: boolean;
   cap: number;

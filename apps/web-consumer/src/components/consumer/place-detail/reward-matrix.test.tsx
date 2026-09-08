@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import type { RewardQuote } from "@/lib/api/tickets";
 
-import { BaseRow, BonusList, ClassLadder, PlanRow } from "./reward-matrix";
+import { BaseRow, BonusList, ClassLadder } from "./reward-matrix";
 
 const QUOTE: RewardQuote = {
   strategy: "aggressive",
@@ -18,13 +18,11 @@ const QUOTE: RewardQuote = {
     automatic: 20,
     classes: { bronze: 0, silver: 10, gold: 20, diamond: 30 },
     cls: "diamond",
-    plan: "premium",
-    planUplift: 20,
   },
 };
 
 describe("the Rewards rate sheet names every priced rung", () => {
-  it("prints Base as the bronze·free floor", () => {
+  it("prints Base as the bronze floor", () => {
     const html = renderToStaticMarkup(<BaseRow quote={QUOTE} />);
     expect(html).toContain("Base");
     expect(html).toContain("20%");
@@ -42,38 +40,16 @@ describe("the Rewards rate sheet names every priced rung", () => {
     expect(html).not.toContain("50%");
   });
 
-  it("prints Free and Premium, using planUplift not ladder.premium", () => {
-    const html = renderToStaticMarkup(
-      <PlanRow quote={{ ...QUOTE, ladder: { premium: 40 } }} plan="premium" />,
-    );
-    expect(html).toContain("Free");
-    expect(html).toContain("Premium");
-    expect(html).toContain("+20%");
-    expect(html).not.toContain("40%");
-  });
-
-  it("makes the Premium row a button when free with an uplift to sell", () => {
-    const html = renderToStaticMarkup(
-      <PlanRow quote={QUOTE} plan="free" onPremiumTap={() => {}} />,
-    );
-    expect(html).toContain("<button");
-  });
-
-  it("leaves the Premium row inert already on Premium, even with uplift", () => {
-    const html = renderToStaticMarkup(
-      <PlanRow quote={QUOTE} plan="premium" onPremiumTap={() => {}} />,
-    );
-    expect(html).not.toContain("<button");
-  });
-
-  it("leaves the Premium row inert with nothing to sell", () => {
-    const html = renderToStaticMarkup(
-      <PlanRow
-        quote={{ ...QUOTE, breakdown: { ...QUOTE.breakdown!, planUplift: 0 } }}
-        plan="free"
-        onPremiumTap={() => {}}
-      />,
-    );
+  // A Free/Premium pair sat between the class ladder and the bonuses, and its
+  // Premium row was the sheet's one button (MESITA-1620). MESITA-1705 removed
+  // the plan from pricing, so the row could only ever have shown +0%; PlanRow
+  // is gone with it. Guarded structurally so it cannot come back unnoticed.
+  it("names no plan rung and offers no button — the sheet is read-only", () => {
+    const html =
+      renderToStaticMarkup(<BaseRow quote={QUOTE} />) +
+      renderToStaticMarkup(<ClassLadder quote={QUOTE} classKey="diamond" />) +
+      renderToStaticMarkup(<BonusList quote={QUOTE} />);
+    expect(html).not.toContain("Premium");
     expect(html).not.toContain("<button");
   });
 

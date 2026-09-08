@@ -1,6 +1,5 @@
 import {
   Instagram,
-  Lock,
   type LucideIcon,
   QrCode,
   ShieldCheck,
@@ -42,12 +41,10 @@ const REWARDS: {
     why: "Presence. The guests who create the atmosphere everyone else came for, priced accordingly.",
     Icon: Star,
   },
-  {
-    label: "Plan",
-    when: "Free / Premium",
-    why: "Commitment. Private by design — the floor never learns who pays, so it never feels unfair.",
-    Icon: Lock,
-  },
+  // A fourth "Plan — Free / Premium" rung sat here. The plan stopped pricing
+  // rewards in MESITA-1705, so the reward stack is three groups: base and
+  // welcome, class, sharing. Premium is still sold; it just does not buy a
+  // bigger discount.
 ];
 
 // The three sharing actions. Verified in the app BEFORE the discount
