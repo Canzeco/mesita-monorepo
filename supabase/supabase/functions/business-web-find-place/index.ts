@@ -9,7 +9,7 @@
 //   web_listed_unclaimed     — place exists, listing_type='web', no
 //                              owner. Caller can submit a verification.
 //   pending_by_me            — place exists, no owner, caller has a
-//                              pending project_verifications row.
+//                              pending place_verifications row.
 //   pending_by_other         — place exists, no owner, someone else has
 //                              a pending verification (caller can still
 //                              submit their own).
@@ -85,9 +85,9 @@ Deno.serve(async (req) => {
     return json({ ok: true, state: "not_in_mesita", place: null });
   }
 
-  // 2. Owner check via project_members.
+  // 2. Owner check via place_members.
   const { data: owner } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("manager_id, role")
     .eq("place_id", place.id)
     .eq("role", "owner")
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
 
   // 3. Pending claim by this caller.
   const { data: pendingForMe } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select(
       "id, method, payload, requester_email, state, reject_reason, decided_at, decided_via, created_at",
     )
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
 
   // 4. Pending claim from a different user.
   const { data: pendingByOther } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select("id")
     .eq("place_id", place.id)
     .eq("state", "pending")

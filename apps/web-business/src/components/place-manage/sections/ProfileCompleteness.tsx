@@ -118,7 +118,7 @@ function scrollToSection(id: string) {
 }
 
 export function ProfileCompleteness({ place }: { place: AdminPlace }) {
-  const { projectId } = usePlaceContext();
+  const { placeId } = usePlaceContext();
   const missing = CHECKS.filter((c) => !c.done(place));
   const pct = 100 - missing.reduce((sum, c) => sum + c.weight, 0);
   const complete = missing.length === 0;
@@ -203,7 +203,7 @@ export function ProfileCompleteness({ place }: { place: AdminPlace }) {
                   return (
                     <CrossTabLink
                       key={c.label}
-                      href={placeSectionHref(projectId, "promos")}
+                      href={placeSectionHref(placeId, "promos")}
                       className={CHIP_CLASS + " inline-flex items-center gap-1"}
                     >
                       {c.hint}

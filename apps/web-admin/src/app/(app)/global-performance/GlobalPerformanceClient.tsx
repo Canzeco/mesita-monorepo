@@ -36,14 +36,14 @@ const AUTO_REFRESH_MS = 30_000;
 
 export function GlobalPerformanceClient({
   initial,
-  projectId,
+  placeId,
   types,
   bleed = true,
 }: {
   initial: NotificationsPayload;
   /** Scope the feed to one place (per-place Performance tab). Hides the
    *  domain tabs + place-name filter and threads the id into refreshes. */
-  projectId?: string;
+  placeId?: string;
   /** Narrow the filter segments (defaults to every known type). */
   types?: NotificationType[];
   /** Break OUT of the parent's page padding so the filter bar spans edge to
@@ -79,7 +79,7 @@ export function GlobalPerformanceClient({
     const fetchTypes = typesForFetch(domain, includeSteps, types);
     startRefresh(async () => {
       const r = await listNotifications(domain, {
-        ...(projectId ? { projectId } : {}),
+        ...(placeId ? { placeId } : {}),
         ...(fetchTypes && fetchTypes.length > 0 ? { types: fetchTypes } : {}),
       });
       inFlightRef.current = false;
@@ -89,7 +89,7 @@ export function GlobalPerformanceClient({
       }
       setData(r.data);
     });
-  }, [projectId, types, domain, includeSteps]);
+  }, [placeId, types, domain, includeSteps]);
 
   useEffect(() => {
     const iv = setInterval(() => {
@@ -163,7 +163,7 @@ export function GlobalPerformanceClient({
         updatedLabel={updatedLabel}
         pending={pending}
         types={types}
-        showDomains={!projectId}
+        showDomains={!placeId}
         onDomainChange={onDomainChange}
         onTypeFilterChange={onTypeFilterChange}
         onStateFilterChange={setStateFilter}
@@ -173,7 +173,7 @@ export function GlobalPerformanceClient({
             setTypeFilter("all");
           }
         }}
-        onPlaceQueryChange={projectId ? undefined : setPlaceQuery}
+        onPlaceQueryChange={placeId ? undefined : setPlaceQuery}
         onRefresh={refresh}
       />
 

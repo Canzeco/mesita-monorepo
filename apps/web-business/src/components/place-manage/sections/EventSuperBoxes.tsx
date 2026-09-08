@@ -282,7 +282,7 @@ export function EventSuperBoxes({
     setError(null);
     startRefresh(async () => {
       const r = await listNotifications("all", {
-        projectId: place.id,
+        placeId: place.id,
         types: SUPER_TYPES,
         limit: 150,
       });
@@ -298,7 +298,7 @@ export function EventSuperBoxes({
   useEffect(() => {
     let alive = true;
     listNotifications("all", {
-      projectId: place.id,
+      placeId: place.id,
       types: SUPER_TYPES,
       limit: 150,
     }).then((r) => {

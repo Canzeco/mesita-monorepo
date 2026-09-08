@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   let counts = new Map<string, number>();
   if (ids.length) {
     const { data: places } = await admin
-      .from("projects")
+      .from("places")
       .select("organization_id")
       .in("organization_id", ids);
     counts = ((places ?? []) as { organization_id: string }[]).reduce(

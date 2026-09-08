@@ -114,7 +114,7 @@ export type Place = {
   reward_cap_mxn?: number | null;
   /**
    * True while Intaker is still building the profile
-   * (`projects.content_state` ∈ {queued, generating}). Drives the
+   * (`places.content_state` ∈ {queued, generating}). Drives the
    * Enriching chip on swipe / catalog cards — same signal as place detail.
    */
   is_enriching?: boolean;

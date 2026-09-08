@@ -39,7 +39,7 @@ import {
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
-  markProjectGenerating,
+  markPlaceGenerating,
   openEnrichmentRun,
   releaseResearchRow,
   seedPlaceResearch,
@@ -63,7 +63,7 @@ export {
   failResearchRow,
   isEnrichingStage,
   loadClaimedRow,
-  markProjectGenerating,
+  markPlaceGenerating,
   openEnrichmentRun,
   releaseResearchRow,
   seedPlaceResearch,
@@ -136,7 +136,7 @@ export type AnalysisPayload = {
 // failure never breaks an enrichment run.
 export async function reportEnrichmentStep(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   // `SX` is kept in the union for historical rows. New stamps are `S<n>`.
   step: `S${number}` | "SX",
   stepName: string,
@@ -146,7 +146,7 @@ export async function reportEnrichmentStep(
 ): Promise<void> {
   try {
     const { error } = await admin.from("place_enrichment_events").insert({
-      place_id: projectId,
+      place_id: placeId,
       step,
       step_name: stepName.slice(0, 80),
       state,
@@ -205,11 +205,11 @@ export function serveEnrichStage(
 
     const bodyRes = await readJson<{ place_id?: string }>(req);
     if (!bodyRes.ok) return bodyRes.response;
-    const projectId = (bodyRes.body.place_id ?? "").toString().trim();
-    if (!projectId) return json({ ok: false, error: "place_id is required" }, 400);
+    const placeId = (bodyRes.body.place_id ?? "").toString().trim();
+    if (!placeId) return json({ ok: false, error: "place_id is required" }, 400);
 
     const admin = adminClient(envRes.env);
-    const rowRes = await loadClaimedRow(admin, projectId, stage);
+    const rowRes = await loadClaimedRow(admin, placeId, stage);
     if (!rowRes.ok) return json({ ok: false, error: rowRes.reason }, 409);
 
     runInBackground(
@@ -219,7 +219,7 @@ export function serveEnrichStage(
         // Cost-cap abort is terminal (MESITA-624) — retrying cannot unspend
         // and would burn more budget. Everything else releases for retry.
         if (isEnrichCostCapError(err)) {
-          await reportEnrichmentStep(admin, projectId, STAGE_CRASH_STEP[stage] ?? "S1",
+          await reportEnrichmentStep(admin, placeId, STAGE_CRASH_STEP[stage] ?? "S1",
             `${stage}_cost_cap`, "failed",
             `Enrichment aborted — per-run cost cap hit: ${msg}`.slice(0, 490));
           // The cost cap is the one terminal that KNOWS the money and used to
@@ -227,7 +227,7 @@ export function serveEnrichStage(
           // was dropped, and because the failing stage never reaches its
           // advanceResearchStage the ledger snapshot never lands on
           // gathered.cost either. Structured, on the run row, once.
-          await failResearchRow(admin, projectId, msg.slice(0, 500), {
+          await failResearchRow(admin, placeId, msg.slice(0, 500), {
             runId: rowRes.row.run_id,
             stage,
             costUsd: err.spentUsd,
@@ -239,12 +239,12 @@ export function serveEnrichStage(
         // Surface the crash in the admin feed — silent crashes hid a wedged
         // pipeline for hours (MESITA-123). Beacon first: release must run
         // even though reportEnrichmentStep is already best-effort inside.
-        await reportEnrichmentStep(admin, projectId, STAGE_CRASH_STEP[stage] ?? "S1",
+        await reportEnrichmentStep(admin, placeId, STAGE_CRASH_STEP[stage] ?? "S1",
           `${stage}_crash`, "failed",
           `The ${stage} stage crashed and was released for retry — ${msg}`.slice(0, 490));
-        await releaseResearchRow(admin, projectId, `${stage}_crash: ${msg}`);
+        await releaseResearchRow(admin, placeId, `${stage}_crash: ${msg}`);
       }),
     );
-    return json({ ok: true, accepted: true, stage, place_id: projectId }, 202);
+    return json({ ok: true, accepted: true, stage, place_id: placeId }, 202);
   });
 }

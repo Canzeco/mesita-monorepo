@@ -9,7 +9,7 @@ export type Kind = "editor" | "editorInvite";
 export type LoadedTarget =
   | {
       ok: true;
-      projectId: string;
+      placeId: string;
       isSelfRemoval: boolean;
       targetIsOwner: boolean;
     }
@@ -24,7 +24,7 @@ export async function loadTarget(
   switch (kind) {
     case "editor": {
       const row = await admin
-        .from("project_members")
+        .from("place_members")
         .select("place_id, manager_id, role")
         .eq("id", id)
         .maybeSingle();
@@ -32,19 +32,19 @@ export async function loadTarget(
       if (!row.data) return notFound("Member not found.", 404);
       return {
         ok: true,
-        projectId: row.data.place_id,
+        placeId: row.data.place_id,
         isSelfRemoval: row.data.manager_id === callerId,
         targetIsOwner: row.data.role === "owner",
       };
     }
     case "editorInvite":
-      return await loadInvite(admin, "project_invites", id);
+      return await loadInvite(admin, "place_invites", id);
   }
 }
 
 export async function loadInvite(
   admin: SupabaseClient,
-  table: "project_invites",
+  table: "place_invites",
   id: string,
 ): Promise<LoadedTarget> {
   const row = await admin.from(table).select("place_id").eq("id", id).maybeSingle();
@@ -52,7 +52,7 @@ export async function loadInvite(
   if (!row.data) return notFound("Invite not found.", 404);
   return {
     ok: true,
-    projectId: row.data.place_id,
+    placeId: row.data.place_id,
     isSelfRemoval: false,
     targetIsOwner: false,
   };
@@ -65,8 +65,8 @@ export function notFound(error: string, status: number): { ok: false; response: 
 export async function deleteTarget(admin: SupabaseClient, kind: Kind, id: string) {
   switch (kind) {
     case "editor":
-      return await admin.from("project_members").delete().eq("id", id);
+      return await admin.from("place_members").delete().eq("id", id);
     case "editorInvite":
-      return await admin.from("project_invites").delete().eq("id", id);
+      return await admin.from("place_invites").delete().eq("id", id);
   }
 }

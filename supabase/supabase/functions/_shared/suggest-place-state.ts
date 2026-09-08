@@ -11,7 +11,7 @@ export async function statesForPlaces(
 ): Promise<Map<string, PredictionState>> {
   if (rows.length === 0) return new Map();
   const { data, error } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("place_id, manager_id")
     .in("place_id", rows.map((r) => r.id))
     .eq("role", "owner");

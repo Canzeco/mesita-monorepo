@@ -17,7 +17,7 @@
 //                            read from public.place_enrichment_events, written
 //                            by the enrich-place stage EFs as the run progresses
 //   atlas.ownership_claimed  someone submitted an ownership proof
-//                            (public.project_verifications) for a place
+//                            (public.place_verifications) for a place
 //
 // The envelope is category-agnostic so future categories slot in without a
 // client rewrite: each item is { id, category, type, occurredAt, place,
@@ -43,27 +43,27 @@
 //
 // Filters: `category` narrows to a category; `types` narrows to specific
 // event types server-side (skips whole source reads — step events flood the
-// feed, so the client can ask for just what it shows); `projectId` narrows
+// feed, so the client can ask for just what it shows); `placeId` narrows
 // every source to one place; `q` is a case-insensitive place-name substring
 // filter applied after the merge (the per-source window is already capped).
 //
 // "Who called it" for a creation: places don't persist the caller at insert
 // time (business-web-create-place deliberately leaves the place unowned until an
 // ownership claim is approved), so the closest honest signal is the place's
-// current owner — resolved here via project_members(role=owner) → managers.
+// current owner — resolved here via place_members(role=owner) → managers.
 // Unclaimed places report actor = null and meta.claimed = false. The exact
 // claimant, when it exists, is its own ownership_claimed event.
 //
 // Place embedding — each source resolves the place profile through the FK it
 // actually has (PostgREST embeds follow declared FKs only):
-//   • place_enrichment_events.place_id → places(id)      → embed places directly
-//   • project_verifications.project_id  → projects(id)     → hop projects → places
-// projects (the owned entity) shares its PK 1:1 with places and carries the
-// `slug`; the place profile columns (name/address/…) live on places. So the
-// claims source embeds `projects(id, slug, places(…))` and flattens the two
-// halves back into one PlaceRef. Do NOT embed `places` straight off
-// project_verifications — there is no such FK and PostgREST 500s with
-// "Could not find a relationship between 'project_verifications' and 'places'".
+//   • place_enrichment_events.place_id → place_profiles(id) → embed place_profiles directly
+//   • place_verifications.place_id     → places(id)          → hop places → place_profiles
+// places (the owned entity) shares its PK 1:1 with place_profiles and carries the
+// `slug`; the place profile columns (name/address/…) live on place_profiles. So the
+// claims source embeds `places(id, slug, place_profiles(…))` and flattens the two
+// halves back into one PlaceRef. Do NOT embed `place_profiles` straight off
+// place_verifications — there is no such FK and PostgREST 500s with
+// "Could not find a relationship between 'place_verifications' and 'place_profiles'".
 //
 // Auth: caller's JWT email must be in public.super_admins.
 //
@@ -82,8 +82,8 @@ import {
   one,
   placeRef,
   type PlaceShape,
-  projectPlaceRef,
-  type ProjectPlaceShape,
+  placeWithSlugRef,
+  type PlaceWithSlugShape,
   truncate,
 } from "./notification-shapes.ts";
 import {
@@ -113,11 +113,11 @@ const ALL_TYPES: NotificationType[] = [
 
 const ALL_CATEGORIES: Category[] = ["atlas", "consumer", "rewards", "reservations"];
 
-// Consumer-activity sources all FK the projects entity (shared PK with
-// places) — same hop-through-projects embed the claims source uses, plus the
+// Consumer-activity sources all FK the places entity (shared PK with
+// place_profiles) — same hop-through-places embed the claims source uses, plus the
 // consumer for the actor line.
-const PROJECT_EMBED =
-  "project:projects(id, slug, place:place_profiles(name, address, category_label, google_place_id))";
+const PLACE_ENTITY_EMBED =
+  "placeEntity:places(id, slug, place:place_profiles(name, address, category_label, google_place_id))";
 const CONSUMER_EMBED =
   "consumer:consumers(full_name, first_name, last_name, instagram_handle)";
 
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     (category === "all" || t.startsWith(`${category}.`)) &&
     (typesFilter.length === 0 || typesFilter.includes(t));
   const wantAtlas = category === "all" || category === "atlas";
-  const projectId = readPlaceIdAlias(body) || null;
+  const placeId = readPlaceIdAlias(body) || null;
   const q = (body.q ?? "").toString().trim().toLowerCase() || null;
 
   const items: NotificationItem[] = [];
@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
           )
           .order("created_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("id", projectId);
+        if (placeId) qb = qb.eq("id", placeId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
           .not("enriched_at", "is", null)
           .order("enriched_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("id", projectId);
+        if (placeId) qb = qb.eq("id", placeId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
           )
           .order("created_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("place_id", projectId);
+        if (placeId) qb = qb.eq("place_id", placeId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -215,16 +215,16 @@ Deno.serve(async (req) => {
     const claimsQuery = wantType("atlas.ownership_claimed")
       ? (() => {
         let qb = admin
-          .from("project_verifications")
+          .from("place_verifications")
           .select(
-            // project_verifications has no FK to places — it references the
-            // projects entity (shared PK with places). Hop through projects to
-            // reach the profile; slug lives on projects, the rest on places.
-            "id, place_id, method, requester_email, state, created_at, project:projects(id, slug, place:place_profiles(name, address, category_label, google_place_id))",
+            // place_verifications has no FK to place_profiles — it references the
+            // places entity (shared PK with place_profiles). Hop through places to
+            // reach the profile; slug lives on places, the rest on place_profiles.
+            "id, place_id, method, requester_email, state, created_at, placeEntity:places(id, slug, place:place_profiles(name, address, category_label, google_place_id))",
           )
           .order("created_at", { ascending: false })
           .limit(limit);
-        if (projectId) qb = qb.eq("place_id", projectId);
+        if (placeId) qb = qb.eq("place_id", placeId);
         return qb;
       })()
       : Promise.resolve({ data: null, error: null });
@@ -257,8 +257,8 @@ Deno.serve(async (req) => {
     const createdIds = createdRows.map((r) => r.id);
     if (createdIds.length > 0) {
       const { data: owners, error: ownersErr } = await admin
-        .from("project_members")
-        // project_members.manager_id → managers (the business-account table;
+        .from("place_members")
+        // place_members.manager_id → managers (the business-account table;
         // no compat view exists, so embedding any older name 500s). Alias the
         // result back to `business`.
         .select("place_id, business:managers(email, full_name, first_name, last_name)")
@@ -354,14 +354,14 @@ Deno.serve(async (req) => {
       requester_email: string | null;
       state: string | null;
       created_at: string;
-      project: ProjectPlaceShape | ProjectPlaceShape[] | null;
+      placeEntity: PlaceWithSlugShape | PlaceWithSlugShape[] | null;
     }>) {
       items.push({
         id: `atlas.ownership_claimed:${c.id}`,
         category: "atlas",
         type: "atlas.ownership_claimed",
         occurredAt: c.created_at,
-        place: projectPlaceRef(one(c.project)),
+        place: placeWithSlugRef(one(c.placeEntity)),
         actor: c.requester_email ?? null,
         detail: null,
         meta: { method: c.method, state: c.state },
@@ -371,7 +371,7 @@ Deno.serve(async (req) => {
 
   // ── Consumer activity (consumer / rewards / reservations) ─────────────
   // Same per-source window + merge pattern as atlas. Every source hops
-  // project → places for the profile and embeds the consumer for the actor.
+  // places → place_profiles for the profile and embeds the consumer for the actor.
   // Visit tickets contribute three event types from three timestamps — each
   // gets its OWN window (ordered by its own timestamp) so a burst of creates
   // can't hide older visits/closes. The ticket TABLE is the type now: the
@@ -380,7 +380,7 @@ Deno.serve(async (req) => {
     type ActivityRow = {
       id: string;
       created_at: string;
-      project: ProjectPlaceShape | ProjectPlaceShape[] | null;
+      placeEntity: PlaceWithSlugShape | PlaceWithSlugShape[] | null;
       consumer: ConsumerShape | ConsumerShape[] | null;
     };
 
@@ -396,11 +396,11 @@ Deno.serve(async (req) => {
           let qb = admin
             .from(table)
             .select(
-              `id, created_at, ${extraCols}${PROJECT_EMBED}, ${CONSUMER_EMBED}`,
+              `id, created_at, ${extraCols}${PLACE_ENTITY_EMBED}, ${CONSUMER_EMBED}`,
             )
             .order(orderCol, { ascending: false })
             .limit(limit);
-          if (projectId) qb = qb.eq("place_id", projectId);
+          if (placeId) qb = qb.eq("place_id", placeId);
           if (orderCol !== "created_at") qb = qb.not(orderCol, "is", null);
           for (const [col, val] of Object.entries(eqFilters)) {
             qb = qb.eq(col, val);
@@ -488,7 +488,7 @@ Deno.serve(async (req) => {
         category,
         type,
         occurredAt,
-        place: projectPlaceRef(one(row.project)),
+        place: placeWithSlugRef(one(row.placeEntity)),
         actor: consumerActor(one(row.consumer)),
         detail,
         meta,

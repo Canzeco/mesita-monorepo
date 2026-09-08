@@ -33,7 +33,7 @@ const DEFAULT_PARTY = 2;
 // in America/Mexico_City and it matches what the guest chose.
 
 /**
- * Everything the sheet needs from a place: the project id it books against and
+ * Everything the sheet needs from a place: the place id it books against and
  * a name to show. Deliberately narrower than PlaceDetail (which structurally
  * satisfies it) so the swipe deck can open this straight from a deck card,
  * without fetching the full place-detail payload.
@@ -141,7 +141,7 @@ export function ReservationSheet({
           scope: "upcoming",
           limit: 100,
         });
-        // place.id is places.id == projects.id, the same id the list EF
+        // place.id is place_profiles.id == places.id, the same id the list EF
         // stitches onto each row via attachPlaces.
         const hit = reservations.find((r) => r.place?.id === place.id) ?? null;
         if (!cancelled) setExisting(hit);

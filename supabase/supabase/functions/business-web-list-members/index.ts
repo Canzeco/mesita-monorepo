@@ -1,12 +1,12 @@
 // Supabase Edge Function — business-web-list-members
 //
 // Returns the active team of a place in one round trip:
-//   - members : project_members joined to managers (email-pool roles;
+//   - members : place_members joined to managers (email-pool roles;
 //     response key is `members`)
 //   - pendingBusinessInvites
 //   - myRole : caller's role on this place (or "super_admin"), so the
 //     UI doesn't have to derive owner-ness from the member list and
-//     gets the right answer for super-admins who skipped project_members
+//     gets the right answer for super-admins who skipped place_members
 //
 // The team is the BUSINESS team only. Waiters were retired (MESITA-833):
 // staff handle tickets on the public check page, where possession of the
@@ -37,11 +37,11 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<Body>(req, {});
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const admin = adminClient(envRes.env);
-  const memberRes = await requireMembership(admin, authRes.user, projectId);
+  const memberRes = await requireMembership(admin, authRes.user, placeId);
   if (!memberRes.ok) return memberRes.response;
 
   const nowIso = new Date().toISOString();
@@ -49,16 +49,16 @@ Deno.serve(async (req) => {
   // Two independent reads in parallel — no further fan-out.
   const [memberRows, pendingBusinessRows] = await Promise.all([
     admin
-      .from("project_members")
+      .from("place_members")
       // manager_id → managers (the business-account table; no compat view).
       // Result stays aliased `business`.
       .select("id, role, created_at, business:managers(id, full_name, email)")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: true }),
     admin
-      .from("project_invites")
+      .from("place_invites")
       .select("id, email, role, token, created_at, expires_at")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .is("claimed_at", null)
       .gt("expires_at", nowIso)
       .order("created_at", { ascending: false }),
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   }));
 
   // `myRole` lets the client gate UI without re-deriving from the
-  // member list (super-admins aren't always in project_members).
+  // member list (super-admins aren't always in place_members).
   const myRole = memberRes.membership.isSuperAdmin
     ? "super_admin"
     : memberRes.membership.role;

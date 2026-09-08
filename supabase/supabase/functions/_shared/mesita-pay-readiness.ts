@@ -35,7 +35,7 @@ export async function resolveChargeableOrganizationAccount(
       .eq("id", placeId)
       .maybeSingle(),
     admin
-      .from("projects")
+      .from("places")
       .select("organization_id")
       .eq("id", placeId)
       .maybeSingle(),

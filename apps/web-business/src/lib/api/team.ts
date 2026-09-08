@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-// project_members.role DB enum — per-place tier (distinct from the
+// place_members.role DB enum — per-place tier (distinct from the
 // platform-level "business" app role). Migration 0025 renamed
 // 'manager' → 'editor'.
 export type BusinessRole = "owner" | "editor" | "viewer";
@@ -41,8 +41,8 @@ export type TeamSnapshot = {
 export async function apiAcceptEditorInvite(
   client: SupabaseClient,
   token: string,
-): Promise<{ projectId: string; role: BusinessRole }> {
-  return await invokeEF<{ projectId: string; role: BusinessRole }>(
+): Promise<{ placeId: string; role: BusinessRole }> {
+  return await invokeEF<{ placeId: string; role: BusinessRole }>(
     client,
     "business-web-accept-invite",
     { token },

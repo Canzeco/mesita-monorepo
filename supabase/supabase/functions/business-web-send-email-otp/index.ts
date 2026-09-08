@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const mockMode = isPlaceOtpMockMode();
   const requesterEmail = resolveRequesterEmail({
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   const { data: place, error: placeError } = await admin
     .from("profiles")
     .select("id, email, website_url")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeError || !place) {
     return json({ ok: false, error: "Place not found" }, 404);
@@ -112,9 +112,9 @@ Deno.serve(async (req) => {
   }
 
   const { data: existingOwner } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("manager_id")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner")
     .maybeSingle();
   if (existingOwner) {
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
   const sentTo = mockMode ? mockPlaceOtpEmail() : place.email;
 
   const insertRes = await insertPendingOtpVerification(admin, {
-    projectId,
+    placeId,
     userId,
     requesterEmail,
     method: "ai_email",

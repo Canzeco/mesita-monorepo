@@ -6,8 +6,8 @@
 // question. The General gate wipes what GOOGLE returned; this one is a pair
 // of `gte` predicates on the Mesita pool query itself
 // (`_shared/discovery-filters.ts`), so it reaches the lanes that never call
-// Google at all: the Home rails (`consumer-web-list-catalog`), the Pay /
-// Home / bbox branch of `consumer-web-list-places`, and Swipe. On the nearby
+// Google at all: the Home rails (consumer-web-list-catalog), the Pay /
+// Home / bbox branch of consumer-web-list-places, and Swipe. On the nearby
 // branch `listedMapFilters` maxes it with Map's own floors.
 //
 // UNTIL MESITA-1667 THIS SLICE HAD NO KNOB AND NO WAY TO GET ONE. It was

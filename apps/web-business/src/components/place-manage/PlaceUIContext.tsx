@@ -38,7 +38,7 @@ type PlaceUIValue = {
 const PlaceUIContext = createContext<PlaceUIValue | null>(null);
 
 export function PlaceUIProvider({ children }: { children: ReactNode }) {
-  // Collapsed by default: production has 23 places and `project_members = 0`
+  // Collapsed by default: production has 23 places and `place_members = 0`
   // on all of them, so the common case is an empty panel nobody needs open.
   const [teamExpanded, setTeamExpanded] = useState(false);
   const value = useMemo(

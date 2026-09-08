@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   const nConsumers = capCount(bodyRes.body.consumers, MAX);
   const nPlaces = capCount(bodyRes.body.places, MAX);
 
-  // ── Places — base fields + rates (projects shares the id) ────────────
+  // ── Places — base fields + rates (places shares the id) ────────────
   const { data: placeRows, error: pErr } = await admin
     .from("place_profiles")
     .select(
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   const placeIds = places.map((p) => p.id);
 
   const { data: rateRows, error: rErr } = await admin
-    .from("projects")
+    .from("places")
     .select("id, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate")
     .in("id", placeIds);
   if (rErr) return jsonError(`rates_failed: ${rErr.message}`, 500);

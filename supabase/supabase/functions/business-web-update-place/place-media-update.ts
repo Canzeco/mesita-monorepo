@@ -1,6 +1,6 @@
 import { json } from "../_shared/http.ts";
-import { isUrl } from "./project-urls.ts";
-import { optString } from "./project-update-utils.ts";
+import { isUrl } from "./place-urls.ts";
+import { optString } from "./place-update-utils.ts";
 
 type MediaUpdateBody = {
   photos?: unknown;

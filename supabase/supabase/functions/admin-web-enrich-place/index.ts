@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-enrich-place (product caller / admin)
 //
-// Manual re-enrich trigger for a single existing place. Given a project_id and a
+// Manual re-enrich trigger for a single existing place. Given a place_id and a
 // `mode`, it reseeds the Intaker pipeline row (place_research) so the pg_cron
 // poller (run_place_enrichment_stages) re-runs from a chosen stage:
 //
@@ -34,7 +34,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } 
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import {
   advanceResearchStage,
-  markProjectGenerating,
+  markPlaceGenerating,
   openEnrichmentRun,
   seedPlaceResearch,
 } from "../_shared/enrich-pipeline.ts";
@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "Missing projectId" }, 400);
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) return json({ ok: false, error: "Missing placeId" }, 400);
 
   // Default to 'full' so legacy callers (no mode) keep the old behaviour.
   const mode = (bodyRes.body.mode ?? "full").toString().trim() as ReenrichMode;
@@ -71,13 +71,13 @@ Deno.serve(async (req) => {
   }
 
   // Resolve the identity spine the pipeline re-checks first (fetchGoogleBasics).
-  // google_place_id lives on the places base table (places.id == the project id
-  // == the editor's projectId); the projects table has no such column. Without
+  // google_place_id lives on the place_profiles base table (place_profiles.id ==
+  // the editor's placeId); the places table has no such column. Without
   // it the research stage can't run, so reject early.
   const { data: place, error: placeErr } = await admin
     .from("place_profiles")
     .select("id, google_place_id")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
   if (!place) return json({ ok: false, error: "Place not found" }, 404);
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
     // both axes — it clears `subprocesses` and ignores cooldown — so recording it
     // as on_schedule would poison exactly the cost-attribution and cooldown
     // queries the run history exists to answer (MESITA-1185).
-    const seed = await seedPlaceResearch(admin, projectId, googlePlaceId, "admin-web-enrich-place", {
+    const seed = await seedPlaceResearch(admin, placeId, googlePlaceId, "admin-web-enrich-place", {
       trigger: "manual",
       subprocesses: null,
       cooldownHours: 0,
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
   const { data: row, error: rowErr } = await admin
     .from("place_research")
     .select("gathered, analysis")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .maybeSingle();
   if (rowErr) return json({ ok: false, error: `place_research: ${rowErr.message}` }, 500);
   if (!row) {
@@ -138,14 +138,14 @@ Deno.serve(async (req) => {
   // touching gathered/analysis — the poller re-claims the row at the chosen stage.
   // MESITA-453: Enriching covers the whole pipeline (research|analysis|contents),
   // so flip content_state back to generating for light re-enrich modes too.
-  await markProjectGenerating(admin, projectId);
+  await markPlaceGenerating(admin, placeId);
   // Explicit operator intent outranks the trigger matrix: clear whatever
   // subprocess set the last automatic trigger stamped, so a light re-enrich
   // queued after (say) an on_visit refresh still runs every step of its stage.
   // A light re-enrich is still a RUN: it spends money and it changes the
   // profile. It enters mid-pipeline, and `entryStage` is what stops the janitor
   // later crediting it with the spend of the gather it is reusing.
-  const opened = await openEnrichmentRun(admin, projectId, {
+  const opened = await openEnrichmentRun(admin, placeId, {
     trigger: "manual",
     seededBy: "admin-web-enrich-place",
     subprocesses: null,
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
   await admin
     .from("place_research")
     .update({ subprocesses: null, run_id: opened.runId ?? null })
-    .eq("place_id", projectId);
-  await advanceResearchStage(admin, projectId, stage);
+    .eq("place_id", placeId);
+  await advanceResearchStage(admin, placeId, stage);
   return json({ ok: true, enrichmentTriggered: true, mode, stage });
 });

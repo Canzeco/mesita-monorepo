@@ -9,7 +9,7 @@ import { efInvoke } from "@/lib/supabase-ef";
 
 type CreatePlaceOk = {
   ok: true;
-  projectId: string;
+  placeId: string;
   name: string;
   slug: string | null;
   photoCount: number;
@@ -76,7 +76,7 @@ export async function createPlaceFromGooglePlaceId(
       return {
         ok: true,
         alreadyExisted: true,
-        projectId: existingId,
+        placeId: existingId,
         name: body.existing?.name ?? "(already on Mesita)",
         slug: body.existing?.slug ?? null,
         photoCount: 0,
@@ -92,7 +92,7 @@ export async function createPlaceFromGooglePlaceId(
   return {
     ok: true,
     alreadyExisted: false,
-    projectId: place.id,
+    placeId: place.id,
     name: place.name ?? "(unnamed)",
     slug: place.slug ?? null,
     photoCount: r.data.enrichment?.photoCount ?? 0,

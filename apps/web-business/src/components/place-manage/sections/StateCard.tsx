@@ -20,11 +20,11 @@
 //
 //   Created    google_place_id present (identity spine)
 //   Active     Google pulse — Google OPERATIONAL (not Intake 1. Pulse)
-//   Listed     projects.state ∈ (active, lead)
+//   Listed     places.state ∈ (active, lead)
 //   Requested  guest request count, 0…n — not a Yes/No
 //   Enriched   PULSE complete — a yes, not a 0–10 high-water.
 //   Enriching  Intaker pipeline mid-flight (live run). Independent of Enriched.
-//   Verified   approved project_verifications
+//   Verified   approved place_verifications
 //   Partnered  plan ≠ free
 //   Promoted   0 Zero · 1 Conservative · 2 Aggressive (not a bool)
 //   Mesita Pay places.mesita_pay_enabled — cleared to accept the in-Mesita
@@ -84,9 +84,9 @@ import {
 // row name.
 //
 //   Created    a google_place_id exists. Nothing enriches without it.
-//   Listed     a guest can reach the place AT ALL. projects.state ∈
+//   Listed     a guest can reach the place AT ALL. places.state ∈
 //              (active, lead) is what the consumer RLS policy
-//              projects_select_public_visible gates on — its content_state
+//              places_select_public_visible gates on — its content_state
 //              leg is a tautology (all four labels of the enum are allowed),
 //              so state alone decides. Product Rules §B is right that Listed
 //              is not a RUNG — nothing progresses through it — but it is not a
@@ -408,7 +408,7 @@ export function StateCard({
                 Guest surfaces disagree with Visit Rewards.
               </span>{" "}
               {badged
-                ? "projects.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed reward lane."
+                ? "places.listing_type still says 'partner' while nothing is on offer, so the consumer app shows a reward badge over a closed reward lane."
                 : "This place promotes a live discount but isn't stored as 'partner', so the consumer app gates the reward off and no guest can claim it."}
             </p>
           </div>
@@ -544,7 +544,7 @@ function ActiveToggle({
 }
 
 /**
- * Listed writes projects.state through admin-web-set-place-listed.
+ * Listed writes places.state through admin-web-set-place-listed.
  * Unlisting is confirmed rather than immediate: the consumer RLS policy
  * gates every guest read on this one value.
  */

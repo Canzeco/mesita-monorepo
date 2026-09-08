@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const target = await admin
-    .from("project_members")
+    .from("place_members")
     .select("id, place_id, manager_id, role")
     .eq("id", memberId)
     .maybeSingle();
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   }
 
   const upd = await admin
-    .from("project_members")
+    .from("place_members")
     .update({ role })
     .eq("id", memberId)
     .select("id, role")

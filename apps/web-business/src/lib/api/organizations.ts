@@ -61,7 +61,7 @@ export type ConsolePlace = {
   /** plan !== "free". UNDEFINED on the pool, where it is withheld — what an
    *  unheld place pays is not a guest's business. Undefined renders "?". */
   partner?: boolean;
-  /** An approved project_verifications row. UNDEFINED both when withheld (the
+  /** An approved place_verifications row. UNDEFINED both when withheld (the
    *  pool) and when the lookup FAILED — either way we did not read it, and a
    *  false here would state something we never learned. */
   verified?: boolean;
@@ -362,7 +362,7 @@ export type ConsolePlaceDetail = {
   phone: string | null;
   timezone: string | null;
   currency: string;
-  /** Raw `projects.state`. `listed` is the fact the console gates on; this
+  /** Raw `places.state`. `listed` is the fact the console gates on; this
    *  is the reason behind a false one, and the screen shows it only then. */
   state: string;
   contentState: string;
@@ -392,7 +392,7 @@ export type ConsolePlaceView = {
   holder: PlaceHolder | null;
   claimable: boolean;
   /** Set when the place is in no organization but the caller holds a direct
-   *  project_members row — the old-style owned place (MESITA-1537 E-E1). */
+   *  place_members row — the old-style owned place (MESITA-1537 E-E1). */
   myDirectRole?: string | null;
 };
 

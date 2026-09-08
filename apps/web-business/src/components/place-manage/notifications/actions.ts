@@ -59,7 +59,7 @@ type NotificationsResult =
 // size (step events are chatty, so we fetch a bigger window by default).
 type ListNotificationsOptions = {
   types?: NotificationType[];
-  projectId?: string;
+  placeId?: string;
   q?: string;
   limit?: number;
 };
@@ -74,7 +74,7 @@ export async function listNotifications(
     category,
     limit: opts.limit ?? DEFAULT_LIMIT,
     ...(opts.types && opts.types.length > 0 ? { types: opts.types } : {}),
-    ...(opts.projectId ? { placeId: opts.projectId } : {}),
+    ...(opts.placeId ? { placeId: opts.placeId } : {}),
     ...(opts.q ? { q: opts.q } : {}),
   });
   if (!r.ok) return { ok: false, error: r.error };

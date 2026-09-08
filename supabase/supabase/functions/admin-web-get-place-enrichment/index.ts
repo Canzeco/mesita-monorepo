@@ -1,14 +1,14 @@
 // Supabase Edge Function — admin-web-get-place-enrichment (product caller / admin)
 //
 // Read-only per-place Intaker inspector for the admin console. Given a
-// project_id, returns:
+// place id, returns:
 //   • media  — one entry per stored image (keyed by public_url AND source_url,
 //     so it resolves whether places.photos[] holds the mirrored URL or the raw
 //     source URL when mirroring failed), carrying SOURCE (google/website/
 //     instagram), the enricher vision ANALYSIS text, plus the pre-analysis
 //     source metadata: caption/likes for Instagram (+ comments/timestamp/video
 //     flag) and alt/page/dimensions for website images.
-//   • state — enrichment progress for the place: projects.content_state +
+//   • state — enrichment progress for the place: places.content_state +
 //     the place_research stage/state/error + last_enriched_at (the moment the
 //     pipeline last reached stage='done').
 //   • serpSummary — the SERP Summary (the Scout's soft editorial read) for the
@@ -57,48 +57,48 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  // placeId is the MESITA-26 alias for the place-row id (== project_id here).
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return jsonError("Missing projectId", 400);
+  // placeId is the MESITA-26 alias for the place-row id (== projectId here).
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) return jsonError("Missing placeId", 400);
 
-  const [mediaRes, projectRes, researchRes, placeRes] = await Promise.all([
+  const [mediaRes, placeRes, researchRes, profileRes] = await Promise.all([
     admin
       .from("place_media_assets")
       .select(
         "public_url, source, state, analysis_text, caption, likes_count, source_url, source_metadata",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .order("created_at", { ascending: true }),
     admin
-      .from("projects")
+      .from("places")
       .select("content_state")
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle(),
     admin
       .from("place_research")
       .select(
         "stage, state, error, updated_at, serp_summary:gathered->grounding->>serpSummary",
       )
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .maybeSingle(),
     admin
       .from("place_profiles")
       .select("enrich_every_days, enrich_mode, enrich_next_at, enriched_at")
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle(),
   ]);
 
   if (mediaRes.error) {
     return jsonError(`place_media_assets: ${mediaRes.error.message}`, 500);
   }
-  if (projectRes.error) {
-    return jsonError(`projects: ${projectRes.error.message}`, 500);
+  if (placeRes.error) {
+    return jsonError(`places: ${placeRes.error.message}`, 500);
   }
   if (researchRes.error) {
     return jsonError(`place_research: ${researchRes.error.message}`, 500);
   }
-  if (placeRes.error) {
-    return jsonError(`places: ${placeRes.error.message}`, 500);
+  if (profileRes.error) {
+    return jsonError(`place_profiles: ${profileRes.error.message}`, 500);
   }
 
   const rows = (mediaRes.data ?? []) as MediaRow[];
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     | null;
 
   const state = {
-    content_state: (projectRes.data?.content_state ?? null) as string | null,
+    content_state: (placeRes.data?.content_state ?? null) as string | null,
     stage: research?.stage ?? null,
     stage_state: research?.state ?? null,
     error: research?.error ?? null,
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     serp_summary: research?.serp_summary ?? null,
   };
 
-  const placeRow = placeRes.data as
+  const profileRow = profileRes.data as
     | {
         enrich_every_days: number | null;
         enrich_mode: string | null;
@@ -139,13 +139,13 @@ Deno.serve(async (req) => {
     | null;
 
   const schedule = {
-    everyDays: placeRow?.enrich_every_days ?? null,
-    mode: placeRow?.enrich_mode ?? "full",
-    nextAt: placeRow?.enrich_next_at ?? null,
+    everyDays: profileRow?.enrich_every_days ?? null,
+    mode: profileRow?.enrich_mode ?? "full",
+    nextAt: profileRow?.enrich_next_at ?? null,
     // places.enriched_at is stamped by the contents stage on a successful
     // persist — the durable "last enriched", where state.last_enriched_at
     // only survives while the research row still sits at 'done'.
-    lastEnrichedAt: placeRow?.enriched_at ?? null,
+    lastEnrichedAt: profileRow?.enriched_at ?? null,
   };
 
   return json({ ok: true, media, state, schedule, count: rows.length });

@@ -7,7 +7,7 @@ import type { PlanKey } from "@/lib/business/plans";
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
 // functions. The operator's JWT email is in super_admins, so _shared/auth.ts
-// grants access regardless of project_members.
+// grants access regardless of place_members.
 //
 // These lived in the retired per-place admin console (`manage-single`) until
 // it was deleted; this page was their only surviving caller, so they moved
@@ -75,7 +75,7 @@ export type PlaceHit = {
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
-  /** A guest can reach it: projects.state, per the consumer RLS policy. */
+  /** A guest can reach it: places.state, per the consumer RLS policy. */
   listed: boolean;
   /** Derived has-demand for filters. Catalog State shows request_count. */
   requested: boolean;
@@ -104,7 +104,7 @@ export type PlaceHit = {
    *  the fallback, and it alone cannot show a function that completed AFTER
    *  an earlier one failed, which is exactly the gap this map closes. */
   enrich_functions?: Record<string, EnrichFunctionState> | null;
-  /** An APPROVED project_verifications row — ownership proof, not a badge. */
+  /** An APPROVED place_verifications row — ownership proof, not a badge. */
   verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
   partner: boolean;
@@ -243,8 +243,8 @@ export async function listAllPlaces(): Promise<
 // Every setter is fire-and-check: the batch rows report ok/error and re-read
 // the catalog afterwards, so none of them needs the place row back.
 
-/** Listed is the guest-visibility gate: projects.state, which is what the
- *  consumer RLS policy projects_select_public_visible gates every guest read
+/** Listed is the guest-visibility gate: places.state, which is what the
+ *  consumer RLS policy places_select_public_visible gates every guest read
  *  on. Unlisting removes the place from browse, search, the swipe deck and
  *  any shared link at once. business-web-update-place does not accept
  *  `state`, so this is its own admin door (admin-web-set-place-listed). */
@@ -339,12 +339,13 @@ export type ReenrichMode = "full" | "analysis" | "contents";
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — the batch row reports the trigger, not the finish.
 export async function enrichPlace(
-  projectId: string,
+  placeId: string,
   mode: ReenrichMode = "full",
 ): Promise<Result<true>> {
+  // Wire key stays `projectId` — admin-web-enrich-place's MESITA-26 alias.
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    { projectId, mode },
+    { projectId: placeId, mode },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };

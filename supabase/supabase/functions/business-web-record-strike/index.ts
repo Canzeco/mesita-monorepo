@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
   const reason = (body.reason ?? "").toString().trim();
   if (!isStrikeReason(reason)) {
     return json(
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   const admin = adminClient(envRes.env);
-  const membership = await requireEditor(admin, authRes.user, projectId);
+  const membership = await requireEditor(admin, authRes.user, placeId);
   if (!membership.ok) return membership.response;
 
   // Prefer consumer from the ticket when ticketId is supplied.
@@ -66,14 +66,14 @@ Deno.serve(async (req) => {
     if (ticket.error) {
       return json({ ok: false, error: ticket.error.message }, 500);
     }
-    if (!ticket.data || ticket.data.place_id !== projectId) {
+    if (!ticket.data || ticket.data.place_id !== placeId) {
       return json({ ok: false, error: "Ticket not found for this place" }, 404);
     }
     consumerId = (ticket.data.consumer_id as string) ?? consumerId;
   }
 
   const result = await recordMembershipStrike(admin, {
-    projectId,
+    placeId,
     reason,
     consumerId,
     ticketId,

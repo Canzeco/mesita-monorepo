@@ -6,7 +6,7 @@
 //
 //   confirm  { reportId }  the report is real (ghost-partner refusal):
 //            marks it reviewed AND sets the place's ghost-partner hold —
-//            projects.reward_lane_pending_review_at — which closes the
+//            places.reward_lane_pending_review_at — which closes the
 //            reward lane (assessPromoLane → pending_review) ahead of any
 //            strike decision, so a place under review honors nothing while
 //            Mesita looks at it.
@@ -15,8 +15,8 @@
 //   restore  { placeId }   review ended — clears the hold. The lane
 //            reopens to whatever the strike ladder already says.
 //
-// Writes to `projects` go through writePlace (the place-doc door) — never a
-// raw .from("projects").update(). Auth: caller's JWT email must be in
+// Writes to `places` go through writePlace (the place-doc door) — never a
+// raw .from("places").update(). Auth: caller's JWT email must be in
 // public.super_admins.
 //
 // Local:  supabase functions serve admin-web-review-ticket-report
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const placeId = (body.placeId ?? "").toString().trim();
     if (!placeId) return json({ ok: false, error: "Missing placeId" });
     const update = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
       id: placeId,
       patch: { reward_lane_pending_review_at: null },
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     // the whole action reads as not-done — never a reviewed report whose
     // hold silently didn't land.
     const update = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
       id: report.project_id,
       patch: { reward_lane_pending_review_at: now },

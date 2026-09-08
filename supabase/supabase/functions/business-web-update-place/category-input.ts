@@ -7,7 +7,7 @@ import {
   familiesForAtlasCategory,
   sanitizeFamilyKeys,
 } from "../_shared/place-taxonomy.ts";
-import { optString } from "./project-update-utils.ts";
+import { optString } from "./place-update-utils.ts";
 
 function familyKeysForCategory(hit: PlaceCategory): string[] | null {
   const live = sanitizeFamilyKeys(hit.super_category_slugs);

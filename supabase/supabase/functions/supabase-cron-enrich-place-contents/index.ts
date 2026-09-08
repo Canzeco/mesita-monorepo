@@ -89,22 +89,22 @@ import {
 serveEnrichStage("contents", async (admin, env, row) => {
   // What this run bought, per the trigger matrix (NULL = everything).
   const buys = row.subprocesses;
-  const projectId = row.place_id;
+  const placeId = row.place_id;
   const { gathered, analysis } = row;
   if (!gathered) {
     // Research output missing (shouldn't happen) — send the row back to research.
-    await advanceResearchStage(admin, projectId, "research");
+    await advanceResearchStage(admin, placeId, "research");
     return;
   }
   if (!analysis) {
-    await advanceResearchStage(admin, projectId, "analysis");
+    await advanceResearchStage(admin, placeId, "analysis");
     return;
   }
   const OPENAI_KEY = Deno.env.get("OPENAI_KEY");
   if (!OPENAI_KEY) {
     await releaseResearchRow(
       admin,
-      projectId,
+      placeId,
       "server_misconfigured: missing OPENAI_KEY",
     );
     return;
@@ -126,7 +126,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const { data: nameRow } = await admin
     .from("place_profiles")
     .select("name")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   const name = (nameRow?.name ?? "").toString();
   const category = (place.category ?? null) as string | null;
@@ -287,7 +287,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     if (parsed?.mesita_name) {
       const door = await applyInferredMesitaName(
         admin,
-        projectId,
+        placeId,
         parsed.mesita_name,
       );
       sources.mesita_name = {
@@ -301,7 +301,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // it never writes words. The door ran first so the effective name is
     // current; `place` overlays the row so facts see this run's fields.
     {
-      const embRow = await loadEmbeddablePlace(admin, projectId);
+      const embRow = await loadEmbeddablePlace(admin, placeId);
       if (embRow) {
         const effective = { ...embRow, ...place } as typeof embRow;
         const summary = await synthesizePlaceSummaryText(
@@ -350,7 +350,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const { data: liveContacts } = await admin
     .from("place_profiles")
     .select("phone, reservation_channel, enrichment_sources")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   const live = (liveContacts ?? null) as
     | {
@@ -476,7 +476,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   const placeRes = await writePlace(admin, {
     table: "place_profiles",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: placeUpdate as PlaceProfilePatch,
   });
   if (!placeRes.ok) {
@@ -484,7 +484,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     // stage's single notification.
     await reportEnrichmentStep(
       admin,
-      projectId,
+      placeId,
       "S7",
       "publish",
       "failed",
@@ -493,22 +493,22 @@ serveEnrichStage("contents", async (admin, env, row) => {
     );
     await releaseResearchRow(
       admin,
-      projectId,
+      placeId,
       `place_update: ${placeRes.error}`,
     );
     return;
   }
-  const projRes = await writePlace(admin, {
-    table: "projects",
+  const placeUpdateRes = await writePlace(admin, {
+    table: "places",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: { content_state: "ready" },
   });
-  if (!projRes.ok) {
+  if (!placeUpdateRes.ok) {
     await releaseResearchRow(
       admin,
-      projectId,
-      `content_state: ${projRes.error}`,
+      placeId,
+      `content_state: ${placeUpdateRes.error}`,
     );
     return;
   }
@@ -524,7 +524,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
     const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
     embeddingWrote = !!(await runPlaceEmbeddingsOnUpdate(
       admin,
-      projectId,
+      placeId,
       openaiKey,
       "enrich-contents/on-update",
       "contents",
@@ -555,7 +555,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
       "supabase-cron-enrich-place-contents",
       "supabase-edgefunc-store-place-images",
       {
-        project_id: projectId,
+        place_id: placeId,
         assets,
         preferred_photo_urls: analysis.finalPhotos,
       },
@@ -609,7 +609,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
         "Embedding did not write (no summary text, or the embed failed). Re-enrich to retry.",
       );
   }
-  await reportPulsePieces(admin, projectId, contentPieces);
+  await reportPulsePieces(admin, placeId, contentPieces);
 
   // One beacon for the whole contents stage — one notification per Edge
   // Function. Its own `step` is decorative and does not track the ladder: the
@@ -617,7 +617,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // above. Reports synthesis + persist + image outcome in a single line.
   await reportEnrichmentStep(
     admin,
-    projectId,
+    placeId,
     "S7",
     "publish",
     "completed",
@@ -644,7 +644,7 @@ serveEnrichStage("contents", async (admin, env, row) => {
   // that exists — it rides on gathered.cost, which the NEXT run overwrites, so
   // the run row is where it survives.
   const finalCost = ledger.snapshot();
-  await advanceResearchStage(admin, projectId, "done", {}, {
+  await advanceResearchStage(admin, placeId, "done", {}, {
     runId: row.run_id,
     // A run that entered at analysis or contents REUSED a stored gather it did
     // not pay for, so it must not be billed for it. Only a run that walked from

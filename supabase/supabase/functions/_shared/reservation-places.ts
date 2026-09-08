@@ -3,26 +3,26 @@
 // WHY THIS EXISTS: a PostgREST embed `place:place_profiles(...)` from `reservations`
 // is IMPOSSIBLE — the FK chain is two hops,
 //
-//   reservations.project_id → projects.id → place_profiles.id  (units_place_fk)
+//   reservations.project_id → places.id → place_profiles.id  (units_place_fk)
 //
 // so the embed fails at runtime with "Could not find a relationship between
 // 'reservations' and 'place_profiles' in the schema cache" (hit live 2026-07-27 the
 // moment the consumer Reservations tab was ungated). `slug` isn't on `place_profiles`
-// either — it lives on `projects`. Both facts make the one-query embed a trap;
+// either — it lives on `places`. Both facts make the one-query embed a trap;
 // this helper does the explicit lookup instead, exactly like the call engine
 // (supabase-edgefunc-reservation-call) already does for a single row.
 //
-// One extra query per list: projects embedded with its place — that direction
-// DOES have a usable FK. Callers select `project_id` on their rows and get
+// One extra query per list: the place entity embedded with its profile — that
+// direction DOES have a usable FK. Callers select `project_id` on their rows and get
 // back the same flat `place` shape clients already speak.
 //
 // NOT reservation-only despite the filename: EVERY table that points at
-// projects hits this same wall — visit_tickets and favorites both FK to
-// projects, so they use this helper too. The summary is a SUPERSET of what
+// places hits this same wall — visit_tickets and favorites both FK to
+// places, so they use this helper too. The summary is a SUPERSET of what
 // those callers need (extra keys are harmless); note which side each column
 // lives on, because the old embeds got that wrong as well:
 //   place_profiles   → name, category, photos, address, price_level, lat, lng
-//   projects → slug, listing_type, fiscal_type, the four promo rate columns
+//   places → slug, listing_type, fiscal_type, the four promo rate columns
 //
 // The rate columns ride along (MESITA-869) so a consumer surface can quote
 // THIS place's real numbers. A membership writes them as one preset, so the
@@ -34,11 +34,11 @@ import { rowPlaceId } from "./place-id.ts";
 
 export type PlaceSummary = {
   id: string;
-  /** From projects. */
+  /** From places. */
   slug: string | null;
   listing_type: string | null;
   fiscal_type: string | null;
-  /** From projects — the v4 preset the place is running (MESITA-869). */
+  /** From places — the v4 preset the place is running (MESITA-869). */
   welcome_free_rate: number | null;
   welcome_premium_rate: number | null;
   free_rate: number | null;
@@ -53,7 +53,7 @@ export type PlaceSummary = {
   lng: number | null;
 };
 
-type RowWithProject = {
+type RowWithPlace = {
   project_id?: string | null;
   place_id?: string | null;
 };
@@ -64,7 +64,7 @@ type RowWithProject = {
  * (the live column) or leftover `project_id`; the wire field `project_id`
  * is always filled so frozen clients keep reading the same JSON key.
  */
-export async function attachPlaces<T extends RowWithProject>(
+export async function attachPlaces<T extends RowWithPlace>(
   admin: SupabaseClient,
   rows: T[],
 ): Promise<Array<T & { place: PlaceSummary | null; project_id: string | null }>> {
@@ -74,10 +74,10 @@ export async function attachPlaces<T extends RowWithProject>(
   const byId = new Map<string, PlaceSummary>();
 
   if (ids.length > 0) {
-    // projects.id → place_profiles.id is a real FK, so THIS embed resolves. slug comes
-    // from projects; the rest from place_profiles.
+    // places.id → place_profiles.id is a real FK, so THIS embed resolves. slug comes
+    // from places; the rest from place_profiles.
     const { data } = await admin
-      .from("projects")
+      .from("places")
       .select(
         "id, slug, listing_type, fiscal_type, " +
           "welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, " +

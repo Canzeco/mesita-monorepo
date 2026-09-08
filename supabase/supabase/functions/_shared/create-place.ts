@@ -234,7 +234,7 @@ export async function createMinimalPlace(opts: {
       const stored = await storeFirstPlaceImage(
         admin,
         supabaseUrl,
-        saved.project_id,
+        saved.place_id,
         firstPhoto,
       );
       place.photos = [stored.url];
@@ -249,7 +249,7 @@ export async function createMinimalPlace(opts: {
   // Both best-effort (a stamp failure never fails a create).
   // Result: a fresh, healthy place reads enriched 2/10 the moment it exists;
   // an un-queued create climbs on to 9–10 via the door below.
-  await reportPulsePieces(admin, saved.project_id, {
+  await reportPulsePieces(admin, saved.place_id, {
     pulse: pieceDone(
       basicsRes.businessStatus
         ? `Google reports this listing ${basicsRes.businessStatus}.`
@@ -294,17 +294,17 @@ export async function createMinimalPlace(opts: {
           const doorWrite = await writePlace(admin, {
             table: "place_profiles",
             mode: "update",
-            id: saved.project_id,
+            id: saved.place_id,
             patch,
           });
           if (door.mesitaNameCandidate) {
             await applyInferredMesitaName(
               admin,
-              saved.project_id,
+              saved.place_id,
               door.mesitaNameCandidate,
             );
           }
-          await reportPulsePieces(admin, saved.project_id, {
+          await reportPulsePieces(admin, saved.place_id, {
             description: doorWrite.ok
               ? pieceDone(
                 `Door Description — category “${door.category ?? "n/a"}”, ` +
@@ -320,7 +320,7 @@ export async function createMinimalPlace(opts: {
       // (place-embeddings).
       await runPlaceEmbeddingsOnUpdate(
         admin,
-        saved.project_id,
+        saved.place_id,
         Deno.env.get("OPENAI_KEY")?.trim(),
         `${callerName}/on-create`,
         "create",
@@ -334,13 +334,13 @@ export async function createMinimalPlace(opts: {
   // ── 3) Queue deep enrichment (async) only when the caller bought it.
   // Consumer/admin Create skip this — votes or a later Enrich call seed.
   const trigger = queueEnrich
-    ? await queueOnCreateEnrichment(admin, saved.project_id, googlePlaceId, callerName)
+    ? await queueOnCreateEnrichment(admin, saved.place_id, googlePlaceId, callerName)
     : { ok: false as const, error: null as string | null, skipped: true };
 
   const channelCount = CHANNEL_KEYS.filter((k) => !!place[k]).length;
   return {
     ok: true,
-    place: { id: saved.project_id, slug: saved.slug, name: saved.name, state: saved.state },
+    place: { id: saved.place_id, slug: saved.slug, name: saved.name, state: saved.state },
     enrichment: {
       google: true,
       enrichmentTriggered: trigger.ok,

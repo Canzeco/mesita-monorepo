@@ -29,7 +29,7 @@ select plan(86);
 
 select has_view(
   'public', 'profiles',
-  'public.profiles exists (projects ⋈ place_profiles; every client read lands here)'
+  'public.profiles exists (places ⋈ place_profiles; every client read lands here)'
 );
 
 -- MESITA-599. A SECURITY DEFINER view runs RLS as its owner (postgres), so
@@ -155,43 +155,43 @@ select throws_ok(
 
 rollback to savepoint before_name_probe;
 
--- ━━━ Wave 0 — project secrets stay off the publishable key ━━━━━━━━━━━━━━━━━
+-- ━━━ Wave 0 — place secrets stay off the publishable key ━━━━━━━━━━━━━━━━━━━
 
 select ok(
-  not has_table_privilege('anon', 'public.projects', 'SELECT'),
-  'anon has no table-level SELECT on public.projects (table SELECT implies every column, including PIN)'
+  not has_table_privilege('anon', 'public.places', 'SELECT'),
+  'anon has no table-level SELECT on public.places (table SELECT implies every column, including PIN)'
 );
 
 select ok(
-  not has_table_privilege('authenticated', 'public.projects', 'SELECT'),
-  'authenticated has no table-level SELECT on public.projects'
+  not has_table_privilege('authenticated', 'public.places', 'SELECT'),
+  'authenticated has no table-level SELECT on public.places'
 );
 
 select ok(
-  has_table_privilege('service_role', 'public.projects', 'SELECT'),
-  'service_role keeps table SELECT on public.projects (Check + set-check-pin)'
+  has_table_privilege('service_role', 'public.places', 'SELECT'),
+  'service_role keeps table SELECT on public.places (Check + set-check-pin)'
 );
 
 select is_empty(
   $$select c.column_name
       from information_schema.columns c
      where c.table_schema = 'public'
-       and c.table_name = 'projects'
+       and c.table_name = 'places'
        and c.column_name in (
          'check_pin', 'staff_pin', 'cfdi_rfc', 'cfdi_cp', 'cfdi_razon_social'
        )
        and (
-         has_column_privilege('anon', 'public.projects', c.column_name, 'SELECT')
+         has_column_privilege('anon', 'public.places', c.column_name, 'SELECT')
          or has_column_privilege(
-           'authenticated', 'public.projects', c.column_name, 'SELECT'
+           'authenticated', 'public.places', c.column_name, 'SELECT'
          )
        )$$,
   'anon and authenticated have no SELECT on existing PIN / CFDI columns'
 );
 
 select ok(
-  has_column_privilege('anon', 'public.projects', 'plan', 'SELECT'),
-  'anon keeps SELECT on projects.plan (profiles invoker reads it)'
+  has_column_privilege('anon', 'public.places', 'plan', 'SELECT'),
+  'anon keeps SELECT on places.plan (profiles invoker reads it)'
 );
 
 select ok(
@@ -285,9 +285,9 @@ select ok(
 );
 
 select is(
-  (select label from public.project_plans where key = 'pro'),
+  (select label from public.place_plans where key = 'pro'),
   'Partner'::text,
-  'project_plans.pro is labelled Partner'
+  'place_plans.pro is labelled Partner'
 );
 
 select is(
@@ -309,9 +309,9 @@ select is_empty(
 
 select is_empty(
   $$select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'projects'
+     where table_schema = 'public' and table_name = 'places'
        and column_name in ('staff_pin', 'requires_story')$$,
-  'projects.staff_pin and requires_story are gone'
+  'places.staff_pin and requires_story are gone'
 );
 
 select is_empty(
@@ -322,8 +322,8 @@ select is_empty(
 );
 
 select has_column(
-  'public', 'projects', 'check_pin',
-  'projects.check_pin stays (the twin staff_pin is what dropped)'
+  'public', 'places', 'check_pin',
+  'places.check_pin stays (the twin staff_pin is what dropped)'
 );
 
 select has_column(
@@ -360,10 +360,10 @@ select ok(
 select ok(
   exists (
     select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'projects'
+     where table_schema = 'public' and table_name = 'places'
        and column_name = 'cfdi_rfc'
   ),
-  'projects.cfdi_rfc is in the ledger (local replay matches live)'
+  'places.cfdi_rfc is in the ledger (local replay matches live)'
 );
 
 -- ━━━ Honest keys — no project_id column left ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -389,13 +389,21 @@ select ok(
   'visit_tickets.place_id exists'
 );
 
+-- Superseded by MESITA-1590: this pinned is_project_member's NAME staying
+-- put across the 20260825005000 project_id->place_id COLUMN rename, since
+-- nothing in that migration's scope touched the entity itself. MESITA-1590
+-- renames the entity (projects->places) and took this function's name with
+-- it — verified no client calls it by name (grep across every app found only
+-- generated database.types.ts, never a hand-written .rpc('is_project_member')
+-- call site) — so the "RPC JSON does not move" guarantee had no live caller
+-- depending on it. Pin the new name instead of deleting the assertion.
 select ok(
   exists (
     select 1 from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'public' and p.proname = 'is_project_member'
+     where n.nspname = 'public' and p.proname = 'is_place_member'
   ),
-  'is_project_member keeps its name (RPC JSON does not move)'
+  'is_place_member exists (renamed from is_project_member, MESITA-1590)'
 );
 
 -- ━━━ Ghost names + HNSW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -403,19 +411,19 @@ select ok(
 select is_empty(
   $$select tgname from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
-     where c.relname = 'projects' and not tgisinternal
+     where c.relname = 'places' and not tgisinternal
        and tgname = 'units_set_updated_at'$$,
-  'units_set_updated_at is gone from projects'
+  'units_set_updated_at is gone from places'
 );
 
 select ok(
   exists (
     select 1 from pg_trigger t
       join pg_class c on c.oid = t.tgrelid
-     where c.relname = 'projects' and not tgisinternal
-       and tgname = 'projects_set_updated_at'
+     where c.relname = 'places' and not tgisinternal
+       and tgname = 'places_set_updated_at'
   ),
-  'projects_set_updated_at is bound'
+  'places_set_updated_at is bound'
 );
 
 select ok(
@@ -643,7 +651,7 @@ select ok(
 select is_empty(
   $$select r from unnest(array[
       'app_config', 'super_admins', 'classes', 'consumer_plans',
-      'project_plans', 'place_categories', 'place_super_categories',
+      'place_plans', 'place_categories', 'place_super_categories',
       'place_tags', 'consumer_code_counter'
     ]) r
     where not exists (
@@ -696,7 +704,7 @@ select ok(
 
 -- MESITA-1550: the ≥1-owner backstop is a real constraint trigger, not an
 -- app-level count — this is the thing the app-level count-then-act check at
--- the place level cannot be (project_members_one_owner_per_project is a
+-- the place level cannot be (place_members_one_owner_per_place is a
 -- partial unique index and enforces the OPPOSITE invariant, at-most-one).
 select ok(
   exists (

@@ -12,8 +12,8 @@
 // PLACE_PUBLIC_COLUMNS" therefore proves nothing about what a BUSINESS may
 // see. This file hand-picks instead, and every column has a stated reason.
 
-/** From `projects` — the commercial row that holds the place. */
-export const PROJECT_COLUMNS: readonly string[] = [
+/** From `places` — the commercial row that holds the place. */
+export const PLACE_COLUMNS: readonly string[] = [
   "id",
   // The raw state. `listed` derives from it; the console shows the raw label
   // only as the REASON when listed is false (Paused, Waiting on review…).
@@ -69,7 +69,7 @@ export const FORBIDDEN_COLUMNS: readonly string[] = [
 ];
 
 export const GET_PLACE_SELECT =
-  `${PROJECT_COLUMNS.join(", ")}, place_profiles!inner(${PLACE_PROFILE_COLUMNS.join(", ")})`;
+  `${PLACE_COLUMNS.join(", ")}, place_profiles!inner(${PLACE_PROFILE_COLUMNS.join(", ")})`;
 
 /** Photos are capped for the wire, not for the truth: `totalPhotos` still
  *  reports the real count so the screen can say "10 of 13".

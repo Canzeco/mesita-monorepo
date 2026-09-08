@@ -43,7 +43,7 @@ function stubClient(): {
         if (table === "place_profiles") {
           return Promise.resolve({ data: { id: "place-uuid-1" }, error: null });
         }
-        if (table === "projects") {
+        if (table === "places") {
           return Promise.resolve({
             data: {
               id: "place-uuid-1",
@@ -98,7 +98,7 @@ Deno.test("savePlaceData accepts a fetchGoogleBasics payload (no `name` key)", a
     "create seeds mesita_name so profile chrome never reads google_name",
   );
   // Slug and returned label derive from the Google observation, not "".
-  assertEquals(writes.projects.slug, "cuerno-calzada");
+  assertEquals(writes.places.slug, "cuerno-calzada");
   assertEquals(res.saved.name, "Cuerno Calzada");
   assertEquals(res.saved.state, "active");
 });

@@ -134,7 +134,7 @@ Deno.test("shapeCheckPayload: the allowlist — forbidden fields never leak", ()
 
 Deno.test("shapeCheckPayload: pin_required is a flag — the PIN value never ships", () => {
   // MESITA-823. The shaper is only ever handed the BOOLEAN; the digits live
-  // on projects.check_pin and are compared server-side in requireCheckPin.
+  // on places.check_pin and are compared server-side in requireCheckPin.
   // This asserts the contract at the one place a leak could happen.
   assertEquals(shape().pin_required, false);
   assertEquals(shape({}, true).pin_required, true);
@@ -285,7 +285,7 @@ Deno.test("shapeCheckPayload: offer states the commitment only while unbilled (M
 // ── The staff PIN gate (MESITA-1120) ───────────────────────────────────
 //
 // The gate is the ONLY protection on six verify_jwt=false write EFs —
-// service-role bypasses RLS and `projects` carries no anon policy. Before
+// service-role bypasses RLS and `places` carries no anon policy. Before
 // this suite it had zero coverage, which is why a dropped PostgREST error
 // held it open in production.
 
@@ -312,7 +312,7 @@ const json = (body: unknown, status = 200) =>
 function gate(settings: CheckSettings | undefined, pin: unknown, admin = fakeAdmin({ data: null, error: null })) {
   return requireCheckPin({
     admin,
-    projectId: "22222222-2222-2222-2222-222222222222",
+    placeId: "22222222-2222-2222-2222-222222222222",
     ticketId: "11111111-1111-1111-1111-111111111111",
     pin,
     ipHash: null,

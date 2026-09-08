@@ -48,8 +48,8 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const update: { check_pin?: string | null } = {};
   if ("pin" in bodyRes.body) {
@@ -73,15 +73,15 @@ Deno.serve(async (req) => {
   const ownerRes = await requireOwner(
     admin,
     authRes.user,
-    projectId,
+    placeId,
     "Only owners can manage the check PIN.",
   );
   if (!ownerRes.ok) return ownerRes.response;
 
   const upd = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: update,
     select: "check_pin",
     selectMode: "maybeSingle",

@@ -21,7 +21,7 @@
 //     credible headline.
 //   - Every discount applies to the first N pesos of the bill — N is the
 //     place's chosen cap (200 / 500 / 1000), persisted to
-//     projects.monthly_promo_cap.
+//     places.monthly_promo_cap.
 //   - Visibility follows generosity: the ranking judge reads a stronger
 //     discount as a stronger card.
 //
@@ -41,7 +41,7 @@ export type StrategyId = "zero" | "conservative" | "aggressive" | "dominant";
 // Four rungs — Dominant is the peak (restored 2026-08-21).
 export type StrategyVisibility = "Low" | "Mid" | "High" | "Max";
 
-// The four discount cells, keyed by the exact projects column each maps to.
+// The four discount cells, keyed by the exact places column each maps to.
 //   welcome_* → first visit at the place · unprefixed → every visit after.
 //   *_free_*  → Free guests             · *_premium_* → Premium guests.
 type StrategyRates = {

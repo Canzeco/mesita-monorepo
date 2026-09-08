@@ -21,7 +21,7 @@ import {
   strikeConsequenceForCount,
 } from "./membership-enforcement-helpers.ts";
 import { buildStrikePatch } from "./membership-strike-patch.ts";
-import { type ProjectPatch, writePlace } from "./place-doc.ts";
+import { type PlacePatch, writePlace } from "./place-doc.ts";
 export { PROMO_PAUSE_MS } from "./membership-strike-patch.ts";
 
 const STRIKE_REASONS = ["refused_qr", "ignored_qr"] as const;
@@ -140,14 +140,14 @@ export function assessPromoLane(
 
 export async function loadMembershipRow(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
 ): Promise<MembershipRow | null> {
   const res = await admin
-    .from("projects")
+    .from("places")
     .select(
       "id, plan, first_ticket_honored_at, plan_live_at, strike_count, last_strike_at, promo_paused_until, plan_forfeited_at, reward_lane_pending_review_at",
     )
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (res.error || !res.data) return null;
   return res.data as MembershipRow;
@@ -162,7 +162,7 @@ async function maybeDecayStrikes(
   const effective = effectiveStrikeCount(row, now);
   if (effective === row.strike_count) return row;
   const update = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
     id: row.id,
     patch: { strike_count: effective },
@@ -200,7 +200,7 @@ function buildActivationPatch(
  */
 export async function recordFirstTicketHonored(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   now: Date = new Date(),
 ): Promise<
   { ok: true; membershipLive: boolean; firstHonor: boolean } | {
@@ -208,8 +208,8 @@ export async function recordFirstTicketHonored(
     error: string;
   }
 > {
-  const row = await loadMembershipRow(admin, projectId);
-  if (!row) return { ok: false, error: "project not found" };
+  const row = await loadMembershipRow(admin, placeId);
+  if (!row) return { ok: false, error: "place not found" };
 
   if (row.first_ticket_honored_at) {
     return {
@@ -222,10 +222,10 @@ export async function recordFirstTicketHonored(
   const { patch, membershipLive } = buildActivationPatch(row, now);
 
   const update = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: projectId,
-    patch: patch as ProjectPatch,
+    id: placeId,
+    patch: patch as PlacePatch,
   });
   if (!update.ok) return { ok: false, error: update.error };
   return { ok: true, membershipLive, firstHonor: true };
@@ -245,7 +245,7 @@ export type RecordStrikeResult = {
 export async function recordMembershipStrike(
   admin: SupabaseClient,
   opts: {
-    projectId: string;
+    placeId: string;
     reason: StrikeReason;
     consumerId?: string | null;
     ticketId?: string | null;
@@ -254,13 +254,13 @@ export async function recordMembershipStrike(
   },
 ): Promise<RecordStrikeResult> {
   const now = opts.now ?? new Date();
-  let row = await loadMembershipRow(admin, opts.projectId);
-  if (!row) return { ok: false, error: "project not found" };
+  let row = await loadMembershipRow(admin, opts.placeId);
+  if (!row) return { ok: false, error: "place not found" };
   row = await maybeDecayStrikes(admin, row, now);
 
   if (opts.ticketId) {
     const existing = await admin
-      .from("project_strikes")
+      .from("place_strikes")
       .select("id, strike_number")
       .eq("ticket_id", opts.ticketId)
       .maybeSingle();
@@ -280,15 +280,15 @@ export async function recordMembershipStrike(
   const patch = buildStrikePatch(next, now);
 
   const update = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: opts.projectId,
-    patch: patch as ProjectPatch,
+    id: opts.placeId,
+    patch: patch as PlacePatch,
   });
   if (!update.ok) return { ok: false, error: update.error };
 
-  const insert = await admin.from("project_strikes").insert({
-    place_id: opts.projectId,
+  const insert = await admin.from("place_strikes").insert({
+    place_id: opts.placeId,
     consumer_id: opts.consumerId ?? null,
     ticket_id: opts.ticketId ?? null,
     reason: opts.reason,
@@ -296,7 +296,7 @@ export async function recordMembershipStrike(
     notes: opts.notes ?? null,
   }).select("id").single();
   if (insert.error) {
-    // Strike already applied on projects — surface the ledger write failure.
+    // Strike already applied on places — surface the ledger write failure.
     return { ok: false, error: `strike_ledger: ${insert.error.message}` };
   }
 

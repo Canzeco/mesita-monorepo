@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
   const userId = authRes.user.id;
   const userEmail = authRes.user.email;
 
-  // Auth: any signed-in user. Super-admin elevation (skips project_members
+  // Auth: any signed-in user. Super-admin elevation (skips place_members
   // and returns the requested place) is granted when the caller's email
   // is in public.super_admins.
   const admin = adminClient(envRes.env);
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
   // them, only the active page does.
   const ticketsLimit = clampTicketsLimit(body.ticketsLimit);
 
-  // Super-admin path: skip project_members. Require an explicit placeId
+  // Super-admin path: skip place_members. Require an explicit placeId
   // (legacy body keys projectId/activeUnitId still accepted via
   // readPlaceIdAlias; the link generator always supplies one) and return
   // a single-row list.
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     // One round trip for both: the place row, and the materialized enrichment
     // map the State box's `enriched` high-water reads from (MESITA-1249).
     // Parallel, so the extra fact costs no latency. `enrichment` is read off
-    // `places` directly, not `profiles` — it is deliberately NOT in the
+    // `place_profiles` directly, not `profiles` — it is deliberately NOT in the
     // profiles view's column list (same reasoning as the embedding/state
     // columns just above staying admin-only: a heavy field only this file and
     // admin-web-search-places need, and adding it to the view means rebuilding
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
     // derives itself — partner and promoting from columns already on this row,
     // verified from admin-web-get-place-verification. The four acceptance
     // INTENT BITS (mesita_pay · credits · pickup · delivery, the Partner tab's
-    // rail toggles) ride the same places-direct side-read as enrichment —
+    // rail toggles) ride the same place_profiles-direct side-read as enrichment —
     // never through profiles (the view is anon-readable) — and are forwarded
     // only when the read returned a boolean, so a failed read renders "?"
     // not a false "no".
@@ -185,9 +185,9 @@ Deno.serve(async (req) => {
   } else {
     // Pull every place the caller is a member of, with the role on each row.
     // Read via profiles so Promos v4 membership columns (MESITA-542) and
-    // project rate/plan fields round-trip with the place profile.
+    // place rate/plan fields round-trip with the place profile.
     const memberRows = await admin
-      .from("project_members")
+      .from("place_members")
       .select(`role, place_id`)
       .eq("manager_id", userId)
       .order("created_at", { ascending: false });
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
     // The ORG-DERIVED path (MESITA-1537 / D1): places held by organizations
     // the caller belongs to are visible too, with the role derived from the
     // org membership CAPPED AT EDITOR (auth-membership's law — owner is a
-    // project_members ROW; the materialized owner comes through the direct
+    // place_members ROW; the materialized owner comes through the direct
     // path above and wins). Without this, every org member except the
     // claimer sees an empty console for places one click away in Org Places.
     const orgRows = await admin
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
         orgMemberships.map((o) => [o.organization_id, o.role]),
       );
       const { data: orgPlaces } = await admin
-        .from("projects")
+        .from("places")
         .select("id, organization_id")
         .in("organization_id", [...orgRoleById.keys()]);
       for (
@@ -256,12 +256,12 @@ Deno.serve(async (req) => {
 
   // Staff Check PIN (MESITA-823) — attached to the ACTIVE place only, and
   // only for owners (super-admin path tags my_role=owner). Read straight
-  // off projects: the column is deliberately NOT in profiles / PLACE_PROFILE_COLUMNS
+  // off places: the column is deliberately NOT in profiles / PLACE_PROFILE_COLUMNS
   // so no consumer- or viewer-facing payload can ever pick it up. The bill
   // is always required (MESITA-1095); there is no per-place switch.
   if (active) {
     const pinRow = await admin
-      .from("projects")
+      .from("places")
       .select("check_pin")
       .eq("id", (active as { id: string }).id)
       .maybeSingle();

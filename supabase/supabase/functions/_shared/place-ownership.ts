@@ -1,4 +1,4 @@
-// Claimed ownership = project_members.role 'owner' (OTP / admin approval).
+// Claimed ownership = place_members.role 'owner' (OTP / admin approval).
 // listing_type 'partner' is a separate catalog/discovery flag, not ownership.
 //
 // Invariant (MESITA-919): at most one owner per place. Transfer = promote a
@@ -9,12 +9,12 @@ import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 export async function placeHasVerifiedOwner(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
 ): Promise<boolean> {
   const { count, error } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("id", { count: "exact", head: true })
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner");
   if (error) return false;
   return (count ?? 0) > 0;
@@ -22,29 +22,29 @@ export async function placeHasVerifiedOwner(
 
 export async function isLastOwnerOfPlace(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
 ): Promise<boolean> {
   const { count } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("id", { count: "exact", head: true })
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner");
   return (count ?? 0) <= 1;
 }
 
 /**
- * Make `memberId` the sole owner of `projectId`. Any other owners are demoted
+ * Make `memberId` the sole owner of `placeId`. Any other owners are demoted
  * to editor first so the partial unique index stays happy.
  */
 export async function transferPlaceOwnership(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   memberId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const demote = await admin
-    .from("project_members")
+    .from("place_members")
     .update({ role: "editor" })
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner")
     .neq("id", memberId);
   if (demote.error) {
@@ -52,10 +52,10 @@ export async function transferPlaceOwnership(
   }
 
   const promote = await admin
-    .from("project_members")
+    .from("place_members")
     .update({ role: "owner" })
     .eq("id", memberId)
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .select("id, role")
     .single();
   if (promote.error) {

@@ -2,7 +2,7 @@
 // 8ae0d87b/4acf5a92/b359c41d/7011ee70). This file is the CONTRACT: the
 // mock layer implements it today, and the future Edge Function client must
 // satisfy the exact same types. It deliberately diverges from the shipped
-// `projects` schema — that divergence is the point of the mock era.
+// `places` schema — that divergence is the point of the mock era.
 //
 //   Organization = one legal person = one RFC = one Stripe account
 //   ├── Members      who can touch it

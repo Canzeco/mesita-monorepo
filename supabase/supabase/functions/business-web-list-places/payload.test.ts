@@ -179,7 +179,7 @@ Deno.test("a failed verification read degrades to UNKNOWN, never to false", () =
     "a read error must clear the set, not leave it empty",
   );
   assert(
-    SRC.includes("[list-places] project_verifications:"),
+    SRC.includes("[list-places] place_verifications:"),
     "the swallowed failure must be logged, or it cannot be diagnosed later",
   );
 });

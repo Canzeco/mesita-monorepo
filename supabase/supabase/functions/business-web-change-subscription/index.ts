@@ -7,7 +7,7 @@
 // Legacy `ultra` is still accepted for already-subscribed places (no-op /
 // switch-to-Verified) but is no longer a purchasable product (MESITA-541).
 //
-// A Stripe subscription is billing, not entitlement: projects.plan is the
+// A Stripe subscription is billing, not entitlement: places.plan is the
 // single source of truth and can be granted through other doors (admin,
 // partnership). This EF and the Stripe webhook only ever couple the two for
 // plans that came through the paid door.
@@ -16,14 +16,14 @@
 //
 //   • MOCK — grants the plan immediately, records a mock active subscription
 //     row, and returns the success URL. No money moves. Also runs whenever
-//     the active Stripe key is absent so a project with no Stripe secret still
+//     the active Stripe key is absent so a place with no Stripe secret still
 //     works out of the box.
 //
 //   • REAL — creates a Stripe Checkout Session (or cancels the live
 //     subscription in place) and lets stripe-webhook-handle-event flip
-//     projects.plan once Stripe confirms.
+//     places.plan once Stripe confirms.
 //
-// Body: { projectId: string, plan: "free" | "pro" | "ultra",
+// Body: { placeId: string, plan: "free" | "pro" | "ultra",
 //         successUrl?: string, cancelUrl?: string }
 // Response (one of):
 //   { ok: true, checkout_url: string, mock?: true }   — go pay (or mock-paid)
@@ -46,7 +46,7 @@ import { stripeSecretKey } from "../_shared/stripe-env.ts";
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
-import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
+import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 
 type Body = {
@@ -64,16 +64,16 @@ const PAID_PLANS = new Set(["pro", "ultra"]);
 const VERIFIED_PLAN = "pro";
 const MOCK_PERIOD_DAYS = 365; // annual membership
 
-function loadProjectRow(
+function loadPlaceRow(
   admin: ReturnType<typeof adminClient>,
-  projectId: string,
+  placeId: string,
 ) {
   return admin
-    .from("projects")
+    .from("places")
     .select(
       "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
 }
 
@@ -112,9 +112,9 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
+  const placeId = readPlaceIdAlias(bodyRes.body);
   const requestedPlan = (bodyRes.body.plan ?? "").toString().trim();
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
   if (requestedPlan !== "free" && !PAID_PLANS.has(requestedPlan)) {
     return json({ ok: false, error: "plan must be one of free | pro | ultra" }, 400);
   }
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
   const ownerRes = await requireOwner(
     admin,
     authRes.user,
-    projectId,
+    placeId,
     "Only owners can change the subscription.",
   );
   if (!ownerRes.ok) return ownerRes.response;
@@ -137,20 +137,20 @@ Deno.serve(async (req) => {
   const origin = req.headers.get("origin") ?? "";
   const successUrl =
     bodyRes.body.successUrl ??
-    `${origin}/place/${projectId}/promos?subscription=success`;
+    `${origin}/place/${placeId}/promos?subscription=success`;
   const cancelUrl =
     bodyRes.body.cancelUrl ??
-    `${origin}/place/${projectId}/promos?subscription=cancelled`;
+    `${origin}/place/${placeId}/promos?subscription=cancelled`;
 
   const stripeKey = stripeSecretKey();
   const mockMode = MOCK_SUBSCRIPTION || !stripeKey;
 
-  // The one live billing row for this project, if any. Mock rows are
+  // The one live billing row for this place, if any. Mock rows are
   // recognisable by their id prefix regardless of the current toggle.
   const { data: liveSub } = await admin
-    .from("project_subscriptions")
+    .from("place_subscriptions")
     .select("stripe_subscription_id, stripe_customer_id, plan_key, current_period_end")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .in("state", ["active", "past_due"])
     .maybeSingle();
   const liveSubId = (liveSub?.stripe_subscription_id ?? "") as string;
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
         cancel_at_period_end: true,
       });
       await admin
-        .from("project_subscriptions")
+        .from("place_subscriptions")
         .update({ cancel_at_period_end: true })
         .eq("stripe_subscription_id", liveSubId);
       return json({
@@ -180,22 +180,22 @@ Deno.serve(async (req) => {
     // Mock subscription (or nothing billable on file): downgrade now.
     if (liveSub && liveIsMock) {
       await admin
-        .from("project_subscriptions")
+        .from("place_subscriptions")
         .update({ state: "canceled", cancel_at_period_end: true })
         .eq("stripe_subscription_id", liveSubId);
     }
-    const projectRow = await loadProjectRow(admin, projectId);
-    if (projectRow.error) {
-      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    const placeRow = await loadPlaceRow(admin, placeId);
+    if (placeRow.error) {
+      return json({ ok: false, error: `place_read: ${placeRow.error.message}` }, 500);
     }
-    if (!projectRow.data) {
+    if (!placeRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
     const down = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: planPatchForRow(projectRow.data as Record<string, unknown>, "free") as ProjectPatch,
+      id: placeId,
+      patch: planPatchForRow(placeRow.data as Record<string, unknown>, "free") as PlacePatch,
     });
     if (!down.ok) {
       return json({ ok: false, error: `downgrade: ${down.error}` }, 500);
@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
 
   // ── Paid Verified membership ──────────────────────────────────────────────
   const { data: planRow } = await admin
-    .from("project_plans")
+    .from("place_plans")
     .select("key, label, price_cents, currency")
     .eq("key", VERIFIED_PLAN)
     .maybeSingle();
@@ -229,18 +229,18 @@ Deno.serve(async (req) => {
     const periodEnd = new Date(
       Date.now() + MOCK_PERIOD_DAYS * 24 * 60 * 60 * 1000,
     ).toISOString();
-    // Stable per-project id so re-subscribing updates the same row instead of
-    // tripping the one-live-subscription-per-project unique index.
-    const mockSubId = `mock_${projectId}`;
+    // Stable per-place id so re-subscribing updates the same row instead of
+    // tripping the one-live-subscription-per-place unique index.
+    const mockSubId = `mock_${placeId}`;
 
     const sub = await admin
-      .from("project_subscriptions")
+      .from("place_subscriptions")
       .upsert(
         {
-          place_id: projectId,
+          place_id: placeId,
           plan_key: VERIFIED_PLAN,
           stripe_subscription_id: mockSubId,
-          stripe_customer_id: `mock_cus_${projectId}`,
+          stripe_customer_id: `mock_cus_${placeId}`,
           state: "active",
           price_cents: planRow.price_cents,
           currency: planRow.currency ?? "MXN",
@@ -253,18 +253,18 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: `mock_subscription: ${sub.error.message}` }, 500);
     }
 
-    const projectRow = await loadProjectRow(admin, projectId);
-    if (projectRow.error) {
-      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    const placeRow = await loadPlaceRow(admin, placeId);
+    if (placeRow.error) {
+      return json({ ok: false, error: `place_read: ${placeRow.error.message}` }, 500);
     }
-    if (!projectRow.data) {
+    if (!placeRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
     const grant = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN) as ProjectPatch,
+      id: placeId,
+      patch: planPatchForRow(placeRow.data as Record<string, unknown>, VERIFIED_PLAN) as PlacePatch,
     });
     if (!grant.ok) {
       return json({ ok: false, error: `mock_grant: ${grant.error}` }, 500);
@@ -286,7 +286,7 @@ Deno.serve(async (req) => {
   void ensureWholeCatalog(admin, stripe);
 
   // Live real subscription on a legacy ultra price → switch onto Verified
-  // (prorated); the webhook reconciles the mirror + projects.plan.
+  // (prorated); the webhook reconciles the mirror + places.plan.
   if (liveSub && !liveIsMock) {
     const current = await stripe.subscriptions.retrieve(liveSubId);
     const itemId = current.items.data[0]?.id;
@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
       proration_behavior: "create_prorations",
       cancel_at_period_end: false,
       metadata: {
-        project_id: projectId,
+        place_id: placeId,
         plan_key: VERIFIED_PLAN,
         mesita_kind: "business",
       },
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
     // Optimistic flip — the subsequent customer.subscription.updated webhook
     // writes the same values idempotently.
     await admin
-      .from("project_subscriptions")
+      .from("place_subscriptions")
       .update({
         plan_key: VERIFIED_PLAN,
         price_cents: resolved.priceCents,
@@ -314,28 +314,28 @@ Deno.serve(async (req) => {
         cancel_at_period_end: false,
       })
       .eq("stripe_subscription_id", liveSubId);
-    const projectRow = await loadProjectRow(admin, projectId);
-    if (projectRow.error) {
-      return json({ ok: false, error: `project_read: ${projectRow.error.message}` }, 500);
+    const placeRow = await loadPlaceRow(admin, placeId);
+    if (placeRow.error) {
+      return json({ ok: false, error: `place_read: ${placeRow.error.message}` }, 500);
     }
-    if (!projectRow.data) {
+    if (!placeRow.data) {
       return json({ ok: false, error: "Place not found" }, 404);
     }
     await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: planPatchForRow(projectRow.data as Record<string, unknown>, VERIFIED_PLAN) as ProjectPatch,
+      id: placeId,
+      patch: planPatchForRow(placeRow.data as Record<string, unknown>, VERIFIED_PLAN) as PlacePatch,
     });
     return json({ ok: true, plan: VERIFIED_PLAN, plan_switched: true });
   }
 
-  // Fresh checkout. Reuse an existing real Stripe customer if this project
+  // Fresh checkout. Reuse an existing real Stripe customer if this place
   // has been through billing before.
   const { data: existing } = await admin
-    .from("project_subscriptions")
+    .from("place_subscriptions")
     .select("stripe_customer_id")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .not("stripe_customer_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -344,7 +344,7 @@ Deno.serve(async (req) => {
   let customerId = (existing?.stripe_customer_id as string | null) ?? null;
   if (!customerId || customerId.startsWith("mock_")) {
     const customer = await stripe.customers.create({
-      metadata: { project_id: projectId },
+      metadata: { place_id: placeId },
     });
     customerId = customer.id;
   }
@@ -352,16 +352,16 @@ Deno.serve(async (req) => {
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    client_reference_id: projectId,
+    client_reference_id: placeId,
     line_items: [{ price: resolved.priceId, quantity: 1 }],
     metadata: {
-      project_id: projectId,
+      place_id: placeId,
       plan_key: VERIFIED_PLAN,
       mesita_kind: "business",
     },
     subscription_data: {
       metadata: {
-        project_id: projectId,
+        place_id: placeId,
         plan_key: VERIFIED_PLAN,
         mesita_kind: "business",
       },
@@ -370,9 +370,9 @@ Deno.serve(async (req) => {
     cancel_url: cancelUrl,
   });
 
-  await admin.from("project_subscriptions").upsert(
+  await admin.from("place_subscriptions").upsert(
     {
-      place_id: projectId,
+      place_id: placeId,
       plan_key: VERIFIED_PLAN,
       stripe_customer_id: customerId,
       state: "incomplete",

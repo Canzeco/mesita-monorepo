@@ -54,24 +54,24 @@ Deno.serve(async (req) => {
   const body = await readJsonOr<Body>(req, {});
   const limit = Math.min(200, Math.max(1, body.limit ?? 100));
 
-  // project_verifications FKs to `projects`, never to `places`, so the place
-  // has to come through the project. `slug` and `state` are project columns;
-  // only name/address/phone/google_place_id live on `places`. Embedding
-  // places directly here fails the whole query with PGRST200 — same trap
+  // place_verifications FKs to `places`, never to `place_profiles`, so the place
+  // has to come through the place entity. `slug` and `state` are place columns;
+  // only name/address/phone/google_place_id live on `place_profiles`. Embedding
+  // place_profiles directly here fails the whole query with PGRST200 — same trap
   // admin-web-list-notifications documents.
   let query = admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select(
-      "id, place_id, requester_id, method, payload, requester_email, state, reject_reason, decided_at, decided_by, decided_via, created_at, project:projects(id, slug, state, place:place_profiles(name, address, phone, google_place_id))",
+      "id, place_id, requester_id, method, payload, requester_email, state, reject_reason, decided_at, decided_by, decided_via, created_at, placeEntity:places(id, slug, state, place:place_profiles(name, address, phone, google_place_id))",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
   if (body.state) {
     query = query.eq("state", body.state);
   }
-  const projectId = readPlaceIdAlias(body) || null;
-  if (projectId) {
-    query = query.eq("place_id", projectId);
+  const placeId = readPlaceIdAlias(body) || null;
+  if (placeId) {
+    query = query.eq("place_id", placeId);
   } else {
     // Method gate (queue surface only): video and manual_contact always
     // show — neither has an auto-verify path (MESITA-1596). ai_call and
@@ -91,16 +91,16 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Flatten project+place back into the single `place` object the admin
-  // web renders. id/slug/state come from the project, the rest from the
-  // place — the shape the client sees is unchanged.
+  // Flatten placeEntity+place back into the single `place` object the admin
+  // web renders. id/slug/state come from the place entity, the rest from the
+  // profile — the shape the client sees is unchanged.
   type PlaceProfileRow = {
     name: string | null;
     address: string | null;
     phone: string | null;
     google_place_id: string | null;
   };
-  type ProjectRow = {
+  type PlaceRow = {
     id: string;
     slug: string | null;
     state: string | null;
@@ -110,10 +110,10 @@ Deno.serve(async (req) => {
     Array.isArray(v) ? (v[0] ?? null) : v;
 
   const verifications = (data ?? []).map((row) => {
-    const { project, ...rest } = row as typeof row & {
-      project: ProjectRow | ProjectRow[] | null;
+    const { placeEntity, ...rest } = row as typeof row & {
+      placeEntity: PlaceRow | PlaceRow[] | null;
     };
-    const p = one(project);
+    const p = one(placeEntity);
     const pl = p ? one(p.place) : null;
     return {
       ...rest,

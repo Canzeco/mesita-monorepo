@@ -75,7 +75,7 @@ type SectionSaver = {
 };
 
 type PlaceContextValue = {
-  projectId: string;
+  placeId: string;
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
   reload: () => void;
@@ -119,13 +119,13 @@ function pushSentinel() {
 }
 
 export function PlaceProvider({
-  projectId,
+  placeId,
   place,
   setPlace,
   reload,
   children,
 }: {
-  projectId: string;
+  placeId: string;
   place: AdminPlace;
   setPlace: (place: AdminPlace) => void;
   reload: () => void;
@@ -205,7 +205,7 @@ export function PlaceProvider({
     setSaveOk(false);
     setSavePending(true);
     void (async () => {
-      const patch = Object.assign({ id: projectId }, ...fragments) as {
+      const patch = Object.assign({ id: placeId }, ...fragments) as {
         id: string;
       } & Record<string, unknown>;
       const r = await updatePlace(patch);
@@ -222,7 +222,7 @@ export function PlaceProvider({
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
-  }, [projectId, setPlace]);
+  }, [placeId, setPlace]);
 
   const isDirty = useMemo(
     () => Object.values(dirtyMap).some(Boolean),
@@ -314,7 +314,7 @@ export function PlaceProvider({
 
   const value = useMemo(
     () => ({
-      projectId,
+      placeId,
       place,
       setPlace,
       reload,
@@ -332,7 +332,7 @@ export function PlaceProvider({
       guardNav,
     }),
     [
-      projectId,
+      placeId,
       place,
       setPlace,
       reload,

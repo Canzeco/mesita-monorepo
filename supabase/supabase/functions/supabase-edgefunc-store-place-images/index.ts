@@ -13,7 +13,7 @@ import {
 } from "../_shared/store-place-images.ts";
 
 type Body = {
-  project_id?: string;
+  place_id?: string;
   assets?: PlaceImageAssetInput[];
   preferred_photo_urls?: string[];
 };
@@ -30,14 +30,14 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = typeof bodyRes.body.project_id === "string" ? bodyRes.body.project_id.trim() : "";
-  if (!projectId) return json({ ok: false, error: "project_id is required" }, 400);
+  const placeId = typeof bodyRes.body.place_id === "string" ? bodyRes.body.place_id.trim() : "";
+  if (!placeId) return json({ ok: false, error: "place_id is required" }, 400);
 
   const admin = adminClient(envRes.env);
   const result = await storePlaceImages(
     admin,
     envRes.env.url,
-    projectId,
+    placeId,
     bodyRes.body.assets ?? [],
     bodyRes.body.preferred_photo_urls ?? [],
   );

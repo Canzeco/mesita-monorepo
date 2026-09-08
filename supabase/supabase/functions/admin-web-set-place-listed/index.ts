@@ -1,6 +1,6 @@
 // Supabase Edge Function — admin-web-set-place-listed
 //
-// The ONLY door onto projects.state.
+// The ONLY door onto places.state.
 //
 // Listed is one of the nine facts the admin State box reports — "can a guest
 // reach this place on Mesita at all" — and until now it was the only one
@@ -83,17 +83,17 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "placeId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
   if (typeof body.listed !== "boolean") {
     return json({ ok: false, error: "listed must be a boolean" }, 400);
   }
   const listed = body.listed;
 
   const { data: current, error: readCurrent } = await admin
-    .from("projects")
+    .from("places")
     .select("state")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (readCurrent) {
     return json({ ok: false, error: `state_read: ${readCurrent.message}` }, 500);
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     const { data: place, error: readError } = await admin
       .from("profiles")
       .select(PLACE_BUSINESS_COLUMNS)
-      .eq("id", projectId)
+      .eq("id", placeId)
       .single();
     if (readError) {
       return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
@@ -121,9 +121,9 @@ Deno.serve(async (req) => {
 
   const nextState = listed ? LISTED_STATE : UNLISTED_STATE;
   const updRes = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: { state: nextState },
     select: "id",
     selectMode: "maybeSingle",
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
   console.log(
     JSON.stringify({
       event: "place_listing_changed",
-      project: projectId,
+      place: placeId,
       from: currentState,
       to: nextState,
       actor: authRes.user.email ?? authRes.user.id,
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
   const { data: place, error: readError } = await admin
     .from("profiles")
     .select(PLACE_BUSINESS_COLUMNS)
-    .eq("id", projectId)
+    .eq("id", placeId)
     .single();
   if (readError) {
     return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
