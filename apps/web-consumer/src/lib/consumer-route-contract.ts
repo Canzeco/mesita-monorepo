@@ -105,7 +105,7 @@ export const CONSUMER_ROUTES = {
   // surface only ever creates. /rewards, /pay and /qr all 308 here.
   newVisit: {
     root: "/new-visit",
-    // PAY IS A CONTAINER AGAIN (Pato, 2026-09-06): New · Wallet.
+    // PAY IS A CONTAINER AGAIN (Pato, 2026-09-06): QR · Wallet.
     //
     // WALLET CAME BACK. It was Pay's second section from 2026-09-01, left for
     // a tab of its own at /wallet on 09-05, and returns here on 09-06 — the
@@ -122,7 +122,7 @@ export const CONSUMER_ROUTES = {
     // Pay.
     //
     // New is the bare route — pick a place, start a visit. The section labels
-    // are New and Wallet; the segments are `/new-visit` and `/new-visit/wallet`.
+    // are QR and Wallet; the segments are `/new-visit` and `/new-visit/wallet`.
     // Same shape as Inbox: container + sections, bare route is the default.
     new: "/new-visit",
     wallet: "/new-visit/wallet",
