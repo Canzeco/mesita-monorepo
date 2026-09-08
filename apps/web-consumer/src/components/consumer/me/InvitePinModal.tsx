@@ -4,13 +4,13 @@ import { useState } from "react";
 import { BadgeCheck, KeyRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { PIN_LENGTH, PinField } from "@/components/consumer/PinField";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { apiClaimInviteCode } from "@/lib/api/profile";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { classProperLabel, identityForClassKey } from "@/lib/consumer-data";
-import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
@@ -20,17 +20,19 @@ import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 // then did nothing. The real flow: Mesita hands a partner a batch of PINs, the
 // partner gives them out, and the holder redeems here.
 //
-// TEN DIGITS, and numeric on purpose. A PIN gets read off a card or a
-// screenshot in a lobby, so `inputMode="numeric"` raises the phone keypad and
-// there is no case or letter/number ambiguity to get wrong. Anything that is
-// not a digit is stripped as the guest types, because people paste PINs with
-// spaces and dashes in them.
+// THE FIELD LIVES IN `PinField` NOW (MESITA-1672). Ten digits, numeric,
+// non-digits stripped as you type — all of it moved out because Credits
+// gifting redeems a 10-digit code too, and its screen is a public route
+// rather than a sheet. What stays here is what is specific to an INVITATION:
+// the EF it calls and the class it grants.
+//
+// The failure moved with it, from a toast to an inline error. A toast at
+// z-140 is not reliably announced and cannot be re-read while you check your
+// typing, which is exactly what someone does after a code is rejected.
 //
 // The server answers ONE generic message for unknown, spent and expired PINs so
 // this screen cannot be used to discover which 10-digit strings are real. Do
 // not "improve" the copy by distinguishing them.
-
-const PIN_LENGTH = 10;
 
 export function InvitePinModal({
   open,
@@ -40,15 +42,16 @@ export function InvitePinModal({
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState("");
   const [claiming, setClaiming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const digits = code.replace(/\D/g, "");
   const canClaim = digits.length === PIN_LENGTH && !claiming;
 
   async function claim() {
     if (!canClaim) return;
     setClaiming(true);
+    setError(null);
     try {
       const result = await apiClaimInviteCode(supabase, { code: digits });
       // `classKey` is the EFFECTIVE class the server settled on, and it is a
@@ -58,7 +61,7 @@ export function InvitePinModal({
       // seed, the same thing the Instagram claim does on success.
       window.location.href = `${CONSUMER_ROUTES.me}?invite=${encodeURIComponent(label)}`;
     } catch (e) {
-      toast(errMsg(e, "That PIN didn't work."));
+      setError(errMsg(e, "That PIN didn't work."));
       setClaiming(false);
     }
   }
@@ -79,26 +82,14 @@ export function InvitePinModal({
         </div>
 
         <section className="border-border bg-card rounded-2xl border p-4">
-          <label
-            htmlFor="invite-pin"
-            className="text-muted-foreground type-label block font-medium"
-          >
-            Your PIN
-          </label>
-          <input
+          <PinField
             id="invite-pin"
+            label="Your PIN"
             value={digits}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="0000000000"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={PIN_LENGTH}
-            data-field-size="lg"
-            className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-1 h-12 w-full rounded-lg border px-5 text-center font-mono text-lg tracking-[0.3em] tabular-nums outline-none"
+            onChange={setDigits}
+            error={error}
+            disabled={claiming}
           />
-          <p className="text-muted-foreground type-label mt-2 text-center">
-            {digits.length}/{PIN_LENGTH}
-          </p>
 
           <Button
             type="button"

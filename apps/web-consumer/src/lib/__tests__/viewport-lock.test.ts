@@ -63,7 +63,10 @@ describe("the frame never zooms", () => {
     expect(read("components/auth/PhoneOtpForm.tsx")).toContain(
       'data-field-size="lg"',
     );
-    expect(read("components/consumer/me/InvitePinModal.tsx")).toContain(
+    // The ten-digit field moved to PinField (MESITA-1672) so the Credits gift
+    // redeem route can mount the same input; the 16px floor moved with it, and
+    // this follows the input rather than the sheet that used to hold it.
+    expect(read("components/consumer/PinField.tsx")).toContain(
       'data-field-size="lg"',
     );
   });
