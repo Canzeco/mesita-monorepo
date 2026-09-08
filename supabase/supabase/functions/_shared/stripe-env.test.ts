@@ -11,6 +11,9 @@ import {
   resolveStripeSecret,
   stripeKeyMatchesMode,
   stripeMode,
+  stripePublishableKey,
+  stripePublishableKeyMatchesMode,
+  stripePublishableKeyNames,
   stripeSecretKey,
   stripeSecretKeyNames,
   stripeSecretKeyProblem,
@@ -245,4 +248,81 @@ Deno.test("isStripeKeyRejection: never throws on junk", () => {
   for (const junk of [null, undefined, "401", 401, [], {}, new Error("boom")]) {
     assertEquals(typeof isStripeKeyRejection(junk), "boolean");
   }
+});
+
+// ── The publishable key (MESITA-1670) ────────────────────────────────────────
+//
+// It is the only Stripe credential that reaches a browser, and it is resolved
+// SERVER-side for one reason: a NEXT_PUBLIC_ build variable cannot follow
+// STRIPE_MODE. Bake pk_test into a deploy, flip the mode, and every 3DS
+// challenge runs against a universe that cannot see the intent.
+
+Deno.test("stripePublishableKey: follows the mode, and never falls through", () => {
+  const both = {
+    STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_a",
+    STRIPE_PUBLISHABLE_KEY_LIVE: "pk_live_b",
+  };
+  assertEquals(stripePublishableKey(env(both)), "pk_test_a");
+  assertEquals(
+    stripePublishableKey(env({ ...both, STRIPE_MODE: "live" })),
+    "pk_live_b",
+  );
+  // THE INVARIANT THAT MATTERS: a missing key for the active mode means "no
+  // key", never "use the other one". Same rule as the secret — a browser must
+  // never be handed a live key by a deployment that believes it is testing.
+  assertEquals(
+    stripePublishableKey(env({ STRIPE_PUBLISHABLE_KEY_LIVE: "pk_live_b" })),
+    undefined,
+  );
+  assertEquals(
+    stripePublishableKey(
+      env({ STRIPE_MODE: "live", STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_a" }),
+    ),
+    undefined,
+  );
+});
+
+Deno.test("stripePublishableKey: the legacy unsuffixed name still works", () => {
+  assertEquals(
+    stripePublishableKey(env({ STRIPE_PUBLISHABLE_KEY: "pk_test_legacy" })),
+    "pk_test_legacy",
+  );
+  // Suffixed wins when both are present — most specific first.
+  assertEquals(
+    stripePublishableKey(
+      env({
+        STRIPE_PUBLISHABLE_KEY: "pk_test_legacy",
+        STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_specific",
+      }),
+    ),
+    "pk_test_specific",
+  );
+  // A blank value is not a value, and must fall through to the next name.
+  assertEquals(
+    stripePublishableKey(
+      env({
+        STRIPE_PUBLISHABLE_KEY_TEST: "   ",
+        STRIPE_PUBLISHABLE_KEY: "pk_test_legacy",
+      }),
+    ),
+    "pk_test_legacy",
+  );
+});
+
+Deno.test("stripePublishableKeyNames: the other mode's name is absent", () => {
+  assertEquals(stripePublishableKeyNames("test"), [
+    "STRIPE_PUBLISHABLE_KEY_TEST",
+    "STRIPE_PUBLISHABLE_KEY",
+  ]);
+  assertEquals(stripePublishableKeyNames("live"), [
+    "STRIPE_PUBLISHABLE_KEY_LIVE",
+    "STRIPE_PUBLISHABLE_KEY",
+  ]);
+});
+
+Deno.test("stripePublishableKeyMatchesMode: reports skew, does not refuse it", () => {
+  assertEquals(stripePublishableKeyMatchesMode("pk_test_a", "test"), true);
+  assertEquals(stripePublishableKeyMatchesMode("pk_live_b", "live"), true);
+  assertEquals(stripePublishableKeyMatchesMode("pk_live_b", "test"), false);
+  assertEquals(stripePublishableKeyMatchesMode("pk_test_a", "live"), false);
 });

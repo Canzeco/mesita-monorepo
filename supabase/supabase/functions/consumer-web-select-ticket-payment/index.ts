@@ -50,7 +50,7 @@ import {
   STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
 import { cardsMockMode, defaultPaymentMethodId } from "../_shared/consumer-cards.ts";
-import { stripeSecretKey } from "../_shared/stripe-env.ts";
+import { stripePublishableKey, stripeSecretKey } from "../_shared/stripe-env.ts";
 
 type Body = { ticketId?: string; method?: string | null };
 
@@ -215,6 +215,51 @@ Deno.serve(async (req) => {
       currency: (ticket.currency as string | null) ?? "MXN",
       idempotencyKey: `mesita-pay:${ticket.id}:${amountCents}`,
     });
+
+    // THE BANK WANTS A STEP, AND THAT IS NOT A FAILURE (MESITA-1670).
+    //
+    // The branch below this one rolls the ticket back to `approved` so the
+    // guest can pay at the register. Doing that here would be a bug with
+    // money in it: the PaymentIntent is LIVE and confirmable, so a rollback
+    // leaves a chargeable intent pointing at a ticket that no longer claims
+    // to be paying — and `payment_intent.succeeded` would then arrive at a
+    // webhook whose loader refuses anything not still in `paying`.
+    //
+    // So the ticket STAYS in `paying` and the response carries what the
+    // browser needs to finish. If the guest abandons the challenge, the
+    // intent simply never succeeds and staff can cancel the ticket; if they
+    // complete it in a tab that then dies, the webhook backstop closes it
+    // without this request ever running again.
+    //
+    // 200, not 402: the request did what was asked. Only a terminal outcome
+    // is a payment failure.
+    if (!outcome.ok && outcome.code === "requires_action") {
+      const publishableKey = stripePublishableKey();
+      if (!publishableKey) {
+        // No browser-safe key means no challenge can be run, and an intent
+        // was already created. Say so as an operator problem rather than
+        // blaming the card: the guest's fallback is the register either way,
+        // but the log has to name the missing variable.
+        console.error(
+          "mesita-pay 3DS: no STRIPE_PUBLISHABLE_KEY for the active mode; " +
+            `intent ${outcome.action.paymentIntentId} left unconfirmed`,
+        );
+        return json(
+          {
+            ok: false,
+            code: "requires_action",
+            error:
+              "Your bank needs extra verification for this card — pay at the register instead.",
+          },
+          402,
+        );
+      }
+      return json({
+        ok: true,
+        state: TICKET_STATE.paying,
+        requiresAction: { ...outcome.action, publishableKey },
+      });
+    }
 
     if (!outcome.ok) {
       // Roll back to approved so the guest can fall back to at_place —
