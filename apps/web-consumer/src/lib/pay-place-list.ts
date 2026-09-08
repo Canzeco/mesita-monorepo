@@ -2,7 +2,7 @@
 // search when the guest types. Live tickets belong in Inbox — this surface
 // never paints an "Open" chip.
 
-import { isPromoting } from "@/lib/promo-rates";
+import { isPartner } from "@/lib/promo-rates";
 import type { Place, PlacePrediction } from "@/lib/api/places";
 import type { SeedPlace } from "@/lib/ticket-seed";
 
@@ -10,11 +10,15 @@ export const PAY_NEARBY_MAX = 50;
 export const PAY_SUGGEST_MIN_CHARS = 2;
 export const PAY_SUGGEST_DEBOUNCE_MS = 300;
 
-/** Ticketable on Pay: the live promoting flag, never listing_type. */
+/**
+ * Ticketable on Pay: the Partner fact — never `listing_type` (stale enum,
+ * doesn't un-flip when a promo pauses) and never `promoting` (a partner can
+ * pause its strategy without losing the ability to take a guest's payment).
+ */
 export function canStartPayVisit(
-  row: { promoting?: boolean | null } | null | undefined,
+  row: { partner?: boolean | null } | null | undefined,
 ): boolean {
-  return isPromoting(row);
+  return isPartner(row);
 }
 
 export type PayListRow = {
