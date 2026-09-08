@@ -10,7 +10,10 @@
 //     metadata (the webhook backstop's only way to find the ticket);
 //   - Stripe's outcome states (succeeded / requires_action / card decline /
 //     transport error) map to the right ChargeOutcome, never a thrown
-//     exception the caller has to guess about.
+//     exception the caller has to guess about;
+//   - requires_action carries the client secret AND the connected account
+//     (MESITA-1670) — without the account the browser looks for the intent on
+//     the platform, which is the failure that reads like a bad secret.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type Stripe from "npm:stripe@17";
@@ -164,13 +167,42 @@ Deno.test("application_fee_amount is only sent when explicitly asked for", async
   assertEquals((intent2.params as { application_fee_amount: number }).application_fee_amount, 150);
 });
 
-Deno.test("requires_action: no client 3DS step exists, so it's a clear failure, not a crash", async () => {
+Deno.test("requires_action hands back everything the browser needs to finish it", async () => {
+  // MESITA-1670. This used to be a terminal failure telling the guest to pay
+  // at the register — fine for a ticket, impossible for a Credits top-up,
+  // which has no register. The intent is REAL and confirmable, so the caller
+  // gets the secret, the intent id, and the account the intent lives on.
   const { admin } = fakeAdmin("cus_conn_cached");
-  const { stripe } = fakeStripe({ intent: { status: "requires_action" } });
+  const { stripe } = fakeStripe({
+    intent: { status: "requires_action", client_secret: "pi_1_secret_abc" },
+  });
   const outcome = await chargeTicketWithMesitaPay(stripe, admin, BASE_ARGS);
   assert(!outcome.ok);
   if (outcome.ok) return;
   assertEquals(outcome.code, "requires_action");
+  if (outcome.code !== "requires_action") return;
+  assertEquals(outcome.action.clientSecret, "pi_1_secret_abc");
+  assertEquals(outcome.action.paymentIntentId, "pi_1");
+  // THE ACCOUNT IS THE POINT. A direct charge lives on the connected account;
+  // Stripe.js initialised against the platform cannot see the intent at all.
+  assertEquals(outcome.action.connectedAccountId, BASE_ARGS.connectedAccountId);
+  // And the copy stops sending them to the register — there is a step now.
+  assert(!outcome.error.includes("register"));
+});
+
+Deno.test("requires_action with no client secret degrades to terminal, never a half-promise", async () => {
+  // client_secret is the one field Stripe may omit. With no secret the browser
+  // has nothing to confirm against, so promising a challenge would strand the
+  // guest mid-flow; it falls back to the old behaviour and names the register.
+  const { admin } = fakeAdmin("cus_conn_cached");
+  const { stripe } = fakeStripe({
+    intent: { status: "requires_action", client_secret: null },
+  });
+  const outcome = await chargeTicketWithMesitaPay(stripe, admin, BASE_ARGS);
+  assert(!outcome.ok);
+  if (outcome.ok) return;
+  assertEquals(outcome.code, "card_declined");
+  assert(outcome.error.includes("register"));
 });
 
 Deno.test("a StripeCardError maps to card_declined with Stripe's own message", async () => {

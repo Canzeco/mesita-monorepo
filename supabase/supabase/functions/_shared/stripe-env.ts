@@ -35,6 +35,14 @@ export type StripeMode = "test" | "live";
 
 /** Base names, before the mode suffix. */
 export const STRIPE_SECRET_KEY_BASE = "STRIPE_SECRET_KEY";
+/** The browser-safe half of the pair (MESITA-1670). It rides the SAME mode
+ *  switch as the secret, and that is the whole reason it is resolved here
+ *  rather than shipped to the client as a NEXT_PUBLIC_ build variable: a
+ *  publishable key baked into a deploy cannot follow STRIPE_MODE, so one
+ *  flip would leave the browser addressing the other universe and every 3DS
+ *  challenge would fail against an intent it cannot see. The server hands the
+ *  key down with the client secret it belongs to, so the two can never skew. */
+export const STRIPE_PUBLISHABLE_KEY_BASE = "STRIPE_PUBLISHABLE_KEY";
 export const STRIPE_WEBHOOK_SECRET_BASES = [
   "STRIPE_WEBHOOK_SECRET",
   "STRIPE_CONNECT_WEBHOOK_SECRET",
@@ -47,6 +55,13 @@ export const STRIPE_SECRET_KEY_NAMES = [
   `${STRIPE_SECRET_KEY_BASE}_TEST`,
   `${STRIPE_SECRET_KEY_BASE}_LIVE`,
   STRIPE_SECRET_KEY_BASE,
+];
+
+/** The same set for the publishable key. */
+export const STRIPE_PUBLISHABLE_KEY_NAMES = [
+  `${STRIPE_PUBLISHABLE_KEY_BASE}_TEST`,
+  `${STRIPE_PUBLISHABLE_KEY_BASE}_LIVE`,
+  STRIPE_PUBLISHABLE_KEY_BASE,
 ];
 
 type ReadEnv = (name: string) => string | undefined;
@@ -79,6 +94,39 @@ export function stripeEnvNames(base: string, mode: StripeMode): string[] {
 /** Ordered secret-key candidates for `mode`. */
 export function stripeSecretKeyNames(mode: StripeMode): string[] {
   return stripeEnvNames(STRIPE_SECRET_KEY_BASE, mode);
+}
+
+/** Ordered publishable-key candidates for `mode`. */
+export function stripePublishableKeyNames(mode: StripeMode): string[] {
+  return stripeEnvNames(STRIPE_PUBLISHABLE_KEY_BASE, mode);
+}
+
+/**
+ * The active publishable key, or undefined when neither candidate is set.
+ *
+ * Same no-fallthrough rule as the secret: a missing TEST key means "no test
+ * publishable key", never "use the live one". A caller with no key must fail
+ * the step rather than send the browser a credential for the other universe.
+ */
+export function stripePublishableKey(
+  read: ReadEnv = envRead,
+  mode: StripeMode = stripeMode(read),
+): string | undefined {
+  for (const name of stripePublishableKeyNames(mode)) {
+    const key = value(read, name);
+    if (key) return key;
+  }
+  return undefined;
+}
+
+/** Does the publishable key address the universe STRIPE_MODE claims? The
+ *  twin of stripeKeyMatchesMode, and the one that matters most on this key:
+ *  it is the only Stripe credential that reaches a browser. */
+export function stripePublishableKeyMatchesMode(
+  key: string,
+  mode: StripeMode,
+): boolean {
+  return key.startsWith("pk_live_") === (mode === "live");
 }
 
 /**

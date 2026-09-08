@@ -33,15 +33,36 @@ import {
   writeOrganizationGuestCustomer,
 } from "./organization-guest-customer-doc.ts";
 
+/** What a browser needs to finish a 3DS challenge on a DIRECT charge. The
+ *  connected account id is not optional decoration: the intent lives on that
+ *  account, so Stripe.js must be initialised against it or `handleNextAction`
+ *  looks for the intent on the platform and cannot find it. */
+export type ChargeAction = {
+  clientSecret: string;
+  paymentIntentId: string;
+  connectedAccountId: string;
+};
+
 export type ChargeOutcome =
   | { ok: true; paymentIntentId: string }
   | {
     ok: false;
-    /** requires_action: Stripe wants additional authentication this
-     *  server-confirmed flow cannot complete — no client-side 3DS step
-     *  exists yet, so the guest is told to fall back to at_place.
-     *  card_declined / no_card / stripe_error: self-explanatory. */
-    code: "requires_action" | "card_declined" | "no_card" | "stripe_error";
+    /** The bank wants step-up authentication. THIS IS NOT A DEAD END any
+     *  more (MESITA-1670): the PaymentIntent is live and confirmable, and
+     *  `action` carries everything the browser needs to finish it. The
+     *  caller must NOT roll its ticket back — the intent is real, and
+     *  `payment_intent.succeeded` on the connected account will close the
+     *  ticket through the webhook backstop even if the guest never comes
+     *  back to this tab. Rolling back would strand a chargeable intent. */
+    code: "requires_action";
+    error: string;
+    action: ChargeAction;
+  }
+  | {
+    ok: false;
+    /** card_declined / no_card / stripe_error: terminal, roll back and let
+     *  the guest pay at the register. */
+    code: "card_declined" | "no_card" | "stripe_error";
     error: string;
   };
 
@@ -164,11 +185,27 @@ export async function chargeTicketWithMesitaPay(
       return { ok: true, paymentIntentId: intent.id };
     }
     if (intent.status === "requires_action") {
+      // A client secret is the one field on a PaymentIntent that Stripe may
+      // omit; without it the browser has nothing to confirm against, so this
+      // degrades to the old terminal behaviour rather than promising a step
+      // that cannot run.
+      if (!intent.client_secret) {
+        return {
+          ok: false,
+          code: "card_declined",
+          error:
+            "Your bank needs extra verification for this card — pay at the register instead.",
+        };
+      }
       return {
         ok: false,
         code: "requires_action",
-        error:
-          "Your bank needs extra verification for this card — pay at the register instead.",
+        error: "Your bank needs to verify this payment.",
+        action: {
+          clientSecret: intent.client_secret,
+          paymentIntentId: intent.id,
+          connectedAccountId: args.connectedAccountId,
+        },
       };
     }
     return {

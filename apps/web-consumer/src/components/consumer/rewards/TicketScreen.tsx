@@ -86,6 +86,7 @@ import {
   StepValidate,
   TipHonesty,
 } from "@/components/consumer/rewards/ticket-steps";
+import { confirmCardAction } from "@/lib/stripe/confirm-card-action";
 import { submitTicketReview } from "@/lib/api/pay";
 import { formatCurrency } from "@/lib/api/profile";
 import {
@@ -471,7 +472,22 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
     setPayBusy(true);
     setPayError(null);
     try {
-      await apiSelectTicketPayment(supabase, ticketId, "mesita_pay");
+      const selection = await apiSelectTicketPayment(
+        supabase,
+        ticketId,
+        "mesita_pay",
+      );
+      // THE BANK ASKED FOR A STEP (MESITA-1670). The charge is already open on
+      // the place's account; this finishes it in the browser. A throw here is
+      // a real failure — the guest abandoned the challenge or the bank refused
+      // — and the catch below already offers the register.
+      //
+      // On success the ticket is closed by `payment_intent.succeeded`, not by
+      // this request, so the refetch underneath may still read `paying` for a
+      // beat. The screen's own 10s sync is what lands it.
+      if (selection.requiresAction) {
+        await confirmCardAction(selection.requiresAction);
+      }
       const {
         ticket: fresh,
         visits: policy,

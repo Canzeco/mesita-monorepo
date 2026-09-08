@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LegacyClassKey } from "@/lib/consumer-data";
 import { invokeEF } from "./_invoke";
+import type { TicketPaymentAction } from "@/lib/stripe/confirm-card-action";
 
 // Mirrors _shared/reservation-places.ts attachPlaces — the EF returns the
 // full summary; fields the wallet didn't need were previously under-declared.
@@ -317,12 +318,18 @@ export async function apiGetTicket(
 // they settle. `at_place` pays the place directly; `mesita_pay` (MESITA-1414)
 // is the gateway — a direct Stripe charge on the place's connected account,
 // gated per ticket by settlement.cardRail (consumer-web-get-ticket).
+//
+// A `mesita_pay` selection can come back with `requiresAction` (MESITA-1670):
+// the charge is REAL and still open, waiting on the guest's bank. That is not
+// an error and the ticket stays in `paying` — the caller runs the challenge
+// with `confirmCardAction` and the webhook closes the ticket when the intent
+// succeeds, whether or not this tab is still around to see it.
 export async function apiSelectTicketPayment(
   client: SupabaseClient,
   ticketId: string,
   method: "at_place" | "mesita_pay" | null,
-): Promise<{ state: string }> {
-  return await invokeEF<{ state: string }>(
+): Promise<{ state: string; requiresAction?: TicketPaymentAction }> {
+  return await invokeEF<{ state: string; requiresAction?: TicketPaymentAction }>(
     client,
     "consumer-web-select-ticket-payment",
     { ticketId, method },

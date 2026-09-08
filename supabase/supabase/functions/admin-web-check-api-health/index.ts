@@ -33,7 +33,10 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import {
+  STRIPE_PUBLISHABLE_KEY_NAMES,
   STRIPE_SECRET_KEY_NAMES,
+  stripePublishableKeyMatchesMode,
+  stripePublishableKeyNames,
   stripeMode,
   stripeSecretKeyNames,
   stripeSecretKeyProblem,
@@ -519,7 +522,7 @@ const PROBES: ProbeSpec[] = [
     id: "stripe",
     label: "Stripe",
     impact: "Business plans + consumer Premium subscriptions",
-    envKeys: STRIPE_SECRET_KEY_NAMES,
+    envKeys: [...STRIPE_SECRET_KEY_NAMES, ...STRIPE_PUBLISHABLE_KEY_NAMES],
     run: async (keys) => {
       // STRIPE_MODE picks WHICH key, and the other universe's key is never a
       // fallback — so "a Stripe secret is set" is not yet "the active mode
@@ -578,9 +581,24 @@ const PROBES: ProbeSpec[] = [
             ? "test mode"
             : "mode not reported";
           const head = `Key accepted — ${universe} · ${name} (STRIPE_MODE=${mode})`;
+          // THE PUBLISHABLE KEY IS PART OF THIS CARD (MESITA-1670). It is the
+          // half a 3DS challenge needs, it follows the same STRIPE_MODE
+          // switch, and it is set by hand — so its absence has to be visible
+          // somewhere an operator looks, not discovered by a guest whose bank
+          // asked for verification. It is never probed against Stripe: it is
+          // browser-safe by definition and there is nothing to authenticate.
+          const pkName = stripePublishableKeyNames(mode).find((n) =>
+            firstKey(keys, [n])
+          );
+          const pk = pkName ? firstKey(keys, [pkName])! : null;
+          const pkNote = !pk
+            ? ` No ${stripePublishableKeyNames(mode)[0]} — card payments needing 3DS will fall back to the register.`
+            : !stripePublishableKeyMatchesMode(pk, mode)
+            ? ` ${pkName} addresses the OTHER universe — 3DS challenges will not resolve.`
+            : ` Publishable key set (${pkName}).`;
           return agrees(b) === false
-            ? `${head}. MISMATCH: the key addresses the other universe — every EF is talking to the wrong Stripe account.`
-            : `${head}.`;
+            ? `${head}. MISMATCH: the key addresses the other universe — every EF is talking to the wrong Stripe account.${pkNote}`
+            : `${head}.${pkNote}`;
         },
       };
     },
