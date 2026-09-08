@@ -55,12 +55,11 @@ describe("state vocabulary", () => {
     ]);
   });
 
-  it("keeps rose for a debt and grey for a fact that simply is not true", () => {
-    expect(STATE_FACT_FALSE_TONE.owned).toBe("neutral");
-    expect(STATE_FACT_FALSE_TONE.partner).toBe("neutral");
-    // Verified stays ROSE: on a place you hold, unproven ownership is a debt
-    // you can settle. The pool withholds the fact rather than restyling it.
+  it("every general-state false reads rose — no neutral-grey exception (MESITA-1684, decision: Pato)", () => {
+    expect(STATE_FACT_FALSE_TONE.owned).toBeUndefined();
+    expect(STATE_FACT_FALSE_TONE.partner).toBeUndefined();
     expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
+    expect(Object.keys(STATE_FACT_FALSE_TONE)).toEqual([]);
   });
 });
 

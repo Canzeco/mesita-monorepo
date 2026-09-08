@@ -55,15 +55,15 @@ describe("state vocabulary", () => {
     );
   });
 
-  it("acceptance bits: neutral false tone, engineless (no chips/segments) until their engines land", () => {
-    expect(STATE_FACT_FALSE_TONE.partner).toBe("neutral");
-    expect(STATE_FACT_FALSE_TONE.mesita_pay).toBe("neutral");
-    expect(STATE_FACT_FALSE_TONE.credits).toBe("neutral");
-    // Unclaimed is the pool's normal condition, not a debt.
-    expect(STATE_FACT_FALSE_TONE.owned).toBe("neutral");
-    // Verified stays ROSE: on a place you hold, unproven ownership is a debt
-    // you can settle. The pool withholds the fact instead of restyling it.
+  it("every general-state false reads rose — no neutral-grey exception (MESITA-1684, decision: Pato)", () => {
+    expect(STATE_FACT_FALSE_TONE.partner).toBeUndefined();
+    expect(STATE_FACT_FALSE_TONE.mesita_pay).toBeUndefined();
+    expect(STATE_FACT_FALSE_TONE.credits).toBeUndefined();
+    expect(STATE_FACT_FALSE_TONE.owned).toBeUndefined();
     expect(STATE_FACT_FALSE_TONE.verified).toBeUndefined();
+    expect(Object.keys(STATE_FACT_FALSE_TONE)).toEqual([]);
+    // Acceptance bits are still engineless (no chips/segments) until their
+    // engines land — that gate is unrelated to the false-tone color.
     expect([...ENGINELESS_STATE_FACT_KEYS]).toEqual(["mesita_pay", "credits"]);
   });
 
