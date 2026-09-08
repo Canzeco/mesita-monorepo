@@ -167,10 +167,9 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
  * THREE NESTED SETS (Pato, 2026-09-05):
  *   Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
  * Enrichment gates every Mesita ring, so a partner has to be enriched to
- * sit inside the enriched one. N is the GUEST's How many on the Filters
- * sheet, never a console knob — this config carries no per-set count.
- * Type batteries ride the Google Nearby call only. Floors still exclude;
- * 0 = off.
+ * sit inside the enriched one. N is `pinCount`, an OPERATOR number since
+ * MESITA-1699 — the guest's Filters sheet is gone and its three controls
+ * live here and on Search Sources. Floors still exclude; 0 = off.
  */
 export type MapConfig = {
   minRating: number;
@@ -182,6 +181,17 @@ export type MapConfig = {
   reloadMinSec: number;
   googleFill: boolean;
   supers: Record<SuperParamKey, boolean>;
+  /**
+   * How many pins the map query returns: 20, 40 or 60 (`GOOGLE_PULL_STOPS`,
+   * the same stops the guest used to pick).
+   *
+   * THIS WAS THE GUEST'S QUESTION UNTIL MESITA-1699. Pato: "remove filters
+   * from search. like those filters are controlled in admin console, not in
+   * consumer app." It caps BOTH lanes and the merged union, so max pins =
+   * pinCount, never the sum. Distinct from `googlePull`, which caps only how
+   * many GOOGLE rows we are willing to pay for.
+   */
+  pinCount: number;
   /**
    * How many places ONE Nearby pull asks Google for: 20, 40 or 60
    * (`GOOGLE_PULL_STOPS`). Google caps a single Nearby Search (New) request at
@@ -496,6 +506,7 @@ export const DEFAULT_MAP: MapConfig = {
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
   googlePull: GOOGLE_PULL_DEFAULT,
+  pinCount: GOOGLE_PULL_DEFAULT,
 };
 
 export const DEFAULT_CATALOG: CatalogConfig = {
@@ -965,6 +976,7 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     googleFill: bool(r.googleFill, DEFAULT_MAP.googleFill),
     supers,
     googlePull: normalizeGooglePull(r.googlePull),
+    pinCount: normalizeGooglePull(r.pinCount),
   };
 }
 

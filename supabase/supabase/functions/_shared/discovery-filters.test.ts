@@ -418,6 +418,32 @@ Deno.test("a pre-1695 blob folds Google slugs up into Supers", () => {
   assertEquals(both.map.supers.restaurants, false);
 });
 
+Deno.test("map.pinCount is the operator's How many, snapped to a stop", () => {
+  // MESITA-1699 took the Search Filters sheet off the consumer app, so the
+  // number that was the guest's since 2026-08-29 lives here. It caps BOTH
+  // lanes and the merged union, so max pins = pinCount, never the sum.
+  const pins = (raw: unknown) =>
+    normalizeDiscoveryConfig({ map: { pinCount: raw } }).map.pinCount;
+  assertEquals(normalizeDiscoveryConfig({}).map.pinCount, 20);
+  assertEquals(pins(40), 40);
+  assertEquals(pins(60), 60);
+  assertEquals(pins(29), 20);
+  assertEquals(pins(31), 40);
+  // A tie snaps DOWN, so a hand-edited blob costs less than it asked for
+  // rather than more — this number is what the map bills Google against.
+  assertEquals(pins(30), 20);
+  assertEquals(pins(9_000), 60);
+  assertEquals(pins("plenty"), 20);
+  // It is NOT googlePull. One caps the pins, the other caps how many Google
+  // rows we pay for, and a blob that sets one must not move the other.
+  const one = normalizeDiscoveryConfig({ map: { pinCount: 60 } }).map;
+  assertEquals(one.pinCount, 60);
+  assertEquals(one.googlePull, 20);
+  const other = normalizeDiscoveryConfig({ map: { googlePull: 60 } }).map;
+  assertEquals(other.pinCount, 20);
+  assertEquals(other.googlePull, 60);
+});
+
 Deno.test("googlePull snaps to 20 / 40 / 60 and defaults to one request", () => {
   // 20 is one Google call. 40 and 60 are 2 and 3 BILLED calls, so a free
   // number here would be a spend leak — the blob only ever holds a stop.

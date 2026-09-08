@@ -186,6 +186,8 @@ export type MapConfig = {
   supers: Record<SuperParamKey, boolean>;
   /** 20 / 40 / 60 — how many Google rows one Nearby pull buys. */
   googlePull: number;
+  /** 20 / 40 / 60 — how many pins the map query returns. Was the guest's. */
+  pinCount: number;
 };
 
 /**
@@ -463,6 +465,7 @@ export const DEFAULT_MAP: MapConfig = {
   googleFill: true,
   supers: DEFAULT_MAP_SUPERS,
   googlePull: GOOGLE_PULL_DEFAULT,
+  pinCount: GOOGLE_PULL_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -1375,6 +1378,7 @@ function coerceMap(raw: unknown): MapConfig {
     googleFill: typeof m.googleFill === "boolean" ? m.googleFill : DEFAULT_MAP.googleFill,
     supers,
     googlePull: coerceGooglePull(m.googlePull),
+    pinCount: coerceGooglePull(m.pinCount),
   };
 }
 

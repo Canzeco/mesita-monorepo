@@ -594,11 +594,16 @@ describe("Discovery page box order", () => {
     expect(name).toContain("QueryConcatCaps");
     expect(name).not.toContain("cascadeLaneCounts");
     expect(map).not.toContain("Then concat. Closest Partners");
-    // No count knob on Map — the guest's How many is the only cap.
+    // ONE count knob on Map, and it is How many pins (MESITA-1699). The old
+    // per-set cap constants and the queries funnel stay gone.
     expect(map).not.toContain("QueryConcatCaps");
     expect(map).not.toContain("MAP_SET_COUNT_MAX");
     expect(map).not.toContain("MAP_GOOGLE_COUNT_MAX");
-    expect(map).toContain("THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER");
+    expect(map).toContain("HOW MANY PINS CAME BACK HERE");
+    expect(map).toContain("pinCount");
+    // The Nearby pull is a different number with a different owner, and it
+    // lives on Search Sources, not here.
+    expect(map).not.toContain("googlePull");
     expect(map).toContain("Three nested sets");
     expect(map).toContain("Enrichment gates every Mesita ring");
     expect(map).not.toContain("LaneMergeFunnel");

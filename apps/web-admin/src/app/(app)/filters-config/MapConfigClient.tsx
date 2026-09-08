@@ -11,13 +11,16 @@
 // say so: an operator reading "Mesita Places" would otherwise price the
 // set at every row in the table.
 //
-// THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29). How
-// many is the guest's How many; the operator only decides IF Google may
-// be called (Search Sources › Google types, plus googleFill here). Never
-// re-add a count knob.
+// HOW MANY PINS CAME BACK HERE (Pato, 2026-09-08: "remove filters from
+// search. like those filters are controlled in admin console, not in
+// consumer app"). It was the guest's question from 2026-08-29 until the
+// Search Filters sheet was deleted in MESITA-1699, and the consumer app now
+// has nothing to override it with. Its two neighbours from that sheet went
+// to Search Sources instead: the Super Categories strip and the Nearby
+// pull. `googleFill` here is what decides whether Google rows appear at all.
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Map as MapIcon, RefreshCw } from "lucide-react";
+import { Hash, Map as MapIcon, RefreshCw } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { formatShortDate } from "@/lib/format";
 import {
@@ -30,6 +33,7 @@ import { getDiscoveryConfig, updateDiscoveryConfig } from "./actions";
 import {
   DEFAULT_CONFIG,
   DISCOVERY_MODE_SOURCES,
+  GOOGLE_PULL_STOPS,
   MAP_RELOAD_PAIRS,
   type DiscoveryConfig,
   type MapConfig,
@@ -138,10 +142,35 @@ export function MapConfigClient({
             Places, the widest Mesita ring, never the narrowest.
           </p>
         </div>
-        <p className="text-muted-foreground mt-5 type-meta">
-          How many pins is the guest&rsquo;s question — the Filters sheet
-          asks it, and nothing here overrides the answer.
-        </p>
+        <div className="mt-5">
+          <ChoiceField
+            icon={<Hash className="mt-0.5 h-4 w-4 shrink-0" />}
+            label="How many pins"
+            hint="Closest N of the selected set, both lanes and the merged union — max pins is this number, never the sum. It was the guest's question on the Search Filters sheet until that sheet was deleted (MESITA-1699); nothing on the consumer app overrides it now, so an empty-looking map is this number's fault or googleFill's."
+          >
+            <div className="flex flex-wrap gap-2">
+              {GOOGLE_PULL_STOPS.map((stop) => {
+                const active = map.pinCount === stop;
+                return (
+                  <button
+                    key={stop}
+                    type="button"
+                    disabled={pending || loadBlocked}
+                    onClick={() => patch({ pinCount: stop })}
+                    aria-pressed={active}
+                    className={
+                      active
+                        ? "bg-foreground text-background inline-flex h-9 items-center rounded-lg px-3.5 type-body font-bold tabular-nums transition disabled:opacity-50"
+                        : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted inline-flex h-9 items-center rounded-lg border px-3.5 type-body font-semibold tabular-nums transition disabled:opacity-50"
+                    }
+                  >
+                    {stop}
+                  </button>
+                );
+              })}
+            </div>
+          </ChoiceField>
+        </div>
         <div className="mt-5">
           <ChoiceField
             icon={<RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />}

@@ -21,8 +21,8 @@
 //
 // EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a Location or a
 // Place moves the camera to its coordinates and reloads the catalog there;
-// a Place becomes card ONE of the carousel — prepended after the filters
-// and the How many cap, which govern the map query only — and its modal is
+// a Place becomes card ONE of the carousel — prepended after the operator's
+// cap, which governs the map query only — and its modal is
 // one more tap away, on the card or its pin. A Location (kind: "location")
 // is a camera destination: coordinates + viewport resolve on pick, never
 // per keystroke, and the viewport picks the zoom.
@@ -36,13 +36,12 @@
 //   • Base: SearchMap fills the body (yellow Partners, red Mesita Places,
 //     gray Google, blue user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: the search bar and Filters on ONE row, then the results
-//     dropdown directly beneath them. Places scope + Super Category + How many
-//     (20 / 40 / 60) live in the Filters sheet, never as chips on the map.
+//   • Top overlay: the search bar, full width, then the results dropdown
+//     directly beneath it. There is no Filters control: the ring, the Super
+//     Categories and How many are all operator config (MESITA-1699).
 //   • Bottom overlay: the catalog rail around the camera, hidden while
-//     querying. Places scope picks the engine (Partners / + enriched Places /
-//     + Google Nearby). Closest first. A guest pan auto-reloads after
-//     reloadMinKm AND reloadMinSec.
+//     querying. Closest first. A guest pan auto-reloads after reloadMinKm
+//     AND reloadMinSec.
 //     Only a finger-drag on the map counts as travel — rail or pin selection
 //     rebases the km origin so click-by-click browsing cannot add up. The
 //     rail's centre card is always the selected pin.
@@ -80,18 +79,7 @@ import {
 } from "./SearchMap";
 import { GooglePlaceSheet } from "./GooglePlaceSheet";
 import { SearchBar } from "./SearchBar";
-import { SearchFilterRow } from "./SearchFilterRow";
 import { SearchResultsPanel } from "./SearchResultsPanel";
-import {
-  applyMapFilters,
-  placeSearchScope,
-  mapFilterCount,
-  mapFiltersAreActive,
-  takeMapResultLimit,
-} from "@/lib/map-filters-engine";
-import { resetMapFilters, useMapFilters } from "@/lib/use-map-filters";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SearchMapFilters } from "./SearchMapFilters";
 import type { AddState } from "./add-state";
 import { SearchRailOverlay } from "./search-catalog-overlays";
 import {
@@ -192,18 +180,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // The bottom rail can be dismissed (X on the counter) to clear the map;
   // it reopens via the floating reopen pill or by tapping any pin.
   const [railCollapsed, setRailCollapsed] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  // THE FILTERS CONTROL IS BACK ON THE TOP ROW (Pato, 2026-09-06), a disc in
-  // the corner beside the bar. The bottom overlay held it for four days and
-  // read fine with a rail under it — but with an empty viewport the pill was
-  // riding the "No places to show here yet" card, so the way out of an empty
-  // map was buried in the empty map's own footnote. SearchFilterRow owns it.
+  // NO GUEST FILTERS ON SEARCH (Pato, 2026-09-08: "remove filters from
+  // search. like those filters are controlled in admin console, not in
+  // consumer app"). The sheet's three controls each have an operator owner
+  // now — Super Category is `map.supers`, the ring is `map.googleFill`, How
+  // many is `map.pinCount` — so this component asks the EF for a set and
+  // paints it. It never narrows one.
   //
-  // The store read comes back WITH it, and that pairing is the rule: while the
-  // control was gone this read `MAP_FILTER_DEFAULTS`, because `useMapFilters`
-  // persists in sessionStorage and a filter nobody can see is worse than one
-  // they can. A visible control makes the persisted set legitimate again.
-  const filters = useMapFilters();
+  // That retires the client-side cut too. `applyMapFilters` re-filtered rows
+  // the EF had already selected, so two places could disagree about what
+  // belongs on the map. There is one selector now, and it is the server.
   const scope = useSearchScope();
   const location = scope.locationOptOut ? null : userLocation;
   const center = location;
@@ -221,42 +207,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     () => withDistances(places.map(enrichPlaceOverview), distanceCenter),
     [places, distanceCenter],
   );
-  // Closest first by distance_km, then How many keeps 20 / 40 / 60 — the
-  // cap governs the MAP QUERY's set. The anchored pick prepends AFTER the
-  // filters and the cap, because the bar never applies either: a guest
-  // filtered to partners still lands on the Google-only place they typed.
-  // Dedupe decides the total — N unique when the pick is inside the N,
-  // N + 1 when outside.
+  // The EF already applied the operator's cap, so the catalog IS what came
+  // back. The anchored pick still prepends after it, because the bar never
+  // obeyed the map's set: a guest looking at a thin operator ring must still
+  // land on the Google-only place they typed. Dedupe decides the total — N
+  // unique when the pick is inside the N, N + 1 when outside.
   const catalog = useMemo(() => {
-    const cut = applyMapFilters(nearby, filters);
-    const capped = takeMapResultLimit(cut, filters.resultLimit);
     const anchorRow = anchor?.place
       ? withDistances([enrichPlaceOverview(anchor.place)], distanceCenter)[0]
       : null;
-    return prependAnchorPlace(capped, anchorRow);
-  }, [nearby, filters, anchor, distanceCenter]);
-  const filtersCutCatalog =
-    nearby.length > 0 && catalog.length === 0 && mapFiltersAreActive(filters);
-  // What each ring would show, from the rows already fetched. Today all
-  // three numbers are equal (every visible place is both a partner and
-  // enriched), and showing them is how that reads as a fact about the
-  // catalog rather than a broken control. The Google ring can only count
-  // what this fetch returned — at a narrower scope the EF never called
-  // Nearby, so its number is the Mesita count until the guest widens.
-  const scopeCounts = useMemo(() => {
-    let partners = 0;
-    let mesita = 0;
-    let google = 0;
-    for (const place of nearby) {
-      const scope = placeSearchScope(place);
-      if (!scope) continue;
-      if (scope === "partners") partners += 1;
-      if (scope === "partners" || scope === "mesita") mesita += 1;
-      google += 1;
-    }
-    return { partners, mesita, google };
-  }, [nearby]);
-
+    return prependAnchorPlace(nearby, anchorRow);
+  }, [nearby, anchor, distanceCenter]);
   // TYPED SEARCH LIVES HERE, on the map. A found place needs somewhere to
   // land, and on a bare list it lands nowhere.
   //
@@ -419,17 +380,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       setCatalogLoading(true);
       setFetchError(null);
       try {
-        // How many is asked ONCE, on the Filters sheet (Pato,
-        // 2026-08-29): it is the cap the fetch itself obeys, so both
-        // lanes and the merged union come back at N. The console has no
-        // count knob left to disagree with.
-        const result = await apiFetchNearbyCatalog(
-          supabase,
-          nextCenter,
-          filters.resultLimit,
-          filters.placesScope,
-          filters.familyKeys,
-        );
+        // How many, the ring and the Super Categories are ALL the
+        // operator's now (MESITA-1699). This call carries a centre and
+        // nothing else; `consumer-web-list-places` reads `map.pinCount`,
+        // `map.googleFill` and `map.supers` off the blob.
+        const result = await apiFetchNearbyCatalog(supabase, nextCenter);
         if (gen !== viewportGen.current) return;
         lastFetchedCenter.current = nextCenter;
         lastFetchedAtMs.current = Date.now();
@@ -453,7 +408,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     // `markViewport` left this list with the search-open guard that used to
     // call it here — the overlay is gone, so a viewport load always loads.
-    [filters.placesScope, filters.familyKeys, filters.resultLimit, supabase],
+    [supabase],
   );
 
   const scheduleOrLoad = useCallback(
@@ -529,16 +484,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   useEffect(() => () => clearPendingReload(), [clearPendingReload]);
-
-  // Places scope, Super Category and How many all change the Nearby
-  // engine — How many is the fetch cap now, not a client slice. Super
-  // pills pick Google includedPrimaryTypes. The query bar (Fast / Deep
-  // Autocomplete) never reads these filters.
-  useEffect(() => {
-    if (!lastFetchedCenter.current || !lastBoxRef.current) return;
-    clearPendingReload();
-    void loadViewport(lastBoxRef.current);
-  }, [clearPendingReload, filters.placesScope, loadViewport]);
 
   const locationKey = location ? `${location.lat},${location.lng}` : null;
 
@@ -649,7 +594,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // the catalog reloads there, and the modal is one more tap away on the
   // card or its pin. A Google-only pick anchors too — the sheet moves to
   // the second tap, the gesture the grey pin already speaks, so the rule
-  // has no exception to learn. Map filters never veto any of it.
+  // has no exception to learn. The operator's cap never vetoes any of it.
   const handleBarPick = (prediction: PlacePrediction) => {
     if (prediction.kind === "location") {
       // A Location is a camera destination, never a card. Coordinates are
@@ -883,38 +828,23 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         onUserViewport={onUserViewport}
       />
 
-      {/* Floating top overlay — the query bar, and Filters in the corner.
+      {/* Floating top overlay — the query bar, full width.
 
-          ONE ROW, TWO CONTROLS (Pato, 2026-09-06). This mode is the app's
-          landing surface, so every pixel it spends on chrome is map a guest
-          does not see — but the map's own knobs belong on the map's own row,
-          and the bottom overlay was carrying them on the rail's card. On an
-          empty viewport that card is a 200px "nothing here yet" note at the
-          bottom of the screen, i.e. Filters was hiding inside the very state
-          it exists to get out of.
-
-          It comes back as a DISC, not the labelled pill that kept escalating
-          here: the corner costs the query no width, and SearchFilterRow wears
-          this bar's exact chrome — same 44px, border, shadow and blur — so the
-          two read as one row instead of a field and a shouting button. */}
+          THE BAR IS THE WHOLE ROW AGAIN (Pato, 2026-09-08). Filters spent a
+          week migrating around this screen — bottom overlay, corner disc, then
+          a labelled third of the row — and the answer turned out to be that
+          the controls were never the guest's. With them gone the row has one
+          job, and the map keeps the width that argument was always about. */}
       <div className="absolute inset-x-3 top-3 z-30 flex flex-col gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={updateQuery}
-              onFocus={() => setBarFocused(true)}
-              onBlur={() => setBarFocused(false)}
-              onClear={() => updateQuery("")}
-              placeholder="Search places by name…"
-            />
-          </div>
-          <SearchFilterRow
-            count={mapFilterCount(filters)}
-            onOpenFilters={() => setFiltersOpen(true)}
-          />
-        </div>
+        <SearchBar
+          query={query}
+          showClear={query.length > 0}
+          onQueryChange={updateQuery}
+          onFocus={() => setBarFocused(true)}
+          onBlur={() => setBarFocused(false)}
+          onClear={() => updateQuery("")}
+          placeholder="Search places by name…"
+        />
 
         {/* RESULTS DROP FROM THE BAR, the way every autocomplete does and the
             way the old standalone Search page stacked them: header band, then
@@ -973,24 +903,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onRailScroll={handleRailScroll}
           onSelectPlace={handleSelectPlace}
           onOpenPlace={handleOpenPlace}
-          onResetFilters={filtersCutCatalog ? resetMapFilters : undefined}
           setRailCardRef={(placeId, el) => {
             railRefs.current.set(placeId, el);
           }}
         />
       )}
-
-      <LocalSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        ariaLabel="Filters"
-      >
-        <SearchMapFilters
-          onClose={() => setFiltersOpen(false)}
-          count={catalog.length}
-          scopeCounts={scopeCounts}
-        />
-      </LocalSheet>
 
       {/* From-Google preview + Add. NOT search chrome: the catalog carries
           Google-only places (grey pins), so a pin or rail-card tap reaches
