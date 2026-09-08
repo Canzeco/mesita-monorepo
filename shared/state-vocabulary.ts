@@ -105,25 +105,15 @@ export const GENERAL_STATE_FACTS = [
 
 export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 
-/** Facts whose FALSE is a state, not a pending debt: grey pill, never rose.
- *  Same taxonomy as the catalog's BoolCell falseTone — a free place and a
- *  place that doesn't take a not-yet-live rail are not defects. */
-export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> = {
-  partner: "neutral",
-  mesita_pay: "neutral",
-  credits: "neutral",
-  // Unclaimed is the pool's normal condition, not a debt anyone owes, so
-  // Owned joins the neutral set the day it joins the box (MESITA-1608).
-  //
-  // Verified deliberately stays ROSE. On the console list that once looked
-  // wrong — a wall of red across places nobody holds — but the fix is that
-  // the pool withholds Verified entirely and renders "?", not that the tone
-  // changes. On Org Places you hold the address, so unproven ownership IS a
-  // debt you can settle, which is the tone's whole meaning and the existing
-  // decision the State box rests on. Same for Enriching: leaving it here
-  // would restyle the single-place box for a list-only concern.
-  owned: "neutral",
-};
+/** EMPTY (Pato, 2026-09-08, decision: overturns MESITA-1608's "a free place
+ *  and a place that doesn't take a not-yet-live rail are not defects"):
+ *  "small ui details make them same color style, like red-green not gray"
+ *  — Partner/Mesita Pay/Credits/Owned used to render grey when false; every
+ *  general-state false reads rose now, no exceptions. Kept as a live map,
+ *  not deleted, because the shape (StateCell's `falseTone` prop, the
+ *  `?? "pending"` fallback at both call sites) is unchanged — only which
+ *  keys populate it did. */
+export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> = {};
 
 /** Acceptance bits with NO engine yet (decision: Pato gate 2026-08-29).
  *  They now have a writer (the Partner tab toggles, admin-web-set-place-rails)
