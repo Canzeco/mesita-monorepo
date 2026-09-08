@@ -35,6 +35,15 @@ export type PulseBlock = {
   state: "failed" | "missing";
 };
 
+/** One Intake function's state, as the EF's shared fold ships it (mirrors
+ *  web-business's EnrichFunctionState — no shared import between the two
+ *  independent install roots). */
+export type EnrichFunctionState = {
+  state: "pending" | "completed" | "failed";
+  at: string | null;
+  detail: string | null;
+};
+
 export type PlaceHit = {
   id: string;
   slug: string | null;
@@ -90,6 +99,11 @@ export type PlaceHit = {
   enrich_pulse_labels: string[];
   /** Why the queue stopped where it did — null once it has finished. */
   enrich_pulse_blocked: PulseBlock | null;
+  /** The per-function map (MESITA-1611), keyed by Intake function. Absent
+   *  means the payload predates the field — the high-water above is still
+   *  the fallback, and it alone cannot show a function that completed AFTER
+   *  an earlier one failed, which is exactly the gap this map closes. */
+  enrich_functions?: Record<string, EnrichFunctionState> | null;
   /** An APPROVED project_verifications row — ownership proof, not a badge. */
   verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
@@ -168,6 +182,10 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     // No invented fallback: absent means the payload predates the field, and
     // defaulting to "missing" would claim a fact we did not read.
     enrich_pulse_blocked: raw.enrich_pulse_blocked ?? null,
+    // Same posture: absent stays absent so the strip knows to fall back to
+    // the high-water, rather than a fabricated empty map reading as "nothing
+    // has run yet".
+    enrich_functions: raw.enrich_functions ?? null,
     verified: raw.verified ?? false,
     partner: raw.partner ?? false,
     promoting: raw.promoting ?? false,
