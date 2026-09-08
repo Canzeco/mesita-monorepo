@@ -1,9 +1,10 @@
-// business-web-verify-place — the rules that survive the mock (MESITA-1664).
+// business-web-verify-place — the rules that survive the missing proof.
 //
-// The code is fake on purpose and will be replaced by a real OTP. Everything
-// AROUND it is not: who may verify, where the holder is read from, what gets
-// written, and the promise that nothing is sent to anyone. Those are the parts
-// a later swap must not quietly drop, and none of them is checked by a type.
+// There is no challenge yet: Verify is one click, and the real phone OTP will
+// arrive as its own step in FRONT of this call. Everything AROUND the missing
+// proof is already real: who may verify, where the holder is read from, what
+// gets written, and the promise that nothing is sent to anyone. Those are the
+// parts the later swap must not quietly drop, and none is checked by a type.
 //
 // Source-reading, because the handler needs a live Supabase env to run and a
 // mock of that env would assert the mock, not the function.
@@ -27,22 +28,19 @@ function codeOnly(src: string): string {
 const CODE = codeOnly(SRC);
 const SHARED_CODE = codeOnly(SHARED_SRC);
 
-Deno.test("the code is compared on the server, never handed to the client", () => {
+Deno.test("no code is asked for, and none is checked", () => {
+  // MESITA-1664 shipped a mock 123456 the caller had to type. It proved
+  // nothing and cost a step, so it is gone — including the constant, so a
+  // later reader cannot mistake a dead literal for a live secret.
+  assert(!/MOCK_VERIFICATION_CODE/.test(CODE), "the mock constant is gone");
+  assert(!/"123456"/.test(CODE), "no code literal survives");
   assert(
-    /const MOCK_VERIFICATION_CODE = "123456"/.test(CODE),
-    "the mock lives in one named constant so removing it is one grep",
+    !/body\.code|formData|\bcode\s*!==/.test(CODE),
+    "the handler must not read or compare a code",
   );
-  assert(
-    /code !== MOCK_VERIFICATION_CODE/.test(CODE),
-    "the comparison must happen in the handler",
-  );
-  // A mock the browser could evaluate would teach the console a shape the
-  // real OTP cannot keep, and swapping it in later would widen access
-  // silently. The constant must never travel out in a response.
-  assert(
-    !/json\([^)]*MOCK_VERIFICATION_CODE/.test(CODE),
-    "the expected code must never be returned to the caller",
-  );
+  // The 409 for an unheld place still answers `code: "not_held"` — that is a
+  // machine-readable error name, not a secret, so the guard above is written
+  // against reads and comparisons rather than the word itself.
 });
 
 Deno.test("verifying is owner-only, like the claim it completes", () => {
@@ -76,6 +74,9 @@ Deno.test("it writes one approved row, attributed to the mock", () => {
     /writeApprovedVerification\(/.test(CODE),
     "must write through the shared writer, not a second hand-rolled insert",
   );
+  // `mock_code` is the enum value for "verified without real proof" — it
+  // stays honest now that the proof is a bare click, and the admin queue can
+  // still tell these apart from a human attestation.
   assert(/method:\s*"mock_code"/.test(CODE), "method must name the mock");
   assert(
     /\.from\("place_verifications"\)[\s\S]{0,80}\.insert\(/.test(SHARED_CODE),
@@ -94,12 +95,12 @@ Deno.test("it writes one approved row, attributed to the mock", () => {
 });
 
 // MESITA-1690: the regression itself. `decided_via`'s check constraint only
-// allows 'auto' | 'admin' — writing the mock's METHOD name into it 500'd on
-// every real Confirm click. Pinned here so the copy-paste can't recur.
+// allows 'auto' | 'admin' — writing the METHOD name into it 500'd on
+// every real Verify click. Pinned here so the copy-paste can't recur.
 Deno.test("decided_via is 'auto', never the method's own name", () => {
   assert(
     /decidedVia:\s*"auto"/.test(CODE),
-    "this EF's decision was made automatically, by the mock check, not by an admin",
+    "this EF's decision is automatic, not an admin's attestation",
   );
   assert(
     !/decided_via:\s*"mock_code"/.test(CODE) &&
@@ -108,20 +109,24 @@ Deno.test("decided_via is 'auto', never the method's own name", () => {
   );
 });
 
-Deno.test("already-verified is a success, checked before the code", () => {
-  const existingAt = CODE.indexOf('.eq("state", "approved")');
-  const compareAt = CODE.indexOf("code !== MOCK_VERIFICATION_CODE");
-  assert(existingAt > -1 && compareAt > -1);
+Deno.test("already-verified is a success, not a duplicate row", () => {
+  // Verified never lapses (MESITA-1320). The idempotence check lives in the
+  // shared writer, which is also the only place the insert happens, so this
+  // EF must not re-check it and must report what the writer returned.
   assert(
-    existingAt < compareAt,
-    "Verified never lapses, so a typo on an already-verified place must still report the truth",
+    /\.eq\("state",\s*"approved"\)/.test(SHARED_CODE),
+    "the shared writer looks for an existing approved row",
   );
-  assert(/alreadyVerified/.test(CODE));
+  assert(
+    !/\.from\("place_verifications"\)/.test(CODE),
+    "this EF must not query place_verifications itself",
+  );
+  assert(/alreadyVerified:\s*result\.alreadyVerified/.test(CODE));
 });
 
 Deno.test("nothing is sent to anybody", () => {
-  // Pato: "don't send emails nor make phone calls, you just need to input
-  // shit." The absence of a delivery path is the feature.
+  // Pato: "don't send emails nor make phone calls." The absence of a
+  // delivery path is the feature until the real phone step is built.
   for (
     const forbidden of ["otp.ts", "resend", "twilio", "sendEmail", "sendSms"]
   ) {
