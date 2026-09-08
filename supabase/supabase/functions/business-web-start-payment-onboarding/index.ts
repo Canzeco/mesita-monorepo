@@ -30,11 +30,11 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { orgIdForPlace, requireOrgRole } from "../_shared/org-membership.ts";
 import {
   liveChargesBlocked,
-  STRIPE_API_VERSION,
 } from "../_shared/stripe-billing.ts";
 import {
   accountSnapshotFromStripe,
   classifyExistingAccount,
+  connectApiVersion,
   isMockConnect,
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
@@ -247,7 +247,15 @@ Deno.serve(async (req) => {
   }
 
   // ── Real mode (test universe until the MESITA-37 ritual). ─────────────────
-  const stripe = new Stripe(stripeKey!, { apiVersion: STRIPE_API_VERSION });
+  // CONNECT_API_VERSION, not the platform-wide GA pin. MESITA-1643 put the
+  // controller and its required version in one file and gave the pair a
+  // predicate, but this line kept building the client from STRIPE_API_VERSION,
+  // so the constant reached no runtime path and accounts.create went on
+  // answering "your platform must collect fees and be liable for negative
+  // balances". The constant only does anything HERE.
+  const stripe = new Stripe(stripeKey!, {
+    apiVersion: connectApiVersion() as Stripe.LatestApiVersion,
+  });
   const livemode = keyIsLive(stripeKey!);
   // ABSOLUTE OR NOTHING (MESITA-1643). This used to fall back to
   // `${req.headers.get("origin") ?? ""}/?org=...`, and the caller that matters

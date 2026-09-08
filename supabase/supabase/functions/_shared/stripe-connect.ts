@@ -74,13 +74,32 @@ export const MESITA_CONNECT_CONTROLLER = {
  * against itself and never imported the version. Now they live together and
  * `connectPairingHolds` below is what a test can actually fail.
  */
-export const CONNECT_API_VERSION = "2026-06-24.preview";
+export const CONNECT_API_VERSION = "2026-08-26.preview";
 
 /** The version at or past which Express tolerates Stripe-owned pricing and
- *  loss liability. Same string today; separate name because one is "what we
- *  send" and the other is "what Stripe requires", and they drift for different
- *  reasons. */
+ *  loss liability. Separate name because one is "what we send" and the other
+ *  is "what Stripe requires", and they drift for different reasons. They have
+ *  now drifted: the docs say to send the CURRENT preview string, and Stripe
+ *  publishes a new `<date>.preview` alongside each `<date>.<codename>` GA
+ *  release, so what we send moves while the floor stays where the feature
+ *  landed. */
 export const EXPRESS_STRIPE_LOSSES_MIN_VERSION = "2026-06-24.preview";
+
+/**
+ * What the client actually sends, env-overridable.
+ *
+ * The preview channel ROLLS FORWARD on Stripe's release schedule and the docs
+ * say to send the current string, not the one the feature shipped under. A
+ * rolled version should cost one secret, not a redeploy — this door was shut
+ * for two days over a version string, and the recovery path should not be
+ * "wait for an agent". An unset or blank value is not an override.
+ */
+export function connectApiVersion(
+  read: (name: string) => string | undefined = (n) => Deno.env.get(n),
+): string {
+  const override = (read("STRIPE_CONNECT_API_VERSION") ?? "").trim();
+  return override || CONNECT_API_VERSION;
+}
 
 /**
  * Does the controller/version pair Stripe will actually accept?
@@ -323,11 +342,20 @@ export function classifyExistingAccount(
  * Unlike `country`, this is NOT permanent: it is a prefill, and Stripe lets
  * the person change it inside the hosted flow. That asymmetry is deliberate
  * and is why this list may grow cheaply while MESITA_CONNECT_COUNTRIES may
- * not. `non_profit` and `government_entity` are Stripe-valid and deliberately
- * absent — no Mesita merchant is either, and an allowlist that offers a
- * branch nobody can complete is a support ticket, not a feature.
+ * not. ALL FOUR of Stripe's values are offered (decision: Pato, 2026-09-08).
+ * The earlier list stopped at individual + company on the theory that no
+ * Mesita merchant is a non-profit or government entity. Mexico breaks it: an
+ * asociación civil running a café is a real persona moral, and a museum or
+ * university restaurant is real too. Since Stripe re-asks the prefill anyway,
+ * a wrong option costs a dropdown correction while a MISSING one costs an
+ * onboarding the operator cannot start.
  */
-export const MESITA_CONNECT_ENTITY_TYPES = ["individual", "company"] as const;
+export const MESITA_CONNECT_ENTITY_TYPES = [
+  "individual",
+  "company",
+  "non_profit",
+  "government_entity",
+] as const;
 
 export type MesitaConnectEntityType = typeof MESITA_CONNECT_ENTITY_TYPES[number];
 
