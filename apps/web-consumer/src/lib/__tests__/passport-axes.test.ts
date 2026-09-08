@@ -109,11 +109,27 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     }
   });
 
-  it("nothing here is parked", () => {
-    // A dead chip in permanent chrome is worse than a dead cell: it never
-    // scrolls away.
-    expect(bar).not.toContain("aria-disabled");
-    expect(bar).not.toMatch(/\bsoon\b/i);
+  it("exactly ONE chip is parked, and it is WhatsApp", () => {
+    // MESITA-1652 said nothing here may be parked, on the ground that a dead
+    // chip in permanent chrome never scrolls away. That still holds — it is
+    // now a budget of one rather than zero (Pato, MESITA-1655), because the
+    // consumer has no WhatsApp axis at all: `consumers.phone` is the AUTH
+    // identity, `whatsapp_url` belongs to a place, and
+    // `staff_whatsapp_sessions.phone_e164` is the STAFF phone. Parked is the
+    // honest shape; printing the auth phone would also leak it, since this
+    // passport is public when `privacy_public` is on.
+    //
+    // A SECOND parked chip is the regression: two dead things in permanent
+    // chrome is a bar that mostly does not work.
+    const parked = [...bar.matchAll(/aria-label="(\w+): coming soon"/g)].map(
+      (m) => m[1],
+    );
+    expect(parked).toEqual(["WhatsApp"]);
+    // ...and it must be inert: a parked chip that is still a button lies.
+    const handlers = [...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)].map(
+      (m) => m[1],
+    );
+    expect(handlers).toEqual(["onOpenInstagram", "onOpenClass"]);
   });
 
   it("is fixed by FLEX, not by sticky, and outside the scroller", () => {
@@ -229,15 +245,29 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(bar).not.toContain("classBadgeClass");
   });
 
-  it("the skeleton mirrors the DESTINATION — same row, same avatar maths", () => {
+  it("the skeleton mirrors the DESTINATION — same 2×2, same avatar maths", () => {
     const loading = bar.indexOf("{loading ? (");
     expect(loading).toBeGreaterThan(-1);
     // 36 core + the 2px ring and 1.5px inset on both sides is 43.
     expect(bar).toContain("h-[43px] w-[43px]");
     expect(bar).toContain("h-9 w-9");
-    // Both chips have a skeleton, or the bar resolves to a wider shape.
+
     const skeleton = bar.slice(loading, bar.indexOf(") : ("));
-    expect([...skeleton.matchAll(/rounded-full/g)].length).toBeGreaterThanOrEqual(3);
+    const live = bar.slice(bar.indexOf(") : ("));
+    // FOUR chips on both sides, and the same grid. A skeleton resolving to a
+    // different shape reflows the bar the moment the profile lands, which
+    // reads as a broken render (MESITA-1158).
+    const len = skeleton.match(/Array\.from\(\{\s*length:\s*(\d+)\s*\}\)/);
+    expect(len, "the skeleton no longer maps a fixed-length array").not.toBeNull();
+    expect(Number(len![1])).toBe(
+      [...live.matchAll(/CHIP_CLASS/g)].length,
+    );
+    expect(skeleton).toContain("grid-cols-2");
+    expect(live).toContain("grid-cols-2");
+    // Chip height agrees too — 28px is what fits two rows inside the shared
+    // bar floor, so a skeleton at any other height is a different bar.
+    expect(skeleton).toContain("h-7");
+    expect(bar).toContain("h-7 min-w-0");
   });
 });
 
