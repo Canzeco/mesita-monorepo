@@ -148,16 +148,9 @@ export function PassportBar({
             </span>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
-              {/* NO METAL HERE, on purpose — see the header note. The rung in
-                  words is also what lets the band and ring stay aria-hidden. */}
-              <button
-                type="button"
-                onClick={onOpenClass}
-                aria-label={`Class: ${classLabel}`}
-                className="border-border text-foreground hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition"
-              >
-                {classLabel}
-              </button>
+              {/* INSTAGRAM FIRST (Pato, MESITA-1653). NO METAL on either, on
+                  purpose — see the header note. The rung in words is also
+                  what lets the band and ring stay aria-hidden. */}
               <button
                 type="button"
                 onClick={onOpenInstagram}
@@ -166,6 +159,14 @@ export function PassportBar({
               >
                 <Instagram className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{instagramSummary}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenClass}
+                aria-label={`Class: ${classLabel}`}
+                className="border-border text-foreground hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition"
+              >
+                {classLabel}
               </button>
             </div>
           </>
