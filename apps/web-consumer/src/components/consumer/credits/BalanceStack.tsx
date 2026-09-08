@@ -1,11 +1,7 @@
 "use client";
 
 import { BalanceCard, CARD_PX, PEEK_PX } from "./BalanceCard";
-import {
-  isExpired,
-  isLocked,
-  type CreditBalance,
-} from "@/lib/mock/credits-mock";
+import { isExpired, type CreditBalance } from "@/lib/mock/credits-mock";
 
 // The card deck.
 //
@@ -49,26 +45,25 @@ import {
 const OVERLAP_PX = 18;
 
 /**
- * Deck order: spendable money first, then waiting money, then dead money, and
- * within each the biggest balance.
+ * Deck order: spendable money first, then dead money, and within each the
+ * biggest balance.
  *
  * It used to be whatever order the fixture happened to be in, which is not an
  * order, it is an accident. Spendable-first is the only ranking a guest can
- * predict without being told, and it makes both rules demonstrate themselves: a
- * card visibly climbs the deck the moment its hold lifts and sinks to the back
- * the moment it expires, which is exactly what the demo clock is there to show.
+ * predict without being told, and it makes the one remaining rule demonstrate
+ * itself: a card sinks to the back the moment it expires. There used to be a
+ * middle tier, money still inside its hold, and it went when the hold did.
  *
- * EXPIRED SINKS BELOW LOCKED rather than being dropped. It is the one card that
- * will never come back up, so it belongs at the bottom — but it is also the
- * only record the guest has that the money was ever there.
+ * EXPIRED SINKS rather than being dropped. It is the one card that will never
+ * come back up, so it belongs at the bottom — but it is also the only record
+ * the guest has that the money was ever there.
  */
 export function rankBalances(
   balances: CreditBalance[],
   nowMs: number,
 ): CreditBalance[] {
-  // 0 spendable · 1 still inside its hold · 2 expired.
-  const rank = (b: CreditBalance) =>
-    isExpired(b, nowMs) ? 2 : isLocked(b, nowMs) ? 1 : 0;
+  // 0 spendable · 1 expired.
+  const rank = (b: CreditBalance) => (isExpired(b, nowMs) ? 1 : 0);
   return [...balances].sort((a, b) => {
     const byState = rank(a) - rank(b);
     if (byState !== 0) return byState;
@@ -87,8 +82,8 @@ export function BalanceStack({
 }) {
   // PAINTED IN REVERSE OF THE RANKING. In a deck the front card is the LOWEST
   // one — it is the card nothing else covers, and the only one that shows its
-  // face. So rank 1 has to be painted last. Sorting without reversing puts the
-  // least relevant balance in the one position that gets the big number.
+  // face. So the top-ranked balance has to be painted last. Sorting without
+  // reversing puts the least relevant one in the position with the big number.
   const painted = rankBalances(balances, nowMs).reverse();
   const front = painted.length - 1;
 

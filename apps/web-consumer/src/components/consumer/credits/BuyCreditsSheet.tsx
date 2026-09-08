@@ -10,8 +10,6 @@ import {
   bonusPctFor,
   CREDIT_PLACES,
   expiryDaysFor,
-  formatUnlock,
-  holdHoursFor,
   type ControlsPolicy,
   type CreditPlace,
 } from "@/lib/mock/credits-mock";
@@ -19,23 +17,25 @@ import { cn } from "@/lib/utils";
 
 // Buy Credits at a place.
 //
-// The sheet's job is to make the TRADE legible, because the trade is the whole
-// model: a bonus AND a hold, moving together. Cabaret pays 25% and holds the
-// money three days; a place that has set nothing inherits the console default
-// and holds it three hours for 5%. Seeing those side by side is what shows a
-// prepay is a term deposit rather than a discount at the table — the place is
-// buying float, and the bonus is the rate it pays for it.
+// The sheet's job is to make the TRADE legible: pay a place up front and it
+// gives you back more than you paid. Cabaret pays 25%, a place that has set
+// nothing inherits the console default of 5%. Seeing them side by side is what
+// shows the bonus is a rate a place chose, not a coupon Mesita printed.
 //
-// AND THE EXPIRY IS ON THIS SHEET, not only on the card afterwards. This is the
-// screen where a guest agrees to the terms; a life the money has is a term, and
-// a term first met on the balance you already paid for is a term you were not
-// offered. It rides the same lines as the hold rather than a warning of its
-// own — 90 days is generous, and shouting it would sell it as a catch.
+// THE HOLD IS NOT ON THIS SHEET ANY MORE (Pato, 2026-09-08). Both terms used to
+// ride every line here — "+25% · held 3d" — because the model was a term
+// deposit and the pairing was the point. Credits are active the moment they are
+// bought now, so there is no window to disclose and no line that mentions one.
 //
-// ALL THREE NUMBERS ARE RESOLVED THROUGH THE POLICY, never read off the place
-// alone: `bonusPct`/`lockHours`/`expiryDays` are null on every place that has
-// set nothing, which is all of them today, and the console owns what null
-// means.
+// THE EXPIRY IS STILL HERE, not only on the card afterwards. This is the screen
+// where a guest agrees to the terms; a life the money has is a term, and a term
+// first met on the balance you already paid for is a term you were not offered.
+// It rides the same line as the bonus rather than a warning of its own — 90 days
+// is generous, and shouting it would sell it as a catch.
+//
+// BOTH NUMBERS ARE RESOLVED THROUGH THE POLICY, never read off the place alone:
+// `bonusPct`/`expiryDays` are null on every place that has set nothing, which is
+// all of them today, and the console owns what null means.
 //
 // Preset amounts rather than a free field: this is a demo of a shape, and a
 // numeric keypad on a phone would be three taps of friction for no insight.
@@ -70,11 +70,8 @@ function PlaceRow({
           {place.name}
         </span>
         <span className="text-muted-foreground block text-xs">
-          +{bonusPctFor(place, policy)}% · held{" "}
-          {formatUnlock(holdHoursFor(place, policy))} · {expiryDaysFor(
-            place,
-            policy,
-          )}d to spend
+          +{bonusPctFor(place, policy)}% · {expiryDaysFor(place, policy)}d to
+          spend
         </span>
       </span>
     </button>
@@ -88,7 +85,6 @@ export function BuyCreditsSheet({
   busy,
   policy,
   heldCents,
-  onHoldCents,
 }: {
   open: boolean;
   onClose: () => void;
@@ -98,8 +94,6 @@ export function BuyCreditsSheet({
   policy: ControlsPolicy;
   /** Everything already held, across every place. */
   heldCents: number;
-  /** The part of it still inside a hold, and therefore spendable nowhere. */
-  onHoldCents: number;
 }) {
   const [placeId, setPlaceId] = useState<string | null>(null);
   const [paidCents, setPaidCents] = useState<number>(AMOUNTS[1]);
@@ -134,11 +128,7 @@ export function BuyCreditsSheet({
               <span className="text-foreground text-sm font-bold tabular-nums">
                 {formatCurrency(heldCents)}
               </span>{" "}
-              already held
-              {onHoldCents > 0 && (
-                <> · {formatCurrency(onHoldCents)} still inside its hold</>
-              )}{" "}
-              · spendable only where you paid
+              already held · spendable only where you paid
             </p>
           )}
 
@@ -193,8 +183,7 @@ export function BuyCreditsSheet({
               </div>
               <div className="text-muted-foreground mt-1 text-xs">
                 {formatCurrency(paidCents)} paid, +{formatCurrency(bonus)} from{" "}
-                {place.name} · unlocks in{" "}
-                {formatUnlock(holdHoursFor(place, policy))} · expires{" "}
+                {place.name} · spendable straight away · expires{" "}
                 {expiryDaysFor(place, policy)} days after today
               </div>
             </div>

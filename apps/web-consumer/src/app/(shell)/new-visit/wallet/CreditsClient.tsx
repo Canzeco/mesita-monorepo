@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronRight, Plus, RotateCcw, Wallet } from "lucide-react";
+import { ChevronRight, Plus, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import {
@@ -12,11 +12,7 @@ import {
 import { BalanceDetail } from "@/components/consumer/credits/BalanceDetail";
 import { BuyCreditsSheet } from "@/components/consumer/credits/BuyCreditsSheet";
 import { CardsModal } from "@/components/consumer/me/CardsModal";
-import {
-  isExpired,
-  isLocked,
-  type CreditBalance,
-} from "@/lib/mock/credits-mock";
+import type { CreditBalance } from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
 import { trackEvent } from "@/lib/analytics/track";
@@ -36,8 +32,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // must feel like an Apple Wallet"). This surface used to run SIX chrome systems
 // at once — the section pill row, the photo cards, two bordered action tiles, an
 // eyebrow section label, a bordered settings row, and a demo bar carrying a
-// two-line paragraph. Apple runs one, cards, plus a ＋. It runs three now: the
-// deck, two hairline rows, the demo strip. What left, and why:
+// two-line paragraph. Apple runs one, cards, plus a ＋. It runs two now: the
+// deck and two hairline rows. What left, and why:
 //
 //   · THE TOTAL LINE. It led a screen it is not the subject of, wrapped to two
 //     lines at 390px, and described money that cannot be spent anywhere — the
@@ -56,8 +52,8 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 //
 // THE ROWS SIT DIRECTLY UNDER THE DECK, not pinned to the bottom. Bottom-anchored
 // they leave ~200px of nothing in the MIDDLE of the screen, which reads as a gap;
-// under the deck the same emptiness falls at the bottom beside the demo strip,
-// where it reads as calm. Proximity: the actions belong to the deck.
+// under the deck the same emptiness falls at the bottom, where it reads as calm.
+// Proximity: the actions belong to the deck.
 //
 // THIS IS THE SECOND BOUNDED CARVE-OUT ON THIS SCREEN. `BalanceCard`'s photo
 // face is the first (CLAUDE.md names it). Border-less rows are a deviation from
@@ -65,25 +61,20 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 //
 // MIXED LIVENESS, and the page still says which is which. The Credits BALANCES
 // are PARKED on a browser emulator — no table, no Edge Function, no place side.
-// The TERMS are real: the hold and the bonus come from the console's Controls
+// The TERMS are real: the bonus and the expiry come from the console's Controls
 // page through consumer-web-get-controls-config. Payment methods is fully live
 // and opens the real Stripe-backed CardsModal.
 //
-// AND THE PARKED CLAIM SURVIVED THE CLEANUP. The SOON pill rode the total line
-// and the other rode the Gift tile, so cutting both would have shipped the
-// prettiest version of this screen as the first one that shows a guest MX$4,172
-// of restaurant money with nothing saying it is emulated. The demo strip carries
-// it now, in one line: nothing live has a +24h button, and the caption names it.
+// AND THE PARKED CLAIM OUTLIVED THE DEMO CLOCK. A strip of +1h/+24h/+30d buttons
+// used to sit at the foot of this screen, there to walk a balance out of its
+// hold; the hold is gone (Pato, 2026-09-08: Credits are active the moment they
+// are bought) and the buttons went with it. Its CAPTION did not. It is the only
+// place the screen says these balances are not real, and cutting it would ship
+// the prettiest version of this surface as the first one to show a guest
+// MX$4,172 of restaurant money with nothing naming it as emulated.
 //
 // NO IN-BODY TITLE. Every section opens straight into its content; the pill
 // row directly above already says which one this is.
-
-/** The demo clock's rungs, in hours. One per scale the terms are written in. */
-const CLOCK_RUNGS = [
-  { hours: 1, label: "+1h" },
-  { hours: 24, label: "+24h" },
-  { hours: 24 * 30, label: "+30d" },
-];
 
 export function CreditsClient({ seed }: { seed: Seed }) {
   const credits = useCredits(seed);
@@ -108,17 +99,10 @@ export function CreditsClient({ seed }: { seed: Seed }) {
 
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
-  // `held` is every peso the guest has here, expired included — the Top up sheet
-  // states what the wallet holds, and quietly dropping dead money would make
-  // the total disagree with the deck the guest is looking at. `onHold` is the
-  // slice that is merely waiting, so an expired balance is not in it: it is not
-  // going to become spendable.
+  // Every peso the guest has here, expired included — the Top up sheet states
+  // what the wallet holds, and quietly dropping dead money would make the total
+  // disagree with the deck the guest is looking at.
   const held = balances.reduce((sum, b) => sum + b.balanceCents, 0);
-  const onHold = balances.reduce(
-    (sum, b) =>
-      sum + (isLocked(b, nowMs) && !isExpired(b, nowMs) ? b.balanceCents : 0),
-    0,
-  );
 
   // The open sheet reads from live state, not the snapshot it was opened with,
   // so a spend updates the sheet it was made from instead of going stale.
@@ -193,47 +177,11 @@ export function CreditsClient({ seed }: { seed: Seed }) {
         </p>
       )}
 
-      {/* The demo bar. A hold is measured in hours and an expiry in months, so
-          without a way to move the clock neither rule is visible — you would
-          have to leave the tab open for the whole window to watch a balance
-          unlock, and for a quarter to watch one die. Pushing time forward runs
-          the same rules a real wait would. It drives the CREDITS half only;
-          Payment methods is live and reads Stripe, not this clock. Its caption
-          is now the only place the screen states that the balances are not
-          real, so it does not get shortened away.
-
-          ONE RUNG PER TERM, and +6h was not one. The rungs are the scales the
-          product actually has: +1h walks the 3h default hold, +24h walks the
-          72h ceiling, +30d walks the 90-day expiry — which at +24h a click was
-          ninety clicks away, i.e. a rule the demo could not reach. The count is
-          unchanged, so the row still fits beside the label at 390px. */}
+      {/* The parked claim, and nothing else. See the header: this line is the
+          only place the screen states that the balances are emulated, so it
+          does not get shortened away. */}
       <div className="border-border shrink-0 border-t px-5 py-3">
-        <div className="flex items-center gap-2">
-          <span className="type-meta text-muted-foreground font-semibold tracking-[0.12em] uppercase">
-            Demo clock
-          </span>
-          <div className="ml-auto flex items-center gap-1.5">
-            {CLOCK_RUNGS.map((rung) => (
-              <button
-                key={rung.label}
-                type="button"
-                onClick={() => credits.advance(rung.hours)}
-                className="border-border bg-card hover:bg-muted/50 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border px-3 text-xs font-semibold tabular-nums transition"
-              >
-                {rung.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={credits.reset}
-              aria-label="Reset the emulator"
-              className="border-border bg-card hover:bg-muted/50 grid min-h-[44px] min-w-[44px] place-items-center rounded-full border transition"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        <p className="text-muted-foreground/80 type-label mt-2">
+        <p className="text-muted-foreground/80 type-label">
           Emulated · Credits aren&rsquo;t live yet.
         </p>
       </div>
@@ -245,7 +193,6 @@ export function CreditsClient({ seed }: { seed: Seed }) {
         busy={credits.busy}
         policy={credits.policy}
         heldCents={held}
-        onHoldCents={onHold}
       />
 
       {/* The SAME sheet Me › More › Cards opens — imported, not reimplemented,
