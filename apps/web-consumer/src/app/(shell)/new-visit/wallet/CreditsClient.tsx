@@ -14,9 +14,8 @@ import {
   CardsDisclosure,
   useConsumerCards,
 } from "@/components/consumer/me/CardList";
-import type { CreditBalance } from "@/lib/mock/credits-mock";
-import type { Seed } from "@/lib/mock/credits-emulator";
-import { errorMessage, useCredits } from "@/lib/mock/use-credits";
+import type { CreditOrgBalance } from "@/lib/api/credits";
+import { useCreditBalances } from "@/lib/use-credit-balances";
 import {
   CONSUMER_ROUTES,
   walletBalancePath,
@@ -25,6 +24,13 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 
 // The Pay tab's second section, at /new-visit/wallet.
+//
+// REAL BALANCES (MESITA-1674). This screen read a browser emulator
+// (src/lib/mock/*, deleted this issue) until now; it reads
+// consumer-web-list-credit-balances through useCreditBalances instead, and
+// the "Emulated" footer that used to be the only place this screen admitted
+// the numbers were invented is gone with it — the number on screen is a real
+// one now, so there is nothing left to disclaim.
 //
 // THE SECTION IS A CONTAINER, NOT A CURRENCY (Pato, 2026-08-31). It was called
 // Credits while per-place prepaid balances were the only thing on it. It now
@@ -63,16 +69,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // pages under /new-visit/wallet/ and this file holds no overlay state at all.
 // The wallet is a LIST plus four doors. See newVisit.walletBuy in the route
 // contract for the reversal, and WalletScreen for the frame they share.
-//
-// MIXED LIVENESS, and the page still says which is which. The BALANCES are
-// PARKED on a browser emulator — no table, no Edge Function, no place side.
-// The TERMS are real: the bonus and the expiry come from the console's Controls
-// page through consumer-web-get-controls-config. Cards is fully live.
-//
-// THE PARKED CLAIM STAYS until the balances are real (MESITA-1674). It is the
-// only place the screen says these numbers are emulated, and cutting it would
-// ship the prettiest version of this surface as the first one to show a guest
-// MX$4,172 of restaurant money with nothing naming it as invented.
 
 /** Title left, actions top-right. Deliberately not small: Pato, 2026-09-08 —
  *  "un botón un poco grande, no quiero que esté escondido", then "make the
@@ -118,8 +114,8 @@ function HeadAction({ href, children }: { href: string; children: React.ReactNod
   );
 }
 
-export function CreditsClient({ seed }: { seed: Seed }) {
-  const credits = useCredits(seed);
+export function CreditsClient() {
+  const credits = useCreditBalances();
   const cards = useConsumerCards(true);
   const router = useRouter();
   const supabase = useBrowserSupabase();
@@ -130,15 +126,27 @@ export function CreditsClient({ seed }: { seed: Seed }) {
     trackEvent(supabase, "wallet_open", { from: "pay_section_nav" });
   }, [supabase]);
 
-  const openBalanceCard = (balance: CreditBalance) => {
+  const openBalanceCard = (balance: CreditOrgBalance) => {
     trackEvent(supabase, "balance_card_tap", {
-      balance_cents: balance.balanceCents,
+      balance_cents: balance.spendableCents,
     });
-    router.push(walletBalancePath(balance.id));
+    router.push(walletBalancePath(balance.organizationId));
   };
 
-  const balances = credits.state?.balances ?? [];
-  const nowMs = credits.nowMs;
+  const loadMore = () => {
+    trackEvent(supabase, "wallet_load_more_tap", {
+      shown: balances.length,
+    });
+    void credits.loadMore();
+  };
+
+  const balances = credits.organizations;
+  // 0, not Date.now(): calling an impure function during render is rejected
+  // outright (react-hooks/purity), and this fallback is never actually
+  // shown — useCreditBalances sets nowMs in the same call that sets
+  // `organizations`, so by the time balances.length > 0 renders below, nowMs
+  // is already real.
+  const nowMs = credits.nowMs ?? 0;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
@@ -201,11 +209,23 @@ export function CreditsClient({ seed }: { seed: Seed }) {
               description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
             />
           ) : (
-            <BalanceList
-              balances={balances}
-              nowMs={nowMs}
-              onOpen={openBalanceCard}
-            />
+            <>
+              <BalanceList
+                balances={balances}
+                nowMs={nowMs}
+                onOpen={openBalanceCard}
+              />
+              {credits.hasMore ? (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={credits.loadingMore}
+                  className="text-muted-foreground hover:text-foreground mt-3 w-full rounded-2xl py-2.5 text-center text-sm font-bold transition disabled:opacity-50"
+                >
+                  {credits.loadingMore ? "Loading…" : "Show more"}
+                </button>
+              ) : null}
+            </>
           )}
         </section>
       </div>
@@ -215,18 +235,9 @@ export function CreditsClient({ seed }: { seed: Seed }) {
           role="alert"
           className="text-destructive shrink-0 px-5 pb-1 text-center text-xs"
         >
-          {errorMessage(credits.error)}
+          {credits.error}
         </p>
       )}
-
-      {/* The parked claim, and nothing else. See the header: this line is the
-          only place the screen states that the balances are emulated, so it
-          does not get shortened away. */}
-      <div className="border-border shrink-0 border-t px-5 py-3">
-        <p className="text-muted-foreground/80 type-label">
-          Emulated &middot; Credits aren&rsquo;t live yet.
-        </p>
-      </div>
     </div>
   );
 }

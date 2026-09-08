@@ -1,28 +1,24 @@
 "use client";
 
 import { formatCurrency } from "@/lib/api/profile";
-import {
-  bonusPctFor,
-  CREDIT_PLACES,
-  expiryDaysFor,
-  type ControlsPolicy,
-  type CreditPlace,
-} from "@/lib/mock/credits-mock";
+import type { ControlsPolicy } from "@/lib/credits";
 import { cn } from "@/lib/utils";
 
-// The two choices Buy and Gift both start with: where, and how much.
+// The two choices Buy starts with: where, and how much. Gift asked the same
+// two questions while it ran on the browser emulator (gifting is issuance,
+// MESITA-1677 — a purchase whose balance lands in someone else's wallet); it
+// is parked until its own real backend exists (GiftClient.tsx), so this file
+// only serves Buy today. The shape stays reusable for the same reason it was
+// shared before: nothing here is Buy-specific.
 //
-// SHARED BECAUSE GIFTING IS ISSUANCE (MESITA-1677). A gift is a purchase whose
-// balance lands in someone else's wallet — same place, same amounts, same terms
-// resolved the same way — so the two screens genuinely ask the same two
-// questions. If gifting had been a TRANSFER out of a balance you already hold,
-// its first question would have been "from which balance", and none of this
-// would be shareable. The shape of this file is the schema decision showing
-// through.
-//
-// Preset amounts rather than a free field: this is a demo of a shape, and a
-// numeric keypad on a phone would be three taps of friction for no insight.
+// Preset amounts rather than a free field: a numeric keypad on a phone would
+// be three taps of friction for a ladder this short. Mirrors
+// supabase/functions/_shared/credits-packages.ts's CREDIT_PACKAGE_CENTS
+// exactly — the server validates against that list, not this one, so a drift
+// here would only ever show an amount Buy then can't actually charge.
 export const AMOUNTS = [50_000, 100_000, 200_000];
+
+export type PickablePlace = { id: string; name: string };
 
 function PlaceRow({
   place,
@@ -30,7 +26,7 @@ function PlaceRow({
   selected,
   onSelect,
 }: {
-  place: CreditPlace;
+  place: PickablePlace;
   policy: ControlsPolicy;
   selected: boolean;
   onSelect: () => void;
@@ -52,35 +48,31 @@ function PlaceRow({
           {place.name}
         </span>
         <span className="text-muted-foreground block text-xs">
-          +{bonusPctFor(place, policy)}% · {expiryDaysFor(place, policy)}d to
-          spend
+          +{policy.defaultBonusPct}% · {policy.defaultExpiryDays}d to spend
         </span>
       </span>
     </button>
   );
 }
 
-/** Where the money goes. Seeing the rates side by side is what shows the bonus
- *  is a rate a place CHOSE, not a coupon Mesita printed.
- *
- *  `places` defaults to the mock ladder (CREDIT_PLACES) so Gift — still fully
- *  emulated — needs no change at all. Buy Credits (MESITA-1676) passes its own
- *  REAL list instead: every real place inherits the global default today (no
- *  per-place override exists in the schema yet), which is exactly what
- *  `bonusPct: null, expiryDays: null` already means to bonusPctFor/
- *  expiryDaysFor below — real data fits the type without a fork. */
+/**
+ * Where the money goes. `places` is always the real list a caller already
+ * fetched (consumer-web-list-credit-places) — no per-place bonus/expiry
+ * override exists in the schema yet, so every row reads the same console
+ * policy rather than a rate the place itself set.
+ */
 export function PlacePicker({
   policy,
   placeId,
   onSelect,
+  places,
   label = "Where",
-  places = CREDIT_PLACES,
 }: {
   policy: ControlsPolicy;
   placeId: string | null;
   onSelect: (placeId: string) => void;
+  places: PickablePlace[];
   label?: string;
-  places?: CreditPlace[];
 }) {
   return (
     <div>
