@@ -27,3 +27,13 @@ export function canClaim(role: Organization["myRole"]): boolean {
 export function canRelease(role: Organization["myRole"]): boolean {
   return role === "owner";
 }
+
+/** Verifying is the proof half of the claim ceremony, so it carries the same
+ *  law as the ownership moves it completes: owner only, matching
+ *  business-web-verify-place's own guard. Named rather than borrowing
+ *  canRelease, because the two answering the same today is a coincidence of
+ *  the role table, not a rule — and a later split should not have to guess
+ *  which callers meant which. */
+export function canVerify(role: Organization["myRole"]): boolean {
+  return role === "owner";
+}

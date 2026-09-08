@@ -19,6 +19,7 @@ import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
 import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
+import { PlaceVerifyButton } from "@/components/console/PlaceVerifyButton";
 import { PlaceStatesTable } from "@/components/console/PlaceStatesTable";
 import { NoOrganization } from "@/components/console/NoOrganization";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -30,6 +31,7 @@ import {
 import {
   canClaim,
   canRelease,
+  canVerify,
   resolveActiveOrg,
 } from "@/lib/active-organization";
 import { SHELL_ROUTES, placeHref, withOrg } from "@/lib/console-routes";
@@ -121,14 +123,20 @@ export default async function PlacesPage({
         /* TWO empty states, not three — the screens merged, so "the pool is
            empty" and "you hold none" collapsed into one honest sentence. The
            zero-catalogue case is production today (0 places, 0 organizations),
-           so it is the state everyone actually sees, and it gets the action. */
+           so it is the state everyone actually sees.
+           
+           It no longer gets an action (MESITA-1664). Businesses do not put
+           places into the catalogue any more; Mesita does. Offering "Add a
+           place" here would be a button that leads nowhere a manager is
+           allowed to go, and the empty state's job in that world is to say
+           who to wait for, not to invent a verb. */
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
           title={query ? "No places match that" : "No places yet"}
           description={
             query
               ? "Try a different name, or clear the search."
-              : "The catalogue has no places yet. Add one and it lands here, yours to claim."
+              : "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
           }
           action={
             query ? (
@@ -138,11 +146,7 @@ export default async function PlacesPage({
               >
                 Clear the search
               </Link>
-            ) : (
-              <Link href="/add" className={CTA_BUTTON_CLASS}>
-                Add a place
-              </Link>
-            )
+            ) : null
           }
         />
       ) : (
@@ -166,6 +170,19 @@ export default async function PlacesPage({
                   place.owned ? canRelease(org.myRole) : canClaim(org.myRole)
                 }
               />
+              {/* Verify is offered on exactly the rows it can act on: held,
+                  and not yet proven. Owned and Verified are independent facts
+                  (a place can be verified without being enriched, and held
+                  without being verified), so this reads both rather than
+                  assuming an order. `verified` is optional on the row for the
+                  usual deploy-window reason, so an undefined one shows no
+                  control instead of a wrong one. */}
+              {place.owned === true && place.verified !== true && (
+                <PlaceVerifyButton
+                  placeId={place.id}
+                  allowed={canVerify(org.myRole)}
+                />
+              )}
             </span>
           )}
         />

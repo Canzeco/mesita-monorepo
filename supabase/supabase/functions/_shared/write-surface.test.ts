@@ -166,6 +166,21 @@ const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [
   // business-web-{claim,release}-place DO write places and are correctly
   // absent here: they go through _shared/place-doc.ts writePlace().
   "_shared/auth-membership.ts",
+  // WINDOWING FALSE POSITIVE, verified by reading the source (same rule as
+  // the entry above): business-web-verify-place touches `places` exactly
+  // once, at `.from("places").select("id, organization_id")` — a READ, and
+  // the whole point of it is that the holder comes from the place row
+  // rather than from the caller's request body. It writes nothing there.
+  // The write the scan's window catches is the `.from("place_verifications")
+  // .insert(...)` roughly 40 lines further down, on a different table: the
+  // approved proof row, which is the only thing this function creates.
+  //
+  // COST, stated plainly: an allowlist entry exempts the whole FILE, so a
+  // future real write to `places` from this function would not be caught
+  // here. That is the same trade the entry above already makes. The
+  // alternative -- spacing the insert past the scan's 2000-char window --
+  // is contorting a handler to satisfy a scanner, which is worse.
+  "business-web-verify-place/index.ts",
 ];
 
 Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {

@@ -1,55 +1,18 @@
 import { redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { getPlaceOverview } from "@/lib/api/place";
-import { AppHeader, type HeaderPlace } from "@/components/auth/AppHeader";
-import { CreatePlaceForm } from "./CreatePlaceForm";
 
-// /add lets a business operator claim a place. Distinct from /onboard,
-// which captures the business operator's own name once. /add is recurring
-// (multi-place operators add N places over time) and also the de-facto home
-// for first-time users who haven't added anything yet.
+// /add is closed (MESITA-1664). Businesses no longer put places into the
+// catalogue — admin does, through Manage Multiple — so the search-and-create
+// flow this route hosted has no caller. Pato, 2026-09-08: "for the moment
+// don't enable managers to add places from the business app... businesses can
+// only claim/verify them and own them."
 //
-// Renders with AppHeader at the top instead of the old "Back to home"
-// link, so the operator can sign out / jump back to an existing place
-// at any point without dead-ending here.
-
-export const dynamic = "force-dynamic";
-
-export default async function CreatePlacePage() {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/signin?next=/add");
-
-  // Best-effort places fetch so AppHeader can render the
-  // jump-to-place menu. Failure here shouldn't break /add itself —
-  // we just render an empty places list in that case.
-  let places: HeaderPlace[] = [];
-  try {
-    const overview = await getPlaceOverview(supabase, null);
-    places = (overview?.places ?? []).map((v) => ({ id: v.id, name: v.name }));
-  } catch (err) {
-    console.error("[add] business-web-get-overview:", err);
-  }
-
-  return (
-    <div className="bg-background flex min-h-screen flex-col">
-      <AppHeader email={user.email ?? null} places={places} />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex max-w-[640px] flex-col px-5 py-8">
-          <header className="mb-6">
-            <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em]">
-              Add a place
-            </h1>
-            <p className="text-muted-foreground mt-2 text-[14.5px] leading-[1.55]">
-              Type the place&apos;s name — we pull the profile straight from
-              Google and show its current Mesita state inline.
-            </p>
-          </header>
-          <CreatePlaceForm signedInEmail={user.email ?? ""} />
-        </div>
-      </div>
-    </div>
-  );
+// A REDIRECT, NOT A DELETE, and not a 404. Two reasons. Operators have this
+// URL in tabs and bookmarks, and dead-ending them on a page that used to work
+// teaches nothing; /places is where the answer now lives. And the flow's seven
+// component files stay on disk for the moment because four of them are held
+// uncommitted by MESITA-1590's rename sweep — removing them under that session
+// turns its merge into delete-modify conflicts. They are unreachable from here
+// and come out in a follow-up once that lands.
+export default function ClosedAddPlacePage() {
+  redirect("/places");
 }

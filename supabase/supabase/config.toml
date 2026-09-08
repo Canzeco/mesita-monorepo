@@ -516,6 +516,9 @@ verify_jwt = true
 [functions.business-web-claim-place]
 verify_jwt = true
 
+[functions.business-web-verify-place]
+verify_jwt = true
+
 [functions.business-web-release-place]
 verify_jwt = true
 
