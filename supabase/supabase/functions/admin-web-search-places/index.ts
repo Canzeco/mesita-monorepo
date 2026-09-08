@@ -30,7 +30,11 @@ import {
 import { isPlaceListed, isPlaceRequested, isPlaceSeeded } from "../_shared/place-state.ts";
 import { promotionScore } from "../_shared/promotion-score.ts";
 import { PULSE_LABELS_IN_ORDER, PULSE_TOTAL } from "../_shared/pulse-pieces.ts";
-import type { EnrichmentMap } from "../_shared/schema-catalog.ts";
+import {
+  operatorFunctionStates,
+  type EnrichmentMap,
+  type FunctionState,
+} from "../_shared/schema-catalog.ts";
 import {
   mergePlaceRowsById,
   placeIdsMatchingNameHistory,
@@ -358,6 +362,18 @@ Deno.serve(async (req) => {
       // and "we asked, and the listing is dead". Shipped from the same events
       // the high-water walks, so the two cannot disagree.
       enrich_pulse_blocked: (enrichment.get(id) ?? EMPTY_ENRICHMENT).blockedAt,
+      // The per-function map (MESITA-1611) — same fold web-business's
+      // Places list and business-web-get-overview already ship as
+      // enrich_functions. The high-water above stops counting at the first
+      // gap by design, so it alone cannot show a function that completed
+      // AFTER an earlier one failed; this map can. OPTIONAL: guarded
+      // because foldFunctionStateMap has no null check and throws on one.
+      enrich_functions: (() => {
+        const fnMap = (enrichment.get(id) ?? EMPTY_ENRICHMENT).functions;
+        return fnMap && typeof fnMap === "object"
+          ? operatorFunctionStates(fnMap as Partial<Record<string, FunctionState>>)
+          : undefined;
+      })(),
       verified: verified.has(id),
       partner: isPaidPlan((v.plan as string | null) ?? null),
       promoting: isPlacePromoting(v as Parameters<typeof isPlacePromoting>[0]),
