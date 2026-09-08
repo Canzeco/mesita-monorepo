@@ -208,6 +208,11 @@ verify_jwt = true
 [functions.admin-web-create-place]
 verify_jwt = true
 
+# Soft delete: writes places.state = 'archived'. See the EF's own header for
+# why 'archived' and not a hard row delete.
+[functions.admin-web-delete-place]
+verify_jwt = true
+
 # Authed consumer writes / reads tied to the signed-in consumer's own data.
 # Public catalog reads. RLS enforces which place states are visible.
 [functions.consumer-web-list-places]
