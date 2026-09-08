@@ -247,7 +247,7 @@ describe("the rule that must survive the discovery rebuild", () => {
   });
 });
 
-// ── The sheet's count means MATCHES, not the unseen remainder ──────────────
+// ── Two counts, two meanings, one prop name ────────────────────────────────
 //
 // Pato, 2026-09-05: "fix these stupid fake filters. it don't works like that
 // anymore." SwipeDeck used to pass `count={deck.length}`, where `deck` is
@@ -256,21 +256,52 @@ describe("the rule that must survive the discovery rebuild", () => {
 // seen everything the sheet rendered "No matches — reset filters" — blaming the
 // predicates for an exhausted deck, where resetting them changed nothing.
 //
-// Source-level pin: the runtime value lives inside a `useMemo` chain in a
-// client component, so a render test would need the whole deck harness. The
-// substring is the contract.
-describe("DiscoveryFilters count is the match count", () => {
+// THE HOST MOVED, THE CONTRACT DID NOT. MESITA-1697 deleted the swipe deck and
+// gave the filter sheet to Feed, so the same invariant is pinned one file over.
+//
+// AND THERE ARE TWO COUNTS NOW, WHICH IS THE REAL TRAP. Feed renders BOTH
+// components: the trigger shows how many FILTERS ARE APPLIED, the sheet shows
+// how many PLACES MATCH. Both props are spelled `count`. Swapping them would
+// label the button with a place count and the sheet's CTA with the number 2 —
+// neither would throw, and neither would look obviously wrong in review.
+//
+// Source-level pin: the runtime values live inside `useMemo` chains in a client
+// component, so a render test would need the whole catalog harness. The
+// substrings are the contract.
+describe("Feed's two filter counts stay distinct", () => {
   const src = readFileSync(
-    join(__dirname, "../../components/consumer/home/swipe/SwipeDeck.tsx"),
+    join(__dirname, "../../components/consumer/home/CatalogRails.tsx"),
     "utf8",
   );
 
-  it("passes the filtered count, never the unseen deck", () => {
-    expect(src).toContain("count={filtered.length}");
-    expect(src).not.toContain("count={deck.length}");
+  it("hands the SHEET the number of matching places", () => {
+    expect(src).toContain("count={rails === null ? null : placesShown}");
   });
 
-  it("keeps exhaustion on its own surface, not on the filter sheet", () => {
-    expect(src).toContain("ExhaustedDeck");
+  it("hands the TRIGGER the number of applied filters", () => {
+    expect(src).toContain("countAppliedDiscoveryFilters(filters)");
+    expect(src).toContain("`Filters, ${appliedCount} applied`");
+  });
+
+  it("never labels the trigger with a place count", () => {
+    expect(src).not.toContain("${placesShown} applied");
+  });
+});
+
+// ── Exhaustion belongs to the deck, never to the filter sheet ──────────────
+//
+// The other half of the 2026-09-05 fix: running out of cards is not a filter
+// result. Scroll owns its own terminal state, so resetting predicates is never
+// offered as the cure for having seen everything.
+describe("Scroll owns its end state", () => {
+  const src = readFileSync(
+    join(__dirname, "../../components/consumer/home/scroll/ScrollDeck.tsx"),
+    "utf8",
+  );
+
+  it("renders a terminal card rather than deferring to the filter sheet", () => {
+    // JSX-escaped in the component (react/no-unescaped-entities).
+    expect(src).toContain("That&apos;s everywhere for now");
+    expect(src).not.toContain("reset filters");
   });
 });

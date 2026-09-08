@@ -13,30 +13,53 @@ import { SWIPE_CARD_FACE } from "./swipe-card-styles";
 import { type SwipeCardLayoutMode } from "@/lib/swipe-card-layout";
 import { useSwipeCardPhotoLayout } from "@/lib/use-swipe-card-layout";
 
+// FORCING A MODE IS SCROLL'S ONE REQUIREMENT (MESITA-1697). Left to resolve
+// itself, the card picks TIWC or WITC per photo off `imageRatio / cardRatio >=
+// 1.32` — so in a one-card-per-screen vertical feed every square or landscape
+// photo would render an opaque fields strip under a photo band, and the feed
+// would grow a white caption bar under roughly every third card. That is not a
+// full-bleed feed; it is a grid with extra steps. Scroll passes "tiwc" and lets
+// the photo crop.
+//
+// It is also the cheap half of this file's cost. The resolver only runs to pick
+// a mode, so pinning the mode skips the per-photo natural-size preload for
+// every card in the list — which at 50 rows is the difference that makes the
+// feed scroll at all.
 export function PlaceSwipeCardFace({
   place,
   carousel = false,
   priority = false,
   className,
+  forceLayoutMode,
 }: {
   place: Place;
   carousel?: boolean;
   priority?: boolean;
   className?: string;
+  /** Pin TIWC/WITC instead of resolving per photo. See the note above. */
+  forceLayoutMode?: SwipeCardLayoutMode;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const fieldsMeasureRef = useRef<HTMLDivElement>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
-  const { getPhotoLayoutMode, reportPhotoSize, fieldsHeight } =
-    useSwipeCardPhotoLayout(place.photos, cardRef, fieldsMeasureRef);
+  const {
+    getPhotoLayoutMode: resolvePhotoLayoutMode,
+    reportPhotoSize,
+    fieldsHeight,
+  } = useSwipeCardPhotoLayout(place.photos, cardRef, fieldsMeasureRef);
+
+  const getPhotoLayoutMode = useCallback(
+    (src: string | undefined): SwipeCardLayoutMode =>
+      forceLayoutMode ?? resolvePhotoLayoutMode(src),
+    [forceLayoutMode, resolvePhotoLayoutMode],
+  );
 
   const hasPhotos = place.photos.length > 0;
   const staticPhoto = place.photos[0];
   const activePhoto = place.photos[activePhotoIdx] ?? staticPhoto;
-  const activeMode: SwipeCardLayoutMode = activePhoto
-    ? getPhotoLayoutMode(activePhoto)
-    : "tiwc";
+  const activeMode: SwipeCardLayoutMode =
+    forceLayoutMode ?? (activePhoto ? getPhotoLayoutMode(activePhoto) : "tiwc");
 
   const reportPhotoSizeAt = useCallback(
     (idx: number, size: { width: number; height: number }) => {

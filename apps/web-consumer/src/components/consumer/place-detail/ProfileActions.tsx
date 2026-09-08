@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Heart, Phone, Share2 } from "lucide-react";
 
-import { ComingSoonModal } from "@/components/consumer/ComingSoonModal";
+import { sharePlace } from "@/lib/share-place";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { useSavedPlaces } from "@/lib/saved-places";
@@ -29,7 +29,6 @@ export function ProfileActions({
 }) {
   const { isSaved, toggle } = useSavedPlaces();
   const [contactOpen, setContactOpen] = useState(false);
-  const [soonKind, setSoonKind] = useState<"share" | null>(null);
   const hasWhatsApp = Boolean(place.channels.whatsapp_url);
   const saved = isSaved(place.id);
 
@@ -105,9 +104,12 @@ export function ProfileActions({
           )}
           Contact
         </button>
+        {/* Share is real as of MESITA-1697 — Scroll's card needed it, and a
+            place profile offering the same verb behind a coming-soon dialog
+            would be the app disagreeing with itself one tap apart. */}
         <button
           type="button"
-          onClick={() => setSoonKind("share")}
+          onClick={() => void sharePlace(place)}
           className={outlineBtn}
         >
           <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} />
@@ -118,13 +120,6 @@ export function ProfileActions({
         place={place}
         open={contactOpen}
         onClose={() => setContactOpen(false)}
-      />
-      <ComingSoonModal
-        open={soonKind === "share"}
-        onClose={() => setSoonKind(null)}
-        title="Sharing coming soon"
-        body="You'll be able to share this place with friends from here soon."
-        icon={Share2}
       />
     </>
   );

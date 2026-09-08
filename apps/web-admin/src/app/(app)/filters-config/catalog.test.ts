@@ -86,7 +86,7 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
 
-  it("nine sources and a locked mode → source matrix", () => {
+  it("eight sources and a locked mode → source matrix", () => {
     expect([...DISCOVERY_MODE_KEYS]).toEqual([
       "word",
       "map",
@@ -101,7 +101,6 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Name Search",
       "Mesita Places Nearby Search",
-      "Mesita Places Browse Search",
       "Mesita Places Flexible Search",
       "Mesita Social Browse Search",
       "Mesita Social Flexible Search",
@@ -115,8 +114,15 @@ describe("Discovery function APIs", () => {
       "Google Places Nearby Search",
       "Mesita Places Nearby Search",
     ]);
+    // Catalog is FLEXIBLE for Places since MESITA-1697 — Home's Feed grew a
+    // filter control and consumer-web-list-catalog cuts its pool with the
+    // guest's predicates before planning a rail. Social's rails stay Browse:
+    // no predicate reaches them, and no events engine exists to take one.
+    // "Mesita Places Browse Search" left DISCOVERY_SOURCES with it: this file
+    // asserts every source is claimed by some mode, and Catalog was its only
+    // caller.
     expect(DISCOVERY_MODE_SOURCES.catalog).toEqual([
-      "Mesita Places Browse Search",
+      "Mesita Places Flexible Search",
       "Mesita Social Browse Search",
     ]);
     expect(DISCOVERY_MODE_SOURCES.swipe).toEqual(["Mesita Places Flexible Search"]);
@@ -140,7 +146,7 @@ describe("Discovery function APIs", () => {
     }
   });
 
-  it("pool mask is Google Places + Listed on Catalog · Swipe; Favorites requires Google Places", () => {
+  it("pool mask is Google Places + Listed on Feed · Scroll; Favorites requires Google Places", () => {
     expect(modeRequiresPool("swipe", "google")).toBe(true);
     expect(modeRequiresPool("swipe", "listed")).toBe(true);
     expect(modeRequiresPool("favorites", "google")).toBe(true);

@@ -67,10 +67,42 @@ export const CONSUMER_ROUTES = {
   // hour-old bookmarks now land somewhere new. That is the accepted cost;
   // one hour of production traffic is not worth reserving the word forever.
   discover: "/discover",
+  //
+  // FOUR MODES NOW — Scroll · Feed · Chat · Favs (Pato, MESITA-1697, live
+  // instruction, refined mid-review to "better call it scroll"). Swipe's
+  // gesture deck is gone and Catalog's segment is gone; what each surviving
+  // word means changed, so read the three notes below before touching this.
+  //
+  // SCROLL IS SWIPE'S SEGMENT, RENAMED. The card-stack deck became a vertical
+  // one-card-per-screen scroll over the SAME card face. "Scroll" rather than
+  // "Discover" because `/discover/discover` stutters, and because Scroll is
+  // the narrower label in DiscoverModeNav's width budget.
+  //
+  // THE ENGINE KEY IS STILL `swipe`, AND THAT IS DELIBERATE. `swipe` is a
+  // persisted key in `app_config.discovery_config`, the only entry in
+  // WIRED_ENGINE_KEYS, a row in discovery-matrix.ts and its hand-mirrored
+  // admin twin, and the mask for weightsForMode("swipe"). Renaming it would
+  // make loadDiscoveryConfig read `undefined` and silently fall back to
+  // DEFAULT_SWIPE, discarding every operator-tuned radius and partner bias in
+  // the live config — and the two code twins pin EACH OTHER, so it would go
+  // green. This is the same routes-never-follow-a-label shape the file already
+  // lives with at Activity/`inbox` and Pay/`new-visit`.
+  //
+  // FEED IS CATALOG'S BODY AT FEED'S ADDRESS — the word's THIRD meaning in
+  // eight days, and this is the deliberate record of that. It meant the
+  // catalog rails for one hour on 2026-09-01 (#1447 -> #1448, reverted), then
+  // the 2-wide deck grid from MESITA-1621, and now it is the rails again with
+  // a filter control on top. The MESITA-1621 note below used to say the hour
+  // -old bookmarks were "the accepted cost"; the same reasoning applies again
+  // to the day-old ones, and the next reader should not mistake this for a
+  // mistake — Pato named Feed, twice.
+  //
+  // CATALOG'S SEGMENT IS RETIRED, not its name: the mode key, CatalogRails,
+  // `consumer-web-list-catalog` and the admin Discovery matrix all still say
+  // catalog. Only the guest-facing address moved.
   discoverTabs: {
-    swipe: "/discover/swipe",
+    scroll: "/discover/scroll",
     feed: "/discover/feed",
-    catalog: "/discover/catalog",
     chat: "/discover/chat",
     favs: "/discover/favs",
   },
@@ -81,7 +113,7 @@ export const CONSUMER_ROUTES = {
   // — it's just Swipe now, not Catalog. Activity's Alerts-leads/Visits-lands
   // split is UNCHANGED and is not this same argument — it stays off its lead
   // for a different, still-live reason (see inboxDefault below).
-  discoverDefault: "/discover/swipe",
+  discoverDefault: "/discover/scroll",
   // NO `favorites` KEY, deliberately. Saved places were `/home/favorites`, a
   // redirect to the hub's Soon state — `FavoritesList` exists under
   // components/ but nothing rendered it, and it needs `deckPlaces` from the
@@ -254,10 +286,20 @@ export const CONSUMER_ROUTES = {
     // Catalog. Deliberate: see discoverTabs above.
     //
     // Catalog's segment for the day it shipped as Home (#1448 -> 2026-09-02).
-    // Live in production, so the bookmarks are real, and it forwards STRAIGHT
-    // to /discover/catalog — never through /discover/feed, which is a live
-    // page now and would make this a hop into the wrong mode entirely.
+    // Live in production, so the bookmarks are real. It used to forward to
+    // /discover/catalog; that segment is itself retired now (MESITA-1697), so
+    // it forwards STRAIGHT to /discover/feed. Chaining it through
+    // /discover/catalog would be the 2-hop this file refuses everywhere else.
     discoverHome: "/discover/home",
+    // Swipe's segment, from the hub's retirement (2026-09-01) to MESITA-1697.
+    // It was `discoverDefault` for that whole week — BottomNav's Home href,
+    // the post-signin target, the onboarding target and place detail's
+    // fallback all pointed here — so these are the realest bookmarks in the
+    // consumer surface. 308s to /discover/scroll.
+    discoverSwipe: "/discover/swipe",
+    // Catalog's segment (2026-09-02 -> MESITA-1697). 308s to /discover/feed,
+    // which now carries the rails it used to serve.
+    discoverCatalog: "/discover/catalog",
     // The centre tab and its detail, before visit/order/reservation replaced
     // the word "ticket" in the consumer URL space.
     rewards: "/rewards",

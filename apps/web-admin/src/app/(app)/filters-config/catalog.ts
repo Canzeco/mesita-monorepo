@@ -752,11 +752,26 @@ export const DISCOVERY_MODE_KEYS = [
 
 export type DiscoveryModeKey = (typeof DISCOVERY_MODE_KEYS)[number];
 
+// DISPLAY STRINGS ONLY — the KEYS beside them are load-bearing and frozen.
+//
+// `swipe` and `catalog` are persisted keys in `app_config.discovery_config`,
+// entries in WIRED_ENGINE_KEYS and DISCOVERY_MODE_KEYS, and the masks behind
+// weightsForMode(). Renaming a key would make loadDiscoveryConfig read
+// `undefined` and silently fall back to the in-code defaults, discarding every
+// tuned value in the live config — and this file and its EF twin pin each
+// OTHER, so nothing would go red. The labels below are the only half that may
+// follow the consumer app's vocabulary.
+//
+// MESITA-1697 renamed the two guest-facing surfaces: Home's Swipe mode became
+// Scroll (a vertical feed, same deck) and Catalog's body moved to Home's Feed
+// tab. The engines did not move, so this is a relabel and nothing else — the
+// same key-vs-label split the consumer app already lives with at Pay
+// (`/new-visit`) and Activity (`/inbox`).
 export const DISCOVERY_MODE_LABELS: Record<DiscoveryModeKey, string> = {
   word: "Word",
   map: "Map",
-  catalog: "Catalog",
-  swipe: "Swipe",
+  catalog: "Feed",
+  swipe: "Scroll",
   chat: "Chat",
   favorites: "Favorites",
 };
@@ -831,7 +846,6 @@ export const DISCOVERY_SOURCES = [
   "Google Places Nearby Search",
   "Mesita Places Name Search",
   "Mesita Places Nearby Search",
-  "Mesita Places Browse Search",
   "Mesita Places Flexible Search",
   "Mesita Social Browse Search",
   "Mesita Social Flexible Search",
@@ -867,7 +881,7 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
-  catalog: ["Mesita Places Browse Search", "Mesita Social Browse Search"],
+  catalog: ["Mesita Places Flexible Search", "Mesita Social Browse Search"],
   swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",
