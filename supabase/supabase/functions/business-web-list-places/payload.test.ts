@@ -34,44 +34,36 @@ Deno.test("state facts come from the shared helpers, never re-implemented", () =
   }
 });
 
-Deno.test("the enrichment column is not selected at all any more", () => {
-  // It was here for the intake meter and the per-function map, both of which
-  // left with MESITA-1637. A jsonb blob nobody reads is bytes off the database
-  // and onto the wire on every row of a 100-row page.
-  assert(!CODE.includes("enrichment"), "drop the column with its last reader");
+Deno.test("the enrichment column is selected — it feeds enrichFunctions", () => {
+  // Re-added by MESITA-1687. The embed carries `place_profiles.enrichment`
+  // so the per-function map can be folded with no second query — the same
+  // column admin-web-search-places already reads via a side query.
+  assert(CODE.includes("enrichment"), "the embed must select the column");
 });
 
-// ── The functions map is GONE (MESITA-1637) ─────────────────────────────
+// ── The functions map is BACK (MESITA-1687) ─────────────────────────────
 //
-// This guard has now been inverted twice, and both inversions are the point.
+// This guard has now been inverted three times, and every inversion is the
+// point.
 //
 // It began as `assert(!SRC.includes("functions:"))` — right while the console
 // row read `Intake 3/10`. MESITA-1608 flipped it to REQUIRE the map, because
 // a states matrix with one column per intake function cannot be fed by a
-// high-water that stops at the first gap.
+// high-water that stops at the first gap. MESITA-1637 flipped it back:
+// Pato, 2026-09-07, "the intake states are internal."
 //
-// MESITA-1637 flips it back, for a reason neither earlier version considered.
-// Pato, 2026-09-07: "the intake states are internal." The columns are gone
-// from the business matrix, and hiding the map in the client while still
-// putting it in every business browser is not the same thing as internal.
-//
-// The spelling trap survives both flips and is why the assertion tests TWO
-// strings: `intakeFunctions:` does not contain the lowercase substring
-// `functions:`, so a future re-add under that spelling would sail past a
-// naive guard. Forbid the wire key by name AND the fold that produces it.
+// MESITA-1687 reverses that reversal. Pato, 2026-09-08: ship it to everyone;
+// the console's own collapse toggle (default hidden) is the thing that keeps
+// it out of sight now, not a server-side withhold.
 
-Deno.test("the per-function intake map does NOT ship — intake is internal", () => {
+Deno.test("the per-function intake map DOES ship, guarded", () => {
   assert(
-    !CODE.includes("enrich_functions"),
-    "the wire key must be gone, not merely unrendered",
+    CODE.includes("enrichFunctions"),
+    "the wire key must be back, camelCase like every other field on this row",
   );
   assert(
-    !CODE.includes("intakeFunctions"),
-    "nor may it come back under the spelling that dodges substring guards",
-  );
-  assert(
-    !CODE.includes("operatorFunctionStates"),
-    "the fold that produces the map has no caller here any more",
+    CODE.includes("operatorFunctionStates"),
+    "folded through the same shared reader admin-web-search-places uses",
   );
 });
 
@@ -120,7 +112,9 @@ Deno.test("scope=all is a MEMBERSHIP read, and it withholds nothing", () => {
 
 Deno.test("scope=all is this org's places OR the unheld ones", () => {
   assert(
-    SRC.includes("organization_id.eq.${organizationId},organization_id.is.null"),
+    SRC.includes(
+      "organization_id.eq.${organizationId},organization_id.is.null",
+    ),
     "all = held by this org, or held by nobody",
   );
   // `eq.null` is not a null test in PostgREST and would match nothing.
@@ -141,11 +135,12 @@ Deno.test("the direct-owner filter spares rows this org holds", () => {
 Deno.test("pool rows withhold the facts a guest has no claim to", () => {
   // getAuthedUser accepts ANY valid bearer token and the backend is a
   // singleton, so every consumer account can call scope=public. Ownership
-  // proof and plan on a place nobody holds are withheld there — as
-  // `undefined`, which renders "?", never a false "no". (Intake used to be
-  // the third fact in this list; it is not withheld now, it is not sent at
-  // all — MESITA-1637.)
-  for (const fact of ["partner", "verified"]) {
+  // proof, plan, and now the intake map on a place nobody holds are withheld
+  // there — as `undefined`, which renders "?", never a false "no". Pato's
+  // "ship it to everyone" (MESITA-1687) meant every BUSINESS browser, and
+  // memberScope is exactly that gate — the same one partner/verified already
+  // use, so the map does not go further than they do.
+  for (const fact of ["partner", "verified", "enrichFunctions"]) {
     const m = SRC.match(new RegExp(`${fact}:[^,]*`));
     assert(m, `${fact} must be on the payload`);
     assert(

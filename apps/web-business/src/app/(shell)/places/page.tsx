@@ -153,37 +153,45 @@ export default async function PlacesPage({
         <PlaceStatesTable
           places={places}
           organizationId={org.id}
-          renderAction={(place) => (
-            <span className="inline-flex items-center gap-2">
-              <Link
-                href={withOrg(placeHref(place.id), org.id)}
-                className={PILL_BUTTON_CLASS}
-              >
-                Open
-              </Link>
-              {/* The action follows the FACT, not the screen. */}
-              <PlaceHoldButton
-                action={place.owned ? "release" : "claim"}
-                placeId={place.id}
-                organizationId={org.id}
-                allowed={
-                  place.owned ? canRelease(org.myRole) : canClaim(org.myRole)
-                }
-              />
-              {/* Verify is offered on exactly the rows it can act on: held,
-                  and not yet proven. Owned and Verified are independent facts
-                  (a place can be verified without being enriched, and held
-                  without being verified), so this reads both rather than
-                  assuming an order. `verified` is optional on the row for the
-                  usual deploy-window reason, so an undefined one shows no
-                  control instead of a wrong one. */}
-              {place.owned === true && place.verified !== true && (
-                <PlaceVerifyButton
+          // PlaceStatesTable is a Client Component (the intake toggle needs
+          // state), so the action cell has to arrive pre-rendered — a
+          // function cannot cross the server/client boundary, but this
+          // already-built JSX can. Rendered here, once per place, exactly as
+          // the old renderAction callback did.
+          actionsByPlaceId={Object.fromEntries(
+            places.map((place) => [
+              place.id,
+              <span key={place.id} className="inline-flex items-center gap-2">
+                <Link
+                  href={withOrg(placeHref(place.id), org.id)}
+                  className={PILL_BUTTON_CLASS}
+                >
+                  Open
+                </Link>
+                {/* The action follows the FACT, not the screen. */}
+                <PlaceHoldButton
+                  action={place.owned ? "release" : "claim"}
                   placeId={place.id}
-                  allowed={canVerify(org.myRole)}
+                  organizationId={org.id}
+                  allowed={
+                    place.owned ? canRelease(org.myRole) : canClaim(org.myRole)
+                  }
                 />
-              )}
-            </span>
+                {/* Verify is offered on exactly the rows it can act on: held,
+                    and not yet proven. Owned and Verified are independent
+                    facts (a place can be verified without being enriched, and
+                    held without being verified), so this reads both rather
+                    than assuming an order. `verified` is optional on the row
+                    for the usual deploy-window reason, so an undefined one
+                    shows no control instead of a wrong one. */}
+                {place.owned === true && place.verified !== true && (
+                  <PlaceVerifyButton
+                    placeId={place.id}
+                    allowed={canVerify(org.myRole)}
+                  />
+                )}
+              </span>,
+            ]),
           )}
         />
       )}

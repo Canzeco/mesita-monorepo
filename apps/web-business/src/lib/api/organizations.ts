@@ -65,14 +65,20 @@ export type ConsolePlace = {
    *  pool) and when the lookup FAILED — either way we did not read it, and a
    *  false here would state something we never learned. */
   verified?: boolean;
-  /* NO INTAKE HERE, deliberately (MESITA-1637). This type carried the
-     per-function map (`enrich_functions`) and the meter (`intakePulse` /
-     `intakeTotal`) for the states matrix. Intake is internal: the columns are
-     gone and the EF stopped shipping both. Enriching and Enriched survive as
-     general columns and neither needs them — `enriching` is its own boolean
-     and `enriched` is the EF's answer. The map still exists on the Place
-     screen's own payload (business-web-get-overview), behind the super-admin
-     Admin tab, which is where operator knowledge belongs. */
+  /** The per-function map (MESITA-1687, reversing MESITA-1637's "the intake
+   *  states are internal"). Pato, 2026-09-08: ship it to every business
+   *  browser again — the console's own collapse toggle, default hidden, is
+   *  what keeps it out of sight, not a server-side withhold. `enriching` and
+   *  `enriched` above stay independent of this map; they read straight off
+   *  the row, same as before. Local shape rather than an import from
+   *  state-enrichment.ts — same no-shared-type convention as
+   *  place-manage/actions.ts's own inline copy, so the two apps' payload
+   *  types can drift on shape without a cross-file edit forcing them apart. */
+  enrichFunctions?: Record<string, {
+    state: "pending" | "completed" | "failed";
+    at: string | null;
+    detail: string | null;
+  }>;
   orders?: boolean;
   pickupOrders?: boolean;
   deliveryOrders?: boolean;

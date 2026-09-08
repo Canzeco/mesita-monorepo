@@ -57,11 +57,12 @@ describe("rows and columns", () => {
     expect((html.match(/<tr/g) ?? []).length).toBe(3); // 1 header row + 2 places
   });
 
-  it("has ONE header row, and no group label over a group of one", () => {
-    // MESITA-1651 reverses the line above it. The group row existed because
-    // the vocabulary was TWO boxes; MESITA-1637 removed Intake and left a
-    // heading that spanned every column and named nothing the column heads
-    // already said. Pato, seeing it: "THIS LOOKS LIKE SHIT."
+  it("has ONE header row when the intake toggle is closed", () => {
+    // MESITA-1651: the group row existed because the vocabulary was TWO
+    // boxes; a heading spanning every column of a group of one named nothing
+    // the column heads did not already say. MESITA-1687 brings the second
+    // group back, but only WITH the toggle — collapsed (the default here),
+    // there is still exactly one group, so the group row must stay gone.
     const html = render();
     expect(html).not.toContain("General States");
     expect(html).not.toContain("Intake States");
@@ -150,33 +151,6 @@ describe("cell values", () => {
   });
 });
 
-// MESITA-1637. Pato: "the intake states are internal." The block that used to
-// live here proved the matrix read the per-function MAP rather than the
-// high-water — the right proof while those columns existed. They do not, so
-// the proof inverts: nothing about our pipeline may reach this table.
-//
-// The two general columns that came from intake are NOT intake and must
-// survive, so this asserts both directions in one place. Deleting the block
-// and asserting nothing is how a rule quietly stops being enforced.
-describe("intake is internal and off this table", () => {
-  it("renders no Intake group, no function columns, no rung labels", () => {
-    const html = render();
-    expect(html).not.toContain("Intake States");
-    for (const label of ["Seed", "Serp", "Embedding", "Description", "Reviews"]) {
-      expect(html).not.toContain(label);
-    }
-  });
-
-  it("still renders Enriching and Enriched — those are facts about the PLACE", () => {
-    // Neither reads intake: Enriching is its own boolean on the row and
-    // Enriched is the EF's answer. Losing them with the machinery would be
-    // the overshoot this test exists to catch.
-    const html = render({ places: [place({ enriching: true, enriched: false })] });
-    expect(html).toContain('aria-label="Enriching: yes"');
-    expect(html).toContain('aria-label="Enriched: no"');
-  });
-});
-
 // MESITA-1614 merged Org Places and Public Places. The whole point was that
 // Owned stops being constant, so these pin the two things that only become
 // true once one list holds both kinds of row.
@@ -197,13 +171,19 @@ describe("one list, both kinds of row", () => {
   // The action follows the FACT, not the screen. This is what used to be two
   // pages with a hardcoded verb each.
   it("gives a held place Release and a claimable one Claim", () => {
+    const rows = [
+      place({ id: "mine", name: "Held Bar", owned: true }),
+      place({ id: "free", name: "Free Bar", owned: false }),
+    ];
     const html = render({
-      places: [
-        place({ id: "mine", name: "Held Bar", owned: true }),
-        place({ id: "free", name: "Free Bar", owned: false }),
-      ],
-      renderAction: (p) => (
-        <button type="button">{p.owned ? "Release" : "Claim"}</button>
+      places: rows,
+      actionsByPlaceId: Object.fromEntries(
+        rows.map((p) => [
+          p.id,
+          <button key={p.id} type="button">
+            {p.owned ? "Release" : "Claim"}
+          </button>,
+        ]),
       ),
     });
     expect(html).toContain(">Release<");
@@ -225,7 +205,7 @@ describe("one list, both kinds of row", () => {
 describe("actions", () => {
   it("renders the injected action cell", () => {
     const html = render({
-      renderAction: (p) => <button type="button">Claim {p.name}</button>,
+      actionsByPlaceId: { p1: <button type="button">Claim Cabaret Social Room</button> },
     });
     expect(html).toContain("Claim Cabaret Social Room");
   });
@@ -233,7 +213,31 @@ describe("actions", () => {
   // PlaceHoldButton returns null for a viewer. In a flex row that collapsed
   // cleanly; in a table it would leave a headed, permanently empty column.
   it("collapses the action column when there is no action", () => {
-    const html = render({ renderAction: undefined });
+    const html = render();
     expect(html).not.toContain("Actions");
+  });
+});
+
+// MESITA-1687, reversing MESITA-1637's "the intake states are internal."
+// The map is back on the wire and back on this table, behind ONE toggle —
+// collapsed by default, so a plain render (no click, no client hydration —
+// renderToStaticMarkup runs neither) proves the closed state.
+describe("intake toggle, collapsed by default", () => {
+  it("shows the toggle and hides the eleven functions until it is opened", () => {
+    const html = render();
+    expect(html).toContain("Show Intake states");
+    expect(html).not.toContain("Intake States");
+    for (const label of ["Seed", "Serp", "Embedding", "Description", "Reviews"]) {
+      expect(html).not.toContain(label);
+    }
+    expect(html).toContain('aria-expanded="false"');
+  });
+
+  // Enriching/Enriched are general columns, not intake — they must render
+  // with the toggle closed, same as before this reversal.
+  it("still renders Enriching and Enriched with the toggle closed", () => {
+    const html = render({ places: [place({ enriching: true, enriched: false })] });
+    expect(html).toContain('aria-label="Enriching: yes"');
+    expect(html).toContain('aria-label="Enriched: no"');
   });
 });
