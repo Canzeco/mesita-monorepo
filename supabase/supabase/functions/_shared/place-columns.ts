@@ -130,6 +130,11 @@ const COLUMNS: readonly string[] = [
   // Description/Actions (Intaker function 9) — guest Order / Reserve CTAs.
   "orders_enabled",
   "reservations_enabled",
+  // The EFFECTIVE Mesita Pay capability — the place's bit AND its org's,
+  // resolved by the `profiles` view so no reader re-derives the chain. It is
+  // the guest's filter for Pay > QR: a place Mesita cannot take a payment at
+  // is not a place to pay at, so it never reaches the list.
+  "mesita_pay_enabled",
   // Promos page section toggles. Boolean, business-controlled, persisted
   // so the on/off state survives page reloads.
   "segmentation_basic_enabled",

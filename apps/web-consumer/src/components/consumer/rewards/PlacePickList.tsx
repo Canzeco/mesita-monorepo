@@ -53,10 +53,9 @@ import {
   PAY_SUGGEST_MIN_CHARS,
   payRowFromPlace,
   payRowFromPrediction,
-  sortPayableFirst,
+  keepPayable,
   type PayListRow,
 } from "@/lib/pay-place-list";
-import { toast } from "@/lib/toast";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { SeedPlace } from "@/lib/ticket-seed";
@@ -153,7 +152,7 @@ export function PlacePickList({
 
   const nearbyRows = useMemo(
     () =>
-      sortPayableFirst(
+      keepPayable(
         filterPlacesByQuery(places, nameSearch ? "" : query).map(
           payRowFromPlace,
         ),
@@ -162,7 +161,7 @@ export function PlacePickList({
   );
   const searchRows = useMemo(
     () =>
-      sortPayableFirst(
+      keepPayable(
         predictions.map((pred) => payRowFromPrediction(pred, places)),
       ),
     [predictions, places],
@@ -216,6 +215,11 @@ export function PlacePickList({
     return <PlacePickListSkeleton />;
   }
 
+  // TWO EMPTIES, AND THEY ARE NOT THE SAME SENTENCE. Filtering on the Mesita
+  // Pay capability means the no-query list can be empty too — and today, with
+  // the capability off everywhere, that is the state a guest actually sees.
+  // Telling them "no place matches" when they typed nothing would be a lie
+  // about their own input.
   if (visible.length === 0) {
     return (
       <div className="border-border bg-card flex flex-col items-center gap-2 rounded-2xl border px-4 py-8 text-center">
@@ -223,8 +227,14 @@ export function PlacePickList({
           <SearchX className="size-5" />
         </span>
         <p className="text-muted-foreground type-body">
-          No place matches{" "}
-          <span className="text-foreground font-semibold">{trimmed}</span>.
+          {trimmed ? (
+            <>
+              No place matches{" "}
+              <span className="text-foreground font-semibold">{trimmed}</span>.
+            </>
+          ) : (
+            "No place near you takes Mesita Pay yet."
+          )}
         </p>
         {onClearQuery ? (
           <button
@@ -280,14 +290,11 @@ function PlaceRow({
       // resolves in a few hundred ms and greying the whole list for that long
       // reads as breakage. The spinner on the active row is the signal.
       disabled={anyBusy}
-      onClick={() => {
-        if (row.seed) {
-          onPick(row.seed);
-          return;
-        }
-        // The one place this is ever explained, said once, when it matters.
-        toast(`${row.name} isn't a Mesita partner yet.`);
-      }}
+      // NO UNPAYABLE BRANCH. `keepPayable` filters the list, so every row
+      // here has a seed. The toast this replaced said the right thing at the
+      // wrong moment — after the guest had read the list, chosen, and reached
+      // for the one place they were standing in.
+      onClick={() => row.seed && onPick(row.seed)}
       className="hover:bg-muted/50 flex w-full items-center gap-3 px-3.5 py-3 text-left transition"
     >
       {/* Full colour either way. The grayscale treatment here used to mark a

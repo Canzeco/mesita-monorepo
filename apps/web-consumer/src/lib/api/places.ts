@@ -35,6 +35,12 @@ export type Place = {
    *  off `listing_type`, which fuses the two and only updates when something
    *  writes the place. Absent ⇒ NOT a partner. */
   partner?: boolean | null;
+  /** The EFFECTIVE Mesita Pay capability: this place's bit AND its
+   *  organization's, resolved server-side on the `profiles` view. Mesita Pay
+   *  is the whole payments package, all or nothing (Docs > Checkout §0) — it
+   *  is never a tender. Absent ⇒ NOT payable, which is the safe default: a
+   *  place we cannot charge at must never be offered as one. */
+  mesita_pay_enabled?: boolean | null;
   /** Server's answer: did we write a profile? Drives the membership colour.
    *  Absent on an older payload — the client falls back to the enrichment
    *  columns, which ship on the same projection. */
