@@ -1,12 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import { Gift, Sparkles } from "lucide-react";
 
+import { PlanModal } from "@/components/consumer/me/PlanModal";
+import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { upToPercentFromQuote } from "@/lib/discount-quote";
 import { useDiscountQuote } from "@/lib/discount-quotes";
 import type { PlaceDetail } from "@/lib/mock/place";
 import { isPromoting, placeOffersMesitaRewards } from "@/lib/promo-rates";
+import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 import { Box, BoxLabel } from "./box";
 import {
@@ -38,14 +42,29 @@ import {
 //   bonuses — the actions, priced, with the ones you can't do today muted.
 //   total   — the number that lands on the bill, and the cap it applies to.
 //
-// NO BUTTONS. Visit · Order · Reserve are pinned in the action bar below
-// (MESITA-1065), so a "Get my ticket" CTA here was a second door to a place
-// the guest can already reach without scrolling.
+// NO BUTTONS, with one exception (MESITA-1620). Visit · Order · Reserve are
+// pinned in the action bar below (MESITA-1065), so a "Get my ticket" CTA here
+// was a second door to a place the guest can already reach without
+// scrolling. The Premium row is different: it is the highest-intent Premium
+// surface in the app — a concrete number, on a chosen place, on a bill the
+// guest is already looking at — so PlanRow makes it a button straight to
+// PlanModal when there is an uplift to sell.
 
 export function RewardsBox({ place }: { place: PlaceDetail }) {
   const consumerClass = useConsumerClass();
   const classKey = consumerClass.key;
   const plan = consumerClass.plan;
+  const [planOpen, setPlanOpen] = useState(false);
+  // Lazy: this box only needs a client for the tap's fire-and-forget track
+  // call, never for a fetch the render depends on (lib/supabase/browser.ts).
+  const getSupabase = useLazyBrowserSupabase();
+  // `source` tells this door apart from Me's (ProfileClient's openPlan) in
+  // the one event both share — otherwise the comparison this issue exists to
+  // enable isn't measurable.
+  function openPlan() {
+    trackEvent(getSupabase(), "plan_open", { source: "place_detail" });
+    setPlanOpen(true);
+  }
 
   // The guest's real numbers for THIS place, from the engine — via the shell's
   // shared cache (MESITA-1019), so the header chip above and this sheet make
@@ -103,61 +122,64 @@ export function RewardsBox({ place }: { place: PlaceDetail }) {
       : null;
 
   return (
-    <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
-      {/* Hero — what you can get. Never why (MESITA-860). */}
-      <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
-        <p className="font-display text-3xl leading-none font-semibold">
-          {upTo == null ? (
-            <span className="inline-block h-7 w-28 animate-pulse rounded bg-white/25 align-middle" />
-          ) : (
-            `Up to ${upTo}%`
-          )}
-        </p>
-        <p className="mt-1.5 text-xs leading-snug text-white/90">
-          Discount for You — depending on your eligible bonuses
-          {capLabel ? ` · on your first ${capLabel}` : ""}
-        </p>
-      </div>
-
-      {quote?.breakdown ? (
-        <div className="flex flex-col gap-3">
-          <BoxLabel>Base</BoxLabel>
-          <BaseRow quote={quote} />
+    <>
+      <Box title="Reward" icon={Sparkles} iconColor="text-pink-400">
+        {/* Hero — what you can get. Never why (MESITA-860). */}
+        <div className="bg-pink-gradient shadow-glow rounded-xl p-4 text-white">
+          <p className="font-display text-3xl leading-none font-semibold">
+            {upTo == null ? (
+              <span className="inline-block h-7 w-28 animate-pulse rounded bg-white/25 align-middle" />
+            ) : (
+              `Up to ${upTo}%`
+            )}
+          </p>
+          <p className="mt-1.5 text-xs leading-snug text-white/90">
+            Discount for You — depending on your eligible bonuses
+            {capLabel ? ` · on your first ${capLabel}` : ""}
+          </p>
         </div>
-      ) : null}
 
-      {/* Every class rung here, the guest's own marked. */}
-      <div className="flex flex-col gap-3">
-        <BoxLabel>Rate by class</BoxLabel>
-        {quote ? (
-          <ClassLadder quote={quote} classKey={classKey} />
-        ) : (
-          <RateSheetSkeleton />
-        )}
-      </div>
+        {quote?.breakdown ? (
+          <div className="flex flex-col gap-3">
+            <BoxLabel>Base</BoxLabel>
+            <BaseRow quote={quote} />
+          </div>
+        ) : null}
 
-      {/* The plan, on its own. Classes v2 (MESITA-1079) splits identity into
+        {/* Every class rung here, the guest's own marked. */}
+        <div className="flex flex-col gap-3">
+          <BoxLabel>Rate by class</BoxLabel>
+          {quote ? (
+            <ClassLadder quote={quote} classKey={classKey} />
+          ) : (
+            <RateSheetSkeleton />
+          )}
+        </div>
+
+        {/* The plan, on its own. Classes v2 (MESITA-1079) splits identity into
           two axes that "never merge", and this sheet is where the merge was
           most visible: Premium used to sit in the ladder above as a rung
           between Influencer and Aura. A separate label is the whole fix —
           what you earn, then what you can buy. */}
-      {quote ? (
+        {quote ? (
+          <div className="flex flex-col gap-3">
+            <BoxLabel>Rate by plan</BoxLabel>
+            <PlanRow quote={quote} plan={plan} onPremiumTap={openPlan} />
+          </div>
+        ) : null}
+
+        {/* The actions, priced. */}
         <div className="flex flex-col gap-3">
-          <BoxLabel>Rate by plan</BoxLabel>
-          <PlanRow quote={quote} plan={plan} />
+          <BoxLabel>Bonuses you can add</BoxLabel>
+          {quote ? <BonusList quote={quote} /> : <RateSheetSkeleton />}
         </div>
-      ) : null}
 
-      {/* The actions, priced. */}
-      <div className="flex flex-col gap-3">
-        <BoxLabel>Bonuses you can add</BoxLabel>
-        {quote ? <BonusList quote={quote} /> : <RateSheetSkeleton />}
-      </div>
-
-      {/* The total and the cap — the two numbers the guest acts on. */}
-      {quote && upTo != null ? (
-        <RewardTotal quote={quote} total={upTo} capLabel={capLabel} />
-      ) : null}
-    </Box>
+        {/* The total and the cap — the two numbers the guest acts on. */}
+        {quote && upTo != null ? (
+          <RewardTotal quote={quote} total={upTo} capLabel={capLabel} />
+        ) : null}
+      </Box>
+      <PlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
+    </>
   );
 }

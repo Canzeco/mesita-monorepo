@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ChevronRight,
   DoorOpen,
   Instagram,
   Star,
@@ -44,6 +45,7 @@ function Row({
   plus = false,
   mine = false,
   muted = false,
+  onTap,
 }: {
   icon: LucideIcon;
   label: string;
@@ -53,12 +55,19 @@ function Row({
   plus?: boolean;
   mine?: boolean;
   muted?: boolean;
+  /** Renders the row as a button — only the sellable Premium rung uses this
+   *  (MESITA-1620). */
+  onTap?: () => void;
 }) {
+  const Comp = onTap ? "button" : "div";
   return (
-    <div
+    <Comp
+      type={onTap ? "button" : undefined}
+      onClick={onTap}
       className={cn(
-        "flex items-center gap-2.5 rounded-xl px-2.5 py-2",
+        "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left",
         mine ? "bg-primary/8 ring-primary/15 ring-1" : "bg-muted/45",
+        onTap && "transition active:scale-[0.99]",
       )}
     >
       <span
@@ -101,7 +110,13 @@ function Row({
       >
         {value == null ? "★" : `${plus && value > 0 ? "+" : ""}${value}%`}
       </span>
-    </div>
+      {onTap ? (
+        <ChevronRight
+          className="text-muted-foreground size-4 shrink-0"
+          strokeWidth={2.25}
+        />
+      ) : null}
+    </Comp>
   );
 }
 
@@ -189,7 +204,9 @@ export function ClassLadder({
             value={value}
             plus={additive && (value ?? 0) > 0}
             mine={key === classKey}
-            muted={value == null || (additive && value === 0 && key !== classKey)}
+            muted={
+              value == null || (additive && value === 0 && key !== classKey)
+            }
           />
         );
       })}
@@ -200,15 +217,26 @@ export function ClassLadder({
 // Plan is its own axis: Free is the floor (no adder), Premium is the paid
 // uplift from `breakdown.planUplift`. Never print `ladder.premium` as that
 // adder — that cell is a standing bronze·premium rate, not a plan bonus.
+//
+// The Premium row is the one button on this rate sheet (MESITA-1620): the
+// guest reading it already has a place, a bill and a concrete number, which
+// makes it the highest-intent Premium surface in the app. It opens `onTap`
+// only when there is something to sell — a free guest with a real uplift —
+// and stays a plain row otherwise (including for a Premium guest: nothing to
+// sell yourself). Muting also lifts with the tap, since a faded row reads as
+// "not for you", not "tap here".
 export function PlanRow({
   quote,
   plan,
+  onPremiumTap,
 }: {
   quote: RewardQuote;
   plan: PlanKey;
+  onPremiumTap?: () => void;
 }) {
   const uplift = premiumUplift(quote);
   if (uplift == null && !quote.breakdown) return null;
+  const sellable = plan === "free" && (uplift ?? 0) > 0;
   return (
     <div className="flex flex-col gap-1.5">
       <Row
@@ -226,7 +254,8 @@ export function PlanRow({
         value={uplift ?? 0}
         plus={(uplift ?? 0) > 0}
         mine={plan === "premium"}
-        muted={plan !== "premium"}
+        muted={plan !== "premium" && !sellable}
+        onTap={sellable ? onPremiumTap : undefined}
       />
     </div>
   );
