@@ -127,6 +127,18 @@
   --tier-diamond: oklch(0.52 0.13 235);
   --tier-premium: oklch(0.25 0.04 15);
 
+  /* THE WASH — colour felt across a surface, not just at its edge (MESITA-1688).
+     classFillClass's band + ring stay the ONLY metal FILL (MESITA-1132 still
+     holds: colour means class, lives on the passport, nowhere else). This is
+     a third way to spend that same license without adding a third hard-edged
+     surface: a soft gradient behind the header/card, using the same light
+     stop each --gradient-* already uses, at low alpha, fading to transparent.
+     One wash per metal so it stays parametric — never hardcode bronze. */
+  --wash-bronze: linear-gradient(180deg, oklch(0.574 0.1 55 / 0.14), transparent 85%);
+  --wash-silver: linear-gradient(180deg, oklch(0.89 0.004 15 / 0.14), transparent 85%);
+  --wash-gold: linear-gradient(180deg, oklch(0.87 0.13 97 / 0.14), transparent 85%);
+  --wash-diamond: linear-gradient(180deg, oklch(0.88 0.07 205 / 0.14), transparent 85%);
+
   --gradient-hero:
     radial-gradient(
       1200px 600px at 20% -10%,
@@ -365,6 +377,18 @@
   }
   .bg-tier-premium {
     background: var(--gradient-premium);
+  }
+  .wash-bronze {
+    background: var(--wash-bronze);
+  }
+  .wash-silver {
+    background: var(--wash-silver);
+  }
+  .wash-gold {
+    background: var(--wash-gold);
+  }
+  .wash-diamond {
+    background: var(--wash-diamond);
   }
   .border-whatsapp {
     border-color: var(--whatsapp);

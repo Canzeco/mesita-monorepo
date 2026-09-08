@@ -162,8 +162,12 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(code).not.toMatch(/>\s*Passport\s*</);
     expect(code).not.toContain('isPublic ? "Public" : "Private"');
     expect(code).not.toContain("detailLine");
-    // The sheet still owns privacy, so the fact did not vanish with the card.
-    expect(read(SHEET)).toContain("privacy_public");
+    // MESITA-1688 (Pato: "all are public by default"): profile_public
+    // defaults true for every account (20260705080000_consumer_profile_
+    // visibility.sql) and Settings › Privacy already owns the toggle
+    // exclusively, so the sheet dropped the restatement too — it's gone
+    // from the passport entirely now, not just moved off the card.
+    expect(read(SHEET)).not.toContain("privacy_public");
   });
 
   it("prints BOTH axes, and so does the cell pair beside it", () => {
@@ -252,14 +256,22 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(codeOnly(bar)).not.toContain("Earned, not bought");
   });
 
-  it("wears no fill but the metal, and the metal is band and ring ONLY", () => {
+  it("wears no metal FILL beyond band and ring — colour past that is wash or ink, never a third fill", () => {
     // Colour means class and lives on the passport (MESITA-1132) — and the
-    // passport is the chrome now. Exactly two metal surfaces: the full-width
-    // band and the avatar ring. The class chip deliberately carries none; a
-    // third inside 62px turns a law about meaning into decoration.
+    // passport is the chrome now. Exactly two metal FILL surfaces, still:
+    // the full-width band and the avatar ring. The class chip still carries
+    // no FILL; a third FILL surface inside 62px turns a law about meaning
+    // into decoration.
     expect([...bar.matchAll(/classFillClass\(key\)/g)]).toHaveLength(2);
-    expect(bar).not.toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
     expect(bar).not.toContain("classBadgeClass");
+    // MESITA-1688 spends the same budget two other ways, neither a fill: a
+    // WASH (a soft gradient behind the header, not a hard-edged surface) and
+    // INK (the class word finally reads in its own tier colour). The
+    // Instagram chip's own brand gradient is a different axis (platform
+    // branding, never class colour), so it isn't gated by this rule either.
+    expect(bar).toContain("classWashClass(key)");
+    expect(bar).toContain("CLASS_TEXT[key]");
+    expect(bar).toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
   });
 
   it("the skeleton mirrors the DESTINATION — same 2×2, same avatar maths", () => {

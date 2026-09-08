@@ -324,6 +324,24 @@ export function classFillClass(classKey: ClassKey): string {
   }
 }
 
+/** A soft wash of the metal behind a surface — not a fill, not text ink.
+ *  Mirrors classFillClass exactly so the wash stays parametric per class
+ *  (MESITA-1688): the passport bar and sheet spend more of MESITA-1132's
+ *  colour budget by letting the metal bleed across the header/card
+ *  background, without adding a third hard-edged fill surface. */
+export function classWashClass(classKey: ClassKey): string {
+  switch (classKey) {
+    case "bronze":
+      return "wash-bronze";
+    case "silver":
+      return "wash-silver";
+    case "gold":
+      return "wash-gold";
+    case "diamond":
+      return "wash-diamond";
+  }
+}
+
 // Compact Title-Case label per class. Used by the swipe overlay, the
 // promo chip and the place detail rewards box — anywhere we render "Mesita Standard" / "Mesita Premium" /
 // "Mesita Influencer" / "Mesita Aura" alongside the lower-case class id.
