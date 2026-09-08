@@ -1,8 +1,8 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
-  DEFAULT_MAP_TYPES,
+  DEFAULT_MAP_SUPERS,
+  SUPER_PARAM_KEYS,
   NEARBY_TYPE_KEYS,
-  type NearbyTypeKey,
 } from "./discovery-config.ts";
 import {
   GOOGLE_SEARCH_TYPES,
@@ -147,17 +147,29 @@ Deno.test("NEARBY_TYPE_KEYS is exactly GOOGLE_SEARCH_TYPES, flattened", () => {
   assertEquals(covered.size, 7);
 });
 
-// The cap keeps the FIRST n entries, so the five the strip billed before this
-// grew must stay inside the first five or an operator's stored count silently
-// changes which Google calls happen.
-Deno.test("the original five stay within the first five, whatever the order", () => {
-  const before: NearbyTypeKey[] = ["restaurant", "bar", "cafe", "night_club", "bakery"];
+// The operator's param IS the Super list (MESITA-1695). Pin it to the
+// taxonomy so a new Super cannot appear in `place-taxonomy.ts` and stay
+// invisible in the console, which is exactly how the five-key strip rotted.
+Deno.test("SUPER_PARAM_KEYS is the guest Supers, minus the empty battery", () => {
+  const withBattery = (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[])
+    .filter((s) => GOOGLE_SEARCH_TYPES[s].length > 0);
+  assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
+  assertEquals(SUPER_PARAM_KEYS.length, 7);
+  // `undefined` has no Google battery, so a toggle for it could never change
+  // a call. It is deliberately not a param.
+  assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
+});
+
+// The three F&B Supers are what the strip has always billed; the four it
+// could not see until MESITA-1683 stay off until an operator opts in.
+Deno.test("the three billed Supers default on, the other four off", () => {
+  const on = SUPER_PARAM_KEYS.filter((s) => DEFAULT_MAP_SUPERS[s]);
+  assertEquals(new Set(on), new Set(["restaurants", "bars_nightlife", "cafes_bakeries"]));
+  // Their union is the five slugs the pre-1695 blob had true, so folding a
+  // stored blob forward changes no Google call.
+  const flat = on.flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
   assertEquals(
-    new Set(NEARBY_TYPE_KEYS.slice(0, 5)),
-    new Set(before),
+    new Set(flat),
+    new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]),
   );
-  for (const k of before) assertEquals(DEFAULT_MAP_TYPES[k], true);
-  for (const k of NEARBY_TYPE_KEYS.slice(5)) {
-    assertEquals(DEFAULT_MAP_TYPES[k], false);
-  }
 });

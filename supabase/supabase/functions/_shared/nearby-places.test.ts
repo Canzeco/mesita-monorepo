@@ -5,6 +5,7 @@ import {
   CATALOG_NEARBY_HARD_MAX,
   GOOGLE_FANOUT_MAX,
   GOOGLE_NEARBY_MAX,
+  nearbyCallCount,
   NEARBY_TYPES,
   parsePlacesScope,
   dropKnownMesitaGoogleHits,
@@ -15,6 +16,7 @@ import {
   mergeNearbyCatalog,
   peekCachedNearbyPlaces,
   searchNearbyPlaces,
+  sliceNearbyTypes,
   type NearbyHit,
   type NearbyLaneCaps,
 } from "./nearby-places.ts";
@@ -761,4 +763,113 @@ Deno.test("nearby helpers: known-gid drop still works", () => {
     ).map((hit) => hit.placeId),
     ["ChIJ-google"],
   );
+});
+
+
+// MESITA-1695: the operator picks 20 / 40 / 60 on Search Sources. Google caps
+// ONE Nearby Search (New) at 20 and offers no page token, so the only way to
+// 40 or 60 is more requests — which is the whole reason the console says the
+// stop costs 1, 2 or 3 billed calls instead of showing three equal buttons.
+Deno.test("nearbyCallCount: a stop is a request count, and never exceeds 3", () => {
+  assertEquals(nearbyCallCount(undefined), 1);
+  assertEquals(nearbyCallCount(20), 1);
+  assertEquals(nearbyCallCount(40), 2);
+  assertEquals(nearbyCallCount(60), 3);
+  // Junk cannot buy a fourth call.
+  assertEquals(nearbyCallCount(1_000), 3);
+  assertEquals(nearbyCallCount(0), 1);
+  assertEquals(nearbyCallCount(-5), 1);
+});
+
+Deno.test("sliceNearbyTypes: disjoint, complete, and never more slices than types", () => {
+  const types = ["restaurant", "cafe", "bakery", "bar", "night_club"];
+  const two = sliceNearbyTypes(types, 2);
+  assertEquals(two.length, 2);
+  // Round-robin, so each slice spans Supers instead of taking a prefix.
+  assertEquals(two.flat().sort(), [...types].sort());
+  assertEquals(new Set(two.flat()).size, types.length);
+  // A single-Super battery cannot be split: one type cannot be asked twice
+  // for two different answers, so the pull silently stays one call.
+  assertEquals(sliceNearbyTypes(["restaurant"], 3), [["restaurant"]]);
+  assertEquals(sliceNearbyTypes(types, 1), [types]);
+});
+
+Deno.test("searchNearbyPlaces: pull 60 fires three calls and dedupes the union", async () => {
+  __resetNearbyGoogleCacheForTests();
+  const bodies: { includedPrimaryTypes: string[] }[] = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = (_url: string | URL | Request, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body ?? "{}")));
+    // Every slice returns the SAME place, so a naive concat would report it
+    // three times and the map would paint one pin as three.
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const hits = await searchNearbyPlaces("k", CENTER, {
+      types: ["restaurant", "cafe", "bakery"],
+      pull: 60,
+    });
+    assertEquals(bodies.length, 3);
+    assertEquals(hits.length, 1);
+    assertEquals(hits[0].placeId, "ChIJ-ok");
+    // Disjoint slices: the union is the battery, with nothing asked twice.
+    const asked = bodies.flatMap((b) => b.includedPrimaryTypes);
+    assertEquals(asked.sort(), ["bakery", "cafe", "restaurant"]);
+    // Each request still asks Google for its own maximum.
+    for (const b of bodies) {
+      assertEquals(
+        (b as unknown as { maxResultCount: number }).maxResultCount,
+        GOOGLE_NEARBY_MAX,
+      );
+    }
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: the pull is part of the cache cell", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    n++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    await searchNearbyPlaces("k", CENTER, { types: ["restaurant"], pull: 20 });
+    assertEquals(n, 1);
+    // Same cell, same types, warm — no second bill.
+    await searchNearbyPlaces("k", CENTER, { types: ["restaurant"], pull: 20 });
+    assertEquals(n, 1);
+    assertEquals(
+      peekCachedNearbyPlaces(CENTER, ["restaurant"], 20)?.length,
+      1,
+    );
+    // A 20-row cell is NOT an answer to a 60 pull, so it must not be served
+    // as one: the operator raised the stop to get more places.
+    assertEquals(peekCachedNearbyPlaces(CENTER, ["restaurant"], 60), null);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("lanesForPlacesScope: the Google lane cap follows the operator pull", () => {
+  // The guest's How many still caps pins; the operator's pull caps what we
+  // buy. 60 pins with a 20 pull is 20 Google rows, exactly as before.
+  assertEquals(lanesForPlacesScope("google", 60).googleCount, GOOGLE_NEARBY_MAX);
+  assertEquals(lanesForPlacesScope("google", 60, 60).googleCount, 60);
+  assertEquals(lanesForPlacesScope("google", 20, 60).googleCount, 20);
+  assertEquals(lanesForPlacesScope("mesita", 60, 60).googleCount, 0);
 });

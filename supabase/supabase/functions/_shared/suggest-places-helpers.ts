@@ -1,7 +1,7 @@
 import {
-  NEARBY_TYPE_KEYS,
+  SUPER_PARAM_KEYS,
   type MapConfig,
-  type NearbyTypeKey,
+  type SuperParamKey,
 } from "./discovery-config.ts";
 import { enabledNearbyTypes } from "./map-engine.ts";
 
@@ -30,18 +30,18 @@ export type Prediction = {
 };
 
 // How to constrain Google Autocomplete primary types for this call:
-// - "skip": every Map type battery is off => don't call Google
+// - "skip": every Map Super is off => don't call Google
 // - "open": omit includedPrimaryTypes; post-filter evaluatePlaceForMap
 export type GoogleTypeFilter = "skip" | "open";
 
-/** Skip Google when every type battery is off. */
-export function googleTypeFilterForTypes(
-  types: Record<NearbyTypeKey, boolean>,
+/** Skip Google when every Super is off. */
+export function googleTypeFilterForSupers(
+  supers: Record<SuperParamKey, boolean>,
 ): GoogleTypeFilter {
-  return NEARBY_TYPE_KEYS.some((key) => types[key]) ? "open" : "skip";
+  return SUPER_PARAM_KEYS.some((key) => supers[key]) ? "open" : "skip";
 }
 
-/** Discovery › Map: skip Google when every type battery is off. */
+/** Discovery › Map: skip Google when every Super is off. */
 export function googleTypeFilterForMap(map: MapConfig): GoogleTypeFilter {
   return enabledNearbyTypes(map).length === 0 ? "skip" : "open";
 }
