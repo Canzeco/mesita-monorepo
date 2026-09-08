@@ -9,8 +9,11 @@ import {
 } from "./credits-mock";
 import {
   emulatorBuy,
+  emulatorGift,
   emulatorLoad,
+  emulatorRedeem,
   emulatorSpend,
+  type CreditGift,
   type CreditsState,
   type EmulatorError,
   type Seed,
@@ -47,6 +50,14 @@ export type CreditsApi = {
   nowMs: number;
   buy: (placeId: string, paidCents: number) => Promise<boolean>;
   spend: (balanceId: string, amountCents: number) => Promise<boolean>;
+  /** Issuance, not transfer (MESITA-1677): resolves to the CODE, or null. */
+  gift: (
+    placeId: string,
+    paidCents: number,
+    note: string | null,
+  ) => Promise<CreditGift | null>;
+  /** Resolves to the gift that was claimed, so the screen can name the place. */
+  redeem: (code: string) => Promise<CreditGift | null>;
   clearError: () => void;
 };
 
@@ -110,6 +121,43 @@ export function useCredits(seed: Seed): CreditsApi {
     [state, policy],
   );
 
+  // Gift and redeem BOTH resolve to the gift rather than a boolean, because
+  // both screens have something to say afterwards that only the gift carries:
+  // the code to hand over, and the place the redeemed money landed at.
+  const giftCredits = useCallback(
+    async (placeId: string, paidCents: number, note: string | null) => {
+      if (!state) return null;
+      setBusy(true);
+      const result = await emulatorGift(state, placeId, paidCents, note, policy);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return null;
+      }
+      setState(result.value.state);
+      setWallMs(Date.now());
+      return result.value.gift;
+    },
+    [state, policy],
+  );
+
+  const redeemCode = useCallback(
+    async (code: string) => {
+      if (!state) return null;
+      setBusy(true);
+      const result = await emulatorRedeem(state, code);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return null;
+      }
+      setState(result.value.state);
+      setWallMs(Date.now());
+      return result.value.gift;
+    },
+    [state],
+  );
+
   const spend = useCallback(
     async (balanceId: string, amountCents: number) => {
       if (!state) return false;
@@ -138,6 +186,8 @@ export function useCredits(seed: Seed): CreditsApi {
     nowMs: wallMs ?? 0,
     buy,
     spend,
+    gift: giftCredits,
+    redeem: redeemCode,
     clearError: () => setError(null),
   };
 }
@@ -154,5 +204,9 @@ export function errorMessage(error: EmulatorError): string {
       return "You don't have that many Credits here.";
     case "amount-not-positive":
       return "Pick an amount first.";
+    case "unknown-code":
+      return "We don't know that code. Check the ten digits and try again.";
+    case "gift-already-redeemed":
+      return "Those Credits have already been claimed.";
   }
 }

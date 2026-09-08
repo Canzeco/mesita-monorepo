@@ -47,6 +47,18 @@ export const SECTIONS: Section[] = [
 export function PaySectionNav() {
   const pathname = usePathname();
 
+  // THE ROW DOES NOT FOLLOW YOU INTO A SUBROUTE (Pato, 2026-09-08). Wallet
+  // grew four full-screen children — Buy, Gift, Redeem, one balance — and they
+  // inherit this layout because they live under it. A guest standing inside
+  // Buy is not choosing between QR and Wallet; leaving the row up would offer
+  // them a lateral move out of a purchase, and it would sit above the screen's
+  // own back-and-title header, which is two rows of chrome saying different
+  // things about where you are.
+  //
+  // Exact membership, not a prefix: only the two section roots show the row.
+  // Anything deeper is a destination and owns its own header.
+  if (!SECTIONS.some((s) => s.href === pathname)) return null;
+
   return (
     <div className="border-border bg-background/90 sticky top-0 z-20 shrink-0 border-b backdrop-blur-xl">
       <div className="scrollbar-hide overflow-x-auto px-2 py-2.5">

@@ -8,6 +8,7 @@ import {
   reservationPath,
   visitPath,
   ticketPath,
+  walletBalancePath,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
 import {
@@ -78,6 +79,13 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         root: "/new-visit",
         new: "/new-visit",
         wallet: "/new-visit/wallet",
+        // Wallet's four children are ROUTES, not sheets and not @modal
+        // intercepts (Pato, 2026-09-08). Nothing here belongs in
+        // isModalContractPath — see the reversal note in the contract.
+        walletBuy: "/new-visit/wallet/buy",
+        walletGift: "/new-visit/wallet/gift",
+        walletRedeem: "/new-visit/wallet/redeem",
+        walletBalance: { prefix: "/new-visit/wallet/balance/" },
       },
       newVisitDefault: "/new-visit",
       visit: { prefix: "/visit/" },
@@ -214,6 +222,38 @@ describe("path helpers", () => {
     // ticket (the DB column, the EFs and the row types all say ticket), so
     // call sites talking about the OBJECT keep reading naturally.
     expect(ticketPath("t1")).toBe("/visit/t1");
+    expect(walletBalancePath("bal_1")).toBe("/new-visit/wallet/balance/bal_1");
+  });
+
+  // The wallet's three static children must never be swallowed by the balance
+  // prefix. Next.js does resolve a static segment ahead of a dynamic sibling,
+  // but these are not siblings at all — that is the point of putting the id
+  // under `balance/` — and this is the assertion that would go red if someone
+  // "simplified" it back to /new-visit/wallet/[id].
+  it("keeps Buy, Gift and Redeem out of the balance id space", () => {
+    for (const href of [
+      CONSUMER_ROUTES.newVisit.walletBuy,
+      CONSUMER_ROUTES.newVisit.walletGift,
+      CONSUMER_ROUTES.newVisit.walletRedeem,
+    ]) {
+      expect(
+        href.startsWith(CONSUMER_ROUTES.newVisit.walletBalance.prefix),
+      ).toBe(false);
+      expect(href.startsWith(`${CONSUMER_ROUTES.newVisit.wallet}/`)).toBe(true);
+    }
+  });
+
+  // A wallet subroute is a PAGE. If one ever appears here, someone has made it
+  // an @modal intercept and undone the 2026-09-08 reversal by the back door.
+  it("keeps every wallet subroute out of the modal contract", () => {
+    for (const href of [
+      CONSUMER_ROUTES.newVisit.walletBuy,
+      CONSUMER_ROUTES.newVisit.walletGift,
+      CONSUMER_ROUTES.newVisit.walletRedeem,
+      walletBalancePath("bal_1"),
+    ]) {
+      expect(isModalContractPath(href), href).toBe(false);
+    }
   });
 });
 
