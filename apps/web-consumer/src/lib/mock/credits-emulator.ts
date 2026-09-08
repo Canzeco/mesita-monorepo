@@ -1,8 +1,8 @@
 // The /credits EMULATOR — a fake backend that lives in the browser.
 //
 // There is no credits table and no consumer-web-credits-* Edge Function. This
-// stands in for both so the surface can be exercised end to end: buy a balance,
-// spend it, watch a lock mature. It is the only reason /credits does anything.
+// stands in for both so the surface can be exercised end to end: buy a balance
+// and spend it. It is the only reason /credits does anything.
 //
 // SHAPED LIKE THE EDGE FUNCTIONS IT REPLACES. Every operation is async, returns
 // a result envelope, and takes the arguments the real endpoint would take, so
@@ -10,12 +10,13 @@
 // call sites. Clients call Edge Functions and never the DB (root CLAUDE.md);
 // nothing here should teach a future session otherwise.
 //
-// THE CLOCK IS THE POINT. Real maturation is measured in hours and days, and
-// expiry in months, so a demo that waits for wall time demonstrates nothing.
-// State stores absolute timestamps and a single `clockOffsetMs`; every read
-// derives "now" from `Date.now() + offset`. Pushing the clock forward runs the
-// SAME maturation logic a real 18-hour wait would, which is what makes the lock
-// legible — and the same expiry logic a real 90-day wait would.
+// BUYING IS ACTIVATION (Pato, 2026-09-08). A top-up used to sit inside a hold
+// before it could be spent, and a DEMO CLOCK — a `clockOffsetMs` on state, with
+// +1h/+24h/+30d buttons on the surface — existed to make that window visible in
+// a demo. The hold is gone, so the clock had nothing left to demonstrate that
+// was worth the furniture, and it went with it. Every read is wall time now.
+// Expiry survives and is still enforced here; at 90 days out it is simply not
+// something a demo session walks to.
 
 import {
   bonusFor,
@@ -23,8 +24,6 @@ import {
   CONTROLS_FALLBACK,
   DAY_MS,
   expiryDaysFor,
-  holdHoursFor,
-  HOUR_MS,
   isExpired,
   placeById,
   seedBalances,
@@ -33,24 +32,21 @@ import {
 } from "./credits-mock";
 
 const STORAGE_KEY = "mesita.credits.emulator";
-// 2: balances carry `expiresAtMs` (2026-09-02). A v1 balance has no expiry, and
-// `isExpired` on an undefined date is quietly false — money that never dies,
-// which is the one thing this shape change exists to stop. `read()` drops a
-// state whose version does not match, so a stale wallet re-seeds instead of
-// running the new rules against a shape that cannot answer them.
-const STATE_VERSION = 2;
+// 3: the hold and the demo clock are gone (2026-09-08) — balances no longer
+// carry `maturesAtMs` and state no longer carries `clockOffsetMs`. A v2 wallet
+// left on disk would keep a stored clock offset that nothing can move and
+// nothing displays, so it re-seeds instead. `read()` drops a state whose
+// version does not match.
+const STATE_VERSION = 3;
 
 export type CreditsState = {
   v: typeof STATE_VERSION;
   balances: CreditBalance[];
-  /** Milliseconds added to wall time. The demo clock, never persisted as "now". */
-  clockOffsetMs: number;
 };
 
 export type EmulatorError =
   | "unknown-place"
   | "unknown-balance"
-  | "balance-locked"
   | "balance-expired"
   | "insufficient-credits"
   | "amount-not-positive";
@@ -58,10 +54,6 @@ export type EmulatorError =
 export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: EmulatorError };
-
-function nowMsFor(state: CreditsState): number {
-  return Date.now() + state.clockOffsetMs;
-}
 
 /** `empty` exists so the zero state is reachable without spending three balances to nothing. */
 export type Seed = "default" | "empty";
@@ -74,7 +66,6 @@ export function freshState(
   return {
     v: STATE_VERSION,
     balances: seed === "empty" ? [] : seedBalances(nowMs, policy),
-    clockOffsetMs: 0,
   };
 }
 
@@ -99,33 +90,26 @@ export function buy(
   if (!place) return { ok: false, error: "unknown-place" };
   if (args.paidCents <= 0) return { ok: false, error: "amount-not-positive" };
 
-  // The hold, the bonus and the expiry are resolved TOGETHER and stored on the
-  // balance, so a later console change never silently reprices Credits a guest
-  // already bought. What the operator changes is what the NEXT top-up gets.
+  // The bonus and the expiry are resolved TOGETHER and stored on the balance,
+  // so a later console change never silently reprices Credits a guest already
+  // bought. What the operator changes is what the NEXT top-up gets.
   const bonusPct = bonusPctFor(place, args.policy);
   const credited = args.paidCents + bonusFor(args.paidCents, bonusPct);
-  const maturesAtMs = args.nowMs + holdHoursFor(place, args.policy) * HOUR_MS;
-  // From the TOP-UP, not from maturity. Dating expiry off the unlock would let
-  // a place buy its Credits a longer life by holding them longer, which is the
-  // opposite of what the hold costs a guest.
+  // The whole balance is spendable from here: there is no window between buying
+  // Credits and being able to use them.
   const expiresAtMs = args.nowMs + expiryDaysFor(place, args.policy) * DAY_MS;
   const existing = state.balances.find((b) => b.placeId === args.placeId);
 
-  // Topping up an existing balance RE-LOCKS the whole thing. The lock is what
-  // the place is paying the bonus for, so letting new money hide behind an
-  // already-matured balance would sell float that was never delivered.
-  //
-  // It RE-DATES the expiry the same way, and in the guest's favour: the older
-  // money rides the new expiry rather than the new money inheriting the old
-  // one. A single balance can only carry one date, and the alternative — new
-  // Credits dying on the schedule of Credits bought months ago — would take
+  // Topping up an existing balance RE-DATES its expiry, in the guest's favour:
+  // the older money rides the new date rather than the new money inheriting the
+  // old one. A single balance can only carry one date, and the alternative —
+  // new Credits dying on the schedule of Credits bought months ago — would take
   // away a term the guest just paid for.
   const next: CreditBalance = existing
     ? {
         ...existing,
         balanceCents: existing.balanceCents + credited,
         paidCents: existing.paidCents + args.paidCents,
-        maturesAtMs,
         expiresAtMs,
         bonusPct,
         activity: [
@@ -144,7 +128,6 @@ export function buy(
         placeName: place.name,
         balanceCents: credited,
         paidCents: args.paidCents,
-        maturesAtMs,
         expiresAtMs,
         bonusPct,
         photoUrl: place.photoUrl,
@@ -182,8 +165,6 @@ export function spend(
   const balance = state.balances.find((b) => b.id === args.balanceId);
   if (!balance) return { ok: false, error: "unknown-balance" };
   if (args.amountCents <= 0) return { ok: false, error: "amount-not-positive" };
-  if (balance.maturesAtMs > args.nowMs)
-    return { ok: false, error: "balance-locked" };
   // Expiry is checked BEFORE the amount: a guest who typed too much into a dead
   // balance needs to be told it is dead, not that they were a few pesos over.
   if (isExpired(balance, args.nowMs))
@@ -214,13 +195,6 @@ export function spend(
   };
 }
 
-export function advanceClock(
-  state: CreditsState,
-  hours: number,
-): CreditsState {
-  return { ...state, clockOffsetMs: state.clockOffsetMs + hours * HOUR_MS };
-}
-
 // ─── Persistence ───────────────────────────────────────────────────────────
 // Every access is guarded: private windows throw on read AND write, and a
 // state written by an older shape must never crash the page it loads into.
@@ -232,12 +206,7 @@ function read(): CreditsState | null {
     const parsed = JSON.parse(raw) as Partial<CreditsState>;
     if (parsed?.v !== STATE_VERSION || !Array.isArray(parsed.balances))
       return null;
-    return {
-      v: STATE_VERSION,
-      balances: parsed.balances,
-      clockOffsetMs:
-        typeof parsed.clockOffsetMs === "number" ? parsed.clockOffsetMs : 0,
-    };
+    return { v: STATE_VERSION, balances: parsed.balances };
   } catch {
     return null;
   }
@@ -287,7 +256,7 @@ export async function emulatorBuy(
   const result = buy(state, {
     placeId,
     paidCents,
-    nowMs: nowMsFor(state),
+    nowMs: Date.now(),
     balanceId: id("bal"),
     activityId: id("act"),
     policy,
@@ -304,28 +273,10 @@ export async function emulatorSpend(
   const result = spend(state, {
     balanceId,
     amountCents,
-    nowMs: nowMsFor(state),
+    nowMs: Date.now(),
     activityId: id("act"),
   });
   if (result.ok) write(result.value);
   return settle(result);
 }
 
-/** Synchronous on purpose — the clock is a demo control, not a request. */
-export function emulatorAdvance(
-  state: CreditsState,
-  hours: number,
-): CreditsState {
-  const next = advanceClock(state, hours);
-  write(next);
-  return next;
-}
-
-export function emulatorReset(
-  seed: Seed,
-  policy: ControlsPolicy = CONTROLS_FALLBACK,
-): CreditsState {
-  const next = freshState(Date.now(), seed, policy);
-  write(next);
-  return next;
-}

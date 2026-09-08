@@ -6,10 +6,7 @@ import { formatCurrency } from "@/lib/api/profile";
 import {
   daysUntilExpiry,
   formatExpiry,
-  formatUnlock,
-  hoursUntil,
   isExpired,
-  isLocked,
   type CreditBalance,
 } from "@/lib/mock/credits-mock";
 import { cn } from "@/lib/utils";
@@ -64,24 +61,24 @@ import { cn } from "@/lib/utils";
 // FRAUNCES ON THE BALANCE, and only there. `brand.json` assigns the display
 // face to "numerals in hero positions" and a card balance is the definitive one
 // in this product; Inter here was also the "gave up on typography" signal.
-// `tabular-nums` stays, or the digits jitter every time the clock advances.
+// `tabular-nums` stays, or the digits jitter every time a spend lands.
 //
 // NO PHOTO, OR A PHOTO THAT FAILS TO LOAD, RENDERS THE INK FACE — the same
 // card with the art layer swapped for a gradient. It is a fallback, not a
 // second design.
 //
-// A LOCKED CARD IS DORMANT ART. Colour used to carry state on this surface and
-// the photo took that job away — with a full-bleed face, the balance you CANNOT
-// spend was the most vivid thing on the screen. Locked desaturates and dims the
-// photo, so the deck reads spendable-first before a word is read. The dimming
-// sits UNDER the scrim, so it only ever improves contrast.
+// AN EXPIRED CARD IS DORMANT ART — the same photo, greyscale and dimmed. Colour
+// used to carry state on this surface and the photo took that job away; with a
+// full-bleed face, the balance you CANNOT spend was the most vivid thing on the
+// screen. The dimming sits UNDER the scrim, so it only ever improves contrast.
+// Not a red card and not a hidden one: red is this app's destructive-action
+// colour and would read as something the guest can still do something about,
+// and hiding it would delete the only record a guest has that the money existed.
 //
-// AN EXPIRED CARD IS THE SAME ART, FURTHER GONE — greyscale, dimmed harder. Not
-// a red card and not a hidden one: red is this app's destructive-action colour
-// and would read as something the guest can still do something about, and
-// hiding it would delete the only record a guest has that the money existed.
-// Expiry outranks the lock on the face, because "unlocks in 2h" printed on a
-// balance that died last week is the one sentence this card must never say.
+// THERE IS NO LOCKED FACE ANY MORE (Pato, 2026-09-08). Credits are active the
+// moment they are bought, so the third state this card used to paint — a
+// desaturated photo under an "unlocks in 3h" chip — has nothing left to
+// describe. Bought is spendable; the only thing that stops it is expiry.
 
 /**
  * How close expiry has to be before the card says so. Two weeks is a visit or
@@ -124,7 +121,6 @@ export function BalanceCard({
   style,
 }: {
   balance: CreditBalance;
-  /** Emulator time. Maturation is never read off wall time. */
   nowMs: number;
   /** Another card lies on top of this one, so only the strip is on screen. */
   covered: boolean;
@@ -134,26 +130,21 @@ export function BalanceCard({
 }) {
   const [artFailed, setArtFailed] = useState(false);
   const expired = isExpired(balance, nowMs);
-  const locked = !expired && isLocked(balance, nowMs);
   const bonusCents = balance.balanceCents - balance.paidCents;
-  const unlock = formatUnlock(hoursUntil(balance, nowMs));
   const daysLeft = daysUntilExpiry(balance, nowMs);
-  // The expiry is only worth a chip once it is the nearer of the two dates. A
-  // spendable balance with three months to run is a balance with nothing to
+  // A spendable balance with three months to run is a balance with nothing to
   // report, and a countdown on it would turn the deck into a nag.
   const expiringSoon = !expired && daysLeft <= EXPIRY_NOTICE_DAYS;
   const showArt = !!balance.photoUrl && !artFailed;
 
-  // The peek chip reads "3h" — enough for a glance, not enough for a screen
+  // The peek chip reads "6d" — enough for a glance, not enough for a screen
   // reader, which gets the whole sentence instead. It says the same thing
   // whether the amount is painted small, big, or not at all.
   const label = expired
     ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, expired`
-    : locked
-      ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, unlocks in ${unlock}`
-      : expiringSoon
-        ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend, expires in ${formatExpiry(daysLeft)}`
-        : `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend`;
+    : expiringSoon
+      ? `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend, expires in ${formatExpiry(daysLeft)}`
+      : `${balance.placeName}, ${formatCurrency(balance.balanceCents)}, ready to spend`;
 
   return (
     <button
@@ -181,9 +172,8 @@ export function BalanceCard({
             className={cn(
               "object-cover",
               // On-scale utilities, not tuned values: the scrim above already
-              // owns contrast, so these only have to read as "asleep" and
-              // "gone". Both sit UNDER the scrim, so they only improve it.
-              locked && "brightness-75 saturate-50",
+              // owns contrast, so this only has to read as "gone". It sits
+              // UNDER the scrim, so it only improves it.
               expired && "brightness-50 grayscale",
             )}
             onError={() => setArtFailed(true)}
@@ -212,13 +202,10 @@ export function BalanceCard({
         >
           {balance.placeName}
         </span>
-        {!covered ? null : expired || locked || expiringSoon ? (
-          // A locked balance is not "MX$0". Rendering the zero would lead with
-          // the most alarming number available for a state that is simply
-          // not-yet — so the amount goes quiet and the chip says when. An
-          // expired one keeps its amount for the same reason in reverse: it is
-          // what the guest had, and zeroing it would be the card lying about
-          // history rather than about the future.
+        {!covered ? null : expired || expiringSoon ? (
+          // An expired balance keeps its amount rather than reading "MX$0": it
+          // is what the guest had, and zeroing it would be the card lying about
+          // history rather than about the future. The chip carries the state.
           <span className="flex shrink-0 items-center gap-1.5">
             <span
               className="text-sm font-bold text-white/75 tabular-nums"
@@ -227,7 +214,7 @@ export function BalanceCard({
               {formatCurrency(balance.balanceCents)}
             </span>
             <span className="type-meta rounded-full border border-white/40 bg-white/15 px-1.5 py-0.5 font-semibold tracking-[0.12em] uppercase tabular-nums backdrop-blur-sm">
-              {expired ? "Expired" : locked ? unlock : formatExpiry(daysLeft)}
+              {expired ? "Expired" : formatExpiry(daysLeft)}
             </span>
           </span>
         ) : (
@@ -252,11 +239,9 @@ export function BalanceCard({
           <span className="mt-1.5 block truncate text-xs text-white/85">
             {expired
               ? "Expired · these Credits can no longer be spent"
-              : locked
-                ? `Unlocks in ${unlock} · +${balance.bonusPct}% bonus`
-                : expiringSoon
-                  ? `Expires in ${formatExpiry(daysLeft)} · +${formatCurrency(bonusCents)} bonus`
-                  : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
+              : expiringSoon
+                ? `Expires in ${formatExpiry(daysLeft)} · +${formatCurrency(bonusCents)} bonus`
+                : `You paid ${formatCurrency(balance.paidCents)} · +${formatCurrency(bonusCents)} bonus`}
           </span>
         </span>
       )}
