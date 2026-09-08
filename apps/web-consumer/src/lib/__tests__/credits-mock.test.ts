@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseCreditsDemo } from "@/lib/credits-demo";
 import {
-  advanceClock,
   buy,
   freshState,
   spend,
@@ -19,18 +18,14 @@ import {
   daysUntilExpiry,
   expiryDaysFor,
   formatExpiry,
-  formatUnlock,
-  holdHoursFor,
   HOUR_MS,
-  hoursUntil,
   isExpired,
-  isLocked,
   spendableCents,
 } from "@/lib/mock/credits-mock";
 import { rankBalances } from "@/components/consumer/credits/BalanceStack";
 
 // The console-owned terms every rule below resolves against. A place's own
-// bonusPct/lockHours are null unless it set them, and what null MEANS is this.
+// bonusPct/expiryDays are null unless it set them, and what null MEANS is this.
 const POLICY = CONTROLS_FALLBACK;
 
 // One place that inherits both terms (what every place does today) and one
@@ -68,10 +63,12 @@ describe("parseCreditsDemo", () => {
 });
 
 describe("seed", () => {
-  it("opens with something matured and something still locked", () => {
-    const s = seeded();
-    expect(s.balances.some((b) => isLocked(b, T0))).toBe(true);
-    expect(s.balances.some((b) => !isLocked(b, T0))).toBe(true);
+  // Buying is activation (2026-09-08), so there is no third state to seed and
+  // no card that opens waiting for a clock nothing can move any more.
+  it("opens with every balance spendable", () => {
+    for (const b of seeded().balances) {
+      expect(spendableCents(b, T0)).toBe(b.balanceCents);
+    }
   });
 
   it("empty is empty", () => {
@@ -96,40 +93,23 @@ describe("seed", () => {
   });
 });
 
-describe("the bonus ladder", () => {
-  // The shape is the model: a place pays more for holding the money longer.
-  // Resolved through the policy, because both terms are null on any place that
-  // has not set them and the console decides what null is worth.
-  it("pays more the longer the hold", () => {
-    const byHold = [...CREDIT_PLACES].sort(
-      (a, b) => holdHoursFor(a, POLICY) - holdHoursFor(b, POLICY),
-    );
-    for (let i = 1; i < byHold.length; i += 1) {
-      expect(bonusPctFor(byHold[i], POLICY)).toBeGreaterThanOrEqual(
-        bonusPctFor(byHold[i - 1], POLICY),
-      );
-    }
-  });
-
+describe("the bonus", () => {
   it("a place that set nothing inherits the console default", () => {
-    expect(INHERITS.lockHours).toBeNull();
     expect(INHERITS.bonusPct).toBeNull();
-    expect(holdHoursFor(INHERITS, POLICY)).toBe(POLICY.defaultHoldHours);
     expect(bonusPctFor(INHERITS, POLICY)).toBe(POLICY.defaultBonusPct);
   });
 
-  it("a place that set its own terms keeps them", () => {
-    expect(holdHoursFor(OVERRIDES, POLICY)).toBe(OVERRIDES.lockHours);
+  it("a place that set its own keeps it", () => {
     expect(bonusPctFor(OVERRIDES, POLICY)).toBe(OVERRIDES.bonusPct);
   });
 
-  it("the shipped default hold is three hours", () => {
-    expect(POLICY.defaultHoldHours).toBe(3);
+  it("the shipped default bonus is five percent", () => {
+    expect(POLICY.defaultBonusPct).toBe(5);
   });
 });
 
 describe("buy", () => {
-  it("credits the bonus and holds for the place's own window", () => {
+  it("credits the bonus and is spendable the same instant", () => {
     const place = OVERRIDES;
     const r = buy(freshState(T0, "empty"), {
       placeId: place.id,
@@ -146,22 +126,18 @@ describe("buy", () => {
       100_000 + bonusFor(100_000, bonusPctFor(place, POLICY)),
     );
     expect(b.paidCents).toBe(100_000);
-    expect(hoursUntil(b, T0)).toBeCloseTo(holdHoursFor(place, POLICY), 5);
-    expect(spendableCents(b, T0)).toBe(0);
-  });
-
-  it("a place with no terms of its own is held for the console default", () => {
-    const r = buy(freshState(T0, "empty"), {
-      placeId: INHERITS.id,
-      paidCents: 100_000,
+    // THE RULE (Pato, 2026-09-08). Not "spendable soon", not "spendable after
+    // the console's hold" — the whole balance works at the moment of purchase,
+    // and a spend at exactly nowMs proves it against the emulator, not just
+    // against a predicate.
+    expect(spendableCents(b, T0)).toBe(b.balanceCents);
+    const drawn = spend(r.value, {
+      balanceId: b.id,
+      amountCents: b.balanceCents,
       nowMs: T0,
-      balanceId: "bal_y",
-      activityId: "act_y",
-      policy: POLICY,
+      activityId: "act_spend",
     });
-    expect(r.ok).toBe(true);
-    if (!r.ok) return;
-    expect(hoursUntil(r.value.balances[0], T0)).toBeCloseTo(3, 5);
+    expect(drawn.ok).toBe(true);
   });
 
   it("a console change reprices the NEXT top-up, not one already bought", () => {
@@ -246,10 +222,12 @@ describe("buy", () => {
     expect(second.value.balances[0].paidCents).toBe(100_000);
   });
 
-  it("RE-LOCKS on top-up — new money cannot hide behind a matured balance", () => {
+  // A top-up used to RE-LOCK the whole balance, so this is the pin on the
+  // reversal: adding money to a balance cannot take away the money already on
+  // it, not even for an hour.
+  it("a top-up leaves the whole balance spendable", () => {
     const place = INHERITS;
-    let s = freshState(T0, "empty");
-    const first = buy(s, {
+    const first = buy(freshState(T0, "empty"), {
       placeId: place.id,
       paidCents: 50_000,
       nowMs: T0,
@@ -258,11 +236,8 @@ describe("buy", () => {
       policy: POLICY,
     });
     if (!first.ok) return;
-    s = first.value;
-    // Long after the first lock lifted.
     const later = T0 + 30 * 24 * HOUR_MS;
-    expect(isLocked(s.balances[0], later)).toBe(false);
-    const second = buy(s, {
+    const second = buy(first.value, {
       placeId: place.id,
       paidCents: 50_000,
       nowMs: later,
@@ -271,16 +246,13 @@ describe("buy", () => {
       policy: POLICY,
     });
     if (!second.ok) return;
-    expect(isLocked(second.value.balances[0], later)).toBe(true);
-    expect(hoursUntil(second.value.balances[0], later)).toBeCloseTo(
-      holdHoursFor(place, POLICY),
-      5,
-    );
+    const b = second.value.balances[0];
+    expect(spendableCents(b, later)).toBe(b.balanceCents);
   });
 });
 
 describe("spend", () => {
-  function matured(): CreditsState {
+  function bought(): CreditsState {
     const r = buy(freshState(T0, "empty"), {
       placeId: INHERITS.id,
       paidCents: 100_000,
@@ -292,14 +264,13 @@ describe("spend", () => {
     if (!r.ok) throw new Error("seed failed");
     return r.value;
   }
-  // Inside the hold's shadow but well short of the 90-day expiry. It used to be
-  // a year out, which is now a DEAD balance: a matured-and-spendable moment has
-  // to sit between the two dates, and picking one that does not is the exact
-  // mistake the expiry rule exists to catch.
+  // Well short of the 90-day expiry. It used to be a year out, which is a DEAD
+  // balance: the moment a spend is tested at has to sit before the expiry, and
+  // picking one that does not is the exact mistake the expiry rule catches.
   const AFTER = T0 + 7 * 24 * HOUR_MS;
 
   it("draws the balance down and records it", () => {
-    const s = matured();
+    const s = bought();
     const before = s.balances[0].balanceCents;
     const r = spend(s, {
       balanceId: "b1",
@@ -313,18 +284,18 @@ describe("spend", () => {
     expect(r.value.balances[0].activity[0].amountCents).toBe(-30_000);
   });
 
-  it("refuses a locked balance — the lock is the product, not a hint", () => {
-    const r = spend(matured(), {
+  it("goes through at the instant of purchase — nothing to wait for", () => {
+    const r = spend(bought(), {
       balanceId: "b1",
       amountCents: 1000,
       nowMs: T0,
       activityId: "a2",
     });
-    expect(r).toEqual({ ok: false, error: "balance-locked" });
+    expect(r.ok).toBe(true);
   });
 
   it("refuses more than is there, and refuses a non-positive amount", () => {
-    const s = matured();
+    const s = bought();
     expect(
       spend(s, {
         balanceId: "b1",
@@ -345,27 +316,13 @@ describe("spend", () => {
 
   it("refuses an unknown balance", () => {
     expect(
-      spend(matured(), {
+      spend(bought(), {
         balanceId: "nope",
         amountCents: 100,
         nowMs: AFTER,
         activityId: "a",
       }),
     ).toEqual({ ok: false, error: "unknown-balance" });
-  });
-});
-
-describe("the demo clock", () => {
-  it("matures a locked balance by moving time, not by touching the balance", () => {
-    const s = seeded();
-    const locked = s.balances.find((b) => isLocked(b, T0))!;
-    const hours = Math.ceil(hoursUntil(locked, T0));
-    const advanced = advanceClock(s, hours + 1);
-    const nowAfter = T0 + advanced.clockOffsetMs;
-    const same = advanced.balances.find((b) => b.id === locked.id)!;
-    expect(same.maturesAtMs).toBe(locked.maturesAtMs);
-    expect(isLocked(same, nowAfter)).toBe(false);
-    expect(spendableCents(same, nowAfter)).toBe(same.balanceCents);
   });
 });
 
@@ -400,16 +357,12 @@ describe("expiry", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const b = r.value.balances[0];
-    // Exactly the override, off T0 — NOT off the 72h hold that place also sets.
     expect(b.expiresAtMs).toBe(T0 + OVERRIDES.expiryDays! * DAY_MS);
-    expect(b.expiresAtMs).toBeGreaterThan(b.maturesAtMs);
   });
 
-  it("every seeded balance matures before it expires", () => {
-    // The degenerate state — money locked for its entire life — is what the
-    // config's floor exists to prevent, so no fixture may ship in it.
+  it("no seeded balance ships already dead", () => {
     for (const b of seeded().balances) {
-      expect(b.maturesAtMs).toBeLessThan(b.expiresAtMs);
+      expect(isExpired(b, T0)).toBe(false);
     }
   });
 
@@ -471,29 +424,27 @@ describe("expiry", () => {
     );
   });
 
-  it("the demo clock kills a balance by moving time, not by touching it", () => {
-    const s = seeded();
-    const before = s.balances[0];
-    const days = Math.ceil(daysUntilExpiry(before, T0));
-    const advanced = advanceClock(s, (days + 1) * 24);
-    const nowAfter = T0 + advanced.clockOffsetMs;
-    const same = advanced.balances.find((b) => b.id === before.id)!;
-    expect(same.expiresAtMs).toBe(before.expiresAtMs);
-    expect(isExpired(same, nowAfter)).toBe(true);
-    expect(spendableCents(same, nowAfter)).toBe(0);
+  // Time kills a balance; nothing writes to it. There is no demo clock any
+  // more, so "later" is an explicit nowMs — which is what every rule here has
+  // always taken anyway.
+  it("dies by the passage of time, without being touched", () => {
+    const b = seeded().balances[0];
+    const days = Math.ceil(daysUntilExpiry(b, T0));
+    const dead = T0 + (days + 1) * 24 * HOUR_MS;
+    expect(isExpired(b, dead)).toBe(true);
+    expect(spendableCents(b, dead)).toBe(0);
+    expect(b.balanceCents).toBeGreaterThan(0);
   });
 });
 
 describe("deck order", () => {
-  it("ranks spendable, then locked, then expired", () => {
+  it("ranks spendable before expired", () => {
     const s = seeded();
+    // Past the shortest life in the fixture but not the longest, so the deck
+    // actually holds both states at once.
     const dead = s.balances[0].expiresAtMs + DAY_MS;
-    // Far enough out that the seed's own locked card has matured, so the only
-    // thing separating these is expiry.
     const ranked = rankBalances(s.balances, dead);
-    const states = ranked.map((b) =>
-      isExpired(b, dead) ? 2 : isLocked(b, dead) ? 1 : 0,
-    );
+    const states = ranked.map((b) => (isExpired(b, dead) ? 1 : 0));
     expect([...states].sort()).toEqual(states);
   });
 });
@@ -511,18 +462,6 @@ describe("formatExpiry", () => {
   it("says Expired once it has passed", () => {
     expect(formatExpiry(0)).toBe("Expired");
     expect(formatExpiry(-3)).toBe("Expired");
-  });
-});
-
-describe("formatUnlock", () => {
-  it("shows hours under a day and days beyond it", () => {
-    expect(formatUnlock(18)).toBe("18h");
-    expect(formatUnlock(24)).toBe("1d");
-    expect(formatUnlock(144)).toBe("6d");
-  });
-
-  it("never renders a zero — a lock that short is still a lock", () => {
-    expect(formatUnlock(0.2)).toBe("1h");
   });
 });
 

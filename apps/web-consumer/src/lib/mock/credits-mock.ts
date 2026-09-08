@@ -2,16 +2,22 @@
 //
 // NOTHING HERE IS LIVE. There is no table, no Edge Function and no type for a
 // prepaid balance, and the PLACE side does not exist at all: a place today
-// cannot set a bonus, cannot set a lock window, and cannot see what it owes.
+// cannot set a bonus, cannot set an expiry, and cannot see what it owes.
 // This exists so the surface can be exercised before any of that is built
 // (MESITA-1380).
 //
-// THE HOLD IS NO LONGER INVENTED HERE (Pato, 2026-09-01). The default sits in
-// app_config.controls_config, owned by admin console > Configurations >
-// Credits (the page, renamed 2026-09-02; the blob and the route kept the old
-// word), and reaches this surface through consumer-web-get-controls-config.
-// A place may still override it — `lockHours: null` means "inherit", which is
-// what every place does until someone sets one. Same for `bonusPct`.
+// CREDITS ARE ACTIVE THE MOMENT THEY ARE BOUGHT (Pato, 2026-09-08). There was
+// a HOLD here — a per-place window a balance sat in before it could be spent,
+// resolved from app_config.controls_config and overridable per place — and the
+// demo clock existed to make it visible. Both are gone. Buying is activation:
+// there is exactly one thing that can stop a balance being spent, and that is
+// expiry. `defaultHoldHours` still rides the EF payload and the console still
+// owns it, because this is a "for the moment" simplification and the term is
+// expected back; nothing on this surface reads it.
+//
+// The bonus still comes from the console the same way, and a place may still
+// override it — `bonusPct: null` means "inherit", which is what every place
+// does until someone sets one.
 //
 // THE PLACES ARE REAL (Pato, 2026-09-01). Ids, names and photos are rows from
 // public.places, so the card art exercises the real storage bucket and the demo
@@ -20,14 +26,14 @@
 //
 // BALANCES EXPIRE, AND EXPIRY IS COUNTED IN DAYS (Pato, 2026-09-02). This was
 // listed below as undecided; the first half is decided now. `defaultExpiryDays`
-// sits in app_config.controls_config beside the hold and rides the same
-// consumer-web-get-controls-config call. The clock starts at the TOP-UP, not at
-// maturity — a hold the place chose must not buy itself a longer life — and a
-// top-up re-dates the whole balance the same way it re-locks it.
+// sits in app_config.controls_config and rides the consumer-web-get-controls-config
+// call. The clock starts at the TOP-UP, and a top-up re-dates the whole balance
+// — the older money rides the new date rather than the new money inheriting the
+// old one.
 //
 // What is deliberately UNDECIDED and must not be read out of this fixture:
-//   · the exact bonus ladder — the shape (longer lock earns more) is the point,
-//     the numbers are invented
+//   · the exact bonus ladder — that a place pays SOMETHING for money up front
+//     is the point, the numbers are invented
 //   · who issues the instrument, the place or Mesita
 //   · what happens to the REMAINDER when a balance expires — forfeited to the
 //     place, or the paid half returned. Expiry stops the money being spendable
@@ -40,7 +46,7 @@ export type CreditActivity = {
   label: string;
   /** Signed, in cents. Negative spends, positive tops up. */
   amountCents: number;
-  /** Real epoch ms. Rendered against the emulator clock, never against wall time. */
+  /** Real epoch ms. */
   atMs: number;
 };
 
@@ -52,8 +58,6 @@ export type CreditBalance = {
   balanceCents: number;
   /** What the guest actually paid. balance - paid = the bonus. */
   paidCents: number;
-  /** Real epoch ms when this unlocks. Compared against the emulator clock. */
-  maturesAtMs: number;
   /** Real epoch ms when what is left expires. Set at buy time, from the top-up. */
   expiresAtMs: number;
   /** The place's own bonus, as a whole percent, resolved at buy time. */
@@ -64,18 +68,15 @@ export type CreditBalance = {
 };
 
 /**
- * A place you can prepay. The place sets BOTH numbers, and the pairing is the
- * model: a longer lock earns a bigger bonus, because what the place is buying
- * is float. That makes a prepay a term deposit rather than a discount at the
- * table, which is the whole reason the lock exists.
+ * A place you can prepay. It sets what it pays for the money up front, and how
+ * long the Credits live. What it can no longer set is a delay before they work:
+ * a top-up is spendable at the till on the way out.
  */
 export type CreditPlace = {
   id: string;
   name: string;
   /** The place's own bonus. Null inherits `defaultBonusPct` from Controls. */
   bonusPct: number | null;
-  /** The place's own hold. Null inherits `defaultHoldHours` from Controls. */
-  lockHours: number | null;
   /** The place's own expiry, in DAYS. Null inherits `defaultExpiryDays`. */
   expiryDays: number | null;
   /** `places.photos[0]`. Null renders the ink fallback card face. */
@@ -85,17 +86,15 @@ export type CreditPlace = {
 const PLACE_IMAGES =
   "https://yjalywfzdelacdzccpgb.supabase.co/storage/v1/object/public/place-images/images";
 
-// Four real rows from public.places. Three INHERIT the hold and the bonus,
-// which is what every place does today; Cabaret overrides both, so the ladder
-// (a longer hold earns a bigger bonus) is visible on the surface instead of
-// only in the pitch. The longest name is kept deliberately so truncation shows
-// up in review rather than in production.
+// Four real rows from public.places. Three INHERIT both terms, which is what
+// every place does today; Cabaret overrides both, so the override path is
+// exercised on the surface instead of only described. The longest name is kept
+// deliberately so truncation shows up in review rather than in production.
 export const CREDIT_PLACES: CreditPlace[] = [
   {
     id: "6305de4b-1e59-493b-aba8-690cf109545a",
     name: "Tony's Tacos Valle Oriente",
     bonusPct: null,
-    lockHours: null,
     expiryDays: null,
     photoUrl: `${PLACE_IMAGES}/5034ce903fa4fd33e008cc42993834dd8712c787fd0ccaed39d2c6b02cff3027.jpg`,
   },
@@ -103,7 +102,6 @@ export const CREDIT_PLACES: CreditPlace[] = [
     id: "d42d20dd-5ef5-477e-b4d5-9fc024327b6f",
     name: "Quincy Punto Valle",
     bonusPct: null,
-    lockHours: null,
     expiryDays: null,
     photoUrl: `${PLACE_IMAGES}/3e72356768b0112fa5c7222e4d3797640cc835a1ff0ad7abc2a0801ff389b33f.jpg`,
   },
@@ -111,7 +109,6 @@ export const CREDIT_PLACES: CreditPlace[] = [
     id: "d3a10dcc-8988-4b0d-8cd4-8735a27e97d7",
     name: "Dos Amores Brunch & Meal",
     bonusPct: null,
-    lockHours: null,
     expiryDays: null,
     photoUrl: `${PLACE_IMAGES}/baec6e6cdee888ae343924d22692bb3e19a025258eedfeb10dafdbaafdffaf03.jpg`,
   },
@@ -119,9 +116,6 @@ export const CREDIT_PLACES: CreditPlace[] = [
     id: "e0927a0f-879a-4142-802f-6bbe7e00ed95",
     name: "Cabaret Social Room",
     bonusPct: 25,
-    lockHours: 72,
-    // The one place that sells a longer life than the policy floor, so the
-    // override path is exercised at all rather than only described.
     expiryDays: 180,
     photoUrl: `${PLACE_IMAGES}/c80e201542993104ccfd82c45b7adc1f94810e935c5d688bdd7c97aabfb75fd5.jpg`,
   },
@@ -132,6 +126,7 @@ export const CREDIT_PLACES: CreditPlace[] = [
  * consumer-web-get-controls-config returns it.
  */
 export type ControlsPolicy = {
+  /** Parked. The hold is not applied on this surface — see the file header. */
   defaultHoldHours: number;
   defaultBonusPct: number;
   /** DAYS, where the hold is hours. The two terms are not in the same unit. */
@@ -149,16 +144,6 @@ export const CONTROLS_FALLBACK: ControlsPolicy = {
   defaultExpiryDays: 90,
 };
 
-/** The hold this place actually gets. Null on the place means inherit. */
-export function holdHoursFor(
-  place: CreditPlace,
-  policy: ControlsPolicy,
-): number {
-  return typeof place.lockHours === "number" && Number.isFinite(place.lockHours)
-    ? place.lockHours
-    : policy.defaultHoldHours;
-}
-
 /** The bonus this place actually pays. Null on the place means inherit. */
 export function bonusPctFor(
   place: CreditPlace,
@@ -171,8 +156,7 @@ export function bonusPctFor(
 
 /**
  * The life this place's Credits get, in DAYS. Null on the place means inherit.
- * No ceiling is applied here for the same reason `holdHoursFor` applies no
- * floor: the operator's guards clamp on the way IN, at
+ * No ceiling is applied here: the operator's guards clamp on the way IN, at
  * _shared/controls-config.ts, and re-clamping a stored term on the way out
  * would silently reprice Credits a guest already bought.
  */
@@ -193,26 +177,14 @@ export function placeById(id: string): CreditPlace | undefined {
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 86_400_000;
 
-export function isLocked(b: CreditBalance, nowMs: number): boolean {
-  return b.maturesAtMs > nowMs;
-}
-
-/**
- * Past its expiry. A separate question from locked: a balance can be both (the
- * degenerate case the config's floor exists to prevent) and the two states say
- * opposite things — not yet, versus never again.
- */
+/** Past its expiry — the only thing that stops a balance being spendable. */
 export function isExpired(b: CreditBalance, nowMs: number): boolean {
   return b.expiresAtMs <= nowMs;
 }
 
-/** Spendable right now — a locked OR expired balance contributes nothing. */
+/** Spendable right now — everything but a dead balance. */
 export function spendableCents(b: CreditBalance, nowMs: number): number {
-  return isLocked(b, nowMs) || isExpired(b, nowMs) ? 0 : b.balanceCents;
-}
-
-export function hoursUntil(b: CreditBalance, nowMs: number): number {
-  return (b.maturesAtMs - nowMs) / HOUR_MS;
+  return isExpired(b, nowMs) ? 0 : b.balanceCents;
 }
 
 /** Days left before expiry. Negative once it has passed. */
@@ -221,19 +193,8 @@ export function daysUntilExpiry(b: CreditBalance, nowMs: number): number {
 }
 
 /**
- * "18h" under a day, "6d" beyond it. Days are what a lock is actually measured
- * in, so a minutes-and-seconds countdown would be a rerender per second for
- * information nobody acts on.
- */
-export function formatUnlock(hours: number): string {
-  if (hours < 24) return `${Math.max(1, Math.ceil(hours))}h`;
-  return `${Math.round(hours / 24)}d`;
-}
-
-/**
- * "89d" out at range, "6d", then "Today" on the last one. Rounds DOWN, unlike
- * `formatUnlock`: overstating a lock costs a guest a little patience,
- * overstating an expiry costs them the money.
+ * "89d" out at range, "6d", then "Today" on the last one. Rounds DOWN:
+ * overstating an expiry costs a guest the money.
  */
 export function formatExpiry(days: number): string {
   if (days <= 0) return "Expired";
@@ -257,17 +218,14 @@ export function formatWhen(atMs: number): string {
 }
 
 /**
- * The opening state. One matured balance with history so the surface is not
- * empty on first load, one mid-lock so the countdown is visible immediately,
- * and the longest name in the fixture so truncation shows up in review rather
- * than in production.
+ * The opening state. Three spendable balances — one with history so the surface
+ * is not empty on first load, and the longest name in the fixture so truncation
+ * shows up in review rather than in production.
  *
- * The mid-lock balance matures against the CONFIGURED hold, so changing the
- * default in the console changes what a fresh wallet opens on — which is the
- * cheapest possible proof that the knob is wired. Every expiry is derived the
- * same way, from the purchase date the activity row already claims plus the
- * configured life, so no seeded balance carries a term the policy would not
- * have given it.
+ * Every expiry is derived from the purchase date the activity row already
+ * claims plus the configured life, so no seeded balance carries a term the
+ * policy would not have given it — which is also the cheapest possible proof
+ * that the console knob is wired.
  */
 export function seedBalances(
   nowMs: number,
@@ -287,7 +245,6 @@ export function seedBalances(
       placeName: tacos.name,
       balanceCents: 124_000,
       paidCents: 110_000,
-      maturesAtMs: nowMs - 5 * 24 * HOUR_MS,
       expiresAtMs: expiry(tacos, tacosBoughtMs),
       bonusPct: bonusPctFor(tacos, policy),
       photoUrl: tacos.photoUrl,
@@ -312,7 +269,6 @@ export function seedBalances(
       placeName: quincy.name,
       balanceCents: 43_200,
       paidCents: 40_000,
-      maturesAtMs: nowMs - 3 * 24 * HOUR_MS,
       expiresAtMs: expiry(quincy, quincyBoughtMs),
       bonusPct: bonusPctFor(quincy, policy),
       photoUrl: quincy.photoUrl,
@@ -331,8 +287,6 @@ export function seedBalances(
       placeName: cabaret.name,
       balanceCents: 250_000,
       paidCents: 200_000,
-      // Half its hold still to run, so the lock chip is on screen on arrival.
-      maturesAtMs: nowMs + (holdHoursFor(cabaret, policy) / 2) * HOUR_MS,
       expiresAtMs: expiry(cabaret, cabaretBoughtMs),
       bonusPct: bonusPctFor(cabaret, policy),
       photoUrl: cabaret.photoUrl,

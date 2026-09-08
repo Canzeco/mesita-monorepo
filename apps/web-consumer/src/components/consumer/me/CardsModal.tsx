@@ -11,7 +11,7 @@
 // no longer contested and Credits keeps naming the money.
 //
 // This is the one LIVE thing on the Wallet screen. The parked framing there
-// (the hero Soon pill, the demo clock) covers the Credits emulator and must
+// (the emulated caption under the deck) covers the Credits emulator and must
 // never be read as covering these cards.
 //
 // Nothing here is cached. Stripe is the only store for card data, so the list
