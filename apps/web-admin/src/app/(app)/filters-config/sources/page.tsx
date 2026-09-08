@@ -1,4 +1,5 @@
 import { GeneralConfigClient } from "../GeneralConfigClient";
+import { GoogleQualityFloorCard } from "../GoogleQualityFloorCard";
 import { GoogleSourceCards } from "../GoogleSourceCards";
 import { MesitaSourceCards } from "../MesitaSourceCards";
 import { SignalsConfigClient } from "../SignalsConfigClient";
@@ -8,6 +9,10 @@ import { DEFAULT_CONFIG } from "../catalog";
 // Search Sources — nine boxes after the shared Google types strip: the
 // three Google Places searches, the four Mesita Places searches, the two
 // Mesita Social searches. Then the signals every Mesita source ranks with.
+// The Google quality floor is not a Source either — it is one rule over what
+// all three Google searches return, parked here as a proposal while General
+// on the Modes tab stays the live floor.
+//
 // Signals are not a Source, and neither is the Google types strip — its
 // `GeneralConfigClient` shares a name with the General box on Modes, which
 // is the post-Google wipe and a different thing entirely.
@@ -31,6 +36,7 @@ export default async function SearchSourcesPage() {
         loadError={loadError}
       />
       <GoogleSourceCards />
+      <GoogleQualityFloorCard />
       <MesitaSourceCards />
       <SignalsConfigClient
         initialConfig={initialConfig}
