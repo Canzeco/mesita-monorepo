@@ -75,3 +75,88 @@ export async function resolveChargeableOrganizationForCredits(
   if (!isConnectChargeReady(row)) return null;
   return { organizationId, connectedAccountId: row!.stripe_account_id };
 }
+
+// ── The org-level fact (MESITA-1674's "Also": a place-scoped bit becoming an
+// org fact) ──────────────────────────────────────────────────────────────
+//
+// `place_profiles.credits_enabled` is place-scoped and `organizations` has no
+// capability bit of its own for Credits — unlike Mesita Pay, where
+// `organizations.mesita_pay_enabled` already IS the org fact and ANDs DOWN
+// into each place's own bit. Credits has nothing to AND down from yet, so the
+// question this issue asks — "any place? all? a new column?" — is answered
+// ANY: an organization accepts Credits if AT LEAST ONE of its places has
+// opted in, the same semantics consumer-web-list-credit-places already uses
+// to decide whether an organization belongs in the Buy picker (a place
+// appears there iff its org clears this same chain). Reusing "any" here next
+// to that EF is what keeps the two from silently drifting into different
+// answers for "does this org take Credits" — the exact unenforced-config bug
+// root CLAUDE.md names. ALL was rejected: an organization can hold places
+// that never sell Credits (a food-truck chain's kiosk, say) without that
+// costing every OTHER place at the org its own opt-in. A new
+// `organizations.credits_enabled` column was rejected too — it would need its
+// own writer and its own drift-with-place-bits story for a fact this query
+// already answers correctly today.
+//
+// BATCHED, NOT ONE ROUND TRIP PER ORG. consumer-web-list-credit-balances
+// calls this once per page of organizations (bounded by DEFAULT_PAGE_SIZE),
+// never once per lot.
+
+/**
+ * Which of `organizationIds` currently accept a NEW Credits purchase — ANY of
+ * that organization's places is a credits_enabled acceptor AND the org's
+ * Connect account is charge-ready. `payCredits` is passed in (from
+ * visits_config) rather than read here, mirroring every other resolver in
+ * this file.
+ */
+export async function organizationsAcceptingCredits(
+  admin: SupabaseClient,
+  organizationIds: readonly string[],
+  payCredits: boolean,
+): Promise<ReadonlySet<string>> {
+  if (!payCredits || organizationIds.length === 0) return new Set();
+
+  const places = await admin
+    .from("places")
+    .select("id, organization_id")
+    .in("organization_id", organizationIds);
+  if (places.error) return new Set();
+  const rows = (places.data ?? []) as { id: string; organization_id: string | null }[];
+  if (rows.length === 0) return new Set();
+
+  const placeIds = rows.map((r) => r.id);
+  const acceptors = await admin
+    .from("place_profiles")
+    .select("id, credits_enabled")
+    .in("id", placeIds)
+    .eq("credits_enabled", true);
+  if (acceptors.error) return new Set();
+  const acceptingPlaceIds = new Set(
+    ((acceptors.data ?? []) as { id: string }[]).map((r) => r.id),
+  );
+  if (acceptingPlaceIds.size === 0) return new Set();
+
+  const candidateOrgIds = new Set(
+    rows
+      .filter((r) => r.organization_id && acceptingPlaceIds.has(r.id))
+      .map((r) => r.organization_id as string),
+  );
+  if (candidateOrgIds.size === 0) return new Set();
+
+  const accounts = await admin
+    .from("organization_payment_accounts")
+    .select("organization_id, stripe_account_id, charges_enabled, details_submitted")
+    .in("organization_id", [...candidateOrgIds]);
+  if (accounts.error) return new Set();
+
+  const ready = new Set<string>();
+  for (
+    const row of (accounts.data ?? []) as {
+      organization_id: string;
+      charges_enabled: boolean;
+      details_submitted: boolean;
+    }[]
+  ) {
+    if (isConnectChargeReady(row)) ready.add(row.organization_id);
+  }
+  return ready;
+}
