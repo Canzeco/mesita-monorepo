@@ -18,14 +18,22 @@
 begin;
 select plan(11);
 
--- Fixtures. Both FKs are real rows; everything rolls back at the end.
+-- Fixtures. Every FK is a real row; everything rolls back at the end.
+--
+-- consumers.id IS auth.uid(), and it carries a real FK to auth.users — so the
+-- auth row has to exist first. `id` is the only NOT NULL column on that table
+-- without a default, which is why a one-column insert is enough and why this
+-- does not have to track whatever else Supabase adds to it.
+insert into auth.users (id) values ('22222222-2222-2222-2222-222222222222');
+
 insert into public.organizations (id, name)
 values ('11111111-1111-1111-1111-111111111111', 'pgTAP org');
 
--- consumers.id is auth.uid() in production; here it only has to be a uuid the
--- FK accepts, and consumers has no FK of its own to auth.users in this schema.
+-- consumers_code_format_check is `^[0-9]{4}-[0-9]{4}$`. A readable fixture
+-- like 'PGTAP00001' is rejected, and the failure reads as a broken schema
+-- rather than a broken fixture, so the shape matters here.
 insert into public.consumers (id, code)
-values ('22222222-2222-2222-2222-222222222222', 'PGTAP00001');
+values ('22222222-2222-2222-2222-222222222222', '9999-0001');
 
 -- ── issuing ──────────────────────────────────────────────────────────────
 select lives_ok(
