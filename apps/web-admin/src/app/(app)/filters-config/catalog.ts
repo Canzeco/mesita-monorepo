@@ -231,7 +231,8 @@ export function weightMaxFor(key: SignalKey): number {
 }
 const SLOT_MIN_EVERY_NTH = 2;
 const SLOT_MAX_EVERY_NTH = 50;
-const MIN_RATING_MAX = 5;
+/** Google stars top out at 5. Exported since MESITA-1667 gave `filters` a box. */
+export const MIN_RATING_MAX = 5;
 const MAX_DISTANCE_KM_MAX = 200;
 const CATALOG_COUNT_MAX = 20;
 const CATALOG_PLACES_PER_RAIL_MIN = 4;

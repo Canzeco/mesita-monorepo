@@ -2,6 +2,7 @@ import { GeneralConfigClient } from "../GeneralConfigClient";
 import { GoogleQualityFloorCard } from "../GoogleQualityFloorCard";
 import { GoogleSourceCards } from "../GoogleSourceCards";
 import { MesitaSourceCards } from "../MesitaSourceCards";
+import { PoolQualityFloorCard } from "../PoolQualityFloorCard";
 import { SignalsConfigClient } from "../SignalsConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
@@ -9,9 +10,11 @@ import { DEFAULT_CONFIG } from "../catalog";
 // Search Sources — nine boxes after the shared Google types strip: the
 // three Google Places searches, the four Mesita Places searches, the two
 // Mesita Social searches. Then the signals every Mesita source ranks with.
-// The Google quality floor is not a Source either — it is one rule over what
-// all three Google searches return, parked here as a proposal while General
-// on the Modes tab stays the live floor.
+// Neither quality floor is a Source. The Google one is a proposal over what
+// the three Google searches return, while General on Modes stays its live
+// box; the Mesita pool one is LIVE and is the only knob `filters` has ever
+// had (MESITA-1667). They are two halves of one question: what Google gave
+// back, and what the listed pool offers on the lanes that never ask Google.
 //
 // Signals are not a Source, and neither is the Google types strip — its
 // `GeneralConfigClient` shares a name with the General box on Modes, which
@@ -37,6 +40,11 @@ export default async function SearchSourcesPage() {
       />
       <GoogleSourceCards />
       <GoogleQualityFloorCard />
+      <PoolQualityFloorCard
+        initialConfig={initialConfig}
+        initialUpdatedAt={initialUpdatedAt}
+        loadError={loadError}
+      />
       <MesitaSourceCards />
       <SignalsConfigClient
         initialConfig={initialConfig}
