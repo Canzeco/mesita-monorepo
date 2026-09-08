@@ -1,15 +1,20 @@
 // Per-IP Google Nearby fill quota (abuse guard for public list-places).
 //
 // consumer-web-list-places is verify_jwt = false. Web Search opt-in
-// `{ google: true, lat, lng }` spends the server GMP_KEY on one
-// Nearby Search (New) call. The 15s in-isolate cell cache and the 20/60s
+// `{ google: true, lat, lng }` spends the server GMP_KEY on one to three
+// Nearby Search (New) calls — `discovery_config.map.googlePull` picks 20, 40
+// or 60, and Google caps a request at 20 with no page token, so the stops are
+// 1, 2 and 3 BILLED requests (MESITA-1695). The 15s in-isolate cell cache and the 20/60s
 // isolate fan-out cap in nearby-places.ts do not bind across isolates, so a
 // unique-~1 km-cell spray is otherwise an independent billed budget per
 // isolate.
 //
 // Model: rolling 60 s window over public.nearby_google_attempts, counted
-// per ATTEMPT (recorded only when this isolate is about to fire the one
+// per BILLED REQUEST (recorded only when this isolate is about to fire one
 // Nearby call — not on a cache hit, in-flight join, or isolate-budget skip).
+// PER REQUEST, NOT PER PULL (MESITA-1700): a pull-scoped charge let one row
+// authorise three billed calls, which tripled both ceilings below without
+// changing a number anybody could see.
 // Insert-then-count makes parallel bursts self-limiting — each request in
 // an N-wide burst sees the whole burst. A rejected attempt deletes its own
 // row so a guest who hit the cap recovers as the window rolls instead of
@@ -23,13 +28,16 @@
 // leftmost XFF hop. A global window cap is the backstop if a caller still
 // mints unique hashes (spoofed CF-Connecting-IP on a direct origin hit).
 //
-// Caller: searchNearbyPlaces `beforeFanout`, cache-miss fan-out only.
+// Caller: searchNearbyPlaces `beforeFanout`, cache-miss fan-out only, once
+// per slice.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
-// Google-fill POSTs per hashed IP per rolling 60 s. Search pan-idle is ~1 s
-// so a real explorer stays well under this; unique cells across isolates
-// share the same ledger.
+// Google-fill POSTs per hashed IP per rolling 60 s, counted per billed Nearby
+// request. Search pan-idle is ~1 s so a real explorer stays well under this
+// at a 20 pull; a 60 pull spends three of these per cache-miss cell, which is
+// the honest cost and is what the operator picked. Unique cells across
+// isolates share the same ledger.
 export const GOOGLE_NEARBY_IP_MAX = 45;
 export const GOOGLE_NEARBY_GLOBAL_MAX = 600;
 export const GOOGLE_NEARBY_IP_WINDOW_MS = 60_000;

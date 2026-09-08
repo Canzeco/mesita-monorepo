@@ -187,9 +187,17 @@ export type SearchNearbyOpts = {
    *  Google call. Super-driven search may send GOOGLE_SEARCH_TYPES
    *  (spa, museum, park, …) beyond the five. */
   types?: readonly string[];
-  /** Called only by the request that starts the Nearby calls — not on
-   *  a warm cell, an in-flight join, or an isolate-budget skip. Return false
-   *  to skip Google (quota deny). */
+  /**
+   * Called once per BILLED CALL, not once per pull (MESITA-1700). A 40 or 60
+   * pull fires 2 or 3 Nearby requests, and the ledger behind this hook counts
+   * what Google charges for — one row per request — so 45/60s means 45 calls.
+   * Charging once per pull let one authorised row buy three billed requests
+   * and silently tripled the ceiling on a `verify_jwt = false` endpoint.
+   *
+   * Never called on a warm cell, an in-flight join, or an isolate-budget
+   * skip. Return false to skip Google (quota deny); a denial partway through
+   * a pull truncates it and keeps what the earlier slices already returned.
+   */
   beforeFanout?: () => Promise<boolean>;
 };
 
@@ -246,7 +254,9 @@ function resolveNearbyTypes(types?: readonly string[]): readonly string[] {
  *  billed call twice. HTTP / parse failures are returned (Mesita still
  *  shows) but never cached. Concurrent same-cell pans share one in-flight
  *  call. Each isolate also caps cache-miss calls (20 / 60s). Shared IP
- *  quota is `beforeFanout` (nearby-google-quota.ts). */
+ *  quota is `beforeFanout` (nearby-google-quota.ts), charged once per BILLED
+ *  REQUEST — a 40 or 60 pull is 2 or 3 of them. A pull that does not complete
+ *  every slice still RETURNS what it got, but is never cached. */
 export async function searchNearbyPlaces(
   apiKey: string,
   center: { lat: number; lng: number },
@@ -280,41 +290,39 @@ export async function searchNearbyPlaces(
       resolveRun([]);
       return [];
     }
-    if (beforeFanout && !(await beforeFanout())) {
-      resolveRun([]);
-      return [];
-    }
-    pruneGoogleFanout(Date.now());
-    if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
-      console.warn("[nearby] isolate Google fan-out budget exhausted");
-      resolveRun([]);
-      return [];
-    }
     const slices = sliceNearbyTypes(types, calls);
     const seen = new Set<string>();
     const hits: NearbyHit[] = [];
-    let anyOk = false;
-    for (const [i, slice] of slices.entries()) {
-      if (i > 0) {
-        pruneGoogleFanout(Date.now());
-        if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
-          console.warn("[nearby] isolate Google fan-out budget exhausted mid-pull");
-          break;
-        }
+    // EVERY slice has to land for this cell to be an answer. `complete` goes
+    // false on a Google failure, a quota denial, or an isolate-budget skip —
+    // all three leave a SHORT list, and a short list cached is a map missing
+    // places for 15s with nothing to say it is missing them (MESITA-1700).
+    let complete = true;
+    for (const slice of slices) {
+      pruneGoogleFanout(Date.now());
+      if (googleFanoutAt.length >= GOOGLE_FANOUT_MAX) {
+        console.warn("[nearby] isolate Google fan-out budget exhausted");
+        complete = false;
+        break;
+      }
+      // The ledger is charged per REQUEST, because Google bills per request.
+      if (beforeFanout && !(await beforeFanout())) {
+        complete = false;
+        break;
       }
       googleFanoutAt.push(Date.now());
       const batch = await searchNearbyOnce(apiKey, center, radius, slice);
-      if (!batch.ok) continue;
-      anyOk = true;
+      if (!batch.ok) {
+        complete = false;
+        continue;
+      }
       for (const hit of batch.hits) {
         if (seen.has(hit.placeId)) continue;
         seen.add(hit.placeId);
         hits.push(hit);
       }
     }
-    // Only a clean pull is cached; a slice that failed would freeze a short
-    // list into the cell for 15s and hide places the retry would have found.
-    if (anyOk) nearbyCache.set(key, { at: Date.now(), hits });
+    if (complete) nearbyCache.set(key, { at: Date.now(), hits });
     resolveRun(hits);
     return hits;
   } catch (err) {
