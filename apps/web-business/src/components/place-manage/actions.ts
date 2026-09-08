@@ -8,7 +8,7 @@ import type { PlanKey } from "@/lib/business/plans";
 // Single-place console — a super-admin drives ANY place through the existing
 // business-* edge functions. The operator's JWT email is in super_admins, so
 // _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
-// access regardless of project_members. Two things need admin-specific EFs:
+// access regardless of place_members. Two things need admin-specific EFs:
 // the place search below, and setting `plan` (business-web-update-place
 // rejects it — it's the paid door's field, so admin gets its own).
 // ════════════════════════════════════════════════════════════════════════
@@ -67,7 +67,7 @@ export type PlaceHit = {
   google_place_id: string | null;
   /** google_place_id present — the identity spine every run starts from. */
   seeded: boolean;
-  /** A guest can reach it: projects.state, per the consumer RLS policy. */
+  /** A guest can reach it: places.state, per the consumer RLS policy. */
   listed: boolean;
   /** Derived has-demand for filters. Catalog State shows request_count. */
   requested: boolean;
@@ -91,7 +91,7 @@ export type PlaceHit = {
   enrich_pulse_labels: string[];
   /** Why the queue stopped where it did — null once it has finished. */
   enrich_pulse_blocked: PulseBlock | null;
-  /** An APPROVED project_verifications row — ownership proof, not a badge. */
+  /** An APPROVED place_verifications row — ownership proof, not a badge. */
   verified: boolean;
   /** plan !== "free" — the place pays Mesita. */
   partner: boolean;
@@ -273,7 +273,7 @@ export type AdminPlace = {
   state: string | null;
   currency: string | null;
   // Catalog tier: "web" (listed) vs "partner" (Mesita partner). Separate from
-  // ownership (project_members.role = owner) — see place-ownership.ts.
+  // ownership (place_members.role = owner) — see place-ownership.ts.
   listing_type: string | null;
   price_level: number | null;
   address: string | null;
@@ -354,7 +354,7 @@ export type AdminPlace = {
   // payload predates them; the box renders "?" rather than a false "no".
   /** google_place_id present — the identity spine every enrichment run needs. */
   seeded?: boolean;
-  /** projects.state ∈ (active, lead) — a guest can reach the place at all. */
+  /** places.state ∈ (active, lead) — a guest can reach the place at all. */
   listed?: boolean;
   /** Derived has-demand for filters. State chip is request_count. */
   requested?: boolean;
@@ -379,7 +379,7 @@ export type AdminPlace = {
     at: string | null;
     detail: string | null;
   }> | null;
-  /** Intaker lifecycle on the project row. Overview already carries this. */
+  /** Intaker lifecycle on the place row. Overview already carries this. */
   content_state?: string | null;
   /** Google's own id. Admin payload only — never in PLACE_PUBLIC_COLUMNS. */
   google_place_id?: string | null;
@@ -395,10 +395,10 @@ export type AdminPlace = {
   [k: string]: unknown;
 };
 
-export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
+export async function getPlace(placeId: string): Promise<Result<AdminPlace>> {
   const r = await efInvoke<{ active: { place: AdminPlace } | null }>(
     "business-web-get-overview",
-    { placeId: projectId, ticketsLimit: 0 },
+    { placeId, ticketsLimit: 0 },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const place = r.data.active?.place ?? null;
@@ -407,7 +407,7 @@ export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
   // `active` as requested-id-if-a-membership ELSE places[0]. Without this
   // check a URL naming a place you cannot see silently renders — and the
   // one-save model WRITES — a different place you happen to own.
-  if (place.id !== projectId) {
+  if (place.id !== placeId) {
     return { ok: false, error: "Place not found or not loadable." };
   }
   return { ok: true, data: place };
@@ -417,15 +417,15 @@ export async function getPlace(projectId: string): Promise<Result<AdminPlace>> {
  *  ships the flag (index.ts:332); the Admin tab is gated on it, so a
  *  restaurant never sees the operator internals (autoplan D1, 2026-09-06). */
 export async function getPlaceAndRole(
-  projectId: string,
+  placeId: string,
 ): Promise<Result<{ place: AdminPlace; isSuperAdmin: boolean }>> {
   const r = await efInvoke<{
     active: { place: AdminPlace } | null;
     isSuperAdmin?: boolean;
-  }>("business-web-get-overview", { placeId: projectId, ticketsLimit: 0 });
+  }>("business-web-get-overview", { placeId, ticketsLimit: 0 });
   if (!r.ok) return { ok: false, error: r.error };
   const place = r.data.active?.place ?? null;
-  if (!place || place.id !== projectId) {
+  if (!place || place.id !== placeId) {
     return { ok: false, error: "Place not found or not loadable." };
   }
   return {
@@ -468,7 +468,7 @@ export async function setPlacePlan(
 }
 
 // Ghost-partner hold triage (MESITA-1311). Confirming a guest report marks
-// it reviewed AND sets projects.reward_lane_pending_review_at, which closes
+// it reviewed AND sets places.reward_lane_pending_review_at, which closes
 // the reward lane (pending_review) until restore clears it. A report is
 // evidence, never an auto-strike — this is the deliberate human call.
 export type ReviewReportResult = {
@@ -695,8 +695,8 @@ export async function getPlacePaymentAccount(
 }
 
 /** List or unlist the place on Mesita — the ONLY write path to
- *  projects.state, which is what the consumer RLS policy
- *  projects_select_public_visible gates every guest read on. Unlisting removes
+ *  places.state, which is what the consumer RLS policy
+ *  places_select_public_visible gates every guest read on. Unlisting removes
  *  the place from browse, search, the swipe deck and any shared link at once.
  *  business-web-update-place does not accept `state`, so this is its own
  *  admin door (admin-web-set-place-listed). */
@@ -827,14 +827,14 @@ export type PlaceActivity = {
 };
 
 export async function getPlaceActivity(
-  projectId: string,
+  placeId: string,
   opts?: { limit?: number },
 ): Promise<Result<PlaceActivity>> {
   // EF returns `closed` (canonical) and may still echo `paid` as a compat alias.
   type EfStats = PlaceStats & { paid?: number };
   const r = await efInvoke<Omit<PlaceActivity, "stats"> & { stats: EfStats }>(
     "admin-web-get-place-activity",
-    { placeId: projectId, limit: opts?.limit },
+    { placeId, limit: opts?.limit },
   );
   if (!r.ok) return { ok: false, error: r.error };
   const s = r.data.stats;
@@ -1006,13 +1006,17 @@ type PlaceEnrichment = {
 };
 
 export async function getPlaceEnrichment(
-  projectId: string,
+  placeId: string,
 ): Promise<Result<PlaceEnrichment>> {
   const r = await efInvoke<{
     media: Record<string, PlaceMediaMeta>;
     state: PlaceEnrichmentState | null;
     schedule: PlaceEnrichmentSchedule | null;
-  }>("admin-web-get-place-enrichment", { projectId });
+  }>(
+    "admin-web-get-place-enrichment",
+    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
+    { projectId: placeId },
+  );
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -1049,12 +1053,13 @@ export type ReenrichMode = "full" | "analysis" | "contents";
 // to the stage implied by `mode`; the cron poller takes it from there. Runs
 // ASYNC — poll getPlaceEnrichment to watch progress.
 export async function enrichPlace(
-  projectId: string,
+  placeId: string,
   mode: ReenrichMode = "full",
 ): Promise<Result<true>> {
+  // Wire key stays `projectId` — admin-web-enrich-place's MESITA-26 alias.
   const r = await efInvoke<{ enrichmentTriggered: boolean }>(
     "admin-web-enrich-place",
-    { projectId, mode },
+    { projectId: placeId, mode },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
@@ -1082,8 +1087,8 @@ export type TeamSnapshot = {
   }[];
 };
 
-export async function listTeam(projectId: string): Promise<Result<TeamSnapshot>> {
-  const r = await efInvoke<TeamSnapshot>("business-web-list-members", { placeId: projectId });
+export async function listTeam(placeId: string): Promise<Result<TeamSnapshot>> {
+  const r = await efInvoke<TeamSnapshot>("business-web-list-members", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
@@ -1097,11 +1102,12 @@ export type PlaceVerificationGlance = {
 };
 
 export async function getPlaceVerification(
-  projectId: string,
+  placeId: string,
 ): Promise<Result<PlaceVerificationGlance>> {
   const r = await efInvoke<PlaceVerificationGlance>(
     "admin-web-get-place-verification",
-    { projectId },
+    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
+    { projectId: placeId },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return {
@@ -1129,11 +1135,12 @@ export type PlaceVerificationRequest = {
 };
 
 export async function listPlaceVerifications(
-  projectId: string,
+  placeId: string,
 ): Promise<Result<PlaceVerificationRequest[]>> {
   const r = await efInvoke<{ verifications: PlaceVerificationRequest[] }>(
     "admin-web-list-verifications",
-    { projectId, limit: 50 },
+    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
+    { projectId: placeId, limit: 50 },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.verifications ?? [] };
@@ -1154,12 +1161,12 @@ export async function decidePlaceVerification(
 }
 
 export async function inviteEditor(
-  projectId: string,
+  placeId: string,
   email: string,
   role: string,
 ): Promise<Result<unknown>> {
   const r = await efInvoke<unknown>("business-web-invite-member", {
-    placeId: projectId,
+    placeId,
     email,
     role,
   });
@@ -1233,7 +1240,7 @@ export async function findPlaceByPlaceId(
   // middleware sees no session and bounces through / (the auth surface)
   // if needed. Once signed in (as themselves, via Google), the
   // business-get-overview EF reads their JWT, finds their email in
-  // super_admins, and grants place access regardless of project_members.
+  // super_admins, and grants place access regardless of place_members.
   const businessOrigin =
     (process.env.BUSINESS_WEB_URL ?? "").trim() || BUSINESS_WEB_URL_FALLBACK;
   const link = `${businessOrigin.replace(/\/$/, "")}/place/${encodeURIComponent(place.id)}/home`;

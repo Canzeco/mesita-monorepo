@@ -39,7 +39,7 @@ export function PlaceManageShell({
 
   return (
     <PlaceProvider
-      projectId={placeId}
+      placeId={placeId}
       place={place}
       setPlace={setPlace}
       reload={reload}

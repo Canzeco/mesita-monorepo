@@ -16,8 +16,8 @@
 // One endpoint, four surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
 //     flips a consumer to/from Premium on the back of the paid door.
-//   • project_id   → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
-//     projects.plan on the back of the paid door.
+//   • place_id     → place plans (Verified / plan=pro; ultra legacy). The ONLY writer that flips
+//     places.plan on the back of the paid door.
 //   • Connect account.updated → organization_payment_accounts mirror (PLATFORM
 //     account layer, connect-account.ts).
 //   • Connect payment_intent.{succeeded,payment_failed} → Mesita Pay's
@@ -51,14 +51,14 @@ import {
 } from "../_shared/stripe-env.ts";
 import {
   resolveConsumerId,
+  resolvePlaceId,
   resolvePlanKey,
-  resolveProjectId,
 } from "./subscription-resolve.ts";
 import {
   applyListingTypeToPatch,
 } from "../_shared/partner-derivation.ts";
 import { recomputeConsumerClass } from "../_shared/class-doors.ts";
-import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
+import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import { subscriptionSnapshot } from "./subscription-snapshot.ts";
 import { verifyStripeEvent } from "./webhook-verify.ts";
@@ -190,13 +190,13 @@ async function handleStripeEvent(
           : session.subscription?.id ?? null;
       if (!subscriptionId) break;
 
-      // Business checkout sessions always carry project_id metadata;
+      // Business checkout sessions always carry place_id metadata;
       // consumer ones carry consumer_id (or client_reference_id).
-      const projectId =
-        (session.metadata?.project_id as string | undefined) ?? null;
-      if (projectId) {
+      const placeId =
+        (session.metadata?.place_id as string | undefined) ?? null;
+      if (placeId) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        await reconcileProjectSubscription(admin, projectId, sub);
+        await reconcilePlaceSubscription(admin, placeId, sub);
         break;
       }
 
@@ -215,11 +215,11 @@ async function handleStripeEvent(
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
 
-      const projectId =
-        (sub.metadata?.project_id as string | undefined) ??
-        (await resolveProjectId(admin, sub));
-      if (projectId) {
-        await reconcileProjectSubscription(admin, projectId, sub);
+      const placeId =
+        (sub.metadata?.place_id as string | undefined) ??
+        (await resolvePlaceId(admin, sub));
+      if (placeId) {
+        await reconcilePlaceSubscription(admin, placeId, sub);
         break;
       }
 
@@ -288,10 +288,10 @@ async function reconcileConsumerSubscription(
 
 // ─── Business side ──────────────────────────────────────────────────────────
 
-// Upserts the project's subscription mirror and applies the plan side-effect.
-async function reconcileProjectSubscription(
+// Upserts the place's subscription mirror and applies the plan side-effect.
+async function reconcilePlaceSubscription(
   admin: ReturnType<typeof adminClient>,
-  projectId: string,
+  placeId: string,
   sub: Stripe.Subscription,
 ): Promise<void> {
   const { localState, customerId, periodEnd, priceCents, currency, isLive } =
@@ -300,31 +300,31 @@ async function reconcileProjectSubscription(
   const planKey = await resolvePlanKey(admin, sub);
   if (!planKey) {
     console.error(
-      `[stripe-webhook-handle-event] no plan_key resolvable for subscription ${sub.id} (project ${projectId})`,
+      `[stripe-webhook-handle-event] no plan_key resolvable for subscription ${sub.id} (place ${placeId})`,
     );
     return;
   }
 
   if (isLive) {
-    // Keep the one-live invariant: retire any OTHER live row for this project
-    // (e.g. a leftover mock_<projectId> row from the demo toggle) so the
-    // incoming subscription can't collide with project_subscriptions_one_live.
+    // Keep the one-live invariant: retire any OTHER live row for this place
+    // (e.g. a leftover mock_<placeId> row from the demo toggle) so the
+    // incoming subscription can't collide with place_subscriptions_one_live.
     const retire = await admin
-      .from("project_subscriptions")
+      .from("place_subscriptions")
       .update({ state: "canceled" })
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .neq("stripe_subscription_id", sub.id)
       .in("state", ["active", "past_due"]);
     if (retire.error) {
-      throw new Error(`project_retire_prior_live: ${retire.error.message}`);
+      throw new Error(`place_retire_prior_live: ${retire.error.message}`);
     }
   }
 
   const mirror = await admin
-    .from("project_subscriptions")
+    .from("place_subscriptions")
     .upsert(
       {
-        place_id: projectId,
+        place_id: placeId,
         plan_key: planKey,
         stripe_customer_id: customerId,
         stripe_subscription_id: sub.id,
@@ -337,19 +337,19 @@ async function reconcileProjectSubscription(
       { onConflict: "stripe_subscription_id" },
     );
   if (mirror.error) {
-    throw new Error(`project_subscription_mirror: ${mirror.error.message}`);
+    throw new Error(`place_subscription_mirror: ${mirror.error.message}`);
   }
 
   if (isLive) {
     const { data: row, error: readErr } = await admin
-      .from("projects")
+      .from("places")
       .select(
         "listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
       )
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle();
-    if (readErr) throw new Error(`project_read: ${readErr.message}`);
-    if (!row) throw new Error(`project_not_found: ${projectId}`);
+    if (readErr) throw new Error(`place_read: ${readErr.message}`);
+    if (!row) throw new Error(`place_not_found: ${placeId}`);
 
     const patch: Record<string, unknown> = { plan: planKey };
     applyListingTypeToPatch(patch, {
@@ -359,21 +359,21 @@ async function reconcileProjectSubscription(
     });
 
     const grant = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: patch as ProjectPatch,
+      id: placeId,
+      patch: patch as PlacePatch,
     });
-    if (!grant.ok) throw new Error(`project_grant: ${grant.error}`);
+    if (!grant.ok) throw new Error(`place_grant: ${grant.error}`);
   } else {
     const { data: row, error: readErr } = await admin
-      .from("projects")
+      .from("places")
       .select(
         "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
       )
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle();
-    if (readErr) throw new Error(`project_read: ${readErr.message}`);
+    if (readErr) throw new Error(`place_read: ${readErr.message}`);
     if (!row) return;
 
     const current = row as Record<string, unknown>;
@@ -391,12 +391,12 @@ async function reconcileProjectSubscription(
     // Guard: only revoke if the plan is still what we read above — a
     // concurrent change (another webhook, a manual admin grant) must win.
     const revoke = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: patch as ProjectPatch,
+      id: placeId,
+      patch: patch as PlacePatch,
       guard: { plan: planKey },
     });
-    if (!revoke.ok) throw new Error(`project_revoke: ${revoke.error}`);
+    if (!revoke.ok) throw new Error(`place_revoke: ${revoke.error}`);
   }
 }

@@ -26,18 +26,18 @@ type Row = {
   name?: string;
   detail?: string;
   error?: string;
-  projectId?: string;
+  placeId?: string;
   alreadyExisted?: boolean;
 };
 
 async function resolveMesitaId(googleId: string): Promise<
-  { ok: true; projectId: string; name: string } | { ok: false; error: string }
+  { ok: true; placeId: string; name: string } | { ok: false; error: string }
 > {
   const r = await searchPlacesByGoogleIds([googleId]);
   if (!r.ok) return { ok: false, error: r.error };
   const hit = r.data.find((p) => p.google_place_id === googleId) ?? r.data[0];
   if (!hit) return { ok: false, error: "Not on Mesita" };
-  return { ok: true, projectId: hit.id, name: hit.google_name || hit.name };
+  return { ok: true, placeId: hit.id, name: hit.google_name || hit.name };
 }
 
 export function IntakeTab({
@@ -275,7 +275,7 @@ async function createOne(googleId: string): Promise<Row> {
       state: "existed",
       name: r.name,
       detail: "Already on Mesita — skipped create",
-      projectId: r.projectId,
+      placeId: r.placeId,
       alreadyExisted: true,
     };
   }
@@ -285,19 +285,19 @@ async function createOne(googleId: string): Promise<Row> {
     detail: r.enrichmentTriggered
       ? "Created · enrich queued"
       : "Created · enrich not queued",
-    projectId: r.projectId,
+    placeId: r.placeId,
   };
 }
 
 async function enrichOne(
   googleId: string,
-  known?: { projectId: string; name?: string },
+  known?: { placeId: string; name?: string },
 ): Promise<Row> {
   const found = known
-    ? { ok: true as const, projectId: known.projectId, name: known.name ?? "" }
+    ? { ok: true as const, placeId: known.placeId, name: known.name ?? "" }
     : await resolveMesitaId(googleId);
   if (!found.ok) return { state: "error", error: found.error };
-  const en = await enrichPlace(found.projectId, "full");
+  const en = await enrichPlace(found.placeId, "full");
   if (!en.ok) return { state: "error", name: found.name, error: en.error };
   return {
     state: "enriching",
@@ -308,9 +308,9 @@ async function enrichOne(
 
 async function runCreateThenEnrich(googleId: string): Promise<Row> {
   const created = await createOne(googleId);
-  if (created.state === "error" || !created.projectId) return created;
+  if (created.state === "error" || !created.placeId) return created;
   const en = await enrichOne(googleId, {
-    projectId: created.projectId,
+    placeId: created.placeId,
     name: created.name,
   });
   if (en.state === "error") {

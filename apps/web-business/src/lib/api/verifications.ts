@@ -105,14 +105,13 @@ export async function apiLookupPlace(
 }
 
 // Shared by both OTP-send calls below (phone + email), which take the
-// same projectId + optional requesterEmail shape. Canonical payload key
-// is `placeId` (MESITA-26); local naming unchanged.
+// same placeId + optional requesterEmail shape.
 function otpSendBody(
-  projectId: string,
+  placeId: string,
   requesterEmail?: string,
 ): Record<string, unknown> {
   return {
-    placeId: projectId,
+    placeId,
     ...(requesterEmail?.trim()
       ? { requesterEmail: requesterEmail.trim() }
       : {}),
@@ -136,19 +135,19 @@ type SendPhoneOtpResult = {
 
 export async function apiBusinessSendsPhoneOtp(
   client: SupabaseClient,
-  projectId: string,
+  placeId: string,
   requesterEmail?: string,
 ): Promise<SendPhoneOtpResult> {
   return invokeEF<SendPhoneOtpResult>(
     client,
     "business-web-send-phone-otp",
-    otpSendBody(projectId, requesterEmail),
+    otpSendBody(placeId, requesterEmail),
     "Couldn't start the phone verification.",
   );
 }
 
 type VerifyOtpResult = {
-  projectId: string;
+  placeId: string;
   // True when the EF accepted the OTP but auto-verify was off for this
   // method, so the row sits in the admin queue. False (default) means
   // ownership was granted on the spot.
@@ -179,13 +178,13 @@ type SendEmailOtpResult = {
 
 export async function apiBusinessSendsEmailOtp(
   client: SupabaseClient,
-  projectId: string,
+  placeId: string,
   requesterEmail?: string,
 ): Promise<SendEmailOtpResult> {
   return invokeEF<SendEmailOtpResult>(
     client,
     "business-web-send-email-otp",
-    otpSendBody(projectId, requesterEmail),
+    otpSendBody(placeId, requesterEmail),
     "Couldn't start the email verification.",
   );
 }

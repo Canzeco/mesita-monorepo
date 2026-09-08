@@ -3,13 +3,13 @@
 // Run: deno test supabase/functions/_shared/place-doc.test.ts
 //
 // Three groups:
-//   1. validatePlaceProfilePatch / validateProjectPatch / validateProfilePatch
+//   1. validatePlaceProfilePatch / validatePlacePatch / validateProfilePatch
 //      accept/reject — belt 2, exercised against the invariants documented
 //      in place-doc.ts (each traced to a live CHECK constraint or enum).
 //   2. writePlace — proves the write door actually GATES: an invalid patch
 //      never reaches the mock DB, and a valid patch reaches it through
 //      exactly the insert/update/delete shape each caller needs.
-//   3. Structural guards: PLACE_PROFILE_PATCH_KEYS / PROJECT_PATCH_KEYS never
+//   3. Structural guards: PLACE_PROFILE_PATCH_KEYS / PLACE_PATCH_KEYS never
 //      collide, and `name` / `google_place_id` are refused the way repo
 //      law requires (place_profiles.name generated column, google_place_id
 //      immutable spine).
@@ -19,19 +19,19 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   PLACE_PROFILE_PATCH_KEYS,
   type PlaceProfilePatch,
-  PROJECT_PATCH_KEYS,
-  type ProjectPatch,
+  PLACE_PATCH_KEYS,
+  type PlacePatch,
   validatePlaceProfilePatch,
   validateProfilePatch,
-  validateProjectPatch,
+  validatePlacePatch,
   writePlace,
 } from "./place-doc.ts";
 
 // ── structural guards ───────────────────────────────────────────────────────
 
-Deno.test("PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide", () => {
+Deno.test("PLACE_PROFILE_PATCH_KEYS and PLACE_PATCH_KEYS never collide", () => {
   const places = new Set(PLACE_PROFILE_PATCH_KEYS as readonly string[]);
-  const overlap = (PROJECT_PATCH_KEYS as readonly string[]).filter((k) => places.has(k));
+  const overlap = (PLACE_PATCH_KEYS as readonly string[]).filter((k) => places.has(k));
   assertEquals(overlap, [], "a key claimed by both tables would be ambiguous for validateProfilePatch");
 });
 
@@ -304,15 +304,15 @@ Deno.test("validatePlaceProfilePatch: rejects google_place_id of the wrong type"
   assert(!validatePlaceProfilePatch({ google_place_id: 12345 }).ok);
 });
 
-// ── validateProjectPatch: accept ────────────────────────────────────────────
+// ── validatePlacePatch: accept ────────────────────────────────────────────
 
-Deno.test("validateProjectPatch: accepts a state transition within the closed enum", () => {
-  assert(validateProjectPatch({ state: "active" }).ok);
-  assert(validateProjectPatch({ state: "pending_verification" }).ok);
+Deno.test("validatePlacePatch: accepts a state transition within the closed enum", () => {
+  assert(validatePlacePatch({ state: "active" }).ok);
+  assert(validatePlacePatch({ state: "pending_verification" }).ok);
 });
 
-Deno.test("validateProjectPatch: accepts plan + listing_type + rate fields", () => {
-  const res = validateProjectPatch({
+Deno.test("validatePlacePatch: accepts plan + listing_type + rate fields", () => {
+  const res = validatePlacePatch({
     plan: "pro",
     listing_type: "partner",
     welcome_free_rate: 20,
@@ -321,23 +321,23 @@ Deno.test("validateProjectPatch: accepts plan + listing_type + rate fields", () 
   assert(res.ok);
 });
 
-Deno.test("validateProjectPatch: accepts monthly_promo_cap in the legal set, and null", () => {
-  assert(validateProjectPatch({ monthly_promo_cap: 500 }).ok);
-  assert(validateProjectPatch({ monthly_promo_cap: null }).ok);
+Deno.test("validatePlacePatch: accepts monthly_promo_cap in the legal set, and null", () => {
+  assert(validatePlacePatch({ monthly_promo_cap: 500 }).ok);
+  assert(validatePlacePatch({ monthly_promo_cap: null }).ok);
 });
 
-Deno.test("validateProjectPatch: accepts strike_count at the boundaries", () => {
-  assert(validateProjectPatch({ strike_count: 0 }).ok);
-  assert(validateProjectPatch({ strike_count: 3 }).ok);
+Deno.test("validatePlacePatch: accepts strike_count at the boundaries", () => {
+  assert(validatePlacePatch({ strike_count: 0 }).ok);
+  assert(validatePlacePatch({ strike_count: 3 }).ok);
 });
 
-Deno.test("validateProjectPatch: accepts a well-formed check_pin, and null", () => {
-  assert(validateProjectPatch({ check_pin: "123456" }).ok);
-  assert(validateProjectPatch({ check_pin: null }).ok);
+Deno.test("validatePlacePatch: accepts a well-formed check_pin, and null", () => {
+  assert(validatePlacePatch({ check_pin: "123456" }).ok);
+  assert(validatePlacePatch({ check_pin: null }).ok);
 });
 
-Deno.test("validateProjectPatch: accepts well-formed CFDI fields", () => {
-  const res = validateProjectPatch({
+Deno.test("validatePlacePatch: accepts well-formed CFDI fields", () => {
+  const res = validatePlacePatch({
     cfdi_rfc: "ABC123456XY9",
     cfdi_cp: "64000",
     cfdi_razon_social: "Restaurante Ejemplo SA de CV",
@@ -345,60 +345,60 @@ Deno.test("validateProjectPatch: accepts well-formed CFDI fields", () => {
   assert(res.ok);
 });
 
-Deno.test("validateProjectPatch: accepts the content_state ladder", () => {
+Deno.test("validatePlacePatch: accepts the content_state ladder", () => {
   for (const s of ["queued", "generating", "ready", "failed"]) {
-    assert(validateProjectPatch({ content_state: s }).ok, s);
+    assert(validatePlacePatch({ content_state: s }).ok, s);
   }
 });
 
-// ── validateProjectPatch: reject ────────────────────────────────────────────
+// ── validatePlacePatch: reject ────────────────────────────────────────────
 
-Deno.test("validateProjectPatch: rejects an unknown field (closed key set)", () => {
-  const res = validateProjectPatch({ owner_id: "some-uuid" });
+Deno.test("validatePlacePatch: rejects an unknown field (closed key set)", () => {
+  const res = validatePlacePatch({ owner_id: "some-uuid" });
   assert(!res.ok);
-  assertEquals(res.error, "unknown project field: owner_id");
+  assertEquals(res.error, "unknown place-row field: owner_id");
 });
 
-Deno.test("validateProjectPatch: rejects a state outside the closed enum", () => {
-  assert(!validateProjectPatch({ state: "deleted" }).ok);
+Deno.test("validatePlacePatch: rejects a state outside the closed enum", () => {
+  assert(!validatePlacePatch({ state: "deleted" }).ok);
 });
 
-Deno.test("validateProjectPatch: rejects a rate outside the legal tens grid", () => {
-  assert(!validateProjectPatch({ free_rate: 25 }).ok, "not in {10,20,30,40,50}");
-  assert(!validateProjectPatch({ premium_rate: 70 }).ok, "70 was retired, MESITA-543");
+Deno.test("validatePlacePatch: rejects a rate outside the legal tens grid", () => {
+  assert(!validatePlacePatch({ free_rate: 25 }).ok, "not in {10,20,30,40,50}");
+  assert(!validatePlacePatch({ premium_rate: 70 }).ok, "70 was retired, MESITA-543");
 });
 
-Deno.test("validateProjectPatch: rejects a monthly_promo_cap outside the legal set", () => {
-  assert(!validateProjectPatch({ monthly_promo_cap: 750 }).ok);
+Deno.test("validatePlacePatch: rejects a monthly_promo_cap outside the legal set", () => {
+  assert(!validatePlacePatch({ monthly_promo_cap: 750 }).ok);
 });
 
-Deno.test("validateProjectPatch: rejects strike_count outside 0..3", () => {
-  assert(!validateProjectPatch({ strike_count: 4 }).ok);
-  assert(!validateProjectPatch({ strike_count: -1 }).ok);
+Deno.test("validatePlacePatch: rejects strike_count outside 0..3", () => {
+  assert(!validatePlacePatch({ strike_count: 4 }).ok);
+  assert(!validatePlacePatch({ strike_count: -1 }).ok);
 });
 
-Deno.test("validateProjectPatch: rejects a malformed check_pin", () => {
-  assert(!validateProjectPatch({ check_pin: "12345" }).ok, "5 digits");
-  assert(!validateProjectPatch({ check_pin: "abcdef" }).ok, "non-digits");
+Deno.test("validatePlacePatch: rejects a malformed check_pin", () => {
+  assert(!validatePlacePatch({ check_pin: "12345" }).ok, "5 digits");
+  assert(!validatePlacePatch({ check_pin: "abcdef" }).ok, "non-digits");
 });
 
-Deno.test("validateProjectPatch: rejects a malformed CFDI RFC / CP", () => {
-  assert(!validateProjectPatch({ cfdi_rfc: "TOO-SHORT" }).ok);
-  assert(!validateProjectPatch({ cfdi_cp: "640" }).ok);
+Deno.test("validatePlacePatch: rejects a malformed CFDI RFC / CP", () => {
+  assert(!validatePlacePatch({ cfdi_rfc: "TOO-SHORT" }).ok);
+  assert(!validatePlacePatch({ cfdi_cp: "640" }).ok);
 });
 
-Deno.test("validateProjectPatch: rejects a discount_cap_cents that is negative", () => {
-  assert(!validateProjectPatch({ discount_cap_cents: -100 }).ok);
+Deno.test("validatePlacePatch: rejects a discount_cap_cents that is negative", () => {
+  assert(!validatePlacePatch({ discount_cap_cents: -100 }).ok);
 });
 
-Deno.test("validateProjectPatch: rejects null on a NOT NULL boolean/enum", () => {
-  assert(!validateProjectPatch({ segmentation_basic_enabled: null }).ok);
-  assert(!validateProjectPatch({ plan: null }).ok);
+Deno.test("validatePlacePatch: rejects null on a NOT NULL boolean/enum", () => {
+  assert(!validatePlacePatch({ segmentation_basic_enabled: null }).ok);
+  assert(!validatePlacePatch({ plan: null }).ok);
 });
 
 // ── validateProfilePatch ────────────────────────────────────────────────────
 
-Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and projects fields, like the view's real callers send", () => {
+Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and places fields, like the view's real callers send", () => {
   const res = validateProfilePatch({
     mesita_name: "El Nuevo Nombre",
     category: "cafe",
@@ -409,7 +409,7 @@ Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and proje
 });
 
 Deno.test("validateProfilePatch: still enforces each field's own rule regardless of which table it belongs to", () => {
-  assert(!validateProfilePatch({ state: "deleted" }).ok, "bad projects field");
+  assert(!validateProfilePatch({ state: "deleted" }).ok, "bad places field");
   assert(!validateProfilePatch({ price_level: 9 }).ok, "bad place_profiles field");
 });
 
@@ -440,13 +440,13 @@ Deno.test("writePlace: an invalid place_profiles patch never reaches the DB", as
   assertEquals(res.error, "price_level must be between 1 and 4, or null");
 });
 
-Deno.test("writePlace: an invalid projects patch never reaches the DB", async () => {
+Deno.test("writePlace: an invalid places patch never reaches the DB", async () => {
   const admin = unreachableAdmin();
-  const invalidPatch = { strike_count: 9 } as unknown as ProjectPatch;
+  const invalidPatch = { strike_count: 9 } as unknown as PlacePatch;
   const res = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: "project-1",
+    id: "place-1",
     patch: invalidPatch,
   });
   assert(!res.ok);
@@ -534,10 +534,10 @@ Deno.test("writePlace: place_profiles insert with select returns the re-read row
   assertEquals(res.row, { id: "place-1" });
 });
 
-Deno.test("writePlace: projects insert carries the shared id alongside the patch", async () => {
+Deno.test("writePlace: places insert carries the shared id alongside the patch", async () => {
   const { admin, calls } = fakePlaceAdmin({ row: { id: "place-1", slug: "cafe-central", state: "active" } });
   const res = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "insert",
     id: "place-1",
     patch: { slug: "cafe-central", state: "active", content_state: "ready" },
@@ -590,9 +590,9 @@ Deno.test("writePlace: surfaces the Postgres error code for a unique-violation r
 Deno.test("writePlace: maybeSingle select mode reaches the DB the same as single", async () => {
   const { admin } = fakePlaceAdmin();
   const res = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: "missing-project",
+    id: "missing-place",
     patch: { state: "active" },
     select: "id",
     selectMode: "maybeSingle",

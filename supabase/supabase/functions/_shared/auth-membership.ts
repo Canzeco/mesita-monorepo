@@ -14,7 +14,7 @@ type MembershipRole = "owner" | "editor" | "viewer";
 
 type Membership = {
   isSuperAdmin: boolean;
-  // The project_members.role for the caller, or null when the caller has
+  // The place_members.role for the caller, or null when the caller has
   // no membership row (super-admins land here too — owners write access
   // either way via the isSuperAdmin flag).
   role: MembershipRole | null;
@@ -25,20 +25,20 @@ type Membership = {
 //
 // TWO PATHS, and they are not equal:
 //
-//   1. project_members — the direct Account <-> PLACE grant. Full range,
+//   1. place_members — the direct Account <-> PLACE grant. Full range,
 //      including `owner`.
-//   2. organization_members joined through projects.organization_id — the
+//   2. organization_members joined through places.organization_id — the
 //      Account <-> ORGANIZATION <-> PLACE path added with the org
 //      hierarchy (2026-09-05). **CAPPED AT EDITOR.**
 //
 // The cap is not a style choice. place-ownership.ts `isLastOwnerOfPlace`
-// counts project_members rows with role='owner', so an org-derived owner
+// counts place_members rows with role='owner', so an org-derived owner
 // counts 0 and would make ownership transfer and member removal misfire
-// against `project_members_one_owner_per_project`; and
+// against `place_members_one_owner_per_place`; and
 // business-web-get-overview attaches the Staff Check PIN on the owner
 // branch, a column deliberately kept out of viewer payloads. Anything that
-// genuinely needs the place's owner must use `requireProjectOwner` below,
-// which reads project_members alone.
+// genuinely needs the place's owner must use `requireOwner` below,
+// which reads place_members alone.
 //
 // The stronger of the two paths wins, after the cap is applied.
 const ROLE_RANK: Record<MembershipRole, number> = {
@@ -62,23 +62,23 @@ function strongerRole(
 export async function checkMembership(
   admin: SupabaseClient,
   user: AuthedUser,
-  projectId: string,
+  placeId: string,
 ): Promise<Membership> {
   const [isSuperAdmin, vm, org] = await Promise.all([
     checkSuperAdmin(admin, user),
     admin
-      .from("project_members")
+      .from("place_members")
       .select("role")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .eq("manager_id", user.id)
       .maybeSingle(),
     // One round trip, not two: read the place's organization and the
     // caller's membership of it in a single embedded select. This sits on
     // the hot path of every membership-gated EF.
     admin
-      .from("projects")
+      .from("places")
       .select("organization_id, organizations!inner(organization_members!inner(role))")
-      .eq("id", projectId)
+      .eq("id", placeId)
       .eq("organizations.organization_members.manager_id", user.id)
       .maybeSingle(),
   ]);
@@ -170,12 +170,12 @@ export async function requireSuperAdmin(
 export async function requireMembership(
   admin: SupabaseClient,
   user: AuthedUser,
-  projectId: string,
+  placeId: string,
 ): Promise<
   | { ok: true; membership: Membership }
   | { ok: false; response: Response }
 > {
-  const m = await checkMembership(admin, user, projectId);
+  const m = await checkMembership(admin, user, placeId);
   if (!m.isSuperAdmin && m.role == null) {
     return {
       ok: false,
@@ -188,20 +188,20 @@ export async function requireMembership(
 // 403s unless the caller is an owner (or super-admin).
 // SAFE UNDER THE ORG PATH BY CONSTRUCTION: this tests `role !== "owner"`,
 // and checkMembership caps the organization path at `editor`, so `owner`
-// can only ever come from project_members (or the super-admin bypass).
+// can only ever come from place_members (or the super-admin bypass).
 // That is what keeps the one-owner-per-place invariant, ownership
 // transfer, member removal and the Staff Check PIN intact without editing
 // the seven EFs that call this.
 export async function requireOwner(
   admin: SupabaseClient,
   user: AuthedUser,
-  projectId: string,
+  placeId: string,
   errorMessage = "Only owners can do that.",
 ): Promise<
   | { ok: true; membership: Membership }
   | { ok: false; response: Response }
 > {
-  const m = await checkMembership(admin, user, projectId);
+  const m = await checkMembership(admin, user, placeId);
   if (!m.isSuperAdmin && m.role !== "owner") {
     return {
       ok: false,
@@ -217,13 +217,13 @@ export async function requireOwner(
 export async function requireEditor(
   admin: SupabaseClient,
   user: AuthedUser,
-  projectId: string,
+  placeId: string,
   errorMessage = "Editors and owners only.",
 ): Promise<
   | { ok: true; membership: Membership }
   | { ok: false; response: Response }
 > {
-  const m = await checkMembership(admin, user, projectId);
+  const m = await checkMembership(admin, user, placeId);
   if (!m.isSuperAdmin && m.role !== "owner" && m.role !== "editor") {
     return {
       ok: false,

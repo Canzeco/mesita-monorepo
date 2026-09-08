@@ -140,8 +140,8 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   let q = admin
-    .from("projects")
-    // `plan` is a projects column, not a profile one — Partner is
+    .from("places")
+    // `plan` is a places column, not a profile one — Partner is
     // `isPaidPlan(plan)` and needs no extra read.
     .select(
       `id, state, content_state, organization_id, claimed_at, plan, ` +
@@ -213,11 +213,11 @@ Deno.serve(async (req) => {
   };
   let rows = (data ?? []) as unknown as Row[];
 
-  // A place with a direct project_members owner is NOT in the pool, even
+  // A place with a direct place_members owner is NOT in the pool, even
   // with organization_id null — it has a real operator who claimed it the
   // old way. Zero such rows today; the guard is what keeps that true.
   // The pool predicate, wherever unheld rows appear. A place with a direct
-  // project_members owner is NOT claimable even with organization_id null —
+  // place_members owner is NOT claimable even with organization_id null —
   // it has a real operator who claimed it the old way. On "all" the filter
   // must spare this organization's OWN rows, which are held by definition.
   if (scope === "public" || scope === "all") {
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
     rows = rows.filter((r) => r.organization_id !== null || !owned.has(r.id));
   }
 
-  // VERIFIED is ownership PROOF — an approved project_verifications row, the
+  // VERIFIED is ownership PROOF — an approved place_verifications row, the
   // same fact admin-web-search-places reads. Batched with `.in()`, never per
   // row: at MAX_LIMIT a per-row lookup would be 100 queries inside one
   // request. Withheld entirely on the pool (header rule 4).
@@ -240,12 +240,12 @@ Deno.serve(async (req) => {
     const ids = rows.map((r) => r.id).filter(Boolean);
     for (const idPart of chunked(ids, ID_CHUNK)) {
       const { data: vs, error: vErr } = await admin
-        .from("project_verifications")
+        .from("place_verifications")
         .select("place_id")
         .eq("state", "approved")
         .in("place_id", idPart);
       if (vErr) {
-        console.error("[list-places] project_verifications:", vErr.message);
+        console.error("[list-places] place_verifications:", vErr.message);
         verified = null;
         break;
       }

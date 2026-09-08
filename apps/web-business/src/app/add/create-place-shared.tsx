@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 export type VerificationCallbacks = {
   supabase: SupabaseClient;
   signedInEmail: string;
-  onApproved: (projectId: string) => void;
+  onApproved: (placeId: string) => void;
   onAwaitingAdmin: () => void;
 };
 

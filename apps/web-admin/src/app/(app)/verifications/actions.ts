@@ -12,7 +12,7 @@ type VerificationState = "pending" | "approved" | "rejected";
 
 export type AdminVerification = {
   id: string;
-  project_id: string;
+  place_id: string;
   requester_id: string;
   method: VerificationMethod;
   payload: Record<string, unknown>;
@@ -23,8 +23,8 @@ export type AdminVerification = {
   decided_by: string | null;
   decided_via: "auto" | "admin" | null;
   created_at: string;
-  // Flattened by the EF from project + place: id/slug/state are the
-  // project's, the rest the place's.
+  // Flattened by the EF from the place entity + profile: id/slug/state are
+  // the place entity's, the rest the profile's.
   place: {
     id: string;
     slug: string | null;

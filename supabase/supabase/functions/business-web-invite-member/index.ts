@@ -5,9 +5,9 @@
 // paths:
 //
 //   1. Email matches an existing managers row → link directly: insert
-//      project_members at the requested role. No email goes out.
+//      place_members at the requested role. No email goes out.
 //
-//   2. Email is unknown → create a project_invites row with a fresh
+//   2. Email is unknown → create a place_invites row with a fresh
 //      token AND ask Supabase Auth to send the standard invite email
 //      (auth.admin.inviteUserByEmail). The redirect URL embeds our
 //      token so the accept page can claim the invite once the new
@@ -47,11 +47,11 @@ Deno.serve(async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<Body>(req, {});
-  const projectId = readPlaceIdAlias(body);
+  const placeId = readPlaceIdAlias(body);
   const email = (body.email ?? "").trim().toLowerCase();
   const role = body.role ?? "editor";
   const redirectBase = (body.redirectBase ?? "").trim().replace(/\/$/, "");
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
   if (!isEmailish(email)) {
     return json({ ok: false, error: "A valid email is required" }, 400);
   }
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   const owner = await requireOwner(
     admin,
     authRes.user,
-    projectId,
+    placeId,
     "Only owners can invite members.",
   );
   if (!owner.ok) return owner.response;
@@ -84,9 +84,9 @@ Deno.serve(async (req) => {
   const [existingBusiness, existingInvite] = await Promise.all([
     admin.from("managers").select("id").ilike("email", email).maybeSingle(),
     admin
-      .from("project_invites")
+      .from("place_invites")
       .select("id, expires_at, claimed_at")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .ilike("email", email)
       .is("claimed_at", null)
       .gt("expires_at", new Date().toISOString())
@@ -95,9 +95,9 @@ Deno.serve(async (req) => {
 
   if (existingBusiness.data) {
     const { data: existingMember } = await admin
-      .from("project_members")
+      .from("place_members")
       .select("id")
-      .eq("place_id", projectId)
+      .eq("place_id", placeId)
       .eq("manager_id", existingBusiness.data.id)
       .maybeSingle();
     if (existingMember) {
@@ -107,8 +107,8 @@ Deno.serve(async (req) => {
       );
     }
     const ins = await admin
-      .from("project_members")
-      .insert({ place_id: projectId, manager_id: existingBusiness.data.id, role })
+      .from("place_members")
+      .insert({ place_id: placeId, manager_id: existingBusiness.data.id, role })
       .select("id")
       .single();
     if (ins.error) {
@@ -127,9 +127,9 @@ Deno.serve(async (req) => {
   const token = newInviteToken();
 
   const invite = await admin
-    .from("project_invites")
+    .from("place_invites")
     .insert({
-      place_id: projectId,
+      place_id: placeId,
       email,
       role,
       token,
@@ -145,17 +145,17 @@ Deno.serve(async (req) => {
   // travel on the redirect so the accept page can claim the invite the
   // moment the new user sets their password.
   const redirectTo = redirectBase
-    ? `${redirectBase}/accept-invite?token=${encodeURIComponent(token)}&projectId=${encodeURIComponent(projectId)}`
+    ? `${redirectBase}/accept-invite?token=${encodeURIComponent(token)}&projectId=${encodeURIComponent(placeId)}`
     : undefined;
   let emailSent = false;
   let emailError: string | null = null;
   try {
     const inviteRes = await admin.auth.admin.inviteUserByEmail(email, {
-      data: { projectId, role, inviteToken: token },
+      data: { projectId: placeId, role, inviteToken: token },
       redirectTo,
     });
     if (inviteRes.error) {
-      // "User already registered" is fine: the project_invites row is
+      // "User already registered" is fine: the place_invites row is
       // still good and the recipient can use the link directly.
       emailError = inviteRes.error.message;
     } else {

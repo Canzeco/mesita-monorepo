@@ -7,9 +7,9 @@
 //                 are bools (`true` / `false`). Requested is the guest request
 //                 count, 0…n — not a Yes/No. Visit Rewards (wire key
 //                 `promoting`, formerly labeled Promoted) is 0 | 1 | 2. Never a
-//                 projects.state. Mesita Pay / Mesita Credits are per-place
-//                 acceptance intent bits (places.mesita_pay_enabled /
-//                 places.credits_enabled) — operator toggles on the Partner tab
+//                 places.state. Mesita Pay / Mesita Credits are per-place
+//                 acceptance intent bits (place_profiles.mesita_pay_enabled /
+//                 place_profiles.credits_enabled) — operator toggles on the Partner tab
 //                 (admin-web-set-place-rails); engines still gate each rail.
 //
 //                 OWNED joined the box with MESITA-1608: an organization holds
@@ -143,7 +143,7 @@ export const ENGINELESS_STATE_FACT_KEYS: readonly GeneralStateKey[] = [
  *
  * `admin-web-list-notifications` puts a `stateFacts` blob on each item, and
  * the feed reads facts straight out of it. Owned is not in that blob: it is a
- * join fact (`projects.organization_id`), not something an enrichment event
+ * join fact (`places.organization_id`), not something an enrichment event
  * observes, and nothing stamps it.
  *
  * Which is why this list exists rather than a `?? false` at the read site.

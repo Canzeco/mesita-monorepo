@@ -2,7 +2,7 @@
 //
 // Phase 1 of the automatic-phone path for /add ownership verification.
 // Generates a 6-digit code, hashes it (SHA-256), inserts a pending
-// project_verifications row (method='ai_call', payload={phoneCalled,
+// place_verifications row (method='ai_call', payload={phoneCalled,
 // channel, codeHash}), and "dispatches" the code to the
 // Google-listed phone via Twilio.
 //
@@ -63,8 +63,8 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const mockMode = isPlaceOtpMockMode();
   const requesterEmail = resolveRequesterEmail({
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
   const { data: place, error: placeError } = await admin
     .from("profiles")
     .select("id, phone, country")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeError || !place) {
     return json({ ok: false, error: "Place not found" }, 404);
@@ -110,9 +110,9 @@ Deno.serve(async (req) => {
   // place. The lookup EF blocks the UI from getting here, but a
   // second guard keeps the path safe under stale clients.
   const { data: existingOwner } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("manager_id")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner")
     .maybeSingle();
   if (existingOwner) {
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
   const phoneDialed = mockMode ? mockPlaceOtpPhone() : place.phone;
 
   const insertRes = await insertPendingOtpVerification(admin, {
-    projectId,
+    placeId,
     userId,
     requesterEmail,
     method: "ai_call",

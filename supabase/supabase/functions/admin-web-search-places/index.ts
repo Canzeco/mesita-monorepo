@@ -5,7 +5,7 @@
 // (by display name / cached Google name / slug, or an exact id paste). The operator
 // picks one, and the admin console then drives that place through the
 // existing business-* EFs (super-admin bypass in _shared/auth.ts grants
-// access regardless of project_members).
+// access regardless of place_members).
 //
 // Four read modes, checked in this order: `all` (the WHOLE catalog, for
 // Mesita Search's All places button), `googlePlaceIds` (a paste), an empty
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
   // one table, one number. The place_research read went with it: computing
   // that level was its only purpose here.
   //
-  // VERIFIED is ownership proof — an approved project_verifications row. It
+  // VERIFIED is ownership proof — an approved place_verifications row. It
   // used to read `listing_type === "partner"`, which is the partner badge and
   // a different fact entirely (MESITA-1152).
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
   for (const idPart of chunked(ids, ID_CHUNK)) {
     const [verificationRes, enrichmentRes] = await Promise.all([
       admin
-        .from("project_verifications")
+        .from("place_verifications")
         .select("place_id")
         .eq("state", "approved")
         .in("place_id", idPart),
@@ -275,7 +275,7 @@ Deno.serve(async (req) => {
     // degrades to 0 / not-verified, which reads as "less done than it is" —
     // the safe direction for a state column.
     if (verificationRes.error) {
-      console.error("[search-places] project_verifications:", verificationRes.error.message);
+      console.error("[search-places] place_verifications:", verificationRes.error.message);
     }
     for (const v of (verificationRes.data ?? []) as Record<string, unknown>[]) {
       verified.add(String(v.place_id));

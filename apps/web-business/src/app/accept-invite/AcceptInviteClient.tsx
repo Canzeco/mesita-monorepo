@@ -36,7 +36,7 @@ export function AcceptInviteClient() {
   const initial = initialFromParams(token);
   const [state, setState] = useState<State>(initial.state);
   const [message, setMessage] = useState<string>(initial.message);
-  const [projectId, setPlaceId] = useState<string | null>(null);
+  const [placeId, setPlaceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return; // static error already rendered
@@ -52,10 +52,10 @@ export function AcceptInviteClient() {
       try {
         const res = await apiAcceptEditorInvite(supabase, token);
         if (cancelled) return;
-        setPlaceId(res.projectId);
+        setPlaceId(res.placeId);
         setState("success");
         window.setTimeout(() => {
-          router.replace(placeHref(res.projectId));
+          router.replace(placeHref(res.placeId));
         }, 1200);
       } catch (err) {
         if (cancelled) return;
@@ -104,9 +104,9 @@ export function AcceptInviteClient() {
         <p className="text-muted-foreground text-sm">
           Redirecting to the place dashboard…
         </p>
-        {projectId && (
+        {placeId && (
           <Link
-            href={placeHref(projectId)}
+            href={placeHref(placeId)}
             className="text-secondary text-xs font-semibold"
           >
             Open now

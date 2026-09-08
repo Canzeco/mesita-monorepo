@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   // The merchant of record is the ORGANIZATION (MESITA-1545): the place's
   // account is its organization's account. A pooled place has none.
   const orgRes = await admin
-    .from("projects")
+    .from("places")
     .select("organization_id")
     .eq("id", placeId)
     .maybeSingle();

@@ -18,16 +18,24 @@
 // would block the whole fleet. This list is small, exact, and cannot
 // misfire.
 //
-// WHEN MESITA-1590 LANDS, THIS TEST FAILS ON PURPOSE. That issue renames
-// `projects` -> `places`, so `places` becomes a real table again and must come
-// out of the list below. Failing at that moment is correct: the name changes
-// meaning, and someone should have to say so out loud rather than have a stale
-// guard quietly keep passing.
+// MESITA-1590 landed: `projects` -> `places` and its six children -> `place_*`.
+// `places` came OUT of this list here for exactly the reason the note above
+// predicted — it is a real table again, under new ownership — and the seven
+// names it just vacated go IN, so this guard keeps catching the MESITA-1602
+// failure class against the new names instead of quietly going blind.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
 /** Renamed or dropped, and NOT currently recreated under the same name. */
-const DROPPED_TABLES = ["places"] as const;
+const DROPPED_TABLES = [
+  "projects",
+  "project_members",
+  "project_invites",
+  "project_plans",
+  "project_strikes",
+  "project_subscriptions",
+  "project_verifications",
+] as const;
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url).pathname;
 

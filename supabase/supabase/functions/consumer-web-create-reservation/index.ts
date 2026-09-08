@@ -83,20 +83,20 @@ Deno.serve(async (req) => {
   // and the raw FK message ("violates foreign key constraint
   // reservations_project_id_fkey") is what the guest reads. Fail clean, and
   // give the client a code it can act on.
-  const { data: projectRow, error: projectErr } = await admin
-    .from("projects")
+  const { data: placeRow, error: placeErr } = await admin
+    .from("places")
     .select("id, content_state")
     .eq("id", body.project_id)
     .maybeSingle();
-  if (projectErr) return json({ ok: false, error: projectErr.message }, 500);
-  if (!projectRow) {
+  if (placeErr) return json({ ok: false, error: placeErr.message }, 500);
+  if (!placeRow) {
     return json({
       ok: false,
       code: "place_not_found",
       error: "That place isn't available anymore. Refresh to get the latest list.",
     }, 404);
   }
-  if (!isPlaceProfileReady((projectRow as { content_state?: unknown }).content_state)) {
+  if (!isPlaceProfileReady((placeRow as { content_state?: unknown }).content_state)) {
     return json({
       ok: false,
       code: "profile_not_ready",
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
   let insertError: { message: string } | null = null;
   for (let i = 0; i < 3 && !reservation; i++) {
     // NO `place:place_profiles(...)` embed here — reservations→place_profiles is a two-hop FK
-    // (reservations.project_id → projects.id → place_profiles.id), so PostgREST fails
+    // (reservations.project_id → places.id → place_profiles.id), so PostgREST fails
     // with "Could not find a relationship between 'reservations' and 'place_profiles'
     // in the schema cache". Select project_id and stitch via attachPlaces,
     // exactly like the list EFs (#518/#523).

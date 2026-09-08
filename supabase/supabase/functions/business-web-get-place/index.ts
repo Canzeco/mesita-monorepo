@@ -4,8 +4,8 @@
 //
 // It exists because business-web-get-overview cannot answer this question.
 // For a non-super-admin that EF resolves places purely from
-// `project_members`, and an ORG-CLAIMED place has no such row — the
-// organization holds it through `projects.organization_id`. Asking overview
+// `place_members`, and an ORG-CLAIMED place has no such row — the
+// organization holds it through `places.organization_id`. Asking overview
 // for one therefore returns nothing, or worse, a DIFFERENT place.
 //
 // Auth, in the same two shapes the listing already has:
@@ -20,7 +20,7 @@
 //
 // The pool predicate is the shared one (_shared/place-claim.ts) for the
 // same reason the listing uses it — a place directly owned through
-// project_members is NOT in the pool even with organization_id null, and
+// place_members is NOT in the pool even with organization_id null, and
 // three surfaces disagreeing about that is how a stranger reads someone
 // else's live restaurant.
 
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // The project row carries the commercial facts and the holder; the
+  // The place row carries the commercial facts and the holder; the
   // embedded place_profiles row carries what the address IS. One round trip, the
   // same join business-web-list-places uses.
   //
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
   // audience boundary — `plan` and `listing_type` and the strike columns are
   // named there and proven absent, rather than promised in a comment here.
   const { data, error } = await admin
-    .from("projects")
+    .from("places")
     .select(GET_PLACE_SELECT)
     .eq("id", placeId)
     .maybeSingle();
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     // surface when the legacy console dies) or when the place is genuinely
     // pooled; a stranger's directly-owned place stays a uniform 404.
     const { data: directRow } = await admin
-      .from("project_members")
+      .from("place_members")
       .select("role")
       .eq("place_id", placeId)
       .eq("manager_id", authRes.user.id)
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   // it. (business-web-get-verification answers a different question — how
   // is MY request going — so it filters by requester and cannot be reused.)
   const { data: verification } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select("id")
     .eq("place_id", placeId)
     .eq("state", "approved")
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
       phone: row.place_profiles.phone,
       timezone: row.place_profiles.timezone,
       currency: row.currency,
-      // The raw projects.state. `listed` is what the console gates on; this
+      // The raw places.state. `listed` is what the console gates on; this
       // is the REASON when listed is false, and the screen shows it only
       // then — an operator asking "why can't guests see us" is owed the
       // answer, not a bare No.

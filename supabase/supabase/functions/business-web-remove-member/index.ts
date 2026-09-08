@@ -2,8 +2,8 @@
 //
 // Removes one team artefact from a place. The `kind` discriminates:
 //
-//   editor       → project_members row (cannot remove last owner)
-//   editorInvite → project_invites row (revoke pending email invite)
+//   editor       → place_members row (cannot remove last owner)
+//   editorInvite → place_invites row (revoke pending email invite)
 //
 // The waiter / waiterInvite kinds were retired with the waiter identity
 // itself (MESITA-833) — staff work the public check page and hold no
@@ -52,14 +52,14 @@ Deno.serve(async (req) => {
   // Authorization: self-removal is fine regardless of role; otherwise
   // the caller must be an owner of the same place (or super-admin).
   if (!target.isSelfRemoval) {
-    const m = await checkMembership(admin, authRes.user, target.projectId);
+    const m = await checkMembership(admin, authRes.user, target.placeId);
     if (!m.isSuperAdmin && m.role !== "owner") {
       return json({ ok: false, error: "Not allowed to remove this member." }, 403);
     }
   }
 
   if (kind === "editor" && target.targetIsOwner) {
-    if (await isLastOwnerOfPlace(admin, target.projectId)) {
+    if (await isLastOwnerOfPlace(admin, target.placeId)) {
       return json(
         {
           ok: false,

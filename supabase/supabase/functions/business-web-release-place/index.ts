@@ -38,12 +38,12 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  const { data: proj } = await admin
-    .from("projects")
+  const { data: placeRow } = await admin
+    .from("places")
     .select("organization_id")
     .eq("id", placeId)
     .maybeSingle();
-  const holdingOrg = (proj as { organization_id: string | null } | null)?.organization_id ?? null;
+  const holdingOrg = (placeRow as { organization_id: string | null } | null)?.organization_id ?? null;
   if (!holdingOrg) {
     return json(
       { ok: false, error: "That place is already public", code: "already_public" },

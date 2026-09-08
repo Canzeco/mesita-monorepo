@@ -62,7 +62,7 @@ export type PlaceDetail = {
   last_updated_label: string;
   // True while the Intaker is still building this place's profile across the
   // FULL pipeline (research → analysis → contents). Driven by
-  // projects.content_state ∈ {queued, generating} — stays generating until
+  // places.content_state ∈ {queued, generating} — stays generating until
   // contents lands ready (MESITA-453). Drives the header "(Enriching)" badge.
   is_enriching: boolean;
   /** Viewable profile (content_state ready). Ugly Create profiles are ready. */

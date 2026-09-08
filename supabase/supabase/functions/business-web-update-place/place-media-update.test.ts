@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import { applyMediaUpdates } from "./project-media-update.ts";
+import { applyMediaUpdates } from "./place-media-update.ts";
 
 Deno.test("products.menu: sanitizes name/url and keeps sibling keys", () => {
   const update: Record<string, unknown> = {};

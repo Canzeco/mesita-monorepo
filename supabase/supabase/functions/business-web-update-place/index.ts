@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-update-place
 //
 // Authenticated. Updates editable fields on a place the caller owns or
-// manages. Self-contained: verifies the JWT, checks project_members membership
+// manages. Self-contained: verifies the JWT, checks place_members membership
 // itself, validates input, writes via service role. Does NOT call any other
 // Edge Function.
 //
@@ -21,8 +21,8 @@ import { PLACE_BUSINESS_COLUMNS } from "../_shared/place-columns.ts";
 import { isServingChannel, type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { sanitizePlaceTags } from "../_shared/tags.ts";
-import { type PlaceHours, sanitiseHours } from "./project-hours.ts";
-import { isUrl, URL_FIELDS, type UrlField } from "./project-urls.ts";
+import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
+import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { normalisePromoRate, PROMO_RATE_FIELDS } from "../_shared/promo-rates.ts";
 import { ratesFromPlace } from "../_shared/promo-strategy.ts";
 import {
@@ -33,13 +33,13 @@ import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
 import {
   isMissingCategoryLabelColumnError,
   optString,
-} from "./project-update-utils.ts";
+} from "./place-update-utils.ts";
 import { resolveCategoryInput } from "./category-input.ts";
-import { applyMediaUpdates } from "./project-media-update.ts";
+import { applyMediaUpdates } from "./place-media-update.ts";
 import {
   loadPreviousSocialUrlsForRefresh,
   queueSocialFollowersRefresh,
-} from "./project-social-refresh.ts";
+} from "./place-social-refresh.ts";
 import {
   queuePlaceEmbeddingsOnUpdate,
   updateTouchesEmbeddingInputs,
@@ -173,12 +173,12 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<UpdateBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const projectId = (body.id ?? "").toString().trim();
-  if (!projectId) return json({ ok: false, error: "id is required" }, 400);
+  const placeId = (body.id ?? "").toString().trim();
+  if (!placeId) return json({ ok: false, error: "id is required" }, 400);
 
   // Auth: editors/owners only (viewers are read-only). Super-admins bypass
   // via the super_admins allowlist baked into requireEditor.
-  const memberRes = await requireEditor(admin, authRes.user, projectId);
+  const memberRes = await requireEditor(admin, authRes.user, placeId);
   if (!memberRes.ok) return memberRes.response;
 
   // Build the update payload from the whitelist. Missing keys are not
@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
   // Four per-tier promo rates. Each is nullable (null clears the offer). The
   // The Promos page sends the tens grid {10, 20, 30, 40, 50} via its four
   // preset strategies (50 is the ceiling; legacy 70 retired — MESITA-543).
-  // The projects CHECK constraints mirror this set.
+  // The places CHECK constraints mirror this set.
   for (const field of PROMO_RATE_FIELDS) {
     if (!(field in body)) continue;
     const rate = normalisePromoRate(field, body[field]);
@@ -504,11 +504,11 @@ Deno.serve(async (req) => {
   let currentRow: Record<string, unknown> | null = null;
   if (writingRates) {
     const { data: row, error: readErr } = await admin
-      .from("projects")
+      .from("places")
       .select(
         "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
       )
-      .eq("id", projectId)
+      .eq("id", placeId)
       .maybeSingle();
     if (readErr) {
       return json({ ok: false, error: `place_read: ${readErr.message}` }, 500);
@@ -539,7 +539,7 @@ Deno.serve(async (req) => {
   // and an unchanged URL must not burn a paid scrape.
   const prevSocial = await loadPreviousSocialUrlsForRefresh(
     admin,
-    projectId,
+    placeId,
     update,
     APIFY_KEY,
   );
@@ -547,7 +547,7 @@ Deno.serve(async (req) => {
   let updRes = await writePlace(admin, {
     table: "profiles",
     mode: "update",
-    id: projectId,
+    id: placeId,
     patch: update as ProfilePatch,
     select: PLACE_BUSINESS_COLUMNS,
   });
@@ -564,7 +564,7 @@ Deno.serve(async (req) => {
     updRes = await writePlace(admin, {
       table: "profiles",
       mode: "update",
-      id: projectId,
+      id: placeId,
       patch: retryUpdate as ProfilePatch,
       select: PLACE_BUSINESS_COLUMNS,
     });
@@ -602,7 +602,7 @@ Deno.serve(async (req) => {
     queueSocialFollowersRefresh({
       admin,
       apifyKey: APIFY_KEY,
-      projectId,
+      placeId,
       update,
       prevSocial,
     });
@@ -614,7 +614,7 @@ Deno.serve(async (req) => {
   if (onUpdateBuys.includes("embedding") && updateTouchesEmbeddingInputs(update)) {
     queuePlaceEmbeddingsOnUpdate({
       admin,
-      placeId: projectId,
+      placeId,
       apiKey: Deno.env.get("OPENAI_KEY")?.trim(),
       logPrefix: "business-web-update-place/on-update",
       via: "update",
@@ -623,7 +623,7 @@ Deno.serve(async (req) => {
 
   if (writingRates && currentRow) {
     logStrategySwitch({
-      project: projectId,
+      project: placeId,
       from: ratesFromPlace(currentRow),
       to: effectiveRatesAfterPatch(currentRow, update),
       actor: authRes.user.email ?? authRes.user.id,

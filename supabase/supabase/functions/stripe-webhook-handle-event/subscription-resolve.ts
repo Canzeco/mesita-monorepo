@@ -32,14 +32,14 @@ export async function resolveConsumerId(
   return null;
 }
 
-// Maps a Stripe subscription back to a Mesita project via our own mirror
+// Maps a Stripe subscription back to a Mesita place via our own mirror
 // table (subscription metadata was already checked by the caller).
-export async function resolveProjectId(
+export async function resolvePlaceId(
   admin: ReturnType<typeof adminClient>,
   sub: Stripe.Subscription,
 ): Promise<string | null> {
   const { data: bySub } = await admin
-    .from("project_subscriptions")
+    .from("place_subscriptions")
     .select("place_id")
     .eq("stripe_subscription_id", sub.id)
     .maybeSingle();
@@ -47,7 +47,7 @@ export async function resolveProjectId(
 
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const { data: byCustomer } = await admin
-    .from("project_subscriptions")
+    .from("place_subscriptions")
     .select("place_id")
     .eq("stripe_customer_id", customerId)
     .limit(1)
@@ -56,7 +56,7 @@ export async function resolveProjectId(
 }
 
 // Resolves which Mesita plan a Stripe subscription pays for: subscription
-// metadata first, then the price id against project_plans, then the price
+// metadata first, then the price id against place_plans, then the price
 // lookup_key against the static catalog.
 export async function resolvePlanKey(
   admin: ReturnType<typeof adminClient>,
@@ -69,14 +69,14 @@ export async function resolvePlanKey(
   if (!price) return null;
 
   const { data } = await admin
-    .from("project_plans")
+    .from("place_plans")
     .select("key")
     .eq("stripe_price_id", price.id)
     .maybeSingle();
   if (data?.key) return data.key as string;
 
   const byLookup = STRIPE_CATALOG.find(
-    (e) => e.lookupKey === price.lookup_key && e.table === "project_plans",
+    (e) => e.lookupKey === price.lookup_key && e.table === "place_plans",
   );
   return byLookup?.rowKey ?? null;
 }

@@ -2,7 +2,7 @@
 //
 // Super-admin approves or rejects a pending ownership verification.
 //
-//   approve  → verification.state='approved' + a project_members row
+//   approve  → verification.state='approved' + a place_members row
 //              (role='owner', manager_id=requester) is inserted. The
 //              place itself is already active+web from
 //              business-web-create-place; this EF only grants membership.
@@ -65,10 +65,10 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Fetch the row so we can act on its project_id + requester_id, and
+  // Fetch the row so we can act on its place_id + requester_id, and
   // reject double-decides.
   const { data: verification, error: lookupError } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select("id, place_id, requester_id, state")
     .eq("id", verificationId)
     .maybeSingle();
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
 
   const now = new Date().toISOString();
   const { error: updateError } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .update({
       state: decision,
       decided_at: now,
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
   if (decision === "approved") {
     // Grant the requester ownership. The place is already active+web;
     // membership is what gates business access on /unit/<id>/*.
-    const { error: memberError } = await admin.from("project_members").insert({
+    const { error: memberError } = await admin.from("place_members").insert({
       place_id: verification.place_id,
       manager_id: verification.requester_id,
       role: "owner",
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
       // parallel claim won (the place is already owned); surface it
       // and let the admin reject this row in a follow-up.
       await admin
-        .from("project_verifications")
+        .from("place_verifications")
         .update({
           state: "pending",
           decided_at: null,

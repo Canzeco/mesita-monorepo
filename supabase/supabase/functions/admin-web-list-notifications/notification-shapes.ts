@@ -16,10 +16,10 @@ export type PlaceRef = {
 
 export type PlaceShape = {
   id: string;
-  // `slug` is a projects-only column — the base public.place_profiles table has none.
-  // Sources embedded via the places FK (steps) can't select it, so it's
+  // `slug` is a places-only column — the base public.place_profiles table has none.
+  // Sources embedded via the place_profiles FK (steps) can't select it, so it's
   // optional here and defaults to null in placeRef. The claims source hops
-  // through projects and DOES carry it (see projectPlaceRef).
+  // through places and DOES carry it (see placeWithSlugRef).
   slug?: string | null;
   name: string | null;
   address: string | null;
@@ -39,11 +39,13 @@ export function placeRef(v: PlaceShape | null): PlaceRef {
   };
 }
 
-// A place profile reached by hopping project_verifications → projects → places.
-// `slug` comes from the projects entity; the profile fields come from the
-// nested places embed. Shared PK means projects.id === places.id, so we key
-// the ref on the projects id.
-export type ProjectPlaceShape = {
+// A place profile reached by hopping through the places entity — used both
+// by the ownership-claims source (place_verifications → places → place_profiles)
+// and by the consumer-activity sources (visit_tickets/favorites/reservations
+// → places → place_profiles). `slug` comes from the places entity; the profile
+// fields come from the nested place_profiles embed. Shared PK means
+// places.id === place_profiles.id, so we key the ref on the places id.
+export type PlaceWithSlugShape = {
   id: string;
   slug: string | null;
   place:
@@ -52,7 +54,7 @@ export type ProjectPlaceShape = {
     | null;
 };
 
-export function projectPlaceRef(p: ProjectPlaceShape | null): PlaceRef {
+export function placeWithSlugRef(p: PlaceWithSlugShape | null): PlaceRef {
   if (!p) return null;
   const pl = one(p.place);
   return {

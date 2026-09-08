@@ -294,7 +294,7 @@ export function checkNotFound(json: (b: unknown, s?: number) => Response): Respo
 
 // ── Per-place check settings (MESITA-823 · MESITA-1095) ────────────────
 //
-// One staff-side knob lives on projects, EF-only (never in profiles):
+// One staff-side knob lives on places, EF-only (never in profiles):
 // check_pin — optional 6-digit PIN gating WRITE actions (NULL = off; NOT
 // a waiter identity, MESITA-833 stands). The bill is always required
 // (MESITA-1095) — get-ticket never gates; it exposes `pin_required` and
@@ -313,19 +313,19 @@ export type CheckSettings = {
 
 export async function loadCheckSettings(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
 ): Promise<CheckSettings> {
   const { data, error } = await admin
-    .from("projects")
+    .from("places")
     .select("check_pin")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   // A transient DB error, an exhausted pool, a timeout, a renamed column or
   // an RLS change all return data = null. Reporting that as "no PIN
   // configured" is what ungated all six write EFs (MESITA-1120).
   if (error) {
     console.error("loadCheckSettings failed", {
-      projectId,
+      placeId,
       code: error.code,
       message: error.message,
       details: error.details,
@@ -348,18 +348,18 @@ export async function loadCheckSettings(
 // 30 attempts/min against a 10^6 space).
 export async function requireCheckPin(args: {
   admin: SupabaseClient;
-  projectId: string;
+  placeId: string;
   ticketId: string;
   pin: unknown;
   ipHash: string | null;
   userAgent: string | null;
   json: (b: unknown, s?: number) => Response;
   /** Pass when the caller already loaded the place's check settings —
-   *  skips the redundant projects read. */
+   *  skips the redundant places read. */
   settings?: CheckSettings;
 }): Promise<{ ok: true } | { ok: false; response: Response }> {
   const settings = args.settings ??
-    await loadCheckSettings(args.admin, args.projectId);
+    await loadCheckSettings(args.admin, args.placeId);
 
   // MESITA-1120: "we could not determine whether a PIN is configured" is not
   // "no PIN configured". Deny, loudly and retryably — never fall through to

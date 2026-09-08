@@ -76,7 +76,7 @@ describe("client components never import the server data layer", () => {
 // The 2am-Friday test.
 //
 // `business-web-get-overview` resolves a non-super-admin's places from
-// `project_members` alone, so it cannot load an org-claimed place — that is
+// `place_members` alone, so it cannot load an org-claimed place — that is
 // the whole reason the shell has its own `business-web-get-place`. Anything
 // that reaches back into `lib/api/places` (the overview's `MyPlace` type) or
 // re-couples the live shell to the broken read. (The second rule below used

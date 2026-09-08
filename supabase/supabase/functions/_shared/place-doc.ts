@@ -4,7 +4,7 @@
 // issue was scoped from: place is the largest of the three remaining
 // aggregates, 29 write call sites across 16 files against THREE surfaces:
 //   • place_profiles   — the Google-observed / Intaker-owned profile
-//   • projects — the owned Mesita entity: state, billing, membership
+//   • places — the owned Mesita entity: state, billing, membership
 //   • profiles — a SECURITY INVOKER VIEW joining the two (`p.* JOIN u.*`,
 //     see the 20260602-era migrations), NOT a base table. It carries two
 //     INSTEAD OF triggers (profiles_insert / profiles_update) that split a
@@ -13,7 +13,7 @@
 //     cross-table atomicity. This door therefore never re-derives that
 //     split itself: `table: "profiles"` forwards the validated patch to
 //     `.from("profiles")`, exactly like every existing call site that used
-//     the view already does. `table: "place_profiles"` / `table: "projects"` write
+//     the view already does. `table: "place_profiles"` / `table: "places"` write
 //     the base table directly, exactly like every existing call site that
 //     already targeted one table alone. Nothing about WHICH surface a call
 //     site writes through changes here — only that every patch now passes
@@ -22,9 +22,9 @@
 // THE TWO-BELT PATTERN (StampablePulseStep, pulse-report.ts; see
 // consumer-doc.ts for the fuller writeup):
 //   Belt 1 — TypeScript. PlaceWriteArgs.patch is typed PlaceProfilePatch /
-//     ProjectPatch / ProfilePatch (closed key sets), not
+//     PlacePatch / ProfilePatch (closed key sets), not
 //     Record<string, unknown>.
-//   Belt 2 — runtime. validatePlaceProfilePatch / validateProjectPatch /
+//   Belt 2 — runtime. validatePlaceProfilePatch / validatePlacePatch /
 //     validateProfilePatch re-check the same closed key sets (HTTP JSON has
 //     no compiler) plus the shape and range invariants below. A malformed
 //     patch never reaches Postgres.
@@ -48,9 +48,9 @@
 //   • `profiles` is a view, not a base table — see the header above.
 //
 // THE INVARIANTS below mirror LIVE Postgres CHECK constraints (pulled via
-// `pg_get_constraintdef` against the `place_profiles` / `projects` tables, MESITA
-// project) and the two tables' native Postgres enum columns (`project_
-// state`, `listing_type`, `plan`, `project_fiscal_type`, `content_state`,
+// `pg_get_constraintdef` against the `place_profiles` / `places` tables, MESITA
+// project) and the two tables' native Postgres enum columns (`place_state`,
+// `listing_type`, `plan`, `place_fiscal_type`, `content_state`,
 // pulled via `pg_enum`) — not invented rules. Each group below names the
 // constraint it mirrors. One invariant is only PARTIALLY checkable from a
 // patch alone (place_profiles_name_source_present, see checkPlaceNameSourceInvariant)
@@ -60,7 +60,7 @@
 // (`sanitiseHours`), tag normalization, phone E.164 shape, category
 // resolution, promo-rate/listing-type derivation. None of those are DB
 // constraints — they are HTTP-input business rules business-web-
-// update-project (and friends) already own and validate before a patch
+// update-place (and friends) already own and validate before a patch
 // ever reaches this door. This validator checks the STORED SHAPE Postgres
 // itself would reject, same posture consumer-doc.ts took for birthday /
 // avatar_url.
@@ -317,9 +317,9 @@ void _assertNoMissingPlaceProfileKeys;
 
 export type PlaceProfilePatch = Partial<Pick<PlaceProfileRow, typeof PLACE_PROFILE_PATCH_KEYS[number]>>;
 
-// ── ProjectRow — the full `projects` row shape ──────────────────────────────
+// ── PlaceRow — the full `places` row shape ──────────────────────────────────
 
-export type ProjectRow = {
+export type PlaceRow = {
   id: string;
   created_at: string;
   updated_at: string;
@@ -358,10 +358,10 @@ export type ProjectRow = {
   reward_lane_pending_review_at: string | null;
 };
 
-export const PROJECT_PATCH_KEYS = [
+export const PLACE_PATCH_KEYS = [
   // The organization that holds this place; null = the public pool. Written
   // by business-web-{claim,release}-place, which is why they go through
-  // this door instead of touching `projects` directly.
+  // this door instead of touching `places` directly.
   "organization_id",
   "claimed_by",
   "claimed_at",
@@ -392,20 +392,20 @@ export const PROJECT_PATCH_KEYS = [
   "cfdi_razon_social",
   "cfdi_cp",
   "reward_lane_pending_review_at",
-] as const satisfies readonly (keyof Omit<ProjectRow, "id" | "created_at" | "updated_at">)[];
+] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">)[];
 
-type _MissingFromProjectPatchKeys = Exclude<
-  keyof Omit<ProjectRow, "id" | "created_at" | "updated_at">,
-  typeof PROJECT_PATCH_KEYS[number]
+type _MissingFromPlacePatchKeys = Exclude<
+  keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">,
+  typeof PLACE_PATCH_KEYS[number]
 >;
-const _assertNoMissingProjectKeys: _MissingFromProjectPatchKeys extends never ? true
-  : ["PROJECT_PATCH_KEYS is missing a field from ProjectRow", _MissingFromProjectPatchKeys] = true;
-void _assertNoMissingProjectKeys;
+const _assertNoMissingPlaceKeys: _MissingFromPlacePatchKeys extends never ? true
+  : ["PLACE_PATCH_KEYS is missing a field from PlaceRow", _MissingFromPlacePatchKeys] = true;
+void _assertNoMissingPlaceKeys;
 
-export type ProjectPatch = Partial<Pick<ProjectRow, typeof PROJECT_PATCH_KEYS[number]>>;
+export type PlacePatch = Partial<Pick<PlaceRow, typeof PLACE_PATCH_KEYS[number]>>;
 
 /** The `profiles` view's writable surface — both tables' patch keys at once. */
-export type ProfilePatch = PlaceProfilePatch & ProjectPatch;
+export type ProfilePatch = PlaceProfilePatch & PlacePatch;
 
 // ── shape primitives ─────────────────────────────────────────────────────
 
@@ -489,7 +489,7 @@ const PLACE_NONNEG_INT_KEYS = new Set<string>([
 // plus a competing, uncalled `update-place.ts` door — folding the same
 // schemas in HERE, at the one real door, closes the gap for every OTHER
 // caller these three fields would otherwise pass through unvalidated (this
-// door's own PROJECT/PROFILE surfaces, save-place.ts's create insert, and
+// door's own PLACE/PROFILE surfaces, save-place.ts's create insert, and
 // any future writer), not just the two hand-patched call sites.
 const PLACE_JSON_KEYS = new Set<string>([
   "hours", "enrichment_sources", "menus", "products",
@@ -630,17 +630,17 @@ export function validatePlaceProfilePatch(input: unknown): PlaceProfilePatchVali
   return { ok: true, patch: patch as PlaceProfilePatch };
 }
 
-// ── projects_* field groups (mirrors the live CHECK constraints named) ─────
+// ── places_* field groups (mirrors the live CHECK constraints named) ───────
 
-const PROJECT_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
-const PROJECT_BOOLEAN_KEYS = new Set<string>([
+const PLACE_NOTNULL_STRING_KEYS = new Set<string>(["slug", "currency"]);
+const PLACE_BOOLEAN_KEYS = new Set<string>([
   "segmentation_basic_enabled", "segmentation_advanced_enabled",
 ]);
-// projects_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
-const PROJECT_RATE_KEYS = new Set<string>([
+// places_promo_rate_legal_values — {10,20,30,40,50}, null allowed.
+const PLACE_RATE_KEYS = new Set<string>([
   "welcome_free_rate", "welcome_premium_rate", "free_rate", "premium_rate",
 ]);
-const PROJECT_TIMESTAMP_KEYS = new Set<string>([
+const PLACE_TIMESTAMP_KEYS = new Set<string>([
   "staff_channel_pinged_at", "first_ticket_honored_at", "plan_live_at",
   "last_strike_at", "promo_paused_until", "plan_forfeited_at",
   "reward_lane_pending_review_at",
@@ -659,14 +659,14 @@ const PLAN_VALUES = new Set(["free", "pro", "ultra"]);
 const FISCAL_TYPE_VALUES = new Set(["formal", "informal"]);
 const CONTENT_STATE_VALUES = new Set(["queued", "generating", "ready", "failed"]);
 
-function checkProjectField(key: string, v: unknown): string | null {
-  if (PROJECT_NOTNULL_STRING_KEYS.has(key)) {
+function checkPlaceField(key: string, v: unknown): string | null {
+  if (PLACE_NOTNULL_STRING_KEYS.has(key)) {
     return isNonEmptyString(v) ? null : `${key} must be a non-empty string`;
   }
-  if (PROJECT_BOOLEAN_KEYS.has(key)) {
+  if (PLACE_BOOLEAN_KEYS.has(key)) {
     return isBoolean(v) ? null : `${key} must be a boolean`;
   }
-  if (PROJECT_RATE_KEYS.has(key)) {
+  if (PLACE_RATE_KEYS.has(key)) {
     return isNullableLegalSet(v, RATE_LEGAL_VALUES) ? null
       : `${key} must be null or one of ${RATE_LEGAL_VALUES.join(", ")}`;
   }
@@ -676,7 +676,7 @@ function checkProjectField(key: string, v: unknown): string | null {
   if (key === "claimed_at") {
     return isNullableString(v) ? null : "claimed_at must be an ISO timestamp string or null";
   }
-  if (PROJECT_TIMESTAMP_KEYS.has(key)) {
+  if (PLACE_TIMESTAMP_KEYS.has(key)) {
     return isNullableString(v) ? null : `${key} must be an ISO timestamp string or null`;
   }
   switch (key) {
@@ -696,55 +696,55 @@ function checkProjectField(key: string, v: unknown): string | null {
     case "content_state":
       return isNonNullEnum(v, CONTENT_STATE_VALUES) ? null
         : `content_state must be one of ${[...CONTENT_STATE_VALUES].join(", ")}`;
-    // projects_monthly_promo_cap_legal_values
+    // places_monthly_promo_cap_legal_values
     case "monthly_promo_cap":
       return isNullableLegalSet(v, PROMO_CAP_LEGAL_VALUES) ? null
         : `monthly_promo_cap must be null or one of ${PROMO_CAP_LEGAL_VALUES.join(", ")}`;
-    // projects_reward_cap_cents_check
+    // places_reward_cap_cents_check
     case "discount_cap_cents":
       return isNullableNonNegInt(v) ? null : "discount_cap_cents must be a non-negative integer, or null";
-    // projects_strike_count_range — NOT NULL
+    // places_strike_count_range — NOT NULL
     case "strike_count":
       return isIntInRange(v, 0, 3) ? null : "strike_count must be an integer between 0 and 3";
-    // projects_check_pin_format
+    // places_check_pin_format
     case "check_pin":
       return isNullableRegex(v, SIX_DIGIT_PIN_RE) ? null
         : `${key} must be exactly 6 digits, or null`;
-    // projects_cfdi_rfc_shape
+    // places_cfdi_rfc_shape
     case "cfdi_rfc":
       return isNullableRegex(v, CFDI_RFC_RE) ? null
         : "cfdi_rfc must match the RFC shape (3-4 letters, 6 digits, 3 alnum), or null";
-    // projects_cfdi_cp_shape
+    // places_cfdi_cp_shape
     case "cfdi_cp":
       return isNullableRegex(v, CFDI_CP_RE) ? null : "cfdi_cp must be exactly 5 digits, or null";
-    // projects_cfdi_razon_social_len
+    // places_cfdi_razon_social_len
     case "cfdi_razon_social":
       return isNullableLenString(v, 1, 200) ? null
         : "cfdi_razon_social must be 1-200 characters, or null";
     default:
-      return `unknown project field: ${key}`;
+      return `unknown place-row field: ${key}`;
   }
 }
 
-export type ProjectPatchValidation =
-  | { ok: true; patch: ProjectPatch }
+export type PlacePatchValidation =
+  | { ok: true; patch: PlacePatch }
   | { ok: false; error: string };
 
-export function validateProjectPatch(input: unknown): ProjectPatchValidation {
+export function validatePlacePatch(input: unknown): PlacePatchValidation {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    return { ok: false, error: "project patch must be an object" };
+    return { ok: false, error: "place-row patch must be an object" };
   }
   const raw = input as Record<string, unknown>;
   const patch: Record<string, unknown> = {};
   for (const key of Object.keys(raw)) {
-    if (!(PROJECT_PATCH_KEYS as readonly string[]).includes(key)) {
-      return { ok: false, error: `unknown project field: ${key}` };
+    if (!(PLACE_PATCH_KEYS as readonly string[]).includes(key)) {
+      return { ok: false, error: `unknown place-row field: ${key}` };
     }
-    const err = checkProjectField(key, raw[key]);
+    const err = checkPlaceField(key, raw[key]);
     if (err) return { ok: false, error: err };
     patch[key] = raw[key];
   }
-  return { ok: true, patch: patch as ProjectPatch };
+  return { ok: true, patch: patch as PlacePatch };
 }
 
 export type ProfilePatchValidation =
@@ -753,12 +753,12 @@ export type ProfilePatchValidation =
 
 /**
  * Validates a patch against the `profiles` view's combined writable surface
- * — place_profiles fields and projects fields in the SAME patch, exactly what every
+ * — place_profiles fields and places fields in the SAME patch, exactly what every
  * existing caller writing through that view already sends (the view's
  * INSTEAD OF trigger splits it across both tables in one statement; see the
- * file header). PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS are disjoint —
+ * file header). PLACE_PROFILE_PATCH_KEYS and PLACE_PATCH_KEYS are disjoint —
  * checked directly by
- * "place-doc.test.ts: PLACE_PROFILE_PATCH_KEYS and PROJECT_PATCH_KEYS never collide".
+ * "place-doc.test.ts: PLACE_PROFILE_PATCH_KEYS and PLACE_PATCH_KEYS never collide".
  */
 export function validateProfilePatch(input: unknown): ProfilePatchValidation {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -777,11 +777,11 @@ export function validateProfilePatch(input: unknown): ProfilePatchValidation {
       };
     }
     const isPlaceProfileKey = (PLACE_PROFILE_PATCH_KEYS as readonly string[]).includes(key);
-    const isProjectKey = (PROJECT_PATCH_KEYS as readonly string[]).includes(key);
-    if (!isPlaceProfileKey && !isProjectKey) {
+    const isPlaceRowKey = (PLACE_PATCH_KEYS as readonly string[]).includes(key);
+    if (!isPlaceProfileKey && !isPlaceRowKey) {
       return { ok: false, error: `unknown profile field: ${key}` };
     }
-    const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkProjectField(key, raw[key]);
+    const err = isPlaceProfileKey ? checkPlaceProfileField(key, raw[key]) : checkPlaceField(key, raw[key]);
     if (err) return { ok: false, error: err };
     patch[key] = raw[key];
   }
@@ -810,18 +810,18 @@ export type PlaceWriteArgs =
   }
   | { table: "place_profiles"; mode: "delete"; id: string }
   | {
-    table: "projects";
+    table: "places";
     mode: "insert";
     id: string;
-    patch: ProjectPatch;
+    patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
   }
   | {
-    table: "projects";
+    table: "places";
     mode: "update";
     id: string;
-    patch: ProjectPatch;
+    patch: PlacePatch;
     select?: string;
     selectMode?: SelectMode;
     /** Extra guard(s) beyond `id` — an optimistic-concurrency check an
@@ -845,7 +845,7 @@ export type PlaceWriteArgs =
 
 /**
  * THE place aggregate's write door. Every insert/update/delete against
- * public.place_profiles, public.projects, or the public.profiles view in the
+ * public.place_profiles, public.places, or the public.profiles view in the
  * codebase goes through this — it is the only place a patch is checked
  * against the aggregate's shape, closed key set, and cross-field invariants
  * before Postgres ever sees it. `select`, when given, re-reads exactly those
@@ -878,15 +878,15 @@ export async function writePlace(
 
   const validated = args.table === "place_profiles"
     ? validatePlaceProfilePatch(args.patch)
-    : args.table === "projects"
-    ? validateProjectPatch(args.patch)
+    : args.table === "places"
+    ? validatePlacePatch(args.patch)
     : validateProfilePatch(args.patch);
   if (!validated.ok) return { ok: false, error: validated.error };
 
   const selectMode = args.selectMode ?? "single";
 
   if (args.mode === "insert") {
-    const row: Record<string, unknown> = args.table === "projects"
+    const row: Record<string, unknown> = args.table === "places"
       ? { id: args.id, ...validated.patch }
       : { ...validated.patch };
     const builder = admin.from(args.table).insert(row);
@@ -905,7 +905,7 @@ export async function writePlace(
 
   // mode === "update"
   let updateBuilder = admin.from(args.table).update(validated.patch).eq("id", args.id);
-  if (args.table === "projects" && args.guard) {
+  if (args.table === "places" && args.guard) {
     for (const [col, val] of Object.entries(args.guard)) {
       updateBuilder = val === null
         ? updateBuilder.is(col, null)

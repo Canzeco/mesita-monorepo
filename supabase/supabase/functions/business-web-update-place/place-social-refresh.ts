@@ -16,7 +16,7 @@ function updatesSocialUrl(update: Record<string, unknown>): boolean {
 
 export async function loadPreviousSocialUrlsForRefresh(
   admin: SupabaseClient,
-  projectId: string,
+  placeId: string,
   update: Record<string, unknown>,
   apifyKey: string | undefined,
 ): Promise<PreviousSocialUrls | null> {
@@ -25,7 +25,7 @@ export async function loadPreviousSocialUrlsForRefresh(
   const { data: prev } = await admin
     .from("place_profiles")
     .select("instagram_url, facebook_url")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
 
   return (prev as PreviousSocialUrls | null) ?? null;
@@ -34,11 +34,11 @@ export async function loadPreviousSocialUrlsForRefresh(
 export function queueSocialFollowersRefresh(opts: {
   admin: SupabaseClient;
   apifyKey: string | undefined;
-  projectId: string;
+  placeId: string;
   update: Record<string, unknown>;
   prevSocial: PreviousSocialUrls | null;
 }): void {
-  const { admin, apifyKey, projectId, update, prevSocial } = opts;
+  const { admin, apifyKey, placeId, update, prevSocial } = opts;
   if (!apifyKey) return;
 
   const igNext = "instagram_url" in update
@@ -58,7 +58,7 @@ export function queueSocialFollowersRefresh(opts: {
     refreshSocialFollowers({
       admin,
       apifyKey,
-      placeId: projectId,
+      placeId,
       ...(igChanged ? { instagramUrl: igNext } : {}),
       ...(fbChanged ? { facebookUrl: fbNext } : {}),
     }).catch(() => {}),

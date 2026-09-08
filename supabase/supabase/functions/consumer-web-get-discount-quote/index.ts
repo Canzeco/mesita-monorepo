@@ -102,11 +102,11 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // The v4 rate columns live on `projects`, never on `places` (places.id ==
-  // projects.id). They carry strategy IDENTITY, not price — the price comes
+  // The v4 rate columns live on `places`, never on `place_profiles` (places.id ==
+  // place_profiles.id). They carry strategy IDENTITY, not price — the price comes
   // from the v11 config below.
   const placeRes = await admin
-    .from("projects")
+    .from("places")
     .select(
       "id, free_rate, premium_rate, welcome_free_rate, welcome_premium_rate, monthly_promo_cap",
     )

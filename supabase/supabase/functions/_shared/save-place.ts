@@ -6,24 +6,24 @@
 // Takes the `place` JSON produced by fetchGoogleBasics and writes it as the
 // real rows:
 //   • place_profiles   — the profile (Google identity, geo, channels, signals, photos)
-//   • projects — the owned Mesita entity (shared PK with the place), landing
+//   • places — the owned Mesita entity (shared PK with the place), landing
 //     state='active', listing_type from Verification Config
 //     (verification_config.createPlacesAsVerified → 'partner', else 'web'),
 //     and a caller-supplied content_state (the async create path passes
 //     'generating').
 //
 // Idempotent on google_place_id (place_already_exists). Slug is made unique
-// against the live catalog. Inserts are sequenced place_profiles→projects (shared id);
-// a projects failure compensates by deleting the just-written place so we
+// against the live catalog. Inserts are sequenced place_profiles→places (shared id);
+// a places failure compensates by deleting the just-written place so we
 // never leave an orphan profile. Media is NOT handled here.
 //
-// Ownership (project_members) is intentionally NOT created here — ownership
+// Ownership (place_members) is intentionally NOT created here — ownership
 // only lands when admin-web-decide-verification approves a claim. Listing
 // type 'partner' here is the consumer Mesita Partner badge only — it does
 // not grant plan, ownership, or a promo strategy.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type PlaceProfilePatch, type ProjectRow, writePlace } from "./place-doc.ts";
+import { type PlaceProfilePatch, type PlaceRow, writePlace } from "./place-doc.ts";
 import { ensureUniqueSlug, slugify } from "./place-slug.ts";
 import { normalizeVerificationConfig } from "./verification-config.ts";
 
@@ -39,7 +39,6 @@ export type PlacePayload = Record<string, unknown> & {
 };
 
 export type SavedPlace = {
-  project_id: string;
   place_id: string;
   slug: string;
   name: string;
@@ -136,15 +135,15 @@ export async function savePlaceData(
     google_name: googleName,
     mesita_name: googleName,
   } as PlaceProfilePatch;
-  const placeRes = await writePlace(admin, {
+  const profileRes = await writePlace(admin, {
     table: "place_profiles",
     mode: "insert",
     patch: placeInsert,
     select: "id",
   });
-  if (!placeRes.ok || !placeRes.row) {
+  if (!profileRes.ok || !profileRes.row) {
     // Race guard: a concurrent create won the unique index — report as dup.
-    if (placeRes.ok === false && placeRes.code === "23505" && /google_place_id/.test(placeRes.error)) {
+    if (profileRes.ok === false && profileRes.code === "23505" && /google_place_id/.test(profileRes.error)) {
       const after = await admin
         .from("profiles")
         .select("id, slug, name, state, listing_type")
@@ -157,30 +156,30 @@ export async function savePlaceData(
       });
     }
     return fail(400, {
-      error: `place_insert: ${placeRes.ok ? "no row" : placeRes.error}`,
-      code: placeRes.ok ? null : placeRes.code ?? null,
+      error: `profile_insert: ${profileRes.ok ? "no row" : profileRes.error}`,
+      code: profileRes.ok ? null : profileRes.code ?? null,
     });
   }
-  const placeRow = placeRes.row as { id: string };
+  const profileRow = profileRes.row as { id: string };
 
-  // ── 2) projects (entity, shared PK). content_state is caller-supplied. ──
-  const projectRes = await writePlace(admin, {
-    table: "projects",
+  // ── 2) places (entity, shared PK). content_state is caller-supplied. ──
+  const placeRes = await writePlace(admin, {
+    table: "places",
     mode: "insert",
-    id: placeRow.id,
+    id: profileRow.id,
     patch: {
       slug,
       state: "active",
       listing_type: listingType,
-      content_state: state as ProjectRow["content_state"],
+      content_state: state as PlaceRow["content_state"],
     },
     select: "id, slug, state",
   });
-  if (!projectRes.ok || !projectRes.row) {
+  if (!placeRes.ok || !placeRes.row) {
     // Compensate: drop the orphan place so a failed create leaves nothing.
-    await writePlace(admin, { table: "place_profiles", mode: "delete", id: placeRow.id });
+    await writePlace(admin, { table: "place_profiles", mode: "delete", id: profileRow.id });
     if (
-      projectRes.ok === false && projectRes.code === "23505" && /\bslug\b/.test(projectRes.error)
+      placeRes.ok === false && placeRes.code === "23505" && /\bslug\b/.test(placeRes.error)
     ) {
       return fail(409, {
         code: "slug_already_taken",
@@ -188,20 +187,19 @@ export async function savePlaceData(
       });
     }
     return fail(400, {
-      error: `project_insert: ${projectRes.ok ? "no row" : projectRes.error}`,
-      code: projectRes.ok ? null : projectRes.code ?? null,
+      error: `place_insert: ${placeRes.ok ? "no row" : placeRes.error}`,
+      code: placeRes.ok ? null : placeRes.code ?? null,
     });
   }
-  const projectRow = projectRes.row as { id: string; slug: string; state: string };
+  const placeRow = placeRes.row as { id: string; slug: string; state: string };
 
   return {
     ok: true,
     saved: {
-      project_id: projectRow.id,
       place_id: placeRow.id,
-      slug: projectRow.slug,
+      slug: placeRow.slug,
       name,
-      state: projectRow.state,
+      state: placeRow.state,
     },
   };
 }

@@ -28,7 +28,7 @@ type PlaceAlternative = {
 export function apiCreateReservation(
   client: SupabaseClient,
   args: {
-    /** places.id == projects.id — the place being booked. */
+    /** place_profiles.id == places.id — the place being booked. */
     projectId: string;
     /** ISO 8601 instant (built with an explicit MX offset by the caller). */
     reservedAt: string;

@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
   let strike: unknown = null;
   if (isStrikeReason(reason)) {
     const result = await recordMembershipStrike(admin, {
-      projectId: ticket.data.place_id,
+      placeId: ticket.data.place_id,
       reason,
       consumerId: ticket.data.consumer_id,
       ticketId,

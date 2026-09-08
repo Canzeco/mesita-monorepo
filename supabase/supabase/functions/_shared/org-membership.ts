@@ -24,7 +24,7 @@ export async function orgRoleFor(
 
 /** The organization that holds a place, for EFs a place console calls with a
  *  placeId but that bill/authorize at the org level (MESITA-1545). `null`
- *  for a nonexistent place or one still in the public pool — `projects
+ *  for a nonexistent place or one still in the public pool — `places
  *  .organization_id` is nullable there, by design (one place belongs to at
  *  most one organization). */
 export async function orgIdForPlace(
@@ -32,7 +32,7 @@ export async function orgIdForPlace(
   placeId: string,
 ): Promise<string | null> {
   const { data } = await admin
-    .from("projects")
+    .from("places")
     .select("organization_id")
     .eq("id", placeId)
     .maybeSingle();

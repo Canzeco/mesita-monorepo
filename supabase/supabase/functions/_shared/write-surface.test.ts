@@ -126,7 +126,7 @@ const PLACE_PROFILE_UPDATE_ALLOWLIST = [
   "admin-web-set-place-enrichment/index.ts",
   "admin-web-set-place-listed/index.ts",
   "admin-web-set-place-active/index.ts",
-  "admin-web-set-place-verified/index.ts", // windowing false positive — .from("place_profiles") is a select; the insert writes project_verifications
+  "admin-web-set-place-verified/index.ts", // windowing false positive — .from("place_profiles") is a select; the insert writes place_verifications
   "admin-web-set-plan/index.ts",
   "business-web-confirm-reservation/index.ts",
   "business-web-request-manual-review/index.ts",
@@ -145,33 +145,33 @@ Deno.test("PLACE: no new writer of place_profiles/profiles outside the allowlist
   assertEquals(extra, [], `new direct writer(s) of place_profiles/profiles: ${extra.join(", ")}`);
 });
 
-// ── PROJECT (projects) — MESITA-1284: this table was missing from every
+// ── PLACE ROW (places) — MESITA-1284: this table was missing from every
 // ratchet in this file (both this ivory-tower ratchet and the DELETION LAW
-// list below), so a new direct writer/deleter of projects went completely
+// list below), so a new direct writer/deleter of places went completely
 // unratcheted by CI. Empty on purpose, VERIFIED by running findWriters()
-// against this branch, not assumed: every real write to "projects" goes
+// against this branch, not assumed: every real write to "places" goes
 // through `_shared/place-doc.ts`'s writePlace() as a parameterized dispatch
 // (`admin.from(args.table)`), which this literal-string scan cannot and
 // should not match — so an empty allowlist here is the correct, current
 // baseline, not an oversight. If this test ever fails, it means a NEW file
-// wrote `.from("projects")` directly, bypassing the door.
-const PROJECT_UPDATE_ALLOWLIST: string[] = [
+// wrote `.from("places")` directly, bypassing the door.
+const PLACE_ROW_UPDATE_ALLOWLIST: string[] = [
   // WINDOWING FALSE POSITIVE, verified by reading the source (per this
   // file's own header rule, not assumed): auth-membership.ts touches
-  // `projects` exactly once, at checkMembership's `.from("projects")
+  // `places` exactly once, at checkMembership's `.from("places")
   // .select(...)` — a READ, resolving the caller's organization path to a
   // place. The only `.update()` in the file is the super_admins lazy
   // user_id backfill 58 lines further down, on a different table; the
   // scan's character window spans both and reports the file as a writer.
-  // business-web-{claim,release}-place DO write projects and are correctly
+  // business-web-{claim,release}-place DO write places and are correctly
   // absent here: they go through _shared/place-doc.ts writePlace().
   "_shared/auth-membership.ts",
 ];
 
-Deno.test("PROJECT: no new writer of projects outside the allowlist", async () => {
-  const found = await findWriters("projects", WRITE_VERBS);
-  const extra = found.filter((f) => !PROJECT_UPDATE_ALLOWLIST.includes(f));
-  assertEquals(extra, [], `new direct writer(s) of projects: ${extra.join(", ")}`);
+Deno.test("PLACE ROW: no new writer of places outside the allowlist", async () => {
+  const found = await findWriters("places", WRITE_VERBS);
+  const extra = found.filter((f) => !PLACE_ROW_UPDATE_ALLOWLIST.includes(f));
+  assertEquals(extra, [], `new direct writer(s) of places: ${extra.join(", ")}`);
 });
 
 // ── CONSUMER (consumers) — see the CONSUMER note in the file header ────────
@@ -280,11 +280,11 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 // ── Guard test 4, refusal half ──────────────────────────────────────────
 //
 // Scope: hard DELETE on one of the six aggregates' OWN row — place_profiles,
-// profiles, consumers, visit_tickets, reservation_tickets, projects
+// profiles, consumers, visit_tickets, reservation_tickets, places
 // (MESITA-1284 — this table was missing from both ratchets below). Deliberately NOT
 // in scope: satellite/audit tables (place_creation_attempts,
 // nearby_google_attempts,
-// project_verifications, project_members, project_invites,
+// place_verifications, place_members, place_invites,
 // consumer_review_claims) whose own insert/delete is normal operation, not
 // a deletion-law question.
 //
@@ -301,12 +301,12 @@ Deno.test("CONFIG: no new writer of app_config outside the allowlist", async () 
 const HARD_DELETE_ALLOWLIST = [
   "_shared/save-place.ts", // real: deletes the place_profiles row it just inserted, on a failed downstream step (compensating-write pattern)
   "_shared/ticket-doc.ts", // writeTicket still exposes mode: "delete"; account close must not call it (MESITA-1250 — tickets stay)
-  "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets project_verifications (dedup-before-insert), not profiles
+  "business-web-request-manual-review/index.ts", // windowing false positive — real delete() targets place_verifications (dedup-before-insert), not profiles
   "consumer-web-submit-review/index.ts", // windowing false positive — real delete() targets consumer_review_claims (claim rollback on a failed write), not profiles or visit_tickets
 ];
 
 Deno.test("DELETION LAW (refusal half): no new hard DELETE on a place/consumer/ticket/reservation row", async () => {
-  const tables = ["place_profiles", "profiles", "consumers", "visit_tickets", "reservation_tickets", "projects"];
+  const tables = ["place_profiles", "profiles", "consumers", "visit_tickets", "reservation_tickets", "places"];
   const found = new Set<string>();
   for (const t of tables) for (const f of await findWriters(t, DELETE_VERB)) found.add(f);
   const extra = [...found].filter((f) => !HARD_DELETE_ALLOWLIST.includes(f));

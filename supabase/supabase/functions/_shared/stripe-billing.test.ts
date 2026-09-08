@@ -29,7 +29,7 @@ Deno.test("STRIPE_CATALOG: Premium monthly + Verified yearly map to DB rows", ()
   assertEquals(byId["consumer_premium"].lookupKey, "consumer_premium_monthly");
   assertEquals(byId["consumer_premium"].interval, "month");
 
-  assertEquals(byId["business_verified"].table, "project_plans");
+  assertEquals(byId["business_verified"].table, "place_plans");
   assertEquals(byId["business_verified"].rowKey, "pro");
   assertEquals(byId["business_verified"].lookupKey, "business_verified_yearly");
   assertEquals(byId["business_verified"].interval, "year");

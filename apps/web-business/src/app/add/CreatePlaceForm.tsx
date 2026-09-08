@@ -109,8 +109,8 @@ export function CreatePlaceForm({ signedInEmail }: { signedInEmail: string }) {
   const verificationCallbacks: VerificationCallbacks = {
     supabase,
     signedInEmail,
-    onApproved: (projectId) => {
-      router.push(placeHref(projectId));
+    onApproved: (placeId) => {
+      router.push(placeHref(placeId));
       router.refresh();
     },
     onAwaitingAdmin: () => {

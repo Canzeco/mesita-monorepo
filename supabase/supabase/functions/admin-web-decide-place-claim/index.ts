@@ -51,15 +51,15 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "decision must be 'clear' or 'reverse'" }, 400);
   }
 
-  const { data: proj, error: lookupError } = await admin
-    .from("projects")
+  const { data: place, error: lookupError } = await admin
+    .from("places")
     .select("organization_id, claimed_by, claim_reviewed_at")
     .eq("id", placeId)
     .maybeSingle();
   if (lookupError) {
     return json({ ok: false, error: `claim_lookup: ${lookupError.message}` }, 500);
   }
-  const row = proj as { organization_id: string | null; claimed_by: string | null; claim_reviewed_at: string | null } | null;
+  const row = place as { organization_id: string | null; claimed_by: string | null; claim_reviewed_at: string | null } | null;
   if (!row || !row.organization_id || !row.claimed_by) {
     return json({ ok: false, error: "That place has no active claim", code: "not_claimed" }, 409);
   }

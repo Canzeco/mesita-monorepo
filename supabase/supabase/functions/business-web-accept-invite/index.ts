@@ -7,7 +7,7 @@
 //   2. Ensure a `managers` profile exists for the caller — the
 //      Supabase invite flow creates the auth.users row but never
 //      writes our domain table.
-//   3. Insert project_members at the stored role (upsert is idempotent
+//   3. Insert place_members at the stored role (upsert is idempotent
 //      so a double-click is harmless).
 //   4. Mark the invite claimed.
 //   5. Stamp app_metadata.role = 'business' so future JWTs carry it.
@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const invite = await admin
-    .from("project_invites")
+    .from("place_invites")
     .select("id, place_id, email, role, claimed_at, expires_at")
     .eq("token", token)
     .maybeSingle();
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
   }
 
   const upsert = await admin
-    .from("project_members")
+    .from("place_members")
     .upsert(
       {
         place_id: invite.data.place_id,
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
   }
 
   const claim = await admin
-    .from("project_invites")
+    .from("place_invites")
     .update({ claimed_at: new Date().toISOString(), claimed_by: user.id })
     .eq("id", invite.data.id)
     .is("claimed_at", null);
@@ -115,6 +115,10 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
+    placeId: invite.data.place_id,
+    // TODO(MESITA-1590 cleanup): drop once web-business's Vercel deploy has
+    // picked up the matching frontend change — the EF ships instantly but
+    // the frontend doesn't, so the currently-live build still reads this.
     projectId: invite.data.place_id,
     role: upsert.data.role,
   });

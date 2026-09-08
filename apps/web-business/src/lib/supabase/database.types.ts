@@ -346,7 +346,7 @@ export type Database = {
             foreignKeyName: "consumer_review_claims_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -541,7 +541,7 @@ export type Database = {
             foreignKeyName: "favorites_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -623,6 +623,53 @@ export type Database = {
           },
           {
             foreignKeyName: "organization_guest_customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_invites: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          token: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invites_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -925,6 +972,53 @@ export type Database = {
           },
         ]
       }
+      place_invites: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          place_id: string
+          role: Database["public"]["Enums"]["member_role"]
+          token: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at?: string
+          id?: string
+          place_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          place_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_invites_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_media_assets: {
         Row: {
           analysis_text: string | null
@@ -997,6 +1091,45 @@ export type Database = {
           },
         ]
       }
+      place_members: {
+        Row: {
+          created_at: string
+          id: string
+          manager_id: string
+          place_id: string
+          role: Database["public"]["Enums"]["member_role"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_id: string
+          place_id: string
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_id?: string
+          place_id?: string
+          role?: Database["public"]["Enums"]["member_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_members_business_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_members_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_name_history: {
         Row: {
           google_name: string
@@ -1029,6 +1162,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      place_plans: {
+        Row: {
+          created_at: string
+          currency: string
+          key: string
+          label: string
+          price_cents: number
+          stripe_price_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          key: string
+          label: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          key?: string
+          label?: string
+          price_cents?: number
+          stripe_price_id?: string | null
+        }
+        Relationships: []
       }
       place_profiles: {
         Row: {
@@ -1415,6 +1575,121 @@ export type Database = {
           },
         ]
       }
+      place_strikes: {
+        Row: {
+          consumer_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          place_id: string
+          reason: string
+          strike_number: number
+          ticket_id: string | null
+        }
+        Insert: {
+          consumer_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          place_id: string
+          reason: string
+          strike_number: number
+          ticket_id?: string | null
+        }
+        Update: {
+          consumer_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          place_id?: string
+          reason?: string
+          strike_number?: number
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_strikes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_strikes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_strikes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "visit_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          currency: string
+          current_period_end: string | null
+          id: string
+          place_id: string
+          plan_key: string
+          price_cents: number | null
+          state: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          place_id: string
+          plan_key: string
+          price_cents?: number | null
+          state: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          currency?: string
+          current_period_end?: string | null
+          id?: string
+          place_id?: string
+          plan_key?: string
+          price_cents?: number | null
+          state?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_subscriptions_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_subscriptions_plan_key_fkey"
+            columns: ["plan_key"]
+            isOneToOne: false
+            referencedRelation: "place_plans"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       place_super_categories: {
         Row: {
           created_at: string
@@ -1469,235 +1744,7 @@ export type Database = {
         }
         Relationships: []
       }
-      project_invites: {
-        Row: {
-          claimed_at: string | null
-          claimed_by: string | null
-          created_at: string
-          created_by: string
-          email: string
-          expires_at: string
-          id: string
-          place_id: string
-          role: Database["public"]["Enums"]["member_role"]
-          token: string
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by: string
-          email: string
-          expires_at?: string
-          id?: string
-          place_id: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token: string
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by?: string | null
-          created_at?: string
-          created_by?: string
-          email?: string
-          expires_at?: string
-          id?: string
-          place_id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-          token?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_invites_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_members: {
-        Row: {
-          created_at: string
-          id: string
-          manager_id: string
-          place_id: string
-          role: Database["public"]["Enums"]["member_role"]
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          manager_id: string
-          place_id: string
-          role?: Database["public"]["Enums"]["member_role"]
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          manager_id?: string
-          place_id?: string
-          role?: Database["public"]["Enums"]["member_role"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_members_business_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "managers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_plans: {
-        Row: {
-          created_at: string
-          currency: string
-          key: string
-          label: string
-          price_cents: number
-          stripe_price_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          currency?: string
-          key: string
-          label: string
-          price_cents?: number
-          stripe_price_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          currency?: string
-          key?: string
-          label?: string
-          price_cents?: number
-          stripe_price_id?: string | null
-        }
-        Relationships: []
-      }
-      project_strikes: {
-        Row: {
-          consumer_id: string | null
-          created_at: string
-          id: string
-          notes: string | null
-          place_id: string
-          reason: string
-          strike_number: number
-          ticket_id: string | null
-        }
-        Insert: {
-          consumer_id?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          place_id: string
-          reason: string
-          strike_number: number
-          ticket_id?: string | null
-        }
-        Update: {
-          consumer_id?: string | null
-          created_at?: string
-          id?: string
-          notes?: string | null
-          place_id?: string
-          reason?: string
-          strike_number?: number
-          ticket_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_strikes_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_strikes_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_strikes_ticket_id_fkey"
-            columns: ["ticket_id"]
-            isOneToOne: false
-            referencedRelation: "visit_tickets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_subscriptions: {
-        Row: {
-          cancel_at_period_end: boolean
-          created_at: string
-          currency: string
-          current_period_end: string | null
-          id: string
-          place_id: string
-          plan_key: string
-          price_cents: number | null
-          state: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          cancel_at_period_end?: boolean
-          created_at?: string
-          currency?: string
-          current_period_end?: string | null
-          id?: string
-          place_id: string
-          plan_key: string
-          price_cents?: number | null
-          state: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          cancel_at_period_end?: boolean
-          created_at?: string
-          currency?: string
-          current_period_end?: string | null
-          id?: string
-          place_id?: string
-          plan_key?: string
-          price_cents?: number | null
-          state?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_subscriptions_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_subscriptions_plan_key_fkey"
-            columns: ["plan_key"]
-            isOneToOne: false
-            referencedRelation: "project_plans"
-            referencedColumns: ["key"]
-          },
-        ]
-      }
-      project_verifications: {
+      place_verifications: {
         Row: {
           created_at: string
           decided_at: string | null
@@ -1742,15 +1789,15 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_verifications_place_id_fkey"
+            foreignKeyName: "place_verifications_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
       }
-      projects: {
+      places: {
         Row: {
           cfdi_cp: string | null
           cfdi_razon_social: string | null
@@ -1765,7 +1812,7 @@ export type Database = {
           currency: string
           discount_cap_cents: number | null
           first_ticket_honored_at: string | null
-          fiscal_type: Database["public"]["Enums"]["project_fiscal_type"]
+          fiscal_type: Database["public"]["Enums"]["place_fiscal_type"]
           free_rate: number | null
           id: string
           last_strike_at: string | null
@@ -1782,7 +1829,7 @@ export type Database = {
           segmentation_basic_enabled: boolean
           slug: string
           staff_channel_pinged_at: string | null
-          state: Database["public"]["Enums"]["project_state"]
+          state: Database["public"]["Enums"]["place_state"]
           strike_count: number
           updated_at: string
           welcome_free_rate: number | null
@@ -1802,7 +1849,7 @@ export type Database = {
           currency?: string
           discount_cap_cents?: number | null
           first_ticket_honored_at?: string | null
-          fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"]
+          fiscal_type?: Database["public"]["Enums"]["place_fiscal_type"]
           free_rate?: number | null
           id: string
           last_strike_at?: string | null
@@ -1819,7 +1866,7 @@ export type Database = {
           segmentation_basic_enabled?: boolean
           slug: string
           staff_channel_pinged_at?: string | null
-          state?: Database["public"]["Enums"]["project_state"]
+          state?: Database["public"]["Enums"]["place_state"]
           strike_count?: number
           updated_at?: string
           welcome_free_rate?: number | null
@@ -1839,7 +1886,7 @@ export type Database = {
           currency?: string
           discount_cap_cents?: number | null
           first_ticket_honored_at?: string | null
-          fiscal_type?: Database["public"]["Enums"]["project_fiscal_type"]
+          fiscal_type?: Database["public"]["Enums"]["place_fiscal_type"]
           free_rate?: number | null
           id?: string
           last_strike_at?: string | null
@@ -1856,7 +1903,7 @@ export type Database = {
           segmentation_basic_enabled?: boolean
           slug?: string
           staff_channel_pinged_at?: string | null
-          state?: Database["public"]["Enums"]["project_state"]
+          state?: Database["public"]["Enums"]["place_state"]
           strike_count?: number
           updated_at?: string
           welcome_free_rate?: number | null
@@ -1864,28 +1911,28 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "projects_claimed_by_fkey"
+            foreignKeyName: "places_claimed_by_fkey"
             columns: ["claimed_by"]
             isOneToOne: false
             referencedRelation: "managers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projects_organization_id_fkey"
+            foreignKeyName: "places_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projects_place_fk"
+            foreignKeyName: "places_place_fk"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "place_profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "projects_place_fk"
+            foreignKeyName: "places_place_fk"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
@@ -2083,7 +2130,7 @@ export type Database = {
             foreignKeyName: "reservation_tickets_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2220,7 +2267,7 @@ export type Database = {
             foreignKeyName: "ticket_reports_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -2284,7 +2331,7 @@ export type Database = {
             foreignKeyName: "ticket_reviews_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -2483,7 +2530,7 @@ export type Database = {
             foreignKeyName: "visit_tickets_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -2529,7 +2576,7 @@ export type Database = {
           facebook_url: string | null
           family_keys: string[] | null
           first_ticket_honored_at: string | null
-          fiscal_type: Database["public"]["Enums"]["project_fiscal_type"] | null
+          fiscal_type: Database["public"]["Enums"]["place_fiscal_type"] | null
           free_rate: number | null
           google_business_url: string | null
           google_maps_url: string | null
@@ -2590,7 +2637,7 @@ export type Database = {
           segmentation_basic_enabled: boolean | null
           slug: string | null
           staff_channel_pinged_at: string | null
-          state: Database["public"]["Enums"]["project_state"] | null
+          state: Database["public"]["Enums"]["place_state"] | null
           story: string | null
           strike_count: number | null
           tags: string[] | null
@@ -2659,7 +2706,7 @@ export type Database = {
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
-      is_project_member: { Args: { p_project_id: string }; Returns: boolean }
+      is_place_member: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       mark_place_claim_reviewed: {
         Args: { p_admin: string; p_place_id: string }
@@ -2710,15 +2757,15 @@ export type Database = {
       content_state: "queued" | "generating" | "ready" | "failed"
       listing_type: "partner" | "web" | "unclaimed"
       member_role: "owner" | "editor" | "viewer"
-      plan: "free" | "pro" | "ultra"
-      project_fiscal_type: "formal" | "informal"
-      project_state:
+      place_fiscal_type: "formal" | "informal"
+      place_state:
         | "lead"
         | "active"
         | "paused"
         | "archived"
         | "pending_review"
         | "pending_verification"
+      plan: "free" | "pro" | "ultra"
       reservation_state:
         | "pending"
         | "confirmed"
@@ -2884,9 +2931,8 @@ export const Constants = {
       content_state: ["queued", "generating", "ready", "failed"],
       listing_type: ["partner", "web", "unclaimed"],
       member_role: ["owner", "editor", "viewer"],
-      plan: ["free", "pro", "ultra"],
-      project_fiscal_type: ["formal", "informal"],
-      project_state: [
+      place_fiscal_type: ["formal", "informal"],
+      place_state: [
         "lead",
         "active",
         "paused",
@@ -2894,6 +2940,7 @@ export const Constants = {
         "pending_review",
         "pending_verification",
       ],
+      plan: ["free", "pro", "ultra"],
       reservation_state: [
         "pending",
         "confirmed",

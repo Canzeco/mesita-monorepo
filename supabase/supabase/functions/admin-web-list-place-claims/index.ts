@@ -6,7 +6,7 @@
 // can catch a bad claim after the fact instead of before it.
 //
 // Queue mode (default): unreviewed claims — organization_id and claimed_by
-// set, claim_reviewed_at still null — newest first (projects_unreviewed_
+// set, claim_reviewed_at still null — newest first (places_unreviewed_
 // claims_idx). includeReviewed=true also returns cleared claims as history,
 // same shape as admin-web-list-verifications's state filter.
 //
@@ -45,9 +45,9 @@ Deno.serve(async (req) => {
 
   // FKs: claimed_by -> managers, organization_id -> organizations, id ->
   // places (1:1, same trap admin-web-list-verifications documents: places
-  // has to come in through its own relation, never embedded via projects).
+  // has to come in through its own relation, never embedded via places).
   let query = admin
-    .from("projects")
+    .from("places")
     .select(
       "id, claimed_by, claimed_at, claim_reviewed_at, claim_reviewed_by, organization:organizations(id, name), claimer:managers!claimed_by(full_name, email), place:place_profiles(name, address, google_place_id)",
     )

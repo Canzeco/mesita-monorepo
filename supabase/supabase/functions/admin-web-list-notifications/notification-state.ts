@@ -5,11 +5,11 @@
 //
 //   created    google_place_id present (operator label Created; wire `seeded`)
 //   active     Google business_state === OPERATIONAL
-//   listed     projects.state ∈ (active, lead)
+//   listed     places.state ∈ (active, lead)
 //   requested  request_count > 0 and content_state is not ready
 //   enriching  content_state generating/queued (live run)
 //   enriched   PULSE high-water complete. Independent of enriching.
-//   verified   an approved project_verifications row
+//   verified   an approved place_verifications row
 //   partner    plan ≠ free (operator label Partnered)
 //   promoting  live discount (isPlacePromoting)
 //   functions  completed Intake Create/Enrich subfunctions (pulse, details, …)
@@ -112,7 +112,7 @@ export async function attachPlaceStateFacts(
   const [profileRes, verificationRes, enrichmentRes] = await Promise.all([
     admin.from("profiles").select(PROFILE_COLS).in("id", ids),
     admin
-      .from("project_verifications")
+      .from("place_verifications")
       .select("place_id")
       .eq("state", "approved")
       .in("place_id", ids),
@@ -125,7 +125,7 @@ export async function attachPlaceStateFacts(
   }
   if (verificationRes.error) {
     console.error(
-      "[list-notifications] project_verifications:",
+      "[list-notifications] place_verifications:",
       verificationRes.error.message,
     );
   }

@@ -183,7 +183,7 @@ function parseEmbeddingVector(raw: AdminPlace["embedding"]): number[] | null {
 // all `places` columns — and the vector lands on `places.embedding` beside
 // `embedding_source_text` / `embedding_source_hash`. The write goes through
 // the `profiles` view because that is the write door, NOT because a profile
-// or a project is what gets embedded: no plan, no rates, no listing_type, no
+// or the place row is what gets embedded: no plan, no rates, no listing_type, no
 // state is in the vector. That is deliberate — commercial state changes
 // weekly and would poison a semantic index that answers "what is this place
 // like".

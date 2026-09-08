@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   const settings = await loadCheckSettings(admin, ticket.project_id);
   const pinRes = await requireCheckPin({
     admin,
-    projectId: ticket.project_id,
+    placeId: ticket.project_id,
     ticketId: ticket.id,
     pin: bodyRes.body.pin,
     ipHash,

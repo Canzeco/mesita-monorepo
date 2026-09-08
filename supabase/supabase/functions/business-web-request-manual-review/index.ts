@@ -7,7 +7,7 @@
 //
 // …or any operator who'd rather talk to a human. Unlike ai_call and
 // ai_email, this path NEVER auto-grants ownership. It writes a pending
-// project_verifications row (method='manual_contact') so the admin queue
+// place_verifications row (method='manual_contact') so the admin queue
 // sees the request, and returns the Mesita ops contact details the UI
 // renders as deep-link buttons.
 //
@@ -55,9 +55,9 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const projectId = readPlaceIdAlias(body);
+  const placeId = readPlaceIdAlias(body);
   const note = (body.note ?? "").trim().slice(0, 500);
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const requesterEmail = resolveRequesterEmail({
     bodyEmail: body.requesterEmail,
@@ -81,16 +81,16 @@ Deno.serve(async (req) => {
   const { data: place, error: placeError } = await admin
     .from("profiles")
     .select("id, name, country")
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (placeError || !place) {
     return json({ ok: false, error: "Place not found" }, 404);
   }
 
   const { data: existingOwner } = await admin
-    .from("project_members")
+    .from("place_members")
     .select("manager_id")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("role", "owner")
     .maybeSingle();
   if (existingOwner) {
@@ -112,16 +112,16 @@ Deno.serve(async (req) => {
   // Dedup: drop any prior pending row by this caller on this place
   // before inserting the new one. Same pattern as the OTP EFs.
   await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .delete()
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("requester_id", userId)
     .eq("state", "pending");
 
   const { data: verification, error: insertError } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .insert({
-      place_id: projectId,
+      place_id: placeId,
       requester_id: userId,
       method: "manual_contact",
       payload: {

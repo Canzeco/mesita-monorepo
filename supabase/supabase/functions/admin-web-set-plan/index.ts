@@ -1,12 +1,12 @@
 // Supabase Edge Function — admin-web-set-plan
 //
-// The admin door onto projects.plan. business-web-change-subscription puts
+// The admin door onto places.plan. business-web-change-subscription puts
 // it this way: "A Stripe subscription is billing, not entitlement:
-// projects.plan is the single source of truth and can be granted through
+// places.plan is the single source of truth and can be granted through
 // other doors (admin, partnership)." This is that door.
 //
 // Grants or revokes a membership directly. No Stripe, no money, no
-// project_subscriptions row — entitlement only. The admin console needs it
+// place_subscriptions row — entitlement only. The admin console needs it
 // because business-web-update-place deliberately rejects `plan` (it is
 // billing, not profile), and business-web-change-subscription is the paid
 // door: owner-scoped and, once live-mode ships, it would open a real Stripe
@@ -51,7 +51,7 @@ import {
   effectiveRatesAfterPatch,
 } from "../_shared/partner-derivation.ts";
 import { logStrategySwitch } from "../_shared/strategy-switch-log.ts";
-import { type ProjectPatch, writePlace } from "../_shared/place-doc.ts";
+import { type PlacePatch, writePlace } from "../_shared/place-doc.ts";
 
 // public.membership — free | pro | ultra. `ultra` is legacy (no longer sold,
 // MESITA-541) but still grantable for the places that already carry it.
@@ -121,8 +121,8 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) {
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) {
     return json({ ok: false, error: "placeId is required" }, 400);
   }
 
@@ -133,11 +133,11 @@ Deno.serve(async (req) => {
   }
 
   const { data: current, error: readCurrent } = await admin
-    .from("projects")
+    .from("places")
     .select(
       "plan, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate, plan_forfeited_at",
     )
-    .eq("id", projectId)
+    .eq("id", placeId)
     .maybeSingle();
   if (readCurrent) {
     return json({ ok: false, error: `plan_read: ${readCurrent.message}` }, 500);
@@ -175,10 +175,10 @@ Deno.serve(async (req) => {
     });
 
     const updRes = await writePlace(admin, {
-      table: "projects",
+      table: "places",
       mode: "update",
-      id: projectId,
-      patch: patch as ProjectPatch,
+      id: placeId,
+      patch: patch as PlacePatch,
       select: "id",
       selectMode: "maybeSingle",
     });
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
     }
 
     logStrategySwitch({
-      project: projectId,
+      project: placeId,
       from: fromRates,
       to: effectiveRatesAfterPatch(row, patch),
       actor,
@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
     const { data: place, error: readError } = await admin
       .from("profiles")
       .select(PLACE_BUSINESS_COLUMNS)
-      .eq("id", projectId)
+      .eq("id", placeId)
       .single();
     if (readError) {
       return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
@@ -246,10 +246,10 @@ Deno.serve(async (req) => {
   }
 
   const updRes = await writePlace(admin, {
-    table: "projects",
+    table: "places",
     mode: "update",
-    id: projectId,
-    patch: patch as ProjectPatch,
+    id: placeId,
+    patch: patch as PlacePatch,
     select: "id",
     selectMode: "maybeSingle",
   });
@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
   const { data: place, error: readError } = await admin
     .from("profiles")
     .select(PLACE_BUSINESS_COLUMNS)
-    .eq("id", projectId)
+    .eq("id", placeId)
     .single();
   if (readError) {
     return json({ ok: false, error: `place_read: ${readError.message}` }, 500);

@@ -2,8 +2,8 @@
 //
 // Read-only ownership-verification glance for Manage Single → Admin →
 // Verification. Returns the immutable requester_email from the latest
-// approved project_verifications row for this place (who completed
-// ownership proof — distinct from current project_members owners).
+// approved place_verifications row for this place (who completed
+// ownership proof — distinct from current place_members owners).
 //
 // Auth: super-admin only.
 // Deploy: supabase functions deploy admin-web-get-place-verification
@@ -35,16 +35,16 @@ Deno.serve(async (req) => {
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const projectId = readPlaceIdAlias(bodyRes.body);
-  if (!projectId) {
-    return jsonError("projectId is required", 400);
+  const placeId = readPlaceIdAlias(bodyRes.body);
+  if (!placeId) {
+    return jsonError("placeId is required", 400);
   }
 
   // Latest approved ownership proof — requester_email is immutable on the row.
   const { data, error } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select("requester_email, decided_at, method, decided_via")
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("state", "approved")
     .order("decided_at", { ascending: false })
     .order("created_at", { ascending: false })

@@ -33,16 +33,16 @@ Deno.serve(async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const projectId = readPlaceIdAlias(body);
-  if (!projectId) return json({ ok: false, error: "projectId is required" }, 400);
+  const placeId = readPlaceIdAlias(body);
+  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const admin = adminClient(envRes.env);
   const { data, error } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select(
       "id, method, payload, requester_email, state, reject_reason, decided_at, decided_via, created_at",
     )
-    .eq("place_id", projectId)
+    .eq("place_id", placeId)
     .eq("requester_id", userId)
     .order("created_at", { ascending: false })
     .limit(1)

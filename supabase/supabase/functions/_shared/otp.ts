@@ -1,7 +1,7 @@
 // One-time-code helpers shared by every ownership-verification EF.
 //
 // Why centralised: the phone/email OTP flows both generate a 6-digit
-// code, hash it, store the hash on the project_verifications row, and
+// code, hash it, store the hash on the place_verifications row, and
 // compare on redemption. Four EFs (`business-web-send-phone-otp`,
 // `business-web-send-email-otp`, `business-web-verify-{phone,email}`) used to
 // reimplement the same primitives + flow control. The higher-level
@@ -29,7 +29,7 @@ type OtpMethod = "ai_call" | "ai_email";
 export async function insertPendingOtpVerification(
   admin: SupabaseClient,
   args: {
-    projectId: string;
+    placeId: string;
     userId: string;
     requesterEmail: string;
     method: OtpMethod;
@@ -40,16 +40,16 @@ export async function insertPendingOtpVerification(
   },
 ): Promise<{ ok: true; verificationId: string } | { ok: false; response: Response }> {
   await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .delete()
-    .eq("place_id", args.projectId)
+    .eq("place_id", args.placeId)
     .eq("requester_id", args.userId)
     .eq("state", "pending");
 
   const { data, error } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .insert({
-      place_id: args.projectId,
+      place_id: args.placeId,
       requester_id: args.userId,
       method: args.method,
       payload: { ...args.payload, codeHash: args.codeHash },
@@ -94,7 +94,7 @@ export async function redeemOtpVerification(
   }
 
   const { data: verification, error: lookupError } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .select("id, place_id, requester_id, method, payload, state")
     .eq("id", args.verificationId)
     .maybeSingle();
@@ -164,7 +164,7 @@ export async function redeemOtpVerification(
     // shows "verified, awaiting approval". State stays pending.
     const nextPayload = { ...payload, codeVerifiedAt: now };
     const { error: payloadError } = await admin
-      .from("project_verifications")
+      .from("place_verifications")
       .update({ payload: nextPayload })
       .eq("id", args.verificationId);
     if (payloadError) {
@@ -173,12 +173,21 @@ export async function redeemOtpVerification(
         500,
       );
     }
-    return json({ ok: true, projectId: verification.place_id, awaitingAdmin: true });
+    // TODO(MESITA-1590 cleanup): drop `projectId` once web-business's Vercel
+    // deploy has picked up the matching frontend change — the EF ships
+    // instantly but the frontend doesn't, so the currently-live build still
+    // reads this.
+    return json({
+      ok: true,
+      placeId: verification.place_id,
+      projectId: verification.place_id,
+      awaitingAdmin: true,
+    });
   }
 
   // Auto-approve: mark approved + grant ownership.
   const { error: updateError } = await admin
-    .from("project_verifications")
+    .from("place_verifications")
     .update({
       state: "approved",
       decided_at: now,
@@ -193,7 +202,7 @@ export async function redeemOtpVerification(
     );
   }
 
-  const { error: memberError } = await admin.from("project_members").insert({
+  const { error: memberError } = await admin.from("place_members").insert({
     place_id: verification.place_id,
     manager_id: args.userId,
     role: "owner",
@@ -203,7 +212,7 @@ export async function redeemOtpVerification(
     // claim won (the place is already owned); surface it so the operator
     // can use the contact / report-fraud flow.
     await admin
-      .from("project_verifications")
+      .from("place_verifications")
       .update({
         state: "pending",
         decided_at: null,
@@ -217,5 +226,12 @@ export async function redeemOtpVerification(
     );
   }
 
-  return json({ ok: true, projectId: verification.place_id, awaitingAdmin: false });
+  // TODO(MESITA-1590 cleanup): drop `projectId` once web-business's Vercel
+  // deploy has picked up the matching frontend change.
+  return json({
+    ok: true,
+    placeId: verification.place_id,
+    projectId: verification.place_id,
+    awaitingAdmin: false,
+  });
 }
