@@ -86,7 +86,7 @@ describe("Discovery function APIs", () => {
     expect(cfg.weights).not.toHaveProperty("semantic");
   });
 
-  it("nine sources and a locked mode → source matrix", () => {
+  it("eight sources and a locked mode → source matrix", () => {
     expect([...DISCOVERY_MODE_KEYS]).toEqual([
       "word",
       "map",

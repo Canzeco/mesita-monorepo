@@ -13,7 +13,7 @@ import {
 } from "./discovery-matrix.ts";
 import { SIGNAL_KEYS } from "./discovery-signals.ts";
 
-Deno.test("six modes, nine sources, and the locked mode → source matrix", () => {
+Deno.test("six modes, eight sources, and the locked mode → source matrix", () => {
   assertEquals([...DISCOVERY_MODE_KEYS], [
     "word",
     "map",
@@ -28,7 +28,6 @@ Deno.test("six modes, nine sources, and the locked mode → source matrix", () =
     "Google Places Nearby Search",
     "Mesita Places Name Search",
     "Mesita Places Nearby Search",
-    "Mesita Places Browse Search",
     "Mesita Places Flexible Search",
     "Mesita Social Browse Search",
     "Mesita Social Flexible Search",
@@ -42,8 +41,15 @@ Deno.test("six modes, nine sources, and the locked mode → source matrix", () =
     "Google Places Nearby Search",
     "Mesita Places Nearby Search",
   ]);
+  // Catalog is FLEXIBLE for Places since MESITA-1697 — Home's Feed grew a
+  // filter control and consumer-web-list-catalog cuts its pool with the
+  // guest's predicates before it plans a rail, so it stopped admitting on
+  // nothing. That left "Mesita Places Browse Search" with no caller at all,
+  // and this file's own rule is that a source nothing calls is not a source —
+  // so it left DISCOVERY_SOURCES too, taking the count from nine to eight.
+  // Mesita SOCIAL Browse stays: no guest predicate reaches the event rails.
   assertEquals([...DISCOVERY_MODE_SOURCES.catalog], [
-    "Mesita Places Browse Search",
+    "Mesita Places Flexible Search",
     "Mesita Social Browse Search",
   ]);
   assertEquals([...DISCOVERY_MODE_SOURCES.swipe], [
