@@ -693,6 +693,19 @@ verify_jwt = true
 [functions.consumer-web-set-default-card]
 verify_jwt = true
 
+# Mesita Credits — buy path (MESITA-1676). Charges the guest's saved card,
+# cloned onto the target place's organization's connected Stripe account
+# (mesita-pay-charge.ts), and writes an org-scoped credit_lots row through
+# the create_credit_lot RPC. The webhook's Connect branch is the reliability
+# backstop for the same charge (stripe-webhook-handle-event).
+[functions.consumer-web-buy-credits]
+verify_jwt = true
+
+# The Buy sheet's "Where" picker: places that accept Mesita Credits AND whose
+# organization is Connect charge-ready today.
+[functions.consumer-web-list-credit-places]
+verify_jwt = true
+
 # Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
 [functions.business-web-change-subscription]
 verify_jwt = true

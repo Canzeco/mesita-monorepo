@@ -108,25 +108,28 @@ async function resolveConnectedCustomer(
 
 /**
  * Clones the guest's PLATFORM default PaymentMethod onto the connected
- * account and attaches it to `connectedCustomerId`, then charges it as a
- * DIRECT charge for `amountCents`. Idempotent per `idempotencyKey` — a
- * retried call (a double-tap, a client retry after a dropped response)
- * returns Stripe's cached result for the same key instead of charging
- * twice.
+ * account and attaches it to a durable connected-account Customer, then
+ * charges it as a DIRECT charge for `amountCents` with the caller's own
+ * `metadata` riding the PaymentIntent — that metadata is the ONLY way a
+ * webhook backstop can find and finish the job later, so every caller stamps
+ * whatever it needs to route and replay itself (a ticket id, or a Credits
+ * purchase's pinned terms). Idempotent per `idempotencyKey` — a retried call
+ * (a double-tap, a client retry after a dropped response) returns Stripe's
+ * cached result for the same key instead of charging twice.
  */
-export async function chargeTicketWithMesitaPay(
+async function cloneCardAndChargeDirect(
   stripe: Stripe,
   admin: SupabaseClient,
   args: {
     organizationId: string;
     connectedAccountId: string;
     consumerId: string;
-    ticketId: string;
     platformCustomerId: string;
     platformPaymentMethodId: string;
     amountCents: number;
     currency: string;
     idempotencyKey: string;
+    metadata: Record<string, string>;
     /** Cents kept on the platform balance. Omitted (no fee) until a
      *  business decision sets one — the plumbing exists so that decision is
      *  a one-line change, not a new code path. */
@@ -170,11 +173,7 @@ export async function chargeTicketWithMesitaPay(
         customer: connectedCustomerId,
         payment_method: clonedPaymentMethodId,
         confirm: true,
-        // The ticket id rides the PaymentIntent so the webhook — the
-        // reliability backstop for the rare crash between a Stripe success
-        // and this function closing the ticket itself — can find it without
-        // a second lookup table.
-        metadata: { ticket_id: args.ticketId, consumer_id: args.consumerId },
+        metadata: args.metadata,
         ...(args.applicationFeeCents
           ? { application_fee_amount: args.applicationFeeCents }
           : {}),
@@ -225,4 +224,88 @@ export async function chargeTicketWithMesitaPay(
     }
     return { ok: false, code: "stripe_error", error: `charge: ${String(err)}` };
   }
+}
+
+export function chargeTicketWithMesitaPay(
+  stripe: Stripe,
+  admin: SupabaseClient,
+  args: {
+    organizationId: string;
+    connectedAccountId: string;
+    consumerId: string;
+    ticketId: string;
+    platformCustomerId: string;
+    platformPaymentMethodId: string;
+    amountCents: number;
+    currency: string;
+    idempotencyKey: string;
+    /** Cents kept on the platform balance. Omitted (no fee) until a
+     *  business decision sets one — the plumbing exists so that decision is
+     *  a one-line change, not a new code path. */
+    applicationFeeCents?: number;
+  },
+): Promise<ChargeOutcome> {
+  return cloneCardAndChargeDirect(stripe, admin, {
+    ...args,
+    // The ticket id rides the PaymentIntent so the webhook — the
+    // reliability backstop for the rare crash between a Stripe success
+    // and this function closing the ticket itself — can find it without
+    // a second lookup table.
+    metadata: { ticket_id: args.ticketId, consumer_id: args.consumerId },
+  });
+}
+
+/**
+ * Charges the guest's saved card, direct, on a Credits purchase's target
+ * organization (MESITA-1676). `paidCents` is what Stripe actually moves —
+ * `bonusCents` never reaches Stripe, it is the organization's own top-up on
+ * top of a real charge. Every money term (`paidCents`, `bonusCents`,
+ * `activatesAt`, `expiresAt`) must already be resolved SERVER-side from
+ * `controls_config` by the caller and is carried here ONLY to ride the
+ * PaymentIntent's metadata: the webhook backstop has nothing else to read
+ * when it reconstructs the same `create_credit_lot` call later, and it must
+ * never re-derive terms from a config that could have changed since the
+ * charge was confirmed.
+ */
+export function chargeCreditsWithMesitaPay(
+  stripe: Stripe,
+  admin: SupabaseClient,
+  args: {
+    organizationId: string;
+    connectedAccountId: string;
+    consumerId: string;
+    platformCustomerId: string;
+    platformPaymentMethodId: string;
+    paidCents: number;
+    bonusCents: number;
+    currency: string;
+    activatesAt: string;
+    expiresAt: string;
+    idempotencyKey: string;
+  },
+): Promise<ChargeOutcome> {
+  return cloneCardAndChargeDirect(stripe, admin, {
+    organizationId: args.organizationId,
+    connectedAccountId: args.connectedAccountId,
+    consumerId: args.consumerId,
+    platformCustomerId: args.platformCustomerId,
+    platformPaymentMethodId: args.platformPaymentMethodId,
+    amountCents: args.paidCents,
+    currency: args.currency,
+    idempotencyKey: args.idempotencyKey,
+    // mesita_kind is what routes a Connect-delivered payment_intent event to
+    // the credits handler instead of the ticket one (stripe-webhook-handle-
+    // event/index.ts) — a restaurant's own Stripe traffic carries neither and
+    // still falls through untouched.
+    metadata: {
+      mesita_kind: "credit_purchase",
+      organization_id: args.organizationId,
+      consumer_id: args.consumerId,
+      paid_cents: String(args.paidCents),
+      bonus_cents: String(args.bonusCents),
+      currency: args.currency,
+      activates_at: args.activatesAt,
+      expires_at: args.expiresAt,
+    },
+  });
 }

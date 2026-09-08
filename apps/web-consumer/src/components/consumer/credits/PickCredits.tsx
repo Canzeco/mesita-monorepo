@@ -61,23 +61,32 @@ function PlaceRow({
 }
 
 /** Where the money goes. Seeing the rates side by side is what shows the bonus
- *  is a rate a place CHOSE, not a coupon Mesita printed. */
+ *  is a rate a place CHOSE, not a coupon Mesita printed.
+ *
+ *  `places` defaults to the mock ladder (CREDIT_PLACES) so Gift — still fully
+ *  emulated — needs no change at all. Buy Credits (MESITA-1676) passes its own
+ *  REAL list instead: every real place inherits the global default today (no
+ *  per-place override exists in the schema yet), which is exactly what
+ *  `bonusPct: null, expiryDays: null` already means to bonusPctFor/
+ *  expiryDaysFor below — real data fits the type without a fork. */
 export function PlacePicker({
   policy,
   placeId,
   onSelect,
   label = "Where",
+  places = CREDIT_PLACES,
 }: {
   policy: ControlsPolicy;
   placeId: string | null;
   onSelect: (placeId: string) => void;
   label?: string;
+  places?: CreditPlace[];
 }) {
   return (
     <div>
       <div className="type-eyebrow text-muted-foreground mb-2">{label}</div>
       <div className="flex flex-col gap-2">
-        {CREDIT_PLACES.map((p) => (
+        {places.map((p) => (
           <PlaceRow
             key={p.id}
             place={p}
