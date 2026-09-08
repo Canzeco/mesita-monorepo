@@ -109,25 +109,33 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     }
   });
 
-  it("exactly ONE chip is parked, and it is WhatsApp", () => {
-    // MESITA-1652 said nothing here may be parked, on the ground that a dead
-    // chip in permanent chrome never scrolls away. That still holds — it is
-    // now a budget of one rather than zero (Pato, MESITA-1655), because the
-    // consumer has no WhatsApp axis at all: `consumers.phone` is the AUTH
-    // identity, `whatsapp_url` belongs to a place, and
-    // `staff_whatsapp_sessions.phone_e164` is the STAFF phone. Parked is the
-    // honest shape; printing the auth phone would also leak it, since this
-    // passport is public when `privacy_public` is on.
-    //
-    // A SECOND parked chip is the regression: two dead things in permanent
-    // chrome is a bar that mostly does not work.
-    const parked = [...bar.matchAll(/aria-label="(\w+): coming soon"/g)].map(
-      (m) => m[1],
-    );
-    expect(parked).toEqual(["WhatsApp"]);
-    // ...and it must be inert: a parked chip that is still a button lies.
-    // Exactly two handlers, so the parked one cannot quietly acquire a third.
+  it("NO chip is parked — the budget is back to zero", () => {
+    // MESITA-1652: a dead chip in permanent chrome never scrolls away. That
+    // held at zero, went to a budget of one when MESITA-1655 parked WhatsApp,
+    // and is back to zero now that the slot carries the login phone
+    // (MESITA-1657). The assertion inverts rather than being deleted — a
+    // parked chip reappearing up here is still the regression it was written
+    // for, whatever it is called.
+    expect(bar).not.toMatch(/coming soon/i);
+    expect(codeOnly(bar)).not.toMatch(/\bsoon\b/i);
+    // Two live doors, and only two: the phone and the name are display.
     expect([...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)]).toHaveLength(2);
+  });
+
+  it("the phone is DISPLAY, and formatted by the shared helper", () => {
+    // api/profile.ts: the phone is "not editable from the profile sheet" —
+    // it is the auth identity. A chip that opened an editor would promise a
+    // surface that does not exist.
+    //
+    // And it is formatted by `formatPhoneDisplay`, whose own doc says it
+    // exists so a number never renders as a raw digit run on the passport.
+    // A second formatter here is how two surfaces start printing the same
+    // number differently.
+    expect(importedFrom(bar, "@/lib/utils")).toContain("formatPhoneDisplay");
+    expect(bar).toContain("formatPhoneDisplay(profile?.phone)");
+    const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
+    const phoneChip = grid.slice(grid.indexOf("{phoneDisplay}") - 400, grid.indexOf("{phoneDisplay}"));
+    expect(phoneChip).not.toContain("<button");
   });
 
   it("is fixed by FLEX, not by sticky, and outside the scroller", () => {
@@ -195,7 +203,7 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(bar).toContain("flex flex-col items-center");
   });
 
-  it("reads Name · Class / WhatsApp · Instagram", () => {
+  it("reads Name · Class / Phone · Instagram", () => {
     // The drawing's order (Pato, MESITA-1656). It flips MESITA-1653's
     // "insta first, class second", which was a left-right call on a single
     // ROW and does not survive the 2x2 — so the pin moves rather than being
@@ -247,9 +255,9 @@ describe("the Passport is the page HEADER, and it is the door", () => {
   it("the skeleton mirrors the DESTINATION — same 2×2, same avatar maths", () => {
     const loading = bar.indexOf("{loading ? (");
     expect(loading).toBeGreaterThan(-1);
-    // 112 core + the 2px ring and 1.5px inset on both sides is 119.
-    expect(bar).toContain("h-[119px] w-[119px]");
-    expect(bar).toContain("h-28 w-28");
+    // 80 core + the 2px ring and 1.5px inset on both sides is 87.
+    expect(bar).toContain("h-[87px] w-[87px]");
+    expect(bar).toContain("h-20 w-20");
 
     const skeleton = bar.slice(loading, bar.indexOf(") : ("));
     const live = bar.slice(bar.indexOf(") : ("));
