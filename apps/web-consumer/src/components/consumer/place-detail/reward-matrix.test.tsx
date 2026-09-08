@@ -52,6 +52,31 @@ describe("the Rewards rate sheet names every priced rung", () => {
     expect(html).not.toContain("40%");
   });
 
+  it("makes the Premium row a button when free with an uplift to sell", () => {
+    const html = renderToStaticMarkup(
+      <PlanRow quote={QUOTE} plan="free" onPremiumTap={() => {}} />,
+    );
+    expect(html).toContain("<button");
+  });
+
+  it("leaves the Premium row inert already on Premium, even with uplift", () => {
+    const html = renderToStaticMarkup(
+      <PlanRow quote={QUOTE} plan="premium" onPremiumTap={() => {}} />,
+    );
+    expect(html).not.toContain("<button");
+  });
+
+  it("leaves the Premium row inert with nothing to sell", () => {
+    const html = renderToStaticMarkup(
+      <PlanRow
+        quote={{ ...QUOTE, breakdown: { ...QUOTE.breakdown!, planUplift: 0 } }}
+        plan="free"
+        onPremiumTap={() => {}}
+      />,
+    );
+    expect(html).not.toContain("<button");
+  });
+
   it("lists Welcome then Instagram Story, Google Review, Mesita Review", () => {
     const html = renderToStaticMarkup(<BonusList quote={QUOTE} />);
     const welcome = html.indexOf("Welcome");

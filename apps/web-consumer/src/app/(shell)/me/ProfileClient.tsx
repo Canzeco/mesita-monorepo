@@ -216,14 +216,16 @@ export function ProfileClient({
   // sheets, which have the whole width to spend.
   const planTile =
     plan === "premium" ? "Premium" : `Free · MX$${PREMIUM_PLAN_PRICE_MXN}/mo`;
-  // The ONE door to the plan sheet (MESITA-1619). Instrumented because the
-  // Passport tile it replaces carried no event at all: without this the
-  // change is unmeasurable in both directions, and "conversion moved" would
-  // be unattributable to the surface that moved it. `plan_open` is paired by
+  // A primary door to the plan sheet (MESITA-1619; place detail's Premium
+  // row opened a second one, MESITA-1620). Instrumented because the Passport
+  // tile it replaces carried no event at all: without this the change is
+  // unmeasurable in both directions, and "conversion moved" would be
+  // unattributable to the surface that moved it. `plan_open` is paired by
   // hand into consumer-web-track-event's allowlist — nothing enforces that at
-  // compile time, so `analytics-events-paired.test.ts` does.
+  // compile time, so `analytics-events-paired.test.ts` does. `source` tells
+  // the two doors apart in the one event they share.
   function openPlan() {
-    trackEvent(supabase, "plan_open");
+    trackEvent(supabase, "plan_open", { source: "me" });
     setPlanOpen(true);
   }
 
@@ -243,7 +245,6 @@ export function ProfileClient({
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-
           {/* The pair that replaces the card's doors. `Passport` is the only
               way into the document now, and its sheet carries the Instagram
               and Class rows — the only entrances to the connect flow and to
