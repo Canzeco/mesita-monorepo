@@ -1,14 +1,16 @@
 {
   "setup-worktree-unix": [
-    "for f in apps/web-admin/.env.local apps/web-business/.env.local apps/web-consumer/.env.local apps/web-landing/.env.local apps/mobile-consumer/.env supabase/.env supabase/.env.twilio.local; do test -f \"$ROOT_WORKTREE_PATH/$f\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
-    "test -d \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" && cp -R \"$ROOT_WORKTREE_PATH/supabase/supabase/.temp\" supabase/supabase/.temp || true"
+    "git -C \"$ROOT_WORKTREE_PATH\" ls-files -o -i --exclude-from=.worktreeinclude -z | while IFS= read -r -d '' f; do test -f \"$ROOT_WORKTREE_PATH/$f\" && mkdir -p \"$(dirname \"$f\")\" && cp \"$ROOT_WORKTREE_PATH/$f\" \"$f\" || true; done",
+    "echo 'mesita: seeded from .worktreeinclude; before the first write claim this worktree: deno task worktree add MESITA-<id> <slug> --adopt . (ASDM I-3)'"
   ],
   "setup-worktree-windows": [
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-admin\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-admin\\.env.local\" apps\\web-admin\\.env.local",
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-business\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-business\\.env.local\" apps\\web-business\\.env.local",
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-consumer\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-consumer\\.env.local\" apps\\web-consumer\\.env.local",
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-landing\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-landing\\.env.local\" apps\\web-landing\\.env.local",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\web-validate\\.env.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\web-validate\\.env.local\" apps\\web-validate\\.env.local",
     "if exist \"%ROOT_WORKTREE_PATH%\\apps\\mobile-consumer\\.env\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\mobile-consumer\\.env\" apps\\mobile-consumer\\.env",
+    "if exist \"%ROOT_WORKTREE_PATH%\\apps\\mobile-business\\.env\" copy /Y \"%ROOT_WORKTREE_PATH%\\apps\\mobile-business\\.env\" apps\\mobile-business\\.env",
     "if exist \"%ROOT_WORKTREE_PATH%\\supabase\\.env\" copy /Y \"%ROOT_WORKTREE_PATH%\\supabase\\.env\" supabase\\.env",
     "if exist \"%ROOT_WORKTREE_PATH%\\supabase\\.env.twilio.local\" copy /Y \"%ROOT_WORKTREE_PATH%\\supabase\\.env.twilio.local\" supabase\\.env.twilio.local",
     "if exist \"%ROOT_WORKTREE_PATH%\\supabase\\supabase\\.temp\" xcopy /E /I /Y \"%ROOT_WORKTREE_PATH%\\supabase\\supabase\\.temp\" supabase\\supabase\\.temp"

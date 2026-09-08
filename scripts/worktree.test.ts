@@ -1,27 +1,40 @@
 // Tests for scripts/worktree.ts on a throwaway git repo with a fake gh.
 // Every path goes through Deno.realPath on both sides (macOS: /var vs /private/var).
+//
+// The fixture deliberately does NOT enable extensions.worktreeConfig: a real clone never has
+// it either, and the script must turn it on itself before the first `git config --worktree`.
+// Fixture commits pass --no-verify because `add` installs the pre-commit gate, and only the
+// tests about the gate want to meet it. The suite must pass with CLAUDE_CODE_REMOTE both set and
+// unset in the parent environment (a cloud session runs it too): mode is always passed explicitly.
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
 import {
-  leave,
-  hostHash,
-  boot,
   add,
+  boot,
   classifyLanded,
+  type Cloud,
+  cloudFromEnv,
   composeClaim,
   decide,
   defaultRunner,
+  ensureWorktreeConfig,
   type Env,
   type Exec,
+  findWorkspace,
   FLEET_DIR,
   GhError,
+  hostHash,
   isClean,
+  isCloudPlatform,
+  leave,
   lockReason,
   parseClaim,
   parseLock,
   parseWorktreeList,
   pr,
+  preflight,
+  PREFLIGHT_SH,
   remove,
   repairLobby,
   sweep,
@@ -58,8 +71,27 @@ async function write(path: string, content: string) {
 async function commitFile(cwd: string, rel: string, content: string, msg: string): Promise<string> {
   await write(join(cwd, rel), content);
   await git(cwd, "add", rel);
-  await git(cwd, "commit", "-q", "-m", msg);
+  await git(cwd, "commit", "-q", "--no-verify", "-m", msg);
   return await git(cwd, "rev-parse", "HEAD");
+}
+
+/** A commit that MEETS the pre-commit gate: the exit code and stderr are the assertion. */
+async function gatedCommit(cwd: string, rel: string, msg: string): Promise<Exec> {
+  await write(join(cwd, rel), `${rel}\n`);
+  await git(cwd, "add", rel);
+  return await defaultRunner("git", ["-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", msg], { cwd });
+}
+
+/** The Claude Code PreToolUse hook, fed the stdin contract the harness uses. */
+async function claudeHook(input: Record<string, unknown>, env: Record<string, string> = {}): Promise<Exec> {
+  const c = new Deno.Command("bash", { args: [PREFLIGHT_SH, "claude"], stdin: "piped", stdout: "piped", stderr: "piped", env });
+  const child = c.spawn();
+  const w = child.stdin.getWriter();
+  await w.write(new TextEncoder().encode(JSON.stringify(input)));
+  await w.close();
+  const o = await child.output();
+  const dec = new TextDecoder();
+  return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };
 }
 
 async function makeFixture(): Promise<Fixture> {
@@ -68,7 +100,6 @@ async function makeFixture(): Promise<Fixture> {
   await git(tmp, "init", "-q", "--bare", "-b", "main", originPath);
   const main = join(tmp, "main");
   await git(tmp, "init", "-q", "-b", "main", main);
-  await git(main, "config", "extensions.worktreeConfig", "true");
   await write(join(main, ".gitignore"), ".env.local\n.claude/worktrees/\n");
   await write(join(main, ".worktreeinclude"), "apps/*/.env.local\n");
   await write(join(main, "apps/web/.env.local"), "SECRET=1\n");
@@ -80,7 +111,7 @@ async function makeFixture(): Promise<Fixture> {
   return { tmp, main, originPath, prsByOid: new Map(), prsByHead: new Map(), calls: [] };
 }
 
-function makeEnv(f: Fixture, opts: { cwd?: string; now?: () => Date; host?: string } = {}): Env & { log: (l: string) => void; lines: string[] } {
+function makeEnv(f: Fixture, opts: { cwd?: string; now?: () => Date; host?: string; cloud?: Cloud } = {}): Env & { log: (l: string) => void; lines: string[] } {
   const lines: string[] = [];
   const runner = async (cmd: string, args: string[], o?: { cwd?: string }): Promise<Exec> => {
     if (cmd !== "gh") return await defaultRunner(cmd, args, o);
@@ -114,8 +145,19 @@ function makeEnv(f: Fixture, opts: { cwd?: string; now?: () => Date; host?: stri
     log: (l) => lines.push(l),
     lines,
     sleep: () => Promise.resolve(),
+    cloud: opts.cloud ?? null,
   };
 }
+
+/** A cloud session's clone: fresh, single worktree, on a harness-named branch, no extension, no fleet. */
+async function makeClone(f: Fixture, branch = "claude/some-task-abc123"): Promise<string> {
+  const clone = join(f.tmp, `clone-${Math.random().toString(36).slice(2, 8)}`);
+  await git(f.tmp, "clone", "-q", f.originPath, clone);
+  if (branch !== "main") await git(clone, "switch", "-q", "-c", branch);
+  return await Deno.realPath(clone);
+}
+
+const CLOUD: Cloud = { platform: "claude-code-cloud", session: "cse_01TEST" };
 
 /** A worktree with one commit on a branch, made through git directly (the harness way). */
 async function rawWorktree(f: Fixture, name: string, branch: string, opts: { commit?: boolean } = { commit: true }): Promise<{ path: string; tip: string }> {
@@ -200,7 +242,9 @@ Deno.test("decide keeps the shared checkout, the cwd, active, locked, unclean an
 Deno.test("add creates a claimed, seeded, locked workspace under the main worktree and prints the claim", async () => {
   const f = await makeFixture();
   const env = makeEnv(f);
+  assertEquals((await defaultRunner("git", ["config", "--get", "extensions.worktreeConfig"], { cwd: f.main })).code, 1, "a real clone starts without the extension");
   const out = await add(env, { id: "MESITA-7", slug: "seven", footprint: "scripts/" });
+  assertEquals(await git(f.main, "config", "--get", "extensions.worktreeConfig"), "true", "add turns the extension on, or the claim step is fatal");
   const path = join(f.main, FLEET_DIR, "MESITA-7-seven");
   assertEquals(await git(path, "rev-parse", "--abbrev-ref", "HEAD"), "claude/MESITA-7-seven");
   assertEquals(await Deno.readTextFile(join(path, "apps/web/.env.local")), "SECRET=1\n");
@@ -209,11 +253,69 @@ Deno.test("add creates a claimed, seeded, locked workspace under the main worktr
   const list = parseWorktreeList(await git(f.main, "worktree", "list", "--porcelain", "-z"));
   const row = list.find((r) => r.path.endsWith("MESITA-7-seven"))!;
   assert(row.locked && parseLock(row.lockReason).ours);
-  assertStringIncludes(out.join("\n"), "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=.claude/worktrees/MESITA-7-seven footprint=scripts/");
-  assertStringIncludes(out.join("\n"), "seeded 1 file(s)");
-  await assertRejects(() => add(env, { id: "MESITA-7", slug: "seven" }), WtError, "EXISTS");
+  const text = out.join("\n");
+  assertStringIncludes(text, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=.claude/worktrees/MESITA-7-seven footprint=scripts/");
+  assertStringIncludes(text, "seeded 1 file(s)");
+  assertStringIncludes(text, "ok: workspace", "the claim is verified through the gate (I-9)");
+  assertStringIncludes(text, "Cursor: open that worktree; Codex: cd", "the enter step names every platform, not only EnterWorktree");
   await assertRejects(() => add(env, { id: "bad" }), WtError, "INVALID ID");
   await assertRejects(() => add(env, { id: "MESITA-8", platform: "vim" }), WtError, "INVALID PLATFORM");
+});
+
+Deno.test("ensureWorktreeConfig is idempotent and carries core.worktree into the main worktree's own file", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await git(f.main, "config", "core.worktree", f.main);
+  assertEquals(await ensureWorktreeConfig(env, f.main), true);
+  assertEquals(await ensureWorktreeConfig(env, f.main), false);
+  assertEquals(await git(f.main, "config", "--get", "extensions.worktreeConfig"), "true");
+  assertEquals((await defaultRunner("git", ["config", "--local", "--get", "core.worktree"], { cwd: f.main })).code, 1, "moved out of the shared file");
+  assertEquals(await git(f.main, "config", "--worktree", "--get", "core.worktree"), f.main);
+});
+
+Deno.test("add resumes the live workspace an issue already has, under any slug, and never doubles it", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-7", slug: "seven", footprint: "apps/web/" });
+  const again = (await add(env, { id: "MESITA-7", slug: "other" })).join("\n");
+  assertStringIncludes(again, "resumed .claude/worktrees/MESITA-7-seven on claude/MESITA-7-seven: MESITA-7 already has this workspace");
+  assertStringIncludes(again, "claimed platform=claude-code host=t3st branch=claude/MESITA-7-seven worktree=.claude/worktrees/MESITA-7-seven footprint=apps/web/", "a resume keeps the claim's footprint");
+  const rows = parseWorktreeList(await git(f.main, "worktree", "list", "--porcelain", "-z"));
+  assertEquals(rows.filter((r) => r.branch?.includes("MESITA-7")).length, 1, "one workspace per issue");
+  assertEquals((await defaultRunner("git", ["rev-parse", "--verify", "--quiet", "refs/heads/claude/MESITA-7-other"], { cwd: f.main })).code, 1, "no second branch");
+  const lane = await rawWorktree(f, "lane", "claude/lane", { commit: false });
+  await assertRejects(() => add(env, { id: "MESITA-7", adopt: lane.path }), WtError, "CLAIMED");
+  assertEquals((await defaultRunner("git", ["config", "--worktree", "--get", "mesita.issue"], { cwd: lane.path })).code, 1, "the second path stays unclaimed");
+  const found = await findWorkspace(env, f.main, rows, "MESITA-7");
+  assert(found?.path.endsWith("MESITA-7-seven"));
+});
+
+Deno.test("add re-attaches a loose branch that carries the id instead of cutting a second one", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  const old = await rawWorktree(f, "old", "claude/MESITA-8-old");
+  await git(f.main, "worktree", "remove", old.path);
+  const out = (await add(env, { id: "MESITA-8", slug: "new" })).join("\n");
+  assertStringIncludes(out, "re-attached branch claude/MESITA-8-old at .claude/worktrees/MESITA-8-new");
+  assertStringIncludes(out, "branch=claude/MESITA-8-old worktree=.claude/worktrees/MESITA-8-new");
+  const path = join(f.main, FLEET_DIR, "MESITA-8-new");
+  assertEquals(await git(path, "rev-parse", "HEAD"), old.tip, "the branch and its commits came back");
+  assertEquals(await git(path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-8");
+  assertEquals((await defaultRunner("git", ["rev-parse", "--verify", "--quiet", "refs/heads/claude/MESITA-8-new"], { cwd: f.main })).code, 1);
+});
+
+Deno.test("adopt takes any registered worktree (Cursor worktree mode lives outside the fleet dir), never the shared checkout", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  const cursorPath = join(f.tmp, "cursor-lane");
+  await git(f.main, "worktree", "add", "-q", cursorPath, "-b", "cursor/lane", "origin/main");
+  const out = (await add(env, { id: "MESITA-12", adopt: cursorPath, platform: "cursor" })).join("\n");
+  assertStringIncludes(out, "renamed branch cursor/lane → cursor/MESITA-12-lane");
+  assertStringIncludes(out, "claimed platform=cursor host=t3st branch=cursor/MESITA-12-lane worktree=../cursor-lane");
+  assertEquals(await git(cursorPath, "config", "--worktree", "--get", "mesita.issue"), "MESITA-12");
+  assertEquals(await Deno.readTextFile(join(cursorPath, "apps/web/.env.local")), "SECRET=1\n", "seeded from .worktreeinclude like any workspace");
+  await assertRejects(() => add(env, { id: "MESITA-13", adopt: f.main }), WtError, "NOT ADOPTABLE");
+  await assertRejects(() => add(env, { id: "MESITA-13", adopt: join(f.tmp, "nowhere") }), WtError, "NOT ADOPTABLE");
 });
 
 Deno.test("add anchors on the main worktree even when run from a linked worktree, and adopts an unclaimed one", async () => {
@@ -230,6 +332,140 @@ Deno.test("add anchors on the main worktree even when run from a linked worktree
   assertEquals(await git(w.path, "config", "--worktree", "--get", "mesita.issue"), "MESITA-10");
   await assertRejects(() => add(env, { id: "MESITA-11", adopt: w.path }), WtError, "NOT A LOBBY");
   await assertRejects(() => add(env, { id: "MESITA-11", adopt: f.main }), WtError, "NOT ADOPTABLE");
+  // The main worktree never claims locally, whatever branch someone parked it on.
+  await git(f.main, "switch", "-q", "-c", "pato/MESITA-11-by-hand");
+  await assertRejects(() => add(env, { id: "MESITA-11", adopt: f.main }), WtError, "NOT ADOPTABLE");
+  await git(f.main, "switch", "-q", "main");
+});
+
+// ── cloud: the clone is the workspace ───────────────────────────────────────
+
+Deno.test("cloud: boot reads the clone instead of repairing it, add --adopt . claims the clone itself, a second issue is refused, resume finds it", async () => {
+  const f = await makeFixture();
+  const clone = await makeClone(f);
+  const env = makeEnv(f, { cwd: clone, cloud: CLOUD });
+  const before = (await boot(env)).join("\n");
+  assertStringIncludes(before, "where: cloud clone on claude/some-task-abc123 with no claim");
+  assertStringIncludes(before, "fleet: none here");
+  assertStringIncludes(before, "preflight: UNCLAIMED CLONE");
+  const out = (await add(env, { id: "MESITA-30", slug: "audit", adopt: ".", footprint: "scripts/" })).join("\n");
+  assertStringIncludes(out, "renamed branch claude/some-task-abc123 → claude/MESITA-30-audit");
+  assertStringIncludes(out, "claimed platform=claude-code-cloud host=t3st branch=claude/MESITA-30-audit worktree=cloud:cse_01TEST footprint=scripts/");
+  assertStringIncludes(out, "ok: cloud clone");
+  assertStringIncludes(out, "this clone is the workspace");
+  assert(!out.includes("EnterWorktree"), "no nested worktree in the cloud");
+  assertEquals(await git(clone, "config", "--worktree", "--get", "mesita.issue"), "MESITA-30");
+  assertEquals(await git(clone, "config", "--worktree", "--get", "mesita.session"), "cse_01TEST");
+  assertEquals(parseWorktreeList(await git(clone, "worktree", "list", "--porcelain", "-z")).length, 1, "the clone stays a single worktree");
+  const after = (await boot(env)).join("\n");
+  assertStringIncludes(after, "claimed by MESITA-30 (session cse_01TEST): resume it");
+  await assertRejects(() => add(env, { id: "MESITA-31", slug: "second", adopt: "." }), WtError, "NOT A LOBBY");
+  assertEquals(await git(clone, "config", "--worktree", "--get", "mesita.issue"), "MESITA-30", "the second issue changed nothing");
+  const resumed = (await add(env, { id: "MESITA-30", slug: "whatever" })).join("\n");
+  assertStringIncludes(resumed, "resumed . on claude/MESITA-30-audit: MESITA-30 already has this workspace");
+  await assertRejects(() => repairLobby(env, clone, { apply: true }), WtError, "NO LOBBY");
+  await assertRejects(() => sweep(env, { apply: false }), WtError, "NO LOBBY");
+});
+
+Deno.test("cloud: a harness branch that already names the issue is kept; a clone on main is the shared checkout; local sessions never claim the main worktree", async () => {
+  const f = await makeFixture();
+  const named = await makeClone(f, "claude/MESITA-40-from-the-title-1a2b3c");
+  const env = makeEnv(f, { cwd: named, cloud: { platform: "claude-code-cloud", session: null } });
+  const out = (await add(env, { id: "MESITA-40", adopt: "." })).join("\n");
+  assert(!out.includes("renamed branch"), "the id is already in the name");
+  assertStringIncludes(out, "branch=claude/MESITA-40-from-the-title-1a2b3c worktree=cloud:clone");
+  const onMain = await makeClone(f, "main");
+  await assertRejects(() => add(makeEnv(f, { cwd: onMain, cloud: CLOUD }), { id: "MESITA-41", adopt: "." }), WtError, "NOT ADOPTABLE");
+  const local = await makeClone(f, "claude/hand-made");
+  await assertRejects(() => add(makeEnv(f, { cwd: local }), { id: "MESITA-42", adopt: "." }), WtError, "NOT ADOPTABLE");
+  assertEquals(cloudFromEnv((k) => ({ CLAUDE_CODE_REMOTE: "true", CLAUDE_CODE_REMOTE_SESSION_ID: "cse_9" })[k]), { platform: "claude-code-cloud", session: "cse_9" });
+  assertEquals(cloudFromEnv(() => undefined), null);
+  assert(isCloudPlatform("cursor-cloud") && !isCloudPlatform("cursor"));
+});
+
+// ── the write gate (scripts/preflight.sh) ───────────────────────────────────
+
+Deno.test("preflight refuses the shared checkout and an unclaimed worktree, passes a claimed one, and catches a branch switch inside it", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  const shared = await preflight(env, f.main);
+  assert(!shared.ok);
+  assertStringIncludes(shared.line, "SHARED CHECKOUT");
+  assertStringIncludes(shared.line, "non-code work needs no workspace");
+  const lane = await rawWorktree(f, "launch", "claude/launch-1a2b3c", { commit: false });
+  const unclaimed = await preflight(env, lane.path);
+  assert(!unclaimed.ok);
+  assertStringIncludes(unclaimed.line, `UNCLAIMED WORKTREE: ${lane.path} on claude/launch-1a2b3c`);
+  assertStringIncludes(unclaimed.line, `--adopt ${lane.path}`);
+  await add(env, { id: "MESITA-50", adopt: lane.path });
+  const claimed = await preflight(env, join(lane.path, "apps", "not-yet-there.ts"));
+  assert(claimed.ok, claimed.line);
+  assertStringIncludes(claimed.line, `ok: workspace ${lane.path} claimed by MESITA-50 on claude/MESITA-50-launch-1a2b3c`);
+  await git(lane.path, "switch", "-q", "-c", "claude/MESITA-51-second");
+  const switched = await preflight(env, lane.path);
+  assert(!switched.ok);
+  assertStringIncludes(switched.line, "CLAIM MISMATCH");
+  assertStringIncludes(switched.line, "claimed by MESITA-50 but sits on claude/MESITA-51-second");
+  const outside = await preflight(env, f.tmp);
+  assert(outside.ok && outside.line.includes("outside any git checkout"));
+});
+
+Deno.test("the pre-commit hook add installs refuses a commit in the shared checkout and lets the claimed workspace commit", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  await add(env, { id: "MESITA-60", slug: "sixty" });
+  const hook = await Deno.readTextFile(join(f.main, ".git", "hooks", "pre-commit"));
+  assertStringIncludes(hook, "mesita preflight");
+  const lobby = await gatedCommit(f.main, "lobby.txt", "work in the lobby");
+  assertEquals(lobby.code, 1);
+  assertStringIncludes(lobby.stderr, "PREFLIGHT REFUSED commit");
+  assertStringIncludes(lobby.stderr, "SHARED CHECKOUT");
+  await git(f.main, "reset", "-q");
+  const ws = await gatedCommit(join(f.main, FLEET_DIR, "MESITA-60-sixty"), "ok.txt", "work in the workspace");
+  assertEquals(ws.code, 0, ws.stderr);
+  const foreign = await rawWorktree(f, "foreign", "claude/foreign-9f9f9f", { commit: false });
+  const unclaimed = await gatedCommit(foreign.path, "x.txt", "work in an unclaimed worktree");
+  assertEquals(unclaimed.code, 1);
+  assertStringIncludes(unclaimed.stderr, "UNCLAIMED WORKTREE");
+});
+
+Deno.test("the Claude Code hook refuses Edit/Write in the shared checkout and in an unclaimed worktree, allows a claimed workspace and paths outside the fleet", async () => {
+  const f = await makeFixture();
+  const env = makeEnv(f);
+  const refused = await claudeHook({ cwd: f.main, tool_name: "Edit", tool_input: { file_path: join(f.main, "CLAUDE.md") } });
+  assertEquals(refused.code, 2, "exit 2 is the harness's unconditional refusal");
+  assertStringIncludes(refused.stderr, "PREFLIGHT REFUSED Edit");
+  assertStringIncludes(refused.stderr, "SHARED CHECKOUT");
+  const lane = await rawWorktree(f, "lane", "claude/lane-abc", { commit: false });
+  const unclaimed = await claudeHook({ cwd: lane.path, tool_name: "Write", tool_input: { file_path: "apps/new.ts" } });
+  assertEquals(unclaimed.code, 2);
+  assertStringIncludes(unclaimed.stderr, "UNCLAIMED WORKTREE");
+  await add(env, { id: "MESITA-70", adopt: lane.path });
+  const allowed = await claudeHook({ cwd: lane.path, tool_name: "Write", tool_input: { file_path: "apps/new.ts" } });
+  assertEquals(allowed.code, 0, allowed.stderr);
+  // A launch dir stays the project dir after EnterWorktree; cwd follows the worktree. An absolute path into the lobby is still the lobby.
+  const escape = await claudeHook({ cwd: lane.path, tool_name: "Edit", tool_input: { file_path: join(f.main, "README") } }, { CLAUDE_PROJECT_DIR: f.main });
+  assertEquals(escape.code, 2);
+  const scratch = await claudeHook({ cwd: f.main, tool_name: "Write", tool_input: { file_path: join(f.tmp, "scratch", "notes.md") } });
+  assertEquals(scratch.code, 0, "outside any git checkout is not a repository write");
+  const other = join(f.tmp, "other-repo");
+  await git(f.tmp, "init", "-q", other);
+  const foreign = await claudeHook({ cwd: other, tool_name: "Write", tool_input: { file_path: join(other, "a.txt") } }, { CLAUDE_PROJECT_DIR: f.main });
+  assertEquals(foreign.code, 0, "another repository is not this fleet's law");
+  const notebook = await claudeHook({ cwd: f.main, tool_name: "NotebookEdit", tool_input: { notebook_path: join(f.main, "n.ipynb") } });
+  assertEquals(notebook.code, 2);
+});
+
+Deno.test("the Claude Code hook on a cloud clone: refused until the clone is claimed, then allowed", async () => {
+  const f = await makeFixture();
+  const clone = await makeClone(f);
+  const refused = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { CLAUDE_CODE_REMOTE: "true" });
+  assertEquals(refused.code, 2);
+  assertStringIncludes(refused.stderr, "UNCLAIMED CLONE");
+  assertStringIncludes(refused.stderr, "--adopt .");
+  await add(makeEnv(f, { cwd: clone, cloud: CLOUD }), { id: "MESITA-80", slug: "cloud", adopt: "." });
+  const allowed = await claudeHook({ cwd: clone, tool_name: "Write", tool_input: { file_path: join(clone, "x.ts") } }, { CLAUDE_CODE_REMOTE: "true" });
+  assertEquals(allowed.code, 0, allowed.stderr);
 });
 
 // ── classifyLanded (I-10) ───────────────────────────────────────────────────

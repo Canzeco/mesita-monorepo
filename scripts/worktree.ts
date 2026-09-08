@@ -1,25 +1,44 @@
 // scripts/worktree.ts — the fleet tool behind ASDM I-3, I-4, I-6, I-9 and I-10.
 //
 //   deno task boot                                   where am I, the shared-checkout checks, the fleet, my resumable workspaces
-//   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor] [--footprint <paths>] [--adopt <path>]
+//   deno task worktree add MESITA-<id> [slug] [--platform claude-code|codex|cursor|claude-code-cloud|cursor-cloud] [--footprint <paths>] [--adopt <path>]
+//   deno task worktree preflight [path]              may this checkout receive writes? the verdict scripts/preflight.sh gives every hook
 //   deno task worktree pr                            adopt or open the PR for this workspace; the body carries Closes MESITA-<id>
 //   deno task worktree remove MESITA-<id>            from a lobby: unlock, remove, back the branch up under refs/swept/, delete it
 //   deno task worktree leave MESITA-<id>             a launch worktree after its issue landed: unlock, clear the claim, keep the checkout and branch
 //   deno task worktree sweep [--apply]               dry-run by default; --apply removes proven-landed, clean, inactive workspaces
 //   deno task worktree repair-lobby                  the shared checkout holds no work of its own (I-4), idempotent
 //
-// git and gh only, through argv arrays (never a shell). Linear is the agent's job: this
-// script prints the claim line and the sweep table; it never reads or writes the ledger.
-// Deno's own writes are the seeded files copied into a new workspace; every other
-// mutation is a git subprocess, which is why the task line grants --allow-write broadly
-// and --allow-run to git and gh only. Output prints paths, never file contents.
+// `add` never makes a second workspace for an issue that has one: it resumes the live one
+// (any slug, any registered path), re-attaches a loose branch that carries the id, and
+// refuses `--adopt` of another path while the issue lives elsewhere (I-3).
+//
+// Cloud mode (CLAUDE_CODE_REMOTE=true, or --platform *-cloud): the fresh clone IS the
+// workspace, so `add MESITA-<id> <slug> --adopt .` claims the main worktree itself (never a
+// nested worktree), the claim line reads worktree=cloud:<session>, and boot / sweep /
+// repair-lobby stop treating the clone as the shared checkout. Locally the main worktree
+// is the lobby and stays unclaimable.
+//
+// Claims are `git config --worktree` keys, which git refuses in a multi-worktree repo until
+// extensions.worktreeConfig is on; every command turns it on first (the one repair that
+// made the claim step work at all outside the test fixture).
+//
+// git and gh only, through argv arrays (never a shell), plus bash for scripts/preflight.sh,
+// the write gate every hook shares. Linear is the agent's job: this script prints the
+// claim line and the sweep table; it never reads or writes the ledger. Deno's own writes
+// are the seeded files copied into a new workspace; every other mutation is a git
+// subprocess, which is why the task line grants --allow-write broadly and --allow-run to
+// git, gh and bash only. Output prints paths, never file contents.
 
-import { dirname, join, relative, resolve } from "@std/path";
+import { dirname, fromFileUrl, join, relative, resolve } from "@std/path";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type Exec = { code: number; stdout: string; stderr: string };
-export type Runner = (cmd: string, args: string[], opts?: { cwd?: string }) => Promise<Exec>;
+export type Runner = (cmd: string, args: string[], opts?: { cwd?: string; env?: Record<string, string> }) => Promise<Exec>;
+
+/** A cloud session: the clone is the workspace; `session` is the harness id the claim line names. */
+export type Cloud = { platform: string; session: string | null };
 
 export type Env = {
   runner: Runner;
@@ -28,6 +47,7 @@ export type Env = {
   cwd: string;
   log: (line: string) => void;
   sleep: (ms: number) => Promise<void>;
+  cloud: Cloud | null;
 };
 
 export type Row = {
@@ -73,9 +93,25 @@ export const DRAFT_POLL_MS = 10_000;
 
 export const PLATFORM_PREFIX: Record<string, string> = {
   "claude-code": "claude",
+  "claude-code-cloud": "claude",
   codex: "agent",
   cursor: "cursor",
+  "cursor-cloud": "cursor",
 };
+
+/** A `*-cloud` token is the only claim the main worktree may carry: the clone is the workspace. */
+export function isCloudPlatform(platform: string): boolean {
+  return platform.endsWith("-cloud");
+}
+
+/** Claude Code on the web sets CLAUDE_CODE_REMOTE; Cursor cloud declares itself with --platform cursor-cloud. */
+export function cloudFromEnv(get: (key: string) => string | undefined): Cloud | null {
+  if (get("CLAUDE_CODE_REMOTE") === "true") return { platform: "claude-code-cloud", session: get("CLAUDE_CODE_REMOTE_SESSION_ID") ?? null };
+  return null;
+}
+
+/** The write gate every hook shares; this script delegates to it rather than restating the rule. */
+export const PREFLIGHT_SH = join(dirname(fromFileUrl(import.meta.url)), "preflight.sh");
 
 // ── Errors (house style, scripts/sync-rules.ts): WHAT: what — why — fix (where) ───
 
@@ -244,6 +280,23 @@ export async function listFleet(env: Env, anyCwd: string): Promise<Row[]> {
   return rows;
 }
 
+/**
+ * `git config --worktree` is fatal in a repo with several worktrees until extensions.worktreeConfig
+ * is on, and nothing turns it on by itself: without this, `add` created the worktree and then died
+ * on the claim step (no config, no lock, no claim line). core.worktree, when set, moves into the
+ * main worktree's own file as git's manual prescribes; core.bare=false applies to every worktree
+ * either way. Idempotent.
+ */
+export async function ensureWorktreeConfig(env: Env, main: string): Promise<boolean> {
+  const on = await git(env, main, "config", "--get", "extensions.worktreeConfig");
+  if (on.code === 0 && on.stdout.trim() === "true") return false;
+  const coreWorktree = await git(env, main, "config", "--get", "core.worktree");
+  if (coreWorktree.code === 0) await gitOk(env, main, "config", "--unset", "core.worktree");
+  await gitOk(env, main, "config", "extensions.worktreeConfig", "true");
+  if (coreWorktree.code === 0) await gitOk(env, main, "config", "--worktree", "core.worktree", coreWorktree.stdout.trim());
+  return true;
+}
+
 /** The main worktree anchors every path; the first entry of `git worktree list` is it. */
 export async function mainWorktree(env: Env): Promise<{ main: string; rows: Row[] }> {
   const probe = await git(env, env.cwd, "rev-parse", "--show-toplevel");
@@ -254,7 +307,31 @@ export async function mainWorktree(env: Env): Promise<{ main: string; rows: Row[
   if (rows.length === 0 || rows[0].bare) {
     throw new WtError("NO MAIN WORKTREE", env.cwd, "the fleet has no main worktree entry", "run from the repo checkout", "I-3");
   }
+  await ensureWorktreeConfig(env, rows[0].path);
   return { main: rows[0].path, rows };
+}
+
+/** The claim a checkout carries: the config key, else the id its branch names (harness or hand-made branches). */
+async function claimOf(env: Env, row: Row): Promise<string | null> {
+  return await worktreeConfig(env, row.path, "mesita.issue") ?? issueFromBranch(row.branch);
+}
+
+// ── preflight (the gate) ────────────────────────────────────────────────────
+
+/** `scripts/preflight.sh check <path>`: the verdict every hook gives, so add can verify what it made (I-9). */
+export async function preflight(env: Env, path: string): Promise<{ ok: boolean; line: string }> {
+  // No cwd: the path may not exist yet (a file about to be written); the script walks up itself.
+  // The mode is passed explicitly: the gate must not guess it from whatever CLAUDE_CODE_REMOTE the
+  // parent process happens to carry (a cloud session running the local suite, or the reverse).
+  const r = await env.runner("bash", [PREFLIGHT_SH, "check", path], { env: { MESITA_CLOUD: env.cloud ? "1" : "0" } });
+  const first = (r.stdout.trim() || r.stderr.trim()).split("\n")[0] ?? "";
+  return { ok: r.code === 0, line: first.replace(/^preflight: /, "") };
+}
+
+/** The pre-commit wrapper in the fleet's common hooks dir: the same gate for Cursor, Codex and humans. */
+export async function installHook(env: Env, main: string): Promise<string> {
+  const r = await env.runner("bash", [PREFLIGHT_SH, "install-hook", main], { cwd: main });
+  return (r.stdout.trim() || r.stderr.trim() || `hook install exited ${r.code}`).replace(/^preflight: /, "");
 }
 
 async function worktreeConfig(env: Env, path: string, key: string): Promise<string | null> {
@@ -432,6 +509,9 @@ export function toJson(main: string, fleet: Fleet[]): string {
 // ── repair-lobby (I-4) ──────────────────────────────────────────────────────
 
 export async function repairLobby(env: Env, main: string, opts: { apply: boolean }): Promise<string[]> {
+  if (env.cloud) {
+    throw new WtError("NO LOBBY", main, "a cloud clone is one workspace, not the shared checkout", "nothing to repair or sweep here; fleet hygiene runs from the fleet's host", "I-4");
+  }
   const notes: string[] = [];
   const fetch = await git(env, main, "fetch", "--quiet", "origin", "main");
   if (fetch.code !== 0) throw new WtError("FETCH FAILED", fetch.stderr.trim() || "git fetch origin main", "offline or not authenticated", "retry with network, or gh auth login", "I-4");
@@ -500,34 +580,91 @@ export async function seedFrom(env: Env, main: string, target: string): Promise<
   return { copied, missing: files.length === 0 };
 }
 
-async function claimWorkspace(env: Env, main: string, path: string, issue: string, platform: string): Promise<void> {
+async function claimWorkspace(env: Env, main: string, path: string, issue: string, platform: string, footprint: string): Promise<void> {
   const now = env.now();
   await gitOk(env, path, "config", "--worktree", "mesita.issue", issue);
   await gitOk(env, path, "config", "--worktree", "mesita.platform", platform);
   await gitOk(env, path, "config", "--worktree", "mesita.claimedAt", now.toISOString());
   await gitOk(env, path, "config", "--worktree", "mesita.host", env.host);
+  await gitOk(env, path, "config", "--worktree", "mesita.footprint", footprint || "none");
+  if (path === main) {
+    // A cloud clone: git cannot lock the main worktree, and the session id is what a later
+    // visit resumes by. The claim dies with the container; Closes flips the issue at merge.
+    await gitOk(env, path, "config", "--worktree", "mesita.session", env.cloud?.session ?? "clone");
+    return;
+  }
   const lock = await git(env, main, "worktree", "lock", "--reason", lockReason(issue, now), path);
   if (lock.code !== 0 && !/already locked/.test(lock.stderr)) {
     throw new WtError("GIT FAILED", "git worktree lock", lock.stderr.trim(), "check the worktree registration", "I-9");
   }
 }
 
+/** The one workspace an issue may have: a registered checkout claimed for it, or whose branch names it (I-3). */
+export async function findWorkspace(env: Env, main: string, rows: Row[], id: string): Promise<Row | null> {
+  for (const r of rows) {
+    if (r.prunable || r.bare) continue;
+    if (r.path === main) {
+      // The lobby's branch never claims (it sits on main); a cloud clone claims through its config.
+      const claim = await worktreeConfig(env, main, "mesita.issue") ?? (env.cloud ? issueFromBranch(r.branch) : null);
+      if (claim === id) return r;
+      continue;
+    }
+    if (await claimOf(env, r) === id) return r;
+  }
+  return null;
+}
+
+/** A local branch carrying the id that no worktree checks out: re-attached rather than duplicated. */
+async function looseBranchOf(env: Env, main: string, rows: Row[], id: string): Promise<string | null> {
+  const attached = new Set(rows.map((r) => r.branch));
+  const refs = (await gitOk(env, main, "for-each-ref", "--format=%(refname:short)", "refs/heads/")).split("\n").filter(Boolean);
+  return refs.find((b) => !attached.has(b) && !b.startsWith("backup/") && issueFromBranch(b) === id) ?? null;
+}
+
+function enterLine(main: string, target: string, id: string): string {
+  return `next: enter ${relative(main, target)} (Claude Code: EnterWorktree path=${target}; Cursor: open that worktree; Codex: cd ${target}), move ${id} to In Progress, paste the claim line`;
+}
+
 export async function add(env: Env, args: { id: string; slug?: string; platform?: string; footprint?: string; adopt?: string }): Promise<string[]> {
   const id = validateId(args.id);
-  const platform = args.platform ?? "claude-code";
+  const platform = args.platform ?? env.cloud?.platform ?? "claude-code";
   const prefix = PLATFORM_PREFIX[platform];
   if (!prefix) throw new WtError("INVALID PLATFORM", platform, `known tokens: ${Object.keys(PLATFORM_PREFIX).join(", ")}`, "pass --platform <token>", "I-6");
   const { main, rows } = await mainWorktree(env);
   const out: string[] = [];
-  if (args.adopt) {
-    const target = await realpath(args.adopt);
+
+  // One workspace per issue (I-3): a live one is resumed, whatever its slug or path, never doubled.
+  const live = await findWorkspace(env, main, rows, id);
+  let adopt = args.adopt ? await realpath(resolve(env.cwd, args.adopt)) : undefined;
+  if (live && adopt && adopt !== live.path) {
+    throw new WtError("CLAIMED", `${id} lives at ${relative(main, live.path) || "."} on ${live.branch ?? "(detached)"}`, "an issue has one workspace", `resume it: deno task worktree add ${id} (no --adopt), or remove it first`, "I-3");
+  }
+  // A resume keeps the footprint the claim was made with unless a new one is passed.
+  let footprint = args.footprint ?? "";
+  if (live && !adopt) {
+    adopt = live.path;
+    out.push(`resumed ${relative(main, live.path) || "."} on ${live.branch ?? "(detached)"}: ${id} already has this workspace`);
+    if (!footprint) footprint = (await worktreeConfig(env, live.path, "mesita.footprint") ?? "").replace(/^none$/, "");
+  }
+
+  if (adopt) {
+    const target = adopt;
     const row = rows.find((r) => r.path === target);
-    const fleetDir = join(main, FLEET_DIR);
-    if (!row || target === main || !target.startsWith(fleetDir + "/")) {
-      throw new WtError("NOT ADOPTABLE", args.adopt, `only a registered worktree under ${FLEET_DIR}/ can be adopted`, "run deno task worktree add without --adopt to create one", "I-3");
+    if (!row) throw new WtError("NOT ADOPTABLE", args.adopt ?? target, "only a registered worktree can be adopted (git worktree list)", "run deno task worktree add without --adopt to create one", "I-3");
+    if (target === main) {
+      // The main worktree is the shared checkout everywhere but the cloud, where the fresh clone is the workspace.
+      if (!isCloudPlatform(platform)) {
+        throw new WtError("NOT ADOPTABLE", relative(main, target) || ".", "the shared checkout is a lobby, never a workspace (I-4); only a cloud clone claims its main worktree", "locally: deno task worktree add without --adopt; in the cloud: --platform claude-code-cloud (set by CLAUDE_CODE_REMOTE) or cursor-cloud", "I-4");
+      }
+      if (row.branch === "main") {
+        throw new WtError("NOT ADOPTABLE", relative(main, target) || ".", "a clone sitting on main is the shared checkout, not a cloud workspace (I-4)", "git switch -c <prefix>/MESITA-<id>-<slug> first, then --adopt .", "I-4");
+      }
     }
     const existing = await worktreeConfig(env, target, "mesita.issue");
     if (existing && existing !== id) {
+      if (target === main) {
+        throw new WtError("NOT A LOBBY", `this clone is claimed by ${existing}`, "a cloud clone serves one issue; a second issue is a second session", "finish or hand off the first issue here, and start another session for the second", "I-3");
+      }
       // A claim whose PR merged and whose tree is clean is a lobby nobody cleared (MESITA-1577): clear it and go on. A tip still on main is a live claim with no work yet, never adopted over.
       const { landed } = await classifyLanded(env, main, row.head, row.branch);
       const merged = isLanded(landed) && landed!.kind !== "on-main";
@@ -540,7 +677,7 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
     }
     // closes.yml reads the issue id off the branch name, so a harness-named branch is renamed in place.
     let branch = row.branch;
-    if (branch && !branch.includes(id)) {
+    if (branch && issueFromBranch(branch) !== id) {
       const tail = branch.split("/").pop() ?? "work";
       const slug = validateSlug(args.slug ?? (SLUG_RE.test(tail) && tail.length <= 40 ? tail : "work"));
       const renamed = `${prefix}/${id}-${slug}`;
@@ -549,12 +686,20 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
       out.push(`renamed branch ${branch} → ${renamed} (closes.yml wants the id in the branch name)`);
       branch = renamed;
     }
-    const seed = await seedFrom(env, main, target);
-    if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
-    await claimWorkspace(env, main, target, id, platform);
-    out.push(composeClaim({ platform, host: env.host, branch: branch ?? "none", worktree: relative(main, target), footprint: args.footprint ?? "" }));
+    if (target !== main) {
+      const seed = await seedFrom(env, main, target);
+      if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
+    }
+    await claimWorkspace(env, main, target, id, platform, footprint);
+    const worktree = target === main ? `cloud:${env.cloud?.session ?? "clone"}` : relative(main, target);
+    out.push(composeClaim({ platform, host: env.host, branch: branch ?? "none", worktree, footprint }));
+    out.push(await installHook(env, main));
+    await verifyClaim(env, target, out);
+    if (target === main) out.push(`next: this clone is the workspace; move ${id} to In Progress, paste the claim line`);
+    else out.push(enterLine(main, target, id));
     return out;
   }
+
   const slug = validateSlug(args.slug ?? "work");
   const name = `${id}-${slug}`;
   const branch = `${prefix}/${name}`;
@@ -563,29 +708,45 @@ export async function add(env: Env, args: { id: string; slug?: string; platform?
   if (check.code !== 0) throw new WtError("INVALID SLUG", branch, "git rejects the branch name", "shorten or simplify the slug", "I-3");
   const fetch = await git(env, main, "fetch", "--quiet", "origin", "main");
   if (fetch.code !== 0) throw new WtError("FETCH FAILED", fetch.stderr.trim() || "git fetch origin main", "offline or not authenticated", "retry with network, or gh auth login", "I-3");
+  // A loose branch that names the issue (its worktree was removed, or it was made by hand) is
+  // re-attached: one issue = one branch, so a second branch is never cut for it.
+  const loose = await looseBranchOf(env, main, rows, id);
   const branchExists = (await git(env, main, "rev-parse", "--verify", "--quiet", `refs/heads/${branch}`)).code === 0;
   let pathExists = false;
   try {
     await Deno.stat(target);
     pathExists = true;
   } catch { /* absent, good */ }
-  if (branchExists || pathExists) {
-    throw new WtError("EXISTS", branchExists ? branch : relative(main, target), "a workspace for this issue was created earlier", `adopt it with --adopt ${relative(main, target)} or remove it first`, "I-3");
+  if (pathExists) {
+    throw new WtError("EXISTS", relative(main, target), "a directory sits where the workspace would go, and it is not a registered worktree", "move it away, or git worktree repair it, then rerun", "I-3");
   }
-  const addRes = await git(env, main, "worktree", "add", target, "-b", branch, "origin/main");
+  const attach = loose ?? (branchExists ? branch : null);
+  const addRes = attach
+    ? await git(env, main, "worktree", "add", target, attach)
+    : await git(env, main, "worktree", "add", target, "-b", branch, "origin/main");
   if (addRes.code !== 0) {
     if (/already checked out|is already used by worktree/.test(addRes.stderr)) {
-      throw new WtError("ELSEWHERE", branch, "that branch is checked out in another workspace", "takeover removes the stale one first (I-6)", "I-6");
+      throw new WtError("ELSEWHERE", attach ?? branch, "that branch is checked out in another workspace", "takeover removes the stale one first (I-6)", "I-6");
     }
     throw new WtError("GIT FAILED", "git worktree add", addRes.stderr.trim(), "fix the state named above and rerun", "I-3");
   }
+  if (attach) out.push(`re-attached branch ${attach} at ${relative(main, target)}: ${id} already had a branch, so no second one was cut`);
   const seed = await seedFrom(env, main, target);
   if (seed.missing) out.push("NO SEED: nothing matched .worktreeinclude in the main worktree — env files are absent there — copy them by hand (I-3)");
   else out.push(`seeded ${seed.copied} file(s) from .worktreeinclude`);
-  await claimWorkspace(env, main, target, id, platform);
-  out.push(composeClaim({ platform, host: env.host, branch, worktree: relative(main, target), footprint: args.footprint ?? "" }));
-  out.push(`next: enter ${relative(main, target)} (Claude Code: EnterWorktree path=${target}), move ${id} to In Progress, paste the claim line`);
+  await claimWorkspace(env, main, target, id, platform, footprint);
+  out.push(composeClaim({ platform, host: env.host, branch: attach ?? branch, worktree: relative(main, target), footprint }));
+  out.push(await installHook(env, main));
+  await verifyClaim(env, target, out);
+  out.push(enterLine(main, target, id));
   return out;
+}
+
+/** I-9: the claim is verified by observed state, through the same gate every hook runs. */
+async function verifyClaim(env: Env, target: string, out: string[]): Promise<void> {
+  const v = await preflight(env, target);
+  if (!v.ok) throw new WtError("PREFLIGHT", v.line, "the workspace just claimed does not pass the write gate", "inspect the claim with git config --worktree --list, then rerun", "I-9");
+  out.push(v.line);
 }
 
 // ── pr (SHIP) ───────────────────────────────────────────────────────────────
@@ -689,7 +850,7 @@ export async function remove(env: Env, id: string): Promise<string[]> {
 // ── leave (LEAVE for a launch worktree: clear the claim, keep the checkout) ─────
 
 async function clearClaim(env: Env, path: string): Promise<void> {
-  for (const key of ["mesita.issue", "mesita.platform", "mesita.claimedAt", "mesita.host"]) await git(env, path, "config", "--worktree", "--unset", key);
+  for (const key of ["mesita.issue", "mesita.platform", "mesita.claimedAt", "mesita.host", "mesita.session", "mesita.footprint"]) await git(env, path, "config", "--worktree", "--unset", key);
 }
 
 /** A landed, clean workspace gives its claim and lock back and stays on disk as a lobby (I-9); idempotent. */
@@ -808,6 +969,20 @@ export async function boot(env: Env): Promise<string[]> {
   const { main, rows } = await mainWorktree(env);
   const cwd = await realpath(env.cwd);
   const lines: string[] = [];
+  if (env.cloud) {
+    // The clone is the workspace: no shared checkout to repair, no fleet to sweep, no gh to ask.
+    const clone = rows[0];
+    const issue = await worktreeConfig(env, main, "mesita.issue");
+    const session = await worktreeConfig(env, main, "mesita.session");
+    if (issue) lines.push(`where: cloud clone on ${clone.branch ?? "(detached)"} claimed by ${issue}${session ? ` (session ${session})` : ""}: resume it`);
+    else lines.push(`where: cloud clone on ${clone.branch ?? "(detached)"} with no claim: the first code issue claims it with deno task worktree add MESITA-<id> <slug> --adopt . (never a nested worktree); non-code work claims nothing`);
+    lines.push(`host: ${env.host} (this container; the claim line's host=)`);
+    lines.push(`gate: ${await installHook(env, main)}`);
+    lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
+    lines.push("fleet: none here (a cloud clone is one workspace; sweep and repair-lobby run on the fleet's host)");
+    lines.push("next: one Linear read for live claims, then PICK");
+    return lines;
+  }
   // The fleet lives inside the shared checkout, so the shared row prefix-matches every worktree: the most specific path wins.
   const here = rows.filter((r) => cwd === r.path || cwd.startsWith(r.path + "/")).sort((a, b) => b.path.length - a.path.length)[0];
   const hereIssue = here && here.path !== main ? await worktreeConfig(env, here.path, "mesita.issue") ?? issueFromBranch(here.branch) : null;
@@ -819,10 +994,12 @@ export async function boot(env: Env): Promise<string[]> {
   else lines.push(`where: ${relative(main, here.path)} on ${here.branch ?? "(detached)"} with no claim: a lobby. First claim may adopt it: deno task worktree add MESITA-<id> --adopt ${relative(main, here.path)}`);
   lines.push(`host: ${env.host} (pinned in ~/.config/mesita/host-id; the claim line's host=)`);
   for (const n of await repairLobby(env, main, { apply: true })) lines.push(`shared checkout: ${n}`);
+  lines.push(`gate: ${await installHook(env, main)}`);
+  lines.push(`preflight: ${(await preflight(env, cwd)).line}`);
   const fleet = await inspect(env, main, await listFleet(env, main), { landed: true });
   lines.push(table(main, fleet, env.now()));
   const mine = fleet.filter((f) => f.issue && f.host === env.host && f.row.path !== main);
-  lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${relative(main, f.row.path)}`).join("; ")}` : "resumable on this host: none");
+  lines.push(mine.length ? `resumable on this host: ${mine.map((f) => `${f.issue} at ${relative(main, f.row.path)} (deno task worktree add ${f.issue} resumes it)`).join("; ")}` : "resumable on this host: none");
   const sweepable = fleet.filter((f) => f.decision === "remove").length;
   lines.push(`sweepable: ${sweepable} (deno task worktree sweep --apply from the shared checkout)`);
   lines.push("next: one Linear read for live claims, then PICK");
@@ -832,7 +1009,7 @@ export async function boot(env: Env): Promise<string[]> {
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
 export const defaultRunner: Runner = async (cmd, args, opts) => {
-  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, stdout: "piped", stderr: "piped" });
+  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, env: opts?.env, stdout: "piped", stderr: "piped" });
   const o = await c.output();
   const dec = new TextDecoder();
   return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };
@@ -885,6 +1062,11 @@ export async function main(argv: string[], env: Env): Promise<number> {
         for (const l of await add(env, { id: positional[0] ?? "", slug: positional[1], platform: flag(rest, "--platform"), footprint: flag(rest, "--footprint"), adopt: flag(rest, "--adopt") })) env.log(l);
         return 0;
       }
+      case "preflight": {
+        const v = await preflight(env, rest[0] ? resolve(env.cwd, rest[0]) : await realpath(env.cwd));
+        env.log(v.line);
+        return v.ok ? 0 : 1;
+      }
       case "pr":
         for (const l of await pr(env)) env.log(l);
         return 0;
@@ -906,7 +1088,7 @@ export async function main(argv: string[], env: Env): Promise<number> {
         return 0;
       }
       default:
-        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | pr | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
+        env.log("usage: worktree.ts boot | add MESITA-<id> [slug] [--platform t] [--footprint p] [--adopt path] | preflight [path] | pr | remove MESITA-<id> | leave MESITA-<id> | sweep [--apply] | repair-lobby");
         return 2;
     }
   } catch (e) {
@@ -931,6 +1113,13 @@ if (import.meta.main) {
     cwd: Deno.cwd(),
     log: (l) => console.log(l),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    cloud: cloudFromEnv((k) => {
+      try {
+        return Deno.env.get(k);
+      } catch {
+        return undefined; // not in --allow-env: local, by definition
+      }
+    }),
   };
   Deno.exit(await main(Deno.args, env));
 }
