@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram, MessageCircle } from "lucide-react";
+import { Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { classFillClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneDisplay } from "@/lib/utils";
 
 // ─── The Passport, as the page header (MESITA-1079 v2 · -1619 · -1633 ·
 //     -1636 · -1640 · -1646 · -1649 · -1650 · -1652) ──────────────────────
@@ -103,6 +103,9 @@ export function PassportBar({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
+  // `formatPhoneDisplay` already exists for exactly this — its own doc says
+  // it keeps a number from "rendering as a raw digit run on the passport".
+  const phoneDisplay = formatPhoneDisplay(profile?.phone) ?? "Not set";
 
   return (
     <header
@@ -113,8 +116,9 @@ export function PassportBar({
       {/* A HERO BLOCK, NOT A BAR (Pato, MESITA-1656: "Must be like this",
           re-sending the wireframe after MESITA-1655 built it inside the 77px
           bar instead). Measured as drawn: 254px, and with the tab bar that is
-          41% of an 812px viewport in permanent chrome. Raised, overruled,
-          recorded — this is a decision, not an accident.
+          41% of an 812px viewport in permanent chrome at the 112px avatar it
+          shipped with. Raised, overruled, recorded — a decision, not an
+          accident. MESITA-1657 brought the avatar to 80px, so it is 222px.
 
           SHELL_BAR_MIN_H went with it. MESITA-1654 added it so the two bars
           would share ONE number instead of matching by coincidence; they no
@@ -123,10 +127,10 @@ export function PassportBar({
       <div className="flex flex-col items-center gap-3.5 px-4 py-4">
         {loading ? (
           <>
-            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 119px
-                is the real avatar (112 + the 2px ring and 1.5px inset, both
+            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 87px
+                is the real avatar (80 + the 2px ring and 1.5px inset, both
                 sides), and the same 2x2 at its real 36px. */}
-            <div className="bg-muted h-[119px] w-[119px] shrink-0 animate-pulse rounded-full" />
+            <div className="bg-muted h-[87px] w-[87px] shrink-0 animate-pulse rounded-full" />
             <div className="grid w-full grid-cols-2 gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -146,13 +150,13 @@ export function PassportBar({
               aria-hidden
             >
               <span className="bg-background block rounded-full p-[1.5px]">
-                <span className="bg-muted relative block h-28 w-28 overflow-hidden rounded-full">
+                <span className="bg-muted relative block h-20 w-20 overflow-hidden rounded-full">
                   {avatarUrl ? (
                     <Image
                       src={avatarUrl}
                       alt=""
                       fill
-                      sizes="112px"
+                      sizes="80px"
                       className="object-cover"
                     />
                   ) : (
@@ -178,19 +182,29 @@ export function PassportBar({
               >
                 <span className="truncate">{classLabel}</span>
               </button>
-              {/* PARKED, and it has to be. The consumer has no WhatsApp
-                  anywhere: `consumers.phone` is the AUTH IDENTITY (see
-                  api/profile.ts), `whatsapp_url` belongs to a place, and
-                  `staff_whatsapp_sessions.phone_e164` is the STAFF phone.
-                  Printing the auth phone here would also leak it — this
-                  passport is public when `privacy_public` is on. */}
-              <span
-                className={cn(CHIP_CLASS, "opacity-60")}
-                title="Coming soon"
-                aria-label="WhatsApp: coming soon"
-              >
-                <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">Soon</span>
+              {/* THE LOGIN PHONE (Pato, MESITA-1657: "they made login with
+                  phone number"). This chip was parked as WhatsApp, and
+                  MESITA-1655 argued against printing the phone because the
+                  passport is public when `privacy_public` is on. That was
+                  WRONG FOR THIS SURFACE: PassportBar renders only from
+                  ProfileClient — the /me page, behind (shell)/layout's
+                  getUser() wall — so it is the owner reading their own
+                  account. `privacy_public` governs how they appear to OTHER
+                  people; it says nothing about their own page. No publishing,
+                  no leak.
+
+                  DISPLAY, NOT A DOOR. api/profile.ts: the phone is "not
+                  editable from the profile sheet" — it is the auth identity,
+                  set at sign-in and mirrored by consumer-update-profile. A
+                  chip that opened an editor would promise a surface that does
+                  not exist, so it states a fact, like the name beside it.
+
+                  "Not set" covers the window before the EF mirrors
+                  auth.user.phone into consumers.phone on a new account; the
+                  chip keeps its slot so the 2x2 never reflows. */}
+              <span className={CHIP_CLASS}>
+                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{phoneDisplay}</span>
               </span>
               {/* NO METAL on either live chip, on purpose — see the header
                   note. The rung in words is also what lets the band and the
