@@ -6,7 +6,6 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { classFillClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
-import { SHELL_BAR_MIN_H } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 // ─── The Passport, as the page header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -73,10 +72,11 @@ import { cn } from "@/lib/utils";
 // says the class in words. That something is now the class chip's own label,
 // inside this subtree — closer than it has been since MESITA-1650 put it on a
 // cell further down the page.
-/** One chip in the bar's 2x2. 28px is what fits inside SHELL_BAR_MIN_H with
- *  two rows and a 6px gap — measured, see the note at the call site. */
+/** One chip in the header's 2x2. Back to 36px now that the header is a hero
+ *  block rather than a bar (MESITA-1656) — the 28px MESITA-1655 needed to fit
+ *  two rows inside 77px was the tap-target cost of that constraint. */
 const CHIP_CLASS =
-  "border-border text-foreground type-label inline-flex h-7 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2.5 font-semibold";
+  "border-border text-foreground inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold";
 
 export function PassportBar({
   profile,
@@ -108,26 +108,30 @@ export function PassportBar({
     <header
       aria-label={`Your Mesita passport, ${classLabel} class`}
       aria-busy={loading || undefined}
-      className={cn(
-        "border-border bg-background/95 flex shrink-0 flex-col border-b backdrop-blur-xl",
-        SHELL_BAR_MIN_H,
-      )}
+      className="border-border bg-background/95 shrink-0 border-b backdrop-blur-xl"
     >
-      {/* `flex-1`, not a height: the row absorbs whatever SHELL_BAR_MIN_H
-          leaves after the 6px band, so the bar tracks the tab bar without a
-          second number to keep in sync (MESITA-1654). */}
-      <div className="flex flex-1 items-center gap-3 px-4">
+      {/* A HERO BLOCK, NOT A BAR (Pato, MESITA-1656: "Must be like this",
+          re-sending the wireframe after MESITA-1655 built it inside the 77px
+          bar instead). Measured as drawn: 254px, and with the tab bar that is
+          41% of an 812px viewport in permanent chrome. Raised, overruled,
+          recorded — this is a decision, not an accident.
+
+          SHELL_BAR_MIN_H went with it. MESITA-1654 added it so the two bars
+          would share ONE number instead of matching by coincidence; they no
+          longer match by design, and a shared constant with one user is a
+          literal in a costume. */}
+      <div className="flex flex-col items-center gap-3.5 px-4 py-4">
         {loading ? (
           <>
-            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 43px
-                is the real avatar (36 + the 2px ring and 1.5px inset, both
-                sides), 20px the real name. */}
-            <div className="bg-muted h-[43px] w-[43px] shrink-0 animate-pulse rounded-full" />
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+            {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 119px
+                is the real avatar (112 + the 2px ring and 1.5px inset, both
+                sides), and the same 2x2 at its real 36px. */}
+            <div className="bg-muted h-[119px] w-[119px] shrink-0 animate-pulse rounded-full" />
+            <div className="grid w-full grid-cols-2 gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="bg-muted h-7 animate-pulse rounded-full"
+                  className="bg-muted h-9 animate-pulse rounded-full"
                 />
               ))}
             </div>
@@ -142,13 +146,13 @@ export function PassportBar({
               aria-hidden
             >
               <span className="bg-background block rounded-full p-[1.5px]">
-                <span className="bg-muted relative block h-9 w-9 overflow-hidden rounded-full">
+                <span className="bg-muted relative block h-28 w-28 overflow-hidden rounded-full">
                   {avatarUrl ? (
                     <Image
                       src={avatarUrl}
                       alt=""
                       fill
-                      sizes="36px"
+                      sizes="112px"
                       className="object-cover"
                     />
                   ) : (
@@ -158,21 +162,22 @@ export function PassportBar({
               </span>
             </span>
 
-            {/* A 2x2 INSIDE THE SAME 77px (Pato, MESITA-1655). The wireframe
-                had a 104px centred avatar over the chips, which measures
-                244px — 3.2x the height Pato asked for one issue earlier and
-                within 9px of the card MESITA-1649/-1650 spent two issues
-                removing. The composition moved inside the bar instead.
-                Measured: 28px chips with a 6px gap total exactly 77px.
-
-                THE COST, STATED: chips went 36px → 28px, so the two LIVE ones
-                (Class, Instagram) have smaller tap targets. Name is display
-                and WhatsApp is parked, so only those two pay it. Reverting is
-                a height change, not a layout one. */}
-            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+            {/* READING ORDER IS THE DRAWING'S: Name · Class / WhatsApp ·
+                Instagram. That flips MESITA-1653 ("insta first, class
+                second"), which was a left-right call on a single ROW and does
+                not survive a 2x2. */}
+            <div className="grid w-full grid-cols-2 gap-2">
               <span className={CHIP_CLASS}>
                 <span className="truncate">{name}</span>
               </span>
+              <button
+                type="button"
+                onClick={onOpenClass}
+                aria-label={`Class: ${classLabel}`}
+                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
+              >
+                <span className="truncate">{classLabel}</span>
+              </button>
               {/* PARKED, and it has to be. The consumer has no WhatsApp
                   anywhere: `consumers.phone` is the AUTH IDENTITY (see
                   api/profile.ts), `whatsapp_url` belongs to a place, and
@@ -184,28 +189,20 @@ export function PassportBar({
                 title="Coming soon"
                 aria-label="WhatsApp: coming soon"
               >
-                <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
+                <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">Soon</span>
               </span>
               {/* NO METAL on either live chip, on purpose — see the header
-                  note. The rung in words is also what lets the band and ring
-                  stay aria-hidden. Instagram first (MESITA-1653). */}
+                  note. The rung in words is also what lets the band and the
+                  ring stay aria-hidden. */}
               <button
                 type="button"
                 onClick={onOpenInstagram}
                 aria-label={`Instagram: ${instagramSummary}`}
                 className={cn(CHIP_CLASS, "hover:bg-muted transition")}
               >
-                <Instagram className="h-3 w-3 shrink-0" aria-hidden />
+                <Instagram className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{instagramSummary}</span>
-              </button>
-              <button
-                type="button"
-                onClick={onOpenClass}
-                aria-label={`Class: ${classLabel}`}
-                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
-              >
-                <span className="truncate">{classLabel}</span>
               </button>
             </div>
           </>

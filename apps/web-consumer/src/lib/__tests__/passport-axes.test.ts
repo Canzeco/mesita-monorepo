@@ -126,10 +126,8 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     );
     expect(parked).toEqual(["WhatsApp"]);
     // ...and it must be inert: a parked chip that is still a button lies.
-    const handlers = [...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)].map(
-      (m) => m[1],
-    );
-    expect(handlers).toEqual(["onOpenInstagram", "onOpenClass"]);
+    // Exactly two handlers, so the parked one cannot quietly acquire a third.
+    expect([...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)]).toHaveLength(2);
   });
 
   it("is fixed by FLEX, not by sticky, and outside the scroller", () => {
@@ -171,46 +169,47 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(client).not.toContain('title="Class"');
   });
 
-  it("costs exactly what the tab bar costs, from ONE constant", () => {
-    // Pato, MESITA-1654: "same height as menu". Measured, not estimated —
-    // the bar was 63px against the nav's 77. The nav declares NO height (it
-    // is content-driven), so a literal in one file would be a number two
-    // components must agree on with nothing enforcing it. Both import the
-    // same floor; losing either import silently un-matches the bars.
+  it("no longer shares a height with the tab bar, and says so", () => {
+    // MESITA-1654 made both bars import SHELL_BAR_MIN_H so they matched by
+    // CONSTANT rather than by coincidence. MESITA-1656 made the header a hero
+    // block — 254px as drawn, 41% of an 812px viewport once the tab bar is
+    // counted. Pato raised it, was answered, and reaffirmed; so the constant
+    // has no job and is gone from all three files rather than left orphaned
+    // on the nav, where a shared constant with one user is a literal in a
+    // costume.
+    //
+    // The budget assertion it carried (floor under 100px, no open-ended
+    // vertical padding) is deliberately NOT reinstated here: it would assert
+    // a law the product has abandoned, and a test that lies is worse than no
+    // test. The height decision lives in MESITA-1656 and the header comment.
     const nav = readFileSync(
       join(SRC, "components", "consumer", "BottomNav.tsx"),
       "utf8",
     );
-    expect(bar).toContain("SHELL_BAR_MIN_H");
-    expect(nav).toContain("SHELL_BAR_MIN_H");
-    // The row must carry no height of its own, or it stops absorbing.
-    expect(bar).not.toContain("h-14");
-    expect(bar).toContain("flex flex-1 items-center");
-
-    // AND THE BUDGET STILL BINDS (the point of the pin this replaces). The
-    // card this bar succeeded was 235px: permanent chrome above a scrolling
-    // grid cannot cost a third of a phone viewport, and that budget is the
-    // whole argument for what is NOT in the bar. 77px is a floor, not an
-    // invitation — no open-ended vertical padding on top of it.
-    expect(bar).not.toContain("py-6");
-    expect(bar).not.toContain("py-10");
-    const floor = readFileSync(join(SRC, "lib", "ui-classes.ts"), "utf8").match(
-      /SHELL_BAR_MIN_H = "min-h-\[(\d+)px\]"/,
-    );
-    expect(floor, "SHELL_BAR_MIN_H is no longer a px floor").not.toBeNull();
-    expect(Number(floor![1])).toBeLessThan(100);
+    const ui = readFileSync(join(SRC, "lib", "ui-classes.ts"), "utf8");
+    expect(ui).not.toContain("SHELL_BAR_MIN_H");
+    expect(nav).not.toContain("SHELL_BAR_MIN_H");
+    expect(codeOnly(bar)).not.toContain("SHELL_BAR_MIN_H");
+    // What DOES stay pinned: the header is a column, so the composition can
+    // stack. A row here means someone quietly rebuilt the bar.
+    expect(bar).toContain("flex flex-col items-center");
   });
 
-  it("Instagram chip first, Class second", () => {
-    // Pato, MESITA-1653. Order was unpinned until now: the test above proves
-    // both chips EXIST, which stays true however they are arranged, so a
-    // refactor that reflowed the row would have flipped them silently. This
-    // is the second ordering call on a passport pair in a day (MESITA-1648
-    // was Passport before Profile), which is what makes it worth a pin.
+  it("reads Name · Class / WhatsApp · Instagram", () => {
+    // The drawing's order (Pato, MESITA-1656). It flips MESITA-1653's
+    // "insta first, class second", which was a left-right call on a single
+    // ROW and does not survive the 2x2 — so the pin moves rather than being
+    // deleted. Order stays pinned because it has now been called three times
+    // on this header and nothing else would catch a silent reflow.
     const handlers = [...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)].map(
       (m) => m[1],
     );
-    expect(handlers).toEqual(["onOpenInstagram", "onOpenClass"]);
+    expect(handlers).toEqual(["onOpenClass", "onOpenInstagram"]);
+    // ...and the name leads, ahead of both live chips. Scoped to the GRID:
+    // `onOpenClass` also appears in the prop list far above the render, so a
+    // whole-file indexOf compares against the declaration, not the chip.
+    const grid = bar.slice(bar.indexOf('className="grid w-full grid-cols-2'));
+    expect(grid.indexOf("{name}")).toBeLessThan(grid.indexOf("onOpenClass"));
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -248,9 +247,9 @@ describe("the Passport is the page HEADER, and it is the door", () => {
   it("the skeleton mirrors the DESTINATION — same 2×2, same avatar maths", () => {
     const loading = bar.indexOf("{loading ? (");
     expect(loading).toBeGreaterThan(-1);
-    // 36 core + the 2px ring and 1.5px inset on both sides is 43.
-    expect(bar).toContain("h-[43px] w-[43px]");
-    expect(bar).toContain("h-9 w-9");
+    // 112 core + the 2px ring and 1.5px inset on both sides is 119.
+    expect(bar).toContain("h-[119px] w-[119px]");
+    expect(bar).toContain("h-28 w-28");
 
     const skeleton = bar.slice(loading, bar.indexOf(") : ("));
     const live = bar.slice(bar.indexOf(") : ("));
@@ -264,10 +263,10 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     );
     expect(skeleton).toContain("grid-cols-2");
     expect(live).toContain("grid-cols-2");
-    // Chip height agrees too — 28px is what fits two rows inside the shared
-    // bar floor, so a skeleton at any other height is a different bar.
-    expect(skeleton).toContain("h-7");
-    expect(bar).toContain("h-7 min-w-0");
+    // Chip height agrees too — back to 36px now that the header is a hero
+    // block (MESITA-1656); a skeleton at any other height is a different bar.
+    expect(skeleton).toContain("h-9 animate-pulse");
+    expect(bar).toContain("h-9 min-w-0");
   });
 });
 
