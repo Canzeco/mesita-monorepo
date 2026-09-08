@@ -10,6 +10,8 @@ import {
   Footprints,
   Gift,
   IdCard,
+  Instagram,
+  Medal,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -54,10 +56,10 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
 import { PassportBar } from "./PassportBar";
 
-// The Me surface — the passport, then five pairs and a tail:
+// The Me surface — the passport header, then eight pairs:
 //
-//   passport       identity + the two axes, DISPLAY ONLY (MESITA-1646)
-//   2              Passport · Profile
+//   passport       identity + the two axes; the bar IS a door (MESITA-1652)
+//   2              Profile · Passport
 //   2              Instagram · Class
 //   2              Wallet · Plan
 //   2              Notifications · Visits
@@ -72,12 +74,15 @@ import { PassportBar } from "./PassportBar";
 // different OBJECT — a document, with a photo, twice the height of a cell —
 // not by the rows underneath it changing shape (MESITA-1639).
 //
-// THE PASSPORT IS ONE BUTTON and nothing inside it is interactive. The three
-// doors that used to be sub-cells — Profile, Instagram, Class — are rows in
-// `PassportModal` now. That is not a convenience: Instagram is the only reach
-// door, and the Class ladder carries the ONLY entrance for a 10-digit invite
-// PIN (Docs › Passport §C). Never make one of those rows inert without giving
-// its surface another way in first.
+// INSTAGRAM AND CLASS HAVE THREE PATHS, AND THAT IS DELIBERATE. Each is a
+// header chip (MESITA-1652), a cell in the pair below (Pato, 2026-09-08), and
+// a row inside `PassportModal`. MESITA-1650 removed the cells for exactly
+// this duplication and Pato re-drew the grid with them back in after seeing
+// the shipped screen. The redundancy is the point of the reversal, not an
+// oversight: Instagram is the only reach door in the app, and the Class
+// ladder carries the ONLY entrance for a 10-digit invite PIN (Docs › Passport
+// §C). Never make the last of those paths inert without adding another
+// first.
 //
 // NOTHING ON THIS PAGE PRINTS A NUMBER any more, which is why the mount does
 // ONE EF read. The four-up carries no summary line, so the metrics call that
@@ -245,36 +250,56 @@ export function ProfileClient({
       />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* The pair that replaces the card's doors. `Passport` is the only
-              way into the document now, and its sheet carries the Instagram
-              and Class rows — the only entrances to the connect flow and to
-              the ladder's "Join with Invitation" (Docs › Passport §C).
+          {/* PROFILE LEADS (Pato, 2026-09-08), reversing MESITA-1648. That
+              issue put Passport first because it "sits directly under the
+              card, so naming it first continues what the card just said". The
+              header now states the identity in full — photo, name, class,
+              Instagram, phone — so the first cell is the one that EDITS it,
+              and Passport is the document you open to read it back.
 
-              PASSPORT LEADS (Pato, MESITA-1648). It sits directly under the
-              card, so naming it first continues what the card just said
-              rather than interrupting it — and the passport is the object,
-              where Profile is a door to editing one part of it. */}
+              PASSPORT NO LONGER SAYS "Class and Instagram". Both are cells in
+              the row directly below; naming them here would print the same
+              two words twice inside one screen. What is left in the sheet and
+              nowhere else is the number and the privacy switch. */}
           <DestGrid>
-            <DestTile
-              Icon={IdCard}
-              title="Passport"
-              summary="Class and Instagram"
-              onClick={() => setPassportOpen(true)}
-            />
             <DestTile
               Icon={UserRound}
               title="Profile"
               summary="Name, photo, birthday"
               onClick={() => profile && setEditOpen(true)}
             />
+            <DestTile
+              Icon={IdCard}
+              title="Passport"
+              summary="Number and privacy"
+              onClick={() => setPassportOpen(true)}
+            />
           </DestGrid>
 
-          {/* THE TWO AXES ARE IN THE BAR (Pato, MESITA-1652). They were rows
-              in the passport sheet (4 taps to an invite PIN), then cells here
-              (3 taps, MESITA-1650), and are now chips in the header — 1 tap,
-              from anywhere on the page, because the bar never scrolls away.
-              Keeping the cells TOO would print the same two facts twice on
-              one screen, which is exactly what MESITA-1650 removed. */}
+          {/* THE AXES ARE CELLS AGAIN (Pato, 2026-09-08). They were rows in
+              the passport sheet (4 taps to an invite PIN), then cells here
+              (MESITA-1650), then header chips only (MESITA-1652). The chips
+              STAY — 1 tap from anywhere, because the bar never scrolls away —
+              so this adds a path rather than moving one, and nothing can be
+              stranded by it.
+
+              EACH CELL STATES ITS OWN VALUE, not a static label: the pair
+              reads as two facts you can act on, which is what earns it a row
+              beside Wallet and Plan rather than reading as two more doors. */}
+          <DestGrid>
+            <DestTile
+              Icon={Instagram}
+              title="Instagram"
+              summary={igSummary}
+              onClick={() => setVerifyOpen(true)}
+            />
+            <DestTile
+              Icon={Medal}
+              title="Class"
+              summary={classLabel}
+              onClick={() => setClassOpen(true)}
+            />
+          </DestGrid>
 
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
               drawer, all the same `DestTile`. The header bell, the count band
