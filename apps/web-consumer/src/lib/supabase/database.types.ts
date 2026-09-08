@@ -2843,6 +2843,7 @@ export type Database = {
       }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
+      get_credit_liability: { Args: never; Returns: Json }
       is_place_member: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       mark_place_claim_reviewed: {
@@ -2884,6 +2885,15 @@ export type Database = {
         Args: { p_organization_id: string; p_place_id: string }
         Returns: Json
       }
+      reverse_credit_lot: {
+        Args: {
+          p_amount_cents: number
+          p_kind: string
+          p_lot_id: string
+          p_reference: string
+        }
+        Returns: Json
+      }
       run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_super_categories: { Args: never; Returns: undefined }
@@ -2896,6 +2906,10 @@ export type Database = {
           p_organization_id: string
           p_reference: string
         }
+        Returns: Json
+      }
+      sweep_expired_credit_lots: {
+        Args: { p_batch_size?: number }
         Returns: Json
       }
     }
