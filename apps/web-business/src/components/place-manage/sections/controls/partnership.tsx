@@ -17,15 +17,18 @@ import { cx, ZERO_STRATEGY_ID } from "./shared";
 
 // ─── Lifecycle banner — this place's progress on the three Tutorial steps ─
 //
-// One rail of three markers + ONE detail line for the step you're on. The
-// earlier three-column stepper printed all three details at once, which read
-// as a wall of 11px next to the boxes that carry the actual controls; every
-// rail state has exactly one current-or-blocked step, so a single line says
-// the same thing. Live on a paid strategy collapses to a slim strip (the
-// teaching job is done; strikes keep it honest). Non-interactive on purpose:
-// the actionable controls stay in the Partnership box and strategy cards.
-// decision: the banner does NOT repeat the partnership status pill — the
-// Membership box header keeps the only pill in the viewport.
+// A plain list of the three steps + ONE detail line for the step you're on.
+// Pato, 2026-09-08: "remove this shit, just easy list of capabilities" — the
+// numbered circles and connecting rail this used to draw were ornament this
+// console's own rule says to skip ("calm and high-density — don't ornament
+// them"); a done step gets a check, everything else a dot, done. Every rail
+// state has exactly one current-or-blocked step, so one detail line still
+// says the same thing the old wall-of-three-descriptions did. Live on a paid
+// strategy collapses to a slim strip (the teaching job is done; strikes keep
+// it honest). Non-interactive on purpose: the actionable controls stay in
+// the Partnership box and strategy cards. decision: the banner does NOT
+// repeat the partnership status pill — the Membership box header keeps the
+// only pill in the viewport.
 
 const STEP_TITLES = {
   join: "Join the partnership",
@@ -118,23 +121,33 @@ function LifecycleBanner({
 
   return (
     <section className="border-border/60 rounded-xl border px-4 py-3">
-      {/* The rail replaced a visible "How promos go live" heading — the steps
+      {/* The list replaced a visible "How promos go live" heading — the steps
           say it. Keep the label for screen readers. */}
       <h2 className="sr-only">How promos go live</h2>
-      <ol className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-3">
-        {steps.map((s, i) => (
+      <ul className="flex flex-col gap-1.5">
+        {steps.map((s) => (
           <li
             key={s.key}
             aria-current={s.state === "current" ? "step" : undefined}
-            // The connector rides inside its step so the row stays a plain
-            // <ol>/<li> (no display:contents, which drops list semantics in
-            // some screen readers); the last step doesn't stretch.
-            className="flex min-w-0 items-center gap-2 sm:flex-1 sm:last:flex-none"
+            className="flex items-center gap-2"
           >
-            <StepMarker n={i + 1} state={s.state} danger={forfeited} />
+            {s.state === "done" ? (
+              <Check
+                className="h-3.5 w-3.5 shrink-0 text-emerald-600"
+                aria-hidden
+              />
+            ) : (
+              <span
+                aria-hidden
+                className={cx(
+                  "h-1.5 w-1.5 shrink-0 rounded-full",
+                  s.state === "upcoming" ? "bg-border" : "bg-amber-500",
+                )}
+              />
+            )}
             <span
               className={cx(
-                "truncate type-body leading-none",
+                "type-body leading-none",
                 s.state === "current" || s.state === "blocked"
                   ? "text-foreground font-semibold"
                   : "text-muted-foreground font-medium",
@@ -142,20 +155,9 @@ function LifecycleBanner({
             >
               {STEP_TITLES[s.key]}
             </span>
-            {i < steps.length - 1 && (
-              <span
-                aria-hidden
-                className={cx(
-                  "ml-1 hidden h-px flex-1 sm:block",
-                  steps[i + 1].state === "upcoming"
-                    ? "bg-border"
-                    : "bg-emerald-500/50",
-                )}
-              />
-            )}
           </li>
         ))}
-      </ol>
+      </ul>
       {active && (
         <p
           className={cx(
@@ -173,44 +175,6 @@ function LifecycleBanner({
     </section>
   );
 }
-
-// One banner marker: done ✓ (emerald) · current (amber ring) · blocked
-// (amber, or red when forfeited) · upcoming (muted outline).
-function StepMarker({
-  n,
-  state,
-  danger,
-}: {
-  n: number;
-  state: LifecycleStepState;
-  danger: boolean;
-}) {
-  if (state === "done") {
-    return (
-      <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-        <Check className="h-2.5 w-2.5" aria-hidden />
-        <span className="sr-only">Step {n} done</span>
-      </span>
-    );
-  }
-  return (
-    <span
-      className={cx(
-        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border type-meta font-bold tabular-nums",
-        state === "current" &&
-          "border-amber-500 bg-amber-500/12 text-amber-800",
-        state === "blocked" &&
-          (danger
-            ? "border-destructive bg-destructive/10 text-destructive"
-            : "border-amber-500 bg-amber-500/12 text-amber-800"),
-        state === "upcoming" && "border-border bg-card text-muted-foreground",
-      )}
-    >
-      {state === "blocked" ? "!" : n}
-    </span>
-  );
-}
-
 
 // ─── Box 2 · Partnership ───────────────────────────────────────────────────
 
