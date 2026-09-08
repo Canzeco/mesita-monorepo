@@ -1,11 +1,12 @@
-// Frontend API surface for the REAL Buy Credits path (MESITA-1676).
+// Frontend API surface for the REAL Buy + Gift Credits paths
+// (MESITA-1676, MESITA-1677).
 //
-// The rest of the Wallet's Credits surface — balances, Gift, Redeem — still
-// runs on the browser emulator (src/lib/mock/*); this file is the first real
-// wire, and only for buying. consumer-web-buy-credits resolves every money
-// term server-side, so nothing here computes a bonus or an expiry that will
-// actually be charged — bonusCents/activatesAt/expiresAt in the response are
-// for DISPLAY, echoed back from what the server already decided and wrote.
+// Balances still run on the browser emulator (src/lib/mock/*, MESITA-1674).
+// Buy, Gift, Redeem and the sent-gifts list are real. Every helper here
+// resolves money terms server-side — nothing in this file computes a bonus
+// or an expiry that will actually be charged; the numbers in each response
+// are for DISPLAY, echoed back from what the server already decided and
+// wrote.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -59,4 +60,100 @@ export async function apiBuyCredits(
     args,
     "Couldn't complete that purchase.",
   );
+}
+
+// ─── Gift (MESITA-1677) — issuance only, never a transfer ──────────────────
+
+export type GiftCreditsOutcome =
+  | {
+    state: "purchased";
+    giftId?: string;
+    /** Shown to the sender exactly once — this response is the only place
+     *  it is ever available in plaintext. See consumer-web-gift-credits'
+     *  own header for why a dropped response means the code is gone
+     *  (cancel the gift to get the lot back; nothing is lost but the code). */
+    code: string;
+    mock?: boolean;
+    expiresAt: string;
+    expiryDays: number;
+    bonusCents: number;
+  }
+  | {
+    state: "requires_action";
+    requiresAction: TicketPaymentAction;
+  };
+
+/** Same `requestId` retry-safety contract as `apiBuyCredits`. */
+export async function apiGiftCredits(
+  client: SupabaseClient,
+  args: { placeId: string; paidCents: number; note: string | null; requestId: string },
+): Promise<GiftCreditsOutcome> {
+  return invokeEF<GiftCreditsOutcome>(
+    client,
+    "consumer-web-gift-credits",
+    args,
+    "Couldn't send that gift.",
+  );
+}
+
+export type RedeemGiftOutcome = {
+  lotId: string;
+  organizationId?: string;
+  organizationName: string;
+  paidCents?: number;
+  bonusCents?: number;
+  creditedCents: number;
+  note: string | null;
+  expiresAt?: string;
+};
+
+export async function apiRedeemGift(
+  client: SupabaseClient,
+  code: string,
+): Promise<RedeemGiftOutcome> {
+  return invokeEF<RedeemGiftOutcome>(
+    client,
+    "consumer-web-redeem-credit-gift",
+    { code },
+    "That code didn't work.",
+  );
+}
+
+export async function apiCancelGift(
+  client: SupabaseClient,
+  giftId: string,
+): Promise<{ lotId: string }> {
+  return invokeEF<{ lotId: string }>(
+    client,
+    "consumer-web-cancel-credit-gift",
+    { giftId },
+    "Couldn't cancel that gift.",
+  );
+}
+
+export type SentGift = {
+  id: string;
+  organizationName: string;
+  paidCents: number;
+  bonusCents: number;
+  creditedCents: number;
+  state: "unclaimed" | "claimed" | "cancelled";
+  note: string | null;
+  createdAt: string;
+  claimedAt: string | null;
+  cancelledAt: string | null;
+  /** The CLAIM deadline — a still-"unclaimed" row past this is effectively
+   *  dead even though the DB never stamps a fourth state (credit_gifts'
+   *  own design: "expired" is derived at read time, not a persisted row). */
+  expiresAt: string;
+};
+
+export async function apiListSentGifts(client: SupabaseClient): Promise<SentGift[]> {
+  const res = await invokeEF<{ gifts: SentGift[] }>(
+    client,
+    "consumer-web-list-credit-gifts",
+    {},
+    "Couldn't load your sent gifts.",
+  );
+  return res.gifts ?? [];
 }

@@ -73,6 +73,13 @@ describe("T1 — every page lives inside the (shell) auth segment", () => {
     "page.tsx", // "/" — the sign-in surface itself
     "onboard/page.tsx", // pre-profile, gated on session not profile
     "auth/post-signin/page.tsx", // the redirect hop that establishes session
+    // MESITA-1677: the public gift landing page. A recipient who has never
+    // heard of Mesita would hit OTP before a single pixel of the org's
+    // identity rendered otherwise — sign-in is step TWO here, after the
+    // guest has seen what they were given. Renders server-side from a
+    // possession code (gift-web-preview-code, verify_jwt=false); the actual
+    // claim still happens behind the wall, at newVisit.walletRedeem.
+    "gift/[code]/page.tsx",
   ]);
 
   it("catches a route authored outside the auth wall", () => {

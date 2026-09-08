@@ -9,6 +9,7 @@ import {
   visitPath,
   ticketPath,
   walletBalancePath,
+  giftClaimPath,
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
 import {
@@ -89,6 +90,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       },
       newVisitDefault: "/new-visit",
       visit: { prefix: "/visit/" },
+      // The public gift landing link (MESITA-1677) — a stranger's entry
+      // point, no session assumed. route-structure.test.tsx T1 carries the
+      // matching auth-wall exemption.
+      giftClaim: { prefix: "/gift/" },
       // THREE sections, and the ORDER is load-bearing: Alerts · Visits ·
       // Reservations runs from what you're doing right now out to the
       // passive feed. Object key order is asserted separately below, since
@@ -223,6 +228,7 @@ describe("path helpers", () => {
     // call sites talking about the OBJECT keep reading naturally.
     expect(ticketPath("t1")).toBe("/visit/t1");
     expect(walletBalancePath("bal_1")).toBe("/new-visit/wallet/balance/bal_1");
+    expect(giftClaimPath("1234567890")).toBe("/gift/1234567890");
   });
 
   // The wallet's three static children must never be swallowed by the balance
@@ -457,6 +463,11 @@ describe("middleware auth wall (shouldGate)", () => {
     "/place/abc",
     "/share",
     "/onboard",
+    // Genuinely public, not just ungated-at-middleware like the routes
+    // above it: /gift/[code] sits OUTSIDE (shell) entirely (route-structure
+    // T1's fourth exemption), so there is no getUser() wall behind this one
+    // either — a signed-out stranger really does see the page.
+    "/gift/1234567890",
     // Not gated but also unreachable as pages — next.config 308s them to a
     // canonical destination that IS gated:
     "/pay",

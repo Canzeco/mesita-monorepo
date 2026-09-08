@@ -9,22 +9,32 @@ import {
   WalletScreen,
 } from "@/components/consumer/wallet/WalletScreen";
 import { formatCurrency } from "@/lib/api/profile";
-import type { CreditGift, Seed } from "@/lib/mock/credits-emulator";
-import { errorMessage, useCredits } from "@/lib/mock/use-credits";
+import { apiRedeemGift, type RedeemGiftOutcome } from "@/lib/api/credits";
+import { EFError } from "@/lib/api/_invoke";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
-// Redeem a gift code.
+// Redeem a gift code — the real path (MESITA-1677). Was fully mock-backed
+// until now; wired to consumer-web-redeem-credit-gift, whose whole
+// concurrency story is ONE conditional UPDATE server-side (redeem_credit_gift)
+// — this screen just shapes the code and shows the ONE generic error the RPC
+// hands back, copying consumer-web-claim-invite-code's deliberate
+// non-differentiation: lost the race, spent, expired, or cancelled all read
+// identically here, on purpose.
 //
 // THE ERROR IS ON THE FIELD, not in a toast — `PinField` carries that rule and
 // the `aria-describedby` that makes it real. A code that failed is exactly the
 // thing a guest re-reads while checking their typing, and here it is money.
 //
 // TWO STATES ON ONE ROUTE, like Gift: the field, then what landed. The result
-// names the PLACE before the amount, because Credits are spendable at exactly
-// one place and a guest who just claimed some needs to know which one before
-// they know how much.
+// names the ORGANIZATION before the amount (Credits are org-scoped, not
+// place-scoped — the real backend's own model), because a guest who just
+// claimed some needs to know where before they know how much.
+//
+// REACHED FROM THE PUBLIC LANDING PAGE (/gift/[code], outside the shell) via
+// ?code=, forwarded through sign-in — see page.tsx, unchanged by this rewire.
 
-function RedeemResult({ gift }: { gift: CreditGift }) {
+function RedeemResult({ result }: { result: RedeemGiftOutcome }) {
   return (
     <div className="flex flex-col gap-5">
       <div className="border-border bg-card rounded-2xl border p-5 text-center">
@@ -32,51 +42,54 @@ function RedeemResult({ gift }: { gift: CreditGift }) {
           Credits added at
         </div>
         <div className="font-display mt-1 text-2xl font-semibold tracking-tight">
-          {gift.placeName}
+          {result.organizationName}
         </div>
         <div className="mt-3 text-4xl font-bold tracking-tight tabular-nums">
-          {formatCurrency(gift.creditedCents)}
+          {formatCurrency(result.creditedCents)}
         </div>
         <div className="text-muted-foreground mt-1 text-xs">
-          Spendable at {gift.placeName} only · {gift.expiryDays} days from today
+          Spendable at {result.organizationName} only
         </div>
       </div>
 
-      {gift.note ? (
+      {result.note ? (
         <div>
           <div className="type-eyebrow text-muted-foreground mb-2">
             They wrote
           </div>
           <p className="border-border bg-card rounded-2xl border p-4 text-sm">
-            {gift.note}
+            {result.note}
           </p>
         </div>
       ) : null}
 
       <WalletParkedNote>
-        Emulated. Nothing here is money — the balance lives in this browser
-        only.
+        Runs in Stripe TEST mode — the balance above is real, on that
+        organization&apos;s account.
       </WalletParkedNote>
     </div>
   );
 }
 
-export function RedeemClient({
-  seed,
-  initialCode,
-}: {
-  seed: Seed;
-  /** Digits only, already capped — see page.tsx. */
-  initialCode: string;
-}) {
-  const credits = useCredits(seed);
+export function RedeemClient({ initialCode }: { initialCode: string }) {
+  const supabase = useBrowserSupabase();
   const router = useRouter();
   const [code, setCode] = useState(initialCode);
-  const [claimed, setClaimed] = useState<CreditGift | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [claimed, setClaimed] = useState<RedeemGiftOutcome | null>(null);
 
   async function submit() {
-    const gift = await credits.redeem(code);
-    if (gift) setClaimed(gift);
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await apiRedeemGift(supabase, code);
+      setClaimed(result);
+    } catch (err) {
+      setError(err instanceof EFError ? err.message : "That code didn't work.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (claimed) {
@@ -92,7 +105,7 @@ export function RedeemClient({
           </Button>
         }
       >
-        <RedeemResult gift={claimed} />
+        <RedeemResult result={claimed} />
       </WalletScreen>
     );
   }
@@ -103,10 +116,10 @@ export function RedeemClient({
       footer={
         <Button
           onClick={submit}
-          disabled={code.length !== PIN_LENGTH || credits.busy}
+          disabled={code.length !== PIN_LENGTH || busy}
           className="w-full"
         >
-          {credits.busy ? "Checking…" : "Claim Credits"}
+          {busy ? "Checking…" : "Claim Credits"}
         </Button>
       }
     >
@@ -124,17 +137,17 @@ export function RedeemClient({
             onChange={(digits) => {
               // Clear the last failure as soon as the guest edits: an error
               // that outlives the code it was about is an error about nothing.
-              if (credits.error) credits.clearError();
+              if (error) setError(null);
               setCode(digits);
             }}
-            error={credits.error ? errorMessage(credits.error) : null}
-            disabled={credits.busy}
+            error={error}
+            disabled={busy}
           />
         </div>
 
         <WalletParkedNote>
-          Emulated. Codes work in this browser only — gift one from Wallet ›
-          Gift and claim it here.
+          Runs in Stripe TEST mode. Gift one from Wallet › Gift and claim it
+          here.
         </WalletParkedNote>
       </div>
     </WalletScreen>

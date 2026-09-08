@@ -1,5 +1,4 @@
 import { GiftClient } from "./GiftClient";
-import { parseCreditsDemo } from "@/lib/credits-demo";
 
 // /new-visit/wallet/gift — buy Credits for someone else (MESITA-1677).
 //
@@ -10,13 +9,11 @@ import { parseCreditsDemo } from "@/lib/credits-demo";
 // buying starts, by choosing a place, which is also why Gift is a GLOBAL button
 // in the wallet header rather than an action on one balance card.
 //
-// Same server-side seed read as its siblings; see buy/page.tsx.
+// REAL AS OF MESITA-1677: this is wired to consumer-web-gift-credits instead
+// of the browser emulator, so there is no demo seed to read server-side any
+// more — GiftClient loads its own policy, place list, and sent-gifts list
+// client-side, exactly like buy/page.tsx did for MESITA-1676.
 
-export default async function GiftCreditsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const sp = await searchParams;
-  return <GiftClient seed={parseCreditsDemo(sp)} />;
+export default function GiftCreditsPage() {
+  return <GiftClient />;
 }
