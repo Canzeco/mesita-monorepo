@@ -286,7 +286,7 @@ reads to an operator as a control that does something.
 
 8.1 The workspace invariants (ASDM I-3, I-4, I-6, I-10), from the 6.7 sweep table: one
     claim line and one workspace per In Progress code issue; no workspace with two live
-    claims; no lane hosting a second issue branch; the shared checkout holding no work
+    claims; every workspace passing `deno task worktree preflight <path>`; the shared checkout holding no work
     of its own (HEAD, index and working tree all at origin/main); claims stale after 24h
     without activity; claims whose branch or worktree is gone. Six counts every run,
     trended: landed-but-present workspaces, empty lanes, two-issue lanes, PRs merged

@@ -1,21 +1,21 @@
 <!-- RULES-QUICKSTART:START (generated — do not hand-edit; run: deno task sync-rules) -->
 # Mesita — agent quickstart (you're ~90% correct after this)
 
-**Notion is the library, and it is deep — it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8) §0. **Rules = the law:** 🤖 **ASDM Rules** — the protocol (model, invariants `I-1`…`I-10`, loop, platform table) · 🏛️ **Product Rules** = WHAT Mesita is · ⚙️ **Development Rules** = tooling gotchas + the knowledge chain. **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain: Apps, Atlas, Intake, Discovery, Passport, Rewards, Visits, Orders, Reservations, Events, Checkout, Credits, Vocabulary, Design. Read the matching doc first; mirror shipped changes back the same session. **Rules beat Docs.**
+**Notion is the library; it wins on any conflict.** This block mirrors [**Rules**](https://www.notion.so/Rules-395a9bf37a528081b2c1dacc445bb6c8) §0. **Rules = the law:** 🤖 **ASDM Rules** — the protocol (model, invariants `I-1`…`I-10`, loop, platform table) · 🏛️ **Product Rules** = WHAT Mesita is · ⚙️ **Development Rules** = tooling gotchas + the knowledge chain. **📚 [Docs](https://www.notion.so/Docs-3bfa9bf37a52801e891ec3407d717273) = the knowledge**, one flat page per domain: Apps, Atlas, Intake, Discovery, Passport, Rewards, Visits, Orders, Reservations, Events, Checkout, Credits, Vocabulary, Design. **Rules beat Docs.**
 
 **The repo.** `Canzeco/mesita-monorepo` is the whole product: `apps/{web-admin,web-business,web-consumer,web-landing,web-validate,mobile-consumer,mobile-business}` + `supabase/` + `assets/`. The six former standalone repos are frozen — never work in them. Package-specific rules: that package's `CLAUDE.md`.
 
 **The blackboard.** Agents never talk to each other. **Linear** (team Mesita, `MESITA-`) carries intent — issues + comments ONLY; **Linear documents and Claude Artifacts are prohibited**. **git/GitHub** carries the work — branches and squash PRs; `Closes MESITA-<id>` is the join.
 
-**The model.** Issue = intent. Claim = In Progress + one claim line, the only lock. Workspace = a checkout a live claim names (worktree + branch, or a cloud clone): one per code issue, none for a non-code issue. PR = one per workspace, joined by `Closes`. Session = a visit (many issues per session, many sessions per issue). Lobby = a checkout with no live claim: the shared `main` checkout, or your launch worktree between claims.
+**The model.** Issue = intent. Claim = In Progress + one claim line, the only lock. Workspace = a checkout a live claim names (worktree + branch, or a cloud clone): one per code issue, none for a non-code issue. PR = one per workspace, joined by `Closes`. Session = a visit. Lobby = a checkout with no live claim: the shared `main` checkout, or your launch worktree between claims.
 
-**Boot card.** Needs `deno` and `gh auth`. `deno task boot` → pick → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for your launch worktree) → EnterWorktree the printed path, In Progress, paste the printed claim line → work → `deno task worktree pr` · `gh pr ready` · `gh pr merge --squash` → `deno task worktree remove MESITA-<id>` from a lobby (`leave` keeps your launch worktree) → terminal status, Docs mirrored.
+**Boot card.** Needs `deno` and `gh auth`. `deno task boot` → pick → `deno task worktree add MESITA-<id> <slug>` (`--adopt .` for the checkout you launched in, a cloud clone included; plain `add` resumes a live workspace) → enter it (Claude Code `EnterWorktree`, Cursor opens it, Codex `cd`), In Progress, paste the printed claim line → work → `deno task worktree pr` · `gh pr ready` · `gh pr merge --squash` → `deno task worktree remove MESITA-<id>` from a lobby (`leave` keeps your launch worktree) → terminal status, Docs mirrored.
 
 **The invariants** (ASDM §B).
 - I-1 Every repo or cloud write has an issue, in a project.
 - I-2 `main` only by squash PR; every PR passes all six required checks.
 - I-3 One code issue = one branch = one worktree = one PR; a second issue, a second workspace.
-- I-4 The shared checkout holds no work of its own; `repair-lobby` fixes it.
+- I-4 The shared checkout holds no work of its own; `repair-lobby` fixes it, `scripts/preflight.sh` refuses the write.
 - I-5 The backend is a singleton: cloud == repo, same session.
 - I-6 Claims are the only lock; stale after 24h idle, then `takeover:`.
 - I-7 Reversible → decide, `decision:`, ship; `needs-human` only when physically blocked.
@@ -23,7 +23,7 @@
 - I-9 Finish clean at landing; verify by observed state.
 - I-10 Landed = a merged PR for the tip; only landed, clean, inactive workspaces are swept.
 
-**The loop.** BOOT (`deno task boot`, one Linear read) · PICK (unblocked, footprint-disjoint) · ISOLATE (`worktree add`, EnterWorktree path) · CLAIM (In Progress + the line) · WORK (Docs first, small commits, push early) · SHIP (`worktree pr`, ready, merge yourself, verify) · LEAVE (`worktree remove` from a lobby) · FINISH (statuses, Docs, decisions). Platform table: ASDM §D.
+**The loop.** BOOT (`deno task boot`, one Linear read) · PICK (unblocked, footprint-disjoint) · ISOLATE (`worktree add`, enter the path) · CLAIM (In Progress + the line) · WORK (Docs first, small commits, push early) · SHIP (`worktree pr`, ready, merge yourself, verify) · LEAVE (`worktree remove` from a lobby) · FINISH (statuses, Docs, decisions). Platform table: ASDM §D.
 
 **The backend is a singleton.** One Supabase project, ONE live schema and EF set, branching unused; a merge to main auto-deploys every EF, so mirror every cloud change into `supabase/` the same session (Development Rules §B).
 
@@ -51,6 +51,6 @@
 
 - **Packages are independent install roots** (own `pnpm-workspace.yaml` + lockfile; no root pnpm workspace — mobile needs `nodeLinker: hoisted`). `cd` into a package to work; run every `supabase` command from `supabase/`.
 - **Vercel:** each `apps/web-*` is its own Vercel project (canzeco team) on this repo, Root Directory `apps/web-<app>`, "skip unaffected" on — a push to `main` deploys only what changed.
-- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard: no `.icns`/`.jxl`/`.heif`/`.heic` anywhere — `image-size`'s advisories are unpatched and those are the formats they parse) and `brand.yml` (brand sync).
-- **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated. Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
-- **Worktrees:** `.worktreeinclude` lists the gitignored state every new worktree needs. **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-validate :3005 · mobile-consumer :8081 · mobile-business :8082.
+- **CI is path-filtered per package** (`.github/workflows/*.yml`) plus two repo-wide gates: `rules.yml` (instruction-file sync + markdown allowlist + word budgets + the forbidden-asset guard: no `.icns`/`.jxl`/`.heif`/`.heic` anywhere) and `brand.yml` (brand sync).
+- **Instruction files:** root `CLAUDE.md` = generated quickstart block + this tail · package `CLAUDE.md` = package rules only (markers forbidden) · every `AGENTS.md` = generated, what Cursor and Codex read (never a `CODEX.md`). Edit `scripts/rules-quickstart.md` or a `CLAUDE.md`, then `deno task sync-rules`; strict `--check` gates CI.
+- **Workspaces, every platform (ASDM I-3, I-4):** before a code issue's first repository write, one claimed workspace: `deno task worktree add MESITA-<id> <slug>` creates it under `.claude/worktrees/`; `--adopt .` claims the checkout you launched in (launch worktree, Cursor worktree, or the cloud clone itself); plain `add MESITA-<id>` resumes the live one, never a second. Work only from that path (Claude Code `EnterWorktree path=<printed>`; Cursor: open it; Codex: `cd`), confirmed by `deno task worktree preflight` before writing. Non-code issues claim nothing; the shared checkout stays on `main` and never receives issue work. **Enforced by `scripts/preflight.sh`:** Claude Code's `PreToolUse` hook (`.claude/settings.json`) refuses Edit/Write outside a claimed workspace, the git `pre-commit` hook `boot`/`add` install refuses commits (Cursor, Codex, humans), Cursor's shell hook (`.cursor/hooks.json`) refuses `git commit`. `.worktreeinclude` names the gitignored state a worktree receives (env files only). **Preview servers** (`.claude/launch.json`): web-admin :3001 · web-business :3002 · web-consumer :3003 · web-landing :3004 · web-validate :3005 · mobile-consumer :8081 · mobile-business :8082.

@@ -126,6 +126,13 @@ jobs:
         if: needs.changes.outputs.changed == 'true'
         run: deno task test:shared
 
+      # The fleet tool and the write gate (scripts/worktree.ts, scripts/preflight.sh)
+      # ran in no workflow before MESITA-1702: a claim step that had been fatal in
+      # every real clone stayed green because only its fixture ever ran it.
+      - name: Test the fleet tool and the write gate
+        if: needs.changes.outputs.changed == 'true'
+        run: deno task test:worktree
+
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
       # is gone with ASDM v5 (MESITA-456).
