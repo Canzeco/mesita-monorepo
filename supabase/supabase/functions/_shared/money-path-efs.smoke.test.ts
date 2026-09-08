@@ -55,6 +55,8 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   // Mesita Credits buy path (MESITA-1676): charges the guest's saved card.
   { name: "consumer-web-buy-credits", path: "../consumer-web-buy-credits/index.ts", accepts: ["POST"] },
   { name: "consumer-web-list-credit-places", path: "../consumer-web-list-credit-places/index.ts", accepts: ["POST"] },
+  // The Wallet's real balance read (MESITA-1674): reads the guest's own money.
+  { name: "consumer-web-list-credit-balances", path: "../consumer-web-list-credit-balances/index.ts", accepts: ["POST"] },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,

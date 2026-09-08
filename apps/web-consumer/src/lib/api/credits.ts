@@ -1,11 +1,15 @@
-// Frontend API surface for the REAL Buy Credits path (MESITA-1676).
+// Frontend API surface for the real Credits paths: Buy (MESITA-1676) and now
+// the Wallet's balance read (MESITA-1674). Gift and Redeem have no real
+// backend yet (MESITA-1677) and are parked on their own screens rather than
+// wired here — see GiftClient.tsx/RedeemClient.tsx.
 //
-// The rest of the Wallet's Credits surface — balances, Gift, Redeem — still
-// runs on the browser emulator (src/lib/mock/*); this file is the first real
-// wire, and only for buying. consumer-web-buy-credits resolves every money
-// term server-side, so nothing here computes a bonus or an expiry that will
-// actually be charged — bonusCents/activatesAt/expiresAt in the response are
-// for DISPLAY, echoed back from what the server already decided and wrote.
+// consumer-web-buy-credits resolves every money term server-side, so nothing
+// here computes a bonus or an expiry that will actually be charged —
+// bonusCents/activatesAt/expiresAt in BuyCreditsOutcome are for DISPLAY,
+// echoed back from what the server already decided and wrote. The balance
+// read below is the same posture the other direction: every cents figure and
+// every timestamp in a CreditOrgBalance is exactly what credit_ledger already
+// agrees to, nothing recomputed on the client.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
@@ -59,4 +63,59 @@ export async function apiBuyCredits(
     args,
     "Couldn't complete that purchase.",
   );
+}
+
+// ── The Wallet's real balance read (MESITA-1674) ───────────────────────────
+// Mirrors supabase/functions/_shared/credits-balances.ts's shapes field for
+// field — this is the wire contract, not a second definition of it.
+
+export type CreditLot = {
+  lotId: string;
+  paidCents: number;
+  bonusCents: number;
+  spentCents: number;
+  remainingCents: number;
+  activatesAt: string;
+  expiresAt: string;
+  createdAt: string;
+  pending: boolean;
+  expired: boolean;
+};
+
+export type CreditOrgBalance = {
+  organizationId: string;
+  organizationName: string;
+  currency: string;
+  totalCents: number;
+  spendableCents: number;
+  pendingCents: number;
+  paidCents: number;
+  nearestExpiryAt: string | null;
+  nearestActivationAt: string | null;
+  acceptsMoreCredits: boolean;
+  lots: CreditLot[];
+};
+
+export type ListCreditBalancesResult = {
+  organizations: CreditOrgBalance[];
+  nextCursor: string | null;
+  /** The clock every pending/expired split in this response was computed against — anchor countdowns to this, never to the guest's own device time. */
+  serverNowMs: number;
+};
+
+export async function apiListCreditBalances(
+  client: SupabaseClient,
+  args: { cursor?: string | null; limit?: number } = {},
+): Promise<ListCreditBalancesResult> {
+  const res = await invokeEF<ListCreditBalancesResult>(
+    client,
+    "consumer-web-list-credit-balances",
+    { cursor: args.cursor ?? undefined, limit: args.limit },
+    "Couldn't load your Credits.",
+  );
+  return {
+    organizations: res.organizations ?? [],
+    nextCursor: res.nextCursor ?? null,
+    serverNowMs: res.serverNowMs,
+  };
 }
