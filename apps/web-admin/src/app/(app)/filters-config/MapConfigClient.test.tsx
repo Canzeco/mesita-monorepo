@@ -23,8 +23,8 @@ describe("Map reload pairs", () => {
         loadError={null}
       />,
     );
-    // THE MAX NUMBER IS ASKED ONCE, ON THE CONSUMER (Pato, 2026-08-29).
-    // No Queries block, no per-set count field, no cap constants.
+    // No Queries block, no per-set count field, no cap constants — the ONE
+    // count here is How many pins, and it is a stop, not a free number.
     expect(html).not.toContain("Queries");
     expect(html).not.toContain("Bring");
     expect(html).not.toContain(
@@ -33,7 +33,12 @@ describe("Map reload pairs", () => {
     expect(html).not.toContain("Google places");
     expect(html).not.toContain("Mesita places");
     expect(html).not.toContain("Mesita partners");
-    expect(html).toContain("How many pins is the guest");
+    // HOW MANY PINS IS THE OPERATOR'S AGAIN (MESITA-1699): the guest's
+    // Search Filters sheet is deleted, so this box is where the number is
+    // asked, and the copy must not still call it the guest's question.
+    expect(html).toContain("How many pins");
+    expect(html).not.toContain("How many pins is the guest");
+    for (const stop of ["20", "40", "60"]) expect(html).toContain(stop);
     // The console must say what the sets ARE, not just name them: an
     // operator reading "Mesita Places" would price it at every row. The
     // chain and its gate are both stated (Pato, 2026-09-05).

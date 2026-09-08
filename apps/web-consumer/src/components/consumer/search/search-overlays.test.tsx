@@ -5,16 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import { RailCard } from "@/components/consumer/search/SearchRailCard";
 import { SearchResultsPanel } from "@/components/consumer/search/SearchResultsPanel";
-import { SearchFilterRow } from "@/components/consumer/search/SearchFilterRow";
 import { buildSearchMapPins, locationTypeLabel } from "@/lib/search-membership";
 import {
   EmptySearchPrompt,
   SearchRailOverlay,
 } from "@/components/consumer/search/search-catalog-overlays";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
-import { SearchMapFilters } from "@/components/consumer/search/SearchMapFilters";
-import { SearchPlacesScope } from "@/components/consumer/search/SearchPlacesScope";
-import { SearchResultLimit } from "@/components/consumer/search/SearchResultLimit";
 import { SearchScopeSheet } from "@/components/consumer/search/SearchScopeSheet";
 import {
   ANCHOR_DROP_KM,
@@ -134,308 +130,6 @@ describe("SearchBar scope affordance", () => {
   });
 });
 
-describe("SearchFilterRow", () => {
-  // A THIRD OF THE ROW, LABELLED (Pato, MESITA-1627: "make the filter button
-  // larger. maybe one third"), reversing the 2026-09-06 disc. That disc's own
-  // argument — a labelled button beside a full-width field competes with it
-  // for the same glance — is the thing being conceded: on a map with an empty
-  // catalog, Filters is the other half of the question, not chrome beside it.
-  //
-  // It still wears SearchBar's chrome (44px, border, shadow-elev, blur), which
-  // is what the PRE-disc pill got wrong and is not what this change reverses.
-  //
-  // MEASURED, not asserted from reading: rendered into a harness page against
-  // the real compiled CSS at a 375px frame, the row is 349px and the control
-  // is 116px — 33% — in all three states (at rest, long query with the clear
-  // button showing, and two filters applied). The app is OTP-gated, so a
-  // layout claim cannot be checked on the deployed preview.
-  it("takes a third of the row, labelled, and goes primary-filled when on", () => {
-    const rest = renderToStaticMarkup(
-      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
-    );
-    expect(rest).toContain("lucide-sliders-horizontal");
-    expect(rest).toContain("Filter places");
-    // THE WORD IS BACK on the canvas, and the width is a THIRD of the track.
-    expect(rest).toMatch(/>\s*Filters\s*</);
-    expect(rest).toContain("basis-1/3");
-    expect(rest).not.toContain("h-11 w-11");
-    expect(rest).toContain("h-11");
-    expect(rest).toContain("rounded-full");
-    // The bar's own chrome, not the old disc's bare blur.
-    expect(rest).toContain("border-border");
-    expect(rest).toContain("bg-card/95");
-    expect(rest).toContain("shadow-elev");
-    expect(rest).not.toContain("bg-primary ");
-    // The sheet still owns every actual filter — none of them leak onto canvas.
-    expect(rest).not.toContain("Restaurants");
-    expect(rest).not.toContain("Bars");
-    expect(rest).not.toContain("Now");
-    expect(rest).not.toContain("Visit");
-    expect(rest).not.toContain("\u{1f1f2}\u{1f1fd}");
-
-    const on = renderToStaticMarkup(
-      <SearchFilterRow count={3} onOpenFilters={() => {}} />,
-    );
-    expect(on).toContain("3 applied");
-    expect(on).toContain("bg-primary");
-    expect(on).toContain(">3<");
-    expect(read("SearchFilterRow.tsx")).not.toContain("PLACE_FAMILIES");
-    expect(read("SearchFilterRow.tsx")).not.toContain("onOpenScope");
-  });
-
-  // THE ANTI-DISAPPEARING PAIR (Pato, MESITA-1627: "when clicking searchbar,
-  // it expands and covers filter and filter disapears").
-  //
-  // Flex resolves an overflowing row by shrinking whichever child CAN shrink.
-  // Drop `shrink-0` here and a bar whose content outgrows the track — a long
-  // query plus the clear button, say — squeezes this control toward zero width
-  // while it is still in the DOM and still focusable. That is exactly what
-  // "the filter disappears" looks like, and neither tsc nor the build sees it.
-  // Drop `min-w-0` on the bar's wrapper in SearchClient and the bar refuses to
-  // shrink at all, overflowing the row instead: same symptom, other direction.
-  //
-  // The harness could not reproduce a disappearance on the current markup —
-  // 116px, visible, in every state — so these two lines are what KEEPS it
-  // true, not a repair. They are the reason the bigger control is safe.
-  it("cannot be squeezed out by the bar beside it", () => {
-    const rest = renderToStaticMarkup(
-      <SearchFilterRow count={0} onOpenFilters={() => {}} />,
-    );
-    expect(rest).toContain("shrink-0");
-
-    const src = read("SearchClient.tsx");
-    // The bar's wrapper: flex-1 to take the remainder, min-w-0 so it may
-    // shrink to it rather than overflowing its sibling.
-    expect(src).toContain('<div className="min-w-0 flex-1">');
-    // …and the row itself is a min-w-0 flex, not a block that would let a
-    // wide child spill past the frame.
-    expect(src).toContain('<div className="flex min-w-0 items-center gap-2">');
-  });
-});
-
-describe("SearchMapFilters", () => {
-  it("shows Super Category, the three Places sets, then How many — dense", () => {
-    const html = renderToStaticMarkup(
-      <SearchMapFilters onClose={() => {}} count={4} />,
-    );
-    expect(html.indexOf("Super Category")).toBeLessThan(html.indexOf("Places"));
-    expect(html.indexOf("Mesita Enriched Places")).toBeLessThan(
-      html.indexOf("How many"),
-    );
-    expect(html).toContain("How many");
-    // 4 places under a cap of 20: the line states BOTH so it cannot
-    // disagree with the button one row below.
-    expect(html).toContain("Showing 4 of up to 20 closest.");
-    expect(html).not.toContain("Closest 20 places.");
-    expect(html).toContain('role="radiogroup"');
-    // THREE nested sets, narrowest first (Pato, 2026-09-05).
-    expect(html).toContain("Mesita Partner Places");
-    expect(html).toContain("Mesita Enriched Places");
-    expect(html).toContain("Google Places");
-    // Order off the aria-labels, not the visible names: the group's
-    // screen-reader sentence names all three rings too, and it renders
-    // before them.
-    const order = [
-      "Mesita Partner Places only",
-      "Mesita Enriched Places, partners included",
-      "Google Places, Mesita places included",
-    ].map((label) => html.indexOf(`aria-label="${label}"`));
-    expect(order.every((at) => at > -1)).toBe(true);
-    expect(order[0]).toBeLessThan(order[1]!);
-    expect(order[1]).toBeLessThan(order[2]!);
-    expect(html).not.toContain("All Mesita Places");
-    expect(html).not.toContain("All Google Places");
-    // The dots wear the pin colours: partner yellow, Mesita red, Google gray.
-    expect(html).toContain("background-color:#ffc400");
-    expect(html).toContain("background-color:#ff2357");
-    expect(html).toContain("background-color:#9ca3af");
-    expect(html).toContain(">20<");
-    expect(html).toContain(">40<");
-    expect(html).toContain(">60<");
-    // The rings are a 28px glyph beside the legend, never the retired 104px
-    // centred figure — measured, that one does not fit a 390pt phone.
-    expect(html).not.toContain('viewBox="0 0 104 104"');
-    expect(html).toContain('viewBox="0 0 28 28"');
-    // The body scrolls as a FLOOR: fitting is still the goal, but the panel
-    // is overflow-hidden and this footer has no background, so an overrun
-    // used to paint the How many radios underneath the CTA.
-    expect(html).toContain("overflow-y-auto");
-    // The sheet opens on the MIDDLE ring — a discovery surface never
-    // opens on "only the places that pay us".
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Enriched Places, partners included"',
-    );
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Closest 20 places"',
-    );
-    // 3 Places rings + 3 How many stops.
-    expect(html.match(/role="radio"/g)?.length).toBe(6);
-    // A curated ring is the default scope — nothing to warn about yet.
-    expect(html).not.toContain("not curated by Mesita");
-    expect(html).not.toContain('type="range"');
-    expect(html).toContain("Super Category");
-    expect(html).toContain("Restaurants");
-    expect(html).toContain("Bars &amp; Nightlife");
-    expect(html).toContain("Wellness &amp; Beauty");
-    // SEVEN pills — ❓ Undefined is a bookkeeping bucket, not an appetite.
-    expect(html).not.toContain("Undefined");
-    expect(html).toContain("Show 4 places");
-    // No State chip row. "Enriched" survives only inside the Places ring
-    // name — the atlas STATES (Created / Requested / Partnered / Promoted)
-    // are still not a filter axis on this sheet.
-    expect(html).not.toContain("Not on Mesita");
-    expect(html).not.toContain("Created");
-    expect(html).not.toContain("Requested");
-    expect(html).not.toContain("Partnered");
-    expect(html).not.toContain("Promoted");
-    expect(html.match(/Enriched/g)?.length).toBe(
-      html.match(/Mesita Enriched Places/g)?.length,
-    );
-    expect(html).not.toContain(">Category<");
-    expect(html).not.toContain("Types");
-    expect(html).not.toContain("Nightclub");
-    expect(html).not.toContain("Taco Restaurant");
-    expect(html).not.toContain("Distance tolerance");
-    expect(html).not.toContain("Anytime");
-    expect(html).not.toContain("I want to");
-    expect(html).not.toContain("Prioritize");
-  });
-});
-
-describe("SearchPlacesScope", () => {
-  // This block used to assert the OPPOSITE — no Venn, no Partners scope,
-  // "Partners is a paint, never a scope". That was a guard test for the
-  // two-set law (356331ca, 2026-08-29), and Pato overturned it on
-  // 2026-09-05 with `Google Places > Mesita Enriched Places > Mesita
-  // Partner Places`. The guard is gone deliberately, not by accident, and
-  // is replaced with the assertions the new law deserves.
-  it("is three stacked radios wearing the pin colours, narrowest first", () => {
-    const src = read("SearchPlacesScope.tsx");
-    // Selection is a FILL, not a coloured hairline (Pato, 2026-08-29 —
-    // still law). The membership colour lives on the dot and the rings.
-    expect(src).toContain("bg-foreground text-background");
-    // 44px touch floor, the same one every other filter control keeps.
-    expect(src).toContain("min-h-11");
-    // The figure reads its fills from map-defaults, never a literal, so it
-    // cannot drift away from the pins it is explaining.
-    expect(src).toContain("MAP_PARTNER_PIN_COLOR");
-    expect(src).toContain("MAP_ENRICHED_PIN_COLOR");
-    expect(src).toContain("MAP_GOOGLE_PIN_COLOR");
-    expect(src).not.toContain("#ff2357");
-
-    const html = renderToStaticMarkup(
-      <SearchPlacesScope scope="mesita" onScope={() => {}} />,
-    );
-    expect(html.match(/role="radio"/g)?.length).toBe(3);
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Mesita Enriched Places, partners included"',
-    );
-    expect(html).toContain('aria-label="Mesita Partner Places only"');
-    expect(html).toContain(
-      'aria-label="Google Places, Mesita places included"',
-    );
-    // All three pin colours render — yellow is a set the guest can pick now.
-    expect(html).toContain("#ffc400");
-    expect(html).toContain("#ff2357");
-    expect(html).toContain("#9ca3af");
-    // The nesting the glyph draws is spoken too — an aria-hidden svg tells
-    // a screen reader nothing.
-    expect(html).toContain("Three nested sets");
-    // The curated rings say nothing; only leaving them warns.
-    expect(html).not.toContain("not curated by Mesita");
-
-    const partners = renderToStaticMarkup(
-      <SearchPlacesScope scope="partners" onScope={() => {}} />,
-    );
-    expect(partners).toContain(
-      'aria-checked="true" aria-label="Mesita Partner Places only"',
-    );
-    expect(partners).not.toContain("not curated by Mesita");
-
-    const google = renderToStaticMarkup(
-      <SearchPlacesScope scope="google" onScope={() => {}} />,
-    );
-    // Leaving the curated set warns, in the box, every time.
-    expect(google).toContain("Google Places are not curated by Mesita");
-    expect(google).toContain("quality varies");
-    expect(google).toContain('role="note"');
-  });
-
-  it("shows each ring's count, so three equal numbers read as a fact", () => {
-    // Every visible place today is both a partner and enriched, so all
-    // three rings hold the same places. Without the counts the control
-    // looks broken; with them the coincidence is legible.
-    const html = renderToStaticMarkup(
-      <SearchPlacesScope
-        scope="mesita"
-        onScope={() => {}}
-        counts={{ partners: 22, mesita: 22, google: 61 }}
-      />,
-    );
-    expect(html).toContain(">22<");
-    expect(html).toContain(">61<");
-    // Counts are optional — the sheet renders before the catalog lands.
-    const bare = renderToStaticMarkup(
-      <SearchPlacesScope scope="mesita" onScope={() => {}} />,
-    );
-    expect(bare).not.toContain("tabular-nums");
-  });
-});
-
-describe("SearchResultLimit — the cap and the reality in one line", () => {
-  it("names the cap when the catalog fills it, the shortfall when it does not", () => {
-    // The bug: "Closest 60 places." sitting above a button reading
-    // "Show 20 places" reads as a broken control. Google's Nearby call
-    // caps at 20/call, so the gap is the normal case at Google scope.
-    const short = renderToStaticMarkup(
-      <SearchResultLimit limit={60} onLimit={() => {}} count={20} />,
-    );
-    expect(short).toContain("Showing 20 of up to 60 closest.");
-    expect(short).not.toContain("Closest 60 places.");
-
-    const full = renderToStaticMarkup(
-      <SearchResultLimit limit={20} onLimit={() => {}} count={20} />,
-    );
-    expect(full).toContain("Closest 20 places.");
-
-    // Over-full (a stale catalog mid-refetch) still reads as the cap.
-    const over = renderToStaticMarkup(
-      <SearchResultLimit limit={20} onLimit={() => {}} count={57} />,
-    );
-    expect(over).toContain("Closest 20 places.");
-
-    // Loading: no count yet, so promise nothing but the cap.
-    const loading = renderToStaticMarkup(
-      <SearchResultLimit limit={40} onLimit={() => {}} count={null} />,
-    );
-    expect(loading).toContain("Closest 40 places.");
-  });
-});
-
-describe("SearchResultLimit", () => {
-  it("offers only 20, 40, and 60 as exclusive radios", () => {
-    const html = renderToStaticMarkup(
-      <SearchResultLimit limit={40} onLimit={() => {}} />,
-    );
-    expect(html.match(/role="radio"/g)?.length).toBe(3);
-    expect(html).toContain("Closest 40 places.");
-    expect(html).toContain(
-      'aria-checked="true" aria-label="Closest 40 places"',
-    );
-    expect(html).toContain(
-      'aria-checked="false" aria-label="Closest 20 places"',
-    );
-    expect(html).toContain(
-      'aria-checked="false" aria-label="Closest 60 places"',
-    );
-    expect(html).toContain(">20<");
-    expect(html).toContain(">40<");
-    expect(html).toContain(">60<");
-    expect(html).not.toContain('type="range"');
-    expect(html).not.toContain('type="number"');
-  });
-});
-
 describe("SearchScopeSheet country pills", () => {
   const sheet = (
     <SearchScopeSheet
@@ -477,11 +171,14 @@ describe("SearchScopeSheet country pills", () => {
 });
 
 describe("Search map catalog auto-reloads after distance and time", () => {
-  it("loads the guest's How many, not an SSR 200 dump", () => {
+  it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
-    // How many is asked ONCE, on the Filters sheet — the fetch obeys the
-    // guest's stop, never a console count knob.
-    expect(read("SearchClient.tsx")).toContain("filters.resultLimit");
+    // MESITA-1699: the call carries a CENTRE AND NOTHING ELSE. How many, the
+    // ring and the Super Categories are operator config, so a cap named here
+    // would be a second answer to a question the blob already answers.
+    expect(read("SearchClient.tsx")).not.toContain("resultLimit");
+    expect(read("SearchClient.tsx")).not.toContain("placesScope");
+    expect(read("SearchClient.tsx")).not.toContain("familyKeys");
     expect(read("SearchClient.tsx")).not.toContain("CATALOG_NEARBY_MAX");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
     expect(read("SearchClient.tsx")).toContain("shouldReloadNearbyCatalog");
@@ -504,8 +201,9 @@ describe("Search map catalog auto-reloads after distance and time", () => {
     expect(read("SearchClient.tsx")).not.toContain("apiFetchPlacesInBbox");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
+    // `google: true` survives and is NOT the ring: it says this client can
+    // render a Google-only stub, which mobile and the Pay picker cannot.
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
-    expect(read("../../../lib/api/places.ts")).toContain("placesScope");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinSec");
   });
 
@@ -548,120 +246,77 @@ describe("Search map catalog auto-reloads after distance and time", () => {
   });
 });
 
-describe("Search map's top row is the query bar and the Filters control", () => {
-  it("keeps Filters ON the bar's row, top right, and OFF the bottom overlay", () => {
+describe("Search map's top row is the query bar, and nothing else", () => {
+  it("has no Filters control, no sheet, and no client-side cut", () => {
     const src = read("SearchClient.tsx");
     const overlays = read("search-catalog-overlays.tsx");
-    // ON THE TOP ROW, last in the flex so it takes the right corner, and
-    // wearing the bar's chrome instead of shouting beside it.
-    expect(src).toContain("<SearchFilterRow");
-    expect(src).toMatch(/<SearchBar[\s\S]*<SearchFilterRow/);
-    expect(src).toContain("onOpenFilters={() => setFiltersOpen(true)}");
-    expect(src).toContain("count={mapFilterCount(filters)}");
-    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    // OFF THE BOTTOM OVERLAY: the pill rode the rail's card, which on an empty
-    // viewport is the "nothing here yet" note itself.
-    expect(overlays).not.toContain("SlidersHorizontal");
-    expect(overlays).not.toContain("filtersPill");
-    expect(overlays).not.toContain("filterCount");
-    expect(src).not.toContain("filterCount={mapFilterCount(filters)}");
-    // Reset filters is the empty state's own way out and stays.
-    expect(overlays).toContain("Reset filters");
-    // The sheet is still the body behind the disc.
-    expect(src).toContain("SearchMapFilters");
-    // THE STORE READ AND THE CONTROL SHIP TOGETHER, always. While the control
-    // was gone this file read MAP_FILTER_DEFAULTS, because useMapFilters
-    // persists in sessionStorage and a filter with no visible control is one
-    // nobody can clear. Either both are here or neither is.
-    expect(src).toContain("const filters = useMapFilters()");
-    expect(src).toContain("resetMapFilters");
-    // The assignment, not the word — the comment above it names the constant
-    // to explain why the defaults were a stopgap and are not the law now.
-    expect(src).not.toContain("const filters = MAP_FILTER_DEFAULTS");
-    expect(src).toContain("applyMapFilters");
-    expect(src).toContain("takeMapResultLimit");
-    expect(src).not.toContain("SearchCategoryRow");
-    expect(src).not.toContain("familyKeys={filters.familyKeys}");
-    expect(src).toContain("flex min-w-0 items-center gap-2");
+    // GONE (Pato, 2026-09-08): "remove filters from search. like those
+    // filters are controlled in admin console, not in consumer app." The
+    // control migrated three times in a week — bottom overlay, corner disc,
+    // labelled third of the row — and the resolution was that the guest was
+    // never the one asking.
+    expect(src).not.toContain("SearchFilterRow");
+    expect(src).not.toContain("SearchMapFilters");
+    expect(src).not.toContain("useMapFilters");
+    expect(src).not.toContain("MAP_FILTER_DEFAULTS");
+    expect(src).not.toContain("resetMapFilters");
+    expect(src).not.toContain("mapFilterCount");
+    // The client-side cut goes with it. Two selectors for one map is how the
+    // EF and the browser end up disagreeing about what belongs on it.
+    //
+    // Assert on the CALLS, not the words: the comment above the catalog memo
+    // names both retired helpers to say why they went, and a bare
+    // not.toContain would forbid explaining the change in the file it changed.
+    expect(src).not.toMatch(/applyMapFilters\(/);
+    expect(src).not.toMatch(/takeMapResultLimit\(/);
+    expect(src).not.toMatch(/from "@\/lib\/map-filters-engine"/);
+    // The bar owns the row outright now — no flex row wrapping two controls.
     expect(src).toContain("<SearchBar");
-    expect(src).not.toContain("flex min-w-0 items-center justify-end");
-    expect(src).not.toContain("applyDiscoveryFilters");
+    expect(src).not.toContain("flex min-w-0 items-center gap-2");
+    // Every file behind the sheet is deleted, not merely unreferenced: a
+    // sessionStorage store nobody renders is a filter nobody can clear.
+    for (const gone of [
+      "SearchFilterRow.tsx",
+      "SearchMapFilters.tsx",
+      "SearchPlacesScope.tsx",
+      "SearchResultLimit.tsx",
+      "SearchCategoryRow.tsx",
+    ]) {
+      expect(existsSync(join(SEARCH_DIR, gone)), gone).toBe(false);
+    }
+    for (const gone of ["map-filters-engine.ts", "use-map-filters.ts"]) {
+      expect(existsSync(join(SEARCH_DIR, "../../../lib", gone)), gone).toBe(
+        false,
+      );
+    }
+    // The bottom overlay keeps its empty state but loses the reset, which
+    // only ever existed to undo a control the guest no longer has.
+    expect(overlays).not.toContain("SlidersHorizontal");
+    expect(overlays).not.toContain("filterCount");
+    expect(overlays).not.toContain("onResetFilters");
+    // The button, not the phrase — the comment above the empty state names
+    // what was removed and why, which is the point of leaving a comment.
+    expect(overlays).not.toMatch(/>\s*Reset filters\s*</);
+    expect(overlays).not.toContain("Adjust");
+    // SWIPE'S SHEET IS A DIFFERENT SHEET and is untouched: four guest
+    // predicates on the deck, its own store, never this surface.
     expect(src).not.toContain("useDiscoveryFilters");
     expect(src).not.toContain("DiscoveryFilters");
-    expect(src).not.toContain("flex-[1.15]");
-    expect(src).not.toContain("SearchScopeSheet");
-    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
-    expect(read("SearchMapFilters.tsx")).toContain("Places");
-    expect(read("SearchMapFilters.tsx")).toContain("SearchPlacesScope");
-    expect(read("SearchMapFilters.tsx")).toContain("SearchResultLimit");
-    expect(read("SearchMapFilters.tsx")).toContain("How many");
-    expect(read("SearchMapFilters.tsx")).toContain("Super Category");
-    expect(read("SearchMapFilters.tsx")).not.toContain('label="Types"');
-    expect(read("SearchMapFilters.tsx")).not.toContain('label="Category"');
-    expect(read("SearchMapFilters.tsx")).not.toContain("MAP_STATE_OPTIONS");
-    expect(read("SearchMapFilters.tsx")).not.toContain("toggleMapState");
-    expect(read("../../../lib/map-filters-engine.ts")).not.toContain(
-      "Mesita Partners",
-    );
-    expect(read("../../../lib/map-filters-engine.ts")).toContain(
-      "Mesita Places",
-    );
-    expect(read("../../../lib/map-filters-engine.ts")).toContain(
-      "Google Places",
-    );
-    expect(read("../../../lib/map-filters-engine.ts")).toContain(
-      "placeSearchScope",
-    );
-    expect(read("SearchClient.tsx")).toContain("filters.placesScope");
-    expect(read("SearchClient.tsx")).toMatch(
-      /filters\.placesScope[\s\S]*clearPendingReload\(\)[\s\S]*loadViewport\(lastBoxRef\.current\)/,
-    );
-    expect(read("SearchClient.tsx")).toContain("distance_km");
-    expect(read("SearchClient.tsx")).not.toMatch(
-      /applyMapFilters\(\s*predictions/,
-    );
-    expect(read("../../../lib/api/places.ts")).not.toMatch(
-      /consumer-web-suggest-places[\s\S]*placesScope/,
-    );
-    expect(read("../../../lib/api/places.ts")).not.toMatch(
-      /consumer-web-suggest-places[\s\S]*familyKeys/,
-    );
-    expect(read("../../../lib/api/places.ts")).toMatch(
-      /consumer-web-list-places[\s\S]*familyKeys/,
-    );
-    expect(read("SearchClient.tsx")).toContain("filters.familyKeys");
-    // Fast/Deep is back on the map with the search bar, so the pin has to get
-    // SHARPER, not looser: SearchClient legitimately contains
-    // "filters.familyKeys" for its CATALOG fetch, and a bare not.toContain
-    // would now be asserting the opposite of what it means.
-    //
-    // The invariant is about the suggest CALL, so assert on its arguments:
-    // map filters describe what to draw on the basemap, and leaking them into
-    // autocomplete would silently narrow a typed name to the current chips.
-    const searchSrc = read("SearchClient.tsx");
+    expect(existsSync(join(SEARCH_DIR, "../../../lib/use-discovery-filters.ts")))
+      .toBe(true);
+    // Map filters never leaked into autocomplete, and now there is nothing
+    // left to leak — but keep asserting on the suggest call's arguments.
     const suggestArgs = [
-      ...searchSrc.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
+      ...src.matchAll(/apiSuggestPlaces\(([\s\S]*?)\);/g),
     ].map((m) => m[1]);
     expect(suggestArgs).toHaveLength(2); // one Fast, one Deep
     expect(suggestArgs.join("\n")).toContain('"fast"');
     expect(suggestArgs.join("\n")).toContain('"deep"');
     for (const args of suggestArgs) expect(args).not.toContain("filters");
-    expect(read("SearchMapFilters.tsx")).not.toContain("Distance tolerance");
-    expect(read("SearchMapFilters.tsx")).not.toContain("Anytime");
-    expect(read("search-catalog-overlays.tsx")).not.toContain("Adjust");
-    expect(read("search-catalog-overlays.tsx")).toContain(
-      "No places match these filters",
-    );
+    expect(read("SearchBar.tsx")).not.toMatch(/Search passes `onOpenScope`/);
     expect(read("../../../app/(shell)/search/loading.tsx")).toContain(
       "flex items-center gap-2",
     );
-    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
-      "flex gap-1.5 overflow-hidden",
-    );
-    expect(read("../../../app/(shell)/search/loading.tsx")).not.toContain(
-      "mt-2 flex gap-1.5",
-    );
-    expect(existsSync(join(SEARCH_DIR, "SearchCategoryRow.tsx"))).toBe(false);
   });
 
   it("recenters the map on the location param, not only the device", () => {
@@ -1014,7 +669,7 @@ describe("Search catalog reload UI", () => {
     expect(html).toContain("opacity-55");
   });
 
-  it("empty nearby state has no Adjust control", () => {
+  it("empty nearby state has no Adjust and no Reset control", () => {
     const html = renderToStaticMarkup(
       <SearchRailOverlay {...railProps} places={[]} catalogCount={0} />,
     );
@@ -1023,19 +678,6 @@ describe("Search catalog reload UI", () => {
     expect(html).not.toContain("filters");
   });
 
-  it("offers Reset filters when predicates emptied the rail", () => {
-    const html = renderToStaticMarkup(
-      <SearchRailOverlay
-        {...railProps}
-        places={[]}
-        catalogCount={4}
-        onResetFilters={() => {}}
-      />,
-    );
-    expect(html).toContain("No places match these filters");
-    expect(html).toContain("Reset filters");
-    expect(html).not.toContain("Adjust");
-  });
 });
 
 describe("Search catalog rail pages 80% wide with neighbor peeks and snaps", () => {
@@ -1362,17 +1004,19 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     expect(client).toMatch(/\} else \{[\s\S]{0,220}setSelectedId\(null\);/);
   });
 
-  it("prepends the pick after the filters and the cap — they never veto it", () => {
+  it("prepends the pick after the operator's cap — it never vetoes the pick", () => {
     const client = read("SearchClient.tsx");
     const memo = client.slice(
       client.indexOf("const catalog = useMemo"),
-      client.indexOf("const filtersCutCatalog"),
+      client.indexOf("}, [nearby, anchor, distanceCenter]);"),
     );
-    expect(memo).toContain("applyMapFilters");
-    expect(memo).toContain("takeMapResultLimit");
-    // Prepend runs LAST, so a partners-only filter cannot hide the
-    // Google-only place the guest explicitly typed.
-    expect(memo.indexOf("takeMapResultLimit")).toBeLessThan(
+    // The cap is the EF's now (MESITA-1699), so the memo has one job: put the
+    // picked place first. It must still not re-cut what the server sent.
+    expect(memo).toContain("prependAnchorPlace(nearby, anchorRow)");
+    expect(memo).not.toContain("applyMapFilters");
+    expect(memo).not.toContain("takeMapResultLimit");
+    // A thin operator ring still cannot hide the place the guest typed.
+    expect(memo.indexOf("anchorRow")).toBeLessThan(
       memo.indexOf("prependAnchorPlace"),
     );
   });

@@ -64,7 +64,6 @@ export function SearchRailOverlay({
   onRailScroll,
   onSelectPlace,
   onOpenPlace,
-  onResetFilters,
   setRailCardRef,
 }: {
   idle: boolean;
@@ -82,20 +81,18 @@ export function SearchRailOverlay({
   onRailScroll: () => void;
   onSelectPlace: (place: Place) => void;
   onOpenPlace: (place: Place) => void;
-  onResetFilters?: () => void;
   setRailCardRef: (placeId: string, el: HTMLElement | null) => void;
 }) {
   if (!idle) return null;
 
-  // NO FILTERS PILL DOWN HERE ANY MORE (Pato, 2026-09-06). It sat beside the
-  // count it changes for four days, which reads well with a rail under it and
-  // badly without one: on an empty viewport the pill was riding the "No places
-  // to show here yet" card, so the control that widens the search lived inside
-  // the state it exists to escape. It is a disc beside the query bar now
-  // (SearchFilterRow) — always in the same corner, whatever the rail is doing.
+  // NO FILTERS ANYWHERE ON SEARCH (Pato, 2026-09-08). The pill lived down
+  // here for four days, then as a disc on the bar row, then as a labelled
+  // third of it — and then the controls turned out to belong to the operator,
+  // so the whole sheet went (MESITA-1699).
   //
-  // Reset filters stays, because it is not chrome: it is the empty state's own
-  // one-tap way out, and it can only be offered when predicates caused it.
+  // Reset filters went with it. It was the empty state's one-tap way out of a
+  // cut the guest made; a guest who cannot cut anything cannot undo one, and
+  // an empty map is now a fact about the catalog or about `map.pinCount`.
 
   if (overspan) {
     return (
@@ -217,21 +214,8 @@ export function SearchRailOverlay({
         (catalogCount > 0 || !catalogLoading) && (
           <div className="border-border bg-card/95 shadow-elev mx-auto flex w-max max-w-[calc(100%-1.5rem)] flex-col items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur">
             <p className="text-muted-foreground text-xs">
-              {onResetFilters
-                ? "No places match these filters"
-                : "No places to show here yet."}
+              No places to show here yet.
             </p>
-            {/* Reset is the blunt way out of a filtered-empty map; the disc
-                up on the bar row is how one predicate gets fixed instead. */}
-            {onResetFilters && (
-              <button
-                type="button"
-                onClick={onResetFilters}
-                className="text-primary text-xs font-semibold"
-              >
-                Reset filters
-              </button>
-            )}
           </div>
         )
       )}

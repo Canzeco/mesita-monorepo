@@ -205,13 +205,21 @@ export type ViewportPlaces = {
   reloadMinSec?: number;
 };
 
-/** Search map catalog: closest N of the selected Places set around a camera. */
+/**
+ * Search map catalog: closest N around a camera.
+ *
+ * A CENTRE AND NOTHING ELSE (MESITA-1699). How many, the Places ring and the
+ * Super Categories used to ride this call from the guest's Filters sheet; they
+ * are operator config now, so the EF reads `map.pinCount`, `map.googleFill`
+ * and `map.supers` off `discovery_config` and this caller states no policy.
+ *
+ * `google: true` stays — it is not the ring, it is web Search saying it CAN
+ * render a Google-only stub. Mobile and the Pay picker omit it and get listed
+ * rows, which is still their contract.
+ */
 export async function apiFetchNearbyCatalog(
   client: SupabaseClient,
   center: { lat: number; lng: number },
-  limit = CATALOG_NEARBY_MAX,
-  placesScope: PlacesScopeWire = "mesita",
-  familyKeys: readonly string[] = [],
 ): Promise<ViewportPlaces> {
   const data = await invokeEF<{
     places: Place[];
@@ -221,11 +229,8 @@ export async function apiFetchNearbyCatalog(
     reloadMinSec?: number;
   }>(client, "consumer-web-list-places", {
     google: true,
-    placesScope,
-    familyKeys: [...familyKeys],
     lat: center.lat,
     lng: center.lng,
-    limit,
   });
   return {
     places: (data.places ?? []).map(stripInsecurePhotos),

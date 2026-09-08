@@ -16,21 +16,31 @@
 //   { lat, lng, limit? } — listed nearby (mobile Search). Closest N of
 //     the Mesita Places set. No Google stubs — mobile opens `/place/:id`
 //     and cannot host GooglePlaceSheet.
-//   { google: true, lat, lng, limit?, placesScope?, familyKeys? } — web
+//   { google: true, lat, lng } — web
 //     Search catalog. THREE NESTED SETS (Pato, 2026-09-05):
 //       Google Places ⊃ Mesita Enriched Places ⊃ Mesita Partner Places
 //       gray                   red                     yellow
 //     `placesScope` names the set — "partners" | "mesita" | "google" —
 //     and enrichment gates every Mesita ring, so a partner has to be
-//     enriched to sit inside the enriched one. Absent or unknown resolves
-//     to "mesita", the WIDEST Mesita ring: mobile Search and the web Pay
-//     picker both post no scope, so the absent value has to be safe on its
-//     own. Legacy numerics keep their old meanings (1 = Mesita,
-//     2/3 = Google). `limit` is the guest's How many — it caps BOTH lanes
-//     and the merged union, so max pins = limit, never the sum. familyKeys
-//     (guest Super pills) pick Nearby `includedPrimaryTypes` from
-//     GOOGLE_SEARCH_TYPES so unlisted Google places match the Super. Empty
-//     = operator F&B batteries. Only the Google scope calls Nearby, and
+//     enriched to sit inside the enriched one.
+//
+//     WEB SEARCH NOW POSTS NEITHER scope NOR limit NOR familyKeys
+//     (MESITA-1699): the guest Filters sheet is deleted, so `map.pinCount`
+//     is the cap, `map.googleFill` decides Google, and `map.supers` picks
+//     the batteries. A `google: true` call with no scope therefore resolves
+//     to the GOOGLE ring — the widest — because the operator, not the
+//     guest, is the one who says whether Google rows may appear, and
+//     googleFill is where that is said.
+//
+//     A call WITHOUT `google: true` keeps the old default: absent or
+//     unknown resolves to "mesita", the widest Mesita ring. Mobile Search
+//     and the web Pay picker post no scope and must not be narrowed, and
+//     the Pay picker names its scope outright besides.
+//
+//     Legacy numerics keep their old meanings (1 = Mesita, 2/3 = Google).
+//     A client `limit` still wins when one is sent; familyKeys still pick
+//     Nearby `includedPrimaryTypes` from GOOGLE_SEARCH_TYPES when a caller
+//     sends them. Only the Google scope calls Nearby, and
 //     every gate on that call reads `lanes.googleCount`, never the scope
 //     name — one place to change, no literal to miss. Google set stays
 //     distance. Listed set Lineup-reorders (Map mask). Google fill is
@@ -223,6 +233,10 @@ Deno.serve(async (req) => {
   // Nearby (lat+lng) is Search's pool. Optional bbox stays for other callers
   // but Search does not send it — a tight camera box is how 4 pins shipped.
   let limit = DEFAULT_LIMIT;
+  // A caller that names its own cap keeps it; one that names none takes the
+  // operator's `map.pinCount` below. Two different silences, two answers.
+  let limitFromClient = false;
+  let scopeFromClient = false;
   let nearbyDecision: ReturnType<typeof decideNearby> = { mode: "none" };
   let clientGoogle = false;
   let placesScope: PlacesScope = PLACES_SCOPE_DEFAULT;
@@ -232,12 +246,15 @@ Deno.serve(async (req) => {
     const body = await readJsonOr<ListBody>(req, {});
     if (typeof body.limit === "number") {
       limit = clampIntRange(body.limit, 1, MAX_LIMIT);
+      limitFromClient = true;
     }
     nearbyDecision = decideNearby(body as Record<string, unknown>);
     clientGoogle = nearbyDecision.mode === "ok" &&
       wantsGoogleFill(body as Record<string, unknown>);
     // The named wire wins; a legacy client's ordinal is the fallback. Both
     // land on "mesita" when absent, never on the narrowest ring.
+    scopeFromClient = body.placesScope !== undefined ||
+      body.searchPower !== undefined;
     placesScope = parsePlacesScope(body.placesScope ?? body.searchPower);
     guestSupers = readGuestFamilyKeys(body.familyKeys);
     if (nearbyDecision.mode === "none") {
@@ -245,7 +262,10 @@ Deno.serve(async (req) => {
     }
   } else {
     const q = Number(new URL(req.url).searchParams.get("limit"));
-    if (Number.isFinite(q)) limit = clampIntRange(q, 1, MAX_LIMIT);
+    if (Number.isFinite(q)) {
+      limit = clampIntRange(q, 1, MAX_LIMIT);
+      limitFromClient = true;
+    }
   }
 
   if (nearbyDecision.mode === "invalid") {
@@ -271,13 +291,21 @@ Deno.serve(async (req) => {
   // Nearby uses its own large radius + closest N of the selected Places
   // set. Pay / Home GET and bbox callers keep global filters only. Google
   // fill is client opt-in AND operator googleFill AND at least one Super on.
-  // HOW MANY PINS is the guest's `limit`; HOW MANY GOOGLE ROWS WE BUY is the
-  // operator's `map.googlePull` (MESITA-1695). Two questions, two owners.
+  // HOW MANY PINS is `map.pinCount`; HOW MANY GOOGLE ROWS WE BUY is
+  // `map.googlePull` (MESITA-1695). Two questions, two knobs, one owner —
+  // the operator, since MESITA-1699 took the guest's Filters sheet away.
   const efEnv = readEFEnv();
   const cfg = efEnv.ok
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
+  // Silence means the operator answers, and only for the web Search call.
+  // `clientGoogle` is the tell: mobile Search and the Pay picker never send
+  // `google: true`, so neither their cap nor their ring moves here.
+  if (clientGoogle) {
+    if (!limitFromClient) limit = clampIntRange(cfg.map.pinCount, 1, MAX_LIMIT);
+    if (!scopeFromClient) placesScope = "google";
+  }
   // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
   // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,
   // so `cfg.map.supers` sits this branch out entirely.
