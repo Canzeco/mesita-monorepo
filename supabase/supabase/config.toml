@@ -350,6 +350,20 @@ verify_jwt = false
 [functions.validate-web-validate-ticket]
 verify_jwt = false
 
+# --- gift-web (PUBLIC gift landing page, MESITA-1677) ---
+# A DIFFERENT actor prefix than validate-web, deliberately: that one is
+# possession auth for whoever holds a freshly scanned ticket QR (nominally
+# staff); this one is a stranger holding a gift code, who may have never
+# heard of Mesita before this link. verify_jwt = FALSE for the same
+# structural reason — "auth-optional" is not a gateway setting, and a
+# recipient must see the org's identity and the gift's terms BEFORE any
+# sign-in wall, or gifting's whole acquisition value is gone. The keyed HMAC
+# digest of the 10-digit code is the entire authentication; see
+# _shared/gift-code.ts. Rate-limited, uniform 404 on an unknown/implausible
+# code — money-path-efs.smoke.test.ts's PUBLIC_CHECK_EFS pins the contract.
+[functions.gift-web-preview-code]
+verify_jwt = false
+
 # Entity-split EFs (migration 0031). consumer-list-tickets stays for
 # now while clients migrate; the new surfaces split favorites and
 # reservations into first-class entities.
@@ -704,6 +718,25 @@ verify_jwt = true
 # The Buy sheet's "Where" picker: places that accept Mesita Credits AND whose
 # organization is Connect charge-ready today.
 [functions.consumer-web-list-credit-places]
+verify_jwt = true
+
+# Gift Credits (MESITA-1677) — issuance only (MESITA-1380: no transfers
+# between consumers). The sender's own card is charged, cloned onto the
+# target place's organization exactly like Buy; the resulting lot has no
+# owner until a stranger redeems its hashed code. All four are JWT-gated —
+# the PUBLIC half of gifting is gift-web-preview-code, above, a different
+# actor prefix entirely. Redeem stays behind the auth wall on purpose
+# (MESITA-1692: "claiming credits a wallet, and a wallet needs an account").
+[functions.consumer-web-gift-credits]
+verify_jwt = true
+
+[functions.consumer-web-redeem-credit-gift]
+verify_jwt = true
+
+[functions.consumer-web-cancel-credit-gift]
+verify_jwt = true
+
+[functions.consumer-web-list-credit-gifts]
 verify_jwt = true
 
 # Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
