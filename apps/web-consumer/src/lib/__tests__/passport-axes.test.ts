@@ -163,6 +163,18 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(client).not.toContain('title="Class"');
   });
 
+  it("Instagram chip first, Class second", () => {
+    // Pato, MESITA-1653. Order was unpinned until now: the test above proves
+    // both chips EXIST, which stays true however they are arranged, so a
+    // refactor that reflowed the row would have flipped them silently. This
+    // is the second ordering call on a passport pair in a day (MESITA-1648
+    // was Passport before Profile), which is what makes it worth a pin.
+    const handlers = [...bar.matchAll(/onClick=\{(onOpen\w+)\}/g)].map(
+      (m) => m[1],
+    );
+    expect(handlers).toEqual(["onOpenInstagram", "onOpenClass"]);
+  });
+
   it("imports nothing plan-shaped from consumer-data", () => {
     expect(planShaped(importedFrom(bar, "@/lib/consumer-data"))).toEqual([]);
   });
