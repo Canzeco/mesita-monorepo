@@ -1,6 +1,8 @@
 "use client";
 
-import { Banknote, CreditCard, Smartphone, Coins } from "lucide-react";
+import { useState } from "react";
+import { Banknote, ChevronDown, CreditCard, Smartphone, Coins } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // The ways to settle a bill, said once (Pato, 2026-09-08: "sí vamos a hacer una
 // lista de Ways to Pay, pero explanatory").
@@ -12,8 +14,7 @@ import { Banknote, CreditCard, Smartphone, Coins } from "lucide-react";
 // once: the card a guest hands to the place, and the card MESITA charges on
 // their behalf. Those are not one tender. They differ in who takes the money,
 // who holds the risk, and which button appears in THE TICKET — checkout has
-// treated them as two rails since MESITA-1414, and the wallet was the only
-// surface still pretending otherwise:
+// treated them as two rails since MESITA-1414:
 //
 //   Cash                     → `at_place`   the place is paid, no PSP
 //   Card                     → `at_place`   the place is paid, their terminal
@@ -24,44 +25,48 @@ import { Banknote, CreditCard, Smartphone, Coins } from "lucide-react";
 // SO THE LIST IS GROUPED BY WHO TAKES THE MONEY, which is the only split a
 // guest can act on — "do I need cash on me" is answered by the first group and
 // nothing else. It is also the grouping `StepPay` already uses at the moment of
-// payment ("At the register" / "Mesita Pay" / "Your Credits"), so the wallet
-// now teaches the screen the guest meets later instead of a different shape.
+// payment, so the wallet teaches the screen the guest meets later.
 //
-// IT IS COPY, NOT A MENU. No chevrons, no handlers, nothing to press. The two
-// panels underneath are where anything is actually done; this one answers the
-// question a guest has exactly once: what can I pay with here.
+// ── NAMES ALWAYS, PROSE ON REQUEST (MESITA-1708) ────────────────────────────
 //
-// IT NO LONGER LEAVES. It used to render only while the guest held zero
-// Credits — read once, then gone. Pato's wireframe draws it above a wallet that
-// has balances, and permanently: a guest who prepaid one place has if anything
-// MORE need of the line that says the other three tenders still exist. The
-// worry it was hidden for — furniture above the number the guest opened the app
-// to see — is paid for by keeping the rows tight, not by deleting the block on
-// the day it starts being true.
+// This block shipped fully expanded and Pato's reply was "better desiggn. wtf
+// is that". He was right, and the failure was measurable rather than a matter
+// of taste: four icon-tile-plus-two-lines rows made it the tallest thing on the
+// screen, above the two panels that actually do something, and at 390×844 it
+// CLIPPED MID-ROW — the first thing a guest saw was a sentence cut in half.
+//
+// The fix is not to hide it again (it was conditional once, and Pato's wireframe
+// deliberately drew it above a wallet that has balances). It is to separate the
+// two jobs this block was doing at once:
+//
+//   · NAMING the four tenders — the whole point of MESITA-1696, and now four
+//     chips that always render, cost one line, and cannot clip.
+//   · EXPLAINING them — a paragraph each, which a guest reads once and never
+//     again, and which now sits behind a press.
+//
+// STILL COPY, NOT A MENU. The disclosure toggles text; the chips are not
+// pressable and route nowhere. The two panels underneath remain the only place
+// anything is done.
 //
 // CREDITS IS NOT A PEER OF THE OTHER THREE, and the copy must not imply it is.
 // `20260831121954_credits_rename.sql` freezes it: "Credits settle as a bill
 // REDUCTION never a payment method, applying only to (subtotal - discount),
 // never the tip." A guest told Credits is a way to PAY will expect a MX$2,000
-// balance to cover a MX$1,800 bill plus tip, and it will not — tips go 100% to
-// the place on a separate rail, computed pre-discount. So the Credits line says
-// what it does to a bill rather than claiming to settle one.
+// balance to cover a MX$1,800 bill plus tip, and it will not.
 //
-// THE TAGS ARE THE LIVENESS, and they are honest. Mesita Online Payments is
-// built but per-place: it needs `places.mesita_pay_enabled` ∧
-// `visits_config.payCard` ∧ Connect charge-readiness, all three false in
-// production today, so the row says where it works rather than that it works.
-// Credits BALANCES became real in MESITA-1674, which deleted the "Emulated"
-// footer this screen used to carry — but SPENDING them did not: StepPay still
-// renders its Credits row `soon`. The "Soon" tag is now the only place the
-// wallet says the tender is not live, so it does not get tidied away.
+// THE TAGS ARE THE LIVENESS, and they are honest. Mesita Online Payments needs
+// `places.mesita_pay_enabled` ∧ `visits_config.payCard` ∧ Connect readiness,
+// all three false in production today. Credits BALANCES became real in
+// MESITA-1674, which deleted the "Emulated" footer this screen used to carry —
+// but SPENDING them did not: StepPay still renders its Credits row `soon`, so
+// "Soon" here is the only place the wallet says that tender is not live.
 //
-// NO APPLE PAY OR GOOGLE PAY IN THIS COPY. Neither is built — there is no
-// Stripe wallet button anywhere in this app — and naming them here would be
-// the screen promising a rail that does not exist.
+// NO APPLE PAY OR GOOGLE PAY IN THIS COPY. Neither is built.
 
 type Way = {
   Icon: typeof Banknote;
+  /** The chip label. Short enough that four fit two rows at 390px. */
+  chip: string;
   title: string;
   line: string;
   /** Renders beside the title when the tender is not universally available. */
@@ -71,11 +76,13 @@ type Way = {
 const AT_THE_PLACE: Way[] = [
   {
     Icon: Banknote,
+    chip: "Cash",
     title: "Cash",
     line: "Hand it over at the table, the way you always have.",
   },
   {
     Icon: CreditCard,
+    chip: "Card",
     title: "Card",
     line: "Your own card on the place’s terminal. Mesita is not in the middle.",
   },
@@ -84,20 +91,50 @@ const AT_THE_PLACE: Way[] = [
 const THROUGH_MESITA: Way[] = [
   {
     Icon: Smartphone,
+    chip: "Online",
     title: "Mesita Online Payments",
     line: "Settle from a saved card inside the app — nothing to hand over.",
     tag: "At places that accept it",
   },
   {
     Icon: Coins,
+    chip: "Credits",
     title: "Mesita Credits Payments",
     line: "Prepay a place for more than you paid. Reduces your bill, never the tip.",
     tag: "Soon",
   },
 ];
 
+const ALL: Way[] = [...AT_THE_PLACE, ...THROUGH_MESITA];
+
+/** The always-visible half. Four names, one line, no clipping possible.
+ *  Not buttons — nothing here is pressable, and a chip that looks tappable and
+ *  is not is the "control that cannot be pressed is decoration" mistake this
+ *  codebase already made once with the Gift tile. */
+function Chips() {
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {ALL.map(({ Icon, chip, tag }) => (
+        <li
+          key={chip}
+          className={cn(
+            "bg-muted type-label flex items-center gap-1.5 rounded-full px-2.5 py-1.5 font-semibold",
+            tag === "Soon" ? "text-muted-foreground" : "text-foreground",
+          )}
+        >
+          <Icon className="size-3" aria-hidden />
+          {chip}
+          {tag === "Soon" ? (
+            <span className="text-muted-foreground/80 type-meta">soon</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The two-word uppercase rule above each pair. It says who ends up with the
- *  money, which is the only difference between the pairs that a guest can feel. */
+ *  money, which is the only difference between the pairs a guest can feel. */
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <span className="text-muted-foreground type-meta font-bold tracking-[0.12em] uppercase">
@@ -137,16 +174,40 @@ function WayRows({ ways }: { ways: Way[] }) {
  *  `WalletPanel`'s — this block owns only the list, so all three Wallet
  *  sections wear one chrome. */
 export function WaysToPay() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <GroupLabel>At the place</GroupLabel>
-        <WayRows ways={AT_THE_PLACE} />
-      </div>
-      <div>
-        <GroupLabel>Through Mesita</GroupLabel>
-        <WayRows ways={THROUGH_MESITA} />
-      </div>
+    <div className="flex flex-col gap-3">
+      <Chips />
+
+      {/* A real button with aria-expanded, not a styled div: this is the one
+          pressable thing in the block and it must read as one. 44px tall
+          including its own padding — the touch floor. */}
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="text-muted-foreground hover:text-foreground type-label -mx-1 flex items-center gap-1 rounded-lg px-1 py-2.5 text-left font-semibold transition"
+      >
+        {open ? "Hide" : "How each one works"}
+        <ChevronDown
+          className={cn("size-3.5 transition-transform", open && "rotate-180")}
+          aria-hidden
+        />
+      </button>
+
+      {open ? (
+        <div className="flex flex-col gap-4 pb-1">
+          <div>
+            <GroupLabel>At the place</GroupLabel>
+            <WayRows ways={AT_THE_PLACE} />
+          </div>
+          <div>
+            <GroupLabel>Through Mesita</GroupLabel>
+            <WayRows ways={THROUGH_MESITA} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
