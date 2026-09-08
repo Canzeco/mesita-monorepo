@@ -61,7 +61,14 @@ main_worktree() {
 # here means "no claim", never a guess.
 claim() { git -C "$1" config --worktree --get "$2" 2>/dev/null || true; }
 
-in_cloud() { [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] || [ "${MESITA_CLOUD:-}" = "1" ]; }
+# MESITA_CLOUD=1|0 is an explicit override (scripts/worktree.ts passes it); otherwise the harness env decides.
+in_cloud() {
+  case "${MESITA_CLOUD:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  [ "${CLAUDE_CODE_REMOTE:-}" = "true" ]
+}
 
 # One JSON field by dotted path (numbers index arrays), through whichever parser the host has.
 jget() {

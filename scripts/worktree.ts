@@ -35,7 +35,7 @@ import { dirname, fromFileUrl, join, relative, resolve } from "@std/path";
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type Exec = { code: number; stdout: string; stderr: string };
-export type Runner = (cmd: string, args: string[], opts?: { cwd?: string }) => Promise<Exec>;
+export type Runner = (cmd: string, args: string[], opts?: { cwd?: string; env?: Record<string, string> }) => Promise<Exec>;
 
 /** A cloud session: the clone is the workspace; `session` is the harness id the claim line names. */
 export type Cloud = { platform: string; session: string | null };
@@ -321,7 +321,9 @@ async function claimOf(env: Env, row: Row): Promise<string | null> {
 /** `scripts/preflight.sh check <path>`: the verdict every hook gives, so add can verify what it made (I-9). */
 export async function preflight(env: Env, path: string): Promise<{ ok: boolean; line: string }> {
   // No cwd: the path may not exist yet (a file about to be written); the script walks up itself.
-  const r = await env.runner("bash", [PREFLIGHT_SH, "check", path]);
+  // The mode is passed explicitly: the gate must not guess it from whatever CLAUDE_CODE_REMOTE the
+  // parent process happens to carry (a cloud session running the local suite, or the reverse).
+  const r = await env.runner("bash", [PREFLIGHT_SH, "check", path], { env: { MESITA_CLOUD: env.cloud ? "1" : "0" } });
   const first = (r.stdout.trim() || r.stderr.trim()).split("\n")[0] ?? "";
   return { ok: r.code === 0, line: first.replace(/^preflight: /, "") };
 }
@@ -1007,7 +1009,7 @@ export async function boot(env: Env): Promise<string[]> {
 // ── CLI ─────────────────────────────────────────────────────────────────────
 
 export const defaultRunner: Runner = async (cmd, args, opts) => {
-  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, stdout: "piped", stderr: "piped" });
+  const c = new Deno.Command(cmd, { args, cwd: opts?.cwd, env: opts?.env, stdout: "piped", stderr: "piped" });
   const o = await c.output();
   const dec = new TextDecoder();
   return { code: o.code, stdout: dec.decode(o.stdout), stderr: dec.decode(o.stderr) };

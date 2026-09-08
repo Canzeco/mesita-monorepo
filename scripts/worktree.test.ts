@@ -4,7 +4,8 @@
 // The fixture deliberately does NOT enable extensions.worktreeConfig: a real clone never has
 // it either, and the script must turn it on itself before the first `git config --worktree`.
 // Fixture commits pass --no-verify because `add` installs the pre-commit gate, and only the
-// tests about the gate want to meet it.
+// tests about the gate want to meet it. The suite must pass with CLAUDE_CODE_REMOTE both set and
+// unset in the parent environment (a cloud session runs it too): mode is always passed explicitly.
 
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { join } from "@std/path";
