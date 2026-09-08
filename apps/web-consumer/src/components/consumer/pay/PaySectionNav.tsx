@@ -1,12 +1,12 @@
 "use client";
 
-// Pay's section row — New · Wallet.
+// Pay's section row — QR · Wallet.
 //
 // Pay became a CONTAINER on 2026-09-01. It was a single surface (a place list)
 // for months, and the file's own rule said so: "IT IS A PLACE LIST AND NOTHING
 // ELSE". That rule was about not stacking unrelated chrome ON the list — a
 // steps rail, ticket rows, an Open chip — all of which were removed for it. A
-// section row does not break it: New still IS that list, undiluted, and Wallet
+// section row does not break it: QR still IS that list, undiluted, and Wallet
 // is a sibling you navigate to rather than a block layered on top.
 //
 // WALLET MOVED HERE FROM ACTIVITY, closing the category error named on
@@ -30,11 +30,17 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 type Section = { href: string; label: string; Icon: LucideIcon };
 
-// NEW LEADS, and bare /new-visit is also the default: you open this tab
+// QR LEADS, and bare /new-visit is also the default: you open this tab
 // standing in a place, not to check a balance. Activity splits first-from-
 // default on purpose; here they agree, because the urgent thing is also first.
+//
+// THE LABEL IS QR, NOT NEW (Pato, 2026-09-08): "el que escanea es el venue".
+// New named a creation the guest never thinks about, and named the wrong
+// actor — the guest SHOWS a code, the venue scans it. The rename stops at the
+// label: the route is still /new-visit and the key is still newVisit.new,
+// because a rename never reaches routes or code (the Pay naming law).
 export const SECTIONS: Section[] = [
-  { href: CONSUMER_ROUTES.newVisit.new, label: "New", Icon: QrCode },
+  { href: CONSUMER_ROUTES.newVisit.new, label: "QR", Icon: QrCode },
   { href: CONSUMER_ROUTES.newVisit.wallet, label: "Wallet", Icon: Wallet },
 ];
 
@@ -47,7 +53,7 @@ export function PaySectionNav() {
         <div className="grid w-max min-w-full auto-cols-fr grid-flow-col items-center gap-1">
           {SECTIONS.map(({ href, label, Icon }) => {
             // EXACT match, not startsWith: /new-visit is a prefix of
-            // /new-visit/wallet, so startsWith would light New on both.
+            // /new-visit/wallet, so startsWith would light QR on both.
             const active = pathname === href;
             return (
               <Link

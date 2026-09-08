@@ -769,18 +769,18 @@ describe("T8 — the Pay section row renders as specified", () => {
     return [...html.matchAll(/<span>([^<]+)<\/span>/g)].map((m) => m[1]);
   }
 
-  it("is exactly New · Wallet, in that order", async () => {
+  it("is exactly QR · Wallet, in that order", async () => {
     expect(labels(await renderNav(CONSUMER_ROUTES.newVisit.new))).toEqual([
-      "New",
+      "QR",
       "Wallet",
     ]);
   });
 
   // The failure this catches: /new-visit is a PREFIX of /new-visit/wallet, so
-  // a startsWith match here lights New on both pages. PaySectionNav compares
+  // a startsWith match here lights QR on both pages. PaySectionNav compares
   // exactly, and this is what proves it still does.
   const ACTIVE: [string, string][] = [
-    ["/new-visit", "New"],
+    ["/new-visit", "QR"],
     ["/new-visit/wallet", "Wallet"],
   ];
 
