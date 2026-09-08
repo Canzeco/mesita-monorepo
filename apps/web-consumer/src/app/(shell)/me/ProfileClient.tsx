@@ -10,7 +10,6 @@ import {
   Footprints,
   Gift,
   IdCard,
-  Instagram,
   Settings as SettingsIcon,
   Share2,
   ShoppingBag,
@@ -46,7 +45,6 @@ import {
 } from "@/lib/api/profile";
 import {
   CLASSES,
-  CLASS_MARK_ICON,
   PREMIUM_PLAN_ICON,
   PREMIUM_PLAN_PRICE_MXN,
 } from "@/lib/consumer-data";
@@ -54,7 +52,7 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useConsumerClass } from "@/lib/class-context";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, DestTile } from "./profile-sections";
-import { ProfileSummaryCard } from "./ProfileSummaryCard";
+import { PassportBar } from "./PassportBar";
 
 // The Me surface — the passport, then five pairs and a tail:
 //
@@ -231,11 +229,20 @@ export function ProfileClient({
 
   return (
     <div className="flex h-full flex-col">
+      {/* OUTSIDE THE SCROLLER (Pato, MESITA-1652). A sibling above it, so the
+          bar is fixed by flex rather than by `sticky top-0` — full width for
+          free, and no fight with the scroller's own px-4 gutter or z-index.
+          It carries the two doors that used to be cells; see PassportBar. */}
+      <PassportBar
+        profile={profile}
+        loading={loading}
+        classLabel={classLabel}
+        instagramSummary={igSummary}
+        onOpenClass={() => setClassOpen(true)}
+        onOpenInstagram={() => setVerifyOpen(true)}
+      />
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-5 pb-8">
         <div className="flex flex-col gap-3">
-          {/* JUST VISIBLE (Pato, MESITA-1646). The card displays; the grid
-              navigates. It takes no handlers at all. */}
-          <ProfileSummaryCard profile={profile} loading={loading} />
 
           {/* The pair that replaces the card's doors. `Passport` is the only
               way into the document now, and its sheet carries the Instagram
@@ -261,27 +268,12 @@ export function ProfileClient({
             />
           </DestGrid>
 
-          {/* THE TWO AXES, AS DESTINATIONS (Pato, MESITA-1650). They were rows
-              inside the passport sheet, which put the ONLY entrance to a
-              10-digit invite PIN four taps from this page — Passport, sheet,
-              Class row, Class sheet, Join with Invitation. Three now. The
-              card above no longer prints them, so nothing is stated twice.
-              Plain cells on purpose: colour means class and lives on the
-              passport (MESITA-1132), so no metal fill down here. */}
-          <DestGrid>
-            <DestTile
-              Icon={Instagram}
-              title="Instagram"
-              summary={igSummary}
-              onClick={() => setVerifyOpen(true)}
-            />
-            <DestTile
-              Icon={CLASS_MARK_ICON}
-              title="Class"
-              summary={classLabel}
-              onClick={() => setClassOpen(true)}
-            />
-          </DestGrid>
+          {/* THE TWO AXES ARE IN THE BAR (Pato, MESITA-1652). They were rows
+              in the passport sheet (4 taps to an invite PIN), then cells here
+              (3 taps, MESITA-1650), and are now chips in the header — 1 tap,
+              from anywhere on the page, because the bar never scrolls away.
+              Keeping the cells TOO would print the same two facts twice on
+              one screen, which is exactly what MESITA-1650 removed. */}
 
           {/* ONE SHAPE, REPEATED (MESITA-1633). Six pairs and a full-width
               drawer, all the same `DestTile`. The header bell, the count band

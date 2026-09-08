@@ -29,7 +29,7 @@ function read(rel: string): string {
   return readFileSync(join(SRC, rel), "utf8");
 }
 
-const CARD = "app/(shell)/me/ProfileSummaryCard.tsx";
+const BAR = "app/(shell)/me/PassportBar.tsx";
 const SHEET = "components/consumer/me/PassportModal.tsx";
 const CLIENT = "app/(shell)/me/ProfileClient.tsx";
 const DATA = "lib/consumer-data.ts";
@@ -78,12 +78,6 @@ function selfClosingTag(source: string, component: string): string {
 const fieldLabels = (source: string) =>
   [...source.matchAll(/(?<![-\w])label="([^"]+)"/g)].map((m) => m[1]);
 
-/** Whole `<InfoBox … />` elements, in render order. Anchored on the closing
- *  indent, not a bare `/>`, because the nested `icon={<Foo />}` closes first
- *  and a lazy match stops there — the same trap `full` fell into once. */
-const infoBoxes = (source: string) =>
-  [...source.matchAll(/<InfoBox\b[\s\S]*?\n {10}\/>/g)].map((m) => m[0]);
-
 const planShaped = (names: string[]) =>
   names.filter((n) => /plan/i.test(n)).sort();
 
@@ -94,136 +88,126 @@ const planShaped = (names: string[]) =>
 const codeOnly = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 
-describe("the Passport card is JUST VISIBLE", () => {
-  const card = read(CARD);
+describe("the Passport is the page HEADER, and it is the door", () => {
+  const bar = read(BAR);
 
-  it("contains no tap target of any kind", () => {
-    // THE invariant (Pato, MESITA-1646). This card is a document: it displays
-    // and does nothing. It went display-only in MESITA-1636, grew doors again
-    // in MESITA-1640, and lost them here — every round the same argument, the
-    // card being asked to be a document AND a control panel. Navigation lives
-    // in the grid now: `Profile` and `Passport` are the first pair of cells
-    // on Me. One button here restarts that argument.
-    expect([...card.matchAll(/<button\b/g)]).toHaveLength(0);
-    expect(card).not.toContain("onClick");
-    // ...and it accepts no handler, so the page cannot hand it one by
-    // mistake and quietly reintroduce a tap target.
-    for (const prop of [
-      "onOpenPassport",
-      "onOpenProfile",
-      "onOpenInstagram",
-      "onOpenClass",
-    ]) {
-      expect(card).not.toContain(prop);
+  it("carries BOTH doors, as real buttons", () => {
+    // MESITA-1652 REVERSES MESITA-1646's "no tap target of any kind". The
+    // gate asked this question directly, because Instagram is the only reach
+    // door in the app and the Class ladder carries "Join with Invitation" —
+    // Docs › Passport §C calls it the ONLY entrance for a 10-digit invite
+    // PIN. A display-only header plus deleted cells would have stranded both
+    // silently. The bar is fixed, so these are 1 tap from anywhere on the
+    // page; the cells they replace had to be scrolled to.
+    expect([...bar.matchAll(/<button\b/g)]).toHaveLength(2);
+    for (const door of ["onOpenInstagram", "onOpenClass"]) {
+      expect(bar).toContain(door);
+    }
+    // ...and still no plan door. NO PLAN is the older law and it survives.
+    for (const prop of ["onOpenPassport", "onOpenProfile", "onOpenPlan"]) {
+      expect(bar).not.toContain(prop);
     }
   });
 
-  it("nothing here is parked either", () => {
-    // Two of these are the ONLY entrance to something in the whole app:
-    // Instagram is the only reach door, and the Class ladder carries "Join
-    // with Invitation", which Docs › Passport §C calls the only entrance for
-    // a 10-digit invite PIN. A door quietly losing its handler is how invite
-    // redemption nearly shipped unreachable once already.
-    // A `soon` box would be a dead cell inside the one card meant to be the
-    // page's most alive object, and a live one would be a button — which the
-    // test above forbids. So the card carries neither state.
-    expect(infoBoxes(card).filter((c) => /^\s*soon$/m.test(c))).toEqual([]);
-    expect(card).not.toContain("aria-disabled");
+  it("nothing here is parked", () => {
+    // A dead chip in permanent chrome is worse than a dead cell: it never
+    // scrolls away.
+    expect(bar).not.toContain("aria-disabled");
+    expect(bar).not.toMatch(/\bsoon\b/i);
   });
 
-  it("says its own name, above the identity row", () => {
-    // MESITA-1638: it is the only card on Me that is itself a button, and it
-    // was the only one that did not say what it opens. The eyebrow must sit
-    // ABOVE the identity, or it reads as a caption on the name.
-    const card = read(CARD);
-    const eyebrow = card.indexOf(">\n            Passport\n          <");
-    expect(eyebrow, "the PASSPORT eyebrow is gone").toBeGreaterThan(-1);
-    expect(card.indexOf("{name}")).toBeGreaterThan(eyebrow);
+  it("is fixed by FLEX, not by sticky, and outside the scroller", () => {
+    // Me wraps a `flex-1 overflow-y-auto px-4` scroller. A `sticky top-0`
+    // inside it would inherit that gutter and fight its z-index; a shrink-0
+    // sibling above it is fixed for free and spans the full width.
+    expect(bar).toContain("shrink-0");
+    // codeOnly, because the header comment must be free to NAME the approach
+    // it rejects — DiscoverModeNav's `sticky top-0` — and a guard that fires
+    // on its own rationale gets greened by deleting the rationale.
+    expect(codeOnly(bar)).not.toContain("sticky");
+    const client = read(CLIENT);
+    const barMount = client.indexOf("<PassportBar");
+    const scroller = client.indexOf("overflow-y-auto");
+    expect(barMount).toBeGreaterThan(-1);
+    expect(barMount).toBeLessThan(scroller);
   });
 
-  it("states privacy exactly once, and never as a control", () => {
-    // Two spellings of one flag is how two surfaces start disagreeing about
-    // what public means. The sheet owns the sentence; the card owns the word.
-    expect([...card.matchAll(/\{isPublic \? "Public" : "Private"\}/g)]).toHaveLength(
-      1,
-    );
+  it("spends 56px of row and no more", () => {
+    // The card was 235px. Permanent chrome on a scrolling grid cannot cost a
+    // third of a phone viewport, and that budget is the whole argument for
+    // what is NOT in the bar.
+    expect(bar).toContain("h-14");
+    expect(bar).not.toContain("py-6");
   });
 
-  it("prints NO axis — Instagram and Class are cells now", () => {
-    // MESITA-1650: they were boxes here AND the card sits ~150px above the
-    // cells, so keeping both printed the same two facts twice. The card is
-    // identity only; the cell is the one you can tap.
-    expect(infoBoxes(card)).toEqual([]);
-    expect(card).not.toContain("grid-cols-2");
-    const named = importedFrom(card, "@/lib/consumer-data");
-    expect(named).not.toContain("classBadgeClass");
-    expect(named).not.toContain("CLASS_MARK_ICON");
+  it("drops the three things that did not fit, and none is lost", () => {
+    // PASSPORT eyebrow: the bar IS the passport. Public/Private: the Passport
+    // CELL still opens the sheet, where privacy belongs. age·sex·country:
+    // Profile owns name, photo, birthday. All three stop printing twice.
+    const code = codeOnly(bar);
+    expect(code).not.toMatch(/>\s*Passport\s*</);
+    expect(code).not.toContain('isPublic ? "Public" : "Private"');
+    expect(code).not.toContain("detailLine");
+    // The sheet still owns privacy, so the fact did not vanish with the card.
+    expect(read(SHEET)).toContain("privacy_public");
+  });
+
+  it("prints BOTH axes — that is what the header is for", () => {
+    // MESITA-1650 took these off the card because the cells 150px below said
+    // the same two things. The cells are gone now, so the bar is the only
+    // place either fact appears.
+    expect(bar).toContain("classLabel");
+    expect(bar).toContain("instagramSummary");
+    const client = read(CLIENT);
+    expect(client).not.toContain('title="Instagram"');
+    expect(client).not.toContain('title="Class"');
   });
 
   it("imports nothing plan-shaped from consumer-data", () => {
-    const named = importedFrom(card, "@/lib/consumer-data");
-    expect(named).toContain("CLASSES");
-    expect(planShaped(named)).toEqual([]);
+    expect(planShaped(importedFrom(bar, "@/lib/consumer-data"))).toEqual([]);
   });
 
   it("does not read the plan axis off the class context", () => {
-    const bound = destructuredFrom(card, "useConsumerClass");
+    const bound = destructuredFrom(bar, "useConsumerClass");
     expect(bound).toContain("key");
     expect(bound).not.toContain("plan");
     expect(bound).not.toContain("renewsAt");
   });
 
   it("states the rung in words, so the band and ring may stay aria-hidden", () => {
-    // The metal band and the avatar ring are `aria-hidden` on the stated
-    // ground that something else says the rung in words. That is the CLASS
-    // box. If it goes, both become screen-reader regressions in silence.
-    expect(card).toContain("aria-hidden");
-    // The Class BOX used to be what said it. It is a cell further down the
-    // page now, outside this card's subtree, so the rung rides the section's
-    // own aria-label (MESITA-1650) — a screen reader on the card still hears
-    // it. Losing this line silently makes the band and ring undescribed.
-    expect(card).toContain("${classLabel} class");
-    expect(card).toContain("classFillClass(key)");
-    // The slogan must not be RENDERED; the comment may quote it.
-    expect(codeOnly(card)).not.toContain("Earned, not bought");
+    // The band and ring are colour-only and aria-hidden on the stated ground
+    // that something says the rung in words. That something is now the class
+    // CHIP, inside this subtree — closer than since MESITA-1650 put it on a
+    // cell further down the page. Losing it makes both undescribed, silently.
+    expect(bar).toContain("aria-hidden");
+    expect(bar).toContain("${classLabel} class");
+    expect(bar).toContain("`Class: ${classLabel}`");
+    expect(codeOnly(bar)).not.toContain("Earned, not bought");
   });
 
-  it("wears no fill but the metal, and the metal is band and ring only", () => {
-    // Colour means class and lives on the passport, nowhere else on this page
-    // (MESITA-1132). With the axes gone the card renders exactly two metal
-    // surfaces, both `aria-hidden` and both colour-only. The Instagram brand
-    // gradient is not here at all any more — the grid cell uses a plain
-    // lucide glyph, so the MESITA-1142 fill/ink trap has nothing to catch.
-    expect([...card.matchAll(/classFillClass\(key\)/g)]).toHaveLength(2);
-    expect(card).not.toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
+  it("wears no fill but the metal, and the metal is band and ring ONLY", () => {
+    // Colour means class and lives on the passport (MESITA-1132) — and the
+    // passport is the chrome now. Exactly two metal surfaces: the full-width
+    // band and the avatar ring. The class chip deliberately carries none; a
+    // third inside 62px turns a law about meaning into decoration.
+    expect([...bar.matchAll(/classFillClass\(key\)/g)]).toHaveLength(2);
+    expect(bar).not.toContain("INSTAGRAM_ICON_GRADIENT_CLASS");
+    expect(bar).not.toContain("classBadgeClass");
   });
 
-  it("the skeleton mirrors the DESTINATION — same grid, same count", () => {
-    // MESITA-1158's rule as a RELATION, not a literal: the card may be
-    // relaid out, but a skeleton resolving to a different shape is the bug.
-    const loading = card.indexOf("if (loading)");
-    const live = card.indexOf("const name =");
+  it("the skeleton mirrors the DESTINATION — same row, same avatar maths", () => {
+    const loading = bar.indexOf("{loading ? (");
     expect(loading).toBeGreaterThan(-1);
-    expect(live).toBeGreaterThan(loading);
-
-    const skeleton = card.slice(loading, live);
-    const rendered = card.slice(live);
-    // Grids on BOTH sides or neither. The card has none now (MESITA-1650), and
-    // a skeleton keeping one would resolve to a shape the card never reaches.
-    const cols = (src: string) =>
-      [...src.matchAll(/grid-cols-(\d+)/g)].map((m) => Number(m[1]));
-    expect(cols(skeleton)).toEqual(cols(rendered));
-    // The avatar is the one measured block left, and the two must agree: 52
-    // plus the 2.5px ring and 2px inset on both sides is 61.
-    const px = (src: string, re: RegExp) => src.match(re)?.[1];
-    expect(px(rendered, /h-\[(\d+)px\] w-\[\d+px\] overflow-hidden/)).toBe("52");
-    expect(px(skeleton, /h-\[(\d+)px\] w-\[\d+px\] animate-pulse rounded-full/)).toBe(
-      "61",
-    );
+    // 36 core + the 2px ring and 1.5px inset on both sides is 43.
+    expect(bar).toContain("h-[43px] w-[43px]");
+    expect(bar).toContain("h-9 w-9");
+    // Both chips have a skeleton, or the bar resolves to a wider shape.
+    const skeleton = bar.slice(loading, bar.indexOf(") : ("));
+    expect([...skeleton.matchAll(/rounded-full/g)].length).toBeGreaterThanOrEqual(3);
   });
 });
 
-describe("the Passport sheet is the same document as the card", () => {
+describe("the Passport sheet is the same document as the bar", () => {
   const sheet = read(SHEET);
 
   it("imports nothing plan-shaped from consumer-data", () => {
@@ -249,10 +233,11 @@ describe("the Passport sheet is the same document as the card", () => {
   });
 
   it("carries the two doors the card gave up, and only those two", () => {
-    // The card is display-only (MESITA-1646), so these rows are the ONLY way
-    // in anywhere in the app: Instagram is the only reach door, and the Class
-    // ladder holds "Join with Invitation", which Docs › Passport §C calls the
-    // only entrance for a 10-digit PIN. Making one inert strands its surface.
+    // The bar now carries these two as chips (MESITA-1652), so the sheet is
+    // the SECOND path, exactly as it was while the cells existed. Keeping it
+    // matters: Instagram is the only reach door and the Class ladder holds
+    // "Join with Invitation", Docs › Passport §C's only entrance for a
+    // 10-digit PIN. Two paths beat one for the doors that cannot be lost.
     for (const door of ["onOpenInstagram", "onOpenClass"]) {
       expect(sheet).toContain(door);
     }
@@ -267,10 +252,8 @@ describe("the Passport sheet is the same document as the card", () => {
 describe("the plan keeps one door, and only one", () => {
   const client = read(CLIENT);
 
-  it("the Passport card is handed no plan door", () => {
-    expect(selfClosingTag(client, "ProfileSummaryCard")).not.toContain(
-      "onOpenPlan",
-    );
+  it("the Passport bar is handed no plan door", () => {
+    expect(selfClosingTag(client, "PassportBar")).not.toContain("onOpenPlan");
   });
 
   it("Me carries the Plan box itself", () => {
@@ -287,7 +270,8 @@ describe("the plan keeps one door, and only one", () => {
     // deleted, so the invariant is now simply ONE door each, page-wide.
     expect(client).not.toContain("MoreModal");
     expect([...client.matchAll(/onClick=\{openPlan\}/g)]).toHaveLength(1);
-    // The card takes no handler at all now; the Passport CELL is the door.
+    // The bar carries the two AXIS doors (MESITA-1652) and no others; the
+    // Passport CELL is still the only way into the document itself.
     expect(client).not.toContain("onOpenPassport");
     expect([...client.matchAll(/setPassportOpen\(true\)/g)]).toHaveLength(1);
   });
@@ -302,7 +286,7 @@ describe("no comment still teaches the rule the code dropped", () => {
   // words "plan cell" would fire on the NO PLAN CELL sentinel below and on
   // globals.css's honest account of the history — the decision record, not
   // the drift.
-  it.each([CARD, SHEET, DATA, "app/globals.css"])(
+  it.each([BAR, SHEET, DATA, "app/globals.css"])(
     "%s does not claim a three-tile passport",
     (rel) => {
       const source = read(rel);
@@ -311,16 +295,16 @@ describe("no comment still teaches the rule the code dropped", () => {
     },
   );
 
-  it("the card carries the negative-space notes that stop the next agent", () => {
+  it("the bar carries the negative-space notes that stop the next agent", () => {
     // A deleted comment leaves no trace of the decision. This is the idiom
     // consumer-data.ts already uses for the `perk` field that must not come
     // back — the only item on the rot list that stops a re-add.
-    const card = read(CARD);
+    const bar = read(BAR);
     // The negative space that has to survive a refactor: no plan on the
-    // passport, and the fact that these four doors are the ONLY doors — the
-    // note that stops the next agent from making one inert and stranding
-    // invite redemption, which nearly shipped that way once.
-    expect(card).toContain("NO PLAN");
-    expect(card).toContain("THE DOORS MOVED, THEY DID NOT DISAPPEAR");
+    // passport, and the fact that the two chips are the ONLY entrance to the
+    // connect flow and to the invite PIN — the note that stops the next agent
+    // from making one inert, which nearly shipped that way once.
+    expect(bar).toContain("NO PLAN");
+    expect(bar).toContain("THE BAR IS THE DOOR");
   });
 });
