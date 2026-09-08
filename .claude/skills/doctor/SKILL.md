@@ -87,7 +87,31 @@ The singleton rule is the one that silently breaks. Check it first.
     CREATE OR REPLACE that re-inlines a stale keep-list is a P0 — the function must read
     the registry. (The old `preserved_media_assets:true` return flag is gone — do not
     re-report it.)
-1.6 **Known-intentional exceptions** — assert they still hold, and report if flipped:
+1.6 **Client-readable views must actually READ.** A `security_invoker` view is only as
+    readable as its BODY: the invoking role is re-checked against every relation and
+    column the body touches, so one appended column can 42501 a view whose own grants
+    never changed. `profiles` was dead for every guest for a day this way (MESITA-1704)
+    while the flag check below and 2.3 both read healthy — one checks the option, the
+    other only looks for `anon` having *more* than intended, and this failure is `anon`
+    having *less* than required. Catalog-derived, so it stays SELECT-only. **Any row is
+    a P0** — that view is dead for that role, and Postgres names the first relation that
+    fails, never the column:
+
+    ```sql
+    select role_name, v.relname as view, d.refobjid::regclass::text as base, a.attname
+      from unnest(array['anon','authenticated']) as role_name
+      cross join pg_class v
+      join pg_namespace n on n.oid = v.relnamespace and n.nspname = 'public'
+      join pg_rewrite r on r.ev_class = v.oid
+      join pg_depend d on d.objid = r.oid and d.classid = 'pg_rewrite'::regclass
+      join pg_attribute a on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+     where v.relkind = 'v' and v.reloptions @> array['security_invoker=true']
+       and d.refobjid <> v.oid and d.refobjsubid > 0
+       and has_table_privilege(role_name, v.oid, 'SELECT')
+       and not has_column_privilege(role_name, d.refobjid, a.attnum, 'SELECT');
+    ```
+
+1.7 **Known-intentional exceptions** — assert they still hold, and report if flipped:
     `profiles` (the view, renamed from `projects_view`) must be `security_invoker = true`. One thing that looks broken and
     is not (MESITA-1048, until a new engine ships): `consumer-web-recommend-swipe`
     returns active places in random order and reads-then-discards `lat` / `lng` /

@@ -81,7 +81,16 @@ export const SKILL_BUDGETS: Record<string, number> = {
   // Nine audit scopes, each carrying its own queries, thresholds and report
   // shape, plus the weekly Scope 9 run (MESITA-1214). Sized 2026-08-23 against
   // the real file, not guessed.
-  doctor: 4350,
+  //
+  // 4350 → 4550 on 2026-09-08 (MESITA-1707), and this is the raise that budget
+  // is designed to make visible rather than prevent. MESITA-1704 took the whole
+  // consumer catalog down for a day and Doctor read healthy through it, because
+  // every check it had asserted CONFIGURATION and none exercised a read. The
+  // 200 words bought are scope 1.6: the catalog query that proves each
+  // client-readable security_invoker view is still readable by the roles that
+  // reach it. Funding it by deleting another audit scope would have been the
+  // worse trade — a smaller file that misses more.
+  doctor: 4550,
 };
 
 /** The one tokenizer, so every budget is measured the same way. */
