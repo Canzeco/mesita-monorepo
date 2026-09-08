@@ -892,6 +892,7 @@ export type Database = {
           currency: string
           id: string
           legal_name: string | null
+          mesita_pay_enabled: boolean
           name: string
           rfc: string | null
           updated_at: string
@@ -901,6 +902,7 @@ export type Database = {
           currency?: string
           id?: string
           legal_name?: string | null
+          mesita_pay_enabled?: boolean
           name: string
           rfc?: string | null
           updated_at?: string
@@ -910,6 +912,7 @@ export type Database = {
           currency?: string
           id?: string
           legal_name?: string | null
+          mesita_pay_enabled?: boolean
           name?: string
           rfc?: string | null
           updated_at?: string
@@ -2719,6 +2722,7 @@ export type Database = {
           menu_pdf_url: string | null
           menus: Json | null
           mesita_name: string | null
+          mesita_pay_enabled: boolean | null
           mesita_review_count: number | null
           mesita_stars_ambience: number | null
           mesita_stars_food: number | null
