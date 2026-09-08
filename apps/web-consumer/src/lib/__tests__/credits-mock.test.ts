@@ -6,6 +6,9 @@ import { parseCreditsDemo } from "@/lib/credits-demo";
 import {
   buy,
   freshState,
+  gift,
+  giftCode,
+  redeem,
   spend,
   type CreditsState,
 } from "@/lib/mock/credits-emulator";
@@ -38,11 +41,15 @@ const OVERRIDES = CREDIT_PLACES[3];
 // The whole ruleset is pure functions taking an explicit nowMs and explicit
 // ids, so every rule below is tested without faking globals or a clock.
 //
-// What is NOT covered, and cannot be in this harness: the spread state and both
-// LocalSheets. vitest runs environment:"node" with renderToStaticMarkup, so
-// effects never run — and LocalOverlay's CardPortal returns null when
-// #mesita-app-card is absent, which is every test. Those are eyeballed on the
-// Vercel preview. Do not read this file as covering them.
+// What is NOT covered, and cannot be in this harness: the four full-screen
+// Wallet routes. vitest runs environment:"node" with renderToStaticMarkup, so
+// effects never run and `useCredits` never loads — every one of those screens
+// renders its loading branch and nothing else. They are eyeballed on the Vercel
+// preview. Do not read this file as covering them.
+//
+// It DOES cover the whole gift ruleset, because gifting is pure: `gift` and
+// `redeem` take their code, their ids and their clock as arguments exactly as
+// `buy` and `spend` do.
 
 const T0 = 1_700_000_000_000;
 
@@ -326,6 +333,181 @@ describe("spend", () => {
   });
 });
 
+describe("gift and redeem", () => {
+  function gifted(nowMs = T0) {
+    const r = gift(freshState(T0, "empty"), {
+      placeId: OVERRIDES.id,
+      paidCents: 100_000,
+      note: "  Happy birthday  ",
+      nowMs,
+      code: "9123456780",
+      policy: POLICY,
+    });
+    if (!r.ok) throw new Error("gift failed");
+    return r.value;
+  }
+
+  // THE WHOLE POINT OF ISSUANCE (MESITA-1677). A gift that moved money out of
+  // a balance would have to split a lot, and MESITA-1380 banned that. If this
+  // ever goes red, someone has rebuilt gifting as a transfer.
+  it("takes nothing out of the giver's wallet", () => {
+    const { state, gift: g } = gifted();
+    expect(state.balances).toEqual([]);
+    expect(g.creditedCents).toBe(
+      100_000 + bonusFor(100_000, bonusPctFor(OVERRIDES, POLICY)),
+    );
+    expect(g.paidCents).toBe(100_000);
+    expect(g.redeemedAtMs).toBeNull();
+    // Trimmed, and an all-space note is no note at all.
+    expect(g.note).toBe("Happy birthday");
+  });
+
+  it("carries DAYS, so a code that waits does not arrive half dead", () => {
+    const { state, gift: g } = gifted();
+    expect(g.expiryDays).toBe(expiryDaysFor(OVERRIDES, POLICY));
+    // Bought today, claimed a month later: the balance still gets the full
+    // term, counted from the claim.
+    const later = T0 + 30 * DAY_MS;
+    const r = redeem(state, {
+      code: g.code,
+      nowMs: later,
+      balanceId: "bal_g",
+      activityId: "act_g",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const b = r.value.state.balances[0];
+    expect(b.expiresAtMs).toBe(later + g.expiryDays * DAY_MS);
+    expect(b.balanceCents).toBe(g.creditedCents);
+    expect(b.placeName).toBe(OVERRIDES.name);
+    expect(isExpired(b, later)).toBe(false);
+  });
+
+  it("spends once and says so the second time", () => {
+    const { state, gift: g } = gifted();
+    const first = redeem(state, {
+      code: g.code,
+      nowMs: T0,
+      balanceId: "bal_1",
+      activityId: "act_1",
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.value.gift.redeemedAtMs).toBe(T0);
+    expect(
+      redeem(first.value.state, {
+        code: g.code,
+        nowMs: T0,
+        balanceId: "bal_2",
+        activityId: "act_2",
+      }),
+    ).toEqual({ ok: false, error: "gift-already-redeemed" });
+  });
+
+  // Two different problems for the guest: "that is not a code" sends them back
+  // to their typing, "that was already used" sends them back to the giver.
+  it("tells an unknown code apart from a used one", () => {
+    const { state } = gifted();
+    expect(
+      redeem(state, {
+        code: "0000000000",
+        nowMs: T0,
+        balanceId: "bal_x",
+        activityId: "act_x",
+      }),
+    ).toEqual({ ok: false, error: "unknown-code" });
+  });
+
+  it("redeeming a gift tops up an existing balance at that place", () => {
+    const bought = buy(freshState(T0, "empty"), {
+      placeId: OVERRIDES.id,
+      paidCents: 50_000,
+      nowMs: T0,
+      balanceId: "bal_own",
+      activityId: "act_own",
+      policy: POLICY,
+    });
+    if (!bought.ok) return;
+    const g = gift(bought.value, {
+      placeId: OVERRIDES.id,
+      paidCents: 100_000,
+      note: null,
+      nowMs: T0,
+      code: "9123456780",
+      policy: POLICY,
+    });
+    if (!g.ok) return;
+    const r = redeem(g.value.state, {
+      code: "9123456780",
+      nowMs: T0,
+      balanceId: "bal_new",
+      activityId: "act_new",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    // ONE balance per place, still. The gift lands in the balance the guest
+    // already had rather than opening a second card at the same restaurant.
+    expect(r.value.state.balances).toHaveLength(1);
+    expect(r.value.state.balances[0].id).toBe("bal_own");
+    expect(r.value.state.balances[0].activity[0].label).toBe(
+      "Redeemed a gift",
+    );
+  });
+
+  it("rejects a gift of nothing, and a gift at a place that is not on Mesita", () => {
+    const empty = freshState(T0, "empty");
+    expect(
+      gift(empty, {
+        placeId: OVERRIDES.id,
+        paidCents: 0,
+        note: null,
+        nowMs: T0,
+        code: "9123456780",
+        policy: POLICY,
+      }),
+    ).toEqual({ ok: false, error: "amount-not-positive" });
+    expect(
+      gift(empty, {
+        placeId: "not-a-place",
+        paidCents: 100_000,
+        note: null,
+        nowMs: T0,
+        code: "9123456780",
+        policy: POLICY,
+      }),
+    ).toEqual({ ok: false, error: "unknown-place" });
+  });
+
+  describe("giftCode", () => {
+    it("is ten digits and never leads with a zero", () => {
+      // A leading zero is the digit a paste path that treats the code as a
+      // number silently eats.
+      for (let i = 0; i < 200; i += 1) {
+        const code = giftCode(new Set());
+        expect(code).toMatch(/^[1-9][0-9]{9}$/);
+      }
+    });
+
+    it("retries past a code already issued", () => {
+      // Forces the collision: the first ten draws reproduce the code that is
+      // already taken, so a generator that does not check would hand it back.
+      const taken = new Set([giftCode(new Set(), () => 0)]);
+      let draw = 0;
+      const rand = () => (draw++ < 10 ? 0 : 0.5);
+      const next = giftCode(taken, rand);
+      expect(taken.has(next)).toBe(false);
+      expect(next).toMatch(/^[1-9][0-9]{9}$/);
+      // It really did take two passes, not one lucky one.
+      expect(draw).toBe(20);
+    });
+
+    it("gives up rather than hand back a duplicate", () => {
+      const taken = new Set([giftCode(new Set(), () => 0)]);
+      expect(() => giftCode(taken, () => 0)).toThrow("no free code");
+    });
+  });
+});
+
 describe("expiry", () => {
   // 90 days, in DAYS, is the shipped term. A test that reads the constant back
   // out of the fixture would pass against any number; this one is the pin.
@@ -481,19 +663,36 @@ describe("naming", () => {
   const MONEY_SRC = [
     "src/components/consumer/credits/BalanceCard.tsx",
     "src/components/consumer/credits/BalanceList.tsx",
-    "src/components/consumer/credits/BalanceDetail.tsx",
-    "src/components/consumer/credits/BuyCreditsSheet.tsx",
+    "src/components/consumer/credits/PickCredits.tsx",
+    // BalanceDetail.tsx and BuyCreditsSheet.tsx are gone (2026-09-08): the
+    // sheets became the four full-screen routes below, and the naming rule
+    // follows the money onto them.
+    "src/app/(shell)/new-visit/wallet/buy/BuyClient.tsx",
+    "src/app/(shell)/new-visit/wallet/gift/GiftClient.tsx",
+    "src/app/(shell)/new-visit/wallet/redeem/RedeemClient.tsx",
+    "src/app/(shell)/new-visit/wallet/balance/[id]/BalanceClient.tsx",
     "src/lib/mock/credits-mock.ts",
     "src/lib/mock/credits-emulator.ts",
   ];
   const CONTAINER_SRC = ["src/app/(shell)/new-visit/wallet/CreditsClient.tsx"];
+
+  // The FRAME may be named after the container, because it IS the container:
+  // WalletScreen is the back-title-body-footer shell all four money screens
+  // wear, and WalletParkedNote is the "none of this is money yet" line it
+  // carries. Same exemption CreditsClient already has, for the same reason —
+  // what the rule is hunting is an INSTRUMENT named after the container, and
+  // `WalletBalance` is still caught by everything below.
+  const FRAME = /^(WalletScreen|WalletParkedNote)$/;
 
   function read(rel: string): string {
     return readFileSync(join(__dirname, "..", "..", "..", rel), "utf8");
   }
 
   it.each(MONEY_SRC)("%s declares no Wallet* identifier", (rel) => {
-    expect(read(rel).match(/\bWallet[A-Z]\w*/g) ?? []).toEqual([]);
+    const hits = (read(rel).match(/\bWallet[A-Z]\w*/g) ?? []).filter(
+      (name) => !FRAME.test(name),
+    );
+    expect(hits).toEqual([]);
   });
 
   it.each([...MONEY_SRC, ...CONTAINER_SRC])(

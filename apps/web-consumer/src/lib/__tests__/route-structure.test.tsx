@@ -257,6 +257,15 @@ describe("T5 — exactly one tab lights per surface", () => {
     // nesting — no prefix of its own. /inbox/credits and /wallet are redirect
     // SOURCES, never rendered, so neither belongs in this matrix.
     ["/new-visit/wallet", "Pay"],
+    // Wallet's four children are full-screen ROUTES as of 2026-09-08, not
+    // sheets. They light Pay by the same nesting, and the tab bar stays under
+    // them: (shell)/layout.tsx's law is that every shell route keeps it. What
+    // a full-screen wallet view drops is the SECTION row, not the tab bar —
+    // PaySectionNav returns null off the two section roots.
+    ["/new-visit/wallet/buy", "Pay"],
+    ["/new-visit/wallet/gift", "Pay"],
+    ["/new-visit/wallet/redeem", "Pay"],
+    ["/new-visit/wallet/balance/bal_1", "Pay"],
 
     // Activity retired as a bottom tab (MESITA-1609) and then as a container
     // (MESITA-1626) — its sections are sheets on Me, and a sheet has no path
@@ -801,5 +810,22 @@ describe("T8 — the Pay section row renders as specified", () => {
       .filter((chunk) => chunk.includes("bg-primary"))
       .map((chunk) => chunk.match(/<span>([^<]+)</)?.[1] ?? "?");
     expect(lit).toEqual([expected]);
+  });
+
+  // Wallet's four full-screen children inherit new-visit/layout.tsx, so the
+  // section row would ride along above their own back-and-title header —
+  // two rows of chrome disagreeing about where the guest is, and a lateral
+  // exit out of a half-finished purchase. The failure this catches is a
+  // future edit relaxing the membership test to a prefix match, which puts
+  // the row back on all four without touching either of them.
+  const SUBROUTES = [
+    CONSUMER_ROUTES.newVisit.walletBuy,
+    CONSUMER_ROUTES.newVisit.walletGift,
+    CONSUMER_ROUTES.newVisit.walletRedeem,
+    `${CONSUMER_ROUTES.newVisit.walletBalance.prefix}bal_1`,
+  ];
+
+  it.each(SUBROUTES)("does not render on %s", async (pathname) => {
+    expect(await renderNav(pathname)).toBe("");
   });
 });

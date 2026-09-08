@@ -126,6 +126,42 @@ export const CONSUMER_ROUTES = {
     // Same shape as Inbox: container + sections, bare route is the default.
     new: "/new-visit",
     wallet: "/new-visit/wallet",
+    // WALLET'S SUBROUTES ARE ROUTES, NOT SHEETS (Pato, 2026-09-08: "not modals
+    // but actually views with full-screen with own screen"). This REVERSES the
+    // call recorded on BalanceDetail four hours earlier, which read an older
+    // instruction ("que se abra de abajo para arriba") as covering the whole
+    // wallet. It covered the balance card's OPEN GESTURE, not the surfaces
+    // hanging off the section header.
+    //
+    // The reversal is the right one on its own merits, and the sheet was
+    // already straining: Buy is a purchase, Gift ends on a code someone has to
+    // hand over, Redeem is reached by a guest who holds nothing, and a balance
+    // detail is a statement with its own activity list. Every one of those is a
+    // destination you can be sent to, land on cold, and press Back out of — the
+    // definition of a route. A sheet has no URL, so none of it survived a
+    // reload or could be linked at all.
+    //
+    // They are NOT @modal intercepts either, and that is the same decision
+    // stated twice: an intercept would put them back in an overlay over the
+    // wallet, which is the thing being reversed. Nothing here goes near
+    // isModalContractPath.
+    walletBuy: "/new-visit/wallet/buy",
+    walletGift: "/new-visit/wallet/gift",
+    // REDEEM IS IN THE SHELL, behind the auth wall, because it credits a
+    // wallet and a wallet needs an account. The PUBLIC half of gifting — a link
+    // that lands a stranger who has no account yet — is a different route that
+    // does not exist yet (MESITA-1677); when it ships it is a top-level page
+    // outside (shell) with its own T1 exemption, and it funnels into this one
+    // after sign-in. Do not "fix" this by moving Redeem out of the wall.
+    walletRedeem: "/new-visit/wallet/redeem",
+    // One balance, opened. `balance/` rather than a bare [id] under wallet/:
+    // Next.js does give static segments priority over a dynamic sibling, so
+    // /new-visit/wallet/buy would still resolve, but a route map where three
+    // words are pages and everything else is an id is a trap for the next
+    // segment anyone adds.
+    walletBalance: {
+      prefix: "/new-visit/wallet/balance/",
+    },
   },
   // Pay lands on New: you open this tab standing in a place, not to check a
   // balance. Same reasoning as inboxDefault landing on Visits.
@@ -273,6 +309,11 @@ export function reservationPath(id: string): string {
 
 export function visitPath(id: string): string {
   return `${CONSUMER_ROUTES.visit.prefix}${id}`;
+}
+
+/** One balance in the wallet — a full page, not a sheet. See newVisit.walletBalance. */
+export function walletBalancePath(balanceId: string): string {
+  return `${CONSUMER_ROUTES.newVisit.walletBalance.prefix}${balanceId}`;
 }
 
 /**
