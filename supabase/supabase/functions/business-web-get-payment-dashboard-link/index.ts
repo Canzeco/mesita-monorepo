@@ -133,13 +133,25 @@ Deno.serve(async (req) => {
   } catch (err) {
     // The most likely cause is an account created BEFORE the Express flip:
     // createLoginLink only works where the controller granted Express
-    // dashboard access, and controller properties are permanent. Stripe names
-    // the problem better than we can, and every failure here is configuration
-    // rather than a transient, so its message is forwarded rather than
-    // replaced by a "try again" that would be false.
-    console.error("[get-payment-dashboard-link] createLoginLink failed:", err);
+    // dashboard access, and controller properties are permanent.
+    //
+    // That is a fact about OUR configuration, and the reader is the restaurant
+    // owner, so Stripe's wording goes to the log and not to their browser —
+    // same rule failure-copy.ts (MESITA-1645) applies next door. The sentence
+    // is duplicated rather than imported because EFs do not reach into each
+    // other's directories; the test below is what keeps the two in step.
     const message = (err as { message?: string })?.message ??
       "Could not open the payments dashboard.";
-    return json({ ok: false, error: message, code: "stripe_error" }, 502);
+    console.error(
+      `[get-payment-dashboard-link] createLoginLink failed for ` +
+        `${row.stripe_account_id} — the merchant saw a generic sentence. ` +
+        `Stripe said: ${message}`,
+    );
+    return json({
+      ok: false,
+      error:
+        "Payments aren’t set up on Mesita’s side yet — nothing to fix on your end. We’ve been notified.",
+      code: "stripe_platform_error",
+    }, 503);
   }
 });

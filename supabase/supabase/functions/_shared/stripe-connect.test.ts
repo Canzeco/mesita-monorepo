@@ -11,6 +11,7 @@ import {
   isMockConnectAccountId,
   isSupportedConnectCountry,
   isSupportedConnectEntityType,
+  connectApiVersion,
   keyIsLive,
   CONNECT_API_VERSION,
   connectAccountCreateParams,
@@ -321,13 +322,21 @@ Deno.test("transition law: mock never overwrites real; real replaces mock; unive
 
 
 Deno.test("entity allowlist: individual and company, and never a free-text passthrough", () => {
-  assertEquals([...MESITA_CONNECT_ENTITY_TYPES], ["individual", "company"]);
+  assertEquals([...MESITA_CONNECT_ENTITY_TYPES], [
+    "individual",
+    "company",
+    "non_profit",
+    "government_entity",
+  ]);
   assert(isSupportedConnectEntityType("individual"));
   assert(isSupportedConnectEntityType("company"));
   // Stripe-valid but deliberately not offered: no Mesita merchant is either,
   // and a branch nobody can finish is a support ticket, not a feature.
-  assert(!isSupportedConnectEntityType("non_profit"));
-  assert(!isSupportedConnectEntityType("government_entity"));
+  assert(isSupportedConnectEntityType("non_profit"));
+  assert(isSupportedConnectEntityType("government_entity"));
+  // Still an allowlist, not a passthrough.
+  assert(!isSupportedConnectEntityType("nonprofit"));
+  assert(!isSupportedConnectEntityType("government"));
   // Near-misses and the shapes a form can actually send.
   assert(!isSupportedConnectEntityType("Individual"));
   assert(!isSupportedConnectEntityType("persona_fisica"));
@@ -352,4 +361,69 @@ Deno.test("entity type is a PREFILL, country is PERMANENT — the asymmetry is t
     classifyExistingAccount(row, { mockMode: false, keyLive: false, country: "US" }),
     "use_country_mismatch",
   );
+});
+
+
+Deno.test("the onboarding HANDLER builds its client from the Connect version, not the GA pin", async () => {
+  // Reads the CALL SITE, never two constants. MESITA-1643 added
+  // CONNECT_API_VERSION and a pairing predicate, and every test passed while
+  // the handler still constructed Stripe with STRIPE_API_VERSION — so the
+  // constant reached no runtime path and accounts.create kept 400ing. The
+  // only question that matters is what the handler actually passes.
+  const src = await Deno.readTextFile(
+    new URL("../business-web-start-payment-onboarding/index.ts", import.meta.url),
+  );
+  const ctor = src.match(/new Stripe\([\s\S]{0,220}?\)\s*;/);
+  assert(ctor, "onboarding EF must construct a Stripe client");
+  assert(
+    /connectApiVersion\(\)|CONNECT_API_VERSION/.test(ctor[0]),
+    `onboarding EF must build its client from the Connect version; got: ${ctor[0]}`,
+  );
+  assert(
+    !ctor[0].includes("STRIPE_API_VERSION"),
+    "onboarding EF must NOT use the GA pin: it 400s the Express + Stripe-losses controller",
+  );
+});
+
+Deno.test("connectApiVersion: the Connect constant by default, env-overridable when Stripe rolls it", () => {
+  const env: Record<string, string> = {};
+  const read = (n: string) => env[n];
+  assertEquals(connectApiVersion(read), CONNECT_API_VERSION);
+  // Preview channel is `<date>.preview`; a GA string here silently reinstates
+  // the 400, so assert the SHAPE and not just the value.
+  assert(
+    /^\d{4}-\d{2}-\d{2}\.preview$/.test(CONNECT_API_VERSION),
+    `Connect version must be <date>.preview, got ${CONNECT_API_VERSION}`,
+  );
+  // What we send must still satisfy what Stripe requires.
+  assert(connectPairingHolds(MESITA_CONNECT_CONTROLLER, CONNECT_API_VERSION));
+  env.STRIPE_CONNECT_API_VERSION = "2027-01-01.preview";
+  assertEquals(connectApiVersion(read), "2027-01-01.preview");
+  env.STRIPE_CONNECT_API_VERSION = "   ";
+  assertEquals(connectApiVersion(read), CONNECT_API_VERSION);
+});
+
+Deno.test("no merchant-facing Connect EF relays Stripe's own words to the browser", async () => {
+  // Scoped to the CLASS of files, not the one that happened to be edited.
+  // MESITA-1645 fixed the copy in start-payment-onboarding and guarded it
+  // with a test whose SRC was that one file, so the identical passthrough
+  // survived in get-payment-dashboard-link — the EF merchants actually reach.
+  for (
+    const ef of [
+      "business-web-start-payment-onboarding",
+      "business-web-get-payment-dashboard-link",
+    ]
+  ) {
+    const src = await Deno.readTextFile(
+      new URL(`../${ef}/index.ts`, import.meta.url),
+    );
+    assert(
+      !/error:\s*message\s*,/.test(src),
+      `${ef} hands the merchant Stripe's raw message. Log it; send them the house sentence.`,
+    );
+    assert(
+      src.includes("nothing to fix on your end"),
+      `${ef} must carry the house sentence for a platform-side failure`,
+    );
+  }
 });

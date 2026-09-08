@@ -128,11 +128,33 @@ export const STATES_ACTION_HEAD =
 
 export const STATES_ACTION_CELL = "sm:sticky sm:right-0 sm:z-10 sm:bg-card";
 
-// The header row, pinned under the console nav so a hundred rows of pills
-// never lose their labels. Row 1 is `static` below `sm` (see
-// TOPNAV_OCCUPIED_PX), and PlaceBar does NOT render on the list screens — so
-// there is no second bar to clear here, unlike on a place route.
-export const STATES_HEAD_STICKY = "sticky top-0 z-30 sm:top-[57px]";
+// The header row, pinned to the top of ITS OWN SCROLLPORT.
+//
+// NO `top-[…]` OFFSET HERE, EVER (MESITA-1658). This used to read
+// `sticky top-0 z-30 sm:top-[57px]`, copied from PLACEBAR_STICKY_CLASS above
+// — and the same characters mean something else in this position.
+//
+// `position: sticky` resolves `top` against the nearest SCROLLING ANCESTOR.
+// PlaceBar has none between it and the page, so its 57px genuinely clears the
+// console nav. This header sits inside PlaceStatesTable's `overflow-x-auto`
+// div, and CSS forces `overflow-y` to `auto` when the other axis is not
+// `visible` — so that div IS a scroll container, and 57px was measured from
+// the top of a box INSIDE the card. The page's nav does not exist in that
+// coordinate system.
+//
+// The symptom, live for weeks: at scroll position 0 the thead shifted down
+// 57px while its flow space stayed put, so the first row's thumbnail surfaced
+// in the gap ABOVE the column labels and the card's `overflow-hidden` clipped
+// the rest. It read as a broken, half-empty table — twice, before anyone
+// found the cause.
+//
+// The old comment's ambition — pinned under the console nav so a hundred rows
+// never lose their labels — is NOT reachable through a nested scrollport at
+// all. Sticking to the page viewport would mean the table is not a scroll
+// container, and the wide table needs its horizontal scroll. The labels pin
+// to the card instead. Recorded as the tradeoff, not left as an aspiration
+// the code cannot meet.
+export const STATES_HEAD_STICKY = "sticky top-0 z-30";
 
 // The header ROWS' own background — same load-bearing opacity rule as
 // STATES_COL_HEAD above, just missed the first time (MESITA-1631): the whole

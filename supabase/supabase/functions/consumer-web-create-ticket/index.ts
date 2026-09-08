@@ -35,7 +35,7 @@ import {
   assessPromoLane,
   loadMembershipRow,
 } from "../_shared/membership-enforcement.ts";
-import { isPlacePromoting } from "../_shared/place-promoting.ts";
+import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
 import {
   loadRewardsGrid,
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
   const placeRow = await admin
     .from("profiles")
     .select(
-      "id, name, slug, state, content_state, listing_type, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
+      "id, name, slug, state, content_state, listing_type, plan, welcome_free_rate, welcome_premium_rate, free_rate, premium_rate",
     )
     .eq("id", placeId)
     .maybeSingle();
@@ -118,13 +118,12 @@ Deno.serve(async (req) => {
   if (place.state === "archived") {
     return json({ ok: false, error: "Place is archived" }, 409);
   }
-  // The place must be PROMOTING — paying, a strategy above Zero, and an open
-  // promo lane. This used to gate on `listing_type = 'partner'` plus a
-  // separate lane check; the enum is derived only when something writes the
-  // place, so it could equally block a place that had just started promoting
-  // and pass one whose lane had since closed. Same computation the consumer
-  // surfaces now render from, so an enabled button and a 409 can no longer
-  // disagree (MESITA-1150). Error CODES are unchanged: callers switch on them.
+  // The place must be a PARTNER (plan != free) — a live discount is no
+  // longer the gate (Pato, 2026-09-08, reversing MESITA-1150's guest-facing
+  // `isPlacePromoting` gate): a partner sitting on a paused or Zero strategy
+  // still gets to start a visit, they just won't see a rate on it. The
+  // strike-lane check below is unrelated and stays: it blocks an actively
+  // penalized place regardless of partner status.
   const membershipRow = await loadMembershipRow(admin, placeId);
   if (membershipRow) {
     const lane = assessPromoLane(membershipRow);
@@ -140,11 +139,11 @@ Deno.serve(async (req) => {
       );
     }
   }
-  if (!isPlacePromoting({ ...(membershipRow ?? {}), ...place })) {
+  if (!isPaidPlan(place.plan)) {
     return json(
       {
         ok: false,
-        error: "This place isn't running a Mesita reward right now.",
+        error: `${place.name} isn't a Mesita partner yet.`,
         code: "not_partner",
       },
       409,

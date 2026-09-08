@@ -10,6 +10,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PLACEBAR_STICKY_CLASS,
+  STATES_HEAD_STICKY,
   SHELL_BLEED,
   SHELL_GUTTER,
   TOPNAV_OCCUPIED_PX,
@@ -85,6 +86,37 @@ describe("row 1 names the route", () => {
     // Two ml-autos in one flex row is one too many: the second is inert and
     // the layout silently depends on source order.
     expect((nav().match(/ml-auto/g) ?? []).length).toBe(1);
+  });
+});
+
+// MESITA-1658. Two sticky constants, one string, two different boxes — and
+// copying the first into the second hid the Places table's first row behind a
+// 57px gap for weeks. These pin the distinction so it cannot be re-collapsed.
+describe("sticky offsets are measured against the right box", () => {
+  it("PlaceBar clears the nav, because the PAGE is its scrollport", () => {
+    // Unchanged and correct: no scrolling ancestor between it and the page.
+    expect(PLACEBAR_STICKY_CLASS).toContain(`sm:top-[${TOPNAV_OCCUPIED_PX}px]`);
+  });
+
+  it("the table header carries NO top offset — its scrollport is the card", () => {
+    // PlaceStatesTable wraps the table in `overflow-x-auto`, and CSS forces
+    // overflow-y to auto when the other axis is not visible, so that div is
+    // the scrollport. A `top-[57px]` there is measured from inside the card,
+    // not from the page, and shifts the header down at scroll position 0 —
+    // surfacing the first row's thumbnail above the labels and clipping the
+    // rest against the card's overflow-hidden.
+    expect(STATES_HEAD_STICKY).toContain("sticky top-0");
+    expect(STATES_HEAD_STICKY).not.toMatch(/top-\[/);
+    expect(STATES_HEAD_STICKY).not.toContain(String(TOPNAV_OCCUPIED_PX));
+  });
+
+  it("the table still wraps the table in a scroll container", () => {
+    // The premise of the rule above. If this ever stops being true, the
+    // header COULD stick to the page and the offset would become correct
+    // again — so the two facts have to be read together.
+    expect(read("components/console/PlaceStatesTable.tsx")).toContain(
+      "overflow-x-auto",
+    );
   });
 });
 

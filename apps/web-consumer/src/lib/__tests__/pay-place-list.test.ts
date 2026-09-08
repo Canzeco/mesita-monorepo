@@ -46,23 +46,25 @@ const basePlace = {
 } as Place;
 
 describe("canStartPayVisit", () => {
-  it("is promoting, never listing_type", () => {
+  it("is the Partner fact, never listing_type or promoting", () => {
     expect(canStartPayVisit(basePlace)).toBe(false);
-    expect(canStartPayVisit({ ...basePlace, promoting: true })).toBe(true);
+    expect(canStartPayVisit({ ...basePlace, partner: true })).toBe(true);
     expect(
-      canStartPayVisit({ ...basePlace, listing_type: "partner", promoting: false } as Place),
+      canStartPayVisit(
+        { ...basePlace, listing_type: "partner", partner: false, promoting: true } as Place,
+      ),
     ).toBe(false);
   });
 });
 
 describe("payRowFromPlace", () => {
-  it("locks non-promoting rows as Soon and keeps promoting rows ticketable", () => {
+  it("locks non-partner rows as Soon and keeps partner rows ticketable", () => {
     const locked = payRowFromPlace(basePlace);
     expect(locked.canStart).toBe(false);
     expect(locked.seed).toBeNull();
     expect(locked.subtitle).toContain("Del Valle");
 
-    const open = payRowFromPlace({ ...basePlace, promoting: true });
+    const open = payRowFromPlace({ ...basePlace, partner: true });
     expect(open.canStart).toBe(true);
     expect(open.seed?.id).toBe("p1");
   });
@@ -91,8 +93,8 @@ describe("payRowFromPrediction", () => {
   });
 
   it("uses the nearby place when the name hit is already in the 50", () => {
-    const promoting = { ...basePlace, promoting: true };
-    const row = payRowFromPrediction(mesita, [promoting]);
+    const partnerPlace = { ...basePlace, partner: true };
+    const row = payRowFromPrediction(mesita, [partnerPlace]);
     expect(row.canStart).toBe(true);
     expect(row.photo).toBe("https://cdn.example/cosmo.jpg");
     expect(row.seed?.id).toBe("p1");

@@ -60,6 +60,26 @@ function factOn(
   return "unknown";
 }
 
+// PULSE is a high-water: it stops counting at the first gap by design (its
+// own comment in _shared/pulse-pieces.ts says so), so a place where `links`
+// failed but `social`/`menu` later completed reads high-water 3 even though
+// 5 and 7 landed. `enrich_functions` (MESITA-1611) is the honest per-function
+// map — read it when the payload carries it, and only fall back to the
+// high-water comparison for a payload that predates the field. Seed is never
+// in that map (it is not a stamped Enrich function — the row existing IS the
+// seed), so it always reads off `seeded` directly.
+export function intakeCalled(
+  hit: PlaceHit,
+  fn: (typeof INTAKE_FUNCTIONS)[number],
+): boolean {
+  if (fn.key === "seed") return hit.seeded;
+  if (hit.enrich_functions) {
+    const state = hit.enrich_functions[fn.key]?.state;
+    return state === "completed" || state === "failed";
+  }
+  return hit.enrich_pulse >= fn.n;
+}
+
 export function MesitaSearchTab({
   text,
   onTextChange,
@@ -314,9 +334,21 @@ export function MesitaSearchTab({
                     <p className="text-muted-foreground type-label mb-2">
                       Intake · {hit.google_name || hit.name}
                     </p>
+                    {hit.enrich_pulse_blocked ? (
+                      <p className="text-muted-foreground type-label mb-2">
+                        Stopped at{" "}
+                        {hit.enrich_pulse_labels[hit.enrich_pulse_blocked.index] ??
+                          hit.enrich_pulse_blocked.key}{" "}
+                        —{" "}
+                        {hit.enrich_pulse_blocked.state === "failed"
+                          ? "the function ran and failed"
+                          : "no event yet"}
+                        .
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap gap-1.5">
                       {INTAKE_FUNCTIONS.map((fn) => {
-                        const called = hit.enrich_pulse >= fn.n;
+                        const called = intakeCalled(hit, fn);
                         return (
                           <span
                             key={fn.key}

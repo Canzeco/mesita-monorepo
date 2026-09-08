@@ -60,11 +60,27 @@ function push(input: ToastInput | string): string {
   // notice + tap the button. 6s feels right — much past that and the user
   // has moved on, much under and they miss it.
   const defaultDuration = cfg.action ? 6000 : 3500;
+  const tone = cfg.tone ?? "info";
+  const durationMs = cfg.durationMs ?? defaultDuration;
+
+  // A repeated tap on the same disabled affordance (e.g. a locked list row)
+  // fires the same message every time — refresh the existing toast's timer
+  // instead of stacking duplicates on screen.
+  const dup = toasts.find((t) => t.message === cfg.message && t.tone === tone);
+  if (dup) {
+    const timer = dismissTimers.get(dup.id);
+    if (timer) window.clearTimeout(timer);
+    if (durationMs > 0) {
+      dismissTimers.set(dup.id, window.setTimeout(() => dismiss(dup.id), durationMs));
+    }
+    return dup.id;
+  }
+
   const t: Toast = {
     id: crypto.randomUUID(),
     message: cfg.message,
-    tone: cfg.tone ?? "info",
-    durationMs: cfg.durationMs ?? defaultDuration,
+    tone,
+    durationMs,
     action: cfg.action ?? null,
   };
   toasts = [...toasts, t];
