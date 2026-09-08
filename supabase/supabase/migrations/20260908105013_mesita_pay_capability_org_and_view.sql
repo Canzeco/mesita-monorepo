@@ -18,6 +18,15 @@
 -- that will disagree with the server the day the rule changes. A place in the
 -- public pool has no organization and is therefore false.
 --
+-- `WITH (security_invoker = true)` IS NOT OPTIONAL AND IS EASY TO LOSE.
+-- `create or replace view` RESETS reloptions, so replacing this view without
+-- restating it drops security_invoker and the view starts running as its
+-- OWNER — bypassing row-level security on places and place_profiles, letting
+-- anon read rows RLS exists to hide. This migration shipped without it; the
+-- schema_invariants test caught it on the fresh replay and 20260908110045
+-- repaired the database that had already run it. Never replace this view
+-- without the option.
+--
 -- A CORRELATED SUBQUERY, not a third join. `profiles` is a 110-column view
 -- over `places JOIN place_profiles` carrying TWO INSTEAD OF triggers that are
 -- how every EF writes a place. Adding a join would rewrite its FROM; appending
@@ -40,7 +49,7 @@ alter table public.organizations
 comment on column public.organizations.mesita_pay_enabled is
   'The org runs Mesita Pay: the whole payments package, all or nothing. The ONLY org capability. A place''s own bit can only be true while this is (profiles.mesita_pay_enabled ANDs them), so switching this off cascades down without touching a single place row.';
 
-create or replace view public.profiles as
+create or replace view public.profiles with (security_invoker = true) as
  SELECT p.id,
     p.created_at,
     p.updated_at,
@@ -180,6 +189,13 @@ begin
   if (select count(*) from pg_trigger
        where tgrelid='public.profiles'::regclass and not tgisinternal) <> 2 then
     raise exception 'profiles lost its INSTEAD OF triggers during the view replace';
+  end if;
+  -- The option the replace silently drops. Asserted here so a future edit to
+  -- this view fails at apply time rather than in a security review.
+  if not exists (select 1 from pg_class
+    where oid = 'public.profiles'::regclass
+      and reloptions @> array['security_invoker=true']) then
+    raise exception 'profiles lost security_invoker during the view replace — RLS is being bypassed';
   end if;
 end $$;
 
