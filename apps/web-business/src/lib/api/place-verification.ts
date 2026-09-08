@@ -20,12 +20,12 @@ export type PlaceVerifyResult = {
 
 export async function apiVerifyPlace(
   client: SupabaseClient,
-  input: { placeId: string; code: string },
+  input: { placeId: string },
 ): Promise<PlaceVerifyResult> {
   return invokeEF<PlaceVerifyResult>(
     client,
     "business-web-verify-place",
-    { placeId: input.placeId, code: input.code },
+    { placeId: input.placeId },
     "Couldn't verify that place.",
   );
 }

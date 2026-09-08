@@ -1,18 +1,18 @@
 "use client";
 
-// Verify — the ownership proof, as a row-level control.
+// Verify — one click, on a place the organization already holds.
 //
 // It sits next to Claim / Release because it is the other half of the same
-// ceremony: an organization takes a place, then proves it holds it. It is
+// ceremony: an organization takes a place, then it becomes Verified. It is
 // NOT offered on a place nobody holds (claim first) and NOT offered on one
 // already verified (Verified never lapses, so there is nothing to redo).
 //
-// The code box only appears once you ask for it. A permanently-open input on
-// every row would read as a required step for all of them, when most rows
-// need nothing.
-import { useActionState, useState } from "react";
+// There is no code box. The mock 123456 that used to sit here proved nothing
+// and cost a typing step; the real proof (phone OTP) will arrive as its own
+// challenge in front of this call, not as a resurrected input.
+import { useActionState } from "react";
 import { cn } from "@/lib/utils";
-import { INPUT_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
   verifyPlaceAction,
   type PlaceVerifyActionState,
@@ -30,7 +30,6 @@ export function PlaceVerifyButton({
    *  a control that cannot work is worse than no control. */
   allowed: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(
     verifyPlaceAction,
     INITIAL,
@@ -48,42 +47,19 @@ export function PlaceVerifyButton({
     );
   }
 
-  if (!open) {
-    return (
+  return (
+    <form action={formAction} className="shrink-0 text-right">
+      <input type="hidden" name="placeId" value={placeId} />
       <button
-        type="button"
-        onClick={() => setOpen(true)}
+        type="submit"
+        disabled={pending}
         className={cn(
           PILL_BUTTON_CLASS,
           "bg-card text-foreground border-border border",
         )}
       >
-        Verify
+        {pending ? "Verifying..." : "Verify"}
       </button>
-    );
-  }
-
-  return (
-    <form action={formAction} className="shrink-0 text-right">
-      <input type="hidden" name="placeId" value={placeId} />
-      <span className="inline-flex items-center gap-2">
-        <input
-          name="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          placeholder="Code"
-          aria-label="Verification code"
-          autoFocus
-          className={cn(INPUT_CLASS, "h-8 w-[92px] text-[13px]")}
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className={cn(PILL_BUTTON_CLASS)}
-        >
-          {pending ? "Verifying..." : "Confirm"}
-        </button>
-      </span>
       {state.error && (
         <p className="text-destructive mt-1 text-[12px]">{state.error}</p>
       )}

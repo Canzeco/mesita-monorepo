@@ -62,14 +62,12 @@ export async function verifyPlaceAction(
   formData: FormData,
 ): Promise<PlaceVerifyActionState> {
   const placeId = String(formData.get("placeId") ?? "");
-  const code = String(formData.get("code") ?? "").trim();
   if (!placeId) return { error: "Missing place.", note: null };
-  if (!code) return { error: "Enter the code.", note: null };
 
   const supabase = await createServerSupabase();
   let result;
   try {
-    result = await apiVerifyPlace(supabase, { placeId, code });
+    result = await apiVerifyPlace(supabase, { placeId });
   } catch (e) {
     return { error: errMsg(e, "Couldn't verify that place."), note: null };
   }
