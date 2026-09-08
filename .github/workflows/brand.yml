@@ -51,13 +51,25 @@ jobs:
   check:
     name: brand assets in sync
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    # THE JOB ITSELF MUST NEVER BE `if:`-GATED (MESITA-1679 fix). A job-level
+    # `if:` that evaluates false means the job does not run AT ALL and posts
+    # NO check run — so a PR that touches no brand-scoped path never gets a
+    # "brand assets in sync" status, and branch protection blocks it forever
+    # on a required check that will never arrive. That is exactly the
+    # "Expected check that will never arrive" failure mode the comment on
+    # `pull_request: {}` above already names — MESITA-1576 fixed the TRIGGER
+    # (unfiltered on pull_request) but left this job-level `if:` re-creating
+    # the identical bug one level down. Gating each STEP instead keeps the
+    # job always green-and-reporting while still doing real work only when
+    # something brand-scoped changed.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
+        if: needs.changes.outputs.changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install Deno
+        if: needs.changes.outputs.changed == 'true'
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.1
@@ -70,4 +82,5 @@ jobs:
       # png/ and pdf/ are NOT checked: they come from
       # scripts/render-brand-raster.mjs, which needs a local browser.
       - name: Check
+        if: needs.changes.outputs.changed == 'true'
         run: deno task sync-brand:check

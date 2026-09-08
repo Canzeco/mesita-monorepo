@@ -5,13 +5,15 @@
 // request is rejected. SEVERAL signing secrets serve the one URL: the
 // platform endpoint's, and the Connect endpoint's once the operator creates
 // it (same URL — needs-human dashboard step: enabled_events must name
-// account.updated, payment_intent.succeeded and payment_intent.payment_
-// failed, not just the first) — in both universes, since STRIPE_MODE keeps
-// test and live credentials side by side (stripe-env.ts). Every configured
-// secret is tried (webhook-verify.ts), so a correctly-signed event from the
-// universe STRIPE_MODE is NOT on still verifies — and is then acked WITHOUT
-// being processed, which is what keeps a mode flip from costing a
-// multi-day Stripe retry storm.
+// account.updated, payment_intent.succeeded, payment_intent.payment_failed,
+// charge.refunded AND charge.dispute.created (MESITA-1679 added the last
+// two — an existing Connect endpoint must have them added by hand, this
+// repo cannot reach the Stripe Dashboard), not just the first) — in both
+// universes, since STRIPE_MODE keeps test and live credentials side by side
+// (stripe-env.ts). Every configured secret is tried (webhook-verify.ts), so
+// a correctly-signed event from the universe STRIPE_MODE is NOT on still
+// verifies — and is then acked WITHOUT being processed, which is what keeps
+// a mode flip from costing a multi-day Stripe retry storm.
 //
 // One endpoint, four surfaces:
 //   • consumer_id  → consumer Premium ($50 MXN/mo). The ONLY writer that
@@ -29,9 +31,14 @@
 //     credit-payment-intent.ts) — routed by intent.metadata.mesita_kind ===
 //     "credit_purchase", since both callers share one Connect endpoint and
 //     Stripe delivers the same event type for either.
+//   • Connect charge.refunded / charge.dispute.created → credit_lots claw-
+//     back (MESITA-1679, credit-refund.ts). A refunded top-up must not leave
+//     a live, spendable lot; Stripe emits these whether or not we listen.
 //   Connect-DELIVERED events (top-level event.account set) are guarded to
-//   exactly these three types: a restaurant's own Stripe subscriptions or
-//   other account activity must never reach the platform reconcilers below.
+//   exactly these five types (payment_intent.{succeeded,payment_failed} each
+//   fan out to two callers by metadata, not two more types): a restaurant's
+//   own Stripe subscriptions or other account activity must never reach the
+//   platform reconcilers below.
 //
 // Idempotency: Stripe retries deliveries. We record every processed event id
 // in public.stripe_events and no-op on replays.
@@ -76,6 +83,10 @@ import {
   handleCreditPurchaseIntentSucceeded,
   isCreditPurchaseIntentEvent,
 } from "./credit-payment-intent.ts";
+import {
+  handleChargeDisputeCreated,
+  handleChargeRefunded,
+} from "./credit-refund.ts";
 
 Deno.serve(async (req) => {
   // Vendor webhook — no CORS preflight; POST-only.
@@ -199,6 +210,18 @@ async function handleStripeEvent(
         }
         break;
       }
+      case "charge.refunded":
+        // A refunded top-up on a connected account. Most refunded charges
+        // are not Credits purchases (tickets, subscriptions) — the handler
+        // no-ops when stripe_payment_intent_id matches no lot.
+        await handleChargeRefunded(admin, event);
+        break;
+      case "charge.dispute.created":
+        // Freezes the matching lot's remainder pending Stripe's
+        // investigation — see credit-refund.ts for why this is 'adjust',
+        // not 'refund'.
+        await handleChargeDisputeCreated(admin, event);
+        break;
       default:
         break;
     }
