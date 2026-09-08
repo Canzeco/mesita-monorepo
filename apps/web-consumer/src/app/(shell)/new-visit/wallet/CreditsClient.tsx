@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { BalanceList, CARD_PX } from "@/components/consumer/credits/BalanceList";
 import { WaysToPay } from "@/components/consumer/credits/WaysToPay";
+import { WalletPanel } from "@/components/consumer/wallet/WalletPanel";
 import {
   AddCardButton,
   CardList,
@@ -43,6 +44,19 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // THREE BLOCKS, IN THIS ORDER (Pato, 2026-09-08, re-drawn after seeing the
 // shipped screen): Ways to pay · Cards · Credits.
 //
+// AND THEY ARE THREE OF THE SAME OBJECT (Pato, 2026-09-08: "Put in boxes,
+// modularize"). Ways to pay used to be a bordered card and the other two were
+// bare headings with content under them — three blocks wearing two chrome
+// systems, and the two that hold the guest's money had none. All three now
+// mount `WalletPanel`: title, actions and body inside one surface. This file
+// owns no section chrome any more, which is what makes a fourth section a
+// mount rather than a paste.
+//
+// WAYS TO PAY IS PERMANENT NOW. It used to render only while the guest held
+// zero balances. Pato's wireframe draws it above a wallet that has them, so
+// the condition is gone — see WaysToPay's header for why the block being read
+// once is not a reason to delete it once it is true.
+//
 // CARDS SITS ABOVE CREDITS, and that is deliberate rather than an oversight.
 // Both design passes on this plan argued the opposite — the guest's own money
 // should lead the screen they opened to check it. Pato's reason for the other
@@ -70,30 +84,16 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // The wallet is a LIST plus four doors. See newVisit.walletBuy in the route
 // contract for the reversal, and WalletScreen for the frame they share.
 
-/** Title left, actions top-right. Deliberately not small: Pato, 2026-09-08 —
- *  "un botón un poco grande, no quiero que esté escondido", then "make the
- *  buttons larger".
+/** ACTION BUTTONS, DELIBERATELY NOT SMALL: Pato, 2026-09-08 — "un botón un
+ *  poco grande, no quiero que esté escondido", then "make the buttons larger".
  *
  *  CARDS TAKES ONE ACTION, CREDITS TAKES THREE, and the widths were measured
  *  rather than hoped for. At `text-sm` bold with `px-4`, "Credits" plus Buy,
  *  Gift and Redeem and their gaps is ~274px inside the 335px a 375px phone
- *  leaves after the page gutter. It fits only with the icons gone — which is
- *  why no section button carries a glyph any more, including Cards' Add, where
- *  the word already says what the button does. */
-function SectionHead({
-  title,
-  action,
-}: {
-  title: string;
-  action: React.ReactNode;
-}) {
-  return (
-    <div className="mb-2.5 flex items-center justify-between gap-2">
-      <h2 className="shrink-0 text-sm font-bold">{title}</h2>
-      <div className="flex min-w-0 items-center gap-2">{action}</div>
-    </div>
-  );
-}
+ *  leaves after the page gutter — and the panel now eats 32px more in its own
+ *  padding, so the row wraps its buttons rather than clipping them. It fits
+ *  only with the icons gone, which is why no section button carries a glyph,
+ *  including Cards' Add, where the word already says what the button does. */
 
 // `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary` (pink-500, 3.66:1)
 // — this is text on a light surface and 500 fails AA. The token has no
@@ -150,49 +150,49 @@ export function CreditsClient() {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5">
-        {/* Only until there is a balance — see WaysToPay's header. */}
-        {!credits.loading && balances.length === 0 ? <WaysToPay /> : null}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-5">
+        {/* Always. Not "until it has been read" — see WaysToPay's header. */}
+        <WalletPanel title="Ways to pay">
+          <WaysToPay />
+        </WalletPanel>
 
-        <section aria-label="Cards">
-          <SectionHead
-            title="Cards"
-            action={
-              <AddCardButton
-                state={cards}
-                label="Add"
-                className={ADD_BUTTON_CLASS}
-              />
-            }
-          />
+        <WalletPanel
+          title="Cards"
+          actions={
+            <AddCardButton
+              state={cards}
+              label="Add"
+              className={ADD_BUTTON_CLASS}
+            />
+          }
+        >
           <CardList state={cards} />
           <CardsDisclosure mock={cards.mock} className="mt-2.5" />
-        </section>
+        </WalletPanel>
 
-        <section aria-label="Credits">
-          <SectionHead
-            title="Credits"
-            // BUY · GIFT · REDEEM (Pato, 2026-09-08). Add named the mechanic;
-            // Buy names the act. Redeem is global BY NECESSITY — it is the door
-            // for someone who was given Credits and holds nothing, so a
-            // per-balance Redeem is unreachable by definition. Gift is global
-            // because gifting is ISSUANCE (MESITA-1677): you buy a balance for
-            // someone else, so it starts by choosing an organization exactly as
-            // Buy does and needs no source balance selected first.
-            action={
-              <>
-                <HeadAction href={CONSUMER_ROUTES.newVisit.walletBuy}>
-                  Buy
-                </HeadAction>
-                <HeadAction href={CONSUMER_ROUTES.newVisit.walletGift}>
-                  Gift
-                </HeadAction>
-                <HeadAction href={CONSUMER_ROUTES.newVisit.walletRedeem}>
-                  Redeem
-                </HeadAction>
-              </>
-            }
-          />
+        <WalletPanel
+          title="Credits"
+          // BUY · GIFT · REDEEM (Pato, 2026-09-08). Add named the mechanic;
+          // Buy names the act. Redeem is global BY NECESSITY — it is the door
+          // for someone who was given Credits and holds nothing, so a
+          // per-balance Redeem is unreachable by definition. Gift is global
+          // because gifting is ISSUANCE (MESITA-1677): you buy a balance for
+          // someone else, so it starts by choosing an organization exactly as
+          // Buy does and needs no source balance selected first.
+          actions={
+            <>
+              <HeadAction href={CONSUMER_ROUTES.newVisit.walletBuy}>
+                Buy
+              </HeadAction>
+              <HeadAction href={CONSUMER_ROUTES.newVisit.walletGift}>
+                Gift
+              </HeadAction>
+              <HeadAction href={CONSUMER_ROUTES.newVisit.walletRedeem}>
+                Redeem
+              </HeadAction>
+            </>
+          }
+        >
           {credits.loading ? (
             // Sized from the card's own minimum so the skeleton cannot drift
             // from what lands on top of it.
@@ -202,7 +202,7 @@ export function CreditsClient() {
           ) : balances.length === 0 ? (
             // No `action`. EmptyState normally carries one and the rule behind
             // that is real — a zero state without a next step is a dead end.
-            // It already has one here: Add sits in the header directly above.
+            // It already has one here: Buy sits in the header directly above.
             <EmptyState
               icon={Wallet}
               title="No Credits yet"
@@ -227,7 +227,7 @@ export function CreditsClient() {
               ) : null}
             </>
           )}
-        </section>
+        </WalletPanel>
       </div>
 
       {credits.error && (

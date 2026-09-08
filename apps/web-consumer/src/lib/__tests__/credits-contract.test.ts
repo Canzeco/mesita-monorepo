@@ -123,21 +123,101 @@ describe("wallet block order", () => {
     "utf8",
   );
 
-  it("puts Cards above Credits", () => {
-    const cards = CLIENT.indexOf('aria-label="Cards"');
-    const credits = CLIENT.indexOf('aria-label="Credits"');
+  it("puts Ways to pay, then Cards, then Credits", () => {
+    const ways = CLIENT.indexOf('title="Ways to pay"');
+    const cards = CLIENT.indexOf('title="Cards"');
+    const credits = CLIENT.indexOf('title="Credits"');
+    expect(ways).toBeGreaterThan(-1);
     expect(cards).toBeGreaterThan(-1);
     expect(credits).toBeGreaterThan(-1);
+    expect(ways).toBeLessThan(cards);
     expect(cards).toBeLessThan(credits);
   });
 
-  it("renders Ways to pay only while the guest holds nothing", () => {
-    expect(CLIENT).toMatch(/balances\.length === 0 \? <WaysToPay \/> : null/);
+  it("renders Ways to pay unconditionally", () => {
+    // REVERSED, MESITA-1696 (Pato, 2026-09-08 wireframe). The block used to
+    // render only while `balances.length === 0`, on the theory that it is read
+    // once and then becomes furniture above the number the guest opened the
+    // app to see. Pato drew it above a wallet that HAS balances: a guest who
+    // prepaid one place has more need, not less, of the line saying the other
+    // three tenders still exist. Anyone re-adding a condition here is undoing
+    // that and should have to delete this test to do it.
+    expect(CLIENT).toContain("<WaysToPay />");
+    expect(CLIENT).not.toMatch(/balances\.length === 0 \? <WaysToPay/);
+  });
+
+  it("wears one section chrome — every block is a WalletPanel", () => {
+    // "Put in boxes, modularize" (Pato, 2026-09-08). Ways to pay was a
+    // bordered card and the other two were bare headings; three blocks, two
+    // chrome systems. A hand-rolled section header reappearing in this file is
+    // the regression.
+    expect(CLIENT).toContain("WalletPanel");
+    expect(CLIENT).not.toContain("<section");
+    expect(CLIENT).not.toContain("SectionHead");
   });
 
   it("mounts the shared card list, never a second one", () => {
     expect(CLIENT).toContain("useConsumerCards");
     expect(CLIENT).toContain("<CardList");
     expect(CLIENT).not.toContain("apiListCards");
+  });
+});
+
+// ── Ways to pay names FOUR tenders (MESITA-1696) ─────────────────────────────
+//
+// Pato, 2026-09-08: "btw in fact four ways to pay. 1. Cash 2. Card 3. Mesita
+// Online Payments 4. Mesita Credits Payments."
+//
+// The list said Cash · Cards · Credits, and "Cards" was doing two jobs: the
+// card a guest hands to the place, and the card MESITA charges on their
+// behalf. Those are two rails with two different holders of the money, and
+// consumer-web-select-ticket-payment has separated them since MESITA-1414
+// (`at_place` vs `mesita_pay`) — the wallet was the last surface pretending
+// they were one tender. Collapsing them back is the regression this guards.
+describe("ways to pay", () => {
+  const WAYS = readFileSync(
+    join(__dirname, "..", "..", "components", "consumer", "credits", "WaysToPay.tsx"),
+    "utf8",
+  );
+
+  it("names all four, in Pato's order", () => {
+    const at = (needle: string) => {
+      const i = WAYS.indexOf(needle);
+      expect(i, needle).toBeGreaterThan(-1);
+      return i;
+    };
+    const order = [
+      at('title: "Cash"'),
+      at('title: "Card"'),
+      at('title: "Mesita Online Payments"'),
+      at('title: "Mesita Credits Payments"'),
+    ];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("groups them by who ends up with the money", () => {
+    // "Do I need cash on me" is answered by the first group and nothing else,
+    // and it is the same split StepPay uses at the moment of payment.
+    expect(WAYS).toContain("At the place");
+    expect(WAYS).toContain("Through Mesita");
+  });
+
+  it("says Credits are not live yet", () => {
+    // MESITA-1674 deleted the "Emulated" footer because the BALANCES became
+    // real. SPENDING them did not: StepPay still renders its Credits row
+    // `soon`. This tag is now the only place the wallet says so.
+    expect(WAYS).toMatch(/tag: "Soon"/);
+  });
+
+  it("never calls Credits a way to settle the whole bill", () => {
+    // 20260831121954_credits_rename.sql: Credits settle as a bill REDUCTION,
+    // applying only to (subtotal - discount), never the tip. A guest told
+    // otherwise expects MX$2,000 to cover a MX$1,800 bill plus tip.
+    expect(WAYS).toContain("never the tip");
+  });
+
+  it("promises no rail that does not exist", () => {
+    // There is no Stripe wallet button anywhere in this app.
+    expect(WAYS).not.toMatch(/Apple Pay|Google Pay/);
   });
 });
