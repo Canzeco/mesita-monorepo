@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(86);
+select plan(90);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -58,6 +58,42 @@ select ok(
 select ok(
   has_table_privilege('service_role', 'public.profiles', 'SELECT'),
   'service_role keeps SELECT on public.profiles (every EF reads through it)'
+);
+
+-- MESITA-1704: the three checks above passed for a full day while `profiles`
+-- was 42501 for every guest. A privilege on a VIEW says the role may reach it;
+-- a `security_invoker` view then re-checks the role against everything its
+-- BODY touches, and nothing above can see the body. MESITA-1689 appended one
+-- derived column reading `places.organization_id` and `public.organizations` —
+-- neither of which a client role held — and the consumer app answered
+-- "permission denied for table places" in a red band over the Search map.
+--
+-- So: run the read. This is the only assertion in the file that proves the
+-- guest browse works rather than that a privilege bit is set.
+create or replace function pg_temp.client_role_reads_profiles(role_name text)
+returns text language plpgsql as $probe$
+declare verdict text;
+begin
+  begin
+    execute format('set local role %I', role_name);
+    perform id, mesita_pay_enabled from public.profiles limit 1;
+    reset role;
+    verdict := 'OK';
+  exception when others then
+    reset role;
+    verdict := sqlstate || ' ' || sqlerrm;
+  end;
+  return verdict;
+end $probe$;
+
+select is(
+  pg_temp.client_role_reads_profiles('anon'), 'OK',
+  'anon can actually READ public.profiles (not just hold a privilege on it)'
+);
+
+select is(
+  pg_temp.client_role_reads_profiles('authenticated'), 'OK',
+  'authenticated can actually READ public.profiles'
 );
 
 -- The INSTEAD OF pair is what makes the view writable. A rebuild that drops
@@ -192,6 +228,40 @@ select is_empty(
 select ok(
   has_column_privilege('anon', 'public.places', 'plan', 'SELECT'),
   'anon keeps SELECT on places.plan (profiles invoker reads it)'
+);
+
+-- The set IS the claim, so it is derived, not typed: every `places` column the
+-- `profiles` body references, read straight out of the view's rewrite rule. A
+-- hand-listed column (`plan`, above) can only catch the loss of a column
+-- someone already thought of; this catches the NEXT one added to the view,
+-- which is how MESITA-1704 happened. Failing here names the column instead of
+-- letting Postgres blame the whole table in production.
+select is_empty(
+  $$select a.attname
+      from pg_depend d
+      join pg_rewrite r
+        on r.oid = d.objid and d.classid = 'pg_rewrite'::regclass
+      join pg_attribute a
+        on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+     where r.ev_class = 'public.profiles'::regclass
+       and d.refobjid = 'public.places'::regclass
+       and d.refobjsubid > 0
+       and (
+         not has_column_privilege('anon', 'public.places', a.attname, 'SELECT')
+         or not has_column_privilege(
+           'authenticated', 'public.places', a.attname, 'SELECT'
+         )
+       )$$,
+  'every places column the profiles view reads is client-readable (a security_invoker view is only as readable as its body)'
+);
+
+-- The other half of MESITA-1704: the repair must never become "open the table".
+-- organizations is EF-only, and it has RLS on with zero policies, so a column
+-- grant here would not even error — every place would just read pay-disabled.
+select ok(
+  not has_table_privilege('anon', 'public.organizations', 'SELECT')
+  and not has_table_privilege('authenticated', 'public.organizations', 'SELECT'),
+  'organizations stays closed to the client roles (profiles reads the org bit through a security-definer function instead)'
 );
 
 select ok(
