@@ -1,6 +1,13 @@
 import { Compass, Layers, MapPin, PartyPopper, Sparkles, Type } from "lucide-react";
 import { ConfigSoon } from "@/components/admin-ui/ConfigSoon";
 import { KnobState, SectionCard } from "@/components/admin-ui/config";
+import {
+  FiltersFloorOwner,
+  FloorMirror,
+  FloorSoonNote,
+  type FloorSeed,
+} from "./SourceFloor";
+import { floorNumber, GENERAL_FLOOR_OWNER } from "./source-floor-copy";
 
 // The six Mesita sources, in taxonomy order: the four over Places, then the
 // two over Social.
@@ -11,13 +18,22 @@ import { KnobState, SectionCard } from "@/components/admin-ui/config";
 // draws Name, a centre and a radius draw Nearby, nothing at all draws Browse,
 // and an arbitrary set of predicates draws Flexible.
 //
-// TWO ARE LIVE WITHOUT KNOBS. Name Search is the Mesita lane inside Word's
-// Deep pass (and all of Pay's `mesita` mode); Nearby Search is the listed
-// lane behind every Map fetch. Neither has an operator number of its own —
-// their counts live on the Word and Map mode boxes — so they carry Enforced,
-// not Soon. Browse, Flexible and both Social sources have no engine at all.
+// FLOORS (MESITA-1681). Name Search mirrors `general`: `fetchEmbedPool` in
+// consumer-search-lane.ts gates the `name_embedding` query with the same wipe
+// the Google boxes name, which is why the floor does NOT split by vendor.
+// Nearby Search owns `filters`, the listed-pool floor, and its effective cut
+// is max(filters, map) via listedMapFilters.
+//
+// The four Soon sources get a sentence, never a field. Pato, 2026-08-21: an
+// engine that does not exist gets its knobs DELETED from the markup, not
+// staged — and a field here would have to write another source's key.
 
-export function MesitaSourceCards() {
+export function MesitaSourceCards({ seed }: { seed: FloorSeed }) {
+  const g = seed.initialConfig.general;
+  const generalRows = [
+    { label: "Only active places", value: g.requireActive ? "On" : "Off" },
+    { label: "Minimum Google reviews", value: floorNumber(g.minReviews) },
+  ];
   return (
     <div className="flex flex-col gap-4">
       <div id="s-mesita-name" className="scroll-mt-16">
@@ -33,6 +49,11 @@ export function MesitaSourceCards() {
             Used by Word. Counts live on the Word (Deep Search) box; Pay runs
             this lane on its own with a floor of 10.
           </p>
+          <FloorMirror
+            rows={generalRows}
+            ownedBy={GENERAL_FLOOR_OWNER}
+            note="A Google key cuts this Mesita source: the same wipe rides the WHERE clause of the name-embedding pool."
+          />
         </SectionCard>
       </div>
       <div id="s-mesita-nearby" className="scroll-mt-16">
@@ -47,6 +68,7 @@ export function MesitaSourceCards() {
             number. Listed pins then Lineup under the Map mask; the Google set
             stays distance.
           </p>
+          <FiltersFloorOwner seed={seed} />
         </SectionCard>
       </div>
       <div id="s-mesita-browse" className="scroll-mt-16">
@@ -55,6 +77,7 @@ export function MesitaSourceCards() {
           title="Mesita Places Browse Search is coming soon"
           body="No query at all — the catalog itself, railed by occupied Atlas categories and a sampled vibe bank. Catalog calls it. Browse is the one source a guest reaches without typing or moving the map."
           doc="Notion Docs › Discovery"
+          footer={<FloorSoonNote />}
         />
       </div>
       <div id="s-mesita-flexible" className="scroll-mt-16">
@@ -63,6 +86,7 @@ export function MesitaSourceCards() {
           title="Mesita Places Flexible Search is coming soon"
           body="An arbitrary set of predicates in, ordered places out. Swipe hands it the guest's four filters; Chat hands it whatever the question turned into. It is the general form the other three are special cases of."
           doc="Notion Docs › Discovery"
+          footer={<FloorSoonNote />}
         />
       </div>
       <div id="s-social-browse" className="scroll-mt-16">
@@ -71,6 +95,7 @@ export function MesitaSourceCards() {
           title="Mesita Social Browse Search is coming soon"
           body="Events a place hosts, not places. Catalog rails them. Social lost its own mode, not its retrieval — there is still no events engine behind either Social source."
           doc="Notion Docs › Discovery"
+          footer={<FloorSoonNote />}
         />
       </div>
       <div id="s-social-flexible" className="scroll-mt-16">
@@ -79,6 +104,7 @@ export function MesitaSourceCards() {
           title="Mesita Social Flexible Search is coming soon"
           body="The same events under an arbitrary set of predicates, for when Chat is asked what is on tonight. Never merged into one list with places: an event and a place are different answers."
           doc="Notion Docs › Discovery"
+          footer={<FloorSoonNote />}
         />
       </div>
     </div>

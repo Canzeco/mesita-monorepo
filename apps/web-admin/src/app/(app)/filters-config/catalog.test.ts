@@ -437,15 +437,31 @@ describe("Discovery page box order", () => {
     expect(general).toContain('title="Google types"');
     expect(general).toContain("NEARBY_TYPE_FIELDS");
 
-    const gate = readFileSync(join(__dirname, "GeneralGateConfigClient.tsx"), "utf8");
-    expect(gate).toContain('title="General"');
-    expect(gate).toContain("Only active places");
-    expect(gate).toContain("Minimum Google reviews");
-    // The wipe is Discovery-wide, so it must not grow type batteries or a
-    // per-mode cap — those belong to Sources and to each mode's own box.
-    expect(gate).not.toContain("NEARBY_TYPE_FIELDS");
-    expect(gate).not.toContain("categoryCount");
-    expect(general).toContain('["general", "nameFast", "nameDeep", "map"]');
+    // The floor lives INSIDE the source it cuts (Pato, 2026-09-08). One box
+    // owns each key; the rest mirror it read-only, so no two inputs move one
+    // number. Autocomplete owns `general`, Nearby owns the Map floors, and
+    // Mesita Nearby owns `filters`.
+    const floor = readFileSync(join(__dirname, "SourceFloor.tsx"), "utf8");
+    expect(floor).toContain("Only active places");
+    expect(floor).toContain("Minimum Google reviews");
+    expect(floor).toContain('"general",');
+    expect(floor).toContain('"mapFloors",');
+    expect(floor).toContain('"filters",');
+    // A Soon source states the fact; it never gets a field to type in.
+    expect(floor).toContain("FloorSoonNote");
+    expect(floor).not.toContain("categoryCount");
+    expect(googleSources).toContain("GeneralFloorOwner");
+    expect(googleSources).toContain("MapFloorOwner");
+    expect(googleSources).toContain("FloorMirror");
+    expect(mesitaSources).toContain("FiltersFloorOwner");
+    expect(mesitaSources).toContain("FloorMirror");
+    expect(mesitaSources.match(/FloorSoonNote \/>/g)?.length).toBe(4);
+    // Two boxes write `map` on this one page now, so neither may save the
+    // whole slice from its own seed or the second Save wipes the first.
+    expect(general).toContain('["general", "nameFast", "nameDeep", "mapTypes"]');
+    const acts = readFileSync(join(__dirname, "actions.ts"), "utf8");
+    expect(acts).toContain('"mapTypes"');
+    expect(acts).toContain('"mapFloors"');
     // Word is ONE mode with two passes. The blob slices keep their names.
     expect(name).toContain('title="Word (Fast Search)"');
     expect(name).toContain('title="Word (Deep Search)"');
@@ -577,7 +593,6 @@ describe("Discovery page box order", () => {
     // having moved to its own subpage (MESITA-1675). It runs last but reads
     // first. The mode cards then run in section 8.1 order.
     const modeOrder = [
-      "GeneralGateConfigClient",
       "NameConfigClient",
       "MapConfigClient",
       "CatalogConfigClient",
@@ -595,17 +610,17 @@ describe("Discovery page box order", () => {
     // Google types stay on Sources; the wipe stays on Modes. Two boxes,
     // two questions — never fold one into the other.
     expect(modesJsx).not.toContain("GeneralConfigClient");
+    expect(modesJsx).not.toContain("GeneralGateConfigClient");
     expect(sourcesJsx).not.toContain("GeneralGateConfigClient");
     expect(modesJsx).not.toContain("SignalsConfigClient");
     expect(modesJsx).not.toContain("ConfigSoon");
 
-    const sourceOrder = [
-      "GeneralConfigClient",
-      "GoogleSourceCards",
-      "GoogleQualityFloorCard",
-      "PoolQualityFloorCard",
-      "MesitaSourceCards",
-    ];
+    // NINE BOXES AND NOTHING ELSE. The types strip is a shared battery above
+    // them, not a source, so it does not spend one of the nine.
+    const sourceOrder = ["GeneralConfigClient", "GoogleSourceCards", "MesitaSourceCards"];
+    expect(sourcesJsx).not.toContain("GoogleQualityFloorCard");
+    expect(sourcesJsx).not.toContain("PoolQualityFloorCard");
+    expect(sourcesJsx).not.toContain("SignalsConfigClient");
     let lastSource = -1;
     for (const n of sourceOrder) {
       const idx = sourcesJsx.indexOf(n);

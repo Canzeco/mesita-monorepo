@@ -35,6 +35,13 @@ export type DiscoverySlice =
   | "social"
   | "chat"
   | "map"
+  // Narrow map slices (MESITA-1681). Search Sources now holds TWO boxes that
+  // write `map`: the Google types strip and Google Nearby's floor. Whole-slice
+  // saves from two seeds on one page mean the second Save wipes the first, so
+  // each writes only its own fields. `map` stays for the Map mode box, which
+  // owns the rest of the slice.
+  | "mapTypes"
+  | "mapFloors"
   | "nameFast"
   | "nameDeep"
   | "swipe"
@@ -70,7 +77,13 @@ export async function updateDiscoveryConfig(
     // it while `applyDiscoveryFilters` enforced it on every one of those lanes.
     filters: keys.has("filters") ? config.filters : live.config.filters,
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
-    map: keys.has("map") ? config.map : live.config.map,
+    map: {
+      ...(keys.has("map") ? config.map : live.config.map),
+      ...(keys.has("mapTypes") ? { types: config.map.types } : null),
+      ...(keys.has("mapFloors")
+        ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
+        : null),
+    },
     name: {
       fast: keys.has("nameFast") ? config.name.fast : live.config.name.fast,
       deep: keys.has("nameDeep") ? config.name.deep : live.config.name.deep,
