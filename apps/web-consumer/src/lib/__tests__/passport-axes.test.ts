@@ -132,14 +132,6 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     expect(barMount).toBeLessThan(scroller);
   });
 
-  it("spends 56px of row and no more", () => {
-    // The card was 235px. Permanent chrome on a scrolling grid cannot cost a
-    // third of a phone viewport, and that budget is the whole argument for
-    // what is NOT in the bar.
-    expect(bar).toContain("h-14");
-    expect(bar).not.toContain("py-6");
-  });
-
   it("drops the three things that did not fit, and none is lost", () => {
     // PASSPORT eyebrow: the bar IS the passport. Public/Private: the Passport
     // CELL still opens the sheet, where privacy belongs. age·sex·country:
@@ -161,6 +153,36 @@ describe("the Passport is the page HEADER, and it is the door", () => {
     const client = read(CLIENT);
     expect(client).not.toContain('title="Instagram"');
     expect(client).not.toContain('title="Class"');
+  });
+
+  it("costs exactly what the tab bar costs, from ONE constant", () => {
+    // Pato, MESITA-1654: "same height as menu". Measured, not estimated —
+    // the bar was 63px against the nav's 77. The nav declares NO height (it
+    // is content-driven), so a literal in one file would be a number two
+    // components must agree on with nothing enforcing it. Both import the
+    // same floor; losing either import silently un-matches the bars.
+    const nav = readFileSync(
+      join(SRC, "components", "consumer", "BottomNav.tsx"),
+      "utf8",
+    );
+    expect(bar).toContain("SHELL_BAR_MIN_H");
+    expect(nav).toContain("SHELL_BAR_MIN_H");
+    // The row must carry no height of its own, or it stops absorbing.
+    expect(bar).not.toContain("h-14");
+    expect(bar).toContain("flex flex-1 items-center");
+
+    // AND THE BUDGET STILL BINDS (the point of the pin this replaces). The
+    // card this bar succeeded was 235px: permanent chrome above a scrolling
+    // grid cannot cost a third of a phone viewport, and that budget is the
+    // whole argument for what is NOT in the bar. 77px is a floor, not an
+    // invitation — no open-ended vertical padding on top of it.
+    expect(bar).not.toContain("py-6");
+    expect(bar).not.toContain("py-10");
+    const floor = readFileSync(join(SRC, "lib", "ui-classes.ts"), "utf8").match(
+      /SHELL_BAR_MIN_H = "min-h-\[(\d+)px\]"/,
+    );
+    expect(floor, "SHELL_BAR_MIN_H is no longer a px floor").not.toBeNull();
+    expect(Number(floor![1])).toBeLessThan(100);
   });
 
   it("Instagram chip first, Class second", () => {

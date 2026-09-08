@@ -1,6 +1,7 @@
 "use client";
 
 import { Z_BOTTOM_NAV } from "@/lib/z-index";
+import { SHELL_BAR_MIN_H } from "@/lib/ui-classes";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -205,6 +206,10 @@ export function BottomNav({ userId }: { userId?: string }) {
         data-shell-nav=""
         className={cn(
           "border-border bg-card/95 shrink-0 border-t px-0.5 pt-2 backdrop-blur",
+          // A floor this nav already meets. It is here so the number is
+          // SHARED with the passport bar rather than matched by coincidence
+          // (MESITA-1654); `min-h` never clips, so the nav can still grow.
+          SHELL_BAR_MIN_H,
           Z_BOTTOM_NAV,
         )}
       >
@@ -238,7 +243,9 @@ export function BottomNav({ userId }: { userId?: string }) {
               <Link
                 key={href}
                 href={href}
-                onClick={() => trackEvent(getSupabase(), "nav_tab_tap", { tab: label })}
+                onClick={() =>
+                  trackEvent(getSupabase(), "nav_tab_tap", { tab: label })
+                }
                 className={cn(
                   "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
                   active

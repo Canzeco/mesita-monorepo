@@ -93,3 +93,19 @@ export const PLACE_GRID_PAGE_CLASS = "px-2 pt-2 pb-6";
 // to be changed together. A skeleton on the wrong ratio is not cosmetic: the
 // grid reflows the moment the rows land, which reads as a broken render.
 export const PLACE_TILE_SKELETON_CLASS = "aspect-[2/3] w-full rounded-2xl";
+
+// THE TWO SHELL BARS ARE THE SAME HEIGHT (Pato, MESITA-1654: "header must be
+// taller, same height as menu"). Measured at 375px with the real type, not
+// estimated:
+//
+//   passport bar  1px border + 56px row + 6px metal band          = 63px
+//   bottom nav    1px border + 8px pt + 58px items + 6 + 4 + 4    = 77px
+//
+// The nav declares NO height — it is content-driven — so the number lives
+// here rather than as a literal in one file that the other has to match by
+// coincidence. `min-h` on BOTH: it never clips, so the nav can still grow
+// with its content, and the header's row (on `flex-1`) absorbs the rest.
+//
+// Re-measure both before changing it. A nav label, icon size or the home
+// indicator moving is what makes this drift.
+export const SHELL_BAR_MIN_H = "min-h-[77px]";

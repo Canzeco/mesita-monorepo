@@ -6,6 +6,7 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { classFillClass } from "@/lib/consumer-data";
 import { useConsumerClass } from "@/lib/class-context";
+import { SHELL_BAR_MIN_H } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 // ─── The Passport, as the page header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -102,9 +103,15 @@ export function PassportBar({
     <header
       aria-label={`Your Mesita passport, ${classLabel} class`}
       aria-busy={loading || undefined}
-      className="border-border bg-background/95 shrink-0 border-b backdrop-blur-xl"
+      className={cn(
+        "border-border bg-background/95 flex shrink-0 flex-col border-b backdrop-blur-xl",
+        SHELL_BAR_MIN_H,
+      )}
     >
-      <div className="flex h-14 items-center gap-3 px-4">
+      {/* `flex-1`, not a height: the row absorbs whatever SHELL_BAR_MIN_H
+          leaves after the 6px band, so the bar tracks the tab bar without a
+          second number to keep in sync (MESITA-1654). */}
+      <div className="flex flex-1 items-center gap-3 px-4">
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 43px
@@ -120,7 +127,10 @@ export function PassportBar({
         ) : (
           <>
             <span
-              className={cn("shrink-0 rounded-full p-[2px]", classFillClass(key))}
+              className={cn(
+                "shrink-0 rounded-full p-[2px]",
+                classFillClass(key),
+              )}
               aria-hidden
             >
               <span className="bg-background block rounded-full p-[1.5px]">
