@@ -195,14 +195,17 @@ export function PromosSection({
       if (r.code === STRIPE_LIVE_BLOCKED) setConnectRefused(true);
       return;
     }
-    // The place already had an account in another country. The link is real
-    // and points at THAT account — country is permanent, so nothing was
-    // changed to match the request. Say so instead of redirecting silently
-    // into an onboarding flow for a country the operator did not choose.
+    // The ORGANIZATION already had an account in another country — Stripe
+    // accounts are org-scoped (MESITA-1545), not per-place, so this is true
+    // no matter which of the org's places the onboarding started from. The
+    // link is real and points at THAT account — country is permanent, so
+    // nothing was changed to match the request. Say so instead of
+    // redirecting silently into an onboarding flow for a country the
+    // operator did not choose.
     if (r.data.countryMismatch) {
       setConnectBusy(false);
       setConnectError(
-        `This place already has a ${r.data.accountCountry ?? "different"} Stripe account, so ${connectCountry} was not applied. A country can't be changed after the account exists — delete it at Stripe first.`,
+        `Your organization already has a ${r.data.accountCountry ?? "different"} Stripe account, so ${connectCountry} was not applied. A country can't be changed after the account exists — delete it at Stripe first.`,
       );
       return;
     }
