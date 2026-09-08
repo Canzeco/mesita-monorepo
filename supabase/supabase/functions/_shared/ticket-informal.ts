@@ -111,7 +111,6 @@ export async function computeInformalBill(
     grid,
     {
       classKey: consumer.class_key,
-      plan: consumer.plan,
       isFirstVisit: firstVisit,
       mesitaReviewed,
     },

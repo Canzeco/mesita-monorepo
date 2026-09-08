@@ -7,9 +7,7 @@ import {
   DEFAULT_PROMOS,
   additivityError,
   coercePromosConfig,
-  deriveOrders,
   deriveVisits,
-  expandOrders,
   expandVisits,
   modelWarnings,
   snapRate,
@@ -29,18 +27,15 @@ describe("coercePromosConfig", () => {
 
   it("snaps rates onto the 5% grid and keeps unknown keys out", () => {
     const cfg = coercePromosConfig({
-      version: 11,
+      version: 12,
       visits: {
-        base: {
-          conservative: { bronze: { free: 12, bogus: 55 }, nope: {} },
-          dominant: { bronze: { free: 60 } }, // retired strategy — dropped
-        },
+        base: { conservative: { bronze: 12, bogus: 55 }, nope: {} },
         bonuses: { welcome: 73, mesita: -4 },
       },
       cap: 480,
       extra: true,
     });
-    expect(cfg.visits.base.conservative.bronze.free).toBe(10);
+    expect(cfg.visits.base.conservative.bronze).toBe(10);
     expect(cfg.visits.base.aggressive).toEqual(
       DEFAULT_PROMOS.visits.base.aggressive,
     );
@@ -54,14 +49,14 @@ describe("coercePromosConfig", () => {
 
   it("never lets a stored blob un-park orders", () => {
     const cfg = coercePromosConfig({
-      version: 11,
+      version: 12,
       orders: { soon: false, base: {}, bonuses: {} },
     });
     expect(cfg.orders.soon).toBe(true);
   });
 });
 
-describe("v10 → v11 migration", () => {
+describe("v10 → v12 migration", () => {
   // The live v10 blob at the time of the cut (cap 200).
   const V10 = {
     version: 10,
@@ -79,31 +74,20 @@ describe("v10 → v11 migration", () => {
     cap: 200,
   };
 
-  it("splits the conflated axes: premium was a PLAN, not a class", () => {
+  it("DROPS the `premium` row — it was the plan, and v12 does not price it", () => {
     const cfg = coercePromosConfig(V10);
-    // standard → bronze·free, premium → bronze·premium.
-    expect(cfg.visits.base.conservative.bronze).toEqual({
-      free: 10,
-      premium: 20,
-    });
-    expect(cfg.visits.base.aggressive.bronze).toEqual({
-      free: 20,
-      premium: 40,
-    });
-    // influencer → silver·free, aura → diamond·free.
-    expect(cfg.visits.base.conservative.silver.free).toBe(15);
-    expect(cfg.visits.base.conservative.diamond.free).toBe(25);
+    // standard → bronze, influencer → silver, aura → diamond. The premium row
+    // is not folded in as an uplift; that would smuggle the deleted axis back.
+    expect(cfg.visits.base.conservative.bronze).toBe(10);
+    expect(cfg.visits.base.aggressive.bronze).toBe(20);
+    expect(cfg.visits.base.conservative.silver).toBe(15);
+    expect(cfg.visits.base.conservative.diamond).toBe(25);
   });
 
-  it("carries the plan uplift across every class and interpolates gold", () => {
+  it("interpolates gold, which has no v10 ancestor", () => {
     const cfg = coercePromosConfig(V10);
-    // Uplift = bronze premium − free = +10 conservative, +20 aggressive.
-    expect(cfg.visits.base.conservative.silver.premium).toBe(15 + 10);
-    expect(cfg.visits.base.conservative.diamond.premium).toBe(25 + 10);
-    expect(cfg.visits.base.aggressive.diamond.premium).toBe(50 + 20);
-    // Gold has no v10 ancestor — it splits the silver→diamond gap.
-    expect(cfg.visits.base.conservative.gold.free).toBe(20);
-    expect(cfg.visits.base.aggressive.gold.free).toBe(40);
+    expect(cfg.visits.base.conservative.gold).toBe(20); // mid(15, 25)
+    expect(cfg.visits.base.aggressive.gold).toBe(40); // mid(30, 50)
   });
 
   it("drops the influencer story override and keeps the cap", () => {
@@ -114,16 +98,107 @@ describe("v10 → v11 migration", () => {
     expect(cfg.cap).toBe(200);
   });
 
-  it("clamps an uplifted cell to the 70% ceiling", () => {
+  it("snaps every migrated cell onto the grid and under the ceiling", () => {
     const cfg = coercePromosConfig({
       ...V10,
       base: {
         ...V10.base,
-        aggressive: { standard: 30, influencer: 40, premium: 60, aura: 60 },
+        aggressive: { standard: 30, influencer: 40, premium: 60, aura: 90 },
       },
     });
-    // uplift = 30; diamond free 60 + 30 would be 90.
-    expect(cfg.visits.base.aggressive.diamond.premium).toBe(70);
+    expect(cfg.visits.base.aggressive.diamond).toBe(70); // 90 clamps
+    expect(cfg.visits.base.aggressive.bronze).toBe(30);
+  });
+});
+
+// ── v11 → v12: the migration that runs on the live blob at deploy ────────
+
+describe("v11 → v12 migration", () => {
+  const V11 = {
+    version: 11,
+    visits: {
+      base: {
+        conservative: {
+          bronze: { free: 10, premium: 20 },
+          silver: { free: 15, premium: 25 },
+          gold: { free: 20, premium: 30 },
+          diamond: { free: 25, premium: 35 },
+        },
+        aggressive: {
+          bronze: { free: 20, premium: 40 },
+          silver: { free: 30, premium: 50 },
+          gold: { free: 40, premium: 60 },
+          diamond: { free: 50, premium: 70 },
+        },
+        dominant: {
+          bronze: { free: 40, premium: 55 },
+          silver: { free: 45, premium: 60 },
+          gold: { free: 50, premium: 65 },
+          diamond: { free: 55, premium: 70 },
+        },
+      },
+      bonuses: {
+        conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
+        aggressive: { welcome: 10, mesita: 5, story: 10, google: 15 },
+        dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      },
+    },
+    orders: {
+      base: {
+        conservative: { free: 5, premium: 10 },
+        aggressive: { free: 10, premium: 15 },
+        dominant: { free: 15, premium: 20 },
+      },
+      bonuses: {
+        conservative: { welcome: 5, mesita: 5, story: 5, google: 10 },
+        aggressive: { welcome: 5, mesita: 5, story: 5, google: 10 },
+        dominant: { welcome: 10, mesita: 10, story: 10, google: 15 },
+      },
+      soon: true,
+    },
+    cap: 500,
+  };
+
+  it("keeps the FREE column and drops every premium cell", () => {
+    const cfg = coercePromosConfig(V11);
+    expect(cfg.version).toBe(12);
+    expect(cfg.visits.base.conservative).toEqual({
+      bronze: 10,
+      silver: 15,
+      gold: 20,
+      diamond: 25,
+    });
+    expect(cfg.orders.base).toEqual({
+      conservative: 5,
+      aggressive: 10,
+      dominant: 15,
+    });
+  });
+
+  it("the LIVE v11 defaults land exactly on the v12 defaults — no bill moves", () => {
+    // The blob in app_config is v11 until the operator's first save, so this
+    // equality IS the no-money-moves guarantee for the deploy.
+    expect(coercePromosConfig(V11)).toEqual(DEFAULT_PROMOS);
+  });
+
+  it("detects the v11 shape even with no version tag", () => {
+    const untagged = structuredClone(V11) as Record<string, unknown>;
+    delete untagged.version;
+    expect(coercePromosConfig(untagged).visits.base.conservative.silver).toBe(15);
+  });
+
+  it("keeps operator tuning that lived on the free column", () => {
+    const tuned = structuredClone(V11);
+    tuned.visits.base.aggressive.bronze.free = 25;
+    tuned.visits.base.aggressive.silver.free = 35;
+    tuned.visits.base.aggressive.gold.free = 45;
+    tuned.visits.base.aggressive.diamond.free = 55;
+    expect(coercePromosConfig(tuned).visits.base.aggressive).toEqual({
+      bronze: 25,
+      silver: 35,
+      gold: 45,
+      diamond: 55,
+    });
   });
 });
 
@@ -145,19 +220,15 @@ describe("snap helpers", () => {
 });
 
 describe("totalFor (the engine bridge)", () => {
-  it("standing total is the bare base for that class and plan", () => {
-    expect(
-      totalFor(DEFAULT_PROMOS, "aggressive", "bronze", "premium", "standing"),
-    ).toBe(40);
-    expect(
-      totalFor(DEFAULT_PROMOS, "aggressive", "bronze", "free", "standing"),
-    ).toBe(20);
+  it("standing total is the bare base for that class", () => {
+    expect(totalFor(DEFAULT_PROMOS, "aggressive", "bronze", "standing")).toBe(20);
+    expect(totalFor(DEFAULT_PROMOS, "aggressive", "diamond", "standing")).toBe(50);
   });
 
   it("every class pays the same universal story bonus (no override)", () => {
     for (const cls of ["bronze", "silver", "gold", "diamond"] as const) {
-      const base = DEFAULT_PROMOS.visits.base.conservative[cls].free;
-      expect(totalFor(DEFAULT_PROMOS, "conservative", cls, "free", "story")).toBe(
+      const base = DEFAULT_PROMOS.visits.base.conservative[cls];
+      expect(totalFor(DEFAULT_PROMOS, "conservative", cls, "story")).toBe(
         base + DEFAULT_PROMOS.visits.bonuses.conservative.story,
       );
     }
@@ -178,17 +249,17 @@ describe("modelWarnings", () => {
     ]);
   });
 
-  it("no longer reports class order or plan uplift — the guard makes them unstorable", () => {
-    // Both used to be warnings. additivityError refuses to store them now, so
-    // warning about them would be theatre. Covered in the guard suite below.
+  it("no longer reports class order — the guard makes it unstorable", () => {
+    // It used to be a warning. additivityError refuses to store it now, so
+    // warning about it would be theatre. Covered in the guard suite below.
     const inverted = structuredClone(DEFAULT_PROMOS);
-    inverted.visits.base.conservative.diamond.free = 5;
+    inverted.visits.base.conservative.diamond = 5;
     expect(modelWarnings(inverted)).toEqual([]);
     expect(additivityError(inverted.visits.base)).not.toBeNull();
   });
 });
 
-// ── components: the five-box editor's view of the stored grid ────────────
+// ── components: the editor's view of the stored grid ────────────────────
 
 describe("deriveVisits / expandVisits", () => {
   it("round-trips the shipped grid exactly", () => {
@@ -196,18 +267,17 @@ describe("deriveVisits / expandVisits", () => {
     expect(expandVisits(deriveVisits(base))).toEqual(base);
   });
 
-  it("pins bronze and free to zero — they ARE the baseline", () => {
+  it("pins bronze to zero — it IS the baseline", () => {
     const c = deriveVisits(DEFAULT_PROMOS.visits.base);
     for (const s of ["conservative", "aggressive"] as const) {
       expect(c[s].class.bronze).toBe(0);
-      expect(c[s].plan.free).toBe(0);
     }
   });
 
   it("reads the real per-strategy steps off the shipped grid", () => {
     const c = deriveVisits(DEFAULT_PROMOS.visits.base);
-    // Class climbs +5 on Conservative and +10 on Aggressive; plan adds
-    // +10 vs +20. A strategy-invariant step would halve every elevated rate.
+    // Class climbs +5 on Conservative and +10 on Aggressive. A
+    // strategy-invariant step would halve every elevated rate.
     expect(c.conservative.class).toEqual({
       bronze: 0,
       silver: 5,
@@ -220,19 +290,21 @@ describe("deriveVisits / expandVisits", () => {
       gold: 20,
       diamond: 30,
     });
-    expect(c.conservative.plan.premium).toBe(10);
-    expect(c.aggressive.plan.premium).toBe(20);
   });
 
   it("clamps an over-ceiling component sum at 70", () => {
     const c = deriveVisits(DEFAULT_PROMOS.visits.base);
     c.aggressive.base = 60;
-    expect(expandVisits(c).aggressive.diamond.premium).toBe(70);
+    expect(expandVisits(c).aggressive.diamond).toBe(70);
   });
 
-  it("orders round-trips too, with no class axis", () => {
-    const base = DEFAULT_PROMOS.orders.base;
-    expect(expandOrders(deriveOrders(base))).toEqual(base);
+  it("orders is a plain scalar per strategy — no components left to derive", () => {
+    // It was base + planStep. With plan gone a remote row is one number, so
+    // deriveOrders/expandOrders were deleted rather than kept as identity
+    // functions. Pinned so a future reader does not restore them.
+    for (const s of ["conservative", "aggressive", "dominant"] as const) {
+      expect(typeof DEFAULT_PROMOS.orders.base[s]).toBe("number");
+    }
   });
 });
 
@@ -241,10 +313,14 @@ describe("additivityError — the guard", () => {
     expect(additivityError(DEFAULT_PROMOS.visits.base)).toBeNull();
   });
 
-  it("rejects a cell set on its own", () => {
+  it("accepts any on-grid single-axis cell — the expansion check is GONE", () => {
+    // v11 also refused a cell that did not equal base + class + plan. With one
+    // axis the class offset is derived from the cell itself, so that check can
+    // never fail; it was deleted rather than left as a test that always
+    // passes. Pinned here so a future reader does not "restore" it.
     const base = structuredClone(DEFAULT_PROMOS.visits.base);
-    base.aggressive.gold.premium = 55; // ladder says 60
-    expect(additivityError(base)).toMatch(/cannot be set on its own/);
+    base.aggressive.gold = 45; // still climbing: 20 / 30 / 45 / 50
+    expect(additivityError(base)).toBeNull();
   });
 
   it("rejects an inverted class ladder even when every offset is >= 0", () => {
@@ -252,27 +328,17 @@ describe("additivityError — the guard", () => {
     // so "all steps >= 0" does not imply monotonic. silver +15 / gold +5 are
     // both non-negative and still invert.
     const base = structuredClone(DEFAULT_PROMOS.visits.base);
-    const floor = base.conservative.bronze.free;
-    base.conservative.silver.free = floor + 15;
-    base.conservative.silver.premium = floor + 15 + 10;
-    base.conservative.gold.free = floor + 5;
-    base.conservative.gold.premium = floor + 5 + 10;
+    const floor = base.conservative.bronze;
+    base.conservative.silver = floor + 15;
+    base.conservative.gold = floor + 5;
     expect(additivityError(base)).toMatch(/ladder would invert/);
-  });
-
-  it("rejects a Premium plan that pays less than Free", () => {
-    const base = structuredClone(DEFAULT_PROMOS.visits.base);
-    for (const cls of ["bronze", "silver", "gold", "diamond"] as const) {
-      base.aggressive[cls].premium = base.aggressive[cls].free - 5;
-    }
-    expect(additivityError(base)).toMatch(/cost the guest money/);
   });
 });
 
 describe("bonuses are per strategy", () => {
   it("a PER-STRATEGY body survives the round trip", () => {
     const cfg = coercePromosConfig({
-      version: 11,
+      version: 12,
       visits: {
         bonuses: {
           conservative: { welcome: 10, mesita: 5, story: 10, google: 15 },
@@ -287,10 +353,10 @@ describe("bonuses are per strategy", () => {
   it("totalFor pays the strategy's OWN action bonus", () => {
     const cfg = structuredClone(DEFAULT_PROMOS);
     cfg.visits.bonuses.aggressive.story = 30;
-    // Aggressive bronze·free base is 20; its own story bonus now adds 30.
-    expect(totalFor(cfg, "aggressive", "bronze", "free", "story")).toBe(50);
+    // Aggressive bronze base is 20; its own story bonus now adds 30.
+    expect(totalFor(cfg, "aggressive", "bronze", "story")).toBe(50);
     // Conservative is untouched by that edit.
-    expect(totalFor(cfg, "conservative", "bronze", "free", "story")).toBe(
+    expect(totalFor(cfg, "conservative", "bronze", "story")).toBe(
       10 + cfg.visits.bonuses.conservative.story,
     );
   });
@@ -339,7 +405,7 @@ describe("Tiers HTML prices visits only", () => {
 });
 
 describe("Rewards Config is one page", () => {
-  it("has three super boxes and no tab nav", () => {
+  it("has two super boxes then Save, and no tab nav", () => {
     const shell = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
@@ -356,24 +422,48 @@ describe("Rewards Config is one page", () => {
     expect(nav).not.toContain("PROMOS_SUBROUTES");
     expect(page).toContain('title="Strategies"');
     expect(page).toContain('title="Discount Cap"');
-    expect(page).toContain('title="Expected Distribution"');
     expect(page).toContain("TiersClient");
     expect(page).toContain("DiscountCapClient");
-    expect(page).toContain("PromosDistributionClient");
     expect(page).toContain("PromosSaveFooter");
-    expect(page).toContain("PromosCalculator");
     expect(page.indexOf("Strategies")).toBeLessThan(
       page.indexOf("Discount Cap"),
     );
+    // Save is LAST on the page now that nothing follows it. Compare against
+    // the JSX usage, not the bare name — the import list carries every name at
+    // the top of the file and would make any ordering assertion trivially true.
     expect(page.indexOf("Discount Cap")).toBeLessThan(
-      page.indexOf("Expected Distribution"),
+      page.indexOf("<PromosSaveFooter />"),
     );
-    expect(page.indexOf("PromosDistributionClient")).toBeLessThan(
-      page.indexOf("PromosCalculator"),
-    );
-    const ledger = readFileSync(join(__dirname, "ResolvedLedger.tsx"), "utf8");
-    expect(ledger).toContain('title="Calculator"');
-    expect(ledger).not.toMatch(/>\s*Resolved\s*</);
+
+    // The Expected Distribution box is GONE (MESITA-1705) — the assumptions
+    // simulator AND the Calculator that lived inside it. Absence guards, not
+    // just a deletion, so the box cannot drift back in unnoticed. existsSync
+    // and not readFileSync on purpose: a readFileSync on a deleted component
+    // ENOENTs the whole test file rather than failing one assertion, which is
+    // exactly the trap this rewrite walked into.
+    // STRUCTURAL, never bare substrings: page.tsx's own comment records why
+    // the box was removed and names all three components, so
+    // `not.toContain("PromosCalculator")` fails on the sentence explaining the
+    // decision — and the cheapest way to green it would be deleting that
+    // sentence. Same trap passport-axes.test.ts documents. Assert on imports
+    // and JSX instead.
+    expect(page).not.toContain('title="Expected Distribution"');
+    for (const gone of [
+      "PromosDistributionClient",
+      "PromosCalculator",
+      "ResolvedLedger",
+    ]) {
+      expect(page).not.toContain(`from "./${gone}"`);
+      expect(page).not.toContain(`<${gone} `);
+      expect(page).not.toContain(`<${gone}/>`);
+      expect(page).not.toContain(`<${gone} />`);
+    }
+    expect(existsSync(join(__dirname, "ResolvedLedger.tsx"))).toBe(false);
+    expect(existsSync(join(__dirname, "PromosCalculator.tsx"))).toBe(false);
+    expect(existsSync(join(__dirname, "PromosDistributionClient.tsx"))).toBe(false);
+    expect(existsSync(join(__dirname, "distribution-model.ts"))).toBe(false);
+
+    // The redirect stays: old bookmarks land on the page, not a 404.
     const tiers = readFileSync(join(__dirname, "tiers/page.tsx"), "utf8");
     const dist = readFileSync(
       join(__dirname, "distribution/page.tsx"),

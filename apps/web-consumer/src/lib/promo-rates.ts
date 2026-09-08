@@ -6,7 +6,7 @@
 // NOTHING HERE IS A PRICE (MESITA-1019). These four numbers are the place's
 // strategy IDENTITY: the engine recovers `zero | conservative | aggressive |
 // dominant` by matching the tuple against the presets below, and the rate a
-// guest is actually quoted comes from `promos_config.v11` via
+// guest is actually quoted comes from `promos_config.v12` via
 // `consumer-web-get-discount-quote`. Reading a column as a percentage is the
 // MESITA-1017 drift class and is how the promo chip spent a month quoting
 // numbers the till never honored. The names also have nothing to do with the
@@ -178,7 +178,7 @@ export function strategyForPlaceRow(
 }
 
 /**
- * Does this place run a live VISIT reward — the `visits` context of promos v11?
+ * Does this place run a live VISIT reward — the `visits` context of promos v12?
  *
  * Class-independent on purpose. The discovery Filters context axis
  * ("Prioritize · Visit", MESITA-1081) asks whether the place pays for a body in

@@ -1,7 +1,8 @@
 import { Gift } from "lucide-react";
 
-// Rewards Config — one page. Visit knobs, then the visit-spread simulator.
-// No orders or prepaid knobs. No sub-tabs.
+// Rewards Config — one page: visit knobs, then the cap, then Save. No orders
+// or prepaid knobs. No sub-tabs. (The visit-spread simulator that used to
+// close the page was removed in MESITA-1705.)
 //
 // decision: Pato live 2026-09-02 (MESITA-1416) — the row is Rewards. "promo"
 // left admin copy on 2026-08-30 and this rail row was the last surface still

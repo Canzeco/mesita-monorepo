@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
   // The v4 rate columns live on `places`, never on `place_profiles` (places.id ==
   // place_profiles.id). They carry strategy IDENTITY, not price — the price comes
-  // from the v11 config below.
+  // from the v12 config below.
   const placeRes = await admin
     .from("places")
     .select(
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
 
   const consumerRes = await admin
     .from("consumers")
-    .select("id, class_key, plan, instagram_handle")
+    .select("id, class_key, instagram_handle")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerRes.error || !consumerRes.data) {
@@ -141,10 +141,7 @@ Deno.serve(async (req) => {
     ),
   ]);
 
-  const { cls: classKey, plan } = identityForClassKey(
-    consumerRes.data.class_key,
-    consumerRes.data.plan as "free" | "premium" | null,
-  );
+  const { cls: classKey } = identityForClassKey(consumerRes.data.class_key);
   const igConnected = Boolean(
     (consumerRes.data.instagram_handle ?? "").toString().trim(),
   );
@@ -176,29 +173,29 @@ Deno.serve(async (req) => {
     // and nothing here is reachable by a business.
     //
     // The rung is still keyed by the LEGACY class segment, because that is what
-    // `consumers.class_key` stores and what the client renders. Under v11 each
-    // one resolves through identityForClassKey to its (class, plan) cell of the
-    // visits grid — so the legacy `premium` rung correctly prices the PLAN.
+    // `consumers.class_key` stores and what the client renders. Under v12 each
+    // one resolves through identityForClassKey to its CLASS row of the visits
+    // grid — there is no plan cell any more.
+    //
     // Metals are the live keys. Legacy aliases stay on the wire so frozen
-    // clients that still read ladder.standard / ladder.premium keep working.
-    // `premium` is the PLAN cell (bronze·premium), not Gold.
+    // clients that still read ladder.standard / ladder.premium keep working —
+    // apps/mobile-consumer is frozen and reads them, so dropping a key would
+    // break a client nobody is allowed to patch. `premium` was the plan cell
+    // (bronze·premium); with the plan gone it is plain bronze, which is what
+    // that rung has always been underneath.
     const metalLadder = Object.fromEntries(
       CLASS_SEGMENTS.map((segment) => {
         if (strategy === "zero") return [segment, 0];
         if (!promos) return [segment, grid.grid[segment][strategy]];
         const id = identityForClassKey(segment);
-        return [segment, promos.visits.base[strategy][id.cls][id.plan]];
+        return [segment, promos.visits.base[strategy][id.cls]];
       }),
     ) as Record<ClassSegment, number>;
     const ladder = {
       ...metalLadder,
       standard: metalLadder.bronze,
       influencer: metalLadder.silver,
-      premium: strategy === "zero"
-        ? 0
-        : promos
-        ? promos.visits.base[strategy].bronze.premium
-        : metalLadder.gold,
+      premium: strategy === "zero" ? 0 : metalLadder.bronze,
       aura: metalLadder.diamond,
     };
 
@@ -242,34 +239,32 @@ Deno.serve(async (req) => {
       };
     }
 
-    // v11 additive — mirrors resolveAdditiveRate component for component. Only
+    // v12 additive — mirrors resolveAdditiveRate component for component. Only
     // the VISITS ladder is quoted: orders is parked, and every ticket today is
     // a visit. The per-class story override is gone with the `influencer`
     // class; class is paid for once, in the base.
-    const { cls, plan: resolvedPlan } = identityForClassKey(classKey, plan);
+    const { cls } = identityForClassKey(classKey);
     const b = promos.visits.bonuses[strategy];
 
     // THE TICKET v4's Reward step (MESITA-1089) renders the base as LANES —
-    // automatic floor · class · plan — so the guest sees what each axis of
-    // their identity adds. The decomposition is derived from the SAME grid the
-    // bill pays: automatic = the bronze·free floor everyone gets; a class chip
-    // = that class's free-plan rate over the floor; the plan uplift = the
-    // caller's own premium delta. Sums reproduce base exactly by construction.
+    // automatic floor · class — so the guest sees what each part of their
+    // identity adds. The decomposition is derived from the SAME grid the bill
+    // pays: automatic = the bronze floor everyone gets; a class chip = that
+    // class's rate over the floor. Sums reproduce base exactly by
+    // construction. The plan lane is GONE with the plan axis (MESITA-1705).
     // Consumer-side only — the classes ladder is the program's public shape,
     // and blended-rate privacy (business never learns class) is untouched.
     const visitsBase = promos.visits.base[strategy];
-    const automatic = visitsBase.bronze.free;
+    const automatic = visitsBase.bronze;
     const breakdown = {
       automatic,
       classes: {
-        bronze: visitsBase.bronze.free - automatic,
-        silver: visitsBase.silver.free - automatic,
-        gold: visitsBase.gold.free - automatic,
-        diamond: visitsBase.diamond.free - automatic,
+        bronze: visitsBase.bronze - automatic,
+        silver: visitsBase.silver - automatic,
+        gold: visitsBase.gold - automatic,
+        diamond: visitsBase.diamond - automatic,
       },
       cls,
-      plan: resolvedPlan,
-      planUplift: visitsBase[cls].premium - visitsBase[cls].free,
     };
 
     return {
@@ -278,7 +273,7 @@ Deno.serve(async (req) => {
       additive: true,
       isFirstVisit,
       breakdown,
-      base: promos.visits.base[strategy][cls][resolvedPlan],
+      base: promos.visits.base[strategy][cls],
       bonuses: {
         // Welcome is a state of the visit, not an action the guest picks, so
         // it reports 0 once they've been here before — the client renders it

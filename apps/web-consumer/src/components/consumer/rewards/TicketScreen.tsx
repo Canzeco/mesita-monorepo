@@ -1458,15 +1458,12 @@ function RewardLanes({
   };
   const classLabel = (k: string) => classProperLabel(k);
   const myCls = b?.cls ?? null;
-  const myPlan = b?.plan ?? "free";
 
   // Result line: earned terms only, in the mock's order.
   const parts: string[] = [];
   if (b) {
     if (myCls && b.classes[myCls] > 0) parts.push(`${b.classes[myCls]}% class`);
     if (b.automatic > 0) parts.push(`${b.automatic}% automatic`);
-    if (myPlan === "premium" && b.planUplift > 0)
-      parts.push(`${b.planUplift}% plan`);
   } else if (quote.base > 0) {
     parts.push(`${quote.base}% base`);
   }
@@ -1534,24 +1531,11 @@ function RewardLanes({
             ))}
           </Lane>
 
-          <Lane title="Plan" note="visits and orders">
-            <LaneChip
-              label="Free"
-              sub={myPlan === "free" ? "yours" : "not active"}
-              value={0}
-              on={myPlan === "free"}
-              faded={myPlan !== "free"}
-              glyph={<Star className="text-muted-foreground size-3.5" />}
-            />
-            <LaneChip
-              label="Premium"
-              sub={myPlan === "premium" ? "yours" : "not active"}
-              value={b.planUplift}
-              on={myPlan === "premium"}
-              faded={myPlan !== "premium"}
-              glyph={<Crown className="text-primary size-3.5" />}
-            />
-          </Lane>
+          {/* A "Plan" lane (Free / Premium) sat here until MESITA-1705. The
+              plan does not price a reward any more, so both chips would read
+              +0% — a lane that shows the guest nothing is worse than no lane.
+              The Reward step is now exactly the formula: base, class, welcome,
+              sharing. */}
         </>
       ) : (
         <Lane title="Base discount" note="always on">

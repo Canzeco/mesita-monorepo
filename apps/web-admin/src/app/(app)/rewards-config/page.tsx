@@ -1,12 +1,18 @@
 import { TiersClient } from "./TiersClient";
 import { DiscountCapClient } from "./DiscountCapClient";
-import { PromosDistributionClient } from "./PromosDistributionClient";
 import { PromosSaveFooter } from "./PromosSaveFooter";
-import { PromosCalculator } from "./PromosCalculator";
 import { PromosSuperBox } from "./PromosSuperBox";
 
-// Rewards Config — ONE page, three super boxes. Old /tiers and /distribution
-// URLs redirect here. No tab strip.
+// Rewards Config — ONE page, two super boxes then Save. Old /tiers and
+// /distribution URLs redirect here. No tab strip.
+//
+// An "Expected Distribution" box sat at the bottom until 2026-09-08
+// (MESITA-1705): an assumptions-based spread simulator plus a Calculator that
+// added up one guest's visit bill. Both were removed — the console shows the
+// rates a place is paid, not a forecast of them, and the forecast's inputs
+// were operator guesses that read as data. `distribution-model.ts`,
+// `PromosDistributionClient` and `ResolvedLedger` went with it; the business
+// console keeps its own distribution model, which is now the only copy.
 export default function PromosConfigPage() {
   return (
     <div className="flex flex-col gap-8">
@@ -23,13 +29,6 @@ export default function PromosConfigPage() {
         <DiscountCapClient />
       </PromosSuperBox>
       <PromosSaveFooter />
-      <PromosSuperBox
-        title="Expected Distribution"
-        subtitle="Assumptions, not live tickets. Calculator last — pick a guest, watch the visit bill add up."
-      >
-        <PromosDistributionClient />
-        <PromosCalculator />
-      </PromosSuperBox>
     </div>
   );
 }

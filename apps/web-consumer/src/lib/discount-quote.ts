@@ -10,7 +10,7 @@ import type { RewardQuote } from "@/lib/api/tickets";
 // 30%" in the header chip and "Up to 60%" in the box below it. Neither the
 // guaranteed base (20) nor the reachable ceiling (60) was 30.
 //
-// `additive` is load-bearing, not decoration: under the v11 engine the
+// `additive` is load-bearing, not decoration: under the v12 engine the
 // components ADD (base + welcome + every bonus), but on the legacy best-of
 // fallback they don't, and a total that summed them would over-promise. That
 // is the one direction of error a discount quote must never make, so the

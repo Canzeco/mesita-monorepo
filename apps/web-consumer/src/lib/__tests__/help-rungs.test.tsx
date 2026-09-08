@@ -11,18 +11,14 @@ const SRC = readFileSync(
 );
 
 describe("Help names every priced rung and quotes no static percent", () => {
-  it("lists Base, metals, Free/Premium, Welcome, and the three sharing actions", () => {
-    const html = renderToStaticMarkup(
-      <HelpRungList classKey="diamond" plan="premium" />,
-    );
+  it("lists Base, the metals, Welcome, and the three sharing actions", () => {
+    const html = renderToStaticMarkup(<HelpRungList classKey="diamond" />);
     for (const label of [
       "Base",
       "Bronze",
       "Silver",
       "Gold",
       "Diamond",
-      "Free",
-      "Premium",
       "Welcome",
       "Instagram Story",
       "Google Review",
@@ -32,6 +28,14 @@ describe("Help names every priced rung and quotes no static percent", () => {
     }
     expect(html).toContain("You");
     expect(html).not.toContain("%");
+  });
+
+  it("names NO plan rung — the plan stopped pricing anything (MESITA-1705)", () => {
+    // Free / Premium sat between the metals and Welcome. Listing them here
+    // would tell the guest a subscription changes their rate, which is false.
+    const html = renderToStaticMarkup(<HelpRungList classKey="bronze" />);
+    expect(html).not.toContain("Premium");
+    expect(html).not.toContain("No subscription");
   });
 
   it("does not import the education ladder that used to print fake rates", () => {

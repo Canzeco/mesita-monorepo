@@ -40,20 +40,17 @@ import { cn, errMsg } from "@/lib/utils";
 // anywhere in the repo, and the AI Connector box on Me is still parked.
 // Un-park either one by deleting its flag here and there.
 //
-// THE +10 IS A REAL NUMBER, not a round one (decision: Pato, MESITA-1131 —
-// which set it back after MESITA-1130 briefly made it +20). It is the Premium
-// column minus the Free column of the v11 visits grid, +10 at every class on
-// the CONSERVATIVE strategy:
-//   bronze 10→20 · silver 15→25 · gold 20→30 · diamond 25→35
-// Every live place runs conservative, so "every Mesita Partner" holds. Two
-// config cases would break it, and both need this line revisited:
-//   · an AGGRESSIVE place pays +20, so the claim would UNDERSTATE it
-//   · a ZERO-strategy place runs no program at all, so there is no uplift
-// The grid is operator-editable at Admin › Rewards Config; move the Premium
-// step and this string goes stale. The rule that held twice now: the copy
-// follows the engine, so a change here comes with a migration.
+// NO RATE CLAIM (MESITA-1705). This list led with "+10% extra discount at
+// every Mesita Partner" for as long as the plan priced a rate: it was the
+// Premium column minus the Free column of the v11 visits grid. v12 deleted the
+// plan from the reward formula, so that claim became false the day it shipped
+// and it goes with the axis.
+//
+// The comment this replaces said it outright — "the copy follows the engine,
+// so a change here comes with a migration." This is that migration. Do not put
+// a percentage back on this surface unless the engine actually pays one; a
+// checkout sheet is the last place a stale number should live.
 const PERKS: { label: string; soon?: boolean }[] = [
-  { label: "+10% extra discount at every Mesita Partner" },
   { label: "Better recommendations" },
   { label: "10 reservations per month" },
   { label: "30 orders per month", soon: true },

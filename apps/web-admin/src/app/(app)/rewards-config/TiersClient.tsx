@@ -12,8 +12,6 @@ import {
   CLASS_KEYS,
   CLASS_META,
   LIVE_STRATEGY_KEYS,
-  PLAN_KEYS,
-  PLAN_META,
   STRATEGY_META,
   modelWarnings,
   totalFor,
@@ -24,8 +22,17 @@ import {
 
 // TIERS — one comparison table. Labels once on the left; Conservative and
 // Aggressive are columns. A place picks ONE column; that column is the whole
-// program. Floor first, then signed adders. Pinned rungs (Bronze, Free) are
-// an em dash — "0%" is a real rate and would read as one.
+// program.
+//
+// THE TABLE IS THE FORMULA (MESITA-1705). Pato states the model as three
+// parenthesised groups — (base + welcome) + (class) + (action) — so the table
+// shows exactly three group rows in that order. Base and Welcome used to
+// float above the first GroupRow with no label while Class and Actions had
+// one, which read as two and a half groups for a three-group model; Standing
+// names them.
+//
+// The PLAN group (Free / Premium) was deleted with the plan axis. Pinned
+// rungs (Bronze) are an em dash — "0%" is a real rate and would read as one.
 //
 // Rewards Config prices VISITS only. Orders and prepaid are not reward
 // contexts on this page. The blob still carries a parked orders grid;
@@ -110,15 +117,6 @@ export function TiersClient() {
       },
     });
 
-  const setPlanPremium = (strategy: StrategyKey, v: number) =>
-    setVisits({
-      ...visits,
-      [strategy]: {
-        ...visits[strategy],
-        plan: { ...visits[strategy].plan, premium: v },
-      },
-    });
-
   return (
     <div className="flex flex-col gap-4">
       {seeded && !loadBlocked && (
@@ -188,6 +186,7 @@ export function TiersClient() {
             </tr>
           </thead>
           <tbody>
+            <GroupRow label="Standing" />
             <tr>
               <LabelCell
                 label="Base"
@@ -241,25 +240,6 @@ export function TiersClient() {
               </tr>
             ))}
 
-            <GroupRow label="Plan" />
-            {PLAN_KEYS.map((p) => (
-              <tr key={p}>
-                <LabelCell label={PLAN_META[p].name} />
-                {LIVE_STRATEGY_KEYS.map((s) => (
-                  <RateCell key={s}>
-                    <RateSelect
-                      value={visits[s].plan[p]}
-                      disabled={pending}
-                      signed
-                      pinned={p === "free"}
-                      ariaLabel={`${STRATEGY_META[s].name} ${PLAN_META[p].name} plan bonus, adds`}
-                      onChange={(v) => setPlanPremium(s, v)}
-                    />
-                  </RateCell>
-                ))}
-              </tr>
-            ))}
-
             <GroupRow label="Actions" />
             {ACTION_BONUS_KEYS.map((k) => (
               <tr key={k}>
@@ -284,15 +264,11 @@ export function TiersClient() {
         </table>
       </div>
 
-      <p className="text-muted-foreground type-label leading-snug">
-        Floor, then signed adders. Class prices a body in the room.
-      </p>
-
       <Collapsible summary="How a visit bill stacks">
         <p className="text-muted-foreground type-label max-w-2xl leading-relaxed">
-          Standing (base + class + plan) plus Welcome plus every earned action,
-          clamped to 100%, on the first cap-pesos. Only the integer percent
-          leaves the server.
+          Base plus class, plus Welcome, plus every earned action — clamped to
+          100%, on the first cap-pesos. Only the integer percent leaves the
+          server.
         </p>
       </Collapsible>
 
@@ -311,7 +287,7 @@ export function TiersClient() {
                   scope="col"
                   className="text-muted-foreground pb-2 text-left type-meta font-bold tracking-[0.12em] uppercase"
                 >
-                  Class · Plan
+                  Class
                 </th>
                 {ACTION_KEYS.map((a) => (
                   <th
@@ -326,45 +302,37 @@ export function TiersClient() {
             </thead>
             <tbody>
               {LIVE_STRATEGY_KEYS.map((s) =>
-                CLASS_KEYS.map((cls, ci) =>
-                  PLAN_KEYS.map((p, pi) => {
-                    const last =
-                      ci === CLASS_KEYS.length - 1 &&
-                      pi === PLAN_KEYS.length - 1;
-                    return (
-                      <tr
-                        key={`${s}|${cls}|${p}`}
-                        className={
-                          last
-                            ? "border-border border-b-2 last:border-0"
-                            : "border-border border-b"
-                        }
+                CLASS_KEYS.map((cls, ci) => {
+                  const last = ci === CLASS_KEYS.length - 1;
+                  return (
+                    <tr
+                      key={`${s}|${cls}`}
+                      className={
+                        last
+                          ? "border-border border-b-2 last:border-0"
+                          : "border-border border-b"
+                      }
+                    >
+                      <th
+                        scope="row"
+                        className="py-1.5 pr-3 text-left font-bold whitespace-nowrap"
                       >
-                        <th
-                          scope="row"
-                          className="py-1.5 pr-3 text-left font-bold whitespace-nowrap"
+                        {ci === 0 ? STRATEGY_META[s].name : ""}
+                      </th>
+                      <td className="py-1.5 pr-3 whitespace-nowrap">
+                        {CLASS_META[cls].name}
+                      </td>
+                      {ACTION_KEYS.map((a) => (
+                        <td
+                          key={a}
+                          className="py-1.5 text-right font-mono font-semibold tabular-nums"
                         >
-                          {ci === 0 && pi === 0 ? STRATEGY_META[s].name : ""}
-                        </th>
-                        <td className="py-1.5 pr-3 whitespace-nowrap">
-                          {pi === 0 ? CLASS_META[cls].name : ""}
-                          <span className="text-muted-foreground">
-                            {pi === 0 ? " · " : ""}
-                            {PLAN_META[p].name}
-                          </span>
+                          {Math.min(100, totalFor(cfg, s, cls, a))}%
                         </td>
-                        {ACTION_KEYS.map((a) => (
-                          <td
-                            key={a}
-                            className="py-1.5 text-right font-mono font-semibold tabular-nums"
-                          >
-                            {Math.min(100, totalFor(cfg, s, cls, p, a))}%
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  }),
-                ),
+                      ))}
+                    </tr>
+                  );
+                }),
               )}
             </tbody>
           </table>

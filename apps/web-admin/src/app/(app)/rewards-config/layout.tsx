@@ -11,8 +11,8 @@ import { DEFAULT_PROMOS } from "./promos";
 // description is the ONE scope line governing all three boxes: no box on the
 // page restates it (MESITA-1421).
 //
-// The layout owns the DOCUMENT: server-seed, dirty flag, one Save. Save sits
-// on the page after the knobs so the simulator below does not own a control.
+// The layout owns the DOCUMENT: server-seed, dirty flag, one Save. Save is the
+// last thing on the page because it is the page's only write.
 //
 // Server-seeded like the other blob editors so a failed GET surfaces as
 // loadError and Save stays blocked (MESITA-737) — never silently edit code

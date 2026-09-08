@@ -13,36 +13,35 @@ import { getPromosConfig, updatePromosConfig } from "./actions";
 import {
   DEFAULT_PROMOS,
   additivityError,
-  deriveOrders,
   deriveVisits,
-  expandOrders,
   expandVisits,
   type BonusKey,
-  type OrdersComponents,
   type PromosConfig,
   type StrategyKey,
   type VisitsComponents,
 } from "./promos";
 
-// ONE document. Visit knobs, the Soon field, and the distribution simulator
-// share this state. The dirty flag, Save, and load error live HERE.
+// ONE document. The visit knobs and the cap share this state; the dirty flag,
+// Save, and load error live HERE.
 //
 // The alternative — a Save button per subpage, each sending the whole blob —
 // would let a Save on Visits revert unsaved Orders edits, with a success
 // toast. That is exactly the stale-tab clobber MESITA-1098 closed, reintroduced
 // between two tabs of one page.
 //
-// The page edits COMPONENTS; storage keeps the GRID (D12, no version bump).
-// Components are derived once when config arrives and expanded back on save;
-// `additivityError` gates Save so an inverted ladder is caught inline rather
-// than as a 400 after the click.
+// The page edits COMPONENTS; storage keeps the GRID. Components are derived
+// once when config arrives and expanded back on save; `additivityError` gates
+// Save so an inverted ladder is caught inline rather than as a 400 after the
+// click.
+//
+// ORDERS IS CARRIED, NOT EDITED. It had components while it priced plan; v12
+// makes a remote row one scalar per strategy and the page has never had orders
+// knobs, so `cfg.orders` rides through Save untouched (MESITA-1705).
 
 type PromosStateValue = {
   cfg: PromosConfig;
   visits: VisitsComponents;
-  orders: OrdersComponents;
   setVisits: (next: VisitsComponents) => void;
-  setOrders: (next: OrdersComponents) => void;
   setBonus: (
     context: "visits" | "orders",
     strategy: StrategyKey,
@@ -89,9 +88,6 @@ export function PromosState({
   const [visits, setVisitsState] = useState<VisitsComponents>(() =>
     deriveVisits(initialConfig.visits.base),
   );
-  const [orders, setOrdersState] = useState<OrdersComponents>(() =>
-    deriveOrders(initialConfig.orders.base),
-  );
   const [seeded, setSeeded] = useState(initialSeeded);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(loadError);
@@ -102,7 +98,6 @@ export function PromosState({
   const adopt = (next: PromosConfig) => {
     setCfg(next);
     setVisitsState(deriveVisits(next.visits.base));
-    setOrdersState(deriveOrders(next.orders.base));
   };
 
   // Re-fetch on mount so a client-side nav shows the live blob, not a stale
@@ -134,9 +129,8 @@ export function PromosState({
     () => ({
       ...cfg,
       visits: { ...cfg.visits, base: expandVisits(visits) },
-      orders: { ...cfg.orders, base: expandOrders(orders) },
     }),
-    [cfg, visits, orders],
+    [cfg, visits],
   );
 
   const dirty = useMemo(
@@ -151,13 +145,8 @@ export function PromosState({
   const value: PromosStateValue = {
     cfg: wire,
     visits,
-    orders,
     setVisits: (next) => {
       setVisitsState(next);
-      setOk(false);
-    },
-    setOrders: (next) => {
-      setOrdersState(next);
       setOk(false);
     },
     setBonus: (context, strategy, key, v) => {

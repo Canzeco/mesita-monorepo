@@ -318,10 +318,12 @@ Deno.serve(async (req) => {
     } else {
       const blob = (cfg.data as { promos_config?: Record<string, unknown> } | null)
         ?.promos_config;
-      // v11 is the live shape; a leftover v10 blob is passed through and the
-      // business client migrates it (coercePromosConfig) — same contract the
-      // admin console uses.
-      rewardsConfig = blob?.v11 ?? blob?.v10 ?? null;
+      // v12 is the live shape; a leftover v10 or v11 blob is passed through
+      // and the business client migrates it (coercePromosConfig) — same
+      // contract the admin console uses. Newest key first: a blob restored
+      // mid-cutover can carry more than one, and reading the older one would
+      // quote rates the bill engine no longer pays.
+      rewardsConfig = blob?.v12 ?? blob?.v11 ?? blob?.v10 ?? null;
     }
   }
 

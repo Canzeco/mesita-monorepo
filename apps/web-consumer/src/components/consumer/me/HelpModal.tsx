@@ -29,9 +29,7 @@ import {
   CLASS_ICONS,
   CLASS_MARK_ICON,
   CLASS_ORDER,
-  PREMIUM_PLAN_ICON,
   classProperLabel,
-  type PlanKey,
 } from "@/lib/consumer-data";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/app-version";
@@ -91,13 +89,14 @@ function RungRow({ icon: Icon, label, hint, mine }: Omit<HelpRung, "key">) {
   );
 }
 
-export function HelpRungList({
-  classKey,
-  plan,
-}: {
-  classKey: string;
-  plan: PlanKey;
-}) {
+// Every PRICED rung, in engine order: Base, the four classes, Welcome, then
+// the three sharing actions.
+//
+// Free / Premium sat between the classes and Welcome until MESITA-1705. The
+// plan is not priced any more, so listing it here would tell the guest a
+// subscription changes their rate — which is now false. Premium's real perks
+// live on Me › Plan.
+export function HelpRungList({ classKey }: { classKey: string }) {
   const rungs: HelpRung[] = [
     {
       key: "base",
@@ -113,20 +112,6 @@ export function HelpRungList({
       icon: CLASS_ICONS[k],
       mine: k === classKey,
     })),
-    {
-      key: "free",
-      label: "Free",
-      hint: "No subscription",
-      icon: Star,
-      mine: plan === "free",
-    },
-    {
-      key: "premium",
-      label: "Premium",
-      hint: "Raises the rate at any class",
-      icon: PREMIUM_PLAN_ICON,
-      mine: plan === "premium",
-    },
     {
       key: "welcome",
       label: "Welcome",
@@ -181,7 +166,7 @@ export function HelpModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const { key: classKey, plan } = useConsumerClass();
+  const { key: classKey } = useConsumerClass();
 
   return (
     <LocalSheet
@@ -222,8 +207,8 @@ export function HelpModal({
             </span>{" "}
             {CLASS_FLOOR.label} gets the base discount; every class above it
             unlocks a bigger one. Followers lift you automatically; an invite is
-            by hand. Premium is a separate subscription that raises your rate at
-            any class.
+            by hand. Premium is a separate subscription, and it does not change
+            your rate.
           </p>
         </div>
 
@@ -236,13 +221,13 @@ export function HelpModal({
               Actions add on.
             </span>{" "}
             Welcome, Instagram Story, Google Review, and Mesita Review stack on
-            your class and plan — not pick-one. The bill clamps at 100% and
+            your class — not pick-one. The bill clamps at 100% and
             applies to the first cap-pesos. Live percents sit on each
             place&apos;s Rewards tab.
           </p>
         </div>
 
-        <HelpRungList classKey={classKey} plan={plan} />
+        <HelpRungList classKey={classKey} />
 
         {/* ABOUT LIVES HERE (Pato, MESITA-1650: "Remove the about box at the
             bottom, that must go in help"). The About cell is gone from Me, so

@@ -15,7 +15,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
-import { DEFAULT_PROMOS_V11 } from "../admin-web-update-rewards-config/promos-v11-normalize.ts";
+import { DEFAULT_PROMOS_V12 } from "../admin-web-update-rewards-config/promos-normalize.ts";
 
 const GRID = DEFAULT_REWARDS_GRID;
 
@@ -371,51 +371,60 @@ Deno.test("v9: the Welcome bonus is UNLOCKED BY the Google review, never on its 
 });
 
 
-// ── v11 additive (MESITA-1069) ───────────────────────────────────────────
+// ── v12 additive (MESITA-1705) ───────────────────────────────────────────
 //
 // The engine still accepts leftover LEGACY `class_key` values on the ticket
-// context (frozen mobile). identityForClassKey maps them; consumers.plan wins
-// when the caller passes it:
-//   standard → bronze·free    influencer → silver·free
-//   premium  → bronze·premium aura       → diamond·free
+// context (frozen mobile). identityForClassKey maps them onto the one priced
+// axis, class:
+//   standard → bronze    influencer → silver
+//   premium  → bronze    aura       → diamond
+//
+// `premium` lands on bronze because the plan no longer prices anything. There
+// is no `plan` on RateContext at all — a reward is base + welcome + class +
+// actions, and what the guest pays Mesita is not part of it.
 
 function withPromos(grid = DEFAULT_REWARDS_GRID) {
   return {
     ...grid,
-    promos: structuredClone(DEFAULT_PROMOS_V11),
-    cap: DEFAULT_PROMOS_V11.cap,
+    promos: structuredClone(DEFAULT_PROMOS_V12),
+    cap: DEFAULT_PROMOS_V12.cap,
   };
 }
 
-Deno.test("resolveTicketRate: v11 additive — base alone, per legacy class", () => {
+Deno.test("resolveTicketRate: v12 additive — base alone, per legacy class", () => {
   const g = withPromos();
   assertEquals(resolveTicketRate("conservative", g, { classKey: "bronze", isFirstVisit: false }), 10);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "bronze", isFirstVisit: false }), 20);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "diamond", isFirstVisit: false }), 50);
 });
 
-Deno.test("resolveTicketRate: v11 — leftover `premium` class_key and consumers.plan both price the PLAN", () => {
+Deno.test("resolveTicketRate: v12 — a leftover `premium` class_key prices as BRONZE", () => {
+  // The inversion of the v11 test that used to live here. `premium` was the
+  // subscription wearing a class costume and priced bronze·premium; with the
+  // plan axis gone it prices plain bronze — identical to `standard`. A real
+  // rate cut for such a row, and deliberate: the cutover probe found zero.
   const g = withPromos();
-  assertEquals(resolveTicketRate("conservative", g, { classKey: "premium", isFirstVisit: false }), 20);
-  assertEquals(resolveTicketRate("aggressive", g, { classKey: "premium", isFirstVisit: false }), 40);
+  assertEquals(resolveTicketRate("conservative", g, { classKey: "premium", isFirstVisit: false }), 10);
+  assertEquals(resolveTicketRate("aggressive", g, { classKey: "premium", isFirstVisit: false }), 20);
   assertEquals(
-    resolveTicketRate("aggressive", g, { classKey: "bronze", plan: "premium", isFirstVisit: false }),
-    40,
+    resolveTicketRate("aggressive", g, { classKey: "premium", isFirstVisit: false }),
+    resolveTicketRate("aggressive", g, { classKey: "standard", isFirstVisit: false }),
   );
+  // Class is the only thing that moves the base.
   assertEquals(
-    resolveTicketRate("aggressive", g, { classKey: "silver", plan: "free", isFirstVisit: false }),
+    resolveTicketRate("aggressive", g, { classKey: "silver", isFirstVisit: false }),
     30,
   );
 });
 
-Deno.test("resolveTicketRate: v11 — an unknown class prices at the floor", () => {
+Deno.test("resolveTicketRate: v12 — an unknown class prices at the floor", () => {
   const g = withPromos();
   // bronze·free, never an error and never a leak that it was unrecognised.
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "wizard", isFirstVisit: false }), 20);
   assertEquals(resolveTicketRate("aggressive", g, { classKey: null, isFirstVisit: false }), 20);
 });
 
-Deno.test("resolveTicketRate: v11 additive — welcome on first visit alone (D3-A)", () => {
+Deno.test("resolveTicketRate: v12 additive — welcome on first visit alone (D3-A)", () => {
   const g = withPromos();
   // Welcome is NOT gated on a Google review.
   assertEquals(resolveTicketRate("aggressive", g, { classKey: "bronze", isFirstVisit: true }), 30); // 20+10
@@ -429,7 +438,7 @@ Deno.test("resolveTicketRate: v11 additive — welcome on first visit alone (D3-
   );
 });
 
-Deno.test("resolveTicketRate: v11 additive — bonuses stack", () => {
+Deno.test("resolveTicketRate: v12 additive — bonuses stack", () => {
   const g = withPromos();
   assertEquals(
     resolveTicketRate("aggressive", g, {
@@ -446,7 +455,7 @@ Deno.test("resolveTicketRate: v11 additive — bonuses stack", () => {
   );
 });
 
-Deno.test("resolveTicketRate: v11 additive — zero still pays nothing", () => {
+Deno.test("resolveTicketRate: v12 additive — zero still pays nothing", () => {
   const g = withPromos();
   assertEquals(
     resolveTicketRate("zero", g, {
@@ -460,9 +469,9 @@ Deno.test("resolveTicketRate: v11 additive — zero still pays nothing", () => {
   );
 });
 
-Deno.test("resolveTicketRate: v11 additive — clamps at 100", () => {
-  const hot = structuredClone(DEFAULT_PROMOS_V11);
-  hot.visits.base.aggressive.diamond.free = 70;
+Deno.test("resolveTicketRate: v12 additive — clamps at 100", () => {
+  const hot = structuredClone(DEFAULT_PROMOS_V12);
+  hot.visits.base.aggressive.diamond = 70;
   hot.visits.bonuses.aggressive = {
     welcome: 70,
     mesita: 70,
@@ -482,7 +491,7 @@ Deno.test("resolveTicketRate: v11 additive — clamps at 100", () => {
   );
 });
 
-Deno.test("offersAction: v11 reads the visits bonuses", () => {
+Deno.test("offersAction: v12 reads the visits bonuses", () => {
   const g = withPromos();
   assertEquals(offersAction("aggressive", g, "story"), true);
   assertEquals(offersAction("aggressive", g, "review"), true);

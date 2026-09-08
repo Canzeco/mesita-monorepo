@@ -12,12 +12,9 @@ import {
   CLASS_FLOOR,
   CLASS_ICONS,
   CLASS_ORDER,
-  PREMIUM_PLAN_ICON,
-  PREMIUM_PLAN_PRICE_MXN,
   classProperLabel,
   type ClassKey,
   type LegacyClassKey,
-  type PlanKey,
 } from "@/lib/consumer-data";
 import type { RewardQuote } from "@/lib/api/tickets";
 import { cn } from "@/lib/utils";
@@ -130,8 +127,8 @@ export function RateSheetSkeleton() {
   );
 }
 
-// Which LEGACY segment carries each v2 class's free-plan rate. Used only when
-// the quote has no v11 `breakdown` (best-of fallback / stale EF).
+// Which LEGACY segment carries each v2 class's rate. Used only when the quote
+// has no v12 `breakdown` (best-of fallback / stale EF).
 const LADDER_SOURCE: Record<ClassKey, LegacyClassKey | null> = {
   bronze: "standard",
   silver: "influencer",
@@ -156,16 +153,8 @@ function classAdder(quote: RewardQuote, key: ClassKey): number | null {
   return standing - floor;
 }
 
-function premiumUplift(quote: RewardQuote): number | null {
-  if (quote.breakdown) return quote.breakdown.planUplift;
-  if (quote.ladder?.premium == null) return null;
-  const freeFloor = quote.ladder.standard;
-  if (freeFloor == null) return quote.ladder.premium;
-  return quote.ladder.premium - freeFloor;
-}
-
-// The bronze·free floor — named as its own rung so Base is never folded into
-// a class total on a v11 quote. Legacy quotes have no decomposition; skip.
+// The bronze floor — named as its own rung so Base is never folded into a
+// class total on a v12 quote. Legacy quotes have no decomposition; skip.
 export function BaseRow({ quote }: { quote: RewardQuote }) {
   if (!quote.breakdown) return null;
   return (
@@ -178,7 +167,7 @@ export function BaseRow({ quote }: { quote: RewardQuote }) {
   );
 }
 
-// Class adders on v11 (Base is a separate row). Standing rates on the legacy
+// Class adders on v12 (Base is a separate row). Standing rates on the legacy
 // ladder, where Gold still cannot be quoted.
 export function ClassLadder({
   quote,
@@ -214,53 +203,16 @@ export function ClassLadder({
   );
 }
 
-// Plan is its own axis: Free is the floor (no adder), Premium is the paid
-// uplift from `breakdown.planUplift`. Never print `ladder.premium` as that
-// adder — that cell is a standing bronze·premium rate, not a plan bonus.
+// THE PLAN IS NOT A RUNG ANY MORE (MESITA-1705). A Free/Premium pair sat here
+// and the Premium row was the one button on this rate sheet — the
+// highest-intent Premium surface in the app, because the guest reading it
+// already had a place, a bill and a concrete number (MESITA-1620).
 //
-// The Premium row is the one button on this rate sheet (MESITA-1620): the
-// guest reading it already has a place, a bill and a concrete number, which
-// makes it the highest-intent Premium surface in the app. It opens `onTap`
-// only when there is something to sell — a free guest with a real uplift —
-// and stays a plain row otherwise (including for a Premium guest: nothing to
-// sell yourself). Muting also lifts with the tap, since a faded row reads as
-// "not for you", not "tap here".
-export function PlanRow({
-  quote,
-  plan,
-  onPremiumTap,
-}: {
-  quote: RewardQuote;
-  plan: PlanKey;
-  onPremiumTap?: () => void;
-}) {
-  const uplift = premiumUplift(quote);
-  if (uplift == null && !quote.breakdown) return null;
-  const sellable = plan === "free" && (uplift ?? 0) > 0;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Row
-        icon={Star}
-        label="Free"
-        hint="No subscription"
-        value={0}
-        mine={plan === "free"}
-        muted={plan !== "free"}
-      />
-      <Row
-        icon={PREMIUM_PLAN_ICON}
-        label="Premium"
-        hint={`$${PREMIUM_PLAN_PRICE_MXN} MXN / mo`}
-        value={uplift ?? 0}
-        plus={(uplift ?? 0) > 0}
-        mine={plan === "premium"}
-        muted={plan !== "premium" && !sellable}
-        onTap={sellable ? onPremiumTap : undefined}
-      />
-    </div>
-  );
-}
-
+// It is gone because the number behind it is gone: the plan no longer moves a
+// rate, so the row could only ever have shown +0%, and a sell that promises
+// nothing is worse than no sell. Premium is still sold — on reservations,
+// recommendations and subscriber terms on Credits — from Me › Plan, which is
+// now the only place that pitches it.
 // Every bonus the engine prices, in the same order as admin Tiers: Welcome,
 // Instagram Story, Google Review, Mesita Review. Zero is listed and faded —
 // hiding a rung makes the rate sheet lie about what exists.

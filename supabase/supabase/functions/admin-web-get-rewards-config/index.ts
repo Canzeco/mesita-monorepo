@@ -2,8 +2,8 @@
 //
 // Naming: caller-verb-words. Caller = admin, verb = get, words = rewards-config.
 //
-// Returns the Promos config: the v11 ADDITIVE blob (MESITA-1069) when one has
-// been saved (`config`, from app_config.promos_config.v11 — a leftover v10
+// Returns the Promos config: the v12 ADDITIVE blob (MESITA-1705) when one has
+// been saved (`config`, from app_config.promos_config.v12 — a leftover v10/v11
 // blob is handed back as-is and the client migrates it), plus the cap scalar.
 // Before the first save there is no blob, only the cap, and the client opens
 // on the launch defaults carrying it.
@@ -49,12 +49,23 @@ Deno.serve(async (req) => {
   const cfg = (settings.data?.promos_config ?? {}) as Record<string, unknown>;
   const cap = typeof cfg.cap === "number" ? cfg.cap : null;
   // The additive config — null until the first save, in which case the client
-  // seeds from the legacy rows. A leftover v10 blob is handed back as-is and
-  // the client migrates it to v11 (coercePromosConfig), so the page opens on
-  // the operator's real numbers rather than the launch defaults.
+  // seeds from the legacy rows. A leftover v10 or v11 blob is handed back
+  // as-is and the client migrates it (coercePromosConfig), so the page opens
+  // on the operator's real numbers rather than the launch defaults.
+  //
+  // NEWEST KEY WINS, and the order matters: a save writes v12 and deletes the
+  // older keys, but a blob restored from backup mid-cutover can carry two at
+  // once. Reading v11 first there would hand the console a superseded grid and
+  // it would save it straight back over the live one.
   const isBlob = (v: unknown) =>
     !!v && typeof v === "object" && !Array.isArray(v);
-  const config = isBlob(cfg.v11) ? cfg.v11 : isBlob(cfg.v10) ? cfg.v10 : null;
+  const config = isBlob(cfg.v12)
+    ? cfg.v12
+    : isBlob(cfg.v11)
+    ? cfg.v11
+    : isBlob(cfg.v10)
+    ? cfg.v10
+    : null;
 
   // One store, so one "Updated" stamp.
   const stamp = settings.data?.updated_at as string | null | undefined;

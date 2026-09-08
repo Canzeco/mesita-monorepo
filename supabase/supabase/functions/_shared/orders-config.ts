@@ -5,7 +5,7 @@
 // parked everywhere — no orders table, no order EF, no consumer type — and the
 // three surfaces that mention them say "soon": the Premium perk list ("30
 // orders per month"), the Inbox › Orders section, and the parked `orders`
-// column of the Promos v11 grid.
+// column of the Promos v12 grid.
 //
 // This module is the single normalizer for the orders policy blob, shared by
 // the admin get/update EFs and (when it ships) by the order EFs themselves —
