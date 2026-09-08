@@ -3,8 +3,10 @@
 // Google Places quality floor — a PROPOSAL, not a live knob.
 //
 // The floor belongs to the SOURCE, not to a mode: one rule over everything
-// the three Google searches return, so no mode can be the one that forgets
-// it. Today's live equivalent is General › Minimum Google reviews on the
+// the three Google searches return. That is Search and Map — the lanes that
+// query Google. It is NOT every mode: Catalog, Swipe and the Pay / Home /
+// bbox branch never call Google, and `discovery_config.filters` is their
+// floor. Today's live equivalent is General › Minimum Google reviews on the
 // Modes tab (`discovery_config.general.minReviews`, the post-Google wipe) —
 // that box still wins, and this one persists nothing until it replaces it.
 //
@@ -27,7 +29,7 @@ export function GoogleQualityFloorCard() {
       <SectionCard
         icon={<ShieldCheck className="text-primary h-4 w-4" />}
         title="Google Places quality floor"
-        subtitle="One floor over everything the three Google searches return. Autocomplete, Text Search and Nearby share it, so no mode can be the one that forgets it."
+        subtitle="One floor over everything the three Google searches return. Search and Map share it — the lanes that actually query Google. Catalog, Swipe and the Home rails draw from the listed Mesita pool and answer to operator filters instead."
         state={
           <KnobState
             kind="not-wired"

@@ -3,8 +3,14 @@
 // Pato, 2026-08-29: "when searching from Google in Discovery, don't show
 // unactive places. Only active places." So this runs on what comes BACK from
 // a Google Places query — Autocomplete, Text Search, Nearby — and on the
-// Mesita rows those results resolve to. Every mode reads it: Fast, Deep, Map,
-// and the business/admin suggest merge.
+// Mesita rows those results resolve to. EVERY LANE THAT QUERIES GOOGLE reads
+// it: Fast, Deep, Map, and the business/admin suggest merge.
+//
+// It is not every MODE, and the difference has bitten a reader already.
+// Catalog, Swipe and the Pay / Home / bbox branch of list-places draw from
+// the listed Mesita pool and never call Google, so there is nothing here for
+// them to wipe; `discovery_config.filters` is their floor. list-places gates
+// this behind `if (isNearby)` on purpose and says so at the call site.
 //
 // IT IS A FILTER, NOT A SIGNAL — it excludes, it never demotes. The Map box
 // (`discovery_config.map`) keeps its own floors and stays Map-only; these two
