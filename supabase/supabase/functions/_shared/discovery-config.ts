@@ -87,13 +87,49 @@ export type SocialConfig = {
   horizonDays: number;
 };
 
-/** Google Nearby primary types the map may bill. Off = skip that call. */
+/**
+ * Google Nearby primary types the map may bill. Off = skip that call.
+ *
+ * ONE ENTRY PER TYPE IN `GOOGLE_SEARCH_TYPES`, in that object's own order, so
+ * the strip covers all SEVEN Super Categories rather than the three it knew
+ * when it was five keys long (MESITA-1683). `google-type-super.test.ts` pins
+ * this list to that map: the taxonomy is the law, this is its value today.
+ *
+ * ORDER IS LOAD-BEARING. `typesWithinGeneral` keeps the first
+ * `general.categoryCount` entries and forces the rest off, so the five that
+ * were here before must stay inside the first five — they do: the flatten
+ * order opens restaurant · bar · night_club · cafe · bakery.
+ */
 export const NEARBY_TYPE_KEYS = [
+  // restaurants
   "restaurant",
+  // bars_nightlife
   "bar",
-  "cafe",
   "night_club",
+  // cafes_bakeries
+  "cafe",
   "bakery",
+  // sports_fitness
+  "gym",
+  "fitness_center",
+  "yoga_studio",
+  "sports_club",
+  // wellness_beauty
+  "spa",
+  "beauty_salon",
+  "hair_salon",
+  "massage",
+  // experiences
+  "tourist_attraction",
+  "amusement_park",
+  "bowling_alley",
+  "park",
+  "movie_theater",
+  // culture_arts
+  "museum",
+  "art_gallery",
+  "performing_arts_theater",
+  "concert_hall",
 ] as const;
 export type NearbyTypeKey = (typeof NEARBY_TYPE_KEYS)[number];
 
@@ -389,12 +425,34 @@ export const SWIPE_PARTNER_LEVELS = [
   "dominant",
 ] as const satisfies readonly SwipePartnerLevel[];
 
+/**
+ * The three supers the strip has always billed stay on. The four it could not
+ * see until MESITA-1683 default OFF: turning seventeen new Google calls on by
+ * default would change what every guest sees and what every call costs.
+ */
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
-  cafe: true,
   night_club: true,
+  cafe: true,
   bakery: true,
+  gym: false,
+  fitness_center: false,
+  yoga_studio: false,
+  sports_club: false,
+  spa: false,
+  beauty_salon: false,
+  hair_salon: false,
+  massage: false,
+  tourist_attraction: false,
+  amusement_park: false,
+  bowling_alley: false,
+  park: false,
+  movie_theater: false,
+  museum: false,
+  art_gallery: false,
+  performing_arts_theater: false,
+  concert_hall: false,
 };
 
 /** How many pins is the GUEST's question (How many, on the Filters sheet),

@@ -153,12 +153,33 @@ export type SocialConfig = {
   horizonDays: number;
 };
 
+// Mirrors NEARBY_TYPE_KEYS in _shared/discovery-config.ts, which is itself
+// pinned to GOOGLE_SEARCH_TYPES by google-type-super.test.ts. All SEVEN Super
+// Categories, not the three this knew while it was five keys long
+// (MESITA-1683). Order is load-bearing: `categoryCount` keeps the first N.
 const NEARBY_TYPE_KEYS = [
   "restaurant",
   "bar",
-  "cafe",
   "night_club",
+  "cafe",
   "bakery",
+  "gym",
+  "fitness_center",
+  "yoga_studio",
+  "sports_club",
+  "spa",
+  "beauty_salon",
+  "hair_salon",
+  "massage",
+  "tourist_attraction",
+  "amusement_park",
+  "bowling_alley",
+  "park",
+  "movie_theater",
+  "museum",
+  "art_gallery",
+  "performing_arts_theater",
+  "concert_hall",
 ] as const;
 
 /** Discovery-wide cap on how many of `NEARBY_TYPE_KEYS` any engine may use. */
@@ -180,12 +201,39 @@ export type MapConfig = {
   types: Record<NearbyTypeKey, boolean>;
 };
 
-export const NEARBY_TYPE_FIELDS: { key: NearbyTypeKey; label: string }[] = [
-  { key: "restaurant", label: "Restaurants" },
-  { key: "bar", label: "Bars" },
-  { key: "cafe", label: "Cafés" },
-  { key: "night_club", label: "Night clubs" },
-  { key: "bakery", label: "Bakeries" },
+/**
+ * Each Google type under the Super Category whose battery it belongs to.
+ * The operator's noun is the Super; the blob stays keyed by Google type, so
+ * this grouping is presentation and needs no migration. Super labels are
+ * verbatim from SUPER_CATEGORIES in _shared/place-taxonomy.ts.
+ */
+export const NEARBY_TYPE_FIELDS: {
+  key: NearbyTypeKey;
+  label: string;
+  superLabel: string;
+}[] = [
+  { key: "restaurant", label: "Restaurants", superLabel: "Restaurants" },
+  { key: "bar", label: "Bars", superLabel: "Bars & Nightlife" },
+  { key: "night_club", label: "Night clubs", superLabel: "Bars & Nightlife" },
+  { key: "cafe", label: "Cafés", superLabel: "Cafés & Desserts" },
+  { key: "bakery", label: "Bakeries", superLabel: "Cafés & Desserts" },
+  { key: "gym", label: "Gyms", superLabel: "Sports & Fitness" },
+  { key: "fitness_center", label: "Fitness centres", superLabel: "Sports & Fitness" },
+  { key: "yoga_studio", label: "Yoga studios", superLabel: "Sports & Fitness" },
+  { key: "sports_club", label: "Sports clubs", superLabel: "Sports & Fitness" },
+  { key: "spa", label: "Spas", superLabel: "Wellness & Beauty" },
+  { key: "beauty_salon", label: "Beauty salons", superLabel: "Wellness & Beauty" },
+  { key: "hair_salon", label: "Hair salons", superLabel: "Wellness & Beauty" },
+  { key: "massage", label: "Massage", superLabel: "Wellness & Beauty" },
+  { key: "tourist_attraction", label: "Attractions", superLabel: "Experiences" },
+  { key: "amusement_park", label: "Amusement parks", superLabel: "Experiences" },
+  { key: "bowling_alley", label: "Bowling alleys", superLabel: "Experiences" },
+  { key: "park", label: "Parks", superLabel: "Experiences" },
+  { key: "movie_theater", label: "Cinemas", superLabel: "Experiences" },
+  { key: "museum", label: "Museums", superLabel: "Culture & Arts" },
+  { key: "art_gallery", label: "Art galleries", superLabel: "Culture & Arts" },
+  { key: "performing_arts_theater", label: "Theatres", superLabel: "Culture & Arts" },
+  { key: "concert_hall", label: "Concert halls", superLabel: "Culture & Arts" },
 ];
 
 export type ParamField = {
@@ -383,12 +431,32 @@ export const DEFAULT_SOCIAL: SocialConfig = {
   horizonDays: 14,
 };
 
+// The three supers the strip always billed stay on; the four it could not see
+// default OFF. Seventeen new Google calls on by default would move what every
+// guest sees and what every call costs.
 const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
-  cafe: true,
   night_club: true,
+  cafe: true,
   bakery: true,
+  gym: false,
+  fitness_center: false,
+  yoga_studio: false,
+  sports_club: false,
+  spa: false,
+  beauty_salon: false,
+  hair_salon: false,
+  massage: false,
+  tourist_attraction: false,
+  amusement_park: false,
+  bowling_alley: false,
+  park: false,
+  movie_theater: false,
+  museum: false,
+  art_gallery: false,
+  performing_arts_theater: false,
+  concert_hall: false,
 };
 
 export const DEFAULT_MAP: MapConfig = {

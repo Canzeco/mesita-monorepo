@@ -157,36 +157,57 @@ export function GeneralConfigClient({
             Types past the count stay saved but unused.
           </p>
         ) : null}
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {NEARBY_TYPE_FIELDS.map((field, i) => {
-            const allowed = i < categoryCount;
-            return (
-              <div
-                key={field.key}
-                className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <Plug className="text-muted-foreground h-4 w-4 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">{field.label}</p>
-                    {!allowed ? (
-                      <p className="text-muted-foreground type-meta">Past available count</p>
-                    ) : null}
-                  </div>
-                </div>
-                <Switch
-                  on={types[field.key]}
-                  pending={pending || loadBlocked || !allowed}
-                  onClick={() => {
-                    if (!allowed) return;
-                    patchType(field.key, !types[field.key]);
-                  }}
-                  label={field.label}
-                />
+        {/* Grouped under the seven Super Categories (MESITA-1683). The blob
+            stays keyed by Google type; the Super is the operator's noun. */}
+        {NEARBY_TYPE_FIELDS.reduce<{ superLabel: string; from: number }[]>(
+          (groups, field, i) => {
+            const last = groups[groups.length - 1];
+            if (!last || last.superLabel !== field.superLabel) {
+              groups.push({ superLabel: field.superLabel, from: i });
+            }
+            return groups;
+          },
+          [],
+        ).map((group, gi, groups) => {
+          const to = gi + 1 < groups.length ? groups[gi + 1].from : NEARBY_TYPE_FIELDS.length;
+          return (
+            <div key={group.superLabel} className="mt-4">
+              <p className="text-muted-foreground type-label font-semibold">
+                {group.superLabel}
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                {NEARBY_TYPE_FIELDS.slice(group.from, to).map((field) => {
+                  const allowed = NEARBY_TYPE_FIELDS.indexOf(field) < categoryCount;
+                  return (
+                    <div
+                      key={field.key}
+                      className="border-border bg-background flex items-center justify-between gap-4 rounded-xl border p-4"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Plug className="text-muted-foreground h-4 w-4 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold">{field.label}</p>
+                          {!allowed ? (
+                            <p className="text-muted-foreground type-meta">Past available count</p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Switch
+                        on={types[field.key]}
+                        pending={pending || loadBlocked || !allowed}
+                        onClick={() => {
+                          if (!allowed) return;
+                          patchType(field.key, !types[field.key]);
+                        }}
+                        label={field.label}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
         {updatedAt ? (
           <p className="text-muted-foreground mt-4 type-meta">
             Last saved {formatShortDate(updatedAt)}

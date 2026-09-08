@@ -6,8 +6,10 @@ import {
   type FilterableQuery,
 } from "./discovery-filters.ts";
 import {
+  DEFAULT_MAP_TYPES,
   DISCOVERY_DEFAULTS,
   applyGeneralCategoryCap,
+  NEARBY_TYPE_KEYS,
   normalizeDiscoveryConfig,
   WIRED_ENGINE_KEYS,
   type DiscoveryFilters,
@@ -347,10 +349,17 @@ Deno.test("the console never asks how many — every set cap is dropped on read"
   }
 });
 
-Deno.test("general.categoryCount defaults to 5 and clamps 0–5", () => {
+Deno.test("general.categoryCount defaults to the whole list and clamps to it", () => {
+  // The count means "how many of the code-defined types are available", so
+  // its default has always been the list length. The list is 22 since the
+  // strip caught up with the seven-Super law; the live blob stores 5, so
+  // nothing on production moved.
+  const all = NEARBY_TYPE_KEYS.length;
+  assertEquals(all, 22);
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
-  assertEquals(missing.general.categoryCount, 5);
-  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 99 } }).general.categoryCount, 5);
+  assertEquals(missing.general.categoryCount, all);
+  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 99 } }).general.categoryCount, all);
+  assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 5 } }).general.categoryCount, 5);
   assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: -2 } }).general.categoryCount, 0);
   assertEquals(normalizeDiscoveryConfig({ general: { categoryCount: 3.6 } }).general.categoryCount, 4);
 });
@@ -360,14 +369,14 @@ Deno.test("applyGeneralCategoryCap turns off types past the General count", () =
     ...DISCOVERY_DEFAULTS,
     general: { ...DISCOVERY_DEFAULTS.general, categoryCount: 3 },
   });
-  assertEquals(capped.map.types, {
-    restaurant: true,
-    bar: true,
-    cafe: true,
-    night_club: false,
-    bakery: false,
-  });
-  assertEquals(capped.name.fast.types.night_club, false);
+  // Assert the RULE, not a snapshot of the list: the first `categoryCount`
+  // keys keep their default, everything past it is forced off. The list grew
+  // 5 -> 22 in MESITA-1683 and a literal here would have to be rewritten every
+  // time a Super Category gains a battery entry.
+  for (const [i, key] of NEARBY_TYPE_KEYS.entries()) {
+    assertEquals(capped.map.types[key], i < 3 && DEFAULT_MAP_TYPES[key], key);
+  }
+  assertEquals(capped.name.fast.types.cafe, false);
   assertEquals(capped.name.deep.types.bakery, false);
   assertEquals(capped.name.fast.types.restaurant, true);
 });

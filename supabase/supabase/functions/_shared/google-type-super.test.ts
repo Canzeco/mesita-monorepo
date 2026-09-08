@@ -1,5 +1,10 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
+  DEFAULT_MAP_TYPES,
+  NEARBY_TYPE_KEYS,
+  type NearbyTypeKey,
+} from "./discovery-config.ts";
+import {
   GOOGLE_SEARCH_TYPES,
   GOOGLE_TYPE_SUPER,
   GOOGLE_TYPES_BY_SUPER,
@@ -122,4 +127,37 @@ Deno.test("search batteries stay inside Google's API caps", () => {
     true,
   );
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
+});
+
+// MESITA-1683: the strip drifted to five keys covering three Super Categories
+// while the law had seven and 22 types, and nothing caught it. This is the
+// fix — the list is pinned to the taxonomy, so adding a Super or a battery
+// entry without touching NEARBY_TYPE_KEYS fails here instead of quietly
+// hiding a whole category from the operator for weeks.
+Deno.test("NEARBY_TYPE_KEYS is exactly GOOGLE_SEARCH_TYPES, flattened", () => {
+  const flat = (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[])
+    .flatMap((s) => [...GOOGLE_SEARCH_TYPES[s]]);
+  assertEquals([...NEARBY_TYPE_KEYS], flat);
+  // Every guest Super is represented; `undefined` is the one empty battery.
+  const covered = new Set(
+    (Object.keys(GOOGLE_SEARCH_TYPES) as GuestSuper[]).filter(
+      (s) => GOOGLE_SEARCH_TYPES[s].length > 0,
+    ),
+  );
+  assertEquals(covered.size, 7);
+});
+
+// The cap keeps the FIRST n entries, so the five the strip billed before this
+// grew must stay inside the first five or an operator's stored count silently
+// changes which Google calls happen.
+Deno.test("the original five stay within the first five, whatever the order", () => {
+  const before: NearbyTypeKey[] = ["restaurant", "bar", "cafe", "night_club", "bakery"];
+  assertEquals(
+    new Set(NEARBY_TYPE_KEYS.slice(0, 5)),
+    new Set(before),
+  );
+  for (const k of before) assertEquals(DEFAULT_MAP_TYPES[k], true);
+  for (const k of NEARBY_TYPE_KEYS.slice(5)) {
+    assertEquals(DEFAULT_MAP_TYPES[k], false);
+  }
 });

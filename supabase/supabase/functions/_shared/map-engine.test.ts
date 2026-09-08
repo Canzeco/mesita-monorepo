@@ -1,5 +1,14 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
+import { DISCOVERY_DEFAULTS, NEARBY_TYPE_KEYS } from "./discovery-config.ts";
+import type { NearbyTypeKey } from "./discovery-config.ts";
+
+// Built from the key list so the fixture cannot rot when the strip grows;
+// it went 5 -> 22 in MESITA-1683 and hardcoded records broke.
+const typesAllOff = (): Record<NearbyTypeKey, boolean> =>
+  Object.fromEntries(NEARBY_TYPE_KEYS.map((k) => [k, false])) as Record<
+    NearbyTypeKey,
+    boolean
+  >;
 import {
   admitMapCatalog,
   admitSwipeCatalog,
@@ -30,12 +39,15 @@ function hit(over: Partial<NearbyHit> = {}): NearbyHit {
   };
 }
 
-Deno.test("defaults admit everything and fire every Nearby type", () => {
+Deno.test("defaults admit everything and fire the three billed Supers", () => {
+  // Not every type any more: the strip covers all seven Super Categories
+  // since MESITA-1683, and the four it could not see before default OFF, so
+  // growing the list bills nothing new until an operator opts in.
   assertEquals(enabledNearbyTypes(MAP), [
     "restaurant",
     "bar",
-    "cafe",
     "night_club",
+    "cafe",
     "bakery",
   ]);
   assertEquals(mapShouldFillGoogle(true, MAP), true);
@@ -60,13 +72,7 @@ Deno.test("googleFill off or all types off skips Nearby even if the client opts 
   assertEquals(
     mapShouldFillGoogle(true, {
       ...MAP,
-      types: {
-        restaurant: false,
-        bar: false,
-        cafe: false,
-        night_club: false,
-        bakery: false,
-      },
+      types: typesAllOff(),
     }),
     false,
   );
@@ -153,13 +159,7 @@ Deno.test("evaluatePlaceForMap admits wellness; rejects hotels", () => {
 Deno.test("evaluatePlaceForMap respects type batteries and floors", () => {
   const barsOnly = {
     ...MAP,
-    types: {
-      restaurant: false,
-      bar: true,
-      cafe: false,
-      night_club: false,
-      bakery: false,
-    },
+    types: { ...typesAllOff(), bar: true },
   };
   assertEquals(
     evaluatePlaceForMap(barsOnly, {
@@ -202,13 +202,7 @@ Deno.test("admitSwipeCatalog keeps listed F&B and spas, drops hotels, never Goog
 Deno.test("admitSwipeCatalog honors Map type batteries", () => {
   const barsOnly = {
     ...MAP,
-    types: {
-      restaurant: false,
-      bar: true,
-      cafe: false,
-      night_club: false,
-      bakery: false,
-    },
+    types: { ...typesAllOff(), bar: true },
   };
   const listed = [
     { id: "rest", category: "restaurant" },
