@@ -28,33 +28,136 @@ setDummyEnv();
 const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   // business-web-create-ticket retired by Tickets v2 (MESITA-806) — guests
   // create their own tickets now.
-  { name: "consumer-web-create-ticket", path: "../consumer-web-create-ticket/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-cancel-ticket", path: "../consumer-web-cancel-ticket/index.ts", accepts: ["POST"] },
-  { name: "business-web-mark-ticket-paid", path: "../business-web-mark-ticket-paid/index.ts", accepts: ["POST"] },
-  { name: "business-web-cancel-ticket", path: "../business-web-cancel-ticket/index.ts", accepts: ["POST"] },
-  { name: "business-web-list-tickets", path: "../business-web-list-tickets/index.ts", accepts: ["POST"] },
-  { name: "business-web-change-subscription", path: "../business-web-change-subscription/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-create-subscription", path: "../consumer-web-create-subscription/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-submit-ticket-review", path: "../consumer-web-submit-ticket-review/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-submit-story", path: "../consumer-web-submit-story/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-submit-review", path: "../consumer-web-submit-review/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-list-pay-notifications", path: "../consumer-web-list-pay-notifications/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-list-tickets", path: "../consumer-web-list-tickets/index.ts", accepts: ["GET", "POST"] },
+  {
+    name: "consumer-web-create-ticket",
+    path: "../consumer-web-create-ticket/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-cancel-ticket",
+    path: "../consumer-web-cancel-ticket/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "business-web-mark-ticket-paid",
+    path: "../business-web-mark-ticket-paid/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "business-web-cancel-ticket",
+    path: "../business-web-cancel-ticket/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "business-web-list-tickets",
+    path: "../business-web-list-tickets/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "business-web-change-subscription",
+    path: "../business-web-change-subscription/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-create-subscription",
+    path: "../consumer-web-create-subscription/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-submit-ticket-review",
+    path: "../consumer-web-submit-ticket-review/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-submit-story",
+    path: "../consumer-web-submit-story/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-submit-review",
+    path: "../consumer-web-submit-review/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-list-pay-notifications",
+    path: "../consumer-web-list-pay-notifications/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-list-tickets",
+    path: "../consumer-web-list-tickets/index.ts",
+    accepts: ["GET", "POST"],
+  },
   // THE TICKET v4 (MESITA-1088/1091/1092): the guest's bill, the live poll,
   // the settle pick.
-  { name: "consumer-web-submit-ticket-bill", path: "../consumer-web-submit-ticket-bill/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-get-ticket", path: "../consumer-web-get-ticket/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-select-ticket-payment", path: "../consumer-web-select-ticket-payment/index.ts", accepts: ["POST"] },
+  {
+    name: "consumer-web-submit-ticket-bill",
+    path: "../consumer-web-submit-ticket-bill/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-get-ticket",
+    path: "../consumer-web-get-ticket/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-select-ticket-payment",
+    path: "../consumer-web-select-ticket-payment/index.ts",
+    accepts: ["POST"],
+  },
   // Stripe Connect PLATFORM account layer (skeleton, no charges).
-  { name: "business-web-start-payment-onboarding", path: "../business-web-start-payment-onboarding/index.ts", accepts: ["POST"] },
-  { name: "admin-web-get-place-payment-account", path: "../admin-web-get-place-payment-account/index.ts", accepts: ["POST"] },
+  {
+    name: "business-web-start-payment-onboarding",
+    path: "../business-web-start-payment-onboarding/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "admin-web-get-place-payment-account",
+    path: "../admin-web-get-place-payment-account/index.ts",
+    accepts: ["POST"],
+  },
   // The Express Dashboard door (MESITA-1532): it mints a single-use link that
   // grants access to the account holder's Stripe data, so its auth gate is
   // money-path-critical even though it moves no money itself.
-  { name: "business-web-get-payment-dashboard-link", path: "../business-web-get-payment-dashboard-link/index.ts", accepts: ["POST"] },
+  {
+    name: "business-web-get-payment-dashboard-link",
+    path: "../business-web-get-payment-dashboard-link/index.ts",
+    accepts: ["POST"],
+  },
   // Mesita Credits buy path (MESITA-1676): charges the guest's saved card.
-  { name: "consumer-web-buy-credits", path: "../consumer-web-buy-credits/index.ts", accepts: ["POST"] },
-  { name: "consumer-web-list-credit-places", path: "../consumer-web-list-credit-places/index.ts", accepts: ["POST"] },
+  {
+    name: "consumer-web-buy-credits",
+    path: "../consumer-web-buy-credits/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-list-credit-places",
+    path: "../consumer-web-list-credit-places/index.ts",
+    accepts: ["POST"],
+  },
+  // Gift Credits (MESITA-1677): issuance-only — the sender's own card is
+  // charged, same as Buy. Redeem/cancel/list all require an account; the
+  // PUBLIC half is gift-web-preview-code, in PUBLIC_CHECK_EFS below.
+  {
+    name: "consumer-web-gift-credits",
+    path: "../consumer-web-gift-credits/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-redeem-credit-gift",
+    path: "../consumer-web-redeem-credit-gift/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-cancel-credit-gift",
+    path: "../consumer-web-cancel-credit-gift/index.ts",
+    accepts: ["POST"],
+  },
+  {
+    name: "consumer-web-list-credit-gifts",
+    path: "../consumer-web-list-credit-gifts/index.ts",
+    accepts: ["POST"],
+  },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,
@@ -62,16 +165,42 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
 // missing/implausible code fires BEFORE any DB work (the plausibility gate
 // and the null ip-hash shortcut make these probes network-free).
 const PUBLIC_CHECK_EFS: { name: string; path: string }[] = [
-  { name: "validate-web-get-ticket", path: "../validate-web-get-ticket/index.ts" },
-  { name: "validate-web-mark-paid", path: "../validate-web-mark-paid/index.ts" },
+  {
+    name: "validate-web-get-ticket",
+    path: "../validate-web-get-ticket/index.ts",
+  },
+  {
+    name: "validate-web-mark-paid",
+    path: "../validate-web-mark-paid/index.ts",
+  },
   // THE TICKET v4 handshake (MESITA-1090/1092). A validate-web EF scaffolded
   // from a consumer template would inherit requireAuthedUser and 401 a
   // surface with no login by design — these probes are what catches it.
-  { name: "validate-web-scan-ticket", path: "../validate-web-scan-ticket/index.ts" },
-  { name: "validate-web-approve-ticket", path: "../validate-web-approve-ticket/index.ts" },
-  { name: "validate-web-request-fix", path: "../validate-web-request-fix/index.ts" },
-  { name: "validate-web-poll-ticket", path: "../validate-web-poll-ticket/index.ts" },
-  { name: "validate-web-validate-ticket", path: "../validate-web-validate-ticket/index.ts" },
+  {
+    name: "validate-web-scan-ticket",
+    path: "../validate-web-scan-ticket/index.ts",
+  },
+  {
+    name: "validate-web-approve-ticket",
+    path: "../validate-web-approve-ticket/index.ts",
+  },
+  {
+    name: "validate-web-request-fix",
+    path: "../validate-web-request-fix/index.ts",
+  },
+  {
+    name: "validate-web-poll-ticket",
+    path: "../validate-web-poll-ticket/index.ts",
+  },
+  {
+    name: "validate-web-validate-ticket",
+    path: "../validate-web-validate-ticket/index.ts",
+  },
+  // The gift landing page's preview (MESITA-1677): a different actor prefix
+  // (gift-web-*) than the ticket-check surface above, same shape —
+  // verify_jwt=false, a keyed-HMAC code is the whole authentication, uniform
+  // 404 on an unknown/implausible code.
+  { name: "gift-web-preview-code", path: "../gift-web-preview-code/index.ts" },
 ];
 
 for (const ef of PUBLIC_CHECK_EFS) {
@@ -125,10 +254,15 @@ for (const ef of JWT_EFS) {
     const h = await loadEFHandler(ef.path);
     const method = ef.accepts.includes("POST") ? "POST" : "GET";
     const res = await h(jsonRequest({}, { method, bearer: null }));
-    assertEquals(res.status, 401, `${ef.name} must 401 an unauthenticated caller`);
+    assertEquals(
+      res.status,
+      401,
+      `${ef.name} must 401 an unauthenticated caller`,
+    );
     const body = await readBody(res);
     assert(
-      typeof body === "object" && body !== null && (body as { ok?: boolean }).ok === false,
+      typeof body === "object" && body !== null &&
+        (body as { ok?: boolean }).ok === false,
       `${ef.name} 401 body should be { ok:false, ... }`,
     );
   });
@@ -150,7 +284,10 @@ for (const ef of JWT_EFS) {
 // stripe-signature header is a 400 before any event is processed.
 
 Deno.test("stripe-webhook-handle-event: non-POST -> 405", async () => {
-  setDummyEnv({ STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x" });
+  setDummyEnv({
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_WEBHOOK_SECRET: "whsec_x",
+  });
   const h = await loadEFHandler("../stripe-webhook-handle-event/index.ts");
   const res = await h(new Request("http://ef.local/", { method: "GET" }));
   assertEquals(res.status, 405);
@@ -158,7 +295,10 @@ Deno.test("stripe-webhook-handle-event: non-POST -> 405", async () => {
 });
 
 Deno.test("stripe-webhook-handle-event: POST without stripe-signature -> 400", async () => {
-  setDummyEnv({ STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x" });
+  setDummyEnv({
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_WEBHOOK_SECRET: "whsec_x",
+  });
   const h = await loadEFHandler("../stripe-webhook-handle-event/index.ts");
   const res = await h(
     new Request("http://ef.local/", {
@@ -173,7 +313,10 @@ Deno.test("stripe-webhook-handle-event: POST without stripe-signature -> 400", a
 });
 
 Deno.test("stripe-webhook-handle-event: a bogus signature fails verification -> 400", async () => {
-  setDummyEnv({ STRIPE_SECRET_KEY: "sk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x" });
+  setDummyEnv({
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_WEBHOOK_SECRET: "whsec_x",
+  });
   const h = await loadEFHandler("../stripe-webhook-handle-event/index.ts");
   const res = await h(
     new Request("http://ef.local/", {

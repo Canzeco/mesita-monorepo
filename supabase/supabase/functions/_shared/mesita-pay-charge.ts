@@ -74,7 +74,11 @@ export type ChargeOutcome =
 async function resolveConnectedCustomer(
   stripe: Stripe,
   admin: SupabaseClient,
-  args: { organizationId: string; consumerId: string; connectedAccountId: string },
+  args: {
+    organizationId: string;
+    consumerId: string;
+    connectedAccountId: string;
+  },
 ): Promise<string> {
   const cached = await getOrganizationGuestCustomer(
     admin,
@@ -178,7 +182,10 @@ async function cloneCardAndChargeDirect(
           ? { application_fee_amount: args.applicationFeeCents }
           : {}),
       },
-      { stripeAccount: args.connectedAccountId, idempotencyKey: args.idempotencyKey },
+      {
+        stripeAccount: args.connectedAccountId,
+        idempotencyKey: args.idempotencyKey,
+      },
     );
     if (intent.status === "succeeded") {
       return { ok: true, paymentIntentId: intent.id };
@@ -210,7 +217,8 @@ async function cloneCardAndChargeDirect(
     return {
       ok: false,
       code: "card_declined",
-      error: `Payment ${intent.status} — try a different card or pay at the register.`,
+      error:
+        `Payment ${intent.status} — try a different card or pay at the register.`,
     };
   } catch (err) {
     const stripeErr = err as { code?: string; type?: string; message?: string };
@@ -306,6 +314,70 @@ export function chargeCreditsWithMesitaPay(
       currency: args.currency,
       activates_at: args.activatesAt,
       expires_at: args.expiresAt,
+    },
+  });
+}
+
+/**
+ * Charges the SENDER's saved card to fund a Gift Credits code (MESITA-1677).
+ * Same direct-charge mechanics as `chargeCreditsWithMesitaPay` — `consumerId`
+ * here is the SENDER, who pays and clones onto the organization's connected
+ * account; the resulting lot has no owner until the code is claimed.
+ *
+ * DELIBERATELY REUSES `mesita_kind: "credit_purchase"` rather than minting a
+ * second event-routing value. stripe-webhook-handle-event/index.ts's
+ * dispatch (`isCreditPurchaseIntentEvent`) stays untouched; only
+ * credit-payment-intent.ts's own handler branches on the extra `gift`
+ * metadata field to call `create_credit_gift` instead of `create_credit_lot`.
+ * One routing predicate, one place that ever has to agree with it.
+ */
+export function chargeGiftCreditsWithMesitaPay(
+  stripe: Stripe,
+  admin: SupabaseClient,
+  args: {
+    organizationId: string;
+    connectedAccountId: string;
+    senderId: string;
+    platformCustomerId: string;
+    platformPaymentMethodId: string;
+    paidCents: number;
+    bonusCents: number;
+    currency: string;
+    codeHash: string;
+    claimExpiresAt: string;
+    expiryDays: number;
+    note: string | null;
+    idempotencyKey: string;
+  },
+): Promise<ChargeOutcome> {
+  return cloneCardAndChargeDirect(stripe, admin, {
+    organizationId: args.organizationId,
+    connectedAccountId: args.connectedAccountId,
+    consumerId: args.senderId,
+    platformCustomerId: args.platformCustomerId,
+    platformPaymentMethodId: args.platformPaymentMethodId,
+    amountCents: args.paidCents,
+    currency: args.currency,
+    idempotencyKey: args.idempotencyKey,
+    metadata: {
+      mesita_kind: "credit_purchase",
+      organization_id: args.organizationId,
+      consumer_id: args.senderId,
+      paid_cents: String(args.paidCents),
+      bonus_cents: String(args.bonusCents),
+      currency: args.currency,
+      // Placeholder terms for the owner-less lot create_credit_gift writes —
+      // see that function's own comment. Real spend terms are computed at
+      // redeem/cancel time, not here.
+      activates_at: new Date().toISOString(),
+      expires_at: args.claimExpiresAt,
+      gift: "1",
+      gift_code_hash: args.codeHash,
+      gift_claim_expires_at: args.claimExpiresAt,
+      gift_expiry_days: String(args.expiryDays),
+      // Stripe metadata values cap at 500 chars; credit_gifts_note_length
+      // already caps the note at 140, well inside that.
+      gift_note: args.note ?? "",
     },
   });
 }
