@@ -22,7 +22,7 @@ import {
   isExpired,
   spendableCents,
 } from "@/lib/mock/credits-mock";
-import { rankBalances } from "@/components/consumer/credits/BalanceStack";
+import { rankBalances } from "@/components/consumer/credits/BalanceList";
 
 // The console-owned terms every rule below resolves against. A place's own
 // bonusPct/expiryDays are null unless it set them, and what null MEANS is this.
@@ -437,10 +437,10 @@ describe("expiry", () => {
   });
 });
 
-describe("deck order", () => {
+describe("list order", () => {
   it("ranks spendable before expired", () => {
     const s = seeded();
-    // Past the shortest life in the fixture but not the longest, so the deck
+    // Past the shortest life in the fixture but not the longest, so the list
     // actually holds both states at once.
     const dead = s.balances[0].expiresAtMs + DAY_MS;
     const ranked = rankBalances(s.balances, dead);
@@ -480,7 +480,7 @@ describe("formatExpiry", () => {
 describe("naming", () => {
   const MONEY_SRC = [
     "src/components/consumer/credits/BalanceCard.tsx",
-    "src/components/consumer/credits/BalanceStack.tsx",
+    "src/components/consumer/credits/BalanceList.tsx",
     "src/components/consumer/credits/BalanceDetail.tsx",
     "src/components/consumer/credits/BuyCreditsSheet.tsx",
     "src/lib/mock/credits-mock.ts",
@@ -502,4 +502,48 @@ describe("naming", () => {
       expect(read(rel).match(/\bPrepay[A-Z]\w*/g) ?? []).toEqual([]);
     },
   );
+});
+
+// ── The Wallet's block order (MESITA-1673) ───────────────────────────────────
+//
+// A SOURCE-TEXT CONTRACT, because this package runs Vitest with environment
+// "node" and the ordering cannot be observed any other way. It is here rather
+// than left to review because it is the most CONTESTED decision on the screen:
+// both design passes on the Credits plan argued that the guest's own money
+// should lead the surface they opened to check it, and Pato overruled them.
+//
+// His reason is a product reason and it is the whole reason Pay was cut from
+// the wallet's main actions earlier: Credits must never read as REQUIRED, and
+// putting the ordinary way to pay first is what says the prepaid balance under
+// it is optional. Anyone flipping this order is reversing that, and should have
+// to delete this test to do it.
+describe("wallet block order", () => {
+  const CLIENT = readFileSync(
+    join(__dirname, "..", "..", "app", "(shell)", "new-visit", "wallet", "CreditsClient.tsx"),
+    "utf8",
+  );
+
+  it("puts Cards above Credits", () => {
+    const cards = CLIENT.indexOf('aria-label="Cards"');
+    const credits = CLIENT.indexOf('aria-label="Credits"');
+    expect(cards).toBeGreaterThan(-1);
+    expect(credits).toBeGreaterThan(-1);
+    expect(cards).toBeLessThan(credits);
+  });
+
+  it("renders Ways to pay only while the guest holds nothing", () => {
+    // Unpressable AND undismissable is worse than either alone — this app
+    // already deleted the Gift tile for the first half of that. The block is
+    // read once, so it leaves once there is a balance to read instead.
+    expect(CLIENT).toMatch(/balances\.length === 0 \? <WaysToPay \/> : null/);
+  });
+
+  it("mounts the shared card list, never a second one", () => {
+    // CardsModal's own header comment exists to guarantee the live Stripe flow
+    // has exactly one definition. Rendering cards inline is where that would
+    // quietly become two.
+    expect(CLIENT).toContain("useConsumerCards");
+    expect(CLIENT).toContain("<CardList");
+    expect(CLIENT).not.toContain("apiListCards");
+  });
 });

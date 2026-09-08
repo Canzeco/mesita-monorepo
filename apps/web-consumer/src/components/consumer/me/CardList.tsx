@@ -211,15 +211,23 @@ export function CardList({ state }: { state: ConsumerCardsState }) {
 export function AddCardButton({
   state,
   className,
+  /** "Add a card" under a sheet's list; "Add" in a section header where the
+   *  heading beside it already says what is being added. */
+  label = "Add a card",
 }: {
   state: ConsumerCardsState;
   className?: string;
+  label?: string;
 }) {
   return (
     <button
       type="button"
       onClick={() => void state.add()}
       disabled={state.addBusy}
+      // The visible label can shorten to "Add"; the accessible name must not,
+      // because a screen reader reaching this button out of context gets no
+      // heading with it.
+      aria-label={label === "Add a card" ? undefined : "Add a card"}
       className={className}
     >
       {state.addBusy ? (
@@ -227,7 +235,7 @@ export function AddCardButton({
       ) : (
         <Plus className="size-4" aria-hidden />
       )}
-      Add a card
+      {label}
     </button>
   );
 }

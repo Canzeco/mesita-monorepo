@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronRight, Plus, Wallet } from "lucide-react";
+import { Plus, Wallet } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
-import {
-  BalanceStack,
-  CARD_PX,
-  PEEK_PX,
-} from "@/components/consumer/credits/BalanceStack";
+import { BalanceList, CARD_PX } from "@/components/consumer/credits/BalanceList";
 import { BalanceDetail } from "@/components/consumer/credits/BalanceDetail";
 import { BuyCreditsSheet } from "@/components/consumer/credits/BuyCreditsSheet";
-import { CardsModal } from "@/components/consumer/me/CardsModal";
+import { WaysToPay } from "@/components/consumer/credits/WaysToPay";
+import {
+  AddCardButton,
+  CardList,
+  CardsDisclosure,
+  useConsumerCards,
+} from "@/components/consumer/me/CardList";
 import type { CreditBalance } from "@/lib/mock/credits-mock";
 import type { Seed } from "@/lib/mock/credits-emulator";
 import { errorMessage, useCredits } from "@/lib/mock/use-credits";
@@ -22,70 +24,80 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 //
 // THE SECTION IS A CONTAINER, NOT A CURRENCY (Pato, 2026-08-31). It was called
 // Credits while per-place prepaid balances were the only thing on it. It now
-// holds the Credits deck, the saved payment methods that were buried in
+// holds the balances, the saved payment methods that were buried in
 // Me › More › Cards, and gifting — so naming it after one of them was the
 // mistake a container name exists to prevent. Credits stays the word for the
 // MONEY: 🪙 Credits §D is untouched, `places.credits_enabled` and
 // `visits_config.payCredits` are untouched.
 //
-// THE DECK IS THE SCREEN (Pato, 2026-09-02: "a lot cleaner, more minimalistic,
-// must feel like an Apple Wallet"). This surface used to run SIX chrome systems
-// at once — the section pill row, the photo cards, two bordered action tiles, an
-// eyebrow section label, a bordered settings row, and a demo bar carrying a
-// two-line paragraph. Apple runs one, cards, plus a ＋. It runs two now: the
-// deck and two hairline rows. What left, and why:
+// THREE BLOCKS, IN THIS ORDER (Pato, 2026-09-08, re-drawn after seeing the
+// shipped screen): Ways to pay · Cards · Credits.
 //
-//   · THE TOTAL LINE. It led a screen it is not the subject of, wrapped to two
-//     lines at 390px, and described money that cannot be spent anywhere — the
-//     same objection that killed the pink hero before it. The deck states every
-//     balance at rest now, so the sum is derivable; where you would ACT on it,
-//     the Top up sheet, is where it moved.
-//   · BOTH ACTION TILES. A bordered box with an icon in a tinted rounded square,
-//     a bold title and a two-line summary, repeated symmetrically, is the most
-//     recognisable generated-UI layout there is. Top up is a row. Gift is gone
-//     entirely: a control that cannot be pressed is decoration, not discovery,
-//     and the instrument's giftability lives in the model, not in a dead chip.
-//   · "ALSO IN YOUR WALLET" AND THE BORDERED ROW UNDER IT. One eyebrow over one
-//     row is a section label for a section of one. Payment methods is a plain
-//     row with a chevron — still a button, still keyboard-reachable, and the
-//     chevron is the affordance iOS already taught everyone to read.
+// CARDS SITS ABOVE CREDITS, and that is deliberate rather than an oversight.
+// Both design passes on this plan argued the opposite — the guest's own money
+// should lead the screen they opened to check it. Pato's reason for the other
+// order is a product reason and it wins: Credits must never read as REQUIRED.
+// Putting the ordinary way to pay first is what says the prepaid balance
+// underneath it is optional. That fear is the whole reason Pay was cut from
+// the wallet's main actions in the first place.
 //
-// THE ROWS SIT DIRECTLY UNDER THE DECK, not pinned to the bottom. Bottom-anchored
-// they leave ~200px of nothing in the MIDDLE of the screen, which reads as a gap;
-// under the deck the same emptiness falls at the bottom, where it reads as calm.
-// Proximity: the actions belong to the deck.
+// THE DECK IS GONE, THE CARD IS NOT. See BalanceList: org scope, pending lots
+// and twenty balances each break an overlapping deck on their own, but the
+// contrast engineering and the display-face numerals live in `BalanceCard` and
+// are untouched. What was deleted is the pile, not the object.
 //
-// THIS IS THE SECOND BOUNDED CARVE-OUT ON THIS SCREEN. `BalanceCard`'s photo
-// face is the first (CLAUDE.md names it). Border-less rows are a deviation from
-// the app's one list-row look and they stop at this file.
+// CARDS IS RENDERED INLINE, NOT BEHIND A ROW. It used to be a hairline row
+// with a chevron that opened `CardsModal`. A section the guest is being told,
+// two inches above, that they can pay with should not then be a door — and the
+// header needs its own Add button, which a row cannot carry. The sheet still
+// exists for Me's door; both mount `CardList` (MESITA-1672), so the live
+// Stripe flow still has exactly one definition.
 //
-// MIXED LIVENESS, and the page still says which is which. The Credits BALANCES
-// are PARKED on a browser emulator — no table, no Edge Function, no place side.
+// MIXED LIVENESS, and the page still says which is which. The BALANCES are
+// PARKED on a browser emulator — no table, no Edge Function, no place side.
 // The TERMS are real: the bonus and the expiry come from the console's Controls
-// page through consumer-web-get-controls-config. Payment methods is fully live
-// and opens the real Stripe-backed CardsModal.
+// page through consumer-web-get-controls-config. Cards is fully live.
 //
-// AND THE PARKED CLAIM OUTLIVED THE DEMO CLOCK. A strip of +1h/+24h/+30d buttons
-// used to sit at the foot of this screen, there to walk a balance out of its
-// hold; the hold is gone (Pato, 2026-09-08: Credits are active the moment they
-// are bought) and the buttons went with it. Its CAPTION did not. It is the only
-// place the screen says these balances are not real, and cutting it would ship
-// the prettiest version of this surface as the first one to show a guest
-// MX$4,172 of restaurant money with nothing naming it as emulated.
-//
-// NO IN-BODY TITLE. Every section opens straight into its content; the pill
-// row directly above already says which one this is.
+// THE PARKED CLAIM STAYS until the balances are real (MESITA-1674). It is the
+// only place the screen says these numbers are emulated, and cutting it would
+// ship the prettiest version of this surface as the first one to show a guest
+// MX$4,172 of restaurant money with nothing naming it as invented.
+
+/** Title left, action top-right. The button is deliberately not small: Pato,
+ *  2026-09-08 — "tiene que ser un botón un poco grande, no quiero que esté
+ *  escondido". */
+function SectionHead({
+  title,
+  action,
+}: {
+  title: string;
+  action: React.ReactNode;
+}) {
+  return (
+    <div className="mb-2.5 flex items-center justify-between gap-3">
+      <h2 className="text-sm font-bold">{title}</h2>
+      {action}
+    </div>
+  );
+}
+
+// `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary` (pink-500, 3.66:1)
+// — this is text on a light surface and 500 fails AA. The token has no
+// Tailwind utility and an arbitrary `text-[...]` trips the off-scale-font-size
+// rule, so it rides an inline style. globals.css:26 documents the pair.
+const ADD_BUTTON_CLASS =
+  "bg-primary/10 flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition active:scale-[0.98] disabled:opacity-50";
+const ADD_BUTTON_STYLE = { color: "var(--brand-pink-text)" };
 
 export function CreditsClient({ seed }: { seed: Seed }) {
   const credits = useCredits(seed);
+  const cards = useConsumerCards(true);
   const [open, setOpen] = useState<CreditBalance | null>(null);
   const [buying, setBuying] = useState(false);
-  const [cardsOpen, setCardsOpen] = useState(false);
   const supabase = useBrowserSupabase();
 
   // MESITA-1387: "whether anyone opens the Wallet" — fires once per mount,
-  // regardless of how the guest arrived (the pill row is the only path
-  // today, but a redirect or a back-button return should count the same).
+  // regardless of how the guest arrived.
   useEffect(() => {
     trackEvent(supabase, "wallet_open", { from: "pay_section_nav" });
   }, [supabase]);
@@ -100,8 +112,8 @@ export function CreditsClient({ seed }: { seed: Seed }) {
   const balances = credits.state?.balances ?? [];
   const nowMs = credits.nowMs;
   // Every peso the guest has here, expired included — the Top up sheet states
-  // what the wallet holds, and quietly dropping dead money would make the total
-  // disagree with the deck the guest is looking at.
+  // what the wallet holds, and quietly dropping dead money would make the
+  // total disagree with the cards the guest is looking at.
   const held = balances.reduce((sum, b) => sum + b.balanceCents, 0);
 
   // The open sheet reads from live state, not the snapshot it was opened with,
@@ -112,60 +124,64 @@ export function CreditsClient({ seed }: { seed: Seed }) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {credits.loading ? (
-          // Derived from the deck's own minimums, so it cannot drift from what
-          // lands on top of it: two peeks and one open card.
-          <div className="px-5 pt-5" style={{ height: PEEK_PX * 2 + CARD_PX }}>
-            <Skeleton className="h-full w-full rounded-2xl" />
-          </div>
-        ) : balances.length === 0 ? (
-          // No `action`. EmptyState normally carries one, and the rule behind
-          // that is real — a zero state without a next step is a dead end. It
-          // already has one here: the Top up row renders directly below, on
-          // every state of this screen.
-          <EmptyState
-            icon={Wallet}
-            title="No Credits yet"
-            description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
-          />
-        ) : (
-          <div className="px-5 pt-5">
-            <BalanceStack balances={balances} nowMs={nowMs} onOpen={openBalanceCard} />
-          </div>
-        )}
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 py-5">
+        {/* Only until there is a balance — see WaysToPay's header. */}
+        {!credits.loading && balances.length === 0 ? <WaysToPay /> : null}
 
-        {/* mt-4: the first hairline sits flush against the deck's bottom edge
-            otherwise, which reads as the card having a border rather than the
-            list having a rule. */}
-        <div className="mt-4 px-5">
-          <div className="border-border border-t">
-            <button
-              type="button"
-              onClick={() => setBuying(true)}
-              // `--brand-pink-text` (pink-600, 4.77:1), NOT `--primary`
-              // (pink-500, 3.66:1) — this is body text and 500 fails AA. The
-              // token has no Tailwind utility, and an arbitrary `text-[...]`
-              // trips the off-scale-font-size rule, so it rides an inline
-              // style. globals.css:26 documents the pair.
-              style={{ color: "var(--brand-pink-text)" }}
-              className="flex min-h-[52px] w-full items-center gap-2.5 py-4 text-left text-sm font-bold transition active:scale-[0.99]"
-            >
-              <Plus className="h-[18px] w-[18px] shrink-0" strokeWidth={2.5} />
-              Top up
-            </button>
-          </div>
-          <div className="border-border border-t">
-            <button
-              type="button"
-              onClick={() => setCardsOpen(true)}
-              className="flex min-h-[52px] w-full items-center gap-3 py-4 text-left text-sm font-semibold transition active:scale-[0.99]"
-            >
-              Payment methods
-              <ChevronRight className="text-muted-foreground ml-auto h-4 w-4 shrink-0" />
-            </button>
-          </div>
-        </div>
+        <section aria-label="Cards">
+          <SectionHead
+            title="Cards"
+            action={
+              <AddCardButton
+                state={cards}
+                label="Add"
+                className={ADD_BUTTON_CLASS}
+              />
+            }
+          />
+          <CardList state={cards} />
+          <CardsDisclosure mock={cards.mock} className="mt-2.5" />
+        </section>
+
+        <section aria-label="Credits">
+          <SectionHead
+            title="Credits"
+            action={
+              <button
+                type="button"
+                onClick={() => setBuying(true)}
+                aria-label="Buy Credits"
+                style={ADD_BUTTON_STYLE}
+                className={ADD_BUTTON_CLASS}
+              >
+                <Plus className="size-4" strokeWidth={2.5} aria-hidden />
+                Add
+              </button>
+            }
+          />
+          {credits.loading ? (
+            // Sized from the card's own minimum so the skeleton cannot drift
+            // from what lands on top of it.
+            <div style={{ height: CARD_PX }}>
+              <Skeleton className="h-full w-full rounded-2xl" />
+            </div>
+          ) : balances.length === 0 ? (
+            // No `action`. EmptyState normally carries one and the rule behind
+            // that is real — a zero state without a next step is a dead end.
+            // It already has one here: Add sits in the header directly above.
+            <EmptyState
+              icon={Wallet}
+              title="No Credits yet"
+              description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
+            />
+          ) : (
+            <BalanceList
+              balances={balances}
+              nowMs={nowMs}
+              onOpen={openBalanceCard}
+            />
+          )}
+        </section>
       </div>
 
       {credits.error && (
@@ -182,7 +198,7 @@ export function CreditsClient({ seed }: { seed: Seed }) {
           does not get shortened away. */}
       <div className="border-border shrink-0 border-t px-5 py-3">
         <p className="text-muted-foreground/80 type-label">
-          Emulated · Credits aren&rsquo;t live yet.
+          Emulated &middot; Credits aren&rsquo;t live yet.
         </p>
       </div>
 
@@ -194,11 +210,6 @@ export function CreditsClient({ seed }: { seed: Seed }) {
         policy={credits.policy}
         heldCents={held}
       />
-
-      {/* The SAME sheet Me › More › Cards opens — imported, not reimplemented,
-          so the live Stripe flow has exactly one definition. Two doorways to
-          one sheet is the shape this app already uses for Credits and Share. */}
-      <CardsModal open={cardsOpen} onClose={() => setCardsOpen(false)} />
 
       <BalanceDetail
         balance={openBalance}
