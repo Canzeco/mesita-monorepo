@@ -1,12 +1,17 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronRight, Copy, IdCard, Lock, Unlock } from "lucide-react";
+import { ChevronRight, Copy, IdCard } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { useConsumerClass } from "@/lib/class-context";
-import { CLASSES, classFillClass } from "@/lib/consumer-data";
+import {
+  CLASSES,
+  classBadgeClass,
+  classFillClass,
+  classWashClass,
+} from "@/lib/consumer-data";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import {
@@ -39,9 +44,13 @@ import { toast } from "@/lib/toast";
 // fetched and the class context the shell seeded, so opening it costs no EF
 // call and it can never disagree with the card above it.
 //
-// PRIVACY IS STATED, NOT TOGGLED. Settings › Privacy owns the switch and its
-// wording is copied from there verbatim; a second control for one flag is how
-// two surfaces start disagreeing about what "public" means.
+// NO PRIVACY FIELD EITHER (MESITA-1688, Pato: "all are public by default").
+// `profile_public` defaults `true` for every account
+// (20260705080000_consumer_profile_visibility.sql) and Settings › Privacy
+// already owns the toggle exclusively — restating "Public"/"Private" here was
+// exactly the two-surfaces-can-disagree risk this file otherwise guards
+// against, just not yet turned on itself. Gone, not demoted, same as NO PLAN
+// FIELD above.
 
 // TWO ROWS HERE ARE DOORS, AND THEY ARE THE ONLY ONES (MESITA-1646). The
 // card above is display-only now, so Class and Instagram are reachable from
@@ -56,12 +65,22 @@ import { toast } from "@/lib/toast";
 function Field({
   label,
   value,
+  valueNode,
+  valueClassName,
   note,
   trailing,
   onClick,
 }: {
   label: string;
   value: string;
+  /** Renders instead of the plain-text value span when present (the Class
+   *  row's colour badge, MESITA-1688). `value` still gets passed for the
+   *  <Tag>'s own text content otherwise, so it's never truly unused. */
+  valueNode?: React.ReactNode;
+  /** Extra classes merged onto the default value span — for a row that needs
+   *  different weight without a full valueNode override (the Number row's
+   *  typography, MESITA-1688). Ignored when valueNode is set. */
+  valueClassName?: string;
   note?: string | null;
   trailing?: React.ReactNode;
   /** Turns the row into a button with a chevron. Hands off at the SAME
@@ -82,9 +101,16 @@ function Field({
         {label}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold tracking-tight">
-          {value}
-        </span>
+        {valueNode ?? (
+          <span
+            className={cn(
+              "block truncate text-sm font-semibold tracking-tight",
+              valueClassName,
+            )}
+          >
+            {value}
+          </span>
+        )}
         {note && (
           <span className="text-muted-foreground block truncate text-xs">
             {note}
@@ -103,14 +129,12 @@ export function PassportModal({
   open,
   onClose,
   profile,
-  onOpenSettings,
   onOpenInstagram,
   onOpenClass,
 }: {
   open: boolean;
   onClose: () => void;
   profile: ConsumerProfile | null;
-  onOpenSettings: () => void;
   /** The two doors the card gave up (MESITA-1646). Each closes this sheet
    *  first — one LocalSheet layer. */
   onOpenInstagram: () => void;
@@ -127,7 +151,6 @@ export function PassportModal({
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
-  const isPublic = profile?.privacy_public ?? false;
 
   const age = ageFromBirthday(profile?.birthday);
   const sexLabel = formatSex(profile?.sex);
@@ -176,15 +199,17 @@ export function PassportModal({
         </div>
 
         <section className="border-border bg-card overflow-hidden rounded-2xl border">
-          {/* Same metal band as the card above — the class is the first thing
-              the document says. Colour-only, so it is hidden from assistive
-              tech; the Class field below states the rung in words. */}
-          <div
-            className={cn("h-1.5 w-full", classFillClass(key))}
-            aria-hidden
-          />
-
-          <div className="flex items-center gap-4 p-4">
+          {/* The wash (MESITA-1688) — same treatment as the bar above it,
+              replacing the old flat band here: the metal felt across the
+              card's top rather than a hard-edged strip. Colour-only, so it's
+              hidden from assistive tech; the Class field below states the
+              rung in words. */}
+          <div className="relative">
+            <div
+              className={cn("pointer-events-none absolute inset-0", classWashClass(key))}
+              aria-hidden
+            />
+            <div className="relative flex items-center gap-4 p-4">
             <div
               className={cn(
                 "shrink-0 rounded-full p-[2.5px]",
@@ -218,12 +243,20 @@ export function PassportModal({
                 </p>
               )}
             </div>
+            </div>
           </div>
 
           <div className="border-border/60 border-t">
             <Field
               label="Number"
               value={code ?? "—"}
+              // The one fact the guest can't see anywhere else in the app
+              // (see the header comment) deserves to look like a serial
+              // number, not another list row (MESITA-1688 — outside review
+              // finding: this was the modal's whole reason to exist, styled
+              // identically to "Profile → Name, phone, birthday, photo",
+              // which isn't even data).
+              valueClassName="font-display text-base tabular-nums"
               note={
                 code
                   ? "Assigned once. Yours for good."
@@ -235,7 +268,7 @@ export function PassportModal({
                     type="button"
                     onClick={copyCode}
                     aria-label="Copy member number"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted -mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition"
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted -mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -250,6 +283,23 @@ export function PassportModal({
             <Field
               label="Class"
               value={classLabel}
+              // Class is the headline of the identity (Docs › Passport §D's
+              // reading order), but read the same weight as the three purely
+              // informational rows above it — nothing led (MESITA-1688).
+              // classBadgeClass is safe on the SHEET even though the BAR's
+              // chip stays plain: this is a spacious, single-purpose,
+              // full-width row, not the cramped 62px 2-up grid the "third
+              // metal surface" rejection (MESITA-1655/56/57) was about.
+              valueNode={
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-bold",
+                    classBadgeClass(key),
+                  )}
+                >
+                  {classLabel}
+                </span>
+              }
               note={cls?.reward ?? null}
               onClick={() => handOff(onOpenClass)}
             />
@@ -271,33 +321,6 @@ export function PassportModal({
             />
           </div>
         </section>
-
-        {/* Visibility — stated here, switched in Settings. The wording is the
-            Private-account row's own, so the two can't drift. */}
-        <div className="border-border bg-card mt-3 rounded-2xl border p-4">
-          <div className="flex items-center gap-2">
-            {isPublic ? (
-              <Unlock className="text-muted-foreground h-4 w-4 shrink-0" />
-            ) : (
-              <Lock className="text-muted-foreground h-4 w-4 shrink-0" />
-            )}
-            <span className="text-sm font-bold tracking-tight">
-              {isPublic ? "Public" : "Private"}
-            </span>
-          </div>
-          <p className="text-muted-foreground mt-1.5 text-xs leading-snug">
-            {isPublic
-              ? "Other guests see this passport in the social feed and on your reviews. Turn on Private account in Settings to appear anonymous instead."
-              : "Other guests see you as anonymous in the social feed and on reviews. Your Instagram can stay public — this only affects Mesita."}
-          </p>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="border-border hover:bg-muted mt-3 flex h-10 items-center justify-center rounded-lg border px-4 text-sm font-semibold transition"
-          >
-            Open Settings
-          </button>
-        </div>
       </div>
     </LocalSheet>
   );

@@ -1,11 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram, Phone } from "lucide-react";
+import { ChevronRight, Instagram, Phone } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
-import { classFillClass } from "@/lib/consumer-data";
+import { CLASS_MARK_ICON, classFillClass, classWashClass } from "@/lib/consumer-data";
+import { CLASS_TEXT } from "@/lib/class-styles";
 import { useConsumerClass } from "@/lib/class-context";
+import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 
 // ─── The Passport, as the page header (MESITA-1079 v2 · -1619 · -1633 ·
@@ -61,12 +63,24 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 // — Docs › Passport §B: "It never prints on the Passport." Plan is a cell in
 // the grid below and this bar takes no plan handler.
 //
-// THE METAL IS THE BAND AND THE RING, AND THAT IS ALL OF IT. Colour means
-// class and lives on the passport, nowhere else on this page (MESITA-1132,
-// Docs › Design §D). The passport is the bar now, so the band is the bar's
-// own bottom edge, full width. The class CHIP deliberately carries NO metal —
-// it says the rung in words. A third metal surface inside 62px would turn a
-// law about meaning into decoration.
+// THE METAL FILL IS THE BAND AND THE RING, AND THAT IS STILL ALL OF IT.
+// Colour means class and lives on the passport, nowhere else on this page
+// (MESITA-1132, Docs › Design §D). The passport is the bar now, so the band
+// is the bar's own bottom edge, full width. The class CHIP still carries NO
+// metal FILL — it says the rung in words. A third metal FILL surface inside
+// 62px would turn a law about meaning into decoration.
+//
+// MESITA-1688 (Pato: "add colors here") spends more of that same budget two
+// other ways, neither a fill. A WASH (classWashClass) — the metal felt
+// across the whole header background, not just at a hard edge — because a
+// 2px ring and a 6-8px band read as trim, not as "this is the one colourful
+// object in the app" the law's own reasoning calls for. And INK: the class
+// word finally reads in its own tier colour (CLASS_TEXT), which globals.css
+// already built and tuned to be text ("tuned only to clear 4.5:1 as ink on
+// card") — nothing on the passport used it that way until now. The
+// Instagram chip's glyph also picks up its own established brand gradient
+// (INSTAGRAM_ICON_GRADIENT_CLASS, already used elsewhere for the same icon)
+// — a different axis than class, never gated by this rule.
 //
 // THE BAND AND THE RING ARE `aria-hidden` on the stated ground that something
 // says the class in words. That something is now the class chip's own label,
@@ -76,7 +90,14 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
  *  block rather than a bar (MESITA-1656) — the 28px MESITA-1655 needed to fit
  *  two rows inside 77px was the tap-target cost of that constraint. */
 const CHIP_CLASS =
-  "border-border text-foreground inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold";
+  "border-border text-foreground relative inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-semibold";
+
+/** Expands the two interactive chips' tap area to the app's 44px floor
+ *  (Docs › Design §D) without growing them visually. 36px chip + 4px per
+ *  side = 44px, and 4px is exactly half the grid's own `gap-2` (8px), so
+ *  two expanded neighbours' invisible hit-areas meet without overlapping
+ *  (MESITA-1688). */
+const TAP_TARGET_CLASS = "after:absolute after:inset-[-4px] after:content-['']";
 
 export function PassportBar({
   profile,
@@ -97,6 +118,7 @@ export function PassportBar({
   onOpenInstagram: () => void;
 }) {
   const { key } = useConsumerClass();
+  const classTextClass = CLASS_TEXT[key];
 
   const name =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
@@ -111,8 +133,16 @@ export function PassportBar({
     <header
       aria-label={`Your Mesita passport, ${classLabel} class`}
       aria-busy={loading || undefined}
-      className="border-border bg-background/95 shrink-0 border-b backdrop-blur-xl"
+      className="border-border bg-background/95 relative shrink-0 border-b backdrop-blur-xl"
     >
+      {/* The wash (MESITA-1688) — sits behind the content div below via DOM
+          order (both `relative`, so paint order follows source order). Fades
+          to transparent well before the band, so it never fights the band's
+          own colour at the bottom edge. */}
+      <div
+        className={cn("pointer-events-none absolute inset-0", classWashClass(key))}
+        aria-hidden
+      />
       {/* A HERO BLOCK, NOT A BAR (Pato, MESITA-1656: "Must be like this",
           re-sending the wireframe after MESITA-1655 built it inside the 77px
           bar instead). Measured as drawn: 254px, and with the tab bar that is
@@ -124,7 +154,7 @@ export function PassportBar({
           would share ONE number instead of matching by coincidence; they no
           longer match by design, and a shared constant with one user is a
           literal in a costume. */}
-      <div className="flex flex-col items-center gap-3.5 px-4 py-4">
+      <div className="relative flex flex-col items-center gap-3.5 px-4 py-4">
         {loading ? (
           <>
             {/* The skeleton mirrors the DESTINATION (Docs › Design §D): 87px
@@ -178,9 +208,16 @@ export function PassportBar({
                 type="button"
                 onClick={onOpenClass}
                 aria-label={`Class: ${classLabel}`}
-                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
+                className={cn(
+                  CHIP_CLASS,
+                  TAP_TARGET_CLASS,
+                  "hover:bg-muted transition",
+                  classTextClass,
+                )}
               >
+                <CLASS_MARK_ICON className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{classLabel}</span>
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
               </button>
               {/* THE LOGIN PHONE (Pato, MESITA-1657: "they made login with
                   phone number"). This chip was parked as WhatsApp, and
@@ -206,17 +243,28 @@ export function PassportBar({
                 <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 <span className="truncate">{phoneDisplay}</span>
               </span>
-              {/* NO METAL on either live chip, on purpose — see the header
-                  note. The rung in words is also what lets the band and the
-                  ring stay aria-hidden. */}
+              {/* NO METAL FILL on either live chip, on purpose — see the
+                  header note. The rung in words is also what lets the band
+                  and the ring stay aria-hidden. The Instagram glyph below
+                  carries its OWN brand gradient (MESITA-1688) — a different
+                  axis than class, not gated by the metal-fill rule. */}
               <button
                 type="button"
                 onClick={onOpenInstagram}
                 aria-label={`Instagram: ${instagramSummary}`}
-                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
+                className={cn(CHIP_CLASS, TAP_TARGET_CLASS, "hover:bg-muted transition")}
               >
-                <Instagram className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                    INSTAGRAM_ICON_GRADIENT_CLASS,
+                  )}
+                  aria-hidden
+                >
+                  <Instagram className="h-3 w-3 text-white" aria-hidden />
+                </span>
                 <span className="truncate">{instagramSummary}</span>
+                <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
               </button>
             </div>
           </>
@@ -225,8 +273,10 @@ export function PassportBar({
 
       {/* The metal band — full width now that the passport is the chrome.
           Colour-only and hidden from assistive tech; the class chip above
-          states the rung in words. */}
-      <div className={cn("h-1.5 w-full", classFillClass(key))} aria-hidden />
+          states the rung in words. Deepened 1.5→2.5 (MESITA-1688) as part of
+          spending more of the same colour budget; still the second of
+          exactly two metal FILL surfaces. */}
+      <div className={cn("h-2.5 w-full", classFillClass(key))} aria-hidden />
     </header>
   );
 }

@@ -260,7 +260,11 @@ export function ProfileClient({
               PASSPORT NO LONGER SAYS "Class and Instagram". Both are cells in
               the row directly below; naming them here would print the same
               two words twice inside one screen. What is left in the sheet and
-              nowhere else is the number and the privacy switch. */}
+              nowhere else is just the number (MESITA-1688 dropped the privacy
+              switch this comment used to also name — profile_public defaults
+              true for every account and Settings owns the toggle
+              exclusively, so restating it here or in the sheet was the same
+              two-surfaces-disagree risk this page otherwise guards against). */}
           <DestGrid>
             <DestTile
               Icon={UserRound}
@@ -271,8 +275,13 @@ export function ProfileClient({
             <DestTile
               Icon={IdCard}
               title="Passport"
-              summary="Number and privacy"
-              onClick={() => setPassportOpen(true)}
+              summary="Your member number"
+              // Mirrors the Profile tile's own guard right above (MESITA-1688).
+              // Without it, a tap between mount and the profile fetch
+              // resolving opens the sheet on profile: null — graceful
+              // fallbacks exist ("Mesita member", "—") but it's a flash of
+              // wrong-looking content, not a real loading state.
+              onClick={() => profile && setPassportOpen(true)}
             />
           </DestGrid>
 
@@ -493,17 +502,15 @@ export function ProfileClient({
         open={passportOpen}
         onClose={() => setPassportOpen(false)}
         profile={profile}
-        // One LocalSheet layer (z-130), so the passport closes before Settings
-        // opens — the same handoff openVerify makes from the Class sheet.
-        onOpenSettings={() => {
-          setPassportOpen(false);
-          setSettingsOpen(true);
-        }}
         // The two doors the card gave up (MESITA-1646). Instagram is the only
         // reach door and the Class ladder is the only entrance for an invite
         // PIN, so these are not conveniences — without them those surfaces
         // are unreachable. Profile is NOT here: it is a grid cell now, and a
         // second door to a surface one tap away is MESITA-1609's rule.
+        //
+        // No onOpenSettings any more (MESITA-1688): the sheet's Public/
+        // Private box it opened Settings from is gone, and nothing else on
+        // this sheet needs a door to Settings.
         onOpenInstagram={() => setVerifyOpen(true)}
         onOpenClass={() => setClassOpen(true)}
       />
