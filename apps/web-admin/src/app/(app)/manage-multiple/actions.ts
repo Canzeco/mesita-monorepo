@@ -2,7 +2,6 @@
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { createPlaceFromGooglePlaceId as createPlaceFromGooglePlaceIdImpl } from "@/lib/create-place-from-google-place";
-import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -260,68 +259,21 @@ export async function setPlaceListed(
   return { ok: true, data: true };
 }
 
-/** Operator Active (State box). Writes business_state. Active off also
- *  unlists — guests disappear in the same apply. Active on does not list. */
-export async function setPlaceActive(
-  placeId: string,
-  active: boolean,
-): Promise<Result<true>> {
-  const r = await efInvoke<unknown>("admin-web-set-place-active", {
-    placeId,
-    active,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
-}
+// Active, Verified and Partnered are NOT settable from here any more
+// (MESITA-1664, decision: Pato — "place cannot be partner from the
+// console"). A manager claims, verifies (mock-code OTP) and owns a place
+// from the business console, then onboards Stripe to activate Partnership
+// from there too. Admin keeps read-only visibility into all three on the
+// Mesita Search catalog table; it just lost the write door. The EFs
+// themselves (admin-web-set-place-active/-verified, admin-web-set-plan)
+// are untouched — nothing else in admin called them.
 
-/** Admin attestation of ownership proof. Verified is one-time; yes only. */
-export async function setPlaceVerified(
-  placeId: string,
-): Promise<Result<{ verified: true; alreadyVerified: boolean }>> {
-  const r = await efInvoke<{ verified?: boolean; alreadyVerified?: boolean }>(
-    "admin-web-set-place-verified",
-    { placeId },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return {
-    ok: true,
-    data: {
-      verified: true,
-      alreadyVerified: r.data.alreadyVerified === true,
-    },
-  };
-}
-
-// business-web-update-place refuses a body carrying a `plan` key — it is
-// the paid door's field, and the paid door is Stripe. The admin grants it
-// through its own door instead: no Stripe, no money (admin-web-set-plan).
-//
-// `rates` rides along on purpose (MESITA-818/912). The partnership and the
-// strategy that justifies it are one decision, and sending them together
-// makes it ONE atomic write. Join may land on Zero (paid plan + null rates) —
-// the old 409 `no_strategy` guard is retired; a 0% Mesita Partner is
-// prevented by the shared listing_type derivation in the EF instead.
-export async function setPlacePlan(
-  placeId: string,
-  plan: PlanKey,
-  rates?: Record<string, number | null>,
-): Promise<Result<true>> {
-  const r = await efInvoke<unknown>("admin-web-set-plan", {
-    placeId,
-    plan,
-    ...(rates ?? {}),
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
-}
-
-/** Rates-only strategy switch — no plan write (MESITA-912).
- *  Plan-less body on admin-web-set-plan (one-caller ACL; never business-web). */
-export async function setPlaceStrategy(
-  placeId: string,
-  rates: Record<string, number | null>,
-): Promise<Result<true>> {
-  const r = await efInvoke<unknown>("admin-web-set-plan", { placeId, ...rates });
+/** Soft delete: writes places.state = 'archived' — the terminal value
+ *  admin-web-set-place-listed's own header reserves for this. Reversible
+ *  only by a direct DB edit, never by any UI action, which is the whole
+ *  point of the distinct state from 'paused' (a List/Unlist toggle). */
+export async function deletePlace(placeId: string): Promise<Result<true>> {
+  const r = await efInvoke<unknown>("admin-web-delete-place", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
 }

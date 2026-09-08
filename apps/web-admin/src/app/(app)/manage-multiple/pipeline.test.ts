@@ -24,39 +24,42 @@ describe("PIPELINE_STEPS", () => {
 });
 
 describe("the page chrome names the three surfaces", () => {
-  it("keeps Google Search, Mesita Search, Mesita Intake as one Update box", () => {
+  it("keeps Google Search, Mesita Search, Mesita Intake — Intake is five flat actions, no Update, no EditTab", () => {
     const client = readFileSync(join(here, "MultiplePlacesClient.tsx"), "utf8");
     const intake = readFileSync(join(here, "IntakeTab.tsx"), "utf8");
-    const edit = readFileSync(join(here, "EditTab.tsx"), "utf8");
     expect(client).toContain("SearchTab");
     expect(client).toContain("MesitaSearchTab");
     expect(client).toContain("IntakeTab");
     expect(client).not.toContain("EditTab");
-    expect(intake).toContain("UpdateFields");
-    expect(intake).toContain('label="Update"');
-    expect(intake).toContain("runCreateThenEnrich");
+    // MESITA-1664 (decision: Pato) — "place cannot be partner from the
+    // console": Active/Verified/Partnered write from web-business now
+    // (claim → verify → own → Stripe onboarding), never from admin.
+    expect(intake).toContain('label="Create"');
+    expect(intake).toContain('label="Delete"');
+    expect(intake).toContain('label="List"');
+    expect(intake).toContain('label="Unlist"');
+    expect(intake).toContain('label="Enrich"');
     expect(intake).toContain("alreadyExisted");
-    expect(intake).toContain("Active · Listed · Verified · Partnered · Visit Rewards");
-    expect(intake).toContain("Create + Enrich is create then enrich");
     expect(intake).toContain("Copy failed IDs");
     expect(intake).toContain("Promise.all(ids.map");
+    expect(intake).toContain("window.confirm");
+    expect(intake).toContain("deletePlace");
+    expect(intake).toContain("setPlaceListed");
+    expect(intake).not.toContain("EditTab");
+    expect(intake).not.toContain("UpdateFields");
+    expect(intake).not.toContain('label="Update"');
+    expect(intake).not.toContain("create_then_enrich");
     expect(intake).not.toContain("create_enrich");
     expect(intake).not.toContain("EditPanel");
     expect(intake).not.toContain("type-eyebrow");
     expect(intake).not.toContain("CONCURRENCY");
     expect(intake).not.toContain("const worker = async");
     expect(intake).not.toContain("Promoting");
-    expect(edit).toContain("Listed");
-    expect(edit).toContain("Active");
-    expect(edit).toContain("Verified");
-    expect(edit).toContain("Partnered");
-    expect(edit).toContain("Visit Rewards");
-    expect(edit).toContain('value="active"');
-    expect(edit).toContain("setPlaceActive");
-    expect(edit).toContain('value="promoting"');
-    expect(edit).toContain("<option value=\"promoting\">Visit Rewards</option>");
-    expect(edit).not.toContain(">Promoting<");
-    expect(edit).not.toContain("EditPanel");
+    expect(intake).not.toContain("Verified");
+    expect(intake).not.toContain("Partnered");
+    expect(intake).not.toContain("setPlaceActive");
+    expect(intake).not.toContain("setPlaceVerified");
+    expect(intake).not.toContain("setPlacePlan");
   });
 });
 

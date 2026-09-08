@@ -8,12 +8,14 @@ import type { IntakeAction } from "./intake-batch";
 const here = dirname(fileURLToPath(import.meta.url));
 
 describe("IntakeAction", () => {
-  it("is create, enrich, or update — no third create_enrich function", () => {
-    const actions: IntakeAction[] = ["create", "enrich", "update"];
-    expect(actions).toEqual(["create", "enrich", "update"]);
+  it("is create, delete, list, unlist, or enrich — no Update, no combo function", () => {
+    const actions: IntakeAction[] = ["create", "delete", "list", "unlist", "enrich"];
+    expect(actions).toEqual(["create", "delete", "list", "unlist", "enrich"]);
     const batch = readFileSync(join(here, "intake-batch.ts"), "utf8");
-    expect(batch).toContain('export type IntakeAction = "create" | "enrich" | "update"');
-    expect(batch).toContain("create then enrich");
+    expect(batch).toContain(
+      'export type IntakeAction = "create" | "delete" | "list" | "unlist" | "enrich"',
+    );
     expect(batch).not.toContain("create_enrich");
+    expect(batch).not.toContain('"update"');
   });
 });
