@@ -16,7 +16,11 @@ import type { Database } from "./database.types";
 // pick a place, you manage it.
 
 export const PROTECTED_PREFIXES = [
-  "/add",
+  // `/add` is NOT here any more (MESITA-1664): the route is a bare redirect
+  // to /places now, reads nothing and renders nothing, and /places carries
+  // the wall. Gating a redirect would only bounce a signed-out visitor
+  // through sign-in to reach a page that immediately sends them somewhere
+  // gated anyway.
   // `/place` and `/settings` are NOT here any more (MESITA-1564): those routes
   // are deleted, and next.config.ts redirects them before a request ever
   // reaches this proxy. Gating a path that cannot resolve implies a screen
