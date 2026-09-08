@@ -88,7 +88,11 @@ export type SocialConfig = {
 };
 
 /**
- * Google Nearby primary types the map may bill. Off = skip that call.
+ * Google Nearby primary types the map asks for. Off = absent from the
+ * `includedPrimaryTypes` array, NOT a skipped call: `searchNearbyOnce`
+ * (nearby-places.ts) sends ONE POST carrying every enabled type, and Google
+ * Places Nearby (New) bills per REQUEST. Twenty-two types cost what five do.
+ * These toggles shape one call's RESULT SET; they never change call count.
  *
  * ONE ENTRY PER TYPE IN `GOOGLE_SEARCH_TYPES`, in that object's own order, so
  * the strip covers all SEVEN Super Categories rather than the three it knew
@@ -426,9 +430,13 @@ export const SWIPE_PARTNER_LEVELS = [
 ] as const satisfies readonly SwipePartnerLevel[];
 
 /**
- * The three supers the strip has always billed stay on. The four it could not
- * see until MESITA-1683 default OFF: turning seventeen new Google calls on by
- * default would change what every guest sees and what every call costs.
+ * The three supers the strip has always asked for stay on; the four it could
+ * not see until MESITA-1683 default OFF.
+ *
+ * NOT for cost: there are no "seventeen new calls" — one request carries the
+ * whole array (MESITA-1685 corrects that claim). Off by default because it
+ * keeps the returned pool exactly as it was; widening what a Nearby call
+ * admits is an operator's decision, not a side effect of the list growing.
  */
 export const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,

@@ -130,7 +130,7 @@ export function GeneralConfigClient({
       <SectionCard
         icon={<SlidersHorizontal className="text-primary h-4 w-4" />}
         title="Google types"
-        subtitle="Which Google Places types Autocomplete, Nearby, and Text Search may bill. One list for all three. How many of the code-defined types are available, then which of those are on."
+        subtitle="Which Google Places types Autocomplete, Nearby and Text Search ask for. One list for all three, and it shapes what a call RETURNS, never how many calls happen — one request carries the whole array. Governs the no-pill map, Word Fast and Deep, Swipe admission and Add eligibility; a guest who picks a Super pill bypasses it."
         state={
           <KnobState
             kind="enforced"

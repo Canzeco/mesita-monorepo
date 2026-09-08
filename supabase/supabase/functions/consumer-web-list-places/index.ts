@@ -278,6 +278,13 @@ Deno.serve(async (req) => {
     ? applyGeneralCategoryCap(await loadDiscoveryConfig(adminClient(efEnv.env)))
     : DISCOVERY_DEFAULTS;
   const isNearby = nearbyDecision.mode === "ok";
+  // A GUEST PILL OUTRANKS THE TYPE STRIP, deliberately (MESITA-1685). The
+  // pill IS the guest's question, and `nearbyTypesForSupers` reads no config,
+  // so `cfg.map.types` and the `categoryCount` cap both sit this branch out.
+  // Do not "fix" this by intersecting the two: types are free (one request
+  // carries the whole array), so an intersection saves nothing and, with the
+  // catalog this thin, empties the four Supers the operator has not enabled.
+  // The operator still holds googleFill, the floors, and the rate controls.
   const nearbyTypes = guestSupers.length > 0
     ? nearbyTypesForSupers(guestSupers)
     : enabledNearbyTypes(cfg.map);

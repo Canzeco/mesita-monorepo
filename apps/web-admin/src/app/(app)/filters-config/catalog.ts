@@ -431,9 +431,10 @@ export const DEFAULT_SOCIAL: SocialConfig = {
   horizonDays: 14,
 };
 
-// The three supers the strip always billed stay on; the four it could not see
-// default OFF. Seventeen new Google calls on by default would move what every
-// guest sees and what every call costs.
+// The three supers the strip always asked for stay on; the four it could not
+// see default OFF. Not a cost choice: one Nearby request carries every enabled
+// type, so types are free (MESITA-1685). Off because it keeps the returned pool
+// unchanged until an operator widens it deliberately.
 const DEFAULT_MAP_TYPES: Record<NearbyTypeKey, boolean> = {
   restaurant: true,
   bar: true,
