@@ -92,13 +92,26 @@ jobs:
   check:
     name: instruction files in sync
     needs: changes
-    if: needs.changes.outputs.changed == 'true'
+    # THE JOB ITSELF MUST NEVER BE `if:`-GATED (MESITA-1679 fix, same bug
+    # fixed in brand.yml's sibling job). A job-level `if:` that evaluates
+    # false means the job does not run AT ALL and posts NO check run — so a
+    # PR that touches none of this filter's paths never gets an
+    # "instruction files in sync" status, and branch protection blocks it
+    # forever on a required check that will never arrive: the exact
+    # "Expected check that will never arrive" failure the comment on
+    # `pull_request: {}` above already names. MESITA-1576 fixed the TRIGGER
+    # (unfiltered on pull_request) but left this job-level `if:` re-creating
+    # the identical bug one level down. Gating each STEP instead keeps the
+    # job always green-and-reporting while still doing real work only when
+    # something in scope changed.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
+        if: needs.changes.outputs.changed == 'true'
         uses: actions/checkout@v4
 
       - name: Install Deno
+        if: needs.changes.outputs.changed == 'true'
         uses: denoland/setup-deno@v2
         with:
           deno-version: v2.9.1
@@ -106,19 +119,23 @@ jobs:
       # The gates guarding the gates. Runs first: a broken enforcement path
       # would otherwise fail below with a message about the wrong thing.
       - name: Test
+        if: needs.changes.outputs.changed == 'true'
         run: deno task test:rules
 
       - name: Test the shared-module gate
+        if: needs.changes.outputs.changed == 'true'
         run: deno task test:shared
 
       # One checkout covers the whole monorepo — the old per-repo --only
       # self-scoping (and its "cross-repo enforcement stays manual" caveat)
       # is gone with ASDM v5 (MESITA-456).
       - name: Check
+        if: needs.changes.outputs.changed == 'true'
         run: deno task sync-rules:check
 
       # Generated output is never hand-edited — same law, different source.
       # shared/** feeds the modules both web apps own; a drifted copy means
       # someone edited the generated file instead of the source.
       - name: Check shared modules
+        if: needs.changes.outputs.changed == 'true'
         run: deno task sync-shared:check
