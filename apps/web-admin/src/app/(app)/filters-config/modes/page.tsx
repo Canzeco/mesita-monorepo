@@ -1,6 +1,5 @@
 import { CatalogConfigClient } from "../CatalogConfigClient";
 import { DiscoveryConfigClient } from "../DiscoveryConfigClient";
-import { DiscoveryMatrix } from "../DiscoveryMatrix";
 import { FavsConfigCard } from "../DiscoverySurfaceCards";
 import { GeneralGateConfigClient } from "../GeneralGateConfigClient";
 import { MapConfigClient } from "../MapConfigClient";
@@ -9,11 +8,11 @@ import { SwipeConfigClient } from "../SwipeConfigClient";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
-// Discovery Modes — ways guests look. Matrix first, then General (the
-// post-Google wipe every mode runs), then one card per mode with locked
-// source chips, in section 8.1 order: Word · Map · Catalog · Swipe · Chat ·
-// Favorites. Word is one mode with two live boxes. Google types live on
-// Search Sources, the other subpage.
+// Discovery Modes — ways guests look. General (the post-Google wipe every
+// mode runs) leads, then one card per mode with locked source chips, in
+// section 8.1 order: Word · Map · Catalog · Swipe · Chat · Favorites. Word
+// is one mode with two live boxes. The matrix moved to its own subpage
+// (MESITA-1675); Google types live on Search Sources.
 export const dynamic = "force-dynamic";
 
 export default async function DiscoveryModesPage() {
@@ -23,7 +22,6 @@ export default async function DiscoveryModesPage() {
   const loadError = seed.ok ? null : seed.error;
   return (
     <div className="flex flex-col gap-10">
-      <DiscoveryMatrix />
       <GeneralGateConfigClient
         initialConfig={initialConfig}
         initialUpdatedAt={initialUpdatedAt}

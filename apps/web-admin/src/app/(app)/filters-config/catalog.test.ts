@@ -384,12 +384,13 @@ describe("Discovery function APIs", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is two subpages — Discovery Modes and Search Sources", () => {
+  it("is three subpages — Matrix, Discovery Modes and Search Sources", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const layout = readFileSync(join(__dirname, "layout.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const modesPage = readFileSync(join(__dirname, "modes/page.tsx"), "utf8");
     const sourcesPage = readFileSync(join(__dirname, "sources/page.tsx"), "utf8");
+    const matrixPage = readFileSync(join(__dirname, "matrix/page.tsx"), "utf8");
     const surfaces = readFileSync(join(__dirname, "DiscoverySurfaceCards.tsx"), "utf8");
     const swipe = readFileSync(join(__dirname, "SwipeConfigClient.tsx"), "utf8");
     const name = readFileSync(join(__dirname, "NameConfigClient.tsx"), "utf8");
@@ -406,6 +407,10 @@ describe("Discovery page box order", () => {
       "utf8",
     );
 
+    // Matrix leads (Pato, 2026-09-08): it is neither a mode nor a source,
+    // so it owns a page instead of riding on top of one.
+    expect(nav).toContain('label: "Matrix"');
+    expect(nav).toContain('"/filters-config/matrix"');
     expect(nav).toContain('label: "Discovery Modes"');
     // The second tab is Search Sources: all nine are searches, and the
     // matrix band on Modes has said so since it was drawn (Pato, 2026-09-02).
@@ -420,7 +425,7 @@ describe("Discovery page box order", () => {
     expect(chrome).toContain("ConfigTabNav");
     expect(chrome).toContain("DISCOVERY_TABS");
     expect(chrome).toContain("tab?.label");
-    expect(page).toContain("redirect(DISCOVERY_MODES_HREF)");
+    expect(page).toContain("redirect(DISCOVERY_MATRIX_HREF)");
     expect(page).not.toContain("GeneralConfigClient");
     expect(page).not.toContain("ConfigSection");
     expect(nextConfig).toContain('destination: "/filters-config/modes"');
@@ -540,7 +545,10 @@ describe("Discovery page box order", () => {
     expect(mesitaSources.match(/ConfigSoon\n/g)?.length).toBe(4);
     expect(chips).toContain("export function ModeSourceChips");
     expect(chips).toContain("None");
-    expect(modesPage).toContain("DiscoveryMatrix");
+    expect(matrixPage).toContain("DiscoveryMatrix");
+    expect(matrixPage).toContain("SignalsConfigClient");
+    expect(modesPage).not.toContain("DiscoveryMatrix");
+    expect(sourcesPage).not.toContain("SignalsConfigClient");
     const matrix = readFileSync(join(__dirname, "DiscoveryMatrix.tsx"), "utf8");
     expect(matrix).toContain("Places Types");
     expect(matrix).toContain("Search Sources");
@@ -565,11 +573,10 @@ describe("Discovery page box order", () => {
 
     const modesJsx = modesPage.slice(modesPage.indexOf("return ("));
     const sourcesJsx = sourcesPage.slice(sourcesPage.indexOf("return ("));
-    // General is the post-Google wipe: below the matrix, above Fast Search
-    // (Pato, 2026-08-29). It runs last but reads first. The mode cards then
-    // run in section 8.1 order.
+    // General is the post-Google wipe and now leads the page, the matrix
+    // having moved to its own subpage (MESITA-1675). It runs last but reads
+    // first. The mode cards then run in section 8.1 order.
     const modeOrder = [
-      "DiscoveryMatrix",
       "GeneralGateConfigClient",
       "NameConfigClient",
       "MapConfigClient",
@@ -595,8 +602,9 @@ describe("Discovery page box order", () => {
     const sourceOrder = [
       "GeneralConfigClient",
       "GoogleSourceCards",
+      "GoogleQualityFloorCard",
+      "PoolQualityFloorCard",
       "MesitaSourceCards",
-      "SignalsConfigClient",
     ];
     let lastSource = -1;
     for (const n of sourceOrder) {
