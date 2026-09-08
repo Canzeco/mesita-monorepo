@@ -10,16 +10,18 @@ import {
   DEFAULT_NAME,
   DEFAULT_SOCIAL,
   DEFAULT_SWIPE,
-  ENGINES,
   DISCOVERY_MODE_KEYS,
   DISCOVERY_MODE_SOURCES,
   DISCOVERY_SOURCES,
+  ENGINES,
+  GENERAL_CATEGORY_COUNT_MAX,
   LIBRARY_SIGNALS,
-  SIGNALS,
-  SIGNAL_KEYS,
   modeCallsSource,
   modeRequiresPool,
   modeSignalState,
+  NEARBY_TYPE_FIELDS,
+  SIGNAL_KEYS,
+  SIGNALS,
   snapMapReloadPair,
 } from "./catalog";
 
@@ -317,11 +319,29 @@ describe("Discovery function APIs", () => {
     expect(swipe?.process).not.toMatch(/two-signal/);
   });
 
-  it("coerceConfig defaults general.categoryCount to 5 and clamps 0–5", () => {
+  it("coerceConfig defaults general.categoryCount to every type and clamps 0–22", () => {
+    // The count means "how many of the code-defined types are available", so
+    // the default has always been the whole list. The list grew from 5 to 22
+    // when the strip caught up with the seven-Super law (MESITA-1683); the
+    // live blob stores 5, so nothing on production moved, and the seventeen
+    // new types default OFF regardless of the count.
+    expect(GENERAL_CATEGORY_COUNT_MAX).toBe(22);
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(coerceConfig({ general: { categoryCount: 99 } }).general.categoryCount).toBe(5);
+    expect(DEFAULT_GENERAL.categoryCount).toBe(GENERAL_CATEGORY_COUNT_MAX);
+    expect(coerceConfig({ general: { categoryCount: 99 } }).general.categoryCount).toBe(22);
     expect(coerceConfig({ general: { categoryCount: -1 } }).general.categoryCount).toBe(0);
     expect(coerceConfig({ general: { categoryCount: 3.6 } }).general.categoryCount).toBe(4);
+    // A stored 5 stays 5: the cap keeps the first five, which are the same
+    // five Google types the strip billed before it grew.
+    expect(coerceConfig({ general: { categoryCount: 5 } }).general.categoryCount).toBe(5);
+    expect(new Set(NEARBY_TYPE_FIELDS.slice(0, 5).map((f) => f.key))).toEqual(
+      new Set(["restaurant", "bar", "cafe", "night_club", "bakery"]),
+    );
+    // All seven Supers are represented now, not the three it knew.
+    expect(new Set(NEARBY_TYPE_FIELDS.map((f) => f.superLabel)).size).toBe(7);
+    for (const f of NEARBY_TYPE_FIELDS.slice(5)) {
+      expect(DEFAULT_MAP.types[f.key], f.key).toBe(false);
+    }
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3+3+3", () => {

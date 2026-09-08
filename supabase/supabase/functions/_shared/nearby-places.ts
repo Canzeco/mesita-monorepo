@@ -27,6 +27,7 @@ import {
   takeClosest,
 } from "./geo.ts";
 import { GOOGLE_SEARCH_TYPES } from "./google-type-super.ts";
+import { NEARBY_TYPE_KEYS, type NearbyTypeKey } from "./discovery-config.ts";
 
 /** Google maxes one Nearby call at 20 — the API's cap, not a policy. */
 export const GOOGLE_NEARBY_MAX = 20;
@@ -41,15 +42,12 @@ export const MESITA_NEARBY_POOL = 1000;
 export const GOOGLE_NEARBY_RADIUS_M = NEARBY_RADIUS_KM * 1000;
 const NEARBY_CACHE_MS = 15_000;
 
-export const NEARBY_TYPES = [
-  "restaurant",
-  "bar",
-  "cafe",
-  "night_club",
-  "bakery",
-] as const;
+// DERIVED, never a second list. This was its own five-key literal and drifted
+// out of lockstep the moment discovery_config grew (MESITA-1683); the test
+// below that pinned them together is now true by construction.
+export const NEARBY_TYPES = NEARBY_TYPE_KEYS;
 
-export type NearbyType = (typeof NEARBY_TYPES)[number];
+export type NearbyType = NearbyTypeKey;
 
 export type NearbyHit = {
   placeId: string;
