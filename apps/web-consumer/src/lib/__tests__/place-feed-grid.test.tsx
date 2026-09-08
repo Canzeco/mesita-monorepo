@@ -1,18 +1,22 @@
-// Feed's shape is the instruction, not an implementation detail (Pato,
-// MESITA-1621: "add places as if they were a feed, 2 wide, occupying almost
-// 100% of screen"), and so is Favs matching it (MESITA-1624: "saved places
-// must look the same"). Three numbers carry both — two columns, a 2-unit
-// gutter, a 2-unit page padding — and all three are Tailwind classes, which
-// means tsc cannot see them and the build cannot see them.
+// The place-grid geometry: two columns, a 2-unit gutter, a 2-unit page
+// padding. All three are Tailwind classes, which means tsc cannot see them and
+// the build cannot see them.
 //
-// THIS FILE PINS THE SHARING, NOT THE STRINGS. Feed and Favs already agreed
-// on the tile and disagreed on the frame around it: Favs shipped px-4 /
-// gap-2.5 / `grid-cols-1 min-[360px]:grid-cols-2` while Feed shipped px-2 /
-// gap-2 / two columns unconditionally, so the same card was ~9px narrower one
-// pill over and collapsed to a single column below 360px. Asserting the
-// literals per file is what let that happen — both files passed their own
-// test. The constants are the fix; these tests exist to keep them the only
-// copy.
+// THIS FILE USED TO PIN A SHARING RELATIONSHIP, AND THAT PREMISE IS GONE.
+// It was written because Feed and Favs agreed on the tile and disagreed on the
+// frame around it: Favs shipped px-4 / gap-2.5 / `grid-cols-1
+// min-[360px]:grid-cols-2` while Feed shipped px-2 / gap-2 / two columns
+// unconditionally, so the same card was ~9px narrower one pill over and
+// collapsed to a single column below 360px. Asserting literals per file is
+// what let that happen — both files passed their own test.
+//
+// MESITA-1697 DELETED THE FEED GRID. Feed is Catalog's rails now, so Favs is
+// the only surface left on these constants and the two-surface drift this file
+// was built to catch can no longer occur. It is kept, repointed at Favs alone,
+// as a plain regression guard: the constants are still invisible to tsc, and a
+// future second caller should find a test already here rather than rediscover
+// the drift. Do not read the assertions below as evidence that two surfaces
+// still share this grid — one does.
 //
 // Source-read rather than rendered, the same way favorites-saves-only and
 // ticket-state-drift read theirs: both surfaces paint a skeleton first
@@ -32,8 +36,9 @@ function read(rel: string): string {
   return readFileSync(join(__dirname, "..", "..", rel), "utf8");
 }
 
+// ONE surface since MESITA-1697. The array shape stays so the day a second
+// grid lands, adding it here is a one-line edit rather than a rewrite.
 const SURFACES = [
-  ["Feed", "components/consumer/home/PlaceFeed.tsx"],
   ["Favs", "components/consumer/home/FavoritesList.tsx"],
 ] as const;
 
@@ -91,9 +96,9 @@ describe("one place-grid geometry, shared", () => {
     expect(read(rel)).toContain("className={PLACE_TILE_SKELETON_CLASS}");
   });
 
-  // Feed is a fourth surface showing place tiles (Catalog's rails, Favs' grid,
-  // Pay's list). A Feed-only card would drift from the others on its own
-  // schedule — the heart's hit area, the opening dot, the promo chip.
+  // Three surfaces show place tiles (Feed's rails, Favs' grid, Pay's list).
+  // A surface-only card would drift from the others on its own schedule —
+  // the heart's hit area, the opening dot, the promo chip.
   it.each(SURFACES)("%s reuses FavoriteTile rather than minting a card", (
     _label,
     rel,
@@ -103,25 +108,32 @@ describe("one place-grid geometry, shared", () => {
     expect(src).toContain("<FavoriteTile");
   });
 
-  // CatalogRails is deliberately NOT a caller — horizontal rails under
-  // category headings answer a different question. If it ever adopts the
-  // constants this line is the deliberate edit that says so.
-  it("leaves Catalog's rails alone", () => {
+  // Feed's rails are deliberately NOT a caller — horizontal rails under
+  // category headings answer a different question from a vertical grid, even
+  // now that Feed is the tab wrapping them. If they ever adopt the constants
+  // this line is the deliberate edit that says so.
+  it("leaves Feed's rails alone", () => {
     const rails = read("components/consumer/home/CatalogRails.tsx");
     expect(rails).not.toContain("PLACE_GRID_CLASS");
     expect(rails).toContain("overflow-x-auto");
   });
 });
 
-// Feed reads the SHARED deck; Favs resolves saves against it. Neither fetches.
-describe("Feed rides the shared deck", () => {
-  const feed = read("components/consumer/home/PlaceFeed.tsx");
+// Scroll reads the SHARED deck; Favs resolves saves against it. Scroll adds
+// ONE fetch of its own and that is deliberate — HomeDeckBoundary sends no
+// coordinates, so without it Proximity would contribute nothing to Home.
+describe("Scroll rides the shared deck", () => {
+  const scroll = read("components/consumer/home/scroll/ScrollDeck.tsx");
 
-  it("takes the deck as a prop instead of fetching its own", () => {
-    const page = read("app/(shell)/discover/feed/page.tsx");
+  it("takes the deck as a prop", () => {
+    const page = read("app/(shell)/discover/scroll/page.tsx");
     expect(page).toContain("useHomeDeck()");
-    expect(feed).not.toContain("apiListCatalog");
-    expect(feed).not.toContain("useBrowserSupabase");
+    expect(scroll).not.toContain("apiListCatalog");
+  });
+
+  it("re-fetches only to add coordinates the boundary never sent", () => {
+    expect(scroll).toContain("apiRecommendDeck");
+    expect(scroll).toContain("lat: center.lat");
   });
 });
 
@@ -129,25 +141,30 @@ describe("Feed rides the shared deck", () => {
 // data for the moment"). Two properties keep it from quietly becoming the
 // product: real rows always win, and the guest is told when they are looking
 // at invented ones. Both are one-line edits away from being lost.
-describe("Feed's mock places are a fallback, and say so", () => {
-  const feed = read("components/consumer/home/PlaceFeed.tsx");
+describe("Scroll's mock places are a fallback, and say so", () => {
+  const feed = read("components/consumer/home/scroll/ScrollDeck.tsx");
   const mock = read("lib/mock/feed-places.ts");
 
-  // `places.length === 0` is the whole gate. Anything else — a flag, an env
-  // check, an unconditional mock — either shows invented places over real
-  // ones or strands the feed empty again once the catalog fills.
-  it("falls back only when the real deck is empty", () => {
-    expect(feed).toContain("const usingMock = places.length === 0;");
-    expect(feed).toContain(
-      "const rows = usingMock ? FEED_MOCK_PLACES : places;",
-    );
+  // The row count is the whole gate. Anything else — a flag, an env check, an
+  // unconditional mock — either shows invented places over real ones or
+  // strands the surface empty again once the catalog fills.
+  //
+  // SCROLL'S THRESHOLD IS `< 2`, NOT `=== 0`, and the difference is the shape
+  // rather than an off-by-one. The grid this replaced read honestly at one
+  // place: one tile among empty space is a short list. A vertical feed cannot
+  // perform the gesture it is named for with a single card — you open Home,
+  // see one place, flick up and nothing moves — so one real row is still a
+  // broken screen and still takes the sample deck.
+  it("falls back when the real deck cannot fill a scroll", () => {
+    expect(feed).toContain("const usingMock = rows.length < 2;");
+    expect(feed).toContain("? FEED_MOCK_PLACES");
   });
 
   // All-real or all-mock. A concatenation here would render a grid where the
   // notice strip is true of some tiles and false of others.
   it("never mixes real rows with mock rows", () => {
     expect(feed).not.toContain("...FEED_MOCK_PLACES");
-    expect(feed).not.toContain("places.concat");
+    expect(feed).not.toContain("rows.concat");
   });
 
   // Unlabelled mock data is the failure that outlives the mock: someone

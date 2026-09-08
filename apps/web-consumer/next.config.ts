@@ -31,10 +31,10 @@ const nextConfig: NextConfig = {
       // Swipe again as of MESITA-1615, was Catalog for one day, Search before
       // that — when /home was retired; chaining them through /home would
       // have made these two-hop, which route-structure T4 caps at exactly 2.
-      { source: "/explore", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/map", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/add", destination: "/discover/swipe", permanent: true },
+      { source: "/explore", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/map", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/add", destination: "/discover/scroll", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -84,13 +84,13 @@ const nextConfig: NextConfig = {
       // /home/favorites goes with them: FavoritesList exists under components/
       // but nothing rendered it and it needs the parked shared-deck fetch, so
       // there was no live surface to promote.
-      { source: "/home", destination: "/discover/swipe", permanent: true },
-      { source: "/home/swipe", destination: "/discover/swipe", permanent: true },
-      { source: "/home/catalog", destination: "/discover/swipe", permanent: true },
-      { source: "/home/chat", destination: "/discover/swipe", permanent: true },
-      { source: "/home/ai", destination: "/discover/swipe", permanent: true },
-      { source: "/home/social", destination: "/discover/swipe", permanent: true },
-      { source: "/home/favorites", destination: "/discover/swipe", permanent: true },
+      { source: "/home", destination: "/discover/scroll", permanent: true },
+      { source: "/home/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/home/catalog", destination: "/discover/scroll", permanent: true },
+      { source: "/home/chat", destination: "/discover/scroll", permanent: true },
+      { source: "/home/ai", destination: "/discover/scroll", permanent: true },
+      { source: "/home/social", destination: "/discover/scroll", permanent: true },
+      { source: "/home/favorites", destination: "/discover/scroll", permanent: true },
       // Explicit search intent, unlike the /home* leaves above — this one
       // stays pointed at Search's canonical route regardless of what the
       // Discover DEFAULT is, the same way /discover/map (below) does. /search
@@ -120,7 +120,22 @@ const nextConfig: NextConfig = {
       // route entirely: the page would never render. So the entry is deleted,
       // not repointed, and Home must NOT be re-pointed through it either —
       // that would land Catalog's bookmarks on a different mode.
-      { source: "/discover/home", destination: "/discover/catalog", permanent: true },
+      { source: "/discover/home", destination: "/discover/feed", permanent: true },
+      // MESITA-1697 — the two renamed segments. Swipe's address was
+      // `discoverDefault` for a week (BottomNav's Home href, the post-signin
+      // and onboarding targets, place detail's fallback), so its bookmarks are
+      // the realest in the consumer surface. Both forward in ONE hop; every
+      // /explore* and /home* entry above was re-pointed at /discover/scroll in
+      // the same change rather than being left to chain through here.
+      //
+      // NOTHING MAY BE ADDED FOR /discover/scroll, /discover/feed,
+      // /discover/chat OR /discover/favs. A redirect whose SOURCE is a live
+      // route shadows it entirely — the page never renders, and typecheck,
+      // build and the whole vitest suite stay green. That is exactly how
+      // /discover/feed was unreachable before MESITA-1621 deleted its entry.
+      // route-structure.test.tsx now asserts this directly.
+      { source: "/discover/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/discover/catalog", destination: "/discover/feed", permanent: true },
       // The Saved tab (reservations, favorites) and the /saved/place dual path.
       // The contract still lists these legacy sources; without entries they 404ed
       // (MESITA-1585). One hop each, straight to the canonical surface.

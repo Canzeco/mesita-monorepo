@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
-import { clearSwipeProgress } from "@/components/consumer/home/swipe/swipe-deck-storage";
+import { clearSwipeProgress } from "@/components/consumer/home/deck-progress";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,

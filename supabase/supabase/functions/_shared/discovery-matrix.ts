@@ -93,7 +93,6 @@ export const DISCOVERY_SOURCES = [
   "Google Places Nearby Search",
   "Mesita Places Name Search",
   "Mesita Places Nearby Search",
-  "Mesita Places Browse Search",
   "Mesita Places Flexible Search",
   "Mesita Social Browse Search",
   "Mesita Social Flexible Search",
@@ -108,12 +107,21 @@ export const DISCOVERY_SOURCES = [
  *
  *   Name      a string, matched on `places.name_embedding`   → Word
  *   Nearby    a centre and a radius, closest-N               → Map
- *   Browse    no query at all, the catalog itself            → Catalog
- *   Flexible  an arbitrary set of predicates                 → Swipe, Chat
+ *   Browse    no query at all, the catalog itself            → Social rails
+ *   Flexible  an arbitrary set of predicates                 → Swipe, Catalog, Chat
  *
- * SWIPE IS FLEXIBLE, NOT BROWSE, and the difference is the guest's own filter
- * sheet: Swipe admits on four predicates it was handed, Catalog admits on
- * nothing and rails whatever the catalog holds.
+ * CATALOG BECAME FLEXIBLE AT MESITA-1697, and this is the reclassification
+ * that came with it. The rule never changed — a source is Flexible when the
+ * guest hands it predicates — but Catalog's surface (Home's Feed) grew a
+ * filter control, and `consumer-web-list-catalog` now cuts its pool with
+ * `applyDeckPredicates` before it plans a single rail. It stopped admitting on
+ * nothing, so it stopped being Browse.
+ *
+ * This block used to read "SWIPE IS FLEXIBLE, NOT BROWSE, and the difference
+ * is the guest's own filter sheet". That contrast is retired rather than
+ * wrong: both modes now carry one. Browse currently has no mode at all, and it
+ * is kept in the table because it is what any future engine that rails the
+ * catalog with no guest input would be.
  *
  * THE SOCIAL SOURCES OUTLIVED THE SOCIAL MODE. Social answers with events a
  * place hosts, not with places, and it lost its own surface when the mode list
@@ -128,7 +136,7 @@ export const DISCOVERY_MODE_SOURCES = {
     "Mesita Places Name Search",
   ],
   map: ["Google Places Nearby Search", "Mesita Places Nearby Search"],
-  catalog: ["Mesita Places Browse Search", "Mesita Social Browse Search"],
+  catalog: ["Mesita Places Flexible Search", "Mesita Social Browse Search"],
   swipe: ["Mesita Places Flexible Search"],
   chat: [
     "Google Places Text Search",

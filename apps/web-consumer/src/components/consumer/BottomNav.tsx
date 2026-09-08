@@ -116,8 +116,7 @@ const ITEMS: Item[] = [
     // tsc cannot see it, and only T5's matrix does.
     matchPrefixes: [
       CONSUMER_ROUTE_PREFIX.place,
-      CONSUMER_ROUTES.discoverTabs.catalog,
-      CONSUMER_ROUTES.discoverTabs.swipe,
+      CONSUMER_ROUTES.discoverTabs.scroll,
       CONSUMER_ROUTES.discoverTabs.feed,
       CONSUMER_ROUTES.discoverTabs.chat,
       CONSUMER_ROUTES.discoverTabs.favs,

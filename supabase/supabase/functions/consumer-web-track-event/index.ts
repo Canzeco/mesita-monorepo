@@ -33,6 +33,10 @@ const ALLOWED_EVENTS = new Set([
   // organizations is a named design case); this is the only new interaction
   // the read adds.
   "wallet_load_more_tap",
+  // MESITA-1697 — Home's modes, finally instrumented. See track.ts.
+  "home_mode_view",
+  "home_card_open",
+  "home_card_save",
 ]);
 
 type Body = { event?: string; payload?: Record<string, unknown> };

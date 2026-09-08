@@ -57,19 +57,19 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // key and a `legacy.discoverFeed` ever appear together, the page is
       // dead and only this pairing shows it.
       discoverTabs: {
-        swipe: "/discover/swipe",
+        scroll: "/discover/scroll",
         feed: "/discover/feed",
-        catalog: "/discover/catalog",
         chat: "/discover/chat",
         favs: "/discover/favs",
       },
       // Default IS the first pill (MESITA-1609/1615) — Search left this rail
       // for its own tab, so the reason the default sat off the lead (Search's
-      // urgency, buried behind width wins) left with it. Swipe leads and is
-      // the default now (MESITA-1615, live instruction), not Catalog.
+      // urgency, buried behind width wins) left with it. Scroll leads and is
+      // the default (MESITA-1697; Swipe held it from MESITA-1615, and Scroll
+      // is that same deck rendered vertically rather than a new mode).
       // Activity's still-live version of this pattern (Alerts leads, bare
       // /inbox lands on Visits) is a SEPARATE, unaffected decision.
-      discoverDefault: "/discover/swipe",
+      discoverDefault: "/discover/scroll",
       place: { prefix: "/place/" },
       reservation: { prefix: "/reservation/" },
       // Pay is a container again: New (bare) + Wallet. Wallet spent 2026-09-05
@@ -107,9 +107,16 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         inboxOrders: "/inbox/orders",
         discoverSearch: "/discover/search",
         discoverMap: "/discover/map",
-        // NO `discoverFeed` — /discover/feed is Home's Feed mode now
-        // (MESITA-1621), a live page, not a forwarding address.
+        // NO `discoverFeed` — /discover/feed is Home's Feed mode
+        // (MESITA-1621, and the rails since MESITA-1697): a live page, not a
+        // forwarding address. This is the pairing that would expose it if a
+        // redirect for that path ever reappeared.
         discoverHome: "/discover/home",
+        // The two segments MESITA-1697 renamed. `discoverSwipe` was
+        // `discoverDefault` for the week before it, so its bookmarks are the
+        // realest in the consumer surface.
+        discoverSwipe: "/discover/swipe",
+        discoverCatalog: "/discover/catalog",
         rewards: "/rewards",
         rewardsTicketPrefix: "/rewards/ticket/",
         meClass: "/me/class",
@@ -297,10 +304,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // Explore era (pre-Home). Repointed at the Discover default when /home
       // was retired — chaining through /home would make these two-hop, and
       // T4 caps at 2. Default is Swipe again as of MESITA-1615.
-      { source: "/explore", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/swipe", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/map", destination: "/discover/swipe", permanent: true },
-      { source: "/explore/add", destination: "/discover/swipe", permanent: true },
+      { source: "/explore", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/map", destination: "/discover/scroll", permanent: true },
+      { source: "/explore/add", destination: "/discover/scroll", permanent: true },
       {
         source: "/explore/place/:id",
         destination: "/place/:id",
@@ -334,13 +341,13 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // here rather than chaining through /home/chat — that page is deleted,
       // so the old chain would dangle AND cost a second hop against T4's cap
       // of 2.
-      { source: "/home", destination: "/discover/swipe", permanent: true },
-      { source: "/home/swipe", destination: "/discover/swipe", permanent: true },
-      { source: "/home/catalog", destination: "/discover/swipe", permanent: true },
-      { source: "/home/chat", destination: "/discover/swipe", permanent: true },
-      { source: "/home/ai", destination: "/discover/swipe", permanent: true },
-      { source: "/home/social", destination: "/discover/swipe", permanent: true },
-      { source: "/home/favorites", destination: "/discover/swipe", permanent: true },
+      { source: "/home", destination: "/discover/scroll", permanent: true },
+      { source: "/home/swipe", destination: "/discover/scroll", permanent: true },
+      { source: "/home/catalog", destination: "/discover/scroll", permanent: true },
+      { source: "/home/chat", destination: "/discover/scroll", permanent: true },
+      { source: "/home/ai", destination: "/discover/scroll", permanent: true },
+      { source: "/home/social", destination: "/discover/scroll", permanent: true },
+      { source: "/home/favorites", destination: "/discover/scroll", permanent: true },
       // The just-shipped Search route (MESITA-1609, six days -> MESITA-1616).
       // Straight to the new canonical /search, never chained through
       // /discover/map, which points here too.
@@ -367,7 +374,19 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       // page it would break is otherwise silent.
       {
         source: "/discover/home",
-        destination: "/discover/catalog",
+        destination: "/discover/feed",
+        permanent: true,
+      },
+      // MESITA-1697's two renames. Both one hop; the /explore* and /home*
+      // entries above were re-pointed rather than left to chain through here.
+      {
+        source: "/discover/swipe",
+        destination: "/discover/scroll",
+        permanent: true,
+      },
+      {
+        source: "/discover/catalog",
+        destination: "/discover/feed",
         permanent: true,
       },
       // The Saved tab and the /saved/place dual path (MESITA-1585).

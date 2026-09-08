@@ -1,9 +1,18 @@
 import { placePath } from "@/lib/consumer-route-contract";
 
+// Every word that is (or was) a route segment, so a place slug can never mint
+// a URL that collides with one. `swipe` and `catalog` stay after MESITA-1697
+// renamed their segments — both are still live redirect sources, so a place
+// slugged "swipe" would still land on a 308 rather than on itself.
 const RESERVED_PLACE_SEGMENTS = new Set([
   "discover",
   "explore",
   "swipe",
+  "scroll",
+  "feed",
+  "catalog",
+  "chat",
+  "favs",
   "map",
   "search",
   "add",

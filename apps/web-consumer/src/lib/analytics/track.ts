@@ -16,7 +16,22 @@ export type AnalyticsEvent =
   // interaction the read adds. NOTE: analytics-events-paired.test.ts's
   // extractor stops at the first literal semicolon after `AnalyticsEvent =`
   // — keep any comment inside this union semicolon-free.
-  | "wallet_load_more_tap";
+  | "wallet_load_more_tap"
+  // MESITA-1697 — Home's modes, finally instrumented. The rail went seven
+  // modes to five to four across two weeks and this table could not say which
+  // mode a guest used, which produced a visit, or whether anyone opened Chat
+  // at all — `nav_tab_tap` fires from BottomNav only, so every in-Home switch
+  // was invisible. `home_card_open` joins to `ticket_created` through the
+  // place, which turns the question of which mode converts into a query
+  // instead of an argument.
+  //
+  // NO DOUBLE QUOTES ANYWHERE IN THIS BLOCK. The paired test extracts every
+  // quoted string between `AnalyticsEvent =` and the semicolon, so a quoted
+  // phrase in a comment here becomes a phantom event and fails the pairing —
+  // which is exactly how this note got written
+  | "home_mode_view"
+  | "home_card_open"
+  | "home_card_save";
 
 /**
  * Fire-and-forget product event. NEVER throws and NEVER awaited by a

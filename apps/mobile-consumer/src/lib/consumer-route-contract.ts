@@ -61,26 +61,21 @@ export const CONSUMER_ROUTES = {
   // (see apps/mobile-consumer/CLAUDE.md, MESITA-1485), so Home and Search
   // stay two distinct Expo screens. These keys mirror web's discoverTabs
   // SHAPE for concept parity: `search` maps to mobile's own separate, real
-  // screen; the other four (renamed to web's current names — `ai`→`chat`,
-  // `social` folded into `catalog`, `favorites`→`favs`) collapse onto Home's
-  // in-screen state, same convention the old `homeTabs` used.
+  // screen; the rest collapse onto Home's in-screen state, same convention
+  // the old `homeTabs` used.
   discoverTabs: {
-    catalog: '/(tabs)/home',
-    search: '/(tabs)/search',
-    swipe: '/(tabs)/home',
-    // Web gained a Feed mode at MESITA-1621 (its own /discover/feed route, a
-    // two-column grid of the deck). Mirrored here for shape parity only —
-    // mobile's Home screen has no feed state to point at, so it collapses
-    // onto the tab like every other mode. Building the screen is copy-pass
-    // work, which the freeze holds.
+    // Web went to FOUR modes at MESITA-1697 — Swipe became Scroll (the same
+    // deck rendered vertically) and Catalog's body moved under Feed's name.
+    // Mobile's Home screen still has no per-mode state to point at, so all
+    // four collapse onto it exactly as the five did.
+    scroll: '/(tabs)/home',
     feed: '/(tabs)/home',
     chat: '/(tabs)/home',
     favs: '/(tabs)/home',
   },
-  // Web's default is search-first now (`discoverDefault: "/discover/search"`,
-  // 2026-09-01). Repointing mobile's default landing tab to Search would be
-  // a real behavior change, which the freeze forbids — this stays Home until
-  // the copy pass actually merges the tabs.
+  // Web's default is `/discover/scroll` (MESITA-1697; it was
+  // `/discover/swipe` from MESITA-1615 and `/discover/search` before that —
+  // this comment claimed the last of those for two renames running).
   discoverDefault: '/(tabs)/home',
   // Same value as discoverDefault, kept under its OLD name only because
   // app/index.tsx's auth-gate redirect — one of the files this freeze

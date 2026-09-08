@@ -430,11 +430,20 @@ export type CatalogRail = {
 export async function apiListCatalog(
   client: SupabaseClient,
   origin?: { lat: number; lng: number } | null,
+  /**
+   * The guest's predicates (MESITA-1697). Sent so the EF cuts its POOL before
+   * planning rails — filtering the response here instead would leave 0-2 tiles
+   * under headings that still paint. See the EF's own note.
+   */
+  predicates?: DiscoveryPredicatesWire,
 ): Promise<CatalogRail[]> {
   const data = await invokeEF<{ rails: CatalogRail[] }>(
     client,
     "consumer-web-list-catalog",
-    origin ? { lat: origin.lat, lng: origin.lng } : {},
+    {
+      ...(origin ? { lat: origin.lat, lng: origin.lng } : {}),
+      ...(predicates ? { predicates } : {}),
+    },
   );
   return (data.rails ?? []).map((rail) => ({
     ...rail,

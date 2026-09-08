@@ -18,6 +18,10 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_EXTRA_COLUMNS } from "../_shared/discovery-place.ts";
 import { applyDiscoveryFilters, trimToRadius } from "../_shared/discovery-filters.ts";
+import {
+  applyDeckPredicates,
+  readDeckPredicates,
+} from "../_shared/discovery-predicates.ts";
 import { CATALOG_VIBE_QUERIES } from "../_shared/catalog-vibe-queries.ts";
 import {
   matchIlike,
@@ -33,6 +37,25 @@ const POOL_CAP = 1000;
 type Body = {
   lat?: number;
   lng?: number;
+  /**
+   * The guest's four discovery predicates (MESITA-1697). Feed grew a filter
+   * control when it absorbed Catalog's body, and this is where that control
+   * lands.
+   *
+   * IT HAD TO CUT HERE, NOT IN THE BROWSER. Each rail is sliced to
+   * `cfg.catalog.placesPerRail` (8) from the pool BEFORE it is returned, so
+   * filtering the response client-side leaves 0-2 tiles under a heading that
+   * still paints — a filtered catalog that looks broken rather than filtered.
+   * Cutting the pool first means every rail that survives is a full rail, and
+   * a rail with nothing left is dropped entirely by the existing `continue`.
+   *
+   * This is the same cut-before-you-rank rule discovery-predicates.ts states
+   * and consumer-web-recommend-swipe already follows; Catalog was simply the
+   * one engine that had no way to express it. Omitting the field keeps the
+   * operator pool exactly as before, which is what every deployed Expo binary
+   * sends.
+   */
+  predicates?: unknown;
 };
 
 function wirePlaces(rows: PlaceProfileRow[]) {
@@ -86,13 +109,26 @@ Deno.serve(async (req) => {
   }
 
   const admitted = (data ?? []) as unknown as PlaceProfileRow[];
-  const pool = trimToRadius(
+  const withinRadius = trimToRadius(
     admitted,
     (r) => (r as unknown as Record<string, unknown>).lat as number | null,
     (r) => (r as unknown as Record<string, unknown>).lng as number | null,
     cfg.filters.maxDistanceKm,
     geo,
   ) as PlaceProfileRow[];
+
+  // GUEST PREDICATES CUT THE POOL, before rails are planned or filled. Rail
+  // OCCUPANCY is computed from the cut pool too, so a category whose only
+  // places are closed right now stops producing a heading at all rather than
+  // producing an empty one.
+  const guestPredicates = readDeckPredicates(body.predicates);
+  const pool = applyDeckPredicates(
+    withinRadius as unknown as Record<string, unknown>[],
+    guestPredicates,
+    geo.lat !== null && geo.lng !== null
+      ? { lat: geo.lat, lng: geo.lng }
+      : null,
+  ) as unknown as PlaceProfileRow[];
 
   const occupied = occupiedFromRows(pool, cfg.catalog.minSeedPlaces);
   const plan = planCatalogRails(cfg.catalog, occupied, CATALOG_VIBE_QUERIES);
@@ -132,6 +168,7 @@ Deno.serve(async (req) => {
     rails,
     summary: {
       pool: pool.length,
+      admitted: withinRadius.length,
       seedPlanned: plan.filter((r) => r.source === "seed").length,
       generatedPlanned: generated.length,
     },

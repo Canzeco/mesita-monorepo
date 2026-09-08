@@ -238,8 +238,9 @@ describe("T5 — exactly one tab lights per surface", () => {
     // Feed is here because it is the newest (MESITA-1621) and a mode added to
     // the rail but missed in BottomNav's matchPrefixes renders with NO tab
     // lit — nothing else catches that.
-    ["/discover/catalog", "Home"],
-    ["/discover/swipe", "Home"],
+    ["/discover/feed", "Home"],
+    ["/discover/chat", "Home"],
+    ["/discover/scroll", "Home"],
     ["/discover/feed", "Home"],
     ["/discover/favs", "Home"],
     // /place rode the Home entry until the hub was retired (2026-09-01) and
@@ -351,24 +352,27 @@ describe("MESITA-1609 — Home/Search split, Activity retires as a tab", () => {
 //
 // It also pins ORDER and COUNT. Search left this rail for its own tab
 // (MESITA-1609) and then its own route (MESITA-1616); Feed joined at
-// MESITA-1621, second, so five modes now, Swipe still leading (MESITA-1615).
+// MESITA-1621. MESITA-1697 cut it to FOUR — Swipe became Scroll (same deck,
+// vertical) and Catalog's body moved under Feed's name, so the two words that
+// left are a rename and a merge rather than two deletions. The order is the
+// input-cost ladder DiscoverModeNav documents: zero input, structured,
+// freeform, recall.
 describe("T5b — Home's mode rail", () => {
-  it("is exactly Swipe · Feed · Catalog · Chat · Favs", async () => {
+  it("is exactly Scroll · Feed · Chat · Favs", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(MODES.map((m) => m.label)).toEqual([
-      "Swipe",
+      "Scroll",
       "Feed",
-      "Catalog",
       "Chat",
       "Favs",
     ]);
   });
 
   // The width budget, as an assertion rather than a comment. `auto-cols-fr`
-  // sizes every column to the WIDEST pill, so the track is N x widest + 16px
-  // of gaps and it has to fit 359px (375 frame less px-2). Chrome per pill is
+  // sizes every column to the WIDEST pill, so the track is N x widest plus
+  // (N-1) x 4px of gaps and it has to fit 359px (375 frame less px-2). Chrome
   // 26px: a 14px icon, gap-1, and px-1 either side.
   //
   // THIS IS THE ASSERTION THAT JUST DID ITS JOB. It was written when Search
@@ -398,32 +402,45 @@ describe("T5b — Home's mode rail", () => {
     );
     // Match the `base` class string itself, not the word anywhere in the file
     // — both sizes are NAMED in that file's comment explaining the swap.
-    expect(navSrc).toContain('"type-label flex items-center');
-    expect(navSrc).not.toContain("py-2 text-xs font-semibold");
+    //
+    // 12px IS THE SIZE AGAIN (MESITA-1697). `type-label` (11px) was adopted
+    // only because Catalog at 40.3px made five columns overflow, and Catalog's
+    // label is gone. At four columns `auto-cols-fr` hands each pill ~87px for
+    // ~53px of content, and an 11px label floating in that reads as an
+    // unfinished render.
+    expect(navSrc).toContain('"text-xs flex items-center');
+    expect(navSrc).not.toContain('"type-label flex items-center');
+    // Advance widths at Inter 600. The four live labels are measured at 12px;
+    // the retired ones stay as the 11px figures the rail was budgeted with, so
+    // the reasoning survives its own rename.
     const TEXT_PX: Record<string, number> = {
-      Swipe: 31.8,
-      Feed: 25.4,
-      Catalog: 40.3,
-      Chat: 24.5,
-      Favs: 25.1,
+      Scroll: 32.7,
+      Feed: 27.7,
+      Chat: 26.7,
+      Favs: 27.4,
     };
+    // Chrome per pill: 16px icon + 4px gap-1 + 8px px-1 = 28 (the icon grew
+    // with the type). Gaps between N columns = N-1, not N — the five-column
+    // version of this line said `+ 16` for four gaps.
     const widest = Math.max(
       ...MODES.map((m) => {
         const text = TEXT_PX[m.label];
         expect(text, `unmeasured label "${m.label}" — measure it at 375px`).
           toBeTypeOf("number");
-        return text + 26;
+        return text + 28;
       }),
     );
-    expect(widest * MODES.length + 16).toBeLessThanOrEqual(359);
+    expect(widest * MODES.length + (MODES.length - 1) * 4).toBeLessThanOrEqual(
+      359,
+    );
   });
 
-  it("has no parked modes — all five are real destinations", async () => {
+  it("has no parked modes — all four are real destinations", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
-    // Swipe, Chat and Favs un-parked 2026-09-01; Feed landed live at
-    // MESITA-1621. A `soon` flag reappearing means a mode shipped unfinished;
+    // Scroll, Feed, Chat and Favs are all live (MESITA-1697). A `soon` flag
+    // reappearing means a mode shipped unfinished;
     // that is allowed, but it should be a deliberate edit to this assertion
     // rather than a silent regression.
     expect(MODES.filter((m) => m.soon)).toEqual([]);
@@ -450,21 +467,21 @@ describe("T5b — Home's mode rail", () => {
   // width win — was the urgent mode nobody landed on by looking; once Search
   // left the rail entirely, there was no more urgent mode among the
   // remaining four to bury, so first-pill-is-default stopped being a trap.
-  // Swipe leading now (MESITA-1615, live instruction) doesn't reopen that —
-  // it just carries the same property to a different mode. See
+  // Scroll leading now (MESITA-1697; Swipe held it from MESITA-1615) doesn't
+  // reopen that — it just carries the same property to a different mode. See
   // consumer-route-contract.ts's discoverDefault comment for the full
   // reasoning. Do NOT re-derive this from Activity's still-live
   // Alerts-leads/Visits-lands split (inboxDefault) — the two rows no longer
   // share a justification.
-  it("lands Home on Swipe — its own leading pill", async () => {
+  it("lands Home on Scroll — its own leading pill", async () => {
     const { MODES } = await import(
       "@/components/consumer/discover/DiscoverModeNav"
     );
     expect(CONSUMER_ROUTES.discoverDefault).toBe(
-      CONSUMER_ROUTES.discoverTabs.swipe,
+      CONSUMER_ROUTES.discoverTabs.scroll,
     );
     expect(MODES[0].href).toBe(CONSUMER_ROUTES.discoverDefault);
-    expect(MODES[0].label).toBe("Swipe");
+    expect(MODES[0].label).toBe("Scroll");
     // The guard that makes "the first tab lands on nothing" impossible to
     // reintroduce: whatever the default points at must be a LIVE mode.
     const landed = MODES.find(

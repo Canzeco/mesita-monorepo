@@ -233,6 +233,27 @@ export function hasDiscoveryPredicates(f: DiscoveryFilters): boolean {
   );
 }
 
+/**
+ * HOW MANY FILTERS ARE APPLIED — not how many places match.
+ *
+ * The two numbers live one component apart on Feed and are both called
+ * `count`: this one labels the trigger ("Filters · 2"), while `DiscoveryFilters`
+ * takes the number of PLACES the current filters leave visible for its CTA.
+ * Reading either as the other is the bug this exists to make hard.
+ *
+ * Zone is excluded deliberately — it recentres the search rather than narrowing
+ * it, and `hasDiscoveryPredicates` leaves it out for the same reason.
+ */
+export function countAppliedDiscoveryFilters(f: DiscoveryFilters): number {
+  let n = 0;
+  if (contextNarrows(f.context)) n += 1;
+  if (f.familyKeys.length > 0) n += 1;
+  if (f.categories.length > 0) n += 1;
+  if (f.maxKm !== null) n += 1;
+  if (f.when.mode !== "anytime") n += 1;
+  return n;
+}
+
 /** Any deviation from defaults — drives the red trigger dot (MESITA-633). */
 export function discoveryFiltersAreActive(f: DiscoveryFilters): boolean {
   return hasDiscoveryPredicates(f) || f.zone !== null;
