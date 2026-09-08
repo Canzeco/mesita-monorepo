@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Instagram } from "lucide-react";
+import { Instagram, MessageCircle } from "lucide-react";
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { DefaultAvatar } from "@/components/consumer/DefaultAvatar";
 import { classFillClass } from "@/lib/consumer-data";
@@ -73,6 +73,11 @@ import { cn } from "@/lib/utils";
 // says the class in words. That something is now the class chip's own label,
 // inside this subtree — closer than it has been since MESITA-1650 put it on a
 // cell further down the page.
+/** One chip in the bar's 2x2. 28px is what fits inside SHELL_BAR_MIN_H with
+ *  two rows and a 6px gap — measured, see the note at the call site. */
+const CHIP_CLASS =
+  "border-border text-foreground type-label inline-flex h-7 min-w-0 items-center justify-center gap-1.5 rounded-full border px-2.5 font-semibold";
+
 export function PassportBar({
   profile,
   loading,
@@ -118,10 +123,13 @@ export function PassportBar({
                 is the real avatar (36 + the 2px ring and 1.5px inset, both
                 sides), 20px the real name. */}
             <div className="bg-muted h-[43px] w-[43px] shrink-0 animate-pulse rounded-full" />
-            <div className="bg-muted h-5 w-32 animate-pulse rounded" />
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <div className="bg-muted h-9 w-20 animate-pulse rounded-full" />
-              <div className="bg-muted h-9 w-24 animate-pulse rounded-full" />
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-muted h-7 animate-pulse rounded-full"
+                />
+              ))}
             </div>
           </>
         ) : (
@@ -150,33 +158,54 @@ export function PassportBar({
               </span>
             </span>
 
-            {/* The name yields first. At 375px the two chips and the photo are
-                fixed width, so this is the only thing that can absorb a long
-                name — and a truncated name beats a wrapped bar. */}
-            <span className="font-display min-w-0 flex-1 truncate text-base leading-tight font-semibold tracking-tight">
-              {name}
-            </span>
+            {/* A 2x2 INSIDE THE SAME 77px (Pato, MESITA-1655). The wireframe
+                had a 104px centred avatar over the chips, which measures
+                244px — 3.2x the height Pato asked for one issue earlier and
+                within 9px of the card MESITA-1649/-1650 spent two issues
+                removing. The composition moved inside the bar instead.
+                Measured: 28px chips with a 6px gap total exactly 77px.
 
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {/* INSTAGRAM FIRST (Pato, MESITA-1653). NO METAL on either, on
-                  purpose — see the header note. The rung in words is also
-                  what lets the band and ring stay aria-hidden. */}
+                THE COST, STATED: chips went 36px → 28px, so the two LIVE ones
+                (Class, Instagram) have smaller tap targets. Name is display
+                and WhatsApp is parked, so only those two pay it. Reverting is
+                a height change, not a layout one. */}
+            <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+              <span className={CHIP_CLASS}>
+                <span className="truncate">{name}</span>
+              </span>
+              {/* PARKED, and it has to be. The consumer has no WhatsApp
+                  anywhere: `consumers.phone` is the AUTH IDENTITY (see
+                  api/profile.ts), `whatsapp_url` belongs to a place, and
+                  `staff_whatsapp_sessions.phone_e164` is the STAFF phone.
+                  Printing the auth phone here would also leak it — this
+                  passport is public when `privacy_public` is on. */}
+              <span
+                className={cn(CHIP_CLASS, "opacity-60")}
+                title="Coming soon"
+                aria-label="WhatsApp: coming soon"
+              >
+                <MessageCircle className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="truncate">Soon</span>
+              </span>
+              {/* NO METAL on either live chip, on purpose — see the header
+                  note. The rung in words is also what lets the band and ring
+                  stay aria-hidden. Instagram first (MESITA-1653). */}
               <button
                 type="button"
                 onClick={onOpenInstagram}
                 aria-label={`Instagram: ${instagramSummary}`}
-                className="border-border text-foreground hover:bg-muted inline-flex h-9 max-w-[9rem] shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition"
+                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
               >
-                <Instagram className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <Instagram className="h-3 w-3 shrink-0" aria-hidden />
                 <span className="truncate">{instagramSummary}</span>
               </button>
               <button
                 type="button"
                 onClick={onOpenClass}
                 aria-label={`Class: ${classLabel}`}
-                className="border-border text-foreground hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-3 text-xs font-semibold transition"
+                className={cn(CHIP_CLASS, "hover:bg-muted transition")}
               >
-                {classLabel}
+                <span className="truncate">{classLabel}</span>
               </button>
             </div>
           </>
