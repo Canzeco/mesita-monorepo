@@ -102,15 +102,24 @@ describe("vocabulary contract", () => {
     expect(TABLE_CODE).not.toContain("factOn");
   });
 
-  // MESITA-1637. Pato: "the intake states are internal." The block came off
-  // this table AND off the payload, so the guard is a source guard: an import
-  // is what a re-add would start with, and the meter is what a re-add would
-  // reach for first if the map were only hidden.
-  it("holds no intake at all — not the map, not the meter", () => {
-    expect(TABLE_CODE).not.toContain("intakeFunctionRows");
-    expect(TABLE_CODE).not.toContain("enrich_functions");
-    expect(TABLE_CODE).not.toContain("intakePulse");
+  // MESITA-1687, reversing MESITA-1637's "the intake states are internal."
+  // The map is back on the wire and back on this table, behind ONE toggle —
+  // so the guard is now that the toggle exists, defaults closed, and the
+  // eleven functions read through the same shared fold the Place screen
+  // uses, not a second mapper.
+  it("is a client component, so its own toggle state can exist", () => {
+    expect(TABLE.startsWith('"use client"')).toBe(true);
+  });
+
+  it("gates intake behind one toggle, collapsed by default", () => {
+    expect(TABLE_CODE).toContain("useState(false)");
+    expect(TABLE_CODE).toContain("showIntake");
+  });
+
+  it("reads the eleven functions through the shared fold, not a second mapper", () => {
+    expect(TABLE_CODE).toContain("intakeFunctionRows");
     expect(TABLE_CODE).not.toContain("enrich_pulse");
+    expect(TABLE_CODE).not.toContain("intakePulse");
   });
 
   // The two general columns intake used to sit beside. Removing the block is

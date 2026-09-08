@@ -1,3 +1,5 @@
+"use client";
+
 // The console place list, as a MATRIX (MESITA-1608).
 //
 //   Rows are places. Columns are states. The left column is identity and holds
@@ -28,38 +30,46 @@
 // have been a fourth mapper for one question, and its trailing `return false`
 // means a fact nobody wired renders "no" forever, with total confidence.
 //
-// INTAKE IS NOT ON THIS TABLE (Pato, 2026-09-07: "the intake states are
-// internal"). MESITA-1608 put the eleven Intake function columns here beside
-// the general ones; this reverses that half of it. How far our pipeline got on
-// a place is operator knowledge — it answers a question the business never
-// asked and cannot act on, and it already has a home on the super-admin-only
-// Admin tab of the Place screen. The EF stopped shipping `enrich_functions`
-// with it, because "internal" is a reason not to put the map in a business
-// browser at all, not merely a reason to hide it.
+// INTAKE IS BACK, BEHIND ONE TOGGLE (MESITA-1687, reversing MESITA-1637's
+// "the intake states are internal"). Pato, 2026-09-08: ship the per-function
+// map to every business browser again — the toggle is what keeps it out of
+// sight by default, not a server-side withhold, so "internal" is now a UI
+// default rather than a wire-level guarantee. `showIntake` starts `false`:
+// the eleven functions answer an operator question most managers never ask,
+// and a collapsed toggle keeps the matrix at its MESITA-1651 width until
+// someone actually wants the detail. This file has to be a Client Component
+// for that piece of state to exist at all — `renderAction` used to be a
+// function called during server render; it is now `actionsByPlaceId`, a
+// plain Record of already-rendered nodes, because a function cannot cross
+// the server/client boundary but a rendered element can.
 //
-// What SURVIVES from intake is the general pair, Enriching and Enriched, and
-// they stay: those are facts about the PLACE, not about our machinery. Neither
-// needs the meter — Enriching is its own boolean and Enriched is the EF's
-// `isPlaceEnriched(enriched_at)` answer, read straight off the row below. The
-// meter used to be fed to `generalHeaderFacts` here and then thrown away by
-// `cellValue`; it left the payload with the map.
+// What SURVIVES from intake regardless of the toggle is the general pair,
+// Enriching and Enriched: those are facts about the PLACE, not about our
+// machinery. Neither needs the map — Enriching is its own boolean and
+// Enriched is the EF's `isPlaceEnriched(enriched_at)` answer, read straight
+// off the row below, same as before this reversal.
 //
-// ONE COLUMN SET NOW. Partner and Verified still read "?" on a pool row —
-// `getAuthedUser` accepts ANY bearer token and the backend is a singleton, so
-// every consumer account can read that scope and the EF withholds those facts.
-// This component just renders what it is given.
+// ONE COLUMN SET, PLUS ELEVEN WHEN ASKED. Partner and Verified still read "?"
+// on a pool row — `getAuthedUser` accepts ANY bearer token and the backend is
+// a singleton, so every consumer account can read that scope and the EF
+// withholds those facts. This component just renders what it is given.
+import { useState } from "react";
 import Link from "next/link";
 
 import { CountCell, StateCell } from "@/components/console/StateCell";
 import { placeHref, withOrg } from "@/lib/console-routes";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { generalHeaderFacts } from "@/components/place-manage/place-header-state";
+import { intakeFunctionRows } from "@/components/place-manage/sections/state-enrichment";
 import {
   GENERAL_STATE_FACTS,
+  INTAKE_FUNCTIONS,
   STATE_FACT_FALSE_TONE,
+  intakeFunctionLabel,
   type GeneralStateKey,
 } from "@/lib/state-vocabulary";
 import {
+  GHOST_PILL_BUTTON_CLASS,
   SHELL_BLEED,
   STATES_ACTION_CELL,
   STATES_ACTION_HEAD,
@@ -108,6 +118,14 @@ const LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
 const GENERAL_COLUMNS = GENERAL_COLUMN_ORDER.map((key) => ({
   key,
   label: LABEL_BY_KEY[key] ?? key,
+}));
+
+/** The eleven Intake functions, 0. Seed … 10. Embedding — same keys and
+ *  order the single-place Intake States box uses, so a manager who expands
+ *  both never sees them disagree. */
+const INTAKE_COLUMNS = INTAKE_FUNCTIONS.map((f) => ({
+  key: f.key,
+  label: intakeFunctionLabel(f.n, f.label),
 }));
 
 function PlaceThumb({ place }: { place: ConsolePlace }) {
@@ -171,21 +189,25 @@ function factsFor(place: ConsolePlace) {
 export function PlaceStatesTable({
   places,
   organizationId,
-  renderAction,
+  actionsByPlaceId,
 }: {
   places: ConsolePlace[];
   organizationId: string;
-  /** The action cell, INJECTED rather than imported.
-   *
-   *  PlaceHoldButton is a client component that imports a "use server" module,
-   *  so importing it here would drag next/headers into any node test that
-   *  renders this table — and renderToStaticMarkup against fixtures is the
-   *  only proof this screen can ever have (it is OTP-gated and the catalog is
-   *  empty). Returning null collapses the column, which is also how a viewer
-   *  with no claim/release rights renders. */
-  renderAction?: (place: ConsolePlace) => React.ReactNode;
+  /** The action cell, INJECTED as already-rendered nodes rather than a
+   *  function — this component is now a Client Component (the intake toggle
+   *  needs `useState`), and a function prop cannot cross the server/client
+   *  boundary the way a rendered element can. The caller (a Server
+   *  Component) renders each place's action JSX itself — PlaceHoldButton and
+   *  friends are client components that import "use server" modules, so
+   *  importing them HERE would drag next/headers into the node tests that
+   *  render this table via fixtures (it is OTP-gated and the catalog is
+   *  empty; renderToStaticMarkup is the only proof this screen ever gets). A
+   *  missing entry collapses to nothing, same as a viewer with no
+   *  claim/release rights rendered before. */
+  actionsByPlaceId?: Record<string, React.ReactNode>;
 }) {
-  const showActions = Boolean(renderAction);
+  const showActions = Boolean(actionsByPlaceId);
+  const [showIntake, setShowIntake] = useState(false);
 
   return (
     // Full bleed on a phone so the scrollport is the whole window (~390px)
@@ -201,6 +223,16 @@ export function PlaceStatesTable({
         SHELL_BLEED,
       )}
     >
+      <div className="border-border/60 flex items-center justify-end border-b px-4 py-2">
+        <button
+          type="button"
+          onClick={() => setShowIntake((v) => !v)}
+          className={GHOST_PILL_BUTTON_CLASS}
+          aria-expanded={showIntake}
+        >
+          {showIntake ? "Hide Intake states" : "Show Intake states"}
+        </button>
+      </div>
       {/* A focusable, named scrolling region. Without tabIndex a keyboard user
           cannot reach the right-hand columns at all — the ported admin table
           has this bug today. overscroll-x-contain stops a horizontal fling
@@ -211,29 +243,51 @@ export function PlaceStatesTable({
         role="region"
         aria-label="Places and their states"
       >
-        {/* 1180px carries identity + nine state columns + the action cell. The
-              lg:min-w-[1560px] that used to sit here was sized for TWENTY
-              columns — nine general plus eleven Intake functions — and after
-              MESITA-1637 it spent 380px spreading nine yes/no cells apart,
-              which is most of why the header read as adrift (MESITA-1651). */}
-          <table className="w-full min-w-[1180px] border-separate border-spacing-0 text-sm">
+        {/* 1180px carries identity + nine state columns + the action cell.
+              Expanded, the eleven Intake columns need room of their own — this
+              is the same 20-column width MESITA-1651 measured before trimming
+              back down to nine, so the layout that toggle removed is exactly
+              the one this toggle brings back, on request instead of always. */}
+          <table
+            className={cn(
+              "w-full border-separate border-spacing-0 text-sm",
+              showIntake ? "min-w-[2200px]" : "min-w-[1180px]",
+            )}
+          >
           <caption className="sr-only">
             One row per place. The left column is the place; every other column
             is a state, reading yes, no, or ? when the fact was not available.
           </caption>
           <thead className={STATES_HEAD_STICKY}>
-            {/* ONE TIER (MESITA-1651). There were two, and the second one's
-                comment gave its own reason away: "the vocabulary is TWO BOXES
-                by decision" — General States and Intake States. MESITA-1637
-                took Intake off this table and the group row outlived its
-                reason, leaving a label that spanned every column and named
-                nothing the column heads do not already say. A heading that
-                labels everything labels nothing, and on a wide screen it read
-                as a stray word floating over empty space.
-
-                If a second group ever returns, the group row returns with it —
-                as a row that appears BECAUSE there are two groups, not as
-                permanent chrome. */}
+            {/* THE GROUP ROW ONLY EXISTS BECAUSE THERE ARE TWO GROUPS
+                (MESITA-1651's own rule, honored on the way back in). It was
+                removed when Intake left the table because a heading spanning
+                every column named nothing the column heads did not already
+                say; now that a second group can be on screen, the row
+                distinguishing them earns its place again — collapsed away
+                with the columns it labels. */}
+            {showIntake ? (
+              <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
+                <th scope="col" className={cn("px-4 py-2", STATES_COL_HEAD)} />
+                <th
+                  scope="col"
+                  colSpan={GENERAL_COLUMNS.length}
+                  className="px-3 py-2 text-center"
+                >
+                  General States
+                </th>
+                <th
+                  scope="col"
+                  colSpan={INTAKE_COLUMNS.length}
+                  className="px-3 py-2 text-center"
+                >
+                  Intake States
+                </th>
+                {showActions ? (
+                  <th scope="col" className={cn("px-4 py-2", STATES_ACTION_HEAD)} />
+                ) : null}
+              </tr>
+            ) : null}
             <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
               <th scope="col" className={cn("px-4 py-3", STATES_COL_HEAD)}>
                 Place
@@ -243,6 +297,13 @@ export function PlaceStatesTable({
                   {c.label}
                 </th>
               ))}
+              {showIntake
+                ? INTAKE_COLUMNS.map((c) => (
+                    <th key={c.key} scope="col" className="px-3 py-3 text-center font-semibold">
+                      {c.label}
+                    </th>
+                  ))
+                : null}
               {showActions ? (
                 <th scope="col" className={cn("px-4 py-3 text-right", STATES_ACTION_HEAD)}>
                   <span className="sr-only">Actions</span>
@@ -257,7 +318,8 @@ export function PlaceStatesTable({
                 place={place}
                 organizationId={organizationId}
                 showActions={showActions}
-                action={renderAction?.(place)}
+                showIntake={showIntake}
+                action={actionsByPlaceId?.[place.id]}
               />
             ))}
           </tbody>
@@ -271,15 +333,23 @@ function PlaceStatesRow({
   place,
   organizationId,
   showActions,
+  showIntake,
   action,
 }: {
   place: ConsolePlace;
   organizationId: string;
   showActions: boolean;
+  showIntake: boolean;
   action: React.ReactNode;
 }) {
   const href = withOrg(placeHref(place.id), organizationId);
   const facts = factsFor(place);
+  const intakeRows = showIntake
+    ? intakeFunctionRows(
+        place.enrichFunctions ?? null,
+        typeof place.seeded === "boolean" ? place.seeded : "unknown",
+      )
+    : null;
 
   return (
     <tr className="[&>td]:border-border/60 hover:bg-muted/40 [&>td]:border-t">
@@ -322,6 +392,18 @@ function PlaceStatesRow({
           )}
         </td>
       ))}
+
+      {intakeRows
+        ? intakeRows.map((row) => (
+            <td key={row.key} className="px-3 py-3 text-center">
+              <StateCell
+                label={row.label}
+                value={row.on}
+                note={row.failed ? "ran and failed" : undefined}
+              />
+            </td>
+          ))
+        : null}
 
       {showActions ? (
         <td className={cn("px-4 py-3 text-right whitespace-nowrap", STATES_ACTION_CELL)}>

@@ -37,20 +37,26 @@
 //      cannot slice a text[] in select=, so the array arrives whole and is
 //      narrowed HERE — a 7-URL average across 100 rows never reaches the
 //      browser (MESITA-1553).
-//   2. NOTHING FROM INTAKE SHIPS, and MESITA-1637 is why. This payload used to
-//      carry the high-water meter, and MESITA-1608 added the per-function map
-//      beside it so the console could render one column per intake function.
-//      Pato, 2026-09-07: "the intake states are internal." Those columns are
-//      gone from the business matrix, and hiding a fact in the client while
-//      still handing it to every business browser is not the same thing as it
-//      being internal — so both left the wire.
+//   2. THE PER-FUNCTION MAP IS BACK ON THE WIRE (MESITA-1687), reversing
+//      MESITA-1637. That change pulled `enrichFunctions` off this payload on
+//      the theory that hiding a fact in the client while still handing it to
+//      every business browser is not the same thing as the fact being
+//      internal. Pato, 2026-09-08: ship it to every business browser again;
+//      the console's own collapse toggle (default hidden) is what keeps it
+//      out of sight now, not a server-side withhold. "Every business
+//      browser" is not "every consumer account", though — `enrichFunctions`
+//      is gated by `memberScope`, same as partner/verified below (rule 4),
+//      so the pool does not hand our pipeline internals to a stranger who
+//      merely holds a valid bearer token. It rides the SAME
+//      `place_profiles.enrichment` column admin-web-search-places already
+//      reads, folded through the same `operatorFunctionStates` — guarded,
+//      because a null/missing map must not throw.
 //
-//      Enriching and Enriched SURVIVE as general columns, and neither needs
-//      intake: `enriching` is `isPlaceEnriching` and `enriched` is
-//      `isPlaceEnriched(enriched_at)`, both straight off the row. Enriching
-//      and Enriched are facts about the PLACE; the eleven functions and the
-//      meter are facts about our machinery. The map still ships from
-//      business-web-get-overview, which feeds the super-admin-only Admin tab.
+//      Enriching and Enriched stay general columns regardless: `enriching` is
+//      `isPlaceEnriching` and `enriched` is `isPlaceEnriched(enriched_at)`,
+//      both straight off the row, never off the map. Enriching and Enriched
+//      are facts about the PLACE; the eleven functions are facts about our
+//      machinery — the map answers a different question, not a replacement.
 //
 //   3. Every state fact is DERIVED BY THE SHARED HELPERS, never re-implemented
 //      here. Listed / Requested / Enriching / Enriched disagreeing between
@@ -76,7 +82,12 @@
 //      built to compare the two.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJsonOr,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
 import { placeIdsWithDirectOwner } from "../_shared/place-claim.ts";
@@ -88,6 +99,10 @@ import {
   isPlaceSeeded,
 } from "../_shared/place-state.ts";
 import { isPaidPlan } from "../_shared/membership-enforcement-helpers.ts";
+import {
+  type FunctionState,
+  operatorFunctionStates,
+} from "../_shared/schema-catalog.ts";
 
 type Body = {
   scope?: "all" | "org" | "public";
@@ -115,7 +130,7 @@ const PLACE_PROFILE_EMBED =
   "name, address, zone, photos, enriched_at, request_count, business_state, " +
   "google_place_id, orders_enabled, pickup_orders_enabled, " +
   "delivery_orders_enabled, reservations_enabled, mesita_pay_enabled, " +
-  "credits_enabled";
+  "credits_enabled, enrichment";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -208,6 +223,7 @@ Deno.serve(async (req) => {
       reservations_enabled: boolean | null;
       mesita_pay_enabled: boolean | null;
       credits_enabled: boolean | null;
+      enrichment: { functions?: Record<string, FunctionState> } | null;
     };
     organizations: { name: string } | null;
   };
@@ -272,7 +288,9 @@ Deno.serve(async (req) => {
         organizationName: r.organizations?.name ?? null,
         claimedAt: r.claimed_at,
         // ONE url. See rule 1 in the header.
-        photoUrl: Array.isArray(p.photos) && p.photos.length > 0 ? p.photos[0] : null,
+        photoUrl: Array.isArray(p.photos) && p.photos.length > 0
+          ? p.photos[0]
+          : null,
         // The state facts, off the shared helpers (rule 3).
         listed: isPlaceListed(r.state),
         requestCount: Number(p.request_count) || 0,
@@ -300,13 +318,19 @@ Deno.serve(async (req) => {
         // Verified — approved ownership proof. `undefined` when withheld OR
         // when the lookup failed, so the console says "?" instead of "no".
         verified: verified ? verified.has(r.id) : undefined,
-        // NO INTAKE. The per-function map and the high-water meter both used
-        // to ship here for the console's Intake columns. Those columns are
-        // gone (MESITA-1637) — how far our pipeline got is internal, and
-        // hiding it in the client while still handing it to every business
-        // browser is not the same thing. Enriching and Enriched survive as
-        // GENERAL columns and neither reads intake: `enriching` is its own
-        // boolean above and `enriched` is `isPlaceEnriched(enriched_at)`.
+        // The per-function map (MESITA-1687, reversing MESITA-1637) — same
+        // fold admin-web-search-places already ships as `enrich_functions`.
+        // Withheld on the pool for the SAME reason as partner/verified
+        // (header rule 4): scope=public is reachable by any consumer
+        // account, and "ship it to everyone" (Pato, 2026-09-08) meant every
+        // BUSINESS browser, not every signed-in consumer. Guarded past that:
+        // a place with no enrichment row yet, or one whose `functions` key
+        // is missing, must render "?" per row, not throw.
+        enrichFunctions: memberScope && p.enrichment &&
+            typeof p.enrichment.functions === "object" &&
+            p.enrichment.functions !== null
+          ? operatorFunctionStates(p.enrichment.functions)
+          : undefined,
         // The commercial rails, exactly the columns that exist.
         orders: p.orders_enabled === true,
         pickupOrders: p.pickup_orders_enabled === true,
