@@ -21,6 +21,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { writeApprovedVerification } from "../_shared/place-verification.ts";
 
 type Body = { placeId?: unknown; projectId?: unknown };
 
@@ -48,43 +49,38 @@ Deno.serve(async (req) => {
     .select("id")
     .eq("id", placeId)
     .maybeSingle();
-  if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
+  if (placeErr) {
+    return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
+  }
   if (!place) return json({ ok: false, error: "Place not found" }, 404);
-
-  const { data: existing, error: existingErr } = await admin
-    .from("place_verifications")
-    .select("id")
-    .eq("place_id", placeId)
-    .eq("state", "approved")
-    .limit(1)
-    .maybeSingle();
-  if (existingErr) {
-    return json({ ok: false, error: `verification_lookup: ${existingErr.message}` }, 500);
-  }
-  if (existing) {
-    return json({ ok: true, verified: true, alreadyVerified: true });
-  }
 
   const email = (authRes.user.email ?? "").trim().toLowerCase();
   if (!email || !email.includes("@")) {
     return json(
-      { ok: false, error: "Admin session has no email — cannot attest verification." },
+      {
+        ok: false,
+        error: "Admin session has no email — cannot attest verification.",
+      },
       422,
     );
   }
-  const now = new Date().toISOString();
-  const { error: insertErr } = await admin.from("place_verifications").insert({
-    place_id: placeId,
-    requester_id: authRes.user.id,
-    requester_email: email,
+
+  const result = await writeApprovedVerification(admin, {
+    placeId,
+    userId: authRes.user.id,
+    userEmail: email,
     method: "manual_contact",
-    state: "approved",
-    decided_at: now,
-    decided_by: authRes.user.id,
-    decided_via: "admin",
+    decidedVia: "admin",
   });
-  if (insertErr) {
-    return json({ ok: false, error: `verification_insert: ${insertErr.message}` }, 500);
+  if (!result.ok) {
+    return json(
+      { ok: false, error: `verification_write: ${result.error}` },
+      500,
+    );
   }
-  return json({ ok: true, verified: true, alreadyVerified: false });
+  return json({
+    ok: true,
+    verified: true,
+    alreadyVerified: result.alreadyVerified,
+  });
 });

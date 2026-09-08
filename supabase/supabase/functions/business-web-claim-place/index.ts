@@ -2,8 +2,14 @@
 //
 // Moves a place out of the PUBLIC POOL into an organization.
 //
-// Ownership verification is deliberately out of scope right now, so this
-// is an assertion rather than a proof. Two things therefore matter:
+// Ownership PROOF is still out of scope — a claim is an assertion, not a
+// proof of it — but Verified is no longer a separate ceremony (MESITA-1690,
+// reversing MESITA-1664's plan to make it one): a successful claim
+// auto-writes an approved `place_verifications` row too, best-effort, below.
+// "For the moment," per Pato — the mock-code Confirm button
+// (business-web-verify-place) still exists as the catch-up path for a place
+// claimed before this shipped, or for the rare claim whose auto-verify write
+// failed. Two things matter about the claim itself:
 //
 //   1. The claim is a CONDITIONAL UPDATE (`organization_id is null` in the
 //      WHERE clause), so two concurrent claims cannot both win — the loser
@@ -20,9 +26,16 @@
 // add-org-member; editors see an explained disabled state in the console.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
+import {
+  corsPreflight,
+  json,
+  readJsonOr,
+  readPlaceIdAlias,
+  rejectUnlessMethods,
+} from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
+import { writeApprovedVerification } from "../_shared/place-verification.ts";
 
 type Body = { placeId?: string; projectId?: string; organizationId?: string };
 
@@ -67,15 +80,45 @@ Deno.serve(async (req) => {
   if (!result.ok) {
     if (result.code === "not_claimable" || result.code === "owner_conflict") {
       return json(
-        { ok: false, error: "That place is not in the public pool", code: "not_claimable" },
+        {
+          ok: false,
+          error: "That place is not in the public pool",
+          code: "not_claimable",
+        },
         409,
       );
     }
     return json(
-      { ok: false, error: "That place was just claimed by someone else", code: "race_lost" },
+      {
+        ok: false,
+        error: "That place was just claimed by someone else",
+        code: "race_lost",
+      },
       409,
     );
   }
 
-  return json({ ok: true, place: { id: placeId, organization_id: organizationId } });
+  // AUTO-VERIFY ON CLAIM (MESITA-1690). Pato: "automatically verify for the
+  // moment. if someone claims, automatically write as verified." Claiming
+  // already writes Owned atomically above; this is best-effort and outside
+  // that atomicity on purpose — a manager who claims fine but hits a
+  // verification-write hiccup still holds the place, and the mock-code
+  // Confirm button (business-web-verify-place) stays as the catch-up path.
+  // `mock_code`/`auto` is the same shape that button writes, so a place
+  // verified here and one verified by hand are indistinguishable rows.
+  const verifyResult = await writeApprovedVerification(admin, {
+    placeId,
+    userId: authRes.user.id,
+    userEmail: authRes.user.email ?? "",
+    method: "mock_code",
+    decidedVia: "auto",
+  });
+  if (!verifyResult.ok) {
+    console.error("[claim-place] auto-verify:", verifyResult.error);
+  }
+
+  return json({
+    ok: true,
+    place: { id: placeId, organization_id: organizationId },
+  });
 });
