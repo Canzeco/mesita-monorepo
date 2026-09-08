@@ -4,22 +4,15 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Loader2, Play } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
+  deletePlace,
   enrichPlace,
   searchPlacesByGoogleIds,
+  setPlaceListed,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { IntakeAction } from "./intake-batch";
-import {
-  applyOne,
-  DEFAULT_EDIT_VALUES,
-  UpdateFields,
-  type EditFact,
-  type EditValues,
-} from "./EditTab";
 import { IdListField } from "./IdListField";
 import { StateIcon, type BatchRowState } from "./StateIcon";
-
-type Running = IntakeAction | "create_then_enrich";
 
 type Row = {
   state: BatchRowState;
@@ -49,10 +42,8 @@ export function IntakeTab({
 }) {
   const placeIds = useMemo(() => parseGooglePlaceIds(text), [text]);
   const [results, setResults] = useState<Record<string, Row>>({});
-  const [running, setRunning] = useState<Running | null>(null);
-  const [lastRun, setLastRun] = useState<Running | null>(null);
-  const [fact, setFact] = useState<EditFact>("active");
-  const [values, setValues] = useState<EditValues>(DEFAULT_EDIT_VALUES);
+  const [running, setRunning] = useState<IntakeAction | null>(null);
+  const [lastRun, setLastRun] = useState<IntakeAction | null>(null);
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
@@ -68,15 +59,27 @@ export function IntakeTab({
   }).length;
   const failed = placeIds.filter((id) => results[id]?.state === "error").length;
 
-  async function run(action: Running) {
+  async function run(action: IntakeAction) {
     if (busy || placeIds.length === 0) return;
+    // Delete writes places.state = 'archived' — reversible only by a direct
+    // DB edit, never by any button here. One confirm for the whole batch,
+    // not per row: the paste is already the commitment, this just catches
+    // a fat-fingered click before it archives a hundred places.
+    if (action === "delete") {
+      const ok = window.confirm(
+        placeIds.length === 1
+          ? "Delete 1 place? This archives it — no Undo in this console."
+          : `Delete ${placeIds.length} places? This archives every one — no Undo in this console.`,
+      );
+      if (!ok) return;
+    }
     setRunning(action);
     setLastRun(action);
     setResults(
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    await Promise.all(ids.map((id) => runRow(id, action, fact, values, setResults)));
+    await Promise.all(ids.map((id) => runRow(id, action, setResults)));
     setRunning(null);
   }
 
@@ -84,6 +87,17 @@ export function IntakeTab({
     const ids = placeIds.filter((id) => results[id]?.state === "error");
     void navigator.clipboard.writeText(ids.join("\n"));
   }
+
+  const summary =
+    lastRun === "create"
+      ? `${created} created · ${existed} already on Mesita · ${failed} failed`
+      : lastRun === "enrich"
+        ? `${enriching} enriching · ${failed} failed`
+        : lastRun === "list"
+          ? `${written} listed · ${failed} failed`
+          : lastRun === "unlist"
+            ? `${written} unlisted · ${failed} failed`
+            : `${written} deleted · ${failed} failed`;
 
   return (
     <div className="space-y-6">
@@ -98,7 +112,8 @@ export function IntakeTab({
 
       <div>
         <p className="text-muted-foreground text-xs">
-          Create runs every ID at once. Enrich is queued. Update writes Active · Listed · Verified · Partnered · Visit Rewards. Create + Enrich is create then enrich.
+          Create runs every ID at once. Enrich is queued. List and Unlist toggle
+          guest visibility. Delete archives — no Undo here.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <ActionButton
@@ -109,45 +124,35 @@ export function IntakeTab({
             onClick={() => void run("create")}
           />
           <ActionButton
+            label="Delete"
+            variant="destructive"
+            busy={running === "delete"}
+            disabled={busy || placeIds.length === 0}
+            onClick={() => void run("delete")}
+          />
+          <ActionButton
+            label="List"
+            variant="secondary"
+            busy={running === "list"}
+            disabled={busy || placeIds.length === 0}
+            onClick={() => void run("list")}
+          />
+          <ActionButton
+            label="Unlist"
+            variant="secondary"
+            busy={running === "unlist"}
+            disabled={busy || placeIds.length === 0}
+            onClick={() => void run("unlist")}
+          />
+          <ActionButton
             label="Enrich"
             variant="secondary"
             busy={running === "enrich"}
             disabled={busy || placeIds.length === 0}
             onClick={() => void run("enrich")}
           />
-          {/* Active · Listed · Verified · Partnered · Visit Rewards — the
-              state facts, plus the value they'd write — read as ONE control
-              with Update, so the dividers keep them out of the run-a-pipeline
-              row either side. */}
-          <div className="border-border/60 flex items-center gap-2 border-l border-r px-2">
-            <UpdateFields
-              fact={fact}
-              onFact={setFact}
-              values={values}
-              onValues={setValues}
-              disabled={busy}
-            />
-            <ActionButton
-              label="Update"
-              variant="secondary"
-              busy={running === "update"}
-              disabled={busy || placeIds.length === 0}
-              onClick={() => void run("update")}
-            />
-          </div>
-          <ActionButton
-            label="Create + Enrich"
-            variant="secondary"
-            busy={running === "create_then_enrich"}
-            disabled={busy || placeIds.length === 0}
-            onClick={() => void run("create_then_enrich")}
-          />
           {done > 0 ? (
-            <span className="text-muted-foreground text-xs">
-              {lastRun === "update"
-                ? `${written} written · ${failed} failed`
-                : `${created} created · ${existed} already on Mesita · ${enriching} enriching · ${failed} failed`}
-            </span>
+            <span className="text-muted-foreground text-xs">{summary}</span>
           ) : null}
           {failed > 0 && !running ? (
             <button
@@ -207,10 +212,11 @@ function ResultList({
 }
 
 // Primary = the one action that starts from nothing (matches the "Look up on
-// Mesita" filled pill in MesitaSearchTab). Everything else here assumes a
-// place already exists, so it takes the same outline secondary pill as that
-// tab's "All places" — four identical black buttons read as four equally
-// important actions when only one is.
+// Mesita" filled pill in MesitaSearchTab). Destructive marks the one action
+// that cannot be undone from this console. Everything else assumes a place
+// already exists and is reversible, so it takes the same outline secondary
+// pill as MesitaSearchTab's "All places" — four identical black buttons read
+// as four equally important actions when they are not.
 function ActionButton({
   label,
   variant,
@@ -219,22 +225,19 @@ function ActionButton({
   onClick,
 }: {
   label: string;
-  variant: "primary" | "secondary";
+  variant: "primary" | "secondary" | "destructive";
   busy: boolean;
   disabled: boolean;
   onClick: () => void;
 }) {
+  const className =
+    variant === "primary"
+      ? "bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
+      : variant === "destructive"
+        ? "border-destructive/40 text-destructive hover:bg-destructive/5 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
+        : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={
-        variant === "primary"
-          ? "bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-          : "border-border hover:border-foreground/40 inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition disabled:opacity-50"
-      }
-    >
+    <button type="button" onClick={onClick} disabled={disabled} className={className}>
       {busy ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
@@ -247,14 +250,12 @@ function ActionButton({
 
 async function runRow(
   googleId: string,
-  action: Running,
-  fact: EditFact,
-  values: EditValues,
+  action: IntakeAction,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
   setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
   try {
-    const row = await runOne(googleId, action, fact, values);
+    const row = await runOne(googleId, action);
     setResults((prev) => ({ ...prev, [googleId]: row }));
   } catch (err) {
     setResults((prev) => ({
@@ -289,13 +290,8 @@ async function createOne(googleId: string): Promise<Row> {
   };
 }
 
-async function enrichOne(
-  googleId: string,
-  known?: { placeId: string; name?: string },
-): Promise<Row> {
-  const found = known
-    ? { ok: true as const, placeId: known.placeId, name: known.name ?? "" }
-    : await resolveMesitaId(googleId);
+async function enrichOne(googleId: string): Promise<Row> {
+  const found = await resolveMesitaId(googleId);
   if (!found.ok) return { state: "error", error: found.error };
   const en = await enrichPlace(found.placeId, "full");
   if (!en.ok) return { state: "error", name: found.name, error: en.error };
@@ -306,39 +302,30 @@ async function enrichOne(
   };
 }
 
-async function runCreateThenEnrich(googleId: string): Promise<Row> {
-  const created = await createOne(googleId);
-  if (created.state === "error" || !created.placeId) return created;
-  const en = await enrichOne(googleId, {
-    placeId: created.placeId,
-    name: created.name,
-  });
-  if (en.state === "error") {
-    return {
-      state: "error",
-      name: created.name,
-      error: created.alreadyExisted
-        ? `Already on Mesita · enrich not queued: ${en.error}`
-        : `Created · enrich not queued: ${en.error}`,
-    };
-  }
+async function listOne(googleId: string, listed: boolean): Promise<Row> {
+  const found = await resolveMesitaId(googleId);
+  if (!found.ok) return { state: "error", error: found.error };
+  const r = await setPlaceListed(found.placeId, listed);
+  if (!r.ok) return { state: "error", name: found.name, error: r.error };
   return {
-    state: created.alreadyExisted ? "existed" : "enriching",
-    name: created.name,
-    detail: created.alreadyExisted
-      ? "Already on Mesita — enrich queued"
-      : "Created · enrich queued",
+    state: "ok",
+    name: found.name,
+    detail: listed ? "Listed on" : "Listed off",
   };
 }
 
-async function runOne(
-  googleId: string,
-  action: Running,
-  fact: EditFact,
-  values: EditValues,
-): Promise<Row> {
-  if (action === "update") return applyOne(googleId, fact, values);
+async function deleteOne(googleId: string): Promise<Row> {
+  const found = await resolveMesitaId(googleId);
+  if (!found.ok) return { state: "error", error: found.error };
+  const r = await deletePlace(found.placeId);
+  if (!r.ok) return { state: "error", name: found.name, error: r.error };
+  return { state: "ok", name: found.name, detail: "Archived" };
+}
+
+async function runOne(googleId: string, action: IntakeAction): Promise<Row> {
   if (action === "enrich") return enrichOne(googleId);
-  if (action === "create_then_enrich") return runCreateThenEnrich(googleId);
+  if (action === "list") return listOne(googleId, true);
+  if (action === "unlist") return listOne(googleId, false);
+  if (action === "delete") return deleteOne(googleId);
   return createOne(googleId);
 }
