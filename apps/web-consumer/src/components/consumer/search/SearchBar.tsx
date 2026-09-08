@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 // Shared by Search and Visit (the wallet's place list, MESITA-1071).
 // Query field only. Search's Places scope + Super Category live in the
-// Filters sheet, opened by SearchFilterRow beside the bar. Visit omits
+// Filters sheet, opened beside the bar. Visit omits
 // that.
 // `onOpenScope` stays as an optional far-right control for hosts that
 // still want country + location on the pill.
@@ -49,7 +49,7 @@ export function SearchBar({
   ].join(", ");
 
   // h-11, NOT h-12: 44px is the touch-target floor, so this is as short as the
-  // bar goes. It also matches SearchFilterRow beside it on the map — two pills
+  // bar goes. It matched the filter pill that used to sit beside it — two pills
   // of different heights in one row read as a misalignment.
   return (
     <div className="border-border bg-card/95 shadow-elev flex h-11 shrink-0 items-center rounded-full border pl-4 backdrop-blur-xl">
