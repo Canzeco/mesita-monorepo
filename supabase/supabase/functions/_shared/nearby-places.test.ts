@@ -873,3 +873,110 @@ Deno.test("lanesForPlacesScope: the Google lane cap follows the operator pull", 
   assertEquals(lanesForPlacesScope("google", 20, 60).googleCount, 20);
   assertEquals(lanesForPlacesScope("mesita", 60, 60).googleCount, 0);
 });
+
+
+// MESITA-1700, both halves. The fan-out inherited two guards written for
+// "one pull = one call" and neither followed it across the slice loop. Both
+// were dormant at a 20 pull, which is what the live blob folds to — and both
+// armed on one click of 40 or 60 in the console.
+
+Deno.test("searchNearbyPlaces: a partial pull is NOT cached", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let n = 0;
+  const orig = globalThis.fetch;
+  // Middle slice fails; the other two return the same single place.
+  globalThis.fetch = () => {
+    n++;
+    if (n === 2) return Promise.resolve(new Response("boom", { status: 500 }));
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const types = ["restaurant", "cafe", "bakery"];
+    const first = await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
+    assertEquals(n, 3);
+    // The caller still gets what the working slices returned — a thin map
+    // beats a blank one.
+    assertEquals(first.length, 1);
+    // But the cell is NOT an answer, so nothing is frozen into it for 15s.
+    assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
+    // A retry therefore reaches Google again instead of being served the
+    // short list the failure produced.
+    await searchNearbyPlaces("k", CENTER, { types, pull: 60 });
+    assertEquals(n, 6);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: the quota is charged per BILLED CALL", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let calls = 0;
+  let charges = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    calls++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    // consumer-web-list-places is verify_jwt = false, so this ledger is the
+    // public abuse guard on a paid API. One row per pull would have let 45
+    // authorised attempts buy 135 billed requests.
+    await searchNearbyPlaces("k", CENTER, {
+      types: ["restaurant", "cafe", "bakery"],
+      pull: 60,
+      beforeFanout: () => {
+        charges++;
+        return Promise.resolve(true);
+      },
+    });
+    assertEquals(calls, 3);
+    assertEquals(charges, 3);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});
+
+Deno.test("searchNearbyPlaces: a mid-pull quota denial truncates, keeps, and does not cache", async () => {
+  __resetNearbyGoogleCacheForTests();
+  let calls = 0;
+  let charges = 0;
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => {
+    calls++;
+    return Promise.resolve(
+      new Response(OK_BODY, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  };
+  try {
+    const types = ["restaurant", "cafe", "bakery"];
+    const hits = await searchNearbyPlaces("k", CENTER, {
+      types,
+      pull: 60,
+      // Allow the first request, deny the second. The guest keeps slice one.
+      beforeFanout: () => Promise.resolve(++charges === 1),
+    });
+    assertEquals(calls, 1);
+    assertEquals(charges, 2);
+    assertEquals(hits.length, 1);
+    // Denied partway is still an incomplete answer.
+    assertEquals(peekCachedNearbyPlaces(CENTER, types, 60), null);
+  } finally {
+    globalThis.fetch = orig;
+    __resetNearbyGoogleCacheForTests();
+  }
+});

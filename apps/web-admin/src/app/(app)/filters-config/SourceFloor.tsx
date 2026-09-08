@@ -341,6 +341,13 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
         and 60 are 2 and 3 <span className="text-foreground font-semibold">billed</span>{" "}
         requests over disjoint slices of the battery, deduped by place id.
       </p>
+      <p className="text-muted-foreground mt-2 type-meta">
+        Each request asks for its own slice and returns ITS OWN closest{" "}
+        {GOOGLE_PULL_STOPS[0]}, so raising this widens across{" "}
+        <span className="text-foreground font-semibold">categories</span>, not
+        further out from the camera. It also spends one per-IP quota unit per
+        request, so 60 reaches the abuse ceiling three times as fast.
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {GOOGLE_PULL_STOPS.map((stop) => {
           const active = pull === stop;
@@ -370,7 +377,7 @@ export function NearbyPullOwner({ seed }: { seed: FloorSeed }) {
       </p>
       <FloorTail
         updatedAt={ed.updatedAt}
-        note="A pull can only split as far as the battery allows: with one Super on there is nothing to slice, so it stays 20 whatever is picked here. The guest's How many still caps the pins."
+        note="A pull can only split as far as the battery allows: with one Super on there is nothing to slice, so it stays 20 whatever is picked here. A pull that cannot finish every slice still returns what it got, but is never cached. How many pins is on the Map box."
         pending={ed.pending}
         dirty={ed.dirty}
         ok={ed.ok}
