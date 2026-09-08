@@ -23,11 +23,21 @@
 //      verify it, and only an owner may do it — the same role law as
 //      claiming, since this is the other half of the same ceremony.
 //   2. THE RECORD. It writes a normal `place_verifications` row, approved,
-//      with method `mock_code`. `business-web-list-places` derives Verified
-//      from exactly that (`state = approved`), so no second source of truth
-//      appears and the admin queue sees the truth about how it happened.
+//      with method `mock_code`, via the shared `writeApprovedVerification`
+//      (MESITA-1690 — `business-web-claim-place` and
+//      `admin-web-set-place-verified` write the identical shape now, so the
+//      insert exists in one place). `business-web-list-places` derives
+//      Verified from exactly that (`state = approved`), so no second source
+//      of truth appears and the admin queue sees the truth about how it
+//      happened.
 //   3. IDEMPOTENCE. Verified never lapses (MESITA-1320), so verifying an
 //      already-verified place is a no-op success, not a duplicate row.
+//
+// MESITA-1690: this used to write `decided_via: "mock_code"` — a copy-paste
+// that crossed `method` and `decided_via`. The column's check constraint
+// only allows `'auto' | 'admin'`, so every real Confirm click 500'd. The
+// shared writer takes `decidedVia` as its own argument now, so the two
+// columns cannot cross again by accident.
 //
 // Auth: OWNER of the organization that holds the place.
 
@@ -41,6 +51,7 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { requireOrgRole } from "../_shared/org-membership.ts";
+import { writeApprovedVerification } from "../_shared/place-verification.ts";
 
 /** The mock. One constant, named for what it is, so removing the mock is a
  *  grep for this identifier rather than a hunt for a string literal. */
@@ -100,19 +111,21 @@ Deno.serve(async (req) => {
   ]);
   if (!roleRes.ok) return roleRes.response;
 
-  // Verified never lapses, so an approved row already present is the answer.
-  // Checked BEFORE the code, so a re-submit with a typo on an already
-  // verified place still reports the truth instead of a rejection.
-  const existing = await admin
+  // Verified never lapses, so checking for an existing approved row happens
+  // inside writeApprovedVerification, BEFORE the code is checked below — a
+  // re-submit with a typo on an already verified place still reports the
+  // truth instead of a rejection. This early return is only for the code
+  // itself; the idempotence check is the shared writer's job.
+  const already = await admin
     .from("place_verifications")
     .select("id")
     .eq("place_id", placeId)
     .eq("state", "approved")
     .limit(1);
-  if (existing.error) {
-    return json({ ok: false, error: existing.error.message }, 500);
+  if (already.error) {
+    return json({ ok: false, error: already.error.message }, 500);
   }
-  if ((existing.data ?? []).length > 0) {
+  if ((already.data ?? []).length > 0) {
     return json({ ok: true, verified: true, alreadyVerified: true });
   }
 
@@ -123,21 +136,18 @@ Deno.serve(async (req) => {
     );
   }
 
-  const now = new Date().toISOString();
-  const insert = await admin.from("place_verifications").insert({
-    place_id: placeId,
-    requester_id: authRes.user.id,
-    requester_email: authRes.user.email ?? "",
+  const result = await writeApprovedVerification(admin, {
+    placeId,
+    userId: authRes.user.id,
+    userEmail: authRes.user.email ?? "",
     method: "mock_code",
-    state: "approved",
-    decided_at: now,
-    decided_by: authRes.user.id,
-    decided_via: "mock_code",
-    payload: {},
+    decidedVia: "auto",
   });
-  if (insert.error) {
-    return json({ ok: false, error: insert.error.message }, 500);
-  }
+  if (!result.ok) return json({ ok: false, error: result.error }, 500);
 
-  return json({ ok: true, verified: true, alreadyVerified: false });
+  return json({
+    ok: true,
+    verified: true,
+    alreadyVerified: result.alreadyVerified,
+  });
 });
