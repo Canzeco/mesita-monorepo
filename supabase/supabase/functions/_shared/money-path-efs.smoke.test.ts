@@ -52,6 +52,9 @@ const JWT_EFS: { name: string; path: string; accepts: string[] }[] = [
   // grants access to the account holder's Stripe data, so its auth gate is
   // money-path-critical even though it moves no money itself.
   { name: "business-web-get-payment-dashboard-link", path: "../business-web-get-payment-dashboard-link/index.ts", accepts: ["POST"] },
+  // Mesita Credits buy path (MESITA-1676): charges the guest's saved card.
+  { name: "consumer-web-buy-credits", path: "../consumer-web-buy-credits/index.ts", accepts: ["POST"] },
+  { name: "consumer-web-list-credit-places", path: "../consumer-web-list-credit-places/index.ts", accepts: ["POST"] },
 ];
 
 // The public check surface (Tickets v2, MESITA-806): verify_jwt=false,

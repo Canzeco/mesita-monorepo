@@ -24,7 +24,11 @@
 //     reliability backstop (MESITA-1414, ticket-payment-intent.ts) — the
 //     synchronous charge in consumer-web-select-ticket-payment closes the
 //     ticket itself in the common case; this only matters if that request
-//     crashed between Stripe confirming and the close running.
+//     crashed between Stripe confirming and the close running. THE SAME TWO
+//     event types also back a Credits purchase (MESITA-1676,
+//     credit-payment-intent.ts) — routed by intent.metadata.mesita_kind ===
+//     "credit_purchase", since both callers share one Connect endpoint and
+//     Stripe delivers the same event type for either.
 //   Connect-DELIVERED events (top-level event.account set) are guarded to
 //   exactly these three types: a restaurant's own Stripe subscriptions or
 //   other account activity must never reach the platform reconcilers below.
@@ -67,6 +71,11 @@ import {
   handleTicketPaymentIntentFailed,
   handleTicketPaymentIntentSucceeded,
 } from "./ticket-payment-intent.ts";
+import {
+  handleCreditPurchaseIntentFailed,
+  handleCreditPurchaseIntentSucceeded,
+  isCreditPurchaseIntentEvent,
+} from "./credit-payment-intent.ts";
 
 Deno.serve(async (req) => {
   // Vendor webhook — no CORS preflight; POST-only.
@@ -160,17 +169,36 @@ async function handleStripeEvent(
       case "account.updated":
         await handleConnectAccountUpdated(admin, event);
         break;
-      case "payment_intent.succeeded":
-        // Mesita Pay's reliability backstop (MESITA-1414) — see
-        // ticket-payment-intent.ts. The synchronous charge path in
-        // consumer-web-select-ticket-payment already closes the ticket in
-        // the common case; this only does anything if that request crashed
-        // between Stripe confirming and the close running.
-        await handleTicketPaymentIntentSucceeded(admin, event);
+      case "payment_intent.succeeded": {
+        // Two different callers share this event type on the SAME Connect
+        // endpoint, and mesita_kind is the only thing that tells them apart
+        // — a restaurant's own Stripe traffic carries neither and falls
+        // through to whichever handler's own metadata check no-ops it.
+        if (isCreditPurchaseIntentEvent(event)) {
+          // Credits purchase backstop (MESITA-1676) — see
+          // credit-payment-intent.ts. consumer-web-buy-credits already
+          // writes the lot in the common case; this only does anything if
+          // that request crashed, or the guest finished a 3DS challenge
+          // after it already returned.
+          await handleCreditPurchaseIntentSucceeded(admin, event);
+        } else {
+          // Mesita Pay's reliability backstop (MESITA-1414) — see
+          // ticket-payment-intent.ts. The synchronous charge path in
+          // consumer-web-select-ticket-payment already closes the ticket in
+          // the common case; this only does anything if that request crashed
+          // between Stripe confirming and the close running.
+          await handleTicketPaymentIntentSucceeded(admin, event);
+        }
         break;
-      case "payment_intent.payment_failed":
-        await handleTicketPaymentIntentFailed(admin, event);
+      }
+      case "payment_intent.payment_failed": {
+        if (isCreditPurchaseIntentEvent(event)) {
+          await handleCreditPurchaseIntentFailed(admin, event);
+        } else {
+          await handleTicketPaymentIntentFailed(admin, event);
+        }
         break;
+      }
       default:
         break;
     }
