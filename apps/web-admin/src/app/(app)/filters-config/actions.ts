@@ -30,6 +30,7 @@ type UpdateDiscoveryConfigResult =
 
 export type DiscoverySlice =
   | "general"
+  | "filters"
   | "catalog"
   | "social"
   | "chat"
@@ -49,6 +50,7 @@ export async function updateDiscoveryConfig(
     slices ??
       ([
         "general",
+        "filters",
         "catalog",
         "social",
         "chat",
@@ -62,6 +64,11 @@ export async function updateDiscoveryConfig(
   const next: DiscoveryConfig = {
     ...live.config,
     general: keys.has("general") ? config.general : live.config.general,
+    // The operator floor for the listed Mesita pool — Home rails, Pay / bbox,
+    // Swipe. Until MESITA-1667 this slice had no member here at all, so it
+    // rode through every save on `...live.config` and no console could reach
+    // it while `applyDiscoveryFilters` enforced it on every one of those lanes.
+    filters: keys.has("filters") ? config.filters : live.config.filters,
     catalog: keys.has("catalog") ? config.catalog : live.config.catalog,
     map: keys.has("map") ? config.map : live.config.map,
     name: {
