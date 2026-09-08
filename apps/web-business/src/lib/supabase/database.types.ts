@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_reset_preserve: {
@@ -507,6 +532,101 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "classes"
             referencedColumns: ["key"]
+          },
+        ]
+      }
+      credit_ledger: {
+        Row: {
+          bonus_delta_cents: number
+          created_at: string
+          id: string
+          kind: string
+          lot_id: string
+          paid_delta_cents: number
+          reference: string | null
+        }
+        Insert: {
+          bonus_delta_cents?: number
+          created_at?: string
+          id?: string
+          kind: string
+          lot_id: string
+          paid_delta_cents?: number
+          reference?: string | null
+        }
+        Update: {
+          bonus_delta_cents?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          lot_id?: string
+          paid_delta_cents?: number
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "credit_lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_lots: {
+        Row: {
+          activates_at: string
+          bonus_cents: number
+          consumer_id: string | null
+          created_at: string
+          currency: string
+          expires_at: string
+          id: string
+          organization_id: string
+          paid_cents: number
+          spent_cents: number
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          activates_at: string
+          bonus_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          paid_cents: number
+          spent_cents?: number
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          activates_at?: string
+          bonus_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          paid_cents?: number
+          spent_cents?: number
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_lots_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_lots_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2704,6 +2824,19 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
+      create_credit_lot: {
+        Args: {
+          p_activates_at: string
+          p_bonus_cents: number
+          p_consumer_id: string
+          p_currency: string
+          p_expires_at: string
+          p_organization_id: string
+          p_paid_cents: number
+          p_stripe_payment_intent_id: string
+        }
+        Returns: Json
+      }
       find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
       is_place_member: { Args: { p_project_id: string }; Returns: boolean }
@@ -2752,6 +2885,15 @@ export type Database = {
       seed_place_super_categories: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
+      spend_credits: {
+        Args: {
+          p_amount_cents: number
+          p_consumer_id: string
+          p_organization_id: string
+          p_reference: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       content_state: "queued" | "generating" | "ready" | "failed"
@@ -2800,6 +2942,7 @@ export type Database = {
         | "postcard"
         | "ai_email"
         | "manual_contact"
+        | "mock_code"
       verification_state: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -2926,6 +3069,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       content_state: ["queued", "generating", "ready", "failed"],
@@ -2978,6 +3124,7 @@ export const Constants = {
         "postcard",
         "ai_email",
         "manual_contact",
+        "mock_code",
       ],
       verification_state: ["pending", "approved", "rejected"],
     },

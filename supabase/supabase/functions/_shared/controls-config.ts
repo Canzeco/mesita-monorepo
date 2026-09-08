@@ -3,10 +3,23 @@
 //
 // A FALLBACK, NOT A FLAT RULE (Pato, 2026-09-01). `defaultHoldHours` is what a
 // place inherits when it has set no hold of its own — today that is every
-// place. A place may still hold LONGER to justify a bigger bonus, up to
-// `maxHoldHours`, because the pairing is the model: what the place buys is
-// float, and the bonus is the rate it pays for it. A flat global hold would
-// leave the bonus priced against nothing.
+// place. A place may still hold LONGER, up to `maxHoldHours`, and pay a bigger
+// bonus for it.
+//
+// THE HOLD IS PRE-COMMITMENT PROOF, NOT FLOAT RENT (Pato, 2026-09-08). This
+// file used to say "what the place buys is float, and the bonus is the rate it
+// pays for it", and that reading does not survive its own default: 5% over
+// THREE HOURS annualizes near 14,600%, and `maxHoldHours` tops out at 72, so
+// even the ceiling is three days. No restaurant buys three hours of working
+// capital at any price, and a bonus priced as rent on it would be indefensible
+// the first time a restaurateur did the arithmetic.
+//
+// What the hold actually buys is EVIDENCE: the guest committed money to this
+// organization before the bill existed, so Mesita can say it influenced the
+// visit rather than discounting one that was already happening. The bonus is
+// acquisition spend, priced like any other discount. Bounded honestly — it
+// proves pre-commitment, not causation; only attribution proves that, and
+// attribution is not built (MESITA-1380 names this gap as cannibalization).
 //
 // `minHoldHours` ships in the blob and NOT on the page. There is no reader for
 // a floor yet, and only WIRED knobs render (Discovery law) — but the whole-blob
