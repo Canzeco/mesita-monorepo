@@ -107,7 +107,7 @@ export function GeneralConfigClient({
     if (loadBlocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateDiscoveryConfig(cfg, ["general", "nameFast", "nameDeep", "map"]);
+      const r = await updateDiscoveryConfig(cfg, ["general", "nameFast", "nameDeep", "mapTypes"]);
       if (r.ok) {
         setSaved(r.config);
         setCfg(r.config);

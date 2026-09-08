@@ -1,18 +1,16 @@
 import { GeneralConfigClient } from "../GeneralConfigClient";
-import { GoogleQualityFloorCard } from "../GoogleQualityFloorCard";
 import { GoogleSourceCards } from "../GoogleSourceCards";
 import { MesitaSourceCards } from "../MesitaSourceCards";
-import { PoolQualityFloorCard } from "../PoolQualityFloorCard";
 import { getDiscoveryConfig } from "../actions";
 import { DEFAULT_CONFIG } from "../catalog";
 
 // Search Sources — the nine searches: three Google Places, four Mesita
 // Places, two Mesita Social, after the shared Google types strip.
-// Neither quality floor is a Source. The Google one is a proposal over what
-// the three Google searches return, while General on Modes stays its live
-// box; the Mesita pool one is LIVE and is the only knob `filters` has ever
-// had (MESITA-1667). They are two halves of one question: what Google gave
-// back, and what the listed pool offers on the lanes that never ask Google.
+// NINE BOXES AND NOTHING ELSE (Pato, 2026-09-08). Every quality floor now
+// lives INSIDE the source it cuts, so the standalone floor cards are gone.
+// One box owns each key and the rest mirror it read-only — see SourceFloor.
+// The Google types strip stays a header above the three Google boxes: it is
+// a shared battery, not a source, so it does not spend one of the nine.
 //
 // Signals moved to the Matrix subpage (MESITA-1675): they rank what a
 // source returns, which is not the same question as which sources exist.
@@ -27,10 +25,11 @@ import { DEFAULT_CONFIG } from "../catalog";
 export const dynamic = "force-dynamic";
 
 export default async function SearchSourcesPage() {
-  const seed = await getDiscoveryConfig();
-  const initialConfig = seed.ok ? seed.config : DEFAULT_CONFIG;
-  const initialUpdatedAt = seed.ok ? seed.updatedAt : null;
-  const loadError = seed.ok ? null : seed.error;
+  const r = await getDiscoveryConfig();
+  const initialConfig = r.ok ? r.config : DEFAULT_CONFIG;
+  const initialUpdatedAt = r.ok ? r.updatedAt : null;
+  const loadError = r.ok ? null : r.error;
+  const seed = { initialConfig, initialUpdatedAt, loadError };
   return (
     <div className="flex flex-col gap-10">
       <GeneralConfigClient
@@ -38,14 +37,8 @@ export default async function SearchSourcesPage() {
         initialUpdatedAt={initialUpdatedAt}
         loadError={loadError}
       />
-      <GoogleSourceCards />
-      <GoogleQualityFloorCard />
-      <PoolQualityFloorCard
-        initialConfig={initialConfig}
-        initialUpdatedAt={initialUpdatedAt}
-        loadError={loadError}
-      />
-      <MesitaSourceCards />
+      <GoogleSourceCards seed={seed} />
+      <MesitaSourceCards seed={seed} />
     </div>
   );
 }
