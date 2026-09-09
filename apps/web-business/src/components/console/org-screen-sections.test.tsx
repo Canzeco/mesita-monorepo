@@ -10,6 +10,7 @@ import {
   OrgScreenSections,
   SOON_STRIPS,
 } from "./OrgScreenSections";
+import { ConnectStripeForm } from "./PaymentsCard";
 import type {
   Organization,
   OrgMember,
@@ -31,6 +32,21 @@ const MEMBERS: OrgMember[] = [
   { managerId: "me", name: null, email: "pato@canzeco.com", role: "owner" },
   { managerId: "m2", name: "Ana Ruiz", email: "ana@x.mx", role: "editor" },
 ];
+
+/** The connect gate now lives behind the card's one button, so it is
+ *  rendered directly — a closed modal has no markup to assert against. */
+function connectForm(over: Partial<Parameters<typeof ConnectStripeForm>[0]> = {}) {
+  return renderToStaticMarkup(
+    <ConnectStripeForm
+      orgId="org-1"
+      action={() => {}}
+      pending={false}
+      error={null}
+      hasLegalName={false}
+      {...over}
+    />,
+  );
+}
 
 function render(over: Partial<Parameters<typeof OrgScreenSections>[0]> = {}) {
   return renderToStaticMarkup(
@@ -117,19 +133,30 @@ describe("the five-box composition", () => {
   });
 
   it("cashes the prefill promise when legal name is missing and no account exists", () => {
-    const html = render();
+    const html = connectForm({ hasLegalName: false });
     expect(html).toContain("comes prefilled");
     // …and drops the nudge once the org HAS a legal name: the line still
     // names what Stripe collects, but stops pointing at a filled-in field.
-    const named = render({ org: { ...ORG, legalName: "Tacos SA de CV" } });
+    const named = connectForm({ hasLegalName: true });
     expect(named).toContain("RFC, address, bank account");
     expect(named).not.toContain("comes prefilled");
+  });
+
+  it("offers ONE control on the card, and asks its questions in the modal", () => {
+    // Pato, 2026-09-09: "Connect Stripe must simply be a clean box." The two
+    // selects and their caveat paragraph used to sit open on a summary card
+    // whose every other row is a label and a value.
+    const html = render();
+    expect(html).toContain("Connect Stripe");
+    expect(html).not.toContain("<select");
+    // A closed modal has no DOM — the questions cannot leak back onto the card.
+    expect(html).not.toContain("RFC, address, bank account");
   });
 
   it("gates connect on country AND legal entity, and sends the rest to Stripe", () => {
     // Pato, 2026-09-06: ask country + entity type BEFORE onboarding opens;
     // the RFC and everything after it belong to Stripe's hosted flow.
-    const html = render();
+    const html = connectForm();
     expect(html).toContain('name="country"');
     expect(html).toContain('name="entityType"');
     expect(html).toContain('value="individual"');
