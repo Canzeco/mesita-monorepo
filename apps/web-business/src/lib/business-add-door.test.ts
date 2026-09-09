@@ -36,12 +36,16 @@ describe("the add door is shut", () => {
     expect(PLACES_PAGE).not.toContain("Add a place");
   });
 
-  it("the empty state offers no action when there is no search", () => {
-    // The query branch keeps "Clear the search" — that is a way back, not a
-    // way to create. Only the no-query branch had the create CTA, and it is
-    // the one that must resolve to nothing.
-    expect(PLACES_PAGE).toContain("Clear the search");
-    expect(PLACES_PAGE).toMatch(/\)\s*:\s*null\s*\n?\s*\}/);
+  it("the empty state offers no action — the search bar is gone, so there is nothing to clear", () => {
+    // Search left the page entirely (Pato, 2026-09-09): the console loads
+    // every place and sorts client-side instead of filtering server-side.
+    // With no query to filter by, the empty state has nothing to hand back
+    // and nothing to create — it renders unconditionally, with no `action`
+    // prop at all.
+    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?\/>\s*\n/)?.[0] ?? "";
+    expect(emptyState).not.toContain("action=");
+    expect(PLACES_PAGE).not.toContain("Clear the search");
+    expect(PLACES_PAGE).not.toContain("Search by name");
   });
 
   it("/add renders a redirect and reads no data", () => {

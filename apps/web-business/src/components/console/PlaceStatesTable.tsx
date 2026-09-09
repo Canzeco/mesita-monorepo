@@ -53,8 +53,9 @@
 // on a pool row — `getAuthedUser` accepts ANY bearer token and the backend is
 // a singleton, so every consumer account can read that scope and the EF
 // withholds those facts. This component just renders what it is given.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { CountCell, StateCell } from "@/components/console/StateCell";
 import { placeHref, withOrg } from "@/lib/console-routes";
@@ -127,6 +128,72 @@ const INTAKE_COLUMNS = INTAKE_FUNCTIONS.map((f) => ({
   key: f.key,
   label: intakeFunctionLabel(f.n, f.label),
 }));
+
+/** Sortable columns: the identity column by name, plus every general state
+ *  column. Intake columns stay unsorted — an operator question, not a list
+ *  order anyone asked for. */
+type SortKey = "name" | GeneralStateKey;
+type SortDir = "asc" | "desc";
+type Sort = { key: SortKey; dir: SortDir };
+type SortableValue = string | number | boolean | "unknown";
+
+/** One value per place, per sortable column — reuses `cellValue` for the
+ *  state facts so sorting can never disagree with what the cell renders. */
+function sortValueFor(place: ConsolePlace, key: SortKey): SortableValue {
+  if (key === "name") return place.name.trim().toLowerCase();
+  if (key === "requested") {
+    return typeof place.requestCount === "number" ? place.requestCount : "unknown";
+  }
+  return cellValue(place, factsFor(place), key);
+}
+
+/** "unknown" sorts last regardless of direction — a fact nobody read is not
+ *  meaningfully high or low, and burying it at the bottom keeps it from
+ *  masquerading as the smallest value in the column. */
+function compareSortable(a: SortableValue, b: SortableValue): number {
+  if (a === "unknown" || b === "unknown") {
+    if (a === b) return 0;
+    return a === "unknown" ? 1 : -1;
+  }
+  if (typeof a === "string" && typeof b === "string") return a.localeCompare(b);
+  if (typeof a === "boolean" && typeof b === "boolean") {
+    return a === b ? 0 : a ? 1 : -1;
+  }
+  return (a as number) - (b as number);
+}
+
+/** One small icon, reused on every sortable header: neutral both-ways glyph
+ *  when idle, a direction arrow once that column is the active sort. Clicking
+ *  cycles asc → desc → off, so a column is never stuck sorted by accident. */
+function SortHeaderButton({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Sort by ${label}${active ? `, ${dir === "asc" ? "ascending" : "descending"}` : ""}`}
+      className={cn(
+        "inline-flex items-center gap-1 transition",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+      <Icon className="h-3 w-3 shrink-0" aria-hidden />
+    </button>
+  );
+}
 
 function PlaceThumb({ place }: { place: ConsolePlace }) {
   const src = placeThumbUrl(place.photoUrl, THUMB_PX);
@@ -208,6 +275,31 @@ export function PlaceStatesTable({
 }) {
   const showActions = Boolean(actionsByPlaceId);
   const [showIntake, setShowIntake] = useState(false);
+  const [sort, setSort] = useState<Sort | null>(null);
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: "asc" };
+      if (prev.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  }
+
+  // Frontend-only (Pato, 2026-09-09): the row count already fits in the
+  // browser, so re-ordering it is a pure client concern — no server round
+  // trip, no query param, nothing for the EF to know about.
+  const sortedPlaces = useMemo(() => {
+    if (!sort) return places;
+    const withValue = places.map((place) => ({
+      place,
+      value: sortValueFor(place, sort.key),
+    }));
+    withValue.sort(
+      (a, b) =>
+        compareSortable(a.value, b.value) * (sort.dir === "asc" ? 1 : -1),
+    );
+    return withValue.map((w) => w.place);
+  }, [places, sort]);
 
   return (
     // Full bleed on a phone so the scrollport is the whole window (~390px)
@@ -290,11 +382,21 @@ export function PlaceStatesTable({
             ) : null}
             <tr className={cn("text-muted-foreground type-label text-left font-semibold tracking-[0.12em] uppercase", STATES_HEAD_BG)}>
               <th scope="col" className={cn("px-4 py-3", STATES_COL_HEAD)}>
-                Place
+                <SortHeaderButton
+                  label="Place"
+                  active={sort?.key === "name"}
+                  dir={sort?.key === "name" ? sort.dir : "asc"}
+                  onClick={() => toggleSort("name")}
+                />
               </th>
               {GENERAL_COLUMNS.map((c) => (
                 <th key={c.key} scope="col" className="px-3 py-3 text-center font-semibold">
-                  {c.label}
+                  <SortHeaderButton
+                    label={c.label}
+                    active={sort?.key === c.key}
+                    dir={sort?.key === c.key ? sort.dir : "asc"}
+                    onClick={() => toggleSort(c.key)}
+                  />
                 </th>
               ))}
               {showIntake
@@ -312,7 +414,7 @@ export function PlaceStatesTable({
             </tr>
           </thead>
           <tbody>
-            {places.map((place) => (
+            {sortedPlaces.map((place) => (
               <PlaceStatesRow
                 key={place.id}
                 place={place}
