@@ -167,33 +167,42 @@ export default async function PlacesPage({
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
           title={
-            owned === "org"
-              ? `${org.name} holds none yet`
-              : owned === "public"
-                ? "Nothing left to claim"
-                : "No places yet"
+            // AN EMPTY CATALOGUE OUTRANKS THE FILTER, and this is the case
+            // that is live right now (0 places, 0 organizations). Keying off
+            // `owned` first would answer "Nothing left to claim — every place
+            // in the catalogue is already held" on `?owned=public` when the
+            // catalogue holds nothing at all: a filter explaining an absence
+            // it did not cause. Ask "is there anything?" before "did I hide
+            // it?".
+            places.length === 0
+              ? "No places yet"
+              : owned === "org"
+                ? `${org.name} holds none yet`
+                : "Nothing left to claim"
           }
           description={
-            owned === "org"
-              ? "Claim one from Public Places and it lands here."
-              : owned === "public"
-                ? "Every place in the catalogue is already held."
-                : "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
+            places.length === 0
+              ? "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
+              : owned === "org"
+                ? "Claim one from Public Places and it lands here."
+                : "Every place in the catalogue is already held."
           }
           action={
-            owned === "org" && places.length > held ? (
+            // No action on an empty catalogue: there is nowhere to send anyone
+            // (MESITA-1664 — businesses do not add places, Mesita does).
+            places.length === 0 ? null : owned === "org" ? (
               <Link
                 href={withOrg(placesHref("public"), org.id)}
                 className={CTA_BUTTON_CLASS}
               >
                 See Public Places
               </Link>
-            ) : owned ? (
+            ) : owned === "public" ? (
               <Link
-                href={withOrg(placesHref(), org.id)}
+                href={withOrg(placesHref("org"), org.id)}
                 className={CTA_BUTTON_CLASS}
               >
-                See all places
+                See Org Places
               </Link>
             ) : null
           }
