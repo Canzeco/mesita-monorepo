@@ -49,10 +49,11 @@ export function PlaceBar({
   guarded: boolean;
 }) {
   return (
-    // top-0 below `sm`, because row 1 is `static` there and parking row 2 at
-    // 57px would leave a band of body content scrolling above it. Above `sm`
-    // row 1 sticks and row 2 parks directly under it.
-    // z-20 sits under TopNav's z-30 and PlaceSaveBar's z-40.
+    // `top-0`, flat, at every width (MESITA-1710). This used to park at 57px
+    // above `sm` to clear the old top bar. The nav is a lateral rail now and
+    // AppShell makes `main` the only scroller, so this bar's scrollport has
+    // nothing above it — see PLACEBAR_STICKY_CLASS for the full argument.
+    // z-20 sits under the drawer's z-50 and PlaceSaveBar's z-40.
     // A <div>, not a second <header>: only one banner landmark per document.
     <div
       className={`bg-background border-border z-20 flex flex-col justify-end gap-1 border-b pt-2 sm:h-12 sm:flex-row sm:items-center sm:gap-3 sm:pt-0 ${PLACEBAR_STICKY_CLASS} ${SHELL_BLEED} ${SHELL_GUTTER}`}

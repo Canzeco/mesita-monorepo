@@ -12,6 +12,7 @@ import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
 import { resolveActiveOrg } from "@/lib/active-organization";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { PlaceBar } from "@/components/console/PlaceBar";
+import { PublishOpenPlace } from "@/components/console/OpenPlace";
 import { PlaceManageShell } from "./PlaceManageShell";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,22 @@ export default async function PlaceLayout({
     organizationId = resolveActiveOrg(orgs, undefined)?.id ?? null;
   }
 
+  // The rail needs this place's NAME, and it is rendered above this layout, so
+  // it cannot know it. Publishing it upward costs nothing — the string is
+  // already in hand — where a second `business-web-get-place` from the shell
+  // would cost a round trip on every navigation. `owned` decides which of the
+  // two Places filters the row nests under; a pool place has no holder.
+  //
+  // Only the NAME travels up. Navigation stays down here, in PlaceBar, where
+  // GuardedPlaceTabs can reach PlaceProvider.
+  const publishName = (
+    <PublishOpenPlace
+      id={id}
+      name={view.place.name}
+      owned={view.holder !== null}
+    />
+  );
+
   // ONE call site for the bar. Building it twice — once per branch — is the
   // drift this layout's docblock exists to prevent.
   const bar = (
@@ -73,6 +90,7 @@ export default async function PlaceLayout({
   if (!manage) {
     return (
       <>
+        {publishName}
         {bar}
         {children}
       </>
@@ -81,6 +99,7 @@ export default async function PlaceLayout({
 
   return (
     <PlaceManageShell placeId={id} initialPlace={manage.place} header={bar}>
+      {publishName}
       {children}
     </PlaceManageShell>
   );

@@ -4,9 +4,12 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  PLACES_OWNED,
   SHELL_ROUTES,
+  ownedFromParam,
   placeHref,
   placeIdFromPathname,
+  placesHref,
   withOrg,
 } from "./console-routes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
@@ -98,5 +101,64 @@ describe("the merged list (MESITA-1614)", () => {
     );
     expect(cfg).toMatch(/source:\s*"\/pool"/);
     expect(cfg).toMatch(/destination:\s*"\/places"/);
+  });
+});
+
+// MESITA-1710. `Org Places` and `Public Places` are back as LABELS in the rail
+// and are still not screens: they are saved filters on the one merged list.
+// These pin the distinction, because the cheap mistake is to let one of them
+// grow a route again and quietly reverse MESITA-1614.
+describe("the rail's two Places children are filters, not routes", () => {
+  it("both resolve to the SAME route file the merged list uses", () => {
+    for (const owned of PLACES_OWNED) {
+      expect(placesHref(owned).split("?")[0]).toBe(SHELL_ROUTES.places);
+    }
+  });
+
+  it("the parent row is the unfiltered list — the comparison view", () => {
+    // The whole argument for merging was being able to see both halves at
+    // once. If the parent ever starts carrying a filter, that is gone.
+    expect(placesHref()).toBe(SHELL_ROUTES.places);
+    expect(placesHref(null)).toBe(SHELL_ROUTES.places);
+  });
+
+  it("names the filter in the query, not the path", () => {
+    expect(placesHref("org")).toBe("/places?owned=org");
+    expect(placesHref("public")).toBe("/places?owned=public");
+  });
+
+  it("neither child grew a route file on disk", () => {
+    for (const seg of ["org", "public", "pool"]) {
+      expect(existsSync(path.join(SHELL_DIR, "places", seg, "page.tsx"))).toBe(
+        false,
+      );
+    }
+  });
+
+  it("carries the organization like every other href", () => {
+    expect(withOrg(placesHref("org"), "org-1")).toBe(
+      "/places?owned=org&org=org-1",
+    );
+  });
+});
+
+describe("ownedFromParam", () => {
+  it("reads the two real values", () => {
+    expect(ownedFromParam("org")).toBe("org");
+    expect(ownedFromParam("public")).toBe("public");
+  });
+
+  it("is null for anything else — an unknown filter shows the FULL list", () => {
+    // The dangerous failure is the other way: a typo that filters everything
+    // out renders an empty screen and reads as data loss.
+    for (const junk of ["", "ORG", "owned", "true", "1", "../org"]) {
+      expect(ownedFromParam(junk)).toBeNull();
+    }
+  });
+
+  it("is null for a repeated param, which Next hands over as an array", () => {
+    // `?owned=org&owned=public` arrives as ["org","public"].
+    expect(ownedFromParam(["org", "public"])).toBeNull();
+    expect(ownedFromParam(undefined)).toBeNull();
   });
 });
