@@ -33,8 +33,14 @@ import {
   canVerify,
   resolveActiveOrg,
 } from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg, placeHref } from "@/lib/console-routes";
-import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import {
+  SHELL_ROUTES,
+  ownedFromParam,
+  placeHref,
+  placesHref,
+  withOrg,
+} from "@/lib/console-routes";
+import { CTA_BUTTON_CLASS, GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -87,14 +93,55 @@ export default async function PlacesPage({
 
   const held = places.filter((p) => p.owned === true).length;
 
+  // ONE READ, then a view of it (MESITA-1710). The rail's `Org Places` and
+  // `Public Places` rows are saved filters on this page, not screens, and the
+  // filter runs HERE rather than in the EF: `scope: "all"` already returns both
+  // halves in one call with every fact attached, so a per-filter fetch would be
+  // a second round trip for rows we are already holding. MESITA-1614 stands —
+  // the split is still a filter, it just has a name in the rail now.
+  //
+  // Same argument MESITA-1711 made about sorting: work on rows the page
+  // already has does not need a round trip.
+  const owned = ownedFromParam(sp.owned);
+  const visible = owned
+    ? places.filter((p) =>
+        owned === "org" ? p.owned === true : p.owned !== true,
+      )
+    : places;
+
   return (
     <>
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Places
+          {owned === "org"
+            ? "Org Places"
+            : owned === "public"
+              ? "Public Places"
+              : "Places"}
         </h1>
         <p className="text-muted-foreground text-[13px]">
-          {held} held by {org.name} · the rest are claimable
+          {owned === "org" ? (
+            <>
+              {held} held by {org.name}
+            </>
+          ) : owned === "public" ? (
+            <>{places.length - held} claimable, held by nobody</>
+          ) : (
+            <>
+              {held} held by {org.name} · the rest are claimable
+            </>
+          )}
+          {owned && (
+            <>
+              {" · "}
+              <Link
+                href={withOrg(placesHref(), org.id)}
+                className="hover:text-foreground underline underline-offset-2"
+              >
+                see all {places.length}
+              </Link>
+            </>
+          )}
         </p>
       </div>
 
@@ -104,25 +151,56 @@ export default async function PlacesPage({
           message={error}
           retryHref={withOrg(SHELL_ROUTES.places, org.id)}
         />
-      ) : places.length === 0 ? (
-        /* ONE empty state — the screens merged, so "the pool is empty" and
-           "you hold none" collapsed into one honest sentence. The
-           zero-catalogue case is production today (0 places, 0 organizations),
-           so it is the state everyone actually sees.
+      ) : visible.length === 0 ? (
+        /* TWO empty states. The first is the merge's (MESITA-1664): the
+           catalogue itself is empty — production today (0 places, 0
+           organizations), so it is the state everyone actually sees, and it
+           gets no action, because businesses do not put places into the
+           catalogue any more, Mesita does. Offering "Add a place" would be a
+           button leading nowhere a manager is allowed to go.
 
-           It gets no action (MESITA-1664). Businesses do not put places into
-           the catalogue any more; Mesita does. Offering "Add a place" here
-           would be a button that leads nowhere a manager is allowed to go,
-           and the empty state's job in that world is to say who to wait for,
-           not to invent a verb. */
+           The second arrived with the rail's filters (MESITA-1710), and it is
+           the one that would have lied: on `?owned=org` with places sitting in
+           the pool, "No places yet" is false — there ARE places, just none of
+           them yours. A filter that empties the screen has to say it was the
+           filter, and hand back the way out. */
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
-          title="No places yet"
-          description="Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
+          title={
+            owned === "org"
+              ? `${org.name} holds none yet`
+              : owned === "public"
+                ? "Nothing left to claim"
+                : "No places yet"
+          }
+          description={
+            owned === "org"
+              ? "Claim one from Public Places and it lands here."
+              : owned === "public"
+                ? "Every place in the catalogue is already held."
+                : "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
+          }
+          action={
+            owned === "org" && places.length > held ? (
+              <Link
+                href={withOrg(placesHref("public"), org.id)}
+                className={CTA_BUTTON_CLASS}
+              >
+                See Public Places
+              </Link>
+            ) : owned ? (
+              <Link
+                href={withOrg(placesHref(), org.id)}
+                className={CTA_BUTTON_CLASS}
+              >
+                See all places
+              </Link>
+            ) : null
+          }
         />
       ) : (
         <PlaceStatesTable
-          places={places}
+          places={visible}
           organizationId={org.id}
           // PlaceStatesTable is a Client Component (the intake toggle needs
           // state), so the action cell has to arrive pre-rendered — a
@@ -130,7 +208,7 @@ export default async function PlacesPage({
           // already-built JSX can. Rendered here, once per place, exactly as
           // the old renderAction callback did.
           actionsByPlaceId={Object.fromEntries(
-            places.map((place) => [
+            visible.map((place) => [
               place.id,
               <span key={place.id} className="inline-flex items-center gap-2">
                 {/* Open is navigation, not a mutation — it stays a quiet

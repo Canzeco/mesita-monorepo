@@ -35,10 +35,11 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
  * A tab's href, carrying the active organization.
  *
  * The org is NOT optional decoration. Without it, a multi-org operator who
- * landed on `/places/x?org=B` and clicks a tab loses `org=B`; `TopNav` then
- * falls back to `organizations[0]`, so the switcher silently jumps to org A
- * and every other nav href follows it. Row 2 sits 56px under that switcher,
- * so an unadorned tab href corrupts the thing directly above it.
+ * landed on `/places/x?org=B` and clicks a tab loses `org=B`; the rail's
+ * switcher then falls back to `organizations[0]`, so it silently jumps to
+ * org A and every other nav href follows it. The tab rail sits inside the
+ * frame the switcher is pinned to, so an unadorned tab href corrupts the
+ * navigation standing beside it.
  */
 export function placeTabHref(
   placeId: string,

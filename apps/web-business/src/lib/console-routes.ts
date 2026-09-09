@@ -25,6 +25,37 @@ export const SHELL_ROUTES = {
   places: "/places",
 } as const;
 
+// ── The rail's two Places children (MESITA-1710) ──────────────────────────
+//
+// `Org Places` and `Public Places` are back as LABELS, and they are still not
+// screens. They are SAVED FILTERS on the one merged list: `?owned=org` and
+// `?owned=public` against `/places`, which is why MESITA-1614 survives this
+// change untouched — `/pool` is still a redirect, the Owned column is still
+// the fact, and the parent row still shows both halves together so they can
+// be compared.
+//
+// The split died because a horizontal bar pays for every item in WIDTH, so a
+// pre-applied filter could not justify a whole screen. A vertical rail nests
+// and costs nothing per row. The labels earn their place; the routes do not.
+
+export const PLACES_OWNED = ["org", "public"] as const;
+export type PlacesOwned = (typeof PLACES_OWNED)[number];
+
+/** The list, optionally pre-filtered. No argument = both halves, which is the
+ *  comparison view the merge exists to protect. */
+export function placesHref(owned?: PlacesOwned | null): string {
+  return owned ? `${SHELL_ROUTES.places}?owned=${owned}` : SHELL_ROUTES.places;
+}
+
+/** Read `?owned=` off a search param. Anything unrecognised is null — an
+ *  unknown value must show the full list, never an empty one. */
+export function ownedFromParam(value: unknown): PlacesOwned | null {
+  return typeof value === "string" &&
+    (PLACES_OWNED as readonly string[]).includes(value)
+    ? (value as PlacesOwned)
+    : null;
+}
+
 /** Place — the fourth screen. Reached from the list. */
 export function placeHref(placeId: string): string {
   return `${SHELL_ROUTES.places}/${encodeURIComponent(placeId)}`;

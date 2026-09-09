@@ -36,16 +36,34 @@ describe("the add door is shut", () => {
     expect(PLACES_PAGE).not.toContain("Add a place");
   });
 
-  it("the empty state offers no action — the search bar is gone, so there is nothing to clear", () => {
+  it("the empty state can only navigate the list — it can never create", () => {
+    // This used to ban the `action` prop outright, which was exact while the
+    // empty state had nothing to offer. The rail's filters gave it something
+    // (MESITA-1710): on `?owned=org` with a full pool, "No places yet" is a
+    // lie, so that state has to say it was the filter and hand back the way
+    // out. Banning the MECHANISM would have stopped that honest fix while
+    // still passing a page that put "Add a place" in `description`.
+    //
+    // So the rule guards the DOOR instead of the prop: whatever the empty
+    // state offers, it may only point back into the list.
+    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
+    expect(emptyState).not.toBe("");
+    for (const href of emptyState.match(/href=\{[^}]*\}/g) ?? []) {
+      expect(href).toMatch(/placesHref\(/);
+    }
+    // No create verb anywhere on the screen, in any prop.
+    expect(PLACES_PAGE).not.toMatch(/Add a place|Create place|New place/i);
+  });
+
+  it("search stayed gone — the page filters by rail, never by query", () => {
     // Search left the page entirely (Pato, 2026-09-09): the console loads
     // every place and sorts client-side instead of filtering server-side.
-    // With no query to filter by, the empty state has nothing to hand back
-    // and nothing to create — it renders unconditionally, with no `action`
-    // prop at all.
-    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?\/>\s*\n/)?.[0] ?? "";
-    expect(emptyState).not.toContain("action=");
+    // The rail's `?owned=` filters are a VIEW of rows already in hand, not a
+    // reason to put the server round trip back.
     expect(PLACES_PAGE).not.toContain("Clear the search");
     expect(PLACES_PAGE).not.toContain("Search by name");
+    expect(PLACES_PAGE).not.toContain("<form");
+    expect(PLACES_PAGE).not.toMatch(/apiListConsolePlaces\([\s\S]*?query:/);
   });
 
   it("/add renders a redirect and reads no data", () => {
