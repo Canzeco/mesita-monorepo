@@ -2,13 +2,14 @@
 
 import { CONNECT_COUNTRIES } from "@/lib/connect-countries";
 import { CONNECT_ENTITY_TYPES } from "@/lib/connect-entity-types";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   StatePill,
   DataRow,
   READY_CAPTION,
   disabledReasonCopy,
 } from "@/components/console/badges";
+import { Field, Modal } from "@/components/shared";
 import {
   connectPaymentsAction,
   openPaymentsDashboardAction,
@@ -24,6 +25,7 @@ import {
   ERROR_BOX_CLASS,
   INPUT_CLASS,
   PILL_BUTTON_CLASS,
+  PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 
 const INITIAL: PaymentsActionState = { error: null, note: null };
@@ -52,6 +54,84 @@ function ErrorBox({ title, message }: { title: string; message: string | null })
 }
 
 
+/**
+ * The two permanent answers, asked once, inside the modal the button opens.
+ *
+ * They used to sit on the card itself — two selects, their captions, and a
+ * caveat paragraph wrapped around the CTA they gate. On a summary box whose
+ * other rows are one label and one value, that reads as clutter, not as a
+ * question (Pato, 2026-09-09). The gate is unchanged: country and legal
+ * entity, both before onboarding opens, the entity with no valid default.
+ *
+ * Exported so the gate can be asserted directly — the card renders a button,
+ * and a closed modal has no DOM.
+ */
+export function ConnectStripeForm({
+  orgId,
+  action,
+  pending,
+  error,
+  hasLegalName,
+}: {
+  orgId: string;
+  action: (formData: FormData) => void;
+  pending: boolean;
+  error: string | null;
+  hasLegalName: boolean;
+}) {
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <ErrorBox title="Couldn't connect payments" message={error} />
+      <input type="hidden" name="orgId" value={orgId} />
+      <input type="hidden" name="intent" value="create" />
+      <Field label="Country">
+        <select name="country" defaultValue="MX" className={INPUT_CLASS}>
+          {CONNECT_COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-muted-foreground mt-1.5 block text-[12px]">
+          Permanent on the Stripe account.
+        </span>
+      </Field>
+      {/* The second half of the pre-onboarding gate. No valid default:
+          this answer decides which documents Stripe asks for next, and
+          a silent "individual" sends a persona moral down the wrong
+          branch — which costs a restart, not a correction. */}
+      <Field label="Legal entity" required>
+        <select
+          name="entityType"
+          defaultValue=""
+          required
+          className={INPUT_CLASS}
+        >
+          <option value="" disabled>
+            Select…
+          </option>
+          {CONNECT_ENTITY_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-muted-foreground mt-1.5 block text-[12px]">
+          Decides what Stripe asks for.
+        </span>
+      </Field>
+      <button type="submit" disabled={pending} className={PRIMARY_BUTTON_CLASS}>
+        {pending ? "Opening Stripe..." : "Continue to Stripe"}
+      </button>
+      <p className="text-muted-foreground text-[12px] leading-relaxed">
+        Stripe asks for the rest — RFC, address, bank account — in its own
+        onboarding.
+        {!hasLegalName && " Add your legal name below and it comes prefilled."}
+      </p>
+    </form>
+  );
+}
+
 export function PaymentsCard({
   orgId,
   account,
@@ -76,6 +156,7 @@ export function PaymentsCard({
     openPaymentsDashboardAction,
     INITIAL,
   );
+  const [connectOpen, setConnectOpen] = useState(false);
 
   const state = paymentAccountState(account, orphaned);
   const note = connectState.note ?? dashState.note;
@@ -128,63 +209,40 @@ export function PaymentsCard({
       {isOwner && (
         <div className="flex flex-col gap-3">
           {state === "none" || orphaned ? (
-            <form action={connectAction} className="flex flex-wrap items-end gap-3">
-              <ErrorBox
-                title="Couldn't connect payments"
-                message={connectState.error}
-              />
-              <input type="hidden" name="orgId" value={orgId} />
-              <input type="hidden" name="intent" value="create" />
-              <label className="flex flex-1 basis-40 flex-col gap-1.5">
-                <span className="text-muted-foreground text-[12px]">
-                  Country — permanent on the Stripe account
-                </span>
-                <select name="country" defaultValue="MX" className={INPUT_CLASS}>
-                  {CONNECT_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {/* The second half of the pre-onboarding gate. No valid default:
-                  this answer decides which documents Stripe asks for next, and
-                  a silent "individual" sends a persona moral down the wrong
-                  branch — which costs a restart, not a correction. */}
-              <label className="flex flex-1 basis-40 flex-col gap-1.5">
-                <span className="text-muted-foreground text-[12px]">
-                  Legal entity — decides what Stripe asks for
-                </span>
-                <select
-                  name="entityType"
-                  defaultValue=""
-                  required
-                  className={INPUT_CLASS}
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-muted-foreground text-sm">
+                  {orphaned
+                    ? "Connect again to start taking payments."
+                    : "Two questions here, the rest on Stripe."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setConnectOpen(true)}
+                  className={CTA_BUTTON_CLASS}
                 >
-                  <option value="" disabled>
-                    Select…
-                  </option>
-                  {CONNECT_ENTITY_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                disabled={connecting}
-                className={CTA_BUTTON_CLASS}
-              >
-                {connecting ? "Opening Stripe..." : "Connect payments"}
-              </button>
-              <p className="text-muted-foreground w-full text-[12px]">
-                Stripe asks for the rest — RFC, address, bank account — in its
-                own onboarding.
-                {!hasLegalName &&
-                  " Add your legal name below and it comes prefilled."}
-              </p>
-            </form>
+                  Connect Stripe
+                </button>
+              </div>
+              {/* A failure keeps the modal up: the answers are still in the
+                  fields, and the message belongs beside them, not on a card
+                  the reader has already been sent back to. */}
+              {connectOpen && (
+                <Modal
+                  title="Connect Stripe"
+                  description="Two answers Stripe can't change later."
+                  onClose={() => setConnectOpen(false)}
+                >
+                  <ConnectStripeForm
+                    orgId={orgId}
+                    action={connectAction}
+                    pending={connecting}
+                    error={connectState.error}
+                    hasLegalName={hasLegalName}
+                  />
+                </Modal>
+              )}
+            </>
           ) : (
             <div className="flex flex-col gap-3">
               <ErrorBox title="Couldn't connect payments" message={connectState.error} />
