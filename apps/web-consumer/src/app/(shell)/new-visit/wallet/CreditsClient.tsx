@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Wallet } from "lucide-react";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { BalanceList, CARD_PX } from "@/components/consumer/credits/BalanceList";
 import { WaysToPay } from "@/components/consumer/credits/WaysToPay";
-import { WalletPanel } from "@/components/consumer/wallet/WalletPanel";
+import {
+  WalletPanel,
+  WalletPanelEmpty,
+} from "@/components/consumer/wallet/WalletPanel";
 import {
   AddCardButton,
   CardList,
@@ -99,9 +100,22 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 // — this is text on a light surface and 500 fails AA. The token has no
 // Tailwind utility and an arbitrary `text-[...]` trips the off-scale-font-size
 // rule, so it rides an inline style. globals.css:26 documents the pair.
+// 44px tall, not 40. Three of these used to sit side by side at `py-2.5`
+// (~40px) with a 6px gutter — three adjacent targets under the touch floor,
+// which is what MESITA-1708 D5 measured. Buy has since left this row, but the
+// floor holds for the two that remain.
 const ADD_BUTTON_CLASS =
-  "bg-primary/10 flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
+  "bg-primary/10 flex shrink-0 items-center gap-1.5 rounded-full px-4 py-3 text-sm font-bold transition active:scale-[0.98] disabled:opacity-50";
 const ADD_BUTTON_STYLE = { color: "var(--brand-pink-text)" };
+
+/** THE ONE SOLID BUTTON ON THE SCREEN (MESITA-1708 D4). Buy used to be the
+ *  first of three identical pink pills beside Gift and Redeem. It is not their
+ *  peer: buying is the only act on this surface that creates anything, and
+ *  Redeem — which most guests will never use — was carrying the same weight.
+ *  `--primary` is fine as a FILL (the AA problem is pink-500 as text on white,
+ *  which is why the pills opposite ride --brand-pink-text instead). */
+const BUY_BUTTON_CLASS =
+  "bg-primary text-primary-foreground inline-flex items-center rounded-full px-5 py-3 text-sm font-bold shadow-rest transition active:scale-[0.98]";
 
 /** A section header action that goes somewhere. Every one of them does now —
  *  the `SoonAction` placeholder that held Gift and Redeem for one afternoon is
@@ -172,8 +186,10 @@ export function CreditsClient() {
 
         <WalletPanel
           title="Credits"
-          // BUY · GIFT · REDEEM (Pato, 2026-09-08). Add named the mechanic;
-          // Buy names the act. Redeem is global BY NECESSITY — it is the door
+          // GIFT · REDEEM in the header; BUY is not here (MESITA-1708 D4) —
+          // it is the panel's own primary button, below, because it is the
+          // only one of the three that creates anything. Redeem is global
+          // BY NECESSITY — it is the door
           // for someone who was given Credits and holds nothing, so a
           // per-balance Redeem is unreachable by definition. Gift is global
           // because gifting is ISSUANCE (MESITA-1677): you buy a balance for
@@ -181,9 +197,6 @@ export function CreditsClient() {
           // Buy does and needs no source balance selected first.
           actions={
             <>
-              <HeadAction href={CONSUMER_ROUTES.newVisit.walletBuy}>
-                Buy
-              </HeadAction>
               <HeadAction href={CONSUMER_ROUTES.newVisit.walletGift}>
                 Gift
               </HeadAction>
@@ -200,13 +213,27 @@ export function CreditsClient() {
               <Skeleton className="h-full w-full rounded-2xl" />
             </div>
           ) : balances.length === 0 ? (
-            // No `action`. EmptyState normally carries one and the rule behind
-            // that is real — a zero state without a next step is a dead end.
-            // It already has one here: Buy sits in the header directly above.
-            <EmptyState
-              icon={Wallet}
-              title="No Credits yet"
-              description="Pay a place ahead of time and it gives you back more than you paid. Spend it there whenever you go."
+            // `WalletPanelEmpty`, not the shared screen-scale `EmptyState` —
+            // see its header. The old one nested a tinted icon tile and a
+            // display headline inside this bordered panel, which is a
+            // container wrapping a container wrapping nothing.
+            //
+            // NO NUMBERS IN THIS COPY. The real bonus and expiry live in
+            // `controls_config` and only BuyClient fetches them; hardcoding
+            // "5% · 90 days" here would be the screen asserting terms the
+            // operator can change, and adding an EF call to every wallet open
+            // for one sentence is not worth it. Buy states the real terms.
+            <WalletPanelEmpty
+              headline="Prepay a place, get more than you paid"
+              description="Spend it there whenever you go. The place sets the bonus and how long it lasts."
+              action={
+                <Link
+                  href={CONSUMER_ROUTES.newVisit.walletBuy}
+                  className={BUY_BUTTON_CLASS}
+                >
+                  Buy Credits
+                </Link>
+              }
             />
           ) : (
             <>
@@ -215,6 +242,12 @@ export function CreditsClient() {
                 nowMs={nowMs}
                 onOpen={openBalanceCard}
               />
+              <Link
+                href={CONSUMER_ROUTES.newVisit.walletBuy}
+                className={`${BUY_BUTTON_CLASS} mt-3.5`}
+              >
+                Buy Credits
+              </Link>
               {credits.hasMore ? (
                 <button
                   type="button"

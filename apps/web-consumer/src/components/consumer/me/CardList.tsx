@@ -178,8 +178,17 @@ export function CardList({ state }: { state: ConsumerCardsState }) {
             </button>
           </div>
         ) : cards.length === 0 ? (
-          <p className="text-muted-foreground border-border rounded-2xl border border-dashed px-4 py-6 text-center text-xs">
-            No cards yet. Add one to pay faster.
+          // NO DASHED BOX (MESITA-1708). This list is mounted inside a
+          // bordered surface on both of its call sites — the Wallet's
+          // `WalletPanel` and Me's `CardsModal` — so an outlined placeholder
+          // here was a container inside a container, drawn around nothing.
+          // The panel is the container; this is the sentence.
+          // Deliberately does NOT repeat the Stripe reassurance:
+          // `CardsDisclosure` renders directly beneath this on both call
+          // sites and already says it. Two sentences saying one thing, two
+          // inches apart, is the copy version of the nesting above.
+          <p className="text-muted-foreground type-label py-1">
+            No cards saved yet.
           </p>
         ) : (
           cards.map((card) => (

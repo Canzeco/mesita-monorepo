@@ -117,7 +117,24 @@ describe("naming", () => {
 // surface they opened to check it, and Pato overruled them: Credits must
 // never read as REQUIRED, and putting the ordinary way to pay first is what
 // says the prepaid balance under it is optional.
+/** Source with comments removed. These files DOCUMENT the patterns they must
+ *  not contain ("the first version drew a `border-b`…"), so a raw substring
+ *  match fails on the explanation rather than on the code. */
+function code(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
 describe("wallet block order", () => {
+  const PANEL = readFileSync(
+    join(__dirname, "..", "..", "components", "consumer", "wallet", "WalletPanel.tsx"),
+    "utf8",
+  );
+  const CARD_LIST = readFileSync(
+    join(__dirname, "..", "..", "components", "consumer", "me", "CardList.tsx"),
+    "utf8",
+  );
   const CLIENT = readFileSync(
     join(__dirname, "..", "..", "app", "(shell)", "new-visit", "wallet", "CreditsClient.tsx"),
     "utf8",
@@ -154,6 +171,47 @@ describe("wallet block order", () => {
     expect(CLIENT).toContain("WalletPanel");
     expect(CLIENT).not.toContain("<section");
     expect(CLIENT).not.toContain("SectionHead");
+  });
+
+  it("keeps the display face off the panel titles", () => {
+    // MESITA-1708. globals.css puts h1-h3 in Fraunces, and brand.json scopes
+    // that face to "h1-h3, the wordmark, numerals in hero positions". A 14px
+    // serif repeated as a section legend is none of those, and it is what made
+    // this screen read as a settings form. `font-sans` is the override; losing
+    // it silently returns the serif.
+    expect(code(PANEL)).toContain("font-sans");
+  });
+
+  it("draws no divider under a panel header", () => {
+    // MESITA-1708. The border-b was the strongest line on the screen and it
+    // separated a title from its own content. Three panels meant six rules,
+    // which is the stacked-cards pattern web-consumer/CLAUDE.md calls a
+    // regression in its first line.
+    // \b on BOTH sides: a bare /border-b/ is a substring of the panel's own
+    // `border-border` outline, which is correct and stays.
+    expect(code(PANEL)).not.toMatch(/\bborder-b\b/);
+  });
+
+  it("puts no container inside a panel", () => {
+    // MESITA-1708. Both zero states used to be a box inside a box: Cards drew
+    // a dashed outline, Credits mounted the screen-scale EmptyState (icon
+    // tile, display headline, centred, pb-10) inside a 200px panel.
+    expect(code(CARD_LIST)).not.toContain("border-dashed");
+    expect(code(CLIENT)).not.toContain("<EmptyState");
+    expect(code(CLIENT)).not.toContain("shared/EmptyState");
+    expect(code(CLIENT)).toContain("WalletPanelEmpty");
+  });
+
+  it("gives Buy the only solid button, out of the header pill row", () => {
+    // MESITA-1708 D4. Buy was the first of three identical pink pills beside
+    // Gift and Redeem. Buying is the only act here that creates anything;
+    // Redeem is the one most guests never use.
+    expect(CLIENT).toContain("BUY_BUTTON_CLASS");
+    const bare = code(CLIENT);
+    const actions = bare.slice(bare.indexOf('title="Credits"'));
+    const head = actions.slice(0, actions.indexOf("</WalletPanel>"));
+    const headActions = head.slice(0, head.indexOf("{credits.loading"));
+    expect(headActions).not.toContain("walletBuy");
   });
 
   it("mounts the shared card list, never a second one", () => {
@@ -214,6 +272,17 @@ describe("ways to pay", () => {
     // applying only to (subtotal - discount), never the tip. A guest told
     // otherwise expects MX$2,000 to cover a MX$1,800 bill plus tip.
     expect(WAYS).toContain("never the tip");
+  });
+
+  it("names all four without expanding by default", () => {
+    // MESITA-1708. The block shipped fully expanded and CLIPPED MID-ROW at
+    // 390x844 — first paint was a sentence cut in half. The NAMES are what
+    // MESITA-1696 was for, so four chips always render; the paragraphs sit
+    // behind aria-expanded.
+    expect(WAYS).toContain("useState");
+    expect(WAYS).toContain("aria-expanded");
+    expect(WAYS).toMatch(/chip: "Cash"/);
+    expect(WAYS).toMatch(/chip: "Credits"/);
   });
 
   it("promises no rail that does not exist", () => {
