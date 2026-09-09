@@ -163,7 +163,11 @@ export type TicketDoc = {
   approved_amount_due_cents: number | null;
   fix_requested: "bill" | "proof" | "reward" | null;
   fix_note: string | null;
-  paid_method: "at_place" | "mesita" | "mesita_pay" | null;
+  // "credits" is server-derived only (a fully-covered bill closes without a
+  // register step or a PaymentIntent, MESITA-1678) — never client-settable,
+  // so validateTicketPatch's PAID_METHOD_VALUES below deliberately excludes
+  // it; only direct server-side writeTicket() calls may set it.
+  paid_method: "at_place" | "mesita" | "mesita_pay" | "credits" | null;
   validated_at: string | null;
   story_ojo_verdict: "pass" | "unsure" | "fail" | null;
   story_ojo_confidence: number | null;
