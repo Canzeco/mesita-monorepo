@@ -169,7 +169,7 @@ select ok(
 -- is still null at this point in the test (consumer-web-select-ticket-payment
 -- sets it later, in the real flow, not this RPC).
 select is(
-  (select spend_cents from public.get_credit_spend_report()
+  (select spend_cents::int from public.get_credit_spend_report()
     where organization_id = 'aaaaaaaa-0000-0000-0000-000000000002'
       and paid_method = 'unknown'),
   400,
