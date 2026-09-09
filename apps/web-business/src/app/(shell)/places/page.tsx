@@ -14,7 +14,6 @@
 // role does not allow it, so a viewer sees a list and no verbs.
 import { Store } from "lucide-react";
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageErrorState } from "@/components/business/PageErrorState";
@@ -34,13 +33,9 @@ import {
   canVerify,
   resolveActiveOrg,
 } from "@/lib/active-organization";
-import { SHELL_ROUTES, placeHref, withOrg } from "@/lib/console-routes";
-import {
-  CTA_BUTTON_CLASS,
-  INPUT_CLASS,
-  PILL_BUTTON_CLASS,
-} from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
+import { SHELL_ROUTES, withOrg, placeHref } from "@/lib/console-routes";
+import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { errMsg } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +45,6 @@ export default async function PlacesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const query = typeof sp.q === "string" ? sp.q : "";
 
   const supabase = await createServerSupabase();
   const {
@@ -78,10 +72,14 @@ export default async function PlacesPage({
     // It is also the only scope that ships every fact for every row: the pool
     // scope withholds Partner, Verified and the intake map because any Mesita
     // account can reach it, and this one is behind requireOrgRole.
+    //
+    // No search: this screen loads every place the org can see and hands
+    // sorting to PlaceStatesTable, client-side (Pato, 2026-09-09) — a filter
+    // that trims the row COUNT belongs on the server, but ordering the rows
+    // the browser already has does not need a round trip.
     places = await apiListConsolePlaces(supabase, {
       scope: "all",
       organizationId: org.id,
-      query,
     });
   } catch (e) {
     error = errMsg(e, "Couldn't load places.");
@@ -100,19 +98,6 @@ export default async function PlacesPage({
         </p>
       </div>
 
-      <form action={SHELL_ROUTES.places} className="relative">
-        <input type="hidden" name="org" value={org.id} />
-        <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by name..."
-          aria-label="Search places"
-          className={cn(INPUT_CLASS, "pl-9")}
-        />
-      </form>
-
       {error ? (
         <PageErrorState
           heading="Couldn't load places"
@@ -120,34 +105,20 @@ export default async function PlacesPage({
           retryHref={withOrg(SHELL_ROUTES.places, org.id)}
         />
       ) : places.length === 0 ? (
-        /* TWO empty states, not three — the screens merged, so "the pool is
-           empty" and "you hold none" collapsed into one honest sentence. The
+        /* ONE empty state — the screens merged, so "the pool is empty" and
+           "you hold none" collapsed into one honest sentence. The
            zero-catalogue case is production today (0 places, 0 organizations),
            so it is the state everyone actually sees.
-           
-           It no longer gets an action (MESITA-1664). Businesses do not put
-           places into the catalogue any more; Mesita does. Offering "Add a
-           place" here would be a button that leads nowhere a manager is
-           allowed to go, and the empty state's job in that world is to say
-           who to wait for, not to invent a verb. */
+
+           It gets no action (MESITA-1664). Businesses do not put places into
+           the catalogue any more; Mesita does. Offering "Add a place" here
+           would be a button that leads nowhere a manager is allowed to go,
+           and the empty state's job in that world is to say who to wait for,
+           not to invent a verb. */
         <EmptyState
           icon={<Store className="text-muted-foreground h-5 w-5" />}
-          title={query ? "No places match that" : "No places yet"}
-          description={
-            query
-              ? "Try a different name, or clear the search."
-              : "Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
-          }
-          action={
-            query ? (
-              <Link
-                href={withOrg(SHELL_ROUTES.places, org.id)}
-                className={CTA_BUTTON_CLASS}
-              >
-                Clear the search
-              </Link>
-            ) : null
-          }
+          title="No places yet"
+          description="Mesita adds places to the catalogue. As soon as yours is listed it lands here, ready to claim."
         />
       ) : (
         <PlaceStatesTable
@@ -162,9 +133,13 @@ export default async function PlacesPage({
             places.map((place) => [
               place.id,
               <span key={place.id} className="inline-flex items-center gap-2">
+                {/* Open is navigation, not a mutation — it stays a quiet
+                    ghost pill so the one dark fill in the row is the action
+                    that actually changes the place's state (Claim), not the
+                    one that just reads it. */}
                 <Link
                   href={withOrg(placeHref(place.id), org.id)}
-                  className={PILL_BUTTON_CLASS}
+                  className={GHOST_PILL_BUTTON_CLASS}
                 >
                   Open
                 </Link>

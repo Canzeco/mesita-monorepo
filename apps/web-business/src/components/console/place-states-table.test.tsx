@@ -72,8 +72,13 @@ describe("rows and columns", () => {
   });
 
   it("still names all nine states, in Pato's order", () => {
+    // Each header's label now sits inside a sort button (frontend-only
+    // column sorting, Pato 2026-09-09), followed by an inline arrow icon —
+    // so the label is the button's text, not the <th>'s.
     const html = render();
-    const heads = [...html.matchAll(/<th[^>]*>([^<]+)</g)].map((m) => m[1].trim());
+    const heads = [...html.matchAll(/<th[^>]*>\s*<button[^>]*>([^<]+)</g)].map(
+      (m) => m[1].trim(),
+    );
     expect(heads).toEqual([
       "Place",
       "Created",

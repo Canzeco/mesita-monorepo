@@ -11,8 +11,7 @@
 // and cost a typing step; the real proof (phone OTP) will arrive as its own
 // challenge in front of this call, not as a resurrected input.
 import { useActionState } from "react";
-import { cn } from "@/lib/utils";
-import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
   verifyPlaceAction,
   type PlaceVerifyActionState,
@@ -53,10 +52,7 @@ export function PlaceVerifyButton({
       <button
         type="submit"
         disabled={pending}
-        className={cn(
-          PILL_BUTTON_CLASS,
-          "bg-card text-foreground border-border border",
-        )}
+        className={GHOST_PILL_BUTTON_CLASS}
       >
         {pending ? "Verifying..." : "Verify"}
       </button>

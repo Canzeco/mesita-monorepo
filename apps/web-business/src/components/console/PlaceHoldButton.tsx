@@ -7,7 +7,7 @@
 // pending copy, the same failure surfaced in the same place.
 import { useActionState } from "react";
 import { cn } from "@/lib/utils";
-import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import {
   claimPlaceAction,
   releasePlaceAction,
@@ -45,11 +45,10 @@ export function PlaceHoldButton({
         type="submit"
         disabled={pending}
         className={cn(
-          PILL_BUTTON_CLASS,
           // Release is the destructive-ish half: it hands the place back to
-          // anyone. Outlined, so it never reads as the obvious next step.
-          action === "release" &&
-            "bg-card text-foreground border-border border",
+          // anyone. Ghost, so it never reads as the obvious next step —
+          // Claim stays the one solid pill in the row.
+          action === "release" ? GHOST_PILL_BUTTON_CLASS : PILL_BUTTON_CLASS,
         )}
       >
         {pending
