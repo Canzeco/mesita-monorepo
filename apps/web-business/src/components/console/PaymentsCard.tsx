@@ -126,7 +126,10 @@ export function ConnectStripeForm({
       <p className="text-muted-foreground text-[12px] leading-relaxed">
         Stripe asks for the rest — RFC, address, bank account — in its own
         onboarding.
-        {!hasLegalName && " Add your legal name below and it comes prefilled."}
+        {/* "below" was true when this line sat on the card; from inside a
+            modal it points at nothing the reader can see. Name the group. */}
+        {!hasLegalName &&
+          " Add your legal name under Legal identity and it comes prefilled."}
       </p>
     </form>
   );
@@ -210,18 +213,17 @@ export function PaymentsCard({
         <div className="flex flex-col gap-3">
           {state === "none" || orphaned ? (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-muted-foreground text-sm">
-                  {orphaned
-                    ? "Connect again to start taking payments."
-                    : "Two questions here, the rest on Stripe."}
-                </p>
+              {/* The button and nothing else. The rows above already say the
+                  state — "No account", and for an orphan the Why row says the
+                  account is gone — so a sentence here would only repeat them
+                  in a second voice. */}
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => setConnectOpen(true)}
                   className={CTA_BUTTON_CLASS}
                 >
-                  Connect Stripe
+                  {orphaned ? "Connect again" : "Connect Stripe"}
                 </button>
               </div>
               {/* A failure keeps the modal up: the answers are still in the
