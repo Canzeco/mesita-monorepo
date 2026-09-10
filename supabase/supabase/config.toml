@@ -407,6 +407,13 @@ verify_jwt = true
 [functions.consumer-web-update-profile]
 verify_jwt = true
 
+# Product instrumentation (MESITA-1387): one row in consumer_analytics_events
+# per allowlisted event. Every call site sits inside web-consumer's (shell)
+# auth wall, and the handler stamps consumer_id off the session, so the guest
+# must be signed in — this is deliberately not an anonymous analytics beacon.
+[functions.consumer-web-track-event]
+verify_jwt = true
+
 [functions.consumer-web-list-reservations]
 verify_jwt = true
 
@@ -520,6 +527,18 @@ verify_jwt = true
 [functions.business-web-add-org-member]
 verify_jwt = true
 
+# The rest of the org-membership lifecycle (MESITA-1550): a logged-in
+# business claims an emailed org invite, an owner promotes or demotes a
+# member, and remove revokes either a membership row or a pending invite.
+[functions.business-web-accept-org-invite]
+verify_jwt = true
+
+[functions.business-web-update-org-member-role]
+verify_jwt = true
+
+[functions.business-web-remove-org-member]
+verify_jwt = true
+
 [functions.business-web-list-places]
 verify_jwt = true
 
@@ -579,6 +598,16 @@ verify_jwt = true
 # Per-place ownership-verification glance (immutable verified-by email)
 # for Manage Single → Admin → Verification.
 [functions.admin-web-get-place-verification]
+verify_jwt = true
+
+# Pool-claim audit trail (MESITA-1544). business-web-claim-place grants
+# ownership instantly with no admin gate; these two are the after-the-fact
+# review — list the unreviewed claims, then clear one or reverse it back
+# into the public pool.
+[functions.admin-web-list-place-claims]
+verify_jwt = true
+
+[functions.admin-web-decide-place-claim]
 verify_jwt = true
 
 # Verification Config — partner-badge create policy + ownership
@@ -659,6 +688,16 @@ verify_jwt = true
 [functions.admin-web-grant-class]
 verify_jwt = true
 
+# The bearer half of the same door (MESITA-1168): an operator mints a
+# labelled BATCH of 10-digit PINs for a class, a partner hands them to
+# people Mesita has never met, and the holder redeems one after signing up.
+# Both stay JWT-gated — the PIN is the invitation, not the authentication.
+[functions.admin-web-mint-invite-codes]
+verify_jwt = true
+
+[functions.consumer-web-claim-invite-code]
+verify_jwt = true
+
 # Read-only per-place activity for the admin Performance tab: reservations +
 # their Reservationist call lifecycle, story/review screenshots, review text,
 # and the two inbound AI lines. No writes — a booking is changed by phoning
@@ -733,6 +772,32 @@ verify_jwt = true
 [functions.consumer-web-list-credit-balances]
 verify_jwt = true
 
+# The guest-facing slice of the Credits policy the admin Controls page owns
+# (hold, bonus, expiry days), so the Wallet stops hard-coding numbers.
+[functions.consumer-web-get-controls-config]
+verify_jwt = true
+
+# Spending the balance (MESITA-1678): a one-time bill reduction on an
+# approved ticket, never the tip. Idempotent on the ticket, so a client
+# retry after a timeout returns the original result instead of double-spending.
+[functions.consumer-web-apply-ticket-credits]
+verify_jwt = true
+
+# The operator side of Credits (MESITA-1679). Liability is the exposure view
+# — issued value, outstanding balance, per-organization exposure, breakage.
+# The spend report is visibility only: Mesita has no POS to reconcile
+# at_place spend against. Refund is the support primitive; its "refund" kind
+# only calls Stripe, and the webhook remains the sole writer of a refund
+# ledger row.
+[functions.admin-web-list-credit-liability]
+verify_jwt = true
+
+[functions.admin-web-get-credits-spend-report]
+verify_jwt = true
+
+[functions.admin-web-refund-credit-lot]
+verify_jwt = true
+
 # Owner-only place plan changes (Free / Promote / Ultra) via Stripe Checkout.
 [functions.business-web-change-subscription]
 verify_jwt = true
@@ -764,9 +829,10 @@ verify_jwt = true
 [functions.admin-web-get-place-payment-account]
 verify_jwt = true
 
-# --- Admin config surfaces (Atlas / Enricher / Reservations /
-# Rewards / Models) — each re-checks super_admins. Listed explicitly so
-# the ACL ledger matches the folders on disk (defaults were already verify_jwt=true).
+# --- Admin config surfaces (Atlas / Enricher / Reservations / Rewards /
+# Models / Controls / Discovery / Ojo) — each re-checks super_admins. Listed
+# explicitly so the ACL ledger matches the folders on disk (defaults were
+# already verify_jwt=true).
 # Memo left this list with its own two EFs: models_config carries the model and
 # the console reads it there.
 [functions.admin-web-get-reservations-config]
@@ -781,7 +847,21 @@ verify_jwt = true
 verify_jwt = true
 [functions.admin-web-update-models-config]
 verify_jwt = true
+[functions.admin-web-get-controls-config]
+verify_jwt = true
+[functions.admin-web-update-controls-config]
+verify_jwt = true
+[functions.admin-web-get-discovery-config]
+verify_jwt = true
+[functions.admin-web-update-discovery-config]
+verify_jwt = true
+[functions.admin-web-get-ojo-config]
+verify_jwt = true
+[functions.admin-web-update-ojo-config]
+verify_jwt = true
 [functions.admin-web-get-place-enrichment]
+verify_jwt = true
+[functions.admin-web-set-place-enrichment]
 verify_jwt = true
 [functions.admin-web-check-api-health]
 verify_jwt = true
