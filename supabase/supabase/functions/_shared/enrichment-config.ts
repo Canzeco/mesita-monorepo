@@ -12,6 +12,7 @@
 // write-path only, same as before.
 
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { asRecord } from "./config-coerce.ts";
 
 export const DEFAULT_IMAGE_ANALYSIS_PROMPT =
   "Describe this place photo: subject (ambience / interior / exterior / food / people / detail), visual quality, lighting, and whether it is representative and appealing. Be concise and factual.";
@@ -74,12 +75,6 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   atlasDiscoverUbereatsN: 2,
   atlasRequestThreshold: 5,
 };
-
-function asRecord(raw: unknown): Record<string, unknown> {
-  return raw && typeof raw === "object" && !Array.isArray(raw)
-    ? raw as Record<string, unknown>
-    : {};
-}
 
 function intIn(v: unknown, min: number, max: number, fallback: number): number {
   const n = typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : fallback;

@@ -79,7 +79,10 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
-import { resolveChargeableOrganizationForCredits } from "../_shared/credits-readiness.ts";
+import {
+  resolveChargeableOrganizationForCredits,
+  resolveOrganizationCurrency,
+} from "../_shared/credits-readiness.ts";
 import { chargeCreditsWithMesitaPay } from "../_shared/mesita-pay-charge.ts";
 import {
   ensureConsumerCustomer,
@@ -98,19 +101,6 @@ const DAY_MS = 86_400_000;
 // UUID — a hostile value just becomes part of an idempotency key string, and
 // Stripe caps that at 255 chars regardless.
 const REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
-
-async function resolveOrganizationCurrency(
-  admin: ReturnType<typeof adminClient>,
-  organizationId: string,
-): Promise<string> {
-  const { data } = await admin
-    .from("organizations")
-    .select("currency")
-    .eq("id", organizationId)
-    .maybeSingle();
-  const currency = (data as { currency?: string | null } | null)?.currency;
-  return currency && currency.trim() ? currency.toUpperCase() : "MXN";
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

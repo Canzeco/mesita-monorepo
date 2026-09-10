@@ -19,6 +19,7 @@
 // Every knob is STAGED until the order rail ships: the blob is live and
 // editable, nothing reads it yet, and the console says so. House rule is that
 // an unenforced config is a bug — a staged one has to be labeled.
+import { num, bool } from "./config-coerce.ts";
 
 export type OrdersChannels = {
   inHouse: boolean;
@@ -66,16 +67,6 @@ export const ORDERS_DEFAULTS: OrdersConfig = {
   // proof. Ojo reads it once its engine ships.
   requireProof: true,
 };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 /** Tolerant read: any missing/invalid key falls back to its default. */
 export function normalizeOrdersConfig(raw: unknown): OrdersConfig {

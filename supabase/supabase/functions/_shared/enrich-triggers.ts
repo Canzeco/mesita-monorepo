@@ -21,6 +21,7 @@
 // console edits the booleans, never the vocabulary.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { bool } from "./config-coerce.ts";
 
 /** One unit of enrichment work, cut at a seam the pipeline can actually skip. */
 export type SubprocessKey =
@@ -322,10 +323,6 @@ export const ENRICHMENT_TRIGGERS_DEFAULTS: EnrichmentTriggersConfig = {
   on_reservation_ok: row(336, ["google"]),
   on_reservation_failed: row(24, ["google"]),
 };
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 function hours(raw: unknown, fallback: number): number {
   const n = typeof raw === "number" ? raw : Number(raw);

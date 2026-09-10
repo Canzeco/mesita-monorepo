@@ -160,3 +160,25 @@ export async function organizationsAcceptingCredits(
   }
   return ready;
 }
+
+/**
+ * The ISO 4217 currency a Credits charge on this organization is priced in,
+ * uppercased for Stripe. Falls back to MXN — the market's currency and the
+ * column's own default — when the org predates the column or holds blank.
+ *
+ * Lives beside resolveChargeableOrganizationForCredits for the same reason
+ * that function exists: buy and gift both charge the same organization, and
+ * the two must never disagree about it. They each carried this query.
+ */
+export async function resolveOrganizationCurrency(
+  admin: SupabaseClient,
+  organizationId: string,
+): Promise<string> {
+  const { data } = await admin
+    .from("organizations")
+    .select("currency")
+    .eq("id", organizationId)
+    .maybeSingle();
+  const currency = (data as { currency?: string | null } | null)?.currency;
+  return currency && currency.trim() ? currency.toUpperCase() : "MXN";
+}

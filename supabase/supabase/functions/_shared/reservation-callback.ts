@@ -22,7 +22,7 @@
 // twin. The place-side cancellation notice does NOT use this module: places
 // are paced by their opening hours (nextAttemptAt), not by politeness windows.
 
-import { mexicoZone } from "./local-time.ts";
+import { placeLocalHour } from "./local-time.ts";
 
 /** Minutes to wait after attempt N fails (index N-1). Length defines the cap. */
 export const GUEST_CALL_LADDER_MIN = [10, 60] as const;
@@ -33,21 +33,6 @@ const QUIET_OPENS = 9; // first callable hour, place-local
 const QUIET_CLOSES = 22; // first NON-callable hour
 const URGENT_WINDOW_MS = 6 * 3600_000;
 const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
-
-/** Place-local hour (0–23) at a given instant; UTC hour when Intl fails. */
-function hourAt(at: Date, lng: number | null): number {
-  try {
-    const h = new Intl.DateTimeFormat("en-US", {
-      timeZone: mexicoZone(lng),
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(at);
-    const n = parseInt(h, 10);
-    return Number.isFinite(n) ? n : at.getUTCHours();
-  } catch {
-    return at.getUTCHours();
-  }
-}
 
 /**
  * The instant the next guest call may fire, or null when there must be no
@@ -77,7 +62,7 @@ export function nextGuestCallAt(
     // Nudge in half-hour steps until the local hour is callable; bounded so a
     // pathological zone can never loop forever (48 × 30 min = a full day).
     for (let i = 0; i < 48; i++) {
-      const h = hourAt(at, lng);
+      const h = placeLocalHour(at, lng);
       if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
       at = new Date(at.getTime() + 30 * 60_000);
       deferred = true;

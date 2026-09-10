@@ -4,6 +4,7 @@
 // instructions still have no live write path (admin-web-{get,update}-memo-config
 // were deleted as dead code). models_config.memo.model is SoT for the brain;
 // openaiModel remains a one-release fallback inside get-memo-config.
+import { asRecord } from "./config-coerce.ts";
 
 export type MemoConfig = {
   greeting: string;
@@ -22,12 +23,6 @@ export const DEFAULT_MEMO_CONFIG: MemoConfig = {
   provider: "openai",
   webGrounding: false,
 };
-
-function asRecord(raw: unknown): Record<string, unknown> {
-  return raw && typeof raw === "object" && !Array.isArray(raw)
-    ? raw as Record<string, unknown>
-    : {};
-}
 
 function text(v: unknown, fallback: string): string {
   return typeof v === "string" ? v : fallback;

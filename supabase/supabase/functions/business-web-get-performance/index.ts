@@ -52,6 +52,7 @@ import {
   requireMembership,
 } from "../_shared/auth.ts";
 import { CLOSED_TICKET_STATE, TICKET_STATE } from "../_shared/ticket-state.ts";
+import { isActionVerified } from "../_shared/rewards-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const DEFAULT_FEED_LIMIT = 40;
@@ -110,15 +111,6 @@ type FeedTicketRow = {
   discount_percent: number | null;
   bill_source: string | null;
 };
-
-// Mirrors _shared/rewards-config isActionVerified — an action counts once the
-// guest attested it (self_verified since MESITA-849) or it was ever approved.
-function isAttested(state: string | null): boolean {
-  return state === "self_verified" ||
-    state === "ai_verified" ||
-    state === "staff_verified" ||
-    state === "waiter_verified";
-}
 
 /** Drain every closed ticket for this place (narrow columns only). */
 async function fetchAllClosedTickets(
@@ -335,8 +327,8 @@ Deno.serve(async (req) => {
     byAction: {
       welcome: closed.filter((t) => (visitsByConsumer.get(t.consumer_id) ?? 0) === 1)
         .length,
-      story: closed.filter((t) => isAttested(t.story_state)).length,
-      review: closed.filter((t) => isAttested(t.review_state)).length,
+      story: closed.filter((t) => isActionVerified(t.story_state)).length,
+      review: closed.filter((t) => isActionVerified(t.review_state)).length,
     },
     currency: closed.find((t) => t.currency)?.currency ?? "MXN",
   };

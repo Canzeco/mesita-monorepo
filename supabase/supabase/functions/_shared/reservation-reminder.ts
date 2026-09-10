@@ -14,7 +14,7 @@
 //
 // Pure scheduling math — no clock, no DB.
 
-import { mexicoZone } from "./local-time.ts";
+import { placeLocalHour } from "./local-time.ts";
 import type { ReservationPatch } from "./reservation-doc.ts";
 
 export const REMINDER_LEAD_MS = 3 * 3600_000;
@@ -35,20 +35,6 @@ export type ReminderState =
 
 export type ReminderPark = Pick<ReservationPatch, "reminder_state" | "reminder_at">;
 
-function hourAt(at: Date, lng: number | null): number {
-  try {
-    const h = new Intl.DateTimeFormat("en-US", {
-      timeZone: mexicoZone(lng),
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(at);
-    const n = parseInt(h, 10);
-    return Number.isFinite(n) ? n : at.getUTCHours();
-  } catch {
-    return at.getUTCHours();
-  }
-}
-
 /**
  * The instant the one reminder call may fire, or null when it cannot fit
  * the window (lead already behind us, quiet hours would land past cutoff,
@@ -67,7 +53,7 @@ export function reminderCallAt(
 
   let deferred = false;
   for (let i = 0; i < 48; i++) {
-    const h = hourAt(at, lng);
+    const h = placeLocalHour(at, lng);
     if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
     at = new Date(at.getTime() + 30 * 60_000);
     deferred = true;

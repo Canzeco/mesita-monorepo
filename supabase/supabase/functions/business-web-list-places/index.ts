@@ -103,6 +103,7 @@ import {
   type FunctionState,
   operatorFunctionStates,
 } from "../_shared/schema-catalog.ts";
+import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 
 type Body = {
   scope?: "all" | "org" | "public";
@@ -112,17 +113,6 @@ type Body = {
 };
 
 const MAX_LIMIT = 100;
-
-/** Verification ids per `.in()`. Same size admin uses; `chunked([])` yields no
- *  chunks, so an empty catalog issues ZERO queries rather than an empty
- *  filter — which matters because with no places that is every request. */
-const ID_CHUNK = 200;
-
-function chunked<T>(xs: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
-  return out;
-}
 
 /** The place half of the row. Kept to columns that already exist on
  *  `places` — this endpoint adds no schema and computes no new fact. */

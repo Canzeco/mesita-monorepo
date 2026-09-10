@@ -27,6 +27,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { phoneDigits } from "../_shared/phone.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
+import { esDate, esTime } from "../_shared/es-speak.ts";
 
 type Body = {
   reference_code?: unknown;
@@ -47,31 +48,6 @@ type AgentTicket = {
   notes: string | null;
   is_test: boolean;
 };
-
-function esDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-function esTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
 
 // PostgREST .or() expressions are comma/paren-delimited — strip those (and
 // wildcards) from user-spoken terms so a weird transcription can't break the

@@ -26,6 +26,7 @@ import {
 import { createMemoData } from "../_shared/memo-data.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "../_shared/models-config.ts";
 import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
+import { isActionVerified } from "../_shared/rewards-config.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
@@ -344,8 +345,8 @@ async function loadPerfContext(
         welcome: closed.filter((t) =>
           (visitsByConsumer.get(t.consumer_id) ?? 0) === 1
         ).length,
-        story: closed.filter((t) => isAttested(t.story_state)).length,
-        review: closed.filter((t) => isAttested(t.review_state)).length,
+        story: closed.filter((t) => isActionVerified(t.story_state)).length,
+        review: closed.filter((t) => isActionVerified(t.review_state)).length,
       },
       content: {
         storiesPosted: storiesRes.count ?? 0,
@@ -355,13 +356,6 @@ async function loadPerfContext(
       reviewSnippets,
     },
   };
-}
-
-function isAttested(state: string | null): boolean {
-  return state === "self_verified" ||
-    state === "ai_verified" ||
-    state === "staff_verified" ||
-    state === "waiter_verified";
 }
 
 async function askMemoPromo(

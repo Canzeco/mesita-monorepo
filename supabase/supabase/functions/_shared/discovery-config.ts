@@ -65,6 +65,7 @@ import {
   type SignalKey,
   type SignalParamBag,
 } from "./discovery-signals.ts";
+import { num, bool } from "./config-coerce.ts";
 
 export type SignalParams = Record<SignalKey, SignalParamBag>;
 
@@ -701,16 +702,6 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   chat: { prompt: "" },
   swipe: DEFAULT_SWIPE,
 };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
   const r = (raw ?? {}) as Record<string, unknown>;

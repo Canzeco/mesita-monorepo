@@ -48,6 +48,7 @@
 // without answering it.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { num } from "./config-coerce.ts";
 
 export type ControlsConfig = {
   /** Hours a top-up is held before it can be spent, when the place sets none. */
@@ -88,12 +89,6 @@ export const CONTROLS_DEFAULTS: ControlsConfig = {
 
 /** Hours in a day. Expiry is set in days and the hold in hours; they compare here. */
 const HOURS_PER_DAY = 24;
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
 
 /** Tolerant read: any missing/invalid key falls back to its default. */
 export function normalizeControlsConfig(raw: unknown): ControlsConfig {

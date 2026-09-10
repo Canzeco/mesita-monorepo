@@ -45,6 +45,7 @@ import {
 import { consumerFromNumber, reservationFromNumber } from "../_shared/elevenlabs.ts";
 import { CLOSED_TICKET_STATE } from "../_shared/ticket-state.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { one } from "../_shared/postgrest.ts";
 
 type Body = { placeId?: string; projectId?: string; limit?: number };
 
@@ -53,12 +54,6 @@ type Body = { placeId?: string; projectId?: string; limit?: number };
 // by informal close, but vocabulary and predicates follow state=revealed.
 const CLOSED_STATE = CLOSED_TICKET_STATE;
 const CLOSED_PAGE = 1000;
-
-// supabase-js types a to-one embed as T | T[]; normalise.
-function one<T>(rel: T | T[] | null | undefined): T | null {
-  if (Array.isArray(rel)) return rel[0] ?? null;
-  return rel ?? null;
-}
 
 type GuestShape = {
   full_name: string | null;

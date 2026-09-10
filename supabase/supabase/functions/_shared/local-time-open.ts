@@ -3,7 +3,12 @@
 
 import { localClock, type WeeklyHours } from "./local-time.ts";
 
-const DAY_KEYS = [
+/**
+ * The day keys of a `WeeklyHours` blob, Sunday-first so the index lines up
+ * with `Date.getDay()` and with the weekday `localClock` reports. Exported
+ * because reservation-retry.ts walks the same week to find the next opening.
+ */
+export const DAY_KEYS = [
   "sunday",
   "monday",
   "tuesday",
@@ -13,7 +18,12 @@ const DAY_KEYS = [
   "saturday",
 ] as const;
 
-function toMinutes(hhmm: unknown): number | null {
+/**
+ * Minutes past midnight from a `"HH:mm"` range bound, or null when the string
+ * is not one. `24:00` is allowed on purpose — it is how a day-ending close is
+ * stored — so the hour bound is `> 24`, not `> 23`.
+ */
+export function toMinutes(hhmm: unknown): number | null {
   if (typeof hhmm !== "string") return null;
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
   if (!m) return null;
