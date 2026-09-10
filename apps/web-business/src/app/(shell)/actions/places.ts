@@ -93,16 +93,22 @@ export async function verifyPlaceAction(
  *  which is exactly the bug that made the header breadcrumb lie (MESITA-1713).
  *  The rail resolves the active org client-side and asks for that one.
  *
- *  Returns id and name only. The rail draws rows, not records, and shipping
- *  the full ConsolePlace would put addresses and intake state into a payload
- *  nothing renders.
+ *  Returns id, name and photo only. The rail draws rows, not records, and
+ *  shipping the full ConsolePlace would put addresses and intake state into a
+ *  payload nothing renders.
+ *
+ *  `photoUrl` is a FULL-RESOLUTION ORIGINAL — the rail must render it through
+ *  `placeThumbUrl()`, never straight into an <img>. That is the MESITA-1553
+ *  mistake, and the rail is on every screen in the console.
  *
  *  NEVER THROWS. A rail that fails to list places must still be a rail: the
  *  console's whole navigation cannot go down because one EF call did.
  */
+export type RailPlace = { id: string; name: string; photoUrl: string | null };
+
 export async function listRailPlacesAction(
   organizationId: string,
-): Promise<{ id: string; name: string }[]> {
+): Promise<RailPlace[]> {
   if (!organizationId) return [];
   const supabase = await createServerSupabase();
   try {
@@ -111,7 +117,7 @@ export async function listRailPlacesAction(
       organizationId,
     });
     return places
-      .map((p) => ({ id: p.id, name: p.name }))
+      .map((p) => ({ id: p.id, name: p.name, photoUrl: p.photoUrl ?? null }))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch (e) {
     console.error("[rail] business-web-list-places:", e);
