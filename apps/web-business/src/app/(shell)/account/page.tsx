@@ -13,7 +13,7 @@ import { Section } from "@/components/shared/Section";
 import { DataRow } from "@/components/console/badges";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AddOrganizationDisclosure } from "@/components/console/AddOrganizationDisclosure";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 
@@ -21,9 +21,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getServerUser, not supabase.auth.getUser: the shell layout above already
+  // validated this JWT over the network this request, and cache() hands back
+  // that answer instead of asking again (MESITA-1729).
+  const user = await getServerUser();
   if (!user) redirect("/signin?next=/account");
 
   let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];

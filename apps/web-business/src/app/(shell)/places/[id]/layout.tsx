@@ -7,7 +7,7 @@
 // the rail both take that resolution rather than re-deriving any of it, so
 // there is exactly one place that decides what this viewer may see.
 import { notFound, redirect } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
@@ -24,23 +24,30 @@ export default async function PlaceLayout({
 }) {
   const { id } = await params;
   const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/signin?next=${encodeURIComponent(`/places/${id}`)}`);
 
-  let view: Awaited<ReturnType<typeof getPlaceView>>;
-  try {
-    view = await getPlaceView(supabase, id);
-  } catch {
+  // THREE round trips became one wait (MESITA-1729). The user check, the place
+  // view and the manage payload are mutually independent — none reads another's
+  // answer — but they were awaited on consecutive lines, so a tab click paid
+  // them end to end. This layout is force-dynamic, so that was every click.
+  //
+  // Guard ORDER is load-bearing and must stay as written below: `user` is
+  // checked before `view`. Signed out, get-place also fails, and answering 404
+  // to someone who merely needs to sign in would be both wrong and a worse
+  // experience. Checking user first keeps the old redirect.
+  //
+  // `getPlaceView` and `getManagePlace` are request-cached (lib/place-view.ts),
+  // so the tab page below asking for the same data is still free.
+  const [user, view, manage] = await Promise.all([
+    getServerUser(),
     // get-place answers 404 the same way for "does not exist" and "held by
     // an organization you are not in". This branch must not tell them apart.
-    notFound();
-  }
-
-  // Null for a pool place: nobody holds it, so there is nothing to manage
-  // yet — Profile carries the Claim button instead.
-  const manage = await getManagePlace(id);
+    getPlaceView(supabase, id).catch(() => null),
+    // Null for a pool place: nobody holds it, so there is nothing to manage
+    // yet — Profile carries the Claim button instead.
+    getManagePlace(id),
+  ]);
+  if (!user) redirect(`/signin?next=${encodeURIComponent(`/places/${id}`)}`);
+  if (!view) notFound();
   const tabs = visibleTabs(view, manage);
 
   // The rail needs this place's NAME and its VIEW SET, and it renders above

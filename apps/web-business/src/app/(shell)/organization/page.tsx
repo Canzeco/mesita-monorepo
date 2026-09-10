@@ -13,7 +13,7 @@ import { OrgStateBadge } from "@/components/console/badges";
 import { CreateOrganizationForm } from "@/components/console/CreateOrganizationForm";
 import { OrgScreenSections } from "@/components/console/OrgScreenSections";
 import { ConnectReturnNotice } from "@/components/console/ConnectReturnNotice";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import {
   apiGetPaymentAccount,
   apiListOrganizations,
@@ -36,9 +36,10 @@ export default async function OrganizationPage({
 }) {
   const sp = await searchParams;
   const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getServerUser, not supabase.auth.getUser: the shell layout above already
+  // validated this JWT over the network this request, and cache() hands back
+  // that answer instead of asking again (MESITA-1729).
+  const user = await getServerUser();
   if (!user) redirect("/signin");
 
   let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
