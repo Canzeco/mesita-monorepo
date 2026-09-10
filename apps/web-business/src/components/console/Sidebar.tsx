@@ -1,58 +1,64 @@
 "use client";
 
-// The whole navigation: one lateral rail (MESITA-1710). Client because active
-// state needs usePathname and every href carries the active organization.
+// The whole navigation: one lateral rail. Client because active state needs
+// usePathname and every href carries the active organization.
 //
-// WHY A RAIL. The old top bar was at its ceiling. MESITA-1614 merged Org
+// FLAT. EVERY ROW AT ONE INDENT (MESITA-1714). The first version grouped by
+// indenting: Places, then its two filters one level in, then the open place one
+// level in from those. Pato rejected it on sight and the reason is measurable —
+// the ACTIVE row is almost always a leaf, so grouping by indent puts the most
+// important row on screen at the deepest inset, where it reads as the least
+// important. Hierarchy inverted.
+//
+// Grouping now comes from a hairline plus a small uppercase label, which cost
+// no indentation at all. No tree lines, no bullet dots, no `depth` prop. That
+// is also exactly the pattern web-admin's rail has always used.
+//
+// WHY A RAIL AT ALL. The old top bar was at its ceiling: MESITA-1614 merged Org
 // Places and Public Places because a horizontal bar pays for every item in
-// WIDTH, so a pre-applied filter could not justify a whole screen. A vertical
-// rail nests and costs nothing per row — so the two labels come back as
-// CHILDREN of one list rather than as two routes, and the merge survives
-// untouched (see `placesHref` in lib/console-routes.ts).
+// WIDTH. A vertical rail costs nothing per row, so the two labels are back as
+// saved `?owned=` filters — with `All Places` kept above them, because dropping
+// it would orphan the both-halves comparison the merge exists to protect.
 //
 // LIGHT, not admin's dark slab. `apps/web-business/CLAUDE.md`: light theme,
-// semantic tokens, calm and high-density. Admin's rail is `bg-foreground` —
-// operator furniture. This console is the one a restaurant owner touches, so
-// it uses the `--sidebar` token family the theme already defines: a paper tone
-// a half-step off the page, separated by a hairline rather than by inversion.
-//
-// CONTRAST IS MEASURED, NOT INHERITED. Admin's rail ships three AA failures
-// (`text-background/35` eyebrows at ~3.3:1, `/45` collapse toggle at 4.36:1).
-// Every text token here is a semantic pair with a measured ratio:
-// `muted-foreground` on `sidebar` is 6.31:1, `foreground` on `sidebar` 17.9:1,
-// and the active pill's `background` on `foreground` 18.1:1.
-//
-// TOP TO BOTTOM: wordmark, then the organization switcher (it SCOPES every row
-// below it, so it sits above every row below it), then the nav, then Account
-// pinned to the floor — identity, not scope, so it leaves the flow entirely.
+// semantic tokens, calm and high-density. Every text token is a semantic pair
+// with a measured ratio (`muted-foreground` on `sidebar` is 6.31:1), never an
+// opacity fraction — admin's rail ships three AA failures that way.
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  Activity,
   Building2,
+  Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  Shield,
+  SlidersHorizontal,
   Store,
   UserRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { useOpenPlace } from "@/components/console/OpenPlace";
+import { useOpenPlace, useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import {
   SHELL_ROUTES,
   ownedFromParam,
-  placeHref,
   placeIdFromPathname,
   placesHref,
   withOrg,
 } from "@/lib/console-routes";
+import {
+  PLACE_TAB_LABEL,
+  placeTabHref,
+  type PlaceTab,
+} from "@/lib/place-tabs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import { useActiveOrg } from "@/lib/use-active-org";
-import type { Organization } from "@/lib/api/organizations";
+import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 
 type SidebarProps = {
-  organizations: Pick<Organization, "id" | "name">[];
+  organizations: ChromeOrg[];
   /** Closes the mobile drawer on navigation. Absent on the desktop rail. */
   onNavigate?: () => void;
   /** Icon-only rail. Desktop instance only — the drawer is always full. */
@@ -62,13 +68,20 @@ type SidebarProps = {
 };
 
 const ROW_BASE =
-  "flex items-center rounded-xl text-sm font-medium transition min-h-11 gap-2.5 px-2.5 lg:min-h-0 lg:py-2 lg:text-[13px]";
+  "flex items-center gap-2.5 rounded-xl px-2.5 text-sm font-medium transition min-h-11 lg:min-h-0 lg:py-2 lg:text-[13px]";
 const ROW_REST =
   "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground";
 // The active row is a SOLID ink pill, not a tint. It is the one place in the
-// rail where the console's own foreground appears as a fill, which is what
-// makes "you are here" readable at a glance in a light column.
+// rail where the console's foreground appears as a fill, which is what makes
+// "you are here" survive a glance down a light column.
 const ROW_ACTIVE = "bg-foreground text-background font-semibold";
+
+const TAB_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
+  profile: UserRound,
+  capabilities: SlidersHorizontal,
+  activity: Activity,
+  admin: Shield,
+};
 
 function NavRow({
   href,
@@ -76,24 +89,35 @@ function NavRow({
   Icon,
   active,
   collapsed,
-  depth = 0,
   onNavigate,
+  onGuardedNavigate,
   title,
 }: {
   href: string;
   label: string;
-  Icon?: React.ComponentType<{ className?: string }>;
+  Icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   collapsed: boolean;
-  /** 0 = top level, 1 = a Places filter, 2 = the open place under its filter. */
-  depth?: 0 | 1 | 2;
   onNavigate?: () => void;
+  /** Unsaved-edit guard. When it returns true it swallowed the click. */
+  onGuardedNavigate?: (href: string, e: { preventDefault: () => void }) => boolean;
   title?: string;
 }) {
   return (
     <Link
       href={href}
-      onClick={onNavigate}
+      onClick={(e) => {
+        // NEVER guard the row you are already on. That click navigates
+        // nowhere, so offering "discard your edits and leave" for it is an
+        // offer to throw work away for nothing, and a person clicking the view
+        // they are looking at is not trying to leave it. The deleted PlaceTabs
+        // skipped the guard on the active tab for exactly this reason.
+        if (!active) onGuardedNavigate?.(href, e);
+        // Close the drawer either way. The discard dialog renders inside
+        // `main`, behind the drawer's scrim, so leaving the rail up buries the
+        // question the person now has to answer.
+        onNavigate?.();
+      }}
       aria-current={active ? "page" : undefined}
       // Collapsed, the icon is the only affordance, so the native tooltip is
       // what names the destination.
@@ -103,30 +127,34 @@ function NavRow({
         active ? ROW_ACTIVE : ROW_REST,
         collapsed && "justify-center px-0 py-2",
       )}
-      style={
-        collapsed || depth === 0
-          ? undefined
-          : // Indent in the padding, not with a wrapper: the row's hover and
-            // active fill must still span the full rail width, or a nested row
-            // reads as a different kind of control.
-            { paddingLeft: `${0.625 + depth * 0.875}rem` }
-      }
     >
-      {Icon ? (
-        <Icon className="h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5" />
-      ) : collapsed ? null : (
-        // Children have no icon of their own — a second glyph one level in
-        // reads as a second category. The tick is a position marker.
-        <span
-          aria-hidden
-          className={cn(
-            "h-1 w-1 shrink-0 rounded-full",
-            active ? "bg-background" : "bg-muted-foreground/50",
-          )}
-        />
-      )}
+      <Icon className="h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5" />
       <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
+  );
+}
+
+/** Groups without indenting. Collapsed there is no room for words, so the
+ *  grouping survives as a rule — the same trade web-admin's rail makes. */
+function SectionBreak({
+  label,
+  collapsed,
+}: {
+  label: string;
+  collapsed: boolean;
+}) {
+  if (collapsed) {
+    return <div className="border-sidebar-border mx-2 my-2 border-t" />;
+  }
+  return (
+    <>
+      <div className="border-sidebar-border mx-2 mt-3 mb-2 border-t" />
+      <div className="px-2.5 pb-1">
+        <span className={cn(TINY_LABEL_CLASS, "block truncate")} title={label}>
+          {label}
+        </span>
+      </div>
+    </>
   );
 }
 
@@ -139,17 +167,22 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ONE resolver for every piece of chrome — see lib/use-active-org.ts for why
-  // this is not inlined here any more.
+  // ONE resolver for every piece of chrome — see lib/use-active-org.ts.
   const { activeOrg, activeOrgId } = useActiveOrg(organizations);
 
   const owned = ownedFromParam(searchParams.get("owned"));
   const openPlace = useOpenPlace();
-  // Exact, not prefix: /places/<id> is the place, not the list.
+  const guardNav = useOpenPlaceGuard();
   const openPlaceId = placeIdFromPathname(pathname);
   const onPlacesList = pathname === SHELL_ROUTES.places;
 
   const href = (to: string) => withOrg(to, activeOrgId);
+
+  // Which of the place's views is open. Profile has no segment of its own —
+  // it IS /places/<id> — so a bare place pathname means Profile.
+  const activeTab: PlaceTab | null = openPlaceId
+    ? ((pathname.split("/")[3] as PlaceTab | undefined) ?? "profile")
+    : null;
 
   const switchHref = (id: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -161,7 +194,14 @@ export function Sidebar({
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
       <Link
         href={href(SHELL_ROUTES.organization)}
-        onClick={onNavigate}
+        // Guarded like every other route out of here. The Organization ROW is
+        // two lines down and goes to the same place; one of them silently
+        // discarding unsaved edits while the other asks is worse than either
+        // rule applied consistently.
+        onClick={(e) => {
+          guardNav?.(href(SHELL_ROUTES.organization), e);
+          onNavigate?.();
+        }}
         aria-label="Mesita business console"
         title={collapsed ? "Mesita business" : undefined}
         className={cn(
@@ -174,23 +214,19 @@ export function Sidebar({
         ) : (
           <>
             <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            {/* TINY_LABEL_CLASS, never a bare <span> with its own sizes and
-                never a heading tag: globals.css puts every bare h1/h2/h3 on
-                the display face, so a 10px eyebrow written as an <h2> would
-                silently become a serif. */}
+            {/* TINY_LABEL_CLASS, never a heading tag: globals.css puts every
+                bare h1/h2/h3 on the display face, so a 10px eyebrow written as
+                an <h2> would silently become a serif. */}
             <span className={TINY_LABEL_CLASS}>business</span>
           </>
         )}
       </Link>
 
       {/* WHICH ORGANIZATION. It scopes every row below it, so it sits above
-          them. A <select> rather than a menu: it is the same control the top
-          bar carried, it is keyboard- and screen-reader-native, and the rail
-          has no room to reinvent one.
-
-          One organization renders as a LABEL, not a disabled control. The old
-          bar hid the switcher entirely below two orgs; in a rail the name is
-          half the orientation, so it stays on screen either way. */}
+          them. A <select> rather than a menu: keyboard- and screen-reader-
+          native, and the rail has no room to reinvent one. One organization
+          renders as a LABEL — in a rail the name is half the orientation, so
+          it stays on screen either way. */}
       {!collapsed && (
         <div className="mt-3.5 shrink-0">
           {organizations.length > 1 ? (
@@ -230,58 +266,62 @@ export function Sidebar({
           active={pathname === SHELL_ROUTES.organization}
           collapsed={collapsed}
           onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
         />
-
-        {/* The parent is the WHOLE list — both halves, the comparison the
-            merge exists to protect. The children pre-filter it. */}
+        {/* All Places is the UNFILTERED list — both halves at once, which is
+            the comparison MESITA-1614 merged the screens to enable. The two
+            rows under it are saved filters on the same route, not screens. */}
         <NavRow
           href={href(placesHref())}
-          label="Places"
+          label="All Places"
           Icon={Store}
           active={onPlacesList && owned === null}
           collapsed={collapsed}
           onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
         />
-        {!collapsed && (
+        <NavRow
+          href={href(placesHref("org"))}
+          label="Org Places"
+          Icon={Building2}
+          active={onPlacesList && owned === "org"}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+        <NavRow
+          href={href(placesHref("public"))}
+          label="Public Places"
+          Icon={Globe}
+          active={onPlacesList && owned === "public"}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+
+        {/* The open place is its own SECTION, not a child. It renders exactly
+            the views this viewer may open — `visibleTabs()`, so 1 to 4. A
+            greyed-out row for a view you cannot open is a worse answer than no
+            row, and a person who only gets Profile should see one view, not
+            four with three disabled. */}
+        {openPlace && openPlace.id === openPlaceId && (
           <>
-            <NavRow
-              href={href(placesHref("org"))}
-              label="Org Places"
-              active={onPlacesList && owned === "org"}
-              collapsed={collapsed}
-              depth={1}
-              onNavigate={onNavigate}
-            />
-            {openPlace && openPlace.owned && (
+            <SectionBreak label={openPlace.name} collapsed={collapsed} />
+            {openPlace.tabs.map((tab) => (
               <NavRow
-                href={href(placeHref(openPlace.id))}
-                label={openPlace.name}
-                title={openPlace.name}
-                active={openPlaceId === openPlace.id}
+                key={tab}
+                href={placeTabHref(openPlace.id, tab, activeOrgId)}
+                label={PLACE_TAB_LABEL[tab]}
+                Icon={TAB_ICON[tab]}
+                active={activeTab === tab}
                 collapsed={collapsed}
-                depth={2}
+                // Collapsed the label is just "Profile", which says nothing
+                // about WHICH place, so the tooltip carries both.
+                title={collapsed ? undefined : openPlace.name}
                 onNavigate={onNavigate}
+                onGuardedNavigate={guardNav ?? undefined}
               />
-            )}
-            <NavRow
-              href={href(placesHref("public"))}
-              label="Public Places"
-              active={onPlacesList && owned === "public"}
-              collapsed={collapsed}
-              depth={1}
-              onNavigate={onNavigate}
-            />
-            {openPlace && !openPlace.owned && (
-              <NavRow
-                href={href(placeHref(openPlace.id))}
-                label={openPlace.name}
-                title={openPlace.name}
-                active={openPlaceId === openPlace.id}
-                collapsed={collapsed}
-                depth={2}
-                onNavigate={onNavigate}
-              />
-            )}
+            ))}
           </>
         )}
       </nav>
@@ -294,6 +334,7 @@ export function Sidebar({
           active={pathname === SHELL_ROUTES.account}
           collapsed={collapsed}
           onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
         />
         {onToggleCollapse && (
           <button

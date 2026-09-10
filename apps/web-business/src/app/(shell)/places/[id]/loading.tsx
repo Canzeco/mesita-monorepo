@@ -6,10 +6,10 @@
 // size causes the very layout shift it exists to prevent — so if the gallery
 // or the cards change height, this changes with them.
 //
-// The name/subtitle blocks are GONE (MESITA-1558): that content moved into
-// PlaceBar, which the layout renders above this boundary and which therefore
-// paints before the skeleton does. Reserving space for it here would have
-// double-counted it and produced the jump this file exists to avoid.
+// The name/subtitle blocks are GONE (MESITA-1558, still true at MESITA-1714):
+// that content is `PlaceHeading`, which the layout renders above this boundary
+// and which therefore paints before the skeleton does. Reserving space for it
+// here would double-count it and produce the jump this file exists to avoid.
 export default function PlaceLoading() {
   return (
     <>
