@@ -1,9 +1,11 @@
 // Shared helper — place tag vocabulary (public.place_tags, migration
 // 20260625060037_place_tags). Mirrors categories.ts: the list is config that
-// lives in the DB, read live, never hardcoded. Both the business tag picker
-// (business-web-list-tags) and the consumer detail enrichment (consumer-web-get-place)
-// resolve slugs → labelled catalog entries through here, so a place's tags are
-// always canonical catalog entries (snake_case slugs) and never free text.
+// lives in the DB, read live, never hardcoded. Both the admin Atlas vocabulary
+// read (admin-web-get-atlas-fields) and the consumer detail enrichment
+// (consumer-web-get-place) resolve slugs → labelled catalog entries through
+// here, so a place's tags are always canonical catalog entries (snake_case
+// slugs) and never free text. The business console has no tag picker EF of its
+// own: business-web-list-tags was deleted unused in MESITA-1723.
 //
 // Locale contract (MESITA-963, parallel to MESITA-939 About):
 //   - slug       = stable identity + future TMS key
