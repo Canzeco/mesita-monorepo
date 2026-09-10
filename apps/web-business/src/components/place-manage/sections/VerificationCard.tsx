@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
 import { BadgeCheck, Check, Loader2, X } from "lucide-react";
 import {
   decidePlaceVerification,
@@ -178,15 +177,9 @@ export function VerificationCard({
           <div className="flex flex-col gap-2">
             <p className="text-muted-foreground text-xs leading-relaxed">
               Proofs arrive through the Verification Queue — phone OTP, email
-              OTP, or a manual contact request. Approving a row there is what
-              stamps Verified.
+              OTP, or a manual contact request. Mesita approves the proof; that
+              approval is what stamps Verified.
             </p>
-            <Link
-              href="/verifications"
-              className="border-border/70 text-foreground/80 hover:bg-muted hover:text-foreground inline-flex h-9 w-fit items-center rounded-full border px-4 text-xs font-semibold transition"
-            >
-              Open Verification Queue
-            </Link>
           </div>
         ) : null}
       </div>

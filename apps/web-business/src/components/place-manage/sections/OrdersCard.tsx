@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { type AdminPlace } from "../actions";
 import { useSectionSaver } from "../useSectionDirty";
 import { usePlaceContext } from "../PlaceContext";
+import { placeSectionHref } from "../nav";
 import { CrossTabLink } from "../ui";
 import {
   ChannelPicker,
@@ -104,7 +105,7 @@ export function OrdersCard({
           </p>
         )}
         <div className="mt-3">
-          <CrossTabLink href={`/manage-single/${place.id}/place`}>
+          <CrossTabLink href={placeSectionHref(place.id, "place")}>
             Edit contacts under Place → Channels
           </CrossTabLink>
         </div>
