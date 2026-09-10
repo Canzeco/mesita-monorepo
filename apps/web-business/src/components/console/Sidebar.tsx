@@ -9,11 +9,24 @@
 // links to lists of them — one click instead of two, and the portfolio is
 // visible without navigating to see it.
 //
-// ORDER, top to bottom: Account, Organization, then the org's places, then
-// All Places at the floor. Account leads because it is the door to every
-// organization you belong to, so it sits above the one you are looking at.
-// All Places sinks to the bottom because it is the superset you drop into
-// occasionally to claim something, not a place you work.
+// ORDER, top to bottom: Organization, the org's places, All Places — then the
+// footer, which holds Account alone.
+//
+// ACCOUNT AND ORGANIZATION ARE NOT NEIGHBOURS (MESITA-1716). They sat as
+// adjacent rows of identical weight, which reads as a pair, and they are not
+// one: Organization is the entity whose data is on screen, Account is who is
+// looking at it. The whole column now separates them. Organization keeps the
+// top because it SCOPES the places listed beneath it — that is the one real
+// grouping in this rail — and All Places closes the places area rather than
+// sitting in the footer, because it is a place list and belongs with place
+// lists, not with identity.
+//
+// EVERY PLACE WEARS ITS OWN PHOTO. A portfolio of six identical Store glyphs
+// is six copies of one row with different words on them; an owner knows their
+// places by sight before they know them by name. Always through
+// `placeThumbUrl()` — `photoUrl` is a full-resolution original, and pointing
+// an <img> at one is the mistake MESITA-1553 fixed on the list rows. The rail
+// is on every screen, so it would be a worse mistake here.
 //
 // THERE IS NO PUBLIC PLACES ROW. Org places are a SUBSET of All Places, and a
 // subset earns a row. Public is the COMPLEMENT — All minus Org — which is
@@ -54,7 +67,10 @@ import {
   useOpenPlaceGuard,
   usePortfolioVersion,
 } from "@/components/console/OpenPlace";
-import { listRailPlacesAction } from "@/app/(shell)/actions/places";
+import {
+  listRailPlacesAction,
+  type RailPlace,
+} from "@/app/(shell)/actions/places";
 import {
   SHELL_ROUTES,
   ownedFromParam,
@@ -63,6 +79,7 @@ import {
   withOrg,
 } from "@/lib/console-routes";
 import { PLACE_TAB_LABEL, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { placeThumbUrl } from "@/lib/place-thumb";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 
@@ -89,6 +106,10 @@ const ROW_ACTIVE = "bg-foreground text-background font-semibold";
 const ROW_HEADING =
   "text-foreground font-semibold hover:bg-sidebar-accent";
 
+/** The rendered thumb box in CSS pixels, and what placeThumbUrl doubles for
+ *  retina. Matches the `h-5 w-5` the row draws. */
+const THUMB_PX = 20;
+
 // Profile is FileText, not a person: Account is the person in this rail, and
 // two identical glyphs a few rows apart is how a menu starts reading as mush.
 const TAB_ICON: Record<PlaceTab, React.ComponentType<{ className?: string }>> = {
@@ -109,6 +130,9 @@ function NavRow({
   /** This row owns the group below it. Reads as a heading, not a destination
    *  you are currently at — the pill belongs to one of its views. */
   heading = false,
+  /** A place's own photo, already thumbnailed. Replaces the glyph when there
+   *  is one; `Icon` is the fallback for a place with no photo yet. */
+  thumb,
   onNavigate,
   onGuardedNavigate,
   title,
@@ -120,6 +144,7 @@ function NavRow({
   collapsed: boolean;
   inset?: boolean;
   heading?: boolean;
+  thumb?: string | null;
   onNavigate?: () => void;
   onGuardedNavigate?: (href: string, e: { preventDefault: () => void }) => boolean;
   title?: string;
@@ -145,7 +170,23 @@ function NavRow({
         collapsed ? "justify-center px-0 py-2" : inset && "pl-8",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5" />
+      {thumb ? (
+        // Plain <img>, the same choice PlaceStatesTable and PlaceGallery make:
+        // placeThumbUrl has already produced a 2x thumb of a few KB, so
+        // next/image would add an optimizer hop for nothing. `alt=""` because
+        // the label beside it already names the place — announcing the name
+        // twice is noise on a screen reader, not access.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumb}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="h-5 w-5 shrink-0 rounded-md object-cover"
+        />
+      ) : (
+        <Icon className="h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5" />
+      )}
       <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
@@ -202,7 +243,7 @@ export function Sidebar({
   // clear when the active org goes away.
   const [fetched, setFetched] = useState<{
     orgId: string;
-    rows: { id: string; name: string }[];
+    rows: RailPlace[];
   } | null>(null);
   useEffect(() => {
     if (!activeOrgId) return;
@@ -333,15 +374,6 @@ export function Sidebar({
         className="mt-3 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain"
       >
         <NavRow
-          href={href(SHELL_ROUTES.account)}
-          label="Account"
-          Icon={UserRound}
-          active={pathname === SHELL_ROUTES.account}
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-          onGuardedNavigate={guardNav ?? undefined}
-        />
-        <NavRow
           href={href(SHELL_ROUTES.organization)}
           label="Organization"
           Icon={Building2}
@@ -370,6 +402,7 @@ export function Sidebar({
                   label={place.name}
                   title={place.name}
                   Icon={Store}
+                  thumb={placeThumbUrl(place.photoUrl, THUMB_PX)}
                   active={false}
                   heading={openPlaceId === place.id}
                   collapsed={collapsed}
@@ -390,16 +423,28 @@ export function Sidebar({
             {viewRows(openPlace)}
           </>
         )}
-      </nav>
 
-      <div className="border-sidebar-border mt-2 shrink-0 border-t pt-2">
-        {/* The superset, at the floor. You come here to claim something, not
-            to work — so it is reachable, not prominent. */}
+        {/* Closes the places area. A place list belongs with place lists — it
+            used to sit in the footer beside Account, which put a catalogue
+            and an identity in one group. */}
         <NavRow
           href={href(placesHref())}
           label="All Places"
           Icon={Layers}
           active={onPlacesList && owned === null}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          onGuardedNavigate={guardNav ?? undefined}
+        />
+      </nav>
+
+      {/* THE FOOTER IS IDENTITY, AND ONLY IDENTITY. */}
+      <div className="border-sidebar-border mt-2 shrink-0 border-t pt-2">
+        <NavRow
+          href={href(SHELL_ROUTES.account)}
+          label="Account"
+          Icon={UserRound}
+          active={pathname === SHELL_ROUTES.account}
           collapsed={collapsed}
           onNavigate={onNavigate}
           onGuardedNavigate={guardNav ?? undefined}

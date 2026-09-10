@@ -204,13 +204,64 @@ describe("the rail is flat, with exactly one exception", () => {
     expect(placesHref("public")).toBe("/places?owned=public");
   });
 
-  it("orders Account, Organization, the places, then All Places", () => {
+  it("keeps Account away from Organization, at the other end of the rail", () => {
+    // They sat as adjacent rows of identical weight, which reads as a pair —
+    // and they are not one. Organization is the entity whose data is on
+    // screen; Account is who is looking. Organization keeps the top because
+    // it SCOPES the places under it; Account goes to the footer alone.
     const r = rail();
     const at = (needle: string) => r.indexOf(needle);
-    expect(at('label="Account"')).toBeGreaterThan(-1);
-    expect(at('label="Account"')).toBeLessThan(at('label="Organization"'));
     expect(at('label="Organization"')).toBeLessThan(at("places.map((place)"));
     expect(at("places.map((place)")).toBeLessThan(at('label="All Places"'));
+    // Account is after </nav>, i.e. in the footer, not in the nav list.
+    expect(at("</nav>")).toBeLessThan(at('label="Account"'));
+    // And All Places is NOT in the footer with it — a catalogue and an
+    // identity are not one group.
+    expect(at('label="All Places"')).toBeLessThan(at("</nav>"));
+  });
+
+  it("gives every place its own photo, never the shared glyph", () => {
+    // Six identical Store glyphs is six copies of one row with different
+    // words on them.
+    expect(rail()).toContain("thumb={placeThumbUrl(place.photoUrl, THUMB_PX)}");
+  });
+
+  it("NEVER points an img at the full-resolution original", () => {
+    // photoUrl is an 8MB-ceiling original in place-images. placeThumbUrl
+    // rewrites it to the /render/image/ transform — measured 274KB to 3KB
+    // (MESITA-1553). The rail renders on EVERY screen in the console, so
+    // getting this wrong costs more here than it did on the list.
+    const r = readCode("components/console/Sidebar.tsx");
+    expect(r).toContain("placeThumbUrl(");
+    expect(r).not.toMatch(/src=\{[^}]*photoUrl[^}]*\}/);
+  });
+
+  it("falls back to a glyph when a place has no photo yet", () => {
+    // A hole in the column, or a broken-image icon, is worse than a generic
+    // storefront.
+    const r = readCode("components/console/Sidebar.tsx");
+    expect(r).toContain("thumb ? (");
+    expect(r).toContain("<Icon className=");
+  });
+
+  it("the photo is decorative — the label already names the place", () => {
+    // Announcing the name twice is noise on a screen reader, not access.
+    expect(rail()).toContain('alt=""');
+    expect(rail()).toContain('loading="lazy"');
+  });
+
+  it("only ONE place can be open, and only IT shows views", () => {
+    // Pato asked for this explicitly; it was already true, so this pins it
+    // rather than changing it. `openPlace` is a single value, not a set, so
+    // two expanded places is not representable — and the views render inside
+    // the matching row only.
+    const r = rail();
+    expect(r).toContain("openPlace?.id === place.id");
+    expect(r).not.toMatch(/expanded(Ids|Set|\[\])/);
+    // The publisher clears on unmount, so leaving a place collapses it.
+    expect(readCode("components/console/OpenPlace.tsx")).toContain(
+      "return () => setPlace(null);",
+    );
   });
 
   it("renders no place section until there is a place in it", () => {
