@@ -42,13 +42,20 @@ describe("the four screens Pato specified", () => {
     ]);
   });
   it("Place is the fourth, and the shell owns it", () => {
-    expect(placeHref("p-x")).toBe("/places/p-x");
+    // placeHref is Profile's address: opening a place means landing on its
+    // profile, and every view has its own segment since MESITA-1732.
+    expect(placeHref("p-x")).toBe("/places/p-x/profile");
+    expect(
+      existsSync(path.join(SHELL_DIR, "places", "[id]", "profile", "page.tsx")),
+    ).toBe(true);
+    // The bare segment still resolves — it is the 307 onto Profile, and a
+    // bookmark taken before the move can still land on it.
     expect(existsSync(path.join(SHELL_DIR, "places", "[id]", "page.tsx"))).toBe(
       true,
     );
   });
   it("encodes the id, so a slash in one cannot forge a route", () => {
-    expect(placeHref("a/b")).toBe("/places/a%2Fb");
+    expect(placeHref("a/b")).toBe("/places/a%2Fb/profile");
   });
 });
 

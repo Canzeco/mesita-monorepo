@@ -14,8 +14,14 @@
 import { withOrg } from "@/lib/console-routes";
 
 // THE TAB MATRIX (Pato, 2026-09-06): Profile · Capabilities · Activity · Admin
-// — the same set admin's Single Place uses. Profile has no segment of its own;
-// it IS /places/<id>.
+// — the same set admin's Single Place uses.
+//
+// Profile USED to have no segment of its own: it was /places/<id>, and the
+// other three hung beneath it. That made the one view an operator is most
+// likely to send someone a link to the one view with no link — /places/<id>/profile
+// answered 404 (MESITA-1732). It has its own address now, and the bare place
+// URL is a temporary redirect onto it, exactly as MESITA-1727 moved the
+// Organization screen off `/`.
 export const PLACE_TABS = [
   "profile",
   "capabilities",
@@ -47,5 +53,22 @@ export function placeTabHref(
   organizationId: string | null = null,
 ): string {
   const base = `/places/${encodeURIComponent(placeId)}`;
-  return withOrg(tab === "profile" ? base : `${base}/${tab}`, organizationId);
+  return withOrg(`${base}/${tab}`, organizationId);
+}
+
+/** Which view a place pathname is showing, or null if it is not one.
+ *
+ *  ONE reader for the segment→tab rule. It used to be written twice, in the
+ *  rail and in the page heading, both as `split("/")[3] ?? "profile"` — the
+ *  `??` being the bare-URL special case. Two copies of a routing rule is one
+ *  copy too many, and the fallback is now a lie: the bare URL redirects rather
+ *  than rendering Profile.
+ *
+ *  Returns null for anything that is not a known tab, so a future segment
+ *  cannot silently light up the Profile row. */
+export function placeTabFromPathname(pathname: string): PlaceTab | null {
+  const seg = pathname.split("/")[3];
+  return (PLACE_TABS as readonly string[]).includes(seg ?? "")
+    ? (seg as PlaceTab)
+    : null;
 }
