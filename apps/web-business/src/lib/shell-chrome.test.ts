@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import * as uiClasses from "./ui-classes";
 import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
+import { ownedFromParam, placesHref } from "./console-routes";
 
 const SRC = path.resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
@@ -160,17 +161,62 @@ describe("the unsaved-edits guard reaches the rail", () => {
 // MESITA-1714. Pato rejected the nested rail on sight, and the reason is
 // measurable: the ACTIVE row is almost always a leaf, so grouping by indent
 // puts the most important row on screen at the deepest inset.
-describe("the rail is flat", () => {
+// MESITA-1715. The rail lists the PLACES, not a link to a list of them, and
+// Pato rejected the tree-shaped version on sight: grouping by indent puts the
+// active row at the deepest inset and inverts hierarchy.
+describe("the rail is flat, with exactly one exception", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
-  it("emits no per-row indentation", () => {
+  it("indents nothing but the open place's views", () => {
+    // `inset` is passed on the view rows and nowhere else. If a second call
+    // site appears, the tree is growing back.
     expect(rail()).not.toContain("paddingLeft");
-    expect(rail()).not.toMatch(/depth/);
+    expect((rail().match(/^\s*inset$/gm) ?? []).length).toBe(1);
   });
 
-  it("groups with a rule and a label instead of a tree", () => {
+  it("groups with a label, never a tree line or a bullet", () => {
     expect(rail()).toContain("SectionBreak");
     expect(rail()).toContain("TINY_LABEL_CLASS");
+    expect(rail()).not.toMatch(/rounded-full["\s]*\/>/);
+  });
+
+  it("lists the org's places as rows, not a link to a filtered list", () => {
+    expect(rail()).toContain("listRailPlacesAction");
+    expect(rail()).toContain("places.map((place)");
+    // The old Org Places LINK is gone; the places themselves replaced it.
+    // "Org Places" survives as the section's label, which is a heading, not a
+    // destination — so the rule is about the href, not the words.
+    expect(rail()).not.toContain('placesHref("org")');
+    expect(rail()).toContain('<SectionBreak label="Org Places"');
+  });
+
+  it("has NO Public Places row — a complement is not a destination", () => {
+    // Org places are a SUBSET of All Places and earn a row. Public is All
+    // minus Org, which is what the Owned column already says on every row.
+    expect(rail()).not.toContain('label="Public Places"');
+    expect(rail()).not.toContain('placesHref("public")');
+  });
+
+  it("still supports ?owned=public as a URL", () => {
+    // It stopped being a destination, not a capability: a bookmark must not
+    // start 404ing because a menu row was removed.
+    expect(ownedFromParam("public")).toBe("public");
+    expect(placesHref("public")).toBe("/places?owned=public");
+  });
+
+  it("orders Account, Organization, the places, then All Places", () => {
+    const r = rail();
+    const at = (needle: string) => r.indexOf(needle);
+    expect(at('label="Account"')).toBeGreaterThan(-1);
+    expect(at('label="Account"')).toBeLessThan(at('label="Organization"'));
+    expect(at('label="Organization"')).toBeLessThan(at("places.map((place)"));
+    expect(at("places.map((place)")).toBeLessThan(at('label="All Places"'));
+  });
+
+  it("renders no place section until there is a place in it", () => {
+    // An empty labelled section is a promise the rail cannot keep, and a new
+    // organization holds nothing.
+    expect(r_hasGuard(rail())).toBe(true);
   });
 
   it("renders exactly the views the viewer may open", () => {
@@ -180,10 +226,22 @@ describe("the rail is flat", () => {
     expect(rail()).not.toContain("disabled");
   });
 
-  it("shows no place section at all when no place is open", () => {
-    expect(rail()).toMatch(/\{openPlace && openPlace\.id === openPlaceId && \(/);
+  it("no two adjacent rows share an icon", () => {
+    // Account and Profile both used to be UserRound, and Organization and Org
+    // Places both used to be Building2 — which is how a menu starts reading as
+    // mush. Every Icon= in the file must be distinct.
+    const icons = (rail().match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
+      m.replace(/Icon=\{|\}/g, ""),
+    );
+    const named = icons.filter((i) => i !== "TAB_ICON[tab]");
+    expect(new Set(named).size).toBe(named.length);
   });
 });
+
+/** The place section must be conditional on the list being non-empty. */
+function r_hasGuard(src: string): boolean {
+  return /\{places\.length > 0 && \(/.test(src);
+}
 
 // MESITA-1637, moved by MESITA-1710. The console is driven in a chromeless
 // desktop window, so the address bar is not on screen and nothing else in the

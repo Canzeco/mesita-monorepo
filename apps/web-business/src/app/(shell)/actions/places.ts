@@ -5,7 +5,11 @@
 // — the browser never holds a token and never calls the EF directly.
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiClaimPlace, apiReleasePlace } from "@/lib/api/organizations";
+import {
+  apiClaimPlace,
+  apiListConsolePlaces,
+  apiReleasePlace,
+} from "@/lib/api/organizations";
 import { apiVerifyPlace } from "@/lib/api/place-verification";
 import { errMsg } from "@/lib/utils";
 
@@ -79,4 +83,38 @@ export async function verifyPlaceAction(
     error: null,
     note: result.alreadyVerified ? "Already verified." : "Verified.",
   };
+}
+
+/** The rail's list of this organization's places (MESITA-1715).
+ *
+ *  A server action rather than a fetch in `(shell)/layout.tsx`, because a
+ *  layout cannot read searchParams and therefore cannot know WHICH
+ *  organization is active — it would have had to guess `organizations[0]`,
+ *  which is exactly the bug that made the header breadcrumb lie (MESITA-1713).
+ *  The rail resolves the active org client-side and asks for that one.
+ *
+ *  Returns id and name only. The rail draws rows, not records, and shipping
+ *  the full ConsolePlace would put addresses and intake state into a payload
+ *  nothing renders.
+ *
+ *  NEVER THROWS. A rail that fails to list places must still be a rail: the
+ *  console's whole navigation cannot go down because one EF call did.
+ */
+export async function listRailPlacesAction(
+  organizationId: string,
+): Promise<{ id: string; name: string }[]> {
+  if (!organizationId) return [];
+  const supabase = await createServerSupabase();
+  try {
+    const places = await apiListConsolePlaces(supabase, {
+      scope: "org",
+      organizationId,
+    });
+    return places
+      .map((p) => ({ id: p.id, name: p.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) {
+    console.error("[rail] business-web-list-places:", e);
+    return [];
+  }
 }
