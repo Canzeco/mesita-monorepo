@@ -77,7 +77,16 @@ Deno.serve(async (req) => {
   const ticketRow = await admin
     .from("visit_tickets")
     .select(
-      "id, consumer_id, state, paid_method, project_id, approved_amount_due_cents, currency",
+      // PRE-EXISTING BUG, found and fixed while implementing MESITA-1678:
+      // this selected the literal column "project_id", which has not
+      // existed on visit_tickets since 20260825005000_rename_project_id_to_place_id.sql
+      // renamed it repo-wide to place_id. Verified live: `select project_id
+      // from visit_tickets` errors 42703 on the production database today.
+      // Every call to this EF was failing at this lookup. _shared/place-id.ts
+      // documents the compat pattern other callers use (select place_id,
+      // then fromPlaceIdRow() also sets .project_id) — this file bypassed
+      // it with its own raw select instead of going through that helper.
+      "id, consumer_id, state, paid_method, place_id, approved_amount_due_cents, credits_applied_cents, currency",
     )
     .eq("id", ticketId)
     .maybeSingle();
@@ -91,6 +100,51 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Ticket not found" }, 404);
   }
   const ticket = ticketRow.data;
+  const grossAmountDueCents = ticket.approved_amount_due_cents as number | null;
+  const creditsAppliedCents = (ticket.credits_applied_cents as number | null) ?? 0;
+
+  // Credits fully covered the reduction (subtotal - discount) — nothing left
+  // for either rail to collect (MESITA-1678). paid_method "credits" so
+  // reporting reflects how the bill was actually settled, not a $0 register
+  // collect or a $0 PaymentIntent nobody would open.
+  async function closeAsCreditsSettled(): Promise<Response> {
+    if (ticket.state === TICKET_STATE.approved) {
+      const start = await writeTicket(admin, {
+        mode: "update",
+        id: ticket.id,
+        patch: { state: TICKET_STATE.paying, paid_method: "credits" },
+        guard: { eq: { state: TICKET_STATE.approved } },
+        select: "id, state",
+      });
+      if (!start.ok) {
+        return json({ ok: false, error: `ticket_update: ${start.error}` }, 500);
+      }
+      if (!start.row) {
+        return json(
+          { ok: false, code: "stale_state", error: "Ticket changed — refresh." },
+          409,
+        );
+      }
+    }
+    const closed = await closeTicketAndEnqueueReview(
+      admin,
+      ticket.id,
+      ticket.consumer_id as string,
+      ticket.place_id as string,
+      { paidMethod: "credits" },
+    );
+    if (!closed.ok) {
+      return json(
+        {
+          ok: false,
+          code: "charged_not_closed",
+          error: `Credits covered the bill but closing the ticket failed: ${closed.error}`,
+        },
+        500,
+      );
+    }
+    return json({ ok: true, state: CLOSED_TICKET_STATE });
+  }
 
   if (method === "mesita_pay") {
     // Retry-safe: a prior call that transitioned to `paying` but crashed
@@ -124,19 +178,22 @@ Deno.serve(async (req) => {
         409,
       );
     }
-    const amountCents = ticket.approved_amount_due_cents as number | null;
-    if (amountCents === null || amountCents === undefined) {
+    if (grossAmountDueCents === null || grossAmountDueCents === undefined) {
       return json(
         { ok: false, error: "Ticket has no approved amount due" },
         500,
       );
+    }
+    const amountCents = grossAmountDueCents - creditsAppliedCents;
+    if (amountCents <= 0) {
+      return await closeAsCreditsSettled();
     }
 
     const visitsConfig = await loadVisitsConfig(admin);
     const chargeable = await resolveChargeableOrganizationAccount(
       admin,
       visitsConfig.payCard,
-      ticket.project_id as string | null,
+      ticket.place_id as string | null,
     );
     if (!chargeable) {
       return json(
@@ -279,7 +336,7 @@ Deno.serve(async (req) => {
       admin,
       ticket.id,
       ticket.consumer_id as string,
-      ticket.project_id as string,
+      ticket.place_id as string,
       { paidMethod: "mesita_pay" },
     );
     if (!closed.ok) {
@@ -312,6 +369,12 @@ Deno.serve(async (req) => {
         },
         409,
       );
+    }
+    if (
+      grossAmountDueCents !== null && grossAmountDueCents !== undefined &&
+      grossAmountDueCents - creditsAppliedCents <= 0
+    ) {
+      return await closeAsCreditsSettled();
     }
     const update = await writeTicket(admin, {
       mode: "update",

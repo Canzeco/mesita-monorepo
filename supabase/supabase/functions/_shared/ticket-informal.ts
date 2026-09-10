@@ -145,7 +145,7 @@ export async function computeInformalBill(
 export async function finalizeInformalTicket(
   admin: SupabaseClient,
   ticketId: string,
-  opts?: { paidMethod?: "at_place" | "mesita_pay" },
+  opts?: { paidMethod?: "at_place" | "mesita_pay" | "credits" },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const ticket = await admin
     .from("visit_tickets")
@@ -196,7 +196,7 @@ export async function closeTicketAndEnqueueReview(
   ticketId: string,
   consumerId: string,
   projectId: string,
-  opts?: { paidMethod?: "at_place" | "mesita_pay" },
+  opts?: { paidMethod?: "at_place" | "mesita_pay" | "credits" },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const fin = await finalizeInformalTicket(admin, ticketId, opts);
   if (!fin.ok) return fin;
