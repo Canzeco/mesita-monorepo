@@ -79,7 +79,7 @@ import {
   placesHref,
   withOrg,
 } from "@/lib/console-routes";
-import { PLACE_TAB_LABEL, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { PLACE_TAB_LABEL, placeTabFromPathname, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import { placeThumbUrl } from "@/lib/place-thumb";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
@@ -262,10 +262,12 @@ export function Sidebar({
 
   const href = (to: string) => withOrg(to, activeOrgId);
 
-  // Which of the place's views is open. Profile has no segment of its own —
-  // it IS /places/<id> — so a bare place pathname means Profile.
+  // Which of the place's views is open. Every view has a segment since
+  // MESITA-1732, so this is a membership test rather than a bare-URL special
+  // case, and it lives in ONE place (lib/place-tabs) that the page heading
+  // reads too. An unknown segment lights up nothing instead of Profile.
   const activeTab: PlaceTab | null = openPlaceId
-    ? ((pathname.split("/")[3] as PlaceTab | undefined) ?? "profile")
+    ? placeTabFromPathname(pathname)
     : null;
 
   // A place you have open that this org does not hold — you reached it from
@@ -393,11 +395,14 @@ export function Sidebar({
             {places.map((place) => (
               <div key={place.id} className="contents">
                 {/* The place row is NEVER the active pill while its views
-                    are showing. Its href is Profile's href, so pilling both
-                    would paint two solid rows and two aria-current markers for
-                    one location — and "you are here" stops meaning one row.
-                    Open, it reads as the heading of its own group; closed, it
-                    is an ordinary row like any other. */}
+                    are showing. It goes to Profile, the same place the Profile
+                    row goes, so pilling both would paint two solid rows and two
+                    aria-current markers for one location — and "you are here"
+                    stops meaning one row. Open, it reads as the heading of its
+                    own group; closed, it is an ordinary row like any other.
+
+                    placeHref IS Profile's address (MESITA-1732), so this row
+                    and the Profile row agree without either naming a tab. */}
                 <NavRow
                   href={href(placeHref(place.id))}
                   label={place.name}

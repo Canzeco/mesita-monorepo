@@ -23,7 +23,7 @@
 
 import { usePathname } from "next/navigation";
 import { PlaceStateBadge } from "@/components/console/badges";
-import { PLACE_TAB_LABEL, type PlaceTab } from "@/lib/place-tabs";
+import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 
 export function PlaceHeading({
   name,
@@ -35,10 +35,11 @@ export function PlaceHeading({
   listed: boolean;
 }) {
   const pathname = usePathname();
-  // Profile has no segment of its own — it IS /places/<id> — so a bare place
-  // pathname means Profile.
-  const tab = (pathname.split("/")[3] as PlaceTab | undefined) ?? "profile";
-  const viewLabel = PLACE_TAB_LABEL[tab];
+  // Same reader the rail uses (MESITA-1732). This was the second independent
+  // copy of the bare-means-Profile rule; a routing rule written twice is one
+  // copy too many, and the bare URL redirects now rather than rendering.
+  const tab = placeTabFromPathname(pathname);
+  const viewLabel = tab ? PLACE_TAB_LABEL[tab] : null;
 
   return (
     <div className="flex flex-col gap-1">

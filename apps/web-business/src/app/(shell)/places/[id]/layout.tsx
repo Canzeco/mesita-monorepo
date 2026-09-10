@@ -8,7 +8,7 @@
 // there is exactly one place that decides what this viewer may see.
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
-import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
+import { getManagePlace, getPlaceView, placeTabHref, visibleTabs } from "@/lib/place-view";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
 import { PlaceManageShell } from "./PlaceManageShell";
@@ -46,7 +46,12 @@ export default async function PlaceLayout({
     // yet — Profile carries the Claim button instead.
     getManagePlace(id),
   ]);
-  if (!user) redirect(`/signin?next=${encodeURIComponent(`/places/${id}`)}`);
+  // Bounce back to a real address, not the redirect (MESITA-1732):
+  // /auth/post-signin pushes `next` straight through, so a bare place URL here
+  // would cost the operator an extra hop after signing in.
+  if (!user) {
+    redirect(`/signin?next=${encodeURIComponent(placeTabHref(id, "profile"))}`);
+  }
   if (!view) notFound();
   const tabs = visibleTabs(view, manage);
 

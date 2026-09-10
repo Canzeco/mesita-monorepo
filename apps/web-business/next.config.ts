@@ -17,10 +17,13 @@ const nextConfig: NextConfig = {
   // through a deleted route.
   async redirects() {
     return [
-      { source: "/unit/:id", destination: "/places/:id", permanent: true },
-      { source: "/unit/:id/:rest*", destination: "/places/:id", permanent: true },
-      { source: "/place/:id", destination: "/places/:id", permanent: true },
-      { source: "/place/:id/:rest*", destination: "/places/:id", permanent: true },
+      // Straight to Profile's real address (MESITA-1732). Landing these on the
+      // bare /places/:id would chain a cached 308 into a 307 for every old
+      // link; these are permanent either way, so one hop beats two.
+      { source: "/unit/:id", destination: "/places/:id/profile", permanent: true },
+      { source: "/unit/:id/:rest*", destination: "/places/:id/profile", permanent: true },
+      { source: "/place/:id", destination: "/places/:id/profile", permanent: true },
+      { source: "/place/:id/:rest*", destination: "/places/:id/profile", permanent: true },
       // Account settings moved to the shell's own screen.
       { source: "/settings", destination: "/account", permanent: true },
       // Org Places and Public Places merged into one list (MESITA-1614).

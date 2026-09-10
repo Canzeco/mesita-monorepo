@@ -1,110 +1,43 @@
-// Profile — the Place screen's landing tab.
+// The bare place URL. It used to BE the Profile view; Profile has its own
+// address now (MESITA-1732), so this is a forwarding address and nothing else.
 //
-// Two shapes, one route. A place the caller can MANAGE renders admin's
-// Single Place profile editor verbatim. A place still in the POOL has no
-// manage surface yet, so this is where Claim lives (the tab row hides
-// everything else until it is held).
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { Section } from "@/components/shared/Section";
-import { DataRow } from "@/components/console/badges";
-import { PlaceGallery } from "@/components/console/PlaceGallery";
-import { PlaceHoldButton } from "@/components/console/PlaceHoldButton";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { getManagePlace, getPlaceView } from "@/lib/place-view";
-import { apiListOrganizations } from "@/lib/api/organizations";
-import { canClaim, canRelease, resolveActiveOrg } from "@/lib/active-organization";
-import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
-import { ProfileTab } from "./ProfileTab";
+// Why it moved: Profile was /places/<id> while its three siblings were real
+// segments, so /places/<id>/profile answered 404. The one view an operator is
+// most likely to send a colleague a link to was the one view with no link.
+// Same defect MESITA-1727 fixed for the Organization screen, same shape here.
+//
+// TEMPORARY, NOT PERMANENT. `redirect()` answers 307, so nothing caches
+// /places/<id> as "always goes to /profile". A `permanent: true` entry in
+// next.config.ts would answer 308, which browsers keep on disk with no expiry,
+// and this is the path a place's canonical URL should be free to become again.
+// legacy-redirects.test.ts:90 asserts every next.config redirect is permanent,
+// which is a second reason this belongs here and not there.
+//
+// THE QUERY STRING TRAVELS. Every rail href carries ?org=<id>. Drop it and a
+// multi-org operator who followed a bookmark is silently switched to
+// organizations[0] — and then every other nav href follows that wrong org.
+//
+// This route is deliberately NOT linked from anywhere inside the app: the four
+// legacy 308s in next.config point straight at /profile, and placeTabHref never
+// returns the bare base. Only bookmarks and pasted links land here, which
+// matters because loading.tsx paints the Profile skeleton for the whole [id]
+// segment, so a hop through this page flashes that skeleton twice.
+import { redirect } from "next/navigation";
+import { placeTabHref } from "@/lib/place-tabs";
+import { withQuery } from "@/lib/console-routes";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlaceProfilePage({
+export default async function PlaceRootPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
-  const manage = await getManagePlace(id);
-  if (manage) return <ProfileTab />;
-
-  // ── Pool place: identity + the claim door. ──────────────────────────────
-  const sp = await searchParams;
-  const supabase = await createServerSupabase();
-  const view = await getPlaceView(supabase, id);
-  const orgs = await apiListOrganizations(supabase).catch(() => []);
-  const activeOrg = resolveActiveOrg(orgs, sp.org);
-  const { place, holder, claimable } = view;
-
-  // One list since MESITA-1614, so held and unheld places go back to the
-  // same screen. A held place carries its holder's org so Back lands on the
-  // portfolio you came from rather than on whichever org happened to be active.
-  const backHref = withOrg(
-    SHELL_ROUTES.places,
-    holder?.organizationId ?? activeOrg?.id ?? null,
-  );
-
-  return (
-    <>
-      <Link
-        href={backHref}
-        className="text-muted-foreground hover:text-foreground inline-flex w-fit items-center gap-1.5 text-[13px]"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        {holder ? "Org Places" : "Public Places"}
-      </Link>
-
-      <PlaceGallery
-        photos={place.photos ?? []}
-        totalPhotos={place.totalPhotos ?? (place.photos ?? []).length}
-        name={place.name}
-      />
-
-      <Section title="Identity" description="What this address is.">
-        <div>
-          <DataRow label="Address">{place.address ?? "Not set"}</DataRow>
-          <DataRow label="Zone">{place.zone ?? "Not set"}</DataRow>
-          <DataRow label="City">{place.city ?? "Not set"}</DataRow>
-          <DataRow label="Phone">{place.phone ?? "Not set"}</DataRow>
-        </div>
-      </Section>
-
-      <Section
-        title="Holding"
-        description={
-          holder
-            ? "An organization holds this place. Releasing returns it to the public pool."
-            : "Nobody holds this place. Claiming moves it into your organization — and makes you its owner, which is what unlocks the staff PIN and Partnership."
-        }
-        right={
-          holder ? (
-            <PlaceHoldButton
-              action="release"
-              placeId={place.id}
-              organizationId={holder.organizationId}
-              allowed={canRelease(holder.myRole)}
-            />
-          ) : claimable && activeOrg ? (
-            <PlaceHoldButton
-              action="claim"
-              placeId={place.id}
-              organizationId={activeOrg.id}
-              allowed={canClaim(activeOrg.myRole)}
-            />
-          ) : null
-        }
-      >
-        <div>
-          <DataRow label="Held by">
-            {holder ? holder.organizationName : "The public pool"}
-          </DataRow>
-          {!holder && !activeOrg && (
-            <DataRow label="Claim it">Create an organization first</DataRow>
-          )}
-        </div>
-      </Section>
-    </>
-  );
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
+  // placeTabHref, not a hand-built string: it is the one place that knows a
+  // tab's shape, and it already carries ?org= when given one. Here the org
+  // rides in `sp` instead, so pass null and let withQuery forward the lot.
+  redirect(withQuery(placeTabHref(id, "profile"), sp));
 }

@@ -5,13 +5,13 @@
 // negative margin against the padding it cancels, a component against the
 // context it may not import. Each one, when broken, ships something that looks
 // fine on the viewport a developer checks first.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import * as uiClasses from "./ui-classes";
 import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
-import { ownedFromParam, placesHref } from "./console-routes";
+import { ownedFromParam, placeHref, placesHref } from "./console-routes";
 
 const SRC = path.resolve(__dirname, "..");
 const read = (rel: string) => readFileSync(path.join(SRC, rel), "utf8");
@@ -447,7 +447,25 @@ describe("tab hrefs", () => {
     expect(placeTabHref("p-1", "capabilities", "org-9")).toBe(
       "/places/p-1/capabilities?org=org-9",
     );
-    expect(placeTabHref("p-1", "profile", "org-9")).toBe("/places/p-1?org=org-9");
+    expect(placeTabHref("p-1", "profile", "org-9")).toBe(
+      "/places/p-1/profile?org=org-9",
+    );
+  });
+  it("agree with placeHref, which is Profile's address", () => {
+    // placeHref writes the segment literally, because lib/place-tabs imports
+    // withOrg from console-routes and reaching back would be a cycle. Two
+    // literals for one route is exactly the drift that made
+    // /places/<id>/profile a 404, so pin them together here instead.
+    expect(placeHref("p-1")).toBe(placeTabHref("p-1", "profile"));
+  });
+  it("never return the bare place URL — every view has its own address", () => {
+    // The regression this exists to prevent (MESITA-1732). Profile used to BE
+    // /places/<id>, so /places/<id>/profile answered 404 and the one view an
+    // operator is likeliest to send a link to was the one with no link.
+    for (const tab of PLACE_TABS) {
+      expect(placeTabHref("p-1", tab)).not.toBe("/places/p-1");
+      expect(placeTabHref("p-1", tab)).toBe(`/places/p-1/${tab}`);
+    }
   });
   it("omit it cleanly when there is no active organization", () => {
     expect(placeTabHref("p-1", "activity")).toBe("/places/p-1/activity");
@@ -455,12 +473,30 @@ describe("tab hrefs", () => {
   it("every tab maps to a route file on disk", () => {
     // Under a permanent header a mislabelled tab is a 404 the operator stares
     // at on every screen, not a link they might never click.
+    //
+    // This was VACUOUS for Profile until MESITA-1732. It derives the path from
+    // placeTabHref itself, and placeTabHref said Profile was the bare
+    // /places/<id> — so the loop just re-checked the bare page.tsx that already
+    // existed, and /places/<id>/profile could 404 in production with this test
+    // green. Deriving the expectation from the function under test is the whole
+    // flaw; the sibling test below closes the loop from the other direction.
     const shell = path.join(SRC, "app", "(shell)");
     for (const tab of PLACE_TABS) {
       const segs = placeTabHref("ID", tab).slice(1).split("/");
       segs[1] = "[id]";
       expect(existsSync(path.join(shell, ...segs, "page.tsx"))).toBe(true);
     }
+  });
+  it("every route file on disk is a tab — no orphan segment", () => {
+    // The opposite direction. Together with the loop above this is a bijection:
+    // a tab with no route fails there, a route with no tab fails here. Either
+    // alone can be satisfied while the rail and the filesystem disagree.
+    const placeDir = path.join(SRC, "app", "(shell)", "places", "[id]");
+    const segments = readdirSync(placeDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .filter((e) => existsSync(path.join(placeDir, e.name, "page.tsx")))
+      .map((e) => e.name);
+    expect(segments.sort()).toEqual([...PLACE_TABS].sort());
   });
 });
 

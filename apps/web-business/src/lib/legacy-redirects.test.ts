@@ -64,23 +64,27 @@ const LEGACY_TABS = [
   "tickets",
 ];
 
+// Destinations are Profile's real address, not the bare place URL (MESITA-1732).
+// These four are `permanent: true`, so their 308 is already cached on disk in
+// every browser that followed them; pointing them at the bare URL would chain
+// that spent 308 into the new 307 forever. One hop beats two.
 describe("the legacy console's URLs all still resolve", () => {
   it("every /place/<id>/<tab> lands on that place, never a 404", async () => {
     const all = await rules();
     for (const tab of LEGACY_TABS) {
-      expect(resolve(`/place/abc/${tab}`, all)).toBe("/places/abc");
+      expect(resolve(`/place/abc/${tab}`, all)).toBe("/places/abc/profile");
     }
   });
 
   it("the bare /place/<id> lands on that place", async () => {
-    expect(resolve("/place/abc", await rules())).toBe("/places/abc");
+    expect(resolve("/place/abc", await rules())).toBe("/places/abc/profile");
   });
 
   it("/unit/* is repointed, not left chaining through a deleted route", async () => {
     // It used to forward to /place/*, which this PR removed.
     const all = await rules();
-    expect(resolve("/unit/abc", all)).toBe("/places/abc");
-    expect(resolve("/unit/abc/place/preview", all)).toBe("/places/abc");
+    expect(resolve("/unit/abc", all)).toBe("/places/abc/profile");
+    expect(resolve("/unit/abc/place/preview", all)).toBe("/places/abc/profile");
   });
 
   it("/settings lands on the shell's Account screen", async () => {

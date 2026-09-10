@@ -16,5 +16,6 @@ export function placeSectionHref(placeId: string, section: string): string {
     ? "activity"
     : section;
   const base = `/places/${encodeURIComponent(placeId)}`;
-  return tab === "profile" ? base : `${base}/${tab}`;
+  // Profile has its own address since MESITA-1732; no tab is the bare base.
+  return `${base}/${tab}`;
 }

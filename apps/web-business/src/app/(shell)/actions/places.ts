@@ -39,7 +39,7 @@ export async function claimPlaceAction(
   // Both lists change: the place leaves the pool and joins the portfolio.
   // So does Place itself — its Holding section is the thing that just moved.
   revalidatePath("/places");
-  revalidatePath("/places/[id]", "page");
+  revalidatePath("/places/[id]", "layout");
   return { error: null };
 }
 
@@ -57,7 +57,7 @@ export async function releasePlaceAction(
     return { error: errMsg(e, "Couldn't release that place.") };
   }
   revalidatePath("/places");
-  revalidatePath("/places/[id]", "page");
+  revalidatePath("/places/[id]", "layout");
   return { error: null };
 }
 
@@ -78,7 +78,7 @@ export async function verifyPlaceAction(
   // Verified is a column on the list and a fact on the place, so both
   // re-read — same pair claim and release already invalidate.
   revalidatePath("/places");
-  revalidatePath("/places/[id]", "page");
+  revalidatePath("/places/[id]", "layout");
   return {
     error: null,
     note: result.alreadyVerified ? "Already verified." : "Verified.",

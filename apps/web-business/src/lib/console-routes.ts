@@ -67,9 +67,21 @@ export function ownedFromParam(value: unknown): PlacesOwned | null {
     : null;
 }
 
-/** Place — the fourth screen. Reached from the list. */
+/** Place — the fourth screen. Reached from the list.
+ *
+ *  This is Profile's address, because Profile IS the place's canonical URL:
+ *  opening a place means landing on its profile. Every view got its own
+ *  segment in MESITA-1732, and the bare `/places/<id>` became a 307 onto this
+ *  one — so returning the bare URL here would route the Places list, the
+ *  places table, accept-invite, the header menu and post-create all through a
+ *  redirect, and `places/[id]/loading.tsx` would paint the Profile skeleton
+ *  twice for one click.
+ *
+ *  The segment is written literally rather than by calling placeTabHref:
+ *  lib/place-tabs imports withOrg from this module, so reaching back would be
+ *  a cycle. shell-chrome.test.ts pins the two in sync instead. */
 export function placeHref(placeId: string): string {
-  return `${SHELL_ROUTES.places}/${encodeURIComponent(placeId)}`;
+  return `${SHELL_ROUTES.places}/${encodeURIComponent(placeId)}/profile`;
 }
 
 /** Is this pathname a Place screen? The nav needs to know, because
@@ -77,9 +89,10 @@ export function placeHref(placeId: string): string {
  *  instead of Place. */
 export function placeIdFromPathname(pathname: string): string | null {
   // One OPTIONAL tab segment (MESITA-1537): /places/<id> and
-  // /places/<id>/{capabilities,activity,admin} are all the Place screen,
-  // so the nav must light Place on every one of them. Profile has no
-  // segment of its own — it IS /places/<id>.
+  // /places/<id>/{profile,capabilities,activity,admin} are all the Place
+  // screen, so the nav must light Place on every one of them. The segment is
+  // optional because the bare URL still resolves — it is a 307 onto Profile
+  // (MESITA-1732) and a bookmark can still land on it.
   const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
 }
