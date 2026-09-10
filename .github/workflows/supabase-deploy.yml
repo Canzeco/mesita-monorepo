@@ -56,6 +56,9 @@ jobs:
       # was removed earlier (MESITA-1093).
       # MESITA-1362: Intake Sourcing get/update EFs — unread after Map became
       # the Search/Add gate.
+      # MESITA-1722: the three pre-monorepo ghosts. These never had a folder
+      # or a config block in this repo at all, so nothing but this list can
+      # reach them; their source is archived under retired/edge-functions/.
       # MESITA-1723: four functions with no caller left. `functions deploy`
       # only ever ADDS, so a folder deleted in the repo stays callable in the
       # cloud forever unless its slug is named here — the third of the three
@@ -79,6 +82,9 @@ jobs:
             business-web-list-categories
             business-web-list-tags
             business-web-list-reservations
+            admin-web-review-refund-request
+            business-web-request-refund
+            business-web-update-cfdi
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"

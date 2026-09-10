@@ -2013,9 +2013,6 @@ export type Database = {
       }
       places: {
         Row: {
-          cfdi_cp: string | null
-          cfdi_razon_social: string | null
-          cfdi_rfc: string | null
           check_pin: string | null
           claim_reviewed_at: string | null
           claim_reviewed_by: string | null
@@ -2050,9 +2047,6 @@ export type Database = {
           welcome_premium_rate: number | null
         }
         Insert: {
-          cfdi_cp?: string | null
-          cfdi_razon_social?: string | null
-          cfdi_rfc?: string | null
           check_pin?: string | null
           claim_reviewed_at?: string | null
           claim_reviewed_by?: string | null
@@ -2087,9 +2081,6 @@ export type Database = {
           welcome_premium_rate?: number | null
         }
         Update: {
-          cfdi_cp?: string | null
-          cfdi_razon_social?: string | null
-          cfdi_rfc?: string | null
           check_pin?: string | null
           claim_reviewed_at?: string | null
           claim_reviewed_by?: string | null
