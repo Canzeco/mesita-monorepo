@@ -138,6 +138,19 @@ export function LadderRow({
       <Reason tone="warn">Stripe: {s.reason}</Reason>
     ) : s.kind === "soon" ? (
       <Reason tone="muted">Soon</Reason>
+    ) : s.kind === "checking" ? (
+      <Reason tone="muted">
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        Checking…
+      </Reason>
+    ) : s.kind === "not_mine" ? (
+      // THE WORD IS THE STATE. StateCell's law, and the reason this is not an
+      // empty slot: the eye finds a column of switches and one hole, and the
+      // hole reads as broken. `Unknown` is the honest answer when the payload
+      // did not carry the fact — never `Off`, which is a claim nobody checked.
+      <Reason tone="muted">
+        {s.on === null ? "Unknown" : s.on ? "On" : "Off"} · {s.word}
+      </Reason>
     ) : isSwitch ? (
       <Track on={on} busy={busy} />
     ) : (
@@ -183,6 +196,10 @@ export function LadderRow({
         <div
           className={cx(
             "flex items-center gap-3 py-2.5",
+            // `locked` and `soon` dim: they mean "this would work if something
+            // about you were different". `not_mine` and `checking` do NOT —
+            // opacity is the grammar of disabled, and neither of those is a
+            // control the operator is being denied.
             (s.kind === "locked" || s.kind === "soon") && "opacity-70",
           )}
         >

@@ -241,14 +241,25 @@ export function PromosSection({
   const forfeited = pillState === "forfeited";
   const level = placeOperatorPromotingLevel(v);
 
-  const rails: Record<keyof PlaceRails, boolean> = {
+  const rails = {
     mesita_pay: v.mesita_pay_enabled === true,
     credits: v.credits_enabled === true,
     pickup: v.pickup_orders_enabled === true,
     delivery: v.delivery_orders_enabled === true,
-  };
+    // Three states, not two. `=== true` would fold "the payload did not carry
+    // it" into "the place takes no bookings" — which is the bug this row
+    // shipped with, in the other direction (MESITA-1735).
+    reservations:
+      typeof v.reservations_enabled === "boolean" ? v.reservations_enabled : null,
+  } satisfies Record<keyof PlaceRails, boolean> & { reservations: boolean | null };
 
-  const rows = offeringRows({ member, visitRewardsLevel: level, rails, connect });
+  const rows = offeringRows({
+    member,
+    visitRewardsLevel: level,
+    rails,
+    connect,
+    connectLoading,
+  });
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
   const score = rows.reduce((n, r) => n + (r.earned && r.points ? r.points : 0), 0);
 

@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       admin
         .from("place_profiles")
         .select(
-          "enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
+          "enrichment, mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled, reservations_enabled",
         )
         .eq("id", requestedPlaceId)
         .maybeSingle(),
@@ -149,6 +149,11 @@ Deno.serve(async (req) => {
         credits_enabled?: unknown;
         pickup_orders_enabled?: unknown;
         delivery_orders_enabled?: unknown;
+        // Read because the CONSUMER app already books off this column
+        // (`isReserveActionEnabled`). The console used to hard-code the row
+        // off, so it claimed a place takes no bookings while guests were
+        // making them (MESITA-1735). Written today only by the Intaker.
+        reservations_enabled?: unknown;
       }
       | null;
     places = [
@@ -179,6 +184,9 @@ Deno.serve(async (req) => {
           : {}),
         ...(typeof acceptanceRow?.delivery_orders_enabled === "boolean"
           ? { delivery_orders_enabled: acceptanceRow.delivery_orders_enabled }
+          : {}),
+        ...(typeof acceptanceRow?.reservations_enabled === "boolean"
+          ? { reservations_enabled: acceptanceRow.reservations_enabled }
           : {}),
       } as unknown as PlaceProfileRow,
     ];
