@@ -8,12 +8,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  PLACEBAR_STICKY_CLASS,
-  STATES_HEAD_STICKY,
-  SHELL_BLEED,
-  SHELL_GUTTER,
-} from "./ui-classes";
+import * as uiClasses from "./ui-classes";
+import { STATES_HEAD_STICKY, SHELL_BLEED, SHELL_GUTTER } from "./ui-classes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
 const SRC = path.resolve(__dirname, "..");
@@ -44,45 +40,111 @@ describe("gutter and bleed are exact negatives", () => {
   });
 });
 
-describe("PlaceBar has no offset left to get wrong (MESITA-1710)", () => {
-  it("is a flat top-0 at every width, with no breakpoint", () => {
-    // This used to be `sticky top-0 sm:top-[57px]`, paired with a
-    // TOPNAV_OCCUPIED_PX constant that encoded the height of the bar above it.
-    // The nav is a lateral rail now and AppShell makes `main` the only
-    // scroller, so PlaceBar's scrollport has nothing above it. The constant
-    // did not get a new value — it stopped having a job.
-    expect(PLACEBAR_STICKY_CLASS).toBe("sticky top-0");
-    expect(PLACEBAR_STICKY_CLASS).not.toMatch(/sm:|md:|lg:/);
-    expect(PLACEBAR_STICKY_CLASS).not.toMatch(/top-\[/);
+// MESITA-1714. The bar is gone. Its name and its four tabs both live in the
+// rail now, so a sticky row restating them was 48px of chrome saying what the
+// column beside it already said. What survived is the h1 — as a page title in
+// the content flow, not as chrome.
+describe("the place screen has a heading, not a second bar", () => {
+  it("PLACEBAR_STICKY_CLASS is gone, not merely unused", () => {
+    // An exported sticky constant nobody reads is an invitation to wire a
+    // second sticky bar back up.
+    expect("PLACEBAR_STICKY_CLASS" in uiClasses).toBe(false);
+    expect(read("lib/ui-classes.ts")).not.toMatch(
+      /^export const PLACEBAR_STICKY_CLASS/m,
+    );
   });
 
-  it("the constant is GONE from ui-classes, not merely unused", () => {
-    // An exported 57 nobody reads is an invitation to wire it back up.
-    const src = read("lib/ui-classes.ts");
-    expect(src).not.toMatch(/^export const TOPNAV_OCCUPIED_PX/m);
+  it("TOPNAV_OCCUPIED_PX stayed gone too", () => {
+    expect("TOPNAV_OCCUPIED_PX" in uiClasses).toBe(false);
   });
 
-  it("no source file still writes a 57px offset", () => {
-    // The literal has to be spelled out for Tailwind to see it, so a stale
-    // copy would compile silently and only show up as a 57px band of dead
-    // space under a bar that no longer exists.
-    for (const f of [
-      "components/console/PlaceBar.tsx",
-      "components/console/AppShell.tsx",
-      "app/(shell)/layout.tsx",
-    ]) {
-      expect(read(f)).not.toMatch(/(sm|md|lg):top-\[57px\]/);
+  it("the heading is not sticky and is not chrome", () => {
+    const h = readCode("components/console/PlaceHeading.tsx");
+    expect(h).not.toContain("sticky");
+    expect(h).not.toContain("z-");
+    expect(h).not.toContain(SHELL_BLEED);
+  });
+
+  it("it is still the place screen's one h1", () => {
+    // Section renders h3. Without this the first heading on the screen is an
+    // h3 with h1 and h2 both skipped — axe flags it and VoiceOver's rotor has
+    // nothing to land on.
+    const h = read("components/console/PlaceHeading.tsx");
+    expect((h.match(/<h1/g) ?? []).length).toBe(1);
+    // font-sans is explicit because globals.css puts every bare h1 on the
+    // display face, and this is identity, not a page title.
+    expect(h).toContain("font-sans");
+  });
+
+  it("the three superseded components are deleted, not orphaned", () => {
+    for (const f of ["PlaceBar.tsx", "PlaceTabs.tsx", "GuardedPlaceTabs.tsx"]) {
+      expect(existsSync(path.join(SRC, "components", "console", f))).toBe(false);
     }
   });
 
   it("one breakpoint, lg — the rail and the chrome switch together", () => {
-    // The old pairing switched PlaceBar at `sm` and the rail at `lg`, so
-    // 640-1024px got a mobile topbar AND a desktop offset. Anything that
-    // hides or shows chrome now does it at `lg`.
     const shell = read("components/console/AppShell.tsx");
     expect(shell).toContain("lg:hidden");
     expect(shell).toContain("lg:flex");
     expect(shell).not.toMatch(/\bsm:hidden\b/);
+  });
+});
+
+// MESITA-1714. The guard travels UP; the component does not come down.
+describe("the unsaved-edits guard reaches the rail", () => {
+  it("only the bridge reads PlaceContext, and it renders nothing", () => {
+    // usePlaceContext throws outside its provider, and a pool place has none.
+    const bridge = read("components/console/PlaceNavBridge.tsx");
+    expect(bridge).toContain("usePlaceContext");
+    expect(bridge).toContain("PublishPlaceNav");
+    // The rail must never import the provider — it renders above it.
+    expect(readCode("components/console/Sidebar.tsx")).not.toMatch(
+      /from ["']@\/components\/place-manage\/PlaceContext/,
+    );
+  });
+
+  it("the bridge lives inside the provider, structurally", () => {
+    // Rendered by the shell itself rather than passed in: position-by-
+    // convention is enforced by nothing, and getting it wrong throws on every
+    // managed place.
+    const shell = read("app/(shell)/places/[id]/PlaceManageShell.tsx");
+    const provider = shell.slice(shell.indexOf("<PlaceProvider"));
+    expect(provider).toContain("<PlaceNavBridge />");
+  });
+
+  it("every rail row routes through the guard when one exists", () => {
+    const rail = readCode("components/console/Sidebar.tsx");
+    const rows = rail.match(/<NavRow/g) ?? [];
+    expect(rows.length).toBeGreaterThan(3);
+    expect((rail.match(/onGuardedNavigate=/g) ?? []).length).toBe(rows.length);
+  });
+});
+
+// MESITA-1714. Pato rejected the nested rail on sight, and the reason is
+// measurable: the ACTIVE row is almost always a leaf, so grouping by indent
+// puts the most important row on screen at the deepest inset.
+describe("the rail is flat", () => {
+  const rail = () => readCode("components/console/Sidebar.tsx");
+
+  it("emits no per-row indentation", () => {
+    expect(rail()).not.toContain("paddingLeft");
+    expect(rail()).not.toMatch(/depth/);
+  });
+
+  it("groups with a rule and a label instead of a tree", () => {
+    expect(rail()).toContain("SectionBreak");
+    expect(rail()).toContain("TINY_LABEL_CLASS");
+  });
+
+  it("renders exactly the views the viewer may open", () => {
+    // visibleTabs() returns 1 to 4. A greyed-out row for a view you cannot
+    // open is a worse answer than no row.
+    expect(rail()).toContain("openPlace.tabs.map");
+    expect(rail()).not.toContain("disabled");
+  });
+
+  it("shows no place section at all when no place is open", () => {
+    expect(rail()).toMatch(/\{openPlace && openPlace\.id === openPlaceId && \(/);
   });
 });
 
@@ -137,10 +199,9 @@ describe("the console header names the route", () => {
 // copying the first into the second hid the Places table's first row behind a
 // 57px gap for weeks. These pin the distinction so it cannot be re-collapsed.
 describe("sticky offsets are measured against the right box", () => {
-  it("PlaceBar sticks to `main`, which is the shell's only scroller", () => {
-    // Its scrollport is <main>, and the console header is main's SIBLING, so
-    // there is nothing above it to clear (MESITA-1710).
-    expect(PLACEBAR_STICKY_CLASS).toBe("sticky top-0");
+  it("main is the shell's only scroller, which is what the rule below is about", () => {
+    // The premise of the distinction: PlaceBar used to sit in this scrollport
+    // and is gone, but the table below still lives in a nested one.
     expect(read("components/console/AppShell.tsx")).toContain(
       '<main className="flex-1 overflow-x-hidden overflow-y-auto">',
     );
@@ -188,33 +249,18 @@ describe("the container stays uncapped", () => {
     expect(rail).not.toMatch(/max-w-\dxl/);
     expect(rail).toContain("h-full w-full");
   });
-  it("the bar never sets w-full — that would kill the breakout", () => {
-    // align-self: stretch only widens a flex item whose width is `auto`.
-    const bar = read("components/console/PlaceBar.tsx");
-    const cls = bar.slice(bar.indexOf("className={`bg-background"));
-    expect(cls.slice(0, cls.indexOf("`}"))).not.toContain("w-full");
-  });
-});
-
-describe("PlaceTabs is dumb by construction", () => {
-  it("never imports PlaceContext — it renders where no provider exists", () => {
-    // usePlaceContext throws outside its provider, and a pool place has none.
-    // Match an IMPORT, not any mention: the file explains this rule in prose,
-    // and a test that forbids documenting its own invariant is backwards.
-    expect(read("components/console/PlaceTabs.tsx")).not.toMatch(
-      /^\s*import[^;]*PlaceContext/m,
-    );
-  });
-  it("the guarded variant is the only context consumer", () => {
-    expect(read("components/console/GuardedPlaceTabs.tsx")).toContain("usePlaceContext");
-  });
-  it("the bar lives inside the provider, structurally", () => {
-    // Passed as a prop, not rendered as a sibling: position-by-convention is
-    // enforced by nothing, and getting it wrong crashes every managed place.
-    const shell = read("app/(shell)/places/[id]/PlaceManageShell.tsx");
-    const provider = shell.slice(shell.indexOf("<PlaceProvider"));
-    expect(provider).toContain("{header}");
-    expect(read("app/(shell)/places/[id]/layout.tsx")).toContain("header={bar}");
+  it("the bleeding table never sets w-full — that would kill the breakout", () => {
+    // align-self: stretch only widens a flex item whose width is `auto`. This
+    // rule used to guard PlaceBar, which was the other breakout; MESITA-1714
+    // deleted it, and the trap moved with the invariant rather than dying with
+    // the component. PlaceStatesTable is the last thing in this app that
+    // cancels the gutter, which is why the pairing above is still load-bearing.
+    const table = read("components/console/PlaceStatesTable.tsx");
+    const at = table.indexOf("SHELL_BLEED,");
+    expect(at).toBeGreaterThan(-1);
+    // The cn() call that applies the bleed, and the class string beside it.
+    const block = table.slice(at - 400, at + 40);
+    expect(block).not.toContain("w-full");
   });
 });
 

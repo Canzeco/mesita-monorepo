@@ -75,27 +75,24 @@ export const GHOST_PILL_BUTTON_CLASS =
 export const SHELL_GUTTER = "px-4 sm:px-6 lg:px-8";
 export const SHELL_BLEED = "-mx-4 sm:-mx-6 lg:-mx-8";
 
-/** PlaceBar's sticky offset — and there is no offset (MESITA-1710).
- *
- *  This used to read `sticky top-0 sm:top-[57px]`, paired with a
- *  `TOPNAV_OCCUPIED_PX = 57` constant that encoded the exact height of the top
- *  bar above it (h-14 = 56, plus a 1px border). The nav is a lateral rail now,
- *  so the obvious move was to re-derive 57 into some new number for the content
- *  header. That would have been wrong: THE CONSTANT DID NOT NEED A NEW VALUE,
- *  IT STOPPED HAVING A JOB.
- *
- *  `position: sticky` resolves `top` against the nearest SCROLLING ANCESTOR —
- *  the same fact `STATES_HEAD_STICKY` below spells out at length, learned the
- *  expensive way in MESITA-1658. AppShell pins the frame with `fixed inset-0`
- *  and makes `main` the only scroller, and the console header is a flex
- *  SIBLING of `main`, not something inside it. From PlaceBar's point of view
- *  there is nothing above it in its own scrollport, so `top-0` is exact at
- *  every width and there is no breakpoint left to get wrong.
- *
- *  That also closes the 640-1024px hole: the old pairing switched at `sm`
- *  while the rail switches at `lg`, so tablets got a mobile topbar AND a 57px
- *  offset measured against a desktop bar that was not on screen. */
-export const PLACEBAR_STICKY_CLASS = "sticky top-0";
+// PLACEBAR_STICKY_CLASS is GONE (MESITA-1714), and the story is worth keeping
+// because the same mistake is easy to make again.
+//
+// It started as `sticky top-0 sm:top-[57px]`, paired with a
+// TOPNAV_OCCUPIED_PX constant encoding the exact height of the top bar above
+// it. MESITA-1710 turned the nav into a lateral rail and the obvious move was
+// to re-derive 57 into a new number for the new header. That was wrong twice
+// over: the frame is `fixed inset-0` with `main` as the only scroller and the
+// header as main's SIBLING, so there was nothing above it in its own
+// scrollport at all — and then MESITA-1714 deleted the bar outright, because
+// once the rail carries the place's name AND its views, a sticky row
+// restating both is 48px of chrome saying what the column beside it says.
+//
+// Neither constant needed a new value. Both stopped having a job.
+//
+// SHELL_BLEED above SURVIVES all of this: PlaceStatesTable is its other
+// consumer, so the gutter/bleed pairing is still load-bearing and still
+// asserted.
 
 // Readable measure for a single-column form. Inputs inherit the width of
 // their container, and a 900px-wide box for a 13-character RFC reads as a
