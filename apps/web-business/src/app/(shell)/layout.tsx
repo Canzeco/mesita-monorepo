@@ -59,7 +59,6 @@ export default async function ShellLayout({
     <Suspense fallback={<div className="bg-background fixed inset-0" />}>
       <AppShell
         organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
-        orgName={organizations[0]?.name ?? null}
         defaultCollapsed={collapsed}
       >
         {/* FLUID: no max-width (MESITA-1558). Two things depend on that and

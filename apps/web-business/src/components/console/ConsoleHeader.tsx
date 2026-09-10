@@ -25,6 +25,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { SHELL_ROUTES, ownedFromParam } from "@/lib/console-routes";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
+import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 import type { OpenPlace } from "@/components/console/OpenPlace";
 import { useOpenPlace } from "@/components/console/OpenPlace";
 
@@ -49,11 +50,21 @@ export function crumbsFor(
   return [];
 }
 
-export function ConsoleHeader({ orgName }: { orgName: string | null }) {
+export function ConsoleHeader({
+  organizations,
+}: {
+  organizations: ChromeOrg[];
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const q = searchParams.toString();
   const openPlace = useOpenPlace();
+  // The NAME is resolved here, from ?org=, not handed down pre-resolved. A
+  // server layout cannot read searchParams, so a passed-in name is always
+  // `organizations[0]` — and this line's entire job is to say whose data is on
+  // screen, so getting that wrong is worse than not printing it at all.
+  const { activeOrg } = useActiveOrg(organizations);
+  const orgName = activeOrg?.name ?? null;
 
   // What the address bar would have said. The query rides along because ?org=
   // is the half that says WHOSE screen this is — a bare /places is ambiguous

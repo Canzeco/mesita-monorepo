@@ -48,6 +48,7 @@ import {
   withOrg,
 } from "@/lib/console-routes";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
+import { useActiveOrg } from "@/lib/use-active-org";
 import type { Organization } from "@/lib/api/organizations";
 
 type SidebarProps = {
@@ -138,16 +139,9 @@ export function Sidebar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // The active organization is resolved HERE, not passed down: the layout that
-  // renders this cannot read searchParams, so it would have had to guess. Same
-  // fallback rule the pages use — ?org= when it names one you belong to, else
-  // the first.
-  const requested = searchParams.get("org");
-  const activeOrgId =
-    (requested && organizations.some((o) => o.id === requested)
-      ? requested
-      : organizations[0]?.id) ?? null;
-  const activeOrg = organizations.find((o) => o.id === activeOrgId) ?? null;
+  // ONE resolver for every piece of chrome — see lib/use-active-org.ts for why
+  // this is not inlined here any more.
+  const { activeOrg, activeOrgId } = useActiveOrg(organizations);
 
   const owned = ownedFromParam(searchParams.get("owned"));
   const openPlace = useOpenPlace();

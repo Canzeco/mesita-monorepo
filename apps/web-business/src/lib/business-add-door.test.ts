@@ -55,6 +55,23 @@ describe("the add door is shut", () => {
     expect(PLACES_PAGE).not.toMatch(/Add a place|Create place|New place/i);
   });
 
+  it("an empty catalogue outranks the filter", () => {
+    // Live state today is 0 places, so this is the branch a person actually
+    // sees. Keying off `owned` first answers "Nothing left to claim — every
+    // place in the catalogue is already held" on `?owned=public` when the
+    // catalogue holds nothing at all: a filter taking credit for an absence
+    // it did not cause. And an empty catalogue gets NO action — there is
+    // nowhere to send anyone (MESITA-1664).
+    const emptyState = PLACES_PAGE.match(/<EmptyState[\s\S]*?^\s*\/>/m)?.[0] ?? "";
+    for (const prop of ["title", "description", "action"]) {
+      const branch = emptyState.slice(emptyState.indexOf(`${prop}={`));
+      expect(branch.indexOf("places.length === 0")).toBeGreaterThanOrEqual(0);
+      expect(branch.indexOf("places.length === 0")).toBeLessThan(
+        branch.indexOf("owned ===") === -1 ? Infinity : branch.indexOf("owned ==="),
+      );
+    }
+  });
+
   it("search stayed gone — the page filters by rail, never by query", () => {
     // Search left the page entirely (Pato, 2026-09-09): the console loads
     // every place and sorts client-side instead of filtering server-side.

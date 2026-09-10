@@ -62,6 +62,17 @@ describe("the drawer is a real modal", () => {
     expect(shell).toContain("onNavigate={close}");
   });
 
+  it("is INERT while closed, not merely translated out of view", () => {
+    // The panel stays mounted so it can animate, and a closed one is hidden
+    // only by a transform — which takes it out of view but NOT out of the tab
+    // order. Without `inert`, a keyboard user below `lg` walks through a full
+    // set of invisible nav links on every screen. It also legalises the
+    // aria-hidden: hiding a subtree that still holds focusable nodes is
+    // invalid ARIA on its own.
+    expect(shell).toContain("inert={!open}");
+    expect(shell).toContain("aria-hidden={!open}");
+  });
+
   it("locks body scroll while open, and restores what it found", () => {
     // Restoring the PREVIOUS value, not hard-coding "": another component may
     // legitimately own the lock when this one lets go.
@@ -98,6 +109,16 @@ describe("the rail is light, and every text token is a measured pair", () => {
   it("keeps 44px touch targets below lg and tightens them above", () => {
     expect(rail).toContain("min-h-11");
     expect(rail).toContain("lg:min-h-0");
+  });
+
+  it("every chrome href carries the active organization", () => {
+    // Dropping `?org=` on ONE link is enough to switch a multi-org operator's
+    // context out from under them: the destination falls back to
+    // organizations[0] and every subsequent href follows it. The mobile
+    // wordmark is where this got missed.
+    const links = code(shell).match(/href=\{[^}]*\}/g) ?? [];
+    expect(links.length).toBeGreaterThan(0);
+    for (const href of links) expect(href).toContain("withOrg(");
   });
 
   it("labels the nav landmark", () => {

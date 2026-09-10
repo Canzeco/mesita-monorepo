@@ -38,28 +38,28 @@ import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { Sidebar } from "@/components/console/Sidebar";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { OpenPlaceProvider } from "@/components/console/OpenPlace";
-import { SHELL_ROUTES } from "@/lib/console-routes";
+import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
-import type { Organization } from "@/lib/api/organizations";
+import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),select:not([disabled]),input:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AppShell({
   organizations,
-  orgName,
   defaultCollapsed = false,
   children,
 }: {
-  organizations: Pick<Organization, "id" | "name">[];
-  /** Rendered in the header crumb. Resolved server-side so the first frame is
-   *  not a blank breadcrumb. */
-  orgName: string | null;
+  organizations: ChromeOrg[];
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
+  // Every href in this frame carries the active organization, resolved the one
+  // way — dropping it on a single link is enough to switch a multi-org
+  // operator's context out from under them.
+  const { activeOrgId } = useActiveOrg(organizations);
   // Two independent pieces of state, easy to confuse: `open` is the mobile
   // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
   // collapses — at that size the whole rail is already hidden by default.
@@ -137,12 +137,21 @@ export function AppShell({
           />
         </div>
 
-        {/* Drawer — below lg */}
+        {/* Drawer — below lg.
+            `inert` while closed, and that is not decoration. The panel stays
+            MOUNTED so it can animate, and a closed one is hidden only by a
+            translate — which removes it from view but not from the tab order.
+            Without this, a keyboard user below `lg` tabs through a full set of
+            invisible nav links on every screen. `aria-hidden` alone is also
+            invalid here: it is illegal to hide a subtree that still contains
+            focusable nodes. `inert` fixes both at once, so aria-hidden rides
+            along only as an older-browser fallback. */}
         <div
           className={
             "fixed inset-0 z-50 lg:hidden " +
             (open ? "pointer-events-auto" : "pointer-events-none")
           }
+          inert={!open}
           aria-hidden={!open}
         >
           <div
@@ -191,7 +200,7 @@ export function AppShell({
               <Menu className="h-4 w-4" />
             </button>
             <Link
-              href={SHELL_ROUTES.organization}
+              href={withOrg(SHELL_ROUTES.organization, activeOrgId)}
               className="inline-flex items-center gap-2 truncate"
             >
               <MesitaLogo variant="horizontal" className="h-5 w-auto" />
@@ -199,7 +208,7 @@ export function AppShell({
             </Link>
           </header>
 
-          <ConsoleHeader orgName={orgName} />
+          <ConsoleHeader organizations={organizations} />
 
           <main className="flex-1 overflow-x-hidden overflow-y-auto">
             {children}
