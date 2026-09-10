@@ -9,8 +9,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getManagePlace, getPlaceView, visibleTabs } from "@/lib/place-view";
-import { resolveActiveOrg } from "@/lib/active-organization";
-import { apiListOrganizations } from "@/lib/api/organizations";
 import { PlaceHeading } from "@/components/console/PlaceHeading";
 import { PublishOpenPlace } from "@/components/console/OpenPlace";
 import { PlaceManageShell } from "./PlaceManageShell";
@@ -44,15 +42,6 @@ export default async function PlaceLayout({
   // yet — Profile carries the Claim button instead.
   const manage = await getManagePlace(id);
   const tabs = visibleTabs(view, manage);
-
-  // The org the tab hrefs must carry. A layout cannot read searchParams, so
-  // it resolves the same way every page does: the holder when there is one,
-  // else the caller's first organization.
-  let organizationId = view.holder?.organizationId ?? null;
-  if (!organizationId) {
-    const orgs = await apiListOrganizations(supabase).catch(() => []);
-    organizationId = resolveActiveOrg(orgs, undefined)?.id ?? null;
-  }
 
   // The rail needs this place's NAME and its VIEW SET, and it renders above
   // this layout, so it cannot know either. Publishing them upward costs

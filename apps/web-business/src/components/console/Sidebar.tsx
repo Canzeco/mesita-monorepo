@@ -74,6 +74,7 @@ import {
 import {
   SHELL_ROUTES,
   ownedFromParam,
+  placeHref,
   placeIdFromPathname,
   placesHref,
   withOrg,
@@ -398,7 +399,7 @@ export function Sidebar({
                     Open, it reads as the heading of its own group; closed, it
                     is an ordinary row like any other. */}
                 <NavRow
-                  href={withOrg(`/places/${encodeURIComponent(place.id)}`, activeOrgId)}
+                  href={href(placeHref(place.id))}
                   label={place.name}
                   title={place.name}
                   Icon={Store}

@@ -116,9 +116,37 @@ describe("the rail is light, and every text token is a measured pair", () => {
     // context out from under them: the destination falls back to
     // organizations[0] and every subsequent href follows it. The mobile
     // wordmark is where this got missed.
-    const links = code(shell).match(/href=\{[^}]*\}/g) ?? [];
-    expect(links.length).toBeGreaterThan(0);
-    for (const href of links) expect(href).toContain("withOrg(");
+    //
+    // SCAN BOTH FILES. This assertion used to read `code(shell)` alone, so it
+    // covered AppShell's single href and none of the rail's seven — the guard
+    // sat at 1 of 8 and looked green the whole time. The rail is where the nav
+    // actually lives, so it was the half that mattered.
+    //
+    // The rail routes hrefs through `href()` (which applies withOrg) or through
+    // `placeTabHref(..., activeOrgId)`; AppShell applies withOrg directly. The
+    // failure being caught is a raw path built inline: it bypasses
+    // console-routes AND can drop the org, and `placeIdFromPathname` would
+    // still light the row correctly while the link itself 404s.
+    const SANCTIONED = [
+      /^href=\{withOrg\(/, // applied directly
+      /^href=\{href\(/, // the rail's helper: (to) => withOrg(to, activeOrgId)
+      /^href=\{placeTabHref\(/, // carries activeOrgId as its third argument
+      /^href=\{href\}$/, // NavRow's prop pass-through: built by its caller
+    ];
+    const links = [
+      ...(code(shell).match(/href=\{[^}]*\}/g) ?? []),
+      ...(code(rail).match(/href=\{[^}]*\}/g) ?? []),
+    ];
+    // Vacuous-pass guard: a scan that finds nothing must fail, not pass. The
+    // narrowing above was invisible precisely because an empty-ish list still
+    // satisfied a `for` loop.
+    expect(links.length).toBeGreaterThanOrEqual(8);
+    for (const link of links) {
+      expect(
+        SANCTIONED.some((ok) => ok.test(link)),
+        `${link} does not carry the active organization`,
+      ).toBe(true);
+    }
   });
 
   it("labels the nav landmark", () => {

@@ -58,15 +58,34 @@ export default async function PlacesPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/signin?next=/places");
 
-  const orgs = await apiListOrganizations(supabase).catch(() => []);
+  // An organizations fetch failure is an ERROR, not "None yet" — the same law
+  // account/page.tsx states and obeys. Collapsing the two sends an operator who
+  // already HAS an organization to "Create an organization", and creating a
+  // second one is not undoable from this console.
+  let orgs: Awaited<ReturnType<typeof apiListOrganizations>> = [];
+  let orgsError = false;
+  try {
+    orgs = await apiListOrganizations(supabase);
+  } catch (e) {
+    orgsError = true;
+    console.error("[places] business-web-list-organizations:", e);
+  }
   const org = resolveActiveOrg(orgs, sp.org);
-  if (!org) {
+  if (orgsError || !org) {
     return (
       <>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           Places
         </h1>
-        <NoOrganization />
+        {orgsError ? (
+          <PageErrorState
+            heading="Couldn't load your organizations"
+            message="The console could not read which organizations you belong to. Reload to try again."
+            retryHref={SHELL_ROUTES.places}
+          />
+        ) : (
+          <NoOrganization />
+        )}
       </>
     );
   }
