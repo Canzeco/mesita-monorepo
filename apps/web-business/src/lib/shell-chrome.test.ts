@@ -164,14 +164,45 @@ describe("the unsaved-edits guard reaches the rail", () => {
 // MESITA-1715. The rail lists the PLACES, not a link to a list of them, and
 // Pato rejected the tree-shaped version on sight: grouping by indent puts the
 // active row at the deepest inset and inverts hierarchy.
-describe("the rail is flat, with exactly one exception", () => {
+//
+// MESITA-1734 REPLACES THIS RULE RATHER THAN DELETING IT, and the distinction
+// is the whole point. Pato: "make places like in boxes, with some toggle or
+// something like that. it must feel more modular." A place is now a container
+// you open and close — which sounds like the tree that was rejected twice, and
+// is not.
+//
+// What 1714/1715 rejected was INDENTATION as the grouping mechanism. A box
+// groups by common region — a shared edge and ground — so the rows inside it
+// sit at the SAME left inset as the rows outside it. The grouping goal
+// survives; the inverted hierarchy that killed the tree does not.
+//
+// So the invariant tightens instead of relaxing: 1714 allowed exactly one
+// indent, and this file now allows ZERO. If an inset ever comes back, the tree
+// is growing back inside the boxes and this describe block is what catches it.
+describe("containers group the rail; indentation never does", () => {
   const rail = () => readCode("components/console/Sidebar.tsx");
 
-  it("indents nothing but the open place's views", () => {
-    // `inset` is passed on the view rows and nowhere else. If a second call
-    // site appears, the tree is growing back.
-    expect(rail()).not.toContain("paddingLeft");
-    expect((rail().match(/^\s*inset$/gm) ?? []).length).toBe(1);
+  it("indents NOTHING — the box edge does what the inset used to", () => {
+    // Strictly stronger than the MESITA-1714 rule it replaces, which permitted
+    // one `inset` for the open place's views. Those views now live inside the
+    // box at its own inset, so the prop has no remaining call site and the
+    // NavRow signature no longer offers one.
+    const r = rail();
+    expect(r).not.toContain("paddingLeft");
+    expect(r).not.toMatch(/^\s*inset$/m);
+    expect(r).not.toContain("inset?:");
+    expect(r).not.toContain("pl-8");
+  });
+
+  it("the box is a container, not a tree node", () => {
+    // A container is a border and a ground. A tree node is a rule running down
+    // the column and a bullet hanging off it — the shapes 1714 threw out, and
+    // the easiest thing to reintroduce while calling it a card.
+    const r = rail();
+    expect(r).toContain("border-sidebar-border border");
+    expect(r).toContain("WELL_BG");
+    expect(r).not.toMatch(/border-l-\d/);
+    expect(r).not.toMatch(/rounded-full["\s]*\/>/);
   });
 
   it("groups with a label, never a tree line or a bullet", () => {
@@ -180,14 +211,29 @@ describe("the rail is flat, with exactly one exception", () => {
     expect(rail()).not.toMatch(/rounded-full["\s]*\/>/);
   });
 
-  it("lists the org's places as rows, not a link to a filtered list", () => {
+  it("lists the org's places themselves, not a link to a filtered list", () => {
     expect(rail()).toContain("listRailPlacesAction");
-    expect(rail()).toContain("places.map((place)");
+    expect(rail()).toContain("places.map(renderPlace)");
     // The old Org Places LINK is gone; the places themselves replaced it.
     // "Org Places" survives as the section's label, which is a heading, not a
     // destination — so the rule is about the href, not the words.
     expect(rail()).not.toContain('placesHref("org")');
     expect(rail()).toContain('<SectionBreak label="Org Places"');
+  });
+
+  it("All Places is separated from the boxes by a rule", () => {
+    // A stack of containers followed by an uncontained row of the same width
+    // reads as one group, and All Places is a link to a list rather than one
+    // of the places above it. Containment says "these are places"; the
+    // hairline says "this is not one of them".
+    const r = rail();
+    const at = (needle: string) => r.indexOf(needle);
+    expect(at("places.map(renderPlace)")).toBeLessThan(
+      at("border-sidebar-border mx-2 mt-3 mb-1 border-t"),
+    );
+    expect(at("border-sidebar-border mx-2 mt-3 mb-1 border-t")).toBeLessThan(
+      at('label="All Places"'),
+    );
   });
 
   it("has NO Public Places row — a complement is not a destination", () => {
@@ -204,20 +250,52 @@ describe("the rail is flat, with exactly one exception", () => {
     expect(placesHref("public")).toBe("/places?owned=public");
   });
 
-  it("keeps Account away from Organization, at the other end of the rail", () => {
-    // They sat as adjacent rows of identical weight, which reads as a pair —
-    // and they are not one. Organization is the entity whose data is on
-    // screen; Account is who is looking. Organization keeps the top because
-    // it SCOPES the places under it; Account goes to the footer alone.
+  it("orders the nav Organization → places → All Places", () => {
+    // Organization keeps the top because it SCOPES the places under it — that
+    // is the one real grouping in this rail — and All Places closes the places
+    // area rather than sitting in the footer, because a place list belongs
+    // with place lists.
     const r = rail();
     const at = (needle: string) => r.indexOf(needle);
-    expect(at('label="Organization"')).toBeLessThan(at("places.map((place)"));
-    expect(at("places.map((place)")).toBeLessThan(at('label="All Places"'));
-    // Account is after </nav>, i.e. in the footer, not in the nav list.
-    expect(at("</nav>")).toBeLessThan(at('label="Account"'));
-    // And All Places is NOT in the footer with it — a catalogue and an
-    // identity are not one group.
+    expect(at('label="Organization"')).toBeLessThan(at("places.map(renderPlace)"));
+    expect(at("places.map(renderPlace)")).toBeLessThan(at('label="All Places"'));
     expect(at('label="All Places"')).toBeLessThan(at("</nav>"));
+  });
+
+  it("Account is at the TOP, and is not shaped like a nav row", () => {
+    // MESITA-1734 reverses 1716's placement on Pato's instruction ("Account
+    // must be at the top"), but NOT the reason 1716 moved it: beside
+    // Organization it read as a PAIR of equal-weight rows, and the two are not
+    // one — Organization is the entity whose data is on screen, Account is who
+    // is looking at it.
+    //
+    // Moving the same ROW back up would rebuild that pair exactly. So the rule
+    // that survives is about SHAPE, not position: whatever carries Account, it
+    // must not be a NavRow. Both halves are asserted, because either one alone
+    // permits the mistake.
+    const r = rail();
+    const at = (needle: string) => r.indexOf(needle);
+    // Above the nav entirely — not merely first inside it.
+    expect(at('aria-label="Account"')).toBeGreaterThan(-1);
+    expect(at('aria-label="Account"')).toBeLessThan(at("<nav"));
+    // And never a row: a NavRow with the person glyph is precisely the pair
+    // 1716 broke apart.
+    //
+    // Anchored to the start of a line, because `aria-label="Account"` — which
+    // the identity BUTTON legitimately carries — contains `label="Account"` as
+    // a substring. A bare `not.toContain` here fails on the correct code.
+    expect(r).not.toMatch(/^\s*label="Account"/m);
+    expect(r).not.toContain("Icon={UserRound}");
+  });
+
+  it("the footer holds the rail's own control and nothing else", () => {
+    // Account left for the top; what remains below </nav> is the one button
+    // that acts on the rail rather than navigating anywhere. A destination
+    // down there would be a second nav nobody scrolls to.
+    const r = rail();
+    const footer = r.slice(r.indexOf("</nav>"));
+    expect(footer).toContain("onToggleCollapse");
+    expect(footer).not.toContain("<NavRow");
   });
 
   it("gives every place its own photo, never the shared glyph", () => {
@@ -250,18 +328,47 @@ describe("the rail is flat, with exactly one exception", () => {
     expect(rail()).toContain('loading="lazy"');
   });
 
-  it("only ONE place can be open, and only IT shows views", () => {
-    // Pato asked for this explicitly; it was already true, so this pins it
-    // rather than changing it. `openPlace` is a single value, not a set, so
-    // two expanded places is not representable — and the views render inside
-    // the matching row only.
+  it("MANY places can be open at once, and the set outlives a reload", () => {
+    // REVERSES the MESITA-1715 rule that exactly one place could be open.
+    // That rule was not a preference, it was a consequence: `openPlace` is a
+    // single published value, so two expanded places were not representable.
+    // Pato asked for per-place toggles (MESITA-1734 D2), so open-ness is now
+    // its OWN state — a set — rather than a shadow of the route.
     const r = rail();
-    expect(r).toContain("openPlace?.id === place.id");
-    expect(r).not.toMatch(/expanded(Ids|Set|\[\])/);
-    // The publisher clears on unmount, so leaving a place collapses it.
-    expect(readCode("components/console/OpenPlace.tsx")).toContain(
-      "return () => setPlace(null);",
-    );
+    expect(r).toContain("useState<Set<string>>");
+    expect(r).toContain("openIds.has(place.id)");
+    // On a cookie, not localStorage: the server layout reads it during render,
+    // so the column paints at its final HEIGHT on the first frame. This is the
+    // same trick the collapsed width uses and it matters more here — a wrong
+    // first frame costs rows, not pixels.
+    expect(r).toContain("RAIL_OPEN_PLACES_COOKIE");
+    expect(r).not.toContain("localStorage");
+    expect(readCode("app/(shell)/layout.tsx")).toContain("parseOpenPlaceIds");
+  });
+
+  it("arriving at a place opens it once, and never re-opens it", () => {
+    // Before boxes, reaching a place always revealed its views; losing that
+    // would make the rail worse for the sake of the new control. So arrival
+    // opens the box — but only on the transition INTO that place, tracked by a
+    // ref. Without the ref the effect re-opens the box on the very next render
+    // after the operator collapses it, and the chevron looks broken.
+    const r = rail();
+    expect(r).toContain("autoOpened");
+    expect(r).toContain("useRef<string | null>(null)");
+    expect(r).toContain("if (autoOpened.current === openPlaceId) return;");
+  });
+
+  it("the chevron toggles and NEVER routes through the unsaved-edits guard", () => {
+    // Toggling a box navigates nowhere and therefore discards nothing.
+    // Guarding it would offer to throw away work in exchange for nothing —
+    // the same mistake as guarding the row you are already on.
+    const r = rail();
+    const button = r.slice(r.indexOf("onClick={onToggle}"));
+    const end = button.indexOf("</button>");
+    expect(button.slice(0, end)).not.toContain("onGuardedNavigate");
+    expect(button.slice(0, end)).not.toContain("guardNav");
+    // Every LINK out of the rail still answers to it.
+    expect(r).toContain("onGuardedNavigate");
   });
 
   it("renders no place section until there is a place in it", () => {
@@ -276,11 +383,29 @@ describe("the rail is flat, with exactly one exception", () => {
     // here" stops meaning one row. Open, the place row is a heading.
     const r = rail();
     expect(r).toContain("active={false}");
-    expect(r).toContain("heading={openPlaceId === place.id}");
+    expect(r).toContain("heading={open || headerIsActive}");
     expect(r).toContain("ROW_HEADING");
     // A heading is bold, never filled — a fill is what `active` means.
     const h = r.slice(r.indexOf("const ROW_HEADING"));
     expect(h.slice(0, h.indexOf(";"))).not.toContain("bg-foreground");
+  });
+
+  it("a SHUT box holding the current route keeps the marker", () => {
+    // The landmine of per-place toggles, and the reason this test exists at
+    // all. Box state and route state are now independent, so collapsing the
+    // box you are inside would bury the pill AND `aria-current="page"` in a
+    // hidden subtree — sighted and screen-reader users lose "you are here"
+    // identically. The marker therefore migrates to the header.
+    const r = rail();
+    expect(r).toContain("const headerIsActive = ownsRoute && !open;");
+    expect(r).toContain("headerIsActive && ROW_ACTIVE");
+    // And it names the VIEW too. Without the trailing label a shut box says
+    // which place is current but not which of its four views, which is half
+    // the orientation.
+    expect(r).toContain("PLACE_TAB_LABEL[activeTab]");
+    // The two markers are mutually exclusive by construction: `headerIsActive`
+    // requires `!open`, and the view rows only render when `open`.
+    expect(r).toContain("const showViews = open && tabs.length > 0;");
   });
 
   it("never calls an unloaded list foreign", () => {
@@ -304,20 +429,114 @@ describe("the rail is flat, with exactly one exception", () => {
 
   it("renders exactly the views the viewer may open", () => {
     // visibleTabs() returns 1 to 4. A greyed-out row for a view you cannot
-    // open is a worse answer than no row.
-    expect(rail()).toContain("openPlace.tabs.map");
-    expect(rail()).not.toContain("disabled");
+    // open is a worse answer than no row — and a box for a place you are NOT
+    // on shows a header alone, because the rail cannot know your permissions
+    // for a place whose layout has not published them.
+    const r = rail();
+    expect(r).toContain("openPlace?.id === id ? openPlace.tabs : []");
+    expect(r).toContain("tabs.map((tab)");
+    expect(r).not.toContain("disabled");
   });
 
-  it("no two adjacent rows share an icon", () => {
+  it("the disclosure is a disclosure, not a tablist", () => {
+    // The four views are ROUTES, not panels. Labelling them a tablist makes a
+    // screen reader promise panel-switching that navigation then breaks, and
+    // hands the arrow keys a job they cannot do here.
+    const r = rail();
+    expect(r).toContain("aria-expanded={open}");
+    expect(r).toContain("aria-controls={showViews ? viewsId : undefined}");
+    // Named, not a bare glyph: "button, collapsed" says nothing about WHAT.
+    expect(r).toMatch(/aria-label=\{`\$\{open \? "Collapse" : "Expand"\} \$\{place\.name\}`\}/);
+    expect(r).not.toContain('role="tablist"');
+    expect(r).not.toContain('role="tab"');
+  });
+
+  it("has NO boxes when the rail is collapsed", () => {
+    // 64px cannot hold a container, a thumb, a name and a chevron, and a
+    // container with nothing to contain is ornament. Collapsed, the rail is
+    // the flat icon column it has always been.
+    const r = rail();
+    const branch = r.slice(r.indexOf("if (collapsed) {"));
+    expect(branch.slice(0, branch.indexOf("return (\n      <PlaceBox"))).not.toContain(
+      "<PlaceBox",
+    );
+    expect(r).toContain("collapsed\n");
+  });
+
+  it("no two DIFFERENT rows share an icon", () => {
     // Account and Profile both used to be UserRound, and Organization and Org
     // Places both used to be Building2 — which is how a menu starts reading as
-    // mush. Every Icon= in the file must be distinct.
-    const icons = (rail().match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
+    // mush.
+    //
+    // Counted as a SET rather than as a duplicate-free list (MESITA-1734): a
+    // place row now has two call sites, the box and the collapsed fallback,
+    // and both must use `Store` — identical icons for the identical row are
+    // the correct answer, not a collision. What must stay distinct is the set
+    // of DIFFERENT rows.
+    const r = rail();
+    const icons = (r.match(/Icon=\{(\w+)\}/g) ?? []).map((m) =>
       m.replace(/Icon=\{|\}/g, ""),
     );
-    const named = icons.filter((i) => i !== "TAB_ICON[tab]");
-    expect(new Set(named).size).toBe(named.length);
+    expect(new Set(icons)).toEqual(new Set(["Building2", "Store", "Layers"]));
+
+    // The four view glyphs must be distinct from each other AND from the rows
+    // above them — this is where mush actually starts, and the old
+    // duplicate-free check never looked inside TAB_ICON at all.
+    const table = r.slice(r.indexOf("const TAB_ICON"));
+    const tabIcons = (table.slice(0, table.indexOf("};")).match(/:\s*(\w+),/g) ?? [])
+      .map((m) => m.replace(/[:,\s]/g, ""));
+    expect(tabIcons).toHaveLength(PLACE_TABS.length);
+    expect(new Set(tabIcons).size).toBe(tabIcons.length);
+    for (const icon of tabIcons) expect(new Set(icons).has(icon)).toBe(false);
+  });
+});
+
+// MESITA-1734. Boxes make this worse than it already was, which is why it is
+// pinned here and not left to review.
+//
+// In Next 16 a route with no `loading.tsx` does NOT fall back to a parent's:
+// LoadingBoundary returns a bare Fragment when `loading` is null, so the
+// suspending segment finds no boundary and the router keeps the PREVIOUS
+// screen painted (MESITA-1729 found this on Organization). Sibling tab
+// navigation does not re-run `places/[id]/layout.tsx` either, so
+// `[id]/loading.tsx` is not the boundary for a tab click — the changed segment
+// is the tab, and every tab page awaits `getManagePlace(id)` on its own.
+//
+// The failure mode is specific to this design: the chevron opens a box, the
+// pill moves, and the content underneath stays on the previous view for the
+// duration. That reads as a broken toggle, not a slow one.
+describe("every place view has its own loading boundary", () => {
+  const VIEWS = path.join(SRC, "app/(shell)/places/[id]");
+
+  // A BIJECTION, not a one-way loop. Asserting only "every tab has a
+  // loading.tsx" passes just as happily when a fifth view directory appears
+  // with no boundary of its own; asserting only the reverse passes when a tab
+  // is added and forgotten. Both directions, so neither hole is open.
+  it("every known tab has one", () => {
+    for (const tab of PLACE_TABS) {
+      expect(existsSync(path.join(VIEWS, tab, "loading.tsx"))).toBe(true);
+    }
+  });
+
+  it("every view directory on disk is a known tab", () => {
+    const dirs = readdirSync(VIEWS, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+    for (const dir of dirs) {
+      expect(PLACE_TABS as readonly string[]).toContain(dir);
+    }
+  });
+
+  it("the skeleton reserves no space for the heading", () => {
+    // PlaceHeading is rendered by the place LAYOUT, above the boundary, so it
+    // is already on screen. A skeleton block for it would double-count and
+    // cause the very shift the boundary exists to prevent — the same rule
+    // `places/[id]/loading.tsx` follows.
+    const s = readCode("components/console/PlaceViewSkeleton.tsx");
+    expect(s).toContain("aria-hidden=\"true\"");
+    expect(s).toContain("sr-only");
+    // And the pulse stops for anyone who asked motion to stop.
+    expect(s).toContain("motion-reduce:animate-none");
   });
 });
 

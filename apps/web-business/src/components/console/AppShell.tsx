@@ -39,6 +39,7 @@ import { Sidebar } from "@/components/console/Sidebar";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
 import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
+import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
 
@@ -48,12 +49,18 @@ const FOCUSABLE =
 export function AppShell({
   organizations,
   defaultCollapsed = false,
+  defaultOpenPlaceIds,
   children,
 }: {
   organizations: ChromeOrg[];
   /** Read from the cookie by the server layout, so the rail paints at its
    *  final width on the first frame. */
   defaultCollapsed?: boolean;
+  /** Same trick, same reason, for which place boxes are open — and it matters
+   *  more, because those are rows of HEIGHT rather than one width
+   *  (MESITA-1734). Passed through to both Sidebar instances so the drawer and
+   *  the rail agree about what is open. */
+  defaultOpenPlaceIds?: string[];
   children: React.ReactNode;
 }) {
   // Every href in this frame carries the active organization, resolved the one
@@ -121,7 +128,10 @@ export function AppShell({
     setCollapsed(next);
     // A year-long cookie rather than localStorage: the server layout reads it
     // during render, so a reload comes back at the width you left it.
-    document.cookie = `business_sidebar_collapsed=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
+    // Through the constant, not the literal it used to inline — the layout
+    // already imports the same name, and two spellings of one cookie is how
+    // they drift.
+    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
   };
 
   return (
@@ -137,6 +147,7 @@ export function AppShell({
             organizations={organizations}
             collapsed={collapsed}
             onToggleCollapse={toggleCollapsed}
+            defaultOpenPlaceIds={defaultOpenPlaceIds}
           />
         </div>
 
@@ -176,7 +187,11 @@ export function AppShell({
             aria-modal="true"
             aria-label="Console navigation"
           >
-            <Sidebar organizations={organizations} onNavigate={close} />
+            <Sidebar
+              organizations={organizations}
+              onNavigate={close}
+              defaultOpenPlaceIds={defaultOpenPlaceIds}
+            />
             {open && (
               <button
                 type="button"

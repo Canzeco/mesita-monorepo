@@ -18,7 +18,11 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/console/AppShell";
 import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
+import {
+  RAIL_OPEN_PLACES_COOKIE,
+  SIDEBAR_COLLAPSED_COOKIE,
+  parseOpenPlaceIds,
+} from "@/lib/sidebar-prefs";
 import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 
@@ -56,8 +60,15 @@ export default async function ShellLayout({
   ]);
   if (!user) redirect("/signin");
 
-  const collapsed =
-    (await cookies()).get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
+  // Both rail preferences come off the same cookie jar read. Reading them
+  // HERE rather than in an effect is what keeps the rail from painting once
+  // and then rearranging itself: the width and the open boxes are both
+  // settled before the first frame (MESITA-1734).
+  const jar = await cookies();
+  const collapsed = jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
+  const openPlaceIds = parseOpenPlaceIds(
+    jar.get(RAIL_OPEN_PLACES_COOKIE)?.value,
+  );
 
   return (
     // Suspense because the rail and the header both read searchParams.
@@ -72,6 +83,7 @@ export default async function ShellLayout({
         <AppShell
           organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
           defaultCollapsed={collapsed}
+          defaultOpenPlaceIds={openPlaceIds}
         >
         {/* FLUID: no max-width (MESITA-1558). Two things depend on that and
             neither is cosmetic — a full-bleed child cancels SHELL_GUTTER with

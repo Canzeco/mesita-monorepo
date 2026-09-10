@@ -103,24 +103,44 @@ export async function verifyPlaceAction(
  *
  *  NEVER THROWS. A rail that fails to list places must still be a rail: the
  *  console's whole navigation cannot go down because one EF call did.
+ *
+ *  BUT IT SAYS WHEN IT FAILED (MESITA-1734). Swallowing the error into a bare
+ *  `[]` made a failure render EXACTLY like an organization that holds no
+ *  places: no label, no rows, no rule — and no way for the operator to tell
+ *  "we could not ask" from "there is nothing". It was silent and it was
+ *  permanent, because nothing retries a resolved promise.
+ *
+ *  So the shape carries the outcome. Still never throws; the rail decides
+ *  what a failure looks like, which is the half it is qualified to decide.
  */
 export type RailPlace = { id: string; name: string; photoUrl: string | null };
 
+export type RailPlacesResult = {
+  places: RailPlace[];
+  /** True when the EF call failed. `places` is empty either way — this is the
+   *  only thing that separates "couldn't ask" from "holds none". */
+  failed: boolean;
+};
+
 export async function listRailPlacesAction(
   organizationId: string,
-): Promise<RailPlace[]> {
-  if (!organizationId) return [];
+): Promise<RailPlacesResult> {
+  // Not a failure: no active organization means there is nothing to ask for.
+  if (!organizationId) return { places: [], failed: false };
   const supabase = await createServerSupabase();
   try {
     const places = await apiListConsolePlaces(supabase, {
       scope: "org",
       organizationId,
     });
-    return places
-      .map((p) => ({ id: p.id, name: p.name, photoUrl: p.photoUrl ?? null }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      places: places
+        .map((p) => ({ id: p.id, name: p.name, photoUrl: p.photoUrl ?? null }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      failed: false,
+    };
   } catch (e) {
     console.error("[rail] business-web-list-places:", e);
-    return [];
+    return { places: [], failed: true };
   }
 }
