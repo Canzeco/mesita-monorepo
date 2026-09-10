@@ -10,6 +10,7 @@
 // until an admin deliberately turns Ojo on.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { num, bool } from "./config-coerce.ts";
 
 export type OjoChecks = {
   placeNameMatches: boolean;
@@ -46,16 +47,6 @@ export const OJO_DEFAULTS: OjoConfig = {
   },
   prompt: "",
 };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 /** Tolerant read: any missing/!invalid key falls back to its default. */
 export function normalizeOjoConfig(raw: unknown): OjoConfig {

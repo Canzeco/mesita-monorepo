@@ -8,7 +8,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
-import { runInBackground } from "./enrich-pipeline.ts";
+import { runInBackground } from "./background.ts";
 import { writePlace } from "./place-doc.ts";
 import {
   type AssetRow,

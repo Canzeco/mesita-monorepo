@@ -67,6 +67,31 @@ export function localHour(lng: number | null): number {
   return localClock(lng)?.hour ?? 12;
 }
 
+// Place-local hour (0–23) at a GIVEN instant, for the reservation schedulers.
+//
+// Distinct from localHour above, which answers "what time is it for this user
+// right now" and defaults to midday because a daypart flavour is cosmetic.
+// This one answers "what hour would this candidate call land on for the
+// place", and its fallback is the UTC hour: a quiet-hours guard that silently
+// read midday on a bad zone would authorise a 3 a.m. call, so it degrades to a
+// real (if wrong-offset) hour instead of a convenient one.
+//
+// Was `hourAt`, written identically in reservation-reminder.ts and
+// reservation-callback.ts — the two modules that decide when a phone may ring.
+export function placeLocalHour(at: Date, lng: number | null): number {
+  try {
+    const h = new Intl.DateTimeFormat("en-US", {
+      timeZone: mexicoZone(lng),
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(at);
+    const n = parseInt(h, 10);
+    return Number.isFinite(n) ? n : at.getUTCHours();
+  } catch {
+    return at.getUTCHours();
+  }
+}
+
 export {
   demoteClosed,
   isOpenAt,

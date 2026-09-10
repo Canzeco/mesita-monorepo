@@ -1,9 +1,8 @@
-// supabase-js types a to-one embed as `T | T[] | null` depending on the
-// relationship metadata; normalise to the first object either way.
-export function one<T>(rel: T | T[] | null | undefined): T | null {
-  if (Array.isArray(rel)) return rel[0] ?? null;
-  return rel ?? null;
-}
+// The to-one embed normaliser now lives in _shared/postgrest.ts — another EF
+// needed it and an EF cannot import from a sibling EF's folder. Re-exported so
+// this file stays the one place this endpoint's shapes come from.
+import { one } from "../_shared/postgrest.ts";
+export { one };
 
 export type PlaceRef = {
   id: string;

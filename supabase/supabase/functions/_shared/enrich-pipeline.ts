@@ -28,6 +28,7 @@
 // live in gathered->sources, not the feed (the judge reads those, never beacons).
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { runInBackground } from "./background.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "./http.ts";
 import { adminClient, type EFEnv, readEFEnv } from "./auth.ts";
 import { requireInternalCaller } from "./internal.ts";
@@ -161,15 +162,11 @@ export async function reportEnrichmentStep(
 
 // ── Misc shared bits ─────────────────────────────────────────────────────────
 
-// Run a stage's work as an EdgeRuntime background task (ack-early pattern —
-// the poller's HTTP call returns immediately; the wall clock still applies).
-export function runInBackground(task: Promise<unknown>): void {
-  const edgeRuntime = (globalThis as unknown as {
-    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
-  }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
-}
+// The ack-early primitive now lives in ./background.ts — a leaf, so a caller
+// that only needs it (the reservation call engine did, and kept a copy rather
+// than import this module) no longer pulls the stages in. Re-exported because
+// a stage reads naturally as "runInBackground from the pipeline".
+export { runInBackground };
 
 // ── Stage EF server ──────────────────────────────────────────────────────────
 

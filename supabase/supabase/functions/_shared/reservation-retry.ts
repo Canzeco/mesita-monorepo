@@ -16,28 +16,7 @@
 // one interpretation of "open", never two.
 
 import { localClock, type WeeklyHours } from "./local-time.ts";
-import { isOpenAt } from "./local-time-open.ts";
-
-const DAY_KEYS = [
-  "sunday",
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-] as const;
-
-/** Minutes past midnight from "HH:mm", or null when unparseable. */
-function toMinutes(hhmm: unknown): number | null {
-  if (typeof hhmm !== "string") return null;
-  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-  if (!m) return null;
-  const h = parseInt(m[1], 10);
-  const min = parseInt(m[2], 10);
-  if (h > 24 || min > 59) return null;
-  return h * 60 + min;
-}
+import { DAY_KEYS, isOpenAt, toMinutes } from "./local-time-open.ts";
 
 const OPEN_RETRY_MINUTES = 5;
 const AFTER_OPENING_MINUTES = 30;

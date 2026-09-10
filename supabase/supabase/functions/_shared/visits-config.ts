@@ -26,6 +26,7 @@
 // §A), and an invariant with a toggle is not an invariant.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { num, bool } from "./config-coerce.ts";
 
 export type VisitsConfig = {
   tipEnabled: boolean;
@@ -69,16 +70,6 @@ export const VISITS_DEFAULTS: VisitsConfig = {
   legacyV3Enabled: true,
   reportEnabled: true,
 };
-
-function num(raw: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
-function bool(raw: unknown, fallback: boolean): boolean {
-  return typeof raw === "boolean" ? raw : fallback;
-}
 
 /** 1–4 whole percents, ascending, deduped. An empty list falls back. */
 function presets(raw: unknown): number[] {

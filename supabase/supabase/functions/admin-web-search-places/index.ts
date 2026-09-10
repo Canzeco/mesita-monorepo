@@ -16,6 +16,9 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+// The two id-scoped side reads below are walked in chunks: an ALL run can
+// carry far more ids than a 250-id paste, and an `in` list rides in the URL.
+import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -56,16 +59,6 @@ const UUID_RE =
 // instead of shipping a payload the console cannot render.
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
-
-// `in` lists ride in the URL, so the two id-scoped side reads below are
-// walked in chunks — an ALL run can carry far more ids than a 250-id paste.
-const ID_CHUNK = 200;
-
-function chunked<T>(xs: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
-  return out;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

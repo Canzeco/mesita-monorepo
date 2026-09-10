@@ -66,7 +66,10 @@ import {
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { loadVisitsConfig } from "../_shared/visits-config.ts";
-import { resolveChargeableOrganizationForCredits } from "../_shared/credits-readiness.ts";
+import {
+  resolveChargeableOrganizationForCredits,
+  resolveOrganizationCurrency,
+} from "../_shared/credits-readiness.ts";
 import { chargeGiftCreditsWithMesitaPay } from "../_shared/mesita-pay-charge.ts";
 import {
   ensureConsumerCustomer,
@@ -101,19 +104,6 @@ const REQUEST_ID_RE = /^[A-Za-z0-9_-]{8,128}$/;
 // No controls_config knob for this yet — see header comment.
 const GIFT_CLAIM_WINDOW_DAYS = 180;
 const MAX_CODE_DRAW_ATTEMPTS = 5;
-
-async function resolveOrganizationCurrency(
-  admin: ReturnType<typeof adminClient>,
-  organizationId: string,
-): Promise<string> {
-  const { data } = await admin
-    .from("organizations")
-    .select("currency")
-    .eq("id", organizationId)
-    .maybeSingle();
-  const currency = (data as { currency?: string | null } | null)?.currency;
-  return currency && currency.trim() ? currency.toUpperCase() : "MXN";
-}
 
 /**
  * Draws a code whose hash is not already a LIVE (unclaimed) gift, checked

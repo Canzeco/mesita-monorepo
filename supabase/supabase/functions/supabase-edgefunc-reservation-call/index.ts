@@ -60,6 +60,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
+import { runInBackground } from "../_shared/background.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
 import { type AttemptEntry } from "../_shared/reservation-attempts.ts";
 import {
@@ -104,6 +105,7 @@ import {
   writeReservation,
 } from "../_shared/reservation-doc.ts";
 import { rowPlaceId } from "../_shared/place-id.ts";
+import { esDate, esTime } from "../_shared/es-speak.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -117,16 +119,6 @@ const VERDICT_BUDGET_MS = 130_000;
 const CALLBACK_BUDGET_MS = 60_000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Ack-early background task — mirror of runInBackground in
-// _shared/enrich-pipeline.ts (not imported: it drags the enrichment stages in).
-function runInBackground(task: Promise<unknown>): void {
-  const edgeRuntime = (globalThis as unknown as {
-    EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
-  }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
-}
 
 type ConsumerName = {
   full_name?: string | null;
@@ -144,32 +136,6 @@ function guestName(c: ConsumerName | null): string {
     .filter(Boolean)
     .join(" ");
   return joined || "el cliente";
-}
-
-// Spanish, Mexico-City local — the agent reads these back on the call.
-function esDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-function esTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 // AttemptEntry: promoted to _shared/reservation-attempts.ts (MESITA-1247) —

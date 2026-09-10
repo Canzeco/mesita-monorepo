@@ -22,6 +22,7 @@ import type { EFEnv } from "./auth.ts";
 import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { phoneDigits } from "./phone.ts";
+import { esDate, esTime } from "./es-speak.ts";
 import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
@@ -66,30 +67,11 @@ export function sameLine(a: unknown, b: unknown): boolean {
 
 // ── Speakable formatting ─────────────────────────────────────────────────────
 
-export function esDate(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-export function esTime(iso: string): string {
-  try {
-    return new Intl.DateTimeFormat("es-MX", {
-      timeZone: "America/Mexico_City",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
+// Spoken es-MX formatting moved to ./es-speak.ts (a leaf — two EFs needed the
+// wording without this module's Supabase client and ticket shapes). Still
+// exported here: `speakable` below is built from them, and the a1..a4 tools
+// import them from the module they already use.
+export { esDate, esTime };
 
 /** Place-local "YYYY-MM-DD" + "HH:mm" → Date (Mexico City, fixed UTC-6). */
 export function parsePlaceLocal(date: unknown, time: unknown): Date | null {
