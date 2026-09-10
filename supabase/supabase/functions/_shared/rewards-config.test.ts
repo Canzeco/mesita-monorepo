@@ -15,7 +15,7 @@ import {
   placeStrategy,
   resolveTicketRate,
 } from "./rewards-config.ts";
-import { DEFAULT_PROMOS_V12 } from "../admin-web-update-rewards-config/promos-normalize.ts";
+import { DEFAULT_PROMOS_V12 } from "./promos-normalize.ts";
 
 const GRID = DEFAULT_REWARDS_GRID;
 

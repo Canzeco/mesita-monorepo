@@ -1,15 +1,24 @@
 // Supabase Edge Function — admin-web-get-config
 //
-// Returns the full public.app_config singleton row to the admin web.
-// One central read for every admin page that needs to surface a flag:
+// THE admin config read. Two behaviours, one door (MESITA-1724, which folded
+// nine per-page getters in here):
 //
+//   { }                  the Intake payload below — verification flags,
+//                        enrichment config, triggers, and the two read-only
+//                        meta blocks. Unchanged, and deliberately NOT a
+//                        section: there is no admin-web-get-enricher-config
+//                        because this IS the Intake page's load.
+//   { section: "<key>" } one section of public.app_config —
+//                        { ok, config, updatedAt }, per
+//                        _shared/config-sections.ts.
+//
+// The Intake payload's flags:
 //   autoVerifyAiCall  — verification auto-approve (call OTP)
 //   autoVerifyAiEmail — verification auto-approve (email OTP)
 //   (both live in the verification_config jsonb column, MESITA-1248 fold)
 //
-// `auto_verify_video`/`autoVerifyVideo` retired (MESITA-1248, separate PR)
-// — nothing ever read it; see admin-web-update-verification-config's header
-// for the full finding.
+// `auto_verify_video`/`autoVerifyVideo` retired (MESITA-1248) — nothing ever
+// read it; see _shared/config-section-verification.ts for the full finding.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 
@@ -18,6 +27,7 @@ import {
   corsPreflight,
   jsonError,
   jsonOk,
+  readJsonOr,
   rejectUnlessMethods,
 } from "../_shared/http.ts";
 import {
@@ -26,6 +36,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
+import { readConfigSection } from "../_shared/config-sections.ts";
 import {
   enrichmentTriggersMeta,
   normalizeEnrichmentTriggers,
@@ -47,6 +58,12 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
+
+  // Body is OPTIONAL: the Intake page has always posted `{}`, and an absent or
+  // unparseable body must keep meaning "the whole payload", not a 400.
+  const body = await readJsonOr<{ section?: unknown }>(req, {});
+  const key = typeof body.section === "string" ? body.section.trim() : "";
+  if (key) return await readConfigSection(admin, key);
 
   const { data, error } = await admin
     .from("app_config")

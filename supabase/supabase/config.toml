@@ -610,32 +610,11 @@ verify_jwt = true
 [functions.admin-web-decide-place-claim]
 verify_jwt = true
 
-# Verification Config — partner-badge create policy + ownership
-# auto-confirm knobs (phone / email / video). Distinct from the
-# ownership Verification Queue (list/decide above).
-[functions.admin-web-get-verification-config]
-verify_jwt = true
-
-[functions.admin-web-update-verification-config]
-verify_jwt = true
-
-# Orders Config — the REMOTE context's policy (channels, quotas, eligibility).
-# Rates are not here; those are the Promos grid's `orders` context. Every knob
-# is STAGED until the order rail exists.
-[functions.admin-web-get-orders-config]
-verify_jwt = true
-
-[functions.admin-web-update-orders-config]
-verify_jwt = true
-
-# Visits Config — the LOCAL context's policy (tips, poll cadence, proof,
-# send-backs, pay rails, abandonment). Rates live in Promos, proof reading in
-# Ojo. Every knob is STAGED until the consumer and check apps read it.
-[functions.admin-web-get-visits-config]
-verify_jwt = true
-
-[functions.admin-web-update-visits-config]
-verify_jwt = true
+# Verification Config (partner-badge create policy + ownership auto-confirm),
+# Orders Config (the REMOTE context's policy) and Visits Config (the LOCAL
+# context's) are sections of the config pair below, not functions of their own
+# since MESITA-1724. The ownership Verification Queue (list/decide above) is a
+# different surface and keeps its own EFs.
 
 [functions.admin-web-get-atlas-fields]
 verify_jwt = true
@@ -705,11 +684,15 @@ verify_jwt = true
 [functions.admin-web-get-place-activity]
 verify_jwt = true
 
-# Enricher configuration — place research knobs on app_config.
+# THE admin config pair (MESITA-1724). Every app_config section the console
+# edits — controls, discovery, enricher, models, ojo, orders, reservations,
+# rewards, verification, visits — arrives here under `section`, and the
+# no-section read is the Intake page's own payload. Registry:
+# functions/_shared/config-sections.ts. Both re-check super_admins.
 [functions.admin-web-get-config]
 verify_jwt = true
 
-[functions.admin-web-update-enricher-config]
+[functions.admin-web-update-config]
 verify_jwt = true
 
 # Re-run the Enricher on an existing place (super-admin only).
@@ -829,36 +812,10 @@ verify_jwt = true
 [functions.admin-web-get-place-payment-account]
 verify_jwt = true
 
-# --- Admin config surfaces (Atlas / Enricher / Reservations / Rewards /
-# Models / Controls / Discovery / Ojo) — each re-checks super_admins. Listed
-# explicitly so the ACL ledger matches the folders on disk (defaults were
-# already verify_jwt=true).
-# Memo left this list with its own two EFs: models_config carries the model and
-# the console reads it there.
-[functions.admin-web-get-reservations-config]
-verify_jwt = true
-[functions.admin-web-update-reservations-config]
-verify_jwt = true
-[functions.admin-web-get-rewards-config]
-verify_jwt = true
-[functions.admin-web-update-rewards-config]
-verify_jwt = true
-[functions.admin-web-get-models-config]
-verify_jwt = true
-[functions.admin-web-update-models-config]
-verify_jwt = true
-[functions.admin-web-get-controls-config]
-verify_jwt = true
-[functions.admin-web-update-controls-config]
-verify_jwt = true
-[functions.admin-web-get-discovery-config]
-verify_jwt = true
-[functions.admin-web-update-discovery-config]
-verify_jwt = true
-[functions.admin-web-get-ojo-config]
-verify_jwt = true
-[functions.admin-web-update-ojo-config]
-verify_jwt = true
+# The Reservations / Rewards / Models / Controls / Discovery / Ojo config
+# surfaces used to hold twelve EFs here. They are sections of
+# admin-web-get-config + admin-web-update-config since MESITA-1724; Memo keeps
+# its own pair (models_config carries the model and the console reads it there).
 [functions.admin-web-get-place-enrichment]
 verify_jwt = true
 [functions.admin-web-set-place-enrichment]

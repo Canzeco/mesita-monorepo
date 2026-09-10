@@ -46,7 +46,7 @@ import {
   legacyRulesFromV12,
   normalizePromos,
   type PromosConfigV12,
-} from "../admin-web-update-rewards-config/promos-normalize.ts";
+} from "./promos-normalize.ts";
 
 export type { PromosConfigV12 };
 export { identityForClassKey };

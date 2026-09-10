@@ -14,7 +14,7 @@
 // the moment those two lists diverge.
 
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
-import { RESERVATION_CHANNELS } from "../_shared/enrich-reservation-endpoint.ts";
+import { RESERVATION_CHANNELS } from "./enrich-reservation-endpoint.ts";
 import { normalizeConfig } from "./reservations-config-normalize.ts";
 
 // The blob the admin console posts, built from the EF's own channel list so it

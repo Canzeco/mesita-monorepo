@@ -1,7 +1,7 @@
-import { RESERVATION_CHANNELS } from "../_shared/enrich-reservation-endpoint.ts";
+import { RESERVATION_CHANNELS } from "./enrich-reservation-endpoint.ts";
 // Single source of truth for the safe test-call default, shared with the
 // read-path coercion so both directions agree (MESITA-739).
-import { TEST_CALL_SEED } from "../_shared/reservations-config.ts";
+import { TEST_CALL_SEED } from "./reservations-config.ts";
 
 type ReservationsConfig = {
   priority: string[];
