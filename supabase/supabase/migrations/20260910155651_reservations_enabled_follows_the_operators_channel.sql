@@ -52,9 +52,14 @@ returns trigger
 language plpgsql
 as $$
 begin
-  -- Treat '' like NULL: the console's `readChannel` maps an unrecognised
-  -- value to the empty string, and an empty string is not an answer.
-  if nullif(btrim(coalesce(new.reservation_channel, '')), '') is not null then
+  -- `is not null` is the whole test, and it is enough because
+  -- place_profiles_reservation_channel_check already restricts this column to
+  -- NULL or one of {phone, whatsapp, instagram, web, none}. There is no empty
+  -- string and no third state to defend against: NULL means unanswered, and
+  -- anything else is an answer. (The console's `readChannel` does map an
+  -- unrecognised value to '', but that value cannot reach the table — the
+  -- CHECK rejects it, which the pgTAP probe asserts rather than assumes.)
+  if new.reservation_channel is not null then
     new.reservations_enabled := (new.reservation_channel <> 'none');
   end if;
   return new;
@@ -86,5 +91,5 @@ create trigger place_profiles_reservations_follow_channel
 -- a row currently lying to guests in one direction or the other.
 update public.place_profiles
    set reservations_enabled = (reservation_channel <> 'none')
- where nullif(btrim(coalesce(reservation_channel, '')), '') is not null
+ where reservation_channel is not null
    and reservations_enabled is distinct from (reservation_channel <> 'none');

@@ -248,17 +248,17 @@ select is(
   'picking a real channel turns the CTA back on'
 );
 
--- '' is what the console sends for a value it did not recognise, and an empty
--- string is not an answer — it must not read as "Not".
-update public.place_profiles
-   set reservation_channel = '', reservations_enabled = true
- where id = '00000000-0000-4000-8000-0000000f0f10';
-
-select is(
-  (select reservations_enabled from public.place_profiles
-    where id = '00000000-0000-4000-8000-0000000f0f10'),
-  true,
-  'an empty channel is silence, not a "Not" — the seed stands'
+-- The trigger tests `reservation_channel is not null` and nothing else. That
+-- is only sufficient while the column cannot hold a third kind of value — an
+-- empty string in particular, which the console's `readChannel` produces for
+-- anything it does not recognise and which must never read as "Not". The
+-- CHECK is what makes NULL-vs-set a clean two-state question, so assert it
+-- here rather than leaving the trigger resting on an assumption.
+select throws_ok(
+  $$update public.place_profiles set reservation_channel = ''
+     where id = '00000000-0000-4000-8000-0000000f0f10'$$,
+  '23514'::char(5), null::text,
+  'an empty reservation_channel is refused by the schema (so "unanswered" can only be NULL)'
 );
 
 rollback to savepoint before_reservations_probe;
