@@ -14,7 +14,7 @@
 // flag, breakage falling out of the ledger — lives in the SQL function
 // get_credit_liability (20260908153425_credit_refund_adjust_and_liability.sql).
 // This EF is a thin ACL-gated wrapper, same shape as
-// admin-web-get-controls-config.
+// admin-web-get-config's `controls` section.
 //
 // Auth: caller's JWT email must be in public.super_admins.
 

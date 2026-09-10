@@ -183,7 +183,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Memo's own config: persona instructions + model. Read side only —
-# Chat persona writes stay on admin-web-update-discovery-config.
+# Chat persona writes stay on admin-web-update-config's `discovery` section.
 [functions.supabase-edgefunc-get-memo-config]
 verify_jwt = true
 

@@ -41,10 +41,10 @@ export const ENRICH_FIELD_LIMITS = {
   tagCatalogSize: { max: 200, unit: "count", note: "Controlled tags in place_tags (Atlas taxonomy)" },
   tagSlugLength: { max: 40, unit: "chars", note: "Per-tag slug length cap" },
   // Mirrors app_config.enrichment_config.atlasSaveTotalImages (1–10; DB CHECK 0–10). Set
-  // through admin-web-update-enricher-config, which is the only writer left
-  // now that the admin Enrichment page renders no knobs. Lowering this number
-  // is what lowers the server validator too — that EF derives
-  // SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The S9
+  // through the `enricher` config section, which is the only writer left now
+  // that the admin Enrichment page renders no knobs. Lowering this number is
+  // what lowers the server validator too — _shared/config-section-enricher.ts
+  // derives SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The S9
   // storage-mirror step (store-place-images.ts / PHOTO_CEILING) separately
   // hard-caps the persisted array at 50 regardless of this setting — the two
   // are not the same knob.

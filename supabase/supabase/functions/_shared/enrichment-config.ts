@@ -2,8 +2,8 @@
 //
 // Folds the 20 leftover atlas_* scalar columns into one jsonb, matching the
 // whole-blob-per-domain pattern (verification_config, discovery_config, …).
-// Wire camelCase is unchanged — admin-web-get-config and
-// admin-web-update-enricher-config still speak atlasGatherGoogleImages etc.
+// Wire camelCase is unchanged — admin-web-get-config and the `enricher`
+// section of admin-web-update-config still speak atlasGatherGoogleImages etc.
 // enrichment_triggers stays its own jsonb; the Intake page already saves that
 // whole grid.
 //

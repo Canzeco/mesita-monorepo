@@ -15,7 +15,7 @@
 //   • perplexity   — models_config.memo.perplexity ("off" = skip Perplexity).
 //
 // Read side for Memo. Greeting still has no editor (memo_config.greeting).
-// The Chat persona writes through admin-web-update-discovery-config
+// The Chat persona writes through admin-web-update-config's `discovery` section
 // (discovery_config.chat.prompt) and is preferred here over leftover
 // memo_config.instructions.
 //
