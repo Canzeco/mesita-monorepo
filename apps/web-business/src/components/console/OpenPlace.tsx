@@ -62,6 +62,12 @@ type Store = {
   setPlace: (place: OpenPlace | null) => void;
   guardNav: GuardNav | null;
   setGuardNav: (guard: GuardNav | null) => void;
+  /** Bumped whenever the org's portfolio changes. The rail lists the places
+   *  and fetches that list itself, so `revalidatePath` in the claim/release
+   *  actions refreshes the TABLE but cannot re-run a client effect: without
+   *  this, a place you just claimed stays off the rail until a reload. */
+  portfolioVersion: number;
+  bumpPortfolio: () => void;
 };
 
 // Defaults rather than `undefined`: the rail renders on screens that have no
@@ -71,6 +77,8 @@ const OpenPlaceContext = createContext<Store>({
   setPlace: () => {},
   guardNav: null,
   setGuardNav: () => {},
+  portfolioVersion: 0,
+  bumpPortfolio: () => {},
 });
 
 export function OpenPlaceProvider({ children }: { children: React.ReactNode }) {
@@ -78,14 +86,17 @@ export function OpenPlaceProvider({ children }: { children: React.ReactNode }) {
   // Stored wrapped, because a bare function passed to a setState updater would
   // be CALLED as an updater instead of stored.
   const [guard, setGuard] = useState<{ fn: GuardNav } | null>(null);
+  const [portfolioVersion, setPortfolioVersion] = useState(0);
   const value = useMemo(
     () => ({
       place,
       setPlace,
       guardNav: guard?.fn ?? null,
       setGuardNav: (fn: GuardNav | null) => setGuard(fn ? { fn } : null),
+      portfolioVersion,
+      bumpPortfolio: () => setPortfolioVersion((v) => v + 1),
     }),
-    [place, guard],
+    [place, guard, portfolioVersion],
   );
   return (
     <OpenPlaceContext.Provider value={value}>
@@ -101,6 +112,15 @@ export function useOpenPlace(): OpenPlace | null {
 /** The rail's escape hatch for unsaved edits. Null when nothing is guarded. */
 export function useOpenPlaceGuard(): GuardNav | null {
   return useContext(OpenPlaceContext).guardNav;
+}
+
+/** Read by the rail (as a fetch key) and called by claim/release. */
+export function usePortfolioVersion(): number {
+  return useContext(OpenPlaceContext).portfolioVersion;
+}
+
+export function useBumpPortfolio(): () => void {
+  return useContext(OpenPlaceContext).bumpPortfolio;
 }
 
 /** Rendered by the place layout. Clears on unmount so the rail's place section
