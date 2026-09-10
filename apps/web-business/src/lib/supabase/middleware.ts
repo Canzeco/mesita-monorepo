@@ -56,6 +56,53 @@ export function shouldGate(pathname: string): boolean {
   );
 }
 
+// ── The identity, forwarded once ──────────────────────────────────────────
+//
+// `auth.getUser()` is a NETWORK CALL, not a cookie read: GoTrueClient hits
+// /auth/v1/user to validate the JWT and memoizes nothing. 114ms warm p50,
+// ~190ms on a fresh connection, measured against production (MESITA-1731).
+//
+// The proxy already pays it on every request the matcher covers, and then the
+// render paid it again — MESITA-1729 collapsed the render's own three into one
+// via a request-cached `getServerUser`, but that cache cannot reach across the
+// proxy/render boundary, so the answer the proxy already had was thrown away
+// and bought a second time.
+//
+// So the proxy hands it forward. `NextResponse.next({ request: { headers } })`
+// rewrites the request as the RENDER sees it, for this request only.
+export const USER_ID_HEADER = "x-mesita-user-id";
+export const USER_EMAIL_HEADER = "x-mesita-user-email";
+const IDENTITY_HEADER_PREFIX = "x-mesita-";
+
+/**
+ * The headers to forward: every inbound `x-mesita-*` dropped, then this
+ * request's resolved identity written back.
+ *
+ * THE STRIP IS THE LOAD-BEARING HALF. Downstream code trusts these headers
+ * precisely because the proxy is the only thing that can set them — and a
+ * browser can put any header it likes on a request. Without the strip, a
+ * signed-out visitor sending `x-mesita-user-id: <someone else>` would be read
+ * as that person by every page that skips revalidation. `Headers` lookup is
+ * case-insensitive per the fetch spec, so `X-Mesita-User-Id` is deleted by
+ * the same pass.
+ */
+export function forwardedIdentityHeaders(
+  inbound: Headers,
+  user: { id: string; email?: string | null } | null,
+): Headers {
+  const headers = new Headers(inbound);
+  for (const name of [...headers.keys()]) {
+    if (name.toLowerCase().startsWith(IDENTITY_HEADER_PREFIX)) headers.delete(name);
+  }
+  if (user) {
+    headers.set(USER_ID_HEADER, user.id);
+    // Absent, not empty: an empty header and a user with no email address are
+    // different facts, and `?? "—"` downstream should see the second one.
+    if (user.email) headers.set(USER_EMAIL_HEADER, user.email);
+  }
+  return headers;
+}
+
 // Refreshes Supabase auth cookies on every request. Env vars are read at
 // call time (not module load) so middleware code is import-safe during the
 // build's page-data collection.
@@ -69,7 +116,15 @@ export async function updateSupabaseSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  let response = NextResponse.next({ request });
+  // The refreshed session cookies, ACCUMULATED rather than written onto a
+  // response as they arrive. The response cannot be built until `getUser()`
+  // has answered, because the identity it resolves goes into the forwarded
+  // request headers — and rebuilding a NextResponse discards the cookies
+  // already set on the old one, which is precisely the "random logouts" the
+  // SSR docs warn about. So: collect here, build once, below.
+  let refreshedCookies: Parameters<
+    NonNullable<Parameters<typeof createServerClient>[2]["cookies"]["setAll"]>
+  >[0] = [];
 
   const supabase = createServerClient<Database>(url, publishableKey, {
     cookies: {
@@ -77,13 +132,12 @@ export async function updateSupabaseSession(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
+        // The request's own jar is updated in place so anything reading
+        // cookies later in THIS request sees the refreshed values.
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        response = NextResponse.next({ request });
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
+        refreshedCookies = [...refreshedCookies, ...cookiesToSet];
       },
     },
   });
@@ -95,6 +149,27 @@ export async function updateSupabaseSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  /** Attaches the refreshed session cookies to whatever we answer with. A
+   *  redirect needs them as much as a pass-through: without them a request
+   *  that arrived on a near-expired token would refresh it, throw the new one
+   *  away, and do it all again on the next navigation. */
+  const withRefreshedCookies = <T extends NextResponse>(res: T): T => {
+    for (const { name, value, options } of refreshedCookies) {
+      res.cookies.set(name, value, options);
+    }
+    return res;
+  };
+
+  // Built here, not at the top: this is the request the RENDER will see, and
+  // it carries the identity so nothing downstream has to buy it again. Adding
+  // it here keeps the SSR rule intact — nothing moved between
+  // createServerClient() and getUser().
+  const response = withRefreshedCookies(
+    NextResponse.next({
+      request: { headers: forwardedIdentityHeaders(request.headers, user) },
+    }),
+  );
+
   const pathname = request.nextUrl.pathname;
 
   // Signed-out wall.
@@ -104,7 +179,7 @@ export async function updateSupabaseSession(request: NextRequest) {
     signInUrl.search = `?next=${encodeURIComponent(
       pathname + request.nextUrl.search,
     )}`;
-    return NextResponse.redirect(signInUrl);
+    return withRefreshedCookies(NextResponse.redirect(signInUrl));
   }
 
   // Already-signed-in bounce. Keep the user's own `?next=` intact so a
@@ -120,7 +195,7 @@ export async function updateSupabaseSession(request: NextRequest) {
         ? incomingNext
         : null;
     bounce.search = safeNext ? `?next=${encodeURIComponent(safeNext)}` : "";
-    return NextResponse.redirect(bounce);
+    return withRefreshedCookies(NextResponse.redirect(bounce));
   }
 
   return response;
