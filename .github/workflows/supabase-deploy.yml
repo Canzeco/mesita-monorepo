@@ -56,6 +56,10 @@ jobs:
       # was removed earlier (MESITA-1093).
       # MESITA-1362: Intake Sourcing get/update EFs — unread after Map became
       # the Search/Add gate.
+      # MESITA-1723: four functions with no caller left. `functions deploy`
+      # only ever ADDS, so a folder deleted in the repo stays callable in the
+      # cloud forever unless its slug is named here — the third of the three
+      # deletions, same as every entry above.
       - name: Delete leftover retired functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -71,6 +75,10 @@ jobs:
             check-web-validate-ticket
             admin-web-get-sourcing-config
             admin-web-update-sourcing-config
+            admin-web-get-config-sample
+            business-web-list-categories
+            business-web-list-tags
+            business-web-list-reservations
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"
