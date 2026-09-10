@@ -275,6 +275,11 @@ serveEnrichStage("contents", async (admin, env, row) => {
       },
       enricherModel,
     );
+    // A SEED, not a verdict (MESITA-1737). `place_reservations_follow_channel`
+    // on place_profiles overrides this the moment an operator has picked a
+    // reservation channel, so a re-run can no longer reopen bookings at a
+    // place that answered "Not". While the channel is NULL this is the only
+    // answer there is, which is what a newly discovered place needs.
     place.reservations_enabled = reservationsLikely;
     sources.actions = {
       orders_enabled: placeHasOrderCatalog(place),

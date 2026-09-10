@@ -322,10 +322,19 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       // off the same column — so the console told an operator they take no
       // bookings while their guests were making them (MESITA-1735).
       //
-      // OBSERVED, so no switch: the only writer is the Intaker
-      // (`supabase-cron-enrich-place-contents` sets it from `reservationsLikely`),
-      // and the set-place-rails doors' RAIL_COLUMNS has no key for it. A
-      // switch here would return 200 and write nothing.
+      // NO SWITCH HERE, but the operator does own the fact (MESITA-1737).
+      // The control is the ReservationsCard's ChannelPicker further down this
+      // page — pick a channel and `reservations_enabled` follows it, pick
+      // "Not" and it goes false. The Intaker's `reservationsLikely` is only a
+      // SEED now, and only survives while no channel has been picked; a
+      // trigger on `place_profiles` states the fact once so a contents re-run
+      // can no longer overwrite an answer. A switch here would still return
+      // 200 and write nothing: the set-place-rails doors' RAIL_COLUMNS has no
+      // key for it, and two controls for one fact is what this row is for
+      // avoiding.
+      //
+      // The `Observed` word is therefore right only until someone picks a
+      // channel, and MESITA-1739 is where the row learns to say which.
       //
       // null ⇒ the payload did not carry it. `false` would be a claim nobody
       // checked, on the one row that already shipped exactly that bug.

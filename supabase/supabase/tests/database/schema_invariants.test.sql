@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(90);
+select plan(95);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -190,6 +190,78 @@ select throws_ok(
 );
 
 rollback to savepoint before_name_probe;
+
+-- ━━━ Reservations is ONE fact, and the operator owns it ━━━━━━━━━━━━━━━━━━━━
+--
+-- MESITA-1737. `reservation_channel` is the operator's pick (the Capabilities
+-- tab's ChannelPicker, "Not" included); `reservations_enabled` is what the
+-- guest's Reserve CTA reads. They used to be able to disagree, because the
+-- only writer of the bit was an LLM guess in the contents cron — so an
+-- operator could answer "Not" and keep taking bookings.
+--
+-- Behaviour, not catalog shape: asserting the trigger EXISTS would pass on a
+-- trigger whose body had been gutted, and this rule is only worth anything as
+-- an outcome.
+
+savepoint before_reservations_probe;
+
+insert into public.place_profiles (id, google_name, reservations_enabled)
+values ('00000000-0000-4000-8000-0000000f0f10', 'Cena Tardía', true);
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f10'),
+  true,
+  'no channel picked ⇒ the enricher''s seed stands (a place nobody has answered for)'
+);
+
+update public.place_profiles set reservation_channel = 'none'
+ where id = '00000000-0000-4000-8000-0000000f0f10';
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f10'),
+  false,
+  'the operator answers "Not" ⇒ the Reserve CTA goes away, whatever the enricher guessed'
+);
+
+-- The regression that matters most: a contents re-run writes the bit and
+-- leaves the channel alone. Before the trigger this silently reopened
+-- bookings at a place that had said it takes none.
+update public.place_profiles set reservations_enabled = true
+ where id = '00000000-0000-4000-8000-0000000f0f10';
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f10'),
+  false,
+  'a re-enrichment cannot overwrite an answer the operator already gave'
+);
+
+update public.place_profiles set reservation_channel = 'phone'
+ where id = '00000000-0000-4000-8000-0000000f0f10';
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f10'),
+  true,
+  'picking a real channel turns the CTA back on'
+);
+
+-- '' is what the console sends for a value it did not recognise, and an empty
+-- string is not an answer — it must not read as "Not".
+update public.place_profiles
+   set reservation_channel = '', reservations_enabled = true
+ where id = '00000000-0000-4000-8000-0000000f0f10';
+
+select is(
+  (select reservations_enabled from public.place_profiles
+    where id = '00000000-0000-4000-8000-0000000f0f10'),
+  true,
+  'an empty channel is silence, not a "Not" — the seed stands'
+);
+
+rollback to savepoint before_reservations_probe;
 
 -- ━━━ Wave 0 — place secrets stay off the publishable key ━━━━━━━━━━━━━━━━━━━
 
