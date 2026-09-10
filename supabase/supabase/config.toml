@@ -444,12 +444,6 @@ verify_jwt = true
 [functions.business-web-update-place]
 verify_jwt = true
 
-[functions.business-web-list-tags]
-verify_jwt = true
-
-[functions.business-web-list-categories]
-verify_jwt = true
-
 # Ownership-verification submit + state-poll, called from /add on
 # business.mesita.ai.
 [functions.business-web-send-email-otp]
@@ -631,19 +625,14 @@ verify_jwt = true
 [functions.admin-web-find-place]
 verify_jwt = true
 
-# Super-admin free-text place search (name / slug / id) for the admin
-# console's Manage Single Place place picker.
-# Random sample of real consumers + places for admin config previews (Memo
-# Config playground). Renamed from admin-web-get-scoring-sample (MESITA-1048).
-[functions.admin-web-get-config-sample]
-verify_jwt = true
-
 # Memo Config Playground engine — runs Memo's reasoning agent for a super-admin
 # with a full reasoning trace (real/mock persona, persona+model override, always
 # the agent engine). Read-only; the agent's airlock is read-only by construction.
 [functions.admin-web-ask-memo]
 verify_jwt = true
 
+# Super-admin free-text place search (name / slug / id) for the admin
+# console's Manage Single Place place picker.
 [functions.admin-web-search-places]
 verify_jwt = true
 
@@ -824,8 +813,6 @@ verify_jwt = true
 [functions.consumer-web-update-reservation]
 verify_jwt = true
 [functions.consumer-web-suggest-places]
-verify_jwt = true
-[functions.business-web-list-reservations]
 verify_jwt = true
 [functions.business-web-confirm-reservation]
 verify_jwt = true
