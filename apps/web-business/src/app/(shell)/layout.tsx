@@ -19,7 +19,7 @@ import { AppShell } from "@/components/console/AppShell";
 import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createServerSupabase, getServerUser } from "@/lib/supabase/server";
 import { apiListOrganizations } from "@/lib/api/organizations";
 
 export const metadata: Metadata = {
@@ -35,19 +35,26 @@ export default async function ShellLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createServerSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/signin");
 
-  // A failure here must not blank the console: the rail degrades to no
-  // switcher and each page reports its own error.
-  let organizations: Awaited<ReturnType<typeof apiListOrganizations>> = [];
-  try {
-    organizations = await apiListOrganizations(supabase);
-  } catch (err) {
-    console.error("[console] business-web-list-organizations:", err);
-  }
+  // The user check and the org list are independent: both need the client,
+  // neither needs the other's answer. Awaiting them on consecutive lines cost
+  // a full round trip on EVERY navigation in the console, because this layout
+  // is force-dynamic and re-renders each time (MESITA-1729).
+  //
+  // The signed-out path now pays for an org list it will not use. That is the
+  // right trade: middleware already turns most signed-out traffic away before
+  // it reaches here, and the redirect below still fires first.
+  //
+  // A failure in the org list must not blank the console: the rail degrades to
+  // no switcher and each page reports its own error.
+  const [user, organizations] = await Promise.all([
+    getServerUser(),
+    apiListOrganizations(supabase).catch((err) => {
+      console.error("[console] business-web-list-organizations:", err);
+      return [] as Awaited<ReturnType<typeof apiListOrganizations>>;
+    }),
+  ]);
+  if (!user) redirect("/signin");
 
   const collapsed =
     (await cookies()).get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
