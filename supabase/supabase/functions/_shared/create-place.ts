@@ -287,6 +287,8 @@ export async function createMinimalPlace(opts: {
           if (door.familyKeys.length > 0) patch.family_keys = door.familyKeys;
           if (door.tags.length > 0) patch.tags = door.tags;
           if (door.description) patch.description = door.description;
+          // The seed for a place nobody has answered for yet; an operator's
+          // channel pick supersedes it from then on (MESITA-1737).
           patch.reservations_enabled = door.reservationsLikely;
           if (door.semanticSummary) {
             patch.embedding_source_text = door.semanticSummary;
