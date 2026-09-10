@@ -7,9 +7,11 @@
 
 import {
   STRATEGY_VISIBILITY_LADDER,
+  strategyForPlace,
   type StrategyId,
   type StrategyVisibility,
 } from "@/lib/business/strategies";
+import { promotingLevelFromStrategy } from "@/lib/state-vocabulary";
 import {
   STRATEGY_KEYS,
   type PromosConfig,
@@ -32,6 +34,18 @@ type MembershipSnapshot = {
   last_strike_at?: unknown;
   /** Ghost-partner hold (MESITA-1311) — a confirmed guest report. */
   reward_lane_pending_review_at?: unknown;
+};
+
+/** A membership snapshot plus the four per-tier promo rates — everything the
+ *  live promoting read below needs, and nothing else. The rates are typed
+ *  (unlike the membership fields, which stay `unknown` because they arrive
+ *  loosely from the EF): `strategyForPlace` matches them against the ladder's
+ *  numbers, so a rate that is not a number is a rate that cannot match. */
+export type PromotingSnapshot = MembershipSnapshot & {
+  welcome_free_rate: number | null;
+  welcome_premium_rate: number | null;
+  free_rate: number | null;
+  premium_rate: number | null;
 };
 
 export type MembershipPillState =
@@ -326,4 +340,42 @@ export function promoCardState(input: {
     return { selected: true, cta: "current" };
   }
   return { selected: false, cta: input.paid ? "switch" : "switch_zero" };
+}
+
+// ── The live promoting read ──────────────────────────────────────────────
+//
+// These two lived in StateCard.tsx, which is an ADMIN-ONLY component (it
+// writes places.state through two super-admin doors). PromosSection imported
+// `placeOperatorPromotingLevel` from it, which dragged that whole module —
+// and the two admin doors' names — into the Capabilities tab's import
+// closure, where a reachability scan cannot tell an imported helper from a
+// rendered component (MESITA-1736). They are pure functions over a place row
+// with no React in them, so this is where they belong.
+
+/** Does a guest get a discount here RIGHT NOW? The live read, not the badge. */
+export function isPromotingNow(place: PromotingSnapshot): boolean {
+  if (!isMemberPlan(place.plan)) return false;
+  const strategy = strategyForPlace({
+    welcome_free_rate: place.welcome_free_rate,
+    welcome_premium_rate: place.welcome_premium_rate,
+    free_rate: place.free_rate,
+    premium_rate: place.premium_rate,
+  });
+  if (strategy === null || strategy === "zero") return false;
+  const state = membershipPillState(place);
+  // Paused (strike 2) and forfeited (strike 3) both close the promo lane.
+  // `pending` still promotes — the place has promised a discount, it just
+  // hasn't honored its first check yet.
+  return state !== "paused" && state !== "forfeited";
+}
+
+/** Operator Promoted chip: 0 | 1 | 2 from the live lane + strategy. */
+export function placeOperatorPromotingLevel(place: PromotingSnapshot): 0 | 1 | 2 {
+  const strategy = strategyForPlace({
+    welcome_free_rate: place.welcome_free_rate,
+    welcome_premium_rate: place.welcome_premium_rate,
+    free_rate: place.free_rate,
+    premium_rate: place.premium_rate,
+  });
+  return promotingLevelFromStrategy(isPromotingNow(place), strategy);
 }

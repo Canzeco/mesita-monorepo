@@ -37,9 +37,9 @@ import { usePlaceContext } from "../PlaceContext";
 import {
   isMemberPlan,
   membershipPillState,
+  placeOperatorPromotingLevel,
   promoCardState,
 } from "./promo-state";
-import { placeOperatorPromotingLevel } from "./StateCard";
 import { PartnershipBody, MembershipStatePill } from "./controls/partnership";
 import { ProductModal, StrategyCard } from "./controls/strategy-cards";
 import { LadderRow, NestedConfig } from "./controls/ladder-row";

@@ -71,7 +71,7 @@ describe("T5 — the console must not disagree with the consumer app", () => {
   it("never renders a switch for reservations — nothing writes it from here", () => {
     const row = rowFor({ ...BASE, rails: { ...BASE.rails, reservations: true } }, "reservations");
     expect(row.state.kind).toBe("not_mine");
-    // admin-web-set-place-rails RAIL_COLUMNS = {mesita_pay, credits, pickup,
+    // _shared/place-rails.ts RAIL_COLUMNS = {mesita_pay, credits, pickup,
     // delivery}. A switch here would post a key the EF loop skips: 200 OK,
     // no write, and an optimistic UI showing it on.
     expect(["on", "off"]).not.toContain(row.state.kind);

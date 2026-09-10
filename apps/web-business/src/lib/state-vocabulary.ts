@@ -10,7 +10,7 @@
 //                 places.state. Mesita Pay / Mesita Credits are per-place
 //                 acceptance intent bits (place_profiles.mesita_pay_enabled /
 //                 place_profiles.credits_enabled) — operator toggles on the Partner tab
-//                 (admin-web-set-place-rails); engines still gate each rail.
+//                 (the set-place-rails doors); engines still gate each rail.
 //
 //                 OWNED joined the box with MESITA-1608: an organization holds
 //                 this place. It is CONSTANT on either console list — Org
@@ -118,7 +118,7 @@ export type GeneralStateKey = (typeof GENERAL_STATE_FACTS)[number]["key"];
 export const STATE_FACT_FALSE_TONE: Partial<Record<GeneralStateKey, "neutral">> = {};
 
 /** Acceptance bits with NO engine yet (decision: Pato gate 2026-08-29).
- *  They now have a writer (the Partner tab toggles, admin-web-set-place-rails)
+ *  They now have a writer (the Capabilities tab toggles, the set-place-rails doors)
  *  and a reader (the Promotion score), but the rails themselves stay staged —
  *  header chips, Global Monitor filter segments and notification meta chips
  *  OMIT these until the Mesita Pay gateway / Credits PRs lift the
@@ -204,7 +204,7 @@ export function intakeFunctionLabel(n: number, label: string): string {
 //   external       a third party decides (Stripe)
 //
 // `column` is the `place_profiles` column a toggle writes, or null when
-// nothing writes it. NULL COLUMN ⇒ NO SWITCH: `admin-web-set-place-rails`
+// nothing writes it. NULL COLUMN ⇒ NO SWITCH: `_shared/place-rails.ts`
 // silently skips a key its `RAIL_COLUMNS` does not know, so a switch for a
 // column-less capability returns 200 and writes nothing. The bijection test
 // pins this in both directions.
