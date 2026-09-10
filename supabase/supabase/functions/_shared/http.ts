@@ -71,9 +71,24 @@ export async function readJson<T>(
 // the body is absent or unparseable instead of erroring:
 //
 //   const body = await readJsonOr<Body>(req, {});
+/** The request body, or `fallback` when there isn't a usable one.
+ *
+ *  `catch` is not enough. It only fires on a PARSE failure, and `JSON.parse`
+ *  accepts the literal `null` happily — so a body of `null` used to come back
+ *  as `null`, past the fallback, into 51 call sites that all do
+ *  `readJsonOr<Body>(req, {})` and then read a field off it. Every one threw a
+ *  TypeError out of the Deno.serve handler: the runtime's own 500, with no CORS
+ *  headers and no { ok:false } envelope, so a browser saw a CORS failure rather
+ *  than an error it could render (MESITA-1730). The reachable ones were not
+ *  only admin: consumer browse, business place reads, and the eleven-* agent
+ *  webhooks all sat behind this.
+ *
+ *  Every caller passes an object and dereferences it immediately, so coalescing
+ *  null to the fallback is what all of them already meant. */
 export async function readJsonOr<T>(req: Request, fallback: T): Promise<T> {
   try {
-    return (await req.json()) as T;
+    const parsed = await req.json();
+    return (parsed ?? fallback) as T;
   } catch {
     return fallback;
   }
