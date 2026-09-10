@@ -65,7 +65,6 @@ export const FORBIDDEN_COLUMNS: readonly string[] = [
   "embedding_source_text",
   "enrichment",
   "check_pin",
-  "cfdi_rfc",
 ];
 
 export const GET_PLACE_SELECT =

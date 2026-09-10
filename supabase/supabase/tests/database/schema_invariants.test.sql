@@ -432,13 +432,21 @@ select ok(
   'refund_requests is gone'
 );
 
-select ok(
-  exists (
-    select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'places'
-       and column_name = 'cfdi_rfc'
-  ),
-  'places.cfdi_rfc is in the ledger (local replay matches live)'
+-- MESITA-1722 inverted this assertion in place, so the plan count is unchanged.
+-- It used to assert places.cfdi_rfc EXISTS: the column was created cloud-side
+-- by the pre-monorepo standalone repo, and 20260825001000 back-filled it into
+-- the ledger so local replay would stop 42703-ing the Wave 0 pins. Its only
+-- writer was the ghost EF business-web-update-cfdi, which had no repo source
+-- and had already stopped working when MESITA-1590 renamed `projects`. All
+-- three CFDI columns are dropped now, so the same slot guards the drop instead
+-- of the back-fill.
+select is_empty(
+  $$select c.column_name
+      from information_schema.columns c
+     where c.table_schema = 'public'
+       and c.table_name = 'places'
+       and c.column_name in ('cfdi_rfc', 'cfdi_razon_social', 'cfdi_cp')$$,
+  'the three CFDI columns are gone from places'
 );
 
 -- ━━━ Honest keys — no project_id column left ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

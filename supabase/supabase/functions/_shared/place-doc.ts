@@ -352,9 +352,6 @@ export type PlaceRow = {
   promo_paused_until: string | null;
   plan_forfeited_at: string | null;
   check_pin: string | null;
-  cfdi_rfc: string | null;
-  cfdi_razon_social: string | null;
-  cfdi_cp: string | null;
   reward_lane_pending_review_at: string | null;
 };
 
@@ -388,9 +385,6 @@ export const PLACE_PATCH_KEYS = [
   "promo_paused_until",
   "plan_forfeited_at",
   "check_pin",
-  "cfdi_rfc",
-  "cfdi_razon_social",
-  "cfdi_cp",
   "reward_lane_pending_review_at",
 ] as const satisfies readonly (keyof Omit<PlaceRow, "id" | "created_at" | "updated_at">)[];
 
@@ -435,9 +429,6 @@ function isNullableLegalSet(v: unknown, legal: readonly number[]): boolean {
 }
 function isNullableRegex(v: unknown, re: RegExp): boolean {
   return v === null || (typeof v === "string" && re.test(v));
-}
-function isNullableLenString(v: unknown, min: number, max: number): boolean {
-  return v === null || (typeof v === "string" && v.length >= min && v.length <= max);
 }
 function isStringArray(v: unknown): v is string[] {
   return Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -647,8 +638,6 @@ const PLACE_TIMESTAMP_KEYS = new Set<string>([
 ]);
 const RATE_LEGAL_VALUES = [10, 20, 30, 40, 50] as const;
 const PROMO_CAP_LEGAL_VALUES = [200, 500, 1000] as const;
-const CFDI_RFC_RE = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
-const CFDI_CP_RE = /^[0-9]{5}$/;
 const SIX_DIGIT_PIN_RE = /^[0-9]{6}$/;
 
 const STATE_VALUES = new Set([
@@ -710,17 +699,6 @@ function checkPlaceField(key: string, v: unknown): string | null {
     case "check_pin":
       return isNullableRegex(v, SIX_DIGIT_PIN_RE) ? null
         : `${key} must be exactly 6 digits, or null`;
-    // places_cfdi_rfc_shape
-    case "cfdi_rfc":
-      return isNullableRegex(v, CFDI_RFC_RE) ? null
-        : "cfdi_rfc must match the RFC shape (3-4 letters, 6 digits, 3 alnum), or null";
-    // places_cfdi_cp_shape
-    case "cfdi_cp":
-      return isNullableRegex(v, CFDI_CP_RE) ? null : "cfdi_cp must be exactly 5 digits, or null";
-    // places_cfdi_razon_social_len
-    case "cfdi_razon_social":
-      return isNullableLenString(v, 1, 200) ? null
-        : "cfdi_razon_social must be 1-200 characters, or null";
     default:
       return `unknown place-row field: ${key}`;
   }
