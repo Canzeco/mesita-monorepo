@@ -175,3 +175,120 @@ export const INTAKE_FUNCTION_COUNT = INTAKE_FUNCTIONS.length;
 export function intakeFunctionLabel(n: number, label: string): string {
   return `${n}. ${label}`;
 }
+
+// ── Capabilities — what a guest can DO here (Notion Main §11.2) ────────────
+//
+// A SECOND LIST, NOT A SPLIT. `GENERAL_STATE_FACTS` above stays exactly as it
+// is, twelve facts, because thirteen files across shared/, web-admin and
+// web-business read its keys — `STATE_FACT_FALSE_TONE`,
+// `ENGINELESS_STATE_FACT_KEYS`, `StampedStateFactKey`'s `Exclude<>`, both
+// notification feeds, `PlaceStatesTable`'s `SortKey`. Splitting it to move
+// three capability-shaped facts out is a ~30-file change across four packages
+// that no user can see. Adding this list beside it closes the fork that DOES
+// matter — the Capabilities tab hand-typing its own labels — in eight.
+//
+// Deduping the two is a separate issue and needs a naming decision first.
+//
+// WHO WRITES THE FACT is the field that earns its place. It is what predicts
+// every bug this screen has shipped: Reservations read `off` for months on a
+// hard-coded constant while the consumer app booked guests off the same
+// column, because an OBSERVED fact was sitting in a DECLARED-shaped row. A
+// row renders its control from `writer`, so "why is there no switch here" is
+// answered by the data instead of by a comment.
+//
+//   declared       an operator asked for it (a rail toggle)
+//   observed       the Intaker inferred it from the listing
+//   administrative Mesita sets it (plan, strategy)
+//   external       a third party decides (Stripe)
+//
+// `column` is the `place_profiles` column a toggle writes, or null when
+// nothing writes it. NULL COLUMN ⇒ NO SWITCH: `admin-web-set-place-rails`
+// silently skips a key its `RAIL_COLUMNS` does not know, so a switch for a
+// column-less capability returns 200 and writes nothing. The bijection test
+// pins this in both directions.
+//
+// `spec` is the Main §11.2 number, or null for a capability that is real in
+// the schema but absent from the spec. Recording the mismatch here is the
+// point: §11.2 also lists "Visits Enabled" (no column anywhere — and
+// `business-web-list-places/payload.test.ts` fences it as "the draft
+// taxonomy's inventions"), and splits Delivery into First- and Third-Party
+// when Main §2.3.7 strikes First-Party through and §8 files Third-Party under
+// Future Expansions. Those three are a Notion correction, not a migration.
+
+export type CapabilityWriter =
+  | "declared"
+  | "observed"
+  | "administrative"
+  | "external";
+
+export const PLACE_CAPABILITIES = [
+  {
+    key: "mesita_pay",
+    label: "Mesita Pay",
+    detail: "Guests pay the bill by card, inside Mesita.",
+    writer: "declared",
+    column: "mesita_pay_enabled",
+    spec: 1,
+  },
+  {
+    key: "visit_rewards",
+    label: "Visits Rewards",
+    detail: "What a visit pays back — Zero, Conservative or Aggressive.",
+    writer: "administrative",
+    column: null,
+    spec: 3,
+  },
+  {
+    key: "credits",
+    label: "Accept Prepays",
+    detail: "Redeem a guest's prepaid balance as a bill discount, never a payment.",
+    writer: "declared",
+    column: "credits_enabled",
+    spec: null,
+  },
+  {
+    key: "pickup",
+    label: "Pickup Orders",
+    detail: "Guests order ahead and pick up.",
+    writer: "declared",
+    column: "pickup_orders_enabled",
+    spec: 4,
+  },
+  {
+    key: "delivery",
+    label: "Delivery Orders",
+    detail: "Guests order for delivery, on the place's own fleet.",
+    writer: "declared",
+    column: "delivery_orders_enabled",
+    spec: 5,
+  },
+  {
+    key: "reservations",
+    label: "Reservations",
+    detail: "Guests book a table.",
+    writer: "observed",
+    column: "reservations_enabled",
+    spec: 7,
+  },
+] as const;
+
+export type PlaceCapabilityKey = (typeof PLACE_CAPABILITIES)[number]["key"];
+
+export const PLACE_CAPABILITY_COUNT = PLACE_CAPABILITIES.length;
+
+/** The `place_profiles` column a capability's toggle writes, or null when
+ *  nothing writes it. A null column MUST render without a switch. */
+export function capabilityColumn(key: PlaceCapabilityKey): string | null {
+  return PLACE_CAPABILITIES.find((c) => c.key === key)?.column ?? null;
+}
+
+/** What the control column says when a capability is not the operator's to
+ *  set. Never "Soon" — a ship date is something an operator can neither act
+ *  on nor verify, and this tab's own ladder already argues that a prerequisite
+ *  beats a date. Name the actor instead. */
+export const CAPABILITY_WRITER_WORD: Record<CapabilityWriter, string> = {
+  declared: "",
+  observed: "Observed",
+  administrative: "Set by Mesita",
+  external: "Set by Stripe",
+};

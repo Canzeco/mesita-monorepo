@@ -1,4 +1,22 @@
 import { PROMOTION_SCORE_MAX, promotionScore } from "@/lib/business/promotion-score";
+import {
+  CAPABILITY_WRITER_WORD,
+  PLACE_CAPABILITIES,
+} from "@/lib/state-vocabulary";
+
+// Labels and detail copy come from the vocabulary, never from a literal in
+// this file. That is the whole point of MESITA-1735: this module used to
+// hand-type nine names while the rest of the console shared a generated
+// list, so every rename landed here last, or not at all.
+//
+// The ladder row keys stay as they are — `byKey` in PromosSection indexes
+// them and `accept_prepays` is the operator word for the `credits` column.
+const CAP = Object.fromEntries(
+  PLACE_CAPABILITIES.map((c) => [c.key, c]),
+) as Record<
+  (typeof PLACE_CAPABILITIES)[number]["key"],
+  (typeof PLACE_CAPABILITIES)[number]
+>;
 
 // The Controls ladder — what a place offers, and what has to be true first.
 //
@@ -100,6 +118,16 @@ export type RowState =
   | { kind: "blocked"; reason: string }
   /** No engine yet. Honest, and not a knob pretending to work. */
   | { kind: "soon" }
+  /** The read that decides this row has not answered yet. NEVER reduce a
+   *  pending read to `locked` or `off`: `connectLoading` starts true while
+   *  `connect` starts `{kind:"none"}`, so the Stripe rungs used to assert
+   *  "Needs an active Stripe account" about a place that has one, for the
+   *  length of a live Stripe round trip on every mount. */
+  | { kind: "checking" }
+  /** Real, but not the operator's to set — `writer` names who does. Never
+   *  "Soon": a ship date is something an operator can neither act on nor
+   *  verify, which is the same argument that makes `locked` outrank it. */
+  | { kind: "not_mine"; word: string; on: boolean | null }
   | { kind: "off" }
   | { kind: "on" };
 
@@ -127,8 +155,15 @@ export type LadderInput = {
     credits: boolean;
     pickup: boolean;
     delivery: boolean;
+    /** Observed by the Intaker, not declared by the operator, and null when
+     *  the payload did not carry it. `false` here would be a claim nobody
+     *  checked — see the reservations row. */
+    reservations: boolean | null;
   };
   connect: ConnectState;
+  /** The Connect mirror read is in flight. Independent of `connect`, which
+   *  cannot distinguish "no account" from "not asked yet". */
+  connectLoading?: boolean;
 };
 
 const NEEDS_PARTNER = "Needs the partnership";
@@ -159,22 +194,32 @@ function railState(on: boolean): RowState {
 export function offeringRows(input: LadderInput): OfferingRow[] {
   const { member, visitRewardsLevel, rails, connect } = input;
   const level = Math.min(2, Math.max(0, Math.trunc(visitRewardsLevel || 0)));
+  // Checking outranks every verdict below it. The Connect mirror is read by a
+  // client effect on every mount, so for the length of a live Stripe round
+  // trip `connect` is `{kind:"none"}` — indistinguishable from a place that
+  // never onboarded. Rendering `locked` there tells an operator with a working
+  // Stripe account that they need one.
+  const checking = input.connectLoading === true;
 
   const stripeState: RowState = !member
     ? { kind: "locked", needs: NEEDS_PARTNER }
-    : connect.kind === "ready"
-      ? { kind: "on" }
-      : connect.kind === "disabled"
-        ? { kind: "blocked", reason: connect.reason ?? "Stripe disabled this account." }
-        : { kind: "off" };
+    : checking
+      ? { kind: "checking" }
+      : connect.kind === "ready"
+        ? { kind: "on" }
+        : connect.kind === "disabled"
+          ? { kind: "blocked", reason: connect.reason ?? "Stripe disabled this account." }
+          : { kind: "off" };
 
   // Mesita Pay is the first rung where money actually moves, so it needs the
   // account to be CHARGE-READY, not merely present.
   const payState: RowState = !member
     ? { kind: "locked", needs: NEEDS_PARTNER }
-    : connect.kind !== "ready"
-      ? { kind: "locked", needs: NEEDS_STRIPE }
-      : railState(rails.mesita_pay);
+    : checking
+      ? { kind: "checking" }
+      : connect.kind !== "ready"
+        ? { kind: "locked", needs: NEEDS_STRIPE }
+        : railState(rails.mesita_pay);
 
   return [
     {
@@ -200,8 +245,8 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "mesita_pay",
-      label: "Mesita Pay",
-      detail: "Guests pay the bill by card, inside Mesita.",
+      label: CAP.mesita_pay.label,
+      detail: CAP.mesita_pay.detail,
       band: "money",
       state: payState,
       points: 1,
@@ -209,8 +254,8 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "visit_rewards",
-      label: "Visit Rewards",
-      detail: "What a visit pays back — Zero, Conservative or Aggressive.",
+      label: CAP.visit_rewards.label,
+      detail: CAP.visit_rewards.detail,
       band: "money",
       state: !member
         ? { kind: "locked", needs: NEEDS_PARTNER }
@@ -222,10 +267,10 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "accept_prepays",
-      label: "Accept Prepays",
+      label: CAP.credits.label,
       // Load-bearing sentence: redemption is a bill reduction, so no money is
       // held and no PSP is involved. It is why this rung does not need Stripe.
-      detail: "Redeem a guest's prepaid balance as a bill discount, never a payment.",
+      detail: CAP.credits.detail,
       band: "money",
       state: !member
         ? { kind: "locked", needs: NEEDS_PARTNER }
@@ -250,8 +295,8 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "pickup",
-      label: "Pickup Orders",
-      detail: "Guests order ahead and pick up.",
+      label: CAP.pickup.label,
+      detail: CAP.pickup.detail,
       band: "service",
       state: railState(rails.pickup),
       points: 1,
@@ -259,8 +304,8 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "delivery",
-      label: "Delivery Orders",
-      detail: "Guests order for delivery.",
+      label: CAP.delivery.label,
+      detail: CAP.delivery.detail,
       band: "service",
       state: railState(rails.delivery),
       points: 1,
@@ -268,10 +313,27 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
     },
     {
       key: "reservations",
-      label: "Reservations",
-      detail: "How a guest books, or that they don't.",
+      label: CAP.reservations.label,
+      detail: CAP.reservations.detail,
       band: "service",
-      state: { kind: "off" },
+      // THE ROW USED TO BE A CONSTANT. `state: { kind: "off" }` was hard-coded
+      // while `web-consumer`'s `isReserveActionEnabled` read
+      // `place_profiles.reservations_enabled` and rendered a live Reserve CTA
+      // off the same column — so the console told an operator they take no
+      // bookings while their guests were making them (MESITA-1735).
+      //
+      // OBSERVED, so no switch: the only writer is the Intaker
+      // (`supabase-cron-enrich-place-contents` sets it from `reservationsLikely`),
+      // and `admin-web-set-place-rails`'s RAIL_COLUMNS has no key for it. A
+      // switch here would return 200 and write nothing.
+      //
+      // null ⇒ the payload did not carry it. `false` would be a claim nobody
+      // checked, on the one row that already shipped exactly that bug.
+      state: {
+        kind: "not_mine",
+        word: CAPABILITY_WRITER_WORD[CAP.reservations.writer],
+        on: rails.reservations,
+      },
       points: null,
       earned: false,
     },
