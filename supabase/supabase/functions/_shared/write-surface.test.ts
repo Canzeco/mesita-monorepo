@@ -265,21 +265,20 @@ Deno.test("RESERVATION: no new writer of reservation_tickets outside the allowli
 });
 
 // ── CONFIG (app_config) ─────────────────────────────────────────────────
+//
+// MESITA-1724 shrank this list by eleven: the admin console's ten config
+// writers were `admin-web-update-<page>-config/index.ts`, each with its own
+// `.from("app_config").update()`, and one of them was listed TWICE
+// (`admin-web-update-reservations-config/index.ts`, a copy-paste in the
+// bootstrap scan that made the allowlist look one entry longer than the tree
+// it froze). They are now sections of admin-web-update-config, dispatched
+// through `_shared/config-sections.ts` and writing through
+// `_shared/write-config.ts` — the door this file has allowed since it was
+// written, finally the only writer it names.
 const CONFIG_ALLOWLIST = [
   "_shared/otp.ts",
   "_shared/save-place.ts",
-  "_shared/write-config.ts",
-  "admin-web-update-controls-config/index.ts",
-  "admin-web-update-discovery-config/index.ts",
-  "admin-web-update-enricher-config/index.ts",
-  "admin-web-update-models-config/index.ts",
-  "admin-web-update-ojo-config/index.ts",
-  "admin-web-update-orders-config/index.ts",
-  "admin-web-update-reservations-config/index.ts",
-  "admin-web-update-reservations-config/index.ts",
-  "admin-web-update-rewards-config/index.ts",
-  "admin-web-update-verification-config/index.ts",
-  "admin-web-update-visits-config/index.ts",
+  "_shared/write-config.ts", // THE app_config door (MESITA-1724) — every admin config section reads and writes here
   "consumer-web-create-reservation/index.ts",
   "consumer-web-update-reservation/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",

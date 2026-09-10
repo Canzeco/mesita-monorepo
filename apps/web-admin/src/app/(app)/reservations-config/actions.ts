@@ -4,9 +4,10 @@
 // Edge Functions via the Result-style efInvoke (never throws) — same contract as
 // the Sourcing / Memo / Atlas config actions.
 //
-// Backed by admin-web-get-reservations-config / admin-web-update-reservations-config,
-// which read and write the reservations_config jsonb on the public.app_config
-// singleton. No client ever touches the DB.
+// Backed by the `reservations` section of admin-web-get-config /
+// admin-web-update-config, which read and write the reservations_config jsonb
+// on the public.app_config singleton. The read also carries the
+// needs-attention feed. No client ever touches the DB.
 //
 // The Playground actions that used to live here are gone with the Playground
 // itself (2026-07-27) — testing happens from the consumer app with test mode ON.
@@ -29,8 +30,8 @@ export async function getReservationsConfig(): Promise<GetReservationsConfigResu
     updatedAt: string | null;
     needs_attention?: NeedsAttentionRow[];
   }>(
-    "admin-web-get-reservations-config",
-    {},
+    "admin-web-get-config",
+    { section: "reservations" },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return {
@@ -49,8 +50,8 @@ export async function updateReservationsConfig(
   config: ReservationsConfig,
 ): Promise<UpdateReservationsConfigResult> {
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-update-reservations-config",
-    { config },
+    "admin-web-update-config",
+    { section: "reservations", config },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };

@@ -4,7 +4,8 @@
 // admin-web-* Edge Functions via the Result-style efInvoke (never throws) —
 // same contract as the Reservations / Sourcing / Memo config actions.
 //
-// Backed by admin-web-get-rewards-config / admin-web-update-rewards-config.
+// Backed by the `rewards` section of admin-web-get-config /
+// admin-web-update-config.
 // The v10 blob in app_config.promos_config is the ONLY source of truth — the
 // legacy best-of rule table is gone, so what this page saves is what the LIVE
 // engine prices (MESITA-992).
@@ -28,7 +29,7 @@ export async function getPromosConfig(): Promise<GetPromosConfigResult> {
     config?: unknown;
     cap?: unknown;
     updatedAt: string | null;
-  }>("admin-web-get-rewards-config", {});
+  }>("admin-web-get-config", { section: "rewards" });
   if (!r.ok) return { ok: false, error: r.error };
 
   if (r.data.config) {
@@ -60,8 +61,8 @@ export async function updatePromosConfig(
   // A WHOLE-BLOB write: the promos model is one coherent thing, so every knob
   // ships on every save and the EF normalizes the complete v10 shape.
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-update-rewards-config",
-    { config },
+    "admin-web-update-config",
+    { section: "rewards", config },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return {

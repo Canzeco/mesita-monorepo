@@ -1,11 +1,12 @@
-// Supabase Edge Function — admin-web-update-enricher-config
+// _shared/config-section-enricher.ts — the `enricher` section's write.
 //
-// Naming: caller-verb-words. Caller = admin, verb = update, words = enricher-config.
-//
-// Partial-update of the Intaker research knobs on public.app_config.enrichment_config
-// (MESITA-1248 fold of the leftover atlas_* scalars), written from the admin
-// console's Intake → Configuration page. Each field is optional; only the keys
-// present in the body are merged, so the UI can save one control at a time.
+// Was admin-web-update-enricher-config (MESITA-1724 collapse). Partial-update
+// of the Intaker research knobs on app_config.enrichment_config (MESITA-1248
+// fold of the leftover atlas_* scalars), written from the admin console's
+// Intake → Configuration page. Each field is optional; only the keys present in
+// the body are merged, so the UI can save one control at a time — which is why
+// this section owns its write instead of riding the generic whole-blob path.
+// The knobs arrive FLAT on the body, not under `config`.
 //
 //   gatherGoogleImages (1–10)
 //   gatherInstagramDepth (1–30, download) / gatherInstagramPosts (1–30, keep ≤ depth)
@@ -17,24 +18,19 @@
 //   discover{Website,Instagram,Facebook,Opentable,Ubereats}N (0–10)
 //   imageAnalysisPrompt / imageSortingPrompt
 //
-// READ-MERGE-WRITE of the jsonb (same lost-update accept as verification_config:
-// one super-admin). enrichment_triggers stays its own column.
+// READ-MERGE-WRITE of the jsonb (same lost-update accept as verification: one
+// super-admin). enrichment_triggers stays its own column, and this is the one
+// section whose write touches two.
 //
-// Auth: caller's JWT email must be in public.super_admins.
-
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
-import { normalizeEnrichmentTriggers } from "../_shared/enrich-triggers.ts";
-import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import {
-  normalizeEnrichmentConfig,
-} from "../_shared/enrichment-config.ts";
+// There is deliberately no `enricher` READ override: admin-web-get-config's
+// no-section payload is what the Intake page loads, and it returns
+// enrichment_config, enrichment_triggers and their meta together.
+import { jsonError, jsonOk } from "./http.ts";
+import { readAppConfig, writeAppConfig } from "./write-config.ts";
+import type { ConfigSection, SectionWriteContext } from "./config-section-base.ts";
+import { normalizeEnrichmentTriggers } from "./enrich-triggers.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
 import { funnelLockError, intInRange } from "./atlas-config-validate.ts";
 
 const GOOGLE_REVIEWS_MAX = ENRICH_FIELD_LIMITS.googleReviews.max;
@@ -74,37 +70,20 @@ const PERPLEXITY_PRESETS = new Set([
   "advanced-deep-research",
 ]);
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
+export async function writeEnricherSection(
+  ctx: SectionWriteContext,
+  section: ConfigSection,
+): Promise<Response> {
+  const body = ctx.body as Body;
 
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
-
-  const bodyRes = await readJson<Body>(req);
-  if (!bodyRes.ok) return bodyRes.response;
-  const body = bodyRes.body;
-
-  const { data: current, error: readError } = await admin
-    .from("app_config")
-    .select("enrichment_config")
-    .eq("id", 1)
-    .maybeSingle();
-  if (readError) {
-    return jsonError(`enrichment_config_read: ${readError.message}`, 500);
-  }
-
-  const next = normalizeEnrichmentConfig(
-    (current as { enrichment_config?: unknown } | null)?.enrichment_config,
+  const current = await readAppConfig(
+    ctx.admin,
+    section.column,
+    `${section.column}_read`,
   );
+  if (!current.ok) return current.response;
+
+  const next = normalizeEnrichmentConfig(current.row?.[section.column]);
   let funnelTouched = false;
   let blobTouched = false;
   let triggers: unknown | undefined;
@@ -305,29 +284,23 @@ Deno.serve(async (req) => {
     return jsonError("Nothing to update", 400);
   }
 
-  const patch: Record<string, unknown> = { updated_by: userId };
-  if (blobTouched) patch.enrichment_config = next;
+  const patch: Record<string, unknown> = { updated_by: ctx.userId };
+  if (blobTouched) patch[section.column] = next;
   if (triggers !== undefined) patch.enrichment_triggers = triggers;
 
-  const { data, error } = await admin
-    .from("app_config")
-    .update(patch)
-    .eq("id", 1)
-    .select("enrichment_config, enrichment_triggers, updated_at")
-    .single();
-  if (error) {
-    return jsonError(`settings_update: ${error.message}`, 500);
-  }
-
-  const saved = normalizeEnrichmentConfig(
-    (data as { enrichment_config?: unknown }).enrichment_config,
+  const saved = await writeAppConfig(
+    ctx.admin,
+    patch,
+    `${section.column}, enrichment_triggers, updated_at`,
+    "settings_update",
   );
-  return json({
-    ok: true,
+  if (!saved.ok) return saved.response;
+
+  return jsonOk({
     enrichmentTriggers: normalizeEnrichmentTriggers(
-      (data as { enrichment_triggers?: unknown }).enrichment_triggers ?? null,
+      saved.row.enrichment_triggers ?? null,
     ),
-    ...saved,
-    updatedAt: data.updated_at,
+    ...normalizeEnrichmentConfig(saved.row[section.column]),
+    updatedAt: saved.row.updated_at,
   });
-});
+}

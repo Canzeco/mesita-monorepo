@@ -1,8 +1,8 @@
 "use server";
 
 // Server actions for Ojo Config. Thin wrappers over the admin-web-* Edge
-// Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-ojo-config on app_config.ojo_config. WHOLE-BLOB save:
+// Functions via the Result-style efInvoke (never throws). Backed by the `ojo`
+// section of admin-web-get/update-config, on app_config.ojo_config. WHOLE-BLOB save:
 // the thresholds are a related set, so a per-key merge could persist an
 // inverted band. No client ever touches the DB.
 
@@ -58,7 +58,9 @@ type GetResult =
   | { ok: false; error: string };
 
 export async function getOjoConfig(): Promise<GetResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-get-ojo-config", {});
+  const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
+    section: "ojo",
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -72,7 +74,8 @@ type UpdateResult =
   | { ok: false; error: string };
 
 export async function updateOjoConfig(config: OjoConfig): Promise<UpdateResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-update-ojo-config", {
+  const r = await efInvoke<ConfigPayload>("admin-web-update-config", {
+    section: "ojo",
     config,
   });
   if (!r.ok) return { ok: false, error: r.error };

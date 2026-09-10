@@ -27,7 +27,7 @@
 //
 // Pure module on purpose — vitest can't import server-action chains (see
 // promo-state.ts precedent), and the EF normalizer mirrors this file
-// (admin-web-update-rewards-config/promos-normalize.ts) — keep them in
+// (supabase _shared/promos-normalize.ts) — keep them in
 // lock-step.
 
 import {

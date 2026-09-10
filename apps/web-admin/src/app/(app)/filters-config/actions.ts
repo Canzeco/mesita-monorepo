@@ -4,9 +4,9 @@
 // Functions via the Result-style efInvoke (never throws) — same contract as
 // the Sourcing / Memo / Atlas config actions.
 //
-// Backed by admin-web-get-discovery-config / admin-web-update-discovery-config,
-// which read and write the discovery_config jsonb on the public.app_config
-// singleton. No client ever touches the DB.
+// Backed by the `discovery` section of admin-web-get-config /
+// admin-web-update-config, which read and write the discovery_config jsonb on
+// the public.app_config singleton. No client ever touches the DB.
 
 import { efInvoke } from "@/lib/supabase-ef";
 import { coerceConfig, type DiscoveryConfig } from "./catalog";
@@ -17,8 +17,8 @@ type GetDiscoveryConfigResult =
 
 export async function getDiscoveryConfig(): Promise<GetDiscoveryConfigResult> {
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-get-discovery-config",
-    {},
+    "admin-web-get-config",
+    { section: "discovery" },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };
@@ -100,8 +100,8 @@ export async function updateDiscoveryConfig(
     slotting: keys.has("signals") ? config.slotting : live.config.slotting,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
-    "admin-web-update-discovery-config",
-    { config: next },
+    "admin-web-update-config",
+    { section: "discovery", config: next },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, config: coerceConfig(r.data.config), updatedAt: r.data.updatedAt ?? null };

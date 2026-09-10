@@ -1,8 +1,8 @@
 "use server";
 
 // Server actions for Orders Config. Thin wrappers over the admin-web-* Edge
-// Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-orders-config on app_config.orders_config.
+// Functions via the Result-style efInvoke (never throws). Backed by the
+// `orders` section of admin-web-get/update-config, on app_config.orders_config.
 // WHOLE-BLOB save: the two quotas are a related pair, so a per-key merge could
 // persist a Premium plan that allows fewer orders than Free. No client ever
 // touches the DB.
@@ -70,7 +70,9 @@ type GetResult =
   | { ok: false; error: string };
 
 export async function getOrdersConfig(): Promise<GetResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-get-orders-config", {});
+  const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
+    section: "orders",
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -86,7 +88,8 @@ type UpdateResult =
 export async function updateOrdersConfig(
   config: OrdersConfig,
 ): Promise<UpdateResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-update-orders-config", {
+  const r = await efInvoke<ConfigPayload>("admin-web-update-config", {
+    section: "orders",
     config,
   });
   if (!r.ok) return { ok: false, error: r.error };

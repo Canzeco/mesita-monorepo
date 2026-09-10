@@ -1,9 +1,17 @@
-// Supabase Edge Function — admin-web-update-models-config
+// _shared/config-section-models.ts — the `models` section's read and write.
 //
-// Naming: caller-verb-words. Caller = admin, verb = update, words = models-config.
+// Was admin-web-get-models-config / admin-web-update-models-config
+// (MESITA-1724 collapse). One { provider, model } per subsystem (supabase /
+// enricher / embeddings / memo / ojo) as ONE jsonb blob on
+// app_config.models_config. NULL means "no blob yet → the client falls back to
+// its DEFAULTS". See 20260726000000_models_config.sql for the column + shape.
 //
-// Writes the central models config as ONE jsonb blob on the public.app_config
-// singleton (models_config). Whole-blob writes only — the Models Config page
+// The READ is its own handler because it is the one section that returns no
+// `updatedAt` and no normalizer: the console's coerceModelsConfig owns the
+// merge, and the raw blob (or null) is what it wants.
+//
+// The WRITE is its own handler because it REBUILDS the blob from scratch rather
+// than coercing it in place. Whole-blob writes only — the Models Config page
 // always saves its full form, so partial patches would only invite drift.
 //
 // The MAIN model is always OpenAI (a chat model, or an embedding model under
@@ -12,31 +20,20 @@
 //
 // `embeddings` WAS `lineup` (MESITA-1216) — the name outlived the engine
 // MESITA-1048 deleted, and the key never ordered anything: it picks the
-// place-embedding model. This validator rebuilds the blob from scratch, so it
-// reads BOTH spellings and writes only the new one; every save is therefore its
-// own migration for the row it touches. See _shared/models-config.ts for the
-// reader side. Model is a free
-// string (the web-admin catalogs evolve, so only the STRUCTURE is enforced —
-// a missing/garbage key falls back to the migration default so the blob is
+// place-embedding model. This validator reads BOTH spellings and writes only
+// the new one; every save is therefore its own migration for the row it
+// touches. See _shared/models-config.ts for the reader side. Model is a free
+// string (the web-admin catalogs evolve, so only the STRUCTURE is enforced — a
+// missing/garbage key falls back to the migration default so the blob is
 // always complete). See 20260726010000_models_config_reshape.sql.
 //
 // Live binding (MESITA-941): Intaker/Memo/embeddings/suggest-promo read this
 // blob via _shared/models-config.ts. (Until MESITA-1048 the Lineup rankers read
 // it too — recommender-rank-map is deleted, so don't look for it.)
-//
-// Auth: caller's JWT email must be in public.super_admins. verify_jwt defaults
-// to true at the gateway (no config.toml entry, mirroring the memo pair).
-
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, jsonError, jsonOk, readJson, rejectUnlessMethods } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
-
-type Body = { config?: unknown };
+import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { jsonError, jsonOk } from "./http.ts";
+import { readAppConfig, writeAppConfig } from "./write-config.ts";
+import type { ConfigSection, SectionWriteContext } from "./config-section-base.ts";
 
 const PERPLEXITY_OPTIONS = [
   "off",
@@ -64,8 +61,8 @@ function obj(v: unknown): Record<string, unknown> {
 
 function cleanModel(v: unknown, fallback: string): string {
   return typeof v === "string" &&
-    v.trim().length > 0 &&
-    v.trim().length <= 100
+      v.trim().length > 0 &&
+      v.trim().length <= 100
     ? v.trim()
     : fallback;
 }
@@ -76,7 +73,7 @@ function cleanPerplexity(v: unknown, fallback: string): string {
 }
 
 /** Structural validation → a clean, complete blob (never trusts client shape). */
-function validate(
+export function validateModelsConfig(
   raw: unknown,
 ): { ok: true; config: unknown } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") {
@@ -118,36 +115,33 @@ function validate(
   return { ok: true, config };
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
+export async function readModelsSection(
+  admin: SupabaseClient,
+  section: ConfigSection,
+): Promise<Response> {
+  const res = await readAppConfig(
+    admin,
+    section.column,
+    section.readError ?? `${section.column}_read`,
+  );
+  if (!res.ok) return res.response;
+  return jsonOk({ config: res.row?.[section.column] ?? null });
+}
 
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
-
-  const bodyRes = await readJson<Body>(req);
-  if (!bodyRes.ok) return bodyRes.response;
-
-  const v = validate(bodyRes.body.config);
+export async function writeModelsSection(
+  ctx: SectionWriteContext,
+  section: ConfigSection,
+): Promise<Response> {
+  const v = validateModelsConfig(ctx.body.config);
   if (!v.ok) return jsonError(v.error, 400);
 
-  const { data, error } = await admin
-    .from("app_config")
-    .update({ models_config: v.config, updated_by: userId })
-    .eq("id", 1)
-    .select("models_config")
-    .single();
-  if (error) {
-    return jsonError(`models_config_update: ${error.message}`, 500);
-  }
+  const saved = await writeAppConfig(
+    ctx.admin,
+    { [section.column]: v.config, updated_by: ctx.userId },
+    section.column,
+    `${section.column}_update`,
+  );
+  if (!saved.ok) return saved.response;
 
-  return jsonOk({ config: data.models_config });
-});
+  return jsonOk({ config: saved.row[section.column] });
+}

@@ -83,8 +83,8 @@ export async function updateEnrichmentTriggers(
   enrichmentTriggers: EnrichmentTriggersConfig,
 ): Promise<UpdateTriggersResult> {
   const r = await efInvoke<{ enrichmentTriggers: EnrichmentTriggersConfig }>(
-    "admin-web-update-enricher-config",
-    { enrichmentTriggers },
+    "admin-web-update-config",
+    { section: "enricher", enrichmentTriggers },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data.enrichmentTriggers };
@@ -161,7 +161,9 @@ type UpdateAtlasConfigResult =
   | { ok: true; data: AtlasConfigResponse }
   | { ok: false; error: string };
 
-// Partial update — pass only the fields you want to change.
+// Partial update — pass only the fields you want to change. The `enricher`
+// section takes its knobs FLAT on the body, not under `config`, which is why
+// the patch is spread rather than nested.
 export async function updateAtlasConfig(patch: {
   gatherGoogleImages?: number;
   gatherInstagramDepth?: number;
@@ -185,8 +187,8 @@ export async function updateAtlasConfig(patch: {
   requestThreshold?: number;
 }): Promise<UpdateAtlasConfigResult> {
   const r = await efInvoke<AtlasConfigResponse>(
-    "admin-web-update-enricher-config",
-    patch,
+    "admin-web-update-config",
+    { section: "enricher", ...patch },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };

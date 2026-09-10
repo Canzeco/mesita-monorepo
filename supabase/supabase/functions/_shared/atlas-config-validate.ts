@@ -1,4 +1,4 @@
-/** Validators for admin-web-update-enricher-config (int ranges + image-funnel lock). */
+/** Validators for the `enricher` config section (int ranges + image-funnel lock). */
 
 export function intInRange(v: unknown, min: number, max: number): number | null {
   if (typeof v !== "number" || !Number.isInteger(v)) return null;

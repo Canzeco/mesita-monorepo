@@ -100,7 +100,7 @@ export function normalizeOjoConfig(raw: unknown): OjoConfig {
 
 /**
  * The ONE reader of app_config.ojo_config, shared by the admin console
- * (admin-web-get-ojo-config) and the engine (_shared/ojo-engine.ts) so they
+ * (admin-web-get-config's `ojo` section) and the engine (_shared/ojo-engine.ts) so they
  * can never disagree about what "the current policy" is. A missing blob is
  * not an error — OJO_DEFAULTS (enabled:false) is the shipped policy, so a
  * fresh environment behaves correctly before anyone opens the console.
