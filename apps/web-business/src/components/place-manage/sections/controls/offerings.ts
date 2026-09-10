@@ -324,7 +324,7 @@ export function offeringRows(input: LadderInput): OfferingRow[] {
       //
       // OBSERVED, so no switch: the only writer is the Intaker
       // (`supabase-cron-enrich-place-contents` sets it from `reservationsLikely`),
-      // and `admin-web-set-place-rails`'s RAIL_COLUMNS has no key for it. A
+      // and the set-place-rails doors' RAIL_COLUMNS has no key for it. A
       // switch here would return 200 and write nothing.
       //
       // null ⇒ the payload did not carry it. `false` would be a claim nobody

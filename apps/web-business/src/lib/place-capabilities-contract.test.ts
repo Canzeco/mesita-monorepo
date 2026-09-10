@@ -7,7 +7,7 @@
 // its answer off the thing under test cannot fail.
 //
 // So: the labels below are typed out from Notion Main §11.2, and the column
-// names are typed out from `admin-web-set-place-rails`'s RAIL_COLUMNS. Two
+// names are typed out from `_shared/place-rails.ts`'s RAIL_COLUMNS. Two
 // packages, two runtimes, no import path between them — the restatement IS
 // the contract, exactly like `promotion-score.ts` and its Edge Function twin.
 import { describe, expect, it } from "vitest";
@@ -18,7 +18,7 @@ import {
   capabilityColumn,
 } from "./state-vocabulary";
 
-/** Verbatim from supabase/functions/admin-web-set-place-rails/index.ts:35-40.
+/** Verbatim from supabase/functions/_shared/place-rails.ts RAIL_COLUMNS.
  *  Keep in lockstep; a key here that the EF does not know is a 200 OK that
  *  writes nothing. */
 const RAIL_COLUMNS_TWIN = [

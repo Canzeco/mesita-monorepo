@@ -5,12 +5,23 @@ import type { MesitaConnectCountry } from "@/lib/connect-countries";
 import type { PlanKey } from "@/lib/business/plans";
 
 // ════════════════════════════════════════════════════════════════════════
-// Single-place console — a super-admin drives ANY place through the existing
-// business-* edge functions. The operator's JWT email is in super_admins, so
-// _shared/auth.ts (checkMembership / requireMembership / requireOwner) grants
-// access regardless of place_members. Two things need admin-specific EFs:
-// the place search below, and setting `plan` (business-web-update-place
-// rejects it — it's the paid door's field, so admin gets its own).
+// Single-place console. These actions serve BOTH readers of the place
+// screen: a super-admin (whose JWT email is in super_admins, so
+// _shared/auth.ts grants access to any place regardless of place_members)
+// and the operator who actually holds it.
+//
+// This file used to say only two things needed admin-specific EFs — the
+// place search and `plan`. That was wrong by six, and nobody could see it,
+// because a super-admin passes every guard: the one account that had ever
+// opened this console was in `super_admins`, so calls that 403 for a real
+// operator returned 200 for the only person testing (MESITA-1736).
+//
+// The rule, from this package's CLAUDE.md: everything the console does goes
+// through `business-web-*`; `admin-web-*` belongs to the Admin tab, which
+// `places/[id]/admin/page.tsx` refuses to a non-super-admin. Each `admin-web-*`
+// call still in here is a surface an operator can reach and cannot use.
+// `lib/business-console-doors.test.ts` names the remaining set with a verdict
+// each, fails on a new one, and fails again when a fixed one is left listed.
 // ════════════════════════════════════════════════════════════════════════
 
 // `code` is the EF's machine-readable failure (efInvoke already keeps it off
@@ -491,7 +502,7 @@ export async function reviewTicketReport(
   return { ok: true, data: r.data };
 }
 
-/** The four rail toggles' post-write truth, from admin-web-set-place-rails. */
+/** The four rail toggles' post-write truth, from business-web-set-place-rails. */
 export type PlaceRails = {
   mesita_pay: boolean;
   credits: boolean;
@@ -499,15 +510,27 @@ export type PlaceRails = {
   delivery: boolean;
 };
 
-// The Partner tab's rail toggles — the ONE writer for the acceptance intent
-// bits (places.mesita_pay_enabled · credits_enabled · pickup_orders_enabled ·
-// delivery_orders_enabled). One-caller ACL; never business-web. Engines still
-// gate each rail — a toggle records what the place OFFERS.
+// The Capabilities tab's rail toggles — the acceptance intent bits
+// (place_profiles.mesita_pay_enabled · credits_enabled ·
+// pickup_orders_enabled · delivery_orders_enabled). Engines still gate each
+// rail — a toggle records what the place OFFERS.
+//
+// This used to call the ADMIN door of the same name, which is
+// requireSuperAdmin: the tab renders for every held role but viewer, so every
+// switch 403'd for anyone outside `public.super_admins` — that is, everyone
+// but the single account that had ever opened the page (MESITA-1736).
+// `business-web-set-place-rails` is the operator's door onto the same shared
+// write; both are a guard plus `_shared/place-rails.ts`.
+//
+// (The old name is spelled out nowhere in this package on purpose:
+// `ef-caller-acl.test.ts` is a literal scan and cannot tell a mention from a
+// call, which is the right trade for a gate that catches a name traveling
+// into a component.)
 export async function setPlaceRails(
   placeId: string,
   rails: Partial<PlaceRails>,
 ): Promise<Result<PlaceRails>> {
-  const r = await efInvoke<{ rails: PlaceRails }>("admin-web-set-place-rails", {
+  const r = await efInvoke<{ rails: PlaceRails }>("business-web-set-place-rails", {
     placeId,
     ...rails,
   });

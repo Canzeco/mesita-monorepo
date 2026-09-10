@@ -80,7 +80,6 @@ const GRANDFATHERED_VIOLATIONS = new Set([
   "admin-web-set-place-active:web-business",
   "admin-web-set-place-enrichment:web-business",
   "admin-web-set-place-listed:web-business",
-  "admin-web-set-place-rails:web-business",
   "admin-web-set-place-verified:web-business",
   "admin-web-set-plan:web-business",
   "admin-web-suggest-places:web-business",

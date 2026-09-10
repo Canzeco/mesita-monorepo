@@ -66,13 +66,14 @@ import { ErrorNote } from "@/components/ErrorNote";
 import {
   effectiveStrikeCount,
   isMemberPlan,
+  isPromotingNow,
   membershipPillState,
+  placeOperatorPromotingLevel,
 } from "./promo-state";
 import { strategyForPlace } from "@/lib/business/strategies";
 import {
   OPERATOR_PROMOTING_LABEL,
   promotingLevelChip,
-  promotingLevelFromStrategy,
   requestCountChip,
   requestCountFromRow,
   stateBoolChip,
@@ -123,34 +124,6 @@ type Verification = {
   method: string | null;
 } | null;
 
-
-/** Does a guest get a discount here RIGHT NOW? The live read, not the badge. */
-function isPromotingNow(place: AdminPlace): boolean {
-  if (!isMemberPlan(place.plan)) return false;
-  const strategy = strategyForPlace({
-    welcome_free_rate: place.welcome_free_rate,
-    welcome_premium_rate: place.welcome_premium_rate,
-    free_rate: place.free_rate,
-    premium_rate: place.premium_rate,
-  });
-  if (strategy === null || strategy === "zero") return false;
-  const state = membershipPillState(place);
-  // Paused (strike 2) and forfeited (strike 3) both close the promo lane.
-  // `pending` still promotes — the place has promised a discount, it just
-  // hasn't honored its first check yet.
-  return state !== "paused" && state !== "forfeited";
-}
-
-/** Operator Promoted chip: 0 | 1 | 2 from the live lane + strategy. */
-export function placeOperatorPromotingLevel(place: AdminPlace): 0 | 1 | 2 {
-  const strategy = strategyForPlace({
-    welcome_free_rate: place.welcome_free_rate,
-    welcome_premium_rate: place.welcome_premium_rate,
-    free_rate: place.free_rate,
-    premium_rate: place.premium_rate,
-  });
-  return promotingLevelFromStrategy(isPromotingNow(place), strategy);
-}
 
 const PLAN_LABEL: Record<string, string> = {
   free: "Free",

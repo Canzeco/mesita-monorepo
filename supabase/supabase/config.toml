@@ -569,6 +569,12 @@ verify_jwt = true
 [functions.business-web-set-check-pin]
 verify_jwt = true
 
+# The operator's door onto the four acceptance intent bits — twin of
+# admin-web-set-place-rails, same body via _shared/place-rails.ts,
+# requireEditor instead of requireSuperAdmin (MESITA-1736).
+[functions.business-web-set-place-rails]
+verify_jwt = true
+
 # --- Admin (Supabase Auth + super_admins allowlist) ---
 #
 # Operators sign in as themselves (Google OAuth via the admin web).

@@ -1,17 +1,9 @@
 // Supabase Edge Function — admin-web-set-place-rails
 //
-// The one writer for the four acceptance INTENT BITS (Pato gates
-// 2026-08-29): place_profiles.mesita_pay_enabled · credits_enabled ·
-// pickup_orders_enabled · delivery_orders_enabled. These are the Partner
-// tab's rail toggles — the operator's "this place offers X", summed by the
-// Promotion score (their reader). Each rail's ENGINE still gates the rail
-// itself: Mesita Pay ANDs with visits_config.payCard + Stripe capability,
-// Credits with visits_config.payCredits, orders with the (unbuilt) order rail — a
-// toggle here never turns an engine on.
-//
-// Writes `table: "place_profiles"` through the place-doc door, NEVER profiles: the
-// profiles_update trigger predates these columns and silently drops them
-// (validateProfilePatch refuses them for the same reason).
+// The ADMIN door onto the four acceptance INTENT BITS. Its twin
+// `business-web-set-place-rails` is the operator's door; both are a guard
+// plus `_shared/place-rails.ts`, which holds the rail contract and the write
+// so the two consoles can never disagree about what a rail is (MESITA-1736).
 //
 // Body: { placeId | projectId, mesita_pay?, credits?, pickup?, delivery? } —
 //       booleans, at least one present.
@@ -19,31 +11,24 @@
 //       the post-write row, so the client reconciles from truth.
 //
 // Auth: caller's JWT email must be in public.super_admins.
+//
+// NO CALLER TODAY. web-business was its only one and now uses its own door;
+// web-admin never wrote these bits — it reads them (admin-web-search-places
+// projections, the State box) and has no rail switch. Kept rather than
+// deleted because MESITA-1736 scoped itself to unbreaking the operator, and
+// retiring a deployed door is its own decision with its own cloud step.
+// Whoever picks that up: the body is shared, so deleting this file and its
+// config.toml stanza costs nothing here — the work is the cloud delete.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { type PlaceProfilePatch, writePlace } from "../_shared/place-doc.ts";
-
-// Body key → place_profiles column. The closed set IS the contract: anything else in
-// the body is ignored, and an empty intersection is a 400.
-const RAIL_COLUMNS = {
-  mesita_pay: "mesita_pay_enabled",
-  credits: "credits_enabled",
-  pickup: "pickup_orders_enabled",
-  delivery: "delivery_orders_enabled",
-} as const;
-
-type RailKey = keyof typeof RAIL_COLUMNS;
-
-type Body = { placeId?: unknown; projectId?: unknown } & {
-  [K in RailKey]?: unknown;
-};
+import { type RailBody, readRailPlaceId, setPlaceRails } from "../_shared/place-rails.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -59,51 +44,11 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const bodyRes = await readJson<Body>(req);
+  const bodyRes = await readJson<RailBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const body = bodyRes.body;
 
-  const placeId = readPlaceIdAlias(body);
-  if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
+  const idRes = readRailPlaceId(bodyRes.body);
+  if (!idRes.ok) return idRes.response;
 
-  const patch: Record<string, boolean> = {};
-  for (const key of Object.keys(RAIL_COLUMNS) as RailKey[]) {
-    if (!(key in body)) continue;
-    const value = body[key];
-    if (typeof value !== "boolean") {
-      return json({ ok: false, error: `${key} must be a boolean` }, 400);
-    }
-    patch[RAIL_COLUMNS[key]] = value;
-  }
-  if (Object.keys(patch).length === 0) {
-    return json(
-      {
-        ok: false,
-        error: "Nothing to set — pass at least one of mesita_pay, credits, pickup, delivery.",
-      },
-      400,
-    );
-  }
-
-  const write = await writePlace(admin, {
-    table: "place_profiles",
-    mode: "update",
-    id: placeId,
-    patch: patch as PlaceProfilePatch,
-    select:
-      "mesita_pay_enabled, credits_enabled, pickup_orders_enabled, delivery_orders_enabled",
-    selectMode: "maybeSingle",
-  });
-  if (!write.ok) return json({ ok: false, error: write.error }, 500);
-  if (!write.row) return json({ ok: false, error: "Place not found" }, 404);
-
-  return json({
-    ok: true,
-    rails: {
-      mesita_pay: write.row.mesita_pay_enabled === true,
-      credits: write.row.credits_enabled === true,
-      pickup: write.row.pickup_orders_enabled === true,
-      delivery: write.row.delivery_orders_enabled === true,
-    },
-  });
+  return await setPlaceRails(admin, idRes.placeId, bodyRes.body);
 });
