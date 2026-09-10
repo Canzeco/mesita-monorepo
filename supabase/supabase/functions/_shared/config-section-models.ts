@@ -33,6 +33,7 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { jsonError, jsonOk } from "./http.ts";
 import { readAppConfig, writeAppConfig } from "./write-config.ts";
+import { appConfigMissing } from "./config-section-base.ts";
 import type { ConfigSection, SectionWriteContext } from "./config-section-base.ts";
 
 const PERPLEXITY_OPTIONS = [
@@ -125,7 +126,15 @@ export async function readModelsSection(
     section.readError ?? `${section.column}_read`,
   );
   if (!res.ok) return res.response;
-  return jsonOk({ config: res.row?.[section.column] ?? null });
+  // Same guard readSectionColumn uses, and the same 500 the old
+  // admin-web-get-models-config gave via .single() (MESITA-1728). Without it a
+  // missing singleton answered 200 with config:null, the console coerced that
+  // to DEFAULTS, and the operator saw a working page whose next Save failed.
+  // Unreachable today, since app_config id=1 is created by migration and
+  // asserted as a required survivor before admin_reset_database truncates, but
+  // the two readers should not disagree about it.
+  if (!res.row) return appConfigMissing();
+  return jsonOk({ config: res.row[section.column] ?? null });
 }
 
 export async function writeModelsSection(

@@ -56,6 +56,11 @@ jobs:
       # was removed earlier (MESITA-1093).
       # MESITA-1362: Intake Sourcing get/update EFs — unread after Map became
       # the Search/Add gate.
+      # MESITA-1728: the nineteen admin config functions MESITA-1724 collapsed
+      # into admin-web-get-config + admin-web-update-config. They were left OUT
+      # of this list on purpose for one cycle as a rollback window: deleting a
+      # folder does not touch the cloud, so reverting the client half alone
+      # would have restored the old behaviour. The window is closed now.
       # MESITA-1722: the three pre-monorepo ghosts. These never had a folder
       # or a config block in this repo at all, so nothing but this list can
       # reach them; their source is archived under retired/edge-functions/.
@@ -85,6 +90,25 @@ jobs:
             admin-web-review-refund-request
             business-web-request-refund
             business-web-update-cfdi
+            admin-web-get-controls-config
+            admin-web-get-discovery-config
+            admin-web-get-models-config
+            admin-web-get-ojo-config
+            admin-web-get-orders-config
+            admin-web-get-reservations-config
+            admin-web-get-rewards-config
+            admin-web-get-verification-config
+            admin-web-get-visits-config
+            admin-web-update-controls-config
+            admin-web-update-discovery-config
+            admin-web-update-enricher-config
+            admin-web-update-models-config
+            admin-web-update-ojo-config
+            admin-web-update-orders-config
+            admin-web-update-reservations-config
+            admin-web-update-rewards-config
+            admin-web-update-verification-config
+            admin-web-update-visits-config
           )
           listed=$(supabase functions list --project-ref yjalywfzdelacdzccpgb)
           echo "$listed"
