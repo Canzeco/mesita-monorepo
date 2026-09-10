@@ -1,9 +1,12 @@
 // Attaching the place summary to reservation rows.
 //
-// WHY THIS EXISTS: a PostgREST embed `place:place_profiles(...)` from `reservations`
-// is IMPOSSIBLE — the FK chain is two hops,
+// WHY THIS EXISTS: a PostgREST embed `place:place_profiles(...)` from
+// `reservation_tickets` is IMPOSSIBLE — the FK chain is two hops,
 //
-//   reservations.project_id → places.id → place_profiles.id  (units_place_fk)
+//   reservation_tickets.place_id → places.id → place_profiles.id  (units_place_fk)
+//
+// (The table was `reservations` and the column `project_id` when this was
+// written; both were renamed and the comment was not — MESITA-1718.)
 //
 // so the embed fails at runtime with "Could not find a relationship between
 // 'reservations' and 'place_profiles' in the schema cache" (hit live 2026-07-27 the
