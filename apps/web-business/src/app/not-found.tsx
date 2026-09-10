@@ -3,6 +3,7 @@
 // is no address bar to type your way out of.
 import Link from "next/link";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { SHELL_ROUTES } from "@/lib/console-routes";
 import { CTA_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,7 @@ export default function NotFound() {
           Browse places
         </Link>
         <Link
-          href="/"
+          href={SHELL_ROUTES.organization}
           className={cn(
             "border-border text-foreground rounded-full border px-5 py-2.5 text-sm font-semibold transition hover:opacity-80",
           )}
