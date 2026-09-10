@@ -22,18 +22,28 @@ async function loadPayingMesitaPayTicket(
   admin: SupabaseClient,
   ticketId: string,
 ) {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("visit_tickets")
-    .select("id, consumer_id, state, paid_method, project_id")
+    .select("id, consumer_id, state, paid_method, place_id")
     .eq("id", ticketId)
     .maybeSingle();
+  // MESITA-1712: this select named `project_id`, retired by
+  // 20260825005000_rename_project_id_to_place_id.sql, so every lookup errored
+  // 42703 — and destructuring `{ data }` alone turned that into `row = null`,
+  // which reads exactly like "already closed by the synchronous path". The
+  // backstop silently never fired and the webhook still answered 200.
+  // A failed lookup is not "not ours": throw, so Stripe retries instead of
+  // acking an event that stranded a ticket in `paying`.
+  if (error) {
+    throw new Error(`ticket_payment_intent_lookup: ${error.message}`);
+  }
   const row = data as
     | {
       id: string;
       consumer_id: string;
       state: string;
       paid_method: string | null;
-      project_id: string;
+      place_id: string;
     }
     | null;
   if (!row || row.state !== TICKET_STATE.paying || row.paid_method !== "mesita_pay") {
@@ -55,7 +65,7 @@ export async function handleTicketPaymentIntentSucceeded(
     admin,
     ticket.id,
     ticket.consumer_id,
-    ticket.project_id,
+    ticket.place_id,
     { paidMethod: "mesita_pay" },
   );
   if (!closed.ok) {

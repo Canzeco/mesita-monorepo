@@ -385,10 +385,15 @@ select is_empty(
 );
 
 select is_empty(
-  $$select 1 from information_schema.columns
-     where table_schema = 'public' and table_name = 'visit_tickets'
-       and column_name = 'ticket_code'$$,
-  'visit_tickets.ticket_code is gone (check_code stays)'
+  $$select c.relname
+      from pg_attribute a
+      join pg_class c on c.oid = a.attrelid
+      join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public'
+       and a.attname = 'ticket_code'
+       and a.attnum > 0 and not a.attisdropped
+       and c.relkind in ('r', 'p', 'v', 'm', 'f')$$,
+  'no public relation still has a ticket_code column (check_code stays) — schema-wide, matching its project_id twin from the same cutover'
 );
 
 select has_column(
@@ -446,8 +451,8 @@ select is_empty(
      where n.nspname = 'public'
        and a.attname = 'project_id'
        and a.attnum > 0 and not a.attisdropped
-       and c.relkind in ('r', 'p')$$,
-  'no public base table still has a project_id column'
+       and c.relkind in ('r', 'p', 'v', 'm', 'f')$$,
+  'no public relation still has a project_id column (views and matviews included: the 20260825 rename only touched base tables, so a view is where it would come back)'
 );
 
 select ok(
