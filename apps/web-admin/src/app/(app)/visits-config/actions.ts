@@ -1,8 +1,9 @@
 "use server";
 
 // Server actions for Visits Config. Thin wrappers over the admin-web-* Edge
-// Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-visits-config on app_config.visits_config. WHOLE-BLOB
+// Functions via the Result-style efInvoke (never throws). Backed by the
+// `visits` section of admin-web-get/update-config, on
+// app_config.visits_config. WHOLE-BLOB
 // save: the knobs are a related set — the preselected tip must be one of the
 // offered presets, and the staff backoff ceiling can never sit below its base
 // interval. No client ever touches the DB.
@@ -87,7 +88,9 @@ type GetResult =
   | { ok: false; error: string };
 
 export async function getVisitsConfig(): Promise<GetResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-get-visits-config", {});
+  const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
+    section: "visits",
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -103,7 +106,8 @@ type UpdateResult =
 export async function updateVisitsConfig(
   config: VisitsConfig,
 ): Promise<UpdateResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-update-visits-config", {
+  const r = await efInvoke<ConfigPayload>("admin-web-update-config", {
+    section: "visits",
     config,
   });
   if (!r.ok) return { ok: false, error: r.error };

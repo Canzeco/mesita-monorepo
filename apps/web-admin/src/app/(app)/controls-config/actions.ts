@@ -1,8 +1,9 @@
 "use server";
 
 // Server actions for Controls Config. Thin wrappers over the admin-web-* Edge
-// Functions via the Result-style efInvoke (never throws). Backed by
-// admin-web-get/update-controls-config on app_config.controls_config.
+// Functions via the Result-style efInvoke (never throws). Backed by the
+// `controls` section of admin-web-get/update-config, on
+// app_config.controls_config.
 // WHOLE-BLOB save: the knobs are a related set — the ceiling can never sit
 // below the floor, the default hold has to be a value inside the window it is
 // the default for, and Credits may never expire before they mature, which ties
@@ -69,7 +70,9 @@ type GetResult =
   | { ok: false; error: string };
 
 export async function getControlsConfig(): Promise<GetResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-get-controls-config", {});
+  const r = await efInvoke<ConfigPayload>("admin-web-get-config", {
+    section: "controls",
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return {
     ok: true,
@@ -85,7 +88,8 @@ type UpdateResult =
 export async function updateControlsConfig(
   config: ControlsConfig,
 ): Promise<UpdateResult> {
-  const r = await efInvoke<ConfigPayload>("admin-web-update-controls-config", {
+  const r = await efInvoke<ConfigPayload>("admin-web-update-config", {
+    section: "controls",
     config,
   });
   if (!r.ok) return { ok: false, error: r.error };

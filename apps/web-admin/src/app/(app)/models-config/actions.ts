@@ -4,8 +4,9 @@
 // Functions via the Result-style efInvoke (never throws) — same contract as the
 // Memo / Atlas config actions.
 //
-// Backed by admin-web-get-models-config / admin-web-update-models-config, which
-// read and write the models_config jsonb blob on the public.app_config
+// Backed by the `models` section of admin-web-get-config /
+// admin-web-update-config, which read and write the models_config jsonb blob
+// on the public.app_config
 // singleton. Live binding (MESITA-941): readers bind supabase / enricher.model /
 // lineup / memo.* via _shared/models-config.ts; enricher.perplexity in the blob
 // is still staged (Intaker uses atlas_perplexity_preset). No client ever
@@ -23,8 +24,8 @@ type GetModelsConfigResult =
 
 export async function getModelsConfig(): Promise<GetModelsConfigResult> {
   const r = await efInvoke<{ config: unknown }>(
-    "admin-web-get-models-config",
-    {},
+    "admin-web-get-config",
+    { section: "models" },
   );
   if (!r.ok) return { ok: false, error: r.error };
   // The EF returns { config: blob | null }; coerce merges null/partial → defaults.
@@ -39,8 +40,8 @@ export async function updateModelsConfig(
   config: ModelsConfig,
 ): Promise<UpdateModelsConfigResult> {
   const r = await efInvoke<{ config: unknown }>(
-    "admin-web-update-models-config",
-    { config },
+    "admin-web-update-config",
+    { section: "models", config },
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: coerceModelsConfig(r.data.config) };
