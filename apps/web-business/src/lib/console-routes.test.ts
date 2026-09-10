@@ -11,6 +11,7 @@ import {
   placeIdFromPathname,
   placesHref,
   withOrg,
+  withQuery,
 } from "./console-routes";
 import { PLACE_TABS, placeTabHref } from "./place-tabs";
 
@@ -71,6 +72,44 @@ describe("placeIdFromPathname — the nav's Places / Place split", () => {
   });
   it("is still null two segments deep", () => {
     expect(placeIdFromPathname("/places/p-x/profile/basics")).toBeNull();
+  });
+});
+
+describe("withQuery — the root forwards its whole query", () => {
+  // The console root redirects to the Organization screen. Stripe stores an
+  // Account Link's return_url when the link is MINTED, so a link created before
+  // MESITA-1727 shipped still points at `/?org=<id>&connect=return`. If that
+  // forward drops the query, the operator finishes Stripe onboarding on a
+  // screen that resolves the wrong organization and never shows the return
+  // notice. This is the assertion that stops it.
+  const ORG = "/organization";
+
+  it("is a no-op with nothing to carry", () => {
+    expect(withQuery(ORG, {})).toBe(ORG);
+    expect(withQuery(ORG, { org: undefined })).toBe(ORG);
+  });
+
+  it("carries the Stripe return exactly as Stripe will send it", () => {
+    expect(withQuery(ORG, { org: "org-9", connect: "return" })).toBe(
+      "/organization?org=org-9&connect=return",
+    );
+    expect(withQuery(ORG, { org: "org-9", connect: "refresh" })).toBe(
+      "/organization?org=org-9&connect=refresh",
+    );
+  });
+
+  it("keeps every value of a repeated param, in order", () => {
+    // Next types a repeated `?org=a&org=b` as an array. Keeping only the first
+    // would quietly change what the destination reads.
+    expect(withQuery(ORG, { org: ["a", "b"] })).toBe(
+      "/organization?org=a&org=b",
+    );
+  });
+
+  it("escapes what belongs in a query string", () => {
+    expect(withQuery(ORG, { note: "a b&c=d" })).toBe(
+      "/organization?note=a+b%26c%3Dd",
+    );
   });
 });
 

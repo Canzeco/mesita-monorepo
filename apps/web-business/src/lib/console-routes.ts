@@ -19,9 +19,20 @@
 // tree that used to squat on `/place/<id>` is deleted (MESITA-1564); that path
 // is now a permanent redirect here — see `next.config.ts`.
 
+// Organization has its OWN address (MESITA-1727). It used to be `/`, which
+// meant the app root and a screen were the same URL: `/` could never route
+// anything, because it already rendered something. Nine sites conflated the
+// two — both error boundaries' retry target, the breadcrumb's special case,
+// the accept-org-invite landing, the nav pill, two wordmarks — and every one
+// of them meant "the Organization screen", not "home".
+//
+// `/` is a TEMPORARY redirect here now, never a permanent one: a 308 would be
+// cached by browsers forever and burn the path for the follow-up that makes
+// `/` a real resolver (no organizations -> create one; one place -> that
+// place; several -> the portfolio).
 export const SHELL_ROUTES = {
   account: "/account",
-  organization: "/",
+  organization: "/organization",
   places: "/places",
 } as const;
 
@@ -71,6 +82,31 @@ export function placeIdFromPathname(pathname: string): string | null {
   // segment of its own — it IS /places/<id>.
   const match = pathname.match(/^\/places\/([^/]+)(?:\/[^/]+)?\/?$/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Re-attach a page's whole query string to another path.
+ *
+ *  Used by the console root, which forwards to the Organization screen. The
+ *  query is not decoration there: Stripe stores an Account Link's return_url
+ *  when the link is minted, so a link created before MESITA-1727 shipped still
+ *  points at `/?org=<id>&connect=return`. Drop the query and the operator
+ *  finishes Stripe onboarding on a screen that knows neither which
+ *  organization they onboarded nor that they just came back.
+ *
+ *  Repeated keys are preserved in order, because Next types a repeated param
+ *  as an array and dropping the extras would silently change what the
+ *  destination reads. */
+export function withQuery(
+  href: string,
+  params: Record<string, string | string[] | undefined>,
+): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") qs.set(key, value);
+    else if (Array.isArray(value)) for (const v of value) qs.append(key, v);
+  }
+  const query = qs.toString();
+  return query ? `${href}?${query}` : href;
 }
 
 /** Carry the active organization through a link. Organizations are real

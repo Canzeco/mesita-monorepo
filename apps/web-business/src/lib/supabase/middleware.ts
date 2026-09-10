@@ -28,13 +28,24 @@ export const PROTECTED_PREFIXES = [
   // Every console screen reads real data through business-web EFs now, so
   // all four are behind the signed-out wall. Nothing in the shell is mock
   // any more.
+  //
+  // Organization is listed for the first time (MESITA-1727). It could not be
+  // before: its address was `/`, and these are PREFIX matches, so listing `/`
+  // would have gated every route in the app including /signin. Now that the
+  // screen has a name, it gets the same edge check as its siblings — which is
+  // what made the sentence above true rather than aspirational.
+  //
+  // `/` itself stays OUT, and stays out deliberately: it is a redirect that
+  // reads nothing and renders nothing, and its destination is walled. Same
+  // reasoning as `/add`.
+  "/organization",
   "/places",
   "/account",
 ];
 
 // Routes where a signed-in visitor should be bounced through
-// /auth/post-signin. `/` hosts the console shell now, so the auth surface
-// moved to /signin and the bounce follows it there. A signed-in visitor
+// /auth/post-signin. `/` is inside the console shell, so the auth surface
+// lives at /signin and the bounce follows it there. A signed-in visitor
 // never needs to see sign-in.
 const SIGNED_IN_BOUNCE = new Set<string>(["/signin"]);
 export { SIGNED_IN_BOUNCE };

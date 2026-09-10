@@ -15,11 +15,23 @@ describe("middleware contract", () => {
     expect(SIGNED_IN_BOUNCE.has("/signin")).toBe(true);
   });
   it("gates every console screen that reads real data", () => {
+    // Organization is in this list for the first time (MESITA-1727). While its
+    // address was `/` it could not be: these are PREFIX matches, so listing `/`
+    // would have gated the whole app, /signin included. The screen reads the
+    // Stripe account, the members and the legal identity, so it belongs here.
+    expect(shouldGate(SHELL_ROUTES.organization)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.places)).toBe(true);
     expect(shouldGate(SHELL_ROUTES.account)).toBe(true);
     // Place — the fourth screen. It reads one org's holdings, so it sits
     // behind the same wall the list does.
     expect(shouldGate("/places/abc")).toBe(true);
+  });
+  it("leaves the root ungated — it renders nothing to protect", () => {
+    // `/` forwards to the Organization screen and reads no data of its own.
+    // Gating it would bounce a signed-out visitor through sign-in only to
+    // reach a redirect. Its destination carries the wall, and so does
+    // (shell)/layout.tsx, which is the real boundary either way.
+    expect(shouldGate("/")).toBe(false);
   });
   it("does not gate routes that no longer exist", () => {
     expect(shouldGate("/central")).toBe(false);

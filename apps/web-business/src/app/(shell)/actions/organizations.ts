@@ -14,6 +14,7 @@ import {
   apiUpdateOrgMemberRole,
   type OrgRole,
 } from "@/lib/api/organizations";
+import { SHELL_ROUTES } from "@/lib/console-routes";
 import { isConnectEntityType } from "@/lib/connect-entity-types";
 import { errMsg } from "@/lib/utils";
 
@@ -126,8 +127,11 @@ export async function connectPaymentsAction(
     ({ url, mock } = await apiStartPaymentOnboarding(supabase, {
       orgId,
       country,
-      returnUrl: `${origin}/?org=${orgId}&connect=return`,
-      refreshUrl: `${origin}/?org=${orgId}&connect=refresh`,
+      // Stripe stores these when the Account Link is minted, so they must
+      // name the Organization screen's real address. `/` still forwards the
+      // query for links minted before MESITA-1727 shipped.
+      returnUrl: `${origin}${SHELL_ROUTES.organization}?org=${orgId}&connect=return`,
+      refreshUrl: `${origin}${SHELL_ROUTES.organization}?org=${orgId}&connect=refresh`,
       ...(entityType ? { entityType } : {}),
     }));
   } catch (e) {
