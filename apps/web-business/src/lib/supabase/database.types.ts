@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_reset_preserve: {
@@ -2544,6 +2569,7 @@ export type Database = {
           check_code: string | null
           consumer_id: string
           created_at: string
+          credits_applied_cents: number
           currency: string
           discount_cents: number | null
           discount_percent: number | null
@@ -2602,6 +2628,7 @@ export type Database = {
           check_code?: string | null
           consumer_id: string
           created_at?: string
+          credits_applied_cents?: number
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
@@ -2660,6 +2687,7 @@ export type Database = {
           check_code?: string | null
           consumer_id?: string
           created_at?: string
+          credits_applied_cents?: number
           currency?: string
           discount_cents?: number | null
           discount_percent?: number | null
@@ -2871,6 +2899,15 @@ export type Database = {
           request_count: number
         }[]
       }
+      apply_ticket_credits: {
+        Args: {
+          p_amount_cents: number
+          p_consumer_id: string
+          p_organization_id: string
+          p_ticket_id: string
+        }
+        Returns: Json
+      }
       atlas_super_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
       cancel_credit_gift: {
@@ -2926,9 +2963,18 @@ export type Database = {
         }
         Returns: Json
       }
-      find_user_id_by_phone: { Args: { phone_digits: string }; Returns: string }
       generate_consumer_code: { Args: never; Returns: string }
       get_credit_liability: { Args: never; Returns: Json }
+      get_credit_spend_report: {
+        Args: never
+        Returns: {
+          organization_id: string
+          organization_name: string
+          paid_method: string
+          spend_cents: number
+          spend_count: number
+        }[]
+      }
       is_place_member: { Args: { p_project_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       mark_place_claim_reviewed: {
@@ -2952,15 +2998,7 @@ export type Database = {
           run_id: string
         }[]
       }
-      place_enrich_events_latest: {
-        Args: { p_place_ids: string[] }
-        Returns: {
-          created_at: string
-          place_id: string
-          state: string
-          step_name: string
-        }[]
-      }
+      org_mesita_pay_enabled: { Args: { p_org_id: string }; Returns: boolean }
       queue_due_place_enrichments: { Args: never; Returns: number }
       redeem_credit_gift: {
         Args: { p_claimer_id: string; p_code_hash: string }
@@ -3176,6 +3214,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       content_state: ["queued", "generating", "ready", "failed"],
