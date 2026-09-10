@@ -40,7 +40,7 @@ type Body = {
 
 type ReportRow = {
   id: string;
-  project_id: string;
+  place_id: string;
   state: string;
 };
 
@@ -91,7 +91,11 @@ Deno.serve(async (req) => {
 
   const reportRes = await admin
     .from("ticket_reports")
-    .select("id, project_id, state")
+    // MESITA-1712: `project_id` was retired by
+    // 20260825005000_rename_project_id_to_place_id.sql, so this select errored
+    // 42703 and every confirm/dismiss returned ok:false — operator triage of
+    // guest ticket reports was dead, and the ghost-partner hold unsettable.
+    .select("id, place_id, state")
     .eq("id", reportId)
     .maybeSingle();
   if (reportRes.error) {
@@ -117,7 +121,7 @@ Deno.serve(async (req) => {
     const update = await writePlace(admin, {
       table: "places",
       mode: "update",
-      id: report.project_id,
+      id: report.place_id,
       patch: { reward_lane_pending_review_at: now },
       select: "id, reward_lane_pending_review_at",
     });
@@ -147,7 +151,7 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     report: { id: reportId, state: (mark.data as ReportRow).state },
-    placeId: report.project_id,
+    placeId: report.place_id,
     hold: action === "confirm" ? now : null,
   });
 });
