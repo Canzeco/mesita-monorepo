@@ -112,6 +112,43 @@ describe("the unsaved-edits guard reaches the rail", () => {
     expect(provider).toContain("<PlaceNavBridge />");
   });
 
+  it("never guards the row you are already on", () => {
+    // That click navigates nowhere, so a discard prompt for it is an offer to
+    // throw work away for nothing. The deleted PlaceTabs skipped the guard on
+    // the active tab; losing that on the way into the rail was a regression.
+    expect(readCode("components/console/Sidebar.tsx")).toContain(
+      "if (!active) onGuardedNavigate?.(href, e);",
+    );
+  });
+
+  it("closes the drawer even when the guard swallows the click", () => {
+    // The discard dialog renders inside `main`, behind the drawer's scrim. An
+    // early return here leaves the rail covering the question.
+    const rail = readCode("components/console/Sidebar.tsx");
+    const onClick = rail.slice(rail.indexOf("onClick={(e) => {"));
+    const body = onClick.slice(0, onClick.indexOf("}}"));
+    expect(body).not.toContain("return");
+    expect(body).toContain("onNavigate?.();");
+  });
+
+  it("the wordmarks are guarded too — same destination, same rule", () => {
+    // Both wordmarks go to Organization, and the Organization ROW is guarded.
+    // One of them silently discarding edits while the other asks is worse than
+    // either rule applied consistently.
+    expect(readCode("components/console/Sidebar.tsx")).toContain(
+      "guardNav?.(href(SHELL_ROUTES.organization), e)",
+    );
+    expect(readCode("components/console/AppShell.tsx")).toContain("guardNav?.(");
+  });
+
+  it("the provider wraps the shell, so the topbar can see the guard", () => {
+    // A hook cannot see a provider its own component renders.
+    expect(readCode("components/console/AppShell.tsx")).not.toContain(
+      "<OpenPlaceProvider>",
+    );
+    expect(readCode("app/(shell)/layout.tsx")).toContain("<OpenPlaceProvider>");
+  });
+
   it("every rail row routes through the guard when one exists", () => {
     const rail = readCode("components/console/Sidebar.tsx");
     const rows = rail.match(/<NavRow/g) ?? [];

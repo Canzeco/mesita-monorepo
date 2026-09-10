@@ -16,6 +16,7 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/console/AppShell";
+import { OpenPlaceProvider } from "@/components/console/OpenPlace";
 import { SHELL_GUTTER } from "@/lib/ui-classes";
 import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -57,20 +58,25 @@ export default async function ShellLayout({
     // to be there instantly, and a flashing skeleton rail is worse than a
     // quiet one.
     <Suspense fallback={<div className="bg-background fixed inset-0" />}>
-      <AppShell
-        organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
-        defaultCollapsed={collapsed}
-      >
+      {/* The provider wraps the SHELL, not sits inside it: the mobile
+          wordmark lives in AppShell's own topbar and needs the guard too, and
+          a hook cannot see a provider its own component renders. */}
+      <OpenPlaceProvider>
+        <AppShell
+          organizations={organizations.map((o) => ({ id: o.id, name: o.name }))}
+          defaultCollapsed={collapsed}
+        >
         {/* FLUID: no max-width (MESITA-1558). Two things depend on that and
             neither is cosmetic — a full-bleed child cancels SHELL_GUTTER with
             SHELL_BLEED and only reaches the column edge if nothing caps it, and
             the place sections only earn a third column when the width exists to
             hold one. Readability is protected per-element (FORM_COLUMN_CLASS),
             not by squeezing the whole console. */}
-        <div className={`flex w-full flex-col gap-4 py-4 sm:py-8 ${SHELL_GUTTER}`}>
-          {children}
-        </div>
-      </AppShell>
+          <div className={`flex w-full flex-col gap-4 py-4 sm:py-8 ${SHELL_GUTTER}`}>
+            {children}
+          </div>
+        </AppShell>
+      </OpenPlaceProvider>
     </Suspense>
   );
 }

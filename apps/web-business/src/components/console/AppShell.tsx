@@ -37,7 +37,7 @@ import { Menu, X } from "lucide-react";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { Sidebar } from "@/components/console/Sidebar";
 import { ConsoleHeader } from "@/components/console/ConsoleHeader";
-import { OpenPlaceProvider } from "@/components/console/OpenPlace";
+import { useOpenPlaceGuard } from "@/components/console/OpenPlace";
 import { SHELL_ROUTES, withOrg } from "@/lib/console-routes";
 import { TINY_LABEL_CLASS } from "@/lib/ui-classes";
 import { useActiveOrg, type ChromeOrg } from "@/lib/use-active-org";
@@ -60,6 +60,10 @@ export function AppShell({
   // way — dropping it on a single link is enough to switch a multi-org
   // operator's context out from under them.
   const { activeOrgId } = useActiveOrg(organizations);
+  // The mobile wordmark is a route out of the place screen exactly like the
+  // rail's rows are, so it answers to the same guard. OpenPlaceProvider is
+  // mounted by the LAYOUT rather than here, so this hook can see it.
+  const guardNav = useOpenPlaceGuard();
   // Two independent pieces of state, easy to confuse: `open` is the mobile
   // drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
   // collapses — at that size the whole rail is already hidden by default.
@@ -121,8 +125,7 @@ export function AppShell({
   };
 
   return (
-    <OpenPlaceProvider>
-      <div className="fixed inset-0 flex overflow-clip">
+    <div className="fixed inset-0 flex overflow-clip">
         {/* Desktop rail — visible lg+. The column owns the width; the rail fills it. */}
         <div
           className={
@@ -201,6 +204,9 @@ export function AppShell({
             </button>
             <Link
               href={withOrg(SHELL_ROUTES.organization, activeOrgId)}
+              onClick={(e) =>
+                guardNav?.(withOrg(SHELL_ROUTES.organization, activeOrgId), e)
+              }
               className="inline-flex items-center gap-2 truncate"
             >
               <MesitaLogo variant="horizontal" className="h-5 w-auto" />
@@ -214,7 +220,6 @@ export function AppShell({
             {children}
           </main>
         </div>
-      </div>
-    </OpenPlaceProvider>
+    </div>
   );
 }

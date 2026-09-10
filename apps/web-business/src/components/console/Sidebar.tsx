@@ -107,10 +107,15 @@ function NavRow({
     <Link
       href={href}
       onClick={(e) => {
-        // Ask before discarding, THEN close the drawer — closing first would
-        // dismiss the rail out from under a dialog the person still has to
-        // answer.
-        if (onGuardedNavigate?.(href, e)) return;
+        // NEVER guard the row you are already on. That click navigates
+        // nowhere, so offering "discard your edits and leave" for it is an
+        // offer to throw work away for nothing, and a person clicking the view
+        // they are looking at is not trying to leave it. The deleted PlaceTabs
+        // skipped the guard on the active tab for exactly this reason.
+        if (!active) onGuardedNavigate?.(href, e);
+        // Close the drawer either way. The discard dialog renders inside
+        // `main`, behind the drawer's scrim, so leaving the rail up buries the
+        // question the person now has to answer.
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}
@@ -189,7 +194,14 @@ export function Sidebar({
     <aside className="bg-sidebar text-sidebar-foreground border-sidebar-border flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 pb-3">
       <Link
         href={href(SHELL_ROUTES.organization)}
-        onClick={onNavigate}
+        // Guarded like every other route out of here. The Organization ROW is
+        // two lines down and goes to the same place; one of them silently
+        // discarding unsaved edits while the other asks is worse than either
+        // rule applied consistently.
+        onClick={(e) => {
+          guardNav?.(href(SHELL_ROUTES.organization), e);
+          onNavigate?.();
+        }}
         aria-label="Mesita business console"
         title={collapsed ? "Mesita business" : undefined}
         className={cn(
