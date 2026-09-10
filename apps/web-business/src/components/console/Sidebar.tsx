@@ -49,7 +49,11 @@ import {
 import { cn } from "@/lib/utils";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { useOpenPlace, useOpenPlaceGuard } from "@/components/console/OpenPlace";
+import {
+  useOpenPlace,
+  useOpenPlaceGuard,
+  usePortfolioVersion,
+} from "@/components/console/OpenPlace";
 import { listRailPlacesAction } from "@/app/(shell)/actions/places";
 import {
   SHELL_ROUTES,
@@ -80,6 +84,10 @@ const ROW_REST =
 // rail where the console's foreground appears as a fill, which is what makes
 // "you are here" survive a glance down a light column.
 const ROW_ACTIVE = "bg-foreground text-background font-semibold";
+// The open place's own row: it heads the views below it, so it goes bold
+// without a fill. Exactly one filled pill on screen at a time.
+const ROW_HEADING =
+  "text-foreground font-semibold hover:bg-sidebar-accent";
 
 // Profile is FileText, not a person: Account is the person in this rail, and
 // two identical glyphs a few rows apart is how a menu starts reading as mush.
@@ -98,6 +106,9 @@ function NavRow({
   collapsed,
   /** The open place's views, and ONLY those. Nothing else in the rail indents. */
   inset = false,
+  /** This row owns the group below it. Reads as a heading, not a destination
+   *  you are currently at — the pill belongs to one of its views. */
+  heading = false,
   onNavigate,
   onGuardedNavigate,
   title,
@@ -108,6 +119,7 @@ function NavRow({
   active: boolean;
   collapsed: boolean;
   inset?: boolean;
+  heading?: boolean;
   onNavigate?: () => void;
   onGuardedNavigate?: (href: string, e: { preventDefault: () => void }) => boolean;
   title?: string;
@@ -129,7 +141,7 @@ function NavRow({
       title={collapsed ? label : title}
       className={cn(
         ROW_BASE,
-        active ? ROW_ACTIVE : ROW_REST,
+        active ? ROW_ACTIVE : heading ? ROW_HEADING : ROW_REST,
         collapsed ? "justify-center px-0 py-2" : inset && "pl-8",
       )}
     >
@@ -177,6 +189,7 @@ export function Sidebar({
   const guardNav = useOpenPlaceGuard();
   const openPlaceId = placeIdFromPathname(pathname);
   const onPlacesList = pathname === SHELL_ROUTES.places;
+  const portfolioVersion = usePortfolioVersion();
 
   // The org's places, fetched through a server action rather than by the shell
   // layout — a layout cannot read searchParams, so it could only ever have
@@ -200,8 +213,10 @@ export function Sidebar({
     return () => {
       live = false;
     };
-  }, [activeOrgId]);
-  const places = fetched?.orgId === activeOrgId ? fetched.rows : [];
+    // portfolioVersion is the claim/release signal — see PlaceHoldButton.
+  }, [activeOrgId, portfolioVersion]);
+  const loaded = fetched?.orgId === activeOrgId;
+  const places = loaded ? fetched.rows : [];
 
   const href = (to: string) => withOrg(to, activeOrgId);
 
@@ -214,7 +229,13 @@ export function Sidebar({
   // A place you have open that this org does not hold — you reached it from
   // All Places. It is not in the list, so it gets its own break rather than
   // being silently missing from a rail that is showing you its views.
+  //
+  // GATED ON `loaded`. While the list is in flight `places` is empty, so an
+  // owned place would read as foreign, render its own standalone section, and
+  // then jump into the portfolio the moment the fetch lands — a visible
+  // shuffle on every place-page load. Unknown is not the same as foreign.
   const openIsForeign =
+    loaded &&
     openPlace != null &&
     openPlace.id === openPlaceId &&
     !places.some((p) => p.id === openPlace.id);
@@ -338,12 +359,19 @@ export function Sidebar({
             <SectionBreak label="Org Places" collapsed={collapsed} />
             {places.map((place) => (
               <div key={place.id} className="contents">
+                {/* The place row is NEVER the active pill while its views
+                    are showing. Its href is Profile's href, so pilling both
+                    would paint two solid rows and two aria-current markers for
+                    one location — and "you are here" stops meaning one row.
+                    Open, it reads as the heading of its own group; closed, it
+                    is an ordinary row like any other. */}
                 <NavRow
                   href={withOrg(`/places/${encodeURIComponent(place.id)}`, activeOrgId)}
                   label={place.name}
                   title={place.name}
                   Icon={Store}
-                  active={openPlaceId === place.id && activeTab === "profile"}
+                  active={false}
+                  heading={openPlaceId === place.id}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
                   onGuardedNavigate={guardNav ?? undefined}

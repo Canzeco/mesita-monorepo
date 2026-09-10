@@ -219,6 +219,38 @@ describe("the rail is flat, with exactly one exception", () => {
     expect(r_hasGuard(rail())).toBe(true);
   });
 
+  it("paints exactly one filled pill for one location", () => {
+    // The place row's href IS Profile's href. Pilling both would put two
+    // solid rows and two aria-current markers on one location, and "you are
+    // here" stops meaning one row. Open, the place row is a heading.
+    const r = rail();
+    expect(r).toContain("active={false}");
+    expect(r).toContain("heading={openPlaceId === place.id}");
+    expect(r).toContain("ROW_HEADING");
+    // A heading is bold, never filled — a fill is what `active` means.
+    const h = r.slice(r.indexOf("const ROW_HEADING"));
+    expect(h.slice(0, h.indexOf(";"))).not.toContain("bg-foreground");
+  });
+
+  it("never calls an unloaded list foreign", () => {
+    // While the fetch is in flight `places` is empty, so an owned place would
+    // render as a standalone foreign section and then jump into the portfolio
+    // when the list lands. Unknown is not the same as foreign.
+    const r = rail();
+    const block = r.slice(r.indexOf("const openIsForeign"));
+    expect(block.slice(0, block.indexOf(";"))).toContain("loaded &&");
+  });
+
+  it("refetches the portfolio when a claim or release lands", () => {
+    // revalidatePath refreshes the places TABLE but cannot re-run a client
+    // effect, so without this a place you just claimed stays off the rail
+    // until a reload.
+    expect(rail()).toContain("portfolioVersion");
+    expect(readCode("components/console/PlaceHoldButton.tsx")).toContain(
+      "bumpPortfolio()",
+    );
+  });
+
   it("renders exactly the views the viewer may open", () => {
     // visibleTabs() returns 1 to 4. A greyed-out row for a view you cannot
     // open is a worse answer than no row.

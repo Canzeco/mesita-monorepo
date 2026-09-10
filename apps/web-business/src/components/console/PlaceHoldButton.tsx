@@ -5,9 +5,10 @@
 // Both lists and the Place screen offer the same two moves, so they share
 // this component and cannot drift apart: the same wording, the same
 // pending copy, the same failure surfaced in the same place.
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { GHOST_PILL_BUTTON_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { useBumpPortfolio } from "@/components/console/OpenPlace";
 import {
   claimPlaceAction,
   releasePlaceAction,
@@ -34,6 +35,22 @@ export function PlaceHoldButton({
     action === "claim" ? claimPlaceAction : releasePlaceAction,
     INITIAL,
   );
+
+  // Tell the rail the portfolio moved. `revalidatePath` in the action already
+  // refreshes this TABLE, but the rail lists the places from its own client
+  // fetch, and a server revalidation cannot re-run a client effect — so a
+  // place you just claimed would stay off the rail until a reload.
+  //
+  // The signal is the pending edge, not `state`: a successful claim returns
+  // `{ error: null }`, which is byte-identical to the initial state, so there
+  // is nothing in `state` to watch. Pending going true-then-false IS the
+  // completion, and a failed action bumps a harmless refetch.
+  const bumpPortfolio = useBumpPortfolio();
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) bumpPortfolio();
+    wasPending.current = pending;
+  }, [pending, bumpPortfolio]);
 
   if (!allowed) return null;
 
