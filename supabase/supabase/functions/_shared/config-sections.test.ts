@@ -407,6 +407,19 @@ Deno.test("an unknown section is a 400 on both doors, never a silent no-op", asy
   assertEquals(row.updated_by, null, "an unknown section still touched the row");
 });
 
+Deno.test("an inherited key is unknown too, not a handler with no column", async () => {
+  // `CONFIG_SECTIONS["__proto__"]` is a truthy object. A `if (!section)` guard
+  // would hand it to the generic read, which would build a select on
+  // `undefined` and answer 500 on a PostgREST parse error instead of saying
+  // which section names are real.
+  const row = seedRow();
+  for (const key of ["__proto__", "constructor", "toString"]) {
+    const res = await readConfigSection(fakeAdmin(row), key);
+    assertEquals(res.status, 400, `${key} was not rejected as unknown`);
+    assertStringIncludes(String((await body(res)).error), "unknown config section");
+  }
+});
+
 Deno.test("every section declares an app_config column and a normalizer", () => {
   for (const key of CONFIG_SECTION_KEYS) {
     const section = CONFIG_SECTIONS[key];

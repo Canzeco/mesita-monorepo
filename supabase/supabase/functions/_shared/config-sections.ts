@@ -118,12 +118,23 @@ function unknownSection(key: string): Response {
   );
 }
 
+/**
+ * OWN properties only. `CONFIG_SECTIONS["__proto__"]` and
+ * `CONFIG_SECTIONS["constructor"]` are truthy inherited objects, so a plain
+ * `if (!section)` would wave them through to a handler with no `column` and
+ * answer 500 on a malformed PostgREST select instead of naming the real
+ * problem.
+ */
+function lookup(key: string): ConfigSection | null {
+  return Object.hasOwn(CONFIG_SECTIONS, key) ? CONFIG_SECTIONS[key] : null;
+}
+
 /** `{ section: "<key>" }` on admin-web-get-config. */
 export function readConfigSection(
   admin: SupabaseClient,
   key: string,
 ): Promise<Response> {
-  const section = CONFIG_SECTIONS[key];
+  const section = lookup(key);
   if (!section) return Promise.resolve(unknownSection(key));
   return (section.read ?? readSectionColumn)(admin, section);
 }
@@ -133,7 +144,7 @@ export function writeConfigSection(
   ctx: SectionWriteContext,
   key: string,
 ): Promise<Response> {
-  const section = CONFIG_SECTIONS[key];
+  const section = lookup(key);
   if (!section) return Promise.resolve(unknownSection(key));
   return (section.write ?? writeSectionColumn)(ctx, section);
 }
