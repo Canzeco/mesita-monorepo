@@ -8,6 +8,7 @@
 //
 // Every call is a business-web EF, so an ordinary business account works
 // here — nothing on this path needs super-admin.
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PaymentAccountState } from "@/lib/model/types";
 import { invokeEF } from "./_invoke";
@@ -87,7 +88,18 @@ export type ConsolePlace = {
   credits?: boolean;
 };
 
-export async function apiListOrganizations(
+/** REQUEST-CACHED (MESITA-1729). The shell layout lists organizations for the
+ *  rail's switcher, and then organization/page.tsx, places/page.tsx,
+ *  account/page.tsx and the pool branch of places/[id]/layout.tsx each list
+ *  them again for their own body — a second full Edge Function round trip in
+ *  the same render. invokeEF is a supabase-js POST, so Next's fetch dedupe
+ *  never saw it. cache() is the same idiom lib/place-view.ts already uses for
+ *  the two place loaders.
+ *
+ *  Keyed on `client`, which is now itself request-cached in lib/supabase/server,
+ *  so every caller in one request presents the same instance and shares the
+ *  entry. */
+export const apiListOrganizations = cache(async function apiListOrganizations(
   client: SupabaseClient,
 ): Promise<Organization[]> {
   const { organizations } = await invokeEF<{ organizations: Organization[] }>(
@@ -97,7 +109,7 @@ export async function apiListOrganizations(
     "Couldn't load your organizations.",
   );
   return organizations ?? [];
-}
+});
 
 export async function apiCreateOrganization(
   client: SupabaseClient,
